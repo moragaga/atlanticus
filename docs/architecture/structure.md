@@ -40,3 +40,13 @@ Source -> Artifact -> Distribution -> Deployment
 ```
 
 `artifacts/`, `distribution/` y `.runtime/` no son autoridad de desarrollo.
+
+## Primera aplicación de scope
+
+La primera composición Web ejecutable se incorpora bajo:
+
+```text
+scopes/ada/web/application/ada-generic-application
+```
+
+Publica `ada.web.application.generic`. Los niveles `ada`, `ada.web` y `ada.web.application` permanecen como namespaces compartidos; `generic` es el paquete concreto de la aplicación.

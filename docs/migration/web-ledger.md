@@ -19,3 +19,7 @@ Este ledger registra qué se promueve desde `atlanticus-multi-stage`. La regla e
 ## Siguiente slice
 
 `ADA Generic Application Bootstrap`: crear temprano `scopes/ada/web/application/ada-generic-application` usando Core + Observability + Identity + Navigation, todavía sin Manager ni infraestructura externa obligatoria.
+
+## Aplicación ADA creada durante la premigración
+
+`scopes/ada/web/application/ada-generic-application` queda creado como composition root real y visible. No es una capability promovida desde multi-stage; consume Web Core + Identity + Navigation y no exige infraestructura externa para su arranque local.
