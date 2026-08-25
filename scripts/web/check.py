@@ -60,6 +60,17 @@ CAPABILITIES: dict[str, WebCapability] = {
             ),
         ),
     ),
+    'navigation': WebCapability(
+        key='navigation',
+        package_roots=('capabilities/navigation/core',),
+        tests_roots=('capabilities/navigation/core/tests',),
+        mirror_pairs=(
+            MirrorPair(
+                'capabilities/navigation/core/src',
+                'capabilities/navigation/core/commented',
+            ),
+        ),
+    ),
 }
 
 

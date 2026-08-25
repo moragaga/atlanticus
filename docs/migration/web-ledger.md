@@ -9,7 +9,7 @@ Este ledger registra qué se promueve desde `atlanticus-multi-stage`. La regla e
 | Identity Core | `web/capabilities/identity/core` | `web/capabilities/identity/core` | PROMOTED | Contrato transversal de principal, provider, sesión y acceso; corregido `except` inválido en `module.py` |
 | Identity Local | `web/capabilities/identity/local` | `web/capabilities/identity/local` | PROMOTED | Provider local estable; elimina personas hardcodeadas y permite subject explícito/entorno/usuario del sistema |
 | Identity App Service | `web/capabilities/identity/app-service` | por revisar | HOLD | No necesaria para primer arranque local; evaluar cuando integremos deployment/Entra |
-| Navigation Core | `web/capabilities/navigation/core` | por revisar | PENDING | Siguiente slice previsto |
+| Navigation Core | `web/capabilities/navigation/core` | `web/capabilities/navigation/core` | PROMOTED | Contrato transversal de menú, definición, principal de navegación y autorización; sin dependencia Users |
 | Users Core | `web/capabilities/users/core` | por revisar | PENDING | Revisar tras Navigation/Application bootstrap |
 | Manager | `web/capabilities/manager` | por revisar | PENDING | Recuperar capability transversal, no la composición ADA antigua |
 | Reference App | `web/applications/reference` | — | DO NOT PROMOTE | Sólo referencia histórica |
@@ -18,4 +18,4 @@ Este ledger registra qué se promueve desde `atlanticus-multi-stage`. La regla e
 
 ## Siguiente slice
 
-`Navigation Core` mínimo. Después se crea temprano `scopes/ada/web/application/ada-generic-application` para que las siguientes capabilities se validen también en la aplicación real.
+`ADA Generic Application Bootstrap`: crear temprano `scopes/ada/web/application/ada-generic-application` usando Core + Observability + Identity + Navigation, todavía sin Manager ni infraestructura externa obligatoria.

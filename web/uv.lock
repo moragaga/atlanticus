@@ -7,6 +7,7 @@ members = [
     "atlanticus-web",
     "atlanticus-web-identity",
     "atlanticus-web-identity-local",
+    "atlanticus-web-navigation",
     "atlanticus-web-observability",
     "atlanticus-web-workspace",
 ]
@@ -72,6 +73,17 @@ requires-dist = [
 ]
 
 [[package]]
+name = "atlanticus-web-navigation"
+version = "0.1.0"
+source = { editable = "capabilities/navigation/core" }
+dependencies = [
+    { name = "atlanticus-web" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "atlanticus-web", editable = "framework/core" }]
+
+[[package]]
 name = "atlanticus-web-observability"
 version = "0.1.0"
 source = { editable = "framework/observability" }
@@ -90,6 +102,7 @@ dependencies = [
     { name = "atlanticus-web" },
     { name = "atlanticus-web-identity" },
     { name = "atlanticus-web-identity-local" },
+    { name = "atlanticus-web-navigation" },
 ]
 
 [package.dev-dependencies]
@@ -103,6 +116,7 @@ requires-dist = [
     { name = "atlanticus-web", editable = "framework/core" },
     { name = "atlanticus-web-identity", editable = "capabilities/identity/core" },
     { name = "atlanticus-web-identity-local", editable = "capabilities/identity/local" },
+    { name = "atlanticus-web-navigation", editable = "capabilities/navigation/core" },
 ]
 
 [package.metadata.requires-dev]
