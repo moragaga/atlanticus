@@ -6,11 +6,11 @@ Este ledger registra qué se promueve desde `atlanticus-multi-stage`. La regla e
 |---|---|---|---|---|
 | Web Observability | `web/framework/observability` | `web/framework/observability` | PROMOTED | Base mínima, sin dependencia ADA |
 | Web Core | `web/framework/core` | `web/framework/core` | PROMOTED | Base Flask/Dash transversal; corregido `except` inválido en `application.py` |
-| Identity Core | `web/capabilities/identity/core` | por revisar | PENDING | Revisar siguiente |
-| Identity Local | `web/capabilities/identity/local` | por revisar | PENDING | Necesaria para ejecución local |
-| Identity App Service | `web/capabilities/identity/app-service` | por revisar | PENDING | No necesaria para primer arranque local |
-| Navigation Core | `web/capabilities/navigation/core` | por revisar | PENDING | Revisar con shell/navegación |
-| Users Core | `web/capabilities/users/core` | por revisar | PENDING | Revisar tras Identity |
+| Identity Core | `web/capabilities/identity/core` | `web/capabilities/identity/core` | PROMOTED | Contrato transversal de principal, provider, sesión y acceso; corregido `except` inválido en `module.py` |
+| Identity Local | `web/capabilities/identity/local` | `web/capabilities/identity/local` | PROMOTED | Provider local estable; elimina personas hardcodeadas y permite subject explícito/entorno/usuario del sistema |
+| Identity App Service | `web/capabilities/identity/app-service` | por revisar | HOLD | No necesaria para primer arranque local; evaluar cuando integremos deployment/Entra |
+| Navigation Core | `web/capabilities/navigation/core` | por revisar | PENDING | Siguiente slice previsto |
+| Users Core | `web/capabilities/users/core` | por revisar | PENDING | Revisar tras Navigation/Application bootstrap |
 | Manager | `web/capabilities/manager` | por revisar | PENDING | Recuperar capability transversal, no la composición ADA antigua |
 | Reference App | `web/applications/reference` | — | DO NOT PROMOTE | Sólo referencia histórica |
 | Runtime Infrastructure | `web/compositions/runtime-infrastructure` | por revisar más adelante | HOLD | No debe bloquear app local con Cosmos |
@@ -18,4 +18,4 @@ Este ledger registra qué se promueve desde `atlanticus-multi-stage`. La regla e
 
 ## Siguiente slice
 
-`Identity Core + Identity Local`, seguido de `Navigation Core`, con smoke dentro de la futura `scopes/ada/web/application/ada-generic-application` tan pronto exista el mínimo para levantarla.
+`Navigation Core` mínimo. Después se crea temprano `scopes/ada/web/application/ada-generic-application` para que las siguientes capabilities se validen también en la aplicación real.

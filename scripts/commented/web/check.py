@@ -1,3 +1,4 @@
+# Resuelve targets Web por semántica; una capability puede agrupar varios paquetes físicos.
 from __future__ import annotations
 
 import argparse
@@ -7,46 +8,64 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-# Runtime Python autorizado para los gates de Atlanticus.
 EXPECTED_PYTHON_VERSION = '3.14.2'
 
 
 @dataclass(frozen=True, slots=True)
-class WebCapability:
-    # Identificador semántico usado en la línea de comandos.
-    key: str
-    # Raíz física del paquete dentro de web/.
-    package_root: str
-    # Suite de pruebas autoritativa de la capability.
-    tests_root: str
-    # Fuente productiva que debe tener espejo comentado equivalente.
+class MirrorPair:
     source_root: str
-    # Espejo comentado correspondiente.
     commented_root: str
 
 
-# El registro desacopla los comandos de mantenimiento de las rutas físicas.
-# Agregar una capability Web nueva requiere registrarla aquí, no crear otro script.
+@dataclass(frozen=True, slots=True)
+class WebCapability:
+    key: str
+    package_roots: tuple[str, ...]
+    tests_roots: tuple[str, ...]
+    mirror_pairs: tuple[MirrorPair, ...]
+
+
+# El registro encapsula las rutas físicas para que los comandos públicos usen nombres estables.
 CAPABILITIES: dict[str, WebCapability] = {
     'core': WebCapability(
         key='core',
-        package_root='framework/core',
-        tests_root='framework/core/tests',
-        source_root='framework/core/src',
-        commented_root='framework/core/commented',
+        package_roots=('framework/core',),
+        tests_roots=('framework/core/tests',),
+        mirror_pairs=(MirrorPair('framework/core/src', 'framework/core/commented'),),
     ),
     'observability': WebCapability(
         key='observability',
-        package_root='framework/observability',
-        tests_root='framework/observability/tests',
-        source_root='framework/observability/src',
-        commented_root='framework/observability/commented',
+        package_roots=('framework/observability',),
+        tests_roots=('framework/observability/tests',),
+        mirror_pairs=(
+            MirrorPair('framework/observability/src', 'framework/observability/commented'),
+        ),
+    ),
+    'identity': WebCapability(
+        key='identity',
+        package_roots=(
+            'capabilities/identity/core',
+            'capabilities/identity/local',
+        ),
+        tests_roots=(
+            'capabilities/identity/core/tests',
+            'capabilities/identity/local/tests',
+        ),
+        mirror_pairs=(
+            MirrorPair(
+                'capabilities/identity/core/src',
+                'capabilities/identity/core/commented',
+            ),
+            MirrorPair(
+                'capabilities/identity/local/src',
+                'capabilities/identity/local/commented',
+            ),
+        ),
     ),
 }
 
 
 def _repository_root() -> Path:
-    # scripts/web/check.py está dos niveles bajo la raíz del repositorio.
     return Path(__file__).resolve().parents[2]
 
 
@@ -55,7 +74,6 @@ def _web_root() -> Path:
 
 
 def _run(command: list[str], *, cwd: Path) -> None:
-    # Todos los subprocesos fallan inmediatamente si el comando retorna error.
     subprocess.run(command, cwd=cwd, check=True)
 
 
@@ -82,7 +100,6 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _resolve_capabilities(arguments: argparse.Namespace) -> tuple[WebCapability, ...]:
-    # --list permite descubrir la interfaz semántica sin conocer el tree interno.
     if arguments.list:
         for key in CAPABILITIES:
             print(key)
@@ -92,7 +109,6 @@ def _resolve_capabilities(arguments: argparse.Namespace) -> tuple[WebCapability,
     if arguments.all and requested:
         raise SystemExit('Use --all or explicit capabilities, not both')
 
-    # Sin argumentos se interpreta como el gate completo de la frontera Web.
     if arguments.all or not requested:
         requested = list(CAPABILITIES)
 
@@ -102,7 +118,7 @@ def _resolve_capabilities(arguments: argparse.Namespace) -> tuple[WebCapability,
         joined = ', '.join(unknown)
         raise SystemExit(f'Unknown Web capabilities: {joined}. Valid capabilities: {valid}')
 
-    # Se conserva el orden solicitado y se eliminan duplicados.
+    # Quitamos duplicados preservando el orden solicitado por el mantenedor.
     unique: list[WebCapability] = []
     seen: set[str] = set()
     for key in requested:
@@ -113,7 +129,6 @@ def _resolve_capabilities(arguments: argparse.Namespace) -> tuple[WebCapability,
 
 
 def _tooling_python_paths(root: Path) -> tuple[str, ...]:
-    # El propio tooling Web también se normaliza con Ruff durante cada gate.
     paths = (
         root / 'scripts/web/check.py',
         root / 'scripts/repository/validate_mirrors.py',
@@ -129,6 +144,11 @@ def _validate_python_version() -> None:
         raise SystemExit(f'Expected Python {EXPECTED_PYTHON_VERSION}, found {version}')
 
 
+def _unique_paths(values: list[str]) -> list[str]:
+    # La misma ruta puede pertenecer a más de un target compuesto; se ejecuta una sola vez.
+    return list(dict.fromkeys(values))
+
+
 def _validate_mirrors(
     capabilities: tuple[WebCapability, ...],
     *,
@@ -137,15 +157,11 @@ def _validate_mirrors(
 ) -> None:
     validator = root / 'scripts/repository/validate_mirrors.py'
     arguments = [sys.executable, str(validator)]
-    # Se agregan únicamente los pares de las capabilities seleccionadas.
+    # Cada capability declara explícitamente todos sus pares productivo/comentado.
     for capability in capabilities:
-        arguments.extend(
-            (
-                capability.source_root,
-                capability.commented_root,
-            )
-        )
-    # El tooling nuevo mantiene también su espejo comentado.
+        for pair in capability.mirror_pairs:
+            arguments.extend((pair.source_root, pair.commented_root))
+    # El propio tooling también forma parte del contrato de espejos del repositorio.
     arguments.extend(
         (
             str(root / 'scripts/web'),
@@ -163,8 +179,11 @@ def main(argv: list[str] | None = None) -> int:
 
     root = _repository_root()
     web = _web_root()
-    package_roots = [capability.package_root for capability in capabilities]
-    tests = [capability.tests_root for capability in capabilities]
+    # Un target semántico puede expandirse a uno o más paquetes y suites de tests.
+    package_roots = _unique_paths(
+        [path for capability in capabilities for path in capability.package_roots]
+    )
+    tests = _unique_paths([path for capability in capabilities for path in capability.tests_roots])
     ruff_targets = [*package_roots, *_tooling_python_paths(root)]
     names = ', '.join(capability.key for capability in capabilities)
 

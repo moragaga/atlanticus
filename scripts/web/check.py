@@ -11,28 +11,54 @@ EXPECTED_PYTHON_VERSION = '3.14.2'
 
 
 @dataclass(frozen=True, slots=True)
-class WebCapability:
-    key: str
-    package_root: str
-    tests_root: str
+class MirrorPair:
     source_root: str
     commented_root: str
+
+
+@dataclass(frozen=True, slots=True)
+class WebCapability:
+    key: str
+    package_roots: tuple[str, ...]
+    tests_roots: tuple[str, ...]
+    mirror_pairs: tuple[MirrorPair, ...]
 
 
 CAPABILITIES: dict[str, WebCapability] = {
     'core': WebCapability(
         key='core',
-        package_root='framework/core',
-        tests_root='framework/core/tests',
-        source_root='framework/core/src',
-        commented_root='framework/core/commented',
+        package_roots=('framework/core',),
+        tests_roots=('framework/core/tests',),
+        mirror_pairs=(MirrorPair('framework/core/src', 'framework/core/commented'),),
     ),
     'observability': WebCapability(
         key='observability',
-        package_root='framework/observability',
-        tests_root='framework/observability/tests',
-        source_root='framework/observability/src',
-        commented_root='framework/observability/commented',
+        package_roots=('framework/observability',),
+        tests_roots=('framework/observability/tests',),
+        mirror_pairs=(
+            MirrorPair('framework/observability/src', 'framework/observability/commented'),
+        ),
+    ),
+    'identity': WebCapability(
+        key='identity',
+        package_roots=(
+            'capabilities/identity/core',
+            'capabilities/identity/local',
+        ),
+        tests_roots=(
+            'capabilities/identity/core/tests',
+            'capabilities/identity/local/tests',
+        ),
+        mirror_pairs=(
+            MirrorPair(
+                'capabilities/identity/core/src',
+                'capabilities/identity/core/commented',
+            ),
+            MirrorPair(
+                'capabilities/identity/local/src',
+                'capabilities/identity/local/commented',
+            ),
+        ),
     ),
 }
 
@@ -115,6 +141,10 @@ def _validate_python_version() -> None:
         raise SystemExit(f'Expected Python {EXPECTED_PYTHON_VERSION}, found {version}')
 
 
+def _unique_paths(values: list[str]) -> list[str]:
+    return list(dict.fromkeys(values))
+
+
 def _validate_mirrors(
     capabilities: tuple[WebCapability, ...],
     *,
@@ -124,12 +154,8 @@ def _validate_mirrors(
     validator = root / 'scripts/repository/validate_mirrors.py'
     arguments = [sys.executable, str(validator)]
     for capability in capabilities:
-        arguments.extend(
-            (
-                capability.source_root,
-                capability.commented_root,
-            )
-        )
+        for pair in capability.mirror_pairs:
+            arguments.extend((pair.source_root, pair.commented_root))
     arguments.extend(
         (
             str(root / 'scripts/web'),
@@ -147,8 +173,10 @@ def main(argv: list[str] | None = None) -> int:
 
     root = _repository_root()
     web = _web_root()
-    package_roots = [capability.package_root for capability in capabilities]
-    tests = [capability.tests_root for capability in capabilities]
+    package_roots = _unique_paths(
+        [path for capability in capabilities for path in capability.package_roots]
+    )
+    tests = _unique_paths([path for capability in capabilities for path in capability.tests_roots])
     ruff_targets = [*package_roots, *_tooling_python_paths(root)]
     names = ', '.join(capability.key for capability in capabilities)
 
