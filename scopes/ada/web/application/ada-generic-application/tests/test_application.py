@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ada.web.application.generic.application import create_application_definition
 from ada.web.application.generic.runtime import create_application_runtime
+from ada.web.ui.core import ADA_UI_ASSET_LAYER
 from atlanticus.web.identity.access import ACCESS_RUNTIME_SERVICE_KEY
 from atlanticus.web.navigation.api import (
     NAVIGATION_DEFINITION_PROVIDER_SERVICE_KEY,
@@ -14,7 +15,12 @@ def test_definition_composes_minimum_ada_web_capabilities() -> None:
 
     assert definition.metadata.application_id == 'ada-generic-application'
     assert definition.metadata.display_name == 'ADA'
-    assert tuple(module.name for module in definition.modules) == ('identity', 'navigation')
+    assert definition.metadata.version == '0.1.1'
+    assert tuple(module.name for module in definition.modules) == (
+        'ada-ui',
+        'identity',
+        'navigation',
+    )
     assert definition.page_packages == ('ada.web.application.generic.pages',)
 
 
@@ -32,6 +38,10 @@ def test_runtime_starts_locally_without_external_infrastructure(tmp_path, monkey
     assert client.get('/').status_code == 200
     assert client.get('/_dash-layout').status_code == 200
     assert runtime.services.contains(ACCESS_RUNTIME_SERVICE_KEY)
+    assert any(
+        entry.startswith(f'{ADA_UI_ASSET_LAYER.target_name}/css/')
+        for entry in runtime.assets.css_entries
+    )
 
     provider = runtime.services.require(
         NAVIGATION_DEFINITION_PROVIDER_SERVICE_KEY,

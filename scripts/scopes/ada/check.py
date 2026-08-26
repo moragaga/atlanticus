@@ -21,6 +21,14 @@ class AdaCapability:
 
 
 CAPABILITIES: dict[str, AdaCapability] = {
+    'ui-core': AdaCapability(
+        key='ui-core',
+        project_root='scopes/ada/web/ui/core',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
     'application': AdaCapability(
         key='application',
         project_root='scopes/ada/web/application/ada-generic-application',
@@ -90,7 +98,7 @@ def _validate_python_version() -> None:
         raise SystemExit(f'Expected Python {EXPECTED_PYTHON_VERSION}, found {version}')
 
 
-def _validate_application(capability: AdaCapability, *, root: Path) -> None:
+def _validate_capability(capability: AdaCapability, *, root: Path) -> None:
     project = root / capability.project_root
     tooling = (
         root / 'scripts/scopes/ada/check.py',
@@ -136,7 +144,7 @@ def main(argv: list[str] | None = None) -> int:
     root = _repository_root()
 
     for capability in capabilities:
-        _validate_application(capability, root=root)
+        _validate_capability(capability, root=root)
 
     names = ', '.join(capability.key for capability in capabilities)
     print(f'Atlanticus ADA validated: {names}')

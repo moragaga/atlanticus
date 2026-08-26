@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ada.web.application.generic.composition import build_application_layout
+from ada.web.ui.core import create_ada_ui_module
 from atlanticus.web.identity.local import LocalIdentityProvider
 from atlanticus.web.identity.module import create_identity_module
 from atlanticus.web.models import ApplicationMetadata, WebApplicationDefinition
@@ -32,11 +33,12 @@ def create_application_definition() -> WebApplicationDefinition:
         metadata=ApplicationMetadata(
             application_id='ada-generic-application',
             display_name='ADA',
-            version='0.1.0',
+            version='0.1.1',
         ),
         publications_root=_APPLICATION_ROOT / '.runtime' / 'publications',
         layout=build_application_layout,
         modules=(
+            create_ada_ui_module(),
             create_identity_module(LocalIdentityProvider()),
             create_navigation_module(navigation),
         ),

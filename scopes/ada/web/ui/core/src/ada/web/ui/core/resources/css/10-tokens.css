@@ -1,0 +1,20 @@
+:root {
+    --background: #858585;
+    --primary-background: #EBEBEB;
+    --secondary-background: #C7C7C7;
+    --tertiary-background: #E1E1E1;
+    --custom-text-color: #4D4D4D;
+    --primary-border-color: #BDBDBD;
+    --secondary-border-color: #313131;
+    --loader-color: #2E2E2E;
+    --loader-background: #939292;
+    --dark-color: #313131;
+    --ada-status-icon-size: 1rem;
+    --ada-cover-icon-box-size: 1.5rem;
+    --ada-cover-icon-size: 1.25rem;
+}
+
+* {
+    box-sizing: border-box;
+    font-family: 'Inter', Helvetica, Arial, sans-serif !important;
+}

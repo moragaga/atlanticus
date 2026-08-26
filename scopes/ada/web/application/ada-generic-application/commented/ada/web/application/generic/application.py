@@ -1,8 +1,11 @@
+# Composition root real de ADA. Desde este step la aplicación registra explícitamente la fundación
+# visual ADA antes de las capabilities funcionales, sin incorporar aún Header ni Branding.
 from __future__ import annotations
 
 from pathlib import Path
 
 from ada.web.application.generic.composition import build_application_layout
+from ada.web.ui.core import create_ada_ui_module
 from atlanticus.web.identity.local import LocalIdentityProvider
 from atlanticus.web.identity.module import create_identity_module
 from atlanticus.web.models import ApplicationMetadata, WebApplicationDefinition
@@ -12,12 +15,10 @@ from atlanticus.web.navigation.api import (
     create_navigation_module,
 )
 
-# Mantiene los outputs locales dentro del proyecto de la aplicación, sin depender del cwd.
 _APPLICATION_ROOT = Path(__file__).resolve().parents[5]
 
 
 def create_application_definition() -> WebApplicationDefinition:
-    # Navigation ya forma parte del composition root aunque todavía no tenga una UI de menú.
     navigation = NavigationDefinition(
         links=(
             NavigationLinkDefinition(
@@ -34,12 +35,12 @@ def create_application_definition() -> WebApplicationDefinition:
         metadata=ApplicationMetadata(
             application_id='ada-generic-application',
             display_name='ADA',
-            version='0.1.0',
+            version='0.1.1',
         ),
         publications_root=_APPLICATION_ROOT / '.runtime' / 'publications',
         layout=build_application_layout,
         modules=(
-            # El provider local permite levantar la aplicación sin Entra ni infraestructura externa.
+            create_ada_ui_module(),
             create_identity_module(LocalIdentityProvider()),
             create_navigation_module(navigation),
         ),
