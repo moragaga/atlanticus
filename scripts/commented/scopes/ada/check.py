@@ -1,5 +1,4 @@
-# Checker semántico del scope ADA. Mantiene la interfaz de mantenedor independiente de las rutas
-# físicas y, sin argumentos, valida todas las capabilities ADA ya promovidas.
+# Orquestador ADA: 05D agrega el target semántico navigation para la presentación del scope.
 from __future__ import annotations
 
 import argparse
@@ -34,6 +33,14 @@ CAPABILITIES: dict[str, AdaCapability] = {
     'branding': AdaCapability(
         key='branding',
         project_root='scopes/ada/web/ui/branding',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
+    'navigation': AdaCapability(
+        key='navigation',
+        project_root='scopes/ada/web/shell/navigation',
         ruff_roots=('src', 'tests', 'commented'),
         tests_root='tests',
         source_root='src',

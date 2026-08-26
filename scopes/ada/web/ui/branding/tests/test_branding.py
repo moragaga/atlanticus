@@ -16,12 +16,12 @@ from ada.web.ui.branding import (
 
 def test_branding_module_publishes_small_operational_asset_layer() -> None:
     module = create_ada_branding_module()
-    resource = files('ada.web.ui.branding').joinpath('resources/img/ada-operational-primary.png')
+    resource = files('ada.web.ui.branding').joinpath('resources/img/ada-operational-primary.svg')
 
     assert module.name == 'ada-branding'
     assert module.asset_layers == (ADA_BRANDING_ASSET_LAYER,)
     assert DEFAULT_OPERATIONAL_BRAND_LOGO_SRC == (
-        f'/assets/{ADA_BRANDING_ASSET_LAYER.target_name}/img/ada-operational-primary.png'
+        f'/assets/{ADA_BRANDING_ASSET_LAYER.target_name}/img/ada-operational-primary.svg'
     )
     assert resource.is_file()
     assert len(resource.read_bytes()) < 100_000

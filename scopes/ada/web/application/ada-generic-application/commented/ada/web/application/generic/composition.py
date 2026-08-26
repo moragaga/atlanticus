@@ -1,20 +1,35 @@
+# La aplicación resuelve el NavigationMenu y entrega al shell visual únicamente datos ya resueltos.
 from __future__ import annotations
 
 from dash import html, page_container
 
+from ada.web.shell.navigation import (
+    AdaNavigationView,
+    build_ada_navigation_offcanvas,
+    build_ada_navigation_trigger,
+)
 from ada.web.ui.branding import OperationalBrandState, build_operational_brand
+from atlanticus.web.navigation.api import resolve_navigation_from_services
 from atlanticus.web.services import ServiceRegistry
 
 
 def build_application_layout(
-    _services: ServiceRegistry,
+    services: ServiceRegistry,
     *,
     operational_brand: OperationalBrandState,
+    navigation_view: AdaNavigationView,
 ):
-    # El Brand se monta como consumidor real ahora; 05E lo anclará dentro del Header.
+    menu = resolve_navigation_from_services(services)
     return html.Div(
         [
-            build_operational_brand(operational_brand),
+            html.Div(
+                [
+                    build_operational_brand(operational_brand),
+                    build_ada_navigation_trigger(),
+                ],
+                className='d-flex align-items-center justify-content-between gap-3 p-3',
+            ),
+            build_ada_navigation_offcanvas(menu, view=navigation_view),
             html.Main(
                 page_container,
                 id='ada-application-content',

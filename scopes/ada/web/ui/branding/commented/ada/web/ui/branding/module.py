@@ -14,7 +14,7 @@ ADA_BRANDING_ASSET_LAYER = AssetLayer(
 # La URL deriva del nombre estable de la capa publicada por Atlanticus Web; evita convertir la
 # imagen a base64 dentro de cada Header y permite cachearla como asset normal del navegador.
 DEFAULT_OPERATIONAL_BRAND_LOGO_SRC = (
-    f'/assets/{ADA_BRANDING_ASSET_LAYER.target_name}/img/ada-operational-primary.png'
+    f'/assets/{ADA_BRANDING_ASSET_LAYER.target_name}/img/ada-operational-primary.svg'
 )
 
 

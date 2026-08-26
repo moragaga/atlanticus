@@ -39,7 +39,7 @@ include = ["ada.web.ui.branding*"]
     "py.typed",
     "resources/css/*.css",
     "resources/css/css.list",
-    "resources/img/*.png",
+    "resources/img/*.svg",
 ]
 
 [tool.ruff]

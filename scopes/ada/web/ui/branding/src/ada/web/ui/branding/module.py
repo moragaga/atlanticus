@@ -10,7 +10,7 @@ ADA_BRANDING_ASSET_LAYER = AssetLayer(
 )
 
 DEFAULT_OPERATIONAL_BRAND_LOGO_SRC = (
-    f'/assets/{ADA_BRANDING_ASSET_LAYER.target_name}/img/ada-operational-primary.png'
+    f'/assets/{ADA_BRANDING_ASSET_LAYER.target_name}/img/ada-operational-primary.svg'
 )
 
 

@@ -25,12 +25,12 @@ ada.web.ui.branding
 ├── create_ada_branding_module()
 └── resources/
     ├── css/
-    └── img/ada-operational-primary.png
+    └── img/ada-operational-primary.svg
 ```
 
 El estado recibe únicamente datos de presentación. `context_name` es opcional y se inyecta desde la composición de la aplicación. Branding no consulta Tool Configuration, Tool Manifest ni providers.
 
-El logo se publica mediante un `AssetLayer` de Atlanticus Web y se referencia por URL. No se incrusta como base64, permitiendo caching normal del navegador. El recurso fuente se renombra desde el nombre histórico ambiguo a `ada-operational-primary.png` y se optimiza para su tamaño real de presentación.
+El logo se publica mediante un `AssetLayer` de Atlanticus Web y se referencia por URL. No se incrusta como base64, permitiendo caching normal del navegador. El recurso operacional canónico se publica como `ada-operational-primary.svg`, conservando formato vectorial y caching normal del navegador.
 
 El resolver calendario y los manifests históricos quedan diferidos. Si en el futuro existen variantes visuales reales, un resolver podrá seleccionar `logo_src` y entregar el resultado a `OperationalBrandState` sin cambiar el Header ni el componente.
 

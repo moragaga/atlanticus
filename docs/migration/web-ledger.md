@@ -16,8 +16,9 @@ Este ledger registra qué se promueve desde `atlanticus-multi-stage`. La regla e
 | Runtime Infrastructure | `web/compositions/runtime-infrastructure` | por revisar más adelante | HOLD | No debe bloquear app local con Cosmos |
 | SharePoint HTTP composition | `web/compositions/sharepoint-http` | por revisar | HOLD | Migrar sólo cuando exista consumidor real |
 | ADA Web UI Core | `scopes/ada/ui/framework/core` | `scopes/ada/web/ui/core` | PROMOTED | Fundación visual mínima: assets/tokens + DOM; status/readiness/ticker diferidos |
-| ADA Operational Branding | `scopes/ada/ui/components/branding` | `scopes/ada/web/ui/branding` | PROMOTING | Componente operacional independiente; contexto inyectado; branding Manager separado; resolver calendario legacy diferido |
+| ADA Operational Branding | `scopes/ada/ui/components/branding` | `scopes/ada/web/ui/branding` | PROMOTED | Componente operacional independiente; contexto inyectado; branding Manager separado; resolver calendario legacy diferido |
+| ADA Navigation Presentation | `scopes/ada/ui/shell/navigation` | `scopes/ada/web/shell/navigation` | PROMOTING | Presentación desacoplada de Header/ServiceRegistry; datos visuales inyectables; sin URL/proyecto hardcodeado |
 
 ## Siguiente slice
 
-`ADA Operational Branding`: promover la identidad operacional como capability independiente y montarla en `ada-generic-application`; luego evaluar State Wrapper antes de continuar hacia Navigation Presentation y Header.
+`ADA Navigation Presentation`: cerrar gate y ajuste visual en `ada-generic-application`; luego construir Step 05E — Operational Header sobre Brand + Navigation ya independientes y slots externos para Global Indicators, Alarm Management y Alarm Status.

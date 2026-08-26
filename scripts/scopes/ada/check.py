@@ -37,6 +37,14 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
+    'navigation': AdaCapability(
+        key='navigation',
+        project_root='scopes/ada/web/shell/navigation',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
     'application': AdaCapability(
         key='application',
         project_root='scopes/ada/web/application/ada-generic-application',
