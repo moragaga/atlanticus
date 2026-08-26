@@ -3,20 +3,17 @@ requires = ["setuptools==83.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ada-generic-application"
-version = "0.1.2"
-description = "Composition root web genérico de ADA sobre Atlanticus Web"
+name = "ada-web-ui-branding"
+version = "0.1.0"
+description = "Identidad visual operacional reusable para aplicaciones Web ADA"
 requires-python = "==3.14.2"
 classifiers = [
     "Private :: Do Not Upload",
 ]
 dependencies = [
-    "ada-web-ui-branding==0.1.0",
     "ada-web-ui-core==0.1.0",
     "atlanticus-web==0.1.0",
-    "atlanticus-web-identity==0.1.0",
-    "atlanticus-web-identity-local==0.1.0",
-    "atlanticus-web-navigation==0.1.0",
+    "dash==4.4.1",
 ]
 
 [dependency-groups]
@@ -25,17 +22,9 @@ dev = [
     "ruff==0.15.22",
 ]
 
-[project.scripts]
-ada-generic-application = "ada.web.application.generic.__main__:main"
-
 [tool.uv.sources]
-ada-web-ui-branding = { path = "../../ui/branding", editable = true }
-ada-web-ui-core = { path = "../../ui/core", editable = true }
+ada-web-ui-core = { path = "../core", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
-atlanticus-web-observability = { path = "../../../../../web/framework/observability", editable = true }
-atlanticus-web-identity = { path = "../../../../../web/capabilities/identity/core", editable = true }
-atlanticus-web-identity-local = { path = "../../../../../web/capabilities/identity/local", editable = true }
-atlanticus-web-navigation = { path = "../../../../../web/capabilities/navigation/core", editable = true }
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -43,10 +32,15 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 namespaces = true
-include = ["ada.web.application.generic*"]
+include = ["ada.web.ui.branding*"]
 
 [tool.setuptools.package-data]
-"ada.web.application.generic" = ["py.typed"]
+"ada.web.ui.branding" = [
+    "py.typed",
+    "resources/css/*.css",
+    "resources/css/css.list",
+    "resources/img/*.png",
+]
 
 [tool.ruff]
 line-length = 100

@@ -5,5 +5,10 @@ from atlanticus.web.application import create_web_application
 from atlanticus.web.models import WebApplicationRuntime
 
 
-def create_application_runtime() -> WebApplicationRuntime:
-    return create_web_application(create_application_definition())
+def create_application_runtime(
+    *,
+    tool_display_name: str | None = None,
+) -> WebApplicationRuntime:
+    return create_web_application(
+        create_application_definition(tool_display_name=tool_display_name)
+    )

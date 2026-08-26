@@ -2,14 +2,22 @@ from __future__ import annotations
 
 from dash import html, page_container
 
+from ada.web.ui.branding import OperationalBrandState, build_operational_brand
 from atlanticus.web.services import ServiceRegistry
 
 
-def build_application_layout(_services: ServiceRegistry):
+def build_application_layout(
+    _services: ServiceRegistry,
+    *,
+    operational_brand: OperationalBrandState,
+):
     return html.Div(
-        html.Main(
-            page_container,
-            id='ada-application-content',
-        ),
+        [
+            build_operational_brand(operational_brand),
+            html.Main(
+                page_container,
+                id='ada-application-content',
+            ),
+        ],
         id='ada-generic-application',
     )

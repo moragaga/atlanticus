@@ -1,0 +1,71 @@
+.ada-operational-brand {
+    --ada-operational-brand-ink: #5B5C64;
+    display: flex;
+    width: 10rem;
+    height: 5.5rem;
+    min-width: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: .25rem .65rem .25rem .2rem;
+    color: var(--ada-operational-brand-ink);
+}
+
+.ada-operational-brand__logo {
+    display: block;
+    width: auto;
+    max-width: 8rem;
+    height: auto;
+    max-height: 3rem;
+    object-fit: contain;
+}
+
+.ada-operational-brand__lockup {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    margin-top: .15rem;
+    flex-direction: column;
+    align-items: center;
+    gap: .15rem;
+}
+
+.ada-operational-brand__assistant {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: .38rem;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: .035rem;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.ada-operational-brand__context {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    gap: .25rem;
+    font-size: .35rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: .065rem;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.ada-operational-brand__context > span:not(.ada-operational-brand__rule) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ada-operational-brand__rule {
+    width: .7rem;
+    height: 1px;
+    flex: 0 0 .7rem;
+    background: currentColor;
+}
