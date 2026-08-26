@@ -9,15 +9,13 @@ from atlanticus.web.services import ServiceRegistry
 def register_ada_navigation_callbacks(app: Dash, _services: ServiceRegistry) -> None:
     app.clientside_callback(
         """
-        function(nClicks, isOpen) {
-            if (!nClicks) {
-                return window.dash_clientside.no_update;
-            }
+        function(_mobileClicks, _desktopClicks, isOpen) {
             return !Boolean(isOpen);
         }
         """,
         Output(AdaNavigationIds.OFFCANVAS, 'is_open'),
-        Input(AdaNavigationIds.TRIGGER, 'n_clicks'),
+        Input(AdaNavigationIds.MOBILE_TOGGLE, 'n_clicks'),
+        Input(AdaNavigationIds.DESKTOP_TOGGLE, 'n_clicks'),
         State(AdaNavigationIds.OFFCANVAS, 'is_open'),
         prevent_initial_call=True,
     )

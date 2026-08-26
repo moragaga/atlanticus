@@ -29,14 +29,48 @@ class AdaNavigationAction:
 
 @dataclass(frozen=True, slots=True)
 class AdaNavigationView:
-    title: str = 'ADA'
-    subtitle: str | None = 'Navegación'
+    title: str = 'Asistente de Decisiones Ágiles'
+    subtitle: str | None = None
+    brand_logo_src: str | None = None
+    brand_logo_alt: str = 'ADA'
+    footer_logo_src: str | None = None
+    footer_logo_alt: str = 'Minera Los Pelambres'
+    application_version: str | None = None
     action: AdaNavigationAction | None = None
 
     def __post_init__(self) -> None:
-        title = self.title.strip()
-        subtitle = self.subtitle.strip() if self.subtitle is not None else None
-        if not title:
-            raise WebDefinitionError('ADA navigation title must not be empty')
-        object.__setattr__(self, 'title', title)
-        object.__setattr__(self, 'subtitle', subtitle or None)
+        object.__setattr__(self, 'title', _text(self.title, 'title'))
+        object.__setattr__(self, 'subtitle', _optional_text(self.subtitle, 'subtitle'))
+        object.__setattr__(
+            self,
+            'brand_logo_src',
+            _optional_text(self.brand_logo_src, 'brand logo source'),
+        )
+        object.__setattr__(self, 'brand_logo_alt', _text(self.brand_logo_alt, 'brand logo alt'))
+        object.__setattr__(
+            self,
+            'footer_logo_src',
+            _optional_text(self.footer_logo_src, 'footer logo source'),
+        )
+        object.__setattr__(
+            self,
+            'footer_logo_alt',
+            _text(self.footer_logo_alt, 'footer logo alt'),
+        )
+        object.__setattr__(
+            self,
+            'application_version',
+            _optional_text(self.application_version, 'application version'),
+        )
+
+
+def _text(value: str, field_name: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise WebDefinitionError(f'ADA navigation {field_name} must not be empty')
+    return value.strip()
+
+
+def _optional_text(value: str | None, field_name: str) -> str | None:
+    if value is None:
+        return None
+    return _text(value, field_name)

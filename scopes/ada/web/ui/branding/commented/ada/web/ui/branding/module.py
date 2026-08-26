@@ -1,5 +1,4 @@
-# Registra los assets propios de la identidad operacional ADA como una capa independiente. El
-# Header sólo tendrá que anclar el componente y no conocer dónde viven sus imágenes o estilos.
+# Registra los recursos visuales ADA sin acoplarlos a una composición concreta.
 from __future__ import annotations
 
 from atlanticus.web.assets import AssetLayer
@@ -11,10 +10,12 @@ ADA_BRANDING_ASSET_LAYER = AssetLayer(
     package='ada.web.ui.branding',
 )
 
-# La URL deriva del nombre estable de la capa publicada por Atlanticus Web; evita convertir la
-# imagen a base64 dentro de cada Header y permite cachearla como asset normal del navegador.
+# Fuentes públicas para que shells/composiciones puedan inyectar logos sin duplicar assets.
 DEFAULT_OPERATIONAL_BRAND_LOGO_SRC = (
     f'/assets/{ADA_BRANDING_ASSET_LAYER.target_name}/img/ada-operational-primary.svg'
+)
+DEFAULT_PELAMBRES_BRAND_LOGO_SRC = (
+    f'/assets/{ADA_BRANDING_ASSET_LAYER.target_name}/img/amsa-pelambres-primary.png'
 )
 
 

@@ -16,9 +16,9 @@ Este ledger registra qué se promueve desde `atlanticus-multi-stage`. La regla e
 | Runtime Infrastructure | `web/compositions/runtime-infrastructure` | por revisar más adelante | HOLD | No debe bloquear app local con Cosmos |
 | SharePoint HTTP composition | `web/compositions/sharepoint-http` | por revisar | HOLD | Migrar sólo cuando exista consumidor real |
 | ADA Web UI Core | `scopes/ada/ui/framework/core` | `scopes/ada/web/ui/core` | PROMOTED | Fundación visual mínima: assets/tokens + DOM; status/readiness/ticker diferidos |
-| ADA Operational Branding | `scopes/ada/ui/components/branding` | `scopes/ada/web/ui/branding` | PROMOTED | Componente operacional independiente; contexto inyectado; branding Manager separado; resolver calendario legacy diferido |
-| ADA Navigation Presentation | `scopes/ada/ui/shell/navigation` | `scopes/ada/web/shell/navigation` | PROMOTING | Presentación desacoplada de Header/ServiceRegistry; datos visuales inyectables; sin URL/proyecto hardcodeado |
+| ADA Operational Branding | `scopes/ada/ui/components/branding` | `scopes/ada/web/ui/branding` | PROMOTED | `0.1.1`: componente operacional independiente + assets públicos ADA/Pelambres por AssetLayer; contexto inyectado; Manager separado |
+| ADA Navigation Presentation | `scopes/ada/ui/shell/navigation` | `scopes/ada/web/shell/navigation` | PROMOTING | `0.1.2`: patrón multi-stage preservado + header oscuro ADA y footer Pelambres/versión inyectados; sin Header/ServiceRegistry/project hardcodes |
 
 ## Siguiente slice
 
-`ADA Navigation Presentation`: cerrar gate y ajuste visual en `ada-generic-application`; luego construir Step 05E — Operational Header sobre Brand + Navigation ya independientes y slots externos para Global Indicators, Alarm Management y Alarm Status.
+`ADA Navigation Presentation`: validar visualmente 0.1.2 con header institucional oscuro y footer Pelambres/versión en `ada-generic-application`; ajustar UI hasta cierre y luego construir Step 05E — Operational Header.

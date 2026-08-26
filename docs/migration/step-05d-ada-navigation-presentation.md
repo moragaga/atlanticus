@@ -1,84 +1,87 @@
 # Step 05D — ADA Navigation Presentation
 
-**Estado:** preparado para gate autoritativo
+**Estado:** en ejecución; gate técnico verde en 0.1.3/0.1.4 y ajuste visual 0.1.5 preparado
 **Destino:** `scopes/ada/web/shell/navigation`
-**Distribución:** `ada-web-shell-navigation==0.1.0`
+**Distribución:** `ada-web-shell-navigation==0.1.2`
 
 ## Objetivo
 
-Promover la presentación ADA de navegación como una capability visual independiente que consume el contrato transversal `atlanticus.web.navigation` sin duplicar resolución, autorización ni configuración.
+Mantener la presentación ADA de navegación como capability visual independiente que consume `atlanticus.web.navigation`, preservando el patrón aprobado de multi-stage y permitiendo ajustes UI explícitos sin reintroducir acoplamientos de Header, Tool Manifest, ServiceRegistry o datos de proyecto.
 
-## Revisión del source anterior
+## Ajuste 0.1.5
 
-La implementación multi-stage ya separaba parcialmente Navigation Core de su presentación, pero la capa ADA conservaba acoplamientos históricos:
-
-- IDs y clases nombrados como `app-header-*` y `dashboard-*`;
-- constantes `ADA N1`, `Navegación del proyecto` y `https://ada.pelambres.cl/` dentro del componente;
-- un helper de presentación que resolvía servicios directamente;
-- un `MutationObserver` global sobre `document.documentElement` para sincronizar estado visual;
-- un asset `account-user.svg` declarado pero no consumido;
-- CSS repetido por breakpoints y reglas específicas del Header.
-
-## Decisión
-
-La nueva frontera es:
+El canvas conserva trigger, offcanvas, user card, acción opcional, links, grupos, active state y responsive previamente restaurados. Se agregan solamente dos zonas institucionales acordadas:
 
 ```text
-ada.web.shell.navigation
-├── AdaNavigationView
-├── AdaNavigationAction
-├── build_ada_navigation_trigger()
-├── build_ada_navigation_offcanvas()
-└── create_ada_navigation_presentation_module()
+Navigation Offcanvas
+├── Header
+│   ├── logo ADA
+│   └── Asistente de Decisiones Ágiles
+├── Main (scrollable)
+│   ├── user card
+│   ├── optional action
+│   └── navigation nodes
+└── Footer
+    ├── Minera Los Pelambres
+    └── Versión <app>
 ```
 
-La presentación recibe un `NavigationMenu` ya resuelto. No conoce `ServiceRegistry`, Users, Tool Manifest, Manager ni una aplicación concreta.
+El Header usa `var(--dark-color)`. El botón de cierre se adapta al fondo oscuro. El área central es la única zona con scroll; el footer permanece al final del canvas.
 
-Título, subtítulo y acción superior son datos inyectables. No existe URL de Pelambres ni nombre `ADA N1` hardcodeado. La acción superior es opcional y no se muestra en el bootstrap.
+## Datos inyectables
 
-Los IDs pertenecen a Navigation (`ada-navigation-*`) y el CSS usa sólo el namespace `.ada-navigation__*`. El componente no depende del Header para posicionarse.
+`AdaNavigationView` conserva datos de presentación únicamente:
 
-La ruta activa se sincroniza mediante callbacks clientside de Dash y `dcc.Location`; se elimina el `MutationObserver` global y no se publica JavaScript adicional.
+- título/subtítulo;
+- `brand_logo_src` / alt;
+- `footer_logo_src` / alt;
+- `application_version`;
+- acción opcional.
 
-## Integración real
+Navigation no importa Branding ni conoce la aplicación concreta. `ada-generic-application` inyecta los assets públicos de `ada.web.ui.branding` y su versión instalada.
 
-`ada-generic-application` sube a `0.1.3` y monta:
+## Branding institucional
+
+`ada-web-ui-branding==0.1.1` publica dos recursos por `AssetLayer`:
+
+- `ada-operational-primary.svg`;
+- `amsa-pelambres-primary.svg`.
+
+Navigation recibe las URLs; no duplica ni posee estos assets.
+
+## Versión de aplicación
+
+La composition root usa `importlib.metadata.version('ada-generic-application')` como fuente única para `ApplicationMetadata.version` y para el footer de Navigation. Navigation no hardcodea versiones.
+
+## Frontera preservada
 
 ```text
-ADA UI Core
-+ Operational Branding
-+ Identity Local
-+ Navigation Core
-+ ADA Navigation Presentation
+Identity + Navigation Core + Branding
+              |
+              | datos ya resueltos
+              v
+       Composition Root
+              |
+              | NavigationMenu + view
+              v
+   ada.web.shell.navigation
 ```
 
-La composition root resuelve el `NavigationMenu` desde los services y lo entrega a la presentación. Para el bootstrap local, Navigation Core recibe un `NavigationPrincipalProvider` derivado del snapshot de Identity; no se introduce Users todavía.
-
-El Brand y el trigger se muestran en una franja temporal de bootstrap. Step 05E moverá esas mismas piezas al Header operacional real.
-
-## Fuera de alcance
-
-- Header operacional;
-- Manager Navigation;
-- Users;
-- Navigation Configuration;
-- autorización nueva;
-- Global Indicators;
-- Alarm Management;
-- Alarm Status.
+Sin `ToolManifest`, resolución de `ServiceRegistry`, `ADA N1`, `pelambres.cl` ni URLs de proyecto hardcodeadas.
 
 ## Gate
 
 ```bash
+bash scripts/scopes/ada/check.sh branding
 bash scripts/scopes/ada/check.sh navigation
 bash scripts/scopes/ada/check.sh
 ```
 
-Luego validar visualmente:
+Después:
 
 ```bash
 cd scopes/ada/web/application/ada-generic-application
 uv run ada-generic-application
 ```
 
-05D permanece abierto hasta validar y ajustar la UI en la aplicación real.
+05D continúa abierto hasta revisar visualmente 0.1.5 y aplicar los ajustes UI adicionales acordados.

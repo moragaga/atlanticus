@@ -1,9 +1,11 @@
-# Identificadores DOM propios de Navigation; no dependen del Header.
 from __future__ import annotations
+
+# Identificadores propios de Navigation; no dependen del Header.
 
 
 class AdaNavigationIds:
-    TRIGGER = 'ada-navigation-trigger'
+    DESKTOP_TOGGLE = 'ada-navigation-desktop-toggle'
+    MOBILE_TOGGLE = 'ada-navigation-mobile-toggle'
     OFFCANVAS = 'ada-navigation-offcanvas'
     LOCATION = 'ada-navigation-location'
     MENU_CONTENT = 'ada-navigation-menu-content'

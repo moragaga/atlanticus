@@ -12,6 +12,9 @@ ADA_BRANDING_ASSET_LAYER = AssetLayer(
 DEFAULT_OPERATIONAL_BRAND_LOGO_SRC = (
     f'/assets/{ADA_BRANDING_ASSET_LAYER.target_name}/img/ada-operational-primary.svg'
 )
+DEFAULT_PELAMBRES_BRAND_LOGO_SRC = (
+    f'/assets/{ADA_BRANDING_ASSET_LAYER.target_name}/img/amsa-pelambres-primary.png'
+)
 
 
 def create_ada_branding_module() -> WebModule:

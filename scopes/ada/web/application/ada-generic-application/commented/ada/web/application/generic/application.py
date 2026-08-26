@@ -1,13 +1,20 @@
-# La composition root conecta Identity con Navigation Core sólo para el bootstrap local, sin mover esa responsabilidad al componente visual.
+# Composition root: inyecta branding institucional y versión instalada en Navigation.
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 from functools import partial
+from importlib.metadata import version
 from pathlib import Path
 
 from ada.web.application.generic.composition import build_application_layout
 from ada.web.shell.navigation import AdaNavigationView, create_ada_navigation_presentation_module
-from ada.web.ui.branding import OperationalBrandState, create_ada_branding_module
+from ada.web.ui.branding import (
+    DEFAULT_OPERATIONAL_BRAND_LOGO_SRC,
+    DEFAULT_PELAMBRES_BRAND_LOGO_SRC,
+    OperationalBrandState,
+    create_ada_branding_module,
+)
 from ada.web.ui.core import create_ada_ui_module
 from atlanticus.web.identity.access import AccessRuntime
 from atlanticus.web.identity.local import LocalIdentityProvider
@@ -23,6 +30,7 @@ from atlanticus.web.navigation.api import (
 )
 
 _APPLICATION_ROOT = Path(__file__).resolve().parents[5]
+_APPLICATION_DISTRIBUTION = 'ada-generic-application'
 _SUBJECT_SEPARATOR = re.compile(r'[-._]+')
 
 
@@ -31,6 +39,7 @@ def create_application_definition(
     tool_display_name: str | None = None,
     navigation_view: AdaNavigationView | None = None,
 ) -> WebApplicationDefinition:
+    application_version = version(_APPLICATION_DISTRIBUTION)
     navigation = NavigationDefinition(
         links=(
             NavigationLinkDefinition(
@@ -49,13 +58,16 @@ def create_application_definition(
         metadata=ApplicationMetadata(
             application_id='ada-generic-application',
             display_name='ADA',
-            version='0.1.3',
+            version=application_version,
         ),
         publications_root=_APPLICATION_ROOT / '.runtime' / 'publications',
         layout=partial(
             build_application_layout,
             operational_brand=operational_brand,
-            navigation_view=navigation_view or AdaNavigationView(),
+            navigation_view=_resolve_navigation_view(
+                navigation_view,
+                application_version=application_version,
+            ),
         ),
         modules=(
             create_ada_ui_module(),
@@ -70,6 +82,20 @@ def create_application_definition(
             create_ada_navigation_presentation_module(),
         ),
         page_packages=('ada.web.application.generic.pages',),
+    )
+
+
+def _resolve_navigation_view(
+    view: AdaNavigationView | None,
+    *,
+    application_version: str,
+) -> AdaNavigationView:
+    resolved = view or AdaNavigationView()
+    return replace(
+        resolved,
+        brand_logo_src=resolved.brand_logo_src or DEFAULT_OPERATIONAL_BRAND_LOGO_SRC,
+        footer_logo_src=resolved.footer_logo_src or DEFAULT_PELAMBRES_BRAND_LOGO_SRC,
+        application_version=resolved.application_version or application_version,
     )
 
 

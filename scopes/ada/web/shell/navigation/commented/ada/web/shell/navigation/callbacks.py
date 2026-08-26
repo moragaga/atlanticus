@@ -1,6 +1,6 @@
-# Callbacks clientside para apertura, grupos y estado visual de la ruta activa.
 from __future__ import annotations
 
+# Callbacks de presentación: apertura/cierre, grupos y estado visual de la ruta activa.
 from dash import ALL, MATCH, Dash, Input, Output, State
 
 from ada.web.shell.navigation.ids import AdaNavigationIds
@@ -10,15 +10,13 @@ from atlanticus.web.services import ServiceRegistry
 def register_ada_navigation_callbacks(app: Dash, _services: ServiceRegistry) -> None:
     app.clientside_callback(
         """
-        function(nClicks, isOpen) {
-            if (!nClicks) {
-                return window.dash_clientside.no_update;
-            }
+        function(_mobileClicks, _desktopClicks, isOpen) {
             return !Boolean(isOpen);
         }
         """,
         Output(AdaNavigationIds.OFFCANVAS, 'is_open'),
-        Input(AdaNavigationIds.TRIGGER, 'n_clicks'),
+        Input(AdaNavigationIds.MOBILE_TOGGLE, 'n_clicks'),
+        Input(AdaNavigationIds.DESKTOP_TOGGLE, 'n_clicks'),
         State(AdaNavigationIds.OFFCANVAS, 'is_open'),
         prevent_initial_call=True,
     )
