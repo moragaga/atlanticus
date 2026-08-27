@@ -88,3 +88,12 @@ def test_configuration_roundtrip_preserves_definition_order() -> None:
 
     assert restored == configuration
     assert restored.definition('b') == configuration.definitions[1]
+
+
+def test_definition_allows_empty_fields_as_authoring_stub() -> None:
+    definition = KpiDefinition(kpi_key='availability', fields={})
+
+    restored = KpiDefinition.from_document(definition.to_document())
+
+    assert dict(definition.fields) == {}
+    assert restored == definition

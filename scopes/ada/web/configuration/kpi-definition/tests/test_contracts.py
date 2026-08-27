@@ -49,3 +49,28 @@ def test_kpi_definition_is_independent_from_operational_binding_existence() -> N
     configuration = KpiDefinitionConfiguration((definition,))
 
     assert configuration.definition(definition.kpi_key) is definition
+
+
+def test_empty_authoring_stub_survives_source_and_projection_roundtrip() -> None:
+    configuration = KpiDefinitionConfiguration(
+        (KpiDefinition(kpi_key='transported_total', fields={}),)
+    )
+    source = KpiDefinitionSourceDocument.create(
+        configuration=configuration,
+        saved_by='owner',
+        saved_at_utc=datetime(2026, 8, 27, 16, 0, tzinfo=UTC),
+    )
+    restored_source = KpiDefinitionSourceDocument.from_document(source.to_document())
+    projection = KpiDefinitionProjection.create(
+        configuration=restored_source.configuration,
+        source_revision=restored_source.revision,
+        projected_by='projector',
+        projected_at_utc=datetime(2026, 8, 27, 17, 0, tzinfo=UTC),
+    )
+    restored_projection = KpiDefinitionProjection.from_document(
+        projection.to_document(item_id='kpi-definitions', partition_key='definitions')
+    )
+
+    definition = restored_projection.configuration.definition('transported_total')
+    assert definition is not None
+    assert dict(definition.fields) == {}
