@@ -1088,21 +1088,21 @@
 /*    }*/
 /*}*/
 
-/* Step 08B.1B: trigger desktop compacto; en reposo no invade Alarm Status. */
+/* El trigger desktop queda contenido por el borde derecho del Header para no ampliar el ancho de la página. */
 .ada-navigation__trigger--desktop {
-    /* El botón mide .75rem pero sale .15rem hacia fuera: dentro del Header sólo ocupa .60rem en reposo. */
-    --ada-navigation-trigger-rest-width: 1.15rem;
-    --ada-navigation-trigger-hover-width: 1.25rem;
-    --ada-navigation-trigger-outset: .15rem;
+    /* El ancho de reposo es mínimo y el hover conserva una expansión breve sin producir reflow. */
+    --ada-navigation-trigger-rest-width: 1rem;
+    --ada-navigation-trigger-hover-width: 1.15rem;
     width: var(--ada-navigation-trigger-rest-width);
     height: 2.45rem;
-    inset-inline-end: calc(-1 * var(--ada-navigation-trigger-outset));
+    /* Al fijar el borde derecho en cero, cualquier aumento de ancho crece únicamente hacia la izquierda. */
+    inset-inline-end: 0;
     border-radius: .625rem 0 0 .625rem;
     opacity: .82;
     overflow: visible;
 }
 
-/* La expansión es absoluta y crece hacia la izquierda; puede superponerse sólo mientras se interactúa. */
+/* La expansión sigue siendo absoluta: puede superponerse temporalmente sin desplazar el Header. */
 .ada-navigation__trigger--desktop:hover,
 .ada-navigation__trigger--desktop:focus-visible {
     width: var(--ada-navigation-trigger-hover-width);

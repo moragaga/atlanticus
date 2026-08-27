@@ -235,12 +235,12 @@ def test_desktop_trigger_is_compact_at_rest_and_expands_only_on_interaction() ->
         / '10-navigation.css'
     ).read_text(encoding='utf-8')
 
-    assert '/* Step 08B.1B: compact desktop navigation trigger. */' in css
-    assert '--ada-navigation-trigger-rest-width: 1.15rem;' in css
-    assert '--ada-navigation-trigger-hover-width: 1.25rem;' in css
-    assert '--ada-navigation-trigger-outset: .15rem;' in css
+    assert '--ada-navigation-trigger-rest-width: 1rem;' in css
+    assert '--ada-navigation-trigger-hover-width: 1.15rem;' in css
+    assert '--ada-navigation-trigger-outset' not in css
     assert 'width: var(--ada-navigation-trigger-rest-width);' in css
-    assert 'inset-inline-end: calc(-1 * var(--ada-navigation-trigger-outset));' in css
+    assert 'inset-inline-end: 0;' in css
+    assert 'calc(-1 * var(--ada-navigation-trigger-outset))' not in css
     assert '.ada-navigation__trigger--desktop:focus-visible {' in css
     assert 'width: var(--ada-navigation-trigger-hover-width);' in css
     assert 'height: 2.45rem;' in css
