@@ -58,9 +58,10 @@
     display: flex;
     width: 100%;
     min-width: 0;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: .4rem;
+    gap: .2rem;
 }
 
 .global-indicator__table {
@@ -103,17 +104,11 @@
 
 .global-indicator__last-measurement {
     display: flex;
-    width: 3.25rem;
-    min-width: 3.25rem;
-    flex: 0 0 3.25rem;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding-left: .35rem;
-    border-left: 1px solid var(--global-indicator-border);
+    gap: .05rem;
 }
-
-
 
 .global-indicator__last-measurement-label {
     font-weight: 600;

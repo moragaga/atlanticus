@@ -178,10 +178,17 @@ def _build_last_measurement_slot(
     state: GlobalIndicatorLastMeasurementState,
     style: GlobalIndicatorStyle,
 ) -> Component:
+    # El bloque queda debajo de la tabla y presenta primero su etiqueta y luego el valor.
     return html.Div(
         className='global-indicator__last-measurement',
         **{'data-measurement-key': state.key},
         children=[
+            html.P(
+                className=(
+                    f'global-indicator__last-measurement-label {style.last_measurement_label_class}'
+                ),
+                children=[state.label],
+            ),
             html.P(
                 className=' '.join(
                     part
@@ -195,12 +202,6 @@ def _build_last_measurement_slot(
                     if part
                 ),
                 children=[_build_display_value(state.actual_value)],
-            ),
-            html.P(
-                className=(
-                    f'global-indicator__last-measurement-label {style.last_measurement_label_class}'
-                ),
-                children=[state.label],
             ),
         ],
     )

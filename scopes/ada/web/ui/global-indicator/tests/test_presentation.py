@@ -86,7 +86,7 @@ def test_two_measurements_render_only_real_rows_and_omit_optional_last_measureme
     assert last_slots == []
 
 
-def test_ok_values_keep_safe_color_classes_and_last_measurement() -> None:
+def test_ok_values_keep_safe_color_classes_and_last_measurement_below_table() -> None:
     state = GlobalIndicatorState(
         key='transportado',
         label='Transportado',
@@ -107,9 +107,21 @@ def test_ok_values_keep_safe_color_classes_and_last_measurement() -> None:
         for item in _walk(component)
         if item.__class__.__name__ == 'P'
     ]
+    content = next(
+        item
+        for item in _walk(component)
+        if _props(item).get('className') == 'global-indicator__content'
+    )
+    table, last_measurement = content.children
+    label, actual_value = last_measurement.children
 
     assert any('text-success fw-bold' in value for value in values)
-    assert any('global-indicator__last-measurement-value' in value for value in values)
+    assert table.__class__.__name__ == 'Table'
+    assert _props(last_measurement)['className'] == 'global-indicator__last-measurement'
+    assert _props(label)['className'].startswith('global-indicator__last-measurement-label')
+    assert label.children == ['Última medición']
+    assert _props(actual_value)['className'].startswith('global-indicator__last-measurement-value')
+    assert actual_value.children == ['198']
 
 
 def test_collection_renders_exactly_the_indicators_received() -> None:

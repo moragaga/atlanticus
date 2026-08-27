@@ -181,6 +181,12 @@ def _build_last_measurement_slot(
         **{'data-measurement-key': state.key},
         children=[
             html.P(
+                className=(
+                    f'global-indicator__last-measurement-label {style.last_measurement_label_class}'
+                ),
+                children=[state.label],
+            ),
+            html.P(
                 className=' '.join(
                     part
                     for part in (
@@ -193,12 +199,6 @@ def _build_last_measurement_slot(
                     if part
                 ),
                 children=[_build_display_value(state.actual_value)],
-            ),
-            html.P(
-                className=(
-                    f'global-indicator__last-measurement-label {style.last_measurement_label_class}'
-                ),
-                children=[state.label],
             ),
         ],
     )
