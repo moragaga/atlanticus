@@ -60,3 +60,20 @@ def test_alarm_status_keeps_counts_and_labels() -> None:
 
 def test_none_state_collapses_without_placeholder() -> None:
     assert build_alarm_status(None) is None
+
+
+def test_alarm_status_label_uses_bell_icon() -> None:
+    component = build_alarm_status(AlarmStatusState(active_count=4, managed_count=3))
+    assert component is not None
+
+    icons = [
+        item
+        for item in _walk(component)
+        if 'ada-alarm-status__icon' in (_props(item).get('className') or '')
+    ]
+
+    assert len(icons) == 1
+    classes = _props(icons[0])['className'].split()
+    assert 'bi' in classes
+    assert 'bi-bell-fill' in classes
+    assert _props(icons[0])['aria-hidden'] == 'true'

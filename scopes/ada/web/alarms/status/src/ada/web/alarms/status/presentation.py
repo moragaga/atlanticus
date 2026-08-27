@@ -12,7 +12,16 @@ def build_alarm_status(state: AlarmStatusState | None) -> Component | None:
     return html.Div(
         className='ada-alarm-status',
         children=[
-            html.Div('Alarmas', className='ada-alarm-status__label'),
+            html.Div(
+                className='ada-alarm-status__label',
+                children=[
+                    html.I(
+                        className='bi bi-bell-fill ada-alarm-status__icon',
+                        **{'aria-hidden': 'true'},
+                    ),
+                    html.Span('Alarmas', className='ada-alarm-status__label-text'),
+                ],
+            ),
             _build_action(kind='active', label='Activas', count=state.active_count),
             _build_action(kind='managed', label='Gestionadas', count=state.managed_count),
         ],

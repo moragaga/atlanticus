@@ -80,3 +80,66 @@
         font-size: .68rem;
     }
 }
+
+/* Step 08B.1C — Alarm Status visual calibration */
+.ada-alarm-status {
+    --ada-alarm-status-surface: rgba(91, 92, 100, .10);
+    --ada-alarm-status-surface-hover: rgba(91, 92, 100, .14);
+    --ada-alarm-status-row-surface: rgba(91, 92, 100, .04);
+    --ada-alarm-status-row-hover: rgba(91, 92, 100, .16);
+    --ada-alarm-status-border: rgba(91, 92, 100, .34);
+    --ada-alarm-status-divider: rgba(91, 92, 100, .22);
+    padding: .38rem .5rem;
+    border: 1px solid var(--ada-alarm-status-border);
+    border-radius: .35rem;
+    background: var(--ada-alarm-status-surface);
+    transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.ada-alarm-status:hover {
+    background: var(--ada-alarm-status-surface-hover);
+}
+
+.ada-alarm-status__label {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: .28rem;
+    padding: 0 .08rem .28rem;
+    border-bottom: 1px solid var(--ada-alarm-status-divider);
+    color: var(--ada-alarm-status-dark, #313131);
+    font-size: .48rem;
+    font-weight: 700;
+    letter-spacing: .02rem;
+}
+
+.ada-alarm-status__icon {
+    flex: 0 0 auto;
+    font-size: .62rem;
+    line-height: 1;
+}
+
+.ada-alarm-status__label-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ada-alarm-status__action {
+    border-color: var(--ada-alarm-status-border);
+    background: var(--ada-alarm-status-row-surface);
+    transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.ada-alarm-status__action:hover {
+    border-color: var(--ada-alarm-status-dark, #313131);
+    background: var(--ada-alarm-status-row-hover);
+}
+
+.ada-alarm-status__count {
+    border-right: 1px solid var(--ada-alarm-status-divider);
+    background: rgba(91, 92, 100, .10);
+    color: var(--ada-alarm-status-dark, #313131);
+}
+
