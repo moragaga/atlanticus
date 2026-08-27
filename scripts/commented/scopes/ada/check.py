@@ -30,6 +30,14 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
+    'display-status': AdaCapability(
+        key='display-status',
+        project_root='scopes/ada/web/ui/display-status',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
     'branding': AdaCapability(
         key='branding',
         project_root='scopes/ada/web/ui/branding',

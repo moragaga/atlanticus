@@ -13,6 +13,7 @@ from ada.web.ui.branding import (
     DEFAULT_PELAMBRES_BRAND_LOGO_SRC,
 )
 from ada.web.ui.core import ADA_UI_ASSET_LAYER
+from ada.web.ui.display_status import ADA_DISPLAY_STATUS_ASSET_LAYER
 from atlanticus.web.identity.access import ACCESS_RUNTIME_SERVICE_KEY
 from atlanticus.web.navigation.api import (
     NAVIGATION_DEFINITION_PROVIDER_SERVICE_KEY,
@@ -26,9 +27,10 @@ def test_definition_composes_current_ada_web_capabilities() -> None:
 
     assert definition.metadata.application_id == 'ada-generic-application'
     assert definition.metadata.display_name == 'ADA'
-    assert definition.metadata.version == '0.1.7'
+    assert definition.metadata.version == '0.1.8'
     assert tuple(module.name for module in definition.modules) == (
         'ada-ui',
+        'ada-display-status',
         'ada-branding',
         'identity',
         'navigation',
@@ -66,11 +68,15 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
     assert DEFAULT_OPERATIONAL_BRAND_LOGO_SRC in payload
     assert DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC in payload
     assert DEFAULT_PELAMBRES_BRAND_LOGO_SRC in payload
-    assert 'Versión 0.1.7' in payload
+    assert 'Versión 0.1.8' in payload
     assert runtime.services.contains(ACCESS_RUNTIME_SERVICE_KEY)
     assert runtime.services.contains(NAVIGATION_PRINCIPAL_PROVIDER_SERVICE_KEY)
     assert any(
         entry.startswith(f'{ADA_UI_ASSET_LAYER.target_name}/css/')
+        for entry in runtime.assets.css_entries
+    )
+    assert any(
+        entry.startswith(f'{ADA_DISPLAY_STATUS_ASSET_LAYER.target_name}/css/')
         for entry in runtime.assets.css_entries
     )
     assert any(

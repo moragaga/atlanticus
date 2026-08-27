@@ -16,6 +16,7 @@ from ada.web.ui.branding import (
     create_ada_branding_module,
 )
 from ada.web.ui.core import create_ada_ui_module
+from ada.web.ui.display_status import create_ada_display_status_module
 from atlanticus.web.identity.access import AccessRuntime
 from atlanticus.web.identity.local import LocalIdentityProvider
 from atlanticus.web.identity.module import create_identity_module
@@ -71,6 +72,7 @@ def create_application_definition(
         ),
         modules=(
             create_ada_ui_module(),
+            create_ada_display_status_module(),
             create_ada_branding_module(),
             create_identity_module(LocalIdentityProvider()),
             create_navigation_module(

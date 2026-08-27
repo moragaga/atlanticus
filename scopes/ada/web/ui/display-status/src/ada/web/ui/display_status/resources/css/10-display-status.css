@@ -1,0 +1,12 @@
+.ada-display-status__icon {
+    display: inline-block;
+    inline-size: var(--ada-status-icon-size);
+    block-size: var(--ada-status-icon-size);
+    min-inline-size: var(--ada-status-icon-size);
+    max-inline-size: var(--ada-status-icon-size);
+    min-block-size: var(--ada-status-icon-size);
+    max-block-size: var(--ada-status-icon-size);
+    flex: 0 0 var(--ada-status-icon-size);
+    object-fit: contain;
+    vertical-align: middle;
+}
