@@ -1,0 +1,2 @@
+class AlarmManagementSummaryDefinitionError(ValueError):
+    pass
