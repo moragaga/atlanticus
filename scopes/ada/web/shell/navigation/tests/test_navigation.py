@@ -220,3 +220,27 @@ def test_css_preserves_approved_visual_navigation_pattern_with_navigation_namesp
     assert '.ada-navigation__version {' in css
     assert '.dashboard-header-shell' not in css
     assert '.dashboard-menu-btn-desktop' not in css
+
+
+def test_desktop_trigger_is_compact_at_rest_and_expands_only_on_interaction() -> None:
+    css = (
+        Path(__file__).parents[1]
+        / 'src'
+        / 'ada'
+        / 'web'
+        / 'shell'
+        / 'navigation'
+        / 'resources'
+        / 'css'
+        / '10-navigation.css'
+    ).read_text(encoding='utf-8')
+
+    assert '/* Step 08B.1B: compact desktop navigation trigger. */' in css
+    assert '--ada-navigation-trigger-rest-width: .75rem;' in css
+    assert '--ada-navigation-trigger-hover-width: 1.375rem;' in css
+    assert '--ada-navigation-trigger-outset: .15rem;' in css
+    assert 'width: var(--ada-navigation-trigger-rest-width);' in css
+    assert 'inset-inline-end: calc(-1 * var(--ada-navigation-trigger-outset));' in css
+    assert '.ada-navigation__trigger--desktop:focus-visible {' in css
+    assert 'width: var(--ada-navigation-trigger-hover-width);' in css
+    assert 'height: 2.25rem;' in css
