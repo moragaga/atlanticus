@@ -45,6 +45,14 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
+    'header': AdaCapability(
+        key='header',
+        project_root='scopes/ada/web/shell/header',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
     'application': AdaCapability(
         key='application',
         project_root='scopes/ada/web/application/ada-generic-application',

@@ -1,8 +1,9 @@
+# Composition root: ensambla capabilities ya resueltas dentro del Header sin transferirles ownership.
 from __future__ import annotations
 
-# Composición temporal: Brand y triggers conviven hasta que 05E aporte el Header real.
 from dash import html, page_container
 
+from ada.web.shell.header import build_ada_operational_header
 from ada.web.shell.navigation import (
     AdaNavigationView,
     build_ada_navigation_desktop_trigger,
@@ -20,20 +21,17 @@ def build_application_layout(
     operational_brand: OperationalBrandState,
     navigation_view: AdaNavigationView,
 ):
+    # Navigation Core resuelve el menú; la presentación sólo recibe el resultado.
     menu = resolve_navigation_from_services(services)
+    # En 05E sólo existen Brand y Navigation. Los slots operacionales restantes colapsan vacíos.
+    header = build_ada_operational_header(
+        brand=build_operational_brand(operational_brand),
+        desktop_navigation_trigger=build_ada_navigation_desktop_trigger(),
+        mobile_navigation_trigger=build_ada_navigation_mobile_trigger(),
+    )
     return html.Div(
         [
-            html.Div(
-                [
-                    build_operational_brand(operational_brand),
-                    html.Div(
-                        build_ada_navigation_mobile_trigger(),
-                        className='ada-navigation__mobile-anchor',
-                    ),
-                    build_ada_navigation_desktop_trigger(),
-                ],
-                className='ada-navigation__anchor-host d-flex align-items-center justify-content-between gap-3 p-3',
-            ),
+            header,
             build_ada_navigation_offcanvas(menu, view=navigation_view),
             html.Main(
                 page_container,

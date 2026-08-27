@@ -5,20 +5,18 @@ Este ledger registra qué se promueve desde `atlanticus-multi-stage`. La regla e
 | Capability | Origen multi-stage | Destino nuevo | Estado | Decisión |
 |---|---|---|---|---|
 | Web Observability | `web/framework/observability` | `web/framework/observability` | PROMOTED | Base mínima, sin dependencia ADA |
-| Web Core | `web/framework/core` | `web/framework/core` | PROMOTED | Base Flask/Dash transversal; corregido `except` inválido en `application.py` |
-| Identity Core | `web/capabilities/identity/core` | `web/capabilities/identity/core` | PROMOTED | Contrato transversal de principal, provider, sesión y acceso; corregido `except` inválido en `module.py` |
-| Identity Local | `web/capabilities/identity/local` | `web/capabilities/identity/local` | PROMOTED | Provider local estable; elimina personas hardcodeadas y permite subject explícito/entorno/usuario del sistema |
-| Identity App Service | `web/capabilities/identity/app-service` | por revisar | HOLD | No necesaria para primer arranque local; evaluar cuando integremos deployment/Entra |
-| Navigation Core | `web/capabilities/navigation/core` | `web/capabilities/navigation/core` | PROMOTED | Contrato transversal de menú, definición, principal de navegación y autorización; sin dependencia Users |
-| Users Core | `web/capabilities/users/core` | por revisar | PENDING | Revisar tras Navigation/Application bootstrap |
-| Manager | `web/capabilities/manager` | por revisar | PENDING | Recuperar capability transversal, no la composición ADA antigua |
-| Reference App | `web/applications/reference` | — | DO NOT PROMOTE | Sólo referencia histórica |
-| Runtime Infrastructure | `web/compositions/runtime-infrastructure` | por revisar más adelante | HOLD | No debe bloquear app local con Cosmos |
-| SharePoint HTTP composition | `web/compositions/sharepoint-http` | por revisar | HOLD | Migrar sólo cuando exista consumidor real |
-| ADA Web UI Core | `scopes/ada/ui/framework/core` | `scopes/ada/web/ui/core` | PROMOTED | Fundación visual mínima: assets/tokens + DOM; status/readiness/ticker diferidos |
-| ADA Operational Branding | `scopes/ada/ui/components/branding` | `scopes/ada/web/ui/branding` | PROMOTED | `0.1.1`: componente operacional independiente + assets públicos ADA/Pelambres por AssetLayer; contexto inyectado; Manager separado |
-| ADA Navigation Presentation | `scopes/ada/ui/shell/navigation` | `scopes/ada/web/shell/navigation` | PROMOTING | `0.1.2`: patrón multi-stage preservado + header oscuro ADA y footer Pelambres/versión inyectados; sin Header/ServiceRegistry/project hardcodes |
+| Web Core | `web/framework/core` | `web/framework/core` | PROMOTED | Base Flask/Dash transversal |
+| Identity Core | `web/capabilities/identity/core` | `web/capabilities/identity/core` | PROMOTED | Contrato transversal de principal, provider, sesión y acceso |
+| Identity Local | `web/capabilities/identity/local` | `web/capabilities/identity/local` | PROMOTED | Provider local estable |
+| Identity App Service | `web/capabilities/identity/app-service` | por revisar | HOLD | Evaluar con deployment/Entra |
+| Navigation Core | `web/capabilities/navigation/core` | `web/capabilities/navigation/core` | PROMOTED | Contrato transversal; sin dependencia Users |
+| Users Core | `web/capabilities/users/core` | por revisar | PENDING | Revisar tras Header/Manager |
+| Manager | `web/capabilities/manager` | por revisar | PENDING | Recuperar capability transversal, no composición ADA antigua |
+| ADA Web UI Core | `scopes/ada/ui/framework/core` | `scopes/ada/web/ui/core` | PROMOTED | Assets/tokens + DOM; status/readiness/ticker diferidos |
+| ADA Operational Branding | `scopes/ada/ui/components/branding` | `scopes/ada/web/ui/branding` | PROMOTED | Brand operacional independiente; ADA SVG + Pelambres PNG por AssetLayer |
+| ADA Navigation Presentation | `scopes/ada/ui/shell/navigation` | `scopes/ada/web/shell/navigation` | PROMOTED | Patrón visual aprobado cerrado; CSS manual es autoridad |
+| ADA Operational Header | `scopes/ada/ui/shell/header` | `scopes/ada/web/shell/header` | PROMOTING | Shell slot-driven; Brand/Navigation se anclan sin ownership; slots operacionales externos |
 
 ## Siguiente slice
 
-`ADA Navigation Presentation`: validar visualmente 0.1.2 con header institucional oscuro y footer Pelambres/versión en `ada-generic-application`; ajustar UI hasta cierre y luego construir Step 05E — Operational Header.
+`ADA Operational Header`: validar 0.1.0 en `ada-generic-application`, ajustar sólo geometría/layout del Header y cerrar 05E antes de promover Global Indicators.

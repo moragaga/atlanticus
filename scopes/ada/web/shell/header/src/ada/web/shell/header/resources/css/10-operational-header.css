@@ -1,0 +1,113 @@
+.ada-operational-header-shell {
+    --ada-operational-header-surface: var(--tertiary-background, #E1E1E1);
+    --ada-operational-header-border: var(--primary-border-color, #BDBDBD);
+    --ada-operational-header-global-grow: 2.4;
+    --ada-operational-header-management-grow: 1.45;
+    --ada-operational-header-status-grow: 1.25;
+    position: relative;
+    width: 100%;
+    background: var(--ada-operational-header-surface);
+    border-bottom: 1px solid var(--ada-operational-header-border);
+}
+
+.ada-operational-header {
+    display: flex;
+    width: 100%;
+    height: 5.5rem;
+    min-height: 5.5rem;
+    align-items: stretch;
+    padding: 0 .6rem;
+    overflow: hidden;
+    background: var(--ada-operational-header-surface);
+}
+
+.ada-operational-header__brand-slot,
+.ada-operational-header__global-indicators-slot,
+.ada-operational-header__alarm-management-slot,
+.ada-operational-header__alarm-status-slot {
+    min-width: 0;
+    align-items: stretch;
+}
+
+.ada-operational-header__brand-slot {
+    display: flex;
+    flex: 0 0 10rem;
+}
+
+.ada-operational-header__brand-slot > * {
+    width: 100%;
+    height: 100%;
+}
+
+.ada-operational-header__global-indicators-slot {
+    display: flex;
+    flex: var(--ada-operational-header-global-grow) 1 0;
+    border-left: 1px solid var(--ada-operational-header-border);
+}
+
+.ada-operational-header__alarm-management-slot {
+    display: flex;
+    flex: var(--ada-operational-header-management-grow) 1 0;
+    min-width: 8.5rem;
+    border-left: 1px solid var(--ada-operational-header-border);
+}
+
+.ada-operational-header__alarm-status-slot {
+    display: flex;
+    flex: var(--ada-operational-header-status-grow) 1 0;
+    min-width: 8rem;
+    border-left: 1px solid var(--ada-operational-header-border);
+}
+
+.ada-operational-header__global-indicators-slot > *,
+.ada-operational-header__alarm-management-slot > *,
+.ada-operational-header__alarm-status-slot > * {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+}
+
+.ada-operational-header [data-slot-empty='true'] {
+    display: none;
+}
+
+.ada-operational-header__desktop-navigation {
+    position: static;
+}
+
+.ada-operational-header__mobile-navigation {
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    padding-left: .5rem;
+}
+
+@media (max-width: 991.98px) {
+    .ada-operational-header {
+        padding-right: .35rem;
+    }
+
+    .ada-operational-header__brand-slot {
+        flex-basis: 8.75rem;
+    }
+
+    .ada-operational-header__alarm-management-slot {
+        min-width: 7.5rem;
+    }
+
+    .ada-operational-header__alarm-status-slot {
+        display: none;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .ada-operational-header__global-indicators-slot,
+    .ada-operational-header__alarm-management-slot,
+    .ada-operational-header__alarm-status-slot {
+        display: none;
+    }
+
+    .ada-operational-header__brand-slot {
+        flex: 1 1 auto;
+    }
+}

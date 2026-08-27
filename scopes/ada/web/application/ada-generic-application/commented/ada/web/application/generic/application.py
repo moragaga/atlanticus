@@ -8,9 +8,10 @@ from importlib.metadata import version
 from pathlib import Path
 
 from ada.web.application.generic.composition import build_application_layout
+from ada.web.shell.header import create_ada_operational_header_module
 from ada.web.shell.navigation import AdaNavigationView, create_ada_navigation_presentation_module
 from ada.web.ui.branding import (
-    DEFAULT_OPERATIONAL_BRAND_LOGO_SRC,
+    DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC,
     DEFAULT_PELAMBRES_BRAND_LOGO_SRC,
     OperationalBrandState,
     create_ada_branding_module,
@@ -80,6 +81,7 @@ def create_application_definition(
                 ),
             ),
             create_ada_navigation_presentation_module(),
+            create_ada_operational_header_module(),
         ),
         page_packages=('ada.web.application.generic.pages',),
     )
@@ -93,7 +95,7 @@ def _resolve_navigation_view(
     resolved = view or AdaNavigationView()
     return replace(
         resolved,
-        brand_logo_src=resolved.brand_logo_src or DEFAULT_OPERATIONAL_BRAND_LOGO_SRC,
+        brand_logo_src=(resolved.brand_logo_src or DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC),
         footer_logo_src=resolved.footer_logo_src or DEFAULT_PELAMBRES_BRAND_LOGO_SRC,
         application_version=resolved.application_version or application_version,
     )

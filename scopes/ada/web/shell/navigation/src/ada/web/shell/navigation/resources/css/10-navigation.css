@@ -46,6 +46,7 @@
 
 #ada-navigation-offcanvas {
     background: var(--primary-background);
+    border: 1px solid var(--dark-color);
 }
 
 #ada-navigation-offcanvas .offcanvas-body {
@@ -968,7 +969,7 @@
 /* Step 05D 0.1.5: branded canvas header + institutional footer. */
 .ada-navigation__offcanvas .offcanvas-header {
     align-items: center;
-    padding: .85rem 1rem;
+    padding: 1.5rem 1rem;
     background: var(--dark-color);
     border-bottom: 0;
 }
@@ -1007,7 +1008,7 @@
 
 .ada-navigation__title-heading {
     color: #FFFFFF;
-    font-weight: 800;
+    font-weight: 500;
     line-height: 1.12;
 }
 
@@ -1065,7 +1066,7 @@
 
 .ada-navigation__footer-logo {
     display: block;
-    width: min(8rem, 70%);
+    width: min(7rem, 70%);
     height: auto;
 }
 

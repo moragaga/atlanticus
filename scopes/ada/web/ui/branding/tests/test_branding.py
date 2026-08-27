@@ -8,6 +8,7 @@ from dash.development.base_component import Component
 from ada.web.ui.branding import (
     ADA_BRANDING_ASSET_LAYER,
     DEFAULT_OPERATIONAL_BRAND_LOGO_SRC,
+    DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC,
     DEFAULT_PELAMBRES_BRAND_LOGO_SRC,
     OperationalBrandState,
     build_operational_brand,
@@ -20,6 +21,9 @@ def test_branding_module_publishes_small_operational_asset_layer() -> None:
     operational_resource = files('ada.web.ui.branding').joinpath(
         'resources/img/ada-operational-primary.svg'
     )
+    secondary_resource = files('ada.web.ui.branding').joinpath(
+        'resources/img/ada-operational-secondary.svg'
+    )
     pelambres_resource = files('ada.web.ui.branding').joinpath(
         'resources/img/amsa-pelambres-primary.png'
     )
@@ -29,10 +33,14 @@ def test_branding_module_publishes_small_operational_asset_layer() -> None:
     assert DEFAULT_OPERATIONAL_BRAND_LOGO_SRC == (
         f'/assets/{ADA_BRANDING_ASSET_LAYER.target_name}/img/ada-operational-primary.svg'
     )
+    assert DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC == (
+        f'/assets/{ADA_BRANDING_ASSET_LAYER.target_name}/img/ada-operational-secondary.svg'
+    )
     assert DEFAULT_PELAMBRES_BRAND_LOGO_SRC == (
         f'/assets/{ADA_BRANDING_ASSET_LAYER.target_name}/img/amsa-pelambres-primary.png'
     )
     assert operational_resource.is_file()
+    assert secondary_resource.is_file()
     assert pelambres_resource.is_file()
     assert len(operational_resource.read_bytes()) < 100_000
     assert len(pelambres_resource.read_bytes()) < 100_000

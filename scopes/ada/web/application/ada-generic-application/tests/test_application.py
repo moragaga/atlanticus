@@ -4,10 +4,12 @@ import json
 
 from ada.web.application.generic.application import create_application_definition
 from ada.web.application.generic.runtime import create_application_runtime
+from ada.web.shell.header import ADA_OPERATIONAL_HEADER_ASSET_LAYER
 from ada.web.shell.navigation import ADA_NAVIGATION_ASSET_LAYER, AdaNavigationView
 from ada.web.ui.branding import (
     ADA_BRANDING_ASSET_LAYER,
     DEFAULT_OPERATIONAL_BRAND_LOGO_SRC,
+    DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC,
     DEFAULT_PELAMBRES_BRAND_LOGO_SRC,
 )
 from ada.web.ui.core import ADA_UI_ASSET_LAYER
@@ -24,18 +26,19 @@ def test_definition_composes_current_ada_web_capabilities() -> None:
 
     assert definition.metadata.application_id == 'ada-generic-application'
     assert definition.metadata.display_name == 'ADA'
-    assert definition.metadata.version == '0.1.5'
+    assert definition.metadata.version == '0.1.7'
     assert tuple(module.name for module in definition.modules) == (
         'ada-ui',
         'ada-branding',
         'identity',
         'navigation',
         'ada-navigation',
+        'ada-operational-header',
     )
     assert definition.page_packages == ('ada.web.application.generic.pages',)
 
 
-def test_runtime_starts_locally_with_real_navigation_presentation(tmp_path, monkeypatch) -> None:
+def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv('ATLANTICUS_ENVIRONMENT', raising=False)
     monkeypatch.setenv('ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID', 'local:test-user')
@@ -50,14 +53,20 @@ def test_runtime_starts_locally_with_real_navigation_presentation(tmp_path, monk
     layout_response = client.get('/_dash-layout')
     assert layout_response.status_code == 200
     payload = json.dumps(layout_response.get_json(), ensure_ascii=False)
+    assert 'operational_header' in payload
+    assert 'global_indicators' in payload
+    assert 'alarm_management' in payload
+    assert 'alarm_status' in payload
     assert 'ada-navigation-desktop-toggle' in payload
     assert 'ada-navigation-mobile-toggle' in payload
     assert 'ada-navigation-offcanvas' in payload
+    assert 'ada-navigation__anchor-host' in payload
     assert 'Test User' in payload
     assert 'Asistente de Decisiones Ágiles' in payload
     assert DEFAULT_OPERATIONAL_BRAND_LOGO_SRC in payload
+    assert DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC in payload
     assert DEFAULT_PELAMBRES_BRAND_LOGO_SRC in payload
-    assert 'Versión 0.1.5' in payload
+    assert 'Versión 0.1.7' in payload
     assert runtime.services.contains(ACCESS_RUNTIME_SERVICE_KEY)
     assert runtime.services.contains(NAVIGATION_PRINCIPAL_PROVIDER_SERVICE_KEY)
     assert any(
@@ -70,6 +79,10 @@ def test_runtime_starts_locally_with_real_navigation_presentation(tmp_path, monk
     )
     assert any(
         entry.startswith(f'{ADA_NAVIGATION_ASSET_LAYER.target_name}/css/')
+        for entry in runtime.assets.css_entries
+    )
+    assert any(
+        entry.startswith(f'{ADA_OPERATIONAL_HEADER_ASSET_LAYER.target_name}/css/')
         for entry in runtime.assets.css_entries
     )
 

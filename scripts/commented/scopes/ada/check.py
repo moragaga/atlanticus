@@ -1,4 +1,4 @@
-# Orquestador ADA: 05D agrega el target semántico navigation para la presentación del scope.
+# Orquestador ADA: 05E registra el target semántico header sin centralizar la lógica del package.
 from __future__ import annotations
 
 import argparse
@@ -41,6 +41,14 @@ CAPABILITIES: dict[str, AdaCapability] = {
     'navigation': AdaCapability(
         key='navigation',
         project_root='scopes/ada/web/shell/navigation',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
+    'header': AdaCapability(
+        key='header',
+        project_root='scopes/ada/web/shell/header',
         ruff_roots=('src', 'tests', 'commented'),
         tests_root='tests',
         source_root='src',

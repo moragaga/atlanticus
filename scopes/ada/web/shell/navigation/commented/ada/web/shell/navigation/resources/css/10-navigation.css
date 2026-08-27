@@ -47,6 +47,7 @@
 
 #ada-navigation-offcanvas {
     background: var(--primary-background);
+    border: 1px solid var(--dark-color);
 }
 
 #ada-navigation-offcanvas .offcanvas-body {
@@ -438,7 +439,7 @@
 .ada-navigation__title-heading {
     margin: 0;
     color: var(--dark-color);
-    font-weight: 850;
+    font-weight: 500;
     line-height: 1.1;
 }
 
@@ -968,7 +969,7 @@
 /* 05D 0.1.5: Header institucional oscuro y footer fijo; sólo el contenido central hace scroll. */
 .ada-navigation__offcanvas .offcanvas-header {
     align-items: center;
-    padding: .85rem 1rem;
+    padding: 1.5rem 1rem;
     background: var(--dark-color);
     border-bottom: 0;
 }
@@ -1007,7 +1008,7 @@
 
 .ada-navigation__title-heading {
     color: #FFFFFF;
-    font-weight: 800;
+    font-weight: 500;
     line-height: 1.12;
 }
 
@@ -1065,7 +1066,7 @@
 
 .ada-navigation__footer-logo {
     display: block;
-    width: min(9rem, 70%);
+    width: min(7rem, 70%);
     height: auto;
 }
 
@@ -1077,12 +1078,12 @@
     opacity: .78;
 }
 
-@media only screen and (min-width: 1024px) {
-    .ada-navigation__brand-logo {
-        width: 4.5rem;
-    }
+/*@media only screen and (min-width: 1024px) {*/
+/*    .ada-navigation__brand-logo {*/
+/*        width: 4.5rem;*/
+/*    }*/
 
-    .ada-navigation__footer-logo {
-        width: min(9.5rem, 72%);
-    }
-}
+/*    .ada-navigation__footer-logo {*/
+/*        width: min(9.5rem, 72%);*/
+/*    }*/
+/*}*/
