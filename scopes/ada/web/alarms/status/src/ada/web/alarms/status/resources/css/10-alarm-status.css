@@ -1,0 +1,78 @@
+.ada-alarm-status {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: .3rem;
+    padding: 0 .65rem;
+}
+
+.ada-alarm-status__label {
+    padding-left: .05rem;
+    color: var(--ada-alarm-status-muted, #6B6B6B);
+    font-size: .42rem;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: .025rem;
+    text-transform: uppercase;
+}
+
+.ada-alarm-status__action {
+    display: flex;
+    width: 100%;
+    height: 1.45rem;
+    min-width: 0;
+    align-items: stretch;
+    overflow: hidden;
+    padding: 0;
+    border: 1px solid var(--ada-alarm-status-muted, #6B6B6B);
+    border-radius: .35rem;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+
+.ada-alarm-status__action:hover {
+    border-color: var(--ada-alarm-status-dark, #313131);
+}
+
+.ada-alarm-status__action:focus-visible {
+    outline: 2px solid var(--ada-alarm-status-focus, currentColor);
+    outline-offset: 2px;
+}
+
+.ada-alarm-status__count {
+    display: flex;
+    width: 1.45rem;
+    flex: 0 0 1.45rem;
+    align-items: center;
+    justify-content: center;
+    background: var(--ada-alarm-status-count-bg, #CFCFCF);
+    color: var(--ada-alarm-status-dark, #313131);
+    font-size: .7rem;
+    font-weight: 800;
+}
+
+.ada-alarm-status__text {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    padding: 0 .55rem;
+    overflow: hidden;
+    color: var(--ada-alarm-status-dark, #313131);
+    font-size: .62rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (min-width: 1920px) {
+    .ada-alarm-status__text {
+        font-size: .68rem;
+    }
+}
