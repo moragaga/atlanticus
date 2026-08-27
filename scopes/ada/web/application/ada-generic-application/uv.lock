@@ -4,9 +4,10 @@ requires-python = "==3.14.2"
 
 [[package]]
 name = "ada-generic-application"
-version = "0.1.9"
+version = "0.1.10"
 source = { editable = "." }
 dependencies = [
+    { name = "ada-web-alarm-management-summary" },
     { name = "ada-web-shell-header" },
     { name = "ada-web-shell-navigation" },
     { name = "ada-web-ui-branding" },
@@ -21,13 +22,13 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "ada-web-alarm-management-summary" },
     { name = "pytest" },
     { name = "ruff" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "ada-web-alarm-management-summary", editable = "../../alarms/management-summary" },
     { name = "ada-web-shell-header", editable = "../../shell/header" },
     { name = "ada-web-shell-navigation", editable = "../../shell/navigation" },
     { name = "ada-web-ui-branding", editable = "../../ui/branding" },
@@ -42,7 +43,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "ada-web-alarm-management-summary", editable = "../../alarms/management-summary" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]

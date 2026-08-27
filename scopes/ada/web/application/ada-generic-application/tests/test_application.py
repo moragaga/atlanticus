@@ -2,6 +2,13 @@ from __future__ import annotations
 
 import json
 
+from ada.web.alarms.management_summary import (
+    ADA_ALARM_MANAGEMENT_SUMMARY_ASSET_LAYER,
+    AlarmManagementSummaryArea,
+    AlarmManagementSummarySegmentState,
+    AlarmManagementSummaryState,
+    AlarmManagementSummaryTone,
+)
 from ada.web.application.generic.application import create_application_definition
 from ada.web.application.generic.runtime import create_application_runtime
 from ada.web.shell.header import ADA_OPERATIONAL_HEADER_ASSET_LAYER
@@ -33,11 +40,12 @@ def test_definition_composes_current_ada_web_capabilities() -> None:
 
     assert definition.metadata.application_id == 'ada-generic-application'
     assert definition.metadata.display_name == 'ADA'
-    assert definition.metadata.version == '0.1.9'
+    assert definition.metadata.version == '0.1.10'
     assert tuple(module.name for module in definition.modules) == (
         'ada-ui',
         'ada-display-status',
         'ada-global-indicator',
+        'ada-alarm-management-summary',
         'ada-branding',
         'identity',
         'navigation',
@@ -75,7 +83,7 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
     assert DEFAULT_OPERATIONAL_BRAND_LOGO_SRC in payload
     assert DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC in payload
     assert DEFAULT_PELAMBRES_BRAND_LOGO_SRC in payload
-    assert 'Versión 0.1.9' in payload
+    assert 'Versión 0.1.10' in payload
     assert runtime.services.contains(ACCESS_RUNTIME_SERVICE_KEY)
     assert runtime.services.contains(NAVIGATION_PRINCIPAL_PROVIDER_SERVICE_KEY)
     assert any(
@@ -88,6 +96,10 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
     )
     assert any(
         entry.startswith(f'{ADA_GLOBAL_INDICATOR_ASSET_LAYER.target_name}/css/')
+        for entry in runtime.assets.css_entries
+    )
+    assert any(
+        entry.startswith(f'{ADA_ALARM_MANAGEMENT_SUMMARY_ASSET_LAYER.target_name}/css/')
         for entry in runtime.assets.css_entries
     )
     assert any(
@@ -152,6 +164,43 @@ def test_global_indicators_mount_only_when_explicitly_injected(tmp_path, monkeyp
     assert 'test_indicator' in payload
     assert 'Indicador de prueba' in payload
     assert 'data-slot-empty' in payload
+
+
+def test_alarm_management_summary_mounts_only_when_explicitly_injected(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv('ATLANTICUS_ENVIRONMENT', raising=False)
+    monkeypatch.setenv('ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID', 'local:test-user')
+
+    summary = AlarmManagementSummaryState(
+        segments=(
+            AlarmManagementSummarySegmentState(
+                area=AlarmManagementSummaryArea.MINE,
+                group='A',
+                management_percentage=72,
+                tone=AlarmManagementSummaryTone.ATTENTION,
+            ),
+            AlarmManagementSummarySegmentState(
+                area=AlarmManagementSummaryArea.PLANT,
+                group='B',
+                management_percentage=88,
+            ),
+        )
+    )
+    runtime = create_application_runtime(alarm_management_summary=summary)
+    response = runtime.server.test_client().get('/_dash-layout')
+    payload = json.dumps(response.get_json(), ensure_ascii=False)
+
+    assert 'alarm_management' in payload
+    assert 'ada-alarm-management-summary' in payload
+    assert 'Grupo Mina' in payload
+    assert 'Gestión Mina' in payload
+    assert '72%' in payload
+    assert 'Grupo Planta' in payload
+    assert '88%' in payload
+    assert 'attention' in payload
 
 
 def test_tool_name_and_navigation_view_are_injected_without_shell_hardcoding(

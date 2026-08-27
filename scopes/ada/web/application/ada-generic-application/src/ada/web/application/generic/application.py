@@ -6,6 +6,10 @@ from functools import partial
 from importlib.metadata import version
 from pathlib import Path
 
+from ada.web.alarms.management_summary import (
+    AlarmManagementSummaryState,
+    create_ada_alarm_management_summary_module,
+)
 from ada.web.application.generic.composition import build_application_layout
 from ada.web.shell.header import create_ada_operational_header_module
 from ada.web.shell.navigation import AdaNavigationView, create_ada_navigation_presentation_module
@@ -44,6 +48,7 @@ def create_application_definition(
     tool_display_name: str | None = None,
     navigation_view: AdaNavigationView | None = None,
     global_indicators: GlobalIndicatorCollection | None = None,
+    alarm_management_summary: AlarmManagementSummaryState | None = None,
 ) -> WebApplicationDefinition:
     application_version = version(_APPLICATION_DISTRIBUTION)
     navigation = NavigationDefinition(
@@ -75,11 +80,13 @@ def create_application_definition(
                 application_version=application_version,
             ),
             global_indicators=global_indicators or GlobalIndicatorCollection(()),
+            alarm_management_summary=alarm_management_summary,
         ),
         modules=(
             create_ada_ui_module(),
             create_ada_display_status_module(),
             create_ada_global_indicator_module(),
+            create_ada_alarm_management_summary_module(),
             create_ada_branding_module(),
             create_identity_module(LocalIdentityProvider()),
             create_navigation_module(
