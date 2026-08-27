@@ -7,7 +7,7 @@ from ada.web.inspection.core import (
     KpiDefinitionSnapshot,
     KpiDefinitionSnapshotStore,
 )
-from ada.web.inspection.runtime import KpiDefinitionWarmup
+from ada.web.inspection.runtime import KpiDefinitionRefresh, KpiDefinitionWarmup
 
 
 def _definition(kpi_key: str, title: str) -> KpiDefinition:
@@ -110,3 +110,76 @@ def test_warmup_has_no_remote_fallback_on_lookup_after_initial_load() -> None:
     assert store.get('missing_kpi') is None
 
     assert provider.calls == 1
+
+
+def test_refresh_replaces_snapshot_through_injected_provider() -> None:
+    previous = _definition('transported_total', 'Anterior')
+    current = _definition('transported_total', 'Actual')
+    store = KpiDefinitionSnapshotStore(_snapshot(previous))
+    provider = InMemoryProvider(_snapshot(current))
+
+    loaded = KpiDefinitionRefresh(provider, store).run()
+
+    assert provider.calls == 1
+    assert loaded is provider.snapshot
+    assert store.get('transported_total') is current
+
+
+def test_refresh_runs_only_when_explicitly_invoked() -> None:
+    transported = _definition('transported_total', 'Transportado')
+    provider = InMemoryProvider(_snapshot(transported))
+    store = KpiDefinitionSnapshotStore()
+    refresh = KpiDefinitionRefresh(provider, store)
+
+    assert store.get('transported_total') is None
+    assert store.get('missing_kpi') is None
+    assert provider.calls == 0
+
+    refresh.run()
+
+    assert provider.calls == 1
+    assert store.get('transported_total') is transported
+    assert store.get('missing_kpi') is None
+    assert provider.calls == 1
+
+
+def test_repeated_refreshes_replace_complete_snapshot() -> None:
+    first = _definition('transported_total', 'Primera')
+    second = _definition('availability', 'Segunda')
+    provider = InMemoryProvider(_snapshot(first))
+    store = KpiDefinitionSnapshotStore()
+    refresh = KpiDefinitionRefresh(provider, store)
+
+    refresh.run()
+    provider.snapshot = _snapshot(second)
+    refresh.run()
+
+    assert provider.calls == 2
+    assert store.get('transported_total') is None
+    assert store.get('availability') is second
+
+
+def test_failed_refresh_preserves_last_valid_snapshot() -> None:
+    existing = _definition('transported_total', 'Anterior')
+    store = KpiDefinitionSnapshotStore(_snapshot(existing))
+    provider = FailingProvider()
+
+    with pytest.raises(RuntimeError, match='Definition provider is unavailable'):
+        KpiDefinitionRefresh(provider, store).run()
+
+    assert provider.calls == 1
+    assert store.get('transported_total') is existing
+
+
+def test_invalid_refresh_payload_preserves_last_valid_snapshot() -> None:
+    existing = _definition('transported_total', 'Anterior')
+    store = KpiDefinitionSnapshotStore(_snapshot(existing))
+
+    class InvalidProvider:
+        def load_snapshot(self) -> KpiDefinitionSnapshot:
+            return None  # type: ignore[return-value]
+
+    with pytest.raises(TypeError, match='Snapshot must be a KpiDefinitionSnapshot'):
+        KpiDefinitionRefresh(InvalidProvider(), store).run()
+
+    assert store.get('transported_total') is existing

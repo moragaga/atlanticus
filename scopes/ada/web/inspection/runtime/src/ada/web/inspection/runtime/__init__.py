@@ -1,3 +1,3 @@
-from ada.web.inspection.runtime.lifecycle import KpiDefinitionWarmup
+from ada.web.inspection.runtime.lifecycle import KpiDefinitionRefresh, KpiDefinitionWarmup
 
-__all__ = ['KpiDefinitionWarmup']
+__all__ = ['KpiDefinitionRefresh', 'KpiDefinitionWarmup']

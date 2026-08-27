@@ -23,3 +23,21 @@ class KpiDefinitionWarmup:
         snapshot = self._provider.load_snapshot()
         self._store.replace(snapshot)
         return snapshot
+
+
+# Representa una actualización explícita que el host puede programar sin introducir timers o threads dentro de Inspection.
+class KpiDefinitionRefresh:
+    # Recibe el mismo provider inyectable y el store local que utiliza el warmup inicial del worker.
+    def __init__(
+        self,
+        provider: KpiDefinitionProvider,
+        store: KpiDefinitionSnapshotStore,
+    ) -> None:
+        self._provider = provider
+        self._store = store
+
+    # Obtiene un snapshot completo y lo publica sólo después de que el provider haya terminado correctamente.
+    def run(self) -> KpiDefinitionSnapshot:
+        snapshot = self._provider.load_snapshot()
+        self._store.replace(snapshot)
+        return snapshot

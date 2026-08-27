@@ -1,4 +1,4 @@
-# Expone únicamente el lifecycle de warmup como contrato público del package Runtime.
-from ada.web.inspection.runtime.lifecycle import KpiDefinitionWarmup
+# Expone los dos puntos explícitos de lifecycle; el host decide cuándo ejecutar warmup y cuándo programar refresh.
+from ada.web.inspection.runtime.lifecycle import KpiDefinitionRefresh, KpiDefinitionWarmup
 
-__all__ = ['KpiDefinitionWarmup']
+__all__ = ['KpiDefinitionRefresh', 'KpiDefinitionWarmup']
