@@ -21,6 +21,14 @@ class AdaCapability:
 
 
 CAPABILITIES: dict[str, AdaCapability] = {
+    'kpi-definition': AdaCapability(
+        key='kpi-definition',
+        project_root='scopes/ada/web/configuration/kpi-definition',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
     'kpi-inspection-core': AdaCapability(
         key='kpi-inspection-core',
         project_root='scopes/ada/web/inspection/core',
