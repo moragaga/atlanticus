@@ -24,6 +24,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "ada-web-ui-global-indicator==0.1.0",
     "pytest==9.1.1",
     "ruff==0.15.22",
 ]
@@ -34,6 +35,7 @@ ada-generic-application = "ada.web.application.generic.__main__:main"
 [tool.uv.sources]
 ada-web-ui-branding = { path = "../../ui/branding", editable = true }
 ada-web-ui-display-status = { path = "../../ui/display-status", editable = true }
+ada-web-ui-global-indicator = { path = "../../ui/global-indicator", editable = true }
 ada-web-ui-core = { path = "../../ui/core", editable = true }
 ada-web-shell-header = { path = "../../shell/header", editable = true }
 ada-web-shell-navigation = { path = "../../shell/navigation", editable = true }

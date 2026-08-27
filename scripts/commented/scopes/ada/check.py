@@ -38,6 +38,14 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
+    'global-indicator': AdaCapability(
+        key='global-indicator',
+        project_root='scopes/ada/web/ui/global-indicator',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
     'branding': AdaCapability(
         key='branding',
         project_root='scopes/ada/web/ui/branding',
