@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ada-web-kpi-inspection-preview"
+version = "0.1.0"
+description = "Preview interactivo local de KPI Inspection sobre la Generic ADA Application"
+requires-python = "==3.14.2"
+classifiers = [
+    "Private :: Do Not Upload",
+]
+dependencies = [
+    "ada-generic-application==0.1.21",
+    "ada-web-kpi-inspection-api==0.1.0",
+    "ada-web-kpi-inspection-core==0.2.0",
+    "ada-web-kpi-inspection-surface==0.1.0",
+    "ada-web-ui-global-indicator==0.1.4",
+    "atlanticus-web==0.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.15.22",
+]
+
+[project.scripts]
+ada-kpi-inspection-preview = "ada.web.inspection.preview.__main__:main"
+
+[tool.uv.sources]
+ada-generic-application = { path = "../../application/ada-generic-application", editable = true }
+ada-web-kpi-inspection-api = { path = "../api", editable = true }
+ada-web-kpi-inspection-core = { path = "../core", editable = true }
+ada-web-kpi-inspection-surface = { path = "../surface", editable = true }
+ada-web-ui-global-indicator = { path = "../../ui/global-indicator", editable = true }
+atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
+atlanticus-web-observability = { path = "../../../../../web/framework/observability", editable = true }
+atlanticus-web-identity = { path = "../../../../../web/capabilities/identity/core", editable = true }
+atlanticus-web-identity-local = { path = "../../../../../web/capabilities/identity/local", editable = true }
+atlanticus-web-navigation = { path = "../../../../../web/capabilities/navigation/core", editable = true }
+ada-web-ui-branding = { path = "../../ui/branding", editable = true }
+ada-web-ui-display-status = { path = "../../ui/display-status", editable = true }
+ada-web-ui-core = { path = "../../ui/core", editable = true }
+ada-web-alarm-management-summary = { path = "../../alarms/management-summary", editable = true }
+ada-web-alarm-status = { path = "../../alarms/status", editable = true }
+ada-web-shell-header = { path = "../../shell/header", editable = true }
+ada-web-shell-navigation = { path = "../../shell/navigation", editable = true }
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+include = ["ada.web.inspection.preview*"]
+
+[tool.setuptools.package-data]
+"ada.web.inspection.preview" = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+target-version = "py314"
+extend-exclude = [
+    "build",
+    "dist",
+    "commented",
+]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ada", "atlanticus"]
+combine-as-imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [
+    "src",
+    "../api/src",
+    "../core/src",
+    "../surface/src",
+]
+addopts = "-q --import-mode=importlib"

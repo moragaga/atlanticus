@@ -101,6 +101,14 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
+    'kpi-inspection-preview': AdaCapability(
+        key='kpi-inspection-preview',
+        project_root='scopes/ada/web/inspection/preview',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
     'ui-core': AdaCapability(
         key='ui-core',
         project_root='scopes/ada/web/ui/core',
