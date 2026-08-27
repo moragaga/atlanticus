@@ -19,7 +19,6 @@ from .models import (
     GlobalIndicatorState,
     GlobalIndicatorStyle,
     IndicatorColorClass,
-    global_indicator_measurement_capacity,
 )
 
 _CLASS_TOKEN = re.compile(r'^[A-Za-z_][A-Za-z0-9_-]*$')
@@ -37,7 +36,6 @@ def build_global_indicator(*, state: GlobalIndicatorState) -> Component:
     attributes = {
         'data-indicator-key': state.key,
         'data-measurement-count': str(len(state.measurements)),
-        'data-measurement-capacity': str(global_indicator_measurement_capacity()),
         'data-has-last-measurement': 'true' if state.last_measurement is not None else 'false',
     }
     if state.definition_key is not None:
@@ -84,15 +82,14 @@ def _build_indicator_content(
     last_measurement: GlobalIndicatorLastMeasurementState | None,
     style: GlobalIndicatorStyle,
 ) -> tuple[Component, ...]:
-    rows = [_build_table_row(state=measurement, style=style) for measurement in measurements]
-    rows.extend(
-        _build_empty_table_row()
-        for _ in range(global_indicator_measurement_capacity() - len(measurements))
-    )
-    return (
-        _build_table(rows=rows),
-        _build_last_measurement_slot(state=last_measurement, style=style),
-    )
+    children: list[Component] = [
+        _build_table(
+            rows=[_build_table_row(state=measurement, style=style) for measurement in measurements]
+        )
+    ]
+    if last_measurement is not None:
+        children.append(_build_last_measurement_slot(state=last_measurement, style=style))
+    return tuple(children)
 
 
 def _build_table(*, rows: list[Component]) -> Component:
@@ -129,14 +126,6 @@ def _build_table_row(
                 value_class_name=f'global-indicator__value--plan {style.plan_value_class}',
             ),
         ],
-    )
-
-
-def _build_empty_table_row() -> Component:
-    return html.Tr(
-        className='global-indicator__row global-indicator__row--empty',
-        **{'aria-hidden': 'true'},
-        children=[html.Td(className='global-indicator__cell', colSpan=4)],
     )
 
 
@@ -186,16 +175,9 @@ def _build_table_separator_cell(*, class_name: str) -> Component:
 
 def _build_last_measurement_slot(
     *,
-    state: GlobalIndicatorLastMeasurementState | None,
+    state: GlobalIndicatorLastMeasurementState,
     style: GlobalIndicatorStyle,
 ) -> Component:
-    if state is None:
-        return html.Div(
-            className=(
-                'global-indicator__last-measurement global-indicator__last-measurement--empty'
-            ),
-            **{'aria-hidden': 'true'},
-        )
     return html.Div(
         className='global-indicator__last-measurement',
         **{'data-measurement-key': state.key},

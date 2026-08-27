@@ -113,13 +113,7 @@
     border-left: 1px solid var(--global-indicator-border);
 }
 
-.global-indicator__last-measurement--empty {
-    visibility: hidden;
-}
 
-.global-indicator__row--empty {
-    height: 1.3rem;
-}
 
 .global-indicator__last-measurement-label {
     font-weight: 600;

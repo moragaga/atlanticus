@@ -59,7 +59,7 @@ def test_degraded_values_delegate_icons_to_shared_display_status() -> None:
     assert all('ada-display-status__icon' in _props(item)['className'] for item in images)
 
 
-def test_two_measurements_reserve_third_row_and_optional_last_measurement_space() -> None:
+def test_two_measurements_render_only_real_rows_and_omit_optional_last_measurement() -> None:
     state = GlobalIndicatorState(
         key='transportado',
         label='Transportado',
@@ -79,11 +79,11 @@ def test_two_measurements_reserve_third_row_and_optional_last_measurement_space(
     ]
 
     assert _props(component)['data-measurement-count'] == '2'
-    assert _props(component)['data-measurement-capacity'] == '3'
-    assert len(rows) == 3
-    assert 'global-indicator__row--empty' in _props(rows[2])['className']
-    assert len(last_slots) == 1
-    assert 'global-indicator__last-measurement--empty' in _props(last_slots[0])['className']
+    assert len(rows) == 2
+    assert all(
+        'global-indicator__row--empty' not in (_props(row).get('className') or '') for row in rows
+    )
+    assert last_slots == []
 
 
 def test_ok_values_keep_safe_color_classes_and_last_measurement() -> None:
@@ -112,24 +112,28 @@ def test_ok_values_keep_safe_color_classes_and_last_measurement() -> None:
     assert any('global-indicator__last-measurement-value' in value for value in values)
 
 
-def test_collection_keeps_indicators_as_equal_siblings() -> None:
-    indicators = tuple(
-        GlobalIndicatorState(
-            key=f'kpi_{index}',
-            label=f'KPI {index}',
-            unit='%',
-            measurements=(
-                _measurement('dia', 'Día', '88', '90'),
-                _measurement('semana', 'Semana', '89', '90'),
-            ),
+def test_collection_renders_exactly_the_indicators_received() -> None:
+    for count in (1, 2, 4):
+        indicators = tuple(
+            GlobalIndicatorState(
+                key=f'kpi_{index}',
+                label=f'KPI {index}',
+                unit='%',
+                measurements=(
+                    _measurement('dia', 'Día', '88', '90'),
+                    _measurement('semana', 'Semana', '89', '90'),
+                ),
+            )
+            for index in range(1, count + 1)
         )
-        for index in range(1, 5)
-    )
 
-    component = build_global_indicators(collection=GlobalIndicatorCollection(indicators))
+        component = build_global_indicators(collection=GlobalIndicatorCollection(indicators))
 
-    assert _props(component)['className'] == 'global-indicators'
-    assert len(component.children) == 4
+        assert _props(component)['className'] == 'global-indicators'
+        assert len(component.children) == count
+        assert [_props(child)['data-indicator-key'] for child in component.children] == [
+            indicator.key for indicator in indicators
+        ]
 
 
 def test_indicator_uses_table_measurements_and_protects_long_heading_text() -> None:

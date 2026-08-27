@@ -9,9 +9,9 @@ def test_global_indicator_css_is_packaged_and_preserves_layout_contract() -> Non
     assert entries == ['10-global-indicator.css']
     assert 'flex: 1 1 0;' in css
     assert 'min-height: 5.5rem;' in css
-    assert '.global-indicator__row--empty' in css
-    assert '.global-indicator__last-measurement--empty' in css
-    assert 'visibility: hidden;' in css
+    assert '.global-indicator__row--empty' not in css
+    assert '.global-indicator__last-measurement--empty' not in css
+    assert 'visibility: hidden;' not in css
 
 
 def test_global_indicator_desktop_layout_uses_equal_columns_and_natural_content_width() -> None:
