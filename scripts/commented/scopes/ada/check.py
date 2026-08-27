@@ -40,6 +40,15 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
+    # Registra el adapter inyectable KPI Definition → KPI Inspection sin acoplarlo a Cosmos.
+    'kpi-inspection-definition-provider': AdaCapability(
+        key='kpi-inspection-definition-provider',
+        project_root='scopes/ada/web/inspection/providers/kpi-definition',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
     # Registra el lifecycle de KPI Inspection separado del core y sin dependencia directa de Cosmos.
     'kpi-inspection-runtime': AdaCapability(
         key='kpi-inspection-runtime',
