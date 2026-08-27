@@ -170,3 +170,48 @@ def test_indicator_uses_table_measurements_and_protects_long_heading_text() -> N
     assert len(tables) == 1
     assert len(labels) == 1
     assert _props(labels[0])['title'] == state.label
+
+
+def test_indicator_is_not_inspectable_without_kpi_key() -> None:
+    state = GlobalIndicatorState(
+        key='transportado',
+        label='Transportado',
+        unit='kt',
+        measurements=(
+            _measurement('turno', 'Turno', '198', '220'),
+            _measurement('dia', 'Día', '201', '220'),
+        ),
+    )
+
+    props = _props(build_global_indicator(state=state))
+
+    assert 'data-kpi-inspection-key' not in props
+    assert 'role' not in props
+    assert 'tabIndex' not in props
+    assert 'aria-haspopup' not in props
+    assert 'data-definition-key' not in props
+
+
+def test_indicator_whole_root_opts_into_kpi_inspection_with_kpi_key() -> None:
+    state = GlobalIndicatorState(
+        key='transportado_card',
+        kpi_key='transported_total',
+        label='Transportado',
+        unit='kt',
+        measurements=(
+            _measurement('turno', 'Turno', '198', '220'),
+            _measurement('dia', 'Día', '201', '220'),
+        ),
+        last_measurement=GlobalIndicatorLastMeasurementState('202'),
+    )
+
+    component = build_global_indicator(state=state)
+    props = _props(component)
+
+    assert props['data-indicator-key'] == 'transportado_card'
+    assert props['data-kpi-inspection-key'] == 'transported_total'
+    assert props['role'] == 'button'
+    assert props['tabIndex'] == 0
+    assert props['aria-haspopup'] == 'dialog'
+    assert 'data-definition-key' not in props
+    assert len(component.children) == 2

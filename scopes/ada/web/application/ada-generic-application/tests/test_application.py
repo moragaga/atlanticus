@@ -42,7 +42,7 @@ def test_definition_composes_current_ada_web_capabilities() -> None:
 
     assert definition.metadata.application_id == 'ada-generic-application'
     assert definition.metadata.display_name == 'ADA'
-    assert definition.metadata.version == '0.1.20'
+    assert definition.metadata.version == '0.1.21'
     assert tuple(module.name for module in definition.modules) == (
         'ada-ui',
         'ada-display-status',
@@ -86,7 +86,7 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
     assert DEFAULT_OPERATIONAL_BRAND_LOGO_SRC in payload
     assert DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC in payload
     assert DEFAULT_PELAMBRES_BRAND_LOGO_SRC in payload
-    assert 'Versión 0.1.20' in payload
+    assert 'Versión 0.1.21' in payload
     assert runtime.services.contains(ACCESS_RUNTIME_SERVICE_KEY)
     assert runtime.services.contains(NAVIGATION_PRINCIPAL_PROVIDER_SERVICE_KEY)
     assert any(
@@ -144,6 +144,7 @@ def test_global_indicators_mount_only_when_explicitly_injected(tmp_path, monkeyp
         indicators=(
             GlobalIndicatorState(
                 key='test_indicator',
+                kpi_key='test_kpi',
                 label='Indicador de prueba',
                 unit='u',
                 measurements=(
@@ -170,6 +171,8 @@ def test_global_indicators_mount_only_when_explicitly_injected(tmp_path, monkeyp
 
     assert 'global-indicators' in payload
     assert 'test_indicator' in payload
+    assert 'data-kpi-inspection-key' in payload
+    assert 'test_kpi' in payload
     assert 'Indicador de prueba' in payload
     assert 'Última medición' in payload
     assert '22' in payload

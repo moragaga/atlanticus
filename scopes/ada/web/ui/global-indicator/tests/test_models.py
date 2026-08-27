@@ -72,3 +72,33 @@ def test_collection_rejects_duplicate_indicator_keys() -> None:
 
     with pytest.raises(GlobalIndicatorDefinitionError, match='duplicate keys'):
         GlobalIndicatorCollection((indicator, indicator))
+
+
+def test_global_indicator_accepts_optional_kpi_key_without_reusing_component_key() -> None:
+    state = GlobalIndicatorState(
+        key='transportado_card',
+        kpi_key='  plant.transport-total  ',
+        label='Transportado',
+        unit='kt',
+        measurements=(
+            _measurement('turno', 'Turno'),
+            _measurement('dia', 'Día'),
+        ),
+    )
+
+    assert state.key == 'transportado_card'
+    assert state.kpi_key == 'plant.transport-total'
+
+
+def test_global_indicator_rejects_empty_kpi_key() -> None:
+    with pytest.raises(GlobalIndicatorDefinitionError, match='kpi_key cannot be empty'):
+        GlobalIndicatorState(
+            key='transportado',
+            kpi_key='   ',
+            label='Transportado',
+            unit='kt',
+            measurements=(
+                _measurement('turno', 'Turno'),
+                _measurement('dia', 'Día'),
+            ),
+        )

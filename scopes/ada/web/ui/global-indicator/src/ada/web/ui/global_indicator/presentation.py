@@ -36,8 +36,15 @@ def build_global_indicator(*, state: GlobalIndicatorState) -> Component:
         'data-measurement-count': str(len(state.measurements)),
         'data-has-last-measurement': 'true' if state.last_measurement is not None else 'false',
     }
-    if state.definition_key is not None:
-        attributes['data-definition-key'] = state.definition_key
+    if state.kpi_key is not None:
+        attributes.update(
+            {
+                'data-kpi-inspection-key': state.kpi_key,
+                'role': 'button',
+                'tabIndex': 0,
+                'aria-haspopup': 'dialog',
+            }
+        )
     return html.Div(
         className='global-indicator',
         **attributes,
