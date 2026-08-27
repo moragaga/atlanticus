@@ -61,6 +61,22 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
+    'kpi-inspection-interval-resilience': AdaCapability(
+        key='kpi-inspection-interval-resilience',
+        project_root='scopes/ada/web/inspection/interval-resilience',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
+    'kpi-inspection-empty-definition-flow': AdaCapability(
+        key='kpi-inspection-empty-definition-flow',
+        project_root='scopes/ada/web/inspection/empty-definition-flow',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
     'kpi-inspection-runtime': AdaCapability(
         key='kpi-inspection-runtime',
         project_root='scopes/ada/web/inspection/runtime',
