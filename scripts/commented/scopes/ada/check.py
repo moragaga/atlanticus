@@ -22,6 +22,15 @@ class AdaCapability:
 
 
 CAPABILITIES: dict[str, AdaCapability] = {
+    # Registra KPI Inspection como capability independiente y validable sin Cosmos.
+    'kpi-inspection-core': AdaCapability(
+        key='kpi-inspection-core',
+        project_root='scopes/ada/web/inspection/core',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
     'ui-core': AdaCapability(
         key='ui-core',
         project_root='scopes/ada/web/ui/core',
