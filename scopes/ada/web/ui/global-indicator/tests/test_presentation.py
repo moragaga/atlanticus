@@ -130,3 +130,27 @@ def test_collection_keeps_indicators_as_equal_siblings() -> None:
 
     assert _props(component)['className'] == 'global-indicators'
     assert len(component.children) == 4
+
+
+def test_indicator_uses_table_measurements_and_protects_long_heading_text() -> None:
+    state = GlobalIndicatorState(
+        key='produccion',
+        label='Producción Planta Concentradora Línea Primaria con nombre extenso',
+        unit='kt',
+        measurements=(
+            _measurement('turno', 'Turno', '198', '220'),
+            _measurement('dia', 'Día', '201', '220'),
+        ),
+    )
+
+    component = build_global_indicator(state=state)
+    tables = [item for item in _walk(component) if item.__class__.__name__ == 'Table']
+    labels = [
+        item
+        for item in _walk(component)
+        if 'global-indicator__label' in (_props(item).get('className') or '')
+    ]
+
+    assert len(tables) == 1
+    assert len(labels) == 1
+    assert _props(labels[0])['title'] == state.label

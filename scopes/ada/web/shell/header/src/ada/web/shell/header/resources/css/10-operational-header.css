@@ -111,3 +111,35 @@
         flex: 1 1 auto;
     }
 }
+
+@media (min-width: 992px) {
+    .ada-operational-header-shell {
+        --ada-operational-header-brand-width: 10rem;
+        --ada-operational-header-management-width: 9.5rem;
+        --ada-operational-header-status-width: 8.75rem;
+    }
+
+    .ada-operational-header__brand-slot {
+        flex: 0 0 var(--ada-operational-header-brand-width);
+    }
+
+    .ada-operational-header__global-indicators-slot {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .ada-operational-header__alarm-management-slot {
+        width: var(--ada-operational-header-management-width);
+        min-width: 8.75rem;
+        max-width: var(--ada-operational-header-management-width);
+        flex: 0 1 var(--ada-operational-header-management-width);
+    }
+
+    .ada-operational-header__alarm-status-slot {
+        width: var(--ada-operational-header-status-width);
+        min-width: 8rem;
+        max-width: var(--ada-operational-header-status-width);
+        flex: 0 1 var(--ada-operational-header-status-width);
+    }
+}
+

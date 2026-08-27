@@ -144,3 +144,18 @@ def _children(component: Component) -> list[object]:
 
 def _prop(component: Component, name: str):
     return getattr(component, name, None)
+
+
+def test_header_desktop_calibration_gives_remaining_width_to_global_indicators() -> None:
+    css = (
+        files('ada.web.shell.header')
+        .joinpath('resources/css/10-operational-header.css')
+        .read_text(encoding='utf-8')
+    )
+
+    assert '--ada-operational-header-brand-width: 10rem;' in css
+    assert '--ada-operational-header-management-width: 9.5rem;' in css
+    assert '--ada-operational-header-status-width: 8.75rem;' in css
+    assert 'flex: 1 1 0;' in css
+    assert 'flex: 0 1 var(--ada-operational-header-management-width);' in css
+    assert 'flex: 0 1 var(--ada-operational-header-status-width);' in css
