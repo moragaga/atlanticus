@@ -14,6 +14,12 @@ from ada.web.ui.branding import (
 )
 from ada.web.ui.core import ADA_UI_ASSET_LAYER
 from ada.web.ui.display_status import ADA_DISPLAY_STATUS_ASSET_LAYER
+from ada.web.ui.global_indicator import (
+    ADA_GLOBAL_INDICATOR_ASSET_LAYER,
+    GlobalIndicatorCollection,
+    GlobalIndicatorMeasurementState,
+    GlobalIndicatorState,
+)
 from atlanticus.web.identity.access import ACCESS_RUNTIME_SERVICE_KEY
 from atlanticus.web.navigation.api import (
     NAVIGATION_DEFINITION_PROVIDER_SERVICE_KEY,
@@ -27,10 +33,11 @@ def test_definition_composes_current_ada_web_capabilities() -> None:
 
     assert definition.metadata.application_id == 'ada-generic-application'
     assert definition.metadata.display_name == 'ADA'
-    assert definition.metadata.version == '0.1.8'
+    assert definition.metadata.version == '0.1.9'
     assert tuple(module.name for module in definition.modules) == (
         'ada-ui',
         'ada-display-status',
+        'ada-global-indicator',
         'ada-branding',
         'identity',
         'navigation',
@@ -68,7 +75,7 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
     assert DEFAULT_OPERATIONAL_BRAND_LOGO_SRC in payload
     assert DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC in payload
     assert DEFAULT_PELAMBRES_BRAND_LOGO_SRC in payload
-    assert 'Versión 0.1.8' in payload
+    assert 'Versión 0.1.9' in payload
     assert runtime.services.contains(ACCESS_RUNTIME_SERVICE_KEY)
     assert runtime.services.contains(NAVIGATION_PRINCIPAL_PROVIDER_SERVICE_KEY)
     assert any(
@@ -77,6 +84,10 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
     )
     assert any(
         entry.startswith(f'{ADA_DISPLAY_STATUS_ASSET_LAYER.target_name}/css/')
+        for entry in runtime.assets.css_entries
+    )
+    assert any(
+        entry.startswith(f'{ADA_GLOBAL_INDICATOR_ASSET_LAYER.target_name}/css/')
         for entry in runtime.assets.css_entries
     )
     assert any(
@@ -103,6 +114,44 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
     with client.session_transaction() as session:
         snapshot = session['_atlanticus_access_snapshot']
     assert snapshot['identity']['subject_id'] == 'local:test-user'
+
+
+def test_global_indicators_mount_only_when_explicitly_injected(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv('ATLANTICUS_ENVIRONMENT', raising=False)
+    monkeypatch.setenv('ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID', 'local:test-user')
+
+    collection = GlobalIndicatorCollection(
+        indicators=(
+            GlobalIndicatorState(
+                key='test_indicator',
+                label='Indicador de prueba',
+                unit='u',
+                measurements=(
+                    GlobalIndicatorMeasurementState(
+                        key='turno',
+                        label='Turno',
+                        actual_value='10',
+                        plan_value='12',
+                    ),
+                    GlobalIndicatorMeasurementState(
+                        key='dia',
+                        label='Día',
+                        actual_value='20',
+                        plan_value='24',
+                    ),
+                ),
+            ),
+        )
+    )
+    runtime = create_application_runtime(global_indicators=collection)
+    response = runtime.server.test_client().get('/_dash-layout')
+    payload = json.dumps(response.get_json(), ensure_ascii=False)
+
+    assert 'global-indicators' in payload
+    assert 'test_indicator' in payload
+    assert 'Indicador de prueba' in payload
+    assert 'data-slot-empty' in payload
 
 
 def test_tool_name_and_navigation_view_are_injected_without_shell_hardcoding(

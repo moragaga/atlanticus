@@ -18,6 +18,10 @@ from ada.web.ui.branding import (
 )
 from ada.web.ui.core import create_ada_ui_module
 from ada.web.ui.display_status import create_ada_display_status_module
+from ada.web.ui.global_indicator import (
+    GlobalIndicatorCollection,
+    create_ada_global_indicator_module,
+)
 from atlanticus.web.identity.access import AccessRuntime
 from atlanticus.web.identity.local import LocalIdentityProvider
 from atlanticus.web.identity.module import create_identity_module
@@ -40,6 +44,7 @@ def create_application_definition(
     *,
     tool_display_name: str | None = None,
     navigation_view: AdaNavigationView | None = None,
+    global_indicators: GlobalIndicatorCollection | None = None,
 ) -> WebApplicationDefinition:
     application_version = version(_APPLICATION_DISTRIBUTION)
     navigation = NavigationDefinition(
@@ -70,10 +75,12 @@ def create_application_definition(
                 navigation_view,
                 application_version=application_version,
             ),
+            global_indicators=global_indicators or GlobalIndicatorCollection(()),
         ),
         modules=(
             create_ada_ui_module(),
             create_ada_display_status_module(),
+            create_ada_global_indicator_module(),
             create_ada_branding_module(),
             create_identity_module(LocalIdentityProvider()),
             create_navigation_module(

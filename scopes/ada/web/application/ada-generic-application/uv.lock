@@ -4,7 +4,7 @@ requires-python = "==3.14.2"
 
 [[package]]
 name = "ada-generic-application"
-version = "0.1.8"
+version = "0.1.9"
 source = { editable = "." }
 dependencies = [
     { name = "ada-web-shell-header" },
@@ -12,6 +12,7 @@ dependencies = [
     { name = "ada-web-ui-branding" },
     { name = "ada-web-ui-core" },
     { name = "ada-web-ui-display-status" },
+    { name = "ada-web-ui-global-indicator" },
     { name = "atlanticus-web" },
     { name = "atlanticus-web-identity" },
     { name = "atlanticus-web-identity-local" },
@@ -20,7 +21,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "ada-web-ui-global-indicator" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -32,6 +32,7 @@ requires-dist = [
     { name = "ada-web-ui-branding", editable = "../../ui/branding" },
     { name = "ada-web-ui-core", editable = "../../ui/core" },
     { name = "ada-web-ui-display-status", editable = "../../ui/display-status" },
+    { name = "ada-web-ui-global-indicator", editable = "../../ui/global-indicator" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "atlanticus-web-identity", editable = "../../../../../web/capabilities/identity/core" },
     { name = "atlanticus-web-identity-local", editable = "../../../../../web/capabilities/identity/local" },
@@ -40,7 +41,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "ada-web-ui-global-indicator", editable = "../../ui/global-indicator" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]
