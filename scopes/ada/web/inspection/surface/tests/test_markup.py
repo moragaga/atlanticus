@@ -6,7 +6,9 @@ def test_surface_markup_is_accessible_and_starts_inert() -> None:
 
     assert 'aria-hidden="true" inert' in markup
     assert 'role="dialog"' in markup
-    assert 'aria-modal="true"' in markup
+    assert 'aria-modal="false"' in markup
+    assert 'aria-busy="false"' in markup
+    assert 'ada-kpi-inspection-surface__backdrop' not in markup
     assert 'aria-live="polite"' in markup
     assert 'data-kpi-inspection-close' in markup
 

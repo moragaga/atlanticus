@@ -10,6 +10,7 @@ from ada.web.inspection.preview import (
     create_preview_runtime,
     create_preview_snapshot,
 )
+from ada.web.ui.global_indicator import build_global_indicator
 
 
 def test_preview_covers_populated_empty_and_missing_kpi_definitions() -> None:
@@ -44,7 +45,7 @@ def test_preview_extends_generic_application_only_with_inspection_api_and_surfac
     module_names = [module.name for module in definition.modules]
 
     assert definition.metadata.application_id == 'ada-kpi-inspection-preview'
-    assert definition.metadata.version == '0.1.0'
+    assert definition.metadata.version == '0.1.1'
     assert module_names[-2:] == ['kpi-inspection-api', 'kpi-inspection-surface']
     assert module_names.count('kpi-inspection-api') == 1
     assert module_names.count('kpi-inspection-surface') == 1
@@ -107,3 +108,64 @@ def test_preview_test_environment_does_not_shadow_installed_atlanticus_packages(
     assert 'web/framework/observability/src' not in pythonpath_block
     assert 'web/capabilities/navigation/core/src' not in pythonpath_block
     assert '../../application/ada-generic-application/src' not in pythonpath_block
+
+
+def _props(component):
+    return component.to_plotly_json()['props']
+
+
+def _walk(component):
+    yield component
+    children = getattr(component, 'children', None)
+    if children is None:
+        return
+    if not isinstance(children, (list, tuple)):
+        children = [children]
+    for child in children:
+        if hasattr(child, 'to_plotly_json'):
+            yield from _walk(child)
+
+
+def test_preview_uses_value_only_inspection_triggers() -> None:
+    for state in create_preview_global_indicators().indicators:
+        component = build_global_indicator(state=state)
+        assert 'data-kpi-inspection-key' not in _props(component)
+        triggers = [
+            item
+            for item in _walk(component)
+            if _props(item).get('data-kpi-inspection-key') == state.kpi_key
+        ]
+        assert len(triggers) == 3
+        assert all(_props(item)['role'] == 'button' for item in triggers)
+
+
+def test_preview_surface_is_dark_square_selectable_and_loading_locked() -> None:
+    project = Path(__file__).resolve().parents[2] / 'surface'
+    css = (
+        project
+        / 'src'
+        / 'ada'
+        / 'web'
+        / 'inspection'
+        / 'surface'
+        / 'resources'
+        / 'css'
+        / '10-kpi-inspection-surface.css'
+    ).read_text(encoding='utf-8')
+    javascript = (
+        project
+        / 'src'
+        / 'ada'
+        / 'web'
+        / 'inspection'
+        / 'surface'
+        / 'resources'
+        / 'js'
+        / '10-kpi-inspection-surface.js'
+    ).read_text(encoding='utf-8')
+
+    assert 'var(--dark-color, #313131)' in css
+    assert 'border-radius: 0;' in css
+    assert 'user-select: text;' in css
+    assert 'function setBusy(isBusy)' in javascript
+    assert 'if (controller.request) {\n      return;\n    }' in javascript

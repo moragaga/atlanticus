@@ -1,4 +1,4 @@
-/* Mirror pedagógico: event delegation; nunca observa hover ni depende del ciclo de render Dash. */
+/* Mirror pedagógico: panel no modal, reutilizable y persistente; loading bloquea requests nuevos sin cerrar la superficie. */
 (() => {
   'use strict';
 
@@ -13,6 +13,7 @@
 
   const controller = {
     root: null,
+    panelNode: null,
     keyNode: null,
     fieldsNode: null,
     emptyNode: null,
@@ -52,18 +53,29 @@
     });
   }
 
+  function setBusy(isBusy) {
+    // El busy pertenece a la request, no al lifecycle open/closed del inspector.
+    controller.root.dataset.busy = isBusy ? 'true' : 'false';
+    controller.panelNode.setAttribute('aria-busy', isBusy ? 'true' : 'false');
+    document.documentElement.classList.toggle('ada-kpi-inspection-loading', isBusy);
+    document.body.classList.toggle('ada-kpi-inspection-loading', isBusy);
+  }
+
   function openSurface(kpiKey, trigger) {
+    const wasOpen = controller.root.dataset.open === 'true';
     controller.previousFocus = trigger || document.activeElement;
     controller.root.inert = false;
     controller.root.setAttribute('aria-hidden', 'false');
     controller.root.dataset.open = 'true';
-    document.documentElement.classList.add('ada-kpi-inspection-open');
-    document.body.classList.add('ada-kpi-inspection-open');
     controller.keyNode.textContent = kpiKey;
     controller.fieldsNode.replaceChildren();
     controller.emptyNode.hidden = true;
     setState('loading');
-    controller.closeButton.focus({ preventScroll: true });
+    setBusy(true);
+    // Sólo la primera apertura mueve foco al cierre; cambiar KPI no recrea ni reabre el panel.
+    if (!wasOpen) {
+      controller.closeButton.focus({ preventScroll: true });
+    }
   }
 
   function closeSurface() {
@@ -72,11 +84,10 @@
       controller.request = null;
     }
     controller.requestSequence += 1;
+    setBusy(false);
     controller.root.dataset.open = 'false';
     controller.root.setAttribute('aria-hidden', 'true');
     controller.root.inert = true;
-    document.documentElement.classList.remove('ada-kpi-inspection-open');
-    document.body.classList.remove('ada-kpi-inspection-open');
     const focusTarget = controller.previousFocus;
     controller.previousFocus = null;
     if (focusTarget && focusTarget.isConnected && typeof focusTarget.focus === 'function') {
@@ -126,9 +137,6 @@
   }
 
   async function loadDefinition(kpiKey) {
-    if (controller.request) {
-      controller.request.abort();
-    }
     const request = new AbortController();
     controller.request = request;
     const sequence = ++controller.requestSequence;
@@ -163,11 +171,16 @@
     } finally {
       if (sequence === controller.requestSequence) {
         controller.request = null;
+        setBusy(false);
       }
     }
   }
 
   function inspectTrigger(trigger) {
+    // Una request en curso bloquea nuevos clicks/teclado: no se generan fetchs que luego haya que abortar.
+    if (controller.request) {
+      return;
+    }
     const kpiKey = String(trigger.getAttribute('data-kpi-inspection-key') || '').trim();
     if (!kpiKey) {
       return;
@@ -213,11 +226,18 @@
     if (!controller.root || controller.root.dataset.initialized === 'true') {
       return;
     }
+    controller.panelNode = controller.root.querySelector('.ada-kpi-inspection-surface__panel');
     controller.keyNode = document.getElementById(KEY_ID);
     controller.fieldsNode = controller.root.querySelector('[data-kpi-inspection-fields]');
     controller.emptyNode = controller.root.querySelector('[data-kpi-inspection-empty]');
     controller.closeButton = controller.root.querySelector('.ada-kpi-inspection-surface__close');
-    if (!controller.keyNode || !controller.fieldsNode || !controller.emptyNode || !controller.closeButton) {
+    if (
+      !controller.panelNode ||
+      !controller.keyNode ||
+      !controller.fieldsNode ||
+      !controller.emptyNode ||
+      !controller.closeButton
+    ) {
       return;
     }
     controller.apiBasePath = resolveApiBasePath();

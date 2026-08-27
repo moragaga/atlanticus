@@ -24,7 +24,7 @@ from atlanticus.web.models import (
     WebApplicationRuntime,
 )
 
-_PREVIEW_VERSION = '0.1.0'
+_PREVIEW_VERSION = '0.1.1'
 _PREVIEW_ROOT = Path(__file__).resolve().parents[5]
 
 

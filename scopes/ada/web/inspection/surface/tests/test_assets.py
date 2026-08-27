@@ -20,7 +20,7 @@ def test_surface_assets_are_packaged_in_explicit_order() -> None:
     ]
 
 
-def test_css_defines_click_opt_in_and_bottom_offcanvas_without_hover_activation() -> None:
+def test_css_defines_non_modal_dark_bottom_surface_without_hover_activation() -> None:
     css = _resource('css', '10-kpi-inspection-surface.css')
 
     assert '[data-kpi-inspection-key] {' in css
@@ -29,6 +29,11 @@ def test_css_defines_click_opt_in_and_bottom_offcanvas_without_hover_activation(
     assert 'bottom: 0;' in css
     assert 'transform: translateY(105%);' in css
     assert "[data-open='true']" in css
+    assert '--ada-kpi-inspection-bg: var(--dark-color, #313131);' in css
+    assert 'border-radius: 0;' in css
+    assert 'user-select: text;' in css
+    assert 'overflow: hidden;' not in css.split('.ada-kpi-inspection-surface__panel', 1)[0]
+    assert 'ada-kpi-inspection-loading' in css
 
 
 def test_javascript_uses_event_delegation_and_never_hover_handlers() -> None:
@@ -52,6 +57,17 @@ def test_javascript_reads_memory_api_safely_and_handles_races() -> None:
     assert "setState('unavailable')" in javascript
     assert "setState('ready')" in javascript
     assert "setState('error')" in javascript
+
+
+def test_javascript_blocks_new_trigger_requests_while_loading_and_keeps_open_surface() -> None:
+    javascript = _resource('js', '10-kpi-inspection-surface.js')
+
+    assert 'if (controller.request) {\n      return;\n    }' in javascript
+    assert 'function setBusy(isBusy)' in javascript
+    assert "setAttribute('aria-busy', isBusy ? 'true' : 'false')" in javascript
+    assert "const wasOpen = controller.root.dataset.open === 'true';" in javascript
+    assert 'if (!wasOpen)' in javascript
+    assert javascript.count('controller.request.abort();') == 1
 
 
 def test_javascript_renders_definition_as_text_not_html() -> None:

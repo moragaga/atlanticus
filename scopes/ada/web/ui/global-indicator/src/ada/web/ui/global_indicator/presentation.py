@@ -31,23 +31,13 @@ def build_global_indicators(*, collection: GlobalIndicatorCollection) -> Compone
 
 
 def build_global_indicator(*, state: GlobalIndicatorState) -> Component:
-    attributes = {
-        'data-indicator-key': state.key,
-        'data-measurement-count': str(len(state.measurements)),
-        'data-has-last-measurement': 'true' if state.last_measurement is not None else 'false',
-    }
-    if state.kpi_key is not None:
-        attributes.update(
-            {
-                'data-kpi-inspection-key': state.kpi_key,
-                'role': 'button',
-                'tabIndex': 0,
-                'aria-haspopup': 'dialog',
-            }
-        )
     return html.Div(
         className='global-indicator',
-        **attributes,
+        **{
+            'data-indicator-key': state.key,
+            'data-measurement-count': str(len(state.measurements)),
+            'data-has-last-measurement': 'true' if state.last_measurement is not None else 'false',
+        },
         children=[
             _build_label(
                 label=state.label,
@@ -60,6 +50,7 @@ def build_global_indicator(*, state: GlobalIndicatorState) -> Component:
                     measurements=state.measurements,
                     last_measurement=state.last_measurement,
                     style=state.style,
+                    kpi_key=state.kpi_key,
                 ),
             ),
         ],
@@ -86,14 +77,24 @@ def _build_indicator_content(
     measurements: tuple[GlobalIndicatorMeasurementState, ...],
     last_measurement: GlobalIndicatorLastMeasurementState | None,
     style: GlobalIndicatorStyle,
+    kpi_key: str | None,
 ) -> tuple[Component, ...]:
     children: list[Component] = [
         _build_table(
-            rows=[_build_table_row(state=measurement, style=style) for measurement in measurements]
+            rows=[
+                _build_table_row(state=measurement, style=style, kpi_key=kpi_key)
+                for measurement in measurements
+            ]
         )
     ]
     if last_measurement is not None:
-        children.append(_build_last_measurement_slot(state=last_measurement, style=style))
+        children.append(
+            _build_last_measurement_slot(
+                state=last_measurement,
+                style=style,
+                kpi_key=kpi_key,
+            )
+        )
     return tuple(children)
 
 
@@ -108,6 +109,7 @@ def _build_table_row(
     *,
     state: GlobalIndicatorMeasurementState,
     style: GlobalIndicatorStyle,
+    kpi_key: str | None,
 ) -> Component:
     return html.Tr(
         className='global-indicator__row',
@@ -124,6 +126,7 @@ def _build_table_row(
                 value=state.actual_value,
                 color_class=state.color_class,
                 value_class_name=f'global-indicator__value--actual {style.actual_value_class}',
+                inspection_key=kpi_key,
             ),
             _build_table_separator_cell(class_name=style.plan_value_class),
             _build_table_value_cell(
@@ -140,6 +143,7 @@ def _build_table_value_cell(
     color_class: IndicatorColorClass = None,
     value_class_name: str = '',
     is_header: bool = False,
+    inspection_key: str | None = None,
 ) -> Component:
     component = html.Th if is_header else html.Td
     attributes = {'scope': 'row'} if is_header else {}
@@ -160,6 +164,7 @@ def _build_table_value_cell(
                     if part
                 ),
                 children=[_build_display_value(resolved_value)],
+                **_inspection_attributes(inspection_key),
             )
         ],
         **attributes,
@@ -182,6 +187,7 @@ def _build_last_measurement_slot(
     *,
     state: GlobalIndicatorLastMeasurementState,
     style: GlobalIndicatorStyle,
+    kpi_key: str | None,
 ) -> Component:
     return html.Div(
         className='global-indicator__last-measurement',
@@ -206,9 +212,21 @@ def _build_last_measurement_slot(
                     if part
                 ),
                 children=[_build_display_value(state.actual_value)],
+                **_inspection_attributes(kpi_key),
             ),
         ],
     )
+
+
+def _inspection_attributes(kpi_key: str | None) -> dict[str, str | int]:
+    if kpi_key is None:
+        return {}
+    return {
+        'data-kpi-inspection-key': kpi_key,
+        'role': 'button',
+        'tabIndex': 0,
+        'aria-haspopup': 'dialog',
+    }
 
 
 def _build_display_value(value: DisplayValue) -> str | Component:

@@ -24,6 +24,7 @@
     box-sizing: border-box;
     overflow: hidden;
     color: var(--global-indicator-ink);
+    user-select: none;
 }
 
 .global-indicator p {

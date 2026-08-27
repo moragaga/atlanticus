@@ -2,9 +2,8 @@ from __future__ import annotations
 
 
 def build_kpi_inspection_surface_fragment() -> str:
-    return """<div id="ada-kpi-inspection-surface" class="ada-kpi-inspection-surface" data-open="false" data-state="idle" aria-hidden="true" inert>
-    <button type="button" class="ada-kpi-inspection-surface__backdrop" tabindex="-1" aria-label="Cerrar inspector KPI" data-kpi-inspection-close></button>
-    <section class="ada-kpi-inspection-surface__panel" role="dialog" aria-modal="true" aria-labelledby="ada-kpi-inspection-title" aria-describedby="ada-kpi-inspection-status">
+    return """<div id="ada-kpi-inspection-surface" class="ada-kpi-inspection-surface" data-open="false" data-state="idle" data-busy="false" aria-hidden="true" inert>
+    <section class="ada-kpi-inspection-surface__panel" role="dialog" aria-modal="false" aria-busy="false" aria-labelledby="ada-kpi-inspection-title" aria-describedby="ada-kpi-inspection-status">
         <header class="ada-kpi-inspection-surface__header">
             <div class="ada-kpi-inspection-surface__heading">
                 <p class="ada-kpi-inspection-surface__eyebrow">KPI</p>

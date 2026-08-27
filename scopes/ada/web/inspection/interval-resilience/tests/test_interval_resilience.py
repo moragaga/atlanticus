@@ -115,7 +115,17 @@ def test_interval_rerenders_replace_indicator_values_without_changing_inspection
     assert [_props(component)['data-indicator-key'] for component in renders] == [
         _INDICATOR_KEY
     ] * 4
-    assert [_props(component)['data-kpi-inspection-key'] for component in renders] == [_KPI_KEY] * 4
+    assert all('data-kpi-inspection-key' not in _props(component) for component in renders)
+    assert [
+        len(
+            [
+                item
+                for item in _walk(component)
+                if _props(item).get('data-kpi-inspection-key') == _KPI_KEY
+            ]
+        )
+        for component in renders
+    ] == [3, 3, 3, 3]
     assert [_actual_values(component) for component in renders] == [
         ('198', '201'),
         ('199', '202'),

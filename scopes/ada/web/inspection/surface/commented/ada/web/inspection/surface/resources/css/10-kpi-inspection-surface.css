@@ -1,4 +1,3 @@
-/* Mirror pedagógico: estilos del offcanvas estable y del contrato opt-in data-kpi-inspection-key. */
 [data-kpi-inspection-key] {
     cursor: help;
 }
@@ -8,29 +7,21 @@
     outline-offset: 2px;
 }
 
+html.ada-kpi-inspection-loading [data-kpi-inspection-key],
+body.ada-kpi-inspection-loading [data-kpi-inspection-key] {
+    cursor: progress;
+}
+
 .ada-kpi-inspection-surface {
-    --ada-kpi-inspection-bg: var(--primary-background, #ffffff);
-    --ada-kpi-inspection-text: var(--custom-text-color, #343a40);
-    --ada-kpi-inspection-muted: #6c757d;
-    --ada-kpi-inspection-border: var(--primary-border-color, #d0d4d8);
+    --ada-kpi-inspection-bg: var(--dark-color, #313131);
+    --ada-kpi-inspection-text: #f2f2f2;
+    --ada-kpi-inspection-muted: #bdbdbd;
+    --ada-kpi-inspection-border: rgba(255, 255, 255, 0.18);
     --ada-kpi-inspection-shadow: 0 -0.65rem 1.8rem rgba(0, 0, 0, 0.16);
     position: fixed;
     inset: 0;
     z-index: 1090;
     pointer-events: none;
-}
-
-.ada-kpi-inspection-surface__backdrop {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    padding: 0;
-    border: 0;
-    background: rgba(0, 0, 0, 0.22);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.18s ease;
 }
 
 .ada-kpi-inspection-surface__panel {
@@ -43,30 +34,19 @@
     flex-direction: column;
     overflow: hidden;
     border-top: 1px solid var(--ada-kpi-inspection-border);
-    border-radius: 1rem 1rem 0 0;
+    border-radius: 0;
     background: var(--ada-kpi-inspection-bg);
     color: var(--ada-kpi-inspection-text);
     box-shadow: var(--ada-kpi-inspection-shadow);
+    pointer-events: none;
+    user-select: text;
     transform: translateY(105%);
     transition: transform 0.2s ease;
 }
 
-.ada-kpi-inspection-surface[data-open='true'] {
-    pointer-events: auto;
-}
-
-.ada-kpi-inspection-surface[data-open='true'] .ada-kpi-inspection-surface__backdrop {
-    opacity: 1;
-    pointer-events: auto;
-}
-
 .ada-kpi-inspection-surface[data-open='true'] .ada-kpi-inspection-surface__panel {
     transform: translateY(0);
-}
-
-html.ada-kpi-inspection-open,
-body.ada-kpi-inspection-open {
-    overflow: hidden;
+    pointer-events: auto;
 }
 
 .ada-kpi-inspection-surface__header {
@@ -127,12 +107,13 @@ body.ada-kpi-inspection-open {
     font-size: 1.45rem;
     line-height: 1;
     cursor: pointer;
+    user-select: none;
 }
 
 .ada-kpi-inspection-surface__close:hover,
 .ada-kpi-inspection-surface__close:focus-visible {
     border-color: var(--ada-kpi-inspection-border);
-    background: rgba(0, 0, 0, 0.045);
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .ada-kpi-inspection-surface__body {
@@ -212,7 +193,6 @@ body.ada-kpi-inspection-open {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .ada-kpi-inspection-surface__backdrop,
     .ada-kpi-inspection-surface__panel {
         transition: none;
     }

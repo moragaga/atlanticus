@@ -29,6 +29,22 @@ from atlanticus.web.services import ServiceRegistry
 _KPI_KEY = 'transported_total'
 
 
+def _props(component):
+    return component.to_plotly_json()['props']
+
+
+def _walk(component):
+    yield component
+    children = getattr(component, 'children', None)
+    if children is None:
+        return
+    if not isinstance(children, (list, tuple)):
+        children = [children]
+    for child in children:
+        if hasattr(child, 'to_plotly_json'):
+            yield from _walk(child)
+
+
 def _snapshot(*definitions: KpiDefinition) -> KpiDefinitionSnapshot:
     return KpiDefinitionSnapshot(definitions=definitions)
 
@@ -196,12 +212,30 @@ def test_global_indicator_and_stable_surface_are_composed_for_the_same_kpi_key()
 
 
 def test_surface_is_stable_and_new_global_indicator_render_keeps_opt_in_identity() -> None:
-    first = _indicator().to_plotly_json()['props']
-    second = _indicator().to_plotly_json()['props']
+    first_component = _indicator()
+    second_component = _indicator()
+    first = first_component.to_plotly_json()['props']
+    second = second_component.to_plotly_json()['props']
     javascript = _javascript()
 
-    assert first['data-kpi-inspection-key'] == _KPI_KEY
-    assert second['data-kpi-inspection-key'] == _KPI_KEY
+    assert 'data-kpi-inspection-key' not in first
+    assert 'data-kpi-inspection-key' not in second
+    assert (
+        sum(
+            1
+            for item in _walk(first_component)
+            if _props(item).get('data-kpi-inspection-key') == _KPI_KEY
+        )
+        == 2
+    )
+    assert (
+        sum(
+            1
+            for item in _walk(second_component)
+            if _props(item).get('data-kpi-inspection-key') == _KPI_KEY
+        )
+        == 2
+    )
     assert "document.addEventListener('click', handleClick)" in javascript
     assert '.closest?.(TRIGGER_SELECTOR)' in javascript
     assert 'MutationObserver' not in javascript
