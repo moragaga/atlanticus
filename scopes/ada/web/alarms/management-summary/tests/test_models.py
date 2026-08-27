@@ -12,7 +12,7 @@ from ada.web.alarms.management_summary import (
 def _segment(
     area: AlarmManagementSummaryArea,
     *,
-    group: str = 'G3',
+    group: int = 3,
     percentage: float = 60,
     tone: AlarmManagementSummaryTone = AlarmManagementSummaryTone.NEUTRAL,
 ) -> AlarmManagementSummarySegmentState:
@@ -28,7 +28,7 @@ def test_summary_supports_mine_and_plant_without_tool_manifest() -> None:
     state = AlarmManagementSummaryState(
         segments=(
             _segment(AlarmManagementSummaryArea.MINE),
-            _segment(AlarmManagementSummaryArea.PLANT, group='G1', percentage=45),
+            _segment(AlarmManagementSummaryArea.PLANT, group=1, percentage=45),
         )
     )
 
@@ -50,7 +50,7 @@ def test_summary_rejects_duplicate_areas() -> None:
         AlarmManagementSummaryState(
             segments=(
                 _segment(AlarmManagementSummaryArea.MINE),
-                _segment(AlarmManagementSummaryArea.MINE, group='G4'),
+                _segment(AlarmManagementSummaryArea.MINE, group=4),
             )
         )
 
@@ -58,14 +58,23 @@ def test_summary_rejects_duplicate_areas() -> None:
 def test_segment_normalizes_group_and_validates_percentage() -> None:
     segment = _segment(
         AlarmManagementSummaryArea.PLANT,
-        group='  G2  ',
+        group=2,
         percentage=72.5,
         tone=AlarmManagementSummaryTone.ATTENTION,
     )
 
-    assert segment.group == 'G2'
+    assert segment.group == 2
     assert segment.management_percentage == 72.5
     assert segment.tone is AlarmManagementSummaryTone.ATTENTION
 
     with pytest.raises(AlarmManagementSummaryDefinitionError, match='between 0 and 100'):
         _segment(AlarmManagementSummaryArea.PLANT, percentage=101)
+
+
+def test_segment_rejects_group_outside_one_to_four() -> None:
+    for group in (0, 5, True, '3'):
+        with pytest.raises(
+            AlarmManagementSummaryDefinitionError,
+            match='integer between 1 and 4',
+        ):
+            _segment(AlarmManagementSummaryArea.MINE, group=group)  # type: ignore[arg-type]

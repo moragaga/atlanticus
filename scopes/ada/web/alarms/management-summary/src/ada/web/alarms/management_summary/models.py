@@ -21,21 +21,23 @@ class AlarmManagementSummaryTone(StrEnum):
 @dataclass(frozen=True, slots=True)
 class AlarmManagementSummarySegmentState:
     area: AlarmManagementSummaryArea
-    group: str
+    group: int
     management_percentage: float
     tone: AlarmManagementSummaryTone = AlarmManagementSummaryTone.NEUTRAL
 
     def __post_init__(self) -> None:
-        group = self.group.strip()
-        if not group:
+        if (
+            isinstance(self.group, bool)
+            or not isinstance(self.group, int)
+            or not 1 <= self.group <= 4
+        ):
             raise AlarmManagementSummaryDefinitionError(
-                'Alarm management summary group cannot be empty'
+                'Alarm management summary group must be an integer between 1 and 4'
             )
         if not 0 <= self.management_percentage <= 100:
             raise AlarmManagementSummaryDefinitionError(
                 'Alarm management summary percentage must be between 0 and 100'
             )
-        object.__setattr__(self, 'group', group)
 
 
 @dataclass(frozen=True, slots=True)

@@ -45,12 +45,12 @@
 }
 
 .ada-alarm-management-summary__segment[data-tone='attention']
-    .ada-alarm-management-summary__value {
+    .ada-alarm-management-summary__percentage-value {
     color: var(--ada-alarm-management-summary-attention, #E0A800);
 }
 
 .ada-alarm-management-summary__segment[data-tone='critical']
-    .ada-alarm-management-summary__value {
+    .ada-alarm-management-summary__percentage-value {
     color: var(--ada-alarm-management-summary-critical, #A31A1A);
 }
 
@@ -97,3 +97,13 @@
         font-size: .68rem;
     }
 }
+
+/* Step 08B.1D — Alarm Management semantic calibration */
+.ada-alarm-management-summary__group-value {
+    color: var(--ada-alarm-management-summary-ink, #4D4D4D);
+}
+
+.ada-alarm-management-summary__percentage-value {
+    color: var(--ada-alarm-management-summary-ink, #4D4D4D);
+}
+

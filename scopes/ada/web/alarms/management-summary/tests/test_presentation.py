@@ -30,13 +30,13 @@ def _state() -> AlarmManagementSummaryState:
         segments=(
             AlarmManagementSummarySegmentState(
                 area=AlarmManagementSummaryArea.MINE,
-                group='G3',
+                group=3,
                 management_percentage=60,
                 tone=AlarmManagementSummaryTone.ATTENTION,
             ),
             AlarmManagementSummarySegmentState(
                 area=AlarmManagementSummaryArea.PLANT,
-                group='G1',
+                group=1,
                 management_percentage=45,
                 tone=AlarmManagementSummaryTone.CRITICAL,
             ),
@@ -71,13 +71,13 @@ def test_summary_keeps_group_and_management_labels() -> None:
         for item in _walk(component)
         for child in (
             [getattr(item, 'children', None)]
-            if isinstance(getattr(item, 'children', None), str)
+            if isinstance(getattr(item, 'children', None), (str, int))
             else []
         )
     ]
 
     assert 'Grupo Mina' in text
-    assert 'G3' in text
+    assert '3' in text
     assert 'Gestión Mina' in text
     assert '60%' in text
     assert 'Grupo Planta' in text
@@ -87,3 +87,22 @@ def test_summary_keeps_group_and_management_labels() -> None:
 
 def test_none_state_collapses_without_placeholder() -> None:
     assert build_alarm_management_summary(None) is None
+
+
+def test_group_and_percentage_use_distinct_css_roles() -> None:
+    component = build_alarm_management_summary(_state())
+    assert component is not None
+
+    groups = [
+        item
+        for item in _walk(component)
+        if 'ada-alarm-management-summary__group-value' in (_props(item).get('className') or '')
+    ]
+    percentages = [
+        item
+        for item in _walk(component)
+        if 'ada-alarm-management-summary__percentage-value' in (_props(item).get('className') or '')
+    ]
+
+    assert len(groups) == 2
+    assert len(percentages) == 2

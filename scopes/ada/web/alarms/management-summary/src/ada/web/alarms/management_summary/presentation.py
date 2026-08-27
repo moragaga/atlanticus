@@ -44,7 +44,10 @@ def _build_segment(segment: AlarmManagementSummarySegmentState) -> Component:
                     ),
                     html.Strong(
                         segment.group,
-                        className='ada-alarm-management-summary__value',
+                        className=(
+                            'ada-alarm-management-summary__value '
+                            'ada-alarm-management-summary__group-value'
+                        ),
                     ),
                 ],
             ),
@@ -57,7 +60,10 @@ def _build_segment(segment: AlarmManagementSummarySegmentState) -> Component:
                     ),
                     html.Strong(
                         f'{segment.management_percentage:g}%',
-                        className='ada-alarm-management-summary__value',
+                        className=(
+                            'ada-alarm-management-summary__value '
+                            'ada-alarm-management-summary__percentage-value'
+                        ),
                     ),
                     html.Progress(
                         value=segment.management_percentage,
