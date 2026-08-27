@@ -50,6 +50,15 @@ CAPABILITIES: dict[str, AdaCapability] = {
         commented_root='commented',
     ),
     # Registra el lifecycle de KPI Inspection separado del core y sin dependencia directa de Cosmos.
+    # Registra el gate cross-capability que prueba KPI Inspection completo sin infraestructura externa.
+    'kpi-inspection-portability': AdaCapability(
+        key='kpi-inspection-portability',
+        project_root='scopes/ada/web/inspection/portability',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
     'kpi-inspection-runtime': AdaCapability(
         key='kpi-inspection-runtime',
         project_root='scopes/ada/web/inspection/runtime',
