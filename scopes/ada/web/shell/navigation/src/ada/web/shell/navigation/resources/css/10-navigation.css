@@ -1090,11 +1090,11 @@
 
 /* Step 08B.1B: compact desktop navigation trigger. */
 .ada-navigation__trigger--desktop {
-    --ada-navigation-trigger-rest-width: .75rem;
-    --ada-navigation-trigger-hover-width: 1.375rem;
+    --ada-navigation-trigger-rest-width: 1.15rem;
+    --ada-navigation-trigger-hover-width: 1.25rem;
     --ada-navigation-trigger-outset: .15rem;
     width: var(--ada-navigation-trigger-rest-width);
-    height: 2.25rem;
+    height: 2.45rem;
     inset-inline-end: calc(-1 * var(--ada-navigation-trigger-outset));
     border-radius: .625rem 0 0 .625rem;
     opacity: .82;
