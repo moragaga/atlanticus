@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ada-web-kpi-inspection-api"
+version = "0.1.0"
+description = "API Flask read-only e inyectable para KPI Inspection en superficies Web ADA"
+requires-python = "==3.14.2"
+classifiers = [
+    "Private :: Do Not Upload",
+]
+dependencies = [
+    "ada-web-kpi-inspection-core==0.2.0",
+    "atlanticus-web==0.1.0",
+    "Flask==3.1.3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.15.22",
+]
+
+[tool.uv.sources]
+ada-web-kpi-inspection-core = { path = "../core", editable = true }
+atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
+atlanticus-web-observability = { path = "../../../../../web/framework/observability", editable = true }
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+include = ["ada.web.inspection.api*"]
+
+[tool.setuptools.package-data]
+"ada.web.inspection.api" = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+target-version = "py314"
+extend-exclude = [
+    "build",
+    "dist",
+    "commented",
+]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ada", "atlanticus"]
+combine-as-imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "../core/src", "../../../../../web/framework/core/src"]
+addopts = "-q --import-mode=importlib"

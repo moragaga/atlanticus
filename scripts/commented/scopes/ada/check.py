@@ -40,6 +40,15 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
+    # Registra la frontera Flask read-only, inyectada con un snapshot store y sin provider remoto.
+    'kpi-inspection-api': AdaCapability(
+        key='kpi-inspection-api',
+        project_root='scopes/ada/web/inspection/api',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
     'ui-core': AdaCapability(
         key='ui-core',
         project_root='scopes/ada/web/ui/core',
