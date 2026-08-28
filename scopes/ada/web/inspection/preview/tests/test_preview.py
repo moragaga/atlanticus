@@ -37,6 +37,13 @@ def _inspection_keys(component) -> tuple[str, ...]:
     )
 
 
+def _component_by_id(component, component_id: str):
+    return next(
+        (item for item in _walk(component) if _props(item).get('id') == component_id),
+        None,
+    )
+
+
 def test_preview_covers_populated_empty_and_missing_per_value_definitions() -> None:
     snapshot = create_preview_snapshot()
     definitions = {definition.kpi_key: definition for definition in snapshot.definitions}
@@ -59,13 +66,17 @@ def test_preview_uses_three_real_global_indicators_with_five_independent_value_k
         assert all(key.startswith(f'{indicator.key.removesuffix("_card")}_') for key in keys)
 
 
-def test_preview_extends_generic_application_only_with_inspection_api_and_surface() -> None:
+def test_preview_extends_generic_application_with_interval_api_and_surface() -> None:
     definition = create_preview_definition()
     module_names = [module.name for module in definition.modules]
 
     assert definition.metadata.application_id == 'ada-kpi-inspection-preview'
-    assert definition.metadata.version == '0.1.2'
-    assert module_names[-2:] == ['kpi-inspection-api', 'kpi-inspection-surface']
+    assert definition.metadata.version == '0.1.3'
+    assert module_names[-3:] == [
+        'kpi-inspection-preview-interval',
+        'kpi-inspection-api',
+        'kpi-inspection-surface',
+    ]
     assert module_names.count('kpi-inspection-api') == 1
     assert module_names.count('kpi-inspection-surface') == 1
 
@@ -108,6 +119,56 @@ def test_preview_keeps_inspection_surface_outside_dash_managed_entry(preview_run
     app_entry = html.index('react-entry-point')
     surface = html.index('ada-kpi-inspection-surface')
     assert surface > app_entry
+
+
+def test_preview_interval_changes_values_without_changing_per_value_identity() -> None:
+    first = create_preview_global_indicators(tick=0)
+    second = create_preview_global_indicators(tick=1)
+
+    assert first.indicators[0].measurements[0].actual_value.value == '184'
+    assert second.indicators[0].measurements[0].actual_value.value == '185'
+    assert first.indicators[1].measurements[0].actual_value.value == '91.4'
+    assert second.indicators[1].measurements[0].actual_value.value == '91.5'
+
+    first_keys = tuple(
+        _inspection_keys(build_global_indicator(state=indicator)) for indicator in first.indicators
+    )
+    second_keys = tuple(
+        _inspection_keys(build_global_indicator(state=indicator)) for indicator in second.indicators
+    )
+    assert second_keys == first_keys
+
+
+def test_preview_runtime_uses_real_interval_and_replaces_only_global_indicator_children(
+    preview_runtime,
+) -> None:
+    with preview_runtime.server.test_request_context('/', headers={'Accept': 'text/html'}):
+        assert preview_runtime.server.preprocess_request() is None
+        layout = preview_runtime.dash.layout()
+
+    interval = _component_by_id(layout, 'kiv003-global-indicator-interval')
+    host = _component_by_id(layout, 'kiv003-global-indicators-host')
+
+    assert interval is not None
+    assert interval.__class__.__name__ == 'Interval'
+    assert interval.interval == 2000
+    assert host is not None
+    assert host.className == 'global-indicators'
+
+    outputs = tuple(preview_runtime.dash.callback_map)
+    assert 'kiv003-global-indicators-host.children' in outputs
+    assert all('ada-kpi-inspection-surface' not in output for output in outputs)
+
+
+def test_preview_adds_local_api_delay_only_to_make_loading_lock_observable() -> None:
+    project = Path(__file__).resolve().parents[1]
+    runtime = (project / 'src' / 'ada' / 'web' / 'inspection' / 'preview' / 'runtime.py').read_text(
+        encoding='utf-8'
+    )
+
+    assert '_PREVIEW_API_DELAY_SECONDS = 0.75' in runtime
+    assert 'class _PreviewDelayedSnapshotStore(KpiDefinitionSnapshotStore)' in runtime
+    assert 'sleep(_PREVIEW_API_DELAY_SECONDS)' in runtime
 
 
 def test_preview_has_no_external_infrastructure_dependency() -> None:

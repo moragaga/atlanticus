@@ -1,8 +1,13 @@
-# Preview visual: cada valor del Global Indicator usa una identidad KPI independiente.
+# KIV-003: preview visual de resiliencia con Interval real y latencia local controlada.
 from __future__ import annotations
 
 from dataclasses import replace
+from functools import partial
 from pathlib import Path
+from time import sleep
+
+from dash import Dash, Input, Output, dcc
+from dash.development.base_component import Component
 
 from ada.web.application.generic.application import create_application_definition
 from ada.web.inspection.api import create_kpi_inspection_api_module
@@ -13,6 +18,7 @@ from ada.web.ui.global_indicator import (
     GlobalIndicatorLastMeasurementState,
     GlobalIndicatorMeasurementState,
     GlobalIndicatorState,
+    build_global_indicators,
 )
 from atlanticus.web.application import create_web_application
 from atlanticus.web.models import (
@@ -20,13 +26,20 @@ from atlanticus.web.models import (
     WebApplicationDefinition,
     WebApplicationRuntime,
 )
+from atlanticus.web.modules import WebModule
+from atlanticus.web.services import ServiceRegistry
 
-_PREVIEW_VERSION = '0.1.2'
+_PREVIEW_VERSION = '0.1.3'
 _PREVIEW_ROOT = Path(__file__).resolve().parents[5]
+_PREVIEW_INTERVAL_ID = 'kiv003-global-indicator-interval'
+_PREVIEW_HOST_ID = 'kiv003-global-indicators-host'
+# El Interval sólo existe en la preview y reemplaza los hijos del host de indicadores.
+_PREVIEW_INTERVAL_MS = 2000
+# La demora permite observar el loading lock sin modificar la API productiva.
+_PREVIEW_API_DELAY_SECONDS = 0.75
 
 
 def create_preview_snapshot() -> KpiDefinitionSnapshot:
-    # Se conserva un stub vacío y una key ausente para validar todos los estados del inspector.
     definitions = [
         _definition(
             'transported_shift_actual',
@@ -111,7 +124,7 @@ def create_preview_snapshot() -> KpiDefinitionSnapshot:
     return KpiDefinitionSnapshot(definitions=tuple(definitions))
 
 
-def create_preview_global_indicators() -> GlobalIndicatorCollection:
+def create_preview_global_indicators(tick: int = 0) -> GlobalIndicatorCollection:
     return GlobalIndicatorCollection(
         indicators=(
             _indicator(
@@ -119,46 +132,47 @@ def create_preview_global_indicators() -> GlobalIndicatorCollection:
                 label='Transportado',
                 unit='kt',
                 kpi_prefix='transported',
-                shift_actual='184',
+                shift_actual=str(184 + tick % 7),
                 shift_plan='180',
-                day_actual='521',
+                day_actual=str(521 + (tick % 7) * 2),
                 day_plan='540',
-                latest='186',
+                latest=str(186 + tick % 7),
             ),
             _indicator(
                 key='recovery_card',
                 label='Recuperación',
                 unit='%',
                 kpi_prefix='recovery',
-                shift_actual='91.4',
+                shift_actual=f'{91.4 + (tick % 5) * 0.1:.1f}',
                 shift_plan='92.0',
-                day_actual='91.8',
+                day_actual=f'{91.8 + (tick % 5) * 0.1:.1f}',
                 day_plan='92.0',
-                latest='91.6',
+                latest=f'{91.6 + (tick % 5) * 0.1:.1f}',
             ),
             _indicator(
                 key='mine_movement_card',
                 label='Movimiento Mina',
                 unit='kt',
                 kpi_prefix='mine_movement',
-                shift_actual='248',
+                shift_actual=str(248 + tick % 9),
                 shift_plan='255',
-                day_actual='731',
+                day_actual=str(731 + (tick % 9) * 3),
                 day_plan='765',
-                latest='251',
+                latest=str(251 + tick % 9),
             ),
         )
     )
 
 
 def create_preview_definition() -> WebApplicationDefinition:
-    store = KpiDefinitionSnapshotStore(create_preview_snapshot())
+    store = _PreviewDelayedSnapshotStore(create_preview_snapshot())
     base = create_application_definition(
         tool_display_name='KPI Inspection Preview',
         global_indicators=create_preview_global_indicators(),
     )
     return replace(
         base,
+        layout=partial(_build_preview_layout, base_layout=base.layout),
         import_name='ada.web.inspection.preview',
         metadata=ApplicationMetadata(
             application_id='ada-kpi-inspection-preview',
@@ -168,6 +182,7 @@ def create_preview_definition() -> WebApplicationDefinition:
         publications_root=_PREVIEW_ROOT / '.runtime' / 'publications',
         modules=(
             *base.modules,
+            _create_preview_interval_module(),
             create_kpi_inspection_api_module(store),
             create_kpi_inspection_surface_module(),
         ),
@@ -176,6 +191,74 @@ def create_preview_definition() -> WebApplicationDefinition:
 
 def create_preview_runtime() -> WebApplicationRuntime:
     return create_web_application(create_preview_definition())
+
+
+# Store de prueba: mantiene el mismo contrato y añade únicamente latencia visual.
+class _PreviewDelayedSnapshotStore(KpiDefinitionSnapshotStore):
+    def get(self, kpi_key: str) -> KpiDefinition | None:
+        sleep(_PREVIEW_API_DELAY_SECONDS)
+        return super().get(kpi_key)
+
+
+# Se reutiliza el layout real y sólo se identifica el host que el callback puede refrescar.
+def _build_preview_layout(
+    services: ServiceRegistry,
+    *,
+    base_layout,
+) -> Component:
+    layout = base_layout(services)
+    host = _find_component_by_class(layout, 'global-indicators')
+    if host is None:
+        raise RuntimeError('KIV-003 preview could not locate Global Indicators host')
+    host.id = _PREVIEW_HOST_ID
+    root_children = list(layout.children or ())
+    root_children.append(
+        dcc.Interval(
+            id=_PREVIEW_INTERVAL_ID,
+            interval=_PREVIEW_INTERVAL_MS,
+            n_intervals=0,
+        )
+    )
+    layout.children = root_children
+    return layout
+
+
+# El callback reemplaza los valores del Header; la Inspection Surface queda fuera de su Output.
+def _create_preview_interval_module() -> WebModule:
+    def register_callbacks(app: Dash, services: ServiceRegistry) -> None:
+        del services
+
+        @app.callback(
+            Output(_PREVIEW_HOST_ID, 'children'),
+            Input(_PREVIEW_INTERVAL_ID, 'n_intervals'),
+        )
+        def refresh_global_indicators(n_intervals: int | None):
+            tick = int(n_intervals or 0)
+            component = build_global_indicators(collection=create_preview_global_indicators(tick))
+            return list(component.children or ())
+
+    return WebModule(
+        name='kpi-inspection-preview-interval',
+        register_callbacks=register_callbacks,
+    )
+
+
+def _find_component_by_class(component: Component, class_name: str) -> Component | None:
+    classes = str(getattr(component, 'className', '') or '').split()
+    if class_name in classes:
+        return component
+    children = getattr(component, 'children', None)
+    if children is None:
+        return None
+    if not isinstance(children, (list, tuple)):
+        children = (children,)
+    for child in children:
+        if not hasattr(child, 'to_plotly_json'):
+            continue
+        found = _find_component_by_class(child, class_name)
+        if found is not None:
+            return found
+    return None
 
 
 def _definition(kpi_key: str, description: str, window: str, value_type: str) -> KpiDefinition:
@@ -190,7 +273,6 @@ def _definition(kpi_key: str, description: str, window: str, value_type: str) ->
     )
 
 
-# El prefijo sólo simplifica el fixture; producción recibe keys ya resueltas por composición.
 def _indicator(
     *,
     key: str,
@@ -213,7 +295,6 @@ def _indicator(
                 label='Turno',
                 actual_value=shift_actual,
                 plan_value=shift_plan,
-                # Actual y plan son triggers distintos incluso dentro de la misma fila Turno.
                 actual_kpi_key=f'{kpi_prefix}_shift_actual',
                 plan_kpi_key=f'{kpi_prefix}_shift_plan',
             ),
