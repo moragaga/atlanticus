@@ -1,17 +1,12 @@
+# Preview visual: cada valor del Global Indicator usa una identidad KPI independiente.
 from __future__ import annotations
 
-# Preview manual de KPI Inspection sobre la composición genérica real de ADA.
-# No introduce Cosmos ni cambia el composition root productivo.
 from dataclasses import replace
 from pathlib import Path
 
 from ada.web.application.generic.application import create_application_definition
 from ada.web.inspection.api import create_kpi_inspection_api_module
-from ada.web.inspection.core import (
-    KpiDefinition,
-    KpiDefinitionSnapshot,
-    KpiDefinitionSnapshotStore,
-)
+from ada.web.inspection.core import KpiDefinition, KpiDefinitionSnapshot, KpiDefinitionSnapshotStore
 from ada.web.inspection.surface import create_kpi_inspection_surface_module
 from ada.web.ui.global_indicator import (
     GlobalIndicatorCollection,
@@ -26,37 +21,104 @@ from atlanticus.web.models import (
     WebApplicationRuntime,
 )
 
-_PREVIEW_VERSION = '0.1.1'
+_PREVIEW_VERSION = '0.1.2'
 _PREVIEW_ROOT = Path(__file__).resolve().parents[5]
 
 
 def create_preview_snapshot() -> KpiDefinitionSnapshot:
-    # Se fijan los tres estados visuales: definición poblada, stub vacío y key ausente.
-    return KpiDefinitionSnapshot(
-        definitions=(
-            KpiDefinition(
-                kpi_key='transported_total',
-                fields={
-                    'description': 'Tonelaje total transportado por la operación.',
-                    'operational_context': 'Indicador piloto con definición descriptiva completa.',
-                    'owner': 'Operaciones',
-                    'source': 'Dispatch',
-                },
-            ),
-            KpiDefinition(kpi_key='recovery', fields={}),
-        )
-    )
+    # Se conserva un stub vacío y una key ausente para validar todos los estados del inspector.
+    definitions = [
+        _definition(
+            'transported_shift_actual',
+            'Tonelaje transportado acumulado durante el turno actual.',
+            'Turno',
+            'Actual',
+        ),
+        _definition(
+            'transported_shift_plan',
+            'Objetivo de tonelaje transportado para el turno actual.',
+            'Turno',
+            'Plan',
+        ),
+        _definition(
+            'transported_day_actual',
+            'Tonelaje transportado acumulado durante el día operacional.',
+            'Día',
+            'Actual',
+        ),
+        _definition(
+            'transported_day_plan',
+            'Objetivo de tonelaje transportado para el día operacional.',
+            'Día',
+            'Plan',
+        ),
+        _definition(
+            'transported_latest',
+            'Última medición disponible de tonelaje transportado.',
+            'Última medición',
+            'Actual',
+        ),
+        _definition(
+            'recovery_shift_actual',
+            'Recuperación acumulada observada durante el turno actual.',
+            'Turno',
+            'Actual',
+        ),
+        _definition(
+            'recovery_shift_plan',
+            'Objetivo de recuperación definido para el turno actual.',
+            'Turno',
+            'Plan',
+        ),
+        _definition(
+            'recovery_day_actual',
+            'Recuperación acumulada observada durante el día operacional.',
+            'Día',
+            'Actual',
+        ),
+        KpiDefinition(kpi_key='recovery_day_plan', fields={}),
+        _definition(
+            'recovery_latest',
+            'Última medición disponible de recuperación.',
+            'Última medición',
+            'Actual',
+        ),
+        _definition(
+            'mine_movement_shift_actual',
+            'Movimiento mina acumulado durante el turno actual.',
+            'Turno',
+            'Actual',
+        ),
+        _definition(
+            'mine_movement_shift_plan',
+            'Objetivo de movimiento mina para el turno actual.',
+            'Turno',
+            'Plan',
+        ),
+        _definition(
+            'mine_movement_day_actual',
+            'Movimiento mina acumulado durante el día operacional.',
+            'Día',
+            'Actual',
+        ),
+        _definition(
+            'mine_movement_day_plan',
+            'Objetivo de movimiento mina para el día operacional.',
+            'Día',
+            'Plan',
+        ),
+    ]
+    return KpiDefinitionSnapshot(definitions=tuple(definitions))
 
 
 def create_preview_global_indicators() -> GlobalIndicatorCollection:
-    # Cada indicador respeta el contrato productivo de dos o tres mediciones.
     return GlobalIndicatorCollection(
         indicators=(
             _indicator(
                 key='transported_card',
                 label='Transportado',
                 unit='kt',
-                kpi_key='transported_total',
+                kpi_prefix='transported',
                 shift_actual='184',
                 shift_plan='180',
                 day_actual='521',
@@ -67,7 +129,7 @@ def create_preview_global_indicators() -> GlobalIndicatorCollection:
                 key='recovery_card',
                 label='Recuperación',
                 unit='%',
-                kpi_key='recovery',
+                kpi_prefix='recovery',
                 shift_actual='91.4',
                 shift_plan='92.0',
                 day_actual='91.8',
@@ -78,7 +140,7 @@ def create_preview_global_indicators() -> GlobalIndicatorCollection:
                 key='mine_movement_card',
                 label='Movimiento Mina',
                 unit='kt',
-                kpi_key='mine_movement',
+                kpi_prefix='mine_movement',
                 shift_actual='248',
                 shift_plan='255',
                 day_actual='731',
@@ -90,7 +152,6 @@ def create_preview_global_indicators() -> GlobalIndicatorCollection:
 
 
 def create_preview_definition() -> WebApplicationDefinition:
-    # Partimos de la Generic Application actual y agregamos exclusivamente API + Surface.
     store = KpiDefinitionSnapshotStore(create_preview_snapshot())
     base = create_application_definition(
         tool_display_name='KPI Inspection Preview',
@@ -114,16 +175,28 @@ def create_preview_definition() -> WebApplicationDefinition:
 
 
 def create_preview_runtime() -> WebApplicationRuntime:
-    # El runtime es el Atlanticus Web real; no una simulación de Flask/Dash.
     return create_web_application(create_preview_definition())
 
 
+def _definition(kpi_key: str, description: str, window: str, value_type: str) -> KpiDefinition:
+    return KpiDefinition(
+        kpi_key=kpi_key,
+        fields={
+            'description': description,
+            'window': window,
+            'value_type': value_type,
+            'owner': 'Operaciones',
+        },
+    )
+
+
+# El prefijo sólo simplifica el fixture; producción recibe keys ya resueltas por composición.
 def _indicator(
     *,
     key: str,
     label: str,
     unit: str,
-    kpi_key: str,
+    kpi_prefix: str,
     shift_actual: str,
     shift_plan: str,
     day_actual: str,
@@ -134,20 +207,27 @@ def _indicator(
         key=key,
         label=label,
         unit=unit,
-        kpi_key=kpi_key,
         measurements=(
             GlobalIndicatorMeasurementState(
                 key='shift',
                 label='Turno',
                 actual_value=shift_actual,
                 plan_value=shift_plan,
+                # Actual y plan son triggers distintos incluso dentro de la misma fila Turno.
+                actual_kpi_key=f'{kpi_prefix}_shift_actual',
+                plan_kpi_key=f'{kpi_prefix}_shift_plan',
             ),
             GlobalIndicatorMeasurementState(
                 key='day',
                 label='Día',
                 actual_value=day_actual,
                 plan_value=day_plan,
+                actual_kpi_key=f'{kpi_prefix}_day_actual',
+                plan_kpi_key=f'{kpi_prefix}_day_plan',
             ),
         ),
-        last_measurement=GlobalIndicatorLastMeasurementState(actual_value=latest),
+        last_measurement=GlobalIndicatorLastMeasurementState(
+            actual_value=latest,
+            actual_kpi_key=f'{kpi_prefix}_latest',
+        ),
     )

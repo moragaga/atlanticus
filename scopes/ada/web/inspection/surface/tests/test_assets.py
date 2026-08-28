@@ -70,6 +70,18 @@ def test_javascript_blocks_new_trigger_requests_while_loading_and_keeps_open_sur
     assert javascript.count('controller.request.abort();') == 1
 
 
+def test_javascript_restores_focus_only_for_keyboard_activation() -> None:
+    javascript = _resource('js', '10-kpi-inspection-surface.js')
+
+    assert "controller.restoreFocusOnClose = activationMode === 'keyboard';" in javascript
+    assert "inspectTrigger(trigger, 'pointer')" in javascript
+    assert "inspectTrigger(trigger, 'keyboard')" in javascript
+    assert 'if (!restoreFocus)' in javascript
+    assert "typeof activeElement.blur === 'function'" in javascript
+    assert 'restoreFocus &&' in javascript
+    assert 'focusTarget.isConnected' in javascript
+
+
 def test_javascript_renders_definition_as_text_not_html() -> None:
     javascript = _resource('js', '10-kpi-inspection-surface.js')
 

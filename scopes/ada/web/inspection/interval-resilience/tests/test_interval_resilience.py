@@ -24,7 +24,6 @@ _INDICATOR_KEY = 'transportado_card'
 def _state(tick: int) -> GlobalIndicatorState:
     return GlobalIndicatorState(
         key=_INDICATOR_KEY,
-        kpi_key=_KPI_KEY,
         label='Transportado',
         unit='kt',
         measurements=(
@@ -33,15 +32,19 @@ def _state(tick: int) -> GlobalIndicatorState:
                 label='Turno',
                 actual_value=str(198 + tick),
                 plan_value='220',
+                actual_kpi_key=_KPI_KEY,
             ),
             GlobalIndicatorMeasurementState(
                 key='dia',
                 label='Día',
                 actual_value=str(201 + tick),
                 plan_value='220',
+                actual_kpi_key=_KPI_KEY,
             ),
         ),
-        last_measurement=GlobalIndicatorLastMeasurementState(str(202 + tick)),
+        last_measurement=GlobalIndicatorLastMeasurementState(
+            str(202 + tick), actual_kpi_key=_KPI_KEY
+        ),
     )
 
 
@@ -183,7 +186,9 @@ def test_closing_after_interval_replacement_ignores_disconnected_previous_trigge
     )
 
     assert 'controller.previousFocus = trigger || document.activeElement;' in javascript
-    assert 'focusTarget && focusTarget.isConnected' in javascript
+    assert "controller.restoreFocusOnClose = activationMode === 'keyboard';" in javascript
+    assert 'restoreFocus &&' in javascript
+    assert 'focusTarget.isConnected' in javascript
     assert "controller.root.dataset.open = 'false';" in javascript
 
 

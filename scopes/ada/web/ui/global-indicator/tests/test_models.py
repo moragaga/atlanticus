@@ -74,31 +74,42 @@ def test_collection_rejects_duplicate_indicator_keys() -> None:
         GlobalIndicatorCollection((indicator, indicator))
 
 
-def test_global_indicator_accepts_optional_kpi_key_without_reusing_component_key() -> None:
-    state = GlobalIndicatorState(
-        key='transportado_card',
-        kpi_key='  plant.transport-total  ',
-        label='Transportado',
-        unit='kt',
-        measurements=(
-            _measurement('turno', 'Turno'),
-            _measurement('dia', 'Día'),
-        ),
+def test_measurement_values_accept_independent_optional_kpi_keys() -> None:
+    state = GlobalIndicatorMeasurementState(
+        key='turno',
+        label='Turno',
+        actual_value='89,4',
+        plan_value='90,5',
+        actual_kpi_key='  recovery.shift.actual  ',
+        plan_kpi_key='  recovery.shift.plan  ',
     )
 
-    assert state.key == 'transportado_card'
-    assert state.kpi_key == 'plant.transport-total'
+    assert state.actual_kpi_key == 'recovery.shift.actual'
+    assert state.plan_kpi_key == 'recovery.shift.plan'
 
 
-def test_global_indicator_rejects_empty_kpi_key() -> None:
-    with pytest.raises(GlobalIndicatorDefinitionError, match='kpi_key cannot be empty'):
-        GlobalIndicatorState(
-            key='transportado',
-            kpi_key='   ',
-            label='Transportado',
-            unit='kt',
-            measurements=(
-                _measurement('turno', 'Turno'),
-                _measurement('dia', 'Día'),
-            ),
+def test_last_measurement_accepts_its_own_optional_kpi_key() -> None:
+    state = GlobalIndicatorLastMeasurementState(
+        '88,9',
+        actual_kpi_key='  recovery.latest  ',
+    )
+
+    assert state.actual_kpi_key == 'recovery.latest'
+
+
+@pytest.mark.parametrize('field_name', ['actual_kpi_key', 'plan_kpi_key'])
+def test_measurement_rejects_empty_value_kpi_key(field_name: str) -> None:
+    kwargs = {field_name: '   '}
+    with pytest.raises(GlobalIndicatorDefinitionError, match=f'{field_name} cannot be empty'):
+        GlobalIndicatorMeasurementState(
+            key='turno',
+            label='Turno',
+            actual_value='89,4',
+            plan_value='90,5',
+            **kwargs,
         )
+
+
+def test_last_measurement_rejects_empty_value_kpi_key() -> None:
+    with pytest.raises(GlobalIndicatorDefinitionError, match='actual_kpi_key cannot be empty'):
+        GlobalIndicatorLastMeasurementState('88,9', actual_kpi_key='   ')

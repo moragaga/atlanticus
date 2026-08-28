@@ -25,12 +25,22 @@ def _walk(component):
             yield from _walk(child)
 
 
-def _measurement(key, label, actual, plan, color_class=None):
+def _measurement(
+    key,
+    label,
+    actual,
+    plan,
+    color_class=None,
+    actual_kpi_key=None,
+    plan_kpi_key=None,
+):
     return GlobalIndicatorMeasurementState(
         key=key,
         label=label,
         actual_value=actual,
         plan_value=plan,
+        actual_kpi_key=actual_kpi_key,
+        plan_kpi_key=plan_kpi_key,
         color_class=color_class,
     )
 
@@ -172,7 +182,7 @@ def test_indicator_uses_table_measurements_and_protects_long_heading_text() -> N
     assert _props(labels[0])['title'] == state.label
 
 
-def test_indicator_is_not_inspectable_without_kpi_key() -> None:
+def test_indicator_is_not_inspectable_without_value_kpi_keys() -> None:
     state = GlobalIndicatorState(
         key='transportado',
         label='Transportado',
@@ -183,59 +193,85 @@ def test_indicator_is_not_inspectable_without_kpi_key() -> None:
         ),
     )
 
-    props = _props(build_global_indicator(state=state))
-
-    assert 'data-kpi-inspection-key' not in props
-    assert 'role' not in props
-    assert 'tabIndex' not in props
-    assert 'aria-haspopup' not in props
-    assert 'data-definition-key' not in props
+    component = build_global_indicator(state=state)
+    assert all('data-kpi-inspection-key' not in _props(item) for item in _walk(component))
+    assert 'data-definition-key' not in _props(component)
 
 
-def test_only_actual_and_last_measurement_values_opt_into_kpi_inspection() -> None:
+def test_each_value_can_opt_into_its_own_kpi_definition() -> None:
     state = GlobalIndicatorState(
         key='transportado_card',
-        kpi_key='transported_total',
         label='Transportado',
         unit='kt',
         measurements=(
-            _measurement('turno', 'Turno', '198', '220'),
-            _measurement('dia', 'Día', '201', '220'),
+            _measurement(
+                'turno',
+                'Turno',
+                '198',
+                '220',
+                actual_kpi_key='transported.shift.actual',
+                plan_kpi_key='transported.shift.plan',
+            ),
+            _measurement(
+                'dia',
+                'Día',
+                '201',
+                '220',
+                actual_kpi_key='transported.day.actual',
+                plan_kpi_key='transported.day.plan',
+            ),
         ),
-        last_measurement=GlobalIndicatorLastMeasurementState('202'),
+        last_measurement=GlobalIndicatorLastMeasurementState(
+            '202',
+            actual_kpi_key='transported.latest',
+        ),
     )
 
     component = build_global_indicator(state=state)
     root_props = _props(component)
-    triggers = [
-        item
-        for item in _walk(component)
-        if _props(item).get('data-kpi-inspection-key') == 'transported_total'
-    ]
-    trigger_classes = [_props(item).get('className', '') for item in triggers]
+    triggers = [item for item in _walk(component) if _props(item).get('data-kpi-inspection-key')]
+    keys = [_props(item)['data-kpi-inspection-key'] for item in triggers]
 
     assert root_props['data-indicator-key'] == 'transportado_card'
     assert 'data-kpi-inspection-key' not in root_props
-    assert 'role' not in root_props
-    assert 'tabIndex' not in root_props
-    assert len(triggers) == 3
-    assert sum('global-indicator__value--actual' in value for value in trigger_classes) == 2
-    assert (
-        sum('global-indicator__last-measurement-value' in value for value in trigger_classes) == 1
-    )
+    assert keys == [
+        'transported.shift.actual',
+        'transported.shift.plan',
+        'transported.day.actual',
+        'transported.day.plan',
+        'transported.latest',
+    ]
     assert all(_props(item)['role'] == 'button' for item in triggers)
     assert all(_props(item)['tabIndex'] == 0 for item in triggers)
     assert all(_props(item)['aria-haspopup'] == 'dialog' for item in triggers)
 
-    plan_values = [
-        item
-        for item in _walk(component)
-        if 'global-indicator__value--plan' in (_props(item).get('className') or '')
-    ]
     measurement_labels = [
         item
         for item in _walk(component)
         if 'global-indicator__value--measurement-label' in (_props(item).get('className') or '')
     ]
-    assert all('data-kpi-inspection-key' not in _props(item) for item in plan_values)
     assert all('data-kpi-inspection-key' not in _props(item) for item in measurement_labels)
+
+
+def test_value_without_kpi_key_remains_neutral_inside_inspectable_row() -> None:
+    state = GlobalIndicatorState(
+        key='transportado_card',
+        label='Transportado',
+        unit='kt',
+        measurements=(
+            _measurement(
+                'turno',
+                'Turno',
+                '198',
+                '220',
+                actual_kpi_key='transported.shift.actual',
+            ),
+            _measurement('dia', 'Día', '201', '220'),
+        ),
+    )
+
+    component = build_global_indicator(state=state)
+    triggers = [item for item in _walk(component) if _props(item).get('data-kpi-inspection-key')]
+
+    assert len(triggers) == 1
+    assert _props(triggers[0])['data-kpi-inspection-key'] == 'transported.shift.actual'

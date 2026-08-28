@@ -50,7 +50,6 @@ def build_global_indicator(*, state: GlobalIndicatorState) -> Component:
                     measurements=state.measurements,
                     last_measurement=state.last_measurement,
                     style=state.style,
-                    kpi_key=state.kpi_key,
                 ),
             ),
         ],
@@ -77,14 +76,10 @@ def _build_indicator_content(
     measurements: tuple[GlobalIndicatorMeasurementState, ...],
     last_measurement: GlobalIndicatorLastMeasurementState | None,
     style: GlobalIndicatorStyle,
-    kpi_key: str | None,
 ) -> tuple[Component, ...]:
     children: list[Component] = [
         _build_table(
-            rows=[
-                _build_table_row(state=measurement, style=style, kpi_key=kpi_key)
-                for measurement in measurements
-            ]
+            rows=[_build_table_row(state=measurement, style=style) for measurement in measurements]
         )
     ]
     if last_measurement is not None:
@@ -92,7 +87,6 @@ def _build_indicator_content(
             _build_last_measurement_slot(
                 state=last_measurement,
                 style=style,
-                kpi_key=kpi_key,
             )
         )
     return tuple(children)
@@ -109,7 +103,6 @@ def _build_table_row(
     *,
     state: GlobalIndicatorMeasurementState,
     style: GlobalIndicatorStyle,
-    kpi_key: str | None,
 ) -> Component:
     return html.Tr(
         className='global-indicator__row',
@@ -126,12 +119,13 @@ def _build_table_row(
                 value=state.actual_value,
                 color_class=state.color_class,
                 value_class_name=f'global-indicator__value--actual {style.actual_value_class}',
-                inspection_key=kpi_key,
+                inspection_key=state.actual_kpi_key,
             ),
             _build_table_separator_cell(class_name=style.plan_value_class),
             _build_table_value_cell(
                 value=state.plan_value,
                 value_class_name=f'global-indicator__value--plan {style.plan_value_class}',
+                inspection_key=state.plan_kpi_key,
             ),
         ],
     )
@@ -187,7 +181,6 @@ def _build_last_measurement_slot(
     *,
     state: GlobalIndicatorLastMeasurementState,
     style: GlobalIndicatorStyle,
-    kpi_key: str | None,
 ) -> Component:
     return html.Div(
         className='global-indicator__last-measurement',
@@ -212,7 +205,7 @@ def _build_last_measurement_slot(
                     if part
                 ),
                 children=[_build_display_value(state.actual_value)],
-                **_inspection_attributes(kpi_key),
+                **_inspection_attributes(state.actual_kpi_key),
             ),
         ],
     )

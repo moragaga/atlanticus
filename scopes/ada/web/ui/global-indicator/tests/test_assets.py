@@ -15,6 +15,7 @@ def test_global_indicator_css_is_packaged_and_preserves_layout_contract() -> Non
     assert 'border-left: 1px solid var(--global-indicator-border);' not in css
     assert 'width: 3.25rem;' not in css
     assert 'user-select: none;' in css
+    assert 'padding: .3rem .55rem .3rem 0;' in css
 
 
 def test_global_indicator_desktop_layout_uses_equal_columns_and_natural_content_width() -> None:

@@ -65,7 +65,6 @@ def _indicator():
     return build_global_indicator(
         state=GlobalIndicatorState(
             key='transportado_card',
-            kpi_key=_KPI_KEY,
             label='Transportado',
             unit='kt',
             measurements=(
@@ -74,12 +73,14 @@ def _indicator():
                     label='Turno',
                     actual_value='198',
                     plan_value='220',
+                    actual_kpi_key=_KPI_KEY,
                 ),
                 GlobalIndicatorMeasurementState(
                     key='dia',
                     label='Día',
                     actual_value='201',
                     plan_value='220',
+                    actual_kpi_key=_KPI_KEY,
                 ),
             ),
         )
@@ -239,7 +240,10 @@ def test_surface_is_stable_and_new_global_indicator_render_keeps_opt_in_identity
     assert "document.addEventListener('click', handleClick)" in javascript
     assert '.closest?.(TRIGGER_SELECTOR)' in javascript
     assert 'MutationObserver' not in javascript
-    assert 'focusTarget && focusTarget.isConnected' in javascript
+    assert "controller.restoreFocusOnClose = activationMode === 'keyboard';" in javascript
+    assert 'restoreFocus &&' in javascript
+    assert 'focusTarget &&' in javascript
+    assert 'focusTarget.isConnected' in javascript
 
 
 def test_surface_can_be_configured_against_a_failing_api_path_for_error_smoke() -> None:

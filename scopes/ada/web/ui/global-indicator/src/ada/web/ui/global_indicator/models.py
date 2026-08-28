@@ -48,12 +48,26 @@ class GlobalIndicatorMeasurementState:
     actual_value: IndicatorInput
     plan_value: IndicatorInput
     color_class: IndicatorColorClass = None
+    actual_kpi_key: str | None = None
+    plan_kpi_key: str | None = None
 
     def __post_init__(self) -> None:
         _require_key(self.key, field_name='measurement key')
         _require_text(self.label, field_name='measurement label')
         object.__setattr__(self, 'actual_value', coerce_display_value(self.actual_value))
         object.__setattr__(self, 'plan_value', coerce_display_value(self.plan_value))
+        if self.actual_kpi_key is not None:
+            object.__setattr__(
+                self,
+                'actual_kpi_key',
+                _require_kpi_key(self.actual_kpi_key, field_name='actual_kpi_key'),
+            )
+        if self.plan_kpi_key is not None:
+            object.__setattr__(
+                self,
+                'plan_kpi_key',
+                _require_kpi_key(self.plan_kpi_key, field_name='plan_kpi_key'),
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,11 +76,18 @@ class GlobalIndicatorLastMeasurementState:
     key: str = 'latest'
     label: str = 'Última medición'
     color_class: IndicatorColorClass = None
+    actual_kpi_key: str | None = None
 
     def __post_init__(self) -> None:
         _require_key(self.key, field_name='last measurement key')
         _require_text(self.label, field_name='last measurement label')
         object.__setattr__(self, 'actual_value', coerce_display_value(self.actual_value))
+        if self.actual_kpi_key is not None:
+            object.__setattr__(
+                self,
+                'actual_kpi_key',
+                _require_kpi_key(self.actual_kpi_key, field_name='actual_kpi_key'),
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,7 +97,6 @@ class GlobalIndicatorState:
     unit: str
     measurements: tuple[GlobalIndicatorMeasurementState, ...]
     last_measurement: GlobalIndicatorLastMeasurementState | None = None
-    kpi_key: str | None = None
     style: GlobalIndicatorStyle = field(default_factory=GlobalIndicatorStyle)
 
     def __post_init__(self) -> None:
@@ -84,8 +104,6 @@ class GlobalIndicatorState:
         _require_key(self.key, field_name='key')
         _require_text(self.label, field_name='label')
         _require_text(self.unit, field_name='unit')
-        if self.kpi_key is not None:
-            object.__setattr__(self, 'kpi_key', _require_kpi_key(self.kpi_key))
         if not 2 <= len(self.measurements) <= _GLOBAL_INDICATOR_MEASUREMENT_CAPACITY:
             raise GlobalIndicatorDefinitionError(
                 'Global indicator requires two or three measurements'
@@ -109,7 +127,6 @@ class GlobalIndicatorState:
         unit: str,
         measurements: Iterable[GlobalIndicatorMeasurementState],
         last_measurement: GlobalIndicatorLastMeasurementState | None = None,
-        kpi_key: str | None = None,
         style: GlobalIndicatorStyle | None = None,
     ) -> GlobalIndicatorState:
         return cls(
@@ -118,7 +135,6 @@ class GlobalIndicatorState:
             unit=unit,
             measurements=tuple(measurements),
             last_measurement=last_measurement,
-            kpi_key=kpi_key,
             style=style or GlobalIndicatorStyle(),
         )
 
@@ -178,10 +194,10 @@ def _require_key(value: str, *, field_name: str) -> None:
         raise GlobalIndicatorDefinitionError(f'Invalid global indicator {field_name}: {value!r}')
 
 
-def _require_kpi_key(value: str) -> str:
+def _require_kpi_key(value: str, *, field_name: str) -> str:
     normalized = value.strip()
     if not normalized:
-        raise GlobalIndicatorDefinitionError('Global indicator kpi_key cannot be empty')
+        raise GlobalIndicatorDefinitionError(f'Global indicator {field_name} cannot be empty')
     return normalized
 
 

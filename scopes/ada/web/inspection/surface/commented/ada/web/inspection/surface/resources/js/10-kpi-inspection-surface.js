@@ -1,4 +1,4 @@
-/* Mirror pedagógico: panel no modal, reutilizable y persistente; loading bloquea requests nuevos sin cerrar la superficie. */
+/* Mirror pedagógico: panel persistente; el foco sólo vuelve al trigger cuando la apertura fue por teclado. */
 (() => {
   'use strict';
 
@@ -19,6 +19,7 @@
     emptyNode: null,
     closeButton: null,
     previousFocus: null,
+    restoreFocusOnClose: false,
     request: null,
     requestSequence: 0,
     apiBasePath: DEFAULT_API_BASE_PATH,
@@ -54,16 +55,17 @@
   }
 
   function setBusy(isBusy) {
-    // El busy pertenece a la request, no al lifecycle open/closed del inspector.
     controller.root.dataset.busy = isBusy ? 'true' : 'false';
     controller.panelNode.setAttribute('aria-busy', isBusy ? 'true' : 'false');
     document.documentElement.classList.toggle('ada-kpi-inspection-loading', isBusy);
     document.body.classList.toggle('ada-kpi-inspection-loading', isBusy);
   }
 
-  function openSurface(kpiKey, trigger) {
+  function openSurface(kpiKey, trigger, activationMode) {
     const wasOpen = controller.root.dataset.open === 'true';
     controller.previousFocus = trigger || document.activeElement;
+    // Pointer no restaura foco para evitar outline residual; teclado conserva navegación accesible.
+    controller.restoreFocusOnClose = activationMode === 'keyboard';
     controller.root.inert = false;
     controller.root.setAttribute('aria-hidden', 'false');
     controller.root.dataset.open = 'true';
@@ -72,7 +74,6 @@
     controller.emptyNode.hidden = true;
     setState('loading');
     setBusy(true);
-    // Sólo la primera apertura mueve foco al cierre; cambiar KPI no recrea ni reabre el panel.
     if (!wasOpen) {
       controller.closeButton.focus({ preventScroll: true });
     }
@@ -85,12 +86,30 @@
     }
     controller.requestSequence += 1;
     setBusy(false);
+    const focusTarget = controller.previousFocus;
+    const restoreFocus = controller.restoreFocusOnClose;
+    controller.previousFocus = null;
+    controller.restoreFocusOnClose = false;
+    // Si la sesión nació desde pointer, se libera el foco interno antes de ocultar la Surface.
+    if (!restoreFocus) {
+      const activeElement = document.activeElement;
+      if (
+        activeElement &&
+        controller.root.contains(activeElement) &&
+        typeof activeElement.blur === 'function'
+      ) {
+        activeElement.blur();
+      }
+    }
     controller.root.dataset.open = 'false';
     controller.root.setAttribute('aria-hidden', 'true');
     controller.root.inert = true;
-    const focusTarget = controller.previousFocus;
-    controller.previousFocus = null;
-    if (focusTarget && focusTarget.isConnected && typeof focusTarget.focus === 'function') {
+    if (
+      restoreFocus &&
+      focusTarget &&
+      focusTarget.isConnected &&
+      typeof focusTarget.focus === 'function'
+    ) {
       focusTarget.focus({ preventScroll: true });
     }
   }
@@ -176,8 +195,8 @@
     }
   }
 
-  function inspectTrigger(trigger) {
-    // Una request en curso bloquea nuevos clicks/teclado: no se generan fetchs que luego haya que abortar.
+  function inspectTrigger(trigger, activationMode) {
+    // Loading lock sigue siendo anterior a cualquier cambio de KPI o nueva llamada HTTP.
     if (controller.request) {
       return;
     }
@@ -185,7 +204,7 @@
     if (!kpiKey) {
       return;
     }
-    openSurface(kpiKey, trigger);
+    openSurface(kpiKey, trigger, activationMode);
     void loadDefinition(kpiKey);
   }
 
@@ -201,7 +220,7 @@
       return;
     }
     event.preventDefault();
-    inspectTrigger(trigger);
+    inspectTrigger(trigger, 'pointer');
   }
 
   function handleKeydown(event) {
@@ -218,7 +237,7 @@
       return;
     }
     event.preventDefault();
-    inspectTrigger(trigger);
+    inspectTrigger(trigger, 'keyboard');
   }
 
   function initialize() {

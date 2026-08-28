@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-web-kpi-inspection-empty-definition-flow"
-version = "0.1.1"
+version = "0.1.2"
 description = "Gate UI-contract para KPI Inspection con definición ausente, vacía o descriptiva"
 requires-python = "==3.14.2"
 classifiers = [
@@ -13,8 +13,8 @@ classifiers = [
 dependencies = [
     "ada-web-kpi-inspection-api==0.1.0",
     "ada-web-kpi-inspection-core==0.2.0",
-    "ada-web-kpi-inspection-surface==0.1.1",
-    "ada-web-ui-global-indicator==0.1.5",
+    "ada-web-kpi-inspection-surface==0.1.2",
+    "ada-web-ui-global-indicator==0.2.0",
     "atlanticus-web==0.1.0",
     "dash==4.4.1",
     "Flask==3.1.3",

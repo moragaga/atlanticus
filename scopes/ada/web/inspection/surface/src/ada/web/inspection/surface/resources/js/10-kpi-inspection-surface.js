@@ -18,6 +18,7 @@
     emptyNode: null,
     closeButton: null,
     previousFocus: null,
+    restoreFocusOnClose: false,
     request: null,
     requestSequence: 0,
     apiBasePath: DEFAULT_API_BASE_PATH,
@@ -59,9 +60,10 @@
     document.body.classList.toggle('ada-kpi-inspection-loading', isBusy);
   }
 
-  function openSurface(kpiKey, trigger) {
+  function openSurface(kpiKey, trigger, activationMode) {
     const wasOpen = controller.root.dataset.open === 'true';
     controller.previousFocus = trigger || document.activeElement;
+    controller.restoreFocusOnClose = activationMode === 'keyboard';
     controller.root.inert = false;
     controller.root.setAttribute('aria-hidden', 'false');
     controller.root.dataset.open = 'true';
@@ -82,12 +84,29 @@
     }
     controller.requestSequence += 1;
     setBusy(false);
+    const focusTarget = controller.previousFocus;
+    const restoreFocus = controller.restoreFocusOnClose;
+    controller.previousFocus = null;
+    controller.restoreFocusOnClose = false;
+    if (!restoreFocus) {
+      const activeElement = document.activeElement;
+      if (
+        activeElement &&
+        controller.root.contains(activeElement) &&
+        typeof activeElement.blur === 'function'
+      ) {
+        activeElement.blur();
+      }
+    }
     controller.root.dataset.open = 'false';
     controller.root.setAttribute('aria-hidden', 'true');
     controller.root.inert = true;
-    const focusTarget = controller.previousFocus;
-    controller.previousFocus = null;
-    if (focusTarget && focusTarget.isConnected && typeof focusTarget.focus === 'function') {
+    if (
+      restoreFocus &&
+      focusTarget &&
+      focusTarget.isConnected &&
+      typeof focusTarget.focus === 'function'
+    ) {
       focusTarget.focus({ preventScroll: true });
     }
   }
@@ -173,7 +192,7 @@
     }
   }
 
-  function inspectTrigger(trigger) {
+  function inspectTrigger(trigger, activationMode) {
     if (controller.request) {
       return;
     }
@@ -181,7 +200,7 @@
     if (!kpiKey) {
       return;
     }
-    openSurface(kpiKey, trigger);
+    openSurface(kpiKey, trigger, activationMode);
     void loadDefinition(kpiKey);
   }
 
@@ -197,7 +216,7 @@
       return;
     }
     event.preventDefault();
-    inspectTrigger(trigger);
+    inspectTrigger(trigger, 'pointer');
   }
 
   function handleKeydown(event) {
@@ -214,7 +233,7 @@
       return;
     }
     event.preventDefault();
-    inspectTrigger(trigger);
+    inspectTrigger(trigger, 'keyboard');
   }
 
   function initialize() {
