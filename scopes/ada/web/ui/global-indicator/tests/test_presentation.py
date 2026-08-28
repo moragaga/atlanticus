@@ -241,9 +241,9 @@ def test_each_value_can_opt_into_its_own_kpi_definition() -> None:
         'transported.day.plan',
         'transported.latest',
     ]
-    assert all(_props(item)['role'] == 'button' for item in triggers)
-    assert all(_props(item)['tabIndex'] == 0 for item in triggers)
-    assert all(_props(item)['aria-haspopup'] == 'dialog' for item in triggers)
+    assert all('role' not in _props(item) for item in triggers)
+    assert all('tabIndex' not in _props(item) for item in triggers)
+    assert all('aria-haspopup' not in _props(item) for item in triggers)
 
     measurement_labels = [
         item

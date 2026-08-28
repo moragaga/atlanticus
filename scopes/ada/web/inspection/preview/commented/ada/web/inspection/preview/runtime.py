@@ -29,7 +29,7 @@ from atlanticus.web.models import (
 from atlanticus.web.modules import WebModule
 from atlanticus.web.services import ServiceRegistry
 
-_PREVIEW_VERSION = '0.1.3'
+_PREVIEW_VERSION = '0.1.5'
 _PREVIEW_ROOT = Path(__file__).resolve().parents[5]
 _PREVIEW_INTERVAL_ID = 'kiv003-global-indicator-interval'
 _PREVIEW_HOST_ID = 'kiv003-global-indicators-host'

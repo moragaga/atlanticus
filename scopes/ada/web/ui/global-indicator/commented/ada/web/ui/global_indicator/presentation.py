@@ -215,16 +215,11 @@ def _build_last_measurement_slot(
     )
 
 
-def _inspection_attributes(kpi_key: str | None) -> dict[str, str | int]:
-    # La frontera con Inspection continúa siendo sólo un atributo DOM opt-in.
+def _inspection_attributes(kpi_key: str | None) -> dict[str, str]:
+    # La frontera con Inspection es click-only: el valor no entra al orden de tabulación.
     if kpi_key is None:
         return {}
-    return {
-        'data-kpi-inspection-key': kpi_key,
-        'role': 'button',
-        'tabIndex': 0,
-        'aria-haspopup': 'dialog',
-    }
+    return {'data-kpi-inspection-key': kpi_key}
 
 
 def _build_display_value(value: DisplayValue) -> str | Component:

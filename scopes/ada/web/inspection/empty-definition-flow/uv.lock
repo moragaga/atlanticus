@@ -40,7 +40,7 @@ dev = [
 
 [[package]]
 name = "ada-web-kpi-inspection-empty-definition-flow"
-version = "0.1.2"
+version = "0.1.3"
 source = { editable = "." }
 dependencies = [
     { name = "ada-web-kpi-inspection-api" },
@@ -134,7 +134,7 @@ dev = [
 
 [[package]]
 name = "ada-web-ui-global-indicator"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "../../ui/global-indicator" }
 dependencies = [
     { name = "ada-web-ui-core" },

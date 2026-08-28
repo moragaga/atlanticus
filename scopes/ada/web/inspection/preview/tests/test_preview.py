@@ -71,7 +71,7 @@ def test_preview_extends_generic_application_with_interval_api_and_surface() -> 
     module_names = [module.name for module in definition.modules]
 
     assert definition.metadata.application_id == 'ada-kpi-inspection-preview'
-    assert definition.metadata.version == '0.1.3'
+    assert definition.metadata.version == '0.1.5'
     assert module_names[-3:] == [
         'kpi-inspection-preview-interval',
         'kpi-inspection-api',
@@ -206,7 +206,8 @@ def test_preview_values_are_the_only_inspection_triggers() -> None:
             sum('global-indicator__last-measurement-value' in value for value in trigger_classes)
             == 1
         )
-        assert all(_props(item)['role'] == 'button' for item in triggers)
+        assert all('role' not in _props(item) for item in triggers)
+        assert all('tabIndex' not in _props(item) for item in triggers)
 
 
 def test_preview_surface_keeps_dark_square_loading_lock_and_pointer_focus_policy() -> None:
@@ -242,3 +243,61 @@ def test_preview_surface_keeps_dark_square_loading_lock_and_pointer_focus_policy
     assert "controller.restoreFocusOnClose = activationMode === 'keyboard';" in javascript
     assert "inspectTrigger(trigger, 'pointer')" in javascript
     assert "inspectTrigger(trigger, 'keyboard')" in javascript
+
+
+def test_preview_value_triggers_are_pointer_only_and_outside_tab_order() -> None:
+    for state in create_preview_global_indicators().indicators:
+        component = build_global_indicator(state=state)
+        triggers = [
+            item for item in _walk(component) if _props(item).get('data-kpi-inspection-key')
+        ]
+
+        assert triggers
+        assert all('role' not in _props(item) for item in triggers)
+        assert all('tabIndex' not in _props(item) for item in triggers)
+        assert all('aria-haspopup' not in _props(item) for item in triggers)
+
+
+def test_preview_surface_close_contract_covers_x_and_escape() -> None:
+    project = Path(__file__).resolve().parents[2] / 'surface'
+    markup = (project / 'src' / 'ada' / 'web' / 'inspection' / 'surface' / 'markup.py').read_text(
+        encoding='utf-8'
+    )
+    javascript = (
+        project
+        / 'src'
+        / 'ada'
+        / 'web'
+        / 'inspection'
+        / 'surface'
+        / 'resources'
+        / 'js'
+        / '10-kpi-inspection-surface.js'
+    ).read_text(encoding='utf-8')
+
+    assert 'aria-label="Cerrar inspector KPI"' in markup
+    assert 'data-kpi-inspection-close' in markup
+    assert "const CLOSE_SELECTOR = '[data-kpi-inspection-close]'" in javascript
+    assert 'closeTarget && controller.root.contains(closeTarget)' in javascript
+    assert "event.key === 'Escape'" in javascript
+    assert javascript.count('closeSurface();') >= 2
+
+
+def test_preview_pointer_trigger_does_not_depend_on_keyboard_activation() -> None:
+    project = Path(__file__).resolve().parents[2] / 'surface'
+    javascript = (
+        project
+        / 'src'
+        / 'ada'
+        / 'web'
+        / 'inspection'
+        / 'surface'
+        / 'resources'
+        / 'js'
+        / '10-kpi-inspection-surface.js'
+    ).read_text(encoding='utf-8')
+
+    assert "inspectTrigger(trigger, 'pointer')" in javascript
+    assert "controller.restoreFocusOnClose = activationMode === 'keyboard';" in javascript
+    assert 'restoreFocus &&' in javascript
+    assert 'focusTarget.isConnected' in javascript

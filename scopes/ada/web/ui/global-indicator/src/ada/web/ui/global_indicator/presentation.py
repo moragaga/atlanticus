@@ -211,15 +211,10 @@ def _build_last_measurement_slot(
     )
 
 
-def _inspection_attributes(kpi_key: str | None) -> dict[str, str | int]:
+def _inspection_attributes(kpi_key: str | None) -> dict[str, str]:
     if kpi_key is None:
         return {}
-    return {
-        'data-kpi-inspection-key': kpi_key,
-        'role': 'button',
-        'tabIndex': 0,
-        'aria-haspopup': 'dialog',
-    }
+    return {'data-kpi-inspection-key': kpi_key}
 
 
 def _build_display_value(value: DisplayValue) -> str | Component:
