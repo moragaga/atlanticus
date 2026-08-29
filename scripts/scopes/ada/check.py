@@ -101,6 +101,14 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
+    'time-status-store-adapter': AdaCapability(
+        key='time-status-store-adapter',
+        project_root='scopes/ada/web/time-status/store-adapter',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
     'time-status': AdaCapability(
         key='time-status',
         project_root='scopes/ada/web/ui/time-status',
