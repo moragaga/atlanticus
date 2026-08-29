@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-web-ui-time-status"
-version = "0.1.0"
+version = "0.1.1"
 description = "Time Status reusable para superficies Web ADA"
 requires-python = "==3.14.2"
 classifiers = [
@@ -39,6 +39,8 @@ include = ["ada.web.ui.time_status*"]
     "py.typed",
     "resources/css/*.css",
     "resources/css/css.list",
+    "resources/js/*.js",
+    "resources/js/js.list",
 ]
 
 [tool.ruff]

@@ -1,8 +1,17 @@
 # La capa de assets se monta después de indicadores/alarmas y antes del shell, sin dependencia circular con Header.
 from __future__ import annotations
 
+import re
+
 from atlanticus.web.assets import AssetLayer
+from atlanticus.web.index import IndexContribution
 from atlanticus.web.modules import WebModule
+
+from .errors import TimeStatusDefinitionError
+
+# ADA usa Santiago por defecto, pero la zona sigue siendo una configuración explícita del módulo.
+_DEFAULT_TIME_ZONE = 'America/Santiago'
+_TIME_ZONE_PATTERN = re.compile(r'^[A-Za-z0-9._+-]+(?:/[A-Za-z0-9._+-]+)*$')
 
 ADA_TIME_STATUS_ASSET_LAYER = AssetLayer(
     name='ada_time_status',
@@ -11,8 +20,19 @@ ADA_TIME_STATUS_ASSET_LAYER = AssetLayer(
 )
 
 
-def create_ada_time_status_module() -> WebModule:
+def create_ada_time_status_module(*, time_zone: str = _DEFAULT_TIME_ZONE) -> WebModule:
+    # Normalizamos y validamos una forma IANA razonable antes de publicarla en runtime config.
+    normalized_time_zone = time_zone.strip()
+    if (
+        not normalized_time_zone
+        or not _TIME_ZONE_PATTERN.fullmatch(normalized_time_zone)
+        or any(part in {'.', '..'} for part in normalized_time_zone.split('/'))
+    ):
+        raise TimeStatusDefinitionError('Time Status time zone has an invalid format')
+
     return WebModule(
         name='ada-time-status',
         asset_layers=(ADA_TIME_STATUS_ASSET_LAYER,),
+        # El JS lee esta configuración pública; no hay secretos ni dependencia con Collector.
+        index=IndexContribution(runtime_config={'time_zone': normalized_time_zone}),
     )
