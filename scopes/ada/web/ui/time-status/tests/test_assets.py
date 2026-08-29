@@ -1,7 +1,7 @@
 from importlib.resources import files
 
 
-def test_time_status_css_is_packaged_without_freezing_preventive_visuals() -> None:
+def test_time_status_css_is_packaged_with_control_source_freshness_visuals() -> None:
     css_root = files('ada.web.ui.time_status').joinpath('resources/css')
     entries = css_root.joinpath('css.list').read_text(encoding='utf-8').splitlines()
     css = css_root.joinpath(entries[0]).read_text(encoding='utf-8')
@@ -11,7 +11,7 @@ def test_time_status_css_is_packaged_without_freezing_preventive_visuals() -> No
     assert 'user-select: none;' in css
     assert '.ada-time-status__source-content--data_error' in css
     assert '.ada-time-status__source-content--hard_stale' in css
-    assert '@keyframes' not in css
+    assert '@keyframes ada-time-status-preventive-pulse' in css
 
 
 def test_anchored_detail_surface_is_local_absolute_and_non_modal() -> None:
@@ -106,3 +106,37 @@ def test_dynamic_detail_rows_are_neutral_and_do_not_define_health_visuals() -> N
     assert '[data-source-role=' not in detail_css
     assert '@keyframes' not in detail_css
     assert 'animation:' not in detail_css
+
+
+def test_clock_asset_recomputes_control_source_freshness_on_real_time_ticks() -> None:
+    from importlib.resources import files
+
+    asset = (
+        files('ada.web.ui.time_status')
+        .joinpath('resources/js/10-time-status-clock.js')
+        .read_text(encoding='utf-8')
+    )
+
+    assert 'SOURCE_SELECTOR = "[data-ada-time-status-source=\'true\']"' in asset
+    assert 'formatRelativeAge' in asset
+    assert 'resolveCondition' in asset
+    assert "condition === 'hard_stale'" in asset
+    assert "source.getAttribute('data-source-condition') === 'data_error'" in asset
+    assert 'Math.max(0, Math.floor((nowMs - timestampMs) / 1000))' in asset
+    assert "summary.setAttribute('data-content-stale', contentStale ? 'true' : 'false')" in asset
+    assert "summary.setAttribute('data-has-data-error', hasDataError ? 'true' : 'false')" in asset
+
+
+def test_time_status_css_maps_preventive_to_pulse_and_hard_stale_to_solid_alert() -> None:
+    from importlib.resources import files
+
+    css = (
+        files('ada.web.ui.time_status')
+        .joinpath('resources/css/10-time-status.css')
+        .read_text(encoding='utf-8')
+    )
+
+    assert "[data-source-condition='preventive']" in css
+    assert 'ada-time-status-preventive-pulse' in css
+    assert "[data-source-condition='hard_stale']" in css
+    assert "[data-source-condition='data_error']" in css

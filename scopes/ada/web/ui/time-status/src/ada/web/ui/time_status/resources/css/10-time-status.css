@@ -158,6 +158,30 @@
     }
 }
 
+.ada-time-status__source[data-source-condition='preventive'] .ada-time-status__source-icon,
+.ada-time-status__source[data-source-condition='preventive'] .ada-time-status__timestamp--source {
+    color: #A31A1A;
+    animation: ada-time-status-preventive-pulse 1.2s ease-in-out infinite;
+}
+
+.ada-time-status__source[data-source-condition='hard_stale'] .ada-time-status__source-icon,
+.ada-time-status__source[data-source-condition='hard_stale'] .ada-time-status__timestamp--source,
+.ada-time-status__source[data-source-condition='data_error'] .ada-time-status__source-icon,
+.ada-time-status__source[data-source-condition='data_error'] .ada-time-status__timestamp--source {
+    color: #A31A1A;
+}
+
+@keyframes ada-time-status-preventive-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: .35;
+    }
+}
+
 .ada-time-status-detail__content {
     display: grid;
     min-width: 16rem;

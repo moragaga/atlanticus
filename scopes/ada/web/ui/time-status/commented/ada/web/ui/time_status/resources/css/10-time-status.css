@@ -1,4 +1,3 @@
-/* El container es la frontera local de TS-005/TS-007 y ancla la Surface sin afectar el flujo del Header. */
 .ada-time-status-container,
 .ada-time-status,
 .ada-time-status__sources {
@@ -29,7 +28,6 @@
     outline-offset: .15rem;
 }
 
-/* La Surface es local, absoluta y no modal; abrirla no cambia la altura del Header. */
 .ada-time-status-detail {
     position: absolute;
     top: calc(100% + .25rem);
@@ -160,7 +158,33 @@
     }
 }
 
-/* TS-008 presenta todas las fuentes consumidas de forma neutral: el rol control/informational no cambia el estilo. */
+/* TS-009 mantiene la señal visual exclusivamente en las filas Summary de control. */
+/* PREVENTIVE pulsa en rojo; HARD_STALE y DATA_ERROR permanecen en alerta sólida. */
+
+.ada-time-status__source[data-source-condition='preventive'] .ada-time-status__source-icon,
+.ada-time-status__source[data-source-condition='preventive'] .ada-time-status__timestamp--source {
+    color: #A31A1A;
+    animation: ada-time-status-preventive-pulse 1.2s ease-in-out infinite;
+}
+
+.ada-time-status__source[data-source-condition='hard_stale'] .ada-time-status__source-icon,
+.ada-time-status__source[data-source-condition='hard_stale'] .ada-time-status__timestamp--source,
+.ada-time-status__source[data-source-condition='data_error'] .ada-time-status__source-icon,
+.ada-time-status__source[data-source-condition='data_error'] .ada-time-status__timestamp--source {
+    color: #A31A1A;
+}
+
+@keyframes ada-time-status-preventive-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: .35;
+    }
+}
+
 .ada-time-status-detail__content {
     display: grid;
     min-width: 16rem;

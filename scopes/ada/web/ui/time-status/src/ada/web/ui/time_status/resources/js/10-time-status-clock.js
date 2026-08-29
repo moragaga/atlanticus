@@ -2,6 +2,10 @@
   'use strict';
 
   const CLOCK_SELECTOR = "[data-ada-time-status-clock='true']";
+  const SUMMARY_SELECTOR = "[data-component-key='time_status']";
+  const SOURCE_SELECTOR = "[data-ada-time-status-source='true']";
+  const SOURCE_VALUE_SELECTOR = "[data-ada-time-status-source-value='true']";
+  const SOURCE_ICON_SELECTOR = "[data-ada-time-status-source-icon='true']";
   const MODULE_NAME = 'ada-time-status';
   const DEFAULT_TIME_ZONE = 'America/Santiago';
   const FORMAT_LOCALE = 'en-CA';
@@ -59,6 +63,89 @@
     return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}`;
   }
 
+  function formatRelativeAge(ageSeconds) {
+    if (ageSeconds < 10) {
+      return 'hace menos de 10 segundos';
+    }
+    if (ageSeconds < 60) {
+      const bucket = Math.floor(ageSeconds / 10) * 10;
+      return `hace más de ${bucket} segundos`;
+    }
+    if (ageSeconds < 3600) {
+      const minutes = Math.floor(ageSeconds / 60);
+      return `hace más de ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
+    }
+    if (ageSeconds < 86400) {
+      const hours = Math.floor(ageSeconds / 3600);
+      return `hace más de ${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+    }
+    const days = Math.floor(ageSeconds / 86400);
+    return `hace más de ${days} ${days === 1 ? 'día' : 'días'}`;
+  }
+
+  function resolveCondition(ageSeconds, warningAfterSeconds, staleAfterSeconds) {
+    if (ageSeconds >= staleAfterSeconds) {
+      return 'hard_stale';
+    }
+    if (ageSeconds >= warningAfterSeconds) {
+      return 'preventive';
+    }
+    return 'fresh';
+  }
+
+  function setSourceCondition(source, condition) {
+    source.setAttribute('data-source-condition', condition);
+    const content = source.querySelector("[data-ada-time-status-source-content='true']");
+    if (content) {
+      content.className = `ada-time-status__source-content ada-time-status__source-content--${condition}`;
+    }
+    const icon = source.querySelector(SOURCE_ICON_SELECTOR);
+    if (icon) {
+      const iconClass = condition === 'hard_stale' ? 'bi bi-cloud-slash' : 'bi bi-cloud-check';
+      icon.className = `${iconClass} ada-time-status__item`;
+    }
+  }
+
+  function updateSource(source, nowMs) {
+    if (source.getAttribute('data-source-condition') === 'data_error') {
+      return;
+    }
+    const timestampMs = Date.parse(source.getAttribute('data-source-timestamp-utc') || '');
+    const warningAfterSeconds = Number(source.getAttribute('data-warning-after-seconds'));
+    const staleAfterSeconds = Number(source.getAttribute('data-stale-after-seconds'));
+    if (
+      !Number.isFinite(timestampMs) ||
+      !Number.isFinite(warningAfterSeconds) ||
+      !Number.isFinite(staleAfterSeconds)
+    ) {
+      return;
+    }
+
+    const ageSeconds = Math.max(0, Math.floor((nowMs - timestampMs) / 1000));
+    const condition = resolveCondition(ageSeconds, warningAfterSeconds, staleAfterSeconds);
+    setSourceCondition(source, condition);
+    const value = source.querySelector(SOURCE_VALUE_SELECTOR);
+    if (value) {
+      value.textContent = formatRelativeAge(ageSeconds);
+    }
+  }
+
+  function updateSummary(summary, nowMs) {
+    const sources = [...summary.querySelectorAll(SOURCE_SELECTOR)];
+    sources.forEach((source) => updateSource(source, nowMs));
+    if (!sources.length) {
+      return;
+    }
+    const contentStale = sources.every(
+      (source) => source.getAttribute('data-source-condition') === 'hard_stale',
+    );
+    const hasDataError = sources.some(
+      (source) => source.getAttribute('data-source-condition') === 'data_error',
+    );
+    summary.setAttribute('data-content-stale', contentStale ? 'true' : 'false');
+    summary.setAttribute('data-has-data-error', hasDataError ? 'true' : 'false');
+  }
+
   function syncClock() {
     const nowMs = Date.now();
     const text = formatTimestamp(nowMs);
@@ -66,6 +153,7 @@
       node.textContent = text;
       node.title = text;
     });
+    document.querySelectorAll(SUMMARY_SELECTOR).forEach((summary) => updateSummary(summary, nowMs));
     return nowMs;
   }
 

@@ -132,6 +132,7 @@ def _build_source(source: TimeStatusSourceState, *, divided: bool) -> Component:
     return html.Span(
         className=source_class,
         **{
+            'data-ada-time-status-source': 'true',
             'data-source-key': source.key,
             'data-source-condition': source.condition.value,
             'data-source-timestamp-utc': source.timestamp_iso or '',
@@ -143,14 +144,19 @@ def _build_source(source: TimeStatusSourceState, *, divided: bool) -> Component:
                 'ada-time-status__source-content '
                 f'ada-time-status__source-content--{source.condition.value}'
             ),
+            **{'data-ada-time-status-source-content': 'true'},
             children=[
-                html.I(className=f'{_icon_class(source.condition)} ada-time-status__item'),
+                html.I(
+                    className=f'{_icon_class(source.condition)} ada-time-status__item',
+                    **{'data-ada-time-status-source-icon': 'true'},
+                ),
                 html.P(className='ada-time-status__item', children=source.label),
                 html.P(className='ada-time-status__item', children='•'),
                 html.P(
                     className='ada-time-status__timestamp ada-time-status__timestamp--source',
                     title=source.timestamp_iso or '',
                     children=source.relative_age_text or '--',
+                    **{'data-ada-time-status-source-value': 'true'},
                 ),
             ],
         ),

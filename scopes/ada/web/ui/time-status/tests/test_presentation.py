@@ -295,3 +295,29 @@ def test_informational_error_is_rendered_opaquely_without_affecting_summary_heal
     assert blockgrade['data-source-role'] == 'informational'
     assert 'data-source-condition' not in blockgrade
     assert _props(blockgrade['children'][1])['children'] == 'Error'
+
+
+def test_summary_source_exposes_stable_client_freshness_markers() -> None:
+    component = build_time_status_summary(state=_pi_state())
+    source = next(
+        item
+        for item in _walk(component)
+        if _props(item).get('data-ada-time-status-source') == 'true'
+    )
+    source_props = _props(source)
+    content = source_props['children']
+    content_props = _props(content)
+
+    assert source_props['data-source-key'] == 'pi'
+    assert source_props['data-source-timestamp-utc']
+    assert source_props['data-warning-after-seconds'] == '200'
+    assert source_props['data-stale-after-seconds'] == '300'
+    assert content_props['data-ada-time-status-source-content'] == 'true'
+    assert any(
+        _props(child).get('data-ada-time-status-source-icon') == 'true'
+        for child in content_props['children']
+    )
+    assert any(
+        _props(child).get('data-ada-time-status-source-value') == 'true'
+        for child in content_props['children']
+    )

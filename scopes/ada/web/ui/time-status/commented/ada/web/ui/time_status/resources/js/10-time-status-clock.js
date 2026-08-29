@@ -1,11 +1,14 @@
 (() => {
   'use strict';
 
-  // El marker se vuelve a resolver en cada tick; no retenemos un nodo que Dash pueda reemplazar.
+  // Un único tick actualiza reloj y freshness para evitar dos timers independientes.
   const CLOCK_SELECTOR = "[data-ada-time-status-clock='true']";
+  const SUMMARY_SELECTOR = "[data-component-key='time_status']";
+  const SOURCE_SELECTOR = "[data-ada-time-status-source='true']";
+  const SOURCE_VALUE_SELECTOR = "[data-ada-time-status-source-value='true']";
+  const SOURCE_ICON_SELECTOR = "[data-ada-time-status-source-icon='true']";
   const MODULE_NAME = 'ada-time-status';
   const DEFAULT_TIME_ZONE = 'America/Santiago';
-  // Usamos formatToParts para producir YYYY-MM-DD HH:mm:ss sin depender del orden visual del locale.
   const FORMAT_LOCALE = 'en-CA';
 
   const controller = {
@@ -44,7 +47,6 @@
     try {
       return new Intl.DateTimeFormat(FORMAT_LOCALE, options);
     } catch (_error) {
-      // Defensa de runtime: una configuración inválida no debe detener el reloj completo.
       return new Intl.DateTimeFormat(FORMAT_LOCALE, {
         ...options,
         timeZone: DEFAULT_TIME_ZONE,
@@ -62,14 +64,103 @@
     return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}`;
   }
 
+  // Los buckets coinciden con el contrato D-TS-015 y con el formatter Python.
+  function formatRelativeAge(ageSeconds) {
+    if (ageSeconds < 10) {
+      return 'hace menos de 10 segundos';
+    }
+    if (ageSeconds < 60) {
+      const bucket = Math.floor(ageSeconds / 10) * 10;
+      return `hace más de ${bucket} segundos`;
+    }
+    if (ageSeconds < 3600) {
+      const minutes = Math.floor(ageSeconds / 60);
+      return `hace más de ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
+    }
+    if (ageSeconds < 86400) {
+      const hours = Math.floor(ageSeconds / 3600);
+      return `hace más de ${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+    }
+    const days = Math.floor(ageSeconds / 86400);
+    return `hace más de ${days} ${days === 1 ? 'día' : 'días'}`;
+  }
+
+  // warning es inclusivo para PREVENTIVE y stale es inclusivo para HARD_STALE.
+  function resolveCondition(ageSeconds, warningAfterSeconds, staleAfterSeconds) {
+    if (ageSeconds >= staleAfterSeconds) {
+      return 'hard_stale';
+    }
+    if (ageSeconds >= warningAfterSeconds) {
+      return 'preventive';
+    }
+    return 'fresh';
+  }
+
+  function setSourceCondition(source, condition) {
+    source.setAttribute('data-source-condition', condition);
+    const content = source.querySelector("[data-ada-time-status-source-content='true']");
+    if (content) {
+      content.className = `ada-time-status__source-content ada-time-status__source-content--${condition}`;
+    }
+    const icon = source.querySelector(SOURCE_ICON_SELECTOR);
+    if (icon) {
+      const iconClass = condition === 'hard_stale' ? 'bi bi-cloud-slash' : 'bi bi-cloud-check';
+      icon.className = `${iconClass} ada-time-status__item`;
+    }
+  }
+
+  function updateSource(source, nowMs) {
+    // DATA_ERROR viene resuelto por la capa Python/calidad y no se reinterpreta con el reloj del navegador.
+    if (source.getAttribute('data-source-condition') === 'data_error') {
+      return;
+    }
+    const timestampMs = Date.parse(source.getAttribute('data-source-timestamp-utc') || '');
+    const warningAfterSeconds = Number(source.getAttribute('data-warning-after-seconds'));
+    const staleAfterSeconds = Number(source.getAttribute('data-stale-after-seconds'));
+    if (
+      !Number.isFinite(timestampMs) ||
+      !Number.isFinite(warningAfterSeconds) ||
+      !Number.isFinite(staleAfterSeconds)
+    ) {
+      return;
+    }
+
+    // Clamp a cero sólo protege contra skew del reloj local; nunca crea DATA_ERROR en cliente.
+    const ageSeconds = Math.max(0, Math.floor((nowMs - timestampMs) / 1000));
+    const condition = resolveCondition(ageSeconds, warningAfterSeconds, staleAfterSeconds);
+    setSourceCondition(source, condition);
+    const value = source.querySelector(SOURCE_VALUE_SELECTOR);
+    if (value) {
+      value.textContent = formatRelativeAge(ageSeconds);
+    }
+  }
+
+  // El marker global usa AND sobre las fuentes summary requeridas; todavía no modifica componentes.
+  function updateSummary(summary, nowMs) {
+    const sources = [...summary.querySelectorAll(SOURCE_SELECTOR)];
+    sources.forEach((source) => updateSource(source, nowMs));
+    if (!sources.length) {
+      return;
+    }
+    const contentStale = sources.every(
+      (source) => source.getAttribute('data-source-condition') === 'hard_stale',
+    );
+    const hasDataError = sources.some(
+      (source) => source.getAttribute('data-source-condition') === 'data_error',
+    );
+    summary.setAttribute('data-content-stale', contentStale ? 'true' : 'false');
+    summary.setAttribute('data-has-data-error', hasDataError ? 'true' : 'false');
+  }
+
   function syncClock() {
-    // Cada render consulta el reloj real; nunca sumamos segundos a un contador iniciado al cargar.
+    // Date.now se consulta en cada ciclo para sobrevivir suspensión, cambio de foco y saltos reales del reloj.
     const nowMs = Date.now();
     const text = formatTimestamp(nowMs);
     document.querySelectorAll(CLOCK_SELECTOR).forEach((node) => {
       node.textContent = text;
       node.title = text;
     });
+    document.querySelectorAll(SUMMARY_SELECTOR).forEach((summary) => updateSummary(summary, nowMs));
     return nowMs;
   }
 
@@ -83,7 +174,6 @@
   function scheduleNextTick() {
     clearTimer();
     const nowMs = syncClock();
-    // Nos alineamos al siguiente segundo del reloj real y usamos setTimeout recursivo para corregir drift.
     const delayMs = Math.max(20, 1000 - (nowMs % 1000) + 5);
     controller.timer = window.setTimeout(scheduleNextTick, delayMs);
   }
@@ -93,7 +183,6 @@
   }
 
   function handleVisibilityChange() {
-    // Al volver desde una pestaña suspendida recalculamos inmediatamente desde Date.now().
     if (!document.hidden) {
       resync();
     }
