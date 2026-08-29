@@ -1,0 +1,134 @@
+/* Baseline visual deliberadamente conservador; TS-012 congelará el estilo final. */
+.ada-time-status,
+.ada-time-status__sources {
+    width: 100%;
+    min-width: 0;
+}
+
+.ada-time-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    min-height: 1.5rem;
+    color: var(--custom-text-color);
+    user-select: none;
+}
+
+.ada-time-status[data-ada-time-status-detail-trigger='true'] {
+    cursor: pointer;
+}
+
+.ada-time-status__sources {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    overflow: hidden;
+}
+
+.ada-time-status__source,
+.ada-time-status__current,
+.ada-time-status__source-content,
+.ada-time-status__current-content {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.ada-time-status__source {
+    flex: 0 1 auto;
+    padding-inline: .25rem;
+}
+
+.ada-time-status__source:first-child {
+    padding-inline-start: 0;
+}
+
+.ada-time-status__source--divided {
+    margin-inline-end: .25rem;
+    padding-inline-end: .5rem;
+    border-inline-end: 1px solid var(--primary-border-color);
+}
+
+.ada-time-status__source-content,
+.ada-time-status__current-content {
+    gap: .25rem;
+    white-space: nowrap;
+}
+
+.ada-time-status__current {
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    margin-inline-start: auto;
+    padding-inline: .5rem;
+}
+
+.ada-time-status__item,
+.ada-time-status__timestamp {
+    min-width: 0;
+    overflow: hidden;
+    margin: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ada-time-status__item.bi {
+    flex: 0 0 auto;
+    overflow: visible;
+    line-height: 1;
+}
+
+.ada-time-status__timestamp--source {
+    max-width: 10rem;
+}
+
+.ada-time-status__timestamp--datetime {
+    flex: 0 0 auto;
+    min-width: 8.75rem;
+    text-align: end;
+}
+
+.ada-time-status__source-content--data_error {
+    font-weight: 700;
+}
+
+.ada-time-status__source-content--hard_stale {
+    font-weight: 700;
+}
+
+@media only screen and (min-width: 1280px) {
+    .ada-time-status__item,
+    .ada-time-status__timestamp {
+        font-size: .6rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .ada-time-status,
+    .ada-time-status__sources {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .ada-time-status__source,
+    .ada-time-status__current {
+        width: 100%;
+    }
+
+    .ada-time-status__source--divided {
+        margin-inline-end: 0;
+        padding-inline-end: .25rem;
+        border-inline-end: 0;
+    }
+
+    .ada-time-status__current {
+        justify-content: flex-start;
+        margin-inline-start: 0;
+        padding-inline: .25rem;
+    }
+
+    .ada-time-status__timestamp--datetime {
+        min-width: 0;
+        text-align: start;
+    }
+}

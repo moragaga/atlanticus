@@ -1,0 +1,2 @@
+class TimeStatusDefinitionError(ValueError):
+    pass
