@@ -1,14 +1,41 @@
-# Presentación inicial no congelada: expone data-* estables para TS-003/TS-009 sin fijar todavía colores ni animaciones.
+# TS-005 compone Summary y Detail como hermanos dentro de una frontera DOM local por instancia.
 from __future__ import annotations
 
 from dash import html
 from dash.development.base_component import Component
 
+from .errors import TimeStatusDefinitionError
 from .models import (
     TimeStatusSourceCondition,
     TimeStatusSourceState,
     TimeStatusSummaryState,
 )
+
+
+def build_time_status(
+    *,
+    state: TimeStatusSummaryState,
+    detail: Component | None = None,
+) -> Component:
+    # Evita renderizar contenido detail que nunca podría abrirse porque el contrato del Summary lo deshabilita.
+    if detail is not None and not state.has_detail:
+        raise TimeStatusDefinitionError('Time Status detail content requires has_detail=True')
+
+    # El Summary conserva su contrato TS-002/TS-003; el wrapper sólo aporta la frontera de anclaje local.
+    children = [build_time_status_summary(state=state)]
+    if state.has_detail:
+        children.append(_build_detail_surface(detail))
+
+    # El open-state visible vive en la frontera DOM local; TS-007 podrá restaurarlo tras rerender sin cambiar esta API.
+    attributes = {'data-ada-time-status-container': 'true'}
+    if state.has_detail:
+        attributes['data-ada-time-status-detail-open'] = 'false'
+
+    return html.Div(
+        className='ada-time-status-container',
+        children=children,
+        **attributes,
+    )
 
 
 def build_time_status_summary(*, state: TimeStatusSummaryState) -> Component:
@@ -21,7 +48,15 @@ def build_time_status_summary(*, state: TimeStatusSummaryState) -> Component:
         'data-has-data-error': 'true' if state.data_error_source_keys else 'false',
     }
     if state.has_detail:
-        attributes['data-ada-time-status-detail-trigger'] = 'true'
+        # Todo el Summary es una única acción contextual, por eso se expone como botón operable con teclado.
+        attributes.update(
+            {
+                'data-ada-time-status-detail-trigger': 'true',
+                'role': 'button',
+                'tabIndex': 0,
+                'aria-expanded': 'false',
+            }
+        )
 
     return html.Div(
         className='ada-time-status',
@@ -36,6 +71,19 @@ def build_time_status_summary(*, state: TimeStatusSummaryState) -> Component:
             _build_current_datetime(state.current_datetime),
         ],
         **attributes,
+    )
+
+
+def _build_detail_surface(detail: Component | None) -> Component:
+    # La Surface nace cerrada. TS-006 será el único responsable de su estado open/closed e interacción.
+    return html.Div(
+        className='ada-time-status-detail',
+        hidden=True,
+        children=detail,
+        **{
+            'data-ada-time-status-detail-surface': 'true',
+            'aria-hidden': 'true',
+        },
     )
 
 

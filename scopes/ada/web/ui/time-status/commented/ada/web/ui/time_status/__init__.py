@@ -1,4 +1,4 @@
-# API pública mínima del componente Time Status.
+# Superficie pública de Time Status: TS-005 suma el builder compuesto sin retirar el Summary reusable existente.
 from .errors import TimeStatusDefinitionError
 from .models import (
     TimeStatusFreshnessPolicy,
@@ -7,7 +7,7 @@ from .models import (
     TimeStatusSummaryState,
 )
 from .module import ADA_TIME_STATUS_ASSET_LAYER, create_ada_time_status_module
-from .presentation import build_time_status_summary
+from .presentation import build_time_status, build_time_status_summary
 
 __all__ = [
     'ADA_TIME_STATUS_ASSET_LAYER',
@@ -16,6 +16,7 @@ __all__ = [
     'TimeStatusSourceCondition',
     'TimeStatusSourceState',
     'TimeStatusSummaryState',
+    'build_time_status',
     'build_time_status_summary',
     'create_ada_time_status_module',
 ]

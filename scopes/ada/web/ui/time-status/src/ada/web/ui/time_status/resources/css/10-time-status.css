@@ -1,7 +1,12 @@
+.ada-time-status-container,
 .ada-time-status,
 .ada-time-status__sources {
     width: 100%;
     min-width: 0;
+}
+
+.ada-time-status-container {
+    position: relative;
 }
 
 .ada-time-status {
@@ -16,6 +21,27 @@
 
 .ada-time-status[data-ada-time-status-detail-trigger='true'] {
     cursor: pointer;
+}
+
+.ada-time-status[data-ada-time-status-detail-trigger='true']:focus-visible {
+    outline: 2px solid var(--primary-border-color);
+    outline-offset: .15rem;
+}
+
+.ada-time-status-detail {
+    position: absolute;
+    top: calc(100% + .25rem);
+    inset-inline-end: 0;
+    z-index: 1040;
+    width: 100%;
+    max-width: min(32rem, calc(100vw - 1rem));
+    max-height: min(60vh, 28rem);
+    overflow: auto;
+    border: 1px solid var(--primary-border-color);
+    background: var(--primary-background);
+    color: var(--custom-text-color);
+    box-shadow: 0 .35rem 1rem rgba(0, 0, 0, .12);
+    user-select: text;
 }
 
 .ada-time-status__sources {

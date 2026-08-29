@@ -6,7 +6,7 @@ from .models import (
     TimeStatusSummaryState,
 )
 from .module import ADA_TIME_STATUS_ASSET_LAYER, create_ada_time_status_module
-from .presentation import build_time_status_summary
+from .presentation import build_time_status, build_time_status_summary
 
 __all__ = [
     'ADA_TIME_STATUS_ASSET_LAYER',
@@ -15,6 +15,7 @@ __all__ = [
     'TimeStatusSourceCondition',
     'TimeStatusSourceState',
     'TimeStatusSummaryState',
+    'build_time_status',
     'build_time_status_summary',
     'create_ada_time_status_module',
 ]

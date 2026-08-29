@@ -3,11 +3,35 @@ from __future__ import annotations
 from dash import html
 from dash.development.base_component import Component
 
+from .errors import TimeStatusDefinitionError
 from .models import (
     TimeStatusSourceCondition,
     TimeStatusSourceState,
     TimeStatusSummaryState,
 )
+
+
+def build_time_status(
+    *,
+    state: TimeStatusSummaryState,
+    detail: Component | None = None,
+) -> Component:
+    if detail is not None and not state.has_detail:
+        raise TimeStatusDefinitionError('Time Status detail content requires has_detail=True')
+
+    children = [build_time_status_summary(state=state)]
+    if state.has_detail:
+        children.append(_build_detail_surface(detail))
+
+    attributes = {'data-ada-time-status-container': 'true'}
+    if state.has_detail:
+        attributes['data-ada-time-status-detail-open'] = 'false'
+
+    return html.Div(
+        className='ada-time-status-container',
+        children=children,
+        **attributes,
+    )
 
 
 def build_time_status_summary(*, state: TimeStatusSummaryState) -> Component:
@@ -20,7 +44,14 @@ def build_time_status_summary(*, state: TimeStatusSummaryState) -> Component:
         'data-has-data-error': 'true' if state.data_error_source_keys else 'false',
     }
     if state.has_detail:
-        attributes['data-ada-time-status-detail-trigger'] = 'true'
+        attributes.update(
+            {
+                'data-ada-time-status-detail-trigger': 'true',
+                'role': 'button',
+                'tabIndex': 0,
+                'aria-expanded': 'false',
+            }
+        )
 
     return html.Div(
         className='ada-time-status',
@@ -35,6 +66,18 @@ def build_time_status_summary(*, state: TimeStatusSummaryState) -> Component:
             _build_current_datetime(state.current_datetime),
         ],
         **attributes,
+    )
+
+
+def _build_detail_surface(detail: Component | None) -> Component:
+    return html.Div(
+        className='ada-time-status-detail',
+        hidden=True,
+        children=detail,
+        **{
+            'data-ada-time-status-detail-surface': 'true',
+            'aria-hidden': 'true',
+        },
     )
 
 

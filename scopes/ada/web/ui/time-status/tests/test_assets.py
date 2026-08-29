@@ -14,12 +14,26 @@ def test_time_status_css_is_packaged_without_freezing_preventive_visuals() -> No
     assert '@keyframes' not in css
 
 
+def test_anchored_detail_surface_is_local_absolute_and_non_modal() -> None:
+    css_root = files('ada.web.ui.time_status').joinpath('resources/css')
+    css = css_root.joinpath('10-time-status.css').read_text(encoding='utf-8')
+    surface = css.split('.ada-time-status-detail {', 1)[1].split('}', 1)[0]
+
+    assert '.ada-time-status-container {' in css
+    assert 'position: relative;' in css.split('.ada-time-status-container {', 1)[1].split('}', 1)[0]
+    assert 'position: absolute;' in surface
+    assert 'top: calc(100% + .25rem);' in surface
+    assert 'position: fixed;' not in surface
+    assert 'inset: 0;' not in surface
+    assert 'backdrop' not in css.lower()
+
+
 def test_real_clock_asset_is_packaged_and_uses_real_time_resynchronization() -> None:
     js_root = files('ada.web.ui.time_status').joinpath('resources/js')
     entries = js_root.joinpath('js.list').read_text(encoding='utf-8').splitlines()
     javascript = js_root.joinpath(entries[0]).read_text(encoding='utf-8')
 
-    assert entries == ['10-time-status-clock.js']
+    assert entries == ['10-time-status-clock.js', '20-time-status-detail.js']
     assert 'Date.now()' in javascript
     assert 'new Date(epochMs)' in javascript
     assert 'window.setTimeout(scheduleNextTick, delayMs)' in javascript
@@ -41,3 +55,38 @@ def test_real_clock_asset_reads_time_zone_from_runtime_config() -> None:
     assert 'runtimeConfig()?.modules?.[MODULE_NAME]?.time_zone' in javascript
     assert "hourCycle: 'h23'" in javascript
     assert '${values.year}-${values.month}-${values.day}' in javascript
+
+
+def test_detail_controller_is_packaged_after_clock_and_uses_local_dom_boundaries() -> None:
+    js_root = files('ada.web.ui.time_status').joinpath('resources/js')
+    entries = js_root.joinpath('js.list').read_text(encoding='utf-8').splitlines()
+    javascript = js_root.joinpath('20-time-status-detail.js').read_text(encoding='utf-8')
+
+    assert entries == ['10-time-status-clock.js', '20-time-status-detail.js']
+    assert 'const CONTAINER_SELECTOR = "[data-ada-time-status-container=\'true\']"' in javascript
+    assert 'const TRIGGER_SELECTOR = "[data-ada-time-status-detail-trigger=\'true\']"' in javascript
+    assert 'const SURFACE_SELECTOR = "[data-ada-time-status-detail-surface=\'true\']"' in javascript
+    assert 'trigger.closest(CONTAINER_SELECTOR)' in javascript
+    assert 'container.querySelector(SURFACE_SELECTOR)' in javascript
+    assert 'document.getElementById' not in javascript
+    assert 'localStorage' not in javascript
+    assert 'sessionStorage' not in javascript
+    assert 'dash_clientside' not in javascript
+
+
+def test_detail_controller_supports_toggle_outside_escape_and_keyboard_without_hover() -> None:
+    js_root = files('ada.web.ui.time_status').joinpath('resources/js')
+    javascript = js_root.joinpath('20-time-status-detail.js').read_text(encoding='utf-8')
+
+    assert "document.addEventListener('click', handleClick)" in javascript
+    assert "document.addEventListener('keydown', handleKeydown)" in javascript
+    assert "event.key === 'Escape'" in javascript
+    assert "event.key !== 'Enter' && event.key !== ' '" in javascript
+    assert 'event.preventDefault()' in javascript
+    assert 'parts.surface.hidden = !isOpen' in javascript
+    assert "parts.trigger.setAttribute('aria-expanded'" in javascript
+    assert "parts.surface.setAttribute('aria-hidden'" in javascript
+    assert '!container.contains(event.target)' in javascript
+    assert "addEventListener('mouseover'" not in javascript
+    assert "addEventListener('mouseenter'" not in javascript
+    assert 'MutationObserver' not in javascript
