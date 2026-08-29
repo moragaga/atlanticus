@@ -93,6 +93,7 @@ def _build_detail_surface(detail: Component | None) -> Component:
         children=detail,
         **{
             'data-ada-time-status-detail-surface': 'true',
+            'data-ada-time-status-detail-placement': 'bottom',
             'aria-hidden': 'true',
         },
     )

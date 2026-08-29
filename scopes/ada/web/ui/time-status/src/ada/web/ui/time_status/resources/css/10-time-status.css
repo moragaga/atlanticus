@@ -29,19 +29,30 @@
 }
 
 .ada-time-status-detail {
+    --ada-time-status-detail-gap: .25rem;
+    --ada-time-status-detail-shift-x: 0px;
+    --ada-time-status-detail-available-height: min(60vh, 28rem);
+    --ada-time-status-detail-viewport-width: calc(100vw - 1rem);
     position: absolute;
-    top: calc(100% + .25rem);
+    top: calc(100% + var(--ada-time-status-detail-gap));
     inset-inline-end: 0;
     z-index: 1040;
-    width: 100%;
-    max-width: min(32rem, calc(100vw - 1rem));
-    max-height: min(60vh, 28rem);
+    box-sizing: border-box;
+    width: max(100%, min(16rem, var(--ada-time-status-detail-viewport-width)));
+    max-width: min(32rem, var(--ada-time-status-detail-viewport-width));
+    max-height: min(60vh, 28rem, var(--ada-time-status-detail-available-height));
     overflow: auto;
+    transform: translateX(var(--ada-time-status-detail-shift-x));
     border: 1px solid var(--primary-border-color);
     background: var(--primary-background);
     color: var(--custom-text-color);
     box-shadow: 0 .35rem 1rem rgba(0, 0, 0, .12);
     user-select: text;
+}
+
+.ada-time-status-detail[data-ada-time-status-detail-placement='top'] {
+    top: auto;
+    bottom: calc(100% + var(--ada-time-status-detail-gap));
 }
 
 .ada-time-status__sources {
@@ -215,6 +226,16 @@
 }
 
 @media (max-width: 767.98px) {
+    .ada-time-status-detail {
+        width: var(--ada-time-status-detail-viewport-width);
+        min-width: 0;
+        max-width: var(--ada-time-status-detail-viewport-width);
+    }
+
+    .ada-time-status-detail__content {
+        min-width: 0;
+    }
+
     .ada-time-status-detail__source {
         grid-template-columns: 1fr;
         gap: .15rem;

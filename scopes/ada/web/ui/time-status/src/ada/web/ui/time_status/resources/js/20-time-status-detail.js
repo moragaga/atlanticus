@@ -6,8 +6,11 @@
   const SURFACE_SELECTOR = "[data-ada-time-status-detail-surface='true']";
   const OPEN_SELECTOR = "[data-ada-time-status-detail-open='true']";
   const TOOL_KEY_ATTRIBUTE = 'data-ada-time-status-tool-key';
+  const PLACEMENT_ATTRIBUTE = 'data-ada-time-status-detail-placement';
+  const VIEWPORT_MARGIN_PX = 8;
 
   let openToolKey = null;
+  let positionFrame = null;
 
   function resolveParts(trigger) {
     const container = trigger.closest(CONTAINER_SELECTOR);
@@ -34,6 +37,99 @@
     return String(container.getAttribute(TOOL_KEY_ATTRIBUTE) || '').trim();
   }
 
+  function viewportBounds() {
+    const viewport = window.visualViewport;
+    if (viewport) {
+      return {
+        left: viewport.offsetLeft,
+        top: viewport.offsetTop,
+        right: viewport.offsetLeft + viewport.width,
+        bottom: viewport.offsetTop + viewport.height,
+        width: viewport.width,
+      };
+    }
+    return {
+      left: 0,
+      top: 0,
+      right: window.innerWidth,
+      bottom: window.innerHeight,
+      width: window.innerWidth,
+    };
+  }
+
+  function detailGapPx() {
+    const rootSize = Number.parseFloat(window.getComputedStyle(document.documentElement).fontSize);
+    return (Number.isFinite(rootSize) ? rootSize : 16) * 0.25;
+  }
+
+  function positionParts(parts) {
+    if (parts.surface.hidden) {
+      return;
+    }
+
+    const bounds = viewportBounds();
+    const gap = detailGapPx();
+    const triggerRect = parts.trigger.getBoundingClientRect();
+    const usableWidth = Math.max(0, bounds.width - VIEWPORT_MARGIN_PX * 2);
+    const availableBelow = Math.max(
+      0,
+      bounds.bottom - VIEWPORT_MARGIN_PX - triggerRect.bottom - gap,
+    );
+    const availableAbove = Math.max(
+      0,
+      triggerRect.top - (bounds.top + VIEWPORT_MARGIN_PX) - gap,
+    );
+    const desiredHeight = parts.surface.scrollHeight;
+    const placement =
+      desiredHeight <= availableBelow || availableBelow >= availableAbove ? 'bottom' : 'top';
+    const availableHeight = placement === 'bottom' ? availableBelow : availableAbove;
+
+    parts.surface.setAttribute(PLACEMENT_ATTRIBUTE, placement);
+    parts.surface.style.setProperty(
+      '--ada-time-status-detail-available-height',
+      `${Math.floor(availableHeight)}px`,
+    );
+    parts.surface.style.setProperty(
+      '--ada-time-status-detail-viewport-width',
+      `${Math.floor(usableWidth)}px`,
+    );
+    parts.surface.style.setProperty('--ada-time-status-detail-shift-x', '0px');
+
+    const surfaceRect = parts.surface.getBoundingClientRect();
+    let shiftX = 0;
+    const minimumLeft = bounds.left + VIEWPORT_MARGIN_PX;
+    const maximumRight = bounds.right - VIEWPORT_MARGIN_PX;
+    if (surfaceRect.left < minimumLeft) {
+      shiftX += minimumLeft - surfaceRect.left;
+    }
+    if (surfaceRect.right + shiftX > maximumRight) {
+      shiftX -= surfaceRect.right + shiftX - maximumRight;
+    }
+    parts.surface.style.setProperty(
+      '--ada-time-status-detail-shift-x',
+      `${Math.round(shiftX)}px`,
+    );
+  }
+
+  function positionOpenContainers() {
+    document.querySelectorAll(OPEN_SELECTOR).forEach((container) => {
+      const parts = resolveContainerParts(container);
+      if (parts) {
+        positionParts(parts);
+      }
+    });
+  }
+
+  function schedulePositionOpen() {
+    if (positionFrame !== null) {
+      return;
+    }
+    positionFrame = window.requestAnimationFrame(() => {
+      positionFrame = null;
+      positionOpenContainers();
+    });
+  }
+
   function setOpen(parts, isOpen) {
     const key = toolKey(parts.container);
     parts.container.setAttribute('data-ada-time-status-detail-open', isOpen ? 'true' : 'false');
@@ -42,6 +138,7 @@
     parts.surface.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
     if (isOpen) {
       openToolKey = key || null;
+      positionParts(parts);
     } else if (key && openToolKey === key) {
       openToolKey = null;
     }
@@ -99,6 +196,9 @@
     mutations.forEach((mutation) => {
       mutation.addedNodes.forEach(restoreAddedNode);
     });
+    if (openToolKey) {
+      schedulePositionOpen();
+    }
   }
 
   function handleClick(event) {
@@ -137,6 +237,12 @@
     document.addEventListener('keydown', handleKeydown);
     const observer = new MutationObserver(handleMutations);
     observer.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('resize', schedulePositionOpen);
+    window.addEventListener('scroll', schedulePositionOpen, true);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', schedulePositionOpen);
+      window.visualViewport.addEventListener('scroll', schedulePositionOpen);
+    }
   }
 
   if (document.readyState === 'loading') {

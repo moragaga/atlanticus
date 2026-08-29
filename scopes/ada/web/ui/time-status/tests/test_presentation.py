@@ -321,3 +321,12 @@ def test_summary_source_exposes_stable_client_freshness_markers() -> None:
         _props(child).get('data-ada-time-status-source-value') == 'true'
         for child in content_props['children']
     )
+
+
+def test_detail_surface_publishes_bottom_as_initial_collision_placement() -> None:
+    component = build_time_status(
+        tool_key='process', state=_pi_state(has_detail=True), detail=html.Div('Detail')
+    )
+    surface = _props(_props(component)['children'][1])
+
+    assert surface['data-ada-time-status-detail-placement'] == 'bottom'

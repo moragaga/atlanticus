@@ -22,7 +22,8 @@ def test_anchored_detail_surface_is_local_absolute_and_non_modal() -> None:
     assert '.ada-time-status-container {' in css
     assert 'position: relative;' in css.split('.ada-time-status-container {', 1)[1].split('}', 1)[0]
     assert 'position: absolute;' in surface
-    assert 'top: calc(100% + .25rem);' in surface
+    assert '--ada-time-status-detail-gap: .25rem;' in surface
+    assert 'top: calc(100% + var(--ada-time-status-detail-gap));' in surface
     assert 'position: fixed;' not in surface
     assert 'inset: 0;' not in surface
     assert 'backdrop' not in css.lower()
@@ -140,3 +141,64 @@ def test_time_status_css_maps_preventive_to_pulse_and_hard_stale_to_solid_alert(
     assert 'ada-time-status-preventive-pulse' in css
     assert "[data-source-condition='hard_stale']" in css
     assert "[data-source-condition='data_error']" in css
+
+
+def test_detail_surface_css_supports_flip_shift_and_viewport_bounded_height() -> None:
+    css_root = files('ada.web.ui.time_status').joinpath('resources/css')
+    css = css_root.joinpath('10-time-status.css').read_text(encoding='utf-8')
+    surface = css.split('.ada-time-status-detail {', 1)[1].split('}', 1)[0]
+
+    assert '--ada-time-status-detail-shift-x: 0px;' in surface
+    assert '--ada-time-status-detail-available-height:' in surface
+    assert '--ada-time-status-detail-viewport-width:' in surface
+    assert 'box-sizing: border-box;' in surface
+    assert 'transform: translateX(var(--ada-time-status-detail-shift-x));' in surface
+    assert 'var(--ada-time-status-detail-available-height)' in surface
+    assert "[data-ada-time-status-detail-placement='top']" in css
+    top_surface = css.split(
+        ".ada-time-status-detail[data-ada-time-status-detail-placement='top'] {", 1
+    )[1].split('}', 1)[0]
+    assert 'top: auto;' in top_surface
+    assert 'bottom: calc(100% + var(--ada-time-status-detail-gap));' in top_surface
+    assert 'position: fixed;' not in surface
+
+
+def test_detail_surface_mobile_contract_uses_full_usable_viewport_without_modal_layout() -> None:
+    css_root = files('ada.web.ui.time_status').joinpath('resources/css')
+    css = css_root.joinpath('10-time-status.css').read_text(encoding='utf-8')
+    mobile = css.split('@media (max-width: 767.98px) {')[-1]
+
+    assert '.ada-time-status-detail {' in mobile
+    assert 'width: var(--ada-time-status-detail-viewport-width);' in mobile
+    assert 'max-width: var(--ada-time-status-detail-viewport-width);' in mobile
+    assert '.ada-time-status-detail__content {' in mobile
+    assert 'min-width: 0;' in mobile
+    assert 'position: fixed;' not in mobile
+    assert 'backdrop' not in mobile.lower()
+
+
+def test_detail_controller_positions_open_surface_against_visual_viewport_and_reflows_never() -> (
+    None
+):
+    js_root = files('ada.web.ui.time_status').joinpath('resources/js')
+    javascript = js_root.joinpath('20-time-status-detail.js').read_text(encoding='utf-8')
+
+    assert "const PLACEMENT_ATTRIBUTE = 'data-ada-time-status-detail-placement'" in javascript
+    assert 'const VIEWPORT_MARGIN_PX = 8' in javascript
+    assert 'window.visualViewport' in javascript
+    assert 'parts.trigger.getBoundingClientRect()' in javascript
+    assert 'parts.surface.scrollHeight' in javascript
+    assert "? 'bottom' : 'top'" in javascript
+    assert 'parts.surface.setAttribute(PLACEMENT_ATTRIBUTE, placement)' in javascript
+    assert "'--ada-time-status-detail-available-height'" in javascript
+    assert "'--ada-time-status-detail-viewport-width'" in javascript
+    assert "'--ada-time-status-detail-shift-x'" in javascript
+    assert 'parts.surface.getBoundingClientRect()' in javascript
+    assert 'window.requestAnimationFrame' in javascript
+    assert "window.addEventListener('resize', schedulePositionOpen)" in javascript
+    assert "window.addEventListener('scroll', schedulePositionOpen, true)" in javascript
+    assert "window.visualViewport.addEventListener('resize', schedulePositionOpen)" in javascript
+    assert "window.visualViewport.addEventListener('scroll', schedulePositionOpen)" in javascript
+    assert 'position: fixed' not in javascript
+    assert 'document.body.appendChild' not in javascript
+    assert 'ResizeObserver' not in javascript
