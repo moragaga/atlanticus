@@ -89,4 +89,8 @@ def test_detail_controller_supports_toggle_outside_escape_and_keyboard_without_h
     assert '!container.contains(event.target)' in javascript
     assert "addEventListener('mouseover'" not in javascript
     assert "addEventListener('mouseenter'" not in javascript
-    assert 'MutationObserver' not in javascript
+    assert 'MutationObserver' in javascript
+    assert "const TOOL_KEY_ATTRIBUTE = 'data-ada-time-status-tool-key'" in javascript
+    assert 'let openToolKey = null' in javascript
+    assert 'mutation.addedNodes.forEach(restoreAddedNode)' in javascript
+    assert 'observer.observe(document.body, { childList: true, subtree: true })' in javascript

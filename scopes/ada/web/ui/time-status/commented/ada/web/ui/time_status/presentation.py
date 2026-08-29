@@ -1,4 +1,4 @@
-# TS-005 compone Summary y Detail como hermanos dentro de una frontera DOM local por instancia.
+# TS-007 añade tool_key como identidad estable para reconciliar la misma instancia después de un rerender.
 from __future__ import annotations
 
 from dash import html
@@ -14,9 +14,15 @@ from .models import (
 
 def build_time_status(
     *,
+    tool_key: str,
     state: TimeStatusSummaryState,
     detail: Component | None = None,
 ) -> Component:
+    # Reutilizamos tool_key como identidad lógica ya existente; no creamos una segunda identidad para el estado JS.
+    normalized_tool_key = tool_key.strip()
+    if not normalized_tool_key:
+        raise TimeStatusDefinitionError('Time Status tool_key must not be empty')
+
     # Evita renderizar contenido detail que nunca podría abrirse porque el contrato del Summary lo deshabilita.
     if detail is not None and not state.has_detail:
         raise TimeStatusDefinitionError('Time Status detail content requires has_detail=True')
@@ -26,8 +32,11 @@ def build_time_status(
     if state.has_detail:
         children.append(_build_detail_surface(detail))
 
-    # El open-state visible vive en la frontera DOM local; TS-007 podrá restaurarlo tras rerender sin cambiar esta API.
-    attributes = {'data-ada-time-status-container': 'true'}
+    # La frontera publica tool_key para que el controller pueda restaurar sólo la misma Tool después de reemplazo DOM.
+    attributes = {
+        'data-ada-time-status-container': 'true',
+        'data-ada-time-status-tool-key': normalized_tool_key,
+    }
     if state.has_detail:
         attributes['data-ada-time-status-detail-open'] = 'false'
 

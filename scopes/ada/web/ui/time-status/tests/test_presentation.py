@@ -133,7 +133,9 @@ def test_hard_stale_and_data_error_are_distinct_dom_states() -> None:
 
 def test_composed_time_status_anchors_detail_as_summary_sibling() -> None:
     detail = html.Div('Injected detail', **{'data-test-detail': 'true'})
-    component = build_time_status(state=_pi_state(has_detail=True), detail=detail)
+    component = build_time_status(
+        tool_key='process', state=_pi_state(has_detail=True), detail=detail
+    )
     root = _props(component)
     children = root['children']
 
@@ -149,7 +151,7 @@ def test_composed_time_status_anchors_detail_as_summary_sibling() -> None:
 
 
 def test_composed_time_status_without_detail_has_no_surface_or_trigger() -> None:
-    component = build_time_status(state=_pi_state())
+    component = build_time_status(tool_key='process', state=_pi_state())
     children = _props(component)['children']
 
     assert len(children) == 1
@@ -163,11 +165,15 @@ def test_composed_time_status_without_detail_has_no_surface_or_trigger() -> None
 
 def test_detail_content_requires_detail_enabled_in_summary_contract() -> None:
     with pytest.raises(TimeStatusDefinitionError, match='requires has_detail=True'):
-        build_time_status(state=_pi_state(), detail=html.Div('Unexpected detail'))
+        build_time_status(
+            tool_key='process', state=_pi_state(), detail=html.Div('Unexpected detail')
+        )
 
 
 def test_detail_enabled_summary_exposes_keyboard_button_contract_closed_by_default() -> None:
-    component = build_time_status(state=_pi_state(has_detail=True), detail=html.Div('Detail'))
+    component = build_time_status(
+        tool_key='process', state=_pi_state(has_detail=True), detail=html.Div('Detail')
+    )
     root = _props(component)
     summary = _props(root['children'][0])
 
@@ -178,7 +184,7 @@ def test_detail_enabled_summary_exposes_keyboard_button_contract_closed_by_defau
 
 
 def test_summary_without_detail_does_not_enter_keyboard_interaction_contract() -> None:
-    component = build_time_status(state=_pi_state())
+    component = build_time_status(tool_key='process', state=_pi_state())
     root = _props(component)
     summary = _props(root['children'][0])
 
@@ -186,3 +192,18 @@ def test_summary_without_detail_does_not_enter_keyboard_interaction_contract() -
     assert 'role' not in summary
     assert 'tabIndex' not in summary
     assert 'aria-expanded' not in summary
+
+
+def test_composed_time_status_publishes_stable_tool_key_for_rerender_identity() -> None:
+    component = build_time_status(
+        tool_key='integrated_operations',
+        state=_pi_state(has_detail=True),
+        detail=html.Div('Detail'),
+    )
+
+    assert _props(component)['data-ada-time-status-tool-key'] == 'integrated_operations'
+
+
+def test_composed_time_status_rejects_empty_tool_key() -> None:
+    with pytest.raises(TimeStatusDefinitionError, match='tool_key must not be empty'):
+        build_time_status(tool_key='   ', state=_pi_state())

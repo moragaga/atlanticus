@@ -13,9 +13,13 @@ from .models import (
 
 def build_time_status(
     *,
+    tool_key: str,
     state: TimeStatusSummaryState,
     detail: Component | None = None,
 ) -> Component:
+    normalized_tool_key = tool_key.strip()
+    if not normalized_tool_key:
+        raise TimeStatusDefinitionError('Time Status tool_key must not be empty')
     if detail is not None and not state.has_detail:
         raise TimeStatusDefinitionError('Time Status detail content requires has_detail=True')
 
@@ -23,7 +27,10 @@ def build_time_status(
     if state.has_detail:
         children.append(_build_detail_surface(detail))
 
-    attributes = {'data-ada-time-status-container': 'true'}
+    attributes = {
+        'data-ada-time-status-container': 'true',
+        'data-ada-time-status-tool-key': normalized_tool_key,
+    }
     if state.has_detail:
         attributes['data-ada-time-status-detail-open'] = 'false'
 

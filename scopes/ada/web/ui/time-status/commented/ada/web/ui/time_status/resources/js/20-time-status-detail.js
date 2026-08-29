@@ -1,14 +1,17 @@
 (() => {
   'use strict';
 
-  // Cada interacción resuelve su propia frontera DOM; no retenemos una Tool, un ID global ni un nodo compartido entre instancias.
+  // Cada interacción sigue resolviendo su propia frontera DOM. tool_key aporta identidad estable entre reemplazos de Dash.
   const CONTAINER_SELECTOR = "[data-ada-time-status-container='true']";
   const TRIGGER_SELECTOR = "[data-ada-time-status-detail-trigger='true']";
   const SURFACE_SELECTOR = "[data-ada-time-status-detail-surface='true']";
   const OPEN_SELECTOR = "[data-ada-time-status-detail-open='true']";
+  const TOOL_KEY_ATTRIBUTE = 'data-ada-time-status-tool-key';
+
+  // Este estado contiene sólo qué Tool tiene el detail abierto; timestamps y contenido continúan viviendo fuera del controller.
+  let openToolKey = null;
 
   function resolveParts(trigger) {
-    // El trigger sólo puede controlar la Surface hermana dentro de su closest container.
     const container = trigger.closest(CONTAINER_SELECTOR);
     if (!container) {
       return null;
@@ -20,26 +23,44 @@
     return { container, trigger, surface };
   }
 
+  function resolveContainerParts(container) {
+    // Tras un rerender siempre resolvemos los nodos nuevos; nunca retenemos referencias al Summary o Surface anteriores.
+    const trigger = container.querySelector(TRIGGER_SELECTOR);
+    const surface = container.querySelector(SURFACE_SELECTOR);
+    if (!trigger || !surface) {
+      return null;
+    }
+    return { container, trigger, surface };
+  }
+
+  function toolKey(container) {
+    return String(container.getAttribute(TOOL_KEY_ATTRIBUTE) || '').trim();
+  }
+
   function setOpen(parts, isOpen) {
-    // DOM y atributos ARIA se actualizan juntos para mantener una sola representación del estado visible.
+    const key = toolKey(parts.container);
     parts.container.setAttribute('data-ada-time-status-detail-open', isOpen ? 'true' : 'false');
     parts.trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     parts.surface.hidden = !isOpen;
     parts.surface.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+
+    // La memoria JS guarda sólo el open-state asociado al tool_key y se actualiza junto con el DOM visible.
+    if (isOpen) {
+      openToolKey = key || null;
+    } else if (key && openToolKey === key) {
+      openToolKey = null;
+    }
   }
 
   function closeContainer(container) {
-    // Re-resolvemos trigger y Surface en cada cierre; no dependemos de referencias retenidas.
-    const trigger = container.querySelector(TRIGGER_SELECTOR);
-    const surface = container.querySelector(SURFACE_SELECTOR);
-    if (!trigger || !surface) {
+    const parts = resolveContainerParts(container);
+    if (!parts) {
       return;
     }
-    setOpen({ container, trigger, surface }, false);
+    setOpen(parts, false);
   }
 
   function closeOpenOutside(targetContainer) {
-    // Al abrir otra instancia cerramos únicamente las demás superficies abiertas; el contenido nunca se comparte.
     document.querySelectorAll(OPEN_SELECTOR).forEach((container) => {
       if (container !== targetContainer) {
         closeContainer(container);
@@ -57,8 +78,37 @@
     setOpen(parts, !isOpen);
   }
 
+  function restoreContainer(container) {
+    // Sólo reabrimos el nuevo DOM cuando representa exactamente la Tool que estaba abierta antes del refresh.
+    if (!openToolKey || toolKey(container) !== openToolKey) {
+      return;
+    }
+    const parts = resolveContainerParts(container);
+    if (!parts) {
+      return;
+    }
+    closeOpenOutside(container);
+    setOpen(parts, true);
+  }
+
+  function restoreAddedNode(node) {
+    // El observer inspecciona únicamente nodos añadidos y subárboles que puedan contener Time Status.
+    if (!(node instanceof Element)) {
+      return;
+    }
+    if (node.matches(CONTAINER_SELECTOR)) {
+      restoreContainer(node);
+    }
+    node.querySelectorAll(CONTAINER_SELECTOR).forEach(restoreContainer);
+  }
+
+  function handleMutations(mutations) {
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach(restoreAddedNode);
+    });
+  }
+
   function handleClick(event) {
-    // La delegación permite que un trigger nuevo funcione sin registrar listeners por nodo.
     const trigger = event.target.closest?.(TRIGGER_SELECTOR);
     if (trigger) {
       event.preventDefault();
@@ -66,7 +116,6 @@
       return;
     }
 
-    // Un click dentro de la Surface no la cierra; un click fuera de su container sí.
     document.querySelectorAll(OPEN_SELECTOR).forEach((container) => {
       if (!container.contains(event.target)) {
         closeContainer(container);
@@ -75,7 +124,6 @@
   }
 
   function handleKeydown(event) {
-    // Escape cierra cualquier detail abierto sin introducir manejo global de foco.
     if (event.key === 'Escape') {
       document.querySelectorAll(OPEN_SELECTOR).forEach(closeContainer);
       return;
@@ -87,7 +135,6 @@
     if (!trigger) {
       return;
     }
-    // Enter y Space implementan el comportamiento del role=button publicado por el Summary.
     event.preventDefault();
     toggleTrigger(trigger);
   }
@@ -95,6 +142,10 @@
   function start() {
     document.addEventListener('click', handleClick);
     document.addEventListener('keydown', handleKeydown);
+
+    // MutationObserver es deliberado en TS-007: la Surface forma parte del subárbol que Dash puede reemplazar.
+    const observer = new MutationObserver(handleMutations);
+    observer.observe(document.body, { childList: true, subtree: true });
   }
 
   if (document.readyState === 'loading') {
