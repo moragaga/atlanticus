@@ -94,3 +94,15 @@ def test_detail_controller_supports_toggle_outside_escape_and_keyboard_without_h
     assert 'let openToolKey = null' in javascript
     assert 'mutation.addedNodes.forEach(restoreAddedNode)' in javascript
     assert 'observer.observe(document.body, { childList: true, subtree: true })' in javascript
+
+
+def test_dynamic_detail_rows_are_neutral_and_do_not_define_health_visuals() -> None:
+    css_root = files('ada.web.ui.time_status').joinpath('resources/css')
+    css = css_root.joinpath('10-time-status.css').read_text(encoding='utf-8')
+    detail_css = css.split('.ada-time-status-detail__content {', 1)[1]
+
+    assert '.ada-time-status-detail__source {' in detail_css
+    assert '.ada-time-status-detail__source-value {' in detail_css
+    assert '[data-source-role=' not in detail_css
+    assert '@keyframes' not in detail_css
+    assert 'animation:' not in detail_css

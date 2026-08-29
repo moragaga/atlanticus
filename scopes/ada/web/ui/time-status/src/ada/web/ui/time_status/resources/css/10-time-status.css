@@ -157,3 +157,46 @@
         text-align: start;
     }
 }
+
+.ada-time-status-detail__content {
+    display: grid;
+    min-width: 16rem;
+    padding: .35rem .5rem;
+}
+
+.ada-time-status-detail__source {
+    display: grid;
+    grid-template-columns: minmax(5rem, auto) minmax(0, 1fr);
+    gap: .75rem;
+    align-items: baseline;
+    padding: .35rem 0;
+}
+
+.ada-time-status-detail__source + .ada-time-status-detail__source {
+    border-top: 1px solid var(--primary-border-color);
+}
+
+.ada-time-status-detail__source-label,
+.ada-time-status-detail__source-value {
+    min-width: 0;
+}
+
+.ada-time-status-detail__source-label {
+    font-weight: 600;
+}
+
+.ada-time-status-detail__source-value {
+    overflow-wrap: anywhere;
+    text-align: end;
+}
+
+@media (max-width: 767.98px) {
+    .ada-time-status-detail__source {
+        grid-template-columns: 1fr;
+        gap: .15rem;
+    }
+
+    .ada-time-status-detail__source-value {
+        text-align: start;
+    }
+}

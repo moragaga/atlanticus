@@ -1,4 +1,4 @@
-/* TS-005: el wrapper establece la frontera de posicionamiento local; la Surface no participa del flujo normal. */
+/* El container es la frontera local de TS-005/TS-007 y ancla la Surface sin afectar el flujo del Header. */
 .ada-time-status-container,
 .ada-time-status,
 .ada-time-status__sources {
@@ -24,13 +24,12 @@
     cursor: pointer;
 }
 
-/* El foco sólo se marca cuando la interacción viene del teclado; el layout no cambia. */
 .ada-time-status[data-ada-time-status-detail-trigger='true']:focus-visible {
     outline: 2px solid var(--primary-border-color);
     outline-offset: .15rem;
 }
 
-/* Surface deliberadamente local y absoluta: no backdrop, no fixed viewport y no reflow del Header/Body. */
+/* La Surface es local, absoluta y no modal; abrirla no cambia la altura del Header. */
 .ada-time-status-detail {
     position: absolute;
     top: calc(100% + .25rem);
@@ -157,6 +156,50 @@
 
     .ada-time-status__timestamp--datetime {
         min-width: 0;
+        text-align: start;
+    }
+}
+
+/* TS-008 presenta todas las fuentes consumidas de forma neutral: el rol control/informational no cambia el estilo. */
+.ada-time-status-detail__content {
+    display: grid;
+    min-width: 16rem;
+    padding: .35rem .5rem;
+}
+
+.ada-time-status-detail__source {
+    display: grid;
+    grid-template-columns: minmax(5rem, auto) minmax(0, 1fr);
+    gap: .75rem;
+    align-items: baseline;
+    padding: .35rem 0;
+}
+
+.ada-time-status-detail__source + .ada-time-status-detail__source {
+    border-top: 1px solid var(--primary-border-color);
+}
+
+.ada-time-status-detail__source-label,
+.ada-time-status-detail__source-value {
+    min-width: 0;
+}
+
+.ada-time-status-detail__source-label {
+    font-weight: 600;
+}
+
+.ada-time-status-detail__source-value {
+    overflow-wrap: anywhere;
+    text-align: end;
+}
+
+@media (max-width: 767.98px) {
+    .ada-time-status-detail__source {
+        grid-template-columns: 1fr;
+        gap: .15rem;
+    }
+
+    .ada-time-status-detail__source-value {
         text-align: start;
     }
 }

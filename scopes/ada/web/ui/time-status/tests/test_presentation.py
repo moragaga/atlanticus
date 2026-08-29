@@ -207,3 +207,91 @@ def test_composed_time_status_publishes_stable_tool_key_for_rerender_identity() 
 def test_composed_time_status_rejects_empty_tool_key() -> None:
     with pytest.raises(TimeStatusDefinitionError, match='tool_key must not be empty'):
         build_time_status(tool_key='   ', state=_pi_state())
+
+
+def _detail_props(component: Component) -> list[dict]:
+    return [
+        _props(item)
+        for item in _walk(component)
+        if _props(item).get('data-ada-time-status-detail-source') == 'true'
+    ]
+
+
+def test_dynamic_detail_renders_only_consumed_sources_with_derived_roles() -> None:
+    from ada.web.ui.time_status import (
+        TimeStatusDetailSourceState,
+        TimeStatusDetailState,
+        build_time_status_detail,
+    )
+
+    detail = build_time_status_detail(
+        state=TimeStatusDetailState(
+            sources=(
+                TimeStatusDetailSourceState(
+                    key='blockgrade', label='BlockGrade', value='2026-08-29T22:00:00Z'
+                ),
+                TimeStatusDetailSourceState(key='pi', label='PI', value='hace 10 segundos'),
+                TimeStatusDetailSourceState(
+                    key='dispatch', label='Dispatch', value='hace 20 segundos'
+                ),
+            )
+        )
+    )
+    rows = _detail_props(detail)
+
+    assert [row['data-source-key'] for row in rows] == ['pi', 'dispatch', 'blockgrade']
+    assert [row['data-source-role'] for row in rows] == [
+        'control',
+        'control',
+        'informational',
+    ]
+    assert not any(row['data-source-key'] == 'fabrica' for row in rows)
+
+
+def test_pi_only_consumption_does_not_invent_dispatch_detail_row() -> None:
+    from ada.web.ui.time_status import (
+        TimeStatusDetailSourceState,
+        TimeStatusDetailState,
+        build_time_status_detail,
+    )
+
+    detail = build_time_status_detail(
+        state=TimeStatusDetailState(
+            sources=(TimeStatusDetailSourceState(key='pi', label='PI', value='Disponible'),)
+        )
+    )
+
+    assert [row['data-source-key'] for row in _detail_props(detail)] == ['pi']
+
+
+def test_informational_error_is_rendered_opaquely_without_affecting_summary_health() -> None:
+    from ada.web.ui.time_status import (
+        TimeStatusDetailSourceState,
+        TimeStatusDetailState,
+        build_time_status_detail,
+    )
+
+    detail = build_time_status_detail(
+        state=TimeStatusDetailState(
+            sources=(
+                TimeStatusDetailSourceState(key='pi', label='PI', value='Disponible'),
+                TimeStatusDetailSourceState(key='blockgrade', label='BlockGrade', value='Error'),
+            )
+        )
+    )
+    component = build_time_status(
+        tool_key='process',
+        state=_pi_state(has_detail=True),
+        detail=detail,
+    )
+    root = _props(component)
+    summary = _props(root['children'][0])
+    blockgrade = next(
+        row for row in _detail_props(root['children'][1]) if row['data-source-key'] == 'blockgrade'
+    )
+
+    assert summary['data-content-stale'] == 'false'
+    assert summary['data-has-data-error'] == 'false'
+    assert blockgrade['data-source-role'] == 'informational'
+    assert 'data-source-condition' not in blockgrade
+    assert _props(blockgrade['children'][1])['children'] == 'Error'

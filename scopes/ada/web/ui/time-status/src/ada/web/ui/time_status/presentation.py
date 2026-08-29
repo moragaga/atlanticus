@@ -5,6 +5,8 @@ from dash.development.base_component import Component
 
 from .errors import TimeStatusDefinitionError
 from .models import (
+    TimeStatusDetailSourceState,
+    TimeStatusDetailState,
     TimeStatusSourceCondition,
     TimeStatusSourceState,
     TimeStatusSummaryState,
@@ -76,6 +78,14 @@ def build_time_status_summary(*, state: TimeStatusSummaryState) -> Component:
     )
 
 
+def build_time_status_detail(*, state: TimeStatusDetailState) -> Component:
+    return html.Div(
+        className='ada-time-status-detail__content',
+        children=[_build_detail_source(source) for source in state.sources],
+        **{'data-ada-time-status-detail-content': 'true'},
+    )
+
+
 def _build_detail_surface(detail: Component | None) -> Component:
     return html.Div(
         className='ada-time-status-detail',
@@ -84,6 +94,26 @@ def _build_detail_surface(detail: Component | None) -> Component:
         **{
             'data-ada-time-status-detail-surface': 'true',
             'aria-hidden': 'true',
+        },
+    )
+
+
+def _build_detail_source(source: TimeStatusDetailSourceState) -> Component:
+    role = 'control' if source.is_control else 'informational'
+    return html.Div(
+        className='ada-time-status-detail__source',
+        children=[
+            html.Span(className='ada-time-status-detail__source-label', children=source.label),
+            html.Span(
+                className='ada-time-status-detail__source-value',
+                title=source.value,
+                children=source.value,
+            ),
+        ],
+        **{
+            'data-ada-time-status-detail-source': 'true',
+            'data-source-key': source.key,
+            'data-source-role': role,
         },
     )
 

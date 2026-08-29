@@ -1,4 +1,4 @@
-# TS-007 añade tool_key como identidad estable para reconciliar la misma instancia después de un rerender.
+# TS-008 agrega contenido dinámico al Detail sin otorgar autoridad operacional a fuentes informativas.
 from __future__ import annotations
 
 from dash import html
@@ -6,6 +6,8 @@ from dash.development.base_component import Component
 
 from .errors import TimeStatusDefinitionError
 from .models import (
+    TimeStatusDetailSourceState,
+    TimeStatusDetailState,
     TimeStatusSourceCondition,
     TimeStatusSourceState,
     TimeStatusSummaryState,
@@ -18,21 +20,19 @@ def build_time_status(
     state: TimeStatusSummaryState,
     detail: Component | None = None,
 ) -> Component:
-    # Reutilizamos tool_key como identidad lógica ya existente; no creamos una segunda identidad para el estado JS.
+    # tool_key sigue siendo la identidad estable de la instancia para TS-007 y no cambia con TS-008.
     normalized_tool_key = tool_key.strip()
     if not normalized_tool_key:
         raise TimeStatusDefinitionError('Time Status tool_key must not be empty')
 
-    # Evita renderizar contenido detail que nunca podría abrirse porque el contrato del Summary lo deshabilita.
+    # No permitimos contenido Detail inaccesible si el Summary no declara la interacción.
     if detail is not None and not state.has_detail:
         raise TimeStatusDefinitionError('Time Status detail content requires has_detail=True')
 
-    # El Summary conserva su contrato TS-002/TS-003; el wrapper sólo aporta la frontera de anclaje local.
     children = [build_time_status_summary(state=state)]
     if state.has_detail:
         children.append(_build_detail_surface(detail))
 
-    # La frontera publica tool_key para que el controller pueda restaurar sólo la misma Tool después de reemplazo DOM.
     attributes = {
         'data-ada-time-status-container': 'true',
         'data-ada-time-status-tool-key': normalized_tool_key,
@@ -57,7 +57,6 @@ def build_time_status_summary(*, state: TimeStatusSummaryState) -> Component:
         'data-has-data-error': 'true' if state.data_error_source_keys else 'false',
     }
     if state.has_detail:
-        # Todo el Summary es una única acción contextual, por eso se expone como botón operable con teclado.
         attributes.update(
             {
                 'data-ada-time-status-detail-trigger': 'true',
@@ -83,8 +82,16 @@ def build_time_status_summary(*, state: TimeStatusSummaryState) -> Component:
     )
 
 
+def build_time_status_detail(*, state: TimeStatusDetailState) -> Component:
+    # Sólo se renderizan las filas recibidas en el contrato de consumo; no se descubren fuentes globales ni se agregan faltantes.
+    return html.Div(
+        className='ada-time-status-detail__content',
+        children=[_build_detail_source(source) for source in state.sources],
+        **{'data-ada-time-status-detail-content': 'true'},
+    )
+
+
 def _build_detail_surface(detail: Component | None) -> Component:
-    # La Surface nace cerrada. TS-006 será el único responsable de su estado open/closed e interacción.
     return html.Div(
         className='ada-time-status-detail',
         hidden=True,
@@ -92,6 +99,27 @@ def _build_detail_surface(detail: Component | None) -> Component:
         **{
             'data-ada-time-status-detail-surface': 'true',
             'aria-hidden': 'true',
+        },
+    )
+
+
+def _build_detail_source(source: TimeStatusDetailSourceState) -> Component:
+    # El rol se deriva del modelo. En TS-008 es sólo metadata semántica y no agrega colores, stale ni parpadeo.
+    role = 'control' if source.is_control else 'informational'
+    return html.Div(
+        className='ada-time-status-detail__source',
+        children=[
+            html.Span(className='ada-time-status-detail__source-label', children=source.label),
+            html.Span(
+                className='ada-time-status-detail__source-value',
+                title=source.value,
+                children=source.value,
+            ),
+        ],
+        **{
+            'data-ada-time-status-detail-source': 'true',
+            'data-source-key': source.key,
+            'data-source-role': role,
         },
     )
 
