@@ -1,0 +1,2 @@
+class ToolSourceOperationalParticipationValidationError(ValueError):
+    pass
