@@ -1,4 +1,4 @@
-# Composition root: ensambla capabilities ya resueltas dentro del Header sin transferirles ownership.
+# Composition root: ensambla capabilities ya resueltas y aplica Content State fuera del componente consumidor.
 from __future__ import annotations
 
 from dash import html, page_container
@@ -16,6 +16,7 @@ from ada.web.shell.navigation import (
     build_ada_navigation_offcanvas,
 )
 from ada.web.ui.branding import OperationalBrandState, build_operational_brand
+from ada.web.ui.content_state import ContentState, build_content_state_wrapper
 from ada.web.ui.global_indicator import GlobalIndicatorCollection, build_global_indicators
 from ada.web.ui.time_status import (
     TimeStatusDetailState,
@@ -33,6 +34,7 @@ def build_application_layout(
     operational_brand: OperationalBrandState,
     navigation_view: AdaNavigationView,
     global_indicators: GlobalIndicatorCollection,
+    global_indicators_content_state: ContentState,
     alarm_management_summary: AlarmManagementSummaryState | None,
     alarm_status: AlarmStatusState | None,
     tool_key: str | None,
@@ -41,9 +43,10 @@ def build_application_layout(
 ):
     # Navigation Core resuelve el menú; la presentación sólo recibe el resultado.
     menu = resolve_navigation_from_services(services)
-    # Cada capability construye su propia presentación antes de llegar al Header slot-driven.
-    global_indicators_component = (
-        build_global_indicators(collection=global_indicators) if len(global_indicators) else None
+    # Content State se compone por fuera de Global Indicator para que ese paquete no conozca overlays.
+    global_indicators_component = _build_global_indicators_component(
+        collection=global_indicators,
+        content_state=global_indicators_content_state,
     )
     alarm_management_component = build_alarm_management_summary(alarm_management_summary)
     alarm_status_component = build_alarm_status(alarm_status)
@@ -71,6 +74,22 @@ def build_application_layout(
             ),
         ],
         id='ada-generic-application',
+    )
+
+
+def _build_global_indicators_component(
+    *,
+    collection: GlobalIndicatorCollection,
+    content_state: ContentState,
+):
+    # Una colección ausente no crea wrapper ni carga visual vacía en el Header.
+    if not len(collection):
+        return None
+    # El wrapper estable reutiliza component_key y preserva el componente real debajo del overlay.
+    return build_content_state_wrapper(
+        component_key='global_indicators',
+        children=build_global_indicators(collection=collection),
+        state=content_state,
     )
 
 

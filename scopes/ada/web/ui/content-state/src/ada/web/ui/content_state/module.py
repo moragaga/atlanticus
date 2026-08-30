@@ -5,7 +5,7 @@ from atlanticus.web.modules import WebModule
 
 ADA_CONTENT_STATE_ASSET_LAYER = AssetLayer(
     name='ada_content_state',
-    load_order=130,
+    load_order=125,
     package='ada.web.ui.content_state',
 )
 

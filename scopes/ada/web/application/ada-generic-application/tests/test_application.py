@@ -21,6 +21,7 @@ from ada.web.ui.branding import (
     DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC,
     DEFAULT_PELAMBRES_BRAND_LOGO_SRC,
 )
+from ada.web.ui.content_state import ADA_CONTENT_STATE_ASSET_LAYER, ContentState
 from ada.web.ui.core import ADA_UI_ASSET_LAYER
 from ada.web.ui.display_status import ADA_DISPLAY_STATUS_ASSET_LAYER
 from ada.web.ui.global_indicator import (
@@ -52,7 +53,7 @@ def test_definition_composes_current_ada_web_capabilities() -> None:
 
     assert definition.metadata.application_id == 'ada-generic-application'
     assert definition.metadata.display_name == 'ADA'
-    assert definition.metadata.version == '0.1.27'
+    assert definition.metadata.version == '0.1.30'
     assert tuple(module.name for module in definition.modules) == (
         'ada-ui',
         'ada-display-status',
@@ -96,7 +97,7 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
     assert DEFAULT_OPERATIONAL_BRAND_LOGO_SRC in payload
     assert DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC in payload
     assert DEFAULT_PELAMBRES_BRAND_LOGO_SRC in payload
-    assert 'Versión 0.1.27' in payload
+    assert 'Versión 0.1.30' in payload
     assert runtime.services.contains(ACCESS_RUNTIME_SERVICE_KEY)
     assert runtime.services.contains(NAVIGATION_PRINCIPAL_PROVIDER_SERVICE_KEY)
     assert any(
@@ -194,6 +195,80 @@ def test_global_indicators_mount_only_when_explicitly_injected(tmp_path, monkeyp
     assert 'Última medición' in payload
     assert '22' in payload
     assert 'data-slot-empty' in payload
+    assert 'data-ada-component-key' in payload
+    assert 'data-ada-content-state' in payload
+    assert 'global_indicators' in payload
+    assert any(
+        entry.startswith(f'{ADA_CONTENT_STATE_ASSET_LAYER.target_name}/css/')
+        for entry in runtime.assets.css_entries
+    )
+
+
+def test_content_state_assets_are_not_loaded_without_global_indicators() -> None:
+    definition = create_application_definition()
+
+    assert 'ada-content-state' not in tuple(module.name for module in definition.modules)
+
+
+def test_global_indicators_construction_state_wraps_real_component_without_hiding_kpi_contract(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv('ATLANTICUS_ENVIRONMENT', raising=False)
+    monkeypatch.setenv('ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID', 'local:test-user')
+
+    collection = GlobalIndicatorCollection(
+        indicators=(
+            GlobalIndicatorState(
+                key='construction_indicator',
+                label='Indicador en construcción',
+                unit='u',
+                measurements=(
+                    GlobalIndicatorMeasurementState(
+                        key='turno',
+                        label='Turno',
+                        actual_value='10',
+                        plan_value='12',
+                        actual_kpi_key='construction_kpi_actual',
+                        plan_kpi_key='construction_kpi_plan',
+                    ),
+                    GlobalIndicatorMeasurementState(
+                        key='dia',
+                        label='Día',
+                        actual_value='20',
+                        plan_value='24',
+                        actual_kpi_key='construction_kpi_day_actual',
+                        plan_kpi_key='construction_kpi_day_plan',
+                    ),
+                ),
+            ),
+        )
+    )
+    runtime = create_application_runtime(
+        global_indicators=collection,
+        global_indicators_content_state=ContentState.CONSTRUCTION,
+    )
+    response = runtime.server.test_client().get('/_dash-layout')
+    payload = json.dumps(response.get_json(), ensure_ascii=False)
+
+    assert response.status_code == 200
+    assert 'data-ada-component-key' in payload
+    assert 'global_indicators' in payload
+    assert 'data-ada-content-state' in payload
+    assert 'construction' in payload
+    assert 'En construcción' in payload
+    assert 'data-kpi-inspection-key' in payload
+    assert 'construction_kpi_actual' in payload
+    assert 'construction_kpi_plan' in payload
+    assert 'construction_kpi_day_actual' in payload
+    assert 'construction_kpi_day_plan' in payload
+    assert 'Indicador en construcción' in payload
+    assert 'ada-content-state__overlay' in payload
+    assert any(
+        entry.startswith(f'{ADA_CONTENT_STATE_ASSET_LAYER.target_name}/css/')
+        for entry in runtime.assets.css_entries
+    )
 
 
 def test_alarm_management_summary_mounts_only_when_explicitly_injected(

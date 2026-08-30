@@ -1,4 +1,4 @@
-# Composition root: inyecta branding institucional y versión instalada en Navigation.
+# Composition root: registra Content State sólo cuando existe un consumidor real.
 from __future__ import annotations
 
 import re
@@ -24,6 +24,7 @@ from ada.web.ui.branding import (
     OperationalBrandState,
     create_ada_branding_module,
 )
+from ada.web.ui.content_state import ContentState, create_ada_content_state_module
 from ada.web.ui.core import create_ada_ui_module
 from ada.web.ui.display_status import create_ada_display_status_module
 from ada.web.ui.global_indicator import (
@@ -58,6 +59,7 @@ def create_application_definition(
     tool_display_name: str | None = None,
     navigation_view: AdaNavigationView | None = None,
     global_indicators: GlobalIndicatorCollection | None = None,
+    global_indicators_content_state: ContentState = ContentState.READY,
     alarm_management_summary: AlarmManagementSummaryState | None = None,
     alarm_status: AlarmStatusState | None = None,
     tool_key: str | None = None,
@@ -78,6 +80,8 @@ def create_application_definition(
         home_route_key='home',
     )
     operational_brand = OperationalBrandState(context_name=tool_display_name)
+    # La colección resuelta determina tanto el layout como si corresponde cargar el asset de Content State.
+    resolved_global_indicators = global_indicators or GlobalIndicatorCollection(())
     return WebApplicationDefinition(
         import_name='ada.web.application.generic',
         metadata=ApplicationMetadata(
@@ -93,7 +97,8 @@ def create_application_definition(
                 navigation_view,
                 application_version=application_version,
             ),
-            global_indicators=global_indicators or GlobalIndicatorCollection(()),
+            global_indicators=resolved_global_indicators,
+            global_indicators_content_state=global_indicators_content_state,
             alarm_management_summary=alarm_management_summary,
             alarm_status=alarm_status,
             tool_key=tool_key,
@@ -104,7 +109,8 @@ def create_application_definition(
             create_ada_ui_module(),
             create_ada_display_status_module(),
             create_ada_global_indicator_module(),
-            # Time Status sólo publica CSS/JS cuando existe una instancia real en esta composición.
+            # Content State se carga sólo cuando Global Indicators realmente existe.
+            *(() if not len(resolved_global_indicators) else (create_ada_content_state_module(),)),
             *(() if time_status_summary is None else (create_ada_time_status_module(),)),
             create_ada_alarm_management_summary_module(),
             create_ada_alarm_status_module(),

@@ -6,7 +6,7 @@ from atlanticus.web.modules import WebModule
 # La capa queda después de Display Status y Global Indicator base, pero antes de Time Status.
 ADA_CONTENT_STATE_ASSET_LAYER = AssetLayer(
     name='ada_content_state',
-    load_order=130,
+    load_order=125,
     package='ada.web.ui.content_state',
 )
 

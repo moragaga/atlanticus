@@ -142,6 +142,15 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
+    # Content State entra al gate agregado recién en CS-002, cuando Generic Application ya lo consume.
+    'content-state': AdaCapability(
+        key='content-state',
+        project_root='scopes/ada/web/ui/content-state',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
     'global-indicator': AdaCapability(
         key='global-indicator',
         project_root='scopes/ada/web/ui/global-indicator',
