@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+import inspect
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from ada.configuration.tool_source_consumption import (
     ToolSourceConsumption,
     ToolSourceConsumptionValidationError,
+)
+from ada.configuration.tool_source_operational_participation import (
+    SourceControlPolicy,
+    ToolSourceOperationalParticipation,
+    ToolSourceOperationalParticipationValidationError,
 )
 from ada.web.alarms.management_summary import (
     ADA_ALARM_MANAGEMENT_SUMMARY_ASSET_LAYER,
@@ -19,12 +25,14 @@ from ada.web.alarms.management_summary import (
 from ada.web.alarms.status import ADA_ALARM_STATUS_ASSET_LAYER, AlarmStatusState
 from ada.web.application.generic.application import create_application_definition
 from ada.web.application.generic.runtime import create_application_runtime
-from ada.web.content_state.dependency_resolver import (
-    ContentStateDependency,
-    MissingSourceFreshnessError,
-)
+from ada.web.content_state.dependency_resolver import ContentStateDependency
 from ada.web.shell.header import ADA_OPERATIONAL_HEADER_ASSET_LAYER
 from ada.web.shell.navigation import ADA_NAVIGATION_ASSET_LAYER, AdaNavigationView
+from ada.web.time_status.store_adapter import (
+    TimeStatusSourceTimestamp,
+    TimeStatusStoreSnapshot,
+    TimeStatusTimestampQuality,
+)
 from ada.web.ui.branding import (
     ADA_BRANDING_ASSET_LAYER,
     DEFAULT_OPERATIONAL_BRAND_LOGO_SRC,
@@ -45,10 +53,7 @@ from ada.web.ui.time_status import (
     ADA_TIME_STATUS_ASSET_LAYER,
     TimeStatusDetailSourceState,
     TimeStatusDetailState,
-    TimeStatusFreshnessPolicy,
     TimeStatusSourceCondition,
-    TimeStatusSourceState,
-    TimeStatusSummaryState,
 )
 from atlanticus.web.identity.access import ACCESS_RUNTIME_SERVICE_KEY
 from atlanticus.web.navigation.api import (
@@ -63,7 +68,7 @@ def test_definition_composes_current_ada_web_capabilities() -> None:
 
     assert definition.metadata.application_id == 'ada-generic-application'
     assert definition.metadata.display_name == 'ADA'
-    assert definition.metadata.version == '0.1.32'
+    assert definition.metadata.version == '0.2.0'
     assert tuple(module.name for module in definition.modules) == (
         'ada-ui',
         'ada-display-status',
@@ -107,7 +112,7 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
     assert DEFAULT_OPERATIONAL_BRAND_LOGO_SRC in payload
     assert DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC in payload
     assert DEFAULT_PELAMBRES_BRAND_LOGO_SRC in payload
-    assert 'Versión 0.1.32' in payload
+    assert 'Versión 0.2.0' in payload
     assert runtime.services.contains(ACCESS_RUNTIME_SERVICE_KEY)
     assert runtime.services.contains(NAVIGATION_PRINCIPAL_PROVIDER_SERVICE_KEY)
     assert any(
@@ -368,7 +373,91 @@ def test_public_package_exposes_runtime_factory() -> None:
     assert callable(create_application_runtime)
 
 
-def test_time_status_mounts_under_header_only_when_explicitly_injected(
+_NOW = datetime(2026, 8, 30, 13, 0, tzinfo=UTC)
+
+
+def _source_configuration(
+    *,
+    tool_key: str = 'process',
+    with_dispatch: bool = False,
+    additional_observation_source_keys: tuple[str, ...] = (),
+    pi_pre_degrading_after_seconds: int = 200,
+    pi_degrading_after_seconds: int = 300,
+) -> tuple[ToolSourceConsumption, ToolSourceOperationalParticipation]:
+    source_keys = ['pi']
+    control_sources = [
+        SourceControlPolicy(
+            source_key='pi',
+            pre_degrading_after_seconds=pi_pre_degrading_after_seconds,
+            degrading_after_seconds=pi_degrading_after_seconds,
+        )
+    ]
+    if with_dispatch:
+        source_keys.append('dispatch')
+        control_sources.append(
+            SourceControlPolicy(
+                source_key='dispatch',
+                pre_degrading_after_seconds=400,
+                degrading_after_seconds=600,
+            )
+        )
+    source_keys.extend(additional_observation_source_keys)
+    return (
+        ToolSourceConsumption(tool_key=tool_key, source_keys=tuple(source_keys)),
+        ToolSourceOperationalParticipation(
+            tool_key=tool_key,
+            control_sources=tuple(control_sources),
+            additional_observation_source_keys=additional_observation_source_keys,
+        ),
+    )
+
+
+def _timestamp(
+    key: str,
+    *,
+    age_seconds: int | None = None,
+    quality: TimeStatusTimestampQuality = TimeStatusTimestampQuality.VALID,
+) -> TimeStatusSourceTimestamp:
+    return TimeStatusSourceTimestamp(
+        key=key,
+        quality=quality,
+        timestamp_utc=(
+            _NOW - timedelta(seconds=age_seconds or 0)
+            if quality is TimeStatusTimestampQuality.VALID
+            else None
+        ),
+    )
+
+
+def _time_status_snapshot(
+    *,
+    tool_key: str = 'process',
+    pi_age_seconds: int = 10,
+    pi_quality: TimeStatusTimestampQuality = TimeStatusTimestampQuality.VALID,
+    dispatch_age_seconds: int | None = None,
+    dispatch_quality: TimeStatusTimestampQuality = TimeStatusTimestampQuality.VALID,
+) -> TimeStatusStoreSnapshot:
+    sources = {
+        'pi': _timestamp(
+            'pi',
+            age_seconds=pi_age_seconds,
+            quality=pi_quality,
+        )
+    }
+    if dispatch_age_seconds is not None or dispatch_quality is not TimeStatusTimestampQuality.VALID:
+        sources['dispatch'] = _timestamp(
+            'dispatch',
+            age_seconds=dispatch_age_seconds,
+            quality=dispatch_quality,
+        )
+    return TimeStatusStoreSnapshot(
+        tool_key=tool_key,
+        generated_at_utc=_NOW,
+        sources=sources,
+    )
+
+
+def test_time_status_mounts_from_tool_source_configuration_and_store_snapshot(
     tmp_path,
     monkeypatch,
 ) -> None:
@@ -376,35 +465,31 @@ def test_time_status_mounts_under_header_only_when_explicitly_injected(
     monkeypatch.delenv('ATLANTICUS_ENVIRONMENT', raising=False)
     monkeypatch.setenv('ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID', 'local:test-user')
 
-    policy = TimeStatusFreshnessPolicy(warning_after_seconds=200, stale_after_seconds=300)
-    pi = TimeStatusSourceState(
-        key='pi',
-        label='PI',
-        policy=policy,
-        condition=TimeStatusSourceCondition.FRESH,
-        relative_age_text='hace menos de 10 segundos',
-        timestamp_utc=datetime(2026, 8, 29, 22, 0, tzinfo=UTC),
-    )
-    summary = TimeStatusSummaryState(pi=pi, has_detail=True)
-    detail = TimeStatusDetailState(
-        sources=(TimeStatusDetailSourceState(key='blockgrade', label='BlockGrade', value='Error'),)
+    consumption, participation = _source_configuration(
+        additional_observation_source_keys=('blockgrade',)
     )
     runtime = create_application_runtime(
-        source_consumption=ToolSourceConsumption(
-            tool_key='process',
-            source_keys=('pi', 'blockgrade'),
+        source_consumption=consumption,
+        source_operational_participation=participation,
+        time_status_snapshot=_time_status_snapshot(),
+        time_status_detail=TimeStatusDetailState(
+            sources=(
+                TimeStatusDetailSourceState(
+                    key='blockgrade',
+                    label='BlockGrade',
+                    value='Error',
+                ),
+            )
         ),
-        time_status_summary=summary,
-        time_status_detail=detail,
     )
     response = runtime.server.test_client().get('/_dash-layout')
     payload = json.dumps(response.get_json(), ensure_ascii=False)
 
+    assert response.status_code == 200
     assert 'time_status' in payload
     assert 'data-ada-time-status-tool-key' in payload
     assert 'process' in payload
     assert 'BlockGrade' in payload
-    assert 'informational' in payload
     assert any(
         entry.startswith(f'{ADA_TIME_STATUS_ASSET_LAYER.target_name}/css/')
         for entry in runtime.assets.css_entries
@@ -415,57 +500,37 @@ def test_time_status_mounts_under_header_only_when_explicitly_injected(
     )
 
 
-def test_time_status_assets_are_not_loaded_without_time_status() -> None:
+def test_time_status_assets_are_not_loaded_without_time_status_snapshot() -> None:
     definition = create_application_definition()
 
     assert 'ada-time-status' not in tuple(module.name for module in definition.modules)
 
 
-def test_time_status_definition_adds_module_when_summary_is_injected() -> None:
-    policy = TimeStatusFreshnessPolicy(warning_after_seconds=200, stale_after_seconds=300)
-    summary = TimeStatusSummaryState(
-        pi=TimeStatusSourceState(
-            key='pi',
-            label='PI',
-            policy=policy,
-            condition=TimeStatusSourceCondition.FRESH,
-            relative_age_text='hace menos de 10 segundos',
-            timestamp_utc=datetime(2026, 8, 29, 22, 0, tzinfo=UTC),
-        )
-    )
+def test_time_status_definition_adds_module_when_snapshot_is_injected() -> None:
+    consumption, participation = _source_configuration()
 
     definition = create_application_definition(
-        source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
-        time_status_summary=summary,
+        source_consumption=consumption,
+        source_operational_participation=participation,
+        time_status_snapshot=_time_status_snapshot(),
     )
 
     assert 'ada-time-status' in tuple(module.name for module in definition.modules)
 
 
-def test_time_status_without_additional_sources_renders_explicit_empty_detail(
+def test_time_status_without_additional_sources_preserves_explicit_empty_detail(
     tmp_path,
     monkeypatch,
 ) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv('ATLANTICUS_ENVIRONMENT', raising=False)
     monkeypatch.setenv('ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID', 'local:test-user')
+    consumption, participation = _source_configuration()
 
-    policy = TimeStatusFreshnessPolicy(warning_after_seconds=200, stale_after_seconds=300)
-    summary = TimeStatusSummaryState(
-        pi=TimeStatusSourceState(
-            key='pi',
-            label='PI',
-            policy=policy,
-            condition=TimeStatusSourceCondition.FRESH,
-            relative_age_text='hace menos de 10 segundos',
-            timestamp_utc=datetime(2026, 8, 30, 13, 0, tzinfo=UTC),
-        ),
-        has_detail=True,
-    )
     runtime = create_application_runtime(
-        source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
-        time_status_summary=summary,
-        time_status_detail=None,
+        source_consumption=consumption,
+        source_operational_participation=participation,
+        time_status_snapshot=_time_status_snapshot(),
     )
     response = runtime.server.test_client().get('/_dash-layout')
     payload = json.dumps(response.get_json(), ensure_ascii=False)
@@ -473,6 +538,94 @@ def test_time_status_without_additional_sources_renders_explicit_empty_detail(
     assert response.status_code == 200
     assert 'Sin fuentes adicionales' in payload
     assert 'Esta herramienta no consume fuentes de datos adicionales.' in payload
+
+
+def test_generic_application_public_api_no_longer_accepts_manual_time_status_summary() -> None:
+    assert 'time_status_summary' not in inspect.signature(create_application_definition).parameters
+    assert 'time_status_summary' not in inspect.signature(create_application_runtime).parameters
+    assert 'time_status_snapshot' in inspect.signature(create_application_definition).parameters
+    assert (
+        'source_operational_participation'
+        in inspect.signature(create_application_definition).parameters
+    )
+
+
+def test_control_thresholds_are_derived_from_tool_operational_participation() -> None:
+    consumption, participation = _source_configuration(
+        pi_pre_degrading_after_seconds=200,
+        pi_degrading_after_seconds=300,
+    )
+
+    definition = create_application_definition(
+        source_consumption=consumption,
+        source_operational_participation=participation,
+        time_status_snapshot=_time_status_snapshot(pi_age_seconds=240),
+    )
+    summary = definition.layout.keywords['time_status_summary']
+
+    assert summary.pi.policy.warning_after_seconds == 200
+    assert summary.pi.policy.stale_after_seconds == 300
+    assert summary.pi.condition is TimeStatusSourceCondition.PREVENTIVE
+
+
+def test_changing_tool_threshold_changes_initial_time_status_without_other_policy_input() -> None:
+    consumption, participation = _source_configuration(
+        pi_pre_degrading_after_seconds=250,
+        pi_degrading_after_seconds=350,
+    )
+
+    definition = create_application_definition(
+        source_consumption=consumption,
+        source_operational_participation=participation,
+        time_status_snapshot=_time_status_snapshot(pi_age_seconds=240),
+    )
+    summary = definition.layout.keywords['time_status_summary']
+
+    assert summary.pi.policy.warning_after_seconds == 250
+    assert summary.pi.policy.stale_after_seconds == 350
+    assert summary.pi.condition is TimeStatusSourceCondition.FRESH
+
+
+def test_dispatch_is_absent_when_not_configured_even_if_snapshot_contains_it() -> None:
+    consumption, participation = _source_configuration()
+
+    definition = create_application_definition(
+        source_consumption=consumption,
+        source_operational_participation=participation,
+        time_status_snapshot=_time_status_snapshot(dispatch_age_seconds=700),
+    )
+
+    assert definition.layout.keywords['time_status_summary'].dispatch is None
+
+
+def test_dispatch_uses_its_own_optional_control_thresholds_when_configured() -> None:
+    consumption, participation = _source_configuration(with_dispatch=True)
+
+    definition = create_application_definition(
+        source_consumption=consumption,
+        source_operational_participation=participation,
+        time_status_snapshot=_time_status_snapshot(dispatch_age_seconds=450),
+    )
+    dispatch = definition.layout.keywords['time_status_summary'].dispatch
+
+    assert dispatch is not None
+    assert dispatch.policy.warning_after_seconds == 400
+    assert dispatch.policy.stale_after_seconds == 600
+    assert dispatch.condition is TimeStatusSourceCondition.PREVENTIVE
+
+
+def test_configured_dispatch_missing_from_snapshot_becomes_data_error() -> None:
+    consumption, participation = _source_configuration(with_dispatch=True)
+
+    definition = create_application_definition(
+        source_consumption=consumption,
+        source_operational_participation=participation,
+        time_status_snapshot=_time_status_snapshot(),
+    )
+    dispatch = definition.layout.keywords['time_status_summary'].dispatch
+
+    assert dispatch is not None
+    assert dispatch.condition is TimeStatusSourceCondition.DATA_ERROR
 
 
 def _content_state_test_collection() -> GlobalIndicatorCollection:
@@ -505,35 +658,6 @@ def _content_state_test_collection() -> GlobalIndicatorCollection:
     )
 
 
-def _time_status_summary(
-    *,
-    pi_condition: TimeStatusSourceCondition,
-    dispatch_condition: TimeStatusSourceCondition | None = None,
-) -> TimeStatusSummaryState:
-    policy = TimeStatusFreshnessPolicy(warning_after_seconds=200, stale_after_seconds=300)
-
-    def source(key: str, condition: TimeStatusSourceCondition) -> TimeStatusSourceState:
-        return TimeStatusSourceState(
-            key=key,
-            label=key.upper(),
-            policy=policy,
-            condition=condition,
-            relative_age_text=(
-                None if condition is TimeStatusSourceCondition.DATA_ERROR else 'hace 10 segundos'
-            ),
-            timestamp_utc=(
-                None
-                if condition is TimeStatusSourceCondition.DATA_ERROR
-                else datetime(2026, 8, 30, 13, 0, tzinfo=UTC)
-            ),
-        )
-
-    return TimeStatusSummaryState(
-        pi=source('pi', pi_condition),
-        dispatch=(None if dispatch_condition is None else source('dispatch', dispatch_condition)),
-    )
-
-
 def test_global_indicators_runtime_binding_resolves_initial_stale_and_preserves_kpi_dom(
     tmp_path,
     monkeypatch,
@@ -541,16 +665,16 @@ def test_global_indicators_runtime_binding_resolves_initial_stale_and_preserves_
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv('ATLANTICUS_ENVIRONMENT', raising=False)
     monkeypatch.setenv('ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID', 'local:test-user')
+    consumption, participation = _source_configuration()
 
     runtime = create_application_runtime(
         global_indicators=_content_state_test_collection(),
         content_state_dependencies=(
             ContentStateDependency(component_key='global_indicators', source_keys=('pi',)),
         ),
-        source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
-        time_status_summary=_time_status_summary(
-            pi_condition=TimeStatusSourceCondition.HARD_STALE,
-        ),
+        source_consumption=consumption,
+        source_operational_participation=participation,
+        time_status_snapshot=_time_status_snapshot(pi_age_seconds=360),
     )
     response = runtime.server.test_client().get('/_dash-layout')
     payload = json.dumps(response.get_json(), ensure_ascii=False)
@@ -567,6 +691,10 @@ def test_global_indicators_runtime_binding_resolves_initial_stale_and_preserves_
 
 
 def test_global_indicators_runtime_binding_resolves_source_error_per_own_dependencies() -> None:
+    consumption, participation = _source_configuration(
+        tool_key='integrated_operations',
+        with_dispatch=True,
+    )
     definition = create_application_definition(
         global_indicators=_content_state_test_collection(),
         content_state_dependencies=(
@@ -575,17 +703,16 @@ def test_global_indicators_runtime_binding_resolves_source_error_per_own_depende
                 source_keys=('pi', 'dispatch'),
             ),
         ),
-        source_consumption=ToolSourceConsumption(
+        source_consumption=consumption,
+        source_operational_participation=participation,
+        time_status_snapshot=_time_status_snapshot(
             tool_key='integrated_operations',
-            source_keys=('pi', 'dispatch'),
-        ),
-        time_status_summary=_time_status_summary(
-            pi_condition=TimeStatusSourceCondition.HARD_STALE,
-            dispatch_condition=TimeStatusSourceCondition.DATA_ERROR,
+            pi_age_seconds=360,
+            dispatch_quality=TimeStatusTimestampQuality.INVALID,
         ),
     )
 
-    assert definition.metadata.version == '0.1.32'
+    assert definition.metadata.version == '0.2.0'
     assert (
         definition.layout.keywords['global_indicators_runtime_state'] is ContentState.SOURCE_ERROR
     )
@@ -599,6 +726,7 @@ def test_construction_precedence_is_preserved_over_runtime_source_error(
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv('ATLANTICUS_ENVIRONMENT', raising=False)
     monkeypatch.setenv('ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID', 'local:test-user')
+    consumption, participation = _source_configuration()
 
     runtime = create_application_runtime(
         global_indicators=_content_state_test_collection(),
@@ -606,9 +734,10 @@ def test_construction_precedence_is_preserved_over_runtime_source_error(
         content_state_dependencies=(
             ContentStateDependency(component_key='global_indicators', source_keys=('pi',)),
         ),
-        source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
-        time_status_summary=_time_status_summary(
-            pi_condition=TimeStatusSourceCondition.DATA_ERROR,
+        source_consumption=consumption,
+        source_operational_participation=participation,
+        time_status_snapshot=_time_status_snapshot(
+            pi_quality=TimeStatusTimestampQuality.INVALID,
         ),
     )
     payload = json.dumps(
@@ -622,23 +751,26 @@ def test_construction_precedence_is_preserved_over_runtime_source_error(
     assert 'runtime_shift_actual' in payload
 
 
-def test_content_state_dependency_requires_required_time_status_source() -> None:
-    with pytest.raises(MissingSourceFreshnessError, match='dispatch'):
+def test_content_state_dependency_rejects_additional_observation_as_degrading_source() -> None:
+    consumption, participation = _source_configuration(
+        additional_observation_source_keys=('blockgrade',)
+    )
+
+    with pytest.raises(
+        ToolSourceOperationalParticipationValidationError,
+        match="not declared as CONTROL: 'blockgrade'",
+    ):
         create_application_definition(
             global_indicators=_content_state_test_collection(),
             content_state_dependencies=(
                 ContentStateDependency(
                     component_key='global_indicators',
-                    source_keys=('pi', 'dispatch'),
+                    source_keys=('blockgrade',),
                 ),
             ),
-            source_consumption=ToolSourceConsumption(
-                tool_key='process',
-                source_keys=('pi', 'dispatch'),
-            ),
-            time_status_summary=_time_status_summary(
-                pi_condition=TimeStatusSourceCondition.FRESH,
-            ),
+            source_consumption=consumption,
+            source_operational_participation=participation,
+            time_status_snapshot=_time_status_snapshot(),
         )
 
 
@@ -647,11 +779,7 @@ def test_content_state_dependency_rejects_component_not_adopted_by_generic_appli
         create_application_definition(
             content_state_dependencies=(
                 ContentStateDependency(component_key='other_component', source_keys=('pi',)),
-            ),
-            source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
-            time_status_summary=_time_status_summary(
-                pi_condition=TimeStatusSourceCondition.FRESH,
-            ),
+            )
         )
 
 
@@ -660,14 +788,21 @@ def test_source_driven_composition_requires_tool_source_consumption() -> None:
         ToolSourceConsumptionValidationError,
         match='requires ToolSourceConsumption',
     ):
+        create_application_definition(time_status_snapshot=_time_status_snapshot())
+
+
+def test_source_driven_composition_requires_operational_participation() -> None:
+    with pytest.raises(
+        ToolSourceOperationalParticipationValidationError,
+        match='requires ToolSourceOperationalParticipation',
+    ):
         create_application_definition(
-            time_status_summary=_time_status_summary(
-                pi_condition=TimeStatusSourceCondition.FRESH,
-            )
+            source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
+            time_status_snapshot=_time_status_snapshot(),
         )
 
 
-def test_time_status_required_source_must_be_declared_by_tool_configuration() -> None:
+def test_pi_must_be_explicitly_consumed_by_ada_tool_configuration() -> None:
     with pytest.raises(
         ToolSourceConsumptionValidationError,
         match="Source is not declared by Tool Configuration: 'pi'",
@@ -677,22 +812,148 @@ def test_time_status_required_source_must_be_declared_by_tool_configuration() ->
                 tool_key='process',
                 source_keys=('blockgrade',),
             ),
-            time_status_summary=_time_status_summary(
-                pi_condition=TimeStatusSourceCondition.FRESH,
+            source_operational_participation=ToolSourceOperationalParticipation(
+                tool_key='process',
+                additional_observation_source_keys=('blockgrade',),
             ),
+            time_status_snapshot=_time_status_snapshot(),
+        )
+
+
+def test_pi_must_participate_as_control_for_ada_generic_application() -> None:
+    with pytest.raises(
+        ToolSourceOperationalParticipationValidationError,
+        match='requires PI as a CONTROL source',
+    ):
+        create_application_definition(
+            source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
+            source_operational_participation=ToolSourceOperationalParticipation(
+                tool_key='process',
+                additional_observation_source_keys=('pi',),
+            ),
+            time_status_snapshot=_time_status_snapshot(),
+        )
+
+
+def test_dispatch_when_consumed_must_participate_as_optional_control_source() -> None:
+    with pytest.raises(
+        ToolSourceOperationalParticipationValidationError,
+        match='Dispatch declared by Tool Source Consumption must participate as CONTROL',
+    ):
+        create_application_definition(
+            source_consumption=ToolSourceConsumption(
+                tool_key='process',
+                source_keys=('pi', 'dispatch'),
+            ),
+            source_operational_participation=ToolSourceOperationalParticipation(
+                tool_key='process',
+                control_sources=(SourceControlPolicy('pi', 200, 300),),
+                additional_observation_source_keys=('dispatch',),
+            ),
+            time_status_snapshot=_time_status_snapshot(),
+        )
+
+
+def test_ada_generic_application_rejects_other_control_source_keys() -> None:
+    with pytest.raises(
+        ToolSourceOperationalParticipationValidationError,
+        match="supports only PI and Dispatch as CONTROL sources: 'blockgrade'",
+    ):
+        create_application_definition(
+            source_consumption=ToolSourceConsumption(
+                tool_key='process',
+                source_keys=('pi', 'blockgrade'),
+            ),
+            source_operational_participation=ToolSourceOperationalParticipation(
+                tool_key='process',
+                control_sources=(
+                    SourceControlPolicy('pi', 200, 300),
+                    SourceControlPolicy('blockgrade', 400, 600),
+                ),
+            ),
+            time_status_snapshot=_time_status_snapshot(),
+        )
+
+
+def test_time_status_snapshot_must_match_tool_scope() -> None:
+    consumption, participation = _source_configuration()
+
+    with pytest.raises(
+        ToolSourceOperationalParticipationValidationError,
+        match='snapshot tool key must match',
+    ):
+        create_application_definition(
+            source_consumption=consumption,
+            source_operational_participation=participation,
+            time_status_snapshot=_time_status_snapshot(tool_key='integrated_operations'),
         )
 
 
 def test_time_status_detail_source_must_be_declared_by_tool_configuration() -> None:
+    consumption, participation = _source_configuration()
+
     with pytest.raises(
         ToolSourceConsumptionValidationError,
         match="Source is not declared by Tool Configuration: 'blockgrade'",
     ):
         create_application_definition(
-            source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
-            time_status_summary=_time_status_summary(
-                pi_condition=TimeStatusSourceCondition.FRESH,
+            source_consumption=consumption,
+            source_operational_participation=participation,
+            time_status_snapshot=_time_status_snapshot(),
+            time_status_detail=TimeStatusDetailState(
+                sources=(
+                    TimeStatusDetailSourceState(
+                        key='blockgrade',
+                        label='BlockGrade',
+                        value='Fresh',
+                    ),
+                )
             ),
+        )
+
+
+def test_time_status_detail_source_must_be_additional_observation() -> None:
+    consumption = ToolSourceConsumption(
+        tool_key='process',
+        source_keys=('pi', 'blockgrade'),
+    )
+    participation = ToolSourceOperationalParticipation(
+        tool_key='process',
+        control_sources=(SourceControlPolicy('pi', 200, 300),),
+    )
+
+    with pytest.raises(
+        ToolSourceOperationalParticipationValidationError,
+        match="not declared as ADDITIONAL OBSERVATION: 'blockgrade'",
+    ):
+        create_application_definition(
+            source_consumption=consumption,
+            source_operational_participation=participation,
+            time_status_snapshot=_time_status_snapshot(),
+            time_status_detail=TimeStatusDetailState(
+                sources=(
+                    TimeStatusDetailSourceState(
+                        key='blockgrade',
+                        label='BlockGrade',
+                        value='Fresh',
+                    ),
+                )
+            ),
+        )
+
+
+def test_time_status_detail_requires_time_status_snapshot() -> None:
+    consumption, participation = _source_configuration(
+        additional_observation_source_keys=('blockgrade',)
+    )
+
+    with pytest.raises(
+        ToolSourceOperationalParticipationValidationError,
+        match='Time Status detail requires Time Status snapshot',
+    ):
+        create_application_definition(
+            source_consumption=consumption,
+            source_operational_participation=participation,
             time_status_detail=TimeStatusDetailState(
                 sources=(
                     TimeStatusDetailSourceState(
@@ -706,6 +967,8 @@ def test_time_status_detail_source_must_be_declared_by_tool_configuration() -> N
 
 
 def test_content_state_dependency_source_must_be_declared_by_tool_configuration() -> None:
+    consumption, participation = _source_configuration()
+
     with pytest.raises(
         ToolSourceConsumptionValidationError,
         match="Source is not declared by Tool Configuration: 'dispatch'",
@@ -718,9 +981,7 @@ def test_content_state_dependency_source_must_be_declared_by_tool_configuration(
                     source_keys=('pi', 'dispatch'),
                 ),
             ),
-            source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
-            time_status_summary=_time_status_summary(
-                pi_condition=TimeStatusSourceCondition.FRESH,
-                dispatch_condition=TimeStatusSourceCondition.FRESH,
-            ),
+            source_consumption=consumption,
+            source_operational_participation=participation,
+            time_status_snapshot=_time_status_snapshot(),
         )

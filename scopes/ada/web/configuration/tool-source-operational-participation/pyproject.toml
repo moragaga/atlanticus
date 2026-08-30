@@ -21,7 +21,7 @@ dev = [
 ]
 
 [tool.uv.sources]
-ada-configuration-tool-source-consumption = { path = "../tool-source-consumption" }
+ada-configuration-tool-source-consumption = { path = "../tool-source-consumption", editable = true }
 
 [tool.setuptools]
 package-dir = {"" = "src"}

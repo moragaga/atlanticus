@@ -24,17 +24,20 @@ def _global_indicator_graph(*sources: str) -> ContentStateDependencyGraph:
     )
 
 
-def test_graph_exposes_reverse_source_to_component_index() -> None:
+def test_graph_exposes_dynamic_reverse_source_to_component_index() -> None:
     graph = ContentStateDependencyGraph(
         (
             ContentStateDependency('global_indicators', ('pi',)),
             ContentStateDependency('dispatch_summary', ('dispatch',)),
+            ContentStateDependency('grade_panel', ('blockgrade',)),
             ContentStateDependency('integrated_panel', ('pi', 'dispatch')),
         )
     )
 
     assert graph.components_for_source('pi') == ('global_indicators', 'integrated_panel')
     assert graph.components_for_source('dispatch') == ('dispatch_summary', 'integrated_panel')
+    assert graph.components_for_source('blockgrade') == ('grade_panel',)
+    assert graph.components_for_source('unused_source') == ()
     assert graph.sources_for_component('integrated_panel') == ('pi', 'dispatch')
     assert graph.sources_for_component('unknown_component') == ()
 
@@ -65,7 +68,7 @@ def test_graph_rejects_non_dependency_values() -> None:
         (SourceFreshnessCondition.DATA_ERROR, ContentState.SOURCE_ERROR),
     ),
 )
-def test_graph_resolves_single_pi_dependency_from_cs003_policy(
+def test_graph_resolves_single_source_dependency(
     condition: SourceFreshnessCondition,
     expected: ContentState,
 ) -> None:
@@ -77,7 +80,7 @@ def test_graph_resolves_single_pi_dependency_from_cs003_policy(
     assert resolved == {'global_indicators': expected}
 
 
-def test_component_with_pi_and_dispatch_uses_its_own_or_semantics() -> None:
+def test_component_with_multiple_sources_uses_its_own_or_semantics() -> None:
     graph = _global_indicator_graph('pi', 'dispatch')
 
     assert graph.resolve(
@@ -112,27 +115,33 @@ def test_missing_required_source_condition_fails_explicitly() -> None:
         graph.resolve({'pi': SourceFreshnessCondition.FRESH})
 
 
-def test_extra_supported_control_condition_is_allowed_when_not_referenced() -> None:
+def test_extra_canonical_condition_is_allowed_when_not_referenced() -> None:
     graph = _global_indicator_graph('pi')
 
     assert graph.resolve(
         {
             'pi': SourceFreshnessCondition.FRESH,
-            'dispatch': SourceFreshnessCondition.DATA_ERROR,
+            'blockgrade': SourceFreshnessCondition.DATA_ERROR,
         }
     ) == {'global_indicators': ContentState.READY}
 
 
-def test_informational_source_cannot_enter_resolution_snapshot() -> None:
+def test_arbitrary_canonical_source_can_be_resolved_when_dependency_is_declared() -> None:
+    graph = _global_indicator_graph('future_source')
+
+    assert graph.resolve({'future_source': SourceFreshnessCondition.HARD_STALE}) == {
+        'global_indicators': ContentState.STALE
+    }
+
+
+def test_resolver_rejects_invalid_source_key_in_resolution_snapshot() -> None:
     graph = _global_indicator_graph('pi')
 
-    with pytest.raises(
-        ContentStateDependencyError, match='Unsupported Content State control source'
-    ):
+    with pytest.raises(ContentStateDependencyError, match='Invalid Content State source key'):
         graph.resolve(
             {
                 'pi': SourceFreshnessCondition.FRESH,
-                'blockgrade': SourceFreshnessCondition.DATA_ERROR,
+                'invalid-source': SourceFreshnessCondition.DATA_ERROR,
             }
         )
 

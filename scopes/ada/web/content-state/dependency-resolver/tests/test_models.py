@@ -18,19 +18,25 @@ def test_dependency_normalizes_source_keys_to_tuple() -> None:
     assert dependency.source_keys == ('pi',)
 
 
-def test_dependency_accepts_pi_and_dispatch_together() -> None:
+def test_dependency_accepts_multiple_canonical_sources() -> None:
     dependency = ContentStateDependency(
         component_key='operational_panel',
-        source_keys=('pi', 'dispatch'),
+        source_keys=('pi', 'dispatch', 'blockgrade'),
     )
 
-    assert dependency.source_keys == ('pi', 'dispatch')
+    assert dependency.source_keys == ('pi', 'dispatch', 'blockgrade')
 
 
 @pytest.mark.parametrize('component_key', ('', 'GlobalIndicators', 'global-indicators', '1global'))
 def test_dependency_rejects_invalid_component_key(component_key: str) -> None:
     with pytest.raises(ContentStateDependencyError, match='Invalid Content State component key'):
         ContentStateDependency(component_key=component_key, source_keys=('pi',))
+
+
+@pytest.mark.parametrize('source_key', ('', 'BlockGrade', 'block-grade', '1source'))
+def test_dependency_rejects_invalid_source_key(source_key: str) -> None:
+    with pytest.raises(ContentStateDependencyError, match='Invalid Content State source key'):
+        ContentStateDependency(component_key='global_indicators', source_keys=(source_key,))
 
 
 def test_dependency_requires_at_least_one_source() -> None:
@@ -43,14 +49,4 @@ def test_dependency_rejects_duplicate_sources() -> None:
         ContentStateDependency(
             component_key='global_indicators',
             source_keys=('pi', 'pi'),
-        )
-
-
-def test_dependency_rejects_informational_source() -> None:
-    with pytest.raises(
-        ContentStateDependencyError, match='Unsupported Content State control source'
-    ):
-        ContentStateDependency(
-            component_key='global_indicators',
-            source_keys=('blockgrade',),
         )

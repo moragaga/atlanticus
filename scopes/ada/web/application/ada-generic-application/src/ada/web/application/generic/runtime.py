@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 from ada.configuration.tool_source_consumption import ToolSourceConsumption
+from ada.configuration.tool_source_operational_participation import (
+    ToolSourceOperationalParticipation,
+)
 from ada.web.alarms.management_summary import AlarmManagementSummaryState
 from ada.web.alarms.status import AlarmStatusState
 from ada.web.application.generic.application import create_application_definition
 from ada.web.content_state.dependency_resolver import ContentStateDependency
 from ada.web.shell.navigation import AdaNavigationView
+from ada.web.time_status.store_adapter import TimeStatusStoreSnapshot
 from ada.web.ui.content_state import ContentState
 from ada.web.ui.global_indicator import GlobalIndicatorCollection
-from ada.web.ui.time_status import TimeStatusDetailState, TimeStatusSummaryState
+from ada.web.ui.time_status import TimeStatusDetailState
 from atlanticus.web.application import create_web_application
 from atlanticus.web.models import WebApplicationRuntime
 
@@ -23,7 +27,8 @@ def create_application_runtime(
     alarm_management_summary: AlarmManagementSummaryState | None = None,
     alarm_status: AlarmStatusState | None = None,
     source_consumption: ToolSourceConsumption | None = None,
-    time_status_summary: TimeStatusSummaryState | None = None,
+    source_operational_participation: ToolSourceOperationalParticipation | None = None,
+    time_status_snapshot: TimeStatusStoreSnapshot | None = None,
     time_status_detail: TimeStatusDetailState | None = None,
 ) -> WebApplicationRuntime:
     return create_web_application(
@@ -36,7 +41,8 @@ def create_application_runtime(
             alarm_management_summary=alarm_management_summary,
             alarm_status=alarm_status,
             source_consumption=source_consumption,
-            time_status_summary=time_status_summary,
+            source_operational_participation=source_operational_participation,
+            time_status_snapshot=time_status_snapshot,
             time_status_detail=time_status_detail,
         )
     )

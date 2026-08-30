@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-web-content-state-dependency-resolver"
-version = "0.1.0"
+version = "0.2.0"
 description = "Resolver puro de dependencias entre fuentes de control y componentes Web ADA"
 requires-python = "==3.14.2"
 classifiers = [

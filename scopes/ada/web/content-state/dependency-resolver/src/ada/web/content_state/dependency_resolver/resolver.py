@@ -10,18 +10,14 @@ from ada.web.content_state.core import (
 )
 
 from .errors import ContentStateDependencyError, MissingSourceFreshnessError
-from .models import (
-    ContentStateDependency,
-    require_component_key,
-    require_control_source_key,
-)
+from .models import ContentStateDependency, require_component_key, require_source_key
 
 
 class ContentStateDependencyGraph:
     def __init__(self, dependencies: Iterable[ContentStateDependency] = ()) -> None:
         normalized = tuple(dependencies)
         by_component: dict[str, ContentStateDependency] = {}
-        by_source: dict[str, list[str]] = {'pi': [], 'dispatch': []}
+        by_source: dict[str, list[str]] = {}
 
         for dependency in normalized:
             if not isinstance(dependency, ContentStateDependency):
@@ -32,7 +28,7 @@ class ContentStateDependencyGraph:
                 )
             by_component[dependency.component_key] = dependency
             for source_key in dependency.source_keys:
-                by_source[source_key].append(dependency.component_key)
+                by_source.setdefault(source_key, []).append(dependency.component_key)
 
         self._dependencies = normalized
         self._by_component = MappingProxyType(by_component)
@@ -45,8 +41,8 @@ class ContentStateDependencyGraph:
         return self._dependencies
 
     def components_for_source(self, source_key: str) -> tuple[str, ...]:
-        require_control_source_key(source_key)
-        return self._by_source[source_key]
+        require_source_key(source_key)
+        return self._by_source.get(source_key, ())
 
     def sources_for_component(self, component_key: str) -> tuple[str, ...]:
         require_component_key(component_key)
@@ -80,6 +76,6 @@ def _validate_source_conditions(
     if not isinstance(source_conditions, Mapping):
         raise TypeError('Source freshness conditions must be a mapping')
     for source_key, condition in source_conditions.items():
-        require_control_source_key(source_key)
+        require_source_key(source_key)
         if not isinstance(condition, SourceFreshnessCondition):
             raise TypeError('Source freshness mapping requires SourceFreshnessCondition values')

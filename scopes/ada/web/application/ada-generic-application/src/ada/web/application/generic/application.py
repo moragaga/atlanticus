@@ -10,6 +10,12 @@ from ada.configuration.tool_source_consumption import (
     ToolSourceConsumption,
     ToolSourceConsumptionValidationError,
 )
+from ada.configuration.tool_source_operational_participation import (
+    SourceControlPolicy,
+    ToolSourceOperationalParticipation,
+    ToolSourceOperationalParticipationValidationError,
+    validate_operational_participation_against_consumption,
+)
 from ada.web.alarms.management_summary import (
     AlarmManagementSummaryState,
     create_ada_alarm_management_summary_module,
@@ -26,6 +32,10 @@ from ada.web.content_state.dependency_resolver import (
 )
 from ada.web.shell.header import create_ada_operational_header_module
 from ada.web.shell.navigation import AdaNavigationView, create_ada_navigation_presentation_module
+from ada.web.time_status.store_adapter import (
+    TimeStatusStoreSnapshot,
+    TimeStatusTimestampQuality,
+)
 from ada.web.ui.branding import (
     DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC,
     DEFAULT_PELAMBRES_BRAND_LOGO_SRC,
@@ -41,9 +51,11 @@ from ada.web.ui.global_indicator import (
 )
 from ada.web.ui.time_status import (
     TimeStatusDetailState,
+    TimeStatusFreshnessPolicy,
     TimeStatusSourceCondition,
     TimeStatusSummaryState,
     create_ada_time_status_module,
+    resolve_time_status_source_state,
 )
 from atlanticus.web.identity.access import AccessRuntime
 from atlanticus.web.identity.local import LocalIdentityProvider
@@ -62,6 +74,8 @@ _APPLICATION_ROOT = Path(__file__).resolve().parents[5]
 _APPLICATION_DISTRIBUTION = 'ada-generic-application'
 _SUBJECT_SEPARATOR = re.compile(r'[-._]+')
 _SUPPORTED_CONTENT_STATE_COMPONENT_KEYS = frozenset({'global_indicators'})
+_SUPPORTED_ADA_CONTROL_SOURCE_KEYS = frozenset({'pi', 'dispatch'})
+_TIME_STATUS_SOURCE_LABELS = {'pi': 'PI', 'dispatch': 'Dispatch'}
 _TIME_STATUS_FRESHNESS = {
     TimeStatusSourceCondition.FRESH: SourceFreshnessCondition.FRESH,
     TimeStatusSourceCondition.PREVENTIVE: SourceFreshnessCondition.PREVENTIVE,
@@ -80,7 +94,8 @@ def create_application_definition(
     alarm_management_summary: AlarmManagementSummaryState | None = None,
     alarm_status: AlarmStatusState | None = None,
     source_consumption: ToolSourceConsumption | None = None,
-    time_status_summary: TimeStatusSummaryState | None = None,
+    source_operational_participation: ToolSourceOperationalParticipation | None = None,
+    time_status_snapshot: TimeStatusStoreSnapshot | None = None,
     time_status_detail: TimeStatusDetailState | None = None,
 ) -> WebApplicationDefinition:
     application_version = version(_APPLICATION_DISTRIBUTION)
@@ -103,11 +118,16 @@ def create_application_definition(
         dependency_graph,
         has_global_indicators=bool(len(resolved_global_indicators)),
     )
-    _validate_source_consumption(
-        source_consumption,
+    _validate_source_configuration(
+        source_consumption=source_consumption,
+        participation=source_operational_participation,
         dependency_graph=dependency_graph,
-        time_status_summary=time_status_summary,
+        time_status_snapshot=time_status_snapshot,
         time_status_detail=time_status_detail,
+    )
+    time_status_summary = _resolve_time_status_summary(
+        snapshot=time_status_snapshot,
+        participation=source_operational_participation,
     )
     tool_key = source_consumption.tool_key if source_consumption is not None else None
     source_conditions = _resolve_source_freshness(time_status_summary)
@@ -167,33 +187,196 @@ def create_application_definition(
     )
 
 
-def _validate_source_consumption(
-    source_consumption: ToolSourceConsumption | None,
+def _validate_source_configuration(
     *,
+    source_consumption: ToolSourceConsumption | None,
+    participation: ToolSourceOperationalParticipation | None,
     dependency_graph: ContentStateDependencyGraph,
-    time_status_summary: TimeStatusSummaryState | None,
+    time_status_snapshot: TimeStatusStoreSnapshot | None,
+    time_status_detail: TimeStatusDetailState | None,
+) -> None:
+    source_driven = bool(
+        dependency_graph.dependencies
+        or time_status_snapshot is not None
+        or time_status_detail is not None
+    )
+    if source_driven and source_consumption is None:
+        raise ToolSourceConsumptionValidationError(
+            'Source-driven Generic Application composition requires ToolSourceConsumption'
+        )
+    if source_driven and participation is None:
+        raise ToolSourceOperationalParticipationValidationError(
+            'Source-driven Generic Application composition requires '
+            'ToolSourceOperationalParticipation'
+        )
+    if participation is None:
+        return
+    if source_consumption is None:
+        raise ToolSourceConsumptionValidationError(
+            'ToolSourceOperationalParticipation requires ToolSourceConsumption'
+        )
+
+    validate_operational_participation_against_consumption(
+        consumption=source_consumption,
+        participation=participation,
+    )
+    _validate_runtime_source_membership(
+        source_consumption=source_consumption,
+        dependency_graph=dependency_graph,
+        time_status_detail=time_status_detail,
+    )
+    _validate_ada_operational_participation(
+        source_consumption=source_consumption,
+        participation=participation,
+    )
+    if (
+        time_status_snapshot is not None
+        and time_status_snapshot.tool_key != source_consumption.tool_key
+    ):
+        raise ToolSourceOperationalParticipationValidationError(
+            'Time Status snapshot tool key must match Tool Source Consumption tool key'
+        )
+    if time_status_detail is not None and time_status_snapshot is None:
+        raise ToolSourceOperationalParticipationValidationError(
+            'Time Status detail requires Time Status snapshot'
+        )
+    _validate_observation_detail(
+        detail=time_status_detail,
+        participation=participation,
+    )
+    _validate_control_dependencies(
+        graph=dependency_graph,
+        participation=participation,
+    )
+
+
+def _validate_runtime_source_membership(
+    *,
+    source_consumption: ToolSourceConsumption,
+    dependency_graph: ContentStateDependencyGraph,
     time_status_detail: TimeStatusDetailState | None,
 ) -> None:
     required_source_keys: list[str] = []
-    if time_status_summary is not None:
-        required_source_keys.extend(source.key for source in time_status_summary.required_sources)
     if time_status_detail is not None:
         required_source_keys.extend(source.key for source in time_status_detail.sources)
     for dependency in dependency_graph.dependencies:
         required_source_keys.extend(dependency.source_keys)
 
-    if not required_source_keys:
-        return
-    if source_consumption is None:
-        raise ToolSourceConsumptionValidationError(
-            'Source-driven Generic Application composition requires ToolSourceConsumption'
-        )
     declared_source_keys = set(source_consumption.source_keys)
     for source_key in dict.fromkeys(required_source_keys):
         if source_key not in declared_source_keys:
             raise ToolSourceConsumptionValidationError(
                 f'Source is not declared by Tool Configuration: {source_key!r}'
             )
+
+
+def _validate_ada_operational_participation(
+    *,
+    source_consumption: ToolSourceConsumption,
+    participation: ToolSourceOperationalParticipation,
+) -> None:
+    if 'pi' not in source_consumption.source_keys:
+        raise ToolSourceConsumptionValidationError(
+            "Source is not declared by Tool Configuration: 'pi'"
+        )
+    if not participation.controls('pi'):
+        raise ToolSourceOperationalParticipationValidationError(
+            'ADA Generic Application requires PI as a CONTROL source'
+        )
+    unsupported = tuple(
+        source_key
+        for source_key in participation.control_source_keys
+        if source_key not in _SUPPORTED_ADA_CONTROL_SOURCE_KEYS
+    )
+    if unsupported:
+        raise ToolSourceOperationalParticipationValidationError(
+            'ADA Generic Application supports only PI and Dispatch as CONTROL sources: '
+            f'{unsupported[0]!r}'
+        )
+    if 'dispatch' in source_consumption.source_keys and not participation.controls('dispatch'):
+        raise ToolSourceOperationalParticipationValidationError(
+            'Dispatch declared by Tool Source Consumption must participate as CONTROL'
+        )
+
+
+def _validate_observation_detail(
+    *,
+    detail: TimeStatusDetailState | None,
+    participation: ToolSourceOperationalParticipation,
+) -> None:
+    if detail is None:
+        return
+    additional_observation_source_keys = set(participation.additional_observation_source_keys)
+    for source in detail.sources:
+        if source.key not in additional_observation_source_keys:
+            raise ToolSourceOperationalParticipationValidationError(
+                'Time Status detail source is not declared as ADDITIONAL OBSERVATION: '
+                f'{source.key!r}'
+            )
+
+
+def _validate_control_dependencies(
+    *,
+    graph: ContentStateDependencyGraph,
+    participation: ToolSourceOperationalParticipation,
+) -> None:
+    control_source_keys = set(participation.control_source_keys)
+    for dependency in graph.dependencies:
+        for source_key in dependency.source_keys:
+            if source_key not in control_source_keys:
+                raise ToolSourceOperationalParticipationValidationError(
+                    f'Content State dependency source is not declared as CONTROL: {source_key!r}'
+                )
+
+
+def _resolve_time_status_summary(
+    *,
+    snapshot: TimeStatusStoreSnapshot | None,
+    participation: ToolSourceOperationalParticipation | None,
+) -> TimeStatusSummaryState | None:
+    if snapshot is None:
+        return None
+    if participation is None:
+        raise ToolSourceOperationalParticipationValidationError(
+            'Time Status snapshot requires ToolSourceOperationalParticipation'
+        )
+    pi_policy = participation.control_policy('pi')
+    if pi_policy is None:
+        raise ToolSourceOperationalParticipationValidationError(
+            'ADA Generic Application requires PI as a CONTROL source'
+        )
+    dispatch_policy = participation.control_policy('dispatch')
+    return TimeStatusSummaryState(
+        pi=_resolve_time_status_control_source(snapshot=snapshot, policy=pi_policy),
+        dispatch=(
+            None
+            if dispatch_policy is None
+            else _resolve_time_status_control_source(snapshot=snapshot, policy=dispatch_policy)
+        ),
+        has_detail=True,
+    )
+
+
+def _resolve_time_status_control_source(
+    *,
+    snapshot: TimeStatusStoreSnapshot,
+    policy: SourceControlPolicy,
+):
+    timestamp = snapshot.source(policy.source_key)
+    return resolve_time_status_source_state(
+        key=policy.source_key,
+        label=_TIME_STATUS_SOURCE_LABELS[policy.source_key],
+        policy=TimeStatusFreshnessPolicy(
+            warning_after_seconds=policy.pre_degrading_after_seconds,
+            stale_after_seconds=policy.degrading_after_seconds,
+        ),
+        timestamp_utc=(
+            timestamp.timestamp_utc
+            if timestamp.quality is TimeStatusTimestampQuality.VALID
+            else None
+        ),
+        now_utc=snapshot.generated_at_utc,
+    )
 
 
 def _resolve_source_freshness(
