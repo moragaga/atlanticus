@@ -37,3 +37,26 @@ def test_css_maps_each_degraded_state_to_one_visible_view() -> None:
 
     assert '.ada-content-state__view {' in css
     assert 'display: none;' in css
+
+
+def test_content_state_runtime_js_is_packaged_and_uses_neutral_freshness_event() -> None:
+    package = files('ada.web.ui.content_state')
+    js_list = package.joinpath('resources/js/js.list').read_text(encoding='utf-8').splitlines()
+    javascript = package.joinpath('resources/js/20-content-state-runtime.js').read_text(
+        encoding='utf-8'
+    )
+
+    assert js_list == ['20-content-state-runtime.js']
+    assert "SOURCE_FRESHNESS_EVENT = 'ada:source-freshness'" in javascript
+    assert "SOURCE_FRESHNESS_REQUEST_EVENT = 'ada:source-freshness-request'" in javascript
+    assert 'document.dispatchEvent(new CustomEvent(SOURCE_FRESHNESS_REQUEST_EVENT))' in javascript
+    assert "[data-ada-content-state-runtime='true']" in javascript
+    assert 'data-ada-time-status' not in javascript
+    assert 'global_indicators' not in javascript
+    assert 'MutationObserver' in javascript
+    assert 'source_error: 2' in javascript
+    assert 'construction: 3' in javascript
+    assert 'setInterval' not in javascript
+    assert 'setTimeout' not in javascript
+    assert 'innerHTML' not in javascript
+    assert 'replaceChild' not in javascript

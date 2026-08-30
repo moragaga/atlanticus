@@ -1,4 +1,3 @@
-# Orquestador ADA: 05E registra el target semántico header sin centralizar la lógica del package.
 from __future__ import annotations
 
 import argparse
@@ -22,7 +21,6 @@ class AdaCapability:
 
 
 CAPABILITIES: dict[str, AdaCapability] = {
-    # Registra KPI Definition como configuración Web independiente de KPI Configuration e Inspection.
     'kpi-definition': AdaCapability(
         key='kpi-definition',
         project_root='scopes/ada/web/configuration/kpi-definition',
@@ -31,7 +29,6 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
-    # Registra el core de KPI Inspection como capability independiente y validable sin Cosmos.
     'kpi-inspection-core': AdaCapability(
         key='kpi-inspection-core',
         project_root='scopes/ada/web/inspection/core',
@@ -40,7 +37,6 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
-    # Registra el adapter inyectable KPI Definition → KPI Inspection sin acoplarlo a Cosmos.
     'kpi-inspection-definition-provider': AdaCapability(
         key='kpi-inspection-definition-provider',
         project_root='scopes/ada/web/inspection/providers/kpi-definition',
@@ -49,8 +45,6 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
-    # Registra el lifecycle de KPI Inspection separado del core y sin dependencia directa de Cosmos.
-    # Registra el gate cross-capability que prueba KPI Inspection completo sin infraestructura externa.
     'kpi-inspection-portability': AdaCapability(
         key='kpi-inspection-portability',
         project_root='scopes/ada/web/inspection/portability',
@@ -75,7 +69,6 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
-    # Registra el gate UI que diferencia KPI Definition ausente, stub vacío y definición poblada sin infraestructura externa.
     'kpi-inspection-empty-definition-flow': AdaCapability(
         key='kpi-inspection-empty-definition-flow',
         project_root='scopes/ada/web/inspection/empty-definition-flow',
@@ -92,7 +85,6 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
-    # Registra la frontera Flask read-only, inyectada con un snapshot store y sin provider remoto.
     'kpi-inspection-api': AdaCapability(
         key='kpi-inspection-api',
         project_root='scopes/ada/web/inspection/api',
@@ -109,7 +101,6 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
-    # Registra el adapter tool-scoped que normaliza el store temporal sin importar Collector en la UI.
     'time-status-store-adapter': AdaCapability(
         key='time-status-store-adapter',
         project_root='scopes/ada/web/time-status/store-adapter',
@@ -142,7 +133,23 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
-    # Content State entra al gate agregado recién en CS-002, cuando Generic Application ya lo consume.
+    # Core y resolver entran al gate agregado recién cuando Generic Application consume el resolver.
+    'content-state-core': AdaCapability(
+        key='content-state-core',
+        project_root='scopes/ada/web/content-state/core',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
+    'content-state-dependency-resolver': AdaCapability(
+        key='content-state-dependency-resolver',
+        project_root='scopes/ada/web/content-state/dependency-resolver',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
     'content-state': AdaCapability(
         key='content-state',
         project_root='scopes/ada/web/ui/content-state',

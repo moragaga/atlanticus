@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 
+import pytest
+
 from ada.web.alarms.management_summary import (
     ADA_ALARM_MANAGEMENT_SUMMARY_ASSET_LAYER,
     AlarmManagementSummaryArea,
@@ -13,6 +15,10 @@ from ada.web.alarms.management_summary import (
 from ada.web.alarms.status import ADA_ALARM_STATUS_ASSET_LAYER, AlarmStatusState
 from ada.web.application.generic.application import create_application_definition
 from ada.web.application.generic.runtime import create_application_runtime
+from ada.web.content_state.dependency_resolver import (
+    ContentStateDependency,
+    MissingSourceFreshnessError,
+)
 from ada.web.shell.header import ADA_OPERATIONAL_HEADER_ASSET_LAYER
 from ada.web.shell.navigation import ADA_NAVIGATION_ASSET_LAYER, AdaNavigationView
 from ada.web.ui.branding import (
@@ -53,7 +59,7 @@ def test_definition_composes_current_ada_web_capabilities() -> None:
 
     assert definition.metadata.application_id == 'ada-generic-application'
     assert definition.metadata.display_name == 'ADA'
-    assert definition.metadata.version == '0.1.30'
+    assert definition.metadata.version == '0.1.31'
     assert tuple(module.name for module in definition.modules) == (
         'ada-ui',
         'ada-display-status',
@@ -97,7 +103,7 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
     assert DEFAULT_OPERATIONAL_BRAND_LOGO_SRC in payload
     assert DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC in payload
     assert DEFAULT_PELAMBRES_BRAND_LOGO_SRC in payload
-    assert 'Versión 0.1.30' in payload
+    assert 'Versión 0.1.31' in payload
     assert runtime.services.contains(ACCESS_RUNTIME_SERVICE_KEY)
     assert runtime.services.contains(NAVIGATION_PRINCIPAL_PROVIDER_SERVICE_KEY)
     assert any(
@@ -457,3 +463,177 @@ def test_time_status_without_additional_sources_renders_explicit_empty_detail(
     assert response.status_code == 200
     assert 'Sin fuentes adicionales' in payload
     assert 'Esta herramienta no consume fuentes de datos adicionales.' in payload
+
+
+def _content_state_test_collection() -> GlobalIndicatorCollection:
+    return GlobalIndicatorCollection(
+        indicators=(
+            GlobalIndicatorState(
+                key='runtime_indicator',
+                label='Indicador runtime',
+                unit='u',
+                measurements=(
+                    GlobalIndicatorMeasurementState(
+                        key='turno',
+                        label='Turno',
+                        actual_value='10',
+                        plan_value='12',
+                        actual_kpi_key='runtime_shift_actual',
+                        plan_kpi_key='runtime_shift_plan',
+                    ),
+                    GlobalIndicatorMeasurementState(
+                        key='dia',
+                        label='Día',
+                        actual_value='20',
+                        plan_value='24',
+                        actual_kpi_key='runtime_day_actual',
+                        plan_kpi_key='runtime_day_plan',
+                    ),
+                ),
+            ),
+        )
+    )
+
+
+def _time_status_summary(
+    *,
+    pi_condition: TimeStatusSourceCondition,
+    dispatch_condition: TimeStatusSourceCondition | None = None,
+) -> TimeStatusSummaryState:
+    policy = TimeStatusFreshnessPolicy(warning_after_seconds=200, stale_after_seconds=300)
+
+    def source(key: str, condition: TimeStatusSourceCondition) -> TimeStatusSourceState:
+        return TimeStatusSourceState(
+            key=key,
+            label=key.upper(),
+            policy=policy,
+            condition=condition,
+            relative_age_text=(
+                None if condition is TimeStatusSourceCondition.DATA_ERROR else 'hace 10 segundos'
+            ),
+            timestamp_utc=(
+                None
+                if condition is TimeStatusSourceCondition.DATA_ERROR
+                else datetime(2026, 8, 30, 13, 0, tzinfo=UTC)
+            ),
+        )
+
+    return TimeStatusSummaryState(
+        pi=source('pi', pi_condition),
+        dispatch=(None if dispatch_condition is None else source('dispatch', dispatch_condition)),
+    )
+
+
+def test_global_indicators_runtime_binding_resolves_initial_stale_and_preserves_kpi_dom(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv('ATLANTICUS_ENVIRONMENT', raising=False)
+    monkeypatch.setenv('ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID', 'local:test-user')
+
+    runtime = create_application_runtime(
+        global_indicators=_content_state_test_collection(),
+        content_state_dependencies=(
+            ContentStateDependency(component_key='global_indicators', source_keys=('pi',)),
+        ),
+        tool_key='process',
+        time_status_summary=_time_status_summary(
+            pi_condition=TimeStatusSourceCondition.HARD_STALE,
+        ),
+    )
+    response = runtime.server.test_client().get('/_dash-layout')
+    payload = json.dumps(response.get_json(), ensure_ascii=False)
+
+    assert response.status_code == 200
+    assert 'data-ada-content-state-runtime' in payload
+    assert 'data-ada-content-state-tool-key' in payload
+    assert 'data-ada-content-state-sources' in payload
+    assert 'global_indicators' in payload
+    assert 'process' in payload
+    assert 'stale' in payload
+    assert 'Información desactualizada' in payload
+    assert 'runtime_shift_actual' in payload
+
+
+def test_global_indicators_runtime_binding_resolves_source_error_per_own_dependencies() -> None:
+    definition = create_application_definition(
+        global_indicators=_content_state_test_collection(),
+        content_state_dependencies=(
+            ContentStateDependency(
+                component_key='global_indicators',
+                source_keys=('pi', 'dispatch'),
+            ),
+        ),
+        tool_key='integrated_operations',
+        time_status_summary=_time_status_summary(
+            pi_condition=TimeStatusSourceCondition.HARD_STALE,
+            dispatch_condition=TimeStatusSourceCondition.DATA_ERROR,
+        ),
+    )
+
+    assert definition.metadata.version == '0.1.31'
+    assert (
+        definition.layout.keywords['global_indicators_runtime_state'] is ContentState.SOURCE_ERROR
+    )
+    assert definition.layout.keywords['global_indicators_source_keys'] == ('pi', 'dispatch')
+
+
+def test_construction_precedence_is_preserved_over_runtime_source_error(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv('ATLANTICUS_ENVIRONMENT', raising=False)
+    monkeypatch.setenv('ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID', 'local:test-user')
+
+    runtime = create_application_runtime(
+        global_indicators=_content_state_test_collection(),
+        global_indicators_content_state=ContentState.CONSTRUCTION,
+        content_state_dependencies=(
+            ContentStateDependency(component_key='global_indicators', source_keys=('pi',)),
+        ),
+        tool_key='process',
+        time_status_summary=_time_status_summary(
+            pi_condition=TimeStatusSourceCondition.DATA_ERROR,
+        ),
+    )
+    payload = json.dumps(
+        runtime.server.test_client().get('/_dash-layout').get_json(),
+        ensure_ascii=False,
+    )
+
+    assert 'data-ada-content-state-declared' in payload
+    assert 'construction' in payload
+    assert 'En construcción' in payload
+    assert 'runtime_shift_actual' in payload
+
+
+def test_content_state_dependency_requires_required_time_status_source() -> None:
+    with pytest.raises(MissingSourceFreshnessError, match='dispatch'):
+        create_application_definition(
+            global_indicators=_content_state_test_collection(),
+            content_state_dependencies=(
+                ContentStateDependency(
+                    component_key='global_indicators',
+                    source_keys=('pi', 'dispatch'),
+                ),
+            ),
+            tool_key='process',
+            time_status_summary=_time_status_summary(
+                pi_condition=TimeStatusSourceCondition.FRESH,
+            ),
+        )
+
+
+def test_content_state_dependency_rejects_component_not_adopted_by_generic_application() -> None:
+    with pytest.raises(ValueError, match='Unsupported Generic Application Content State component'):
+        create_application_definition(
+            content_state_dependencies=(
+                ContentStateDependency(component_key='other_component', source_keys=('pi',)),
+            ),
+            tool_key='process',
+            time_status_summary=_time_status_summary(
+                pi_condition=TimeStatusSourceCondition.FRESH,
+            ),
+        )

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 
 from dash import html
@@ -7,7 +8,9 @@ from dash.development.base_component import Component
 
 from ada.web.ui.core import component_identity_attributes
 
-from .models import ContentState, resolve_content_state_visual
+from .models import ContentState, resolve_content_state, resolve_content_state_visual
+
+_KEY_PATTERN = re.compile(r'^[a-z][a-z0-9_]*$')
 
 
 def build_content_state_wrapper(
@@ -15,16 +18,31 @@ def build_content_state_wrapper(
     component_key: str,
     children: Component | Sequence[Component],
     state: ContentState = ContentState.READY,
+    runtime_state: ContentState = ContentState.READY,
+    tool_key: str | None = None,
+    source_keys: Sequence[str] = (),
     class_name: str | None = None,
 ) -> Component:
-    if not isinstance(state, ContentState):
-        raise TypeError('Content state wrapper requires a ContentState value')
+    if not isinstance(state, ContentState) or not isinstance(runtime_state, ContentState):
+        raise TypeError('Content state wrapper requires ContentState values')
 
+    normalized_source_keys = _normalize_source_keys(source_keys)
+    normalized_tool_key = _normalize_tool_key(tool_key, source_keys=normalized_source_keys)
+    effective_state = resolve_content_state(state, runtime_state)
     classes = ' '.join(
         part for part in ('ada-content-state', class_name) if isinstance(part, str) and part.strip()
     )
     attributes = component_identity_attributes(component_key)
-    attributes['data-ada-content-state'] = state.value
+    attributes['data-ada-content-state'] = effective_state.value
+    attributes['data-ada-content-state-declared'] = state.value
+    if normalized_source_keys:
+        attributes.update(
+            {
+                'data-ada-content-state-runtime': 'true',
+                'data-ada-content-state-tool-key': normalized_tool_key,
+                'data-ada-content-state-sources': ','.join(normalized_source_keys),
+            }
+        )
 
     return html.Div(
         className=classes,
@@ -33,7 +51,7 @@ def build_content_state_wrapper(
                 className='ada-content-state__content',
                 children=children,
             ),
-            _build_overlay(state=state),
+            _build_overlay(state=effective_state),
         ],
         **attributes,
     )
@@ -74,3 +92,23 @@ def _build_state_view(state: ContentState) -> Component:
             ),
         ],
     )
+
+
+def _normalize_source_keys(source_keys: Sequence[str]) -> tuple[str, ...]:
+    normalized = tuple(source_keys)
+    if len(normalized) != len(set(normalized)):
+        raise ValueError('Content State runtime source keys must be unique')
+    for source_key in normalized:
+        if not isinstance(source_key, str) or not _KEY_PATTERN.fullmatch(source_key):
+            raise ValueError(f'Invalid Content State runtime source key: {source_key!r}')
+    return normalized
+
+
+def _normalize_tool_key(tool_key: str | None, *, source_keys: tuple[str, ...]) -> str | None:
+    if not source_keys:
+        if tool_key is not None:
+            raise ValueError('Content State runtime tool_key requires source_keys')
+        return None
+    if not isinstance(tool_key, str) or not tool_key.strip():
+        raise ValueError('Content State runtime source_keys require tool_key')
+    return tool_key.strip()

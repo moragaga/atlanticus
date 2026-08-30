@@ -247,3 +247,21 @@ def test_clock_hydrates_new_time_status_nodes_immediately_after_dash_rerender() 
     assert 'element.querySelectorAll(CLOCK_SELECTOR)' in javascript
     assert 'element.querySelectorAll(SUMMARY_SELECTOR)' in javascript
     assert 'setInterval' not in javascript
+
+
+def test_clock_publishes_neutral_source_freshness_events_without_component_knowledge() -> None:
+    javascript = (
+        files('ada.web.ui.time_status')
+        .joinpath('resources/js/10-time-status-clock.js')
+        .read_text(encoding='utf-8')
+    )
+
+    assert "SOURCE_FRESHNESS_EVENT = 'ada:source-freshness'" in javascript
+    assert "SOURCE_FRESHNESS_REQUEST_EVENT = 'ada:source-freshness-request'" in javascript
+    assert 'new CustomEvent(SOURCE_FRESHNESS_EVENT' in javascript
+    assert 'detail: { toolKey, sourceKey, condition }' in javascript
+    assert "publishSourceFreshness(source, 'data_error')" in javascript
+    assert 'publishSourceFreshness(source, condition, true)' in javascript
+    assert 'document.addEventListener(SOURCE_FRESHNESS_REQUEST_EVENT' in javascript
+    assert 'component_key' not in javascript
+    assert 'global_indicators' not in javascript

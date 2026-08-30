@@ -76,9 +76,7 @@ class ContentStateDependencyGraph:
                     )
                 conditions.append(condition)
             # La policy CS-003 conserva SOURCE_ERROR > STALE > READY entre dependencias.
-            resolved[dependency.component_key] = resolve_content_state_from_freshness(
-                *conditions
-            )
+            resolved[dependency.component_key] = resolve_content_state_from_freshness(*conditions)
         # El resultado es inmutable para evitar que un consumidor altere la resolución compartida.
         return MappingProxyType(resolved)
 

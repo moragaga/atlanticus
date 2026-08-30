@@ -34,6 +34,8 @@ def build_application_layout(
     navigation_view: AdaNavigationView,
     global_indicators: GlobalIndicatorCollection,
     global_indicators_content_state: ContentState,
+    global_indicators_runtime_state: ContentState,
+    global_indicators_source_keys: tuple[str, ...],
     alarm_management_summary: AlarmManagementSummaryState | None,
     alarm_status: AlarmStatusState | None,
     tool_key: str | None,
@@ -44,6 +46,9 @@ def build_application_layout(
     global_indicators_component = _build_global_indicators_component(
         collection=global_indicators,
         content_state=global_indicators_content_state,
+        runtime_state=global_indicators_runtime_state,
+        tool_key=tool_key,
+        source_keys=global_indicators_source_keys,
     )
     alarm_management_component = build_alarm_management_summary(alarm_management_summary)
     alarm_status_component = build_alarm_status(alarm_status)
@@ -78,6 +83,9 @@ def _build_global_indicators_component(
     *,
     collection: GlobalIndicatorCollection,
     content_state: ContentState,
+    runtime_state: ContentState,
+    tool_key: str | None,
+    source_keys: tuple[str, ...],
 ):
     if not len(collection):
         return None
@@ -85,6 +93,9 @@ def _build_global_indicators_component(
         component_key='global_indicators',
         children=build_global_indicators(collection=collection),
         state=content_state,
+        runtime_state=runtime_state,
+        tool_key=tool_key if source_keys else None,
+        source_keys=source_keys,
     )
 
 

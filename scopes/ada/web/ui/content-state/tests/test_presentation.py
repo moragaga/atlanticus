@@ -92,3 +92,59 @@ def test_wrapper_rejects_invalid_component_identity() -> None:
             component_key='Global Indicators',
             children=html.Div('payload'),
         )
+
+
+def test_runtime_binding_publishes_neutral_tool_and_source_metadata() -> None:
+    wrapper = build_content_state_wrapper(
+        component_key='global_indicators',
+        children=html.Div('payload'),
+        state=ContentState.READY,
+        runtime_state=ContentState.STALE,
+        tool_key='process',
+        source_keys=('pi', 'dispatch'),
+    )
+    props = _props(wrapper)
+    _, overlay = _children(wrapper)
+
+    assert props['data-ada-content-state'] == 'stale'
+    assert props['data-ada-content-state-declared'] == 'ready'
+    assert props['data-ada-content-state-runtime'] == 'true'
+    assert props['data-ada-content-state-tool-key'] == 'process'
+    assert props['data-ada-content-state-sources'] == 'pi,dispatch'
+    assert _props(overlay)['aria-hidden'] == 'false'
+
+
+def test_construction_remains_effective_over_runtime_source_error() -> None:
+    wrapper = build_content_state_wrapper(
+        component_key='global_indicators',
+        children=html.Div('payload'),
+        state=ContentState.CONSTRUCTION,
+        runtime_state=ContentState.SOURCE_ERROR,
+        tool_key='process',
+        source_keys=('pi',),
+    )
+
+    assert _props(wrapper)['data-ada-content-state'] == 'construction'
+
+
+def test_runtime_binding_requires_tool_key_and_unique_valid_sources() -> None:
+    with pytest.raises(ValueError, match='require tool_key'):
+        build_content_state_wrapper(
+            component_key='global_indicators',
+            children=html.Div('payload'),
+            source_keys=('pi',),
+        )
+    with pytest.raises(ValueError, match='must be unique'):
+        build_content_state_wrapper(
+            component_key='global_indicators',
+            children=html.Div('payload'),
+            tool_key='process',
+            source_keys=('pi', 'pi'),
+        )
+    with pytest.raises(ValueError, match='Invalid Content State runtime source key'):
+        build_content_state_wrapper(
+            component_key='global_indicators',
+            children=html.Div('payload'),
+            tool_key='process',
+            source_keys=('PI Source',),
+        )

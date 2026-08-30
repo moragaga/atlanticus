@@ -4,11 +4,12 @@ requires-python = "==3.14.2"
 
 [[package]]
 name = "ada-generic-application"
-version = "0.1.30"
+version = "0.1.31"
 source = { editable = "." }
 dependencies = [
     { name = "ada-web-alarm-management-summary" },
     { name = "ada-web-alarm-status" },
+    { name = "ada-web-content-state-dependency-resolver" },
     { name = "ada-web-shell-header" },
     { name = "ada-web-shell-navigation" },
     { name = "ada-web-ui-branding" },
@@ -33,6 +34,7 @@ dev = [
 requires-dist = [
     { name = "ada-web-alarm-management-summary", editable = "../../alarms/management-summary" },
     { name = "ada-web-alarm-status", editable = "../../alarms/status" },
+    { name = "ada-web-content-state-dependency-resolver", editable = "../../content-state/dependency-resolver" },
     { name = "ada-web-shell-header", editable = "../../shell/header" },
     { name = "ada-web-shell-navigation", editable = "../../shell/navigation" },
     { name = "ada-web-ui-branding", editable = "../../ui/branding" },
@@ -101,6 +103,23 @@ version = "0.1.0"
 source = { editable = "../../content-state/core" }
 
 [package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-content-state-dependency-resolver"
+version = "0.1.0"
+source = { editable = "../../content-state/dependency-resolver" }
+dependencies = [
+    { name = "ada-web-content-state-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "ada-web-content-state-core", editable = "../../content-state/core" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -183,7 +202,7 @@ dev = [
 
 [[package]]
 name = "ada-web-ui-content-state"
-version = "0.1.3"
+version = "0.1.4"
 source = { editable = "../../ui/content-state" }
 dependencies = [
     { name = "ada-web-content-state-core" },
@@ -273,7 +292,7 @@ dev = [
 
 [[package]]
 name = "ada-web-ui-time-status"
-version = "0.1.9"
+version = "0.1.10"
 source = { editable = "../../ui/time-status" }
 dependencies = [
     { name = "ada-web-ui-core" },

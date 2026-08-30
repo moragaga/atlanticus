@@ -1,4 +1,3 @@
-# Composition root: ensambla capabilities ya resueltas y aplica Content State fuera del componente consumidor.
 from __future__ import annotations
 
 from dash import html, page_container
@@ -28,6 +27,7 @@ from atlanticus.web.navigation.api import resolve_navigation_from_services
 from atlanticus.web.services import ServiceRegistry
 
 
+# La composición recibe por separado el estado declarado y el runtime resuelto.
 def build_application_layout(
     services: ServiceRegistry,
     *,
@@ -35,18 +35,21 @@ def build_application_layout(
     navigation_view: AdaNavigationView,
     global_indicators: GlobalIndicatorCollection,
     global_indicators_content_state: ContentState,
+    global_indicators_runtime_state: ContentState,
+    global_indicators_source_keys: tuple[str, ...],
     alarm_management_summary: AlarmManagementSummaryState | None,
     alarm_status: AlarmStatusState | None,
     tool_key: str | None,
     time_status_summary: TimeStatusSummaryState | None,
     time_status_detail: TimeStatusDetailState | None,
 ):
-    # Navigation Core resuelve el menú; la presentación sólo recibe el resultado.
     menu = resolve_navigation_from_services(services)
-    # Content State se compone por fuera de Global Indicator para que ese paquete no conozca overlays.
     global_indicators_component = _build_global_indicators_component(
         collection=global_indicators,
         content_state=global_indicators_content_state,
+        runtime_state=global_indicators_runtime_state,
+        tool_key=tool_key,
+        source_keys=global_indicators_source_keys,
     )
     alarm_management_component = build_alarm_management_summary(alarm_management_summary)
     alarm_status_component = build_alarm_status(alarm_status)
@@ -77,19 +80,24 @@ def build_application_layout(
     )
 
 
+# El wrapper conserva el componente real y publica metadata neutral para el runtime cliente.
 def _build_global_indicators_component(
     *,
     collection: GlobalIndicatorCollection,
     content_state: ContentState,
+    runtime_state: ContentState,
+    tool_key: str | None,
+    source_keys: tuple[str, ...],
 ):
-    # Una colección ausente no crea wrapper ni carga visual vacía en el Header.
     if not len(collection):
         return None
-    # El wrapper estable reutiliza component_key y preserva el componente real debajo del overlay.
     return build_content_state_wrapper(
         component_key='global_indicators',
         children=build_global_indicators(collection=collection),
         state=content_state,
+        runtime_state=runtime_state,
+        tool_key=tool_key if source_keys else None,
+        source_keys=source_keys,
     )
 
 
@@ -99,12 +107,10 @@ def _build_time_status_component(
     summary: TimeStatusSummaryState | None,
     detail: TimeStatusDetailState | None,
 ):
-    # La integración sólo traduce el contrato inyectado a Component. No consulta Collector ni Manager.
     if summary is None:
         if detail is not None:
             raise ValueError('Time Status detail requires Time Status summary')
         return None
-    # build_time_status conserva la autoridad sobre tool_key y sobre la coherencia has_detail/detail.
     return build_time_status(
         tool_key=tool_key or '',
         state=summary,

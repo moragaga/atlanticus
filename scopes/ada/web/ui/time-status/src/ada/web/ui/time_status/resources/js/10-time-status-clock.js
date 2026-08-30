@@ -2,11 +2,15 @@
   'use strict';
 
   const CLOCK_SELECTOR = "[data-ada-time-status-clock='true']";
+  const CONTAINER_SELECTOR = "[data-ada-time-status-container='true']";
   const SUMMARY_SELECTOR = "[data-component-key='time_status']";
   const SOURCE_SELECTOR = "[data-ada-time-status-source='true']";
   const SOURCE_VALUE_SELECTOR = "[data-ada-time-status-source-value='true']";
   const SOURCE_ICON_SELECTOR = "[data-ada-time-status-source-icon='true']";
   const MODULE_NAME = 'ada-time-status';
+  const SOURCE_FRESHNESS_EVENT = 'ada:source-freshness';
+  const SOURCE_FRESHNESS_REQUEST_EVENT = 'ada:source-freshness-request';
+  const PUBLISHED_CONDITION_ATTRIBUTE = 'data-ada-source-freshness-published';
   const DEFAULT_TIME_ZONE = 'America/Santiago';
   const FORMAT_LOCALE = 'en-CA';
 
@@ -94,6 +98,35 @@
     return 'fresh';
   }
 
+  function publishSourceFreshness(source, condition, force = false) {
+    const container = source.closest(CONTAINER_SELECTOR);
+    const toolKey = String(
+      container?.getAttribute('data-ada-time-status-tool-key') || '',
+    ).trim();
+    const sourceKey = String(source.getAttribute('data-source-key') || '').trim();
+    if (!toolKey || !sourceKey) {
+      return;
+    }
+    if (!force && source.getAttribute(PUBLISHED_CONDITION_ATTRIBUTE) === condition) {
+      return;
+    }
+    source.setAttribute(PUBLISHED_CONDITION_ATTRIBUTE, condition);
+    document.dispatchEvent(
+      new CustomEvent(SOURCE_FRESHNESS_EVENT, {
+        detail: { toolKey, sourceKey, condition },
+      }),
+    );
+  }
+
+  function publishCurrentSourceFreshness() {
+    document.querySelectorAll(SOURCE_SELECTOR).forEach((source) => {
+      const condition = String(source.getAttribute('data-source-condition') || '').trim();
+      if (condition) {
+        publishSourceFreshness(source, condition, true);
+      }
+    });
+  }
+
   function setSourceCondition(source, condition) {
     source.setAttribute('data-source-condition', condition);
     const content = source.querySelector("[data-ada-time-status-source-content='true']");
@@ -105,10 +138,12 @@
       const iconClass = condition === 'hard_stale' ? 'bi bi-cloud-slash' : 'bi bi-cloud-check';
       icon.className = `${iconClass} ada-time-status__item`;
     }
+    publishSourceFreshness(source, condition);
   }
 
   function updateSource(source, nowMs) {
     if (source.getAttribute('data-source-condition') === 'data_error') {
+      publishSourceFreshness(source, 'data_error');
       return;
     }
     const timestampMs = Date.parse(source.getAttribute('data-source-timestamp-utc') || '');
@@ -213,6 +248,7 @@
     controller.observer = new MutationObserver(handleMutations);
     controller.observer.observe(document.body, { childList: true, subtree: true });
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener(SOURCE_FRESHNESS_REQUEST_EVENT, publishCurrentSourceFreshness);
     window.addEventListener('focus', resync);
     window.addEventListener('pageshow', resync);
   }

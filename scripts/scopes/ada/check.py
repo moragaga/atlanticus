@@ -133,6 +133,22 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
+    'content-state-core': AdaCapability(
+        key='content-state-core',
+        project_root='scopes/ada/web/content-state/core',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
+    'content-state-dependency-resolver': AdaCapability(
+        key='content-state-dependency-resolver',
+        project_root='scopes/ada/web/content-state/dependency-resolver',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
     'content-state': AdaCapability(
         key='content-state',
         project_root='scopes/ada/web/ui/content-state',

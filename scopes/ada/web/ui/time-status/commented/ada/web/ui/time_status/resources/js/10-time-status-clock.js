@@ -1,13 +1,17 @@
 (() => {
   'use strict';
 
-  // El mismo controller mantiene reloj y freshness; TS-012A agrega hidratación inmediata tras rerender.
   const CLOCK_SELECTOR = "[data-ada-time-status-clock='true']";
+  const CONTAINER_SELECTOR = "[data-ada-time-status-container='true']";
   const SUMMARY_SELECTOR = "[data-component-key='time_status']";
   const SOURCE_SELECTOR = "[data-ada-time-status-source='true']";
   const SOURCE_VALUE_SELECTOR = "[data-ada-time-status-source-value='true']";
   const SOURCE_ICON_SELECTOR = "[data-ada-time-status-source-icon='true']";
   const MODULE_NAME = 'ada-time-status';
+  // Contrato neutral para publicar cambios de salud temporal sin conocer consumidores.
+  const SOURCE_FRESHNESS_EVENT = 'ada:source-freshness';
+  const SOURCE_FRESHNESS_REQUEST_EVENT = 'ada:source-freshness-request';
+  const PUBLISHED_CONDITION_ATTRIBUTE = 'data-ada-source-freshness-published';
   const DEFAULT_TIME_ZONE = 'America/Santiago';
   const FORMAT_LOCALE = 'en-CA';
 
@@ -95,6 +99,37 @@
     return 'fresh';
   }
 
+  // Publica sólo cambios, salvo cuando un consumidor pide explícitamente el snapshot actual.
+  function publishSourceFreshness(source, condition, force = false) {
+    const container = source.closest(CONTAINER_SELECTOR);
+    const toolKey = String(
+      container?.getAttribute('data-ada-time-status-tool-key') || '',
+    ).trim();
+    const sourceKey = String(source.getAttribute('data-source-key') || '').trim();
+    if (!toolKey || !sourceKey) {
+      return;
+    }
+    if (!force && source.getAttribute(PUBLISHED_CONDITION_ATTRIBUTE) === condition) {
+      return;
+    }
+    source.setAttribute(PUBLISHED_CONDITION_ATTRIBUTE, condition);
+    document.dispatchEvent(
+      new CustomEvent(SOURCE_FRESHNESS_EVENT, {
+        detail: { toolKey, sourceKey, condition },
+      }),
+    );
+  }
+
+  // Reenvía el snapshot actual para hacer el contrato independiente del orden de carga de assets.
+  function publishCurrentSourceFreshness() {
+    document.querySelectorAll(SOURCE_SELECTOR).forEach((source) => {
+      const condition = String(source.getAttribute('data-source-condition') || '').trim();
+      if (condition) {
+        publishSourceFreshness(source, condition, true);
+      }
+    });
+  }
+
   function setSourceCondition(source, condition) {
     source.setAttribute('data-source-condition', condition);
     const content = source.querySelector("[data-ada-time-status-source-content='true']");
@@ -106,11 +141,12 @@
       const iconClass = condition === 'hard_stale' ? 'bi bi-cloud-slash' : 'bi bi-cloud-check';
       icon.className = `${iconClass} ada-time-status__item`;
     }
+    publishSourceFreshness(source, condition);
   }
 
   function updateSource(source, nowMs) {
-    // DATA_ERROR pertenece a la resolución Python y no se reinterpreta con el reloj local.
     if (source.getAttribute('data-source-condition') === 'data_error') {
+      publishSourceFreshness(source, 'data_error');
       return;
     }
     const timestampMs = Date.parse(source.getAttribute('data-source-timestamp-utc') || '');
@@ -154,7 +190,6 @@
     node.title = text;
   }
 
-  // Cuando Dash inserta un Summary nuevo se reemplaza el placeholder en la misma mutación, sin esperar al próximo segundo.
   function syncAddedElement(element, nowMs, text) {
     if (element.matches(CLOCK_SELECTOR)) {
       setClockNode(element, text);
@@ -167,7 +202,6 @@
   }
 
   function handleMutations(mutations) {
-    // Se obtiene un único now para toda la ráfaga de nodos agregados y no se crea un segundo timer.
     const nowMs = Date.now();
     const text = formatTimestamp(nowMs);
     mutations.forEach((mutation) => {
@@ -214,10 +248,10 @@
   function start() {
     controller.formatter = createFormatter(resolveTimeZone());
     scheduleNextTick();
-    // El observer sólo rehidrata nodos nuevos; no vigila atributos ni hace polling.
     controller.observer = new MutationObserver(handleMutations);
     controller.observer.observe(document.body, { childList: true, subtree: true });
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener(SOURCE_FRESHNESS_REQUEST_EVENT, publishCurrentSourceFreshness);
     window.addEventListener('focus', resync);
     window.addEventListener('pageshow', resync);
   }
