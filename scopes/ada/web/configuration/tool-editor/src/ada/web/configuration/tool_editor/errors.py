@@ -1,0 +1,2 @@
+class ToolSourceEditorValidationError(ValueError):
+    pass

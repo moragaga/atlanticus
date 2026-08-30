@@ -1,0 +1,100 @@
+.ada-tool-source-editor {
+    display: grid;
+    gap: 1rem;
+}
+
+.ada-tool-source-editor__heading {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.ada-tool-source-editor__title,
+.ada-tool-source-editor__copy {
+    margin: 0;
+}
+
+.ada-tool-source-editor__copy,
+.ada-tool-source-editor__help,
+.ada-tool-source-editor__source-heading span {
+    color: rgba(7, 21, 34, 0.66);
+}
+
+.ada-tool-source-editor__source-card {
+    display: grid;
+    gap: 0.8rem;
+    padding: 1rem;
+    border: 1px solid rgba(7, 21, 34, 0.14);
+    border-radius: 0.65rem;
+    background: rgba(255, 255, 255, 0.46);
+}
+
+.ada-tool-source-editor__source-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.ada-tool-source-editor__source-heading span {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+.ada-tool-source-editor__threshold-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.ada-tool-source-editor__field {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.ada-tool-source-editor__field-label {
+    font-weight: 600;
+}
+
+.ada-tool-source-editor__number-control {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.ada-tool-source-editor__number-input,
+.ada-tool-source-editor__textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid rgba(7, 21, 34, 0.22);
+    border-radius: 0.45rem;
+    background: rgba(255, 255, 255, 0.88);
+    padding: 0.55rem 0.65rem;
+}
+
+.ada-tool-source-editor__textarea {
+    min-height: 5.5rem;
+    resize: vertical;
+}
+
+.ada-tool-source-editor__unit {
+    color: rgba(7, 21, 34, 0.66);
+}
+
+.ada-tool-source-editor__validation {
+    min-height: 1.2rem;
+    color: #8b1e1e;
+    font-size: 0.86rem;
+}
+
+@media (max-width: 720px) {
+    .ada-tool-source-editor__threshold-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ada-tool-source-editor__source-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+}
