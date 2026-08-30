@@ -30,6 +30,11 @@ from ada.web.ui.global_indicator import (
     GlobalIndicatorCollection,
     create_ada_global_indicator_module,
 )
+from ada.web.ui.time_status import (
+    TimeStatusDetailState,
+    TimeStatusSummaryState,
+    create_ada_time_status_module,
+)
 from atlanticus.web.identity.access import AccessRuntime
 from atlanticus.web.identity.local import LocalIdentityProvider
 from atlanticus.web.identity.module import create_identity_module
@@ -55,6 +60,9 @@ def create_application_definition(
     global_indicators: GlobalIndicatorCollection | None = None,
     alarm_management_summary: AlarmManagementSummaryState | None = None,
     alarm_status: AlarmStatusState | None = None,
+    tool_key: str | None = None,
+    time_status_summary: TimeStatusSummaryState | None = None,
+    time_status_detail: TimeStatusDetailState | None = None,
 ) -> WebApplicationDefinition:
     application_version = version(_APPLICATION_DISTRIBUTION)
     navigation = NavigationDefinition(
@@ -88,11 +96,16 @@ def create_application_definition(
             global_indicators=global_indicators or GlobalIndicatorCollection(()),
             alarm_management_summary=alarm_management_summary,
             alarm_status=alarm_status,
+            tool_key=tool_key,
+            time_status_summary=time_status_summary,
+            time_status_detail=time_status_detail,
         ),
         modules=(
             create_ada_ui_module(),
             create_ada_display_status_module(),
             create_ada_global_indicator_module(),
+            # Time Status sólo publica CSS/JS cuando existe una instancia real en esta composición.
+            *(() if time_status_summary is None else (create_ada_time_status_module(),)),
             create_ada_alarm_management_summary_module(),
             create_ada_alarm_status_module(),
             create_ada_branding_module(),

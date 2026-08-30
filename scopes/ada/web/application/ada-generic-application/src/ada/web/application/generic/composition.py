@@ -16,6 +16,12 @@ from ada.web.shell.navigation import (
 )
 from ada.web.ui.branding import OperationalBrandState, build_operational_brand
 from ada.web.ui.global_indicator import GlobalIndicatorCollection, build_global_indicators
+from ada.web.ui.time_status import (
+    TimeStatusDetailState,
+    TimeStatusSummaryState,
+    build_time_status,
+    build_time_status_detail,
+)
 from atlanticus.web.navigation.api import resolve_navigation_from_services
 from atlanticus.web.services import ServiceRegistry
 
@@ -28,6 +34,9 @@ def build_application_layout(
     global_indicators: GlobalIndicatorCollection,
     alarm_management_summary: AlarmManagementSummaryState | None,
     alarm_status: AlarmStatusState | None,
+    tool_key: str | None,
+    time_status_summary: TimeStatusSummaryState | None,
+    time_status_detail: TimeStatusDetailState | None,
 ):
     menu = resolve_navigation_from_services(services)
     global_indicators_component = (
@@ -35,11 +44,17 @@ def build_application_layout(
     )
     alarm_management_component = build_alarm_management_summary(alarm_management_summary)
     alarm_status_component = build_alarm_status(alarm_status)
+    time_status_component = _build_time_status_component(
+        tool_key=tool_key,
+        summary=time_status_summary,
+        detail=time_status_detail,
+    )
     header = build_ada_operational_header(
         brand=build_operational_brand(operational_brand),
         global_indicators=global_indicators_component,
         alarm_management=alarm_management_component,
         alarm_status=alarm_status_component,
+        time_status=time_status_component,
         desktop_navigation_trigger=build_ada_navigation_desktop_trigger(),
         mobile_navigation_trigger=build_ada_navigation_mobile_trigger(),
     )
@@ -53,4 +68,21 @@ def build_application_layout(
             ),
         ],
         id='ada-generic-application',
+    )
+
+
+def _build_time_status_component(
+    *,
+    tool_key: str | None,
+    summary: TimeStatusSummaryState | None,
+    detail: TimeStatusDetailState | None,
+):
+    if summary is None:
+        if detail is not None:
+            raise ValueError('Time Status detail requires Time Status summary')
+        return None
+    return build_time_status(
+        tool_key=tool_key or '',
+        state=summary,
+        detail=None if detail is None else build_time_status_detail(state=detail),
     )

@@ -12,6 +12,7 @@ def build_ada_operational_header(
     global_indicators: Component | None = None,
     alarm_management: Component | None = None,
     alarm_status: Component | None = None,
+    time_status: Component | None = None,
     desktop_navigation_trigger: Component | None = None,
     mobile_navigation_trigger: Component | None = None,
 ) -> html.Header:
@@ -44,14 +45,14 @@ def build_ada_operational_header(
             )
         )
 
-    shell_children: list[Component] = [
+    primary_children: list[Component] = [
         html.Div(
             row_children,
             className='ada-operational-header',
         )
     ]
     if desktop_navigation_trigger is not None:
-        shell_children.append(
+        primary_children.append(
             html.Div(
                 desktop_navigation_trigger,
                 className='ada-operational-header__desktop-navigation',
@@ -60,8 +61,18 @@ def build_ada_operational_header(
         )
 
     return html.Header(
-        shell_children,
-        className='ada-operational-header-shell ada-navigation__anchor-host',
+        [
+            html.Div(
+                primary_children,
+                className='ada-operational-header__primary ada-navigation__anchor-host',
+            ),
+            _build_slot(
+                'time_status',
+                time_status,
+                'ada-operational-header__time-status-slot',
+            ),
+        ],
+        className='ada-operational-header-shell',
         **component_identity_attributes('operational_header'),
     )
 

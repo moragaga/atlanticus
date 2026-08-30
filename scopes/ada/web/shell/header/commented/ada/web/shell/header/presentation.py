@@ -13,10 +13,11 @@ def build_ada_operational_header(
     global_indicators: Component | None = None,
     alarm_management: Component | None = None,
     alarm_status: Component | None = None,
+    time_status: Component | None = None,
     desktop_navigation_trigger: Component | None = None,
     mobile_navigation_trigger: Component | None = None,
 ) -> html.Header:
-    # La fila mantiene el orden visual aprobado de los bloques operacionales.
+    # La fila primaria mantiene el orden horizontal ya aprobado para los bloques operacionales.
     row_children: list[Component] = [
         _build_slot('brand', brand, 'ada-operational-header__brand-slot'),
         _build_slot(
@@ -46,15 +47,16 @@ def build_ada_operational_header(
             )
         )
 
-    # El trigger desktop queda anclado al shell para conservar su patrón lateral derecho.
-    shell_children: list[Component] = [
+    # El trigger desktop se ancla únicamente a la fila primaria para que el nuevo strip inferior
+    # de Time Status no cambie su centro vertical ni invada los bloques operacionales.
+    primary_children: list[Component] = [
         html.Div(
             row_children,
             className='ada-operational-header',
         )
     ]
     if desktop_navigation_trigger is not None:
-        shell_children.append(
+        primary_children.append(
             html.Div(
                 desktop_navigation_trigger,
                 className='ada-operational-header__desktop-navigation',
@@ -62,9 +64,21 @@ def build_ada_operational_header(
             )
         )
 
+    # Time Status vive bajo la fila existente pero sigue dentro del Header. El slot siempre existe
+    # como contrato DOM y se colapsa completamente cuando la composition root no inyecta contenido.
     return html.Header(
-        shell_children,
-        className='ada-operational-header-shell ada-navigation__anchor-host',
+        [
+            html.Div(
+                primary_children,
+                className='ada-operational-header__primary ada-navigation__anchor-host',
+            ),
+            _build_slot(
+                'time_status',
+                time_status,
+                'ada-operational-header__time-status-slot',
+            ),
+        ],
+        className='ada-operational-header-shell',
         **component_identity_attributes('operational_header'),
     )
 

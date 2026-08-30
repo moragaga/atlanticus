@@ -33,6 +33,7 @@ def test_header_owns_slots_without_knowing_their_presentations() -> None:
     indicators = html.Div('indicators', id='indicators-component')
     management = html.Div('management', id='management-component')
     status = html.Div('status', id='status-component')
+    time_status = html.Div('time', id='time-status-component')
     desktop = html.Button('desktop', id='desktop-navigation')
     mobile = html.Button('mobile', id='mobile-navigation')
 
@@ -41,6 +42,7 @@ def test_header_owns_slots_without_knowing_their_presentations() -> None:
         global_indicators=indicators,
         alarm_management=management,
         alarm_status=status,
+        time_status=time_status,
         desktop_navigation_trigger=desktop,
         mobile_navigation_trigger=mobile,
     )
@@ -50,12 +52,14 @@ def test_header_owns_slots_without_knowing_their_presentations() -> None:
     assert _require_slot(component, 'global_indicators') is not None
     assert _require_slot(component, 'alarm_management') is not None
     assert _require_slot(component, 'alarm_status') is not None
+    assert _require_slot(component, 'time_status') is not None
     assert _require_slot(component, 'navigation_desktop') is not None
     assert _require_slot(component, 'navigation_mobile') is not None
     assert _require_id(component, 'brand-component') is brand
     assert _require_id(component, 'indicators-component') is indicators
     assert _require_id(component, 'management-component') is management
     assert _require_id(component, 'status-component') is status
+    assert _require_id(component, 'time-status-component') is time_status
     assert _require_id(component, 'desktop-navigation') is desktop
     assert _require_id(component, 'mobile-navigation') is mobile
 
@@ -63,7 +67,7 @@ def test_header_owns_slots_without_knowing_their_presentations() -> None:
 def test_optional_operational_slots_are_empty_without_placeholders() -> None:
     component = build_ada_operational_header(brand=html.Div('brand'))
 
-    for slot_key in ('global_indicators', 'alarm_management', 'alarm_status'):
+    for slot_key in ('global_indicators', 'alarm_management', 'alarm_status', 'time_status'):
         slot = _require_slot(component, slot_key)
         assert _prop(slot, 'data-slot-empty') == 'true'
         assert _children(slot) == []
@@ -159,3 +163,34 @@ def test_header_desktop_calibration_gives_remaining_width_to_global_indicators()
     assert 'flex: 1 1 0;' in css
     assert 'flex: 0 1 var(--ada-operational-header-management-width);' in css
     assert 'flex: 0 1 var(--ada-operational-header-status-width);' in css
+
+
+def test_time_status_slot_sits_below_primary_header_row() -> None:
+    time_status = html.Div('time', id='time-status')
+    component = build_ada_operational_header(
+        brand=html.Div('brand'),
+        time_status=time_status,
+        desktop_navigation_trigger=html.Button('menu'),
+    )
+
+    children = _children(component)
+    assert len(children) == 2
+    primary, time_slot = children
+    assert 'ada-operational-header__primary' in (_prop(primary, 'className') or '')
+    assert 'ada-navigation__anchor-host' in (_prop(primary, 'className') or '')
+    assert _prop(time_slot, 'data-ada-slot-key') == 'time_status'
+    assert _prop(time_slot, 'data-slot-empty') == 'false'
+    assert _require_id(time_slot, 'time-status') is time_status
+
+
+def test_header_css_keeps_time_status_out_of_primary_row_geometry() -> None:
+    css = (
+        files('ada.web.shell.header')
+        .joinpath('resources/css/10-operational-header.css')
+        .read_text(encoding='utf-8')
+    )
+
+    assert '.ada-operational-header__time-status-slot {' in css
+    assert 'min-height: 1.75rem;' in css
+    assert 'overflow: visible;' in css
+    assert '.ada-operational-header__primary {' in css

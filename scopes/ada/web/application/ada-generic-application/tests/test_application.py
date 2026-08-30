@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 
 from ada.web.alarms.management_summary import (
     ADA_ALARM_MANAGEMENT_SUMMARY_ASSET_LAYER,
@@ -29,6 +30,15 @@ from ada.web.ui.global_indicator import (
     GlobalIndicatorMeasurementState,
     GlobalIndicatorState,
 )
+from ada.web.ui.time_status import (
+    ADA_TIME_STATUS_ASSET_LAYER,
+    TimeStatusDetailSourceState,
+    TimeStatusDetailState,
+    TimeStatusFreshnessPolicy,
+    TimeStatusSourceCondition,
+    TimeStatusSourceState,
+    TimeStatusSummaryState,
+)
 from atlanticus.web.identity.access import ACCESS_RUNTIME_SERVICE_KEY
 from atlanticus.web.navigation.api import (
     NAVIGATION_DEFINITION_PROVIDER_SERVICE_KEY,
@@ -42,7 +52,7 @@ def test_definition_composes_current_ada_web_capabilities() -> None:
 
     assert definition.metadata.application_id == 'ada-generic-application'
     assert definition.metadata.display_name == 'ADA'
-    assert definition.metadata.version == '0.1.24'
+    assert definition.metadata.version == '0.1.25'
     assert tuple(module.name for module in definition.modules) == (
         'ada-ui',
         'ada-display-status',
@@ -86,7 +96,7 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
     assert DEFAULT_OPERATIONAL_BRAND_LOGO_SRC in payload
     assert DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC in payload
     assert DEFAULT_PELAMBRES_BRAND_LOGO_SRC in payload
-    assert 'Versión 0.1.24' in payload
+    assert 'Versión 0.1.25' in payload
     assert runtime.services.contains(ACCESS_RUNTIME_SERVICE_KEY)
     assert runtime.services.contains(NAVIGATION_PRINCIPAL_PROVIDER_SERVICE_KEY)
     assert any(
@@ -271,3 +281,74 @@ def test_public_package_exposes_runtime_factory() -> None:
     from ada.web.application.generic import create_application_runtime
 
     assert callable(create_application_runtime)
+
+
+def test_time_status_mounts_under_header_only_when_explicitly_injected(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv('ATLANTICUS_ENVIRONMENT', raising=False)
+    monkeypatch.setenv('ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID', 'local:test-user')
+
+    policy = TimeStatusFreshnessPolicy(warning_after_seconds=200, stale_after_seconds=300)
+    pi = TimeStatusSourceState(
+        key='pi',
+        label='PI',
+        policy=policy,
+        condition=TimeStatusSourceCondition.FRESH,
+        relative_age_text='hace menos de 10 segundos',
+        timestamp_utc=datetime(2026, 8, 29, 22, 0, tzinfo=UTC),
+    )
+    summary = TimeStatusSummaryState(pi=pi, has_detail=True)
+    detail = TimeStatusDetailState(
+        sources=(
+            TimeStatusDetailSourceState(key='pi', label='PI', value='2026-08-29T22:00:00Z'),
+            TimeStatusDetailSourceState(key='blockgrade', label='BlockGrade', value='Error'),
+        )
+    )
+    runtime = create_application_runtime(
+        tool_key='process',
+        time_status_summary=summary,
+        time_status_detail=detail,
+    )
+    response = runtime.server.test_client().get('/_dash-layout')
+    payload = json.dumps(response.get_json(), ensure_ascii=False)
+
+    assert 'time_status' in payload
+    assert 'data-ada-time-status-tool-key' in payload
+    assert 'process' in payload
+    assert 'BlockGrade' in payload
+    assert 'informational' in payload
+    assert any(
+        entry.startswith(f'{ADA_TIME_STATUS_ASSET_LAYER.target_name}/css/')
+        for entry in runtime.assets.css_entries
+    )
+    assert any(
+        entry.startswith(f'{ADA_TIME_STATUS_ASSET_LAYER.target_name}/js/')
+        for entry in runtime.assets.js_entries
+    )
+
+
+def test_time_status_assets_are_not_loaded_without_time_status() -> None:
+    definition = create_application_definition()
+
+    assert 'ada-time-status' not in tuple(module.name for module in definition.modules)
+
+
+def test_time_status_definition_adds_module_when_summary_is_injected() -> None:
+    policy = TimeStatusFreshnessPolicy(warning_after_seconds=200, stale_after_seconds=300)
+    summary = TimeStatusSummaryState(
+        pi=TimeStatusSourceState(
+            key='pi',
+            label='PI',
+            policy=policy,
+            condition=TimeStatusSourceCondition.FRESH,
+            relative_age_text='hace menos de 10 segundos',
+            timestamp_utc=datetime(2026, 8, 29, 22, 0, tzinfo=UTC),
+        )
+    )
+
+    definition = create_application_definition(tool_key='process', time_status_summary=summary)
+
+    assert 'ada-time-status' in tuple(module.name for module in definition.modules)

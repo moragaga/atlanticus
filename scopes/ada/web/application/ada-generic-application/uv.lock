@@ -4,7 +4,7 @@ requires-python = "==3.14.2"
 
 [[package]]
 name = "ada-generic-application"
-version = "0.1.24"
+version = "0.1.25"
 source = { editable = "." }
 dependencies = [
     { name = "ada-web-alarm-management-summary" },
@@ -15,6 +15,7 @@ dependencies = [
     { name = "ada-web-ui-core" },
     { name = "ada-web-ui-display-status" },
     { name = "ada-web-ui-global-indicator" },
+    { name = "ada-web-ui-time-status" },
     { name = "atlanticus-web" },
     { name = "atlanticus-web-identity" },
     { name = "atlanticus-web-identity-local" },
@@ -37,6 +38,7 @@ requires-dist = [
     { name = "ada-web-ui-core", editable = "../../ui/core" },
     { name = "ada-web-ui-display-status", editable = "../../ui/display-status" },
     { name = "ada-web-ui-global-indicator", editable = "../../ui/global-indicator" },
+    { name = "ada-web-ui-time-status", editable = "../../ui/time-status" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "atlanticus-web-identity", editable = "../../../../../web/capabilities/identity/core" },
     { name = "atlanticus-web-identity-local", editable = "../../../../../web/capabilities/identity/local" },
@@ -93,7 +95,7 @@ dev = [
 
 [[package]]
 name = "ada-web-shell-header"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "../../shell/header" }
 dependencies = [
     { name = "ada-web-ui-core" },
@@ -219,6 +221,29 @@ dependencies = [
 requires-dist = [
     { name = "ada-web-ui-core", editable = "../../ui/core" },
     { name = "ada-web-ui-display-status", editable = "../../ui/display-status" },
+    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
+    { name = "dash", specifier = "==4.4.1" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-ui-time-status"
+version = "0.1.7"
+source = { editable = "../../ui/time-status" }
+dependencies = [
+    { name = "ada-web-ui-core" },
+    { name = "atlanticus-web" },
+    { name = "dash" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-web-ui-core", editable = "../../ui/core" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "dash", specifier = "==4.4.1" },
 ]
