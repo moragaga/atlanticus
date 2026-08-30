@@ -82,9 +82,9 @@
     display: flex;
     width: 100%;
     min-width: 0;
-    min-height: 1.75rem;
+    min-height: 1.35rem;
     align-items: center;
-    padding: .1rem .6rem .15rem;
+    padding: .02rem .6rem .04rem;
     overflow: visible;
     background: var(--ada-operational-header-surface);
     border-top: 1px solid var(--ada-operational-header-border);

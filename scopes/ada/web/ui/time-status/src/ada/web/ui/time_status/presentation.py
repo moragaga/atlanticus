@@ -45,15 +45,9 @@ def build_time_status(
 
 def build_time_status_summary(*, state: TimeStatusSummaryState) -> Component:
     sources = state.required_sources
-    attributes = {
-        'data-component-key': 'time_status',
-        'data-has-dispatch': 'true' if state.dispatch is not None else 'false',
-        'data-has-detail': 'true' if state.has_detail else 'false',
-        'data-content-stale': 'true' if state.content_stale else 'false',
-        'data-has-data-error': 'true' if state.data_error_source_keys else 'false',
-    }
+    source_attributes = {}
     if state.has_detail:
-        attributes.update(
+        source_attributes.update(
             {
                 'data-ada-time-status-detail-trigger': 'true',
                 'role': 'button',
@@ -71,10 +65,17 @@ def build_time_status_summary(*, state: TimeStatusSummaryState) -> Component:
                     _build_source(source, divided=index < len(sources) - 1)
                     for index, source in enumerate(sources)
                 ],
+                **source_attributes,
             ),
             _build_current_datetime(state.current_datetime),
         ],
-        **attributes,
+        **{
+            'data-component-key': 'time_status',
+            'data-has-dispatch': 'true' if state.dispatch is not None else 'false',
+            'data-has-detail': 'true' if state.has_detail else 'false',
+            'data-content-stale': 'true' if state.content_stale else 'false',
+            'data-has-data-error': 'true' if state.data_error_source_keys else 'false',
+        },
     )
 
 

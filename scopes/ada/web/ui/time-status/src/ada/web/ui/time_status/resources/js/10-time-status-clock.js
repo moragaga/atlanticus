@@ -13,6 +13,7 @@
   const controller = {
     timer: null,
     formatter: null,
+    observer: null,
   };
 
   function runtimeConfig() {
@@ -146,13 +147,38 @@
     summary.setAttribute('data-has-data-error', hasDataError ? 'true' : 'false');
   }
 
+  function setClockNode(node, text) {
+    node.textContent = text;
+    node.title = text;
+  }
+
+  function syncAddedElement(element, nowMs, text) {
+    if (element.matches(CLOCK_SELECTOR)) {
+      setClockNode(element, text);
+    }
+    element.querySelectorAll(CLOCK_SELECTOR).forEach((node) => setClockNode(node, text));
+    if (element.matches(SUMMARY_SELECTOR)) {
+      updateSummary(element, nowMs);
+    }
+    element.querySelectorAll(SUMMARY_SELECTOR).forEach((summary) => updateSummary(summary, nowMs));
+  }
+
+  function handleMutations(mutations) {
+    const nowMs = Date.now();
+    const text = formatTimestamp(nowMs);
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (node instanceof Element) {
+          syncAddedElement(node, nowMs, text);
+        }
+      });
+    });
+  }
+
   function syncClock() {
     const nowMs = Date.now();
     const text = formatTimestamp(nowMs);
-    document.querySelectorAll(CLOCK_SELECTOR).forEach((node) => {
-      node.textContent = text;
-      node.title = text;
-    });
+    document.querySelectorAll(CLOCK_SELECTOR).forEach((node) => setClockNode(node, text));
     document.querySelectorAll(SUMMARY_SELECTOR).forEach((summary) => updateSummary(summary, nowMs));
     return nowMs;
   }
@@ -184,6 +210,8 @@
   function start() {
     controller.formatter = createFormatter(resolveTimeZone());
     scheduleNextTick();
+    controller.observer = new MutationObserver(handleMutations);
+    controller.observer.observe(document.body, { childList: true, subtree: true });
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', resync);
     window.addEventListener('pageshow', resync);

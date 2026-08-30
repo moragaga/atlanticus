@@ -1,4 +1,4 @@
-# TS-008 agrega contenido dinámico al Detail sin otorgar autoridad operacional a fuentes informativas.
+# TS-012A calibra la interacción visual sin cambiar la semántica PI/Dispatch ni el contrato del Detail.
 from __future__ import annotations
 
 from dash import html
@@ -20,12 +20,10 @@ def build_time_status(
     state: TimeStatusSummaryState,
     detail: Component | None = None,
 ) -> Component:
-    # tool_key sigue siendo la identidad estable de la instancia para TS-007 y no cambia con TS-008.
+    # tool_key sigue siendo la identidad estable usada para restaurar el popover tras rerender.
     normalized_tool_key = tool_key.strip()
     if not normalized_tool_key:
         raise TimeStatusDefinitionError('Time Status tool_key must not be empty')
-
-    # No permitimos contenido Detail inaccesible si el Summary no declara la interacción.
     if detail is not None and not state.has_detail:
         raise TimeStatusDefinitionError('Time Status detail content requires has_detail=True')
 
@@ -49,15 +47,11 @@ def build_time_status(
 
 def build_time_status_summary(*, state: TimeStatusSummaryState) -> Component:
     sources = state.required_sources
-    attributes = {
-        'data-component-key': 'time_status',
-        'data-has-dispatch': 'true' if state.dispatch is not None else 'false',
-        'data-has-detail': 'true' if state.has_detail else 'false',
-        'data-content-stale': 'true' if state.content_stale else 'false',
-        'data-has-data-error': 'true' if state.data_error_source_keys else 'false',
-    }
+
+    # La interacción pertenece exclusivamente al grupo PI/Dispatch. Fecha y hora queda fuera del trigger.
+    source_attributes = {}
     if state.has_detail:
-        attributes.update(
+        source_attributes.update(
             {
                 'data-ada-time-status-detail-trigger': 'true',
                 'role': 'button',
@@ -75,15 +69,22 @@ def build_time_status_summary(*, state: TimeStatusSummaryState) -> Component:
                     _build_source(source, divided=index < len(sources) - 1)
                     for index, source in enumerate(sources)
                 ],
+                **source_attributes,
             ),
             _build_current_datetime(state.current_datetime),
         ],
-        **attributes,
+        **{
+            'data-component-key': 'time_status',
+            'data-has-dispatch': 'true' if state.dispatch is not None else 'false',
+            'data-has-detail': 'true' if state.has_detail else 'false',
+            'data-content-stale': 'true' if state.content_stale else 'false',
+            'data-has-data-error': 'true' if state.data_error_source_keys else 'false',
+        },
     )
 
 
 def build_time_status_detail(*, state: TimeStatusDetailState) -> Component:
-    # Sólo se renderizan las filas recibidas en el contrato de consumo; no se descubren fuentes globales ni se agregan faltantes.
+    # El Detail sigue renderizando sólo las fuentes ya resueltas por la composición.
     return html.Div(
         className='ada-time-status-detail__content',
         children=[_build_detail_source(source) for source in state.sources],
@@ -92,6 +93,7 @@ def build_time_status_detail(*, state: TimeStatusDetailState) -> Component:
 
 
 def _build_detail_surface(detail: Component | None) -> Component:
+    # La Surface permanece local y absolute; TS-012A cambia sólo su lenguaje visual y anclaje izquierdo.
     return html.Div(
         className='ada-time-status-detail',
         hidden=True,
@@ -105,7 +107,7 @@ def _build_detail_surface(detail: Component | None) -> Component:
 
 
 def _build_detail_source(source: TimeStatusDetailSourceState) -> Component:
-    # El rol se deriva del modelo. En TS-008 es sólo metadata semántica y no agrega colores, stale ni parpadeo.
+    # PI/Dispatch conservan rol control y las fuentes adicionales continúan siendo informativas.
     role = 'control' if source.is_control else 'informational'
     return html.Div(
         className='ada-time-status-detail__source',
@@ -165,6 +167,7 @@ def _build_source(source: TimeStatusSourceState, *, divided: bool) -> Component:
 
 
 def _build_current_datetime(current_datetime: str) -> Component:
+    # El reloj no participa de la interacción del Detail y mantiene su anclaje al extremo derecho.
     return html.Span(
         className='ada-time-status__current',
         children=html.Span(

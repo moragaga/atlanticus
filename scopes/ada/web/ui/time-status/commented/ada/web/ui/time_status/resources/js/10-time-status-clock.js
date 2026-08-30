@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  // Un único tick actualiza reloj y freshness para evitar dos timers independientes.
+  // El mismo controller mantiene reloj y freshness; TS-012A agrega hidratación inmediata tras rerender.
   const CLOCK_SELECTOR = "[data-ada-time-status-clock='true']";
   const SUMMARY_SELECTOR = "[data-component-key='time_status']";
   const SOURCE_SELECTOR = "[data-ada-time-status-source='true']";
@@ -14,6 +14,7 @@
   const controller = {
     timer: null,
     formatter: null,
+    observer: null,
   };
 
   function runtimeConfig() {
@@ -64,7 +65,6 @@
     return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}`;
   }
 
-  // Los buckets coinciden con el contrato D-TS-015 y con el formatter Python.
   function formatRelativeAge(ageSeconds) {
     if (ageSeconds < 10) {
       return 'hace menos de 10 segundos';
@@ -85,7 +85,6 @@
     return `hace más de ${days} ${days === 1 ? 'día' : 'días'}`;
   }
 
-  // warning es inclusivo para PREVENTIVE y stale es inclusivo para HARD_STALE.
   function resolveCondition(ageSeconds, warningAfterSeconds, staleAfterSeconds) {
     if (ageSeconds >= staleAfterSeconds) {
       return 'hard_stale';
@@ -110,7 +109,7 @@
   }
 
   function updateSource(source, nowMs) {
-    // DATA_ERROR viene resuelto por la capa Python/calidad y no se reinterpreta con el reloj del navegador.
+    // DATA_ERROR pertenece a la resolución Python y no se reinterpreta con el reloj local.
     if (source.getAttribute('data-source-condition') === 'data_error') {
       return;
     }
@@ -125,7 +124,6 @@
       return;
     }
 
-    // Clamp a cero sólo protege contra skew del reloj local; nunca crea DATA_ERROR en cliente.
     const ageSeconds = Math.max(0, Math.floor((nowMs - timestampMs) / 1000));
     const condition = resolveCondition(ageSeconds, warningAfterSeconds, staleAfterSeconds);
     setSourceCondition(source, condition);
@@ -135,7 +133,6 @@
     }
   }
 
-  // El marker global usa AND sobre las fuentes summary requeridas; todavía no modifica componentes.
   function updateSummary(summary, nowMs) {
     const sources = [...summary.querySelectorAll(SOURCE_SELECTOR)];
     sources.forEach((source) => updateSource(source, nowMs));
@@ -152,14 +149,40 @@
     summary.setAttribute('data-has-data-error', hasDataError ? 'true' : 'false');
   }
 
-  function syncClock() {
-    // Date.now se consulta en cada ciclo para sobrevivir suspensión, cambio de foco y saltos reales del reloj.
+  function setClockNode(node, text) {
+    node.textContent = text;
+    node.title = text;
+  }
+
+  // Cuando Dash inserta un Summary nuevo se reemplaza el placeholder en la misma mutación, sin esperar al próximo segundo.
+  function syncAddedElement(element, nowMs, text) {
+    if (element.matches(CLOCK_SELECTOR)) {
+      setClockNode(element, text);
+    }
+    element.querySelectorAll(CLOCK_SELECTOR).forEach((node) => setClockNode(node, text));
+    if (element.matches(SUMMARY_SELECTOR)) {
+      updateSummary(element, nowMs);
+    }
+    element.querySelectorAll(SUMMARY_SELECTOR).forEach((summary) => updateSummary(summary, nowMs));
+  }
+
+  function handleMutations(mutations) {
+    // Se obtiene un único now para toda la ráfaga de nodos agregados y no se crea un segundo timer.
     const nowMs = Date.now();
     const text = formatTimestamp(nowMs);
-    document.querySelectorAll(CLOCK_SELECTOR).forEach((node) => {
-      node.textContent = text;
-      node.title = text;
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (node instanceof Element) {
+          syncAddedElement(node, nowMs, text);
+        }
+      });
     });
+  }
+
+  function syncClock() {
+    const nowMs = Date.now();
+    const text = formatTimestamp(nowMs);
+    document.querySelectorAll(CLOCK_SELECTOR).forEach((node) => setClockNode(node, text));
     document.querySelectorAll(SUMMARY_SELECTOR).forEach((summary) => updateSummary(summary, nowMs));
     return nowMs;
   }
@@ -191,6 +214,9 @@
   function start() {
     controller.formatter = createFormatter(resolveTimeZone());
     scheduleNextTick();
+    // El observer sólo rehidrata nodos nuevos; no vigila atributos ni hace polling.
+    controller.observer = new MutationObserver(handleMutations);
+    controller.observer.observe(document.body, { childList: true, subtree: true });
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', resync);
     window.addEventListener('pageshow', resync);

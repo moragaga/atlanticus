@@ -4,18 +4,18 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-web-time-status-preview"
-version = "0.1.0"
+version = "0.1.1"
 description = "Preview local de validación visual TS-012 para ADA Time Status"
 requires-python = "==3.14.2"
 classifiers = [
     "Private :: Do Not Upload",
 ]
 dependencies = [
-    "ada-generic-application==0.1.25",
+    "ada-generic-application==0.1.26",
     "ada-web-alarm-management-summary==0.1.1",
     "ada-web-alarm-status==0.1.2",
     "ada-web-ui-global-indicator==0.2.1",
-    "ada-web-ui-time-status==0.1.7",
+    "ada-web-ui-time-status==0.1.8",
     "atlanticus-web==0.1.0",
 ]
 

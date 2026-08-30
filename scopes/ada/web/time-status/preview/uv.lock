@@ -45,7 +45,7 @@ constraints = [
 
 [[package]]
 name = "ada-generic-application"
-version = "0.1.25"
+version = "0.1.26"
 source = { editable = "../../application/ada-generic-application" }
 dependencies = [
     { name = "ada-web-alarm-management-summary" },
@@ -130,7 +130,7 @@ dev = [
 
 [[package]]
 name = "ada-web-shell-header"
-version = "0.1.2"
+version = "0.1.3"
 source = { editable = "../../shell/header" }
 dependencies = [
     { name = "ada-web-ui-core" },
@@ -180,7 +180,7 @@ dev = [
 
 [[package]]
 name = "ada-web-time-status-preview"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "ada-generic-application" },
@@ -303,7 +303,7 @@ dev = [
 
 [[package]]
 name = "ada-web-ui-time-status"
-version = "0.1.7"
+version = "0.1.8"
 source = { editable = "../../ui/time-status" }
 dependencies = [
     { name = "ada-web-ui-core" },

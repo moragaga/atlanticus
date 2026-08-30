@@ -124,7 +124,7 @@ def test_preview_definition_composes_full_header_and_validation_module() -> None
     module_names = tuple(module.name for module in definition.modules)
 
     assert definition.metadata.application_id == 'ada-time-status-preview-integrated_operations'
-    assert definition.metadata.version == '0.1.0'
+    assert definition.metadata.version == '0.1.1'
     assert 'ada-time-status' in module_names
     assert module_names[-1] == 'time-status-visual-preview-controls'
 
@@ -196,5 +196,13 @@ def test_preview_pins_closed_time_status_header_application_contracts() -> None:
     project = Path(__file__).resolve().parents[1]
     pyproject = (project / 'pyproject.toml').read_text(encoding='utf-8')
 
-    assert 'ada-generic-application==0.1.25' in pyproject
-    assert 'ada-web-ui-time-status==0.1.7' in pyproject
+    assert 'ada-generic-application==0.1.26' in pyproject
+    assert 'ada-web-ui-time-status==0.1.8' in pyproject
+
+
+def test_ts012a_preview_pins_compact_header_and_calibrated_time_status() -> None:
+    project = Path(__file__).resolve().parents[1]
+    pyproject = (project / 'pyproject.toml').read_text(encoding='utf-8')
+
+    assert 'ada-generic-application==0.1.26' in pyproject
+    assert 'ada-web-ui-time-status==0.1.8' in pyproject

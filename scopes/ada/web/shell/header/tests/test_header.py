@@ -191,6 +191,7 @@ def test_header_css_keeps_time_status_out_of_primary_row_geometry() -> None:
     )
 
     assert '.ada-operational-header__time-status-slot {' in css
-    assert 'min-height: 1.75rem;' in css
+    assert 'min-height: 1.35rem;' in css
+    assert 'padding: .02rem .6rem .04rem;' in css
     assert 'overflow: visible;' in css
     assert '.ada-operational-header__primary {' in css

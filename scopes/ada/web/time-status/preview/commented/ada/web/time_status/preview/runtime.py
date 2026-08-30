@@ -38,7 +38,7 @@ from atlanticus.web.models import ApplicationMetadata, WebApplicationDefinition,
 from atlanticus.web.modules import WebModule
 from atlanticus.web.services import ServiceRegistry
 
-_PREVIEW_VERSION = '0.1.0'
+_PREVIEW_VERSION = '0.1.1'
 _PREVIEW_ROOT = Path(__file__).resolve().parents[5]
 _PREVIEW_INTERVAL_ID = 'ts012-time-status-interval'
 _PREVIEW_SCENARIO_ID = 'ts012-time-status-scenario'

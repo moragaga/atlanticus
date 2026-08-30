@@ -22,7 +22,7 @@ def test_anchored_detail_surface_is_local_absolute_and_non_modal() -> None:
     assert '.ada-time-status-container {' in css
     assert 'position: relative;' in css.split('.ada-time-status-container {', 1)[1].split('}', 1)[0]
     assert 'position: absolute;' in surface
-    assert '--ada-time-status-detail-gap: .25rem;' in surface
+    assert '--ada-time-status-detail-gap: .2rem;' in surface
     assert 'top: calc(100% + var(--ada-time-status-detail-gap));' in surface
     assert 'position: fixed;' not in surface
     assert 'inset: 0;' not in surface
@@ -137,10 +137,12 @@ def test_time_status_css_maps_preventive_to_pulse_and_hard_stale_to_solid_alert(
         .read_text(encoding='utf-8')
     )
 
-    assert "[data-source-condition='preventive']" in css
-    assert 'ada-time-status-preventive-pulse' in css
-    assert "[data-source-condition='hard_stale']" in css
-    assert "[data-source-condition='data_error']" in css
+    assert '.ada-time-status__source-content--preventive {' in css
+    assert 'animation: ada-time-status-preventive-pulse' in css
+    assert '.ada-time-status__source-content--hard_stale,' in css
+    assert '.ada-time-status__source-content--data_error {' in css
+    assert 'background: #c82333;' in css
+    assert 'color: #fff;' in css
 
 
 def test_detail_surface_css_supports_flip_shift_and_viewport_bounded_height() -> None:
@@ -202,3 +204,41 @@ def test_detail_controller_positions_open_surface_against_visual_viewport_and_re
     assert 'position: fixed' not in javascript
     assert 'document.body.appendChild' not in javascript
     assert 'ResizeObserver' not in javascript
+
+
+def test_ts012a_visual_calibration_uses_dark_surface_left_anchor_and_full_danger_capsule() -> None:
+    css = (
+        files('ada.web.ui.time_status')
+        .joinpath('resources/css/10-time-status.css')
+        .read_text(encoding='utf-8')
+    )
+    surface = css.split('.ada-time-status-detail {', 1)[1].split('}', 1)[0]
+
+    assert 'inset-inline-start: 0;' in surface
+    assert 'inset-inline-end: 0;' not in surface
+    assert 'background: var(--dark-color);' in surface
+    assert 'color: #fff;' in surface
+    assert ".ada-time-status__sources[data-ada-time-status-detail-trigger='true']" in css
+    assert 'border: 1px solid var(--dark-color);' in css
+    assert '.ada-time-status__source-content--preventive {' in css
+    assert '.ada-time-status__source-content--hard_stale,' in css
+    assert 'background: #c82333;' in css
+    assert 'color: #fff;' in css
+
+
+def test_clock_hydrates_new_time_status_nodes_immediately_after_dash_rerender() -> None:
+    javascript = (
+        files('ada.web.ui.time_status')
+        .joinpath('resources/js/10-time-status-clock.js')
+        .read_text(encoding='utf-8')
+    )
+
+    assert 'new MutationObserver(handleMutations)' in javascript
+    assert (
+        'controller.observer.observe(document.body, { childList: true, subtree: true })'
+        in javascript
+    )
+    assert 'syncAddedElement(node, nowMs, text)' in javascript
+    assert 'element.querySelectorAll(CLOCK_SELECTOR)' in javascript
+    assert 'element.querySelectorAll(SUMMARY_SELECTOR)' in javascript
+    assert 'setInterval' not in javascript

@@ -75,7 +75,7 @@ def test_pi_only_summary_exposes_clock_marker_and_policy_metadata() -> None:
     )
 
 
-def test_pi_and_dispatch_are_one_summary_and_whole_set_is_detail_trigger() -> None:
+def test_pi_and_dispatch_sources_are_the_only_detail_trigger() -> None:
     component = build_time_status_summary(
         state=TimeStatusSummaryState(
             pi=_source(
@@ -91,15 +91,19 @@ def test_pi_and_dispatch_are_one_summary_and_whole_set_is_detail_trigger() -> No
         )
     )
     root = _props(component)
+    children = root['children']
+    sources = _props(children[0])
+    current = _props(children[1])
 
     assert root['data-has-dispatch'] == 'true'
-    assert root['data-ada-time-status-detail-trigger'] == 'true'
+    assert 'data-ada-time-status-detail-trigger' not in root
+    assert sources['data-ada-time-status-detail-trigger'] == 'true'
+    assert sources['role'] == 'button'
+    assert sources['tabIndex'] == 0
+    assert sources['aria-expanded'] == 'false'
+    assert 'data-ada-time-status-detail-trigger' not in current
     assert (
         sum(1 for item in _walk(component) if _props(item).get('data-source-key') is not None) == 2
-    )
-    assert all(
-        'data-ada-time-status-detail-trigger' not in _props(item)
-        for item in list(_walk(component))[1:]
     )
 
 
@@ -142,7 +146,9 @@ def test_composed_time_status_anchors_detail_as_summary_sibling() -> None:
     assert root['data-ada-time-status-container'] == 'true'
     assert len(children) == 2
     assert _props(children[0])['data-component-key'] == 'time_status'
-    assert _props(children[0])['data-ada-time-status-detail-trigger'] == 'true'
+    summary_children = _props(children[0])['children']
+    assert _props(summary_children[0])['data-ada-time-status-detail-trigger'] == 'true'
+    assert 'data-ada-time-status-detail-trigger' not in _props(children[0])
     surface = _props(children[1])
     assert surface['data-ada-time-status-detail-surface'] == 'true'
     assert surface['hidden'] is True
@@ -176,11 +182,15 @@ def test_detail_enabled_summary_exposes_keyboard_button_contract_closed_by_defau
     )
     root = _props(component)
     summary = _props(root['children'][0])
+    sources = _props(summary['children'][0])
+    current = _props(summary['children'][1])
 
     assert root['data-ada-time-status-detail-open'] == 'false'
-    assert summary['role'] == 'button'
-    assert summary['tabIndex'] == 0
-    assert summary['aria-expanded'] == 'false'
+    assert 'role' not in summary
+    assert sources['role'] == 'button'
+    assert sources['tabIndex'] == 0
+    assert sources['aria-expanded'] == 'false'
+    assert 'role' not in current
 
 
 def test_summary_without_detail_does_not_enter_keyboard_interaction_contract() -> None:
