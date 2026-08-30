@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ada-configuration-tools"
+version = "0.2.0"
+description = "Configuración persistible de Tools ADA y contratos de fuentes"
+requires-python = "==3.14.2"
+classifiers = [
+    "Private :: Do Not Upload",
+]
+dependencies = [
+    "ada-configuration-tool-source-consumption==0.1.0",
+    "ada-configuration-tool-source-operational-participation==0.1.0",
+]
+
+[tool.uv.sources]
+ada-configuration-tool-source-consumption = { path = "../tool-source-consumption", editable = true }
+ada-configuration-tool-source-operational-participation = { path = "../tool-source-operational-participation", editable = true }
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.15.22",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+include = ["ada.configuration.tools*"]
+
+[tool.setuptools.package-data]
+"ada.configuration.tools" = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+target-version = "py314"
+extend-exclude = [
+    "build",
+    "dist",
+    "commented",
+]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ada", "atlanticus"]
+combine-as-imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q --import-mode=importlib"

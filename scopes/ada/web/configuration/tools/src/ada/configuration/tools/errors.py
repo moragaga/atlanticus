@@ -1,0 +1,2 @@
+class ToolConfigurationValidationError(ValueError):
+    pass
