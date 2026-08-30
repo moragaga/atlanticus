@@ -1,0 +1,84 @@
+/* El wrapper entrega el contexto de posicionamiento sin imponer geometría al consumidor. */
+.ada-content-state {
+    position: relative;
+    min-width: 0;
+}
+
+/* El contenido real permanece montado y conserva sus interacciones debajo de la marca. */
+.ada-content-state__content {
+    position: relative;
+    min-width: 0;
+}
+
+/* La marca visual cubre el componente, pero nunca captura eventos del mouse o touch. */
+.ada-content-state__overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: .75rem;
+
+    background-color: rgba(75, 75, 75, .32);
+    border: 1px solid var(--primary-border-color);
+    border-radius: .3rem;
+
+    -webkit-backdrop-filter: grayscale(1);
+    backdrop-filter: grayscale(1);
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    user-select: none;
+
+    transition:
+        opacity 180ms ease-in-out,
+        visibility 0s linear 180ms;
+}
+
+/* Cualquier estado degradado vuelve visible el mismo overlay estable. */
+.ada-content-state[data-ada-content-state='stale'] .ada-content-state__overlay,
+.ada-content-state[data-ada-content-state='source_error'] .ada-content-state__overlay,
+.ada-content-state[data-ada-content-state='construction'] .ada-content-state__overlay {
+    opacity: 1;
+    visibility: visible;
+    transition-delay: 0s;
+}
+
+/* Las tres vistas existen siempre, pero solo una se muestra a la vez. */
+.ada-content-state__view {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    max-width: 80%;
+    color: #FFFFFF;
+    text-align: center;
+}
+
+.ada-content-state[data-ada-content-state='stale']
+    .ada-content-state__view[data-ada-content-state-view='stale'],
+.ada-content-state[data-ada-content-state='source_error']
+    .ada-content-state__view[data-ada-content-state-view='source_error'],
+.ada-content-state[data-ada-content-state='construction']
+    .ada-content-state__view[data-ada-content-state-view='construction'] {
+    display: flex;
+}
+
+/* La iconografía se mantiene centrada y compacta, siguiendo la referencia visual legacy. */
+.ada-content-state__icon {
+    margin-bottom: .25rem;
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+.ada-content-state__message {
+    margin: 0;
+    color: #FFFFFF;
+    font-size: .75rem;
+    font-weight: 600;
+    line-height: 1.15;
+}
