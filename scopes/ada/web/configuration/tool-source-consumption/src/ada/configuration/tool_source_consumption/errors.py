@@ -1,0 +1,2 @@
+class ToolSourceConsumptionValidationError(ValueError):
+    pass

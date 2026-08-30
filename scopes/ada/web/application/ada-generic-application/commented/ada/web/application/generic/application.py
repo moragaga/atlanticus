@@ -6,6 +6,10 @@ from functools import partial
 from importlib.metadata import version
 from pathlib import Path
 
+from ada.configuration.tool_source_consumption import (
+    ToolSourceConsumption,
+    ToolSourceConsumptionValidationError,
+)
 from ada.web.alarms.management_summary import (
     AlarmManagementSummaryState,
     create_ada_alarm_management_summary_module,
@@ -76,7 +80,7 @@ def create_application_definition(
     content_state_dependencies: tuple[ContentStateDependency, ...] = (),
     alarm_management_summary: AlarmManagementSummaryState | None = None,
     alarm_status: AlarmStatusState | None = None,
-    tool_key: str | None = None,
+    source_consumption: ToolSourceConsumption | None = None,
     time_status_summary: TimeStatusSummaryState | None = None,
     time_status_detail: TimeStatusDetailState | None = None,
 ) -> WebApplicationDefinition:
@@ -100,6 +104,15 @@ def create_application_definition(
         dependency_graph,
         has_global_indicators=bool(len(resolved_global_indicators)),
     )
+    # DATA-003 verifica que toda fuente usada por la composición pertenezca a la Tool.
+    _validate_source_consumption(
+        source_consumption,
+        dependency_graph=dependency_graph,
+        time_status_summary=time_status_summary,
+        time_status_detail=time_status_detail,
+    )
+    # La identidad que consumen Time Status y Content State deriva de una única autoridad pública.
+    tool_key = source_consumption.tool_key if source_consumption is not None else None
     source_conditions = _resolve_source_freshness(time_status_summary)
     resolved_content_states = (
         dependency_graph.resolve(source_conditions) if dependency_graph.dependencies else {}
@@ -155,6 +168,39 @@ def create_application_definition(
         ),
         page_packages=('ada.web.application.generic.pages',),
     )
+
+
+# Reúne solo las fuentes efectivamente usadas por Time Status y Content State en esta composición.
+def _validate_source_consumption(
+    source_consumption: ToolSourceConsumption | None,
+    *,
+    dependency_graph: ContentStateDependencyGraph,
+    time_status_summary: TimeStatusSummaryState | None,
+    time_status_detail: TimeStatusDetailState | None,
+) -> None:
+    # La lista conserva el orden de aparición sin crear una clasificación paralela de fuentes.
+    required_source_keys: list[str] = []
+    if time_status_summary is not None:
+        required_source_keys.extend(source.key for source in time_status_summary.required_sources)
+    if time_status_detail is not None:
+        required_source_keys.extend(source.key for source in time_status_detail.sources)
+    for dependency in dependency_graph.dependencies:
+        required_source_keys.extend(dependency.source_keys)
+
+    if not required_source_keys:
+        return
+    # Una composición source-driven sin Tool Configuration sería una segunda autoridad implícita.
+    if source_consumption is None:
+        raise ToolSourceConsumptionValidationError(
+            'Source-driven Generic Application composition requires ToolSourceConsumption'
+        )
+    declared_source_keys = set(source_consumption.source_keys)
+    # El contrato solo comprueba pertenencia; DATA-004 clasificará CONTROL/INFORMATIONAL.
+    for source_key in dict.fromkeys(required_source_keys):
+        if source_key not in declared_source_keys:
+            raise ToolSourceConsumptionValidationError(
+                f'Source is not declared by Tool Configuration: {source_key!r}'
+            )
 
 
 # Traducción explícita en la raíz de composición: Time Status y Content State no se importan entre sí.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ada.configuration.tool_source_consumption import ToolSourceConsumption
 from ada.web.alarms.management_summary import AlarmManagementSummaryState
 from ada.web.alarms.status import AlarmStatusState
 from ada.web.application.generic.application import create_application_definition
@@ -21,7 +22,7 @@ def create_application_runtime(
     content_state_dependencies: tuple[ContentStateDependency, ...] = (),
     alarm_management_summary: AlarmManagementSummaryState | None = None,
     alarm_status: AlarmStatusState | None = None,
-    tool_key: str | None = None,
+    source_consumption: ToolSourceConsumption | None = None,
     time_status_summary: TimeStatusSummaryState | None = None,
     time_status_detail: TimeStatusDetailState | None = None,
 ) -> WebApplicationRuntime:
@@ -34,7 +35,7 @@ def create_application_runtime(
             content_state_dependencies=content_state_dependencies,
             alarm_management_summary=alarm_management_summary,
             alarm_status=alarm_status,
-            tool_key=tool_key,
+            source_consumption=source_consumption,
             time_status_summary=time_status_summary,
             time_status_detail=time_status_detail,
         )

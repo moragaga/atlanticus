@@ -5,6 +5,10 @@ from datetime import UTC, datetime
 
 import pytest
 
+from ada.configuration.tool_source_consumption import (
+    ToolSourceConsumption,
+    ToolSourceConsumptionValidationError,
+)
 from ada.web.alarms.management_summary import (
     ADA_ALARM_MANAGEMENT_SUMMARY_ASSET_LAYER,
     AlarmManagementSummaryArea,
@@ -59,7 +63,7 @@ def test_definition_composes_current_ada_web_capabilities() -> None:
 
     assert definition.metadata.application_id == 'ada-generic-application'
     assert definition.metadata.display_name == 'ADA'
-    assert definition.metadata.version == '0.1.31'
+    assert definition.metadata.version == '0.1.32'
     assert tuple(module.name for module in definition.modules) == (
         'ada-ui',
         'ada-display-status',
@@ -103,7 +107,7 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
     assert DEFAULT_OPERATIONAL_BRAND_LOGO_SRC in payload
     assert DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC in payload
     assert DEFAULT_PELAMBRES_BRAND_LOGO_SRC in payload
-    assert 'Versión 0.1.31' in payload
+    assert 'Versión 0.1.32' in payload
     assert runtime.services.contains(ACCESS_RUNTIME_SERVICE_KEY)
     assert runtime.services.contains(NAVIGATION_PRINCIPAL_PROVIDER_SERVICE_KEY)
     assert any(
@@ -386,7 +390,10 @@ def test_time_status_mounts_under_header_only_when_explicitly_injected(
         sources=(TimeStatusDetailSourceState(key='blockgrade', label='BlockGrade', value='Error'),)
     )
     runtime = create_application_runtime(
-        tool_key='process',
+        source_consumption=ToolSourceConsumption(
+            tool_key='process',
+            source_keys=('pi', 'blockgrade'),
+        ),
         time_status_summary=summary,
         time_status_detail=detail,
     )
@@ -427,7 +434,10 @@ def test_time_status_definition_adds_module_when_summary_is_injected() -> None:
         )
     )
 
-    definition = create_application_definition(tool_key='process', time_status_summary=summary)
+    definition = create_application_definition(
+        source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
+        time_status_summary=summary,
+    )
 
     assert 'ada-time-status' in tuple(module.name for module in definition.modules)
 
@@ -453,7 +463,7 @@ def test_time_status_without_additional_sources_renders_explicit_empty_detail(
         has_detail=True,
     )
     runtime = create_application_runtime(
-        tool_key='process',
+        source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
         time_status_summary=summary,
         time_status_detail=None,
     )
@@ -537,7 +547,7 @@ def test_global_indicators_runtime_binding_resolves_initial_stale_and_preserves_
         content_state_dependencies=(
             ContentStateDependency(component_key='global_indicators', source_keys=('pi',)),
         ),
-        tool_key='process',
+        source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
         time_status_summary=_time_status_summary(
             pi_condition=TimeStatusSourceCondition.HARD_STALE,
         ),
@@ -565,14 +575,17 @@ def test_global_indicators_runtime_binding_resolves_source_error_per_own_depende
                 source_keys=('pi', 'dispatch'),
             ),
         ),
-        tool_key='integrated_operations',
+        source_consumption=ToolSourceConsumption(
+            tool_key='integrated_operations',
+            source_keys=('pi', 'dispatch'),
+        ),
         time_status_summary=_time_status_summary(
             pi_condition=TimeStatusSourceCondition.HARD_STALE,
             dispatch_condition=TimeStatusSourceCondition.DATA_ERROR,
         ),
     )
 
-    assert definition.metadata.version == '0.1.31'
+    assert definition.metadata.version == '0.1.32'
     assert (
         definition.layout.keywords['global_indicators_runtime_state'] is ContentState.SOURCE_ERROR
     )
@@ -593,7 +606,7 @@ def test_construction_precedence_is_preserved_over_runtime_source_error(
         content_state_dependencies=(
             ContentStateDependency(component_key='global_indicators', source_keys=('pi',)),
         ),
-        tool_key='process',
+        source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
         time_status_summary=_time_status_summary(
             pi_condition=TimeStatusSourceCondition.DATA_ERROR,
         ),
@@ -619,7 +632,10 @@ def test_content_state_dependency_requires_required_time_status_source() -> None
                     source_keys=('pi', 'dispatch'),
                 ),
             ),
-            tool_key='process',
+            source_consumption=ToolSourceConsumption(
+                tool_key='process',
+                source_keys=('pi', 'dispatch'),
+            ),
             time_status_summary=_time_status_summary(
                 pi_condition=TimeStatusSourceCondition.FRESH,
             ),
@@ -632,8 +648,79 @@ def test_content_state_dependency_rejects_component_not_adopted_by_generic_appli
             content_state_dependencies=(
                 ContentStateDependency(component_key='other_component', source_keys=('pi',)),
             ),
-            tool_key='process',
+            source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
             time_status_summary=_time_status_summary(
                 pi_condition=TimeStatusSourceCondition.FRESH,
+            ),
+        )
+
+
+def test_source_driven_composition_requires_tool_source_consumption() -> None:
+    with pytest.raises(
+        ToolSourceConsumptionValidationError,
+        match='requires ToolSourceConsumption',
+    ):
+        create_application_definition(
+            time_status_summary=_time_status_summary(
+                pi_condition=TimeStatusSourceCondition.FRESH,
+            )
+        )
+
+
+def test_time_status_required_source_must_be_declared_by_tool_configuration() -> None:
+    with pytest.raises(
+        ToolSourceConsumptionValidationError,
+        match="Source is not declared by Tool Configuration: 'pi'",
+    ):
+        create_application_definition(
+            source_consumption=ToolSourceConsumption(
+                tool_key='process',
+                source_keys=('blockgrade',),
+            ),
+            time_status_summary=_time_status_summary(
+                pi_condition=TimeStatusSourceCondition.FRESH,
+            ),
+        )
+
+
+def test_time_status_detail_source_must_be_declared_by_tool_configuration() -> None:
+    with pytest.raises(
+        ToolSourceConsumptionValidationError,
+        match="Source is not declared by Tool Configuration: 'blockgrade'",
+    ):
+        create_application_definition(
+            source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
+            time_status_summary=_time_status_summary(
+                pi_condition=TimeStatusSourceCondition.FRESH,
+            ),
+            time_status_detail=TimeStatusDetailState(
+                sources=(
+                    TimeStatusDetailSourceState(
+                        key='blockgrade',
+                        label='BlockGrade',
+                        value='Fresh',
+                    ),
+                )
+            ),
+        )
+
+
+def test_content_state_dependency_source_must_be_declared_by_tool_configuration() -> None:
+    with pytest.raises(
+        ToolSourceConsumptionValidationError,
+        match="Source is not declared by Tool Configuration: 'dispatch'",
+    ):
+        create_application_definition(
+            global_indicators=_content_state_test_collection(),
+            content_state_dependencies=(
+                ContentStateDependency(
+                    component_key='global_indicators',
+                    source_keys=('pi', 'dispatch'),
+                ),
+            ),
+            source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
+            time_status_summary=_time_status_summary(
+                pi_condition=TimeStatusSourceCondition.FRESH,
+                dispatch_condition=TimeStatusSourceCondition.FRESH,
             ),
         )
