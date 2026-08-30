@@ -30,6 +30,17 @@ def _walk(component: Component):
                 yield from _walk(child)
 
 
+def _text_content(component: Component) -> tuple[str, ...]:
+    values: list[str] = []
+    for item in _walk(component):
+        children = _props(item).get('children')
+        if isinstance(children, str):
+            values.append(children)
+        elif isinstance(children, (list, tuple)):
+            values.extend(child for child in children if isinstance(child, str))
+    return tuple(values)
+
+
 def _source(
     key: str,
     *,
@@ -101,6 +112,7 @@ def test_pi_and_dispatch_sources_are_the_only_detail_trigger() -> None:
     assert sources['role'] == 'button'
     assert sources['tabIndex'] == 0
     assert sources['aria-expanded'] == 'false'
+    assert sources['aria-label'] == 'Ver fuentes de datos adicionales'
     assert 'data-ada-time-status-detail-trigger' not in current
     assert (
         sum(1 for item in _walk(component) if _props(item).get('data-source-key') is not None) == 2
@@ -134,6 +146,44 @@ def test_hard_stale_and_data_error_are_distinct_dom_states() -> None:
     assert _props(error)['data-content-stale'] == 'false'
     assert _props(error)['data-has-data-error'] == 'true'
 
+    error_source = next(
+        item for item in _walk(error) if _props(item).get('data-source-key') == 'pi'
+    )
+    error_content = _props(_props(error_source)['children'])['children']
+    source_icon = next(
+        item
+        for item in error_content
+        if _props(item).get('data-ada-time-status-source-icon') == 'true'
+    )
+    source_value = next(
+        item
+        for item in error_content
+        if _props(item).get('data-ada-time-status-source-value') == 'true'
+    )
+
+    assert 'bi-cloud-slash' in _props(source_icon)['className']
+    assert 'bi-exclamation-triangle' in _props(source_value)['className']
+    assert _props(source_value)['aria-label'] == 'Error de información temporal'
+
+
+def test_data_error_keeps_pi_dispatch_detail_trigger_available() -> None:
+    component = build_time_status_summary(
+        state=TimeStatusSummaryState(
+            pi=_source(
+                'pi',
+                condition=TimeStatusSourceCondition.DATA_ERROR,
+                warning=200,
+                stale=300,
+            ),
+            has_detail=True,
+        )
+    )
+    sources = _props(_props(component)['children'][0])
+
+    assert sources['data-ada-time-status-detail-trigger'] == 'true'
+    assert sources['role'] == 'button'
+    assert sources['aria-expanded'] == 'false'
+
 
 def test_composed_time_status_anchors_detail_as_summary_sibling() -> None:
     detail = html.Div('Injected detail', **{'data-test-detail': 'true'})
@@ -154,6 +204,23 @@ def test_composed_time_status_anchors_detail_as_summary_sibling() -> None:
     assert surface['hidden'] is True
     assert surface['aria-hidden'] == 'true'
     assert surface['children'] is detail
+
+
+def test_detail_enabled_without_additional_sources_renders_explicit_empty_state() -> None:
+    component = build_time_status(tool_key='process', state=_pi_state(has_detail=True))
+    root = _props(component)
+    surface = _props(root['children'][1])
+    empty = next(
+        item
+        for item in _walk(surface['children'])
+        if _props(item).get('data-ada-time-status-detail-empty') == 'true'
+    )
+    text = _text_content(surface['children'])
+
+    assert surface['data-ada-time-status-detail-surface'] == 'true'
+    assert 'Sin fuentes adicionales' in text
+    assert 'Esta herramienta no consume fuentes de datos adicionales.' in text
+    assert _props(empty)['data-ada-time-status-detail-empty'] == 'true'
 
 
 def test_composed_time_status_without_detail_has_no_surface_or_trigger() -> None:
@@ -227,7 +294,7 @@ def _detail_props(component: Component) -> list[dict]:
     ]
 
 
-def test_dynamic_detail_renders_only_consumed_sources_with_derived_roles() -> None:
+def test_dynamic_detail_renders_only_additional_sources_as_informational() -> None:
     from ada.web.ui.time_status import (
         TimeStatusDetailSourceState,
         TimeStatusDetailState,
@@ -240,38 +307,20 @@ def test_dynamic_detail_renders_only_consumed_sources_with_derived_roles() -> No
                 TimeStatusDetailSourceState(
                     key='blockgrade', label='BlockGrade', value='2026-08-29T22:00:00Z'
                 ),
-                TimeStatusDetailSourceState(key='pi', label='PI', value='hace 10 segundos'),
                 TimeStatusDetailSourceState(
-                    key='dispatch', label='Dispatch', value='hace 20 segundos'
+                    key='fabrica', label='Fábrica', value='Sin información temporal disponible'
                 ),
             )
         )
     )
     rows = _detail_props(detail)
+    text = _text_content(detail)
 
-    assert [row['data-source-key'] for row in rows] == ['pi', 'dispatch', 'blockgrade']
-    assert [row['data-source-role'] for row in rows] == [
-        'control',
-        'control',
-        'informational',
-    ]
-    assert not any(row['data-source-key'] == 'fabrica' for row in rows)
-
-
-def test_pi_only_consumption_does_not_invent_dispatch_detail_row() -> None:
-    from ada.web.ui.time_status import (
-        TimeStatusDetailSourceState,
-        TimeStatusDetailState,
-        build_time_status_detail,
-    )
-
-    detail = build_time_status_detail(
-        state=TimeStatusDetailState(
-            sources=(TimeStatusDetailSourceState(key='pi', label='PI', value='Disponible'),)
-        )
-    )
-
-    assert [row['data-source-key'] for row in _detail_props(detail)] == ['pi']
+    assert [row['data-source-key'] for row in rows] == ['blockgrade', 'fabrica']
+    assert [row['data-source-role'] for row in rows] == ['informational', 'informational']
+    assert 'Fuentes adicionales' in text
+    assert 'PI' not in [row['data-source-key'] for row in rows]
+    assert 'Dispatch' not in [row['data-source-key'] for row in rows]
 
 
 def test_informational_error_is_rendered_opaquely_without_affecting_summary_health() -> None:
@@ -284,7 +333,6 @@ def test_informational_error_is_rendered_opaquely_without_affecting_summary_heal
     detail = build_time_status_detail(
         state=TimeStatusDetailState(
             sources=(
-                TimeStatusDetailSourceState(key='pi', label='PI', value='Disponible'),
                 TimeStatusDetailSourceState(key='blockgrade', label='BlockGrade', value='Error'),
             )
         )
@@ -305,6 +353,29 @@ def test_informational_error_is_rendered_opaquely_without_affecting_summary_heal
     assert blockgrade['data-source-role'] == 'informational'
     assert 'data-source-condition' not in blockgrade
     assert _props(blockgrade['children'][1])['children'] == 'Error'
+
+
+def test_time_status_presentation_avoids_native_title_tooltips() -> None:
+    from ada.web.ui.time_status import (
+        TimeStatusDetailSourceState,
+        TimeStatusDetailState,
+        build_time_status_detail,
+    )
+
+    detail = build_time_status_detail(
+        state=TimeStatusDetailState(
+            sources=(
+                TimeStatusDetailSourceState(key='blockgrade', label='BlockGrade', value='Error'),
+            )
+        )
+    )
+    component = build_time_status(
+        tool_key='process',
+        state=_pi_state(has_detail=True),
+        detail=detail,
+    )
+
+    assert all('title' not in _props(item) for item in _walk(component))
 
 
 def test_summary_source_exposes_stable_client_freshness_markers() -> None:

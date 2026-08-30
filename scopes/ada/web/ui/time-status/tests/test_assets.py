@@ -128,9 +128,7 @@ def test_clock_asset_recomputes_control_source_freshness_on_real_time_ticks() ->
     assert "summary.setAttribute('data-has-data-error', hasDataError ? 'true' : 'false')" in asset
 
 
-def test_time_status_css_maps_preventive_to_pulse_and_hard_stale_to_solid_alert() -> None:
-    from importlib.resources import files
-
+def test_time_status_css_maps_preventive_to_stronger_pulse_and_hard_stale_to_solid_alert() -> None:
     css = (
         files('ada.web.ui.time_status')
         .joinpath('resources/css/10-time-status.css')
@@ -138,7 +136,8 @@ def test_time_status_css_maps_preventive_to_pulse_and_hard_stale_to_solid_alert(
     )
 
     assert '.ada-time-status__source-content--preventive {' in css
-    assert 'animation: ada-time-status-preventive-pulse' in css
+    assert 'animation: ada-time-status-preventive-pulse 1.35s ease-in-out infinite;' in css
+    assert 'opacity: .62;' in css
     assert '.ada-time-status__source-content--hard_stale,' in css
     assert '.ada-time-status__source-content--data_error {' in css
     assert 'background: #c82333;' in css
@@ -206,24 +205,30 @@ def test_detail_controller_positions_open_surface_against_visual_viewport_and_re
     assert 'ResizeObserver' not in javascript
 
 
-def test_ts012a_visual_calibration_uses_dark_surface_left_anchor_and_full_danger_capsule() -> None:
+def test_ts012b_visual_polish_uses_bar_surface_hover_only_affordance_and_compact_clock() -> None:
     css = (
         files('ada.web.ui.time_status')
         .joinpath('resources/css/10-time-status.css')
         .read_text(encoding='utf-8')
     )
     surface = css.split('.ada-time-status-detail {', 1)[1].split('}', 1)[0]
+    sources = css.split('.ada-time-status__sources {', 1)[1].split('}', 1)[0]
+    hover = css.split(
+        ".ada-time-status__sources[data-ada-time-status-detail-trigger='true']:hover {", 1
+    )[1].split('}', 1)[0]
+    datetime = css.split('.ada-time-status__timestamp--datetime {', 1)[1].split('}', 1)[0]
 
     assert 'inset-inline-start: 0;' in surface
-    assert 'inset-inline-end: 0;' not in surface
-    assert 'background: var(--dark-color);' in surface
-    assert 'color: #fff;' in surface
-    assert ".ada-time-status__sources[data-ada-time-status-detail-trigger='true']" in css
-    assert 'border: 1px solid var(--dark-color);' in css
-    assert '.ada-time-status__source-content--preventive {' in css
-    assert '.ada-time-status__source-content--hard_stale,' in css
-    assert 'background: #c82333;' in css
-    assert 'color: #fff;' in css
+    assert 'background: var(--ada-operational-header-surface' in surface
+    assert 'color: var(--custom-text-color);' in surface
+    assert 'background: var(--dark-color);' not in surface
+    assert 'width: fit-content;' in sources
+    assert 'border: 1px solid transparent;' in sources
+    assert 'border-color: var(--primary-border-color);' in hover
+    assert 'min-width: 0;' in datetime
+    assert 'text-align: start;' in datetime
+    assert '.ada-time-status-detail__empty {' in css
+    assert '.ada-time-status-detail__heading {' in css
 
 
 def test_clock_hydrates_new_time_status_nodes_immediately_after_dash_rerender() -> None:

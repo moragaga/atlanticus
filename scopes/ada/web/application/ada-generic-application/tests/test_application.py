@@ -52,7 +52,7 @@ def test_definition_composes_current_ada_web_capabilities() -> None:
 
     assert definition.metadata.application_id == 'ada-generic-application'
     assert definition.metadata.display_name == 'ADA'
-    assert definition.metadata.version == '0.1.26'
+    assert definition.metadata.version == '0.1.27'
     assert tuple(module.name for module in definition.modules) == (
         'ada-ui',
         'ada-display-status',
@@ -96,7 +96,7 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
     assert DEFAULT_OPERATIONAL_BRAND_LOGO_SRC in payload
     assert DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC in payload
     assert DEFAULT_PELAMBRES_BRAND_LOGO_SRC in payload
-    assert 'Versión 0.1.26' in payload
+    assert 'Versión 0.1.27' in payload
     assert runtime.services.contains(ACCESS_RUNTIME_SERVICE_KEY)
     assert runtime.services.contains(NAVIGATION_PRINCIPAL_PROVIDER_SERVICE_KEY)
     assert any(
@@ -302,10 +302,7 @@ def test_time_status_mounts_under_header_only_when_explicitly_injected(
     )
     summary = TimeStatusSummaryState(pi=pi, has_detail=True)
     detail = TimeStatusDetailState(
-        sources=(
-            TimeStatusDetailSourceState(key='pi', label='PI', value='2026-08-29T22:00:00Z'),
-            TimeStatusDetailSourceState(key='blockgrade', label='BlockGrade', value='Error'),
-        )
+        sources=(TimeStatusDetailSourceState(key='blockgrade', label='BlockGrade', value='Error'),)
     )
     runtime = create_application_runtime(
         tool_key='process',
@@ -352,3 +349,36 @@ def test_time_status_definition_adds_module_when_summary_is_injected() -> None:
     definition = create_application_definition(tool_key='process', time_status_summary=summary)
 
     assert 'ada-time-status' in tuple(module.name for module in definition.modules)
+
+
+def test_time_status_without_additional_sources_renders_explicit_empty_detail(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv('ATLANTICUS_ENVIRONMENT', raising=False)
+    monkeypatch.setenv('ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID', 'local:test-user')
+
+    policy = TimeStatusFreshnessPolicy(warning_after_seconds=200, stale_after_seconds=300)
+    summary = TimeStatusSummaryState(
+        pi=TimeStatusSourceState(
+            key='pi',
+            label='PI',
+            policy=policy,
+            condition=TimeStatusSourceCondition.FRESH,
+            relative_age_text='hace menos de 10 segundos',
+            timestamp_utc=datetime(2026, 8, 30, 13, 0, tzinfo=UTC),
+        ),
+        has_detail=True,
+    )
+    runtime = create_application_runtime(
+        tool_key='process',
+        time_status_summary=summary,
+        time_status_detail=None,
+    )
+    response = runtime.server.test_client().get('/_dash-layout')
+    payload = json.dumps(response.get_json(), ensure_ascii=False)
+
+    assert response.status_code == 200
+    assert 'Sin fuentes adicionales' in payload
+    assert 'Esta herramienta no consume fuentes de datos adicionales.' in payload

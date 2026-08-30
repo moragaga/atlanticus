@@ -1,6 +1,5 @@
 .ada-time-status-container,
-.ada-time-status,
-.ada-time-status__sources {
+.ada-time-status {
     width: 100%;
     min-width: 0;
 }
@@ -13,26 +12,38 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: .45rem;
+    gap: .3rem;
     min-height: 1.2rem;
     color: var(--custom-text-color);
     user-select: none;
 }
 
+.ada-time-status__sources {
+    display: flex;
+    flex: 0 1 auto;
+    width: fit-content;
+    max-width: 100%;
+    min-width: 0;
+    align-items: center;
+    overflow: hidden;
+    border: 1px solid transparent;
+    border-radius: .22rem;
+    background: transparent;
+}
+
 .ada-time-status__sources[data-ada-time-status-detail-trigger='true'] {
     cursor: pointer;
-    border: 1px solid var(--dark-color);
-    border-radius: .22rem;
-    background: rgba(49, 49, 49, .035);
 }
 
 .ada-time-status__sources[data-ada-time-status-detail-trigger='true']:hover {
-    background: rgba(49, 49, 49, .075);
+    border-color: var(--primary-border-color);
+    background: rgba(49, 49, 49, .045);
 }
 
 .ada-time-status__sources[data-ada-time-status-detail-trigger='true']:focus-visible {
-    outline: 2px solid var(--dark-color);
-    outline-offset: .12rem;
+    border-color: var(--dark-color);
+    outline: 1px solid var(--dark-color);
+    outline-offset: .08rem;
 }
 
 .ada-time-status-detail {
@@ -51,24 +62,17 @@
     max-height: min(60vh, 28rem, var(--ada-time-status-detail-available-height));
     overflow: auto;
     transform: translateX(var(--ada-time-status-detail-shift-x));
-    border: 1px solid var(--dark-color);
+    border: 1px solid var(--primary-border-color);
     border-radius: .2rem;
-    background: var(--dark-color);
-    color: #fff;
-    box-shadow: 0 .4rem 1.1rem rgba(0, 0, 0, .28);
+    background: var(--ada-operational-header-surface, var(--tertiary-background, #E1E1E1));
+    color: var(--custom-text-color);
+    box-shadow: 0 .35rem .9rem rgba(0, 0, 0, .18);
     user-select: text;
 }
 
 .ada-time-status-detail[data-ada-time-status-detail-placement='top'] {
     top: auto;
     bottom: calc(100% + var(--ada-time-status-detail-gap));
-}
-
-.ada-time-status__sources {
-    display: flex;
-    flex: 0 1 auto;
-    align-items: center;
-    overflow: hidden;
 }
 
 .ada-time-status__source,
@@ -93,7 +97,7 @@
 
 .ada-time-status__source-content,
 .ada-time-status__current-content {
-    gap: .2rem;
+    gap: .16rem;
     white-space: nowrap;
 }
 
@@ -106,7 +110,7 @@
     flex: 0 0 auto;
     justify-content: flex-end;
     margin-inline-start: auto;
-    padding-inline: .3rem .1rem;
+    padding-inline: .15rem .08rem;
 }
 
 .ada-time-status__item,
@@ -128,10 +132,17 @@
     max-width: 10rem;
 }
 
+.ada-time-status__timestamp--error {
+    flex: 0 0 auto;
+    overflow: visible;
+    color: inherit;
+}
+
 .ada-time-status__timestamp--datetime {
     flex: 0 0 auto;
-    min-width: 8.75rem;
-    text-align: end;
+    min-width: 0;
+    text-align: start;
+    font-variant-numeric: tabular-nums;
 }
 
 .ada-time-status__source-content--preventive,
@@ -143,7 +154,7 @@
 
 .ada-time-status__source-content--preventive {
     background: #c82333;
-    animation: ada-time-status-preventive-pulse 1.8s linear infinite;
+    animation: ada-time-status-preventive-pulse 1.35s ease-in-out infinite;
 }
 
 .ada-time-status__source-content--hard_stale,
@@ -156,19 +167,26 @@
     0%,
     100% {
         background: #c82333;
-        box-shadow: 0 0 .1rem rgba(220, 53, 69, .2);
+        opacity: .62;
+        box-shadow: 0 0 .12rem rgba(220, 53, 69, .2);
     }
 
     50% {
         background: #ed4354;
-        box-shadow: 0 0 .42rem rgba(220, 53, 69, .55);
+        opacity: 1;
+        box-shadow: 0 0 .5rem rgba(220, 53, 69, .68);
     }
 }
 
 .ada-time-status-detail__content {
     display: grid;
     min-width: 16rem;
-    padding: .25rem .5rem;
+    padding: .35rem .55rem .45rem;
+}
+
+.ada-time-status-detail__heading {
+    margin: 0 0 .2rem;
+    font-weight: 700;
 }
 
 .ada-time-status-detail__source {
@@ -180,7 +198,7 @@
 }
 
 .ada-time-status-detail__source + .ada-time-status-detail__source {
-    border-top: 1px solid rgba(255, 255, 255, .22);
+    border-top: 1px solid var(--primary-border-color);
 }
 
 .ada-time-status-detail__source-label,
@@ -195,6 +213,26 @@
 .ada-time-status-detail__source-value {
     overflow-wrap: anywhere;
     text-align: end;
+}
+
+.ada-time-status-detail__empty {
+    display: grid;
+    gap: .08rem;
+    padding: .3rem 0 .15rem;
+    border-top: 1px solid var(--primary-border-color);
+}
+
+.ada-time-status-detail__empty-title,
+.ada-time-status-detail__empty-copy {
+    margin: 0;
+}
+
+.ada-time-status-detail__empty-title {
+    font-weight: 700;
+}
+
+.ada-time-status-detail__empty-copy {
+    opacity: .82;
 }
 
 @media only screen and (min-width: 1280px) {
@@ -212,7 +250,8 @@
     }
 
     .ada-time-status__sources[data-ada-time-status-detail-trigger='true'] {
-        width: 100%;
+        width: fit-content;
+        max-width: 100%;
     }
 
     .ada-time-status__source,

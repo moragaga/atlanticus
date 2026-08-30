@@ -1,4 +1,4 @@
-# Contratos de Time Status: el Summary mantiene PI/Dispatch como fuentes de control y TS-008 agrega filas dinámicas para el Detail.
+# Contratos de Time Status: PI/Dispatch gobiernan la salud superficial; el Detail contiene únicamente fuentes adicionales.
 from __future__ import annotations
 
 import re
@@ -12,7 +12,7 @@ from .errors import TimeStatusDefinitionError
 
 _KEY_PATTERN = re.compile(r'^[a-z][a-z0-9_]*$')
 _DEFAULT_CLOCK_PLACEHOLDER = '----/--/-- --:--:--'
-# La autoridad operacional no es configurable: sólo PI y Dispatch pueden actuar como fuentes de control.
+# Esta frontera impide duplicar PI/Dispatch dentro del popover y evita que una fuente adicional adquiera autoridad operacional.
 _CONTROL_SOURCE_KEYS = frozenset({'pi', 'dispatch'})
 
 
@@ -72,53 +72,39 @@ class TimeStatusSourceState:
 
 @dataclass(frozen=True, slots=True)
 class TimeStatusDetailSourceState:
-    # Cada fila recibe sólo identidad, etiqueta y el texto que debe presentar. No interpreta salud ni freshness.
+    # Cada fila del Detail representa una fuente adicional ya resuelta por composición; no interpreta freshness.
     key: str
     label: str
     value: str
 
     def __post_init__(self) -> None:
         _require_key(self.key, field_name='detail source key')
+        # PI y Dispatch ya están visibles en el Summary y no pueden repetirse como filas del popover.
+        if self.key in _CONTROL_SOURCE_KEYS:
+            raise TimeStatusDefinitionError(
+                'Time Status detail accepts additional source keys only'
+            )
         _require_text(self.label, field_name='detail source label')
         _require_text(self.value, field_name='detail source value')
-
-    @property
-    def is_control(self) -> bool:
-        # Derivar el rol desde la identidad impide que BlockGrade u otra fuente adquiera autoridad por configuración accidental.
-        return self.key in _CONTROL_SOURCE_KEYS
 
 
 @dataclass(frozen=True, slots=True)
 class TimeStatusDetailState:
-    # Esta secuencia representa exactamente las fuentes que la Tool consume y desea mostrar en el Detail.
+    # Cuando existen extras, esta secuencia conserva exactamente su orden de composición.
     sources: tuple[TimeStatusDetailSourceState, ...]
 
     def __post_init__(self) -> None:
         sources = tuple(self.sources)
+        # El caso sin extras se representa con detail=None y has_detail=True para que la Surface muestre su empty-state explícito.
         if not sources:
-            raise TimeStatusDefinitionError('Time Status detail requires at least one source')
+            raise TimeStatusDefinitionError(
+                'Time Status detail requires at least one additional source'
+            )
 
         keys = tuple(source.key for source in sources)
         if len(keys) != len(set(keys)):
             raise TimeStatusDefinitionError('Time Status detail source keys must be unique')
-        if 'pi' not in keys:
-            raise TimeStatusDefinitionError("ADA Time Status detail requires PI source key 'pi'")
-
-        # PI y Dispatch ocupan posiciones canónicas. Las fuentes informativas conservan su orden relativo de entrada.
-        by_key = {source.key: source for source in sources}
-        ordered = [by_key['pi']]
-        if 'dispatch' in by_key:
-            ordered.append(by_key['dispatch'])
-        ordered.extend(source for source in sources if source.key not in _CONTROL_SOURCE_KEYS)
-        object.__setattr__(self, 'sources', tuple(ordered))
-
-    @property
-    def control_sources(self) -> tuple[TimeStatusDetailSourceState, ...]:
-        return tuple(source for source in self.sources if source.is_control)
-
-    @property
-    def informational_sources(self) -> tuple[TimeStatusDetailSourceState, ...]:
-        return tuple(source for source in self.sources if not source.is_control)
+        object.__setattr__(self, 'sources', sources)
 
     def to_component(self) -> Component:
         from .presentation import build_time_status_detail
@@ -130,6 +116,7 @@ class TimeStatusDetailState:
 class TimeStatusSummaryState:
     pi: TimeStatusSourceState
     dispatch: TimeStatusSourceState | None = None
+    # has_detail significa que PI/Dispatch pueden abrir la Surface, incluso si no existen fuentes adicionales.
     has_detail: bool = False
     current_datetime: str = _DEFAULT_CLOCK_PLACEHOLDER
 

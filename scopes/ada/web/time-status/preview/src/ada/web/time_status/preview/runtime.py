@@ -40,7 +40,7 @@ from atlanticus.web.models import (
 from atlanticus.web.modules import WebModule
 from atlanticus.web.services import ServiceRegistry
 
-_PREVIEW_VERSION = '0.1.1'
+_PREVIEW_VERSION = '0.1.2'
 _PREVIEW_ROOT = Path(__file__).resolve().parents[5]
 _PREVIEW_INTERVAL_ID = 'ts012-time-status-interval'
 _PREVIEW_SCENARIO_ID = 'ts012-time-status-scenario'
@@ -67,18 +67,22 @@ _SCENARIOS = (
     _Scenario(
         key='pi_only_fresh',
         label='01 · PI-only · Fresh · Detail vacío',
-        expected='PI visible y saludable. No debe existir affordance ni popover de Detail.',
+        expected=(
+            'PI visible y saludable. PI debe abrir el popover y mostrar el empty-state de fuentes adicionales.'
+        ),
     ),
     _Scenario(
         key='pi_dispatch_fresh',
         label='02 · PI + Dispatch · Fresh · Detail vacío',
-        expected='PI y Dispatch saludables. El Summary no debe mostrar estado global stale.',
+        expected=(
+            'PI y Dispatch saludables. El popover debe abrir con el empty-state de fuentes adicionales.'
+        ),
     ),
     _Scenario(
         key='pi_dispatch_detail',
         label='03 · PI + Dispatch · Detail poblado + BlockGrade Error',
         expected=(
-            'El Detail debe abrir y mostrar PI, Dispatch y BlockGrade. BlockGrade Error debe '
+            'El Detail debe abrir y mostrar sólo BlockGrade como fuente adicional. BlockGrade Error debe '
             'permanecer informativo y no volver rojo el Summary.'
         ),
     ),
@@ -188,7 +192,7 @@ def create_preview_scenario_state(
 
     if scenario.key == 'pi_only_fresh':
         pi = _resolve_source('pi', 'PI', _PI_POLICY, now=now, age_seconds=25)
-        return TimeStatusSummaryState(pi=pi), None
+        return TimeStatusSummaryState(pi=pi, has_detail=True), None
     if scenario.key == 'pi_dispatch_fresh':
         pi = _resolve_source('pi', 'PI', _PI_POLICY, now=now, age_seconds=25)
         dispatch = _resolve_source(
@@ -198,7 +202,7 @@ def create_preview_scenario_state(
             now=now,
             age_seconds=40,
         )
-        return TimeStatusSummaryState(pi=pi, dispatch=dispatch), None
+        return TimeStatusSummaryState(pi=pi, dispatch=dispatch, has_detail=True), None
     if scenario.key == 'pi_dispatch_detail':
         pi = _resolve_source('pi', 'PI', _PI_POLICY, now=now, age_seconds=25)
         dispatch = _resolve_source(
@@ -210,14 +214,14 @@ def create_preview_scenario_state(
         )
         return (
             TimeStatusSummaryState(pi=pi, dispatch=dispatch, has_detail=True),
-            _detail_state(pi_value=pi.timestamp_iso or '--', dispatch_value=dispatch.timestamp_iso),
+            _detail_state(),
         )
     if scenario.key == 'pi_preventive':
         pi = _resolve_source('pi', 'PI', _PI_POLICY, now=now, age_seconds=240)
-        return TimeStatusSummaryState(pi=pi), None
+        return TimeStatusSummaryState(pi=pi, has_detail=True), None
     if scenario.key == 'pi_hard_stale':
         pi = _resolve_source('pi', 'PI', _PI_POLICY, now=now, age_seconds=360)
-        return TimeStatusSummaryState(pi=pi), None
+        return TimeStatusSummaryState(pi=pi, has_detail=True), None
     if scenario.key == 'split_health':
         pi = _resolve_source('pi', 'PI', _PI_POLICY, now=now, age_seconds=360)
         dispatch = _resolve_source(
@@ -227,7 +231,7 @@ def create_preview_scenario_state(
             now=now,
             age_seconds=40,
         )
-        return TimeStatusSummaryState(pi=pi, dispatch=dispatch), None
+        return TimeStatusSummaryState(pi=pi, dispatch=dispatch, has_detail=True), None
     if scenario.key == 'both_hard_stale':
         pi = _resolve_source('pi', 'PI', _PI_POLICY, now=now, age_seconds=360)
         dispatch = _resolve_source(
@@ -237,10 +241,10 @@ def create_preview_scenario_state(
             now=now,
             age_seconds=720,
         )
-        return TimeStatusSummaryState(pi=pi, dispatch=dispatch), None
+        return TimeStatusSummaryState(pi=pi, dispatch=dispatch, has_detail=True), None
     if scenario.key == 'pi_data_error':
         pi = _resolve_source('pi', 'PI', _PI_POLICY, now=now, data_error=True)
-        return TimeStatusSummaryState(pi=pi), None
+        return TimeStatusSummaryState(pi=pi, has_detail=True), None
     if scenario.key == 'dispatch_data_error':
         pi = _resolve_source('pi', 'PI', _PI_POLICY, now=now, age_seconds=25)
         dispatch = _resolve_source(
@@ -250,7 +254,7 @@ def create_preview_scenario_state(
             now=now,
             data_error=True,
         )
-        return TimeStatusSummaryState(pi=pi, dispatch=dispatch), None
+        return TimeStatusSummaryState(pi=pi, dispatch=dispatch, has_detail=True), None
 
     pi = resolve_time_status_source_state(
         key='pi',
@@ -268,7 +272,7 @@ def create_preview_scenario_state(
     )
     return (
         TimeStatusSummaryState(pi=pi, dispatch=dispatch, has_detail=True),
-        _detail_state(pi_value=pi.timestamp_iso or '--', dispatch_value=dispatch.timestamp_iso),
+        _detail_state(),
     )
 
 
@@ -466,24 +470,16 @@ def _resolve_source(
     )
 
 
-def _detail_state(*, pi_value: str, dispatch_value: str | None) -> TimeStatusDetailState:
-    sources = [TimeStatusDetailSourceState(key='pi', label='PI', value=pi_value)]
-    if dispatch_value is not None:
-        sources.append(
+def _detail_state() -> TimeStatusDetailState:
+    return TimeStatusDetailState(
+        sources=(
             TimeStatusDetailSourceState(
-                key='dispatch',
-                label='Dispatch',
-                value=dispatch_value,
-            )
-        )
-    sources.append(
-        TimeStatusDetailSourceState(
-            key='blockgrade',
-            label='BlockGrade',
-            value='Error',
+                key='blockgrade',
+                label='BlockGrade',
+                value='Error',
+            ),
         )
     )
-    return TimeStatusDetailState(sources=tuple(sources))
 
 
 def _indicator(

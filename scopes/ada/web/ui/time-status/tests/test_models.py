@@ -110,8 +110,6 @@ def _detail_source(key: str, *, value: str = '2026-08-29T22:00:00Z'):
     from ada.web.ui.time_status import TimeStatusDetailSourceState
 
     labels = {
-        'pi': 'PI',
-        'dispatch': 'Dispatch',
         'blockgrade': 'BlockGrade',
         'fabrica': 'Fábrica',
     }
@@ -122,46 +120,27 @@ def _detail_source(key: str, *, value: str = '2026-08-29T22:00:00Z'):
     )
 
 
-def test_detail_requires_pi_and_unique_consumed_source_keys() -> None:
-    from ada.web.ui.time_status import TimeStatusDetailState
+def test_detail_accepts_only_unique_additional_source_keys() -> None:
+    from ada.web.ui.time_status import TimeStatusDetailSourceState, TimeStatusDetailState
 
-    with pytest.raises(TimeStatusDefinitionError, match='requires PI'):
-        TimeStatusDetailState(sources=(_detail_source('blockgrade'),))
+    with pytest.raises(TimeStatusDefinitionError, match='additional source keys only'):
+        TimeStatusDetailSourceState(key='pi', label='PI', value='Disponible')
+    with pytest.raises(TimeStatusDefinitionError, match='additional source keys only'):
+        TimeStatusDetailSourceState(key='dispatch', label='Dispatch', value='Disponible')
+    with pytest.raises(TimeStatusDefinitionError, match='at least one additional source'):
+        TimeStatusDetailState(sources=())
     with pytest.raises(TimeStatusDefinitionError, match='must be unique'):
-        TimeStatusDetailState(sources=(_detail_source('pi'), _detail_source('pi')))
+        TimeStatusDetailState(sources=(_detail_source('blockgrade'), _detail_source('blockgrade')))
 
 
-def test_detail_orders_control_sources_before_informational_sources() -> None:
+def test_detail_preserves_additional_source_order_without_control_roles() -> None:
     from ada.web.ui.time_status import TimeStatusDetailState
 
     state = TimeStatusDetailState(
         sources=(
             _detail_source('blockgrade'),
-            _detail_source('dispatch'),
             _detail_source('fabrica'),
-            _detail_source('pi'),
         )
     )
 
-    assert tuple(source.key for source in state.sources) == (
-        'pi',
-        'dispatch',
-        'blockgrade',
-        'fabrica',
-    )
-
-
-def test_detail_source_authority_is_derived_only_from_pi_and_dispatch_identity() -> None:
-    from ada.web.ui.time_status import TimeStatusDetailState
-
-    state = TimeStatusDetailState(
-        sources=(
-            _detail_source('pi'),
-            _detail_source('dispatch'),
-            _detail_source('blockgrade', value='Error'),
-        )
-    )
-
-    assert tuple(source.key for source in state.control_sources) == ('pi', 'dispatch')
-    assert tuple(source.key for source in state.informational_sources) == ('blockgrade',)
-    assert state.sources[2].is_control is False
+    assert tuple(source.key for source in state.sources) == ('blockgrade', 'fabrica')

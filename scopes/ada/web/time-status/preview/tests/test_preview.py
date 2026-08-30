@@ -61,22 +61,22 @@ def test_preview_matrix_covers_required_visual_freeze_scenarios() -> None:
     } == values
 
 
-def test_pi_only_fresh_has_no_detail_affordance() -> None:
+def test_pi_only_fresh_keeps_detail_affordance_with_empty_additional_sources() -> None:
     summary, detail = _state('pi_only_fresh')
 
     assert summary.dispatch is None
-    assert summary.has_detail is False
+    assert summary.has_detail is True
     assert summary.content_stale is False
     assert detail is None
 
 
-def test_populated_detail_keeps_blockgrade_informational_and_health_neutral() -> None:
+def test_populated_detail_contains_only_additional_sources_and_keeps_health_neutral() -> None:
     summary, detail = _state('pi_dispatch_detail')
 
     assert detail is not None
-    assert tuple(source.key for source in detail.sources) == ('pi', 'dispatch', 'blockgrade')
-    assert detail.informational_sources[0].key == 'blockgrade'
-    assert detail.informational_sources[0].value == 'Error'
+    assert tuple(source.key for source in detail.sources) == ('blockgrade',)
+    assert detail.sources[0].value == 'Error'
+    assert summary.has_detail is True
     assert summary.content_stale is False
     assert summary.data_error_source_keys == ()
 
@@ -124,7 +124,7 @@ def test_preview_definition_composes_full_header_and_validation_module() -> None
     module_names = tuple(module.name for module in definition.modules)
 
     assert definition.metadata.application_id == 'ada-time-status-preview-integrated_operations'
-    assert definition.metadata.version == '0.1.1'
+    assert definition.metadata.version == '0.1.2'
     assert 'ada-time-status' in module_names
     assert module_names[-1] == 'time-status-visual-preview-controls'
 
@@ -196,13 +196,13 @@ def test_preview_pins_closed_time_status_header_application_contracts() -> None:
     project = Path(__file__).resolve().parents[1]
     pyproject = (project / 'pyproject.toml').read_text(encoding='utf-8')
 
-    assert 'ada-generic-application==0.1.26' in pyproject
-    assert 'ada-web-ui-time-status==0.1.8' in pyproject
+    assert 'ada-generic-application==0.1.27' in pyproject
+    assert 'ada-web-ui-time-status==0.1.9' in pyproject
 
 
-def test_ts012a_preview_pins_compact_header_and_calibrated_time_status() -> None:
+def test_ts012b_preview_pins_polished_time_status_contract() -> None:
     project = Path(__file__).resolve().parents[1]
     pyproject = (project / 'pyproject.toml').read_text(encoding='utf-8')
 
-    assert 'ada-generic-application==0.1.26' in pyproject
-    assert 'ada-web-ui-time-status==0.1.8' in pyproject
+    assert 'ada-generic-application==0.1.27' in pyproject
+    assert 'ada-web-ui-time-status==0.1.9' in pyproject

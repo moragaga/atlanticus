@@ -53,6 +53,7 @@ def build_time_status_summary(*, state: TimeStatusSummaryState) -> Component:
                 'role': 'button',
                 'tabIndex': 0,
                 'aria-expanded': 'false',
+                'aria-label': 'Ver fuentes de datos adicionales',
             }
         )
 
@@ -82,7 +83,10 @@ def build_time_status_summary(*, state: TimeStatusSummaryState) -> Component:
 def build_time_status_detail(*, state: TimeStatusDetailState) -> Component:
     return html.Div(
         className='ada-time-status-detail__content',
-        children=[_build_detail_source(source) for source in state.sources],
+        children=[
+            _build_detail_heading(),
+            *[_build_detail_source(source) for source in state.sources],
+        ],
         **{'data-ada-time-status-detail-content': 'true'},
     )
 
@@ -91,7 +95,7 @@ def _build_detail_surface(detail: Component | None) -> Component:
     return html.Div(
         className='ada-time-status-detail',
         hidden=True,
-        children=detail,
+        children=detail if detail is not None else _build_empty_detail(),
         **{
             'data-ada-time-status-detail-surface': 'true',
             'data-ada-time-status-detail-placement': 'bottom',
@@ -100,22 +104,51 @@ def _build_detail_surface(detail: Component | None) -> Component:
     )
 
 
+def _build_detail_heading() -> Component:
+    return html.P(
+        className='ada-time-status-detail__heading',
+        children='Fuentes adicionales',
+    )
+
+
+def _build_empty_detail() -> Component:
+    return html.Div(
+        className='ada-time-status-detail__content',
+        children=[
+            _build_detail_heading(),
+            html.Div(
+                className='ada-time-status-detail__empty',
+                children=[
+                    html.P(
+                        className='ada-time-status-detail__empty-title',
+                        children='Sin fuentes adicionales',
+                    ),
+                    html.P(
+                        className='ada-time-status-detail__empty-copy',
+                        children='Esta herramienta no consume fuentes de datos adicionales.',
+                    ),
+                ],
+                **{'data-ada-time-status-detail-empty': 'true'},
+            ),
+        ],
+        **{'data-ada-time-status-detail-content': 'true'},
+    )
+
+
 def _build_detail_source(source: TimeStatusDetailSourceState) -> Component:
-    role = 'control' if source.is_control else 'informational'
     return html.Div(
         className='ada-time-status-detail__source',
         children=[
             html.Span(className='ada-time-status-detail__source-label', children=source.label),
             html.Span(
                 className='ada-time-status-detail__source-value',
-                title=source.value,
                 children=source.value,
             ),
         ],
         **{
             'data-ada-time-status-detail-source': 'true',
             'data-source-key': source.key,
-            'data-source-role': role,
+            'data-source-role': 'informational',
         },
     )
 
@@ -148,14 +181,27 @@ def _build_source(source: TimeStatusSourceState, *, divided: bool) -> Component:
                 ),
                 html.P(className='ada-time-status__item', children=source.label),
                 html.P(className='ada-time-status__item', children='•'),
-                html.P(
-                    className='ada-time-status__timestamp ada-time-status__timestamp--source',
-                    title=source.timestamp_iso or '',
-                    children=source.relative_age_text or '--',
-                    **{'data-ada-time-status-source-value': 'true'},
-                ),
+                _build_source_value(source),
             ],
         ),
+    )
+
+
+def _build_source_value(source: TimeStatusSourceState) -> Component:
+    class_name = 'ada-time-status__timestamp ada-time-status__timestamp--source'
+    if source.condition is TimeStatusSourceCondition.DATA_ERROR:
+        return html.I(
+            className=f'bi bi-exclamation-triangle {class_name} ada-time-status__timestamp--error',
+            role='img',
+            **{
+                'data-ada-time-status-source-value': 'true',
+                'aria-label': 'Error de información temporal',
+            },
+        )
+    return html.P(
+        className=class_name,
+        children=source.relative_age_text,
+        **{'data-ada-time-status-source-value': 'true'},
     )
 
 
@@ -173,7 +219,6 @@ def _build_current_datetime(current_datetime: str) -> Component:
                 html.P(className='ada-time-status__item', children='•'),
                 html.P(
                     className='ada-time-status__timestamp ada-time-status__timestamp--datetime',
-                    title=current_datetime,
                     children=current_datetime,
                     **{'data-ada-time-status-clock': 'true'},
                 ),
@@ -183,8 +228,9 @@ def _build_current_datetime(current_datetime: str) -> Component:
 
 
 def _icon_class(condition: TimeStatusSourceCondition) -> str:
-    if condition is TimeStatusSourceCondition.HARD_STALE:
+    if condition in {
+        TimeStatusSourceCondition.HARD_STALE,
+        TimeStatusSourceCondition.DATA_ERROR,
+    }:
         return 'bi bi-cloud-slash'
-    if condition is TimeStatusSourceCondition.DATA_ERROR:
-        return 'bi bi-exclamation-triangle'
     return 'bi bi-cloud-check'

@@ -76,12 +76,12 @@ class TimeStatusDetailSourceState:
 
     def __post_init__(self) -> None:
         _require_key(self.key, field_name='detail source key')
+        if self.key in _CONTROL_SOURCE_KEYS:
+            raise TimeStatusDefinitionError(
+                'Time Status detail accepts additional source keys only'
+            )
         _require_text(self.label, field_name='detail source label')
         _require_text(self.value, field_name='detail source value')
-
-    @property
-    def is_control(self) -> bool:
-        return self.key in _CONTROL_SOURCE_KEYS
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,28 +91,14 @@ class TimeStatusDetailState:
     def __post_init__(self) -> None:
         sources = tuple(self.sources)
         if not sources:
-            raise TimeStatusDefinitionError('Time Status detail requires at least one source')
+            raise TimeStatusDefinitionError(
+                'Time Status detail requires at least one additional source'
+            )
 
         keys = tuple(source.key for source in sources)
         if len(keys) != len(set(keys)):
             raise TimeStatusDefinitionError('Time Status detail source keys must be unique')
-        if 'pi' not in keys:
-            raise TimeStatusDefinitionError("ADA Time Status detail requires PI source key 'pi'")
-
-        by_key = {source.key: source for source in sources}
-        ordered = [by_key['pi']]
-        if 'dispatch' in by_key:
-            ordered.append(by_key['dispatch'])
-        ordered.extend(source for source in sources if source.key not in _CONTROL_SOURCE_KEYS)
-        object.__setattr__(self, 'sources', tuple(ordered))
-
-    @property
-    def control_sources(self) -> tuple[TimeStatusDetailSourceState, ...]:
-        return tuple(source for source in self.sources if source.is_control)
-
-    @property
-    def informational_sources(self) -> tuple[TimeStatusDetailSourceState, ...]:
-        return tuple(source for source in self.sources if not source.is_control)
+        object.__setattr__(self, 'sources', sources)
 
     def to_component(self) -> Component:
         from .presentation import build_time_status_detail

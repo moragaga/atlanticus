@@ -1,4 +1,4 @@
-# TS-012A calibra la interacción visual sin cambiar la semántica PI/Dispatch ni el contrato del Detail.
+# TS-012B afina la lectura visual: PI/Dispatch son el trigger y el popover comunica únicamente fuentes adicionales.
 from __future__ import annotations
 
 from dash import html
@@ -20,7 +20,7 @@ def build_time_status(
     state: TimeStatusSummaryState,
     detail: Component | None = None,
 ) -> Component:
-    # tool_key sigue siendo la identidad estable usada para restaurar el popover tras rerender.
+    # tool_key sigue siendo la identidad usada para restaurar una Surface abierta tras un rerender de Dash.
     normalized_tool_key = tool_key.strip()
     if not normalized_tool_key:
         raise TimeStatusDefinitionError('Time Status tool_key must not be empty')
@@ -47,16 +47,16 @@ def build_time_status(
 
 def build_time_status_summary(*, state: TimeStatusSummaryState) -> Component:
     sources = state.required_sources
-
-    # La interacción pertenece exclusivamente al grupo PI/Dispatch. Fecha y hora queda fuera del trigger.
     source_attributes = {}
     if state.has_detail:
+        # Sólo PI/Dispatch exponen interacción; el reloj queda visual y semánticamente fuera de este botón.
         source_attributes.update(
             {
                 'data-ada-time-status-detail-trigger': 'true',
                 'role': 'button',
                 'tabIndex': 0,
                 'aria-expanded': 'false',
+                'aria-label': 'Ver fuentes de datos adicionales',
             }
         )
 
@@ -84,20 +84,23 @@ def build_time_status_summary(*, state: TimeStatusSummaryState) -> Component:
 
 
 def build_time_status_detail(*, state: TimeStatusDetailState) -> Component:
-    # El Detail sigue renderizando sólo las fuentes ya resueltas por la composición.
+    # Las filas aquí son exclusivamente fuentes adicionales y siempre son informativas para la salud global.
     return html.Div(
         className='ada-time-status-detail__content',
-        children=[_build_detail_source(source) for source in state.sources],
+        children=[
+            _build_detail_heading(),
+            *[_build_detail_source(source) for source in state.sources],
+        ],
         **{'data-ada-time-status-detail-content': 'true'},
     )
 
 
 def _build_detail_surface(detail: Component | None) -> Component:
-    # La Surface permanece local y absolute; TS-012A cambia sólo su lenguaje visual y anclaje izquierdo.
+    # detail=None no deja un panel vacío: representa explícitamente que la Tool no consume fuentes adicionales.
     return html.Div(
         className='ada-time-status-detail',
         hidden=True,
-        children=detail,
+        children=detail if detail is not None else _build_empty_detail(),
         **{
             'data-ada-time-status-detail-surface': 'true',
             'data-ada-time-status-detail-placement': 'bottom',
@@ -106,23 +109,52 @@ def _build_detail_surface(detail: Component | None) -> Component:
     )
 
 
+def _build_detail_heading() -> Component:
+    return html.P(
+        className='ada-time-status-detail__heading',
+        children='Fuentes adicionales',
+    )
+
+
+def _build_empty_detail() -> Component:
+    return html.Div(
+        className='ada-time-status-detail__content',
+        children=[
+            _build_detail_heading(),
+            html.Div(
+                className='ada-time-status-detail__empty',
+                children=[
+                    html.P(
+                        className='ada-time-status-detail__empty-title',
+                        children='Sin fuentes adicionales',
+                    ),
+                    html.P(
+                        className='ada-time-status-detail__empty-copy',
+                        children='Esta herramienta no consume fuentes de datos adicionales.',
+                    ),
+                ],
+                **{'data-ada-time-status-detail-empty': 'true'},
+            ),
+        ],
+        **{'data-ada-time-status-detail-content': 'true'},
+    )
+
+
 def _build_detail_source(source: TimeStatusDetailSourceState) -> Component:
-    # PI/Dispatch conservan rol control y las fuentes adicionales continúan siendo informativas.
-    role = 'control' if source.is_control else 'informational'
+    # El rol es fijo: cualquier fuente del Detail es adicional e informativa.
     return html.Div(
         className='ada-time-status-detail__source',
         children=[
             html.Span(className='ada-time-status-detail__source-label', children=source.label),
             html.Span(
                 className='ada-time-status-detail__source-value',
-                title=source.value,
                 children=source.value,
             ),
         ],
         **{
             'data-ada-time-status-detail-source': 'true',
             'data-source-key': source.key,
-            'data-source-role': role,
+            'data-source-role': 'informational',
         },
     )
 
@@ -155,19 +187,33 @@ def _build_source(source: TimeStatusSourceState, *, divided: bool) -> Component:
                 ),
                 html.P(className='ada-time-status__item', children=source.label),
                 html.P(className='ada-time-status__item', children='•'),
-                html.P(
-                    className='ada-time-status__timestamp ada-time-status__timestamp--source',
-                    title=source.timestamp_iso or '',
-                    children=source.relative_age_text or '--',
-                    **{'data-ada-time-status-source-value': 'true'},
-                ),
+                _build_source_value(source),
             ],
         ),
     )
 
 
+def _build_source_value(source: TimeStatusSourceState) -> Component:
+    class_name = 'ada-time-status__timestamp ada-time-status__timestamp--source'
+    if source.condition is TimeStatusSourceCondition.DATA_ERROR:
+        # La nube sigue identificando la fuente; el triángulo ocupa la posición del valor temporal inválido.
+        return html.I(
+            className=f'bi bi-exclamation-triangle {class_name} ada-time-status__timestamp--error',
+            role='img',
+            **{
+                'data-ada-time-status-source-value': 'true',
+                'aria-label': 'Error de información temporal',
+            },
+        )
+    return html.P(
+        className=class_name,
+        children=source.relative_age_text,
+        **{'data-ada-time-status-source-value': 'true'},
+    )
+
+
 def _build_current_datetime(current_datetime: str) -> Component:
-    # El reloj no participa de la interacción del Detail y mantiene su anclaje al extremo derecho.
+    # Fecha y hora se presenta como una unidad compacta al extremo derecho y no usa tooltip nativo.
     return html.Span(
         className='ada-time-status__current',
         children=html.Span(
@@ -181,7 +227,6 @@ def _build_current_datetime(current_datetime: str) -> Component:
                 html.P(className='ada-time-status__item', children='•'),
                 html.P(
                     className='ada-time-status__timestamp ada-time-status__timestamp--datetime',
-                    title=current_datetime,
                     children=current_datetime,
                     **{'data-ada-time-status-clock': 'true'},
                 ),
@@ -191,8 +236,10 @@ def _build_current_datetime(current_datetime: str) -> Component:
 
 
 def _icon_class(condition: TimeStatusSourceCondition) -> str:
-    if condition is TimeStatusSourceCondition.HARD_STALE:
+    # Tanto hard stale como data error mantienen el ícono de nube caída; el error temporal se marca en el valor.
+    if condition in {
+        TimeStatusSourceCondition.HARD_STALE,
+        TimeStatusSourceCondition.DATA_ERROR,
+    }:
         return 'bi bi-cloud-slash'
-    if condition is TimeStatusSourceCondition.DATA_ERROR:
-        return 'bi bi-exclamation-triangle'
     return 'bi bi-cloud-check'
