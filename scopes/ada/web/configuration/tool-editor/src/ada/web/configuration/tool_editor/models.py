@@ -181,6 +181,7 @@ def build_configuration_from_source_editor(
             control_sources=tuple(control_sources),
             additional_observation_source_keys=(values.additional_observation_source_keys),
         ),
+        structure=base_configuration.structure,
     )
     validate_ada_operational_tool_sources(configuration)
     return configuration

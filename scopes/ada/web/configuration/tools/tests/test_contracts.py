@@ -8,9 +8,15 @@ from ada.configuration.tool_sources import (
     ToolSourceOperationalParticipation,
 )
 from ada.configuration.tools import (
+    ProcessLayoutRole,
+    ToolComponent,
     ToolConfiguration,
     ToolConfigurationKind,
     ToolConfigurationValidationError,
+    ToolScope,
+    ToolStructure,
+    ToolSubcomponent,
+    validate_ada_operational_tool_configuration,
     validate_ada_operational_tool_sources,
 )
 
@@ -127,7 +133,7 @@ def test_operational_validation_does_not_restrict_additional_observation_names()
     validate_ada_operational_tool_sources(configuration)
 
 
-def test_tool_configuration_contract_has_no_structure_or_ui_fields_yet() -> None:
+def test_tool_configuration_contract_exposes_optional_structure_without_ui_fields() -> None:
     fields = ToolConfiguration.__dataclass_fields__
 
     assert tuple(fields) == (
@@ -136,16 +142,60 @@ def test_tool_configuration_contract_has_no_structure_or_ui_fields_yet() -> None
         'kind',
         'source_consumption',
         'source_operational_participation',
+        'structure',
     )
     for field in (
-        'components',
-        'subcomponents',
-        'layout_role',
         'alarm_points',
         'renderer',
         'show_in_summary',
+        'store_id',
+        'callback',
     ):
         assert field not in fields
+
+
+def test_operational_configuration_requires_structure_only_at_publish_boundary() -> None:
+    configuration = _configuration(
+        source_keys=('pi',),
+        control_sources=(SourceControlPolicy('pi', 200, 300),),
+    )
+
+    validate_ada_operational_tool_sources(configuration)
+    with pytest.raises(
+        ToolConfigurationValidationError,
+        match='requires Tool Structure',
+    ):
+        validate_ada_operational_tool_configuration(configuration)
+
+
+def test_operational_configuration_accepts_process_structure() -> None:
+    configuration = _configuration(
+        source_keys=('pi',),
+        control_sources=(SourceControlPolicy('pi', 200, 300),),
+    )
+    structure = ToolStructure(
+        tool_key='process',
+        kind=ToolConfigurationKind.PROCESS,
+        operational_scope=ToolScope.MINE,
+        components=(
+            ToolComponent(
+                key='mina',
+                display_name='Mina',
+                layout_role=ProcessLayoutRole.CENTER,
+                subcomponents=(ToolSubcomponent(key='carguio', display_name='Carguío'),),
+            ),
+        ),
+    )
+    configuration = ToolConfiguration(
+        tool_key=configuration.tool_key,
+        display_name=configuration.display_name,
+        kind=configuration.kind,
+        source_consumption=configuration.source_consumption,
+        source_operational_participation=configuration.source_operational_participation,
+        structure=structure,
+    )
+
+    validate_ada_operational_tool_configuration(configuration)
 
 
 def test_tool_configuration_source_has_no_transport_or_implementation_details() -> None:

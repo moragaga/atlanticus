@@ -30,7 +30,7 @@ dev = [
 
 [[package]]
 name = "ada-configuration-tools"
-version = "0.2.1"
+version = "0.3.0"
 source = { editable = "../tools" }
 dependencies = [
     { name = "ada-configuration-tool-sources" },
@@ -47,7 +47,7 @@ dev = [
 
 [[package]]
 name = "ada-web-configuration-manager-tools"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "." }
 dependencies = [
     { name = "ada-configuration-branding" },
@@ -78,7 +78,7 @@ dev = [
 
 [[package]]
 name = "ada-web-tool-configuration-editor"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "../tool-editor" }
 dependencies = [
     { name = "ada-configuration-tool-sources" },

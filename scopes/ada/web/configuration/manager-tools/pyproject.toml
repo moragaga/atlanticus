@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-web-configuration-manager-tools"
-version = "0.1.1"
+version = "0.1.2"
 description = "Surface reusable de Manager para configuración de Tools ADA"
 requires-python = "==3.14.2"
 classifiers = [
@@ -12,7 +12,7 @@ classifiers = [
 ]
 dependencies = [
     "ada-configuration-branding==0.1.0",
-    "ada-web-tool-configuration-editor==0.1.1",
+    "ada-web-tool-configuration-editor==0.1.2",
     "atlanticus-web==0.1.0",
     "dash==4.4.1",
 ]

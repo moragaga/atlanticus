@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import re
 from collections.abc import Mapping
 from dataclasses import dataclass
-from enum import StrEnum
 from typing import Any
 
 from ada.configuration.tool_sources import (
@@ -11,14 +9,10 @@ from ada.configuration.tool_sources import (
     ToolSourceOperationalParticipation,
     validate_operational_participation_against_consumption,
 )
+from ada.configuration.tools.enums import ToolConfigurationKind
 from ada.configuration.tools.errors import ToolConfigurationValidationError
-
-_KEY_PATTERN = re.compile(r'^[a-z][a-z0-9_]*$')
-
-
-class ToolConfigurationKind(StrEnum):
-    INTEGRATED_OPERATIONS = 'integrated_operations'
-    PROCESS = 'process'
+from ada.configuration.tools.structure import ToolStructure
+from ada.configuration.tools.validation import require_display_name, require_key
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,10 +22,14 @@ class ToolConfiguration:
     kind: ToolConfigurationKind
     source_consumption: ToolSourceConsumption
     source_operational_participation: ToolSourceOperationalParticipation
+    structure: ToolStructure | None = None
 
     def __post_init__(self) -> None:
-        tool_key = _require_key(self.tool_key, label='Tool key')
-        display_name = _require_display_name(self.display_name)
+        tool_key = require_key(self.tool_key, label='Tool key')
+        display_name = require_display_name(
+            self.display_name,
+            label='Tool display name',
+        )
         if not isinstance(self.kind, ToolConfigurationKind):
             raise ToolConfigurationValidationError('Tool kind is invalid')
         if not isinstance(self.source_consumption, ToolSourceConsumption):
@@ -52,6 +50,17 @@ class ToolConfiguration:
                 'Tool source operational participation tool key must match '
                 'Tool Configuration tool key'
             )
+        if self.structure is not None:
+            if not isinstance(self.structure, ToolStructure):
+                raise ToolConfigurationValidationError('Tool Structure contract is invalid')
+            if self.structure.tool_key != tool_key:
+                raise ToolConfigurationValidationError(
+                    'Tool Structure tool key must match Tool Configuration tool key'
+                )
+            if self.structure.kind is not self.kind:
+                raise ToolConfigurationValidationError(
+                    'Tool Structure kind must match Tool Configuration kind'
+                )
         try:
             validate_operational_participation_against_consumption(
                 consumption=self.source_consumption,
@@ -71,6 +80,7 @@ class ToolConfiguration:
             'source_operational_participation': (
                 self.source_operational_participation.to_document()
             ),
+            'structure': self.structure.to_document() if self.structure is not None else None,
         }
 
     @classmethod
@@ -78,9 +88,12 @@ class ToolConfiguration:
         try:
             source_consumption = document['source_consumption']
             source_operational_participation = document['source_operational_participation']
+            raw_structure = document.get('structure')
             if not isinstance(source_consumption, Mapping):
                 raise TypeError
             if not isinstance(source_operational_participation, Mapping):
+                raise TypeError
+            if raw_structure is not None and not isinstance(raw_structure, Mapping):
                 raise TypeError
             return cls(
                 tool_key=document['tool_key'],
@@ -92,6 +105,11 @@ class ToolConfiguration:
                         source_operational_participation
                     )
                 ),
+                structure=(
+                    ToolStructure.from_document(raw_structure)
+                    if raw_structure is not None
+                    else None
+                ),
             )
         except (KeyError, TypeError, ValueError) as error:
             if isinstance(error, ToolConfigurationValidationError):
@@ -99,21 +117,3 @@ class ToolConfiguration:
             raise ToolConfigurationValidationError(
                 'Tool Configuration contract is invalid'
             ) from error
-
-
-def _require_key(value: object, *, label: str) -> str:
-    if not isinstance(value, str):
-        raise ToolConfigurationValidationError(f'{label} must be a string')
-    normalized = value.strip().casefold()
-    if not _KEY_PATTERN.fullmatch(normalized):
-        raise ToolConfigurationValidationError(f'{label} has an invalid format')
-    return normalized
-
-
-def _require_display_name(value: object) -> str:
-    if not isinstance(value, str):
-        raise ToolConfigurationValidationError('Tool display name must be a string')
-    normalized = value.strip()
-    if not normalized:
-        raise ToolConfigurationValidationError('Tool display name must not be empty')
-    return normalized

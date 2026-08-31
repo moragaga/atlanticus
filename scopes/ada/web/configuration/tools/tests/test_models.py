@@ -8,9 +8,14 @@ from ada.configuration.tool_sources import (
     ToolSourceOperationalParticipation,
 )
 from ada.configuration.tools import (
+    ProcessLayoutRole,
+    ToolComponent,
     ToolConfiguration,
     ToolConfigurationKind,
     ToolConfigurationValidationError,
+    ToolScope,
+    ToolStructure,
+    ToolSubcomponent,
 )
 
 
@@ -165,6 +170,7 @@ def test_document_shape_keeps_data003_and_data004_explicit() -> None:
         'kind',
         'source_consumption',
         'source_operational_participation',
+        'structure',
     )
     assert document['source_consumption'] == {
         'tool_key': 'process',
@@ -181,6 +187,7 @@ def test_document_shape_keeps_data003_and_data004_explicit() -> None:
         ],
         'additional_observation_source_keys': [],
     }
+    assert document['structure'] is None
 
 
 def test_document_reader_rejects_invalid_shape() -> None:
@@ -228,3 +235,127 @@ def test_configuration_rejects_invalid_kind_type() -> None:
                 control_sources=(SourceControlPolicy('pi', 200, 300),),
             ),
         )
+
+
+def test_configuration_accepts_structure_for_same_tool_and_kind() -> None:
+    structure = ToolStructure(
+        tool_key='process',
+        kind=ToolConfigurationKind.PROCESS,
+        operational_scope=ToolScope.MINE,
+        components=(
+            ToolComponent(
+                key='mina',
+                display_name='Mina',
+                layout_role=ProcessLayoutRole.CENTER,
+                subcomponents=(ToolSubcomponent(key='principal', display_name='Principal'),),
+            ),
+        ),
+    )
+
+    configuration = ToolConfiguration(
+        tool_key='process',
+        display_name='Process',
+        kind=ToolConfigurationKind.PROCESS,
+        source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
+        source_operational_participation=ToolSourceOperationalParticipation(
+            tool_key='process',
+            control_sources=(SourceControlPolicy('pi', 200, 300),),
+        ),
+        structure=structure,
+    )
+
+    assert configuration.structure is structure
+
+
+def test_configuration_rejects_structure_for_another_tool() -> None:
+    structure = ToolStructure(
+        tool_key='another_process',
+        kind=ToolConfigurationKind.PROCESS,
+        operational_scope=ToolScope.MINE,
+        components=(
+            ToolComponent(
+                key='center',
+                display_name='Center',
+                layout_role=ProcessLayoutRole.CENTER,
+                subcomponents=(ToolSubcomponent(key='principal', display_name='Principal'),),
+            ),
+        ),
+    )
+
+    with pytest.raises(
+        ToolConfigurationValidationError,
+        match='Structure tool key must match',
+    ):
+        ToolConfiguration(
+            tool_key='process',
+            display_name='Process',
+            kind=ToolConfigurationKind.PROCESS,
+            source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
+            source_operational_participation=ToolSourceOperationalParticipation(
+                tool_key='process',
+                control_sources=(SourceControlPolicy('pi', 200, 300),),
+            ),
+            structure=structure,
+        )
+
+
+def test_configuration_rejects_structure_kind_mismatch() -> None:
+    structure = ToolStructure(
+        tool_key='process',
+        kind=ToolConfigurationKind.INTEGRATED_OPERATIONS,
+        components=(
+            ToolComponent(
+                key='process_a',
+                display_name='Process A',
+                scope=ToolScope.MINE,
+                subcomponents=(ToolSubcomponent(key='principal', display_name='Principal'),),
+            ),
+        ),
+    )
+
+    with pytest.raises(
+        ToolConfigurationValidationError,
+        match='Structure kind must match',
+    ):
+        ToolConfiguration(
+            tool_key='process',
+            display_name='Process',
+            kind=ToolConfigurationKind.PROCESS,
+            source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
+            source_operational_participation=ToolSourceOperationalParticipation(
+                tool_key='process',
+                control_sources=(SourceControlPolicy('pi', 200, 300),),
+            ),
+            structure=structure,
+        )
+
+
+def test_document_roundtrip_preserves_structure_when_present() -> None:
+    structure = ToolStructure(
+        tool_key='process',
+        kind=ToolConfigurationKind.PROCESS,
+        operational_scope=ToolScope.PLANT,
+        components=(
+            ToolComponent(
+                key='flotacion',
+                display_name='Flotación',
+                layout_role=ProcessLayoutRole.CENTER,
+                subcomponents=(ToolSubcomponent(key='flotacion', display_name='Flotación'),),
+            ),
+        ),
+    )
+    configuration = ToolConfiguration(
+        tool_key='process',
+        display_name='Process',
+        kind=ToolConfigurationKind.PROCESS,
+        source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
+        source_operational_participation=ToolSourceOperationalParticipation(
+            tool_key='process',
+            control_sources=(SourceControlPolicy('pi', 200, 300),),
+        ),
+        structure=structure,
+    )
+
+    restored = ToolConfiguration.from_document(MappingProxyType(configuration.to_document()))
+
+    assert restored == configuration

@@ -263,3 +263,47 @@ def test_build_configuration_requires_dispatch_thresholds_when_enabled() -> None
                 dispatch_degrading_after_seconds=600,
             ),
         )
+
+
+def test_build_configuration_preserves_tool_structure() -> None:
+    from ada.configuration.tools import (
+        ProcessLayoutRole,
+        ToolComponent,
+        ToolScope,
+        ToolStructure,
+        ToolSubcomponent,
+    )
+
+    base = ToolConfiguration(
+        tool_key='process',
+        display_name='Process',
+        kind=ToolConfigurationKind.PROCESS,
+        source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
+        source_operational_participation=ToolSourceOperationalParticipation(
+            tool_key='process',
+            control_sources=(SourceControlPolicy('pi', 200, 300),),
+        ),
+        structure=ToolStructure(
+            tool_key='process',
+            kind=ToolConfigurationKind.PROCESS,
+            operational_scope=ToolScope.MINE,
+            components=(
+                ToolComponent(
+                    key='mina',
+                    display_name='Mina',
+                    layout_role=ProcessLayoutRole.CENTER,
+                    subcomponents=(ToolSubcomponent(key='carguio', display_name='Carguío'),),
+                ),
+            ),
+        ),
+    )
+
+    updated = build_configuration_from_source_editor(
+        base_configuration=base,
+        values=ToolSourceEditorValues(
+            pi_pre_degrading_after_seconds=250,
+            pi_degrading_after_seconds=350,
+        ),
+    )
+
+    assert updated.structure is base.structure

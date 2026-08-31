@@ -29,3 +29,13 @@ def validate_ada_operational_tool_sources(configuration: ToolConfiguration) -> N
         raise ToolConfigurationValidationError(
             'Dispatch declared by Tool Source Consumption must participate as CONTROL'
         )
+
+
+def validate_ada_operational_tool_configuration(
+    configuration: ToolConfiguration,
+) -> None:
+    validate_ada_operational_tool_sources(configuration)
+    if configuration.structure is None:
+        raise ToolConfigurationValidationError(
+            'ADA operational Tool Configuration requires Tool Structure'
+        )

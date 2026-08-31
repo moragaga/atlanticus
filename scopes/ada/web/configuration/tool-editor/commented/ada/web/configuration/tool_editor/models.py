@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-# Este módulo traduce los controles visuales al contrato backend ya cerrado.
-# La UI no crea un modelo alternativo persistente: produce ToolConfiguration válida.
-
+# El editor modifica únicamente Sources y conserva intacta la topología estructural ya configurada de la Tool.
 import re
 from dataclasses import dataclass
 
@@ -192,6 +190,7 @@ def build_configuration_from_source_editor(
                 values.additional_observation_source_keys
             ),
         ),
+        structure=base_configuration.structure,
     )
     validate_ada_operational_tool_sources(configuration)
     return configuration

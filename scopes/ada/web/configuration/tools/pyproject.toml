@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-configuration-tools"
-version = "0.2.1"
-description = "Configuración persistible de Tools ADA y contratos de fuentes"
+version = "0.3.0"
+description = "Configuración persistible de Tools ADA, fuentes y topología estructural"
 requires-python = "==3.14.2"
 classifiers = [
     "Private :: Do Not Upload",
