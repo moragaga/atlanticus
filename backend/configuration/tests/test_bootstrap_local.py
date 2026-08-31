@@ -227,3 +227,62 @@ def test_invalid_explicit_process_environment_does_not_fall_back_to_dotenv(tmp_p
             process_values={'ENVIRONMENT': 'invalid'},
             dotenv_path=dotenv_path,
         )
+
+
+def test_local_configuration_root_uses_conventional_dotenv_without_file_name(tmp_path) -> None:
+    dotenv_path = tmp_path / '.env'
+    dotenv_path.write_text('ENVIRONMENT=local\nTOPIC=events\n', encoding='utf-8')
+
+    bootstrap = ConfigurationBootstrap.from_process(
+        specs=(ConfigurationVariableSpec(key='TOPIC'),),
+        process_values={},
+        configuration_root=tmp_path,
+    )
+    configuration = bootstrap.load(process_values={})
+
+    assert bootstrap.dotenv_path == dotenv_path
+    assert configuration.require('TOPIC') == 'events'
+    assert configuration.sources['ENVIRONMENT'] == ConfigurationSource.DOTENV
+    assert configuration.sources['TOPIC'] == ConfigurationSource.DOTENV
+
+
+def test_local_configuration_root_keeps_explicit_dotenv_override_exceptional(tmp_path) -> None:
+    override_path = tmp_path / '.env.integration'
+    override_path.write_text('ENVIRONMENT=local\nTOPIC=integration\n', encoding='utf-8')
+
+    bootstrap = ConfigurationBootstrap.from_process(
+        specs=(ConfigurationVariableSpec(key='TOPIC'),),
+        process_values={},
+        configuration_root=tmp_path,
+        dotenv_path='.env.integration',
+    )
+    configuration = bootstrap.load(process_values={})
+
+    assert bootstrap.dotenv_path == override_path
+    assert configuration.require('TOPIC') == 'integration'
+
+
+def test_configuration_root_must_be_a_path_like_value() -> None:
+    with pytest.raises(ConfigurationSourceError, match='configuration_root'):
+        ConfigurationBootstrap.from_process(
+            specs=(),
+            process_values={'ENVIRONMENT': 'local'},
+            configuration_root=123,  # type: ignore[arg-type]
+        )
+
+
+def test_local_default_discovers_dotenv_without_declaring_file_or_root(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    (tmp_path / '.env').write_text('ENVIRONMENT=local\nTOPIC=events\n', encoding='utf-8')
+    monkeypatch.chdir(tmp_path)
+
+    bootstrap = ConfigurationBootstrap.from_process(
+        specs=(ConfigurationVariableSpec(key='TOPIC'),),
+        process_values={},
+    )
+    configuration = bootstrap.load(process_values={})
+
+    assert bootstrap.dotenv_path.as_posix() == '.env'
+    assert configuration.require('TOPIC') == 'events'

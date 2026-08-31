@@ -83,7 +83,8 @@ class ConfigurationBootstrap:
         *,
         specs: Sequence[ConfigurationVariableSpec],
         process_values: Mapping[str, str] | None = None,
-        dotenv_path: str | Path = '.env',
+        configuration_root: str | Path = '.',
+        dotenv_path: str | Path | None = None,
         secrets_manifest: SecretsManifest | None = None,
         secret_resolver: SecretResolver | None = None,
     ) -> ConfigurationBootstrap:
@@ -92,14 +93,18 @@ class ConfigurationBootstrap:
         effective_values = os.environ if process_values is None else process_values
         if not isinstance(effective_values, Mapping):
             raise ConfigurationSourceError('Process configuration values must be a mapping.')
+        effective_dotenv_path = _resolve_dotenv_path(
+            configuration_root=configuration_root,
+            dotenv_path=dotenv_path,
+        )
         environment, _ = _resolve_environment(
             effective_values,
-            dotenv_path=dotenv_path,
+            dotenv_path=effective_dotenv_path,
         )
         return cls(
             environment=environment,
             specs=specs,
-            dotenv_path=dotenv_path,
+            dotenv_path=effective_dotenv_path,
             secrets_manifest=secrets_manifest,
             secret_resolver=secret_resolver,
         )
@@ -241,6 +246,26 @@ class ConfigurationBootstrap:
             sources=sources,
             sensitive_keys=frozenset(sensitive_keys),
         )
+
+
+def _resolve_dotenv_path(
+    *,
+    configuration_root: str | Path,
+    dotenv_path: str | Path | None,
+) -> Path:
+    if not isinstance(configuration_root, str | Path):
+        raise ConfigurationSourceError('configuration_root must be a string or Path.')
+    if dotenv_path is not None and not isinstance(dotenv_path, str | Path):
+        raise ConfigurationSourceError('dotenv_path must be a string, Path, or None.')
+
+    root = Path(configuration_root)
+    if dotenv_path is None:
+        return root / '.env'
+
+    configured_path = Path(dotenv_path)
+    if configured_path.is_absolute():
+        return configured_path
+    return root / configured_path
 
 
 def _resolve_environment(
