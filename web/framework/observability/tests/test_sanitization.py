@@ -6,6 +6,7 @@ def test_sanitize_redacts_secrets_without_redacting_definition_keys():
         {
             'definition_key': 'movement_mine',
             'client_secret': 'hidden',
+            'token': 'hidden',
             'nested': {'access_token': 'hidden'},
         }
     )
@@ -13,5 +14,6 @@ def test_sanitize_redacts_secrets_without_redacting_definition_keys():
     assert value == {
         'definition_key': 'movement_mine',
         'client_secret': '[REDACTED]',
+        'token': '[REDACTED]',
         'nested': {'access_token': '[REDACTED]'},
     }

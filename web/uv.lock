@@ -101,7 +101,7 @@ requires-dist = [{ name = "atlanticus-web", editable = "framework/core" }]
 
 [[package]]
 name = "atlanticus-web-observability"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "framework/observability" }
 dependencies = [
     { name = "flask" },

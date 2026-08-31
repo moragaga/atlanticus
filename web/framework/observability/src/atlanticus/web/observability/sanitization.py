@@ -14,6 +14,7 @@ _SECRET_KEYS = {
     'sas',
     'secret',
     'session',
+    'token',
 }
 
 

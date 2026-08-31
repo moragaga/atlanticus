@@ -9,16 +9,27 @@ from typing import Any
 from flask import Flask, g, got_request_exception, request
 
 from atlanticus.web.observability.models import WebErrorInfo, WebEvent, WebSeverity
+from atlanticus.web.observability.ports import WebEventSink
 from atlanticus.web.observability.sanitization import sanitize
 
 _EXCEPTION_FLAG = '_atlanticus_web_exception_observed'
 
 
 class WebObservability:
-    def __init__(self, *, application: str, logger: logging.Logger, json_output: bool) -> None:
+    def __init__(
+        self,
+        *,
+        application: str,
+        logger: logging.Logger,
+        json_output: bool,
+        external_sink: WebEventSink | None = None,
+    ) -> None:
         self._application = application
         self._logger = logger
         self._json_output = json_output
+        if external_sink is not None and not callable(getattr(external_sink, 'emit', None)):
+            raise TypeError('external_sink must implement emit()')
+        self._external_sink = external_sink
 
     def warning(self, name: str, message: str, **context: Any) -> None:
         self._emit(WebSeverity.WARNING, name, message, context=context)
@@ -108,6 +119,18 @@ class WebObservability:
             WebSeverity.CRITICAL: self._logger.critical,
         }[severity]
         log_method(self._render(event))
+        self._emit_external(event)
+
+    def _emit_external(self, event: WebEvent) -> None:
+        if self._external_sink is None:
+            return
+        try:
+            self._external_sink.emit(event)
+        except Exception:
+            self._logger.error(
+                'event=web.observability.external_sink.failed | '
+                f'application={self._application} | message=External observability sink failed'
+            )
 
     def _render(self, event: WebEvent) -> str:
         if self._json_output:
@@ -129,7 +152,12 @@ class WebObservability:
         return ' | '.join(details)
 
 
-def configure_web_observability(*, application: str, json_output: bool) -> WebObservability:
+def configure_web_observability(
+    *,
+    application: str,
+    json_output: bool,
+    external_sink: WebEventSink | None = None,
+) -> WebObservability:
     logger = logging.getLogger(f'atlanticus.web.{application}')
     logger.handlers.clear()
     logger.propagate = False
@@ -137,4 +165,9 @@ def configure_web_observability(*, application: str, json_output: bool) -> WebOb
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(logging.Formatter('%(levelname)s %(message)s'))
     logger.addHandler(handler)
-    return WebObservability(application=application, logger=logger, json_output=json_output)
+    return WebObservability(
+        application=application,
+        logger=logger,
+        json_output=json_output,
+        external_sink=external_sink,
+    )
