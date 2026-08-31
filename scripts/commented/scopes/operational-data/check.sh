@@ -1,15 +1,45 @@
 #!/usr/bin/env bash
+# Espejo comentado: instala el grafo local de Operational Data sin editables y ejecuta el gate sin resincronizar.
 set -euo pipefail
 
-# Resuelve siempre la raíz del repositorio antes de entrar al scope.
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 SCOPE="$ROOT/scopes/operational-data"
 DISTRIBUTIONS=(
+  atlanticus-kernel
+  atlanticus-observability
   atlanticus-datasets
+  atlanticus-datasets-parquet
+  atlanticus-datasets-runtime
+  atlanticus-job-runtime
+  atlanticus-state
+  atlanticus-http
+  atlanticus-service-bus
+  atlanticus-sql
+  atlanticus-storage
+  atlanticus-pi-contracts
+  atlanticus-pi-web-api
   atlanticus-operational-data-core
   atlanticus-operational-data-planner
   atlanticus-operational-data-calendar
   atlanticus-operational-data-sources
+  atlanticus-data-producers-core
+  atlanticus-data-producers-sql
+  atlanticus-data-producers-pi
+  atlanticus-data-producers-notpii
+  atlanticus-data-producers-fabrica
+  atlanticus-data-producers-remanentes
+)
+PROJECTS=(
+  core
+  planner
+  calendar
+  sources
+  producers/core
+  producers/sql
+  producers/pi
+  producers/notpii
+  producers/fabrica
+  producers/remanentes
 )
 
 CLEAN=0
@@ -34,13 +64,12 @@ PYTHON_BIN="$(uv python find 3.14.2 --no-python-downloads)"
 
 if [[ "$CLEAN" -eq 1 ]]; then
   rm -rf .venv dist
-  for project in core planner calendar sources; do
+  for project in "${PROJECTS[@]}"; do
     rm -rf "$project/build" "$project/.pytest_cache" "$project/.ruff_cache"
     find "$project" -type d -name '*.egg-info' -prune -exec rm -rf {} + 2>/dev/null || true
   done
 fi
 
-# Fuerza wheels locales non-editable para que el gate pruebe el packaging real.
 REINSTALL_ARGS=()
 for distribution in "${DISTRIBUTIONS[@]}"; do
   REINSTALL_ARGS+=(--reinstall-package "$distribution")

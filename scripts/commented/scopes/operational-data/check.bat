@@ -1,7 +1,7 @@
 @echo off
+REM Espejo comentado: bootstrap non-editable del scope Operational Data.
 setlocal EnableExtensions EnableDelayedExpansion
 
-rem Resuelve la raíz del repositorio antes de ejecutar el gate.
 set "ROOT=%~dp0\..\..\.."
 for %%I in ("%ROOT%") do set "ROOT=%%~fI"
 set "SCOPE=%ROOT%\scopes\operational-data"
@@ -36,7 +36,7 @@ if errorlevel 1 exit /b 1
 if "%CLEAN%"=="1" (
     if exist ".venv" rmdir /s /q ".venv"
     if exist "dist" rmdir /s /q "dist"
-    for %%P in (core planner calendar sources) do (
+    for %%P in (core planner calendar sources producers\core producers\sql producers\pi producers\notpii producers\fabrica producers\remanentes) do (
         if exist "%%P\build" rmdir /s /q "%%P\build"
         if exist "%%P\.pytest_cache" rmdir /s /q "%%P\.pytest_cache"
         if exist "%%P\.ruff_cache" rmdir /s /q "%%P\.ruff_cache"
@@ -44,7 +44,30 @@ if "%CLEAN%"=="1" (
 )
 
 echo [bootstrap] Synchronizing locked Atlanticus Operational Data environment
-uv sync --python "%PYTHON_BIN%" --no-python-downloads --locked --all-packages --group dev --no-editable --reinstall-package atlanticus-datasets --reinstall-package atlanticus-operational-data-core --reinstall-package atlanticus-operational-data-planner --reinstall-package atlanticus-operational-data-calendar --reinstall-package atlanticus-operational-data-sources
+uv sync --python "%PYTHON_BIN%" --no-python-downloads --locked --all-packages --group dev --no-editable ^
+ --reinstall-package atlanticus-kernel ^
+ --reinstall-package atlanticus-observability ^
+ --reinstall-package atlanticus-datasets ^
+ --reinstall-package atlanticus-datasets-parquet ^
+ --reinstall-package atlanticus-datasets-runtime ^
+ --reinstall-package atlanticus-job-runtime ^
+ --reinstall-package atlanticus-state ^
+ --reinstall-package atlanticus-http ^
+ --reinstall-package atlanticus-service-bus ^
+ --reinstall-package atlanticus-sql ^
+ --reinstall-package atlanticus-storage ^
+ --reinstall-package atlanticus-pi-contracts ^
+ --reinstall-package atlanticus-pi-web-api ^
+ --reinstall-package atlanticus-operational-data-core ^
+ --reinstall-package atlanticus-operational-data-planner ^
+ --reinstall-package atlanticus-operational-data-calendar ^
+ --reinstall-package atlanticus-operational-data-sources ^
+ --reinstall-package atlanticus-data-producers-core ^
+ --reinstall-package atlanticus-data-producers-sql ^
+ --reinstall-package atlanticus-data-producers-pi ^
+ --reinstall-package atlanticus-data-producers-notpii ^
+ --reinstall-package atlanticus-data-producers-fabrica ^
+ --reinstall-package atlanticus-data-producers-remanentes
 if errorlevel 1 exit /b 1
 
 uv run --python "%PYTHON_BIN%" --no-python-downloads --no-sync python "%ROOT%\scripts\scopes\operational-data\check.py" %FORWARD_ARGS%

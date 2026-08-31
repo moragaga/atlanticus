@@ -56,14 +56,93 @@ CAPABILITIES: dict[str, OperationalDataCapability] = {
         'sources/src',
         'sources/commented',
     ),
+    'producer-core': OperationalDataCapability(
+        'producer-core',
+        'atlanticus-data-producers-core',
+        'atlanticus.data_producers.core',
+        'producers/core',
+        'producers/core/src',
+        'producers/core/commented',
+    ),
+    'producer-sql': OperationalDataCapability(
+        'producer-sql',
+        'atlanticus-data-producers-sql',
+        'atlanticus.data_producers.sql',
+        'producers/sql',
+        'producers/sql/src',
+        'producers/sql/commented',
+    ),
+    'producer-pi': OperationalDataCapability(
+        'producer-pi',
+        'atlanticus-data-producers-pi',
+        'atlanticus.data_producers.pi',
+        'producers/pi',
+        'producers/pi/src',
+        'producers/pi/commented',
+    ),
+    'producer-notpii': OperationalDataCapability(
+        'producer-notpii',
+        'atlanticus-data-producers-notpii',
+        'atlanticus.data_producers.notpii',
+        'producers/notpii',
+        'producers/notpii/src',
+        'producers/notpii/commented',
+    ),
+    'producer-fabrica': OperationalDataCapability(
+        'producer-fabrica',
+        'atlanticus-data-producers-fabrica',
+        'atlanticus.data_producers.fabrica',
+        'producers/fabrica',
+        'producers/fabrica/src',
+        'producers/fabrica/commented',
+    ),
+    'producer-remanentes': OperationalDataCapability(
+        'producer-remanentes',
+        'atlanticus-data-producers-remanentes',
+        'atlanticus.data_producers.remanentes',
+        'producers/remanentes',
+        'producers/remanentes/src',
+        'producers/remanentes/commented',
+    ),
 }
+
+EXPECTED_WORKSPACE_MEMBERS = [
+    'core',
+    'planner',
+    'calendar',
+    'sources',
+    'producers/core',
+    'producers/sql',
+    'producers/pi',
+    'producers/notpii',
+    'producers/fabrica',
+    'producers/remanentes',
+]
 
 EXPECTED_WORKSPACE_SOURCES = {
     'atlanticus-operational-data-core': {'workspace': True},
     'atlanticus-operational-data-planner': {'workspace': True},
     'atlanticus-operational-data-calendar': {'workspace': True},
     'atlanticus-operational-data-sources': {'workspace': True},
+    'atlanticus-data-producers-core': {'workspace': True},
+    'atlanticus-data-producers-sql': {'workspace': True},
+    'atlanticus-data-producers-pi': {'workspace': True},
+    'atlanticus-data-producers-notpii': {'workspace': True},
+    'atlanticus-data-producers-fabrica': {'workspace': True},
+    'atlanticus-data-producers-remanentes': {'workspace': True},
     'atlanticus-datasets': {'path': '../../backend/datasets', 'editable': True},
+    'atlanticus-datasets-parquet': {'path': '../../backend/datasets-parquet', 'editable': True},
+    'atlanticus-datasets-runtime': {'path': '../../backend/datasets-runtime', 'editable': True},
+    'atlanticus-job-runtime': {'path': '../../backend/runtime', 'editable': True},
+    'atlanticus-kernel': {'path': '../../backend/kernel', 'editable': True},
+    'atlanticus-observability': {'path': '../../backend/observability', 'editable': True},
+    'atlanticus-state': {'path': '../../backend/state', 'editable': True},
+    'atlanticus-http': {'path': '../../connectivity/http-client', 'editable': True},
+    'atlanticus-service-bus': {'path': '../../connectivity/service-bus', 'editable': True},
+    'atlanticus-sql': {'path': '../../connectivity/sql', 'editable': True},
+    'atlanticus-storage': {'path': '../../connectivity/storage', 'editable': True},
+    'atlanticus-pi-contracts': {'path': '../../integrations/pi/contracts', 'editable': True},
+    'atlanticus-pi-web-api': {'path': '../../integrations/pi/web-api', 'editable': True},
 }
 
 EXPECTED_DEPENDENCIES = {
@@ -78,6 +157,78 @@ EXPECTED_DEPENDENCIES = {
         'pandas==3.0.3',
         'pyarrow==25.0.0',
     ],
+    'producer-core': [],
+    'producer-sql': [
+        'atlanticus-data-producers-core==1.0.0',
+        'atlanticus-datasets==1.0.0',
+        'atlanticus-datasets-parquet==1.0.0',
+        'atlanticus-datasets-runtime==1.0.0',
+        'atlanticus-job-runtime==1.0.0',
+        'atlanticus-sql==1.0.0',
+        'atlanticus-state==1.0.0',
+        'pyarrow==25.0.0',
+    ],
+    'producer-pi': [
+        'atlanticus-datasets==1.0.0',
+        'atlanticus-datasets-parquet==1.0.0',
+        'atlanticus-datasets-runtime==1.0.0',
+        'atlanticus-job-runtime==1.0.0',
+        'atlanticus-observability==1.0.0',
+        'atlanticus-pi-contracts==1.0.0',
+        'atlanticus-pi-web-api==1.0.0',
+        'atlanticus-state==1.0.0',
+        'pyarrow==25.0.0',
+    ],
+    'producer-notpii': [
+        'atlanticus-datasets==1.0.0',
+        'atlanticus-datasets-parquet==1.0.0',
+        'atlanticus-datasets-runtime==1.0.0',
+        'atlanticus-job-runtime==1.0.0',
+        'atlanticus-pi-contracts==1.0.0',
+        'atlanticus-service-bus==1.0.0',
+        'atlanticus-state==1.0.0',
+        'atlanticus-storage==1.0.0',
+        'pandas==3.0.3',
+        'pyarrow==25.0.0',
+    ],
+    'producer-fabrica': [
+        'atlanticus-datasets==1.0.0',
+        'atlanticus-datasets-parquet==1.0.0',
+        'atlanticus-datasets-runtime==1.0.0',
+        'atlanticus-job-runtime==1.0.0',
+        'atlanticus-observability==1.0.0',
+        'atlanticus-state==1.0.0',
+        'atlanticus-storage==1.0.0',
+        'pandas==3.0.3',
+        'pyarrow==25.0.0',
+    ],
+    'producer-remanentes': [
+        'atlanticus-datasets==1.0.0',
+        'atlanticus-datasets-parquet==1.0.0',
+        'atlanticus-datasets-runtime==1.0.0',
+        'atlanticus-job-runtime==1.0.0',
+        'atlanticus-observability==1.0.0',
+        'atlanticus-state==1.0.0',
+        'atlanticus-storage==1.0.0',
+        'pandas==3.0.3',
+        'pyarrow==25.0.0',
+    ],
+}
+
+LOCAL_BASELINES = {
+    'atlanticus-datasets': 'backend/datasets',
+    'atlanticus-datasets-parquet': 'backend/datasets-parquet',
+    'atlanticus-datasets-runtime': 'backend/datasets-runtime',
+    'atlanticus-job-runtime': 'backend/runtime',
+    'atlanticus-kernel': 'backend/kernel',
+    'atlanticus-observability': 'backend/observability',
+    'atlanticus-state': 'backend/state',
+    'atlanticus-http': 'connectivity/http-client',
+    'atlanticus-service-bus': 'connectivity/service-bus',
+    'atlanticus-sql': 'connectivity/sql',
+    'atlanticus-storage': 'connectivity/storage',
+    'atlanticus-pi-contracts': 'integrations/pi/contracts',
+    'atlanticus-pi-web-api': 'integrations/pi/web-api',
 }
 
 LEGACY_TOKENS = (
@@ -190,27 +341,35 @@ def _validate_workspace(scope: Path, repository: Path) -> None:
                 raise SystemExit(f'Invalid Ruff {key} for {capability.distribution}')
             if any('commented' in str(pattern) for pattern in patterns):
                 raise SystemExit(f'{capability.distribution} Ruff must include commented mirrors')
+        capability_uv = capability_tool.get('uv')
+        if isinstance(capability_uv, dict) and 'sources' in capability_uv:
+            raise SystemExit(
+                f'{capability.distribution} must inherit local sources from the scope workspace'
+            )
     uv = tool.get('uv')
     if not isinstance(uv, dict):
         raise SystemExit('Missing [tool.uv] configuration in Operational Data workspace')
     workspace = uv.get('workspace')
-    expected_members = ['core', 'planner', 'calendar', 'sources']
-    if not isinstance(workspace, dict) or workspace.get('members') != expected_members:
+    if not isinstance(workspace, dict) or workspace.get('members') != EXPECTED_WORKSPACE_MEMBERS:
         raise SystemExit('Operational Data workspace members are not canonical')
     sources = uv.get('sources')
     if not isinstance(sources, dict):
         raise SystemExit('Missing [tool.uv.sources] in Operational Data workspace')
+    if set(sources) != set(EXPECTED_WORKSPACE_SOURCES):
+        raise SystemExit('Operational Data workspace source registry is not canonical')
     for distribution, expected in EXPECTED_WORKSPACE_SOURCES.items():
         source = sources.get(distribution)
         if source != expected:
             raise SystemExit(f'Unexpected UV source for {distribution}: {source!r}')
-    dataset_target = (scope / '../../backend/datasets').resolve()
-    try:
-        dataset_target.relative_to(repository.resolve())
-    except ValueError as exc:
-        raise SystemExit('atlanticus-datasets UV source escapes repository') from exc
-    if not (dataset_target / 'pyproject.toml').is_file():
-        raise SystemExit(f'atlanticus-datasets source target is missing: {dataset_target}')
+        if 'path' not in expected:
+            continue
+        target = (scope / str(expected['path'])).resolve()
+        try:
+            target.relative_to(repository.resolve())
+        except ValueError as exc:
+            raise SystemExit(f'{distribution} UV source escapes repository') from exc
+        if not (target / 'pyproject.toml').is_file():
+            raise SystemExit(f'{distribution} source target is missing: {target}')
 
 
 def _require_version(project_root: Path, distribution: str, expected: str) -> None:
@@ -231,7 +390,8 @@ def _validate_dependency_correlation(scope: Path, repository: Path) -> None:
             raise SystemExit(
                 f'Unexpected dependencies for {capability.distribution}: {dependencies!r}'
             )
-    _require_version(repository / 'backend/datasets', 'atlanticus-datasets', '1.0.0')
+    for distribution, relative in LOCAL_BASELINES.items():
+        _require_version(repository / relative, distribution, '1.0.0')
 
 
 def _validate_ownership(scope: Path) -> None:

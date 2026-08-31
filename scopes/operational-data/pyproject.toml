@@ -19,7 +19,25 @@ atlanticus-operational-data-core = { workspace = true }
 atlanticus-operational-data-planner = { workspace = true }
 atlanticus-operational-data-calendar = { workspace = true }
 atlanticus-operational-data-sources = { workspace = true }
+atlanticus-data-producers-core = { workspace = true }
+atlanticus-data-producers-sql = { workspace = true }
+atlanticus-data-producers-pi = { workspace = true }
+atlanticus-data-producers-notpii = { workspace = true }
+atlanticus-data-producers-fabrica = { workspace = true }
+atlanticus-data-producers-remanentes = { workspace = true }
 atlanticus-datasets = { path = "../../backend/datasets", editable = true }
+atlanticus-datasets-parquet = { path = "../../backend/datasets-parquet", editable = true }
+atlanticus-datasets-runtime = { path = "../../backend/datasets-runtime", editable = true }
+atlanticus-job-runtime = { path = "../../backend/runtime", editable = true }
+atlanticus-kernel = { path = "../../backend/kernel", editable = true }
+atlanticus-observability = { path = "../../backend/observability", editable = true }
+atlanticus-state = { path = "../../backend/state", editable = true }
+atlanticus-http = { path = "../../connectivity/http-client", editable = true }
+atlanticus-service-bus = { path = "../../connectivity/service-bus", editable = true }
+atlanticus-sql = { path = "../../connectivity/sql", editable = true }
+atlanticus-storage = { path = "../../connectivity/storage", editable = true }
+atlanticus-pi-contracts = { path = "../../integrations/pi/contracts", editable = true }
+atlanticus-pi-web-api = { path = "../../integrations/pi/web-api", editable = true }
 
 [tool.uv.workspace]
 members = [
@@ -27,6 +45,12 @@ members = [
     "planner",
     "calendar",
     "sources",
+    "producers/core",
+    "producers/sql",
+    "producers/pi",
+    "producers/notpii",
+    "producers/fabrica",
+    "producers/remanentes",
 ]
 
 [tool.ruff]
