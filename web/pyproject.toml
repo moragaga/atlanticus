@@ -12,6 +12,8 @@ dependencies = [
     "atlanticus-web-navigation==0.1.0",
     "atlanticus-web-configuration==0.1.0",
     "atlanticus-web-pwa==0.1.0",
+    "atlanticus-web-users-activity==0.1.0",
+    "atlanticus-web-composition-navigation-activity==0.1.0",
 ]
 
 [dependency-groups]
@@ -32,6 +34,8 @@ atlanticus-web-navigation = { workspace = true }
 
 atlanticus-web-configuration = { workspace = true }
 atlanticus-web-pwa = { workspace = true }
+atlanticus-web-users-activity = { workspace = true }
+atlanticus-web-composition-navigation-activity = { workspace = true }
 [tool.uv.workspace]
 members = [
     "framework/core",
@@ -41,6 +45,8 @@ members = [
     "capabilities/navigation/core",
     "framework/configuration",
     "framework/pwa",
+    "capabilities/users/activity",
+    "compositions/navigation-activity",
 ]
 
 [tool.ruff]
@@ -75,5 +81,7 @@ testpaths = [
     "capabilities/navigation/core/tests",
     "framework/configuration/tests",
     "framework/pwa/tests",
+    "capabilities/users/activity/tests",
+    "compositions/navigation-activity/tests",
 ]
 addopts = "-q --import-mode=importlib"
