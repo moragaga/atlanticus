@@ -1,3 +1,5 @@
+
+# La observabilidad Web conserva logging local y usa el sink externo sólo cuando está configurado.
 from __future__ import annotations
 
 import json
@@ -8,6 +10,7 @@ from typing import Any
 
 from flask import Flask, g, got_request_exception, request
 
+from atlanticus.web.observability.binding import get_bound_web_external_sink
 from atlanticus.web.observability.models import WebErrorInfo, WebEvent, WebSeverity
 from atlanticus.web.observability.ports import WebEventSink
 from atlanticus.web.observability.sanitization import sanitize
@@ -29,10 +32,8 @@ class WebObservability:
         self._json_output = json_output
         if external_sink is not None and not callable(getattr(external_sink, 'emit', None)):
             raise TypeError('external_sink must implement emit()')
-        # El sink externo es opcional y no pertenece al lifecycle de WebObservability.
         self._external_sink = external_sink
 
-    # No existe método info deliberadamente: la Web sana permanece silenciosa remotamente.
     def warning(self, name: str, message: str, **context: Any) -> None:
         self._emit(WebSeverity.WARNING, name, message, context=context)
 
@@ -80,10 +81,8 @@ class WebObservability:
                 endpoint=request.endpoint,
             )
 
-        # Observa excepciones Flask/Dash sin reemplazar su manejo HTTP.
         got_request_exception.connect(observe_exception, sender=app, weak=False)
 
-        # También captura respuestas 5xx que no provienen de una excepción Python.
         @app.after_request
         def observe_failed_response(response):
             if response.status_code >= 500 and not getattr(g, _EXCEPTION_FLAG, False):
@@ -109,7 +108,6 @@ class WebObservability:
         error = None
         if exception is not None:
             error = WebErrorInfo(type=type(exception).__name__, message=str(exception))
-        # Sanitiza una vez antes de entregar el mismo hecho a salida local y remota.
         event = WebEvent(
             name=name,
             severity=severity,
@@ -132,7 +130,6 @@ class WebObservability:
         try:
             self._external_sink.emit(event)
         except Exception:
-            # El exporter nunca debe romper la aplicación ni reingresar al mismo sink.
             self._logger.error(
                 'event=web.observability.external_sink.failed | '
                 f'application={self._application} | message=External observability sink failed'
@@ -175,5 +172,7 @@ def configure_web_observability(
         application=application,
         logger=logger,
         json_output=json_output,
-        external_sink=external_sink,
+        external_sink=(
+            external_sink if external_sink is not None else get_bound_web_external_sink()
+        ),
     )

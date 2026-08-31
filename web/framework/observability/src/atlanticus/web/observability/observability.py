@@ -8,6 +8,7 @@ from typing import Any
 
 from flask import Flask, g, got_request_exception, request
 
+from atlanticus.web.observability.binding import get_bound_web_external_sink
 from atlanticus.web.observability.models import WebErrorInfo, WebEvent, WebSeverity
 from atlanticus.web.observability.ports import WebEventSink
 from atlanticus.web.observability.sanitization import sanitize
@@ -169,5 +170,7 @@ def configure_web_observability(
         application=application,
         logger=logger,
         json_output=json_output,
-        external_sink=external_sink,
+        external_sink=(
+            external_sink if external_sink is not None else get_bound_web_external_sink()
+        ),
     )
