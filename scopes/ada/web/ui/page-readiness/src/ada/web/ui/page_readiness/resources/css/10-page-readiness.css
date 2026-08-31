@@ -1,0 +1,39 @@
+[data-ada-page-readiness='true'] {
+    position: relative;
+}
+
+[data-ada-page-readiness='true'][data-ada-page-readiness-enabled='true'] > .ada-page-readiness__content {
+    visibility: hidden;
+}
+
+[data-ada-page-readiness='true'][data-ada-page-readiness-state='fading'] > .ada-page-readiness__content,
+[data-ada-page-readiness='true'][data-ada-page-readiness-state='ready'] > .ada-page-readiness__content,
+[data-ada-page-readiness='true'][data-ada-page-readiness-enabled='false'] > .ada-page-readiness__content {
+    visibility: visible;
+}
+
+.ada-page-readiness__loader {
+    position: absolute;
+    inset: 0;
+    z-index: 1000;
+    opacity: 1;
+    transition: opacity 240ms ease;
+}
+
+[data-ada-page-readiness-state='fading'] > .ada-page-readiness__loader {
+    opacity: 0;
+    pointer-events: none;
+}
+
+[data-ada-page-readiness-state='ready'] > .ada-page-readiness__loader,
+[data-ada-page-readiness-enabled='false'] > .ada-page-readiness__loader {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ada-page-readiness__loader {
+        transition-duration: 0ms;
+    }
+}

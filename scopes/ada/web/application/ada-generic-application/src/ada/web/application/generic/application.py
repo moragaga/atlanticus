@@ -54,6 +54,7 @@ from ada.web.ui.global_indicator import (
     GlobalIndicatorCollection,
     create_ada_global_indicator_module,
 )
+from ada.web.ui.page_readiness import create_ada_page_readiness_module
 from ada.web.ui.time_status import (
     TimeStatusDetailState,
     TimeStatusFreshnessPolicy,
@@ -197,6 +198,7 @@ def create_application_definition(
             create_ada_operational_header_module(),
             create_ada_session_module(),
             create_ada_wake_lock_module(),
+            create_ada_page_readiness_module(),
         ),
         page_packages=('ada.web.application.generic.pages',),
     )

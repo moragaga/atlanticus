@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-generic-application"
-version = "0.2.4"
+version = "0.2.5"
 description = "Composition root web genérico de ADA sobre Atlanticus Web"
 requires-python = "==3.14.2"
 classifiers = [
@@ -28,6 +28,7 @@ dependencies = [
     "atlanticus-web-identity==0.1.0",
     "atlanticus-web-identity-local==0.1.0",
     "atlanticus-web-navigation==0.1.0",
+    "ada-web-ui-page-readiness==0.1.0",
 ]
 
 [dependency-groups]
@@ -58,6 +59,7 @@ atlanticus-web-observability = { path = "../../../../../web/framework/observabil
 atlanticus-web-identity = { path = "../../../../../web/capabilities/identity/core", editable = true }
 atlanticus-web-identity-local = { path = "../../../../../web/capabilities/identity/local", editable = true }
 atlanticus-web-navigation = { path = "../../../../../web/capabilities/navigation/core", editable = true }
+ada-web-ui-page-readiness = { path = "../../ui/page-readiness", editable = true }
 
 [tool.setuptools]
 package-dir = {"" = "src"}
