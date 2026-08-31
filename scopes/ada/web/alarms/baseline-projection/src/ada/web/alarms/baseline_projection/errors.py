@@ -1,0 +1,2 @@
+class AlarmBaselineProjectionError(ValueError):
+    pass
