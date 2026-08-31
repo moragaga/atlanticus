@@ -1,12 +1,29 @@
-from __future__ import annotations
-# La capacidad Gunicorn se deriva exclusivamente de recursos efectivos; no admite overrides ambientales.
+# Espejo comentado de atlanticus.web.hosting.
+# Mantiene exactamente la misma semántica que producción y documenta el contrato de hosting.
 
+from __future__ import annotations
+
+import atexit
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from threading import Lock
+from typing import Any, Protocol
 
 _MEMORY_GIB = 1024 * 1024 * 1024
 _CGROUP_UNLIMITED_THRESHOLD = 1 << 60
+
+
+# Contrato mínimo que debe exponer un runtime construido dentro de cada worker.
+class WorkerRuntime(Protocol):
+    @property
+    def server(self) -> Callable[..., Any]: ...
+
+    def close(self) -> None: ...
+
+
+RuntimeFactory = Callable[[], WorkerRuntime]
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,6 +42,66 @@ class GunicornCapacity:
         return round(self.memory_bytes / _MEMORY_GIB, 2)
 
 
+# Wrapper WSGI liviano en el master; materializa el runtime únicamente durante warmup post-fork.
+class WorkerApplication:
+    def __init__(self, factory: RuntimeFactory) -> None:
+        if not callable(factory):
+            raise TypeError('factory must be callable')
+        self._factory = factory
+        self._lock = Lock()
+        self._runtime: WorkerRuntime | None = None
+        self._exit_registered = False
+
+    @property
+    def warmed_up(self) -> bool:
+        return self._runtime is not None
+
+    def warmup(self) -> None:
+        if self._runtime is not None:
+            return
+        with self._lock:
+            if self._runtime is not None:
+                return
+            runtime = self._factory()
+            if not callable(getattr(runtime, 'server', None)):
+                raise TypeError('worker runtime server must be callable')
+            if not callable(getattr(runtime, 'close', None)):
+                raise TypeError('worker runtime close must be callable')
+            self._runtime = runtime
+            if not self._exit_registered:
+                atexit.register(self.close)
+                self._exit_registered = True
+
+    def __call__(self, environ: dict[str, Any], start_response: Callable[..., Any]):
+        runtime = self._runtime
+        if runtime is None:
+            raise RuntimeError('Atlanticus Web worker runtime is not initialized')
+        return runtime.server(environ, start_response)
+
+    def close(self) -> None:
+        with self._lock:
+            runtime = self._runtime
+            self._runtime = None
+        if runtime is not None:
+            runtime.close()
+
+
+# Hook reusable para post_worker_init de Gunicorn.
+def warmup_gunicorn_worker(worker: object) -> None:
+    warmup = getattr(getattr(worker, 'wsgi', None), 'warmup', None)
+    if not callable(warmup):
+        raise RuntimeError('Gunicorn WSGI application does not support worker warmup')
+    warmup()
+
+
+# Hook reusable para worker_exit; el cierre es opcional e idempotente en la aplicación.
+def close_gunicorn_worker(worker: object) -> None:
+    close = getattr(getattr(worker, 'wsgi', None), 'close', None)
+    if callable(close):
+        close()
+
+
+# La capacidad se deriva exclusivamente de recursos efectivos del runtime.
 def resolve_gunicorn_capacity() -> GunicornCapacity:
     effective_cpu, cpu_source = _detect_cpu()
     memory_bytes, memory_source = _detect_memory_bytes()
