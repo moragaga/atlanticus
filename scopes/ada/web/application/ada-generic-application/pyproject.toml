@@ -4,15 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-generic-application"
-version = "0.2.1"
+version = "0.2.2"
 description = "Composition root web genérico de ADA sobre Atlanticus Web"
 requires-python = "==3.14.2"
 classifiers = [
     "Private :: Do Not Upload",
 ]
 dependencies = [
-    "ada-configuration-tool-source-consumption==0.1.0",
-    "ada-configuration-tool-source-operational-participation==0.1.0",
+    "ada-configuration-tool-sources==0.1.0",
     "ada-web-time-status-store-adapter==0.1.0",
     "ada-web-content-state-dependency-resolver==0.2.0",
     "ada-web-alarm-management-summary==0.1.1",
@@ -41,8 +40,7 @@ dev = [
 ada-generic-application = "ada.web.application.generic.__main__:main"
 
 [tool.uv.sources]
-ada-configuration-tool-source-consumption = { path = "../../configuration/tool-source-consumption", editable = true }
-ada-configuration-tool-source-operational-participation = { path = "../../configuration/tool-source-operational-participation", editable = true }
+ada-configuration-tool-sources = { path = "../../configuration/tool-sources", editable = true }
 ada-web-time-status-store-adapter = { path = "../../time-status/store-adapter", editable = true }
 ada-web-content-state-dependency-resolver = { path = "../../content-state/dependency-resolver", editable = true }
 ada-web-ui-branding = { path = "../../ui/branding", editable = true }

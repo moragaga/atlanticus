@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from ada.configuration.tool_source_consumption import ToolSourceConsumption
-from ada.configuration.tool_source_operational_participation import (
+from ada.configuration.tool_sources import (
+    ToolSourceConsumption,
     ToolSourceOperationalParticipation,
 )
 from ada.web.alarms.management_summary import AlarmManagementSummaryState

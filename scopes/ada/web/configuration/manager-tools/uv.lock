@@ -16,28 +16,11 @@ dev = [
 ]
 
 [[package]]
-name = "ada-configuration-tool-source-consumption"
+name = "ada-configuration-tool-sources"
 version = "0.1.0"
-source = { editable = "../tool-source-consumption" }
+source = { editable = "../tool-sources" }
 
 [package.metadata]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-configuration-tool-source-operational-participation"
-version = "0.1.0"
-source = { editable = "../tool-source-operational-participation" }
-dependencies = [
-    { name = "ada-configuration-tool-source-consumption" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "ada-configuration-tool-source-consumption", editable = "../tool-source-consumption" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -47,18 +30,14 @@ dev = [
 
 [[package]]
 name = "ada-configuration-tools"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "../tools" }
 dependencies = [
-    { name = "ada-configuration-tool-source-consumption" },
-    { name = "ada-configuration-tool-source-operational-participation" },
+    { name = "ada-configuration-tool-sources" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "ada-configuration-tool-source-consumption", editable = "../tool-source-consumption" },
-    { name = "ada-configuration-tool-source-operational-participation", editable = "../tool-source-operational-participation" },
-]
+requires-dist = [{ name = "ada-configuration-tool-sources", editable = "../tool-sources" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -68,7 +47,7 @@ dev = [
 
 [[package]]
 name = "ada-web-configuration-manager-tools"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "ada-configuration-branding" },
@@ -99,11 +78,10 @@ dev = [
 
 [[package]]
 name = "ada-web-tool-configuration-editor"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "../tool-editor" }
 dependencies = [
-    { name = "ada-configuration-tool-source-consumption" },
-    { name = "ada-configuration-tool-source-operational-participation" },
+    { name = "ada-configuration-tool-sources" },
     { name = "ada-configuration-tools" },
     { name = "atlanticus-web" },
     { name = "dash" },
@@ -111,8 +89,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-configuration-tool-source-consumption", editable = "../tool-source-consumption" },
-    { name = "ada-configuration-tool-source-operational-participation", editable = "../tool-source-operational-participation" },
+    { name = "ada-configuration-tool-sources", editable = "../tool-sources" },
     { name = "ada-configuration-tools", editable = "../tools" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "dash", specifier = "==4.4.1" },

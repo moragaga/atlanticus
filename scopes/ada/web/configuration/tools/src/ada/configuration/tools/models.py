@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
-from ada.configuration.tool_source_consumption import ToolSourceConsumption
-from ada.configuration.tool_source_operational_participation import (
+from ada.configuration.tool_sources import (
+    ToolSourceConsumption,
     ToolSourceOperationalParticipation,
     validate_operational_participation_against_consumption,
 )

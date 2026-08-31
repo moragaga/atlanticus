@@ -7,12 +7,10 @@ from functools import partial
 from importlib.metadata import version
 from pathlib import Path
 
-from ada.configuration.tool_source_consumption import (
+from ada.configuration.tool_sources import (
+    SourceControlPolicy,
     ToolSourceConsumption,
     ToolSourceConsumptionValidationError,
-)
-from ada.configuration.tool_source_operational_participation import (
-    SourceControlPolicy,
     ToolSourceOperationalParticipation,
     ToolSourceOperationalParticipationValidationError,
     validate_operational_participation_against_consumption,

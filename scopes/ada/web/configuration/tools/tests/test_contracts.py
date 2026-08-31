@@ -2,9 +2,9 @@ import inspect
 
 import pytest
 
-from ada.configuration.tool_source_consumption import ToolSourceConsumption
-from ada.configuration.tool_source_operational_participation import (
+from ada.configuration.tool_sources import (
     SourceControlPolicy,
+    ToolSourceConsumption,
     ToolSourceOperationalParticipation,
 )
 from ada.configuration.tools import (
