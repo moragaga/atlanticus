@@ -70,7 +70,7 @@ def test_definition_composes_current_ada_web_capabilities() -> None:
 
     assert definition.metadata.application_id == 'ada-generic-application'
     assert definition.metadata.display_name == 'ADA'
-    assert definition.metadata.version == '0.2.3'
+    assert definition.metadata.version == '0.2.4'
     assert tuple(module.name for module in definition.modules) == (
         'ada-ui',
         'ada-display-status',
@@ -83,6 +83,7 @@ def test_definition_composes_current_ada_web_capabilities() -> None:
         'ada-navigation',
         'ada-operational-header',
         'ada-session',
+        'ada-wake-lock',
     )
     assert definition.page_packages == ('ada.web.application.generic.pages',)
 
@@ -115,7 +116,7 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
     assert DEFAULT_OPERATIONAL_BRAND_LOGO_SRC in payload
     assert DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC in payload
     assert DEFAULT_PELAMBRES_BRAND_LOGO_SRC in payload
-    assert 'Versión 0.2.3' in payload
+    assert 'Versión 0.2.4' in payload
     assert runtime.services.contains(ACCESS_RUNTIME_SERVICE_KEY)
     assert runtime.services.contains(NAVIGATION_PRINCIPAL_PROVIDER_SERVICE_KEY)
     assert any(
@@ -715,7 +716,7 @@ def test_global_indicators_runtime_binding_resolves_source_error_per_own_depende
         ),
     )
 
-    assert definition.metadata.version == '0.2.3'
+    assert definition.metadata.version == '0.2.4'
     assert (
         definition.layout.keywords['global_indicators_runtime_state'] is ContentState.SOURCE_ERROR
     )
