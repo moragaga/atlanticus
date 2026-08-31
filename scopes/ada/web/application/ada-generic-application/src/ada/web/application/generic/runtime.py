@@ -10,7 +10,7 @@ from ada.web.application.generic.application import create_application_definitio
 from ada.web.content_state.dependency_resolver import ContentStateDependency
 from ada.web.shell.navigation import AdaNavigationView
 from ada.web.time_status.store_adapter import TimeStatusStoreSnapshot
-from ada.web.ui.content_state import ContentState
+from ada.web.ui.content_state import ContentState, ContentStatePresentationMode
 from ada.web.ui.global_indicator import GlobalIndicatorCollection
 from ada.web.ui.time_status import TimeStatusDetailState
 from atlanticus.web.application import create_web_application
@@ -23,6 +23,9 @@ def create_application_runtime(
     navigation_view: AdaNavigationView | None = None,
     global_indicators: GlobalIndicatorCollection | None = None,
     global_indicators_content_state: ContentState = ContentState.READY,
+    content_state_presentation_mode: ContentStatePresentationMode = (
+        ContentStatePresentationMode.NORMAL
+    ),
     content_state_dependencies: tuple[ContentStateDependency, ...] = (),
     alarm_management_summary: AlarmManagementSummaryState | None = None,
     alarm_status: AlarmStatusState | None = None,
@@ -37,6 +40,7 @@ def create_application_runtime(
             navigation_view=navigation_view,
             global_indicators=global_indicators,
             global_indicators_content_state=global_indicators_content_state,
+            content_state_presentation_mode=content_state_presentation_mode,
             content_state_dependencies=content_state_dependencies,
             alarm_management_summary=alarm_management_summary,
             alarm_status=alarm_status,

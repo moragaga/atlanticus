@@ -4,6 +4,7 @@ import pytest
 
 from ada.web.ui.content_state import (
     ContentState,
+    ContentStatePresentationMode,
     resolve_content_state,
     resolve_content_state_visual,
 )
@@ -59,3 +60,7 @@ def test_content_state_visual_contract_is_explicit() -> None:
     assert construction is not None
     assert construction.message == 'En construcción'
     assert construction.icon_class == 'bi bi-hammer'
+
+
+def test_content_state_presentation_modes_are_stable() -> None:
+    assert tuple(mode.value for mode in ContentStatePresentationMode) == ('normal', 'authoring')

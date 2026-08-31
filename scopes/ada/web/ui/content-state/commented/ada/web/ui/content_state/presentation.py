@@ -8,13 +8,19 @@ from dash.development.base_component import Component
 
 from ada.web.ui.core import component_identity_attributes
 
-from .models import ContentState, resolve_content_state, resolve_content_state_visual
+from .models import (
+    ContentState,
+    ContentStatePresentationMode,
+    resolve_content_state,
+    resolve_content_state_visual,
+)
 
 # Las claves viajan al DOM como metadata de binding; no definen autoridad de fuente.
 _KEY_PATTERN = re.compile(r'^[a-z][a-z0-9_]*$')
 
 
 # Mantiene el wrapper estable y combina el estado declarativo con el estado runtime inicial.
+# AUTHORING sólo suprime la presentación; nunca altera el estado resuelto ni sus metadatos.
 def build_content_state_wrapper(
     *,
     component_key: str,
@@ -23,10 +29,13 @@ def build_content_state_wrapper(
     runtime_state: ContentState = ContentState.READY,
     tool_key: str | None = None,
     source_keys: Sequence[str] = (),
+    presentation_mode: ContentStatePresentationMode = ContentStatePresentationMode.NORMAL,
     class_name: str | None = None,
 ) -> Component:
     if not isinstance(state, ContentState) or not isinstance(runtime_state, ContentState):
         raise TypeError('Content state wrapper requires ContentState values')
+    if not isinstance(presentation_mode, ContentStatePresentationMode):
+        raise TypeError('Content state wrapper requires ContentStatePresentationMode value')
 
     normalized_source_keys = _normalize_source_keys(source_keys)
     normalized_tool_key = _normalize_tool_key(tool_key, source_keys=normalized_source_keys)
@@ -37,6 +46,7 @@ def build_content_state_wrapper(
     attributes = component_identity_attributes(component_key)
     attributes['data-ada-content-state'] = effective_state.value
     attributes['data-ada-content-state-declared'] = state.value
+    attributes['data-ada-content-state-presentation'] = presentation_mode.value
     if normalized_source_keys:
         attributes.update(
             {
@@ -53,19 +63,29 @@ def build_content_state_wrapper(
                 className='ada-content-state__content',
                 children=children,
             ),
-            _build_overlay(state=effective_state),
+            _build_overlay(state=effective_state, presentation_mode=presentation_mode),
         ],
         **attributes,
     )
 
 
-def _build_overlay(*, state: ContentState) -> Component:
+# El overlay permanece en el DOM para conservar una estructura estable entre modos.
+def _build_overlay(
+    *,
+    state: ContentState,
+    presentation_mode: ContentStatePresentationMode,
+) -> Component:
     return html.Div(
         className='ada-content-state__overlay',
         role='status',
         **{
             'aria-live': 'polite',
-            'aria-hidden': 'true' if state is ContentState.READY else 'false',
+            'aria-hidden': (
+                'true'
+                if presentation_mode is ContentStatePresentationMode.AUTHORING
+                or state is ContentState.READY
+                else 'false'
+            ),
         },
         children=[
             _build_state_view(ContentState.STALE),

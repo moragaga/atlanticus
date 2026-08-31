@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import replace
 from functools import partial
@@ -42,7 +43,11 @@ from ada.web.ui.branding import (
     OperationalBrandState,
     create_ada_branding_module,
 )
-from ada.web.ui.content_state import ContentState, create_ada_content_state_module
+from ada.web.ui.content_state import (
+    ContentState,
+    ContentStatePresentationMode,
+    create_ada_content_state_module,
+)
 from ada.web.ui.core import create_ada_ui_module
 from ada.web.ui.display_status import create_ada_display_status_module
 from ada.web.ui.global_indicator import (
@@ -70,6 +75,7 @@ from atlanticus.web.navigation.api import (
     create_navigation_module,
 )
 
+_LOGGER = logging.getLogger(__name__)
 _APPLICATION_ROOT = Path(__file__).resolve().parents[5]
 _APPLICATION_DISTRIBUTION = 'ada-generic-application'
 _SUBJECT_SEPARATOR = re.compile(r'[-._]+')
@@ -90,6 +96,9 @@ def create_application_definition(
     navigation_view: AdaNavigationView | None = None,
     global_indicators: GlobalIndicatorCollection | None = None,
     global_indicators_content_state: ContentState = ContentState.READY,
+    content_state_presentation_mode: ContentStatePresentationMode = (
+        ContentStatePresentationMode.NORMAL
+    ),
     content_state_dependencies: tuple[ContentStateDependency, ...] = (),
     alarm_management_summary: AlarmManagementSummaryState | None = None,
     alarm_status: AlarmStatusState | None = None,
@@ -98,6 +107,9 @@ def create_application_definition(
     time_status_snapshot: TimeStatusStoreSnapshot | None = None,
     time_status_detail: TimeStatusDetailState | None = None,
 ) -> WebApplicationDefinition:
+    _validate_content_state_presentation_mode(content_state_presentation_mode)
+    if content_state_presentation_mode is ContentStatePresentationMode.AUTHORING:
+        _LOGGER.info('Content State presentation override is active: authoring')
     application_version = version(_APPLICATION_DISTRIBUTION)
     navigation = NavigationDefinition(
         links=(
@@ -156,6 +168,7 @@ def create_application_definition(
             ),
             global_indicators=resolved_global_indicators,
             global_indicators_content_state=global_indicators_content_state,
+            content_state_presentation_mode=content_state_presentation_mode,
             global_indicators_runtime_state=global_indicators_runtime_state,
             global_indicators_source_keys=global_indicators_source_keys,
             alarm_management_summary=alarm_management_summary,
@@ -185,6 +198,13 @@ def create_application_definition(
         ),
         page_packages=('ada.web.application.generic.pages',),
     )
+
+
+def _validate_content_state_presentation_mode(
+    presentation_mode: ContentStatePresentationMode,
+) -> None:
+    if not isinstance(presentation_mode, ContentStatePresentationMode):
+        raise TypeError('Generic Application requires ContentStatePresentationMode value')
 
 
 def _validate_source_configuration(

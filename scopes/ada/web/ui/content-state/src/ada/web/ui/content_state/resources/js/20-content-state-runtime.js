@@ -7,6 +7,7 @@
   const OVERLAY_SELECTOR = '.ada-content-state__overlay';
   const STATE_ATTRIBUTE = 'data-ada-content-state';
   const DECLARED_STATE_ATTRIBUTE = 'data-ada-content-state-declared';
+  const PRESENTATION_ATTRIBUTE = 'data-ada-content-state-presentation';
   const TOOL_KEY_ATTRIBUTE = 'data-ada-content-state-tool-key';
   const SOURCE_KEYS_ATTRIBUTE = 'data-ada-content-state-sources';
   const STATE_PRIORITY = { ready: 0, stale: 1, source_error: 2, construction: 3 };
@@ -55,6 +56,10 @@
     return maxState(states);
   }
 
+  function overlaySuppressed(wrapper) {
+    return String(wrapper.getAttribute(PRESENTATION_ATTRIBUTE) || '').trim() === 'authoring';
+  }
+
   function setEffectiveState(wrapper, state) {
     if (!(state in STATE_PRIORITY)) {
       return;
@@ -62,7 +67,10 @@
     wrapper.setAttribute(STATE_ATTRIBUTE, state);
     const overlay = wrapper.querySelector(OVERLAY_SELECTOR);
     if (overlay) {
-      overlay.setAttribute('aria-hidden', state === 'ready' ? 'true' : 'false');
+      overlay.setAttribute(
+        'aria-hidden',
+        overlaySuppressed(wrapper) || state === 'ready' ? 'true' : 'false',
+      );
     }
   }
 

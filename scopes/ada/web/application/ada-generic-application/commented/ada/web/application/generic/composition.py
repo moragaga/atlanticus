@@ -15,7 +15,11 @@ from ada.web.shell.navigation import (
     build_ada_navigation_offcanvas,
 )
 from ada.web.ui.branding import OperationalBrandState, build_operational_brand
-from ada.web.ui.content_state import ContentState, build_content_state_wrapper
+from ada.web.ui.content_state import (
+    ContentState,
+    ContentStatePresentationMode,
+    build_content_state_wrapper,
+)
 from ada.web.ui.global_indicator import GlobalIndicatorCollection, build_global_indicators
 from ada.web.ui.time_status import (
     TimeStatusDetailState,
@@ -27,7 +31,7 @@ from atlanticus.web.navigation.api import resolve_navigation_from_services
 from atlanticus.web.services import ServiceRegistry
 
 
-# La composición recibe por separado el estado declarado y el runtime resuelto.
+# La composición recibe por separado el estado declarado, runtime y política de presentación.
 def build_application_layout(
     services: ServiceRegistry,
     *,
@@ -35,6 +39,7 @@ def build_application_layout(
     navigation_view: AdaNavigationView,
     global_indicators: GlobalIndicatorCollection,
     global_indicators_content_state: ContentState,
+    content_state_presentation_mode: ContentStatePresentationMode,
     global_indicators_runtime_state: ContentState,
     global_indicators_source_keys: tuple[str, ...],
     alarm_management_summary: AlarmManagementSummaryState | None,
@@ -47,6 +52,7 @@ def build_application_layout(
     global_indicators_component = _build_global_indicators_component(
         collection=global_indicators,
         content_state=global_indicators_content_state,
+        presentation_mode=content_state_presentation_mode,
         runtime_state=global_indicators_runtime_state,
         tool_key=tool_key,
         source_keys=global_indicators_source_keys,
@@ -85,6 +91,7 @@ def _build_global_indicators_component(
     *,
     collection: GlobalIndicatorCollection,
     content_state: ContentState,
+    presentation_mode: ContentStatePresentationMode,
     runtime_state: ContentState,
     tool_key: str | None,
     source_keys: tuple[str, ...],
@@ -96,6 +103,7 @@ def _build_global_indicators_component(
         children=build_global_indicators(collection=collection),
         state=content_state,
         runtime_state=runtime_state,
+        presentation_mode=presentation_mode,
         tool_key=tool_key if source_keys else None,
         source_keys=source_keys,
     )

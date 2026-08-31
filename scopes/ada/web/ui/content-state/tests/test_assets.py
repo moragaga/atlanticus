@@ -60,3 +60,33 @@ def test_content_state_runtime_js_is_packaged_and_uses_neutral_freshness_event()
     assert 'setTimeout' not in javascript
     assert 'innerHTML' not in javascript
     assert 'replaceChild' not in javascript
+
+
+def test_authoring_css_suppresses_overlay_without_rewriting_content_state() -> None:
+    css = (
+        files('ada.web.ui.content_state')
+        .joinpath('resources/css/10-content-state.css')
+        .read_text(encoding='utf-8')
+    )
+
+    assert "[data-ada-content-state-presentation='authoring']" in css
+    assert 'opacity: 0;' in css
+    assert 'visibility: hidden;' in css
+    assert (
+        "data-ada-content-state='ready'"
+        not in css.split("[data-ada-content-state-presentation='authoring']", maxsplit=1)[1].split(
+            '}', maxsplit=1
+        )[0]
+    )
+
+
+def test_runtime_js_keeps_authoring_overlay_accessibility_hidden() -> None:
+    javascript = (
+        files('ada.web.ui.content_state')
+        .joinpath('resources/js/20-content-state-runtime.js')
+        .read_text(encoding='utf-8')
+    )
+
+    assert "PRESENTATION_ATTRIBUTE = 'data-ada-content-state-presentation'" in javascript
+    assert 'overlaySuppressed(wrapper)' in javascript
+    assert "=== 'authoring'" in javascript

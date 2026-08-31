@@ -44,6 +44,12 @@
     transition-delay: 0s;
 }
 
+.ada-content-state[data-ada-content-state-presentation='authoring'] .ada-content-state__overlay {
+    opacity: 0;
+    visibility: hidden;
+    transition: none;
+}
+
 .ada-content-state__view {
     display: none;
     flex-direction: column;

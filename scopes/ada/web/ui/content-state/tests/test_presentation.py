@@ -3,7 +3,11 @@ from __future__ import annotations
 import pytest
 from dash import html
 
-from ada.web.ui.content_state import ContentState, build_content_state_wrapper
+from ada.web.ui.content_state import (
+    ContentState,
+    ContentStatePresentationMode,
+    build_content_state_wrapper,
+)
 
 
 def _props(component):
@@ -147,4 +151,44 @@ def test_runtime_binding_requires_tool_key_and_unique_valid_sources() -> None:
             children=html.Div('payload'),
             tool_key='process',
             source_keys=('PI Source',),
+        )
+
+
+def test_authoring_mode_preserves_effective_state_but_suppresses_overlay() -> None:
+    wrapper = build_content_state_wrapper(
+        component_key='global_indicators',
+        children=html.Div('payload'),
+        state=ContentState.STALE,
+        presentation_mode=ContentStatePresentationMode.AUTHORING,
+    )
+    props = _props(wrapper)
+    _, overlay = _children(wrapper)
+
+    assert props['data-ada-content-state'] == 'stale'
+    assert props['data-ada-content-state-declared'] == 'stale'
+    assert props['data-ada-content-state-presentation'] == 'authoring'
+    assert _props(overlay)['aria-hidden'] == 'true'
+
+
+def test_normal_mode_keeps_degraded_overlay_accessible() -> None:
+    wrapper = build_content_state_wrapper(
+        component_key='global_indicators',
+        children=html.Div('payload'),
+        state=ContentState.SOURCE_ERROR,
+        presentation_mode=ContentStatePresentationMode.NORMAL,
+    )
+    props = _props(wrapper)
+    _, overlay = _children(wrapper)
+
+    assert props['data-ada-content-state'] == 'source_error'
+    assert props['data-ada-content-state-presentation'] == 'normal'
+    assert _props(overlay)['aria-hidden'] == 'false'
+
+
+def test_wrapper_rejects_implicit_presentation_mode_string() -> None:
+    with pytest.raises(TypeError, match='ContentStatePresentationMode'):
+        build_content_state_wrapper(
+            component_key='global_indicators',
+            children=html.Div('payload'),
+            presentation_mode='authoring',  # type: ignore[arg-type]
         )

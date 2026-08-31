@@ -3,6 +3,7 @@ from .freshness import SourceFreshnessCondition, resolve_content_state_from_fres
 # Superficie pública mínima de la capability Content State.
 from .models import (
     ContentState,
+    ContentStatePresentationMode,
     ContentStateVisual,
     resolve_content_state,
     resolve_content_state_visual,
@@ -13,6 +14,7 @@ from .presentation import build_content_state_wrapper
 __all__ = [
     'ADA_CONTENT_STATE_ASSET_LAYER',
     'ContentState',
+    'ContentStatePresentationMode',
     'ContentStateVisual',
     'SourceFreshnessCondition',
     'build_content_state_wrapper',

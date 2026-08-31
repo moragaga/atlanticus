@@ -1,16 +1,13 @@
-/* El wrapper entrega el contexto de posicionamiento sin imponer geometría al consumidor. */
 .ada-content-state {
     position: relative;
     min-width: 0;
 }
 
-/* El contenido real permanece montado y conserva sus interacciones debajo de la marca. */
 .ada-content-state__content {
     position: relative;
     min-width: 0;
 }
 
-/* La marca visual cubre el componente, pero nunca captura eventos del mouse o touch. */
 .ada-content-state__overlay {
     position: absolute;
     inset: 0;
@@ -39,7 +36,6 @@
         visibility 0s linear 180ms;
 }
 
-/* Cualquier estado degradado vuelve visible el mismo overlay estable. */
 .ada-content-state[data-ada-content-state='stale'] .ada-content-state__overlay,
 .ada-content-state[data-ada-content-state='source_error'] .ada-content-state__overlay,
 .ada-content-state[data-ada-content-state='construction'] .ada-content-state__overlay {
@@ -48,7 +44,12 @@
     transition-delay: 0s;
 }
 
-/* Las tres vistas existen siempre, pero solo una se muestra a la vez. */
+.ada-content-state[data-ada-content-state-presentation='authoring'] .ada-content-state__overlay {
+    opacity: 0;
+    visibility: hidden;
+    transition: none;
+}
+
 .ada-content-state__view {
     display: none;
     flex-direction: column;
@@ -68,7 +69,6 @@
     display: flex;
 }
 
-/* La iconografía se mantiene centrada y compacta, siguiendo la referencia visual legacy. */
 .ada-content-state__icon {
     margin-bottom: .25rem;
     font-size: 1.3rem;
