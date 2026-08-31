@@ -8,7 +8,7 @@ from dash import Dash
 from flask import Flask, request
 
 from atlanticus.web.assets import AssetLayer, publish_asset_layers
-from atlanticus.web.environment import WebEnvironment, resolve_environment
+from atlanticus.web.configuration import WebEnvironment, WebSettings
 from atlanticus.web.errors import WebDefinitionError
 from atlanticus.web.health import HealthRegistry, register_health_routes
 from atlanticus.web.index import render_index_string
@@ -39,7 +39,7 @@ BASE_ASSET_LAYER = AssetLayer(
 
 def create_web_application(definition: WebApplicationDefinition) -> WebApplicationRuntime:
     _validate_definition(definition)
-    environment = resolve_environment()
+    environment = WebSettings().environment
     observability = configure_web_observability(
         application=definition.metadata.application_id,
         json_output=environment.is_production,

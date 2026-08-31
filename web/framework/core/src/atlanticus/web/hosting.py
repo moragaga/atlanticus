@@ -4,8 +4,6 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from atlanticus.web.errors import WebConfigurationError
-
 _MEMORY_GIB = 1024 * 1024 * 1024
 _CGROUP_UNLIMITED_THRESHOLD = 1 << 60
 
@@ -26,8 +24,7 @@ class GunicornCapacity:
         return round(self.memory_bytes / _MEMORY_GIB, 2)
 
 
-def resolve_gunicorn_capacity(values: dict[str, str] | None = None) -> GunicornCapacity:
-    source = os.environ if values is None else values
+def resolve_gunicorn_capacity() -> GunicornCapacity:
     effective_cpu, cpu_source = _detect_cpu()
     memory_bytes, memory_source = _detect_memory_bytes()
 
@@ -38,8 +35,8 @@ def resolve_gunicorn_capacity(values: dict[str, str] | None = None) -> GunicornC
     detected_resources = cpu_source != 'fallback' or memory_source != 'fallback'
     detected_threads = 2 if detected_resources else 1
 
-    workers = _read_positive_override(source, 'ATLANTICUS_WEB_WORKERS') or detected_workers
-    threads = _read_positive_override(source, 'ATLANTICUS_WEB_THREADS') or detected_threads
+    workers = detected_workers
+    threads = detected_threads
 
     return GunicornCapacity(
         workers=workers,
@@ -49,19 +46,6 @@ def resolve_gunicorn_capacity(values: dict[str, str] | None = None) -> GunicornC
         memory_bytes=memory_bytes,
         memory_source=memory_source,
     )
-
-
-def _read_positive_override(values: dict[str, str], name: str) -> int | None:
-    raw_value = values.get(name)
-    if raw_value is None or not raw_value.strip():
-        return None
-    try:
-        value = int(raw_value)
-    except ValueError as exc:
-        raise WebConfigurationError(f'{name} must be a positive integer') from exc
-    if value <= 0:
-        raise WebConfigurationError(f'{name} must be a positive integer')
-    return value
 
 
 def _read_text(path: str) -> str | None:

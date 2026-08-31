@@ -1,18 +1,47 @@
-import pytest
+import atlanticus.web.hosting as hosting
 
-from atlanticus.web.errors import WebConfigurationError
-from atlanticus.web.hosting import resolve_gunicorn_capacity
+_MEMORY_GIB = 1024 * 1024 * 1024
 
 
-def test_gunicorn_capacity_accepts_explicit_overrides():
-    capacity = resolve_gunicorn_capacity(
-        {'ATLANTICUS_WEB_WORKERS': '2', 'ATLANTICUS_WEB_THREADS': '4'}
+def test_gunicorn_capacity_is_derived_from_detected_resources(monkeypatch):
+    monkeypatch.setattr(hosting, '_detect_cpu', lambda: (4.0, 'test_cpu'))
+    monkeypatch.setattr(
+        hosting,
+        '_detect_memory_bytes',
+        lambda: (8 * _MEMORY_GIB, 'test_memory'),
     )
 
+    capacity = hosting.resolve_gunicorn_capacity()
+
+    assert capacity.workers == 3
+    assert capacity.threads == 2
+    assert capacity.effective_cpu == 4.0
+    assert capacity.cpu_source == 'test_cpu'
+    assert capacity.memory_bytes == 8 * _MEMORY_GIB
+    assert capacity.memory_source == 'test_memory'
+
+
+def test_gunicorn_capacity_ignores_legacy_environment_overrides(monkeypatch):
+    monkeypatch.setenv('ATLANTICUS_WEB_WORKERS', '99')
+    monkeypatch.setenv('ATLANTICUS_WEB_THREADS', '99')
+    monkeypatch.setattr(hosting, '_detect_cpu', lambda: (2.0, 'test_cpu'))
+    monkeypatch.setattr(
+        hosting,
+        '_detect_memory_bytes',
+        lambda: (4 * _MEMORY_GIB, 'test_memory'),
+    )
+
+    capacity = hosting.resolve_gunicorn_capacity()
+
     assert capacity.workers == 2
-    assert capacity.threads == 4
+    assert capacity.threads == 2
 
 
-def test_gunicorn_capacity_rejects_invalid_overrides():
-    with pytest.raises(WebConfigurationError, match='ATLANTICUS_WEB_WORKERS'):
-        resolve_gunicorn_capacity({'ATLANTICUS_WEB_WORKERS': '0'})
+def test_gunicorn_capacity_uses_conservative_fallback(monkeypatch):
+    monkeypatch.setattr(hosting, '_detect_cpu', lambda: (1.0, 'fallback'))
+    monkeypatch.setattr(hosting, '_detect_memory_bytes', lambda: (None, 'fallback'))
+
+    capacity = hosting.resolve_gunicorn_capacity()
+
+    assert capacity.workers == 1
+    assert capacity.threads == 1

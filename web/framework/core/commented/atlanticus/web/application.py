@@ -1,6 +1,5 @@
 from __future__ import annotations
-
-# Compone Flask, módulos, assets y Dash Pages en un orden determinista.
+# La composición Web obtiene el entorno desde el contrato tipado de configuración Web.
 
 import importlib.util
 import re
@@ -10,7 +9,7 @@ from dash import Dash
 from flask import Flask, request
 
 from atlanticus.web.assets import AssetLayer, publish_asset_layers
-from atlanticus.web.environment import WebEnvironment, resolve_environment
+from atlanticus.web.configuration import WebEnvironment, WebSettings
 from atlanticus.web.errors import WebDefinitionError
 from atlanticus.web.health import HealthRegistry, register_health_routes
 from atlanticus.web.index import render_index_string
@@ -24,8 +23,6 @@ _EXTENSION_KEY = 'atlanticus_web'
 _DASH_SETUP_DEFERRED_PATH_PREFIXES = ('/assets/', '/health/', '/.auth/')
 
 
-# Las rutas públicas de infraestructura no deben disparar la validación inicial de una UI
-# que puede depender de identidad request-scoped. Dash se inicializa en el primer request UI real.
 class _AtlanticusDash(Dash):
     def _setup_server(self):
         if request.path.startswith(_DASH_SETUP_DEFERRED_PATH_PREFIXES):
@@ -43,7 +40,7 @@ BASE_ASSET_LAYER = AssetLayer(
 
 def create_web_application(definition: WebApplicationDefinition) -> WebApplicationRuntime:
     _validate_definition(definition)
-    environment = resolve_environment()
+    environment = WebSettings().environment
     observability = configure_web_observability(
         application=definition.metadata.application_id,
         json_output=environment.is_production,
@@ -92,15 +89,12 @@ def _compose_web_application(
             module.register_services(services)
     services.freeze()
 
-    # Local conserva assets legibles; producción publica el snapshot CSS/JS optimizado.
     assets = publish_asset_layers(
         layers=_collect_asset_layers(definition),
         publications_root=definition.publications_root,
         optimize=environment.is_production,
     )
 
-    # Flask no puede inferir de forma segura el instance path cuando la raíz usa
-    # un namespace package.
     flask_paths = _resolve_namespace_flask_paths(definition.import_name)
     if flask_paths is None:
         server = Flask(definition.import_name)
@@ -186,12 +180,10 @@ def _compose_web_application(
 
 
 def _resolve_namespace_flask_paths(import_name: str) -> tuple[Path, Path] | None:
-    # Solo intervenimos cuando el primer segmento del import pertenece a un namespace package.
-    # Las aplicaciones normales conservan exactamente la resolución nativa de Flask.
     root_name = import_name.partition('.')[0]
     try:
         root_spec = importlib.util.find_spec(root_name)
-    except (ImportError, ValueError):
+    except ImportError, ValueError:
         return None
 
     if (
@@ -201,7 +193,6 @@ def _resolve_namespace_flask_paths(import_name: str) -> tuple[Path, Path] | None
     ):
         return None
 
-    # La aplicación concreta debe poder resolverse a una ubicación física única.
     try:
         package_spec = importlib.util.find_spec(import_name)
     except (ImportError, ValueError) as error:
@@ -210,9 +201,7 @@ def _resolve_namespace_flask_paths(import_name: str) -> tuple[Path, Path] | None
         ) from error
 
     if package_spec is None:
-        raise WebDefinitionError(
-            f'Application import name could not be resolved: {import_name}'
-        )
+        raise WebDefinitionError(f'Application import name could not be resolved: {import_name}')
 
     if package_spec.origin not in {None, 'namespace'}:
         root_path = Path(package_spec.origin).resolve().parent
@@ -224,8 +213,6 @@ def _resolve_namespace_flask_paths(import_name: str) -> tuple[Path, Path] | None
             )
         root_path = Path(locations[0]).resolve()
 
-    # Flask solo necesita un path absoluto; se usa el directorio hermano "instance" para mantener
-    # la semántica habitual de una carpeta de instancia junto al paquete de aplicación.
     return root_path, root_path.parent / 'instance'
 
 

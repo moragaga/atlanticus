@@ -1,5 +1,5 @@
-# Local publica una clave atómicamente para compartirla entre workers; producción exige SECRET_KEY.
 from __future__ import annotations
+# La política de sesión usa el mismo WebSettings tipado que el runtime Web.
 
 import os
 import secrets
@@ -7,14 +7,14 @@ from pathlib import Path
 
 from flask import Flask
 
-from atlanticus.web.environment import resolve_environment
+from atlanticus.web.configuration import WebSettings
 from atlanticus.web.identity.errors import IdentityConfigurationError
 
 _LOCAL_SECRET_PATH = Path('.runtime') / 'identity' / 'session.key'
 
 
 def configure_identity_session(server: Flask) -> None:
-    environment = resolve_environment()
+    environment = WebSettings().environment
     if not server.secret_key:
         if environment.is_production:
             raise IdentityConfigurationError(

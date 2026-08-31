@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from atlanticus.web.assets import AssetLayer, AssetPublication
-from atlanticus.web.environment import WebEnvironment
+from atlanticus.web.configuration import WebEnvironment
 from atlanticus.web.health import HealthRegistry
 from atlanticus.web.index import IndexPageDefinition
 from atlanticus.web.modules import WebModule

@@ -27,6 +27,7 @@ name = "atlanticus-web"
 version = "0.1.0"
 source = { editable = "framework/core" }
 dependencies = [
+    { name = "atlanticus-web-configuration" },
     { name = "atlanticus-web-observability" },
     { name = "dash" },
     { name = "flask" },
@@ -36,6 +37,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "atlanticus-web-configuration", editable = "framework/configuration" },
     { name = "atlanticus-web-observability", editable = "framework/observability" },
     { name = "dash", specifier = "==4.4.1" },
     { name = "flask", specifier = "==3.1.3" },
@@ -60,12 +62,14 @@ version = "0.1.0"
 source = { editable = "capabilities/identity/core" }
 dependencies = [
     { name = "atlanticus-web" },
+    { name = "atlanticus-web-configuration" },
     { name = "flask" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "atlanticus-web", editable = "framework/core" },
+    { name = "atlanticus-web-configuration", editable = "framework/configuration" },
     { name = "flask", specifier = "==3.1.3" },
 ]
 

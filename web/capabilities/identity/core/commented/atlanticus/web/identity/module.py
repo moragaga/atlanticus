@@ -1,9 +1,9 @@
-# Compone identidad y acceso sin un selector de proveedor redundante; producción solo acepta providers aptos.
 from __future__ import annotations
+# Identity consulta el entorno mediante WebSettings y no mediante un lector propio del Core.
 
 from flask import Flask, request
 
-from atlanticus.web.environment import resolve_environment
+from atlanticus.web.configuration import WebSettings
 from atlanticus.web.identity.access import (
     ACCESS_RUNTIME_SERVICE_KEY,
     AccessResolver,
@@ -39,7 +39,7 @@ def create_identity_module(
     resolver = access_resolver or AuthenticatedAccessResolver()
 
     def register_services(services: ServiceRegistry) -> None:
-        if resolve_environment().is_production and not provider.production_ready:
+        if WebSettings().environment.is_production and not provider.production_ready:
             raise IdentityConfigurationError(
                 f'Identity provider {provider.key!r} is not allowed in production'
             )
@@ -63,7 +63,7 @@ def create_identity_module(
                 return None
             try:
                 snapshot = _resolve_request_snapshot(bootstrap, runtime)
-            except (IdentityProviderUnavailableError, AccessResolverUnavailableError):
+            except IdentityProviderUnavailableError, AccessResolverUnavailableError:
                 return identity_unavailable_response()
             if snapshot.status is AccessStatus.INVALID_IDENTITY:
                 return invalid_identity_response()

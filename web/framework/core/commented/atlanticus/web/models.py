@@ -1,6 +1,5 @@
 from __future__ import annotations
-
-# Mantiene contratos de aplicación/runtime sin degradar Flask, Dash u observabilidad a Any.
+# Los modelos runtime reutilizan WebEnvironment desde la autoridad de configuración Web.
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -8,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from atlanticus.web.assets import AssetLayer, AssetPublication
-from atlanticus.web.environment import WebEnvironment
+from atlanticus.web.configuration import WebEnvironment
 from atlanticus.web.health import HealthRegistry
 from atlanticus.web.index import IndexPageDefinition
 from atlanticus.web.modules import WebModule
