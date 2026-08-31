@@ -1,0 +1,65 @@
+.ada-manager-tools {
+    box-sizing: border-box;
+    width: min(72rem, 100%);
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+}
+
+.ada-manager-tools__heading {
+    margin-bottom: 1.5rem;
+}
+
+.ada-manager-tools__eyebrow {
+    margin: 0 0 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.ada-manager-tools__title {
+    margin: 0;
+    font-size: clamp(1.65rem, 3vw, 2.2rem);
+}
+
+.ada-manager-tools__copy,
+.ada-manager-tools__section-copy {
+    margin: 0.5rem 0 0;
+    max-width: 50rem;
+    line-height: 1.5;
+}
+
+.ada-manager-tools__section {
+    margin-bottom: 1.5rem;
+    padding: 1.25rem;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 0.75rem;
+    background: rgba(255, 255, 255, 0.55);
+}
+
+.ada-manager-tools__section-heading {
+    margin-bottom: 1rem;
+}
+
+.ada-manager-tools__section-title {
+    margin: 0;
+}
+
+.ada-manager-tools__field {
+    display: grid;
+    gap: 0.45rem;
+    max-width: 28rem;
+}
+
+.ada-manager-tools__field-label {
+    font-weight: 700;
+}
+
+.ada-manager-tools__help {
+    opacity: 0.72;
+}
+
+.ada-manager-tools__status {
+    min-height: 1.25rem;
+    margin-top: 0.6rem;
+}
