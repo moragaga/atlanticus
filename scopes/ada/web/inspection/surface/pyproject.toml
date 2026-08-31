@@ -4,13 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-web-kpi-inspection-surface"
-version = "0.1.2"
+version = "0.1.3"
 description = "Superficie JS reusable y estable para KPI Inspection en aplicaciones Web ADA"
 requires-python = "==3.14.2"
 classifiers = [
     "Private :: Do Not Upload",
 ]
 dependencies = [
+    "ada-web-ui-core==0.2.0",
     "atlanticus-web==0.1.0",
 ]
 
@@ -21,6 +22,7 @@ dev = [
 ]
 
 [tool.uv.sources]
+ada-web-ui-core = { path = "../../ui/core", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
 
 [tool.setuptools]

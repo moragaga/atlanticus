@@ -14,7 +14,7 @@
     justify-content: space-between;
     gap: .3rem;
     min-height: 1.2rem;
-    color: var(--custom-text-color);
+    color: var(--ada-color-text-primary);
     user-select: none;
 }
 
@@ -36,13 +36,13 @@
 }
 
 .ada-time-status__sources[data-ada-time-status-detail-trigger='true']:hover {
-    border-color: var(--primary-border-color);
+    border-color: var(--ada-color-border-primary);
     background: rgba(49, 49, 49, .045);
 }
 
 .ada-time-status__sources[data-ada-time-status-detail-trigger='true']:focus-visible {
-    border-color: var(--dark-color);
-    outline: 1px solid var(--dark-color);
+    border-color: var(--ada-color-border-strong);
+    outline: 1px solid var(--ada-color-border-strong);
     outline-offset: .08rem;
 }
 
@@ -62,10 +62,10 @@
     max-height: min(60vh, 28rem, var(--ada-time-status-detail-available-height));
     overflow: auto;
     transform: translateX(var(--ada-time-status-detail-shift-x));
-    border: 1px solid var(--primary-border-color);
+    border: 1px solid var(--ada-color-border-primary);
     border-radius: .2rem;
-    background: var(--ada-operational-header-surface, var(--tertiary-background, #E1E1E1));
-    color: var(--custom-text-color);
+    background: var(--ada-operational-header-surface, var(--ada-color-surface-tertiary));
+    color: var(--ada-color-text-primary);
     box-shadow: 0 .35rem .9rem rgba(0, 0, 0, .18);
     user-select: text;
 }
@@ -92,7 +92,7 @@
 .ada-time-status__source--divided {
     margin-inline-end: .1rem;
     padding-inline-end: .3rem;
-    border-inline-end: 1px solid var(--primary-border-color);
+    border-inline-end: 1px solid var(--ada-color-border-primary);
 }
 
 .ada-time-status__source-content,
@@ -148,7 +148,7 @@
 .ada-time-status__source-content--preventive,
 .ada-time-status__source-content--hard_stale,
 .ada-time-status__source-content--data_error {
-    color: #fff;
+    color: var(--ada-color-text-inverse);
     font-weight: 700;
 }
 
@@ -198,7 +198,7 @@
 }
 
 .ada-time-status-detail__source + .ada-time-status-detail__source {
-    border-top: 1px solid var(--primary-border-color);
+    border-top: 1px solid var(--ada-color-border-primary);
 }
 
 .ada-time-status-detail__source-label,
@@ -219,7 +219,7 @@
     display: grid;
     gap: .08rem;
     padding: .3rem 0 .15rem;
-    border-top: 1px solid var(--primary-border-color);
+    border-top: 1px solid var(--ada-color-border-primary);
 }
 
 .ada-time-status-detail__empty-title,

@@ -280,6 +280,8 @@ def _validate_capability(capability: AdaCapability, *, root: Path) -> None:
     tooling = (
         root / 'scripts/scopes/ada/check.py',
         root / 'scripts/commented/scopes/ada/check.py',
+        root / 'scripts/repository/validate_css_tokens.py',
+        root / 'scripts/commented/repository/validate_css_tokens.py',
     )
     ruff_targets = [*capability.ruff_roots, *(str(path) for path in tooling)]
 
@@ -322,6 +324,12 @@ def main(argv: list[str] | None = None) -> int:
 
     for capability in capabilities:
         _validate_capability(capability, root=root)
+
+    print('ADA scope: validating CSS token contract')
+    _run(
+        [sys.executable, str(root / 'scripts/repository/validate_css_tokens.py')],
+        cwd=root,
+    )
 
     names = ', '.join(capability.key for capability in capabilities)
     print(f'Atlanticus ADA validated: {names}')

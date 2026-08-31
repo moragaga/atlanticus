@@ -22,9 +22,11 @@ def test_ada_ui_core_preserves_bootstrap_and_shared_tokens() -> None:
 
     assert css_list == ['00-bootstrap.min.css', '10-tokens.css']
     assert 'Bootstrap  v5.3.3' in bootstrap
-    assert '--primary-background: #EBEBEB;' in tokens
-    assert '--loader-color: #2E2E2E;' in tokens
-    assert '--dark-color: #313131;' in tokens
+    assert '--ada-color-surface-primary: #EBEBEB;' in tokens
+    assert '--ada-color-surface-active: #2E2E2E;' in tokens
+    assert '--ada-color-text-strong: #313131;' in tokens
+    assert '._dash-loading {' in tokens
+    assert 'display: none !important;' in tokens
 
 
 def test_ada_ui_core_does_not_bundle_unrelated_runtime_capabilities() -> None:

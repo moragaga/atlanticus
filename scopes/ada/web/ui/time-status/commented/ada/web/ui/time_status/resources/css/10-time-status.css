@@ -1,4 +1,4 @@
-/* El contenedor mantiene la frontera local usada por el popover y el Summary ocupa el ancho disponible. */
+/* Time Status mantiene sus colores de estado locales y consume colores estructurales desde ADA UI Core. */
 .ada-time-status-container,
 .ada-time-status {
     width: 100%;
@@ -15,11 +15,10 @@
     justify-content: space-between;
     gap: .3rem;
     min-height: 1.2rem;
-    color: var(--custom-text-color);
+    color: var(--ada-color-text-primary);
     user-select: none;
 }
 
-/* PI/Dispatch se ajustan a su contenido: el borde invisible evita reflow y sólo se revela en hover/focus. */
 .ada-time-status__sources {
     display: flex;
     flex: 0 1 auto;
@@ -38,17 +37,16 @@
 }
 
 .ada-time-status__sources[data-ada-time-status-detail-trigger='true']:hover {
-    border-color: var(--primary-border-color);
+    border-color: var(--ada-color-border-primary);
     background: rgba(49, 49, 49, .045);
 }
 
 .ada-time-status__sources[data-ada-time-status-detail-trigger='true']:focus-visible {
-    border-color: var(--dark-color);
-    outline: 1px solid var(--dark-color);
+    border-color: var(--ada-color-border-strong);
+    outline: 1px solid var(--ada-color-border-strong);
     outline-offset: .08rem;
 }
 
-/* La Surface conserva el anclaje absolute/no-reflow de TS-010, pero usa la misma superficie visual del Header. */
 .ada-time-status-detail {
     --ada-time-status-detail-gap: .2rem;
     --ada-time-status-detail-shift-x: 0px;
@@ -65,10 +63,10 @@
     max-height: min(60vh, 28rem, var(--ada-time-status-detail-available-height));
     overflow: auto;
     transform: translateX(var(--ada-time-status-detail-shift-x));
-    border: 1px solid var(--primary-border-color);
+    border: 1px solid var(--ada-color-border-primary);
     border-radius: .2rem;
-    background: var(--ada-operational-header-surface, var(--tertiary-background, #E1E1E1));
-    color: var(--custom-text-color);
+    background: var(--ada-operational-header-surface, var(--ada-color-surface-tertiary));
+    color: var(--ada-color-text-primary);
     box-shadow: 0 .35rem .9rem rgba(0, 0, 0, .18);
     user-select: text;
 }
@@ -95,7 +93,7 @@
 .ada-time-status__source--divided {
     margin-inline-end: .1rem;
     padding-inline-end: .3rem;
-    border-inline-end: 1px solid var(--primary-border-color);
+    border-inline-end: 1px solid var(--ada-color-border-primary);
 }
 
 .ada-time-status__source-content,
@@ -141,7 +139,6 @@
     color: inherit;
 }
 
-/* Fecha y hora queda agrupada como una única unidad compacta al extremo derecho. */
 .ada-time-status__timestamp--datetime {
     flex: 0 0 auto;
     min-width: 0;
@@ -152,11 +149,10 @@
 .ada-time-status__source-content--preventive,
 .ada-time-status__source-content--hard_stale,
 .ada-time-status__source-content--data_error {
-    color: #fff;
+    color: var(--ada-color-text-inverse);
     font-weight: 700;
 }
 
-/* PREVENTIVE parpadea con más contraste; HARD_STALE y DATA_ERROR quedan rojos estables. */
 .ada-time-status__source-content--preventive {
     background: #c82333;
     animation: ada-time-status-preventive-pulse 1.35s ease-in-out infinite;
@@ -183,7 +179,6 @@
     }
 }
 
-/* El Detail sólo contiene fuentes adicionales y un encabezado estable. */
 .ada-time-status-detail__content {
     display: grid;
     min-width: 16rem;
@@ -204,7 +199,7 @@
 }
 
 .ada-time-status-detail__source + .ada-time-status-detail__source {
-    border-top: 1px solid var(--primary-border-color);
+    border-top: 1px solid var(--ada-color-border-primary);
 }
 
 .ada-time-status-detail__source-label,
@@ -221,12 +216,11 @@
     text-align: end;
 }
 
-/* Cuando no existen fuentes adicionales, la Surface comunica explícitamente ese contrato en vez de quedar vacía. */
 .ada-time-status-detail__empty {
     display: grid;
     gap: .08rem;
     padding: .3rem 0 .15rem;
-    border-top: 1px solid var(--primary-border-color);
+    border-top: 1px solid var(--ada-color-border-primary);
 }
 
 .ada-time-status-detail__empty-title,

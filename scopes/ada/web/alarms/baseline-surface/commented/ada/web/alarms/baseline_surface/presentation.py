@@ -18,10 +18,7 @@ def build_alarm_baseline_surface(projection: AlarmBaselineProjection) -> html.Di
                 className='ada-alarm-baseline-surface__points',
             ),
         ],
-        className=(
-            'ada-alarm-baseline-surface '
-            f'ada-alarm-baseline-surface--{kind_class}'
-        ),
+        className=(f'ada-alarm-baseline-surface ada-alarm-baseline-surface--{kind_class}'),
         style={'--ada-alarm-baseline-point-count': str(len(projection.points))},
         **{
             'aria-hidden': 'true',

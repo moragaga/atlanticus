@@ -4,13 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-web-alarm-baseline-surface"
-version = "0.1.0"
+version = "0.1.1"
 description = "Superficie visual neutral del baseline de alarmas ADA"
 requires-python = "==3.14.2"
 classifiers = [
     "Private :: Do Not Upload",
 ]
 dependencies = [
+    "ada-web-ui-core==0.2.0",
     "ada-web-alarm-baseline-projection==0.1.0",
     "atlanticus-web==0.1.0",
     "dash==4.4.1",
@@ -23,6 +24,7 @@ dev = [
 ]
 
 [tool.uv.sources]
+ada-web-ui-core = { path = "../../ui/core", editable = true }
 ada-web-alarm-baseline-projection = { path = "../baseline-projection", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
 

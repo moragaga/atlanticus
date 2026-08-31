@@ -211,7 +211,7 @@ def test_css_preserves_approved_visual_navigation_pattern_with_navigation_namesp
     assert 'width: 5.75rem;' in css
     assert '.ada-navigation__action {' in css
     assert '.ada-navigation__offcanvas' in css
-    assert 'background: var(--dark-color);' in css
+    assert 'background: var(--ada-color-surface-strong);' in css
     assert '.ada-navigation__brand-logo {' in css
     assert '.ada-navigation__main {' in css
     assert 'overflow-y: auto;' in css

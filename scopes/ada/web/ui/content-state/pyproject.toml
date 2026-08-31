@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-web-ui-content-state"
-version = "0.1.5"
+version = "0.1.6"
 description = "Estado operacional reutilizable para componentes Web ADA"
 requires-python = "==3.14.2"
 classifiers = [
@@ -12,7 +12,7 @@ classifiers = [
 ]
 dependencies = [
     "ada-web-content-state-core==0.1.0",
-    "ada-web-ui-core==0.1.0",
+    "ada-web-ui-core==0.2.0",
     "atlanticus-web==0.1.0",
     "dash==4.4.1",
 ]

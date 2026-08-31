@@ -1,3 +1,4 @@
+/* Este espejo conserva el comportamiento productivo de Alarm Management Summary y documenta el consumo de tokens raíz ADA. */
 .ada-alarm-management-summary {
     display: flex;
     width: 100%;
@@ -29,7 +30,7 @@
 .ada-alarm-management-summary__label {
     max-width: 100%;
     overflow: hidden;
-    color: var(--ada-alarm-management-summary-ink, #4D4D4D);
+    color: var(--ada-color-text-primary);
     font-size: .46rem;
     font-weight: 400;
     line-height: 1;
@@ -38,7 +39,7 @@
 }
 
 .ada-alarm-management-summary__value {
-    color: var(--ada-alarm-management-summary-ink, #4D4D4D);
+    color: var(--ada-color-text-primary);
     font-size: .62rem;
     font-weight: 700;
     line-height: 1.2;
@@ -71,7 +72,7 @@
 
 .ada-alarm-management-summary__progress::-webkit-progress-value,
 .ada-alarm-management-summary__progress::-moz-progress-bar {
-    background: var(--ada-alarm-management-summary-ink, #4D4D4D);
+    background: var(--ada-color-surface-emphasis);
 }
 
 .ada-alarm-management-summary__segment[data-tone='attention']
@@ -98,13 +99,11 @@
     }
 }
 
-/* Step 08B.1D — Alarm Management semantic calibration */
-/* El grupo es una categoría 1..4 y nunca hereda el color del porcentaje. */
 .ada-alarm-management-summary__group-value {
-    color: var(--ada-alarm-management-summary-ink, #4D4D4D);
+    color: var(--ada-color-text-primary);
 }
 
 .ada-alarm-management-summary__percentage-value {
-    color: var(--ada-alarm-management-summary-ink, #4D4D4D);
+    color: var(--ada-color-text-primary);
 }
 

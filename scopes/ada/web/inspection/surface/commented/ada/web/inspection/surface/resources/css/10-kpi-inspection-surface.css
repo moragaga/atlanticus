@@ -1,3 +1,4 @@
+/* KPI Inspection consume superficie fuerte y texto muted desde la autoridad de tokens ADA. */
 [data-kpi-inspection-key] {
     cursor: help;
 }
@@ -13,9 +14,9 @@ body.ada-kpi-inspection-loading [data-kpi-inspection-key] {
 }
 
 .ada-kpi-inspection-surface {
-    --ada-kpi-inspection-bg: var(--dark-color, #313131);
+    --ada-kpi-inspection-bg: var(--ada-color-surface-strong);
     --ada-kpi-inspection-text: #f2f2f2;
-    --ada-kpi-inspection-muted: #bdbdbd;
+    --ada-kpi-inspection-muted: var(--ada-color-text-muted);
     --ada-kpi-inspection-border: rgba(255, 255, 255, 0.18);
     --ada-kpi-inspection-shadow: 0 -0.65rem 1.8rem rgba(0, 0, 0, 0.16);
     position: fixed;

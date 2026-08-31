@@ -141,7 +141,7 @@ def test_time_status_css_maps_preventive_to_stronger_pulse_and_hard_stale_to_sol
     assert '.ada-time-status__source-content--hard_stale,' in css
     assert '.ada-time-status__source-content--data_error {' in css
     assert 'background: #c82333;' in css
-    assert 'color: #fff;' in css
+    assert 'color: var(--ada-color-text-inverse);' in css
 
 
 def test_detail_surface_css_supports_flip_shift_and_viewport_bounded_height() -> None:
@@ -220,11 +220,11 @@ def test_ts012b_visual_polish_uses_bar_surface_hover_only_affordance_and_compact
 
     assert 'inset-inline-start: 0;' in surface
     assert 'background: var(--ada-operational-header-surface' in surface
-    assert 'color: var(--custom-text-color);' in surface
-    assert 'background: var(--dark-color);' not in surface
+    assert 'color: var(--ada-color-text-primary);' in surface
+    assert 'background: var(--ada-color-surface-strong);' not in surface
     assert 'width: fit-content;' in sources
     assert 'border: 1px solid transparent;' in sources
-    assert 'border-color: var(--primary-border-color);' in hover
+    assert 'border-color: var(--ada-color-border-primary);' in hover
     assert 'min-width: 0;' in datetime
     assert 'text-align: start;' in datetime
     assert '.ada-time-status-detail__empty {' in css

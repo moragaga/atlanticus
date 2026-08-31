@@ -22,9 +22,10 @@ def test_asset_layer_points_to_canonical_package() -> None:
 def test_group_is_neutral_and_percentage_matches_progress_tone() -> None:
     css = (PACKAGE_ROOT / 'resources/css/10-management-summary.css').read_text(encoding='utf-8')
 
-    assert 'Step 08B.1D — Alarm Management semantic calibration' in css
     assert "[data-tone='attention']\n    .ada-alarm-management-summary__percentage-value" in css
     assert "[data-tone='critical']\n    .ada-alarm-management-summary__percentage-value" in css
     assert '.ada-alarm-management-summary__group-value {' in css
+    assert 'color: var(--ada-color-text-primary);' in css
+    assert 'background: var(--ada-color-surface-emphasis);' in css
     assert '#198754' not in css
     assert '#28A745' not in css

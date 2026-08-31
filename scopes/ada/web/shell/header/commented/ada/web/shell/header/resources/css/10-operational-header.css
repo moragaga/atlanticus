@@ -1,6 +1,7 @@
+/* El header operacional consume superficies y bordes compartidos desde ADA UI Core. */
 .ada-operational-header-shell {
-    --ada-operational-header-surface: var(--tertiary-background, #E1E1E1);
-    --ada-operational-header-border: var(--primary-border-color, #BDBDBD);
+    --ada-operational-header-surface: var(--ada-color-surface-tertiary);
+    --ada-operational-header-border: var(--ada-color-border-primary);
     --ada-operational-header-global-grow: 2.4;
     --ada-operational-header-management-grow: 1.45;
     --ada-operational-header-status-grow: 1.25;
@@ -10,7 +11,6 @@
     border-bottom: 1px solid var(--ada-operational-header-border);
 }
 
-/* La fila primaria conserva su propia caja de anclaje para Navigation desktop. */
 .ada-operational-header__primary {
     position: relative;
 }
@@ -77,7 +77,6 @@
     display: none;
 }
 
-/* Time Status forma un strip inferior estable; su flyout puede sobresalir sin provocar reflow. */
 .ada-operational-header__time-status-slot {
     display: flex;
     width: 100%;
@@ -136,7 +135,6 @@
     }
 }
 
-/* Calibración desktop: Brand y alarmas mantienen cajas controladas; Global Indicators consume el resto. */
 @media (min-width: 992px) {
     .ada-operational-header-shell {
         --ada-operational-header-brand-width: 10rem;

@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-web-ui-time-status"
-version = "0.1.10"
+version = "0.1.11"
 description = "Time Status reusable para superficies Web ADA"
 requires-python = "==3.14.2"
 classifiers = [
     "Private :: Do Not Upload",
 ]
 dependencies = [
-    "ada-web-ui-core==0.1.0",
+    "ada-web-ui-core==0.2.0",
     "atlanticus-web==0.1.0",
     "dash==4.4.1",
 ]

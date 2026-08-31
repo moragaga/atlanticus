@@ -1,4 +1,4 @@
-/* Contenedor del resumen completo dentro del slot de Alarm Status. */
+/* Este espejo conserva el comportamiento productivo de Alarm Status y documenta el consumo de tokens raíz ADA. */
 .ada-alarm-status {
     display: flex;
     width: 100%;
@@ -11,7 +11,6 @@
     padding: 0 .65rem;
 }
 
-/* Rótulo pequeño que conserva la jerarquía visual del Header histórico. */
 .ada-alarm-status__label {
     padding-left: .05rem;
     color: var(--ada-alarm-status-muted, #6B6B6B);
@@ -22,7 +21,6 @@
     text-transform: uppercase;
 }
 
-/* Cada conteo ya es una acción visual porque más adelante abrirá su detalle propio. */
 .ada-alarm-status__action {
     display: flex;
     width: 100%;
@@ -41,7 +39,7 @@
 }
 
 .ada-alarm-status__action:hover {
-    border-color: var(--ada-alarm-status-dark, #313131);
+    border-color: var(--ada-color-border-strong);
 }
 
 .ada-alarm-status__action:focus-visible {
@@ -49,7 +47,6 @@
     outline-offset: 2px;
 }
 
-/* La cifra mantiene una caja estable para que Activas y Gestionadas alineen verticalmente. */
 .ada-alarm-status__count {
     display: flex;
     width: 1.45rem;
@@ -57,7 +54,7 @@
     align-items: center;
     justify-content: center;
     background: var(--ada-alarm-status-count-bg, #CFCFCF);
-    color: var(--ada-alarm-status-dark, #313131);
+    color: var(--ada-color-text-strong);
     font-size: .7rem;
     font-weight: 800;
 }
@@ -68,7 +65,7 @@
     align-items: center;
     padding: 0 .55rem;
     overflow: hidden;
-    color: var(--ada-alarm-status-dark, #313131);
+    color: var(--ada-color-text-strong);
     font-size: .62rem;
     font-weight: 600;
     text-overflow: ellipsis;
@@ -81,7 +78,6 @@
     }
 }
 
-/* Step 08B.1C — Alarm Status visual calibration */
 .ada-alarm-status {
     --ada-alarm-status-surface: rgba(91, 92, 100, .10);
     --ada-alarm-status-surface-hover: rgba(91, 92, 100, .14);
@@ -107,7 +103,7 @@
     gap: .28rem;
     padding: 0 .08rem .28rem;
     border-bottom: 1px solid var(--ada-alarm-status-divider);
-    color: var(--ada-alarm-status-dark, #313131);
+    color: var(--ada-color-text-strong);
     font-size: .48rem;
     font-weight: 700;
     letter-spacing: .02rem;
@@ -133,18 +129,16 @@
 }
 
 .ada-alarm-status__action:hover {
-    border-color: var(--ada-alarm-status-dark, #313131);
+    border-color: var(--ada-color-border-strong);
     background: var(--ada-alarm-status-row-hover);
 }
 
 .ada-alarm-status__count {
     border-right: 1px solid var(--ada-alarm-status-divider);
     background: rgba(91, 92, 100, .10);
-    color: var(--ada-alarm-status-dark, #313131);
+    color: var(--ada-color-text-strong);
 }
 
-/* Step 08B.1C.1 — Alarm Status line layout */
-/* Las acciones se muestran como líneas compactas: sin card ni botones visibles. */
 .ada-alarm-status {
     --ada-alarm-status-row-hover: rgba(91, 92, 100, .14);
     --ada-alarm-status-divider: rgba(91, 92, 100, .34);
@@ -193,7 +187,7 @@
     position: absolute;
     inset-inline-end: .22rem;
     top: 50%;
-    color: var(--ada-alarm-status-dark, #313131);
+    color: var(--ada-color-text-strong);
     content: '•';
     font-size: .7rem;
     line-height: 1;
@@ -210,7 +204,7 @@
     padding: 0 .42rem 0 0;
     border-right: 1px solid var(--ada-alarm-status-divider);
     background: transparent;
-    color: var(--ada-alarm-status-dark, #313131);
+    color: var(--ada-color-text-strong);
 }
 
 .ada-alarm-status__text {

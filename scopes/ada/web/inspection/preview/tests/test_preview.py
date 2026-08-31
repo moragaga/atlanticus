@@ -235,7 +235,7 @@ def test_preview_surface_keeps_dark_square_loading_lock_and_pointer_focus_policy
         / '10-kpi-inspection-surface.js'
     ).read_text(encoding='utf-8')
 
-    assert 'var(--dark-color, #313131)' in css
+    assert 'var(--ada-color-surface-strong)' in css
     assert 'border-radius: 0;' in css
     assert 'user-select: text;' in css
     assert 'function setBusy(isBusy)' in javascript

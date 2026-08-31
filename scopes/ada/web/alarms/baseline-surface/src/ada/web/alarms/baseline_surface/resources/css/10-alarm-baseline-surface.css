@@ -1,7 +1,7 @@
 .ada-alarm-baseline-surface {
     --ada-alarm-baseline-line-color: rgba(91, 92, 100, .28);
     --ada-alarm-baseline-point-color: #5B5C64;
-    --ada-alarm-baseline-point-background: #E1E1E1;
+    --ada-alarm-baseline-point-background: var(--ada-color-surface-tertiary);
     --ada-alarm-baseline-point-size: .72rem;
     position: relative;
     width: 100%;

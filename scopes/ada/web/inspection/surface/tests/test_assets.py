@@ -29,7 +29,7 @@ def test_css_defines_non_modal_dark_bottom_surface_without_hover_activation() ->
     assert 'bottom: 0;' in css
     assert 'transform: translateY(105%);' in css
     assert "[data-open='true']" in css
-    assert '--ada-kpi-inspection-bg: var(--dark-color, #313131);' in css
+    assert '--ada-kpi-inspection-bg: var(--ada-color-surface-strong);' in css
     assert 'border-radius: 0;' in css
     assert 'user-select: text;' in css
     assert 'overflow: hidden;' not in css.split('.ada-kpi-inspection-surface__panel', 1)[0]

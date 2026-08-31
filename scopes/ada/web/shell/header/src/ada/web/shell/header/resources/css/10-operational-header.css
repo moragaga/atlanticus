@@ -1,6 +1,6 @@
 .ada-operational-header-shell {
-    --ada-operational-header-surface: var(--tertiary-background, #E1E1E1);
-    --ada-operational-header-border: var(--primary-border-color, #BDBDBD);
+    --ada-operational-header-surface: var(--ada-color-surface-tertiary);
+    --ada-operational-header-border: var(--ada-color-border-primary);
     --ada-operational-header-global-grow: 2.4;
     --ada-operational-header-management-grow: 1.45;
     --ada-operational-header-status-grow: 1.25;
