@@ -24,6 +24,7 @@ from ada.web.alarms.status import (
     create_ada_alarm_status_module,
 )
 from ada.web.application.generic.composition import build_application_layout
+from ada.web.application.generic.session import create_ada_session_module
 from ada.web.content_state.core import SourceFreshnessCondition
 from ada.web.content_state.dependency_resolver import (
     ContentStateDependency,
@@ -193,6 +194,7 @@ def create_application_definition(
             ),
             create_ada_navigation_presentation_module(),
             create_ada_operational_header_module(),
+            create_ada_session_module(),
         ),
         page_packages=('ada.web.application.generic.pages',),
     )

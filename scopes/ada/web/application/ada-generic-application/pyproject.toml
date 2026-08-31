@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-generic-application"
-version = "0.2.2"
+version = "0.2.3"
 description = "Composition root web genérico de ADA sobre Atlanticus Web"
 requires-python = "==3.14.2"
 classifiers = [
@@ -68,7 +68,10 @@ namespaces = true
 include = ["ada.web.application.generic*"]
 
 [tool.setuptools.package-data]
-"ada.web.application.generic" = ["py.typed"]
+"ada.web.application.generic" = ["py.typed",
+    "resources/session/js/js.list",
+    "resources/session/js/*.js",
+]
 
 [tool.ruff]
 line-length = 100
