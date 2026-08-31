@@ -50,6 +50,17 @@ CAPABILITIES: dict[str, WebCapability] = {
             MirrorPair('framework/observability/src', 'framework/observability/commented'),
         ),
     ),
+    'pwa': WebCapability(
+        key='pwa',
+        package_roots=('framework/pwa',),
+        tests_roots=('framework/pwa/tests',),
+        mirror_pairs=(
+            MirrorPair(
+                'framework/pwa/src',
+                'framework/pwa/commented',
+            ),
+        ),
+    ),
     'identity': WebCapability(
         key='identity',
         package_roots=(

@@ -10,6 +10,7 @@ members = [
     "atlanticus-web-identity-local",
     "atlanticus-web-navigation",
     "atlanticus-web-observability",
+    "atlanticus-web-pwa",
     "atlanticus-web-workspace",
 ]
 
@@ -111,6 +112,21 @@ dependencies = [
 requires-dist = [{ name = "flask", specifier = "==3.1.3" }]
 
 [[package]]
+name = "atlanticus-web-pwa"
+version = "0.1.0"
+source = { editable = "framework/pwa" }
+dependencies = [
+    { name = "atlanticus-web" },
+    { name = "flask" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-web", editable = "framework/core" },
+    { name = "flask", specifier = "==3.1.3" },
+]
+
+[[package]]
 name = "atlanticus-web-workspace"
 version = "0.1.0"
 source = { virtual = "." }
@@ -120,6 +136,7 @@ dependencies = [
     { name = "atlanticus-web-identity" },
     { name = "atlanticus-web-identity-local" },
     { name = "atlanticus-web-navigation" },
+    { name = "atlanticus-web-pwa" },
 ]
 
 [package.dev-dependencies]
@@ -135,6 +152,7 @@ requires-dist = [
     { name = "atlanticus-web-identity", editable = "capabilities/identity/core" },
     { name = "atlanticus-web-identity-local", editable = "capabilities/identity/local" },
     { name = "atlanticus-web-navigation", editable = "capabilities/navigation/core" },
+    { name = "atlanticus-web-pwa", editable = "framework/pwa" },
 ]
 
 [package.metadata.requires-dev]

@@ -11,6 +11,7 @@ dependencies = [
     "atlanticus-web-identity-local==0.1.0",
     "atlanticus-web-navigation==0.1.0",
     "atlanticus-web-configuration==0.1.0",
+    "atlanticus-web-pwa==0.1.0",
 ]
 
 [dependency-groups]
@@ -30,6 +31,7 @@ atlanticus-web-identity-local = { workspace = true }
 atlanticus-web-navigation = { workspace = true }
 
 atlanticus-web-configuration = { workspace = true }
+atlanticus-web-pwa = { workspace = true }
 [tool.uv.workspace]
 members = [
     "framework/core",
@@ -38,6 +40,7 @@ members = [
     "capabilities/identity/local",
     "capabilities/navigation/core",
     "framework/configuration",
+    "framework/pwa",
 ]
 
 [tool.ruff]
@@ -71,5 +74,6 @@ testpaths = [
     "capabilities/identity/local/tests",
     "capabilities/navigation/core/tests",
     "framework/configuration/tests",
+    "framework/pwa/tests",
 ]
 addopts = "-q --import-mode=importlib"
