@@ -134,6 +134,15 @@ CAPABILITIES: dict[str, AdaCapability] = {
         commented_root='commented',
     ),
     # Core y resolver entran al gate agregado recién cuando Generic Application consume el resolver.
+    # Card Display se valida como primitive ADA independiente y no como composición de una Tool.
+    'card-display': AdaCapability(
+        key='card-display',
+        project_root='scopes/ada/web/ui/card-display',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
     'content-state-core': AdaCapability(
         key='content-state-core',
         project_root='scopes/ada/web/content-state/core',

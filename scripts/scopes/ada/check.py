@@ -133,6 +133,14 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
+    'card-display': AdaCapability(
+        key='card-display',
+        project_root='scopes/ada/web/ui/card-display',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
     'content-state-core': AdaCapability(
         key='content-state-core',
         project_root='scopes/ada/web/content-state/core',
