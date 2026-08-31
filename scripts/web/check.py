@@ -25,6 +25,17 @@ class WebCapability:
 
 
 CAPABILITIES: dict[str, WebCapability] = {
+    'configuration': WebCapability(
+        key='configuration',
+        package_roots=('framework/configuration',),
+        tests_roots=('framework/configuration/tests',),
+        mirror_pairs=(
+            MirrorPair(
+                'framework/configuration/src',
+                'framework/configuration/commented',
+            ),
+        ),
+    ),
     'core': WebCapability(
         key='core',
         package_roots=('framework/core',),

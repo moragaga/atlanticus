@@ -27,6 +27,18 @@ class WebCapability:
 
 # El registro encapsula las rutas físicas para que los comandos públicos usen nombres estables.
 CAPABILITIES: dict[str, WebCapability] = {
+    # Configuration Web mantiene settings tipados separados de backend/Key Vault.
+    'configuration': WebCapability(
+        key='configuration',
+        package_roots=('framework/configuration',),
+        tests_roots=('framework/configuration/tests',),
+        mirror_pairs=(
+            MirrorPair(
+                'framework/configuration/src',
+                'framework/configuration/commented',
+            ),
+        ),
+    ),
     'core': WebCapability(
         key='core',
         package_roots=('framework/core',),
