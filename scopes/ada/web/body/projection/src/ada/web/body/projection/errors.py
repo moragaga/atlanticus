@@ -1,0 +1,2 @@
+class ToolBodyProjectionError(ValueError):
+    pass
