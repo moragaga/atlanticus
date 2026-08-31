@@ -1,0 +1,456 @@
+from __future__ import annotations
+
+import json
+import threading
+import time
+from datetime import UTC, datetime, timedelta
+
+import pytest
+
+from atlanticus.runtime import AtlanticusRuntimeError, LeaseOwnershipLostError, LeaseRenewalError
+from atlanticus.runtime.lease import ExecutionLease
+
+
+class MutableClock:
+    def __init__(self, value: datetime) -> None:
+        self.value = value
+
+    def __call__(self) -> datetime:
+        return self.value
+
+
+def _lease(
+    tmp_path,
+    *,
+    run_id: str,
+    clock: MutableClock,
+    scheduled_at_utc: datetime | None = None,
+    authority_deadline_utc: datetime | None = None,
+    lease_timeout_seconds: float = 120,
+    wait_seconds: float = 0,
+) -> ExecutionLease:
+    return ExecutionLease(
+        volume_path=tmp_path,
+        application='ada',
+        service_name='authority-job',
+        module_name='authority_job',
+        run_id=run_id,
+        lease_timeout_seconds=lease_timeout_seconds,
+        renewal_seconds=min(10, lease_timeout_seconds / 2),
+        wait_seconds=wait_seconds,
+        poll_seconds=0.01,
+        instance_id=f'instance-{run_id}',
+        process_id=101,
+        scheduled_at_utc=scheduled_at_utc,
+        authority_deadline_utc=authority_deadline_utc,
+        wall_clock=clock,
+    )
+
+
+def test_poc_generation_is_durable_across_clean_release(tmp_path) -> None:
+    clock = MutableClock(datetime(2026, 8, 23, 21, 10, 5, tzinfo=UTC))
+    first = _lease(tmp_path, run_id='run-1', clock=clock)
+
+    first_acquisition = first.acquire()
+    assert first_acquisition.generation == 1
+    assert first.release()
+
+    second = _lease(tmp_path, run_id='run-2', clock=clock)
+    second_acquisition = second.acquire()
+
+    assert second_acquisition.generation == 2
+    authority = json.loads(second.authority_path.read_text(encoding='utf-8'))
+    assert authority['generation'] == 2
+    assert second.release()
+
+
+def test_poc_completed_scheduled_slot_is_not_executed_twice(tmp_path) -> None:
+    scheduled_at = datetime(2026, 8, 23, 21, 10, 0, tzinfo=UTC)
+    deadline = datetime(2026, 8, 23, 21, 20, 0, tzinfo=UTC)
+    clock = MutableClock(datetime(2026, 8, 23, 21, 10, 5, tzinfo=UTC))
+    first = _lease(
+        tmp_path,
+        run_id='run-1',
+        clock=clock,
+        scheduled_at_utc=scheduled_at,
+        authority_deadline_utc=deadline,
+    )
+
+    first_acquisition = first.acquire()
+    assert first_acquisition.generation == 1
+    assert first.release(completed=True)
+
+    duplicate = _lease(
+        tmp_path,
+        run_id='run-2',
+        clock=clock,
+        scheduled_at_utc=scheduled_at,
+        authority_deadline_utc=deadline,
+    )
+    duplicate_acquisition = duplicate.acquire()
+
+    assert duplicate_acquisition.skipped_reason == 'scheduled_slot_completed'
+    assert duplicate_acquisition.generation == 1
+    assert duplicate.acquired is False
+    assert duplicate.path.exists() is False
+
+
+def test_poc_incomplete_scheduled_slot_can_be_retried_with_new_generation(tmp_path) -> None:
+    scheduled_at = datetime(2026, 8, 23, 21, 10, 0, tzinfo=UTC)
+    deadline = datetime(2026, 8, 23, 21, 20, 0, tzinfo=UTC)
+    clock = MutableClock(datetime(2026, 8, 23, 21, 10, 5, tzinfo=UTC))
+    first = _lease(
+        tmp_path,
+        run_id='run-1',
+        clock=clock,
+        scheduled_at_utc=scheduled_at,
+        authority_deadline_utc=deadline,
+    )
+
+    assert first.acquire().generation == 1
+    assert first.release(completed=False)
+
+    retry = _lease(
+        tmp_path,
+        run_id='run-2',
+        clock=clock,
+        scheduled_at_utc=scheduled_at,
+        authority_deadline_utc=deadline,
+    )
+    retry_acquisition = retry.acquire()
+
+    assert retry_acquisition.generation == 2
+    assert retry_acquisition.skipped_reason is None
+    assert retry.release(completed=True)
+
+
+def test_poc_expired_takeover_advances_generation(tmp_path) -> None:
+    clock = MutableClock(datetime(2026, 8, 23, 21, 10, 0, tzinfo=UTC))
+    first = _lease(
+        tmp_path,
+        run_id='run-1',
+        clock=clock,
+        lease_timeout_seconds=10,
+    )
+    assert first.acquire().generation == 1
+
+    clock.value += timedelta(seconds=11)
+    second = _lease(
+        tmp_path,
+        run_id='run-2',
+        clock=clock,
+        lease_timeout_seconds=10,
+    )
+    acquisition = second.acquire()
+
+    assert acquisition.generation == 2
+    assert acquisition.recovered is not None
+    assert acquisition.recovered.run_id == 'run-1'
+    assert second.release()
+
+
+def test_poc_renewal_never_crosses_authority_deadline(tmp_path) -> None:
+    started_at = datetime(2026, 8, 23, 21, 10, 0, tzinfo=UTC)
+    deadline = started_at + timedelta(seconds=30)
+    clock = MutableClock(started_at)
+    lease = _lease(
+        tmp_path,
+        run_id='run-1',
+        clock=clock,
+        authority_deadline_utc=deadline,
+        lease_timeout_seconds=120,
+    )
+
+    lease.acquire()
+    payload = json.loads(lease.path.read_text(encoding='utf-8'))
+    assert datetime.fromisoformat(payload['expires_at_utc']) == deadline
+
+    clock.value += timedelta(seconds=20)
+    assert lease.renew() is True
+    payload = json.loads(lease.path.read_text(encoding='utf-8'))
+    assert datetime.fromisoformat(payload['expires_at_utc']) == deadline
+
+    clock.value = deadline
+    assert lease.renew() is False
+    assert lease.acquired is False
+
+
+def test_poc_elapsed_authority_window_never_creates_a_lease(tmp_path) -> None:
+    deadline = datetime(2026, 8, 23, 21, 20, 0, tzinfo=UTC)
+    clock = MutableClock(deadline)
+    lease = _lease(
+        tmp_path,
+        run_id='run-1',
+        clock=clock,
+        scheduled_at_utc=datetime(2026, 8, 23, 21, 10, 0, tzinfo=UTC),
+        authority_deadline_utc=deadline,
+    )
+
+    acquisition = lease.acquire()
+
+    assert acquisition.skipped_reason == 'authority_window_elapsed'
+    assert lease.acquired is False
+    assert lease.path.exists() is False
+    assert lease.authority_path.exists() is False
+
+
+def test_poc_expired_owner_cannot_renew_same_generation(tmp_path) -> None:
+    clock = MutableClock(datetime(2026, 8, 23, 21, 10, 0, tzinfo=UTC))
+    lease = _lease(
+        tmp_path,
+        run_id='run-1',
+        clock=clock,
+        lease_timeout_seconds=10,
+    )
+    assert lease.acquire().generation == 1
+
+    clock.value += timedelta(seconds=11)
+
+    assert lease.renew() is False
+    assert lease.acquired is False
+
+
+def test_poc_renewal_waits_for_short_physical_fence(tmp_path) -> None:
+    clock = MutableClock(datetime(2026, 8, 23, 21, 10, 0, tzinfo=UTC))
+    lease = _lease(
+        tmp_path,
+        run_id='run-1',
+        clock=clock,
+        lease_timeout_seconds=10,
+    )
+    assert lease.acquire().generation == 1
+    entered = threading.Event()
+
+    def hold_fence() -> None:
+        with lease.fenced_mutation():
+            entered.set()
+            time.sleep(0.05)
+
+    thread = threading.Thread(target=hold_fence)
+    thread.start()
+    assert entered.wait(1)
+    try:
+        assert lease.renew() is True
+    finally:
+        thread.join()
+    assert lease.release()
+
+
+def test_poc_corrupt_authority_state_fails_closed(tmp_path) -> None:
+    clock = MutableClock(datetime(2026, 8, 23, 21, 10, 0, tzinfo=UTC))
+    lease = _lease(tmp_path, run_id='run-1', clock=clock)
+    lease.authority_path.parent.mkdir(parents=True, exist_ok=True)
+    lease.authority_path.write_text('{not-json', encoding='utf-8')
+
+    with pytest.raises(AtlanticusRuntimeError, match='authority state is invalid'):
+        lease.acquire()
+
+
+def test_poc_physical_fence_linearizes_commit_before_takeover(tmp_path) -> None:
+    clock = MutableClock(datetime(2026, 8, 23, 21, 10, 0, tzinfo=UTC))
+    first = _lease(
+        tmp_path,
+        run_id='run-1',
+        clock=clock,
+        lease_timeout_seconds=10,
+    )
+    assert first.acquire().generation == 1
+    entered = threading.Event()
+    allow_commit = threading.Event()
+    takeover_done = threading.Event()
+    sequence: list[str] = []
+    errors: list[BaseException] = []
+
+    def generation_one_commit() -> None:
+        try:
+            with first.fenced_mutation():
+                entered.set()
+                if not allow_commit.wait(1):
+                    raise TimeoutError('test commit barrier timed out')
+                sequence.append('generation_1_commit')
+        except BaseException as error:
+            errors.append(error)
+
+    first_thread = threading.Thread(target=generation_one_commit)
+    first_thread.start()
+    assert entered.wait(1)
+
+    clock.value += timedelta(seconds=11)
+    second = _lease(
+        tmp_path,
+        run_id='run-2',
+        clock=clock,
+        lease_timeout_seconds=10,
+        wait_seconds=1,
+    )
+
+    def takeover() -> None:
+        try:
+            acquisition = second.acquire()
+            sequence.append(f'generation_{acquisition.generation}_takeover')
+            takeover_done.set()
+        except BaseException as error:
+            errors.append(error)
+
+    second_thread = threading.Thread(target=takeover)
+    second_thread.start()
+    time.sleep(0.05)
+
+    assert takeover_done.is_set() is False
+    allow_commit.set()
+    first_thread.join(timeout=1)
+    assert first_thread.is_alive() is False
+    assert takeover_done.wait(1)
+    second_thread.join(timeout=1)
+
+    assert errors == []
+    assert sequence == ['generation_1_commit', 'generation_2_takeover']
+
+    with pytest.raises(LeaseOwnershipLostError, match='ownership'):
+        with first.fenced_mutation():
+            sequence.append('stale_generation_1_commit')
+
+    assert sequence == ['generation_1_commit', 'generation_2_takeover']
+    assert second.release()
+
+
+def test_poc_heartbeat_retries_long_self_fence_without_false_renewal_failure(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    lease = ExecutionLease(
+        volume_path=tmp_path,
+        application='ada',
+        service_name='authority-job',
+        module_name='authority_job',
+        run_id='run-1',
+        lease_timeout_seconds=0.4,
+        renewal_seconds=0.03,
+        wait_seconds=0,
+        poll_seconds=0.005,
+        instance_id='instance-run-1',
+        process_id=101,
+    )
+    assert lease.acquire().generation == 1
+    initial_expiration = datetime.fromisoformat(
+        json.loads(lease.path.read_text(encoding='utf-8'))['expires_at_utc']
+    )
+    lost = threading.Event()
+
+    monkeypatch.setattr(
+        lease,
+        '_acquire_authority_fence',
+        lambda: lease._physical_fence.acquire(wait_seconds=0.02, poll_seconds=0.005),
+    )
+
+    with lease.fenced_mutation():
+        lease.start_renewal(on_lost=lambda reason: lost.set())
+        time.sleep(0.08)
+        assert lease.failure is None
+        assert lost.is_set() is False
+
+    deadline = time.monotonic() + 0.3
+    renewed_expiration = initial_expiration
+    while renewed_expiration <= initial_expiration and time.monotonic() < deadline:
+        time.sleep(0.01)
+        renewed_expiration = datetime.fromisoformat(
+            json.loads(lease.path.read_text(encoding='utf-8'))['expires_at_utc']
+        )
+
+    lease.stop_renewal()
+    assert renewed_expiration > initial_expiration
+    assert lease.failure is None
+    assert lost.is_set() is False
+    assert lease.release()
+
+
+def test_poc_heartbeat_retries_repeated_transient_fence_contention(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    lease = ExecutionLease(
+        volume_path=tmp_path,
+        application='ada',
+        service_name='authority-job',
+        module_name='authority_job',
+        run_id='run-1',
+        lease_timeout_seconds=0.4,
+        renewal_seconds=0.01,
+        wait_seconds=0,
+        poll_seconds=0.005,
+        instance_id='instance-run-1',
+        process_id=101,
+    )
+    assert lease.acquire().generation == 1
+    initial_expiration = datetime.fromisoformat(
+        json.loads(lease.path.read_text(encoding='utf-8'))['expires_at_utc']
+    )
+    original_try_acquire = lease._physical_fence.try_acquire
+    heartbeat_contention_attempts = 0
+
+    def transient_try_acquire() -> int | None:
+        nonlocal heartbeat_contention_attempts
+        if (
+            threading.current_thread().name.startswith('lease-heartbeat-')
+            and heartbeat_contention_attempts < 12
+        ):
+            heartbeat_contention_attempts += 1
+            return None
+        return original_try_acquire()
+
+    monkeypatch.setattr(lease._physical_fence, 'try_acquire', transient_try_acquire)
+    monkeypatch.setattr(lease, '_acquire_authority_fence', lease._physical_fence.try_acquire)
+    lease.start_renewal()
+
+    deadline = time.monotonic() + 0.3
+    renewed_expiration = initial_expiration
+    while renewed_expiration <= initial_expiration and time.monotonic() < deadline:
+        time.sleep(0.01)
+        renewed_expiration = datetime.fromisoformat(
+            json.loads(lease.path.read_text(encoding='utf-8'))['expires_at_utc']
+        )
+
+    lease.stop_renewal()
+    assert heartbeat_contention_attempts == 12
+    assert renewed_expiration > initial_expiration
+    assert lease.failure is None
+    assert lease.release()
+
+
+def test_poc_heartbeat_contention_still_fails_closed_at_authority_deadline(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    authority_deadline = datetime.now(UTC) + timedelta(seconds=0.15)
+    lease = ExecutionLease(
+        volume_path=tmp_path,
+        application='ada',
+        service_name='authority-job',
+        module_name='authority_job',
+        run_id='run-1',
+        lease_timeout_seconds=1,
+        renewal_seconds=0.02,
+        wait_seconds=0,
+        poll_seconds=0.005,
+        instance_id='instance-run-1',
+        process_id=101,
+        authority_deadline_utc=authority_deadline,
+    )
+    assert lease.acquire().generation == 1
+    original_try_acquire = lease._physical_fence.try_acquire
+
+    def blocked_heartbeat_try_acquire() -> int | None:
+        if threading.current_thread().name.startswith('lease-heartbeat-'):
+            return None
+        return original_try_acquire()
+
+    monkeypatch.setattr(lease._physical_fence, 'try_acquire', blocked_heartbeat_try_acquire)
+    stopped = threading.Event()
+    lease.start_renewal(on_lost=lambda reason: stopped.set())
+
+    assert stopped.wait(timeout=0.5)
+    assert isinstance(lease.failure, LeaseRenewalError)
+    with pytest.raises(LeaseRenewalError, match='Lease renewal failed'):
+        with lease.fenced_mutation():
+            raise AssertionError('unreachable')
+    assert lease.release()
