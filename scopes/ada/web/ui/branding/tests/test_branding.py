@@ -122,3 +122,28 @@ def _text_content(component: Component) -> str:
         for child in children
         if isinstance(child, (str, Component))
     )
+
+
+def test_operational_brand_css_tracks_pelambres_responsive_scale() -> None:
+    css = (
+        files('ada.web.ui.branding')
+        .joinpath('resources/css/10-operational-brand.css')
+        .read_text(encoding='utf-8')
+    )
+
+    assert 'width: 100%;' in css
+    assert 'height: 100%;' in css
+    for width in (350, 480, 1280, 1366, 1536, 1920, 2560):
+        assert f'@media only screen and (min-width: {width}px)' in css
+
+
+def test_operational_brand_mobile_and_large_display_calibration_is_explicit() -> None:
+    css = (
+        files('ada.web.ui.branding')
+        .joinpath('resources/css/10-operational-brand.css')
+        .read_text(encoding='utf-8')
+    )
+
+    assert 'max-width: 8rem; max-height: 2.9rem;' in css
+    assert 'max-width: 8.75rem; max-height: 3.15rem;' in css
+    assert 'max-width: 10.5rem; max-height: 3.75rem;' in css

@@ -28,3 +28,26 @@ def test_alarm_status_line_layout_is_flat_symmetric_and_hoverable() -> None:
     assert 'border-right: 1px solid var(--ada-alarm-status-divider);' in css
     assert 'background: var(--ada-alarm-status-row-hover);' in css
     assert 'border-radius: 0;' in css
+
+
+def test_alarm_status_uses_pelambres_responsive_typography() -> None:
+    css = (
+        files('ada.web.alarms.status')
+        .joinpath('resources/css/10-alarm-status.css')
+        .read_text(encoding='utf-8')
+    )
+
+    assert '@media only screen and (min-width: 350px) and (max-width: 1279.98px)' in css
+    assert '@media only screen and (min-width: 1280px)' in css
+    assert '@media only screen and (min-width: 2560px)' in css
+
+
+def test_alarm_status_visual_calibration_scales_videowall() -> None:
+    css = (
+        files('ada.web.alarms.status')
+        .joinpath('resources/css/10-alarm-status.css')
+        .read_text(encoding='utf-8')
+    )
+    assert '.ada-alarm-status__label { font-size: .6rem; }' in css
+    assert '.ada-alarm-status__action { height: 1.7rem;' in css
+    assert '.ada-alarm-status__text { font-size: .72rem; }' in css

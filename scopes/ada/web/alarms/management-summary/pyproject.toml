@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-web-alarm-management-summary"
-version = "0.1.2"
+version = "0.1.5"
 description = "Resumen visual de gestión de alarmas para superficies Web ADA"
 requires-python = "==3.14.2"
 classifiers = [

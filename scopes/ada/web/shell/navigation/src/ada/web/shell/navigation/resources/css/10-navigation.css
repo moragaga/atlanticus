@@ -1099,3 +1099,29 @@
     font-size: .7rem;
 }
 
+@media only screen and (min-width: 350px) and (max-width: 479.98px) {
+    .ada-navigation__brand-logo {
+        width: 4.25rem;
+    }
+
+    .ada-navigation__title {
+        gap: .55rem;
+    }
+
+    .ada-navigation__title-heading {
+        font-size: .82rem;
+    }
+
+    .ada-navigation__title-subtitle {
+        font-size: .72rem;
+    }
+}
+
+@media only screen and (min-width: 2560px) {
+    .ada-navigation__trigger--desktop,
+    .ada-navigation__trigger--mobile,
+    .ada-navigation__mobile-anchor,
+    #ada-navigation-offcanvas {
+        display: none !important;
+    }
+}

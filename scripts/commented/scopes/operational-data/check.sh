@@ -5,14 +5,17 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 SCOPE="$ROOT/scopes/operational-data"
 DISTRIBUTIONS=(
+  atlanticus-configuration
   atlanticus-kernel
   atlanticus-observability
+  atlanticus-observability-azure
   atlanticus-datasets
   atlanticus-datasets-parquet
   atlanticus-datasets-runtime
   atlanticus-job-runtime
   atlanticus-state
   atlanticus-http
+  atlanticus-key-vault
   atlanticus-service-bus
   atlanticus-sql
   atlanticus-storage
@@ -28,6 +31,12 @@ DISTRIBUTIONS=(
   atlanticus-data-producers-notpii
   atlanticus-data-producers-fabrica
   atlanticus-data-producers-remanentes
+  atlanticus-operational-data-pi-process
+  atlanticus-operational-data-notpii-process
+  atlanticus-operational-data-dispatch-process
+  atlanticus-operational-data-blockgrade-process
+  atlanticus-operational-data-fabrica-process
+  atlanticus-operational-data-remanentes-process
 )
 PROJECTS=(
   core
@@ -40,6 +49,12 @@ PROJECTS=(
   producers/notpii
   producers/fabrica
   producers/remanentes
+  processes/pi
+  processes/notpii
+  processes/dispatch
+  processes/blockgrade
+  processes/fabrica
+  processes/remanentes
 )
 
 CLEAN=0

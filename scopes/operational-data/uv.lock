@@ -15,9 +15,15 @@ members = [
     "atlanticus-data-producers-pi",
     "atlanticus-data-producers-remanentes",
     "atlanticus-data-producers-sql",
+    "atlanticus-operational-data-blockgrade-process",
     "atlanticus-operational-data-calendar",
     "atlanticus-operational-data-core",
+    "atlanticus-operational-data-dispatch-process",
+    "atlanticus-operational-data-fabrica-process",
+    "atlanticus-operational-data-notpii-process",
+    "atlanticus-operational-data-pi-process",
     "atlanticus-operational-data-planner",
+    "atlanticus-operational-data-remanentes-process",
     "atlanticus-operational-data-sources",
     "atlanticus-operational-data-workspace",
 ]
@@ -32,6 +38,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/61/cc/a381afa6efea9f496eff839d4a6a1aed3bfafc7b3ab4b0d1b243a12573dd/anyio-4.14.2.tar.gz", hash = "sha256:cfa139f3ed1a23ee8f88a145ddb5ac7605b8bbfd8592baacd7ce3d8bb4313c7f", size = 260176, upload-time = "2026-07-12T20:29:07.082Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/da/35/f2287558c17e29fafc8ef3daf819bb9834061cfa43bff8014f7df7f63bdc/anyio-4.14.2-py3-none-any.whl", hash = "sha256:9f505dda5ac9f0c8309b5e8bd445a8c2bf7246f3ce950121e45ea15bc41d1494", size = 125813, upload-time = "2026-07-12T20:29:05.763Z" },
+]
+
+[[package]]
+name = "atlanticus-configuration"
+version = "1.0.0"
+source = { editable = "../../backend/configuration" }
+dependencies = [
+    { name = "atlanticus-kernel" },
+    { name = "python-dotenv" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
+    { name = "python-dotenv", specifier = "==1.2.2" },
 ]
 
 [[package]]
@@ -337,6 +358,23 @@ version = "1.0.0"
 source = { editable = "../../backend/kernel" }
 
 [[package]]
+name = "atlanticus-key-vault"
+version = "1.0.0"
+source = { editable = "../../connectivity/key-vault" }
+dependencies = [
+    { name = "atlanticus-kernel" },
+    { name = "azure-identity" },
+    { name = "azure-keyvault-secrets" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
+    { name = "azure-identity", specifier = "==1.25.3" },
+    { name = "azure-keyvault-secrets", specifier = "==4.11.0" },
+]
+
+[[package]]
 name = "atlanticus-observability"
 version = "1.0.0"
 source = { editable = "../../backend/observability" }
@@ -346,6 +384,64 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "atlanticus-kernel", editable = "../../backend/kernel" }]
+
+[[package]]
+name = "atlanticus-observability-azure"
+version = "1.0.0"
+source = { editable = "../../backend/observability-azure" }
+dependencies = [
+    { name = "atlanticus-observability" },
+    { name = "azure-monitor-opentelemetry-exporter" },
+    { name = "opentelemetry-sdk" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-observability", editable = "../../backend/observability" },
+    { name = "azure-monitor-opentelemetry-exporter", specifier = "==1.0.0b55" },
+    { name = "opentelemetry-sdk", specifier = "==1.43.0" },
+]
+
+[[package]]
+name = "atlanticus-operational-data-blockgrade-process"
+version = "1.0.0"
+source = { editable = "processes/blockgrade" }
+dependencies = [
+    { name = "atlanticus-configuration" },
+    { name = "atlanticus-data-producers-core" },
+    { name = "atlanticus-data-producers-sql" },
+    { name = "atlanticus-job-runtime" },
+    { name = "atlanticus-kernel" },
+    { name = "atlanticus-key-vault" },
+    { name = "atlanticus-observability-azure" },
+    { name = "atlanticus-operational-data-calendar" },
+    { name = "atlanticus-sql" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-configuration", editable = "../../backend/configuration" },
+    { name = "atlanticus-data-producers-core", editable = "producers/core" },
+    { name = "atlanticus-data-producers-sql", editable = "producers/sql" },
+    { name = "atlanticus-job-runtime", editable = "../../backend/runtime" },
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
+    { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
+    { name = "atlanticus-observability-azure", editable = "../../backend/observability-azure" },
+    { name = "atlanticus-operational-data-calendar", editable = "calendar" },
+    { name = "atlanticus-sql", editable = "../../connectivity/sql" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
 
 [[package]]
 name = "atlanticus-operational-data-calendar"
@@ -386,6 +482,164 @@ dev = [
 ]
 
 [[package]]
+name = "atlanticus-operational-data-dispatch-process"
+version = "1.0.0"
+source = { editable = "processes/dispatch" }
+dependencies = [
+    { name = "atlanticus-configuration" },
+    { name = "atlanticus-data-producers-core" },
+    { name = "atlanticus-data-producers-sql" },
+    { name = "atlanticus-job-runtime" },
+    { name = "atlanticus-kernel" },
+    { name = "atlanticus-key-vault" },
+    { name = "atlanticus-observability-azure" },
+    { name = "atlanticus-operational-data-calendar" },
+    { name = "atlanticus-sql" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-configuration", editable = "../../backend/configuration" },
+    { name = "atlanticus-data-producers-core", editable = "producers/core" },
+    { name = "atlanticus-data-producers-sql", editable = "producers/sql" },
+    { name = "atlanticus-job-runtime", editable = "../../backend/runtime" },
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
+    { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
+    { name = "atlanticus-observability-azure", editable = "../../backend/observability-azure" },
+    { name = "atlanticus-operational-data-calendar", editable = "calendar" },
+    { name = "atlanticus-sql", editable = "../../connectivity/sql" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "atlanticus-operational-data-fabrica-process"
+version = "1.0.0"
+source = { editable = "processes/fabrica" }
+dependencies = [
+    { name = "atlanticus-configuration" },
+    { name = "atlanticus-data-producers-fabrica" },
+    { name = "atlanticus-job-runtime" },
+    { name = "atlanticus-kernel" },
+    { name = "atlanticus-key-vault" },
+    { name = "atlanticus-observability-azure" },
+    { name = "atlanticus-storage" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-configuration", editable = "../../backend/configuration" },
+    { name = "atlanticus-data-producers-fabrica", editable = "producers/fabrica" },
+    { name = "atlanticus-job-runtime", editable = "../../backend/runtime" },
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
+    { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
+    { name = "atlanticus-observability-azure", editable = "../../backend/observability-azure" },
+    { name = "atlanticus-storage", editable = "../../connectivity/storage" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "atlanticus-operational-data-notpii-process"
+version = "1.0.0"
+source = { editable = "processes/notpii" }
+dependencies = [
+    { name = "atlanticus-configuration" },
+    { name = "atlanticus-data-producers-notpii" },
+    { name = "atlanticus-job-runtime" },
+    { name = "atlanticus-kernel" },
+    { name = "atlanticus-key-vault" },
+    { name = "atlanticus-observability-azure" },
+    { name = "atlanticus-pi-contracts" },
+    { name = "atlanticus-service-bus" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-configuration", editable = "../../backend/configuration" },
+    { name = "atlanticus-data-producers-notpii", editable = "producers/notpii" },
+    { name = "atlanticus-job-runtime", editable = "../../backend/runtime" },
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
+    { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
+    { name = "atlanticus-observability-azure", editable = "../../backend/observability-azure" },
+    { name = "atlanticus-pi-contracts", editable = "../../integrations/pi/contracts" },
+    { name = "atlanticus-service-bus", editable = "../../connectivity/service-bus" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "atlanticus-operational-data-pi-process"
+version = "1.0.0"
+source = { editable = "processes/pi" }
+dependencies = [
+    { name = "atlanticus-configuration" },
+    { name = "atlanticus-data-producers-pi" },
+    { name = "atlanticus-http" },
+    { name = "atlanticus-job-runtime" },
+    { name = "atlanticus-kernel" },
+    { name = "atlanticus-key-vault" },
+    { name = "atlanticus-observability-azure" },
+    { name = "atlanticus-pi-contracts" },
+    { name = "atlanticus-pi-web-api" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-configuration", editable = "../../backend/configuration" },
+    { name = "atlanticus-data-producers-pi", editable = "producers/pi" },
+    { name = "atlanticus-http", editable = "../../connectivity/http-client" },
+    { name = "atlanticus-job-runtime", editable = "../../backend/runtime" },
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
+    { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
+    { name = "atlanticus-observability-azure", editable = "../../backend/observability-azure" },
+    { name = "atlanticus-pi-contracts", editable = "../../integrations/pi/contracts" },
+    { name = "atlanticus-pi-web-api", editable = "../../integrations/pi/web-api" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
 name = "atlanticus-operational-data-planner"
 version = "1.0.0"
 source = { editable = "planner" }
@@ -401,6 +655,43 @@ dev = [
 
 [package.metadata]
 requires-dist = [{ name = "atlanticus-operational-data-core", editable = "core" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "atlanticus-operational-data-remanentes-process"
+version = "1.0.0"
+source = { editable = "processes/remanentes" }
+dependencies = [
+    { name = "atlanticus-configuration" },
+    { name = "atlanticus-data-producers-remanentes" },
+    { name = "atlanticus-job-runtime" },
+    { name = "atlanticus-kernel" },
+    { name = "atlanticus-key-vault" },
+    { name = "atlanticus-observability-azure" },
+    { name = "atlanticus-storage" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-configuration", editable = "../../backend/configuration" },
+    { name = "atlanticus-data-producers-remanentes", editable = "producers/remanentes" },
+    { name = "atlanticus-job-runtime", editable = "../../backend/runtime" },
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
+    { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
+    { name = "atlanticus-observability-azure", editable = "../../backend/observability-azure" },
+    { name = "atlanticus-storage", editable = "../../connectivity/storage" },
+]
 
 [package.metadata.requires-dev]
 dev = [
@@ -561,6 +852,37 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c5/0e/3a63efb48aa4a5ae2cfca61ee152fbcb668092134d3eb8bfda472dd5c617/azure_identity-1.25.3.tar.gz", hash = "sha256:ab23c0d63015f50b630ef6c6cf395e7262f439ce06e5d07a64e874c724f8d9e6", size = 286304, upload-time = "2026-03-13T01:12:20.892Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/49/9a/417b3a533e01953a7c618884df2cb05a71e7b68bdbce4fbdb62349d2a2e8/azure_identity-1.25.3-py3-none-any.whl", hash = "sha256:f4d0b956a8146f30333e071374171f3cfa7bdb8073adb8c3814b65567aa7447c", size = 192138, upload-time = "2026-03-13T01:12:22.951Z" },
+]
+
+[[package]]
+name = "azure-keyvault-secrets"
+version = "4.11.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "azure-core" },
+    { name = "isodate" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f1/b8/03c7b4edd1e3355ad5fffb70e68af70cd09542963f45cf3a2aa9fb3930b5/azure_keyvault_secrets-4.11.0.tar.gz", hash = "sha256:ac14727b9159cca353173ec5a454d8d7b192a6f2f5e7eb540f9fbcf914fa0ca0", size = 112291, upload-time = "2026-04-17T00:52:12.422Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/78/76/41c513917c0e8dc68de0c33578c6a0668b4a09eb4dc3e2782d382dc2947f/azure_keyvault_secrets-4.11.0-py3-none-any.whl", hash = "sha256:d8543b710423569bd00ada2a2533fe83d52d8e1fe026e1c47f41a3bc0fc73ef5", size = 103148, upload-time = "2026-04-17T00:52:13.796Z" },
+]
+
+[[package]]
+name = "azure-monitor-opentelemetry-exporter"
+version = "1.0.0b55"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "azure-core" },
+    { name = "azure-identity" },
+    { name = "msrest" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-sdk" },
+    { name = "psutil" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ab/21/178fed00e9738e4c953e147d46f5f803bfeb3fde50b11efdb99ae016f05f/azure_monitor_opentelemetry_exporter-1.0.0b55.tar.gz", hash = "sha256:6701307124e5eeb1837b269ddafab0affb69020fdb842d7c5ff1a3122514595a", size = 342308, upload-time = "2026-07-01T23:59:14.53Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/70/80/c1e58ea1c7dd7452579ab98912e9a3aa9a5fdb22f24a676f3cdaac3ab096/azure_monitor_opentelemetry_exporter-1.0.0b55-py2.py3-none-any.whl", hash = "sha256:5f0bcfcfd36d82f3f55cf5fe894ea05c5c0a32d2e38adf571eaa0e2b655aeb9e", size = 251064, upload-time = "2026-07-01T23:59:16.305Z" },
 ]
 
 [[package]]
@@ -848,6 +1170,22 @@ wheels = [
 ]
 
 [[package]]
+name = "msrest"
+version = "0.7.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "azure-core" },
+    { name = "certifi" },
+    { name = "isodate" },
+    { name = "requests" },
+    { name = "requests-oauthlib" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/68/77/8397c8fb8fc257d8ea0fa66f8068e073278c65f05acb17dcb22a02bfdc42/msrest-0.7.1.zip", hash = "sha256:6e7661f46f3afd88b75667b7187a92829924446c7ea1d169be8c4bb7eeb788b9", size = 175332, upload-time = "2022-06-13T22:41:25.111Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/15/cf/f2966a2638144491f8696c27320d5219f48a072715075d168b31d3237720/msrest-0.7.1-py3-none-any.whl", hash = "sha256:21120a810e1233e5e6cc7fe40b474eeb4ec6f757a15d7cf86702c369f9567c32", size = 85384, upload-time = "2022-06-13T22:41:22.42Z" },
+]
+
+[[package]]
 name = "mssql-python"
 version = "1.13.0"
 source = { registry = "https://pypi.org/simple" }
@@ -906,6 +1244,54 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/14/2f/42921d27c40aea7e077f4a423ae509fd9220b028cd787bafefd8ab2b3a5f/numpy-2.5.2-cp314-cp314t-win32.whl", hash = "sha256:ddf47472af2e4280d79bac82304f5e80150211f1b9e614b760061d5fdfbb6eba", size = 6271085, upload-time = "2026-08-09T13:47:01.903Z" },
     { url = "https://files.pythonhosted.org/packages/75/e6/bad5f5d56de9b1971bac959963dda276d35c40f1854475005434bbe08692/numpy-2.5.2-cp314-cp314t-win_amd64.whl", hash = "sha256:44ef9675d908e65f9953063837c3277730f3f4437615a4cdab67b366cabaf884", size = 12787971, upload-time = "2026-08-09T13:47:04.963Z" },
     { url = "https://files.pythonhosted.org/packages/df/05/f608795cb34391acd67e38d94a3c36abd8d8576293a3a80727d7595c372c/numpy-2.5.2-cp314-cp314t-win_arm64.whl", hash = "sha256:eaa088384c46f519dacb93b7ec483a6d6b19a4a2085ae4f25ab9b1c43d387d1e", size = 10750306, upload-time = "2026-08-09T13:47:07.976Z" },
+]
+
+[[package]]
+name = "oauthlib"
+version = "3.3.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/0b/5f/19930f824ffeb0ad4372da4812c50edbd1434f678c90c2733e1188edfc63/oauthlib-3.3.1.tar.gz", hash = "sha256:0f0f8aa759826a193cf66c12ea1af1637f87b9b4622d46e866952bb022e538c9", size = 185918, upload-time = "2025-06-19T22:48:08.269Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/be/9c/92789c596b8df838baa98fa71844d84283302f7604ed565dafe5a6b5041a/oauthlib-3.3.1-py3-none-any.whl", hash = "sha256:88119c938d2b8fb88561af5f6ee0eec8cc8d552b7bb1f712743136eb7523b7a1", size = 160065, upload-time = "2025-06-19T22:48:06.508Z" },
+]
+
+[[package]]
+name = "opentelemetry-api"
+version = "1.43.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ae/cc/e4c9584181f86494df0f6bdec1a4f3280c50db44704dc2a407e994fc87bb/opentelemetry_api-1.43.0.tar.gz", hash = "sha256:107d0d03857ea8fc7c5fcbbbd83f800c281f0d560553d61c1d675fccfd1761c1", size = 73476, upload-time = "2026-06-24T15:19:55.323Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/17/83/6dba32b85f31868400440dc7ad2ca1eab94cbbf3a7b0459ed39f8311a9e2/opentelemetry_api-1.43.0-py3-none-any.whl", hash = "sha256:20acf45e9b21851926835292e4045d290acade1edd2ff3de86d2f069687ba1fd", size = 61912, upload-time = "2026-06-24T15:19:35.434Z" },
+]
+
+[[package]]
+name = "opentelemetry-sdk"
+version = "1.43.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-semantic-conventions" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3e/eb/5041074274ac0956b03637cc039d434569112468e875eddfcc9a0674ce06/opentelemetry_sdk-1.43.0.tar.gz", hash = "sha256:d8187c81c162df9913e4003dd6485f7390d9a24fc17026ec7387b8b8218b08e9", size = 254744, upload-time = "2026-06-24T15:20:08.467Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/49/e3/b17be23af124201c9f52eececd4cc8ddfed1597d37b4ee771895d325805c/opentelemetry_sdk-1.43.0-py3-none-any.whl", hash = "sha256:d1323a547c1ce69d6a069a17a44b7da82bb8b332051ecb074041f87642c86823", size = 178852, upload-time = "2026-06-24T15:19:52.169Z" },
+]
+
+[[package]]
+name = "opentelemetry-semantic-conventions"
+version = "0.64b0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5a/30/5f26df29509eccd86b99b481ac9ffa39da49ba9577cc69071c552ae30447/opentelemetry_semantic_conventions-0.64b0.tar.gz", hash = "sha256:72f76fb2d1582d9d033dd1fcd84532e961e6ff3d90d24ba6fabc72975a83864c", size = 148340, upload-time = "2026-06-24T15:20:09.267Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f2/ca/23ba87a221b574a7c5a99d48849d80bfe8b047624681357e2b002e566187/opentelemetry_semantic_conventions-0.64b0-py3-none-any.whl", hash = "sha256:ea77e85e354b8f604ddbe5f3d9135216f982fa4d77e5859ac30f6d8a50505aa6", size = 203713, upload-time = "2026-06-24T15:19:53.339Z" },
 ]
 
 [[package]]
@@ -1060,6 +1446,15 @@ wheels = [
 ]
 
 [[package]]
+name = "python-dotenv"
+version = "1.2.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/82/ed/0301aeeac3e5353ef3d94b6ec08bbcabd04a72018415dcb29e588514bba8/python_dotenv-1.2.2.tar.gz", hash = "sha256:2c371a91fbd7ba082c2c1dc1f8bf89ca22564a087c2c287cd9b662adde799cf3", size = 50135, upload-time = "2026-03-01T16:00:26.196Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0b/d7/1959b9648791274998a9c3526f6d0ec8fd2233e4d4acce81bbae76b44b2a/python_dotenv-1.2.2-py3-none-any.whl", hash = "sha256:1d8214789a24de455a8b8bd8ae6fe3c6b69a5e3d64aa8a8e5d68e694bbcb285a", size = 22101, upload-time = "2026-03-01T16:00:25.09Z" },
+]
+
+[[package]]
 name = "requests"
 version = "2.34.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1072,6 +1467,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ac/c3/e2a2b89f2d3e2179abd6d00ebd70bff6273f37fb3e0cc209f48b39d00cbf/requests-2.34.2.tar.gz", hash = "sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed", size = 142856, upload-time = "2026-05-14T19:25:27.735Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl", hash = "sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0", size = 73075, upload-time = "2026-05-14T19:25:26.443Z" },
+]
+
+[[package]]
+name = "requests-oauthlib"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "oauthlib" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/42/f2/05f29bc3913aea15eb670be136045bf5c5bbf4b99ecb839da9b422bb2c85/requests-oauthlib-2.0.0.tar.gz", hash = "sha256:b3dffaebd884d8cd778494369603a9e7b58d29111bf6b41bdc2dcd87203af4e9", size = 55650, upload-time = "2024-03-22T20:32:29.939Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3b/5d/63d4ae3b9daea098d5d6f5da83984853c1bbacd5dc826764b249fe119d24/requests_oauthlib-2.0.0-py2.py3-none-any.whl", hash = "sha256:7dd8a5c40426b779b0868c404bdef9768deccf22749cde15852df527e6269b36", size = 24179, upload-time = "2024-03-22T20:32:28.055Z" },
 ]
 
 [[package]]

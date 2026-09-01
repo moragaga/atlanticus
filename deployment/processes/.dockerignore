@@ -1,0 +1,10 @@
+*
+!Dockerfile
+!processes/
+!processes/*/
+!processes/*/pyproject.toml
+!processes/*/uv.lock
+!processes/*/wheels/
+!processes/*/wheels/**
+!processes/*/src/
+!processes/*/src/**

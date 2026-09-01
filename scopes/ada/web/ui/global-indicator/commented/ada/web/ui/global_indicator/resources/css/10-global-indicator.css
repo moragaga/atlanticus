@@ -1,4 +1,4 @@
-/* Global Indicator usa tokens semánticos compartidos sin duplicar hexadecimales. */
+/* Contenedor flexible mobile-first; centra automáticamente la última tarjeta impar. */
 .global-indicators {
     --global-indicator-border: var(--ada-color-border-primary);
     --global-indicator-ink: var(--ada-color-text-primary);
@@ -10,13 +10,18 @@
     align-items: stretch;
     justify-content: center;
     flex-wrap: wrap;
+    box-sizing: border-box;
+    row-gap: .25rem;
+    padding-block: .2rem;
 }
 
 .global-indicator {
     display: flex;
-    flex: 1 1 0;
+    flex: 0 0 100%;
+    width: 100%;
+    max-width: 100%;
     min-width: 0;
-    min-height: 5.5rem;
+    min-height: 4.25rem;
     flex-direction: column;
     align-items: center;
     justify-content: center;
@@ -68,8 +73,10 @@
 
 .global-indicator__table {
     width: auto;
+    max-width: 100%;
     background: transparent;
     border-collapse: collapse;
+    table-layout: auto;
 }
 
 .global-indicator__cell {
@@ -121,30 +128,76 @@
     font-weight: 800;
 }
 
-.font-size-gi-100 {
-    font-size: .7rem;
-}
-
-.font-size-gi-200 {
-    font-size: .6rem;
-}
-
-.font-size-gi-300 {
-    font-size: .5rem;
-}
-
-.font-size-gi-400 {
-    font-size: .4rem;
-}
+.font-size-gi-100 { font-size: .68rem; }
+.font-size-gi-200 { font-size: .58rem; }
+.font-size-gi-300 { font-size: .48rem; }
+.font-size-gi-400 { font-size: .4rem; }
 
 .global-indicator__status-icon {
     display: block;
     margin-inline: auto;
 }
 
-@media (min-width: 1280px) {
+/* Mobile calibrado: dos indicadores por fila. */
+@media only screen and (min-width: 350px) {
     .global-indicators {
+        row-gap: .45rem;
+        padding-block: .4rem;
+    }
+
+    .font-size-gi-100 { font-size: .8rem; }
+    .font-size-gi-200 { font-size: .7rem; }
+    .font-size-gi-300 { font-size: .6rem; }
+    .font-size-gi-400 { font-size: .5rem; }
+
+    .global-indicator {
+        flex: 0 0 50%;
+        width: 50%;
+        max-width: 50%;
+        min-height: 4.6rem;
+    }
+
+    .global-indicators > .global-indicator:last-child:nth-child(odd) {
+        margin-inline: auto;
+    }
+}
+
+@media only screen and (min-width: 480px) {
+    .global-indicators {
+        row-gap: .55rem;
+        padding-block: .5rem;
+    }
+
+    .global-indicator {
+        min-height: 4.9rem;
+    }
+
+    .font-size-gi-100 { font-size: .88rem; }
+    .font-size-gi-200 { font-size: .76rem; }
+    .font-size-gi-300 { font-size: .66rem; }
+    .font-size-gi-400 { font-size: .56rem; }
+}
+
+/* Tablet Pelambres y superiores: indicadores en una sola fila de columnas iguales. */
+@media only screen and (min-width: 1280px) {
+    .global-indicators {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(0, 1fr);
+        align-items: stretch;
+        justify-content: stretch;
         flex-wrap: nowrap;
+        row-gap: 0;
+        padding-block: .28rem .38rem;
+    }
+
+    .global-indicator {
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        min-width: 0;
+        min-height: 0;
+        padding-inline: .25rem;
     }
 
     .global-indicators > .global-indicator {
@@ -154,47 +207,15 @@
     .global-indicators > .global-indicator:first-child {
         border-inline-start: 1px solid var(--global-indicator-border);
     }
-}
 
-@media (min-width: 1920px) {
-    .font-size-gi-100 {
-        font-size: .75rem;
+    .global-indicators > .global-indicator:last-child:nth-child(odd) {
+        margin-inline: 0;
     }
 
-    .font-size-gi-200 {
-        font-size: .65rem;
-    }
-
-    .font-size-gi-300 {
-        font-size: .55rem;
-    }
-
-    .font-size-gi-400 {
-        font-size: .45rem;
-    }
-}
-
-@media (max-width: 1279.98px) {
-    .global-indicator {
-        flex: 1 1 50%;
-    }
-}
-
-@media (min-width: 992px) {
-    .global-indicators {
-        display: grid;
-        grid-auto-flow: column;
-        grid-auto-columns: minmax(0, 1fr);
-        align-items: stretch;
-        justify-content: stretch;
-        flex-wrap: nowrap;
-    }
-
-    .global-indicator {
-        width: 100%;
-        height: 100%;
-        min-width: 0;
-    }
+    .font-size-gi-100 { font-size: .72rem; }
+    .font-size-gi-200 { font-size: .62rem; }
+    .font-size-gi-300 { font-size: .52rem; }
+    .font-size-gi-400 { font-size: .44rem; }
 
     .global-indicator__heading,
     .global-indicator__content {
@@ -206,12 +227,6 @@
         max-width: 100%;
     }
 
-    .global-indicator__table {
-        width: auto;
-        max-width: 100%;
-        table-layout: auto;
-    }
-
     .global-indicator__value--measurement-label,
     .global-indicator__value--actual,
     .global-indicator__separator,
@@ -220,3 +235,39 @@
     }
 }
 
+@media only screen and (min-width: 1366px) {
+    .global-indicators { padding-block: .3rem .4rem; }
+    .font-size-gi-100 { font-size: .74rem; }
+    .font-size-gi-200 { font-size: .64rem; }
+    .font-size-gi-300 { font-size: .54rem; }
+    .font-size-gi-400 { font-size: .45rem; }
+}
+
+@media only screen and (min-width: 1536px) {
+    .global-indicators { padding-block: .3rem .42rem; }
+    .font-size-gi-100 { font-size: .76rem; }
+    .font-size-gi-200 { font-size: .66rem; }
+    .font-size-gi-300 { font-size: .56rem; }
+    .font-size-gi-400 { font-size: .48rem; }
+}
+
+@media only screen and (min-width: 1920px) {
+    .global-indicators { padding-block: .32rem .46rem; }
+    .font-size-gi-100 { font-size: .82rem; }
+    .font-size-gi-200 { font-size: .72rem; }
+    .font-size-gi-300 { font-size: .62rem; }
+    .font-size-gi-400 { font-size: .52rem; }
+}
+
+/* Videowall: tipografía mayor para lectura a distancia. */
+@media only screen and (min-width: 2560px) {
+    .global-indicators { padding-block: .38rem .55rem; }
+    .font-size-gi-100 { font-size: .92rem; }
+    .font-size-gi-200 { font-size: .8rem; }
+    .font-size-gi-300 { font-size: .7rem; }
+    .font-size-gi-400 { font-size: .58rem; }
+    .global-indicator__label,
+    .global-indicator__unit { font-size: .86rem; }
+    .global-indicator__value--measurement-label { padding-inline-end: 1rem; }
+    .global-indicator__last-measurement { margin-bottom: .12rem; }
+}

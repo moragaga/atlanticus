@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import platform
 import shutil
 import subprocess
@@ -104,6 +105,54 @@ CAPABILITIES: dict[str, OperationalDataCapability] = {
         'producers/remanentes/src',
         'producers/remanentes/commented',
     ),
+    'process-pi': OperationalDataCapability(
+        'process-pi',
+        'atlanticus-operational-data-pi-process',
+        'atlanticus.operational_data.processes.pi',
+        'processes/pi',
+        'processes/pi/src',
+        'processes/pi/commented',
+    ),
+    'process-notpii': OperationalDataCapability(
+        'process-notpii',
+        'atlanticus-operational-data-notpii-process',
+        'atlanticus.operational_data.processes.notpii',
+        'processes/notpii',
+        'processes/notpii/src',
+        'processes/notpii/commented',
+    ),
+    'process-dispatch': OperationalDataCapability(
+        'process-dispatch',
+        'atlanticus-operational-data-dispatch-process',
+        'atlanticus.operational_data.processes.dispatch',
+        'processes/dispatch',
+        'processes/dispatch/src',
+        'processes/dispatch/commented',
+    ),
+    'process-blockgrade': OperationalDataCapability(
+        'process-blockgrade',
+        'atlanticus-operational-data-blockgrade-process',
+        'atlanticus.operational_data.processes.blockgrade',
+        'processes/blockgrade',
+        'processes/blockgrade/src',
+        'processes/blockgrade/commented',
+    ),
+    'process-fabrica': OperationalDataCapability(
+        'process-fabrica',
+        'atlanticus-operational-data-fabrica-process',
+        'atlanticus.operational_data.processes.fabrica',
+        'processes/fabrica',
+        'processes/fabrica/src',
+        'processes/fabrica/commented',
+    ),
+    'process-remanentes': OperationalDataCapability(
+        'process-remanentes',
+        'atlanticus-operational-data-remanentes-process',
+        'atlanticus.operational_data.processes.remanentes',
+        'processes/remanentes',
+        'processes/remanentes/src',
+        'processes/remanentes/commented',
+    ),
 }
 
 EXPECTED_WORKSPACE_MEMBERS = [
@@ -117,6 +166,12 @@ EXPECTED_WORKSPACE_MEMBERS = [
     'producers/notpii',
     'producers/fabrica',
     'producers/remanentes',
+    'processes/pi',
+    'processes/notpii',
+    'processes/dispatch',
+    'processes/blockgrade',
+    'processes/fabrica',
+    'processes/remanentes',
 ]
 
 EXPECTED_WORKSPACE_SOURCES = {
@@ -130,14 +185,26 @@ EXPECTED_WORKSPACE_SOURCES = {
     'atlanticus-data-producers-notpii': {'workspace': True},
     'atlanticus-data-producers-fabrica': {'workspace': True},
     'atlanticus-data-producers-remanentes': {'workspace': True},
+    'atlanticus-operational-data-pi-process': {'workspace': True},
+    'atlanticus-operational-data-notpii-process': {'workspace': True},
+    'atlanticus-operational-data-dispatch-process': {'workspace': True},
+    'atlanticus-operational-data-blockgrade-process': {'workspace': True},
+    'atlanticus-operational-data-fabrica-process': {'workspace': True},
+    'atlanticus-operational-data-remanentes-process': {'workspace': True},
+    'atlanticus-configuration': {'path': '../../backend/configuration', 'editable': True},
     'atlanticus-datasets': {'path': '../../backend/datasets', 'editable': True},
     'atlanticus-datasets-parquet': {'path': '../../backend/datasets-parquet', 'editable': True},
     'atlanticus-datasets-runtime': {'path': '../../backend/datasets-runtime', 'editable': True},
     'atlanticus-job-runtime': {'path': '../../backend/runtime', 'editable': True},
     'atlanticus-kernel': {'path': '../../backend/kernel', 'editable': True},
     'atlanticus-observability': {'path': '../../backend/observability', 'editable': True},
+    'atlanticus-observability-azure': {
+        'path': '../../backend/observability-azure',
+        'editable': True,
+    },
     'atlanticus-state': {'path': '../../backend/state', 'editable': True},
     'atlanticus-http': {'path': '../../connectivity/http-client', 'editable': True},
+    'atlanticus-key-vault': {'path': '../../connectivity/key-vault', 'editable': True},
     'atlanticus-service-bus': {'path': '../../connectivity/service-bus', 'editable': True},
     'atlanticus-sql': {'path': '../../connectivity/sql', 'editable': True},
     'atlanticus-storage': {'path': '../../connectivity/storage', 'editable': True},
@@ -213,17 +280,81 @@ EXPECTED_DEPENDENCIES = {
         'pandas==3.0.3',
         'pyarrow==25.0.0',
     ],
+    'process-pi': [
+        'atlanticus-configuration==1.0.0',
+        'atlanticus-data-producers-pi==1.0.0',
+        'atlanticus-http==1.0.0',
+        'atlanticus-job-runtime==1.0.0',
+        'atlanticus-kernel==1.0.0',
+        'atlanticus-key-vault==1.0.0',
+        'atlanticus-observability-azure==1.0.0',
+        'atlanticus-pi-contracts==1.0.0',
+        'atlanticus-pi-web-api==1.0.0',
+    ],
+    'process-notpii': [
+        'atlanticus-configuration==1.0.0',
+        'atlanticus-data-producers-notpii==1.0.0',
+        'atlanticus-job-runtime==1.0.0',
+        'atlanticus-kernel==1.0.0',
+        'atlanticus-key-vault==1.0.0',
+        'atlanticus-observability-azure==1.0.0',
+        'atlanticus-pi-contracts==1.0.0',
+        'atlanticus-service-bus==1.0.0',
+    ],
+    'process-dispatch': [
+        'atlanticus-operational-data-calendar==1.0.0',
+        'atlanticus-configuration==1.0.0',
+        'atlanticus-data-producers-core==1.0.0',
+        'atlanticus-data-producers-sql==1.0.0',
+        'atlanticus-job-runtime==1.0.0',
+        'atlanticus-kernel==1.0.0',
+        'atlanticus-key-vault==1.0.0',
+        'atlanticus-observability-azure==1.0.0',
+        'atlanticus-sql==1.0.0',
+    ],
+    'process-blockgrade': [
+        'atlanticus-operational-data-calendar==1.0.0',
+        'atlanticus-configuration==1.0.0',
+        'atlanticus-data-producers-core==1.0.0',
+        'atlanticus-data-producers-sql==1.0.0',
+        'atlanticus-job-runtime==1.0.0',
+        'atlanticus-kernel==1.0.0',
+        'atlanticus-key-vault==1.0.0',
+        'atlanticus-observability-azure==1.0.0',
+        'atlanticus-sql==1.0.0',
+    ],
+    'process-fabrica': [
+        'atlanticus-configuration==1.0.0',
+        'atlanticus-data-producers-fabrica==1.0.0',
+        'atlanticus-job-runtime==1.0.0',
+        'atlanticus-kernel==1.0.0',
+        'atlanticus-key-vault==1.0.0',
+        'atlanticus-observability-azure==1.0.0',
+        'atlanticus-storage==1.0.0',
+    ],
+    'process-remanentes': [
+        'atlanticus-configuration==1.0.0',
+        'atlanticus-data-producers-remanentes==1.0.0',
+        'atlanticus-job-runtime==1.0.0',
+        'atlanticus-kernel==1.0.0',
+        'atlanticus-key-vault==1.0.0',
+        'atlanticus-observability-azure==1.0.0',
+        'atlanticus-storage==1.0.0',
+    ],
 }
 
 LOCAL_BASELINES = {
+    'atlanticus-configuration': 'backend/configuration',
     'atlanticus-datasets': 'backend/datasets',
     'atlanticus-datasets-parquet': 'backend/datasets-parquet',
     'atlanticus-datasets-runtime': 'backend/datasets-runtime',
     'atlanticus-job-runtime': 'backend/runtime',
     'atlanticus-kernel': 'backend/kernel',
     'atlanticus-observability': 'backend/observability',
+    'atlanticus-observability-azure': 'backend/observability-azure',
     'atlanticus-state': 'backend/state',
     'atlanticus-http': 'connectivity/http-client',
+    'atlanticus-key-vault': 'connectivity/key-vault',
     'atlanticus-service-bus': 'connectivity/service-bus',
     'atlanticus-sql': 'connectivity/sql',
     'atlanticus-storage': 'connectivity/storage',
@@ -237,6 +368,28 @@ LEGACY_TOKENS = (
     'ada-operational-data-',
     'ada-operational-calendar',
     'ADA_OPERATIONAL_CALENDARS',
+    'ada.processes.pi_web_api',
+    'ada.processes.notpii',
+    'ada.processes.dispatch',
+    'ada.processes.blockgrade',
+    'ada.processes.fabrica',
+    'ada.processes.remanentes',
+)
+
+
+LEGACY_PATH_TOKENS = (
+    'src/ada/processes/',
+    'commented/ada/processes/',
+)
+
+
+RETIRED_PROCESS_PATHS = (
+    'scopes/ada/processes/pi-web-api',
+    'scopes/ada/processes/notpii',
+    'scopes/ada/processes/dispatch',
+    'scopes/ada/processes/blockgrade',
+    'scopes/ada/processes/fabrica',
+    'scopes/ada/processes/remanentes',
 )
 
 
@@ -394,6 +547,14 @@ def _validate_dependency_correlation(scope: Path, repository: Path) -> None:
         _require_version(repository / relative, distribution, '1.0.0')
 
 
+def _validate_retired_process_paths(repository: Path) -> None:
+    remaining = [relative for relative in RETIRED_PROCESS_PATHS if (repository / relative).exists()]
+    if remaining:
+        raise SystemExit(
+            'Retired ADA materialization process paths are still present: ' + ', '.join(remaining)
+        )
+
+
 def _validate_ownership(scope: Path) -> None:
     roots = [
         scope / capability.project_root / relative
@@ -408,6 +569,33 @@ def _validate_ownership(scope: Path) -> None:
             for token in LEGACY_TOKENS:
                 if token in text:
                     raise SystemExit(f'Legacy ADA ownership token {token!r} found in {path}')
+            normalized = ''.join(character for character in text if character not in ' \t\r\n\'"')
+            for token in LEGACY_PATH_TOKENS:
+                if token in normalized:
+                    raise SystemExit(f'Legacy ADA ownership path {token!r} found in {path}')
+
+
+def _validate_process_isolation(scope: Path) -> None:
+    prefix = 'atlanticus.operational_data.processes.'
+    for capability in CAPABILITIES.values():
+        if not capability.key.startswith('process-'):
+            continue
+        own = capability.import_name
+        source = scope / capability.source_root
+        for path in source.rglob('*.py'):
+            tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+            imported: list[str] = []
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom) and node.module:
+                    imported.append(node.module)
+                elif isinstance(node, ast.Import):
+                    imported.extend(alias.name for alias in node.names)
+            for module in imported:
+                if not module.startswith(prefix):
+                    continue
+                if module == own or module.startswith(own + '.'):
+                    continue
+                raise SystemExit(f'Process-to-process import is forbidden: {path} -> {module}')
 
 
 def _run_tests(capabilities: tuple[OperationalDataCapability, ...], scope: Path) -> None:
@@ -482,8 +670,10 @@ def main() -> int:
     _validate_workspace(scope, repository)
     print('[3/10] Validating dependency and version correlation')
     _validate_dependency_correlation(scope, repository)
-    print('[4/10] Validating ownership boundary and retired ADA namespaces')
+    print('[4/10] Validating ownership boundary, retired ADA namespaces and process isolation')
+    _validate_retired_process_paths(repository)
     _validate_ownership(scope)
+    _validate_process_isolation(scope)
     print('[5/10] Validating locked dependency graph')
     _run(['uv', 'lock', '--check'], cwd=scope)
     targets = [capability.project_root for capability in capabilities]

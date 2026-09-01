@@ -1,0 +1,11 @@
+# El contexto Docker se limita a archivos transportables y nunca incluye configuración activa.
+*
+!Dockerfile
+!processes/
+!processes/*/
+!processes/*/pyproject.toml
+!processes/*/uv.lock
+!processes/*/wheels/
+!processes/*/wheels/**
+!processes/*/src/
+!processes/*/src/**

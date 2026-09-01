@@ -1,27 +1,31 @@
-/* El header operacional consume superficies y bordes compartidos desde ADA UI Core. */
+/* Espejo pedagógico: misma semántica CSS que producción, con notas de intención. */
 .ada-operational-header-shell {
     --ada-operational-header-surface: var(--ada-color-surface-tertiary);
     --ada-operational-header-border: var(--ada-color-border-primary);
-    --ada-operational-header-global-grow: 2.4;
-    --ada-operational-header-management-grow: 1.45;
-    --ada-operational-header-status-grow: 1.25;
+    --ada-operational-header-brand-width: 12rem;
+    --ada-operational-header-management-width: 10.5rem;
+    --ada-operational-header-status-width: 9.75rem;
+    --ada-operational-header-mobile-menu-safe-area: 3.25rem;
     position: relative;
     width: 100%;
+    min-width: 0;
     background: var(--ada-operational-header-surface);
     border-bottom: 1px solid var(--ada-operational-header-border);
 }
 
 .ada-operational-header__primary {
     position: relative;
+    min-width: 0;
 }
 
 .ada-operational-header {
-    display: flex;
+    display: grid;
     width: 100%;
-    height: 5.5rem;
-    min-height: 5.5rem;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(5.2rem, auto) auto minmax(3.9rem, auto) minmax(3.9rem, auto);
     align-items: stretch;
-    padding: 0 .6rem;
+    padding: 0 .35rem;
     overflow: hidden;
     background: var(--ada-operational-header-surface);
 }
@@ -31,37 +35,42 @@
 .ada-operational-header__alarm-management-slot,
 .ada-operational-header__alarm-status-slot {
     min-width: 0;
+    min-height: 0;
     align-items: stretch;
 }
 
 .ada-operational-header__brand-slot {
     display: flex;
-    flex: 0 0 10rem;
+    grid-column: 1 / -1;
+    grid-row: 1;
+    padding-inline: var(--ada-operational-header-mobile-menu-safe-area);
 }
 
 .ada-operational-header__brand-slot > * {
     width: 100%;
     height: 100%;
+    min-width: 0;
 }
 
 .ada-operational-header__global-indicators-slot {
     display: flex;
-    flex: var(--ada-operational-header-global-grow) 1 0;
-    border-left: 1px solid var(--ada-operational-header-border);
+    grid-column: 1 / -1;
+    grid-row: 2;
+    border-top: 1px solid var(--ada-operational-header-border);
 }
 
 .ada-operational-header__alarm-management-slot {
     display: flex;
-    flex: var(--ada-operational-header-management-grow) 1 0;
-    min-width: 8.5rem;
-    border-left: 1px solid var(--ada-operational-header-border);
+    grid-column: 1 / -1;
+    grid-row: 3;
+    border-top: 1px solid var(--ada-operational-header-border);
 }
 
 .ada-operational-header__alarm-status-slot {
     display: flex;
-    flex: var(--ada-operational-header-status-grow) 1 0;
-    min-width: 8rem;
-    border-left: 1px solid var(--ada-operational-header-border);
+    grid-column: 1 / -1;
+    grid-row: 4;
+    border-top: 1px solid var(--ada-operational-header-border);
 }
 
 .ada-operational-header__global-indicators-slot > *,
@@ -70,6 +79,7 @@
     width: 100%;
     height: 100%;
     min-width: 0;
+    min-height: 0;
 }
 
 .ada-operational-header [data-slot-empty='true'],
@@ -95,74 +105,198 @@
 }
 
 .ada-operational-header__desktop-navigation {
+    display: none;
     position: static;
 }
 
 .ada-operational-header__mobile-navigation {
-    flex: 0 0 auto;
-    align-items: center;
-    justify-content: center;
-    padding-left: .5rem;
+    position: absolute;
+    top: .45rem;
+    inset-inline-end: .45rem;
+    z-index: 5;
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    justify-content: flex-end;
 }
 
-@media (max-width: 991.98px) {
+/* Mobile calibrado: Branding centrado con reserva simétrica para el burger. */
+@media only screen and (min-width: 350px) {
     .ada-operational-header {
-        padding-right: .35rem;
-    }
-
-    .ada-operational-header__brand-slot {
-        flex-basis: 8.75rem;
-    }
-
-    .ada-operational-header__alarm-management-slot {
-        min-width: 7.5rem;
-    }
-
-    .ada-operational-header__alarm-status-slot {
-        display: none;
+        grid-template-rows: minmax(5.45rem, auto) auto minmax(4rem, auto) minmax(4rem, auto);
+        row-gap: .35rem;
+        padding-inline: .4rem;
     }
 }
 
-@media (max-width: 767.98px) {
-    .ada-operational-header__global-indicators-slot,
-    .ada-operational-header__alarm-management-slot,
-    .ada-operational-header__alarm-status-slot {
-        display: none;
+@media only screen and (min-width: 480px) {
+    .ada-operational-header {
+        grid-template-rows: minmax(5.8rem, auto) auto minmax(4.2rem, auto) minmax(4.2rem, auto);
+        row-gap: .45rem;
+        padding-inline: .5rem;
     }
 
-    .ada-operational-header__brand-slot {
-        flex: 1 1 auto;
+    .ada-operational-header__mobile-navigation {
+        top: .55rem;
+        inset-inline-end: .55rem;
     }
 }
 
-@media (min-width: 992px) {
-    .ada-operational-header-shell {
-        --ada-operational-header-brand-width: 10rem;
-        --ada-operational-header-management-width: 9.5rem;
-        --ada-operational-header-status-width: 8.75rem;
+/* Tablet Pelambres: Header horizontal compacto con mayor altura útil. */
+@media only screen and (min-width: 1280px) {
+    .ada-operational-header {
+        display: flex;
+        height: 5rem;
+        min-height: 5rem;
+        padding: 0 .45rem;
     }
 
     .ada-operational-header__brand-slot {
-        flex: 0 0 var(--ada-operational-header-brand-width);
+        padding-inline: 0;
+        width: 8.75rem;
+        max-width: 8.75rem;
+        flex: 0 1 8.75rem;
     }
 
     .ada-operational-header__global-indicators-slot {
         flex: 1 1 0;
-        min-width: 0;
+        border-top: 0;
+        border-left: 1px solid var(--ada-operational-header-border);
     }
 
     .ada-operational-header__alarm-management-slot {
-        width: var(--ada-operational-header-management-width);
-        min-width: 8.75rem;
-        max-width: var(--ada-operational-header-management-width);
-        flex: 0 1 var(--ada-operational-header-management-width);
+        width: 8.2rem;
+        min-width: 7.8rem;
+        max-width: 8.2rem;
+        flex: 0 1 8.2rem;
+        border-top: 0;
+        border-left: 1px solid var(--ada-operational-header-border);
     }
 
     .ada-operational-header__alarm-status-slot {
-        width: var(--ada-operational-header-status-width);
-        min-width: 8rem;
-        max-width: var(--ada-operational-header-status-width);
-        flex: 0 1 var(--ada-operational-header-status-width);
+        width: 7.4rem;
+        min-width: 7rem;
+        max-width: 7.4rem;
+        flex: 0 1 7.4rem;
+        border-top: 0;
+        border-left: 1px solid var(--ada-operational-header-border);
+    }
+
+    .ada-operational-header__mobile-navigation {
+        display: none;
+    }
+
+    .ada-operational-header__desktop-navigation {
+        display: block;
     }
 }
 
+@media only screen and (min-width: 1366px) {
+    .ada-operational-header {
+        height: 5.1rem;
+        min-height: 5.1rem;
+        padding-inline: .5rem;
+    }
+
+    .ada-operational-header__brand-slot {
+        width: 7.9rem;
+        max-width: 7.9rem;
+        flex-basis: 7.9rem;
+    }
+
+    .ada-operational-header__alarm-management-slot {
+        width: 8.4rem;
+        max-width: 8.4rem;
+        flex-basis: 8.4rem;
+    }
+
+    .ada-operational-header__alarm-status-slot {
+        width: 7.6rem;
+        max-width: 7.6rem;
+        flex-basis: 7.6rem;
+    }
+}
+
+@media only screen and (min-width: 1536px) {
+    .ada-operational-header {
+        height: 5.25rem;
+        min-height: 5.25rem;
+        padding-inline: .55rem;
+    }
+
+    .ada-operational-header__brand-slot {
+        width: 9.4rem;
+        max-width: 9.4rem;
+        flex-basis: 9.4rem;
+    }
+
+    .ada-operational-header__alarm-management-slot {
+        width: 8.7rem;
+        max-width: 8.7rem;
+        flex-basis: 8.7rem;
+    }
+
+    .ada-operational-header__alarm-status-slot {
+        width: 7.9rem;
+        max-width: 7.9rem;
+        flex-basis: 7.9rem;
+    }
+}
+
+@media only screen and (min-width: 1920px) {
+    .ada-operational-header {
+        height: 5.5rem;
+        min-height: 5.5rem;
+        padding-inline: .6rem;
+    }
+
+    .ada-operational-header__brand-slot {
+        width: 10.25rem;
+        max-width: 10.25rem;
+        flex-basis: 10.25rem;
+    }
+
+    .ada-operational-header__alarm-management-slot {
+        width: 9.1rem;
+        max-width: 9.1rem;
+        flex-basis: 9.1rem;
+    }
+
+    .ada-operational-header__alarm-status-slot {
+        width: 8.2rem;
+        max-width: 8.2rem;
+        flex-basis: 8.2rem;
+    }
+}
+
+/* Videowall: escala amplia y navegación visual suprimida. */
+@media only screen and (min-width: 2560px) {
+    .ada-operational-header {
+        height: 6.25rem;
+        min-height: 6.25rem;
+        padding-inline: .75rem;
+    }
+
+    .ada-operational-header__brand-slot {
+        width: 9.2rem;
+        max-width: 9.2rem;
+        flex-basis: 9.2rem;
+    }
+
+    .ada-operational-header__alarm-management-slot {
+        width: 10.2rem;
+        max-width: 10.2rem;
+        flex-basis: 10.2rem;
+    }
+
+    .ada-operational-header__alarm-status-slot {
+        width: 9.2rem;
+        max-width: 9.2rem;
+        flex-basis: 9.2rem;
+    }
+
+    .ada-operational-header__desktop-navigation,
+    .ada-operational-header__mobile-navigation {
+        display: none;
+    }
+}

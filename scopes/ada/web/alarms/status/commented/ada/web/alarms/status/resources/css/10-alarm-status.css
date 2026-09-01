@@ -1,4 +1,4 @@
-/* Este espejo conserva el comportamiento productivo de Alarm Status y documenta el consumo de tokens raíz ADA. */
+/* Espejo pedagógico: misma semántica CSS que producción, con notas de intención. */
 .ada-alarm-status {
     display: flex;
     width: 100%;
@@ -72,11 +72,6 @@
     white-space: nowrap;
 }
 
-@media (min-width: 1920px) {
-    .ada-alarm-status__text {
-        font-size: .68rem;
-    }
-}
 
 .ada-alarm-status {
     --ada-alarm-status-surface: rgba(91, 92, 100, .10);
@@ -214,3 +209,61 @@
     padding: 0 0 0 .42rem;
 }
 
+@media only screen and (min-width: 350px) and (max-width: 1279.98px) {
+    .ada-alarm-status { padding: .35rem .6rem; }
+    .ada-alarm-status__label { font-size: .6rem; }
+    .ada-alarm-status__icon { font-size: .74rem; }
+    .ada-alarm-status__action { height: 1.65rem; grid-template-columns: 1.7rem minmax(0, 1fr); }
+    .ada-alarm-status__count { font-size: .84rem; }
+    .ada-alarm-status__text { font-size: .76rem; }
+}
+
+@media only screen and (min-width: 480px) and (max-width: 1279.98px) {
+    .ada-alarm-status__label { font-size: .64rem; }
+    .ada-alarm-status__action { height: 1.75rem; grid-template-columns: 1.8rem minmax(0, 1fr); }
+    .ada-alarm-status__count { font-size: .9rem; }
+    .ada-alarm-status__text { font-size: .8rem; }
+}
+
+/* Tablet Pelambres mantiene las dos filas legibles dentro del slot compacto. */
+@media only screen and (min-width: 1280px) {
+    .ada-alarm-status { padding: .2rem .38rem; }
+    .ada-alarm-status__label { font-size: .42rem; }
+    .ada-alarm-status__icon { font-size: .56rem; }
+    .ada-alarm-status__action { height: 1.3rem; grid-template-columns: 1.42rem minmax(0, 1fr); }
+    .ada-alarm-status__count { font-size: .62rem; }
+    .ada-alarm-status__text { font-size: .56rem; }
+}
+
+@media only screen and (min-width: 1366px) {
+    .ada-alarm-status__label { font-size: .44rem; }
+    .ada-alarm-status__action { height: 1.35rem; grid-template-columns: 1.46rem minmax(0, 1fr); }
+    .ada-alarm-status__count { font-size: .64rem; }
+    .ada-alarm-status__text { font-size: .58rem; }
+}
+
+@media only screen and (min-width: 1536px) {
+    .ada-alarm-status__label { font-size: .46rem; }
+    .ada-alarm-status__icon { font-size: .6rem; }
+    .ada-alarm-status__action { height: 1.4rem; grid-template-columns: 1.5rem minmax(0, 1fr); }
+    .ada-alarm-status__count { font-size: .68rem; }
+    .ada-alarm-status__text { font-size: .6rem; }
+}
+
+@media only screen and (min-width: 1920px) {
+    .ada-alarm-status__label { font-size: .5rem; }
+    .ada-alarm-status__icon { font-size: .66rem; }
+    .ada-alarm-status__action { height: 1.5rem; grid-template-columns: 1.6rem minmax(0, 1fr); }
+    .ada-alarm-status__count { font-size: .72rem; }
+    .ada-alarm-status__text { font-size: .64rem; }
+}
+
+/* Videowall aumenta filas, icono y tipografía. */
+@media only screen and (min-width: 2560px) {
+    .ada-alarm-status { padding: .28rem .48rem; }
+    .ada-alarm-status__label { font-size: .6rem; }
+    .ada-alarm-status__icon { font-size: .72rem; }
+    .ada-alarm-status__action { height: 1.7rem; grid-template-columns: 1.75rem minmax(0, 1fr); }
+    .ada-alarm-status__count { font-size: .82rem; }
+    .ada-alarm-status__text { font-size: .72rem; }
+}

@@ -25,14 +25,23 @@ atlanticus-data-producers-pi = { workspace = true }
 atlanticus-data-producers-notpii = { workspace = true }
 atlanticus-data-producers-fabrica = { workspace = true }
 atlanticus-data-producers-remanentes = { workspace = true }
+atlanticus-operational-data-pi-process = { workspace = true }
+atlanticus-operational-data-notpii-process = { workspace = true }
+atlanticus-operational-data-dispatch-process = { workspace = true }
+atlanticus-operational-data-blockgrade-process = { workspace = true }
+atlanticus-operational-data-fabrica-process = { workspace = true }
+atlanticus-operational-data-remanentes-process = { workspace = true }
+atlanticus-configuration = { path = "../../backend/configuration", editable = true }
 atlanticus-datasets = { path = "../../backend/datasets", editable = true }
 atlanticus-datasets-parquet = { path = "../../backend/datasets-parquet", editable = true }
 atlanticus-datasets-runtime = { path = "../../backend/datasets-runtime", editable = true }
 atlanticus-job-runtime = { path = "../../backend/runtime", editable = true }
 atlanticus-kernel = { path = "../../backend/kernel", editable = true }
 atlanticus-observability = { path = "../../backend/observability", editable = true }
+atlanticus-observability-azure = { path = "../../backend/observability-azure", editable = true }
 atlanticus-state = { path = "../../backend/state", editable = true }
 atlanticus-http = { path = "../../connectivity/http-client", editable = true }
+atlanticus-key-vault = { path = "../../connectivity/key-vault", editable = true }
 atlanticus-service-bus = { path = "../../connectivity/service-bus", editable = true }
 atlanticus-sql = { path = "../../connectivity/sql", editable = true }
 atlanticus-storage = { path = "../../connectivity/storage", editable = true }
@@ -51,6 +60,12 @@ members = [
     "producers/notpii",
     "producers/fabrica",
     "producers/remanentes",
+    "processes/pi",
+    "processes/notpii",
+    "processes/dispatch",
+    "processes/blockgrade",
+    "processes/fabrica",
+    "processes/remanentes",
 ]
 
 [tool.ruff]

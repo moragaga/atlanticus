@@ -35,7 +35,7 @@ if errorlevel 1 exit /b 1
 if "%CLEAN%"=="1" (
     if exist ".venv" rmdir /s /q ".venv"
     if exist "dist" rmdir /s /q "dist"
-    for %%P in (core planner calendar sources producers\core producers\sql producers\pi producers\notpii producers\fabrica producers\remanentes) do (
+    for %%P in (core planner calendar sources producers\core producers\sql producers\pi producers\notpii producers\fabrica producers\remanentes processes\pi processes\notpii processes\dispatch processes\blockgrade processes\fabrica processes\remanentes) do (
         if exist "%%P\build" rmdir /s /q "%%P\build"
         if exist "%%P\.pytest_cache" rmdir /s /q "%%P\.pytest_cache"
         if exist "%%P\.ruff_cache" rmdir /s /q "%%P\.ruff_cache"
@@ -44,14 +44,17 @@ if "%CLEAN%"=="1" (
 
 echo [bootstrap] Synchronizing locked Atlanticus Operational Data environment
 uv sync --python "%PYTHON_BIN%" --no-python-downloads --locked --all-packages --group dev --no-editable ^
+ --reinstall-package atlanticus-configuration ^
  --reinstall-package atlanticus-kernel ^
  --reinstall-package atlanticus-observability ^
+ --reinstall-package atlanticus-observability-azure ^
  --reinstall-package atlanticus-datasets ^
  --reinstall-package atlanticus-datasets-parquet ^
  --reinstall-package atlanticus-datasets-runtime ^
  --reinstall-package atlanticus-job-runtime ^
  --reinstall-package atlanticus-state ^
  --reinstall-package atlanticus-http ^
+ --reinstall-package atlanticus-key-vault ^
  --reinstall-package atlanticus-service-bus ^
  --reinstall-package atlanticus-sql ^
  --reinstall-package atlanticus-storage ^
@@ -66,7 +69,13 @@ uv sync --python "%PYTHON_BIN%" --no-python-downloads --locked --all-packages --
  --reinstall-package atlanticus-data-producers-pi ^
  --reinstall-package atlanticus-data-producers-notpii ^
  --reinstall-package atlanticus-data-producers-fabrica ^
- --reinstall-package atlanticus-data-producers-remanentes
+ --reinstall-package atlanticus-data-producers-remanentes ^
+ --reinstall-package atlanticus-operational-data-pi-process ^
+ --reinstall-package atlanticus-operational-data-notpii-process ^
+ --reinstall-package atlanticus-operational-data-dispatch-process ^
+ --reinstall-package atlanticus-operational-data-blockgrade-process ^
+ --reinstall-package atlanticus-operational-data-fabrica-process ^
+ --reinstall-package atlanticus-operational-data-remanentes-process
 if errorlevel 1 exit /b 1
 
 uv run --python "%PYTHON_BIN%" --no-python-downloads --no-sync python "%ROOT%\scripts\scopes\operational-data\check.py" %FORWARD_ARGS%

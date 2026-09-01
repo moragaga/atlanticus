@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atlanticus-operational-data-remanentes-process"
+version = "1.0.0"
+description = "Remanentes materialization process composition for Operational Data."
+requires-python = "==3.14.2"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "atlanticus-configuration==1.0.0",
+    "atlanticus-data-producers-remanentes==1.0.0",
+    "atlanticus-job-runtime==1.0.0",
+    "atlanticus-kernel==1.0.0",
+    "atlanticus-key-vault==1.0.0",
+    "atlanticus-observability-azure==1.0.0",
+    "atlanticus-storage==1.0.0",
+]
+
+[dependency-groups]
+dev = ["pytest==9.1.1", "ruff==0.15.22"]
+
+[project.scripts]
+operational-data-remanentes = "atlanticus.operational_data.processes.remanentes.bootstrap:main"
+
+[tool.atlanticus.container]
+command = "operational-data-remanentes"
+system-profile = "base"
+
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["atlanticus.operational_data.processes.remanentes*"]
+namespaces = true
+
+[tool.setuptools.package-data]
+"atlanticus.operational_data.processes.remanentes" = ["py.typed"]
+
+[tool.pytest.ini_options]
+addopts = "-q --import-mode=importlib"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["atlanticus"]
+combine-as-imports = true

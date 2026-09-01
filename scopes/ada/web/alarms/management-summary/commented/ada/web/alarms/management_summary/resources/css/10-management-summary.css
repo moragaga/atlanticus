@@ -1,4 +1,4 @@
-/* Este espejo conserva el comportamiento productivo de Alarm Management Summary y documenta el consumo de tokens raíz ADA. */
+/* Espejo pedagógico: misma semántica CSS que producción, con notas de intención. */
 .ada-alarm-management-summary {
     display: flex;
     width: 100%;
@@ -89,15 +89,6 @@
     background: var(--ada-alarm-management-summary-critical, #A31A1A);
 }
 
-@media (min-width: 1920px) {
-    .ada-alarm-management-summary__label {
-        font-size: .5rem;
-    }
-
-    .ada-alarm-management-summary__value {
-        font-size: .68rem;
-    }
-}
 
 .ada-alarm-management-summary__group-value {
     color: var(--ada-color-text-primary);
@@ -107,3 +98,43 @@
     color: var(--ada-color-text-primary);
 }
 
+@media only screen and (min-width: 350px) and (max-width: 1279.98px) {
+    .ada-alarm-management-summary { gap: .6rem; padding: .55rem .65rem; }
+    .ada-alarm-management-summary__label { font-size: .6rem; }
+    .ada-alarm-management-summary__value { font-size: .78rem; }
+}
+
+@media only screen and (min-width: 480px) and (max-width: 1279.98px) {
+    .ada-alarm-management-summary__label { font-size: .62rem; }
+    .ada-alarm-management-summary__value { font-size: .82rem; }
+}
+
+/* Tablet Pelambres crece sólo lo necesario para conservar densidad. */
+@media only screen and (min-width: 1280px) {
+    .ada-alarm-management-summary { gap: .38rem; padding: .32rem .42rem; }
+    .ada-alarm-management-summary__label { font-size: .4rem; }
+    .ada-alarm-management-summary__value { font-size: .56rem; }
+}
+
+@media only screen and (min-width: 1366px) {
+    .ada-alarm-management-summary__label { font-size: .44rem; }
+    .ada-alarm-management-summary__value { font-size: .6rem; }
+}
+
+@media only screen and (min-width: 1536px) {
+    .ada-alarm-management-summary__label { font-size: .46rem; }
+    .ada-alarm-management-summary__value { font-size: .62rem; }
+}
+
+@media only screen and (min-width: 1920px) {
+    .ada-alarm-management-summary__label { font-size: .5rem; }
+    .ada-alarm-management-summary__value { font-size: .68rem; }
+}
+
+/* Videowall prioriza lectura a distancia. */
+@media only screen and (min-width: 2560px) {
+    .ada-alarm-management-summary { gap: .5rem; padding: .4rem .55rem; }
+    .ada-alarm-management-summary__label { font-size: .6rem; }
+    .ada-alarm-management-summary__value { font-size: .78rem; }
+    .ada-alarm-management-summary__progress { height: .18rem; }
+}

@@ -29,3 +29,17 @@ def test_group_is_neutral_and_percentage_matches_progress_tone() -> None:
     assert 'background: var(--ada-color-surface-emphasis);' in css
     assert '#198754' not in css
     assert '#28A745' not in css
+
+
+def test_management_summary_uses_pelambres_responsive_typography() -> None:
+    css = (PACKAGE_ROOT / 'resources/css/10-management-summary.css').read_text(encoding='utf-8')
+
+    assert '@media only screen and (min-width: 350px) and (max-width: 1279.98px)' in css
+    assert '@media only screen and (min-width: 1280px)' in css
+    assert '@media only screen and (min-width: 2560px)' in css
+
+
+def test_management_summary_visual_calibration_scales_videowall() -> None:
+    css = (PACKAGE_ROOT / 'resources/css/10-management-summary.css').read_text(encoding='utf-8')
+    assert '.ada-alarm-management-summary__label { font-size: .6rem; }' in css
+    assert '.ada-alarm-management-summary__value { font-size: .78rem; }' in css

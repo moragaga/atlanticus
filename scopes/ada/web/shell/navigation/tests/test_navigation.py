@@ -244,3 +244,27 @@ def test_desktop_trigger_is_compact_at_rest_and_expands_only_on_interaction() ->
     assert '.ada-navigation__trigger--desktop:focus-visible {' in css
     assert 'width: var(--ada-navigation-trigger-hover-width);' in css
     assert 'height: 2.45rem;' in css
+
+
+def test_mobile_menu_branding_is_compact_only_at_350() -> None:
+    css = (
+        Path(__file__).parents[1] / 'src/ada/web/shell/navigation/resources/css/10-navigation.css'
+    ).read_text(encoding='utf-8')
+    section = css.split('@media only screen and (min-width: 350px) and (max-width: 479.98px) {', 1)[
+        1
+    ].split('@media only screen and (min-width: 2560px)', 1)[0]
+    assert 'width: 4.25rem;' in section
+    assert 'font-size: .82rem;' in section
+    assert 'font-size: .72rem;' in section
+
+
+def test_videowall_suppresses_all_navigation_surfaces() -> None:
+    css = (
+        Path(__file__).parents[1] / 'src/ada/web/shell/navigation/resources/css/10-navigation.css'
+    ).read_text(encoding='utf-8')
+    section = css.split('@media only screen and (min-width: 2560px) {', 1)[1]
+    assert '.ada-navigation__trigger--desktop,' in section
+    assert '.ada-navigation__trigger--mobile,' in section
+    assert '.ada-navigation__mobile-anchor,' in section
+    assert '#ada-navigation-offcanvas {' in section
+    assert 'display: none !important;' in section
