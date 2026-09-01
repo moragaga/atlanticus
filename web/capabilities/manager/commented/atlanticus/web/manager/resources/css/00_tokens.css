@@ -1,0 +1,58 @@
+/* Tokens visuales recuperados de Atlanticus: tipografías, paleta, estados, radios, sombra y foco. */
+:root {
+    --atlanticus-admin-color-primary: #0D1B2A;
+    --atlanticus-admin-color-primary-hover: #071522;
+    --atlanticus-admin-color-secondary: #26425A;
+    --atlanticus-admin-color-accent: #C9A24B;
+    --atlanticus-admin-color-background: #F5F1E6;
+    --atlanticus-admin-color-surface: #FFFFFF;
+    --atlanticus-admin-color-surface-muted: #FAF8F2;
+    --atlanticus-admin-color-border: #D6DADE;
+    --atlanticus-admin-color-text: #0D1B2A;
+    --atlanticus-admin-color-text-muted: #4D5660;
+    --atlanticus-admin-color-disabled: #D6DADE;
+    --atlanticus-admin-color-danger: #C62828;
+    --atlanticus-admin-focus-ring: 0 0 0 .2rem rgba(201, 162, 75, .3);
+    --atlanticus-admin-font-interface: 'Inter', Helvetica, Arial, sans-serif;
+    --atlanticus-admin-control-height: 2.5rem;
+    --atlanticus-admin-control-radius: .65rem;
+    --atlanticus-admin-panel-radius: 1rem;
+    --atlanticus-admin-shadow: 0 12px 32px rgba(7, 21, 34, .09);
+    --atlanticus-admin-transition: .16s ease;
+    --atlanticus-manager-color-primary: var(--atlanticus-admin-color-accent);
+    --atlanticus-manager-color-primary-soft: var(--atlanticus-admin-color-background);
+    --atlanticus-manager-color-primary-muted: var(--atlanticus-admin-color-border);
+    --atlanticus-manager-color-primary-strong: var(--atlanticus-admin-color-secondary);
+    --atlanticus-manager-color-primary-action: var(--atlanticus-admin-color-primary);
+    --atlanticus-manager-color-primary-dark: var(--atlanticus-admin-color-primary-hover);
+    --atlanticus-manager-color-primary-ink: var(--atlanticus-admin-color-text);
+    --atlanticus-manager-color-focus: rgba(201, 162, 75, .3);
+    --atlanticus-manager-font: var(--atlanticus-admin-font-interface);
+    --atlanticus-manager-font-brand: 'Cinzel', Georgia, serif;
+    --atlanticus-manager-background: var(--atlanticus-admin-color-background);
+    --atlanticus-manager-surface: var(--atlanticus-admin-color-surface);
+    --atlanticus-manager-surface-muted: var(--atlanticus-admin-color-surface-muted);
+    --atlanticus-manager-border: var(--atlanticus-admin-color-border);
+    --atlanticus-manager-text: var(--atlanticus-admin-color-text);
+    --atlanticus-manager-text-muted: var(--atlanticus-admin-color-text-muted);
+    --atlanticus-manager-success: #238636;
+    --atlanticus-manager-success-soft: #EAF7ED;
+    --atlanticus-manager-info: #26425A;
+    --atlanticus-manager-info-soft: #E9EEF2;
+    --atlanticus-manager-warning: #B26A00;
+    --atlanticus-manager-warning-soft: #FFF4DF;
+    --atlanticus-manager-stale: #C65D00;
+    --atlanticus-manager-stale-soft: #FFF0E5;
+    --atlanticus-manager-danger: #C62828;
+    --atlanticus-manager-danger-soft: #FDECEC;
+    --atlanticus-manager-neutral: #7A818C;
+    --atlanticus-manager-neutral-soft: #EEF0F3;
+    --atlanticus-manager-shadow: var(--atlanticus-admin-shadow);
+    --atlanticus-manager-radius: var(--atlanticus-admin-panel-radius);
+    --atlanticus-manager-primary: var(--atlanticus-admin-color-primary);
+}
+:root {
+    --atlanticus-manager-bg: var(--atlanticus-manager-background);
+    --atlanticus-manager-muted: var(--atlanticus-manager-text-muted);
+    --atlanticus-manager-accent: var(--atlanticus-manager-color-primary);
+}
