@@ -11,6 +11,14 @@ ToolConfigurationAuditActorProvider = Callable[[], str]
 class ToolConfigurationSource(Protocol):
     def load(self) -> ToolConfigurationSourceSnapshot | None: ...
 
+    def list_history(
+        self,
+        *,
+        limit: int = 20,
+    ) -> tuple[ToolConfigurationSourceSnapshot, ...]: ...
+
+    def load_revision(self, revision: str) -> ToolConfigurationSourceSnapshot | None: ...
+
 
 class ToolConfigurationPublisher(Protocol):
     def publish(
