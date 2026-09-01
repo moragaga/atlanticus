@@ -105,6 +105,27 @@ CAPABILITIES = {
         'kpis/history',
         ('atlanticus-datasets==1.0.0', 'pyarrow==25.0.0'),
     ),
+    # Registra el proceso que materializa History y confirma su autoridad durable.
+    'kpi-historian-runtime': Capability(
+        'kpi-historian-runtime',
+        'ada-kpi-historian-process',
+        'ada.processes.kpi_historian',
+        'processes/kpi-historian',
+        (
+            'ada-kpis-core==1.0.0',
+            'ada-kpis-history==1.0.0',
+            'ada-kpis-persistence==1.0.0',
+            'atlanticus-configuration==1.0.0',
+            'atlanticus-datasets-parquet==1.0.0',
+            'atlanticus-datasets-runtime==1.0.0',
+            'atlanticus-job-runtime==1.0.0',
+            'atlanticus-key-vault==1.0.0',
+            'atlanticus-kernel==1.0.0',
+            'atlanticus-observability-azure==1.0.0',
+            'atlanticus-state==1.0.0',
+            'pyarrow==25.0.0',
+        ),
+    ),
 }
 
 EXPECTED_MEMBERS = [
@@ -115,11 +136,13 @@ EXPECTED_MEMBERS = [
     'kpis/delivery',
     'processes/kpi-delivery',
     'kpis/history',
+    'processes/kpi-historian',
 ]
 
 EXPECTED_SOURCES = {
     'ada-kpi-runtime-process': {'workspace': True},
     'ada-kpi-delivery-process': {'workspace': True},
+    'ada-kpi-historian-process': {'workspace': True},
     'ada-kpis-core': {'workspace': True},
     'ada-kpis-evaluation': {'workspace': True},
     'ada-kpis-persistence': {'workspace': True},
@@ -280,6 +303,7 @@ def _validate_workspace(repository: Path, scope: Path) -> None:
         _validate_project(repository / relative, distribution)
     _validate_runtime_process_contract(scope)
     _validate_delivery_process_contract(scope)
+    _validate_historian_process_contract(scope)
 
 
 def _validate_runtime_process_contract(scope: Path) -> None:
@@ -320,6 +344,26 @@ def _validate_delivery_process_contract(scope: Path) -> None:
             raise SystemExit(f'KPI Delivery process contract file is missing: {name}')
 
 
+# Verifica el entrypoint y los archivos de despliegue del proceso Historian.
+def _validate_historian_process_contract(scope: Path) -> None:
+    root = scope / 'processes/kpi-historian'
+    document = _read(root / 'pyproject.toml')
+    project = document.get('project')
+    tool = document.get('tool')
+    if not isinstance(project, dict) or not isinstance(tool, dict):
+        raise SystemExit('KPI Historian project metadata is incomplete')
+    expected_script = {'ada-kpi-historian': 'ada.processes.kpi_historian.bootstrap:main'}
+    if project.get('scripts') != expected_script:
+        raise SystemExit('KPI Historian entrypoint is not canonical')
+    atlanticus = tool.get('atlanticus')
+    container = atlanticus.get('container') if isinstance(atlanticus, dict) else None
+    if container != {'command': 'ada-kpi-historian', 'system-profile': 'base'}:
+        raise SystemExit('KPI Historian container contract is not canonical')
+    for name in ('.python-version', '.env.detail', 'config.detail.json', 'secrets.detail.json'):
+        if not (root / name).is_file():
+            raise SystemExit(f'KPI Historian process contract file is missing: {name}')
+
+
 def _validate_ownership(repository: Path, scope: Path) -> None:
     if (repository / 'scopes/ada/kpis').exists():
         raise SystemExit(
@@ -340,9 +384,11 @@ def _validate_ownership(repository: Path, scope: Path) -> None:
             text = path.read_text(encoding='utf-8')
             if LEGACY_PATTERN.search(text.replace('KpiSourceTrace', '')):
                 raise SystemExit(f'Legacy KPI data ownership found in {path}')
-            if capability.key in {'kpi-runtime', 'kpi-delivery-runtime'} and any(
-                token in text for token in PROCESS_FORBIDDEN_IMPORTS
-            ):
+            if capability.key in {
+                'kpi-runtime',
+                'kpi-delivery-runtime',
+                'kpi-historian-runtime',
+            } and any(token in text for token in PROCESS_FORBIDDEN_IMPORTS):
                 raise SystemExit(f'Forbidden KPI Runtime dependency found in {path}')
 
 

@@ -6,6 +6,7 @@ classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "ada-kpi-runtime-process==1.0.0",
     "ada-kpi-delivery-process==1.0.0",
+    "ada-kpi-historian-process==1.0.0",
     "ada-kpis-core==1.0.0",
     "ada-kpis-evaluation==1.0.0",
     "ada-kpis-persistence==1.0.0",
@@ -25,6 +26,7 @@ package = false
 [tool.uv.sources]
 ada-kpi-runtime-process = { workspace = true }
 ada-kpi-delivery-process = { workspace = true }
+ada-kpi-historian-process = { workspace = true }
 ada-kpis-core = { workspace = true }
 ada-kpis-evaluation = { workspace = true }
 ada-kpis-persistence = { workspace = true }
@@ -56,6 +58,7 @@ members = [
     "kpis/delivery",
     "processes/kpi-delivery",
     "kpis/history",
+    "processes/kpi-historian",
 ]
 
 [tool.ruff]
