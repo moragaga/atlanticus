@@ -1,8 +1,13 @@
-# Errores específicos del contrato descriptivo de KPI.
+# Error de contrato o validación de una definición KPI.
 class KpiDefinitionValidationError(ValueError):
     pass
 
 
-# Separa errores del documento proyectado de los errores del source.
+# Error de disponibilidad o concurrencia de la fuente autoritativa.
+class KpiDefinitionSourceError(RuntimeError):
+    pass
+
+
+# Error durante la construcción o actualización de la proyección.
 class KpiDefinitionProjectionError(ValueError):
     pass

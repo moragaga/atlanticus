@@ -1,15 +1,20 @@
+# Define dependencias abstractas para que KPI Definition no conozca adaptadores físicos.
+from collections.abc import Callable
 from typing import Protocol
 
 from ada.configuration.kpi_definition.projection import KpiDefinitionProjection
 from ada.configuration.kpi_definition.source import KpiDefinitionSourceDocument
 
+# El actor se resuelve desde la composition root y no desde identidad global.
+KpiDefinitionAuditActorProvider = Callable[[], str]
 
-# Puerto de lectura del source; SharePoint será un adapter futuro y no una dependencia del dominio.
+
+# Contrato mínimo de lectura de la fuente autoritativa.
 class KpiDefinitionSource(Protocol):
     def load(self) -> KpiDefinitionSourceDocument | None: ...
 
 
-# Puerto de publicación con revisión esperada para permitir concurrencia optimista en adapters reales.
+# Contrato mínimo de publicación con optimistic concurrency.
 class KpiDefinitionPublisher(Protocol):
     def publish(
         self,
@@ -19,7 +24,7 @@ class KpiDefinitionPublisher(Protocol):
     ) -> None: ...
 
 
-# Puerto durable para la proyección; Cosmos se conectará detrás de esta frontera más adelante.
+# Contrato de la proyección activa, independiente de Cosmos u otra tecnología.
 class KpiDefinitionProjectionRepository(Protocol):
     def load(self) -> KpiDefinitionProjection | None: ...
 

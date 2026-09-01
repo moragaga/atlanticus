@@ -1,7 +1,10 @@
+from collections.abc import Callable
 from typing import Protocol
 
 from ada.configuration.kpi_definition.projection import KpiDefinitionProjection
 from ada.configuration.kpi_definition.source import KpiDefinitionSourceDocument
+
+KpiDefinitionAuditActorProvider = Callable[[], str]
 
 
 class KpiDefinitionSource(Protocol):
