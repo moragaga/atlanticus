@@ -1,0 +1,2 @@
+class ComponentStoreValidationError(ValueError):
+    pass
