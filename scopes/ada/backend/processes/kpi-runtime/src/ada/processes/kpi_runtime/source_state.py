@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime
 
 from ada.kpis.core import KpiWatermark
@@ -40,14 +41,24 @@ class PiOperationalWatermarkReader:
         if document is None:
             return None
         value = document.value
-        required = {'producer', 'source_watermark_utc'}
-        if not required.issubset(value):
-            raise KpiRuntimeSourceStateError(
-                'NOT PII producer state is missing the source watermark contract'
-            )
         if value.get('producer') != 'notpii':
             raise KpiRuntimeSourceStateError('NOT PII producer state has an invalid producer')
-        return _watermark(value.get('source_watermark_utc'), source='NOT PII')
+        streams = value.get('streams')
+        if not isinstance(streams, Mapping):
+            raise KpiRuntimeSourceStateError('NOT PII producer state streams must be a mapping')
+        interpolated = streams.get('interpolated')
+        if interpolated is None:
+            return None
+        if not isinstance(interpolated, Mapping):
+            raise KpiRuntimeSourceStateError('NOT PII interpolated stream state must be a mapping')
+        if 'source_watermark_utc' not in interpolated:
+            raise KpiRuntimeSourceStateError(
+                'NOT PII interpolated stream state is missing the source watermark contract'
+            )
+        return _watermark(
+            interpolated.get('source_watermark_utc'),
+            source='NOT PII interpolated',
+        )
 
 
 def _watermark(value: object, *, source: str) -> KpiWatermark | None:

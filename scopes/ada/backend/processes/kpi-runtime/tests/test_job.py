@@ -6,6 +6,9 @@ from ada.kpis.core import KpiCatalog
 from ada.processes.kpi_runtime.errors import KpiRuntimeWatermarkError
 from ada.processes.kpi_runtime.job import KpiRuntimeJob
 from ada.processes.kpi_runtime.models import KpiRuntimeOutcome
+from ada.processes.kpi_runtime.source_state import PiOperationalWatermarkReader
+from atlanticus.operational_data.sources import PiSourceProvider
+from atlanticus.state import AtomicStateStore, StateKey
 from tests.support import RuntimeContextStub, StaticWatermarkReader, runtime_parts, watermark
 
 
@@ -67,6 +70,68 @@ def test_new_source_watermark_evaluates_and_commits(tmp_path) -> None:
     assert context.lease_checks == 1
     assert context.fences == 1
     assert context.execution_counters == {'evaluations_committed': 1}
+
+
+def test_notpii_recorded_advance_does_not_move_kpi_runtime(tmp_path) -> None:
+    store = AtomicStateStore(volume_path=tmp_path, application='notpii-clock')
+    key = StateKey(namespace=('producers',), name='notpii')
+    store.replace(
+        key,
+        {
+            'producer': 'notpii',
+            'revision': 2,
+            'source_watermark_utc': '2026-08-31T20:12:00.000000Z',
+            'last_change_at_utc': '2026-08-31T20:12:01.000000Z',
+            'streams': {
+                'interpolated': {
+                    'revision': 1,
+                    'source_watermark_utc': '2026-08-31T20:10:00.000000Z',
+                    'last_change_at_utc': '2026-08-31T20:10:01.000000Z',
+                },
+                'recorded': {
+                    'revision': 2,
+                    'source_watermark_utc': '2026-08-31T20:12:00.000000Z',
+                    'last_change_at_utc': '2026-08-31T20:12:01.000000Z',
+                },
+            },
+        },
+    )
+    source = PiOperationalWatermarkReader(store=store, provider=PiSourceProvider.NOTPII)
+    job, persistence, reader = _job(tmp_path, source)
+
+    first = job.run_iteration(RuntimeContextStub())
+
+    assert first.reason == 'evaluated'
+    assert persistence.committed_watermark() == watermark(10)
+    assert reader.calls == 1
+
+    store.replace(
+        key,
+        {
+            'producer': 'notpii',
+            'revision': 3,
+            'source_watermark_utc': '2026-08-31T20:13:00.000000Z',
+            'last_change_at_utc': '2026-08-31T20:13:01.000000Z',
+            'streams': {
+                'interpolated': {
+                    'revision': 1,
+                    'source_watermark_utc': '2026-08-31T20:10:00.000000Z',
+                    'last_change_at_utc': '2026-08-31T20:10:01.000000Z',
+                },
+                'recorded': {
+                    'revision': 3,
+                    'source_watermark_utc': '2026-08-31T20:13:00.000000Z',
+                    'last_change_at_utc': '2026-08-31T20:13:01.000000Z',
+                },
+            },
+        },
+    )
+
+    second = job.run_iteration(RuntimeContextStub())
+
+    assert second.reason == 'up_to_date'
+    assert persistence.committed_watermark() == watermark(10)
+    assert reader.calls == 1
 
 
 def test_same_source_watermark_skips_without_loading(tmp_path) -> None:

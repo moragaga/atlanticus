@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-# Espejo pedagógico: conserva el comportamiento productivo y documenta la responsabilidad de este módulo.
+# Espejo pedagógico: conserva exactamente la semántica productiva y explica el contrato temporal.
+from collections.abc import Mapping
 from datetime import UTC, datetime
 
 from ada.kpis.core import KpiWatermark
@@ -19,11 +20,13 @@ class PiOperationalWatermarkReader:
         self._provider = provider
 
     def current(self) -> KpiWatermark | None:
+        # El runtime consume una sola autoridad temporal operacional por proveedor.
         if self._provider is PiSourceProvider.PI_WEB_API:
             return self._read_pi_web_api()
         return self._read_notpii()
 
     def _read_pi_web_api(self) -> KpiWatermark | None:
+        # PI Web API ya publica el último slot interpolado cerrado y materializado.
         document = self._store.read(StateKey(namespace=('sources',), name='pi-web-api'))
         if document is None:
             return None
@@ -37,21 +40,34 @@ class PiOperationalWatermarkReader:
         return _watermark(value.get('source_watermark_utc'), source='PI Web API')
 
     def _read_notpii(self) -> KpiWatermark | None:
+        # NOTPII mantiene un máximo global entre streams, pero ese máximo no es el reloj KPI.
         document = self._store.read(StateKey(namespace=('producers',), name='notpii'))
         if document is None:
             return None
         value = document.value
-        required = {'producer', 'source_watermark_utc'}
-        if not required.issubset(value):
-            raise KpiRuntimeSourceStateError(
-                'NOT PII producer state is missing the source watermark contract'
-            )
         if value.get('producer') != 'notpii':
             raise KpiRuntimeSourceStateError('NOT PII producer state has an invalid producer')
-        return _watermark(value.get('source_watermark_utc'), source='NOT PII')
+        streams = value.get('streams')
+        if not isinstance(streams, Mapping):
+            raise KpiRuntimeSourceStateError('NOT PII producer state streams must be a mapping')
+        # La fuente de verdad temporal es exclusivamente el stream interpolated conciliado.
+        interpolated = streams.get('interpolated')
+        if interpolated is None:
+            return None
+        if not isinstance(interpolated, Mapping):
+            raise KpiRuntimeSourceStateError('NOT PII interpolated stream state must be a mapping')
+        if 'source_watermark_utc' not in interpolated:
+            raise KpiRuntimeSourceStateError(
+                'NOT PII interpolated stream state is missing the source watermark contract'
+            )
+        return _watermark(
+            interpolated.get('source_watermark_utc'),
+            source='NOT PII interpolated',
+        )
 
 
 def _watermark(value: object, *, source: str) -> KpiWatermark | None:
+    # KPI Runtime valida el watermark publicado, pero no vuelve a normalizar la granularidad del productor.
     if value is None:
         return None
     if not isinstance(value, str):
