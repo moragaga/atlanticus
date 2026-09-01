@@ -77,6 +77,24 @@ CAPABILITIES = {
         'kpis/delivery',
         (),
     ),
+    'kpi-delivery-runtime': Capability(
+        'kpi-delivery-runtime',
+        'ada-kpi-delivery-process',
+        'ada.processes.kpi_delivery',
+        'processes/kpi-delivery',
+        (
+            'ada-kpis-core==1.0.0',
+            'ada-kpis-delivery==1.0.0',
+            'ada-kpis-persistence==1.0.0',
+            'atlanticus-configuration==1.0.0',
+            'atlanticus-cosmos==1.0.0',
+            'atlanticus-job-runtime==1.0.0',
+            'atlanticus-key-vault==1.0.0',
+            'atlanticus-kernel==1.0.0',
+            'atlanticus-observability-azure==1.0.0',
+            'atlanticus-state==1.0.0',
+        ),
+    ),
 }
 
 EXPECTED_MEMBERS = [
@@ -85,15 +103,18 @@ EXPECTED_MEMBERS = [
     'kpis/persistence',
     'processes/kpi-runtime',
     'kpis/delivery',
+    'processes/kpi-delivery',
 ]
 
 EXPECTED_SOURCES = {
     'ada-kpi-runtime-process': {'workspace': True},
+    'ada-kpi-delivery-process': {'workspace': True},
     'ada-kpis-core': {'workspace': True},
     'ada-kpis-evaluation': {'workspace': True},
     'ada-kpis-persistence': {'workspace': True},
     'ada-kpis-delivery': {'workspace': True},
     'atlanticus-configuration': {'path': '../../../backend/configuration', 'editable': True},
+    'atlanticus-cosmos': {'path': '../../../connectivity/cosmos', 'editable': True},
     'atlanticus-datasets': {'path': '../../../backend/datasets', 'editable': True},
     'atlanticus-datasets-parquet': {
         'path': '../../../backend/datasets-parquet',
@@ -133,6 +154,7 @@ EXPECTED_SOURCES = {
 
 LOCAL_BASELINES = {
     'atlanticus-configuration': 'backend/configuration',
+    'atlanticus-cosmos': 'connectivity/cosmos',
     'atlanticus-datasets': 'backend/datasets',
     'atlanticus-datasets-parquet': 'backend/datasets-parquet',
     'atlanticus-datasets-runtime': 'backend/datasets-runtime',
@@ -245,6 +267,7 @@ def _validate_workspace(repository: Path, scope: Path) -> None:
     for distribution, relative in LOCAL_BASELINES.items():
         _validate_project(repository / relative, distribution)
     _validate_runtime_process_contract(scope)
+    _validate_delivery_process_contract(scope)
 
 
 def _validate_runtime_process_contract(scope: Path) -> None:
@@ -263,6 +286,25 @@ def _validate_runtime_process_contract(scope: Path) -> None:
     for name in ('.python-version', '.env.detail', 'config.detail.json', 'secrets.detail.json'):
         if not (root / name).is_file():
             raise SystemExit(f'KPI Runtime process contract file is missing: {name}')
+
+
+def _validate_delivery_process_contract(scope: Path) -> None:
+    root = scope / 'processes/kpi-delivery'
+    document = _read(root / 'pyproject.toml')
+    project = document.get('project')
+    tool = document.get('tool')
+    if not isinstance(project, dict) or not isinstance(tool, dict):
+        raise SystemExit('KPI Delivery project metadata is incomplete')
+    expected_script = {'ada-kpi-delivery': 'ada.processes.kpi_delivery.bootstrap:main'}
+    if project.get('scripts') != expected_script:
+        raise SystemExit('KPI Delivery entrypoint is not canonical')
+    atlanticus = tool.get('atlanticus')
+    container = atlanticus.get('container') if isinstance(atlanticus, dict) else None
+    if container != {'command': 'ada-kpi-delivery', 'system-profile': 'base'}:
+        raise SystemExit('KPI Delivery container contract is not canonical')
+    for name in ('.python-version', '.env.detail', 'config.detail.json', 'secrets.detail.json'):
+        if not (root / name).is_file():
+            raise SystemExit(f'KPI Delivery process contract file is missing: {name}')
 
 
 def _validate_ownership(repository: Path, scope: Path) -> None:
@@ -285,7 +327,7 @@ def _validate_ownership(repository: Path, scope: Path) -> None:
             text = path.read_text(encoding='utf-8')
             if LEGACY_PATTERN.search(text.replace('KpiSourceTrace', '')):
                 raise SystemExit(f'Legacy KPI data ownership found in {path}')
-            if capability.key == 'kpi-runtime' and any(
+            if capability.key in {'kpi-runtime', 'kpi-delivery-runtime'} and any(
                 token in text for token in PROCESS_FORBIDDEN_IMPORTS
             ):
                 raise SystemExit(f'Forbidden KPI Runtime dependency found in {path}')

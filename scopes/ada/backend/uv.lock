@@ -10,6 +10,7 @@ resolution-markers = [
 [manifest]
 members = [
     "ada-backend-workspace",
+    "ada-kpi-delivery-process",
     "ada-kpi-runtime-process",
     "ada-kpis-core",
     "ada-kpis-delivery",
@@ -22,6 +23,7 @@ name = "ada-backend-workspace"
 version = "1.0.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "ada-kpi-delivery-process" },
     { name = "ada-kpi-runtime-process" },
     { name = "ada-kpis-core" },
     { name = "ada-kpis-delivery" },
@@ -37,11 +39,55 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "ada-kpi-delivery-process", editable = "processes/kpi-delivery" },
     { name = "ada-kpi-runtime-process", editable = "processes/kpi-runtime" },
     { name = "ada-kpis-core", editable = "kpis/core" },
     { name = "ada-kpis-delivery", editable = "kpis/delivery" },
     { name = "ada-kpis-evaluation", editable = "kpis/evaluation" },
     { name = "ada-kpis-persistence", editable = "kpis/persistence" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-kpi-delivery-process"
+version = "1.0.0"
+source = { editable = "processes/kpi-delivery" }
+dependencies = [
+    { name = "ada-kpis-core" },
+    { name = "ada-kpis-delivery" },
+    { name = "ada-kpis-persistence" },
+    { name = "atlanticus-configuration" },
+    { name = "atlanticus-cosmos" },
+    { name = "atlanticus-job-runtime" },
+    { name = "atlanticus-kernel" },
+    { name = "atlanticus-key-vault" },
+    { name = "atlanticus-observability-azure" },
+    { name = "atlanticus-state" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-kpis-core", editable = "kpis/core" },
+    { name = "ada-kpis-delivery", editable = "kpis/delivery" },
+    { name = "ada-kpis-persistence", editable = "kpis/persistence" },
+    { name = "atlanticus-configuration", editable = "../../../backend/configuration" },
+    { name = "atlanticus-cosmos", editable = "../../../connectivity/cosmos" },
+    { name = "atlanticus-job-runtime", editable = "../../../backend/runtime" },
+    { name = "atlanticus-kernel", editable = "../../../backend/kernel" },
+    { name = "atlanticus-key-vault", editable = "../../../connectivity/key-vault" },
+    { name = "atlanticus-observability-azure", editable = "../../../backend/observability-azure" },
+    { name = "atlanticus-state", editable = "../../../backend/state" },
 ]
 
 [package.metadata.requires-dev]
@@ -212,6 +258,21 @@ dependencies = [
 requires-dist = [
     { name = "atlanticus-kernel", editable = "../../../backend/kernel" },
     { name = "python-dotenv", specifier = "==1.2.2" },
+]
+
+[[package]]
+name = "atlanticus-cosmos"
+version = "1.0.0"
+source = { editable = "../../../connectivity/cosmos" }
+dependencies = [
+    { name = "atlanticus-observability" },
+    { name = "azure-cosmos" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-observability", editable = "../../../backend/observability" },
+    { name = "azure-cosmos", specifier = "==4.16.3" },
 ]
 
 [[package]]
@@ -421,6 +482,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a6/f3/b416179e408990df5db0d516283022dde0f5d0111d98c1a848e41853e81c/azure_core-1.41.0.tar.gz", hash = "sha256:f46ff5dfcd230f25cf1c19e8a34b8dc08a337b2503e268bb600a16c00db8ad5a", size = 381042, upload-time = "2026-05-07T23:30:54.302Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/5b/db/325c6d7312d2200251c52323878281045aaffcb5586612296484e4280eaa/azure_core-1.41.0-py3-none-any.whl", hash = "sha256:522b4011e8180b1a3dcd2024396a4e7fe9ac37fb8597db47163d230b5efe892d", size = 220920, upload-time = "2026-05-07T23:30:56.357Z" },
+]
+
+[[package]]
+name = "azure-cosmos"
+version = "4.16.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "azure-core" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/35/21/59863ec67ff0284e6783fef67e2a03e17c3504a3ce0561d525ffb0caccec/azure_cosmos-4.16.3.tar.gz", hash = "sha256:da0a4d9957de7b3f018b2ebb728b7e0494623d4db58639eb92ccd140eddc12d3", size = 2459773, upload-time = "2026-07-29T22:39:46.757Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/17/f6/bf580f67645dcf4d2b4e9a6f7d5e1e3809bbe0c882519aedad647efcb8db/azure_cosmos-4.16.3-py3-none-any.whl", hash = "sha256:666fa5d40227bc233d0e49d8e6342998603a8ef57780d1986af1b23b6d08e987", size = 501516, upload-time = "2026-07-29T22:39:49.435Z" },
 ]
 
 [[package]]
