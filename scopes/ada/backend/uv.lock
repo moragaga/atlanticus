@@ -13,6 +13,7 @@ members = [
     "ada-kpi-delivery-process",
     "ada-kpi-historian-process",
     "ada-kpi-runtime-process",
+    "ada-kpi-timeseries-delivery-process",
     "ada-kpis-core",
     "ada-kpis-delivery",
     "ada-kpis-evaluation",
@@ -28,6 +29,7 @@ dependencies = [
     { name = "ada-kpi-delivery-process" },
     { name = "ada-kpi-historian-process" },
     { name = "ada-kpi-runtime-process" },
+    { name = "ada-kpi-timeseries-delivery-process" },
     { name = "ada-kpis-core" },
     { name = "ada-kpis-delivery" },
     { name = "ada-kpis-evaluation" },
@@ -46,6 +48,7 @@ requires-dist = [
     { name = "ada-kpi-delivery-process", editable = "processes/kpi-delivery" },
     { name = "ada-kpi-historian-process", editable = "processes/kpi-historian" },
     { name = "ada-kpi-runtime-process", editable = "processes/kpi-runtime" },
+    { name = "ada-kpi-timeseries-delivery-process", editable = "processes/kpi-timeseries-delivery" },
     { name = "ada-kpis-core", editable = "kpis/core" },
     { name = "ada-kpis-delivery", editable = "kpis/delivery" },
     { name = "ada-kpis-evaluation", editable = "kpis/evaluation" },
@@ -191,6 +194,53 @@ requires-dist = [
     { name = "atlanticus-operational-data-core", editable = "../../operational-data/core" },
     { name = "atlanticus-operational-data-planner", editable = "../../operational-data/planner" },
     { name = "atlanticus-operational-data-sources", editable = "../../operational-data/sources" },
+    { name = "atlanticus-state", editable = "../../../backend/state" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-kpi-timeseries-delivery-process"
+version = "1.0.0"
+source = { editable = "processes/kpi-timeseries-delivery" }
+dependencies = [
+    { name = "ada-kpis-core" },
+    { name = "ada-kpis-delivery" },
+    { name = "ada-kpis-history" },
+    { name = "atlanticus-configuration" },
+    { name = "atlanticus-cosmos" },
+    { name = "atlanticus-datasets-parquet" },
+    { name = "atlanticus-datasets-runtime" },
+    { name = "atlanticus-job-runtime" },
+    { name = "atlanticus-kernel" },
+    { name = "atlanticus-key-vault" },
+    { name = "atlanticus-observability-azure" },
+    { name = "atlanticus-state" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-kpis-core", editable = "kpis/core" },
+    { name = "ada-kpis-delivery", editable = "kpis/delivery" },
+    { name = "ada-kpis-history", editable = "kpis/history" },
+    { name = "atlanticus-configuration", editable = "../../../backend/configuration" },
+    { name = "atlanticus-cosmos", editable = "../../../connectivity/cosmos" },
+    { name = "atlanticus-datasets-parquet", editable = "../../../backend/datasets-parquet" },
+    { name = "atlanticus-datasets-runtime", editable = "../../../backend/datasets-runtime" },
+    { name = "atlanticus-job-runtime", editable = "../../../backend/runtime" },
+    { name = "atlanticus-kernel", editable = "../../../backend/kernel" },
+    { name = "atlanticus-key-vault", editable = "../../../connectivity/key-vault" },
+    { name = "atlanticus-observability-azure", editable = "../../../backend/observability-azure" },
     { name = "atlanticus-state", editable = "../../../backend/state" },
 ]
 

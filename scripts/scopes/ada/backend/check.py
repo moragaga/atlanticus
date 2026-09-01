@@ -122,6 +122,26 @@ CAPABILITIES = {
             'pyarrow==25.0.0',
         ),
     ),
+    'kpi-timeseries-delivery-runtime': Capability(
+        'kpi-timeseries-delivery-runtime',
+        'ada-kpi-timeseries-delivery-process',
+        'ada.processes.kpi_timeseries_delivery',
+        'processes/kpi-timeseries-delivery',
+        (
+            'ada-kpis-core==1.0.0',
+            'ada-kpis-delivery==1.0.0',
+            'ada-kpis-history==1.0.0',
+            'atlanticus-configuration==1.0.0',
+            'atlanticus-cosmos==1.0.0',
+            'atlanticus-datasets-parquet==1.0.0',
+            'atlanticus-datasets-runtime==1.0.0',
+            'atlanticus-job-runtime==1.0.0',
+            'atlanticus-key-vault==1.0.0',
+            'atlanticus-kernel==1.0.0',
+            'atlanticus-observability-azure==1.0.0',
+            'atlanticus-state==1.0.0',
+        ),
+    ),
 }
 
 EXPECTED_MEMBERS = [
@@ -133,6 +153,7 @@ EXPECTED_MEMBERS = [
     'processes/kpi-delivery',
     'kpis/history',
     'processes/kpi-historian',
+    'processes/kpi-timeseries-delivery',
 ]
 
 EXPECTED_SOURCES = {
@@ -181,6 +202,7 @@ EXPECTED_SOURCES = {
         'editable': True,
     },
     'atlanticus-state': {'path': '../../../backend/state', 'editable': True},
+    'ada-kpi-timeseries-delivery-process': {'workspace': True},
 }
 
 LOCAL_BASELINES = {
@@ -300,6 +322,7 @@ def _validate_workspace(repository: Path, scope: Path) -> None:
     _validate_runtime_process_contract(scope)
     _validate_delivery_process_contract(scope)
     _validate_historian_process_contract(scope)
+    _validate_timeseries_delivery_process_contract(scope)
 
 
 def _validate_runtime_process_contract(scope: Path) -> None:
@@ -358,6 +381,30 @@ def _validate_historian_process_contract(scope: Path) -> None:
             raise SystemExit(f'KPI Historian process contract file is missing: {name}')
 
 
+def _validate_timeseries_delivery_process_contract(scope: Path) -> None:
+    root = scope / 'processes/kpi-timeseries-delivery'
+    document = _read(root / 'pyproject.toml')
+    project = document.get('project')
+    tool = document.get('tool')
+    if not isinstance(project, dict) or not isinstance(tool, dict):
+        raise SystemExit('KPI Timeseries Delivery project metadata is incomplete')
+    expected_script = {
+        'ada-kpi-timeseries-delivery': 'ada.processes.kpi_timeseries_delivery.bootstrap:main'
+    }
+    if project.get('scripts') != expected_script:
+        raise SystemExit('KPI Timeseries Delivery entrypoint is not canonical')
+    atlanticus = tool.get('atlanticus')
+    container = atlanticus.get('container') if isinstance(atlanticus, dict) else None
+    if container != {
+        'command': 'ada-kpi-timeseries-delivery',
+        'system-profile': 'base',
+    }:
+        raise SystemExit('KPI Timeseries Delivery container contract is not canonical')
+    for name in ('.python-version', '.env.detail', 'config.detail.json', 'secrets.detail.json'):
+        if not (root / name).is_file():
+            raise SystemExit(f'KPI Timeseries Delivery process contract file is missing: {name}')
+
+
 def _validate_ownership(repository: Path, scope: Path) -> None:
     if (repository / 'scopes/ada/kpis').exists():
         raise SystemExit(
@@ -382,6 +429,7 @@ def _validate_ownership(repository: Path, scope: Path) -> None:
                 'kpi-runtime',
                 'kpi-delivery-runtime',
                 'kpi-historian-runtime',
+                'kpi-timeseries-delivery-runtime',
             } and any(token in text for token in PROCESS_FORBIDDEN_IMPORTS):
                 raise SystemExit(f'Forbidden KPI Runtime dependency found in {path}')
 
