@@ -1,5 +1,4 @@
 from __future__ import annotations
-# La composición Web obtiene el entorno desde el contrato tipado de configuración Web.
 
 import importlib.util
 import re
@@ -14,6 +13,7 @@ from atlanticus.web.errors import WebDefinitionError
 from atlanticus.web.health import HealthRegistry, register_health_routes
 from atlanticus.web.index import render_index_string
 from atlanticus.web.models import WebApplicationDefinition, WebApplicationRuntime
+from atlanticus.web.modules import WebModule
 from atlanticus.web.observability import WebObservability, configure_web_observability
 from atlanticus.web.pages import import_page_packages, validate_page_packages
 from atlanticus.web.services import ServiceRegistry
@@ -38,6 +38,7 @@ BASE_ASSET_LAYER = AssetLayer(
 )
 
 
+# Éste es el ensamblador único: una definición produce Flask, Dash y ServiceRegistry.
 def create_web_application(definition: WebApplicationDefinition) -> WebApplicationRuntime:
     _validate_definition(definition)
     environment = WebSettings().environment
@@ -84,9 +85,12 @@ def _compose_web_application(
     services = ServiceRegistry()
     health = HealthRegistry()
 
+    # Primero cada pieza registra sus servicios. Después se validan dependencias declaradas.
+    # El orden de módulos no define la arquitectura.
     for module in definition.modules:
         if module.register_services is not None:
             module.register_services(services)
+    _validate_module_service_requirements(definition.modules, services)
     services.freeze()
 
     assets = publish_asset_layers(
@@ -137,6 +141,7 @@ def _compose_web_application(
     )
 
     dash_settings = definition.dash
+    # La aplicación completa comparte una sola instancia Dash sobre el mismo servidor Flask.
     dash_app = _AtlanticusDash(
         definition.import_name,
         server=server,
@@ -232,6 +237,19 @@ def _collect_page_packages(definition: WebApplicationDefinition) -> tuple[str, .
     return packages
 
 
+# Valida dependencias después de que todas las piezas registraron sus servicios.
+def _validate_module_service_requirements(
+    modules: tuple[WebModule, ...],
+    services: ServiceRegistry,
+) -> None:
+    for module in modules:
+        for service_name in module.requires_services:
+            if not services.contains(service_name):
+                raise WebDefinitionError(
+                    f'Module requires an unregistered service: {module.name}: {service_name}'
+                )
+
+
 def _validate_definition(definition: WebApplicationDefinition) -> None:
     metadata = definition.metadata
     if not definition.import_name.strip():
@@ -253,3 +271,24 @@ def _validate_definition(definition: WebApplicationDefinition) -> None:
         if normalized in module_names:
             raise WebDefinitionError(f'Module already registered: {normalized}')
         module_names.add(normalized)
+        _validate_required_service_names(module)
+
+
+# Mantiene el contrato de dependencias explícito, estable y sin duplicados dentro de cada módulo.
+def _validate_required_service_names(module: WebModule) -> None:
+    seen: set[str] = set()
+    for service_name in module.requires_services:
+        if not isinstance(service_name, str):
+            raise WebDefinitionError(
+                f'Module required service name has an invalid format: {module.name}'
+            )
+        normalized = service_name.strip()
+        if not normalized or normalized != service_name:
+            raise WebDefinitionError(
+                f'Module required service name has an invalid format: {module.name}'
+            )
+        if normalized in seen:
+            raise WebDefinitionError(
+                f'Module required service is duplicated: {module.name}: {normalized}'
+            )
+        seen.add(normalized)

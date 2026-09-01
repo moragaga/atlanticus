@@ -55,6 +55,7 @@ def import_page_packages(packages: tuple[str, ...]) -> tuple[str, ...]:
             seen_modules.add(module_name)
             imported.append(module_name)
 
+    _validate_registered_page_routes(tuple(imported))
     return tuple(imported)
 
 
@@ -75,3 +76,20 @@ def _bind_registered_page_layout(module_name: str, page_module: object) -> None:
         raise WebCompositionError(f'Page module has no layout: {module_name}')
 
     page['layout'] = layout
+
+
+def _validate_registered_page_routes(module_names: tuple[str, ...]) -> None:
+    from dash import page_registry
+
+    routes: dict[str, str] = {}
+    for module_name in module_names:
+        page = page_registry.get(module_name)
+        if page is None:
+            continue
+        route = page.get('path_template') or page.get('path')
+        if not isinstance(route, str) or not route:
+            continue
+        previous_module = routes.get(route)
+        if previous_module is not None and previous_module != module_name:
+            raise WebDefinitionError(f'Page route is duplicated: {route}')
+        routes[route] = module_name

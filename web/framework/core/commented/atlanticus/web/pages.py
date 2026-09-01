@@ -1,4 +1,3 @@
-# Descubre Pages por paquetes Python explícitos; el orden de importación es determinista y se omiten módulos privados.
 from __future__ import annotations
 
 import pkgutil
@@ -10,6 +9,7 @@ from atlanticus.web.errors import WebCompositionError, WebDefinitionError
 _PACKAGE_PATTERN = re.compile(r'^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$')
 
 
+# La composición no admite paquetes de páginas duplicados.
 def validate_page_packages(packages: tuple[str, ...]) -> None:
     seen: set[str] = set()
     for package_name in packages:
@@ -20,7 +20,7 @@ def validate_page_packages(packages: tuple[str, ...]) -> None:
         seen.add(package_name)
 
 
-# La importación recursiva permite que cada módulo mantenga sus Pages dentro de su propio paquete.
+# Importa todas las páginas declaradas y valida el conjunto completo antes de entregar el runtime.
 def import_page_packages(packages: tuple[str, ...]) -> tuple[str, ...]:
     validate_page_packages(packages)
     imported: list[str] = []
@@ -57,6 +57,8 @@ def import_page_packages(packages: tuple[str, ...]) -> tuple[str, ...]:
             seen_modules.add(module_name)
             imported.append(module_name)
 
+    # Dos capabilities no pueden apropiarse silenciosamente de la misma ruta Dash.
+    _validate_registered_page_routes(tuple(imported))
     return tuple(imported)
 
 
@@ -65,7 +67,6 @@ def _is_private_module(module_name: str, package_name: str) -> bool:
     return any(part.startswith('_') for part in relative.split('.'))
 
 
-# Al importar Pages fuera del cargador automático de Dash, completamos el layout registrado igual que hace Pages.
 def _bind_registered_page_layout(module_name: str, page_module: object) -> None:
     from dash import page_registry
 
@@ -78,3 +79,21 @@ def _bind_registered_page_layout(module_name: str, page_module: object) -> None:
         raise WebCompositionError(f'Page module has no layout: {module_name}')
 
     page['layout'] = layout
+
+
+# Rechaza colisiones de rutas entre páginas aportadas por distintas piezas.
+def _validate_registered_page_routes(module_names: tuple[str, ...]) -> None:
+    from dash import page_registry
+
+    routes: dict[str, str] = {}
+    for module_name in module_names:
+        page = page_registry.get(module_name)
+        if page is None:
+            continue
+        route = page.get('path_template') or page.get('path')
+        if not isinstance(route, str) or not route:
+            continue
+        previous_module = routes.get(route)
+        if previous_module is not None and previous_module != module_name:
+            raise WebDefinitionError(f'Page route is duplicated: {route}')
+        routes[route] = module_name

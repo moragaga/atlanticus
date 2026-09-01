@@ -30,3 +30,4 @@ class WebModule:
     register_routes: FlaskRegistrar | None = None
     register_callbacks: CallbackRegistrar | None = None
     index: IndexContribution = field(default_factory=IndexContribution)
+    requires_services: tuple[str, ...] = ()
