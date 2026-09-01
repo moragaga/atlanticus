@@ -8,6 +8,7 @@ from ada.kpis.core import (
     KpiResult,
     KpiStatus,
     KpiValueKind,
+    KpiValueType,
     KpiWatermark,
 )
 from ada.kpis.delivery import KpiDeliveryBinding, KpiDeliveryConfiguration
@@ -117,19 +118,36 @@ def evaluation(
     *,
     status: KpiStatus = KpiStatus.OK,
     value_kind: KpiValueKind = KpiValueKind.VALUE,
-    value=42.5,
+    value='42.5',
+    parsed_value=None,
+    value_type: KpiValueType | None = KpiValueType.FLOAT,
     error: str | None = None,
     watermark_value: KpiWatermark | None = None,
 ) -> KpiEvaluation:
     resolved_watermark = watermark() if watermark_value is None else watermark_value
+    if value_kind is KpiValueKind.JSON:
+        value_type = None
+        parsed_value = None
+    elif status is KpiStatus.OK:
+        if not isinstance(value, str):
+            value = str(value)
+        if parsed_value is None:
+            parsed_value = value.replace('.', ',')
     if status is KpiStatus.OK:
-        result = KpiResult(status=status, value_kind=value_kind, value=value)
+        result = KpiResult(
+            status=status,
+            value_kind=value_kind,
+            value=value,
+            parsed_value=parsed_value,
+            value_type=value_type,
+        )
     elif status is KpiStatus.MISSING:
-        result = KpiResult(status=status, value_kind=value_kind)
+        result = KpiResult(status=status, value_kind=value_kind, value_type=value_type)
     else:
         result = KpiResult(
             status=status,
             value_kind=value_kind,
+            value_type=value_type,
             error='TestError' if error is None else error,
         )
     return KpiEvaluation(

@@ -1,6 +1,6 @@
-# Fachada pública del dominio KPI Core, incluyendo el contrato Over recuperado.
+# API pública del dominio KPI; expone tipos escalares y contratos sin incorporar dependencias de runtime.
 from ada.kpis.core.catalog import KpiCatalog
-from ada.kpis.core.enums import KpiArea, KpiMode, KpiStatus, KpiValueKind
+from ada.kpis.core.enums import KpiArea, KpiMode, KpiStatus, KpiValueKind, KpiValueType
 from ada.kpis.core.results import KpiEvaluation, KpiResult, KpiSourceTrace
 from ada.kpis.core.rules import KpiResolver, KpiSpec, OverKpiResolver, OverKpiSpec
 from ada.kpis.core.values import KpiJsonValue, KpiNativeValue, KpiScalar, normalize_kpi_value
@@ -22,6 +22,7 @@ __all__ = [
     'KpiSpec',
     'KpiStatus',
     'KpiValueKind',
+    'KpiValueType',
     'KpiWatermark',
     'OverKpiResolver',
     'OverKpiSpec',

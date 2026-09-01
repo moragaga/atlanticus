@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
+from types import MappingProxyType
 from typing import Any
+
+_VALUE_TYPES = frozenset({'text', 'integer', 'float', 'boolean'})
 
 
 class KpiDeliveryStatus(StrEnum):
@@ -87,17 +92,45 @@ class KpiLatestSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
+class KpiTimeseriesHistory:
+    value_type: str
+    values: Mapping[datetime, str]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.value_type, str) or self.value_type not in _VALUE_TYPES:
+            raise ValueError('timeseries history value_type is invalid')
+        if not isinstance(self.values, Mapping):
+            raise TypeError('timeseries history values must be a mapping')
+        normalized: dict[datetime, str] = {}
+        for timestamp, value in self.values.items():
+            if not isinstance(timestamp, datetime):
+                raise TypeError('timeseries history timestamps must be datetime values')
+            if not isinstance(value, str):
+                raise TypeError('timeseries history values must contain canonical strings')
+            normalized[timestamp] = value
+        object.__setattr__(self, 'values', MappingProxyType(normalized))
+
+
+@dataclass(frozen=True, slots=True)
 class KpiTimeseriesSeries:
     hours: int
     start_utc: str
     end_utc: str
+    value_type: str | None
     values: tuple[Any, ...]
+
+    def __post_init__(self) -> None:
+        if self.value_type is not None and self.value_type not in _VALUE_TYPES:
+            raise ValueError('timeseries series value_type is invalid')
+        if self.value_type is None and any(value is not None for value in self.values):
+            raise ValueError('timeseries series with values requires value_type')
 
     def to_payload(self) -> dict[str, Any]:
         return {
             'hours': self.hours,
             'start_utc': self.start_utc,
             'end_utc': self.end_utc,
+            'value_type': self.value_type,
             'values': list(self.values),
         }
 

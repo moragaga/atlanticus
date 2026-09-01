@@ -1,11 +1,5 @@
-# Espejo pedagógico: mantiene los contratos KPI y añade comentarios en español sin cambiar el AST productivo.
+# Enumeraciones canónicas KPI; value_kind define la forma y value_type define el tipo escalar declarado.
 from enum import StrEnum
-
-
-class KpiArea(StrEnum):
-    GENERAL = 'general'
-    MINA = 'mina'
-    PLANTA = 'planta'
 
 
 class KpiMode(StrEnum):
@@ -14,7 +8,10 @@ class KpiMode(StrEnum):
     SUM = 'sum'
     MAX = 'max'
     STATUS = 'status'
+    SUM_LATESTS_NUMBERS = 'sum_latests_numbers'
+    MAX_LATESTS_NUMBERS = 'max_latests_numbers'
     CUSTOM = 'custom'
+    CONSTANT = 'constant'
 
 
 class KpiStatus(StrEnum):
@@ -26,3 +23,16 @@ class KpiStatus(StrEnum):
 class KpiValueKind(StrEnum):
     VALUE = 'value'
     JSON = 'json'
+
+
+class KpiValueType(StrEnum):
+    TEXT = 'text'
+    INTEGER = 'integer'
+    FLOAT = 'float'
+    BOOLEAN = 'boolean'
+
+
+class KpiArea(StrEnum):
+    GENERAL = 'general'
+    MINA = 'mina'
+    PLANTA = 'planta'

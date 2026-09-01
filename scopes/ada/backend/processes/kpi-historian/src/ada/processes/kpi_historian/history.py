@@ -6,7 +6,7 @@ from typing import Protocol
 
 import pyarrow as pa
 
-from ada.kpis.core import KpiEvaluation, KpiStatus, KpiWatermark
+from ada.kpis.core import KpiEvaluation, KpiStatus, KpiValueKind, KpiWatermark
 from ada.kpis.history import (
     HISTORY_KEY_COLUMNS,
     HISTORY_ORDER_COLUMNS,
@@ -173,13 +173,19 @@ class KpiHistorianMaterializer:
 
 
 def _history_record(evaluation: KpiEvaluation) -> dict[str, object]:
+    value = evaluation.value
+    parsed_value = evaluation.parsed_value
+    if evaluation.value_kind is KpiValueKind.JSON:
+        value = encode_history_value(value)
+        parsed_value = None
     return {
         'timestamp_utc': evaluation.watermark.timestamp_utc,
         'key': evaluation.key,
         'status': evaluation.status.value,
         'value_kind': evaluation.value_kind.value,
-        'value': encode_history_value(evaluation.value),
-        'parsed_value': encode_history_value(evaluation.parsed_value),
+        'value_type': None if evaluation.value_type is None else evaluation.value_type.value,
+        'value': value,
+        'parsed_value': parsed_value,
     }
 
 

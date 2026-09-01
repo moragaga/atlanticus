@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from ada.kpis.history import (
-    decode_history_value,
     error_history_definition,
     error_history_target,
     history_definition,
@@ -17,7 +16,7 @@ def test_materialization_is_idempotent_on_real_dataset_runtime(tmp_path) -> None
     runtime = DatasetRuntime(store=ParquetDatasetStore(root=tmp_path / 'datasets'))
     materializer = KpiHistorianMaterializer(runtime=runtime)
     current = watermark()
-    current_batch = batch(evaluation('produccion_total', watermark_value=current, value=42.5))
+    current_batch = batch(evaluation('produccion_total', watermark_value=current, value='42.5'))
 
     first = materializer.materialize(batches=(current_batch,))
     second = materializer.materialize(batches=(current_batch,))
@@ -29,7 +28,10 @@ def test_materialization_is_idempotent_on_real_dataset_runtime(tmp_path) -> None
     assert second.history_publications == 1
     assert len(rows) == 1
     assert rows[0]['key'] == 'produccion_total'
-    assert decode_history_value(rows[0]['value']) == 42.5
+    assert rows[0]['value_kind'] == 'value'
+    assert rows[0]['value_type'] == 'float'
+    assert rows[0]['value'] == '42.5'
+    assert rows[0]['parsed_value'] == '42,5'
 
 
 def test_error_history_uses_shared_error_contract(tmp_path) -> None:

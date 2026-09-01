@@ -5,6 +5,7 @@ from ada.kpis.delivery import (
     KpiDeliveryConfiguration,
     KpiDeliveryStatus,
     KpiLatestValue,
+    KpiTimeseriesHistory,
     project_kpi_latest,
     project_kpi_timeseries,
 )
@@ -33,19 +34,25 @@ def test_configuration_drives_latest_and_series_independently() -> None:
     end = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
     latest = project_kpi_latest(
         configuration=configuration,
-        values={'production': KpiLatestValue(KpiDeliveryStatus.OK, 'value', 66)},
+        values={'production': KpiLatestValue(KpiDeliveryStatus.OK, 'value', '66')},
         watermark_utc=end,
         published_at_utc=end,
     )
     series = project_kpi_timeseries(
         configuration=configuration,
-        histories={'production': {end: 66, end - timedelta(minutes=2): 65}},
+        histories={
+            'production': KpiTimeseriesHistory(
+                value_type='integer',
+                values={end: '66', end - timedelta(minutes=2): '65'},
+            )
+        },
         historian_revision='hist-9',
         end_utc=end,
         published_at_utc=end,
     )
     assert set(latest.destinations) == {'global_indicators', 'milling'}
     assert set(series.destinations) == {'global_indicators', 'milling'}
+    assert series.series['production'].value_type == 'integer'
     assert 'disabled' not in latest.destinations['milling']
     assert 'disabled' not in series.destinations['milling']
     assert (

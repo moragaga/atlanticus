@@ -30,18 +30,13 @@ def _job(tmp_path, source, *, catalog=None):
 def test_source_watermark_missing_is_empty_without_nullable_facts(tmp_path) -> None:
     job, persistence, reader = _job(tmp_path, StaticWatermarkReader(None))
     context = RuntimeContextStub()
-
     result = job.run_iteration(context)
-
     assert result.outcome is KpiRuntimeOutcome.EMPTY
     assert result.reason == 'source_watermark_missing'
     assert persistence.committed_watermark() is None
     assert reader.calls == 0
     assert context.work is False
-    assert context.iteration_facts == {
-        'outcome': 'empty',
-        'reason': 'source_watermark_missing',
-    }
+    assert context.iteration_facts == {'outcome': 'empty', 'reason': 'source_watermark_missing'}
     assert context.execution_facts == {}
 
 
@@ -49,9 +44,7 @@ def test_empty_catalog_does_not_advance_watermark_or_publish_missing_commit(tmp_
     source = StaticWatermarkReader(watermark(10))
     job, persistence, reader = _job(tmp_path, source, catalog=KpiCatalog(()))
     context = RuntimeContextStub()
-
     result = job.run_iteration(context)
-
     assert result.reason == 'no_kpis_configured'
     assert persistence.committed_watermark() is None
     assert reader.calls == 0
@@ -61,15 +54,11 @@ def test_empty_catalog_does_not_advance_watermark_or_publish_missing_commit(tmp_
     assert context.execution_facts == {'pi_observed_watermark_utc': watermark(10).to_text()}
 
 
-def test_new_source_watermark_evaluates_and_commits_without_nullable_before_fact(
-    tmp_path,
-) -> None:
+def test_new_source_watermark_evaluates_and_commits_without_nullable_before_fact(tmp_path) -> None:
     source = StaticWatermarkReader(watermark(10))
     job, persistence, reader = _job(tmp_path, source)
     context = RuntimeContextStub()
-
     result = job.run_iteration(context)
-
     assert result.outcome is KpiRuntimeOutcome.COMPLETED
     assert result.reason == 'evaluated'
     assert result.committed_before is None
@@ -112,13 +101,10 @@ def test_notpii_recorded_advance_does_not_move_kpi_runtime(tmp_path) -> None:
     )
     source = PiOperationalWatermarkReader(store=store, provider=PiSourceProvider.NOTPII)
     job, persistence, reader = _job(tmp_path, source)
-
     first = job.run_iteration(RuntimeContextStub())
-
     assert first.reason == 'evaluated'
     assert persistence.committed_watermark() == watermark(10)
     assert reader.calls == 1
-
     store.replace(
         key,
         {
@@ -140,9 +126,7 @@ def test_notpii_recorded_advance_does_not_move_kpi_runtime(tmp_path) -> None:
             },
         },
     )
-
     second = job.run_iteration(RuntimeContextStub())
-
     assert second.reason == 'up_to_date'
     assert persistence.committed_watermark() == watermark(10)
     assert reader.calls == 1
@@ -153,9 +137,7 @@ def test_same_source_watermark_skips_without_loading(tmp_path) -> None:
     job, persistence, reader = _job(tmp_path, source)
     job.run_iteration(RuntimeContextStub())
     reader.calls = 0
-
     result = job.run_iteration(RuntimeContextStub())
-
     assert result.reason == 'up_to_date'
     assert persistence.committed_watermark() == watermark(10)
     assert reader.calls == 0
@@ -166,10 +148,8 @@ def test_source_watermark_behind_committed_fails_closed(tmp_path) -> None:
     job, persistence, _reader = _job(tmp_path, source)
     job.run_iteration(RuntimeContextStub())
     source.value = watermark(8)
-
     with pytest.raises(KpiRuntimeWatermarkError, match='must not be older'):
         job.run_iteration(RuntimeContextStub())
-
     assert persistence.committed_watermark() == watermark(10)
 
 
@@ -180,7 +160,7 @@ def test_resolver_error_is_committed_as_kpi_error(tmp_path) -> None:
     def explode(_context):
         raise RuntimeError('boom')
 
-    from ada.kpis.core import KpiCatalog, KpiMode, KpiSpec
+    from ada.kpis.core import KpiCatalog, KpiMode, KpiSpec, KpiValueType
 
     failing = KpiCatalog(
         (
@@ -190,6 +170,7 @@ def test_resolver_error_is_committed_as_kpi_error(tmp_path) -> None:
                 mode=KpiMode.CUSTOM,
                 source_requirements=spec.requirements,
                 custom_resolver=explode,
+                value_type=KpiValueType.FLOAT,
             ),
         )
     )
@@ -203,10 +184,9 @@ def test_resolver_error_is_committed_as_kpi_error(tmp_path) -> None:
         persistence=persistence,
         source_watermarks=StaticWatermarkReader(watermark(10)),
     )
-
     result = job.run_iteration(RuntimeContextStub())
     batch = persistence.read_committed_after()[0]
-
     assert result.reason == 'evaluated'
     assert batch.evaluations[0].status.value == 'error'
+    assert batch.evaluations[0].value_type is KpiValueType.FLOAT
     assert batch.evaluations[0].error == 'RuntimeError'

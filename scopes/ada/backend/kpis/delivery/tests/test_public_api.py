@@ -11,6 +11,7 @@ def test_public_api_is_explicit() -> None:
         'KpiLatestManifest',
         'KpiLatestSnapshot',
         'KpiLatestValue',
+        'KpiTimeseriesHistory',
         'KpiTimeseriesManifest',
         'KpiTimeseriesSeries',
         'KpiTimeseriesSnapshot',

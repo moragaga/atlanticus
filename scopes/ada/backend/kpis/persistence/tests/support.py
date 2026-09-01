@@ -1,6 +1,13 @@
 from datetime import UTC, datetime
 
-from ada.kpis.core import KpiEvaluation, KpiResult, KpiStatus, KpiValueKind, KpiWatermark
+from ada.kpis.core import (
+    KpiEvaluation,
+    KpiResult,
+    KpiStatus,
+    KpiValueKind,
+    KpiValueType,
+    KpiWatermark,
+)
 from ada.kpis.persistence import KpiEvaluationBatch
 
 
@@ -10,6 +17,7 @@ def watermark(minute: int) -> KpiWatermark:
 
 def batch(minute: int, value: float = 1.0) -> KpiEvaluationBatch:
     mark = watermark(minute)
+    neutral = str(value)
     return KpiEvaluationBatch(
         watermark=mark,
         evaluations=(
@@ -18,7 +26,13 @@ def batch(minute: int, value: float = 1.0) -> KpiEvaluationBatch:
                 area='general',
                 watermark=mark,
                 evaluated_at_utc=mark.timestamp_utc,
-                result=KpiResult(KpiStatus.OK, KpiValueKind.VALUE, value, value),
+                result=KpiResult(
+                    KpiStatus.OK,
+                    KpiValueKind.VALUE,
+                    value=neutral,
+                    parsed_value=neutral.replace('.', ','),
+                    value_type=KpiValueType.FLOAT,
+                ),
             ),
         ),
     )

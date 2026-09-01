@@ -1,12 +1,11 @@
-# Adapta evaluaciones persistidas al contrato mínimo de Delivery.
+# Adaptador Latest; VALUE publica parsed_value y JSON publica value sin duplicar transformaciones.
 from __future__ import annotations
 
-from ada.kpis.core import KpiStatus
+from ada.kpis.core import KpiStatus, KpiValueKind
 from ada.kpis.delivery import KpiDeliveryStatus, KpiLatestValue
 from ada.kpis.persistence import KpiEvaluationBatch
 
 
-# Reduce cada evaluación a status, value_kind y value.
 def delivery_values_from_batch(batch: KpiEvaluationBatch) -> dict[str, KpiLatestValue]:
     if not isinstance(batch, KpiEvaluationBatch):
         raise TypeError('batch must be KpiEvaluationBatch')
@@ -21,10 +20,15 @@ def delivery_values_from_batch(batch: KpiEvaluationBatch) -> dict[str, KpiLatest
                 value=None,
             )
         else:
+            value = (
+                evaluation.parsed_value
+                if evaluation.value_kind is KpiValueKind.VALUE
+                else evaluation.value
+            )
             projected = KpiLatestValue(
                 status=KpiDeliveryStatus.OK,
                 value_kind=evaluation.value_kind.value,
-                value=evaluation.value,
+                value=value,
             )
         values[evaluation.key] = projected
     return values

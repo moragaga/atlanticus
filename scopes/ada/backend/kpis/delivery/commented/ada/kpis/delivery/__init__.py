@@ -1,6 +1,4 @@
-# API pública del dominio KPI Delivery.
-# Este módulo sólo reexporta contratos y funciones puras; no compone runtime ni infraestructura.
-
+# API pública de Delivery; expone el contrato tipado de entrada histórica para series de tiempo.
 from ada.kpis.delivery.configuration import KpiDeliveryBinding, KpiDeliveryConfiguration
 from ada.kpis.delivery.errors import KpiDeliveryValidationError
 from ada.kpis.delivery.latest import project_kpi_latest
@@ -9,6 +7,7 @@ from ada.kpis.delivery.models import (
     KpiLatestManifest,
     KpiLatestSnapshot,
     KpiLatestValue,
+    KpiTimeseriesHistory,
     KpiTimeseriesManifest,
     KpiTimeseriesSeries,
     KpiTimeseriesSnapshot,
@@ -29,6 +28,7 @@ __all__ = [
     'KpiLatestManifest',
     'KpiLatestSnapshot',
     'KpiLatestValue',
+    'KpiTimeseriesHistory',
     'KpiTimeseriesManifest',
     'KpiTimeseriesSeries',
     'KpiTimeseriesSnapshot',

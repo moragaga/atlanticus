@@ -1,11 +1,11 @@
-# Espejo pedagógico: mantiene los contratos KPI y añade comentarios en español sin cambiar el AST productivo.
+# Contratos de resultado KPI; VALUE transporta textos tipados y JSON conserva una única representación estructurada.
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Self
 
-from ada.kpis.core.enums import KpiStatus, KpiValueKind
+from ada.kpis.core.enums import KpiStatus, KpiValueKind, KpiValueType
 from ada.kpis.core.values import KpiNativeValue, normalize_kpi_value
 from ada.kpis.core.watermark import KpiWatermark
 from atlanticus.operational_data.core import DataSource
@@ -26,14 +26,33 @@ class KpiResult:
     value: KpiNativeValue = None
     parsed_value: KpiNativeValue = None
     error: str | None = None
+    value_type: KpiValueType | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.status, KpiStatus):
             raise TypeError('KPI result status must be KpiStatus')
         if not isinstance(self.value_kind, KpiValueKind):
             raise TypeError('KPI result value_kind must be KpiValueKind')
-        value = normalize_kpi_value(self.value)
-        parsed = normalize_kpi_value(self.parsed_value)
+        if self.value_type is not None and not isinstance(self.value_type, KpiValueType):
+            raise TypeError('KPI result value_type must be KpiValueType or None')
+        if self.value_kind is KpiValueKind.VALUE:
+            if self.value_type is None:
+                raise ValueError('VALUE KPI result requires value_type')
+            value = self.value
+            parsed = self.parsed_value
+            if value is not None and not isinstance(value, str):
+                raise TypeError('VALUE KPI result value must be str or None')
+            if parsed is not None and not isinstance(parsed, str):
+                raise TypeError('VALUE KPI result parsed_value must be str or None')
+        else:
+            if self.value_type is not None:
+                raise ValueError('JSON KPI result must not declare value_type')
+            value = normalize_kpi_value(self.value)
+            parsed = normalize_kpi_value(self.parsed_value)
+            if parsed is not None:
+                raise ValueError('JSON KPI result must not expose parsed_value')
+            if value is not None and not isinstance(value, list | dict):
+                raise TypeError('JSON KPI result value must be a list, dict or None')
         if self.status is KpiStatus.ERROR:
             if value is not None or parsed is not None:
                 raise ValueError('error KPI result must not expose value or parsed_value')
@@ -45,6 +64,8 @@ class KpiResult:
         else:
             if value is None or self.error is not None:
                 raise ValueError('ok KPI result requires a value and no error')
+            if self.value_kind is KpiValueKind.VALUE and parsed is None:
+                raise ValueError('ok VALUE KPI result requires parsed_value')
         object.__setattr__(self, 'value', value)
         object.__setattr__(self, 'parsed_value', parsed)
 
@@ -52,6 +73,7 @@ class KpiResult:
         return {
             'status': self.status.value,
             'value_kind': self.value_kind.value,
+            'value_type': None if self.value_type is None else self.value_type.value,
             'value': self.value,
             'parsed_value': self.parsed_value,
             'error': self.error,
@@ -61,12 +83,14 @@ class KpiResult:
     def from_payload(cls, payload: dict[str, Any]) -> Self:
         if not isinstance(payload, dict):
             raise TypeError('KPI result payload must be a dict')
-        expected = {'status', 'value_kind', 'value', 'parsed_value', 'error'}
+        expected = {'status', 'value_kind', 'value_type', 'value', 'parsed_value', 'error'}
         if set(payload) != expected:
             raise ValueError('KPI result payload contains unexpected or missing fields')
+        value_type = payload['value_type']
         return cls(
             status=KpiStatus(payload['status']),
             value_kind=KpiValueKind(payload['value_kind']),
+            value_type=None if value_type is None else KpiValueType(value_type),
             value=payload['value'],
             parsed_value=payload['parsed_value'],
             error=payload['error'],
@@ -139,6 +163,10 @@ class KpiEvaluation:
     @property
     def value_kind(self) -> KpiValueKind:
         return self.result.value_kind
+
+    @property
+    def value_type(self) -> KpiValueType | None:
+        return self.result.value_type
 
     @property
     def value(self) -> KpiNativeValue:

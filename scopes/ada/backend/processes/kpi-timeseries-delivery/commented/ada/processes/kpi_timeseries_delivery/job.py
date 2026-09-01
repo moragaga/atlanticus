@@ -1,4 +1,4 @@
-# Espejo comentado de la implementación productiva.
+# Job de Timeseries Delivery; transporta historias tipadas desde Historian hacia la proyección pura.
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -8,13 +8,12 @@ from typing import Protocol
 from ada.kpis.core import KpiWatermark
 from ada.kpis.delivery import (
     KpiDeliveryConfiguration,
+    KpiTimeseriesHistory,
     align_timeseries_end,
     project_kpi_timeseries,
 )
 from ada.kpis.history import KpiHistorianAuthority
-from ada.processes.kpi_timeseries_delivery.errors import (
-    KpiTimeseriesDeliveryRepositoryError,
-)
+from ada.processes.kpi_timeseries_delivery.errors import KpiTimeseriesDeliveryRepositoryError
 from ada.processes.kpi_timeseries_delivery.models import (
     KpiTimeseriesCheckpoint,
     KpiTimeseriesDeliveryIterationResult,
@@ -36,7 +35,7 @@ class _HistoryReader(Protocol):
         keys: tuple[str, ...],
         start_utc: datetime,
         end_utc: datetime,
-    ) -> dict[str, dict[datetime, object]]: ...
+    ) -> dict[str, KpiTimeseriesHistory]: ...
 
 
 class _CheckpointStore(Protocol):
@@ -99,16 +98,10 @@ class KpiTimeseriesDeliveryJob:
                 ),
             )
 
-        # El Historian puede avanzar con una granularidad más fina que la serie publicada.
         historian_watermark = KpiWatermark(authority.watermark_utc)
-        # Timeseries define su propia grilla canónica de 120 segundos en el dominio Delivery.
         aligned_end = align_timeseries_end(historian_watermark.timestamp_utc)
-        # El checkpoint representa el último bucket de Timeseries ya publicado, no cada avance bruto.
         timeseries_watermark = KpiWatermark(aligned_end)
-        _validate_authority(
-            checkpoint=checkpoint,
-            timeseries_watermark=timeseries_watermark,
-        )
+        _validate_authority(checkpoint=checkpoint, timeseries_watermark=timeseries_watermark)
         if _is_current(
             checkpoint=checkpoint,
             timeseries_watermark=timeseries_watermark,
@@ -127,12 +120,9 @@ class KpiTimeseriesDeliveryJob:
         series_bindings = tuple(
             binding for binding in self._configuration.bindings if binding.series_enabled
         )
-        max_hours = max(
-            (binding.series_hours or 0 for binding in series_bindings),
-            default=0,
-        )
+        max_hours = max((binding.series_hours or 0 for binding in series_bindings), default=0)
         keys = tuple(binding.key for binding in series_bindings)
-        histories: dict[str, dict[datetime, object]] = {}
+        histories: dict[str, KpiTimeseriesHistory] = {}
         if max_hours > 0:
             histories = self._history.read_histories(
                 keys=keys,
@@ -154,7 +144,6 @@ class KpiTimeseriesDeliveryJob:
         context.raise_if_cancelled()
         context.assert_lease_current()
 
-        # El checkpoint sólo avanza después de publicar y conserva exactamente el bucket entregado.
         new_checkpoint = KpiTimeseriesCheckpoint(
             watermark=timeseries_watermark,
             configuration_revision=self._configuration.revision,
@@ -194,7 +183,6 @@ def _validate_authority(
     checkpoint: KpiTimeseriesCheckpoint | None,
     timeseries_watermark: KpiWatermark,
 ) -> None:
-    # La comparación ocurre dentro del mismo eje temporal que persiste el checkpoint.
     if checkpoint is not None and timeseries_watermark < checkpoint.watermark:
         raise KpiTimeseriesDeliveryRepositoryError(
             'KPI historian authority must not regress behind timeseries delivery checkpoint'

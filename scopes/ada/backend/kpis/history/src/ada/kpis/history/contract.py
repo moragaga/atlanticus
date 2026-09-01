@@ -12,7 +12,7 @@ from atlanticus.datasets.models import (
     MaterializationDefinition,
 )
 
-HISTORY_SCHEMA_VERSION = 1
+HISTORY_SCHEMA_VERSION = 2
 HISTORY_MATERIALIZATION = 'daily'
 HISTORY_PARTITION_DIMENSIONS = ('year', 'month', 'day')
 HISTORY_KEY_COLUMNS = ('timestamp_utc', 'key')
@@ -46,6 +46,7 @@ _HISTORY_SCHEMA = pa.schema(
         pa.field('key', pa.string(), nullable=False),
         pa.field('status', pa.string(), nullable=False),
         pa.field('value_kind', pa.string(), nullable=False),
+        pa.field('value_type', pa.string(), nullable=True),
         pa.field('value', pa.string(), nullable=True),
         pa.field('parsed_value', pa.string(), nullable=True),
     )

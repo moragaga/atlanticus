@@ -7,13 +7,12 @@ from typing import Protocol
 from ada.kpis.core import KpiWatermark
 from ada.kpis.delivery import (
     KpiDeliveryConfiguration,
+    KpiTimeseriesHistory,
     align_timeseries_end,
     project_kpi_timeseries,
 )
 from ada.kpis.history import KpiHistorianAuthority
-from ada.processes.kpi_timeseries_delivery.errors import (
-    KpiTimeseriesDeliveryRepositoryError,
-)
+from ada.processes.kpi_timeseries_delivery.errors import KpiTimeseriesDeliveryRepositoryError
 from ada.processes.kpi_timeseries_delivery.models import (
     KpiTimeseriesCheckpoint,
     KpiTimeseriesDeliveryIterationResult,
@@ -35,7 +34,7 @@ class _HistoryReader(Protocol):
         keys: tuple[str, ...],
         start_utc: datetime,
         end_utc: datetime,
-    ) -> dict[str, dict[datetime, object]]: ...
+    ) -> dict[str, KpiTimeseriesHistory]: ...
 
 
 class _CheckpointStore(Protocol):
@@ -101,10 +100,7 @@ class KpiTimeseriesDeliveryJob:
         historian_watermark = KpiWatermark(authority.watermark_utc)
         aligned_end = align_timeseries_end(historian_watermark.timestamp_utc)
         timeseries_watermark = KpiWatermark(aligned_end)
-        _validate_authority(
-            checkpoint=checkpoint,
-            timeseries_watermark=timeseries_watermark,
-        )
+        _validate_authority(checkpoint=checkpoint, timeseries_watermark=timeseries_watermark)
         if _is_current(
             checkpoint=checkpoint,
             timeseries_watermark=timeseries_watermark,
@@ -123,12 +119,9 @@ class KpiTimeseriesDeliveryJob:
         series_bindings = tuple(
             binding for binding in self._configuration.bindings if binding.series_enabled
         )
-        max_hours = max(
-            (binding.series_hours or 0 for binding in series_bindings),
-            default=0,
-        )
+        max_hours = max((binding.series_hours or 0 for binding in series_bindings), default=0)
         keys = tuple(binding.key for binding in series_bindings)
-        histories: dict[str, dict[datetime, object]] = {}
+        histories: dict[str, KpiTimeseriesHistory] = {}
         if max_hours > 0:
             histories = self._history.read_histories(
                 keys=keys,

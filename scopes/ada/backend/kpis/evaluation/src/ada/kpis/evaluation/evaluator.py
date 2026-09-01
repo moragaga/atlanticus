@@ -11,16 +11,14 @@ from ada.kpis.core import (
     KpiSpec,
     KpiStatus,
     KpiValueKind,
+    KpiValueType,
     KpiWatermark,
     OverKpiSpec,
     normalize_kpi_value,
 )
 from ada.kpis.evaluation.dependencies import KpiDependencies
-from ada.kpis.evaluation.errors import (
-    KpiDependencyError,
-    KpiEvaluationContractError,
-)
-from ada.kpis.evaluation.values import missing_value, numeric_value
+from ada.kpis.evaluation.errors import KpiDependencyError, KpiEvaluationContractError
+from ada.kpis.evaluation.values import format_value, missing_value, numeric_value, parse_value
 from atlanticus.operational_data.core import DataRuntimeContext, DataSource
 
 
@@ -46,7 +44,8 @@ def evaluate_kpi(
     except Exception as error:
         result = KpiResult(
             status=KpiStatus.ERROR,
-            value_kind=_expected_kind(spec),
+            value_kind=spec.value_kind,
+            value_type=spec.value_type,
             error=type(error).__name__,
         )
     return KpiEvaluation(
@@ -71,21 +70,20 @@ def evaluate_over_kpi(
         raise TypeError('spec must be OverKpiSpec')
     if not isinstance(watermark, KpiWatermark):
         raise TypeError('watermark must be KpiWatermark')
-    resolved = _over_dependencies(
-        spec=spec,
-        dependencies=dependencies,
-        watermark=watermark,
-    )
+    resolved = _over_dependencies(spec=spec, dependencies=dependencies, watermark=watermark)
     evaluated_at = datetime.now(UTC) if evaluated_at_utc is None else evaluated_at_utc
     traces = _dependency_source_traces(resolved)
     if any(evaluation.status is KpiStatus.ERROR for evaluation in resolved.values()):
         result = KpiResult(
             status=KpiStatus.ERROR,
             value_kind=spec.value_kind,
+            value_type=spec.value_type,
             error=KpiDependencyError.__name__,
         )
     else:
-        values = KpiDependencies({key: resolved[key].value for key in spec.dependencies})
+        values = KpiDependencies(
+            {key: _dependency_value(resolved[key]) for key in spec.dependencies}
+        )
         try:
             value = spec.resolver(values)
             result = _over_result(spec, value)
@@ -93,6 +91,7 @@ def evaluate_over_kpi(
             result = KpiResult(
                 status=KpiStatus.ERROR,
                 value_kind=spec.value_kind,
+                value_type=spec.value_type,
                 error=type(error).__name__,
             )
     return KpiEvaluation(
@@ -115,16 +114,27 @@ def _source_traces(
 
 
 def _resolve_value(spec: KpiSpec, context: DataRuntimeContext) -> object:
+    if spec.mode is KpiMode.CONSTANT:
+        return spec.constant_value
     if spec.mode is KpiMode.CUSTOM:
         if spec.custom_resolver is None:
             raise RuntimeError('custom KPI resolver is missing')
         return spec.custom_resolver(context)
     requirement = spec.requirements[0]
     frame = context.get(requirement.source, requirement.partition)
-    if spec.mode in {KpiMode.LATEST, KpiMode.STATUS}:
+    if spec.mode in {KpiMode.LATEST, KpiMode.LATEST_NUMBER, KpiMode.STATUS}:
         return frame.last_value(spec.columns[0].name)
-    if spec.mode is KpiMode.LATEST_NUMBER:
-        return frame.last_value_number(spec.columns[0].name)
+    if spec.mode in {KpiMode.SUM_LATESTS_NUMBERS, KpiMode.MAX_LATESTS_NUMBERS}:
+        values = []
+        for column in spec.columns:
+            value = numeric_value(frame.last_value(column.name))
+            if value is not None:
+                values.append(value)
+        if not values:
+            return None
+        if spec.mode is KpiMode.SUM_LATESTS_NUMBERS:
+            return sum(values)
+        return max(values)
     values = []
     for column in spec.columns:
         if column.name not in frame.dataframe.columns:
@@ -144,44 +154,76 @@ def _resolve_value(spec: KpiSpec, context: DataRuntimeContext) -> object:
 
 def _result(spec: KpiSpec, value: object) -> KpiResult:
     if missing_value(value):
-        return KpiResult(KpiStatus.MISSING, _expected_kind(spec))
-    normalized = normalize_kpi_value(value)
-    if spec.mode in {KpiMode.LATEST_NUMBER, KpiMode.SUM, KpiMode.MAX}:
-        numeric = numeric_value(normalized)
-        if numeric is None:
-            return KpiResult(KpiStatus.MISSING, KpiValueKind.VALUE)
-        if spec.decimals is not None:
-            numeric = round(numeric, spec.decimals)
-        normalized = numeric
+        return KpiResult(
+            status=KpiStatus.MISSING,
+            value_kind=spec.value_kind,
+            value_type=spec.value_type,
+        )
+    if spec.value_kind is KpiValueKind.JSON:
+        normalized = normalize_kpi_value(value)
+        if not isinstance(normalized, list | dict):
+            raise TypeError('JSON KPI resolver must return a JSON container')
+        return KpiResult(
+            status=KpiStatus.OK,
+            value_kind=KpiValueKind.JSON,
+            value=normalized,
+        )
+    value_type = _required_value_type(spec.value_type)
+    neutral, parsed = format_value(
+        value,
+        value_type=value_type,
+        decimals=spec.decimals,
+        is_truncated=spec.is_truncated,
+    )
     return KpiResult(
         status=KpiStatus.OK,
-        value_kind=_value_kind(normalized),
-        value=normalized,
-        parsed_value=normalized,
+        value_kind=KpiValueKind.VALUE,
+        value_type=value_type,
+        value=neutral,
+        parsed_value=parsed,
     )
 
 
 def _over_result(spec: OverKpiSpec, value: object) -> KpiResult:
     if missing_value(value):
-        return KpiResult(KpiStatus.MISSING, spec.value_kind)
-    normalized = normalize_kpi_value(value)
+        return KpiResult(
+            status=KpiStatus.MISSING,
+            value_kind=spec.value_kind,
+            value_type=spec.value_type,
+        )
     if spec.value_kind is KpiValueKind.JSON:
+        normalized = normalize_kpi_value(value)
         if not isinstance(normalized, list | dict):
             raise TypeError('JSON Over KPI resolver must return a JSON container')
-    else:
-        if isinstance(normalized, list | dict):
-            raise TypeError('VALUE Over KPI resolver must return a scalar value')
-        if spec.decimals is not None:
-            numeric = numeric_value(normalized)
-            if numeric is None:
-                raise TypeError('Over KPI decimals require a numeric value')
-            normalized = round(numeric, spec.decimals)
+        return KpiResult(
+            status=KpiStatus.OK,
+            value_kind=KpiValueKind.JSON,
+            value=normalized,
+        )
+    value_type = _required_value_type(spec.value_type)
+    neutral, parsed = format_value(
+        value,
+        value_type=value_type,
+        decimals=spec.decimals,
+        is_truncated=spec.is_truncated,
+    )
     return KpiResult(
         status=KpiStatus.OK,
-        value_kind=spec.value_kind,
-        value=normalized,
-        parsed_value=normalized,
+        value_kind=KpiValueKind.VALUE,
+        value_type=value_type,
+        value=neutral,
+        parsed_value=parsed,
     )
+
+
+def _dependency_value(evaluation: KpiEvaluation):
+    if evaluation.status is KpiStatus.MISSING:
+        return None
+    if evaluation.value_kind is KpiValueKind.JSON:
+        return evaluation.value
+    if evaluation.value is None or evaluation.value_type is None:
+        raise KpiEvaluationContractError('VALUE KPI dependency is missing scalar metadata')
+    return parse_value(evaluation.value, evaluation.value_type)
 
 
 def _over_dependencies(
@@ -228,9 +270,7 @@ def _dependency_source_traces(
     return tuple(traces.values())
 
 
-def _value_kind(value: object) -> KpiValueKind:
-    return KpiValueKind.JSON if isinstance(value, list | dict) else KpiValueKind.VALUE
-
-
-def _expected_kind(spec: KpiSpec) -> KpiValueKind:
-    return KpiValueKind.JSON if spec.mode is KpiMode.CUSTOM else KpiValueKind.VALUE
+def _required_value_type(value: KpiValueType | None) -> KpiValueType:
+    if value is None:
+        raise KpiEvaluationContractError('VALUE KPI requires a scalar value_type')
+    return value
