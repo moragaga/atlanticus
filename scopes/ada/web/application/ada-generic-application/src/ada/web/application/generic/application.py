@@ -20,7 +20,6 @@ from ada.web.application.generic.composition import (
     AdaApplicationComposition,
     create_local_operational_composition,
 )
-from ada.web.application.generic.layout import build_application_layout
 from ada.web.content_state.core import SourceFreshnessCondition
 from ada.web.content_state.dependency_resolver import (
     ContentStateDependency,
@@ -124,7 +123,7 @@ def create_application_definition(
         ),
         publications_root=_APPLICATION_ROOT / '.runtime' / 'publications',
         layout=partial(
-            build_application_layout,
+            resolved_composition.layout,
             operational_brand=operational_brand,
             navigation_view=_resolve_navigation_view(
                 navigation_view,

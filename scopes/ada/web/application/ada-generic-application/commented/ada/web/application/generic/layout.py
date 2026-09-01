@@ -1,5 +1,8 @@
-# Espejo comentado: composición visual operacional separada del ensamblaje.
+# Espejo comentado: layouts concretos seleccionados por la composición ADA.
 from __future__ import annotations
+
+from collections.abc import Callable
+from functools import partial
 
 from dash import html, page_container
 
@@ -31,8 +34,17 @@ from ada.web.ui.time_status import (
 from atlanticus.web.navigation.api import resolve_navigation_from_services
 from atlanticus.web.services import ServiceRegistry
 
+AdaApplicationLayoutFactory = Callable[..., object]
 
-def build_application_layout(
+
+def create_ada_operational_layout(*, navigation_enabled: bool) -> AdaApplicationLayoutFactory:
+    return partial(
+        build_operational_application_layout,
+        navigation_enabled=navigation_enabled,
+    )
+
+
+def build_operational_application_layout(
     services: ServiceRegistry,
     *,
     operational_brand: OperationalBrandState,
@@ -47,8 +59,17 @@ def build_application_layout(
     tool_key: str | None,
     time_status_summary: TimeStatusSummaryState | None,
     time_status_detail: TimeStatusDetailState | None,
+    navigation_enabled: bool,
 ):
-    menu = resolve_navigation_from_services(services)
+    navigation_offcanvas = None
+    desktop_navigation_trigger = None
+    mobile_navigation_trigger = None
+    if navigation_enabled:
+        menu = resolve_navigation_from_services(services)
+        desktop_navigation_trigger = build_ada_navigation_desktop_trigger()
+        mobile_navigation_trigger = build_ada_navigation_mobile_trigger()
+        navigation_offcanvas = build_ada_navigation_offcanvas(menu, view=navigation_view)
+
     global_indicators_component = _build_global_indicators_component(
         collection=global_indicators,
         content_state=global_indicators_content_state,
@@ -70,18 +91,33 @@ def build_application_layout(
         alarm_management=alarm_management_component,
         alarm_status=alarm_status_component,
         time_status=time_status_component,
-        desktop_navigation_trigger=build_ada_navigation_desktop_trigger(),
-        mobile_navigation_trigger=build_ada_navigation_mobile_trigger(),
+        desktop_navigation_trigger=desktop_navigation_trigger,
+        mobile_navigation_trigger=mobile_navigation_trigger,
+    )
+    children = [header]
+    if navigation_offcanvas is not None:
+        children.append(navigation_offcanvas)
+    children.append(
+        html.Main(
+            page_container,
+            id='ada-application-content',
+        )
     )
     return html.Div(
-        [
-            header,
-            build_ada_navigation_offcanvas(menu, view=navigation_view),
-            html.Main(
-                page_container,
-                id='ada-application-content',
-            ),
-        ],
+        children,
+        id='ada-generic-application',
+    )
+
+
+def build_body_application_layout(
+    _services: ServiceRegistry,
+    **_state: object,
+):
+    return html.Div(
+        html.Main(
+            page_container,
+            id='ada-application-content',
+        ),
         id='ada-generic-application',
     )
 

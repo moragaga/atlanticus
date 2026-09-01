@@ -5,6 +5,10 @@ from dataclasses import dataclass
 
 from ada.web.alarms.management_summary import create_ada_alarm_management_summary_module
 from ada.web.alarms.status import create_ada_alarm_status_module
+from ada.web.application.generic.layout import (
+    AdaApplicationLayoutFactory,
+    create_ada_operational_layout,
+)
 from ada.web.application.generic.session import create_ada_session_module
 from ada.web.application.generic.wake_lock import create_ada_wake_lock_module
 from ada.web.shell.header import create_ada_operational_header_module
@@ -36,7 +40,61 @@ _SUBJECT_SEPARATOR = re.compile(r'[-._]+')
 @dataclass(frozen=True, slots=True)
 class AdaApplicationComposition:
     modules: tuple[WebModule, ...]
+    layout: AdaApplicationLayoutFactory
     page_packages: tuple[str, ...] = _DEFAULT_PAGE_PACKAGES
+
+
+def create_ada_shared_ui_modules(
+    *,
+    include_content_state: bool = False,
+    include_time_status: bool = False,
+) -> tuple[WebModule, ...]:
+    return (
+        create_ada_ui_module(),
+        create_ada_display_status_module(),
+        create_ada_global_indicator_module(),
+        *(() if not include_content_state else (create_ada_content_state_module(),)),
+        *(() if not include_time_status else (create_ada_time_status_module(),)),
+    )
+
+
+def create_ada_alarm_surface_modules() -> tuple[WebModule, ...]:
+    return (
+        create_ada_alarm_management_summary_module(),
+        create_ada_alarm_status_module(),
+    )
+
+
+def create_ada_branding_modules() -> tuple[WebModule, ...]:
+    return (create_ada_branding_module(),)
+
+
+def create_local_identity_modules() -> tuple[WebModule, ...]:
+    return (create_identity_module(LocalIdentityProvider()),)
+
+
+def create_identity_navigation_modules() -> tuple[WebModule, ...]:
+    return (
+        create_navigation_module(
+            _default_navigation_definition(),
+            principal_provider=NavigationPrincipalProvider(_resolve_bootstrap_navigation_principal),
+        ),
+    )
+
+
+def create_ada_operational_shell_modules(*, include_navigation: bool) -> tuple[WebModule, ...]:
+    return (
+        *(() if not include_navigation else (create_ada_navigation_presentation_module(),)),
+        create_ada_operational_header_module(),
+    )
+
+
+def create_ada_runtime_experience_modules() -> tuple[WebModule, ...]:
+    return (
+        create_ada_session_module(),
+        create_ada_wake_lock_module(),
+        create_ada_page_readiness_module(),
+    )
 
 
 def create_local_operational_composition(
@@ -44,7 +102,25 @@ def create_local_operational_composition(
     include_content_state: bool = False,
     include_time_status: bool = False,
 ) -> AdaApplicationComposition:
-    navigation = NavigationDefinition(
+    return AdaApplicationComposition(
+        modules=(
+            *create_ada_shared_ui_modules(
+                include_content_state=include_content_state,
+                include_time_status=include_time_status,
+            ),
+            *create_ada_alarm_surface_modules(),
+            *create_ada_branding_modules(),
+            *create_local_identity_modules(),
+            *create_identity_navigation_modules(),
+            *create_ada_operational_shell_modules(include_navigation=True),
+            *create_ada_runtime_experience_modules(),
+        ),
+        layout=create_ada_operational_layout(navigation_enabled=True),
+    )
+
+
+def _default_navigation_definition() -> NavigationDefinition:
+    return NavigationDefinition(
         links=(
             NavigationLinkDefinition(
                 key='home',
@@ -55,30 +131,6 @@ def create_local_operational_composition(
             ),
         ),
         home_route_key='home',
-    )
-    return AdaApplicationComposition(
-        modules=(
-            create_ada_ui_module(),
-            create_ada_display_status_module(),
-            create_ada_global_indicator_module(),
-            *(() if not include_content_state else (create_ada_content_state_module(),)),
-            *(() if not include_time_status else (create_ada_time_status_module(),)),
-            create_ada_alarm_management_summary_module(),
-            create_ada_alarm_status_module(),
-            create_ada_branding_module(),
-            create_identity_module(LocalIdentityProvider()),
-            create_navigation_module(
-                navigation,
-                principal_provider=NavigationPrincipalProvider(
-                    _resolve_bootstrap_navigation_principal
-                ),
-            ),
-            create_ada_navigation_presentation_module(),
-            create_ada_operational_header_module(),
-            create_ada_session_module(),
-            create_ada_wake_lock_module(),
-            create_ada_page_readiness_module(),
-        )
     )
 
 
