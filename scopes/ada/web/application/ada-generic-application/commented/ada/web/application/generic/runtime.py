@@ -1,3 +1,4 @@
+# Espejo comentado: materializa una definición sobre el runtime Atlanticus.
 from __future__ import annotations
 
 from ada.configuration.tool_sources import (
@@ -7,6 +8,7 @@ from ada.configuration.tool_sources import (
 from ada.web.alarms.management_summary import AlarmManagementSummaryState
 from ada.web.alarms.status import AlarmStatusState
 from ada.web.application.generic.application import create_application_definition
+from ada.web.application.generic.composition import AdaApplicationComposition
 from ada.web.content_state.dependency_resolver import ContentStateDependency
 from ada.web.shell.navigation import AdaNavigationView
 from ada.web.time_status.store_adapter import TimeStatusStoreSnapshot
@@ -17,10 +19,9 @@ from atlanticus.web.application import create_web_application
 from atlanticus.web.models import WebApplicationRuntime
 
 
-# El runtime conserva la misma API de composición.
-# La construcción final se delega a la definición de aplicación.
 def create_application_runtime(
     *,
+    composition: AdaApplicationComposition | None = None,
     tool_display_name: str | None = None,
     navigation_view: AdaNavigationView | None = None,
     global_indicators: GlobalIndicatorCollection | None = None,
@@ -38,6 +39,7 @@ def create_application_runtime(
 ) -> WebApplicationRuntime:
     return create_web_application(
         create_application_definition(
+            composition=composition,
             tool_display_name=tool_display_name,
             navigation_view=navigation_view,
             global_indicators=global_indicators,

@@ -1,7 +1,7 @@
+# Espejo comentado: resuelve estado y consume una composición de capabilities.
 from __future__ import annotations
 
 import logging
-import re
 from dataclasses import replace
 from functools import partial
 from importlib.metadata import version
@@ -15,24 +15,19 @@ from ada.configuration.tool_sources import (
     ToolSourceOperationalParticipationValidationError,
     validate_operational_participation_against_consumption,
 )
-from ada.web.alarms.management_summary import (
-    AlarmManagementSummaryState,
-    create_ada_alarm_management_summary_module,
+from ada.web.alarms.management_summary import AlarmManagementSummaryState
+from ada.web.alarms.status import AlarmStatusState
+from ada.web.application.generic.composition import (
+    AdaApplicationComposition,
+    create_local_operational_composition,
 )
-from ada.web.alarms.status import (
-    AlarmStatusState,
-    create_ada_alarm_status_module,
-)
-from ada.web.application.generic.composition import build_application_layout
-from ada.web.application.generic.session import create_ada_session_module
-from ada.web.application.generic.wake_lock import create_ada_wake_lock_module
+from ada.web.application.generic.layout import build_application_layout
 from ada.web.content_state.core import SourceFreshnessCondition
 from ada.web.content_state.dependency_resolver import (
     ContentStateDependency,
     ContentStateDependencyGraph,
 )
-from ada.web.shell.header import create_ada_operational_header_module
-from ada.web.shell.navigation import AdaNavigationView, create_ada_navigation_presentation_module
+from ada.web.shell.navigation import AdaNavigationView
 from ada.web.time_status.store_adapter import (
     TimeStatusStoreSnapshot,
     TimeStatusTimestampQuality,
@@ -41,48 +36,21 @@ from ada.web.ui.branding import (
     DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC,
     DEFAULT_PELAMBRES_BRAND_LOGO_SRC,
     OperationalBrandState,
-    create_ada_branding_module,
 )
-from ada.web.ui.content_state import (
-    ContentState,
-    ContentStatePresentationMode,
-    create_ada_content_state_module,
-)
-from ada.web.ui.core import create_ada_ui_module
-from ada.web.ui.display_status import create_ada_display_status_module
-from ada.web.ui.global_indicator import (
-    GlobalIndicatorCollection,
-    create_ada_global_indicator_module,
-)
-from ada.web.ui.page_readiness import create_ada_page_readiness_module
+from ada.web.ui.content_state import ContentState, ContentStatePresentationMode
+from ada.web.ui.global_indicator import GlobalIndicatorCollection
 from ada.web.ui.time_status import (
     TimeStatusDetailState,
     TimeStatusFreshnessPolicy,
     TimeStatusSourceCondition,
     TimeStatusSummaryState,
-    create_ada_time_status_module,
     resolve_time_status_source_state,
 )
-from atlanticus.web.identity.access import AccessRuntime
-from atlanticus.web.identity.local import LocalIdentityProvider
-from atlanticus.web.identity.module import create_identity_module
 from atlanticus.web.models import ApplicationMetadata, WebApplicationDefinition
-from atlanticus.web.navigation.api import (
-    NavigationDefinition,
-    NavigationLinkDefinition,
-    NavigationPrincipal,
-    NavigationPrincipalProvider,
-    NavigationUser,
-    create_navigation_module,
-)
 
-# La aplicación compone capacidades ADA conocidas.
-# Tool Configuration describe decisiones funcionales, no toda la implementación.
-# El override de presentación se informa por logs y nunca se deduce del ambiente.
 _LOGGER = logging.getLogger(__name__)
 _APPLICATION_ROOT = Path(__file__).resolve().parents[5]
 _APPLICATION_DISTRIBUTION = 'ada-generic-application'
-_SUBJECT_SEPARATOR = re.compile(r'[-._]+')
 _SUPPORTED_CONTENT_STATE_COMPONENT_KEYS = frozenset({'global_indicators'})
 _SUPPORTED_ADA_CONTROL_SOURCE_KEYS = frozenset({'pi', 'dispatch'})
 _TIME_STATUS_SOURCE_LABELS = {'pi': 'PI', 'dispatch': 'Dispatch'}
@@ -94,9 +62,9 @@ _TIME_STATUS_FRESHNESS = {
 }
 
 
-# Esta frontera recibe contratos funcionales y materializa el estado que consumirá la UI.
 def create_application_definition(
     *,
+    composition: AdaApplicationComposition | None = None,
     tool_display_name: str | None = None,
     navigation_view: AdaNavigationView | None = None,
     global_indicators: GlobalIndicatorCollection | None = None,
@@ -116,18 +84,6 @@ def create_application_definition(
     if content_state_presentation_mode is ContentStatePresentationMode.AUTHORING:
         _LOGGER.info('Content State presentation override is active: authoring')
     application_version = version(_APPLICATION_DISTRIBUTION)
-    navigation = NavigationDefinition(
-        links=(
-            NavigationLinkDefinition(
-                key='home',
-                label='Inicio',
-                href='/',
-                order=0,
-                icon='bi bi-house',
-            ),
-        ),
-        home_route_key='home',
-    )
     operational_brand = OperationalBrandState(context_name=tool_display_name)
     resolved_global_indicators = global_indicators or GlobalIndicatorCollection(())
     dependency_graph = ContentStateDependencyGraph(content_state_dependencies)
@@ -145,6 +101,10 @@ def create_application_definition(
     time_status_summary = _resolve_time_status_summary(
         snapshot=time_status_snapshot,
         participation=source_operational_participation,
+    )
+    resolved_composition = composition or create_local_operational_composition(
+        include_content_state=bool(len(resolved_global_indicators)),
+        include_time_status=time_status_summary is not None,
     )
     tool_key = source_consumption.tool_key if source_consumption is not None else None
     source_conditions = _resolve_source_freshness(time_status_summary)
@@ -182,35 +142,11 @@ def create_application_definition(
             time_status_summary=time_status_summary,
             time_status_detail=time_status_detail,
         ),
-        modules=(
-            create_ada_ui_module(),
-            create_ada_display_status_module(),
-            create_ada_global_indicator_module(),
-            *(() if not len(resolved_global_indicators) else (create_ada_content_state_module(),)),
-            *(() if time_status_summary is None else (create_ada_time_status_module(),)),
-            create_ada_alarm_management_summary_module(),
-            create_ada_alarm_status_module(),
-            create_ada_branding_module(),
-            create_identity_module(LocalIdentityProvider()),
-            create_navigation_module(
-                navigation,
-                principal_provider=NavigationPrincipalProvider(
-                    _resolve_bootstrap_navigation_principal
-                ),
-            ),
-            create_ada_navigation_presentation_module(),
-            create_ada_operational_header_module(),
-            create_ada_session_module(),
-            create_ada_wake_lock_module(),
-            create_ada_page_readiness_module(),
-        ),
-        page_packages=('ada.web.application.generic.pages',),
+        modules=resolved_composition.modules,
+        page_packages=resolved_composition.page_packages,
     )
 
 
-# Primero validamos pertenencia DATA-003 y luego participación DATA-004.
-# Así cada error queda asociado a su contrato responsable.
-# La frontera pública exige un modo explícito y tipado incluso si todavía no hay wrappers.
 def _validate_content_state_presentation_mode(
     presentation_mode: ContentStatePresentationMode,
 ) -> None:
@@ -281,7 +217,6 @@ def _validate_source_configuration(
     )
 
 
-# Los componentes solo pueden referenciar fuentes que la Tool declaró como consumidas.
 def _validate_runtime_source_membership(
     *,
     source_consumption: ToolSourceConsumption,
@@ -302,7 +237,6 @@ def _validate_runtime_source_membership(
             )
 
 
-# La aplicación operacional ADA usa PI como control principal y Dispatch como control opcional.
 def _validate_ada_operational_participation(
     *,
     source_consumption: ToolSourceConsumption,
@@ -332,8 +266,6 @@ def _validate_ada_operational_participation(
         )
 
 
-# El detalle admite únicamente observaciones adicionales.
-# CONTROL ya participa automáticamente en OBSERVATION.
 def _validate_observation_detail(
     *,
     detail: TimeStatusDetailState | None,
@@ -350,7 +282,6 @@ def _validate_observation_detail(
             )
 
 
-# Solo una fuente CONTROL puede degradar un componente mediante Content State.
 def _validate_control_dependencies(
     *,
     graph: ContentStateDependencyGraph,
@@ -365,8 +296,6 @@ def _validate_control_dependencies(
                 )
 
 
-# Time Status se construye desde el snapshot y los thresholds de DATA-004.
-# Ya no existe una segunda política pública para los mismos segundos.
 def _resolve_time_status_summary(
     *,
     snapshot: TimeStatusStoreSnapshot | None,
@@ -395,8 +324,6 @@ def _resolve_time_status_summary(
     )
 
 
-# La política genérica pre-degrading/degrading se adapta al contrato interno
-# warning/stale de Time Status sin crear otra fuente de verdad.
 def _resolve_time_status_control_source(
     *,
     snapshot: TimeStatusStoreSnapshot,
@@ -459,40 +386,3 @@ def _resolve_navigation_view(
         footer_logo_src=resolved.footer_logo_src or DEFAULT_PELAMBRES_BRAND_LOGO_SRC,
         application_version=resolved.application_version or application_version,
     )
-
-
-def _resolve_bootstrap_navigation_principal() -> NavigationPrincipal:
-    snapshot = AccessRuntime().current()
-    identity = snapshot.identity
-    if identity is None:
-        raise RuntimeError('Resolved access snapshot does not contain an identity')
-    display_name = identity.display_name or _display_name_from_subject(identity.subject_id)
-    profile_key = identity.provider_key
-    return NavigationPrincipal(
-        access_key=profile_key,
-        unrestricted=True,
-        user=NavigationUser(
-            display_name=display_name,
-            email=identity.email,
-            profile_key=profile_key,
-            profile_label=profile_key.replace('-', ' ').title(),
-            profile_background_color='#3778C2',
-            profile_text_color='#FFFFFF',
-            avatar_text=_avatar_text(display_name),
-        ),
-    )
-
-
-def _display_name_from_subject(subject_id: str) -> str:
-    candidate = subject_id.rsplit(':', maxsplit=1)[-1].strip()
-    words = _SUBJECT_SEPARATOR.sub(' ', candidate).split()
-    if not words:
-        return subject_id
-    return ' '.join(word.capitalize() for word in words)
-
-
-def _avatar_text(display_name: str) -> str:
-    words = display_name.split()
-    if not words:
-        return 'U'
-    return ''.join(word[0] for word in words[:2]).upper()
