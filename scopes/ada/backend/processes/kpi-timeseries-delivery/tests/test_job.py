@@ -46,19 +46,20 @@ def test_missing_historian_authority_is_empty_without_publication() -> None:
     assert not context.work
 
 
-def test_current_raw_historian_checkpoint_skips_before_history_read() -> None:
+def test_current_aligned_checkpoint_skips_before_history_read() -> None:
     history = HistoryReader()
+    publisher = SnapshotPublisher()
     job = KpiTimeseriesDeliveryJob(
         configuration=configuration(),
         historian=AuthorityReader(authority(3)),
         history=history,
         checkpoint=CheckpointStore(
             KpiTimeseriesCheckpoint(
-                watermark=watermark(3),
+                watermark=watermark(2),
                 configuration_revision='config-r1',
             )
         ),
-        snapshots=SnapshotPublisher(),
+        snapshots=publisher,
         now=lambda: NOW,
     )
 
@@ -67,9 +68,41 @@ def test_current_raw_historian_checkpoint_skips_before_history_read() -> None:
     assert result.status is KpiTimeseriesDeliveryIterationStatus.SKIPPED_CURRENT
     assert result.watermark_utc == '2026-09-01T05:02:00Z'
     assert history.calls == 0
+    assert publisher.calls == 0
 
 
-def test_new_historian_revision_inside_same_grid_republishes() -> None:
+def test_new_historian_revision_inside_same_grid_does_not_republish() -> None:
+    checkpoint = CheckpointStore(
+        KpiTimeseriesCheckpoint(
+            watermark=watermark(2),
+            configuration_revision='config-r1',
+        )
+    )
+    history = HistoryReader()
+    publisher = SnapshotPublisher()
+    job = KpiTimeseriesDeliveryJob(
+        configuration=configuration(),
+        historian=AuthorityReader(authority(3)),
+        history=history,
+        checkpoint=checkpoint,
+        snapshots=publisher,
+        now=lambda: NOW,
+    )
+
+    result = job.run_iteration(RuntimeContextStub())
+
+    assert result.status is KpiTimeseriesDeliveryIterationStatus.SKIPPED_CURRENT
+    assert result.watermark_utc == '2026-09-01T05:02:00Z'
+    assert history.calls == 0
+    assert publisher.calls == 0
+    assert checkpoint.commit_calls == 0
+    assert checkpoint.value == KpiTimeseriesCheckpoint(
+        watermark=watermark(2),
+        configuration_revision='config-r1',
+    )
+
+
+def test_new_aligned_grid_publishes_and_advances_checkpoint() -> None:
     checkpoint = CheckpointStore(
         KpiTimeseriesCheckpoint(
             watermark=watermark(2),
@@ -79,7 +112,7 @@ def test_new_historian_revision_inside_same_grid_republishes() -> None:
     publisher = SnapshotPublisher()
     job = KpiTimeseriesDeliveryJob(
         configuration=configuration(),
-        historian=AuthorityReader(authority(3)),
+        historian=AuthorityReader(authority(4)),
         history=HistoryReader(),
         checkpoint=checkpoint,
         snapshots=publisher,
@@ -89,18 +122,19 @@ def test_new_historian_revision_inside_same_grid_republishes() -> None:
     result = job.run_iteration(RuntimeContextStub())
 
     assert result.status is KpiTimeseriesDeliveryIterationStatus.PUBLISHED
-    assert result.watermark_utc == '2026-09-01T05:02:00Z'
+    assert result.watermark_utc == '2026-09-01T05:04:00Z'
+    assert publisher.calls == 1
     assert checkpoint.value == KpiTimeseriesCheckpoint(
-        watermark=watermark(3),
+        watermark=watermark(4),
         configuration_revision='config-r1',
     )
 
 
-def test_configuration_change_republishes_same_historian_watermark() -> None:
+def test_configuration_change_republishes_same_aligned_watermark() -> None:
     events: list[str] = []
     checkpoint = CheckpointStore(
         KpiTimeseriesCheckpoint(
-            watermark=watermark(3),
+            watermark=watermark(2),
             configuration_revision='config-r1',
         ),
         events=events,
@@ -120,7 +154,7 @@ def test_configuration_change_republishes_same_historian_watermark() -> None:
     assert result.status is KpiTimeseriesDeliveryIterationStatus.PUBLISHED
     assert events == ['publish', 'checkpoint']
     assert checkpoint.value == KpiTimeseriesCheckpoint(
-        watermark=watermark(3),
+        watermark=watermark(2),
         configuration_revision='config-r2',
     )
     assert context.lease_checks == 2

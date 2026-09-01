@@ -99,17 +99,21 @@ class KpiTimeseriesDeliveryJob:
                 ),
             )
 
+        # El Historian puede avanzar con una granularidad más fina que la serie publicada.
         historian_watermark = KpiWatermark(authority.watermark_utc)
+        # Timeseries define su propia grilla canónica de 120 segundos en el dominio Delivery.
+        aligned_end = align_timeseries_end(historian_watermark.timestamp_utc)
+        # El checkpoint representa el último bucket de Timeseries ya publicado, no cada avance bruto.
+        timeseries_watermark = KpiWatermark(aligned_end)
         _validate_authority(
             checkpoint=checkpoint,
-            historian_watermark=historian_watermark,
+            timeseries_watermark=timeseries_watermark,
         )
         if _is_current(
             checkpoint=checkpoint,
-            historian_watermark=historian_watermark,
+            timeseries_watermark=timeseries_watermark,
             configuration_revision=self._configuration.revision,
         ):
-            aligned_end = align_timeseries_end(historian_watermark.timestamp_utc)
             return _record_result(
                 context,
                 KpiTimeseriesDeliveryIterationResult(
@@ -120,7 +124,6 @@ class KpiTimeseriesDeliveryJob:
                 ),
             )
 
-        aligned_end = align_timeseries_end(historian_watermark.timestamp_utc)
         series_bindings = tuple(
             binding for binding in self._configuration.bindings if binding.series_enabled
         )
@@ -151,8 +154,9 @@ class KpiTimeseriesDeliveryJob:
         context.raise_if_cancelled()
         context.assert_lease_current()
 
+        # El checkpoint sólo avanza después de publicar y conserva exactamente el bucket entregado.
         new_checkpoint = KpiTimeseriesCheckpoint(
-            watermark=historian_watermark,
+            watermark=timeseries_watermark,
             configuration_revision=self._configuration.revision,
         )
         with context.fenced_mutation():
@@ -188,9 +192,10 @@ class KpiTimeseriesDeliveryJob:
 def _validate_authority(
     *,
     checkpoint: KpiTimeseriesCheckpoint | None,
-    historian_watermark: KpiWatermark,
+    timeseries_watermark: KpiWatermark,
 ) -> None:
-    if checkpoint is not None and historian_watermark < checkpoint.watermark:
+    # La comparación ocurre dentro del mismo eje temporal que persiste el checkpoint.
+    if checkpoint is not None and timeseries_watermark < checkpoint.watermark:
         raise KpiTimeseriesDeliveryRepositoryError(
             'KPI historian authority must not regress behind timeseries delivery checkpoint'
         )
@@ -199,12 +204,12 @@ def _validate_authority(
 def _is_current(
     *,
     checkpoint: KpiTimeseriesCheckpoint | None,
-    historian_watermark: KpiWatermark,
+    timeseries_watermark: KpiWatermark,
     configuration_revision: str,
 ) -> bool:
     return (
         checkpoint is not None
-        and checkpoint.watermark == historian_watermark
+        and checkpoint.watermark == timeseries_watermark
         and checkpoint.configuration_revision == configuration_revision
     )
 
