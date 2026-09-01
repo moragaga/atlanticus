@@ -1,0 +1,2 @@
+class OperationalRenderBindingError(ValueError):
+    pass
