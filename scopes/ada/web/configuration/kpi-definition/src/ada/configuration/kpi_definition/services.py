@@ -56,6 +56,23 @@ class KpiDefinitionAdministrationService:
         document = self.load_source()
         return document.configuration if document is not None else None
 
+    def list_history(
+        self,
+        *,
+        limit: int = 20,
+    ) -> tuple[KpiDefinitionSourceDocument, ...]:
+        return self._source.list_history(limit=limit)
+
+    def load_revision_configuration(
+        self,
+        revision: str,
+    ) -> KpiDefinitionConfiguration:
+        normalized = revision.strip() if isinstance(revision, str) else ''
+        document = self._source.load_revision(normalized) if normalized else None
+        if document is None:
+            raise KpiDefinitionSourceError('KPI definition revision does not exist')
+        return document.configuration
+
     def validate_configuration(
         self,
         configuration: KpiDefinitionConfiguration,

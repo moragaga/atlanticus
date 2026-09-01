@@ -13,6 +13,14 @@ KpiDefinitionAuditActorProvider = Callable[[], str]
 class KpiDefinitionSource(Protocol):
     def load(self) -> KpiDefinitionSourceDocument | None: ...
 
+    def list_history(
+        self,
+        *,
+        limit: int = 20,
+    ) -> tuple[KpiDefinitionSourceDocument, ...]: ...
+
+    def load_revision(self, revision: str) -> KpiDefinitionSourceDocument | None: ...
+
 
 # Contrato mínimo de publicación con optimistic concurrency.
 class KpiDefinitionPublisher(Protocol):
