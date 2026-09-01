@@ -18,9 +18,7 @@ class KpiConfigurationAuditRecord:
     def __post_init__(self) -> None:
         actor = self.actor.strip() if isinstance(self.actor, str) else ''
         if not actor:
-            raise KpiConfigurationValidationError(
-                'KPI configuration audit actor must not be empty'
-            )
+            raise KpiConfigurationValidationError('KPI configuration audit actor must not be empty')
         if self.occurred_at_utc.tzinfo is None or self.occurred_at_utc.utcoffset() is None:
             raise KpiConfigurationValidationError(
                 'KPI configuration audit timestamp must be timezone-aware'
@@ -44,9 +42,7 @@ class KpiConfigurationIssue:
                 'KPI configuration issue metadata must not be empty'
             )
         if self.level not in {'error', 'warning'}:
-            raise KpiConfigurationValidationError(
-                'KPI configuration issue level is invalid'
-            )
+            raise KpiConfigurationValidationError('KPI configuration issue level is invalid')
         path = self.path.strip() if isinstance(self.path, str) else self.path
         object.__setattr__(self, 'code', code)
         object.__setattr__(self, 'message', message)
@@ -79,9 +75,7 @@ class KpiConfigurationStatus:
 
     def __post_init__(self) -> None:
         if (self.source_revision is None) != (self.source_audit is None):
-            raise KpiConfigurationValidationError(
-                'KPI source status metadata must be complete'
-            )
+            raise KpiConfigurationValidationError('KPI source status metadata must be complete')
         active = (
             self.active_revision,
             self.active_source_revision,
@@ -91,9 +85,7 @@ class KpiConfigurationStatus:
         if any(value is not None for value in active) and not all(
             value is not None for value in active
         ):
-            raise KpiConfigurationValidationError(
-                'KPI projection status metadata must be complete'
-            )
+            raise KpiConfigurationValidationError('KPI projection status metadata must be complete')
 
 
 @dataclass(frozen=True, slots=True)

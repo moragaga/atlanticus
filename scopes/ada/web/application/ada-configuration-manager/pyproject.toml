@@ -4,13 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-configuration-manager"
-version = "0.4.1"
+version = "0.4.2"
 description = "Composition backend de ADA para Atlanticus Manager"
 requires-python = "==3.14.2"
 classifiers = [
     "Private :: Do Not Upload",
 ]
 dependencies = [
+    "ada-configuration-kpi-configuration==0.2.0",
     "ada-configuration-kpi-definition==0.4.0",
     "ada-configuration-tool-sources==0.1.0",
     "ada-configuration-tools==0.3.0",
@@ -26,6 +27,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
+ada-configuration-kpi-configuration = { path = "../../configuration/kpi-configuration", editable = true }
 ada-configuration-kpi-definition = { path = "../../configuration/kpi-definition", editable = true }
 ada-configuration-tool-sources = { path = "../../configuration/tool-sources", editable = true }
 ada-configuration-tools = { path = "../../configuration/tools", editable = true }
@@ -83,6 +85,7 @@ combine-as-imports = true
 testpaths = ["tests"]
 pythonpath = [
     "src",
+    "../../configuration/kpi-configuration/src",
     "../../configuration/kpi-definition/src",
     "../../configuration/tool-sources/src",
     "../../configuration/tools/src",

@@ -1,3 +1,4 @@
+from ada.configuration.kpi_configuration.catalog import KpiCatalog
 from ada.configuration.kpi_configuration.contracts import (
     KpiConfigurationAuditActorProvider,
     KpiConfigurationProjectionRepository,
@@ -46,13 +47,14 @@ from ada.configuration.kpi_configuration.source import (
     build_kpi_configuration_digest,
 )
 
-__version__ = '0.1.0'
+__version__ = '0.2.0'
 
 __all__ = [
     'KPI_CONFIGURATION_PROJECTION_DOCUMENT_TYPE',
     'KPI_CONFIGURATION_PROJECTION_SCHEMA_VERSION',
     'KPI_CONFIGURATION_SOURCE_DOCUMENT_TYPE',
     'KPI_CONFIGURATION_SOURCE_SCHEMA_VERSION',
+    'KpiCatalog',
     'KpiConfiguration',
     'KpiConfigurationAdministrationService',
     'KpiConfigurationAuditActorProvider',

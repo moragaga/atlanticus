@@ -4,6 +4,7 @@ import hashlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from ada.configuration.kpi_configuration.catalog import KpiCatalog
 from ada.configuration.kpi_configuration.errors import KpiConfigurationProjectionError
 from ada.configuration.kpi_configuration.models import KpiConfiguration
 
@@ -69,6 +70,12 @@ class KpiConfigurationProjection:
             tool_projection_revision=tool_projection_revision,
             projected_by=projected_by,
             projected_at_utc=projected_at_utc,
+        )
+
+    def catalog(self) -> KpiCatalog:
+        return KpiCatalog(
+            revision=self.revision,
+            kpi_keys=tuple(binding.kpi_key for binding in self.configuration.bindings),
         )
 
     def to_delivery_document(

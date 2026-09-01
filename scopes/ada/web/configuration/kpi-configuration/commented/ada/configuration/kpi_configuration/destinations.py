@@ -16,9 +16,7 @@ class KpiDestination:
         key = require_destination_key(self.key)
         display_name = self.display_name.strip() if isinstance(self.display_name, str) else ''
         if not display_name:
-            raise KpiConfigurationValidationError(
-                'KPI destination display name must not be empty'
-            )
+            raise KpiConfigurationValidationError('KPI destination display name must not be empty')
         object.__setattr__(self, 'key', key)
         object.__setattr__(self, 'display_name', display_name)
 
@@ -35,9 +33,7 @@ class KpiDestinationCatalog:
             else ''
         )
         if not revision:
-            raise KpiConfigurationValidationError(
-                'Tool projection revision must not be empty'
-            )
+            raise KpiConfigurationValidationError('Tool projection revision must not be empty')
         destinations = tuple(self.destinations)
         if not all(isinstance(item, KpiDestination) for item in destinations):
             raise KpiConfigurationValidationError(

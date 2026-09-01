@@ -3,6 +3,19 @@ revision = 3
 requires-python = "==3.14.2"
 
 [[package]]
+name = "ada-configuration-kpi-configuration"
+version = "0.2.0"
+source = { editable = "../../configuration/kpi-configuration" }
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
 name = "ada-configuration-kpi-definition"
 version = "0.4.0"
 source = { editable = "../../configuration/kpi-definition" }
@@ -17,9 +30,10 @@ dev = [
 
 [[package]]
 name = "ada-configuration-manager"
-version = "0.4.1"
+version = "0.4.2"
 source = { editable = "." }
 dependencies = [
+    { name = "ada-configuration-kpi-configuration" },
     { name = "ada-configuration-kpi-definition" },
     { name = "ada-configuration-tool-sources" },
     { name = "ada-configuration-tools" },
@@ -42,6 +56,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "ada-configuration-kpi-configuration", editable = "../../configuration/kpi-configuration" },
     { name = "ada-configuration-kpi-definition", editable = "../../configuration/kpi-definition" },
     { name = "ada-configuration-tool-sources", editable = "../../configuration/tool-sources" },
     { name = "ada-configuration-tools", editable = "../../configuration/tools" },

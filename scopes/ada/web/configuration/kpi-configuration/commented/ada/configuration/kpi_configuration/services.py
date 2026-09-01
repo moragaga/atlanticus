@@ -103,9 +103,7 @@ class KpiConfigurationAdministrationService:
         current = self._source.load()
         current_revision = current.revision if current is not None else None
         if current_revision != expected_source_revision:
-            raise KpiConfigurationSourceError(
-                'KPI source revision changed before publication'
-            )
+            raise KpiConfigurationSourceError('KPI source revision changed before publication')
         catalog = self._require_catalog()
         issues = _validate_configuration(validated, catalog)
         if any(issue.level == 'error' for issue in issues):
@@ -145,10 +143,7 @@ class KpiConfigurationAdministrationService:
         catalog = self._destinations.load()
         if catalog is None:
             raise KpiConfigurationValidationError('Tool projection is not available')
-        if (
-            expected_revision is not None
-            and catalog.tool_projection_revision != expected_revision
-        ):
+        if expected_revision is not None and catalog.tool_projection_revision != expected_revision:
             raise KpiConfigurationValidationError(
                 'Tool projection revision changed before publication'
             )
@@ -183,9 +178,7 @@ class KpiConfigurationProjectionWorkflow:
                 else None
             ),
             active_revision=active.revision if active is not None else None,
-            active_source_revision=(
-                active.source_revision if active is not None else None
-            ),
+            active_source_revision=(active.source_revision if active is not None else None),
             active_tool_projection_revision=(
                 active.tool_projection_revision if active is not None else None
             ),
@@ -204,14 +197,10 @@ class KpiConfigurationProjectionWorkflow:
         expected_source_revision: str,
     ) -> KpiConfigurationProjectionResult:
         expected = (
-            expected_source_revision.strip()
-            if isinstance(expected_source_revision, str)
-            else ''
+            expected_source_revision.strip() if isinstance(expected_source_revision, str) else ''
         )
         if not expected:
-            raise KpiConfigurationProjectionError(
-                'Expected KPI source revision must not be empty'
-            )
+            raise KpiConfigurationProjectionError('Expected KPI source revision must not be empty')
         source = self._require_source(expected)
         catalog = self._require_catalog()
         issues = _validate_configuration(source.configuration, catalog)
@@ -273,9 +262,7 @@ class KpiConfigurationProjectionWorkflow:
         if document is None:
             raise KpiConfigurationSourceError('KPI configuration source does not exist')
         if document.revision != expected_revision:
-            raise KpiConfigurationProjectionError(
-                'KPI source revision changed before projection'
-            )
+            raise KpiConfigurationProjectionError('KPI source revision changed before projection')
         return document
 
     def _require_catalog(
@@ -286,10 +273,7 @@ class KpiConfigurationProjectionWorkflow:
         catalog = self._destinations.load()
         if catalog is None:
             raise KpiConfigurationProjectionError('Tool projection is not available')
-        if (
-            expected_revision is not None
-            and catalog.tool_projection_revision != expected_revision
-        ):
+        if expected_revision is not None and catalog.tool_projection_revision != expected_revision:
             raise KpiConfigurationProjectionError(
                 'Tool projection revision changed before KPI projection'
             )
@@ -348,10 +332,7 @@ def _validate_configuration(
                     KpiConfigurationIssue(
                         code='kpi.destination.unavailable',
                         message=f'KPI destination {destination_key!r} is not available',
-                        path=(
-                            f'bindings[{binding_index}].destination_keys'
-                            f'[{destination_index}]'
-                        ),
+                        path=(f'bindings[{binding_index}].destination_keys[{destination_index}]'),
                     )
                 )
     return tuple(issues)

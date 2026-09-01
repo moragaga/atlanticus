@@ -24,9 +24,7 @@ class KpiConfigurationBinding:
         kpi_key = require_kpi_key(self.kpi_key)
         if not isinstance(self.destination_keys, tuple):
             raise KpiConfigurationValidationError('KPI destination keys must be a tuple')
-        destinations = tuple(
-            require_destination_key(value) for value in self.destination_keys
-        )
+        destinations = tuple(require_destination_key(value) for value in self.destination_keys)
         if not destinations:
             raise KpiConfigurationValidationError(
                 'KPI binding must define at least one destination'
@@ -110,9 +108,7 @@ class KpiConfiguration:
     def __post_init__(self) -> None:
         bindings = tuple(self.bindings)
         if not all(isinstance(binding, KpiConfigurationBinding) for binding in bindings):
-            raise KpiConfigurationValidationError(
-                'KPI configuration contains an invalid binding'
-            )
+            raise KpiConfigurationValidationError('KPI configuration contains an invalid binding')
         keys = tuple(binding.kpi_key for binding in bindings)
         if len(keys) != len(set(keys)):
             raise KpiConfigurationValidationError('KPI keys must be unique')
@@ -133,11 +129,7 @@ class KpiConfiguration:
         return {'bindings': [binding.to_document() for binding in self.bindings]}
 
     def to_delivery_document(self) -> dict[str, object]:
-        return {
-            'bindings': [
-                binding.to_delivery_document() for binding in self.bindings
-            ]
-        }
+        return {'bindings': [binding.to_delivery_document() for binding in self.bindings]}
 
     @classmethod
     def from_document(cls, document: Mapping[str, Any]) -> KpiConfiguration:
@@ -148,9 +140,7 @@ class KpiConfiguration:
             ):
                 raise TypeError
             return cls(
-                bindings=tuple(
-                    KpiConfigurationBinding.from_document(item) for item in bindings
-                )
+                bindings=tuple(KpiConfigurationBinding.from_document(item) for item in bindings)
             )
         except (TypeError, ValueError) as error:
             if isinstance(error, KpiConfigurationValidationError):

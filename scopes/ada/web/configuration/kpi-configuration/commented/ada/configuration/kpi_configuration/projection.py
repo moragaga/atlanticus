@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-# Genera el documento exacto que KPI Delivery consume.
+# La proyección puede derivar un catálogo estrecho sin alterar el documento Delivery schema v1.
 import hashlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from ada.configuration.kpi_configuration.catalog import KpiCatalog
 from ada.configuration.kpi_configuration.errors import KpiConfigurationProjectionError
 from ada.configuration.kpi_configuration.models import KpiConfiguration
 
@@ -23,9 +24,7 @@ class KpiConfigurationProjection:
 
     def __post_init__(self) -> None:
         if not isinstance(self.configuration, KpiConfiguration):
-            raise KpiConfigurationProjectionError(
-                'KPI projection configuration is invalid'
-            )
+            raise KpiConfigurationProjectionError('KPI projection configuration is invalid')
         source_revision = _required_text(
             self.source_revision,
             'KPI projection source revision',
@@ -36,9 +35,7 @@ class KpiConfigurationProjection:
         )
         actor = _required_text(self.projected_by, 'KPI projection audit actor')
         if self.projected_at_utc.tzinfo is None or self.projected_at_utc.utcoffset() is None:
-            raise KpiConfigurationProjectionError(
-                'KPI projection timestamp must be timezone-aware'
-            )
+            raise KpiConfigurationProjectionError('KPI projection timestamp must be timezone-aware')
         occurred_at = self.projected_at_utc.astimezone(UTC)
         expected_revision = build_kpi_configuration_projection_revision(
             source_revision=source_revision,
@@ -74,6 +71,12 @@ class KpiConfigurationProjection:
             tool_projection_revision=tool_projection_revision,
             projected_by=projected_by,
             projected_at_utc=projected_at_utc,
+        )
+
+    def catalog(self) -> KpiCatalog:
+        return KpiCatalog(
+            revision=self.revision,
+            kpi_keys=tuple(binding.kpi_key for binding in self.configuration.bindings),
         )
 
     def to_delivery_document(

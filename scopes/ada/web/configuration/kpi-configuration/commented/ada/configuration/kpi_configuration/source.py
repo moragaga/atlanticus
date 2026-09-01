@@ -27,14 +27,10 @@ class KpiConfigurationSourceDocument:
             raise KpiConfigurationValidationError('KPI source configuration is invalid')
         expected_revision = build_kpi_configuration_digest(self.configuration)
         if not isinstance(self.revision, str) or self.revision.strip() != expected_revision:
-            raise KpiConfigurationValidationError(
-                'KPI source revision does not match content'
-            )
+            raise KpiConfigurationValidationError('KPI source revision does not match content')
         actor = self.saved_by.strip() if isinstance(self.saved_by, str) else ''
         if not actor:
-            raise KpiConfigurationValidationError(
-                'KPI source audit actor must not be empty'
-            )
+            raise KpiConfigurationValidationError('KPI source audit actor must not be empty')
         if self.saved_at_utc.tzinfo is None or self.saved_at_utc.utcoffset() is None:
             raise KpiConfigurationValidationError(
                 'KPI source audit timestamp must be timezone-aware'
