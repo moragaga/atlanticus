@@ -13,6 +13,10 @@ from pathlib import Path
 from zipfile import ZipFile
 
 EXPECTED_PYTHON_VERSION = '3.14.2'
+DEFAULT_PROJECT_VERSION = '1.0.0'
+PROJECT_VERSION_OVERRIDES = {
+    'ada-kpi-runtime-process': '1.0.1',
+}
 LEGACY_PATTERN = re.compile(r'\b(?:KpiSource|KpiPartition|SourceRequirement)\b|ada\.data\.')
 PROCESS_FORBIDDEN_IMPORTS = ('ada.web', 'atlanticus.data_producers')
 
@@ -280,10 +284,21 @@ def _validate_python() -> None:
         )
 
 
+def _expected_project_version(distribution: str) -> str:
+    return PROJECT_VERSION_OVERRIDES.get(distribution, DEFAULT_PROJECT_VERSION)
+
+
 def _validate_project(path: Path, distribution: str) -> None:
     project = _project(path / 'pyproject.toml')
-    if project.get('name') != distribution or project.get('version') != '1.0.0':
-        raise SystemExit(f'Unexpected project identity at {path}')
+    expected_version = _expected_project_version(distribution)
+    actual_name = project.get('name')
+    actual_version = project.get('version')
+    if actual_name != distribution or actual_version != expected_version:
+        raise SystemExit(
+            f'Unexpected project identity at {path}: '
+            f'expected {distribution}=={expected_version}, '
+            f'found {actual_name}=={actual_version}'
+        )
 
 
 def _validate_workspace(repository: Path, scope: Path) -> None:
@@ -475,10 +490,13 @@ def _build_wheels(selected: tuple[Capability, ...], scope: Path) -> None:
     dist.mkdir(parents=True)
     for capability in selected:
         _run(['uv', 'build', capability.root, '--wheel', '--out-dir', str(dist)], cwd=scope)
-        prefix = capability.distribution.replace('-', '_') + '-1.0.0-'
+        expected_version = _expected_project_version(capability.distribution)
+        prefix = capability.distribution.replace('-', '_') + f'-{expected_version}-'
         wheels = tuple(path for path in dist.glob('*.whl') if path.name.startswith(prefix))
         if len(wheels) != 1:
-            raise SystemExit(f'Expected exactly one wheel for {capability.distribution}')
+            raise SystemExit(
+                f'Expected exactly one wheel for {capability.distribution}=={expected_version}'
+            )
         typed = capability.import_name.replace('.', '/') + '/py.typed'
         with ZipFile(wheels[0]) as archive:
             names = set(archive.namelist())

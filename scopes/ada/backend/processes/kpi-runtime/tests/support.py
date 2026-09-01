@@ -67,13 +67,20 @@ class RuntimeContextStub:
         self.work = True
 
     def set_iteration_fact(self, key: str, value: object) -> None:
+        self._validate_fact(key, value)
         self.iteration_facts[key] = value
 
     def set_execution_fact(self, key: str, value: object) -> None:
+        self._validate_fact(key, value)
         self.execution_facts[key] = value
 
     def increment_execution_counter(self, key: str, amount: int | float = 1) -> None:
         self.execution_counters[key] = self.execution_counters.get(key, 0) + amount
+
+    @staticmethod
+    def _validate_fact(key: str, value: object) -> None:
+        if value is None:
+            raise TypeError(f'operational field {key!r} must be a scalar value')
 
 
 def watermark(minute: int) -> KpiWatermark:

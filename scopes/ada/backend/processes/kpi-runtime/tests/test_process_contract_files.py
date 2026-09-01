@@ -11,7 +11,7 @@ def test_process_contract_files_and_container_entrypoint() -> None:
         document = tomllib.load(stream)
 
     assert document['project']['name'] == 'ada-kpi-runtime-process'
-    assert document['project']['version'] == '1.0.0'
+    assert document['project']['version'] == '1.0.1'
     assert document['project']['scripts'] == {
         'ada-kpi-runtime': 'ada.processes.kpi_runtime.bootstrap:main'
     }

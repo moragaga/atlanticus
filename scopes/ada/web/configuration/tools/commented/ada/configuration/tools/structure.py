@@ -211,10 +211,14 @@ class ToolStructure:
         object.__setattr__(self, 'components', components)
         _validate_linked_component_keys(self)
         _validate_visible_subcomponent_namespaces(self)
+
+        # PROCESS e INTEGRATED_OPERATIONS conservan sus validaciones conocidas.
         if self.kind is ToolConfigurationKind.PROCESS:
             _validate_process_structure(self)
-        else:
+        elif self.kind is ToolConfigurationKind.INTEGRATED_OPERATIONS:
             _validate_integrated_operations_structure(self)
+        # STRATEGIC sólo usa las invariantes estructurales comunes.
+        # Su forma funcional todavía no está definida y no se inventa aquí.
 
     @property
     def kpi_destination_keys(self) -> tuple[str, ...]:
@@ -222,12 +226,22 @@ class ToolStructure:
 
     @property
     def alarm_baseline_component_keys(self) -> tuple[str, ...]:
+        # Tools expone el kind, pero no inventa una proyección de alarmas para Strategic.
+        if self.kind is ToolConfigurationKind.STRATEGIC:
+            raise ToolConfigurationValidationError(
+                'Alarm projection is not defined for Strategic Tool Structure'
+            )
         if self.kind is ToolConfigurationKind.PROCESS:
             return (self.component_for_layout_role(ProcessLayoutRole.CENTER).key,)
         return tuple(component.key for component in self.components)
 
     @property
     def alarm_subcomponent_addresses(self) -> tuple[ToolSubcomponentAddress, ...]:
+        # El consumidor de alarmas debe resolver la semántica de Strategic usando kind.
+        if self.kind is ToolConfigurationKind.STRATEGIC:
+            raise ToolConfigurationValidationError(
+                'Alarm projection is not defined for Strategic Tool Structure'
+            )
         if self.kind is ToolConfigurationKind.PROCESS:
             center = self.component_for_layout_role(ProcessLayoutRole.CENTER)
             return tuple(
@@ -286,6 +300,11 @@ class ToolStructure:
         self,
         component_key: str,
     ) -> tuple[ToolSubcomponentAddress, ...]:
+        # No se reutiliza por defecto el comportamiento de Operaciones Integradas para Strategic.
+        if self.kind is ToolConfigurationKind.STRATEGIC:
+            raise ToolConfigurationValidationError(
+                'Alarm projection is not defined for Strategic Tool Structure'
+            )
         component = self.component(component_key)
         if self.kind is ToolConfigurationKind.PROCESS:
             center = self.component_for_layout_role(ProcessLayoutRole.CENTER)

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-kpi-runtime-process"
-version = "1.0.0"
+version = "1.0.1"
 description = "KPI runtime process composition for the ADA backend."
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]

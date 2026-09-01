@@ -40,6 +40,14 @@ validate_artifacts() {
         --repository-root "${ROOT}"
 }
 
+validate_workspace_contract() {
+    require_compose_file
+    uv run --python "${PYTHON_VERSION}" --no-python-downloads --no-project \
+        "${GENERATOR}" validate-workspace \
+        --repository-root "${ROOT}" \
+        --workspace-root "${WORKSPACE}"
+}
+
 generate_workspace() {
     local volume_mode="$1"
     uv run --python "${PYTHON_VERSION}" --no-python-downloads --no-project \
@@ -158,8 +166,10 @@ command_logs() {
 
 command_run() {
     [[ "$#" -eq 1 ]] || fail "Usage: scripts/local-process.sh run <process>"
+    validate_uv
     validate_docker
-    require_compose_file
+    validate_artifacts
+    validate_workspace_contract
     local process="$1"
     compose config --services | grep -Fx -- "${process}" >/dev/null \
         || fail "Local Compose service not found: ${process}"

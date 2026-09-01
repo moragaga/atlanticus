@@ -206,7 +206,7 @@ class ToolStructure:
         _validate_visible_subcomponent_namespaces(self)
         if self.kind is ToolConfigurationKind.PROCESS:
             _validate_process_structure(self)
-        else:
+        elif self.kind is ToolConfigurationKind.INTEGRATED_OPERATIONS:
             _validate_integrated_operations_structure(self)
 
     @property
@@ -215,12 +215,20 @@ class ToolStructure:
 
     @property
     def alarm_baseline_component_keys(self) -> tuple[str, ...]:
+        if self.kind is ToolConfigurationKind.STRATEGIC:
+            raise ToolConfigurationValidationError(
+                'Alarm projection is not defined for Strategic Tool Structure'
+            )
         if self.kind is ToolConfigurationKind.PROCESS:
             return (self.component_for_layout_role(ProcessLayoutRole.CENTER).key,)
         return tuple(component.key for component in self.components)
 
     @property
     def alarm_subcomponent_addresses(self) -> tuple[ToolSubcomponentAddress, ...]:
+        if self.kind is ToolConfigurationKind.STRATEGIC:
+            raise ToolConfigurationValidationError(
+                'Alarm projection is not defined for Strategic Tool Structure'
+            )
         if self.kind is ToolConfigurationKind.PROCESS:
             center = self.component_for_layout_role(ProcessLayoutRole.CENTER)
             return tuple(
@@ -273,6 +281,10 @@ class ToolStructure:
         self,
         component_key: str,
     ) -> tuple[ToolSubcomponentAddress, ...]:
+        if self.kind is ToolConfigurationKind.STRATEGIC:
+            raise ToolConfigurationValidationError(
+                'Alarm projection is not defined for Strategic Tool Structure'
+            )
         component = self.component(component_key)
         if self.kind is ToolConfigurationKind.PROCESS:
             center = self.component_for_layout_role(ProcessLayoutRole.CENTER)

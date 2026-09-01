@@ -5,6 +5,8 @@ from enum import StrEnum
 class ToolConfigurationKind(StrEnum):
     INTEGRATED_OPERATIONS = 'integrated_operations'
     PROCESS = 'process'
+    # Strategic se expone como identidad de Tool; sus reglas funcionales pertenecen a sus consumidores.
+    STRATEGIC = 'strategic'
 
 
 class ToolScope(StrEnum):

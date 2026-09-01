@@ -1,4 +1,5 @@
 # Runtime KPI: evalúa primero KPI base y luego Over KPI, conservando un único batch durable por watermark.
+# Los operational facts sólo se publican cuando el dato existe; None representa ausencia y no se serializa.
 from __future__ import annotations
 
 from ada.kpis.core import KpiCatalog, KpiEvaluation, KpiWatermark
@@ -123,6 +124,7 @@ class KpiRuntimeJob:
         )
 
 
+# Un resultado vacío conserva la ausencia real de watermark omitiendo los facts que todavía no existen.
 def _empty(
     context: JobRuntimeContext,
     *,
@@ -132,12 +134,10 @@ def _empty(
 ) -> KpiRuntimeIterationResult:
     context.set_iteration_fact('outcome', KpiRuntimeOutcome.EMPTY.value)
     context.set_iteration_fact('reason', reason)
-    context.set_iteration_fact(
-        'kpi_committed_before_utc', None if committed is None else committed.to_text()
-    )
-    context.set_iteration_fact(
-        'kpi_committed_after_utc', None if committed is None else committed.to_text()
-    )
+    if committed is not None:
+        current = committed.to_text()
+        context.set_iteration_fact('kpi_committed_before_utc', current)
+        context.set_iteration_fact('kpi_committed_after_utc', current)
     return KpiRuntimeIterationResult(
         outcome=KpiRuntimeOutcome.EMPTY,
         reason=reason,
@@ -147,20 +147,24 @@ def _empty(
     )
 
 
+# Los facts previos se registran por presencia para respetar el contrato escalar de Job Runtime.
 def _record_before(
     context: JobRuntimeContext,
     *,
     observed: KpiWatermark | None,
     committed: KpiWatermark | None,
 ) -> None:
-    source = None if observed is None else observed.to_text()
-    current = None if committed is None else committed.to_text()
-    context.set_iteration_fact('pi_observed_watermark_utc', source)
-    context.set_iteration_fact('kpi_committed_before_utc', current)
-    context.set_execution_fact('pi_observed_watermark_utc', source)
-    context.set_execution_fact('kpi_committed_watermark_utc', current)
+    if observed is not None:
+        source = observed.to_text()
+        context.set_iteration_fact('pi_observed_watermark_utc', source)
+        context.set_execution_fact('pi_observed_watermark_utc', source)
+    if committed is not None:
+        current = committed.to_text()
+        context.set_iteration_fact('kpi_committed_before_utc', current)
+        context.set_execution_fact('kpi_committed_watermark_utc', current)
 
 
+# En el primer commit no existe watermark anterior; ese fact se omite hasta que tenga un valor real.
 def _record_after(
     context: JobRuntimeContext,
     *,
@@ -173,9 +177,8 @@ def _record_after(
     context.set_iteration_fact('outcome', KpiRuntimeOutcome.COMPLETED.value)
     context.set_iteration_fact('reason', 'evaluated')
     context.set_iteration_fact('pi_watermark_utc', observed.to_text())
-    context.set_iteration_fact(
-        'kpi_committed_before_utc', None if before is None else before.to_text()
-    )
+    if before is not None:
+        context.set_iteration_fact('kpi_committed_before_utc', before.to_text())
     context.set_iteration_fact('kpi_committed_after_utc', after.to_text())
     context.set_iteration_fact('evaluation_write_status', write_status)
     context.set_iteration_fact('evaluation_count', evaluation_count)

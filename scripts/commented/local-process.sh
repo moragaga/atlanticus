@@ -1,5 +1,7 @@
 # Wrapper operativo para exportar artifacts y ejecutar procesos Atlanticus en Docker Compose local.
 # El bundler es transversal a scopes; la selección puede limitarse explícitamente con --scope.
+# Antes de ejecutar un process se valida que artifact y fuente compartan contrato y que el
+# workspace Compose corresponda a la revisión actual del deployment local.
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -36,10 +38,20 @@ validate_docker() {
     docker compose version >/dev/null 2>&1 || fail "Docker Compose is not available"
 }
 
+# La validación local incluye coherencia source/artifact para impedir imágenes construidas desde contracts viejos.
 validate_artifacts() {
     uv run --python "${PYTHON_VERSION}" --no-python-downloads --no-project \
         "${GENERATOR}" validate \
         --repository-root "${ROOT}"
+}
+
+# run no reutiliza un Compose generado por una revisión previa del contrato local.
+validate_workspace_contract() {
+    require_compose_file
+    uv run --python "${PYTHON_VERSION}" --no-python-downloads --no-project \
+        "${GENERATOR}" validate-workspace \
+        --repository-root "${ROOT}" \
+        --workspace-root "${WORKSPACE}"
 }
 
 generate_workspace() {
@@ -160,8 +172,10 @@ command_logs() {
 
 command_run() {
     [[ "$#" -eq 1 ]] || fail "Usage: scripts/local-process.sh run <process>"
+    validate_uv
     validate_docker
-    require_compose_file
+    validate_artifacts
+    validate_workspace_contract
     local process="$1"
     compose config --services | grep -Fx -- "${process}" >/dev/null \
         || fail "Local Compose service not found: ${process}"

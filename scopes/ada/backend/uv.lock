@@ -154,7 +154,7 @@ dev = [
 
 [[package]]
 name = "ada-kpi-runtime-process"
-version = "1.0.0"
+version = "1.0.1"
 source = { editable = "processes/kpi-runtime" }
 dependencies = [
     { name = "ada-kpis-core" },

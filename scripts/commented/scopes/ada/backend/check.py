@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-# Espejo pedagógico: este gate valida la frontera completa de ADA Backend sin alterar su lógica productiva.
 import argparse
 import ast
 import platform
@@ -13,7 +12,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from zipfile import ZipFile
 
+# El gate conserva un baseline general y sólo declara excepciones de versión explícitas.
 EXPECTED_PYTHON_VERSION = '3.14.2'
+DEFAULT_PROJECT_VERSION = '1.0.0'
+PROJECT_VERSION_OVERRIDES = {
+    'ada-kpi-runtime-process': '1.0.1',
+}
 LEGACY_PATTERN = re.compile(r'\b(?:KpiSource|KpiPartition|SourceRequirement)\b|ada\.data\.')
 PROCESS_FORBIDDEN_IMPORTS = ('ada.web', 'atlanticus.data_producers')
 
@@ -78,7 +82,6 @@ CAPABILITIES = {
         'kpis/delivery',
         (),
     ),
-    # Registra el proceso Latest separado del dominio puro de Delivery.
     'kpi-delivery-runtime': Capability(
         'kpi-delivery-runtime',
         'ada-kpi-delivery-process',
@@ -97,7 +100,6 @@ CAPABILITIES = {
             'atlanticus-state==1.0.0',
         ),
     ),
-    # Comparte una sola definición durable entre Historian y Timeseries Delivery.
     'kpi-history': Capability(
         'kpi-history',
         'ada-kpis-history',
@@ -105,7 +107,6 @@ CAPABILITIES = {
         'kpis/history',
         ('atlanticus-datasets==1.0.0', 'pyarrow==25.0.0'),
     ),
-    # Registra el proceso que materializa History y confirma su autoridad durable.
     'kpi-historian-runtime': Capability(
         'kpi-historian-runtime',
         'ada-kpi-historian-process',
@@ -284,10 +285,23 @@ def _validate_python() -> None:
         )
 
 
+# Una única autoridad de versión alimenta tanto identity validation como wheel qualification.
+def _expected_project_version(distribution: str) -> str:
+    return PROJECT_VERSION_OVERRIDES.get(distribution, DEFAULT_PROJECT_VERSION)
+
+
+# El diagnóstico muestra la identidad esperada y encontrada para detectar contratos antiguos.
 def _validate_project(path: Path, distribution: str) -> None:
     project = _project(path / 'pyproject.toml')
-    if project.get('name') != distribution or project.get('version') != '1.0.0':
-        raise SystemExit(f'Unexpected project identity at {path}')
+    expected_version = _expected_project_version(distribution)
+    actual_name = project.get('name')
+    actual_version = project.get('version')
+    if actual_name != distribution or actual_version != expected_version:
+        raise SystemExit(
+            f'Unexpected project identity at {path}: '
+            f'expected {distribution}=={expected_version}, '
+            f'found {actual_name}=={actual_version}'
+        )
 
 
 def _validate_workspace(repository: Path, scope: Path) -> None:
@@ -347,7 +361,6 @@ def _validate_runtime_process_contract(scope: Path) -> None:
             raise SystemExit(f'KPI Runtime process contract file is missing: {name}')
 
 
-# Verifica que el proceso publique el entrypoint y los archivos de despliegue acordados.
 def _validate_delivery_process_contract(scope: Path) -> None:
     root = scope / 'processes/kpi-delivery'
     document = _read(root / 'pyproject.toml')
@@ -367,7 +380,6 @@ def _validate_delivery_process_contract(scope: Path) -> None:
             raise SystemExit(f'KPI Delivery process contract file is missing: {name}')
 
 
-# Verifica el entrypoint y los archivos de despliegue del proceso Historian.
 def _validate_historian_process_contract(scope: Path) -> None:
     root = scope / 'processes/kpi-historian'
     document = _read(root / 'pyproject.toml')
@@ -474,6 +486,7 @@ def _validate_imports(selected: tuple[Capability, ...], scope: Path) -> None:
         _run([sys.executable, '-c', f'import {capability.import_name}'], cwd=scope)
 
 
+# La búsqueda del wheel usa la misma versión esperada que la validación del proyecto.
 def _build_wheels(selected: tuple[Capability, ...], scope: Path) -> None:
     dist = scope / 'dist'
     if dist.exists():
@@ -481,10 +494,13 @@ def _build_wheels(selected: tuple[Capability, ...], scope: Path) -> None:
     dist.mkdir(parents=True)
     for capability in selected:
         _run(['uv', 'build', capability.root, '--wheel', '--out-dir', str(dist)], cwd=scope)
-        prefix = capability.distribution.replace('-', '_') + '-1.0.0-'
+        expected_version = _expected_project_version(capability.distribution)
+        prefix = capability.distribution.replace('-', '_') + f'-{expected_version}-'
         wheels = tuple(path for path in dist.glob('*.whl') if path.name.startswith(prefix))
         if len(wheels) != 1:
-            raise SystemExit(f'Expected exactly one wheel for {capability.distribution}')
+            raise SystemExit(
+                f'Expected exactly one wheel for {capability.distribution}=={expected_version}'
+            )
         typed = capability.import_name.replace('.', '/') + '/py.typed'
         with ZipFile(wheels[0]) as archive:
             names = set(archive.namelist())

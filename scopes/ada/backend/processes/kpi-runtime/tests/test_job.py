@@ -27,7 +27,7 @@ def _job(tmp_path, source, *, catalog=None):
     )
 
 
-def test_source_watermark_missing_is_empty(tmp_path) -> None:
+def test_source_watermark_missing_is_empty_without_nullable_facts(tmp_path) -> None:
     job, persistence, reader = _job(tmp_path, StaticWatermarkReader(None))
     context = RuntimeContextStub()
 
@@ -38,9 +38,14 @@ def test_source_watermark_missing_is_empty(tmp_path) -> None:
     assert persistence.committed_watermark() is None
     assert reader.calls == 0
     assert context.work is False
+    assert context.iteration_facts == {
+        'outcome': 'empty',
+        'reason': 'source_watermark_missing',
+    }
+    assert context.execution_facts == {}
 
 
-def test_empty_catalog_does_not_advance_watermark(tmp_path) -> None:
+def test_empty_catalog_does_not_advance_watermark_or_publish_missing_commit(tmp_path) -> None:
     source = StaticWatermarkReader(watermark(10))
     job, persistence, reader = _job(tmp_path, source, catalog=KpiCatalog(()))
     context = RuntimeContextStub()
@@ -50,9 +55,15 @@ def test_empty_catalog_does_not_advance_watermark(tmp_path) -> None:
     assert result.reason == 'no_kpis_configured'
     assert persistence.committed_watermark() is None
     assert reader.calls == 0
+    assert context.iteration_facts['pi_observed_watermark_utc'] == watermark(10).to_text()
+    assert 'kpi_committed_before_utc' not in context.iteration_facts
+    assert 'kpi_committed_after_utc' not in context.iteration_facts
+    assert context.execution_facts == {'pi_observed_watermark_utc': watermark(10).to_text()}
 
 
-def test_new_source_watermark_evaluates_and_commits(tmp_path) -> None:
+def test_new_source_watermark_evaluates_and_commits_without_nullable_before_fact(
+    tmp_path,
+) -> None:
     source = StaticWatermarkReader(watermark(10))
     job, persistence, reader = _job(tmp_path, source)
     context = RuntimeContextStub()
@@ -70,6 +81,9 @@ def test_new_source_watermark_evaluates_and_commits(tmp_path) -> None:
     assert context.lease_checks == 1
     assert context.fences == 1
     assert context.execution_counters == {'evaluations_committed': 1}
+    assert 'kpi_committed_before_utc' not in context.iteration_facts
+    assert context.iteration_facts['kpi_committed_after_utc'] == watermark(10).to_text()
+    assert context.execution_facts['kpi_committed_watermark_utc'] == watermark(10).to_text()
 
 
 def test_notpii_recorded_advance_does_not_move_kpi_runtime(tmp_path) -> None:
