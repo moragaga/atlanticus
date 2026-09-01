@@ -1,0 +1,501 @@
+.atlanticus-users-admin {
+    display: grid;
+    gap: .9rem;
+}
+
+.atlanticus-users-admin__runtime-context,
+.atlanticus-users-admin__section {
+    min-width: 0;
+    padding: 1rem;
+    background: var(--atlanticus-manager-surface);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: .85rem;
+    box-shadow: 0 4px 16px rgba(25, 30, 38, .035);
+}
+
+.atlanticus-users-admin__runtime-context {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .55rem .75rem;
+    padding-block: .72rem;
+    background: var(--atlanticus-manager-surface-muted);
+}
+
+.atlanticus-users-admin__runtime-source {
+    display: flex;
+    align-items: baseline;
+    gap: .42rem;
+    padding: .38rem .62rem;
+    color: var(--atlanticus-manager-color-primary-dark);
+    background: var(--atlanticus-manager-color-primary-soft);
+    border: 1px solid rgba(201, 162, 75, .3);
+    border-radius: 999px;
+    font-size: .7rem;
+}
+
+.atlanticus-users-admin__runtime-source span,
+.atlanticus-users-admin__runtime-help {
+    color: var(--atlanticus-manager-text-muted);
+}
+
+.atlanticus-users-admin__import {
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    gap: .6rem;
+}
+
+.atlanticus-users-admin__runtime-help {
+    max-width: 32rem;
+    font-size: .68rem;
+    line-height: 1.35;
+}
+
+.atlanticus-users-admin__tabs {
+    display: flex;
+    gap: .3rem;
+    padding: .25rem;
+    background: var(--atlanticus-manager-surface-muted);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: .75rem;
+}
+
+.atlanticus-users-admin__tab {
+    min-height: 2.2rem;
+    padding: .42rem .78rem;
+    color: var(--atlanticus-manager-text-muted);
+    background: transparent;
+    border: 0;
+    border-radius: .55rem;
+    font: inherit;
+    font-size: .74rem;
+    font-weight: 750;
+}
+
+.atlanticus-users-admin__tab--active {
+    color: var(--atlanticus-manager-color-primary-ink);
+    background: var(--atlanticus-manager-surface);
+    box-shadow: 0 2px 8px rgba(25, 30, 38, .06);
+}
+
+.atlanticus-users-admin__panel {
+    display: none;
+}
+
+.atlanticus-users-admin__panel--active {
+    display: block;
+}
+
+.atlanticus-users-admin__panel-content {
+    display: grid;
+    gap: .9rem;
+}
+
+.atlanticus-users-admin__section-heading-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.atlanticus-users-admin__section-heading-copy {
+    display: grid;
+    gap: .2rem;
+    min-width: 0;
+}
+
+.atlanticus-users-admin__section-heading-copy h3,
+.atlanticus-users-admin__section-heading-copy p {
+    margin: 0;
+}
+
+.atlanticus-users-admin__section-heading-copy h3 {
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: .9rem;
+    font-weight: 780;
+}
+
+.atlanticus-users-admin__section-heading-copy p {
+    max-width: 64rem;
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .72rem;
+    line-height: 1.4;
+}
+
+.atlanticus-users-admin__system-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .7rem;
+    margin-top: .8rem;
+}
+
+.atlanticus-users-admin__profile-card,
+.atlanticus-users-admin__list-card {
+    min-width: 0;
+    padding: .75rem .8rem;
+    background: var(--atlanticus-manager-surface-muted);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: .72rem;
+}
+
+.atlanticus-users-admin__profile-card {
+    display: grid;
+    gap: .75rem;
+}
+
+.atlanticus-users-admin__profile-copy,
+.atlanticus-users-admin__user-copy {
+    display: grid;
+    gap: .18rem;
+    min-width: 0;
+}
+
+.atlanticus-users-admin__profile-copy strong,
+.atlanticus-users-admin__user-copy strong {
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: .82rem;
+}
+
+.atlanticus-users-admin__profile-copy code,
+.atlanticus-users-admin__user-copy code,
+.atlanticus-users-admin__profile-copy span,
+.atlanticus-users-admin__user-copy span {
+    overflow: hidden;
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .68rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.atlanticus-users-admin__profile-copy p {
+    margin: .15rem 0 0;
+    color: var(--atlanticus-manager-text-soft);
+    font-size: .68rem;
+    line-height: 1.35;
+}
+
+.atlanticus-users-admin__profile-preview,
+.atlanticus-users-admin__persona,
+.atlanticus-users-admin__local-personas,
+.atlanticus-users-admin__color-pickers,
+.atlanticus-users-admin__card-actions {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.atlanticus-users-admin__profile-preview strong {
+    color: var(--atlanticus-manager-color-primary-ink);
+}
+
+.atlanticus-users-admin__profile-avatar,
+.atlanticus-users-admin__persona-swatch {
+    display: inline-grid;
+    place-items: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    font-size: .72rem;
+    font-weight: 800;
+}
+
+.atlanticus-users-admin__profile-copy .atlanticus-users-admin__profile-avatar,
+.atlanticus-users-admin__profile-avatar {
+    color: var(--atlanticus-users-profile-text-color);
+    background: var(--atlanticus-users-profile-background-color);
+    border: 1px solid color-mix(
+        in srgb,
+        var(--atlanticus-users-profile-background-color) 74%,
+        black
+    );
+}
+
+.atlanticus-users-admin__persona div {
+    display: grid;
+    gap: .08rem;
+}
+
+.atlanticus-users-admin__persona strong {
+    font-size: .72rem;
+}
+
+.atlanticus-users-admin__local-personas,
+.atlanticus-users-admin__color-pickers {
+    flex-wrap: wrap;
+}
+
+.atlanticus-users-admin__color-picker-field {
+    display: grid;
+    gap: .3rem;
+}
+
+.atlanticus-users-admin__color-picker {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    min-height: 2.2rem;
+    padding: .28rem .55rem;
+    color: var(--atlanticus-manager-color-primary-ink);
+    background: #FFFFFF;
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: var(--atlanticus-admin-control-radius);
+    font: inherit;
+    font-size: .68rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.atlanticus-users-admin__color-picker-swatch {
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 1px solid rgba(0, 0, 0, .18);
+    border-radius: .35rem;
+}
+
+.atlanticus-users-admin__color-picker:focus {
+    border-color: var(--atlanticus-manager-color-primary);
+    box-shadow: var(--atlanticus-admin-focus-ring);
+    outline: none;
+}
+
+.atlanticus-users-admin__profile-preview-field {
+    display: grid;
+    gap: .45rem;
+}
+
+.atlanticus-users-admin__field-label,
+.atlanticus-users-admin__color-value {
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .68rem;
+    font-weight: 700;
+}
+
+.atlanticus-users-admin__list {
+    display: grid;
+    gap: .55rem;
+    margin-top: .8rem;
+}
+
+.atlanticus-users-admin__list-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.atlanticus-users-admin__card-actions {
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.atlanticus-users-admin__action {
+    min-height: 2rem;
+    padding: .35rem .58rem;
+    color: var(--atlanticus-manager-color-primary-dark);
+    background: #FFFFFF;
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: .5rem;
+    font: inherit;
+    font-size: .68rem;
+    font-weight: 700;
+}
+
+.atlanticus-users-admin__action:disabled {
+    cursor: not-allowed;
+    opacity: .4;
+}
+
+.atlanticus-users-admin__action--danger {
+    color: var(--atlanticus-manager-danger);
+}
+
+.atlanticus-users-admin__profile-badge,
+.atlanticus-users-admin__status {
+    padding: .28rem .5rem;
+    border-radius: 999px;
+    font-size: .65rem;
+    font-weight: 750;
+}
+
+.atlanticus-users-admin__profile-badge {
+    border: 1px solid rgba(0, 0, 0, .08);
+}
+
+.atlanticus-users-admin__status {
+    color: var(--atlanticus-manager-text-muted);
+    background: var(--atlanticus-manager-surface);
+    border: 1px solid var(--atlanticus-manager-border);
+}
+
+.atlanticus-users-admin__status--enabled {
+    color: var(--atlanticus-manager-success);
+}
+
+.atlanticus-users-admin__status--disabled {
+    color: var(--atlanticus-manager-danger);
+}
+
+.atlanticus-users-admin__empty {
+    margin-top: .8rem;
+    padding: .9rem;
+    color: var(--atlanticus-manager-text-muted);
+    background: var(--atlanticus-manager-surface-muted);
+    border: 1px dashed var(--atlanticus-manager-border);
+    border-radius: .7rem;
+    font-size: .72rem;
+}
+
+.atlanticus-users-admin__section--footer {
+    border-top: .22rem solid var(--atlanticus-manager-color-primary);
+}
+
+.atlanticus-users-admin__field {
+    display: grid;
+    gap: .35rem;
+}
+
+.atlanticus-users-admin__field > input {
+    min-height: var(--atlanticus-admin-control-height);
+    padding: .48rem .62rem;
+    color: var(--atlanticus-manager-text);
+    background: #FFFFFF;
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: var(--atlanticus-admin-control-radius);
+    font: inherit;
+}
+
+.atlanticus-users-admin__field > input:focus {
+    border-color: var(--atlanticus-manager-color-primary);
+    box-shadow: var(--atlanticus-admin-focus-ring);
+    outline: none;
+}
+
+.atlanticus-users-admin__field small {
+    color: var(--atlanticus-manager-text-soft);
+    font-size: .64rem;
+    line-height: 1.35;
+}
+
+.atlanticus-users-admin__field--reference code {
+    min-height: var(--atlanticus-admin-control-height);
+    padding: .58rem .65rem;
+    color: var(--atlanticus-manager-color-primary-ink);
+    background: var(--atlanticus-manager-color-primary-soft);
+    border: 1px solid rgba(201, 162, 75, .22);
+    border-radius: var(--atlanticus-admin-control-radius);
+}
+
+.atlanticus-users-admin__enabled-field {
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: .76rem;
+    font-weight: 700;
+}
+
+.atlanticus-users-admin__message {
+    padding: .6rem .72rem;
+    border-radius: .65rem;
+    font-size: .72rem;
+}
+
+.atlanticus-users-admin__message--error {
+    color: var(--atlanticus-manager-danger);
+}
+
+.atlanticus-users-admin__modal {
+    position: fixed;
+    z-index: 1300;
+    inset: 0;
+    display: none;
+    place-items: center;
+    padding: 1rem;
+}
+
+.atlanticus-users-admin__modal--open {
+    display: grid;
+}
+
+.atlanticus-users-admin__modal-backdrop {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    background: rgba(7, 21, 34, .56);
+    border: 0;
+}
+
+.atlanticus-users-admin__modal-dialog {
+    position: relative;
+    z-index: 1;
+    width: min(38rem, 100%);
+    max-height: min(46rem, calc(100vh - 2rem));
+    overflow-y: auto;
+    background: var(--atlanticus-manager-surface);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-top: .24rem solid var(--atlanticus-manager-color-primary);
+    border-radius: .9rem;
+    box-shadow: var(--atlanticus-manager-shadow);
+}
+
+.atlanticus-users-admin__modal-header,
+.atlanticus-users-admin__modal-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .85rem 1rem;
+}
+
+.atlanticus-users-admin__modal-header {
+    border-bottom: 1px solid var(--atlanticus-manager-border);
+}
+
+.atlanticus-users-admin__modal-header h3,
+.atlanticus-users-admin__modal-header p {
+    margin: 0;
+}
+
+.atlanticus-users-admin__modal-header h3 {
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: .95rem;
+}
+
+.atlanticus-users-admin__modal-eyebrow {
+    color: var(--atlanticus-manager-color-primary);
+    font-size: .65rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.atlanticus-users-admin__modal-body {
+    display: grid;
+    gap: .85rem;
+    padding: 1rem;
+}
+
+.atlanticus-users-admin__modal-actions {
+    justify-content: flex-end;
+    border-top: 1px solid var(--atlanticus-manager-border);
+}
+
+@media (max-width: 900px) {
+    .atlanticus-users-admin__system-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .atlanticus-users-admin__list-card,
+    .atlanticus-users-admin__section-heading-row,
+    .atlanticus-users-admin__import {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .atlanticus-users-admin__card-actions {
+        justify-content: flex-start;
+    }
+}

@@ -15,6 +15,7 @@ dependencies = [
     "atlanticus-web-configuration==0.1.0",
     "atlanticus-web-pwa==0.1.0",
     "atlanticus-web-users==0.1.0",
+    "atlanticus-web-users-configuration==0.1.6",
     "atlanticus-web-users-activity==0.1.0",
     "atlanticus-web-composition-navigation-activity==0.1.0",
 ]
@@ -40,6 +41,7 @@ atlanticus-web-manager = { workspace = true }
 atlanticus-web-configuration = { workspace = true }
 atlanticus-web-pwa = { workspace = true }
 atlanticus-web-users = { workspace = true }
+atlanticus-web-users-configuration = { workspace = true }
 atlanticus-web-users-activity = { workspace = true }
 atlanticus-web-composition-navigation-activity = { workspace = true }
 [tool.uv.workspace]
@@ -54,6 +56,7 @@ members = [
     "framework/configuration",
     "framework/pwa",
     "capabilities/users/core",
+    "capabilities/users/configuration",
     "capabilities/users/activity",
     "compositions/navigation-activity",
 ]
@@ -93,6 +96,7 @@ testpaths = [
     "framework/configuration/tests",
     "framework/pwa/tests",
     "capabilities/users/core/tests",
+    "capabilities/users/configuration/tests",
     "capabilities/users/activity/tests",
     "compositions/navigation-activity/tests",
 ]

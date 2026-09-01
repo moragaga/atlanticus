@@ -16,6 +16,7 @@ members = [
     "atlanticus-web-pwa",
     "atlanticus-web-users",
     "atlanticus-web-users-activity",
+    "atlanticus-web-users-configuration",
     "atlanticus-web-workspace",
 ]
 
@@ -218,6 +219,28 @@ requires-dist = [
 ]
 
 [[package]]
+name = "atlanticus-web-users-configuration"
+version = "0.1.6"
+source = { editable = "capabilities/users/configuration" }
+dependencies = [
+    { name = "atlanticus-web-users" },
+]
+
+[package.optional-dependencies]
+web = [
+    { name = "atlanticus-web" },
+    { name = "dash" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-web", marker = "extra == 'web'", editable = "framework/core" },
+    { name = "atlanticus-web-users", editable = "capabilities/users/core" },
+    { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
+]
+provides-extras = ["web"]
+
+[[package]]
 name = "atlanticus-web-workspace"
 version = "0.1.0"
 source = { virtual = "." }
@@ -233,6 +256,7 @@ dependencies = [
     { name = "atlanticus-web-pwa" },
     { name = "atlanticus-web-users" },
     { name = "atlanticus-web-users-activity" },
+    { name = "atlanticus-web-users-configuration" },
 ]
 
 [package.dev-dependencies]
@@ -254,6 +278,7 @@ requires-dist = [
     { name = "atlanticus-web-pwa", editable = "framework/pwa" },
     { name = "atlanticus-web-users", editable = "capabilities/users/core" },
     { name = "atlanticus-web-users-activity", editable = "capabilities/users/activity" },
+    { name = "atlanticus-web-users-configuration", editable = "capabilities/users/configuration" },
 ]
 
 [package.metadata.requires-dev]
