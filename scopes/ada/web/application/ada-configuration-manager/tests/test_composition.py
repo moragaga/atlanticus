@@ -53,6 +53,7 @@ def test_surface_uses_manager_route_and_functional_module_order() -> None:
     assert tuple(module.key for module in surface.registry.modules) == (
         'users',
         'navigation',
+        'tools',
     )
     assert surface.default_path == '/manager/users'
     assert surface.registry.root_route == '/manager'
@@ -60,7 +61,7 @@ def test_surface_uses_manager_route_and_functional_module_order() -> None:
 
 def test_surface_registers_explicit_access_contracts() -> None:
     definition = build_configuration_manager_surface(dependencies())
-    users, navigation = definition.modules
+    users, navigation, tools = definition.modules
 
     assert users.access.view == 'users.manage'
     assert users.access.validate == 'users.manage'
@@ -70,6 +71,22 @@ def test_surface_registers_explicit_access_contracts() -> None:
     assert navigation.access.validate == 'navigation.manage'
     assert navigation.access.publish == 'navigation.manage'
     assert navigation.access.project == 'navigation.manage'
+    assert tools.access.view == 'tools.manage'
+    assert tools.access.validate == 'tools.manage'
+    assert tools.access.publish == 'tools.manage'
+    assert tools.access.project == 'tools.manage'
+
+
+def test_tools_module_represents_the_application_tool_without_selector() -> None:
+    definition = build_configuration_manager_surface(dependencies())
+    tools = definition.modules[2]
+
+    assert tools.key == 'tools'
+    assert tools.title == 'Tool'
+    assert tools.route == '/tools'
+    assert tools.workflow_service == TOOLS_WORKFLOW_SERVICE
+    assert tools.web_module is not None
+    assert tools.web_module.name == 'ada-configuration-manager-tools'
 
 
 def test_service_module_registers_all_four_workflow_adapters() -> None:

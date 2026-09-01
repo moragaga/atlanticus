@@ -1,8 +1,14 @@
 from __future__ import annotations
 
-# Compone workflows y superficies nativas del Manager sin seleccionar infraestructura física.
+# Compone Users, Navigation y la Tool única de esta aplicación dentro del Manager.
 from ada.web.application.configuration_manager.dependencies import (
     ConfigurationManagerDependencies,
+)
+from ada.web.application.configuration_manager.tools import (
+    ToolManagerWebContext,
+    build_tool_history_preview,
+    build_tool_manager_configuration,
+    create_tool_manager_web_module,
 )
 from ada.web.application.configuration_manager.workflows import (
     KpiDefinitionManagerWorkflowAdapter,
@@ -22,6 +28,7 @@ from atlanticus.web.manager.web.ids import (
     workflow_draft_id,
     workflow_editor_revision_id,
     workflow_refresh_signal_id,
+    workflow_result_id,
     workflow_saved_draft_id,
 )
 from atlanticus.web.modules import WebModule
@@ -75,6 +82,15 @@ def build_configuration_manager_surface(
         source_name=dependencies.navigation_source_name,
         projection_name=dependencies.navigation_projection_name,
         profile_options_provider=lambda: _navigation_profile_options(dependencies),
+    )
+    tools_context = ToolManagerWebContext(
+        draft_store_id=workflow_draft_id('tools'),
+        saved_draft_store_id=workflow_saved_draft_id('tools'),
+        draft_save_action_id=workflow_action_id('tools', 'save-draft'),
+        editor_revision_store_id=workflow_editor_revision_id('tools'),
+        result_id=workflow_result_id('tools'),
+        draft_owner_provider=lambda: dependencies.principal_provider().subject_id,
+        can_manage=lambda: _can_manage_tools(dependencies.principal_provider()),
     )
     return ManagerSurfaceDefinition(
         principal_provider=dependencies.principal_provider,
@@ -130,6 +146,27 @@ def build_configuration_manager_surface(
                 projection_name=dependencies.navigation_projection_name,
                 force_publish_enabled=dependencies.force_publish_enabled,
             ),
+            ManagerModule(
+                key='tools',
+                group_key='configuration',
+                title='Tool',
+                route='/tools',
+                order=30,
+                description='Configuración de la herramienta que construye esta aplicación.',
+                layout=lambda _services: build_tool_manager_configuration(),
+                history_preview_renderer=build_tool_history_preview,
+                workflow_service=TOOLS_WORKFLOW_SERVICE,
+                access=ManagerModuleAccess(
+                    view='tools.manage',
+                    validate='tools.manage',
+                    project='tools.manage',
+                    publish='tools.manage',
+                ),
+                web_module=create_tool_manager_web_module(tools_context),
+                source_name=dependencies.tools_source_name,
+                projection_name=dependencies.tools_projection_name,
+                force_publish_enabled=dependencies.force_publish_enabled,
+            ),
         ),
         default_module_key='users',
         route_prefix=MANAGER_ROUTE_PREFIX,
@@ -180,6 +217,14 @@ def _can_manage_navigation(principal: ManagerPrincipal) -> bool:
         principal.is_local
         or 'administrator' in principal.profile_keys
         or 'navigation.manage' in principal.access_keys
+    )
+
+
+def _can_manage_tools(principal: ManagerPrincipal) -> bool:
+    return (
+        principal.is_local
+        or 'administrator' in principal.profile_keys
+        or 'tools.manage' in principal.access_keys
     )
 
 

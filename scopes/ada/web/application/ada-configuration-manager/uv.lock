@@ -17,13 +17,14 @@ dev = [
 
 [[package]]
 name = "ada-configuration-manager"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "ada-configuration-kpi-definition" },
     { name = "ada-configuration-tool-sources" },
     { name = "ada-configuration-tools" },
     { name = "ada-configuration-tools-lifecycle" },
+    { name = "ada-web-tool-configuration-editor" },
     { name = "atlanticus-web" },
     { name = "atlanticus-web-identity" },
     { name = "atlanticus-web-manager" },
@@ -45,6 +46,7 @@ requires-dist = [
     { name = "ada-configuration-tool-sources", editable = "../../configuration/tool-sources" },
     { name = "ada-configuration-tools", editable = "../../configuration/tools" },
     { name = "ada-configuration-tools-lifecycle", editable = "../../configuration/tools-lifecycle" },
+    { name = "ada-web-tool-configuration-editor", editable = "../../configuration/tool-editor" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "atlanticus-web-identity", editable = "../../../../../web/capabilities/identity/core" },
     { name = "atlanticus-web-manager", editable = "../../../../../web/capabilities/manager" },
@@ -100,6 +102,31 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "ada-configuration-tools", editable = "../../configuration/tools" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-tool-configuration-editor"
+version = "0.1.2"
+source = { editable = "../../configuration/tool-editor" }
+dependencies = [
+    { name = "ada-configuration-tool-sources" },
+    { name = "ada-configuration-tools" },
+    { name = "atlanticus-web" },
+    { name = "dash" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-configuration-tool-sources", editable = "../../configuration/tool-sources" },
+    { name = "ada-configuration-tools", editable = "../../configuration/tools" },
+    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
+    { name = "dash", specifier = "==4.4.1" },
+]
 
 [package.metadata.requires-dev]
 dev = [

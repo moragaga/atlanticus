@@ -14,4 +14,7 @@ def test_web_definition_mounts_manager_pages_and_surface_modules() -> None:
 
     module_names = tuple(module.name for module in definition.modules)
     assert 'ada-configuration-manager-services' in module_names
+    assert 'atlanticus-users-configuration' in module_names
+    assert 'atlanticus-navigation-configuration' in module_names
+    assert 'ada-configuration-manager-tools' in module_names
     assert 'manager-surface' in module_names

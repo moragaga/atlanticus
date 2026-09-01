@@ -6,6 +6,7 @@ FILES = (
     'application.py',
     'composition.py',
     'dependencies.py',
+    'tools.py',
     'workflows.py',
 )
 

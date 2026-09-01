@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-configuration-manager"
-version = "0.2.0"
+version = "0.3.0"
 description = "Composition backend de ADA para Atlanticus Manager"
 requires-python = "==3.14.2"
 classifiers = [
@@ -15,6 +15,7 @@ dependencies = [
     "ada-configuration-tool-sources==0.1.0",
     "ada-configuration-tools==0.3.0",
     "ada-configuration-tools-lifecycle==0.2.0",
+    "ada-web-tool-configuration-editor==0.1.2",
     "atlanticus-web==0.1.0",
     "atlanticus-web-identity==0.1.0",
     "atlanticus-web-manager==0.3.12",
@@ -29,6 +30,7 @@ ada-configuration-kpi-definition = { path = "../../configuration/kpi-definition"
 ada-configuration-tool-sources = { path = "../../configuration/tool-sources", editable = true }
 ada-configuration-tools = { path = "../../configuration/tools", editable = true }
 ada-configuration-tools-lifecycle = { path = "../../configuration/tools-lifecycle", editable = true }
+ada-web-tool-configuration-editor = { path = "../../configuration/tool-editor", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
 atlanticus-web-identity = { path = "../../../../../web/capabilities/identity/core", editable = true }
 atlanticus-web-manager = { path = "../../../../../web/capabilities/manager", editable = true }
@@ -85,6 +87,7 @@ pythonpath = [
     "../../configuration/tool-sources/src",
     "../../configuration/tools/src",
     "../../configuration/tools-lifecycle/src",
+    "../../configuration/tool-editor/src",
     "../../../../../web/framework/core/src",
     "../../../../../web/capabilities/identity/core/src",
     "../../../../../web/capabilities/manager/src",
