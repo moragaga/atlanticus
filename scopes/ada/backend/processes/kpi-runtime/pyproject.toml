@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ada-kpi-runtime-process"
+version = "1.0.0"
+description = "KPI runtime process composition for the ADA backend."
+requires-python = "==3.14.2"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "ada-kpis-core==1.0.0",
+    "ada-kpis-evaluation==1.0.0",
+    "ada-kpis-persistence==1.0.0",
+    "atlanticus-configuration==1.0.0",
+    "atlanticus-datasets-parquet==1.0.0",
+    "atlanticus-datasets-runtime==1.0.0",
+    "atlanticus-job-runtime==1.0.0",
+    "atlanticus-key-vault==1.0.0",
+    "atlanticus-kernel==1.0.0",
+    "atlanticus-observability-azure==1.0.0",
+    "atlanticus-operational-data-core==1.0.0",
+    "atlanticus-operational-data-planner==1.0.0",
+    "atlanticus-operational-data-sources==1.0.0",
+    "atlanticus-state==1.0.0",
+]
+
+[dependency-groups]
+dev = ["pytest==9.1.1", "ruff==0.15.22"]
+
+[project.scripts]
+ada-kpi-runtime = "ada.processes.kpi_runtime.bootstrap:main"
+
+[tool.atlanticus.container]
+command = "ada-kpi-runtime"
+system-profile = "base"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["ada.processes.kpi_runtime*"]
+namespaces = true
+
+[tool.setuptools.package-data]
+"ada.processes.kpi_runtime" = ["py.typed"]
+
+[tool.pytest.ini_options]
+addopts = "-q --import-mode=importlib"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ada", "atlanticus"]
+combine-as-imports = true

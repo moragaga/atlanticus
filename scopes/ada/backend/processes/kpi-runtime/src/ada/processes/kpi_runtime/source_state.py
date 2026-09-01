@@ -1,0 +1,67 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime
+
+from ada.kpis.core import KpiWatermark
+from ada.processes.kpi_runtime.errors import KpiRuntimeSourceStateError
+from atlanticus.operational_data.sources import PiSourceProvider
+from atlanticus.state import AtomicStateStore, StateKey
+
+
+class PiOperationalWatermarkReader:
+    def __init__(self, *, store: AtomicStateStore, provider: PiSourceProvider) -> None:
+        if not isinstance(store, AtomicStateStore):
+            raise TypeError('store must be an AtomicStateStore')
+        if not isinstance(provider, PiSourceProvider):
+            raise TypeError('provider must be PiSourceProvider')
+        self._store = store
+        self._provider = provider
+
+    def current(self) -> KpiWatermark | None:
+        if self._provider is PiSourceProvider.PI_WEB_API:
+            return self._read_pi_web_api()
+        return self._read_notpii()
+
+    def _read_pi_web_api(self) -> KpiWatermark | None:
+        document = self._store.read(StateKey(namespace=('sources',), name='pi-web-api'))
+        if document is None:
+            return None
+        value = document.value
+        if set(value) != {'source', 'source_watermark_utc'}:
+            raise KpiRuntimeSourceStateError(
+                'PI Web API source state has unexpected or missing fields'
+            )
+        if value.get('source') != 'pi-web-api':
+            raise KpiRuntimeSourceStateError('PI Web API source state has an invalid source')
+        return _watermark(value.get('source_watermark_utc'), source='PI Web API')
+
+    def _read_notpii(self) -> KpiWatermark | None:
+        document = self._store.read(StateKey(namespace=('producers',), name='notpii'))
+        if document is None:
+            return None
+        value = document.value
+        required = {'producer', 'source_watermark_utc'}
+        if not required.issubset(value):
+            raise KpiRuntimeSourceStateError(
+                'NOT PII producer state is missing the source watermark contract'
+            )
+        if value.get('producer') != 'notpii':
+            raise KpiRuntimeSourceStateError('NOT PII producer state has an invalid producer')
+        return _watermark(value.get('source_watermark_utc'), source='NOT PII')
+
+
+def _watermark(value: object, *, source: str) -> KpiWatermark | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise KpiRuntimeSourceStateError(f'{source} source watermark must be text or null')
+    try:
+        parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
+    except ValueError as error:
+        raise KpiRuntimeSourceStateError(f'{source} source watermark is invalid') from error
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise KpiRuntimeSourceStateError(f'{source} source watermark must be timezone-aware')
+    try:
+        return KpiWatermark(parsed.astimezone(UTC))
+    except ValueError as error:
+        raise KpiRuntimeSourceStateError(f'{source} source watermark is invalid') from error

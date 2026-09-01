@@ -4,9 +4,11 @@ version = "1.0.0"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
+    "ada-kpi-runtime-process==1.0.0",
     "ada-kpis-core==1.0.0",
     "ada-kpis-evaluation==1.0.0",
     "ada-kpis-persistence==1.0.0",
+    "ada-kpis-delivery==1.0.0",
 ]
 
 [dependency-groups]
@@ -19,13 +21,25 @@ dev = [
 package = false
 
 [tool.uv.sources]
+ada-kpi-runtime-process = { workspace = true }
 ada-kpis-core = { workspace = true }
 ada-kpis-evaluation = { workspace = true }
 ada-kpis-persistence = { workspace = true }
-atlanticus-operational-data-core = { path = "../../operational-data/core", editable = true }
+ada-kpis-delivery = { workspace = true }
+atlanticus-configuration = { path = "../../../backend/configuration", editable = true }
+atlanticus-datasets = { path = "../../../backend/datasets", editable = true }
+atlanticus-datasets-parquet = { path = "../../../backend/datasets-parquet", editable = true }
+atlanticus-datasets-runtime = { path = "../../../backend/datasets-runtime", editable = true }
+atlanticus-job-runtime = { path = "../../../backend/runtime", editable = true }
 atlanticus-json = { path = "../../../backend/json", editable = true }
 atlanticus-kernel = { path = "../../../backend/kernel", editable = true }
+atlanticus-key-vault = { path = "../../../connectivity/key-vault", editable = true }
 atlanticus-observability = { path = "../../../backend/observability", editable = true }
+atlanticus-observability-azure = { path = "../../../backend/observability-azure", editable = true }
+atlanticus-operational-data-calendar = { path = "../../operational-data/calendar", editable = true }
+atlanticus-operational-data-core = { path = "../../operational-data/core", editable = true }
+atlanticus-operational-data-planner = { path = "../../operational-data/planner", editable = true }
+atlanticus-operational-data-sources = { path = "../../operational-data/sources", editable = true }
 atlanticus-state = { path = "../../../backend/state", editable = true }
 
 [tool.uv.workspace]
@@ -33,6 +47,8 @@ members = [
     "kpis/core",
     "kpis/evaluation",
     "kpis/persistence",
+    "processes/kpi-runtime",
+    "kpis/delivery",
 ]
 
 [tool.ruff]

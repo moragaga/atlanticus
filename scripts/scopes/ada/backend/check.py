@@ -14,6 +14,7 @@ from zipfile import ZipFile
 
 EXPECTED_PYTHON_VERSION = '3.14.2'
 LEGACY_PATTERN = re.compile(r'\b(?:KpiSource|KpiPartition|SourceRequirement)\b|ada\.data\.')
+PROCESS_FORBIDDEN_IMPORTS = ('ada.web', 'atlanticus.data_producers')
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,24 +48,104 @@ CAPABILITIES = {
         'kpis/persistence',
         ('ada-kpis-core==1.0.0', 'atlanticus-json==1.0.0', 'atlanticus-state==1.0.0'),
     ),
+    'kpi-runtime': Capability(
+        'kpi-runtime',
+        'ada-kpi-runtime-process',
+        'ada.processes.kpi_runtime',
+        'processes/kpi-runtime',
+        (
+            'ada-kpis-core==1.0.0',
+            'ada-kpis-evaluation==1.0.0',
+            'ada-kpis-persistence==1.0.0',
+            'atlanticus-configuration==1.0.0',
+            'atlanticus-datasets-parquet==1.0.0',
+            'atlanticus-datasets-runtime==1.0.0',
+            'atlanticus-job-runtime==1.0.0',
+            'atlanticus-key-vault==1.0.0',
+            'atlanticus-kernel==1.0.0',
+            'atlanticus-observability-azure==1.0.0',
+            'atlanticus-operational-data-core==1.0.0',
+            'atlanticus-operational-data-planner==1.0.0',
+            'atlanticus-operational-data-sources==1.0.0',
+            'atlanticus-state==1.0.0',
+        ),
+    ),
+    'kpi-delivery': Capability(
+        'kpi-delivery',
+        'ada-kpis-delivery',
+        'ada.kpis.delivery',
+        'kpis/delivery',
+        (),
+    ),
 }
 
+EXPECTED_MEMBERS = [
+    'kpis/core',
+    'kpis/evaluation',
+    'kpis/persistence',
+    'processes/kpi-runtime',
+    'kpis/delivery',
+]
+
 EXPECTED_SOURCES = {
+    'ada-kpi-runtime-process': {'workspace': True},
     'ada-kpis-core': {'workspace': True},
     'ada-kpis-evaluation': {'workspace': True},
     'ada-kpis-persistence': {'workspace': True},
-    'atlanticus-operational-data-core': {'path': '../../operational-data/core', 'editable': True},
+    'ada-kpis-delivery': {'workspace': True},
+    'atlanticus-configuration': {'path': '../../../backend/configuration', 'editable': True},
+    'atlanticus-datasets': {'path': '../../../backend/datasets', 'editable': True},
+    'atlanticus-datasets-parquet': {
+        'path': '../../../backend/datasets-parquet',
+        'editable': True,
+    },
+    'atlanticus-datasets-runtime': {
+        'path': '../../../backend/datasets-runtime',
+        'editable': True,
+    },
+    'atlanticus-job-runtime': {'path': '../../../backend/runtime', 'editable': True},
     'atlanticus-json': {'path': '../../../backend/json', 'editable': True},
     'atlanticus-kernel': {'path': '../../../backend/kernel', 'editable': True},
+    'atlanticus-key-vault': {'path': '../../../connectivity/key-vault', 'editable': True},
     'atlanticus-observability': {'path': '../../../backend/observability', 'editable': True},
+    'atlanticus-observability-azure': {
+        'path': '../../../backend/observability-azure',
+        'editable': True,
+    },
+    'atlanticus-operational-data-calendar': {
+        'path': '../../operational-data/calendar',
+        'editable': True,
+    },
+    'atlanticus-operational-data-core': {
+        'path': '../../operational-data/core',
+        'editable': True,
+    },
+    'atlanticus-operational-data-planner': {
+        'path': '../../operational-data/planner',
+        'editable': True,
+    },
+    'atlanticus-operational-data-sources': {
+        'path': '../../operational-data/sources',
+        'editable': True,
+    },
     'atlanticus-state': {'path': '../../../backend/state', 'editable': True},
 }
 
 LOCAL_BASELINES = {
-    'atlanticus-operational-data-core': 'scopes/operational-data/core',
+    'atlanticus-configuration': 'backend/configuration',
+    'atlanticus-datasets': 'backend/datasets',
+    'atlanticus-datasets-parquet': 'backend/datasets-parquet',
+    'atlanticus-datasets-runtime': 'backend/datasets-runtime',
+    'atlanticus-job-runtime': 'backend/runtime',
     'atlanticus-json': 'backend/json',
     'atlanticus-kernel': 'backend/kernel',
+    'atlanticus-key-vault': 'connectivity/key-vault',
     'atlanticus-observability': 'backend/observability',
+    'atlanticus-observability-azure': 'backend/observability-azure',
+    'atlanticus-operational-data-calendar': 'scopes/operational-data/calendar',
+    'atlanticus-operational-data-core': 'scopes/operational-data/core',
+    'atlanticus-operational-data-planner': 'scopes/operational-data/planner',
+    'atlanticus-operational-data-sources': 'scopes/operational-data/sources',
     'atlanticus-state': 'backend/state',
 }
 
@@ -141,11 +222,7 @@ def _validate_workspace(repository: Path, scope: Path) -> None:
     if not isinstance(uv, dict):
         raise SystemExit('Missing ADA backend UV workspace configuration')
     workspace = uv.get('workspace')
-    if not isinstance(workspace, dict) or workspace.get('members') != [
-        'kpis/core',
-        'kpis/evaluation',
-        'kpis/persistence',
-    ]:
+    if not isinstance(workspace, dict) or workspace.get('members') != EXPECTED_MEMBERS:
         raise SystemExit('ADA backend workspace members are not canonical')
     sources = uv.get('sources')
     if sources != EXPECTED_SOURCES:
@@ -167,12 +244,35 @@ def _validate_workspace(repository: Path, scope: Path) -> None:
             raise SystemExit(f'Unexpected dependencies for {capability.distribution}')
     for distribution, relative in LOCAL_BASELINES.items():
         _validate_project(repository / relative, distribution)
+    _validate_runtime_process_contract(scope)
+
+
+def _validate_runtime_process_contract(scope: Path) -> None:
+    root = scope / 'processes/kpi-runtime'
+    document = _read(root / 'pyproject.toml')
+    project = document.get('project')
+    tool = document.get('tool')
+    if not isinstance(project, dict) or not isinstance(tool, dict):
+        raise SystemExit('KPI Runtime project metadata is incomplete')
+    if project.get('scripts') != {'ada-kpi-runtime': 'ada.processes.kpi_runtime.bootstrap:main'}:
+        raise SystemExit('KPI Runtime entrypoint is not canonical')
+    atlanticus = tool.get('atlanticus')
+    container = atlanticus.get('container') if isinstance(atlanticus, dict) else None
+    if container != {'command': 'ada-kpi-runtime', 'system-profile': 'base'}:
+        raise SystemExit('KPI Runtime container contract is not canonical')
+    for name in ('.python-version', '.env.detail', 'config.detail.json', 'secrets.detail.json'):
+        if not (root / name).is_file():
+            raise SystemExit(f'KPI Runtime process contract file is missing: {name}')
 
 
 def _validate_ownership(repository: Path, scope: Path) -> None:
     if (repository / 'scopes/ada/kpis').exists():
         raise SystemExit(
             'Legacy scopes/ada/kpis authority must not coexist with ADA backend KPI domain'
+        )
+    if (repository / 'scopes/ada/processes/kpis').exists():
+        raise SystemExit(
+            'Legacy scopes/ada/processes/kpis authority must not coexist with KPI Runtime'
         )
     core = scope / 'kpis/core/src/ada/kpis/core'
     if (core / 'requirements.py').exists() or (core / 'runtime.py').exists():
@@ -185,6 +285,10 @@ def _validate_ownership(repository: Path, scope: Path) -> None:
             text = path.read_text(encoding='utf-8')
             if LEGACY_PATTERN.search(text.replace('KpiSourceTrace', '')):
                 raise SystemExit(f'Legacy KPI data ownership found in {path}')
+            if capability.key == 'kpi-runtime' and any(
+                token in text for token in PROCESS_FORBIDDEN_IMPORTS
+            ):
+                raise SystemExit(f'Forbidden KPI Runtime dependency found in {path}')
 
 
 def _semantic_tree(path: Path) -> str:

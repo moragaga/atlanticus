@@ -1,0 +1,2 @@
+class KpiDeliveryValidationError(ValueError):
+    pass

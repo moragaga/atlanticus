@@ -1,12 +1,7 @@
-# Espejo pedagógico: ejecuta el mismo gate con Python 3.14.2 + UV.
 #!/usr/bin/env bash
+# Espejo pedagógico: resuelve la raíz del repositorio y delega toda la validación al gate Python.
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
-
-cd "$REPO_ROOT"
-uv run \
-  --python 3.14.2 \
-  --project scopes/ada/backend \
-  --frozen \
-  python scripts/scopes/ada/backend/check.py "$@"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
+cd "$ROOT/scopes/ada/backend"
+exec uv run --python 3.14.2 --no-python-downloads python "$ROOT/scripts/scopes/ada/backend/check.py" "$@"
