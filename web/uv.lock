@@ -11,6 +11,7 @@ members = [
     "atlanticus-web-identity-local",
     "atlanticus-web-manager",
     "atlanticus-web-navigation",
+    "atlanticus-web-navigation-configuration",
     "atlanticus-web-observability",
     "atlanticus-web-pwa",
     "atlanticus-web-users-activity",
@@ -134,6 +135,28 @@ dependencies = [
 requires-dist = [{ name = "atlanticus-web", editable = "framework/core" }]
 
 [[package]]
+name = "atlanticus-web-navigation-configuration"
+version = "0.1.5"
+source = { editable = "capabilities/navigation/configuration" }
+dependencies = [
+    { name = "atlanticus-web-navigation" },
+]
+
+[package.optional-dependencies]
+web = [
+    { name = "atlanticus-web" },
+    { name = "dash" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-web", marker = "extra == 'web'", editable = "framework/core" },
+    { name = "atlanticus-web-navigation", editable = "capabilities/navigation/core" },
+    { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
+]
+provides-extras = ["web"]
+
+[[package]]
 name = "atlanticus-web-observability"
 version = "0.3.0"
 source = { editable = "framework/observability" }
@@ -188,6 +211,7 @@ dependencies = [
     { name = "atlanticus-web-identity-local" },
     { name = "atlanticus-web-manager" },
     { name = "atlanticus-web-navigation" },
+    { name = "atlanticus-web-navigation-configuration" },
     { name = "atlanticus-web-pwa" },
     { name = "atlanticus-web-users-activity" },
 ]
@@ -207,6 +231,7 @@ requires-dist = [
     { name = "atlanticus-web-identity-local", editable = "capabilities/identity/local" },
     { name = "atlanticus-web-manager", editable = "capabilities/manager" },
     { name = "atlanticus-web-navigation", editable = "capabilities/navigation/core" },
+    { name = "atlanticus-web-navigation-configuration", editable = "capabilities/navigation/configuration" },
     { name = "atlanticus-web-pwa", editable = "framework/pwa" },
     { name = "atlanticus-web-users-activity", editable = "capabilities/users/activity" },
 ]

@@ -1,0 +1,302 @@
+/* Mantiene el mismo lenguaje visual del Manager y compacta formularios en dos columnas. */
+.atlanticus-navigation-admin {
+    display: grid;
+    gap: .9rem;
+}
+
+.atlanticus-navigation-admin__runtime-context,
+.atlanticus-navigation-admin__section {
+    min-width: 0;
+    padding: 1rem;
+    background: var(--atlanticus-manager-surface);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: .85rem;
+    box-shadow: 0 4px 16px rgba(25, 30, 38, .035);
+}
+
+.atlanticus-navigation-admin__runtime-context {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .55rem .75rem;
+    padding-block: .72rem;
+    background: var(--atlanticus-manager-surface-muted);
+}
+
+.atlanticus-navigation-admin__runtime-source {
+    display: flex;
+    align-items: baseline;
+    gap: .42rem;
+    padding: .38rem .62rem;
+    color: var(--atlanticus-manager-color-primary-dark);
+    background: var(--atlanticus-manager-color-primary-soft);
+    border: 1px solid rgba(201, 162, 75, .3);
+    border-radius: 999px;
+    font-size: .7rem;
+}
+
+.atlanticus-navigation-admin__runtime-source span,
+.atlanticus-navigation-admin__runtime-help,
+.atlanticus-navigation-admin__section-copy p,
+.atlanticus-navigation-admin__card-meta,
+.atlanticus-navigation-admin__empty,
+.atlanticus-navigation-admin__empty-child {
+    color: var(--atlanticus-manager-text-muted);
+}
+
+.atlanticus-navigation-admin__import {
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    gap: .6rem;
+}
+
+.atlanticus-navigation-admin__runtime-help {
+    max-width: 32rem;
+    font-size: .68rem;
+    line-height: 1.35;
+}
+
+.atlanticus-navigation-admin__section-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: .8rem;
+}
+
+.atlanticus-navigation-admin__section-copy {
+    display: grid;
+    gap: .2rem;
+    min-width: 0;
+}
+
+.atlanticus-navigation-admin__section-copy h3,
+.atlanticus-navigation-admin__section-copy p {
+    margin: 0;
+}
+
+.atlanticus-navigation-admin__section-copy h3 {
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: .9rem;
+    font-weight: 780;
+}
+
+.atlanticus-navigation-admin__section-copy p {
+    max-width: 64rem;
+    font-size: .72rem;
+    line-height: 1.4;
+}
+
+.atlanticus-navigation-admin__heading-actions,
+.atlanticus-navigation-admin__actions,
+.atlanticus-navigation-admin__check-row,
+.atlanticus-navigation-admin__modal-actions {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+}
+
+.atlanticus-navigation-admin__profiles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+    margin-top: .65rem;
+}
+
+.atlanticus-navigation-admin__profile {
+    padding: .32rem .62rem;
+    color: var(--atlanticus-manager-text);
+    background: var(--atlanticus-manager-surface-muted);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: 999px;
+    font-size: .7rem;
+    font-weight: 700;
+}
+
+.atlanticus-navigation-admin__profile--unrestricted {
+    border-color: rgba(201, 162, 75, .55);
+}
+
+.atlanticus-navigation-admin__link-card,
+.atlanticus-navigation-admin__group-card {
+    min-width: 0;
+    margin-top: .55rem;
+    padding: .68rem .75rem;
+    background: var(--atlanticus-manager-surface-muted);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: .72rem;
+}
+
+.atlanticus-navigation-admin__link-card,
+.atlanticus-navigation-admin__card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .8rem;
+}
+
+.atlanticus-navigation-admin__link-card--child {
+    margin-top: .38rem;
+    background: var(--atlanticus-manager-surface);
+}
+
+.atlanticus-navigation-admin__card-copy {
+    display: grid;
+    gap: .18rem;
+    min-width: 0;
+}
+
+.atlanticus-navigation-admin__card-title,
+.atlanticus-navigation-admin__card-meta {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: .45rem;
+}
+
+.atlanticus-navigation-admin__card-title strong {
+    font-size: .82rem;
+}
+
+.atlanticus-navigation-admin__card-title code,
+.atlanticus-navigation-admin__card-meta {
+    font-size: .68rem;
+}
+
+.atlanticus-navigation-admin__children {
+    margin: .55rem 0;
+    padding-left: .7rem;
+    border-left: 2px solid var(--atlanticus-manager-border);
+}
+
+.atlanticus-navigation-admin__group-add {
+    min-height: 2rem;
+    padding: .34rem .62rem;
+}
+
+.atlanticus-navigation-admin__mini-button {
+    min-height: 2rem;
+    padding: .32rem .5rem;
+    color: var(--atlanticus-manager-color-primary-ink);
+    background: var(--atlanticus-manager-surface);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: .45rem;
+    cursor: pointer;
+    font: inherit;
+    font-size: .7rem;
+    font-weight: 700;
+}
+
+.atlanticus-navigation-admin__empty,
+.atlanticus-navigation-admin__empty-child {
+    margin: .55rem 0 0;
+    font-size: .72rem;
+}
+
+.atlanticus-navigation-admin__empty-child {
+    margin: .35rem 0;
+}
+
+.atlanticus-navigation-admin__section--footer {
+    border-top: 2px solid var(--atlanticus-manager-color-accent);
+}
+
+.atlanticus-navigation-admin__modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: none;
+    padding: 2rem;
+    overflow: auto;
+    background: rgb(7 21 34 / 48%);
+}
+
+.atlanticus-navigation-admin__modal--open {
+    display: grid;
+    place-items: center;
+}
+
+.atlanticus-navigation-admin__modal-card {
+    display: grid;
+    gap: .9rem;
+    width: min(52rem, 100%);
+    padding: 1.25rem;
+    background: var(--atlanticus-manager-surface);
+    border-radius: .85rem;
+    box-shadow: 0 1rem 3rem rgb(0 0 0 / 20%);
+}
+
+.atlanticus-navigation-admin__modal-card h3 {
+    margin: 0;
+    color: var(--atlanticus-manager-color-primary-ink);
+}
+
+.atlanticus-navigation-admin__form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .75rem .9rem;
+}
+
+.atlanticus-navigation-admin__field {
+    display: grid;
+    gap: .35rem;
+    min-width: 0;
+    font-size: .76rem;
+    font-weight: 700;
+}
+
+.atlanticus-navigation-admin__field input {
+    width: 100%;
+    min-height: 2.45rem;
+    padding: .5rem .62rem;
+    border: 1px solid var(--atlanticus-manager-border-strong, #cfd6dd);
+    border-radius: .45rem;
+}
+
+.atlanticus-navigation-admin__field-check {
+    display: flex;
+    align-items: end;
+    padding-bottom: .45rem;
+}
+
+.atlanticus-navigation-admin__check-row {
+    flex-wrap: wrap;
+    gap: .65rem 1.2rem;
+}
+
+.atlanticus-navigation-admin__modal-actions {
+    justify-content: flex-end;
+    margin-top: .2rem;
+}
+
+.atlanticus-navigation-admin__error {
+    padding: .55rem .7rem;
+    color: #9b1c1c;
+    background: #fff0f0;
+    border-radius: .45rem;
+    font-size: .78rem;
+}
+
+@media (max-width: 760px) {
+    .atlanticus-navigation-admin__section-heading,
+    .atlanticus-navigation-admin__link-card,
+    .atlanticus-navigation-admin__card-head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .atlanticus-navigation-admin__heading-actions,
+    .atlanticus-navigation-admin__actions {
+        flex-wrap: wrap;
+    }
+
+    .atlanticus-navigation-admin__form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .atlanticus-navigation-admin__import {
+        justify-content: flex-start;
+    }
+}

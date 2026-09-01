@@ -10,6 +10,7 @@ dependencies = [
     "atlanticus-web-identity==0.1.0",
     "atlanticus-web-identity-local==0.1.0",
     "atlanticus-web-navigation==0.1.0",
+    "atlanticus-web-navigation-configuration==0.1.5",
     "atlanticus-web-manager==0.3.12",
     "atlanticus-web-configuration==0.1.0",
     "atlanticus-web-pwa==0.1.0",
@@ -32,6 +33,7 @@ atlanticus-web-observability = { workspace = true }
 atlanticus-web-identity = { workspace = true }
 atlanticus-web-identity-local = { workspace = true }
 atlanticus-web-navigation = { workspace = true }
+atlanticus-web-navigation-configuration = { workspace = true }
 atlanticus-web-manager = { workspace = true }
 
 atlanticus-web-configuration = { workspace = true }
@@ -45,6 +47,7 @@ members = [
     "capabilities/identity/core",
     "capabilities/identity/local",
     "capabilities/navigation/core",
+    "capabilities/navigation/configuration",
     "capabilities/manager",
     "framework/configuration",
     "framework/pwa",
@@ -82,6 +85,7 @@ testpaths = [
     "capabilities/identity/core/tests",
     "capabilities/identity/local/tests",
     "capabilities/navigation/core/tests",
+    "capabilities/navigation/configuration/tests",
     "capabilities/manager/tests",
     "framework/configuration/tests",
     "framework/pwa/tests",
