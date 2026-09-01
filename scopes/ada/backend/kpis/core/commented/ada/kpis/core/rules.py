@@ -1,12 +1,13 @@
-# Espejo pedagógico: mantiene los contratos KPI y añade comentarios en español sin cambiar el AST productivo.
+# Contratos de definición KPI. OverKpiSpec declara dependencias entre KPI ya calculados y no fuentes operacionales.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import TypeAlias
 
-from ada.kpis.core.enums import KpiArea, KpiMode
+from ada.kpis.core.enums import KpiArea, KpiMode, KpiValueKind
+from ada.kpis.core.values import KpiNativeValue
 from atlanticus.operational_data.core import (
     DataColumn,
     DataColumnType,
@@ -20,6 +21,7 @@ from atlanticus.operational_data.core import (
 )
 
 KpiResolver: TypeAlias = Callable[[DataRuntimeContext], object]
+OverKpiResolver: TypeAlias = Callable[[Mapping[str, KpiNativeValue]], object]
 _KEY_PATTERN = re.compile(r'[A-Za-z0-9](?:[A-Za-z0-9_.-]{0,119})?')
 _NUMERIC_TYPES = frozenset({DataColumnType.INTEGER, DataColumnType.FLOAT})
 _SIMPLE_TYPES = frozenset({DataColumnType.TEXT, DataColumnType.INTEGER, DataColumnType.FLOAT})
@@ -137,6 +139,53 @@ class KpiSpec:
         }:
             raise ValueError('KPI decimals are only valid for numeric modes')
         _ = self.requirements
+
+
+@dataclass(frozen=True, slots=True)
+class OverKpiSpec:
+    key: str
+    area: KpiArea | str
+    dependencies: tuple[str, ...]
+    resolver: OverKpiResolver
+    value_kind: KpiValueKind = KpiValueKind.VALUE
+    decimals: int | None = None
+    persist_history: bool = False
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.key, str) or not _KEY_PATTERN.fullmatch(self.key):
+            raise ValueError(
+                'Over KPI key must use 1-120 letters, numbers, dots, underscores or hyphens'
+            )
+        area = self.area.value if isinstance(self.area, KpiArea) else self.area
+        if not isinstance(area, str) or not _KEY_PATTERN.fullmatch(area):
+            raise ValueError('Over KPI area must use a valid identity')
+        dependencies = tuple(self.dependencies)
+        if not dependencies:
+            raise ValueError('Over KPI requires at least one dependency')
+        if any(
+            not isinstance(dependency, str) or not _KEY_PATTERN.fullmatch(dependency)
+            for dependency in dependencies
+        ):
+            raise ValueError('Over KPI dependencies must use valid KPI identities')
+        if len(set(dependencies)) != len(dependencies):
+            raise ValueError('Over KPI dependencies must be unique')
+        if self.key in dependencies:
+            raise ValueError('Over KPI cannot depend on itself')
+        if not callable(self.resolver):
+            raise TypeError('Over KPI resolver must be callable')
+        if not isinstance(self.value_kind, KpiValueKind):
+            raise TypeError('Over KPI value_kind must be KpiValueKind')
+        if self.decimals is not None:
+            if isinstance(self.decimals, bool) or not isinstance(self.decimals, int):
+                raise TypeError('Over KPI decimals must be an int or None')
+            if not 0 <= self.decimals <= 12:
+                raise ValueError('Over KPI decimals must be between 0 and 12')
+            if self.value_kind is KpiValueKind.JSON:
+                raise ValueError('JSON Over KPI must not declare decimals')
+        if not isinstance(self.persist_history, bool):
+            raise TypeError('Over KPI persist_history must be bool')
+        object.__setattr__(self, 'area', area)
+        object.__setattr__(self, 'dependencies', dependencies)
 
 
 def _allowed_types(mode: KpiMode) -> frozenset[DataColumnType]:

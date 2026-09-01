@@ -57,7 +57,9 @@ def build_composition(
     settings = KpiRuntimeSettings.from_configuration(configuration)
     runtime_configuration = RuntimeConfiguration.from_sources(environ=configuration.values)
     registry = build_current_source_registry(pi_source=settings.pi_source)
-    plan = DataRequirementPlanner().plan({spec.key: spec.requirements for spec in resolved_catalog})
+    plan = DataRequirementPlanner().plan(
+        {spec.key: spec.requirements for spec in resolved_catalog.specs}
+    )
     applications = DataSourceApplications(
         pi=settings.pi_application,
         dispatch=settings.dispatch_application,

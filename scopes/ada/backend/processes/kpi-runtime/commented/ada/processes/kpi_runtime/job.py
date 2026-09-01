@@ -1,13 +1,12 @@
+# Runtime KPI: evalúa primero KPI base y luego Over KPI, conservando un único batch durable por watermark.
 from __future__ import annotations
 
-from ada.kpis.core import KpiCatalog, KpiWatermark
-from ada.kpis.evaluation import evaluate_kpi
+from ada.kpis.core import KpiCatalog, KpiEvaluation, KpiWatermark
+from ada.kpis.evaluation import evaluate_kpi, evaluate_over_kpi
 from ada.kpis.persistence import KpiEvaluationBatch, KpiPersistence
 from ada.processes.kpi_runtime.errors import KpiRuntimeWatermarkError
 from ada.processes.kpi_runtime.models import KpiRuntimeIterationResult, KpiRuntimeOutcome
 from ada.processes.kpi_runtime.source_state import PiOperationalWatermarkReader
-
-# Espejo pedagógico: conserva el comportamiento productivo y documenta la responsabilidad de este módulo.
 from atlanticus.operational_data.core import DataSource
 from atlanticus.operational_data.planner import DataLoadPlan
 from atlanticus.operational_data.sources import DataSourceLoader
@@ -76,16 +75,29 @@ class KpiRuntimeJob:
             DataSource.PI_INTERPOLATED: observed,
             DataSource.PI_RECORDED: observed,
         }
-        evaluations = tuple(
-            evaluate_kpi(
+        evaluations: list[KpiEvaluation] = []
+        resolved: dict[str, KpiEvaluation] = {}
+
+        for spec in self._catalog.specs:
+            evaluation = evaluate_kpi(
                 spec=spec,
                 context=loaded.context_for(spec.key),
                 watermark=observed,
                 source_watermarks=source_traces,
             )
-            for spec in self._catalog
-        )
-        batch = KpiEvaluationBatch(watermark=observed, evaluations=evaluations)
+            evaluations.append(evaluation)
+            resolved[spec.key] = evaluation
+
+        for spec in self._catalog.over_specs:
+            evaluation = evaluate_over_kpi(
+                spec=spec,
+                dependencies={key: resolved[key] for key in spec.dependencies},
+                watermark=observed,
+            )
+            evaluations.append(evaluation)
+            resolved[spec.key] = evaluation
+
+        batch = KpiEvaluationBatch(watermark=observed, evaluations=tuple(evaluations))
         context.raise_if_cancelled()
         context.assert_lease_current()
         with context.fenced_mutation():

@@ -1,8 +1,8 @@
-# Espejo pedagógico: mantiene los contratos KPI y añade comentarios en español sin cambiar el AST productivo.
+# Fachada pública del dominio KPI Core, incluyendo el contrato Over recuperado.
 from ada.kpis.core.catalog import KpiCatalog
 from ada.kpis.core.enums import KpiArea, KpiMode, KpiStatus, KpiValueKind
 from ada.kpis.core.results import KpiEvaluation, KpiResult, KpiSourceTrace
-from ada.kpis.core.rules import KpiResolver, KpiSpec
+from ada.kpis.core.rules import KpiResolver, KpiSpec, OverKpiResolver, OverKpiSpec
 from ada.kpis.core.values import KpiJsonValue, KpiNativeValue, KpiScalar, normalize_kpi_value
 from ada.kpis.core.watermark import KpiWatermark
 
@@ -23,6 +23,8 @@ __all__ = [
     'KpiStatus',
     'KpiValueKind',
     'KpiWatermark',
+    'OverKpiResolver',
+    'OverKpiSpec',
     '__version__',
     'normalize_kpi_value',
 ]
