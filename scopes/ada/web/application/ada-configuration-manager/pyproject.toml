@@ -1,0 +1,96 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ada-configuration-manager"
+version = "0.1.0"
+description = "Composition backend de ADA para Atlanticus Manager"
+requires-python = "==3.14.2"
+classifiers = [
+    "Private :: Do Not Upload",
+]
+dependencies = [
+    "ada-configuration-kpi-definition==0.3.0",
+    "ada-configuration-tool-sources==0.1.0",
+    "ada-configuration-tools==0.3.0",
+    "ada-configuration-tools-lifecycle==0.2.0",
+    "atlanticus-web==0.1.0",
+    "atlanticus-web-identity==0.1.0",
+    "atlanticus-web-manager==0.3.12",
+    "atlanticus-web-navigation==0.1.0",
+    "atlanticus-web-navigation-configuration==0.1.5",
+    "atlanticus-web-users==0.1.0",
+    "atlanticus-web-users-configuration==0.1.6",
+]
+
+[tool.uv.sources]
+ada-configuration-kpi-definition = { path = "../../configuration/kpi-definition", editable = true }
+ada-configuration-tool-sources = { path = "../../configuration/tool-sources", editable = true }
+ada-configuration-tools = { path = "../../configuration/tools", editable = true }
+ada-configuration-tools-lifecycle = { path = "../../configuration/tools-lifecycle", editable = true }
+atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
+atlanticus-web-identity = { path = "../../../../../web/capabilities/identity/core", editable = true }
+atlanticus-web-manager = { path = "../../../../../web/capabilities/manager", editable = true }
+atlanticus-web-navigation = { path = "../../../../../web/capabilities/navigation/core", editable = true }
+atlanticus-web-navigation-configuration = { path = "../../../../../web/capabilities/navigation/configuration", editable = true }
+atlanticus-web-users = { path = "../../../../../web/capabilities/users/core", editable = true }
+atlanticus-web-users-configuration = { path = "../../../../../web/capabilities/users/configuration", editable = true }
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.15.22",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+include = ["ada.web.application.configuration_manager*"]
+
+[tool.setuptools.package-data]
+"ada.web.application.configuration_manager" = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+target-version = "py314"
+extend-exclude = [
+    "build",
+    "dist",
+    "commented",
+]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ada", "atlanticus"]
+combine-as-imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [
+    "src",
+    "../../configuration/kpi-definition/src",
+    "../../configuration/tool-sources/src",
+    "../../configuration/tools/src",
+    "../../configuration/tools-lifecycle/src",
+    "../../../../../web/framework/core/src",
+    "../../../../../web/capabilities/identity/core/src",
+    "../../../../../web/capabilities/manager/src",
+    "../../../../../web/capabilities/navigation/core/src",
+    "../../../../../web/capabilities/navigation/configuration/src",
+    "../../../../../web/capabilities/users/core/src",
+    "../../../../../web/capabilities/users/configuration/src",
+]
+addopts = "-q --import-mode=importlib"
