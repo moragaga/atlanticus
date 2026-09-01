@@ -188,7 +188,7 @@
         justify-content: stretch;
         flex-wrap: nowrap;
         row-gap: 0;
-        padding-block: .28rem .38rem;
+        padding-block: .1rem .14rem;
     }
 
     .global-indicator {
@@ -197,7 +197,36 @@
         max-width: 100%;
         min-width: 0;
         min-height: 0;
+        gap: .18rem;
         padding-inline: .25rem;
+    }
+
+    .global-indicator__content {
+        gap: .08rem;
+    }
+
+    .global-indicator__last-measurement {
+        gap: .06rem;
+    }
+
+    .global-indicator__value--measurement-label {
+        padding: .2rem .55rem .2rem 0;
+    }
+
+    .global-indicator__value--actual {
+        padding: .2rem .1rem .2rem 0;
+    }
+
+    .global-indicator__separator {
+        padding: .2rem .1rem;
+    }
+
+    .global-indicator__value--plan {
+        padding: .2rem 0 .2rem .1rem;
+    }
+
+    .global-indicator__last-measurement {
+        margin-bottom: .06rem;
     }
 
     .global-indicators > .global-indicator {
@@ -236,7 +265,7 @@
 }
 
 @media only screen and (min-width: 1366px) {
-    .global-indicators { padding-block: .3rem .4rem; }
+    .global-indicators { padding-block: .11rem .15rem; }
     .font-size-gi-100 { font-size: .74rem; }
     .font-size-gi-200 { font-size: .64rem; }
     .font-size-gi-300 { font-size: .54rem; }
@@ -244,7 +273,7 @@
 }
 
 @media only screen and (min-width: 1536px) {
-    .global-indicators { padding-block: .3rem .42rem; }
+    .global-indicators { padding-block: .12rem .16rem; }
     .font-size-gi-100 { font-size: .76rem; }
     .font-size-gi-200 { font-size: .66rem; }
     .font-size-gi-300 { font-size: .56rem; }
@@ -252,7 +281,7 @@
 }
 
 @media only screen and (min-width: 1920px) {
-    .global-indicators { padding-block: .32rem .46rem; }
+    .global-indicators { padding-block: .14rem .18rem; }
     .font-size-gi-100 { font-size: .82rem; }
     .font-size-gi-200 { font-size: .72rem; }
     .font-size-gi-300 { font-size: .62rem; }
@@ -261,7 +290,7 @@
 
 /* Videowall: tipografía mayor para lectura a distancia. */
 @media only screen and (min-width: 2560px) {
-    .global-indicators { padding-block: .38rem .55rem; }
+    .global-indicators { padding-block: .18rem .24rem; }
     .font-size-gi-100 { font-size: .92rem; }
     .font-size-gi-200 { font-size: .8rem; }
     .font-size-gi-300 { font-size: .7rem; }
@@ -269,5 +298,5 @@
     .global-indicator__label,
     .global-indicator__unit { font-size: .86rem; }
     .global-indicator__value--measurement-label { padding-inline-end: 1rem; }
-    .global-indicator__last-measurement { margin-bottom: .12rem; }
+    .global-indicator__last-measurement { margin-bottom: .1rem; }
 }

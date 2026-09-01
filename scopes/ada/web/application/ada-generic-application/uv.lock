@@ -17,7 +17,7 @@ dev = [
 
 [[package]]
 name = "ada-generic-application"
-version = "0.2.10"
+version = "0.2.13"
 source = { editable = "." }
 dependencies = [
     { name = "ada-configuration-tool-sources" },
@@ -303,7 +303,7 @@ dev = [
 
 [[package]]
 name = "ada-web-ui-global-indicator"
-version = "0.2.6"
+version = "0.2.9"
 source = { editable = "../../ui/global-indicator" }
 dependencies = [
     { name = "ada-web-ui-core" },

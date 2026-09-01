@@ -68,6 +68,58 @@ def test_global_indicator_visual_calibration_scales_mobile_tablet_and_videowall(
     assert '.font-size-gi-100 { font-size: .72rem; }' in css
     assert '.font-size-gi-100 { font-size: .92rem; }' in css
     assert 'row-gap: .45rem;' in css
-    assert 'padding-block: .38rem .55rem;' in css
+    assert 'padding-block: .18rem .24rem;' in css
     assert '.global-indicator__label,\n    .global-indicator__unit { font-size: .86rem; }' in css
     assert 'padding-inline-end: 1rem;' in css
+
+
+def test_global_indicator_desktop_fit_preserves_text_scale_and_last_measurement() -> None:
+    css = (
+        files('ada.web.ui.global_indicator')
+        .joinpath('resources/css/10-global-indicator.css')
+        .read_text(encoding='utf-8')
+    )
+
+    desktop = css.split('@media only screen and (min-width: 1280px) {', 1)[1]
+    assert 'gap: .18rem;' in desktop
+    assert '.global-indicator__content {\n        gap: .08rem;' in desktop
+    assert '.global-indicator__last-measurement {\n        gap: .06rem;' in desktop
+    assert 'padding: .2rem .55rem .2rem 0;' in desktop
+    assert 'padding: .2rem .1rem .2rem 0;' in desktop
+    assert 'padding: .2rem .1rem;' in desktop
+    assert 'padding: .2rem 0 .2rem .1rem;' in desktop
+    assert 'margin-bottom: .06rem;' in desktop
+
+    mobile = css.split('@media only screen and (min-width: 1280px) {', 1)[0]
+    assert 'gap: .3rem;' in mobile
+    assert '.global-indicator__content {\n    display: flex;' in mobile
+
+
+def test_global_indicator_desktop_uses_fixed_header_height_efficiently() -> None:
+    css = (
+        files('ada.web.ui.global_indicator')
+        .joinpath('resources/css/10-global-indicator.css')
+        .read_text(encoding='utf-8')
+    )
+
+    assert 'padding-block: .1rem .14rem;' in css
+    assert '.global-indicators { padding-block: .11rem .15rem; }' in css
+    assert '.global-indicators { padding-block: .12rem .16rem; }' in css
+    assert '.global-indicators { padding-block: .14rem .18rem; }' in css
+    assert '.global-indicators { padding-block: .18rem .24rem; }' in css
+    assert 'margin-bottom: .1rem;' in css
+
+
+def test_global_indicator_desktop_breathing_keeps_content_separated() -> None:
+    css = (
+        files('ada.web.ui.global_indicator')
+        .joinpath('resources/css/10-global-indicator.css')
+        .read_text(encoding='utf-8')
+    )
+
+    desktop = css.split('@media only screen and (min-width: 1280px) {', 1)[1]
+    assert 'gap: .18rem;' in desktop
+    assert '.global-indicator__content {\n        gap: .08rem;' in desktop
+    assert '.global-indicator__last-measurement {\n        gap: .06rem;' in desktop
+    assert 'margin-bottom: .06rem;' in desktop
+    assert '.global-indicator__last-measurement { margin-bottom: .1rem; }' in desktop
