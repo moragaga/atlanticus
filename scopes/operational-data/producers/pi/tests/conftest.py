@@ -20,7 +20,7 @@ def catalog() -> PiCatalog:
             PiTagDefinition(
                 tag_name='TAG_A',
                 alias='a',
-                value_kind=PiValueKind.NUMBER,
+                value_kind=PiValueKind.FLOAT,
                 extraction_mode=PiExtractionMode.INTERPOLATED,
                 materializations=(PiMaterialization.LATEST, PiMaterialization.DAILY),
             ),
@@ -34,7 +34,7 @@ def catalog() -> PiCatalog:
             PiTagDefinition(
                 tag_name='TAG_DISABLED',
                 alias='disabled',
-                value_kind=PiValueKind.NUMBER,
+                value_kind=PiValueKind.FLOAT,
                 extraction_mode=PiExtractionMode.INTERPOLATED,
                 materializations=(PiMaterialization.DAILY,),
                 is_active=False,

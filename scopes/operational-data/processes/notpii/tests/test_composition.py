@@ -20,7 +20,7 @@ def _catalog() -> PiCatalog:
             PiTagDefinition(
                 tag_name='TAG_A',
                 alias='tag_a',
-                value_kind=PiValueKind.NUMBER,
+                value_kind=PiValueKind.FLOAT,
                 extraction_mode=PiExtractionMode.INTERPOLATED,
                 materializations=(PiMaterialization.LATEST,),
             ),

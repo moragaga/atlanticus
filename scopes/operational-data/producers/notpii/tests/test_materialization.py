@@ -21,7 +21,7 @@ def _definition(tag: str, alias: str) -> PiTagDefinition:
     return PiTagDefinition(
         tag_name=tag,
         alias=alias,
-        value_kind=PiValueKind.NUMBER,
+        value_kind=PiValueKind.FLOAT,
         extraction_mode=PiExtractionMode.RECORDED,
         materializations=(PiMaterialization.DAILY,),
     )

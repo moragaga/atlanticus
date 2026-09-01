@@ -13,5 +13,5 @@ class PiMaterialization(StrEnum):
 
 
 class PiValueKind(StrEnum):
-    NUMBER = 'number'
+    FLOAT = 'float'
     TEXT = 'text'

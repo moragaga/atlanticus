@@ -1,6 +1,13 @@
 from datetime import UTC, datetime
 
-from ada.kpis.core import KpiMode, KpiSpec, KpiStatus, KpiValueKind, KpiWatermark
+from ada.kpis.core import (
+    KpiArea,
+    KpiMode,
+    KpiSpec,
+    KpiStatus,
+    KpiValueKind,
+    KpiWatermark,
+)
 from ada.kpis.evaluation import evaluate_kpi
 from atlanticus.operational_data.core import (
     DataColumn,
@@ -21,7 +28,7 @@ VIEW = DataSourceView(DataSource.PI_INTERPOLATED, DataPartition.LATEST)
 def test_latest_number_returns_ok_and_source_trace() -> None:
     spec = KpiSpec(
         key='kpi-a',
-        area='general',
+        area=KpiArea.GENERAL,
         mode=KpiMode.LATEST_NUMBER,
         source=VIEW.source,
         partition=VIEW.partition,
@@ -43,7 +50,7 @@ def test_latest_number_returns_ok_and_source_trace() -> None:
 def test_missing_latest_is_missing_not_error() -> None:
     spec = KpiSpec(
         key='kpi-a',
-        area='general',
+        area=KpiArea.GENERAL,
         mode=KpiMode.LATEST,
         source=VIEW.source,
         partition=VIEW.partition,
@@ -57,7 +64,7 @@ def test_sum_aggregates_requested_numeric_columns() -> None:
     daily = DataSourceView(DataSource.PI_INTERPOLATED, DataPartition.DAILY)
     spec = KpiSpec(
         key='sum',
-        area='general',
+        area=KpiArea.GENERAL,
         mode=KpiMode.SUM,
         source=daily.source,
         partition=daily.partition,
@@ -87,7 +94,7 @@ def test_custom_exception_is_sanitized_to_exception_type() -> None:
 
     spec = KpiSpec(
         key='custom',
-        area='general',
+        area=KpiArea.GENERAL,
         mode=KpiMode.CUSTOM,
         source_requirements=(requirement,),
         custom_resolver=fail,
@@ -112,7 +119,7 @@ def test_custom_mapping_is_json_value() -> None:
     )
     spec = KpiSpec(
         key='custom',
-        area='general',
+        area=KpiArea.GENERAL,
         mode=KpiMode.CUSTOM,
         source_requirements=(requirement,),
         custom_resolver=lambda _context: {'value': 1},

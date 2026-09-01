@@ -5,7 +5,6 @@ class KpiArea(StrEnum):
     GENERAL = 'general'
     MINA = 'mina'
     PLANTA = 'planta'
-    PUERTO = 'puerto'
 
 
 class KpiMode(StrEnum):

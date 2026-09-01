@@ -92,7 +92,7 @@ def test_process_gate_exercises_connector_parquet_filtering(monkeypatch) -> None
             PiTagDefinition(
                 tag_name='TAG.001',
                 alias='tag_001',
-                value_kind=PiValueKind.NUMBER,
+                value_kind=PiValueKind.FLOAT,
                 extraction_mode=PiExtractionMode.INTERPOLATED,
                 materializations=(PiMaterialization.LATEST,),
             ),

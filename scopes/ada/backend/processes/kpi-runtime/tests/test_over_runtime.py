@@ -45,7 +45,7 @@ def test_over_kpi_does_not_add_operational_data_requirements(tmp_path):
     base_catalog = simple_catalog()
     over = OverKpiSpec(
         key='general.copy',
-        area='general',
+        area=KpiArea.GENERAL,
         dependencies=('test-kpi',),
         resolver=lambda values: values['test-kpi'],
     )

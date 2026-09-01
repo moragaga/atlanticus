@@ -66,7 +66,7 @@ def _definition(
     return PiTagDefinition(
         tag_name=name,
         alias=alias,
-        value_kind=PiValueKind.NUMBER,
+        value_kind=PiValueKind.FLOAT,
         extraction_mode=mode,
         materializations=materializations,
     )

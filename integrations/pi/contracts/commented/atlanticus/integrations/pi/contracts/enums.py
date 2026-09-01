@@ -16,5 +16,5 @@ class PiMaterialization(StrEnum):
 
 # Tipos lógicos mínimos que Atlanticus necesita distinguir al normalizar PI.
 class PiValueKind(StrEnum):
-    NUMBER = 'number'
+    FLOAT = 'float'
     TEXT = 'text'

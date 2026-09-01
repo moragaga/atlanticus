@@ -77,7 +77,7 @@ def _tag(name: str, mode: PiExtractionMode) -> ResolvedPiTag:
         definition=PiTagDefinition(
             tag_name=name,
             alias=name.lower(),
-            value_kind=PiValueKind.NUMBER,
+            value_kind=PiValueKind.FLOAT,
             extraction_mode=mode,
             materializations=(PiMaterialization.DAILY,),
         ),

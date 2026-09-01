@@ -51,7 +51,7 @@ def evaluate_kpi(
         )
     return KpiEvaluation(
         key=spec.key,
-        area=spec.area,
+        area=spec.area.value,
         watermark=watermark,
         evaluated_at_utc=evaluated_at,
         result=result,
@@ -97,7 +97,7 @@ def evaluate_over_kpi(
             )
     return KpiEvaluation(
         key=spec.key,
-        area=spec.area,
+        area=spec.area.value,
         watermark=watermark,
         evaluated_at_utc=evaluated_at,
         result=result,

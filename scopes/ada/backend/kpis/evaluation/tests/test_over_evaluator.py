@@ -94,7 +94,7 @@ def test_dependency_error_short_circuits_resolver():
 
     spec = OverKpiSpec(
         key='general.total',
-        area='general',
+        area=KpiArea.GENERAL,
         dependencies=('general.a',),
         resolver=resolver,
     )
@@ -114,7 +114,7 @@ def test_dependency_error_short_circuits_resolver():
 def test_missing_dependency_value_is_available_to_resolver_as_none():
     spec = OverKpiSpec(
         key='general.fallback',
-        area='general',
+        area=KpiArea.GENERAL,
         dependencies=('general.a',),
         resolver=lambda values: 0 if values['general.a'] is None else values['general.a'],
     )
@@ -133,7 +133,7 @@ def test_missing_dependency_value_is_available_to_resolver_as_none():
 def test_json_over_requires_json_container():
     spec = OverKpiSpec(
         key='general.payload',
-        area='general',
+        area=KpiArea.GENERAL,
         dependencies=('general.a',),
         resolver=lambda values: 1,
         value_kind=KpiValueKind.JSON,

@@ -18,7 +18,7 @@ def _interpolated_tag(
     return PiTagDefinition(
         tag_name='\\\\PISERVER\\Crusher Feed Rate',
         alias=alias,
-        value_kind=PiValueKind.NUMBER,
+        value_kind=PiValueKind.FLOAT,
         extraction_mode=PiExtractionMode.INTERPOLATED,
         materializations=(
             PiMaterialization.LATEST,
@@ -47,7 +47,7 @@ def test_tag_definition_contains_materialization_contract() -> None:
 
     assert tag.tag_name == '\\\\PISERVER\\Crusher Feed Rate'
     assert tag.alias == 'crusher_feed_rate'
-    assert tag.value_kind is PiValueKind.NUMBER
+    assert tag.value_kind is PiValueKind.FLOAT
     assert tag.extraction_mode is PiExtractionMode.INTERPOLATED
     assert tag.materializations == (
         PiMaterialization.LATEST,
@@ -75,7 +75,7 @@ def test_tag_definition_rejects_invalid_identifiers(field_name: str, value: str)
 
     with pytest.raises(ValueError, match=field_name):
         PiTagDefinition(
-            value_kind=PiValueKind.NUMBER,
+            value_kind=PiValueKind.FLOAT,
             extraction_mode=PiExtractionMode.INTERPOLATED,
             materializations=(PiMaterialization.DAILY,),
             **values,
@@ -87,7 +87,7 @@ def test_tag_definition_requires_value_kind_contract() -> None:
         PiTagDefinition(
             tag_name='tag',
             alias='alias',
-            value_kind='number',  # type: ignore[arg-type]
+            value_kind='float',  # type: ignore[arg-type]
             extraction_mode=PiExtractionMode.INTERPOLATED,
             materializations=(PiMaterialization.DAILY,),
         )
@@ -98,7 +98,7 @@ def test_tag_definition_requires_extraction_mode_contract() -> None:
         PiTagDefinition(
             tag_name='tag',
             alias='alias',
-            value_kind=PiValueKind.NUMBER,
+            value_kind=PiValueKind.FLOAT,
             extraction_mode='interpolated',  # type: ignore[arg-type]
             materializations=(PiMaterialization.DAILY,),
         )
@@ -109,7 +109,7 @@ def test_materializations_must_be_non_empty_tuple() -> None:
         PiTagDefinition(
             tag_name='tag',
             alias='alias',
-            value_kind=PiValueKind.NUMBER,
+            value_kind=PiValueKind.FLOAT,
             extraction_mode=PiExtractionMode.INTERPOLATED,
             materializations=[PiMaterialization.DAILY],  # type: ignore[arg-type]
         )
@@ -118,7 +118,7 @@ def test_materializations_must_be_non_empty_tuple() -> None:
         PiTagDefinition(
             tag_name='tag',
             alias='alias',
-            value_kind=PiValueKind.NUMBER,
+            value_kind=PiValueKind.FLOAT,
             extraction_mode=PiExtractionMode.INTERPOLATED,
             materializations=(),
         )
@@ -129,7 +129,7 @@ def test_materializations_reject_invalid_values_and_duplicates() -> None:
         PiTagDefinition(
             tag_name='tag',
             alias='alias',
-            value_kind=PiValueKind.NUMBER,
+            value_kind=PiValueKind.FLOAT,
             extraction_mode=PiExtractionMode.INTERPOLATED,
             materializations=('daily',),  # type: ignore[arg-type]
         )
@@ -138,7 +138,7 @@ def test_materializations_reject_invalid_values_and_duplicates() -> None:
         PiTagDefinition(
             tag_name='tag',
             alias='alias',
-            value_kind=PiValueKind.NUMBER,
+            value_kind=PiValueKind.FLOAT,
             extraction_mode=PiExtractionMode.INTERPOLATED,
             materializations=(PiMaterialization.DAILY, PiMaterialization.DAILY),
         )
@@ -149,7 +149,7 @@ def test_recorded_tags_cannot_materialize_latest() -> None:
         PiTagDefinition(
             tag_name='tag',
             alias='alias',
-            value_kind=PiValueKind.NUMBER,
+            value_kind=PiValueKind.FLOAT,
             extraction_mode=PiExtractionMode.RECORDED,
             materializations=(PiMaterialization.LATEST,),
         )
@@ -160,7 +160,7 @@ def test_is_active_requires_bool() -> None:
         PiTagDefinition(
             tag_name='tag',
             alias='alias',
-            value_kind=PiValueKind.NUMBER,
+            value_kind=PiValueKind.FLOAT,
             extraction_mode=PiExtractionMode.INTERPOLATED,
             materializations=(PiMaterialization.DAILY,),
             is_active=1,  # type: ignore[arg-type]

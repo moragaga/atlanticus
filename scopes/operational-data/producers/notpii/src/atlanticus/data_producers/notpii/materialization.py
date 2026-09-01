@@ -257,7 +257,7 @@ def _merge_active_schema(*, existing: pa.Schema, current: pa.Schema) -> pa.Schem
 
 
 def _field_for_definition(definition: PiTagDefinition) -> pa.Field:
-    if definition.value_kind is PiValueKind.NUMBER:
+    if definition.value_kind is PiValueKind.FLOAT:
         return pa.field(definition.alias, pa.float64(), nullable=True)
     return pa.field(definition.alias, pa.string(), nullable=True)
 
@@ -321,7 +321,7 @@ def _preserve_existing_on_null(*, existing: pa.Table, incoming: pa.Table) -> pa.
 def _normalize_value(value: Any, definition: PiTagDefinition) -> float | str | None:
     if value is None or pd.isna(value):
         return None
-    if definition.value_kind is PiValueKind.NUMBER:
+    if definition.value_kind is PiValueKind.FLOAT:
         if isinstance(value, bool):
             return None
         try:

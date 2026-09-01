@@ -24,6 +24,7 @@ def test_materializations_are_stable_strings() -> None:
 
 def test_value_kinds_are_minimal_and_stable() -> None:
     assert tuple(PiValueKind) == (
-        PiValueKind.NUMBER,
+        PiValueKind.FLOAT,
         PiValueKind.TEXT,
     )
+    assert PiValueKind.FLOAT.value == 'float'

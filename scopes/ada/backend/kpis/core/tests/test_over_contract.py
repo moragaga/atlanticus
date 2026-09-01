@@ -36,7 +36,7 @@ def test_over_spec_normalizes_area_and_preserves_declared_dependencies():
         value_kind=KpiValueKind.VALUE,
     )
 
-    assert spec.area == 'general'
+    assert spec.area is KpiArea.GENERAL
     assert spec.dependencies == ('general.a', 'general.b')
     assert spec.persist_history is False
 
@@ -45,7 +45,7 @@ def test_over_spec_rejects_self_dependency_and_duplicates():
     with pytest.raises(ValueError, match='cannot depend on itself'):
         OverKpiSpec(
             key='general.total',
-            area='general',
+            area=KpiArea.GENERAL,
             dependencies=('general.total',),
             resolver=lambda values: 1,
         )
@@ -53,7 +53,7 @@ def test_over_spec_rejects_self_dependency_and_duplicates():
     with pytest.raises(ValueError, match='must be unique'):
         OverKpiSpec(
             key='general.total',
-            area='general',
+            area=KpiArea.GENERAL,
             dependencies=('general.a', 'general.a'),
             resolver=lambda values: 1,
         )
@@ -62,13 +62,13 @@ def test_over_spec_rejects_self_dependency_and_duplicates():
 def test_catalog_allows_prior_over_dependency_chain_and_preserves_order():
     first = OverKpiSpec(
         key='general.first',
-        area='general',
+        area=KpiArea.GENERAL,
         dependencies=('general.base',),
         resolver=lambda values: values['general.base'],
     )
     second = OverKpiSpec(
         key='general.second',
-        area='general',
+        area=KpiArea.GENERAL,
         dependencies=('general.first',),
         resolver=lambda values: values['general.first'],
     )
@@ -83,13 +83,13 @@ def test_catalog_allows_prior_over_dependency_chain_and_preserves_order():
 def test_catalog_rejects_future_or_unknown_over_dependency():
     first = OverKpiSpec(
         key='general.first',
-        area='general',
+        area=KpiArea.GENERAL,
         dependencies=('general.second',),
         resolver=lambda values: 1,
     )
     second = OverKpiSpec(
         key='general.second',
-        area='general',
+        area=KpiArea.GENERAL,
         dependencies=('general.base',),
         resolver=lambda values: 1,
     )
@@ -103,3 +103,13 @@ def test_empty_catalog_remains_valid_before_productive_kpis_exist():
 
     assert len(catalog) == 0
     assert catalog.keys == ()
+
+
+def test_over_spec_rejects_string_area_even_when_value_matches_enum():
+    with pytest.raises(TypeError, match='KpiArea'):
+        OverKpiSpec(
+            key='general.total',
+            area='general',  # type: ignore[arg-type]
+            dependencies=('general.base',),
+            resolver=lambda values: values['general.base'],
+        )

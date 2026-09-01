@@ -134,7 +134,7 @@ def test_prepare_chunks_only_missing_webids_using_configured_points_limit(tmp_pa
         PiTagDefinition(
             tag_name=f'TAG_{index:03d}',
             alias=f'tag_{index:03d}',
-            value_kind=PiValueKind.NUMBER,
+            value_kind=PiValueKind.FLOAT,
             extraction_mode=PiExtractionMode.INTERPOLATED,
             materializations=(PiMaterialization.DAILY,),
         )
@@ -175,7 +175,7 @@ def test_prepare_rejects_non_web_api_catalog(tmp_path) -> None:
             PiTagDefinition(
                 tag_name='TAG_A',
                 alias='a',
-                value_kind=PiValueKind.NUMBER,
+                value_kind=PiValueKind.FLOAT,
                 extraction_mode=PiExtractionMode.INTERPOLATED,
                 materializations=(PiMaterialization.DAILY,),
             ),
@@ -236,7 +236,7 @@ def test_prepare_preserves_successful_webid_chunks_before_later_timeout(
         PiTagDefinition(
             tag_name=f'TAG_{index}',
             alias=f'tag_{index}',
-            value_kind=PiValueKind.NUMBER,
+            value_kind=PiValueKind.FLOAT,
             extraction_mode=PiExtractionMode.INTERPOLATED,
             materializations=(PiMaterialization.DAILY,),
         )
