@@ -267,7 +267,7 @@ def test_clock_publishes_neutral_source_freshness_events_without_component_knowl
     assert 'global_indicators' not in javascript
 
 
-def test_responsive_time_summary_stacks_rows_below_1280_without_stacking_row_content() -> None:
+def test_responsive_time_mobile_rows_use_full_width_and_keep_inline_content_flow() -> None:
     css = (
         files('ada.web.ui.time_status')
         .joinpath('resources/css/10-time-status.css')
@@ -277,22 +277,30 @@ def test_responsive_time_summary_stacks_rows_below_1280_without_stacking_row_con
         '@media (max-width: 767.98px) {', 1
     )[0]
 
-    assert '.ada-time-status,\n    .ada-time-status__sources {' in responsive
-    assert 'flex-direction: column;' in responsive
-    assert '.ada-time-status__source,\n    .ada-time-status__current {' in responsive
+    assert '.ada-time-status {\n        gap: .2rem;' in responsive
+    assert (
+        '.ada-time-status__sources,\n    .ada-time-status__sources[data-ada-time-status-detail-trigger='
+        in responsive
+    )
     assert 'width: 100%;' in responsive
-    assert '.ada-time-status__source--divided {' in responsive
-    assert 'border-inline-end: 0;' in responsive
-    assert '.ada-time-status__current {' in responsive
-    assert 'justify-content: flex-start;' in responsive
-    assert '.ada-time-status__source-content {' not in responsive
-    assert '.ada-time-status__current-content {' not in responsive
-    assert 'font-size:' not in responsive
+    assert '.ada-time-status__sources {\n        gap: .2rem;' in responsive
+    assert (
+        '.ada-time-status__source-content,\n    .ada-time-status__current-content {' in responsive
+    )
+    assert '.ada-time-status__source-content .ada-time-status__item.bi {' in responsive
+    source = responsive.split('.ada-time-status__source {', 1)[1].split('}', 1)[0]
+    divided = responsive.split('.ada-time-status__source--divided {', 1)[1].split('}', 1)[0]
+    assert 'flex: 0 0 auto;' in source
+    assert 'padding-inline: 0;' in source
+    assert 'padding-inline-end: 0;' in divided
+    assert 'flex: 0 0 5.4rem;' not in responsive
+    assert '.ada-time-status__timestamp--datetime {' in responsive
+    assert 'margin-inline-start: 0;' in responsive
+    assert 'text-align: start;' in responsive
+    assert 'justify-content: space-between;' not in responsive
 
 
-def test_responsive_time_summary_keeps_hidden_detail_trigger_compact_and_desktop_unchanged() -> (
-    None
-):
+def test_responsive_time_mobile_summary_preserves_approved_scale_and_icon_alignment() -> None:
     css = (
         files('ada.web.ui.time_status')
         .joinpath('resources/css/10-time-status.css')
@@ -301,29 +309,79 @@ def test_responsive_time_summary_keeps_hidden_detail_trigger_compact_and_desktop
     responsive = css.split('@media only screen and (max-width: 1279.98px) {', 1)[1].split(
         '@media (max-width: 767.98px) {', 1
     )[0]
-    desktop = css.split('@media only screen and (min-width: 1280px) {', 1)[1].split(
+
+    assert 'font-size: .75rem;' in responsive
+    assert '.ada-time-status__source-content .ada-time-status__item.bi::before {' in responsive
+    assert 'font-size: .85rem;' in responsive
+    assert '.ada-time-status__current-content .ada-time-status__item.bi::before {' in responsive
+    assert 'vertical-align: -.05em;' in responsive
+    assert '::after' not in responsive
+
+
+def test_responsive_time_current_datetime_does_not_force_tabular_numerals() -> None:
+    css = (
+        files('ada.web.ui.time_status')
+        .joinpath('resources/css/10-time-status.css')
+        .read_text(encoding='utf-8')
+    )
+    datetime = css.split('.ada-time-status__timestamp--datetime {', 1)[1].split('}', 1)[0]
+
+    assert 'font-variant-numeric: tabular-nums;' not in datetime
+
+
+def test_responsive_time_tablet_pelambres_uses_compact_text_cloud_and_clock_scale() -> None:
+    css = (
+        files('ada.web.ui.time_status')
+        .joinpath('resources/css/10-time-status.css')
+        .read_text(encoding='utf-8')
+    )
+    tablet = css.split(
+        '@media only screen and (min-width: 1280px) and (max-width: 1365.98px) {', 1
+    )[1].split('@media only screen and (min-width: 1920px) {', 1)[0]
+
+    assert 'font-size: .5rem;' in tablet
+    assert '.ada-time-status__source-content .ada-time-status__item.bi::before {' in tablet
+    assert 'font-size: .6rem;' in tablet
+    assert '.ada-time-status__current-content .ada-time-status__item.bi::before {' in tablet
+    assert 'flex-direction: column;' not in tablet
+
+
+def test_responsive_time_monitor_and_videowall_enlarge_only_cloud_icon() -> None:
+    css = (
+        files('ada.web.ui.time_status')
+        .joinpath('resources/css/10-time-status.css')
+        .read_text(encoding='utf-8')
+    )
+    large = css.split('@media only screen and (min-width: 1920px) {', 1)[1].split(
         '@media only screen and (max-width: 1279.98px) {', 1
     )[0]
 
-    assert ".ada-time-status__sources[data-ada-time-status-detail-trigger='true'] {" in responsive
-    assert 'width: fit-content;' in responsive
-    assert 'max-width: 100%;' in responsive
-    assert '::before' not in responsive
-    assert '::after' not in responsive
-    assert 'font-size: .6rem;' in desktop
-    assert 'flex-direction: column;' not in desktop
+    assert '.ada-time-status__source-content .ada-time-status__item.bi::before {' in large
+    assert 'font-size: .7rem;' in large
+    assert '.ada-time-status__current-content' not in large
+    assert 'font-size: .6rem;' not in large
 
 
-def test_responsive_time_mobile_detail_contract_remains_scoped_to_767() -> None:
+def test_responsive_time_keeps_detail_surface_and_hidden_trigger_contract_unchanged() -> None:
     css = (
         files('ada.web.ui.time_status')
         .joinpath('resources/css/10-time-status.css')
         .read_text(encoding='utf-8')
     )
+    responsive = css.split('@media only screen and (max-width: 1279.98px) {', 1)[1].split(
+        '@media (max-width: 767.98px) {', 1
+    )[0]
     mobile_detail = css.split('@media (max-width: 767.98px) {', 1)[1]
 
+    assert ".ada-time-status__sources[data-ada-time-status-detail-trigger='true']" in responsive
+    assert 'width: 100%;' in responsive
+    assert (
+        '::before'
+        not in responsive.split("[data-ada-time-status-detail-trigger='true']", 1)[1].split('}', 1)[
+            0
+        ]
+    )
     assert '.ada-time-status-detail {' in mobile_detail
     assert 'width: var(--ada-time-status-detail-viewport-width);' in mobile_detail
     assert '.ada-time-status-detail__source {' in mobile_detail
     assert 'grid-template-columns: 1fr;' in mobile_detail
-    assert '.ada-time-status,\n    .ada-time-status__sources {' not in mobile_detail

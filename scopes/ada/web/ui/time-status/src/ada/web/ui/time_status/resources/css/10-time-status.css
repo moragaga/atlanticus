@@ -142,7 +142,6 @@
     flex: 0 0 auto;
     min-width: 0;
     text-align: start;
-    font-variant-numeric: tabular-nums;
 }
 
 .ada-time-status__source-content--preventive,
@@ -242,6 +241,27 @@
     }
 }
 
+@media only screen and (min-width: 1280px) and (max-width: 1365.98px) {
+    .ada-time-status__item,
+    .ada-time-status__timestamp {
+        font-size: .5rem;
+    }
+
+    .ada-time-status__source-content .ada-time-status__item.bi::before {
+        font-size: .6rem;
+    }
+
+    .ada-time-status__current-content .ada-time-status__item.bi::before {
+        font-size: .5rem;
+    }
+}
+
+@media only screen and (min-width: 1920px) {
+    .ada-time-status__source-content .ada-time-status__item.bi::before {
+        font-size: .7rem;
+    }
+}
+
 @media only screen and (max-width: 1279.98px) {
     .ada-time-status,
     .ada-time-status__sources {
@@ -249,20 +269,62 @@
         flex-direction: column;
     }
 
+    .ada-time-status {
+        gap: .2rem;
+    }
+
+    .ada-time-status__sources,
     .ada-time-status__sources[data-ada-time-status-detail-trigger='true'] {
-        width: fit-content;
+        width: 100%;
         max-width: 100%;
+    }
+
+    .ada-time-status__sources {
+        gap: .2rem;
+        overflow: visible;
     }
 
     .ada-time-status__source,
     .ada-time-status__current {
+        box-sizing: border-box;
         width: 100%;
+    }
+
+    .ada-time-status__source {
+        flex: 0 0 auto;
+        padding-inline: 0;
     }
 
     .ada-time-status__source--divided {
         margin-inline-end: 0;
-        padding-inline-end: .2rem;
+        padding-inline-end: 0;
         border-inline-end: 0;
+    }
+
+    .ada-time-status__source-content,
+    .ada-time-status__current-content {
+        gap: .12rem;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .ada-time-status__item,
+    .ada-time-status__timestamp {
+        font-size: .75rem;
+    }
+
+    .ada-time-status__source-content .ada-time-status__item.bi {
+        flex: 0 0 auto;
+    }
+
+    .ada-time-status__source-content .ada-time-status__item.bi::before {
+        font-size: .85rem;
+        vertical-align: -.05em;
+    }
+
+    .ada-time-status__timestamp--source {
+        flex: 0 1 auto;
+        max-width: none;
     }
 
     .ada-time-status__current {
@@ -271,8 +333,16 @@
         padding-inline: .2rem;
     }
 
+    .ada-time-status__current-content .ada-time-status__item.bi::before {
+        font-size: .75rem;
+        vertical-align: -.05em;
+    }
+
     .ada-time-status__timestamp--datetime {
+        flex: 0 1 auto;
         min-width: 0;
+        max-width: none;
+        margin-inline-start: 0;
         text-align: start;
     }
 }
