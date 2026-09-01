@@ -4,7 +4,7 @@ requires-python = "==3.14.2"
 
 [[package]]
 name = "ada-configuration-kpi-definition"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "../../configuration/kpi-definition" }
 
 [package.metadata]
@@ -17,7 +17,7 @@ dev = [
 
 [[package]]
 name = "ada-configuration-manager"
-version = "0.4.0"
+version = "0.4.1"
 source = { editable = "." }
 dependencies = [
     { name = "ada-configuration-kpi-definition" },

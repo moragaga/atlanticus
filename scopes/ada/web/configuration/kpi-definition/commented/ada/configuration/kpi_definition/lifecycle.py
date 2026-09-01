@@ -1,25 +1,29 @@
 from __future__ import annotations
 
+# Propaga la revisión de KPI Configuration por Validate, Publish, Status y Project.
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Literal
 
 from ada.configuration.kpi_definition.errors import KpiDefinitionValidationError
 
-# Niveles que puede exponer una validación de dominio.
 KpiDefinitionIssueLevel = Literal['error', 'warning']
 
 
-# Conserva actor y timestamp normalizados para resultados de lifecycle.
+def _required_text(value: object, label: str) -> str:
+    normalized = value.strip() if isinstance(value, str) else ''
+    if not normalized:
+        raise KpiDefinitionValidationError(f'{label} must not be empty')
+    return normalized
+
+
 @dataclass(frozen=True, slots=True)
 class KpiDefinitionAuditRecord:
     actor: str
     occurred_at_utc: datetime
 
     def __post_init__(self) -> None:
-        actor = self.actor.strip() if isinstance(self.actor, str) else ''
-        if not actor:
-            raise KpiDefinitionValidationError('KPI definition audit actor must not be empty')
+        actor = _required_text(self.actor, 'KPI definition audit actor')
         if self.occurred_at_utc.tzinfo is None or self.occurred_at_utc.utcoffset() is None:
             raise KpiDefinitionValidationError(
                 'KPI definition audit timestamp must be timezone-aware'
@@ -28,7 +32,6 @@ class KpiDefinitionAuditRecord:
         object.__setattr__(self, 'occurred_at_utc', self.occurred_at_utc.astimezone(UTC))
 
 
-# Representa un finding de validación sin depender del contrato visual del Manager.
 @dataclass(frozen=True, slots=True)
 class KpiDefinitionIssue:
     code: str
@@ -37,43 +40,39 @@ class KpiDefinitionIssue:
     path: str | None = None
 
     def __post_init__(self) -> None:
-        code = self.code.strip() if isinstance(self.code, str) else ''
-        message = self.message.strip() if isinstance(self.message, str) else ''
-        if not code or not message:
-            raise KpiDefinitionValidationError(
-                'KPI definition lifecycle issue metadata must not be empty'
-            )
+        code = _required_text(self.code, 'KPI definition issue code')
+        message = _required_text(self.message, 'KPI definition issue message')
         if self.level not in {'error', 'warning'}:
-            raise KpiDefinitionValidationError('KPI definition lifecycle issue level is invalid')
+            raise KpiDefinitionValidationError(
+                'KPI definition lifecycle issue level is invalid'
+            )
         path = self.path.strip() if isinstance(self.path, str) else self.path
         object.__setattr__(self, 'code', code)
         object.__setattr__(self, 'message', message)
         object.__setattr__(self, 'path', path or None)
 
 
-# Par etiqueta/valor destinado a resumir el resultado sin imponer una UI.
 @dataclass(frozen=True, slots=True)
 class KpiDefinitionSummaryItem:
     label: str
     value: str
 
     def __post_init__(self) -> None:
-        label = self.label.strip() if isinstance(self.label, str) else ''
-        if not label:
-            raise KpiDefinitionValidationError(
-                'KPI definition lifecycle summary label must not be empty'
-            )
-        object.__setattr__(self, 'label', label)
+        object.__setattr__(
+            self,
+            'label',
+            _required_text(self.label, 'KPI definition lifecycle summary label'),
+        )
         object.__setattr__(self, 'value', str(self.value))
 
 
-# Fotografía de Source y Projection usada por cualquier consumidor administrativo.
 @dataclass(frozen=True, slots=True)
 class KpiDefinitionStatus:
     source_revision: str | None = None
     source_audit: KpiDefinitionAuditRecord | None = None
     active_revision: str | None = None
     active_source_revision: str | None = None
+    active_kpi_configuration_revision: str | None = None
     projection_audit: KpiDefinitionAuditRecord | None = None
 
     def __post_init__(self) -> None:
@@ -81,81 +80,128 @@ class KpiDefinitionStatus:
             raise KpiDefinitionValidationError(
                 'KPI definition source status metadata must be complete'
             )
-        if self.source_revision is not None and not self.source_revision.strip():
-            raise KpiDefinitionValidationError(
-                'KPI definition source status revision must not be empty'
-            )
-        active_values = (
+        if self.source_revision is not None:
+            _required_text(self.source_revision, 'KPI definition source status revision')
+        active = (
             self.active_revision,
             self.active_source_revision,
+            self.active_kpi_configuration_revision,
             self.projection_audit,
         )
-        if any(value is not None for value in active_values) and not all(
-            value is not None for value in active_values
+        if any(value is not None for value in active) and not all(
+            value is not None for value in active
         ):
             raise KpiDefinitionValidationError(
                 'KPI definition projection status metadata must be complete'
             )
+        for value, label in (
+            (self.active_revision, 'KPI definition active revision'),
+            (self.active_source_revision, 'KPI definition active source revision'),
+            (
+                self.active_kpi_configuration_revision,
+                'KPI definition active KPI configuration revision',
+            ),
+        ):
+            if value is not None:
+                _required_text(value, label)
 
 
-# Resultado tipado de validar un draft ya convertido al modelo del dominio.
 @dataclass(frozen=True, slots=True)
 class KpiDefinitionValidationResult:
     draft_revision: str
     valid: bool
     audit: KpiDefinitionAuditRecord
+    kpi_configuration_revision: str | None
     issues: tuple[KpiDefinitionIssue, ...] = ()
     summary: tuple[KpiDefinitionSummaryItem, ...] = ()
 
     def __post_init__(self) -> None:
-        revision = self.draft_revision.strip() if isinstance(self.draft_revision, str) else ''
-        if not revision:
-            raise KpiDefinitionValidationError('KPI definition draft revision must not be empty')
-        object.__setattr__(self, 'draft_revision', revision)
+        object.__setattr__(
+            self,
+            'draft_revision',
+            _required_text(self.draft_revision, 'KPI definition draft revision'),
+        )
+        if not isinstance(self.valid, bool):
+            raise KpiDefinitionValidationError(
+                'KPI definition validation flag must be boolean'
+            )
+        if self.kpi_configuration_revision is not None:
+            object.__setattr__(
+                self,
+                'kpi_configuration_revision',
+                _required_text(
+                    self.kpi_configuration_revision,
+                    'KPI configuration revision',
+                ),
+            )
         object.__setattr__(self, 'issues', tuple(self.issues))
         object.__setattr__(self, 'summary', tuple(self.summary))
 
 
-# Resultado de publicar o detectar un no-op de contenido idéntico.
 @dataclass(frozen=True, slots=True)
 class KpiDefinitionPublicationResult:
     source_revision: str
     published: bool
     audit: KpiDefinitionAuditRecord
+    kpi_configuration_revision: str
     summary: tuple[KpiDefinitionSummaryItem, ...] = ()
 
     def __post_init__(self) -> None:
-        revision = self.source_revision.strip() if isinstance(self.source_revision, str) else ''
-        if not revision:
+        object.__setattr__(
+            self,
+            'source_revision',
+            _required_text(self.source_revision, 'KPI definition source revision'),
+        )
+        if not isinstance(self.published, bool):
             raise KpiDefinitionValidationError(
-                'KPI definition published source revision must not be empty'
+                'KPI definition publication flag must be boolean'
             )
-        object.__setattr__(self, 'source_revision', revision)
+        object.__setattr__(
+            self,
+            'kpi_configuration_revision',
+            _required_text(
+                self.kpi_configuration_revision,
+                'KPI configuration revision',
+            ),
+        )
         object.__setattr__(self, 'summary', tuple(self.summary))
 
 
-# Resultado de proyectar o detectar que la proyección ya está sincronizada.
 @dataclass(frozen=True, slots=True)
 class KpiDefinitionProjectionResult:
     source_revision: str
     projection_revision: str
+    kpi_configuration_revision: str
     projected: bool
     audit: KpiDefinitionAuditRecord
     issues: tuple[KpiDefinitionIssue, ...] = ()
     summary: tuple[KpiDefinitionSummaryItem, ...] = ()
 
     def __post_init__(self) -> None:
-        source_revision = (
-            self.source_revision.strip() if isinstance(self.source_revision, str) else ''
+        object.__setattr__(
+            self,
+            'source_revision',
+            _required_text(self.source_revision, 'KPI definition source revision'),
         )
-        projection_revision = (
-            self.projection_revision.strip() if isinstance(self.projection_revision, str) else ''
+        object.__setattr__(
+            self,
+            'projection_revision',
+            _required_text(
+                self.projection_revision,
+                'KPI definition projection revision',
+            ),
         )
-        if not source_revision or not projection_revision:
+        object.__setattr__(
+            self,
+            'kpi_configuration_revision',
+            _required_text(
+                self.kpi_configuration_revision,
+                'KPI configuration revision',
+            ),
+        )
+        if not isinstance(self.projected, bool):
             raise KpiDefinitionValidationError(
-                'KPI definition projection result revisions must not be empty'
+                'KPI definition projected flag must be boolean'
             )
-        object.__setattr__(self, 'source_revision', source_revision)
-        object.__setattr__(self, 'projection_revision', projection_revision)
         object.__setattr__(self, 'issues', tuple(self.issues))
         object.__setattr__(self, 'summary', tuple(self.summary))

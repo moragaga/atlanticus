@@ -2,75 +2,78 @@ from datetime import UTC, datetime
 
 from ada.configuration.kpi_definition import (
     KpiDefinition,
+    KpiDefinitionAuthorityCatalog,
     KpiDefinitionConfiguration,
+    KpiDefinitionCoverageStatus,
     KpiDefinitionProjection,
     KpiDefinitionSourceDocument,
 )
 
 
-def test_kpi_definition_contract_does_not_import_inspection_or_kpi_configuration() -> None:
+def authority(*keys: str) -> KpiDefinitionAuthorityCatalog:
+    return KpiDefinitionAuthorityCatalog(
+        kpi_configuration_revision='kpi-config-r1',
+        kpi_keys=tuple(keys),
+    )
+
+
+def test_kpi_definition_uses_authority_contract_without_importing_kpi_configuration() -> None:
+    import ada.configuration.kpi_definition.authority as authority_module
     import ada.configuration.kpi_definition.contracts as contracts
     import ada.configuration.kpi_definition.models as models
     import ada.configuration.kpi_definition.projection as projection
-    import ada.configuration.kpi_definition.source as source
 
-    modules = (contracts, models, projection, source)
+    modules = (authority_module, contracts, models, projection)
     text = '\n'.join(module.__loader__.get_source(module.__name__) or '' for module in modules)
 
+    assert 'ada.configuration.kpi_configuration' not in text
     assert 'ada.web.inspection' not in text
-    assert 'ada.configuration.kpis' not in text
     assert 'azure' not in text.lower()
     assert 'cosmos' not in text.lower()
 
 
-def test_source_and_projection_support_empty_definition_configuration() -> None:
+def test_empty_definition_source_projects_virtual_missing_contracts() -> None:
     configuration = KpiDefinitionConfiguration()
     source = KpiDefinitionSourceDocument.create(
         configuration=configuration,
         saved_by='owner',
-        saved_at_utc=datetime(2026, 8, 27, 16, 0, tzinfo=UTC),
+        saved_at_utc=datetime(2026, 9, 1, 16, 0, tzinfo=UTC),
     )
     projection = KpiDefinitionProjection.create(
         configuration=configuration,
         source_revision=source.revision,
+        authority=authority('throughput', 'recovery'),
         projected_by='projector',
-        projected_at_utc=datetime(2026, 8, 27, 17, 0, tzinfo=UTC),
+        projected_at_utc=datetime(2026, 9, 1, 17, 0, tzinfo=UTC),
     )
 
-    assert source.configuration.definitions == ()
     assert projection.configuration.definitions == ()
+    assert projection.missing_kpi_keys == ('throughput', 'recovery')
+    assert all(item.status is KpiDefinitionCoverageStatus.MISSING for item in projection.coverage)
 
 
-def test_kpi_definition_is_independent_from_operational_binding_existence() -> None:
-    definition = KpiDefinition(
-        kpi_key='definition_without_operational_binding',
-        fields={'description': 'Independent descriptive metadata'},
-    )
-    configuration = KpiDefinitionConfiguration((definition,))
-
-    assert configuration.definition(definition.kpi_key) is definition
-
-
-def test_empty_authoring_stub_survives_source_and_projection_roundtrip() -> None:
-    configuration = KpiDefinitionConfiguration(
-        (KpiDefinition(kpi_key='transported_total', fields={}),)
-    )
+def test_empty_authored_stub_remains_defined_after_projection_roundtrip() -> None:
+    configuration = KpiDefinitionConfiguration((KpiDefinition(kpi_key='throughput', fields={}),))
     source = KpiDefinitionSourceDocument.create(
         configuration=configuration,
         saved_by='owner',
-        saved_at_utc=datetime(2026, 8, 27, 16, 0, tzinfo=UTC),
+        saved_at_utc=datetime(2026, 9, 1, 16, 0, tzinfo=UTC),
     )
-    restored_source = KpiDefinitionSourceDocument.from_document(source.to_document())
     projection = KpiDefinitionProjection.create(
-        configuration=restored_source.configuration,
-        source_revision=restored_source.revision,
+        configuration=configuration,
+        source_revision=source.revision,
+        authority=authority('throughput'),
         projected_by='projector',
-        projected_at_utc=datetime(2026, 8, 27, 17, 0, tzinfo=UTC),
+        projected_at_utc=datetime(2026, 9, 1, 17, 0, tzinfo=UTC),
     )
-    restored_projection = KpiDefinitionProjection.from_document(
-        projection.to_document(item_id='kpi-definitions', partition_key='definitions')
+    restored = KpiDefinitionProjection.from_document(
+        projection.to_document(
+            item_id='kpi-definitions',
+            partition_key='definitions',
+        )
     )
 
-    definition = restored_projection.configuration.definition('transported_total')
-    assert definition is not None
-    assert dict(definition.fields) == {}
+    item = restored.coverage_item('throughput')
+    assert item is not None
+    assert item.status is KpiDefinitionCoverageStatus.DEFINED
+    assert dict(item.fields) == {}

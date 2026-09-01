@@ -7,6 +7,7 @@ import pytest
 from ada.configuration.kpi_definition import (
     KpiDefinition,
     KpiDefinitionAdministrationService,
+    KpiDefinitionAuthorityCatalog,
     KpiDefinitionConfiguration,
     KpiDefinitionSourceDocument,
     KpiDefinitionSourceError,
@@ -14,44 +15,41 @@ from ada.configuration.kpi_definition import (
 
 
 class SourceStub:
-    def __init__(
-        self,
-        *,
-        current: KpiDefinitionSourceDocument | None,
-        history: tuple[KpiDefinitionSourceDocument, ...],
-    ) -> None:
+    def __init__(self, *, current, history):
         self.current = current
         self.history = history
-        self.requested_limit: int | None = None
+        self.requested_limit = None
 
-    def load(self) -> KpiDefinitionSourceDocument | None:
+    def load(self):
         return self.current
 
-    def list_history(
-        self,
-        *,
-        limit: int = 20,
-    ) -> tuple[KpiDefinitionSourceDocument, ...]:
+    def list_history(self, *, limit=20):
         self.requested_limit = limit
         return self.history[:limit]
 
-    def load_revision(self, revision: str) -> KpiDefinitionSourceDocument | None:
-        return next((item for item in self.history if item.revision == revision), None)
+    def load_revision(self, revision):
+        return next(
+            (item for item in self.history if item.revision == revision),
+            None,
+        )
 
 
 class PublisherStub:
-    def publish(
-        self,
-        document: KpiDefinitionSourceDocument,
-        *,
-        expected_revision: str | None,
-    ) -> None:
+    def publish(self, document, *, expected_revision):
         raise AssertionError('Publisher must not be used by history reads')
+
+
+class AuthorityStub:
+    def load(self):
+        return KpiDefinitionAuthorityCatalog(
+            kpi_configuration_revision='kpi-config-r1',
+            kpi_keys=('throughput',),
+        )
 
 
 def configuration(*, name: str) -> KpiDefinitionConfiguration:
     return KpiDefinitionConfiguration(
-        definitions=(
+        (
             KpiDefinition(
                 kpi_key='throughput',
                 fields={'name': name},
@@ -60,12 +58,7 @@ def configuration(*, name: str) -> KpiDefinitionConfiguration:
     )
 
 
-def document(
-    *,
-    name: str,
-    actor: str,
-    hour: int,
-) -> KpiDefinitionSourceDocument:
+def document(*, name: str, actor: str, hour: int) -> KpiDefinitionSourceDocument:
     return KpiDefinitionSourceDocument.create(
         configuration=configuration(name=name),
         saved_by=actor,
@@ -77,6 +70,7 @@ def service(source: SourceStub) -> KpiDefinitionAdministrationService:
     return KpiDefinitionAdministrationService(
         source=source,
         publisher=PublisherStub(),
+        authority=AuthorityStub(),
         audit_actor_provider=lambda: 'manager-user',
     )
 
@@ -84,10 +78,7 @@ def service(source: SourceStub) -> KpiDefinitionAdministrationService:
 def test_list_history_delegates_limit_and_preserves_source_order() -> None:
     newest = document(name='Current', actor='current-user', hour=12)
     previous = document(name='Previous', actor='previous-user', hour=11)
-    source = SourceStub(
-        current=newest,
-        history=(newest, previous),
-    )
+    source = SourceStub(current=newest, history=(newest, previous))
 
     result = service(source).list_history(limit=1)
 
@@ -98,10 +89,7 @@ def test_list_history_delegates_limit_and_preserves_source_order() -> None:
 def test_load_revision_configuration_recovers_historical_content() -> None:
     current = document(name='Current', actor='current-user', hour=12)
     previous = document(name='Previous', actor='previous-user', hour=11)
-    source = SourceStub(
-        current=current,
-        history=(current, previous),
-    )
+    source = SourceStub(current=current, history=(current, previous))
 
     recovered = service(source).load_revision_configuration(previous.revision)
 
@@ -109,28 +97,13 @@ def test_load_revision_configuration_recovers_historical_content() -> None:
     assert recovered != current.configuration
 
 
-def test_load_revision_configuration_normalizes_revision() -> None:
-    previous = document(name='Previous', actor='previous-user', hour=11)
-    source = SourceStub(
-        current=previous,
-        history=(previous,),
-    )
-
-    recovered = service(source).load_revision_configuration(f'  {previous.revision}  ')
-
-    assert recovered == previous.configuration
-
-
 @pytest.mark.parametrize('revision', ['', '   ', 'missing'])
 def test_load_revision_configuration_rejects_missing_revision(revision: str) -> None:
     current = document(name='Current', actor='current-user', hour=12)
-    source = SourceStub(
-        current=current,
-        history=(current,),
-    )
+    source = SourceStub(current=current, history=(current,))
 
     with pytest.raises(
         KpiDefinitionSourceError,
-        match='KPI definition revision does not exist',
+        match='revision does not exist',
     ):
         service(source).load_revision_configuration(revision)

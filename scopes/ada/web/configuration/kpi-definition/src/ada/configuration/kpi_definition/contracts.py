@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from typing import Protocol
 
+from ada.configuration.kpi_definition.authority import KpiDefinitionAuthorityCatalog
 from ada.configuration.kpi_definition.projection import KpiDefinitionProjection
 from ada.configuration.kpi_definition.source import KpiDefinitionSourceDocument
 
@@ -34,3 +35,7 @@ class KpiDefinitionProjectionRepository(Protocol):
     def save(self, projection: KpiDefinitionProjection) -> KpiDefinitionProjection: ...
 
     def health_check(self) -> bool: ...
+
+
+class KpiDefinitionAuthorityProvider(Protocol):
+    def load(self) -> KpiDefinitionAuthorityCatalog | None: ...
