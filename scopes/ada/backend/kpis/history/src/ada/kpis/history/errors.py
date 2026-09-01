@@ -1,0 +1,2 @@
+class KpiHistoryContractError(ValueError):
+    pass

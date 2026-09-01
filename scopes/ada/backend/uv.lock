@@ -15,6 +15,7 @@ members = [
     "ada-kpis-core",
     "ada-kpis-delivery",
     "ada-kpis-evaluation",
+    "ada-kpis-history",
     "ada-kpis-persistence",
 ]
 
@@ -28,6 +29,7 @@ dependencies = [
     { name = "ada-kpis-core" },
     { name = "ada-kpis-delivery" },
     { name = "ada-kpis-evaluation" },
+    { name = "ada-kpis-history" },
     { name = "ada-kpis-persistence" },
 ]
 
@@ -44,6 +46,7 @@ requires-dist = [
     { name = "ada-kpis-core", editable = "kpis/core" },
     { name = "ada-kpis-delivery", editable = "kpis/delivery" },
     { name = "ada-kpis-evaluation", editable = "kpis/evaluation" },
+    { name = "ada-kpis-history", editable = "kpis/history" },
     { name = "ada-kpis-persistence", editable = "kpis/persistence" },
 ]
 
@@ -208,6 +211,33 @@ dev = [
 requires-dist = [
     { name = "ada-kpis-core", editable = "kpis/core" },
     { name = "atlanticus-operational-data-core", editable = "../../operational-data/core" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-kpis-history"
+version = "1.0.0"
+source = { editable = "kpis/history" }
+dependencies = [
+    { name = "atlanticus-datasets" },
+    { name = "pyarrow" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-datasets", editable = "../../../backend/datasets" },
+    { name = "pyarrow", specifier = "==25.0.0" },
 ]
 
 [package.metadata.requires-dev]

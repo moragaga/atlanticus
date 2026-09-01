@@ -97,6 +97,14 @@ CAPABILITIES = {
             'atlanticus-state==1.0.0',
         ),
     ),
+    # Comparte una sola definición durable entre Historian y Timeseries Delivery.
+    'kpi-history': Capability(
+        'kpi-history',
+        'ada-kpis-history',
+        'ada.kpis.history',
+        'kpis/history',
+        ('atlanticus-datasets==1.0.0', 'pyarrow==25.0.0'),
+    ),
 }
 
 EXPECTED_MEMBERS = [
@@ -106,6 +114,7 @@ EXPECTED_MEMBERS = [
     'processes/kpi-runtime',
     'kpis/delivery',
     'processes/kpi-delivery',
+    'kpis/history',
 ]
 
 EXPECTED_SOURCES = {
@@ -115,6 +124,7 @@ EXPECTED_SOURCES = {
     'ada-kpis-evaluation': {'workspace': True},
     'ada-kpis-persistence': {'workspace': True},
     'ada-kpis-delivery': {'workspace': True},
+    'ada-kpis-history': {'workspace': True},
     'atlanticus-configuration': {'path': '../../../backend/configuration', 'editable': True},
     'atlanticus-cosmos': {'path': '../../../connectivity/cosmos', 'editable': True},
     'atlanticus-datasets': {'path': '../../../backend/datasets', 'editable': True},

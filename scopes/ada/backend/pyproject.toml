@@ -10,6 +10,7 @@ dependencies = [
     "ada-kpis-evaluation==1.0.0",
     "ada-kpis-persistence==1.0.0",
     "ada-kpis-delivery==1.0.0",
+    "ada-kpis-history==1.0.0",
 ]
 
 [dependency-groups]
@@ -28,6 +29,7 @@ ada-kpis-core = { workspace = true }
 ada-kpis-evaluation = { workspace = true }
 ada-kpis-persistence = { workspace = true }
 ada-kpis-delivery = { workspace = true }
+ada-kpis-history = { workspace = true }
 atlanticus-configuration = { path = "../../../backend/configuration", editable = true }
 atlanticus-cosmos = { path = "../../../connectivity/cosmos", editable = true }
 atlanticus-datasets = { path = "../../../backend/datasets", editable = true }
@@ -53,6 +55,7 @@ members = [
     "processes/kpi-runtime",
     "kpis/delivery",
     "processes/kpi-delivery",
+    "kpis/history",
 ]
 
 [tool.ruff]
