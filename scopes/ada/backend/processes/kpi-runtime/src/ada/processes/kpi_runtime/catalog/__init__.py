@@ -1,5 +1,3 @@
-from ada.kpis.core import KpiCatalog
+from ada.processes.kpi_runtime.catalog.registry import build_catalog
 
-
-def build_catalog() -> KpiCatalog:
-    return KpiCatalog(())
+__all__ = ['build_catalog']
