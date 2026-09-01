@@ -2,7 +2,6 @@ from __future__ import annotations
 
 # Los callbacks conectan un documento ToolConfiguration de entrada con un draft válido de salida.
 # Cuando la edición es incompleta o inválida se invalida el draft para evitar guardar estado anterior.
-
 from dash import Input, Output, State
 
 from ada.configuration.tools import ToolConfiguration

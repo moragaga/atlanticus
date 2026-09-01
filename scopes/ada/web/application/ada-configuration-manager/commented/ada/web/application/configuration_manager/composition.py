@@ -130,9 +130,7 @@ def build_configuration_manager_surface(
                 route='/navigation',
                 order=20,
                 description='Rutas, secciones y perfiles habilitados en la navegación de ADA.',
-                layout=lambda _services: build_navigation_admin_configuration(
-                    navigation_context
-                ),
+                layout=lambda _services: build_navigation_admin_configuration(navigation_context),
                 history_preview_renderer=build_navigation_history_preview,
                 workflow_service=NAVIGATION_WORKFLOW_SERVICE,
                 access=ManagerModuleAccess(

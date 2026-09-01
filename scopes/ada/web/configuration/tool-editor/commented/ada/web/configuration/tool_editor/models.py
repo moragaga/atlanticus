@@ -63,9 +63,7 @@ class ToolSourceEditorValues:
                 label='Dispatch degrading threshold',
             ),
         )
-        normalized_additional = _normalize_source_keys(
-            self.additional_observation_source_keys
-        )
+        normalized_additional = _normalize_source_keys(self.additional_observation_source_keys)
         reserved = next(
             (
                 source_key
@@ -100,16 +98,12 @@ def source_editor_values_from_configuration(
         ),
         dispatch_enabled=configuration.source_consumption.consumes('dispatch'),
         dispatch_pre_degrading_after_seconds=(
-            dispatch_policy.pre_degrading_after_seconds
-            if dispatch_policy is not None
-            else None
+            dispatch_policy.pre_degrading_after_seconds if dispatch_policy is not None else None
         ),
         dispatch_degrading_after_seconds=(
             dispatch_policy.degrading_after_seconds if dispatch_policy is not None else None
         ),
-        additional_observation_source_keys=(
-            participation.additional_observation_source_keys
-        ),
+        additional_observation_source_keys=(participation.additional_observation_source_keys),
     )
 
 
@@ -186,9 +180,7 @@ def build_configuration_from_source_editor(
         source_operational_participation=ToolSourceOperationalParticipation(
             tool_key=base_configuration.tool_key,
             control_sources=tuple(control_sources),
-            additional_observation_source_keys=(
-                values.additional_observation_source_keys
-            ),
+            additional_observation_source_keys=(values.additional_observation_source_keys),
         ),
         structure=base_configuration.structure,
     )

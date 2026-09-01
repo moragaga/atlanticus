@@ -17,7 +17,7 @@ dev = [
 
 [[package]]
 name = "ada-configuration-manager"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "ada-configuration-kpi-definition" },
@@ -111,7 +111,7 @@ dev = [
 
 [[package]]
 name = "ada-web-tool-configuration-editor"
-version = "0.1.2"
+version = "0.2.0"
 source = { editable = "../../configuration/tool-editor" }
 dependencies = [
     { name = "ada-configuration-tool-sources" },

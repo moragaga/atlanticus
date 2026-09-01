@@ -14,8 +14,7 @@ _BRANDING_LABELS = {
 
 def branding_variant_options() -> tuple[dict[str, str], ...]:
     return tuple(
-        {'label': _BRANDING_LABELS[variant], 'value': variant.value}
-        for variant in BrandingVariant
+        {'label': _BRANDING_LABELS[variant], 'value': variant.value} for variant in BrandingVariant
     )
 
 

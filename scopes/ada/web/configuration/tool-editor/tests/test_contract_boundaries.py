@@ -26,3 +26,11 @@ def test_editor_does_not_restore_legacy_freshness_contract() -> None:
     assert 'stale_after_seconds' not in source
     assert 'warning_after_seconds' not in source
     assert 'freshness' not in source.casefold()
+
+
+def test_editor_uses_manual_composition_instead_of_specialized_data_grids() -> None:
+    source = '\n'.join(path.read_text(encoding='utf-8') for path in SOURCE_ROOT.rglob('*.py'))
+
+    assert 'dash_table' not in source
+    assert 'DataTable' not in source
+    assert 'AgGrid' not in source

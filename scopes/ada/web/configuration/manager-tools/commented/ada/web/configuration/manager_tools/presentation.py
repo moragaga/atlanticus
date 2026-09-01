@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+# La superficie Manager Tools presenta el editor completo de la Tool sin lifecycle propio.
 from collections.abc import Mapping
 
 from dash import dcc, html
@@ -14,7 +15,7 @@ from ada.web.configuration.manager_tools.ids import (
     ROOT_ID,
 )
 from ada.web.configuration.manager_tools.models import branding_variant_options
-from ada.web.configuration.tool_editor import build_tool_source_editor
+from ada.web.configuration.tool_editor import build_tool_configuration_editor
 
 
 def build_manager_tools_page(
@@ -22,7 +23,6 @@ def build_manager_tools_page(
     tool_configuration_document: Mapping[str, object] | None = None,
     branding_configuration_document: Mapping[str, object] | None = None,
 ) -> Component:
-    # Branding tiene un default seguro aunque todavía no exista persistencia del Manager.
     branding_document = (
         dict(branding_configuration_document)
         if branding_configuration_document is not None
@@ -38,8 +38,9 @@ def build_manager_tools_page(
             dcc.Store(id=BRANDING_DRAFT_STORE_ID, data=None, storage_type='memory'),
             _page_heading(),
             _branding_section(),
-            # Sources conserva su propio contrato y stores; el Manager sólo lo compone.
-            build_tool_source_editor(configuration_document=tool_configuration_document),
+            build_tool_configuration_editor(
+                configuration_document=tool_configuration_document,
+            ),
         ],
         id=ROOT_ID,
         className='ada-manager-tools',

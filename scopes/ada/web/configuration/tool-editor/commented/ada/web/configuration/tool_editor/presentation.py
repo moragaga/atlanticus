@@ -2,7 +2,6 @@ from __future__ import annotations
 
 # Presentación reusable de la sección Sources de una Tool.
 # No incluye navegación, persistencia ni shell de Manager; esas responsabilidades se componen fuera.
-
 from collections.abc import Mapping
 
 from dash import dcc, html

@@ -1,0 +1,111 @@
+.ada-tool-configuration-editor-complete {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.ada-tool-structure-editor {
+    display: grid;
+    gap: 1rem;
+}
+
+.ada-tool-structure-editor__heading,
+.ada-tool-structure-editor__collection,
+.ada-tool-structure-editor__rows {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.ada-tool-structure-editor__title,
+.ada-tool-structure-editor__copy,
+.ada-tool-structure-editor__collection h4,
+.ada-tool-structure-editor__collection p {
+    margin: 0;
+}
+
+.ada-tool-structure-editor__kind {
+    font-weight: 600;
+}
+
+.ada-tool-structure-editor__scope {
+    display: grid;
+    gap: 0.35rem;
+    max-width: 22rem;
+}
+
+.ada-tool-structure-editor__collection {
+    padding-top: 0.25rem;
+}
+
+.ada-tool-structure-editor__collection-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.ada-tool-structure-editor__collection-copy {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.ada-tool-structure-editor__row {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.75rem;
+    padding: 0.9rem;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 0.65rem;
+    background: rgba(255, 255, 255, 0.28);
+}
+
+.ada-tool-structure-editor__row-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.75rem;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.ada-tool-structure-editor__field {
+    display: grid;
+    gap: 0.3rem;
+    min-width: 0;
+}
+
+.ada-tool-structure-editor__field > span {
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.ada-tool-structure-editor__field input {
+    width: 100%;
+    min-height: 2.35rem;
+    box-sizing: border-box;
+}
+
+.ada-tool-structure-editor__add,
+.ada-tool-structure-editor__delete {
+    white-space: nowrap;
+}
+
+.ada-tool-structure-editor__validation {
+    min-height: 1.25rem;
+}
+
+.ada-tool-structure-editor__destinations {
+    display: grid;
+    gap: 0.25rem;
+}
+
+@media (max-width: 720px) {
+    .ada-tool-structure-editor__collection-heading,
+    .ada-tool-structure-editor__row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .ada-tool-structure-editor__add,
+    .ada-tool-structure-editor__delete {
+        width: 100%;
+    }
+}

@@ -11,20 +11,13 @@ from ada.web.configuration.tool_editor import (
     ADA_TOOL_CONFIGURATION_EDITOR_ASSET_LAYER,
     CONFIGURATION_STORE_ID,
     DRAFT_STORE_ID,
+    STRUCTURE_DOCUMENT_STORE_ID,
+    STRUCTURE_VALIDITY_STORE_ID,
     VALIDITY_STORE_ID,
-    ToolSourceEditorValues,
-    build_configuration_from_source_editor,
-    build_tool_source_editor,
-    parse_additional_observation_source_keys,
+    build_configuration_from_structure_editor,
+    build_tool_configuration_editor,
     register_tool_source_editor_callbacks,
-)
-from ada.web.configuration.tool_editor.ids import (
-    ADDITIONAL_OBSERVATION_ID,
-    DISPATCH_DEGRADING_ID,
-    DISPATCH_ENABLED_ID,
-    DISPATCH_PRE_DEGRADING_ID,
-    PI_DEGRADING_ID,
-    PI_PRE_DEGRADING_ID,
+    register_tool_structure_editor_callbacks,
 )
 from atlanticus.web.manager import ManagerDraft
 from atlanticus.web.manager.errors import ManagerProjectionError
@@ -43,7 +36,7 @@ class ToolManagerWebContext:
 
 
 def build_tool_manager_configuration() -> object:
-    return build_tool_source_editor()
+    return build_tool_configuration_editor()
 
 
 def build_tool_history_preview(payload: dict[str, object]) -> object:
@@ -75,6 +68,7 @@ def build_tool_history_preview(payload: dict[str, object]) -> object:
 def create_tool_manager_web_module(context: ToolManagerWebContext) -> WebModule:
     def register_callbacks(app: object, _services: object) -> None:
         register_tool_source_editor_callbacks(app)
+        register_tool_structure_editor_callbacks(app)
         register_tool_manager_callbacks(app, context)
 
     return WebModule(
@@ -104,35 +98,26 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
 
     @app.callback(
         Output(context.editor_revision_store_id, 'data', allow_duplicate=True),
-        Input(PI_PRE_DEGRADING_ID, 'value'),
-        Input(PI_DEGRADING_ID, 'value'),
-        Input(DISPATCH_ENABLED_ID, 'value'),
-        Input(DISPATCH_PRE_DEGRADING_ID, 'value'),
-        Input(DISPATCH_DEGRADING_ID, 'value'),
-        Input(ADDITIONAL_OBSERVATION_ID, 'value'),
-        State(CONFIGURATION_STORE_ID, 'data'),
+        Input(DRAFT_STORE_ID, 'data'),
+        Input(VALIDITY_STORE_ID, 'data'),
+        Input(STRUCTURE_DOCUMENT_STORE_ID, 'data'),
+        Input(STRUCTURE_VALIDITY_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
     def track_editor_revision(
-        pi_pre_degrading: int | float | None,
-        pi_degrading: int | float | None,
-        dispatch_values: list[str] | None,
-        dispatch_pre_degrading: int | float | None,
-        dispatch_degrading: int | float | None,
-        additional_observation: str | None,
-        configuration_document: dict[str, object] | None,
+        source_document: dict[str, object] | None,
+        source_valid: bool | None,
+        structure_document: dict[str, object] | None,
+        structure_valid: bool | None,
     ):
-        if configuration_document is None:
-            return None
+        if source_valid is not True or structure_valid is not True:
+            return 'invalid'
+        if not isinstance(source_document, dict) or not isinstance(structure_document, dict):
+            return 'invalid'
         try:
             configuration = _editor_configuration(
-                configuration_document=configuration_document,
-                pi_pre_degrading=pi_pre_degrading,
-                pi_degrading=pi_degrading,
-                dispatch_values=dispatch_values,
-                dispatch_pre_degrading=dispatch_pre_degrading,
-                dispatch_degrading=dispatch_degrading,
-                additional_observation=additional_observation,
+                source_document=source_document,
+                structure_document=structure_document,
             )
         except ValueError:
             return 'invalid'
@@ -145,14 +130,18 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
         Input(context.draft_save_action_id, 'n_clicks'),
         State(DRAFT_STORE_ID, 'data'),
         State(VALIDITY_STORE_ID, 'data'),
+        State(STRUCTURE_DOCUMENT_STORE_ID, 'data'),
+        State(STRUCTURE_VALIDITY_STORE_ID, 'data'),
         State(context.draft_store_id, 'data'),
         State(context.editor_revision_store_id, 'data'),
         prevent_initial_call=True,
     )
     def save_tool_draft(
         clicks: int | None,
-        editor_document: dict[str, object] | None,
-        editor_valid: bool | None,
+        source_document: dict[str, object] | None,
+        source_valid: bool | None,
+        structure_document: dict[str, object] | None,
+        structure_valid: bool | None,
         current_draft_data: dict[str, object] | None,
         editor_revision: str | None,
     ):
@@ -160,10 +149,18 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
             return no_update, no_update, no_update
         if not context.can_manage():
             return _error('Management access is denied'), no_update, no_update
-        if editor_valid is not True or not isinstance(editor_document, dict):
+        if (
+            source_valid is not True
+            or structure_valid is not True
+            or not isinstance(source_document, dict)
+            or not isinstance(structure_document, dict)
+        ):
             return _error('Tool editor must be valid before saving'), no_update, no_update
         try:
-            configuration = ToolConfiguration.from_document(editor_document)
+            configuration = _editor_configuration(
+                source_document=source_document,
+                structure_document=structure_document,
+            )
             owner_subject_id = context.draft_owner_provider()
             current = (
                 _owned_draft(
@@ -190,28 +187,13 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
 
 def _editor_configuration(
     *,
-    configuration_document: dict[str, object],
-    pi_pre_degrading: int | float | None,
-    pi_degrading: int | float | None,
-    dispatch_values: list[str] | None,
-    dispatch_pre_degrading: int | float | None,
-    dispatch_degrading: int | float | None,
-    additional_observation: str | None,
+    source_document: dict[str, object],
+    structure_document: dict[str, object],
 ) -> ToolConfiguration:
-    base_configuration = ToolConfiguration.from_document(configuration_document)
-    values = ToolSourceEditorValues(
-        pi_pre_degrading_after_seconds=pi_pre_degrading,
-        pi_degrading_after_seconds=pi_degrading,
-        dispatch_enabled='dispatch' in (dispatch_values or []),
-        dispatch_pre_degrading_after_seconds=dispatch_pre_degrading,
-        dispatch_degrading_after_seconds=dispatch_degrading,
-        additional_observation_source_keys=parse_additional_observation_source_keys(
-            additional_observation
-        ),
-    )
-    return build_configuration_from_source_editor(
-        base_configuration=base_configuration,
-        values=values,
+    source_configuration = ToolConfiguration.from_document(source_document)
+    return build_configuration_from_structure_editor(
+        base_configuration=source_configuration,
+        structure_document=structure_document,
     )
 
 

@@ -58,6 +58,4 @@ def create_configuration_manager_web_definition(
 def create_configuration_manager_application(
     dependencies: ConfigurationManagerDependencies,
 ) -> WebApplicationRuntime:
-    return create_web_application(
-        create_configuration_manager_web_definition(dependencies)
-    )
+    return create_web_application(create_configuration_manager_web_definition(dependencies))
