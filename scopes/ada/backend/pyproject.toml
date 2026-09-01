@@ -1,0 +1,58 @@
+[project]
+name = "ada-backend-workspace"
+version = "1.0.0"
+requires-python = "==3.14.2"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "ada-kpis-core==1.0.0",
+    "ada-kpis-evaluation==1.0.0",
+    "ada-kpis-persistence==1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.15.22",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+ada-kpis-core = { workspace = true }
+ada-kpis-evaluation = { workspace = true }
+ada-kpis-persistence = { workspace = true }
+atlanticus-operational-data-core = { path = "../../operational-data/core", editable = true }
+atlanticus-json = { path = "../../../backend/json", editable = true }
+atlanticus-kernel = { path = "../../../backend/kernel", editable = true }
+atlanticus-observability = { path = "../../../backend/observability", editable = true }
+atlanticus-state = { path = "../../../backend/state", editable = true }
+
+[tool.uv.workspace]
+members = [
+    "kpis/core",
+    "kpis/evaluation",
+    "kpis/persistence",
+]
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+target-version = "py314"
+extend-exclude = ["build", "dist"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ada", "atlanticus"]
+combine-as-imports = true
+
+[tool.pytest.ini_options]
+addopts = "-q --import-mode=importlib"

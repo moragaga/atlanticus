@@ -265,3 +265,65 @@ def test_clock_publishes_neutral_source_freshness_events_without_component_knowl
     assert 'document.addEventListener(SOURCE_FRESHNESS_REQUEST_EVENT' in javascript
     assert 'component_key' not in javascript
     assert 'global_indicators' not in javascript
+
+
+def test_responsive_time_summary_stacks_rows_below_1280_without_stacking_row_content() -> None:
+    css = (
+        files('ada.web.ui.time_status')
+        .joinpath('resources/css/10-time-status.css')
+        .read_text(encoding='utf-8')
+    )
+    responsive = css.split('@media only screen and (max-width: 1279.98px) {', 1)[1].split(
+        '@media (max-width: 767.98px) {', 1
+    )[0]
+
+    assert '.ada-time-status,\n    .ada-time-status__sources {' in responsive
+    assert 'flex-direction: column;' in responsive
+    assert '.ada-time-status__source,\n    .ada-time-status__current {' in responsive
+    assert 'width: 100%;' in responsive
+    assert '.ada-time-status__source--divided {' in responsive
+    assert 'border-inline-end: 0;' in responsive
+    assert '.ada-time-status__current {' in responsive
+    assert 'justify-content: flex-start;' in responsive
+    assert '.ada-time-status__source-content {' not in responsive
+    assert '.ada-time-status__current-content {' not in responsive
+    assert 'font-size:' not in responsive
+
+
+def test_responsive_time_summary_keeps_hidden_detail_trigger_compact_and_desktop_unchanged() -> (
+    None
+):
+    css = (
+        files('ada.web.ui.time_status')
+        .joinpath('resources/css/10-time-status.css')
+        .read_text(encoding='utf-8')
+    )
+    responsive = css.split('@media only screen and (max-width: 1279.98px) {', 1)[1].split(
+        '@media (max-width: 767.98px) {', 1
+    )[0]
+    desktop = css.split('@media only screen and (min-width: 1280px) {', 1)[1].split(
+        '@media only screen and (max-width: 1279.98px) {', 1
+    )[0]
+
+    assert ".ada-time-status__sources[data-ada-time-status-detail-trigger='true'] {" in responsive
+    assert 'width: fit-content;' in responsive
+    assert 'max-width: 100%;' in responsive
+    assert '::before' not in responsive
+    assert '::after' not in responsive
+    assert 'font-size: .6rem;' in desktop
+    assert 'flex-direction: column;' not in desktop
+
+
+def test_responsive_time_mobile_detail_contract_remains_scoped_to_767() -> None:
+    css = (
+        files('ada.web.ui.time_status')
+        .joinpath('resources/css/10-time-status.css')
+        .read_text(encoding='utf-8')
+    )
+    mobile_detail = css.split('@media (max-width: 767.98px) {', 1)[1]
+
+    assert '.ada-time-status-detail {' in mobile_detail
+    assert 'width: var(--ada-time-status-detail-viewport-width);' in mobile_detail
+    assert '.ada-time-status-detail__source {' in mobile_detail
+    assert 'grid-template-columns: 1fr;' in mobile_detail
+    assert '.ada-time-status,\n    .ada-time-status__sources {' not in mobile_detail

@@ -243,7 +243,8 @@
     }
 }
 
-@media (max-width: 767.98px) {
+/* Bajo 1280 px cada fuente y el reloj ocupan su propia fila; el contenido interno de cada fila sigue horizontal. */
+@media only screen and (max-width: 1279.98px) {
     .ada-time-status,
     .ada-time-status__sources {
         align-items: stretch;
@@ -276,7 +277,10 @@
         min-width: 0;
         text-align: start;
     }
+}
 
+/* El Detail conserva su geometría mobile histórica; este incremento no cambia el popover. */
+@media (max-width: 767.98px) {
     .ada-time-status-detail {
         width: var(--ada-time-status-detail-viewport-width);
         min-width: 0;

@@ -242,7 +242,7 @@
     }
 }
 
-@media (max-width: 767.98px) {
+@media only screen and (max-width: 1279.98px) {
     .ada-time-status,
     .ada-time-status__sources {
         align-items: stretch;
@@ -275,7 +275,9 @@
         min-width: 0;
         text-align: start;
     }
+}
 
+@media (max-width: 767.98px) {
     .ada-time-status-detail {
         width: var(--ada-time-status-detail-viewport-width);
         min-width: 0;

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-generic-application"
-version = "0.2.13"
+version = "0.2.14"
 description = "Composition root web genérico de ADA sobre Atlanticus Web"
 requires-python = "==3.14.2"
 classifiers = [
@@ -20,7 +20,7 @@ dependencies = [
     "ada-web-ui-content-state==0.1.6",
     "ada-web-ui-display-status==0.1.1",
     "ada-web-ui-global-indicator==0.2.9",
-    "ada-web-ui-time-status==0.1.11",
+    "ada-web-ui-time-status==0.1.12",
     "ada-web-ui-core==0.2.0",
     "ada-web-shell-header==0.1.8",
     "ada-web-shell-navigation==0.1.7",
