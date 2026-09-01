@@ -17,7 +17,7 @@ dev = [
 
 [[package]]
 name = "ada-configuration-manager"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "ada-configuration-kpi-definition" },
@@ -28,9 +28,9 @@ dependencies = [
     { name = "atlanticus-web-identity" },
     { name = "atlanticus-web-manager" },
     { name = "atlanticus-web-navigation" },
-    { name = "atlanticus-web-navigation-configuration" },
+    { name = "atlanticus-web-navigation-configuration", extra = ["web"] },
     { name = "atlanticus-web-users" },
-    { name = "atlanticus-web-users-configuration" },
+    { name = "atlanticus-web-users-configuration", extra = ["web"] },
 ]
 
 [package.dev-dependencies]
@@ -49,9 +49,9 @@ requires-dist = [
     { name = "atlanticus-web-identity", editable = "../../../../../web/capabilities/identity/core" },
     { name = "atlanticus-web-manager", editable = "../../../../../web/capabilities/manager" },
     { name = "atlanticus-web-navigation", editable = "../../../../../web/capabilities/navigation/core" },
-    { name = "atlanticus-web-navigation-configuration", editable = "../../../../../web/capabilities/navigation/configuration" },
+    { name = "atlanticus-web-navigation-configuration", extras = ["web"], editable = "../../../../../web/capabilities/navigation/configuration" },
     { name = "atlanticus-web-users", editable = "../../../../../web/capabilities/users/core" },
-    { name = "atlanticus-web-users-configuration", editable = "../../../../../web/capabilities/users/configuration" },
+    { name = "atlanticus-web-users-configuration", extras = ["web"], editable = "../../../../../web/capabilities/users/configuration" },
 ]
 
 [package.metadata.requires-dev]
@@ -201,6 +201,12 @@ dependencies = [
     { name = "atlanticus-web-navigation" },
 ]
 
+[package.optional-dependencies]
+web = [
+    { name = "atlanticus-web" },
+    { name = "dash" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "atlanticus-web", marker = "extra == 'web'", editable = "../../../../../web/framework/core" },
@@ -243,6 +249,12 @@ version = "0.1.6"
 source = { editable = "../../../../../web/capabilities/users/configuration" }
 dependencies = [
     { name = "atlanticus-web-users" },
+]
+
+[package.optional-dependencies]
+web = [
+    { name = "atlanticus-web" },
+    { name = "dash" },
 ]
 
 [package.metadata]

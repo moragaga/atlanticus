@@ -1,7 +1,13 @@
 import ast
 from pathlib import Path
 
-FILES = ('__init__.py', 'workflows.py')
+FILES = (
+    '__init__.py',
+    'application.py',
+    'composition.py',
+    'dependencies.py',
+    'workflows.py',
+)
 
 
 def test_commented_mirror_matches_productive_ast() -> None:

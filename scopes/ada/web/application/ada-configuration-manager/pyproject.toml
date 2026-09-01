@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-configuration-manager"
-version = "0.1.0"
+version = "0.2.0"
 description = "Composition backend de ADA para Atlanticus Manager"
 requires-python = "==3.14.2"
 classifiers = [
@@ -19,9 +19,9 @@ dependencies = [
     "atlanticus-web-identity==0.1.0",
     "atlanticus-web-manager==0.3.12",
     "atlanticus-web-navigation==0.1.0",
-    "atlanticus-web-navigation-configuration==0.1.5",
+    "atlanticus-web-navigation-configuration[web]==0.1.5",
     "atlanticus-web-users==0.1.0",
-    "atlanticus-web-users-configuration==0.1.6",
+    "atlanticus-web-users-configuration[web]==0.1.6",
 ]
 
 [tool.uv.sources]
