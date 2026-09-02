@@ -16,7 +16,11 @@ from ada.web.application.generic.composition import (
     AdaApplicationComposition,
     create_local_operational_composition,
 )
+from ada.web.application.generic.operational_render import (
+    validate_operational_render_application_binding,
+)
 from ada.web.content_state.dependency_resolver import ContentStateDependency
+from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.operational_state import resolve_ada_operational_state
 from ada.web.shell.navigation import AdaNavigationView
 from ada.web.time_status.store_adapter import TimeStatusStoreSnapshot
@@ -38,6 +42,7 @@ _APPLICATION_DISTRIBUTION = 'ada-generic-application'
 def create_application_definition(
     *,
     composition: AdaApplicationComposition | None = None,
+    operational_render_binding: OperationalRenderBinding | None = None,
     tool_display_name: str | None = None,
     navigation_view: AdaNavigationView | None = None,
     global_indicators: GlobalIndicatorCollection | None = None,
@@ -71,6 +76,10 @@ def create_application_definition(
         include_content_state=bool(len(resolved_global_indicators)),
         include_time_status=operational_state.time_status_summary is not None,
     )
+    validate_operational_render_application_binding(
+        binding=operational_render_binding,
+        body_factory=resolved_composition.operational_body_factory,
+    )
     return WebApplicationDefinition(
         import_name='ada.web.application.generic',
         metadata=ApplicationMetadata(
@@ -96,6 +105,8 @@ def create_application_definition(
             tool_key=operational_state.tool_key,
             time_status_summary=operational_state.time_status_summary,
             time_status_detail=time_status_detail,
+            operational_render_binding=operational_render_binding,
+            operational_body_factory=resolved_composition.operational_body_factory,
         ),
         modules=resolved_composition.modules,
         page_packages=resolved_composition.page_packages,

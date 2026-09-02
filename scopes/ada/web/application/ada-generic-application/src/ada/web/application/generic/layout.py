@@ -4,12 +4,18 @@ from collections.abc import Callable
 from functools import partial
 
 from dash import html, page_container
+from dash.development.base_component import Component
 
 from ada.web.alarms.management_summary import (
     AlarmManagementSummaryState,
     build_alarm_management_summary,
 )
 from ada.web.alarms.status import AlarmStatusState, build_alarm_status
+from ada.web.application.generic.operational_render import (
+    AdaOperationalBodyFactory,
+    build_operational_body,
+)
+from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.shell.header import build_ada_operational_header
 from ada.web.shell.navigation import (
     AdaNavigationView,
@@ -58,6 +64,8 @@ def build_operational_application_layout(
     tool_key: str | None,
     time_status_summary: TimeStatusSummaryState | None,
     time_status_detail: TimeStatusDetailState | None,
+    operational_render_binding: OperationalRenderBinding | None,
+    operational_body_factory: AdaOperationalBodyFactory | None,
     navigation_enabled: bool,
 ):
     navigation_offcanvas = None
@@ -98,7 +106,10 @@ def build_operational_application_layout(
         children.append(navigation_offcanvas)
     children.append(
         html.Main(
-            page_container,
+            _resolve_application_content(
+                binding=operational_render_binding,
+                body_factory=operational_body_factory,
+            ),
             id='ada-application-content',
         )
     )
@@ -110,15 +121,33 @@ def build_operational_application_layout(
 
 def build_body_application_layout(
     _services: ServiceRegistry,
+    *,
+    operational_render_binding: OperationalRenderBinding | None = None,
+    operational_body_factory: AdaOperationalBodyFactory | None = None,
     **_state: object,
 ):
     return html.Div(
         html.Main(
-            page_container,
+            _resolve_application_content(
+                binding=operational_render_binding,
+                body_factory=operational_body_factory,
+            ),
             id='ada-application-content',
         ),
         id='ada-generic-application',
     )
+
+
+def _resolve_application_content(
+    *,
+    binding: OperationalRenderBinding | None,
+    body_factory: AdaOperationalBodyFactory | None,
+) -> Component:
+    operational_body = build_operational_body(
+        binding=binding,
+        body_factory=body_factory,
+    )
+    return page_container if operational_body is None else operational_body
 
 
 def _build_global_indicators_component(

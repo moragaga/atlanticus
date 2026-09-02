@@ -1,4 +1,4 @@
-# Espejo comentado: bloques explícitos de composición modular ADA.
+# Espejo comentado: la composición selecciona capabilities, layout y factory visual concreto.
 from __future__ import annotations
 
 import re
@@ -10,6 +10,7 @@ from ada.web.application.generic.layout import (
     AdaApplicationLayoutFactory,
     create_ada_operational_layout,
 )
+from ada.web.application.generic.operational_render import AdaOperationalBodyFactory
 from ada.web.runtime_experience import create_ada_session_module, create_ada_wake_lock_module
 from ada.web.shell.header import create_ada_operational_header_module
 from ada.web.shell.navigation import create_ada_navigation_presentation_module
@@ -42,6 +43,8 @@ class AdaApplicationComposition:
     modules: tuple[WebModule, ...]
     layout: AdaApplicationLayoutFactory
     page_packages: tuple[str, ...] = _DEFAULT_PAGE_PACKAGES
+    # Cada aplicación puede declarar su renderer de body sin imponerlo al runtime genérico.
+    operational_body_factory: AdaOperationalBodyFactory | None = None
 
 
 def create_ada_shared_ui_modules(
@@ -101,6 +104,7 @@ def create_local_operational_composition(
     *,
     include_content_state: bool = False,
     include_time_status: bool = False,
+    operational_body_factory: AdaOperationalBodyFactory | None = None,
 ) -> AdaApplicationComposition:
     return AdaApplicationComposition(
         modules=(
@@ -116,6 +120,7 @@ def create_local_operational_composition(
             *create_ada_runtime_experience_modules(),
         ),
         layout=create_ada_operational_layout(navigation_enabled=True),
+        operational_body_factory=operational_body_factory,
     )
 
 

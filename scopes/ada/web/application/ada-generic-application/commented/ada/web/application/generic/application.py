@@ -1,3 +1,4 @@
+# Espejo comentado: composition root ADA; recibe bindings ya resueltos y delega presentación.
 from __future__ import annotations
 
 import logging
@@ -16,8 +17,11 @@ from ada.web.application.generic.composition import (
     AdaApplicationComposition,
     create_local_operational_composition,
 )
+from ada.web.application.generic.operational_render import (
+    validate_operational_render_application_binding,
+)
 from ada.web.content_state.dependency_resolver import ContentStateDependency
-# El composition root delega la política operacional a una capability ADA reutilizable.
+from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.operational_state import resolve_ada_operational_state
 from ada.web.shell.navigation import AdaNavigationView
 from ada.web.time_status.store_adapter import TimeStatusStoreSnapshot
@@ -36,10 +40,10 @@ _APPLICATION_ROOT = Path(__file__).resolve().parents[5]
 _APPLICATION_DISTRIBUTION = 'ada-generic-application'
 
 
-# La aplicación conserva su API pública y ensambla estado resuelto + composición visual.
 def create_application_definition(
     *,
     composition: AdaApplicationComposition | None = None,
+    operational_render_binding: OperationalRenderBinding | None = None,
     tool_display_name: str | None = None,
     navigation_view: AdaNavigationView | None = None,
     global_indicators: GlobalIndicatorCollection | None = None,
@@ -61,7 +65,6 @@ def create_application_definition(
     application_version = version(_APPLICATION_DISTRIBUTION)
     operational_brand = OperationalBrandState(context_name=tool_display_name)
     resolved_global_indicators = global_indicators or GlobalIndicatorCollection(())
-    # Fuentes, Time Status y Content State se resuelven fuera del package de aplicación.
     operational_state = resolve_ada_operational_state(
         has_global_indicators=bool(len(resolved_global_indicators)),
         content_state_dependencies=content_state_dependencies,
@@ -70,10 +73,14 @@ def create_application_definition(
         time_status_snapshot=time_status_snapshot,
         time_status_detail=time_status_detail,
     )
-    # La composición continúa siendo reemplazable; los datos no deciden qué capabilities existen.
     resolved_composition = composition or create_local_operational_composition(
         include_content_state=bool(len(resolved_global_indicators)),
         include_time_status=operational_state.time_status_summary is not None,
+    )
+    # Un binding sólo es válido si la composición declara cómo renderizarlo.
+    validate_operational_render_application_binding(
+        binding=operational_render_binding,
+        body_factory=resolved_composition.operational_body_factory,
     )
     return WebApplicationDefinition(
         import_name='ada.web.application.generic',
@@ -93,15 +100,16 @@ def create_application_definition(
             global_indicators=resolved_global_indicators,
             global_indicators_content_state=global_indicators_content_state,
             content_state_presentation_mode=content_state_presentation_mode,
-            global_indicators_runtime_state=(
-                operational_state.global_indicators_runtime_state
-            ),
+            global_indicators_runtime_state=(operational_state.global_indicators_runtime_state),
             global_indicators_source_keys=operational_state.global_indicators_source_keys,
             alarm_management_summary=alarm_management_summary,
             alarm_status=alarm_status,
             tool_key=operational_state.tool_key,
             time_status_summary=operational_state.time_status_summary,
             time_status_detail=time_status_detail,
+            # El binding cruza intacto hasta el layout; aquí no se inspecciona payload ni ToolKind.
+            operational_render_binding=operational_render_binding,
+            operational_body_factory=resolved_composition.operational_body_factory,
         ),
         modules=resolved_composition.modules,
         page_packages=resolved_composition.page_packages,
@@ -115,7 +123,6 @@ def _validate_content_state_presentation_mode(
         raise TypeError('Generic Application requires ContentStatePresentationMode value')
 
 
-# Este default sí pertenece a la presentación de esta aplicación y por eso permanece aquí.
 def _resolve_navigation_view(
     view: AdaNavigationView | None,
     *,

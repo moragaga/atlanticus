@@ -16,6 +16,23 @@ dev = [
 ]
 
 [[package]]
+name = "ada-configuration-tools"
+version = "0.4.0"
+source = { editable = "../../configuration/tools" }
+dependencies = [
+    { name = "ada-configuration-tool-sources" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "ada-configuration-tool-sources", editable = "../../configuration/tool-sources" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
 name = "ada-generic-application"
 version = "0.2.17"
 source = { editable = "." }
@@ -24,6 +41,7 @@ dependencies = [
     { name = "ada-web-alarm-management-summary" },
     { name = "ada-web-alarm-status" },
     { name = "ada-web-content-state-dependency-resolver" },
+    { name = "ada-web-operational-render-binding" },
     { name = "ada-web-operational-state" },
     { name = "ada-web-runtime-experience" },
     { name = "ada-web-shell-header" },
@@ -54,6 +72,7 @@ requires-dist = [
     { name = "ada-web-alarm-management-summary", editable = "../../alarms/management-summary" },
     { name = "ada-web-alarm-status", editable = "../../alarms/status" },
     { name = "ada-web-content-state-dependency-resolver", editable = "../../content-state/dependency-resolver" },
+    { name = "ada-web-operational-render-binding", editable = "../../operational-render-binding" },
     { name = "ada-web-operational-state", editable = "../../operational-state" },
     { name = "ada-web-runtime-experience", editable = "../../runtime-experience" },
     { name = "ada-web-shell-header", editable = "../../shell/header" },
@@ -125,6 +144,23 @@ dev = [
 ]
 
 [[package]]
+name = "ada-web-component-store"
+version = "0.1.0"
+source = { editable = "../../component-store" }
+dependencies = [
+    { name = "ada-configuration-tools" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "ada-configuration-tools", editable = "../../configuration/tools" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
 name = "ada-web-content-state-core"
 version = "0.1.0"
 source = { editable = "../../content-state/core" }
@@ -147,6 +183,27 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "ada-web-content-state-core", editable = "../../content-state/core" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-operational-render-binding"
+version = "0.1.0"
+source = { editable = "../../operational-render-binding" }
+dependencies = [
+    { name = "ada-configuration-tools" },
+    { name = "ada-web-component-store" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-configuration-tools", editable = "../../configuration/tools" },
+    { name = "ada-web-component-store", editable = "../../component-store" },
+]
 
 [package.metadata.requires-dev]
 dev = [

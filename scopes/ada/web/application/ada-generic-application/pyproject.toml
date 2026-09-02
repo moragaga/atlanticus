@@ -12,6 +12,7 @@ classifiers = [
 ]
 dependencies = [
     "ada-web-operational-state==0.1.0",
+    "ada-web-operational-render-binding==0.1.0",
     "ada-configuration-tool-sources==0.1.0",
     "ada-web-time-status-store-adapter==0.1.0",
     "ada-web-content-state-dependency-resolver==0.2.0",
@@ -44,6 +45,7 @@ ada-generic-application = "ada.web.application.generic.__main__:main"
 
 [tool.uv.sources]
 ada-web-operational-state = { path = "../../operational-state", editable = true }
+ada-web-operational-render-binding = { path = "../../operational-render-binding", editable = true }
 ada-configuration-tool-sources = { path = "../../configuration/tool-sources", editable = true }
 ada-web-time-status-store-adapter = { path = "../../time-status/store-adapter", editable = true }
 ada-web-content-state-dependency-resolver = { path = "../../content-state/dependency-resolver", editable = true }
