@@ -4,8 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from ada.web.application.generic.application import create_application_definition
-from ada.web.application.generic.session import (
+from ada.web.runtime_experience import (
     ADA_SESSION_ASSET_LAYER,
     ADA_SESSION_CHECK_EVERY_SECONDS_ENV,
     ADA_SESSION_RELOAD_AFTER_SECONDS_ENV,
@@ -64,7 +63,7 @@ def test_session_reload_definition_rejects_invalid_configuration(
         resolve_ada_session_reload_definition(environ)
 
 
-def test_session_module_publishes_stable_marker_and_asset() -> None:
+def test_session_module_publishes_stable_marker_and_extracted_asset() -> None:
     module = create_ada_session_module(
         AdaSessionReloadDefinition(
             reload_after_seconds=120,
@@ -74,28 +73,20 @@ def test_session_module_publishes_stable_marker_and_asset() -> None:
 
     assert module.name == 'ada-session'
     assert module.asset_layers == (ADA_SESSION_ASSET_LAYER,)
-    assert module.index is not None
+    assert ADA_SESSION_ASSET_LAYER.package == 'ada.web.runtime_experience'
     assert module.index.body_end_fragments == (
         '<div id="ada-session-auto-reload" hidden '
         'data-reload-after-ms="120000" data-check-every-ms="10000"></div>',
     )
 
 
-def test_generic_application_always_composes_ada_session_module() -> None:
-    definition = create_application_definition()
-    modules = {module.name: module for module in definition.modules}
-
-    assert modules['ada-session'].asset_layers == (ADA_SESSION_ASSET_LAYER,)
-
-
-def test_session_javascript_stays_inside_ada_and_has_no_tool_specific_contract() -> None:
+def test_session_javascript_has_no_tool_specific_contract() -> None:
     source = (
         Path(__file__).parents[1]
         / 'src'
         / 'ada'
         / 'web'
-        / 'application'
-        / 'generic'
+        / 'runtime_experience'
         / 'resources'
         / 'session'
         / 'js'

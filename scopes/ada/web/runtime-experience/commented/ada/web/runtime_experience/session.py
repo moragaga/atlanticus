@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+# La política sigue siendo propia de ADA, pero ya no pertenece a una aplicación concreta.
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -8,6 +9,7 @@ from atlanticus.web.assets import AssetLayer
 from atlanticus.web.index import IndexContribution
 from atlanticus.web.modules import WebModule
 
+# Dos horas son el plazo preventivo acordado; treinta segundos evita polling agresivo.
 DEFAULT_ADA_SESSION_RELOAD_AFTER_SECONDS = 7_200
 DEFAULT_ADA_SESSION_CHECK_EVERY_SECONDS = 30
 ADA_SESSION_RELOAD_AFTER_SECONDS_ENV = 'ADA_SESSION_RELOAD_AFTER_SECONDS'
@@ -15,13 +17,14 @@ ADA_SESSION_CHECK_EVERY_SECONDS_ENV = 'ADA_SESSION_CHECK_EVERY_SECONDS'
 ADA_SESSION_ASSET_LAYER = AssetLayer(
     name='ada_session',
     load_order=9900,
-    package='ada.web.application.generic',
+    package='ada.web.runtime_experience',
     resource_directory='resources/session',
 )
 
 
 @dataclass(frozen=True, slots=True)
 class AdaSessionReloadDefinition:
+    # La configuración es tipada e inmutable porque define comportamiento de runtime.
     reload_after_seconds: int = DEFAULT_ADA_SESSION_RELOAD_AFTER_SECONDS
     check_every_seconds: int = DEFAULT_ADA_SESSION_CHECK_EVERY_SECONDS
 
@@ -35,6 +38,7 @@ class AdaSessionReloadDefinition:
 def resolve_ada_session_reload_definition(
     environ: Mapping[str, str] | None = None,
 ) -> AdaSessionReloadDefinition:
+    # Los nombres ADA_* mantienen explícita la autoridad de configuración de esta capability.
     source = os.environ if environ is None else environ
     return AdaSessionReloadDefinition(
         reload_after_seconds=_read_positive_integer(
@@ -53,6 +57,7 @@ def resolve_ada_session_reload_definition(
 def create_ada_session_module(
     definition: AdaSessionReloadDefinition | None = None,
 ) -> WebModule:
+    # El marker publica sólo intervalos no sensibles y el asset vive en su package de capability.
     resolved = definition or resolve_ada_session_reload_definition()
     marker = (
         '<div id="ada-session-auto-reload" hidden '
@@ -71,6 +76,7 @@ def _read_positive_integer(
     key: str,
     default: int,
 ) -> int:
+    # La configuración inválida falla en composición y no se degrada silenciosamente.
     raw = environ.get(key)
     if raw is None:
         return default

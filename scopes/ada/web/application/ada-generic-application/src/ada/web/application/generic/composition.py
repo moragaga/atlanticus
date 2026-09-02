@@ -9,8 +9,7 @@ from ada.web.application.generic.layout import (
     AdaApplicationLayoutFactory,
     create_ada_operational_layout,
 )
-from ada.web.application.generic.session import create_ada_session_module
-from ada.web.application.generic.wake_lock import create_ada_wake_lock_module
+from ada.web.runtime_experience import create_ada_session_module, create_ada_wake_lock_module
 from ada.web.shell.header import create_ada_operational_header_module
 from ada.web.shell.navigation import create_ada_navigation_presentation_module
 from ada.web.ui.branding import create_ada_branding_module

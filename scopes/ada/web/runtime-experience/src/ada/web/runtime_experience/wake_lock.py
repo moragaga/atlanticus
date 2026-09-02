@@ -6,7 +6,7 @@ from atlanticus.web.modules import WebModule
 ADA_WAKE_LOCK_ASSET_LAYER = AssetLayer(
     name='ada_wake_lock',
     load_order=9910,
-    package='ada.web.application.generic',
+    package='ada.web.runtime_experience',
     resource_directory='resources/wake_lock',
 )
 
