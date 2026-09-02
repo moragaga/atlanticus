@@ -18,6 +18,4 @@ class ConfigurationManagerDependencies:
     navigation_projection_name: str = 'Projection'
     tools_source_name: str = 'Source'
     tools_projection_name: str = 'Projection'
-    kpi_definitions_source_name: str = 'Source'
-    kpi_definitions_projection_name: str = 'Projection'
     force_publish_enabled: bool = False

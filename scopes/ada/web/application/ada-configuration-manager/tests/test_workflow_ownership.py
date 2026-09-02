@@ -18,6 +18,8 @@ def test_manager_registers_only_workflows_owned_by_surface_modules() -> None:
     assert 'KPI_DEFINITIONS_WORKFLOW_SERVICE' not in source
     assert 'KpiDefinitionManagerWorkflowAdapter' not in source
     assert 'kpi_definitions:' not in source
+    assert 'kpi_definitions_source_name:' not in source
+    assert 'kpi_definitions_projection_name:' not in source
 
 
 def test_kpi_composition_bridges_remain_available_without_dormant_manager_workflow() -> None:
