@@ -10,7 +10,6 @@ from ada.web.application.configuration_manager.tools import (
     create_tool_manager_web_module,
 )
 from ada.web.application.configuration_manager.workflows import (
-    KpiDefinitionManagerWorkflowAdapter,
     NavigationManagerWorkflowAdapter,
     ToolConfigurationManagerWorkflowAdapter,
     UsersManagerWorkflowAdapter,
@@ -51,7 +50,6 @@ MANAGER_ROUTE_PREFIX = '/manager'
 USERS_WORKFLOW_SERVICE = 'ada.configuration-manager.users.workflow'
 NAVIGATION_WORKFLOW_SERVICE = 'ada.configuration-manager.navigation.workflow'
 TOOLS_WORKFLOW_SERVICE = 'ada.configuration-manager.tools.workflow'
-KPI_DEFINITIONS_WORKFLOW_SERVICE = 'ada.configuration-manager.kpi-definitions.workflow'
 
 
 def build_configuration_manager_surface(
@@ -194,10 +192,6 @@ def _register_services(
     services.add(
         TOOLS_WORKFLOW_SERVICE,
         ToolConfigurationManagerWorkflowAdapter(dependencies.tools),
-    )
-    services.add(
-        KPI_DEFINITIONS_WORKFLOW_SERVICE,
-        KpiDefinitionManagerWorkflowAdapter(dependencies.kpi_definitions),
     )
 
 

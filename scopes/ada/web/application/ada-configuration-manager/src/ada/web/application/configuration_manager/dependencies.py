@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 
-from ada.configuration.kpi_definition import KpiDefinitionServices
 from ada.configuration.tools_lifecycle import ToolLifecycleServices
 from atlanticus.web.manager import ManagerPrincipalProvider
 from atlanticus.web.navigation.configuration import NavigationConfigurationServices
@@ -12,7 +11,6 @@ class ConfigurationManagerDependencies:
     users: UsersConfigurationServices
     navigation: NavigationConfigurationServices
     tools: ToolLifecycleServices
-    kpi_definitions: KpiDefinitionServices
     principal_provider: ManagerPrincipalProvider
     users_source_name: str = 'Source'
     users_projection_name: str = 'Projection'

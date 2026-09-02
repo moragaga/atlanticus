@@ -1,13 +1,11 @@
 from types import SimpleNamespace
 
 from ada.web.application.configuration_manager import (
-    KPI_DEFINITIONS_WORKFLOW_SERVICE,
     MANAGER_ROUTE_PREFIX,
     NAVIGATION_WORKFLOW_SERVICE,
     TOOLS_WORKFLOW_SERVICE,
     USERS_WORKFLOW_SERVICE,
     ConfigurationManagerDependencies,
-    KpiDefinitionManagerWorkflowAdapter,
     NavigationManagerWorkflowAdapter,
     ToolConfigurationManagerWorkflowAdapter,
     UsersManagerWorkflowAdapter,
@@ -39,7 +37,6 @@ def dependencies() -> ConfigurationManagerDependencies:
         users=domain(UsersAdministrationStub()),
         navigation=domain(),
         tools=domain(),
-        kpi_definitions=domain(),
         principal_provider=lambda: principal,
     )
 
@@ -89,7 +86,7 @@ def test_tools_module_represents_the_application_tool_without_selector() -> None
     assert tools.web_module.name == 'ada-configuration-manager-tools'
 
 
-def test_service_module_registers_all_four_workflow_adapters() -> None:
+def test_service_module_registers_only_surface_workflow_adapters() -> None:
     definition = build_configuration_manager_surface(dependencies())
     service_module = definition.web_modules[0]
     services = ServiceRegistry()
@@ -108,8 +105,4 @@ def test_service_module_registers_all_four_workflow_adapters() -> None:
     assert isinstance(
         services.require(TOOLS_WORKFLOW_SERVICE),
         ToolConfigurationManagerWorkflowAdapter,
-    )
-    assert isinstance(
-        services.require(KPI_DEFINITIONS_WORKFLOW_SERVICE),
-        KpiDefinitionManagerWorkflowAdapter,
     )

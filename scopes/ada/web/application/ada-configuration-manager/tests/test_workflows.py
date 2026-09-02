@@ -5,10 +5,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from ada.configuration.kpi_definition import KpiDefinitionConfiguration
 from ada.configuration.tools import ToolConfiguration
 from ada.web.application.configuration_manager import (
-    KpiDefinitionManagerWorkflowAdapter,
     NavigationManagerWorkflowAdapter,
     ToolConfigurationManagerWorkflowAdapter,
     UsersManagerWorkflowAdapter,
@@ -162,16 +160,10 @@ def _tool_payload() -> dict[str, object]:
 
 
 def _cases():
-    kpi = KpiDefinitionConfiguration()
     tool = ToolConfiguration.from_document(_tool_payload())
     navigation = NavigationConfigurationCatalog()
     users = UsersConfigurationCatalog()
     return (
-        (
-            KpiDefinitionManagerWorkflowAdapter,
-            kpi.to_document(),
-            kpi,
-        ),
         (
             ToolConfigurationManagerWorkflowAdapter,
             tool.to_document(),
