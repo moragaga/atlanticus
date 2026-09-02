@@ -5,118 +5,9 @@ requires-python = "==3.14.2"
 [[package]]
 name = "ada-configuration-tool-sources"
 version = "0.1.0"
-source = { editable = "../../configuration/tool-sources" }
+source = { editable = "../configuration/tool-sources" }
 
 [package.metadata]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-generic-application"
-version = "0.2.17"
-source = { editable = "." }
-dependencies = [
-    { name = "ada-configuration-tool-sources" },
-    { name = "ada-web-alarm-management-summary" },
-    { name = "ada-web-alarm-status" },
-    { name = "ada-web-content-state-dependency-resolver" },
-    { name = "ada-web-operational-state" },
-    { name = "ada-web-runtime-experience" },
-    { name = "ada-web-shell-header" },
-    { name = "ada-web-shell-navigation" },
-    { name = "ada-web-time-status-store-adapter" },
-    { name = "ada-web-ui-branding" },
-    { name = "ada-web-ui-content-state" },
-    { name = "ada-web-ui-core" },
-    { name = "ada-web-ui-display-status" },
-    { name = "ada-web-ui-global-indicator" },
-    { name = "ada-web-ui-page-readiness" },
-    { name = "ada-web-ui-time-status" },
-    { name = "atlanticus-web" },
-    { name = "atlanticus-web-identity" },
-    { name = "atlanticus-web-identity-local" },
-    { name = "atlanticus-web-navigation" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-configuration-tool-sources", editable = "../../configuration/tool-sources" },
-    { name = "ada-web-alarm-management-summary", editable = "../../alarms/management-summary" },
-    { name = "ada-web-alarm-status", editable = "../../alarms/status" },
-    { name = "ada-web-content-state-dependency-resolver", editable = "../../content-state/dependency-resolver" },
-    { name = "ada-web-operational-state", editable = "../../operational-state" },
-    { name = "ada-web-runtime-experience", editable = "../../runtime-experience" },
-    { name = "ada-web-shell-header", editable = "../../shell/header" },
-    { name = "ada-web-shell-navigation", editable = "../../shell/navigation" },
-    { name = "ada-web-time-status-store-adapter", editable = "../../time-status/store-adapter" },
-    { name = "ada-web-ui-branding", editable = "../../ui/branding" },
-    { name = "ada-web-ui-content-state", editable = "../../ui/content-state" },
-    { name = "ada-web-ui-core", editable = "../../ui/core" },
-    { name = "ada-web-ui-display-status", editable = "../../ui/display-status" },
-    { name = "ada-web-ui-global-indicator", editable = "../../ui/global-indicator" },
-    { name = "ada-web-ui-page-readiness", editable = "../../ui/page-readiness" },
-    { name = "ada-web-ui-time-status", editable = "../../ui/time-status" },
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "atlanticus-web-identity", editable = "../../../../../web/capabilities/identity/core" },
-    { name = "atlanticus-web-identity-local", editable = "../../../../../web/capabilities/identity/local" },
-    { name = "atlanticus-web-navigation", editable = "../../../../../web/capabilities/navigation/core" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-alarm-management-summary"
-version = "0.1.5"
-source = { editable = "../../alarms/management-summary" }
-dependencies = [
-    { name = "ada-web-ui-core" },
-    { name = "atlanticus-web" },
-    { name = "dash" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-web-ui-core", editable = "../../ui/core" },
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "dash", specifier = "==4.4.1" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-alarm-status"
-version = "0.1.7"
-source = { editable = "../../alarms/status" }
-dependencies = [
-    { name = "ada-web-ui-core" },
-    { name = "atlanticus-web" },
-    { name = "dash" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-web-ui-core", editable = "../../ui/core" },
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "dash", specifier = "==4.4.1" },
-]
 
 [package.metadata.requires-dev]
 dev = [
@@ -127,7 +18,7 @@ dev = [
 [[package]]
 name = "ada-web-content-state-core"
 version = "0.1.0"
-source = { editable = "../../content-state/core" }
+source = { editable = "../content-state/core" }
 
 [package.metadata]
 
@@ -140,13 +31,13 @@ dev = [
 [[package]]
 name = "ada-web-content-state-dependency-resolver"
 version = "0.2.0"
-source = { editable = "../../content-state/dependency-resolver" }
+source = { editable = "../content-state/dependency-resolver" }
 dependencies = [
     { name = "ada-web-content-state-core" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "ada-web-content-state-core", editable = "../../content-state/core" }]
+requires-dist = [{ name = "ada-web-content-state-core", editable = "../content-state/core" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -157,7 +48,7 @@ dev = [
 [[package]]
 name = "ada-web-operational-state"
 version = "0.1.0"
-source = { editable = "../../operational-state" }
+source = { editable = "." }
 dependencies = [
     { name = "ada-configuration-tool-sources" },
     { name = "ada-web-content-state-core" },
@@ -166,80 +57,19 @@ dependencies = [
     { name = "ada-web-ui-time-status" },
 ]
 
-[package.metadata]
-requires-dist = [
-    { name = "ada-configuration-tool-sources", editable = "../../configuration/tool-sources" },
-    { name = "ada-web-content-state-core", editable = "../../content-state/core" },
-    { name = "ada-web-content-state-dependency-resolver", editable = "../../content-state/dependency-resolver" },
-    { name = "ada-web-time-status-store-adapter", editable = "../../time-status/store-adapter" },
-    { name = "ada-web-ui-time-status", editable = "../../ui/time-status" },
-]
-
-[package.metadata.requires-dev]
+[package.dev-dependencies]
 dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-runtime-experience"
-version = "0.1.0"
-source = { editable = "../../runtime-experience" }
-dependencies = [
-    { name = "atlanticus-web" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "atlanticus-web", editable = "../../../../../web/framework/core" }]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-shell-header"
-version = "0.1.8"
-source = { editable = "../../shell/header" }
-dependencies = [
-    { name = "ada-web-ui-core" },
-    { name = "atlanticus-web" },
-    { name = "dash" },
+    { name = "pytest" },
+    { name = "ruff" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-web-ui-core", editable = "../../ui/core" },
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "dash", specifier = "==4.4.1" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-shell-navigation"
-version = "0.1.7"
-source = { editable = "../../shell/navigation" }
-dependencies = [
-    { name = "ada-web-ui-core" },
-    { name = "atlanticus-web" },
-    { name = "atlanticus-web-navigation" },
-    { name = "dash" },
-    { name = "dash-bootstrap-components" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-web-ui-core", editable = "../../ui/core" },
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "atlanticus-web-navigation", editable = "../../../../../web/capabilities/navigation/core" },
-    { name = "dash", specifier = "==4.4.1" },
-    { name = "dash-bootstrap-components", specifier = "==2.0.4" },
+    { name = "ada-configuration-tool-sources", editable = "../configuration/tool-sources" },
+    { name = "ada-web-content-state-core", editable = "../content-state/core" },
+    { name = "ada-web-content-state-dependency-resolver", editable = "../content-state/dependency-resolver" },
+    { name = "ada-web-time-status-store-adapter", editable = "../time-status/store-adapter" },
+    { name = "ada-web-ui-time-status", editable = "../ui/time-status" },
 ]
 
 [package.metadata.requires-dev]
@@ -251,57 +81,9 @@ dev = [
 [[package]]
 name = "ada-web-time-status-store-adapter"
 version = "0.1.0"
-source = { editable = "../../time-status/store-adapter" }
+source = { editable = "../time-status/store-adapter" }
 
 [package.metadata]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-ui-branding"
-version = "0.1.6"
-source = { editable = "../../ui/branding" }
-dependencies = [
-    { name = "ada-web-ui-core" },
-    { name = "atlanticus-web" },
-    { name = "dash" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-web-ui-core", editable = "../../ui/core" },
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "dash", specifier = "==4.4.1" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-ui-content-state"
-version = "0.1.6"
-source = { editable = "../../ui/content-state" }
-dependencies = [
-    { name = "ada-web-content-state-core" },
-    { name = "ada-web-ui-core" },
-    { name = "atlanticus-web" },
-    { name = "dash" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-web-content-state-core", editable = "../../content-state/core" },
-    { name = "ada-web-ui-core", editable = "../../ui/core" },
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "dash", specifier = "==4.4.1" },
-]
 
 [package.metadata.requires-dev]
 dev = [
@@ -312,82 +94,13 @@ dev = [
 [[package]]
 name = "ada-web-ui-core"
 version = "0.2.0"
-source = { editable = "../../ui/core" }
+source = { editable = "../ui/core" }
 dependencies = [
     { name = "atlanticus-web" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "atlanticus-web", editable = "../../../../../web/framework/core" }]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-ui-display-status"
-version = "0.1.1"
-source = { editable = "../../ui/display-status" }
-dependencies = [
-    { name = "ada-web-ui-core" },
-    { name = "atlanticus-web" },
-    { name = "dash" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-web-ui-core", editable = "../../ui/core" },
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "dash", specifier = "==4.4.1" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-ui-global-indicator"
-version = "0.2.9"
-source = { editable = "../../ui/global-indicator" }
-dependencies = [
-    { name = "ada-web-ui-core" },
-    { name = "ada-web-ui-display-status" },
-    { name = "atlanticus-web" },
-    { name = "dash" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-web-ui-core", editable = "../../ui/core" },
-    { name = "ada-web-ui-display-status", editable = "../../ui/display-status" },
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "dash", specifier = "==4.4.1" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-ui-page-readiness"
-version = "0.1.0"
-source = { editable = "../../ui/page-readiness" }
-dependencies = [
-    { name = "atlanticus-web" },
-    { name = "dash" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "dash", specifier = "==4.4.1" },
-]
+requires-dist = [{ name = "atlanticus-web", editable = "../../../../web/framework/core" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -398,7 +111,7 @@ dev = [
 [[package]]
 name = "ada-web-ui-time-status"
 version = "0.1.15"
-source = { editable = "../../ui/time-status" }
+source = { editable = "../ui/time-status" }
 dependencies = [
     { name = "ada-web-ui-core" },
     { name = "atlanticus-web" },
@@ -407,8 +120,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-web-ui-core", editable = "../../ui/core" },
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
+    { name = "ada-web-ui-core", editable = "../ui/core" },
+    { name = "atlanticus-web", editable = "../../../../web/framework/core" },
     { name = "dash", specifier = "==4.4.1" },
 ]
 
@@ -430,7 +143,7 @@ wheels = [
 [[package]]
 name = "atlanticus-web"
 version = "0.1.0"
-source = { editable = "../../../../../web/framework/core" }
+source = { editable = "../../../../web/framework/core" }
 dependencies = [
     { name = "atlanticus-web-configuration" },
     { name = "atlanticus-web-observability" },
@@ -442,8 +155,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-web-configuration", editable = "../../../../../web/framework/configuration" },
-    { name = "atlanticus-web-observability", editable = "../../../../../web/framework/observability" },
+    { name = "atlanticus-web-configuration", editable = "../../../../web/framework/configuration" },
+    { name = "atlanticus-web-observability", editable = "../../../../web/framework/observability" },
     { name = "dash", specifier = "==4.4.1" },
     { name = "flask", specifier = "==3.1.3" },
     { name = "rcssmin", specifier = "==1.2.2" },
@@ -453,7 +166,7 @@ requires-dist = [
 [[package]]
 name = "atlanticus-web-configuration"
 version = "0.1.0"
-source = { editable = "../../../../../web/framework/configuration" }
+source = { editable = "../../../../web/framework/configuration" }
 dependencies = [
     { name = "pydantic-settings" },
 ]
@@ -462,52 +175,9 @@ dependencies = [
 requires-dist = [{ name = "pydantic-settings", specifier = "==2.14.1" }]
 
 [[package]]
-name = "atlanticus-web-identity"
-version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/identity/core" }
-dependencies = [
-    { name = "atlanticus-web" },
-    { name = "atlanticus-web-configuration" },
-    { name = "flask" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "atlanticus-web-configuration", editable = "../../../../../web/framework/configuration" },
-    { name = "flask", specifier = "==3.1.3" },
-]
-
-[[package]]
-name = "atlanticus-web-identity-local"
-version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/identity/local" }
-dependencies = [
-    { name = "atlanticus-web-identity" },
-    { name = "flask" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-web-identity", editable = "../../../../../web/capabilities/identity/core" },
-    { name = "flask", specifier = "==3.1.3" },
-]
-
-[[package]]
-name = "atlanticus-web-navigation"
-version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/navigation/core" }
-dependencies = [
-    { name = "atlanticus-web" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "atlanticus-web", editable = "../../../../../web/framework/core" }]
-
-[[package]]
 name = "atlanticus-web-observability"
 version = "0.3.0"
-source = { editable = "../../../../../web/framework/observability" }
+source = { editable = "../../../../web/framework/observability" }
 dependencies = [
     { name = "flask" },
 ]
@@ -643,18 +313,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/5a/67/d5cea6dedfbfde4165436fb58154480ea6358a9e71a739d3366575b5b724/dash-4.4.1.tar.gz", hash = "sha256:9356ca7856bc496c12c5b6de5978aaf783e090d07450ee395ade1c0c2cbdf816", size = 8536482, upload-time = "2026-07-21T18:58:19.72Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9a/29/498125538103a11eab9cfbbde41bacf93e14ab3ac92ae9fb4ac0ac4dd61b/dash-4.4.1-py3-none-any.whl", hash = "sha256:72120a91b10ee4d73f9446efd5d6a4ec218086feed7b1b479d2259844d1f658f", size = 8945027, upload-time = "2026-07-21T18:58:11.405Z" },
-]
-
-[[package]]
-name = "dash-bootstrap-components"
-version = "2.0.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "dash" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/cc/d4/5b7da808ff5acb3a6ca702f504d8ef05bc7d4c475b18dadefd783b1120c3/dash_bootstrap_components-2.0.4.tar.gz", hash = "sha256:c3206c0923774bbc6a6ddaa7822b8d9aa5326b0d3c1e7cd795cc975025fe2484", size = 115599, upload-time = "2025-08-20T19:42:09.449Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d6/38/1efeec8b4d741c09ccd169baf8a00c07a0176b58e418d4cd0c30dffedd22/dash_bootstrap_components-2.0.4-py3-none-any.whl", hash = "sha256:767cf0084586c1b2b614ccf50f79fe4525fdbbf8e3a161ed60016e584a14f5d1", size = 204044, upload-time = "2025-08-20T19:42:07.928Z" },
 ]
 
 [[package]]
