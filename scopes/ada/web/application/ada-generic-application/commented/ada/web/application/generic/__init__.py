@@ -15,13 +15,18 @@ from ada.web.application.generic.layout import (
     create_ada_operational_layout,
 )
 # Factory público para que la composición concreta defina su body operacional.
-from ada.web.application.generic.operational_render import AdaOperationalBodyFactory
+from ada.web.application.generic.operational_render import (
+    AdaOperationalBodyFactory,
+    AdaOperationalComponentRenderer,
+    materialize_operational_components,
+)
 from ada.web.application.generic.runtime import create_application_runtime
 from ada.web.ui.content_state import ContentStatePresentationMode
 
 __all__ = [
     'AdaApplicationComposition',
     'AdaOperationalBodyFactory',
+    'AdaOperationalComponentRenderer',
     'ContentStatePresentationMode',
     'build_body_application_layout',
     'create_ada_alarm_surface_modules',
@@ -34,4 +39,5 @@ __all__ = [
     'create_identity_navigation_modules',
     'create_local_identity_modules',
     'create_local_operational_composition',
+    'materialize_operational_components',
 ]
