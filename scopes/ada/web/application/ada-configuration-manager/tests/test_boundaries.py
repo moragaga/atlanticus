@@ -65,3 +65,9 @@ def test_cl003b1_exposes_users_navigation_and_single_tool_surface() -> None:
     assert "key='navigation'" in composition
     assert "key='tools'" in composition
     assert "key='kpi-definitions'" not in composition
+
+
+def test_legacy_manager_tools_package_is_physically_absent() -> None:
+    web_scope = Path(__file__).parents[3]
+
+    assert not (web_scope / 'configuration' / 'manager-tools').exists()
