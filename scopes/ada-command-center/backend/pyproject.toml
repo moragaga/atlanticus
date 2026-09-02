@@ -3,7 +3,10 @@ name = "ada-command-center-backend-workspace"
 version = "1.0.0"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
-dependencies = []
+dependencies = [
+    "ada-command-center-alarms-core==1.0.0",
+    "ada-command-center-alarms-persistence==1.0.0",
+]
 
 [dependency-groups]
 dev = [
@@ -14,8 +17,19 @@ dev = [
 [tool.uv]
 package = false
 
+[tool.uv.sources]
+ada-command-center-alarms-core = { workspace = true }
+ada-command-center-alarms-persistence = { workspace = true }
+atlanticus-json = { path = "../../../backend/json", editable = true }
+atlanticus-state = { path = "../../../backend/state", editable = true }
+atlanticus-observability = { path = "../../../backend/observability", editable = true }
+atlanticus-kernel = { path = "../../../backend/kernel", editable = true }
+
 [tool.uv.workspace]
-members = []
+members = [
+    "alarms/core",
+    "alarms/persistence",
+]
 
 [tool.ruff]
 line-length = 100

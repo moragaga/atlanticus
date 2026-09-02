@@ -2,10 +2,17 @@ version = 1
 revision = 3
 requires-python = "==3.14.2"
 
+[manifest]
+members = [
+    "ada-command-center-alarms-core",
+    "ada-command-center-alarms-persistence",
+    "ada-command-center-backend-workspace",
+]
+
 [[package]]
-name = "ada-command-center-backend-workspace"
+name = "ada-command-center-alarms-core"
 version = "1.0.0"
-source = { virtual = "." }
+source = { editable = "alarms/core" }
 
 [package.dev-dependencies]
 dev = [
@@ -20,6 +27,92 @@ dev = [
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]
+
+[[package]]
+name = "ada-command-center-alarms-persistence"
+version = "1.0.0"
+source = { editable = "alarms/persistence" }
+dependencies = [
+    { name = "atlanticus-json" },
+    { name = "atlanticus-state" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-json", editable = "../../../backend/json" },
+    { name = "atlanticus-state", editable = "../../../backend/state" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-command-center-backend-workspace"
+version = "1.0.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "ada-command-center-alarms-core" },
+    { name = "ada-command-center-alarms-persistence" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-command-center-alarms-core", editable = "alarms/core" },
+    { name = "ada-command-center-alarms-persistence", editable = "alarms/persistence" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "atlanticus-json"
+version = "1.0.0"
+source = { editable = "../../../backend/json" }
+
+[[package]]
+name = "atlanticus-kernel"
+version = "1.0.0"
+source = { editable = "../../../backend/kernel" }
+
+[[package]]
+name = "atlanticus-observability"
+version = "1.0.0"
+source = { editable = "../../../backend/observability" }
+dependencies = [
+    { name = "atlanticus-kernel" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "atlanticus-kernel", editable = "../../../backend/kernel" }]
+
+[[package]]
+name = "atlanticus-state"
+version = "1.0.0"
+source = { editable = "../../../backend/state" }
+dependencies = [
+    { name = "atlanticus-observability" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "atlanticus-observability", editable = "../../../backend/observability" }]
 
 [[package]]
 name = "colorama"
