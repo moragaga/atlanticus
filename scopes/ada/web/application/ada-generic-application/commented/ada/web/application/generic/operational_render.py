@@ -1,3 +1,4 @@
+# Espejo comentado: frontera entre el binding operacional y la presentación concreta ADA.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
@@ -9,9 +10,13 @@ from ada.web.operational_render_binding import (
     OperationalRenderBinding,
 )
 
-# La aplicación conserva el ownership del body completo y de cada renderer concreto.
+# El body factory compone la geometría final usando el binding completo.
 AdaOperationalBodyFactory = Callable[[OperationalRenderBinding], Component]
-AdaOperationalComponentRenderer = Callable[[OperationalComponentBinding], Component]
+# Cada renderer recibe el contexto completo y el Component que le corresponde materializar.
+AdaOperationalComponentRenderer = Callable[
+    [OperationalRenderBinding, OperationalComponentBinding],
+    Component,
+]
 
 
 def validate_operational_render_application_binding(
@@ -44,7 +49,6 @@ def build_operational_body(
     return body
 
 
-# Materializa exactamente un renderer por Component configurado, sin decidir geometría.
 def materialize_operational_components(
     binding: OperationalRenderBinding,
     *,
@@ -55,9 +59,9 @@ def materialize_operational_components(
     if not isinstance(renderers, Mapping):
         raise TypeError('Operational component renderers must be a mapping')
 
+    # La cobertura se valida contra la identidad canónica del ToolStructure.
     expected_keys = binding.component_keys
     expected_key_set = set(expected_keys)
-    # La cobertura visual debe ser explícita: no se aceptan destinos ajenos a ToolStructure.
     for component_key, renderer in renderers.items():
         if not isinstance(component_key, str):
             raise TypeError('Operational component renderer key must be a string')
@@ -68,17 +72,16 @@ def materialize_operational_components(
                 f'Operational component renderer must be callable: {component_key!r}'
             )
 
-    # Ningún Component configurado puede desaparecer por falta de renderer.
     missing_key = next((key for key in expected_keys if key not in renderers), None)
     if missing_key is not None:
         raise ValueError(f'Missing operational component renderer: {missing_key!r}')
 
+    # El orden viene del binding, nunca del Mapping de renderers.
     materialized: list[Component] = []
-    # El orden proviene del binding, que ya está fijado por ToolStructure.
     for component_binding in binding.components:
         component_key = component_binding.component.key
-        # El renderer recibe el binding original: conserva subcomponents, Store, EMPTY y payload.
-        rendered = renderers[component_key](component_binding)
+        # El binding completo permite resolver relaciones linked sin duplicar Stores o payloads.
+        rendered = renderers[component_key](binding, component_binding)
         if not isinstance(rendered, Component):
             raise TypeError(
                 f'Operational component renderer must return a Dash Component: {component_key!r}'

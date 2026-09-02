@@ -10,7 +10,10 @@ from ada.web.operational_render_binding import (
 )
 
 AdaOperationalBodyFactory = Callable[[OperationalRenderBinding], Component]
-AdaOperationalComponentRenderer = Callable[[OperationalComponentBinding], Component]
+AdaOperationalComponentRenderer = Callable[
+    [OperationalRenderBinding, OperationalComponentBinding],
+    Component,
+]
 
 
 def validate_operational_render_application_binding(
@@ -70,7 +73,7 @@ def materialize_operational_components(
     materialized: list[Component] = []
     for component_binding in binding.components:
         component_key = component_binding.component.key
-        rendered = renderers[component_key](component_binding)
+        rendered = renderers[component_key](binding, component_binding)
         if not isinstance(rendered, Component):
             raise TypeError(
                 f'Operational component renderer must return a Dash Component: {component_key!r}'

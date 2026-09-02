@@ -8,6 +8,7 @@ from ada.configuration.tools import (
     ToolScope,
     ToolStructure,
     ToolSubcomponent,
+    ToolSubcomponentAddress,
 )
 from ada.web.application.generic.operational_render import materialize_operational_components
 from ada.web.component_store import ComponentStoreSnapshot, ComponentStoreState
@@ -23,7 +24,21 @@ def _structure() -> ToolStructure:
                 key='mine',
                 display_name='Mina',
                 scope=ToolScope.MINE,
-                subcomponents=(ToolSubcomponent(key='mine_phase', display_name='Fase Mina'),),
+                subcomponents=(
+                    ToolSubcomponent(
+                        key='mine_phase',
+                        display_name='Fase Mina',
+                        linked_component_keys=('haulage',),
+                    ),
+                ),
+            ),
+            ToolComponent(
+                key='haulage',
+                display_name='Transporte',
+                scope=ToolScope.MINE,
+                subcomponents=(
+                    ToolSubcomponent(key='haulage_phase', display_name='Fase Transporte'),
+                ),
             ),
             ToolComponent(
                 key='plant',
@@ -46,6 +61,10 @@ def _binding(*, populated_mine: bool = False):
         ),
         ComponentStoreSnapshot(
             tool_key=structure.tool_key,
+            component_key='haulage',
+        ),
+        ComponentStoreSnapshot(
+            tool_key=structure.tool_key,
             component_key='plant',
         ),
     )
@@ -56,37 +75,75 @@ def test_materialization_uses_structure_order_and_preserves_original_bindings() 
     binding, _payload = _binding()
     observed = []
 
-    def render_mine(component_binding):
+    def render_component(render_binding, component_binding):
+        assert render_binding is binding
         observed.append(component_binding)
-        return html.Div(component_binding.component.display_name, id='rendered-mine')
-
-    def render_plant(component_binding):
-        observed.append(component_binding)
-        return html.Div(component_binding.component.display_name, id='rendered-plant')
+        return html.Div(
+            component_binding.component.display_name,
+            id=f'rendered-{component_binding.component.key}',
+        )
 
     rendered = materialize_operational_components(
         binding,
         renderers={
-            'plant': render_plant,
-            'mine': render_mine,
+            'plant': render_component,
+            'haulage': render_component,
+            'mine': render_component,
         },
     )
 
-    assert tuple(component.id for component in rendered) == ('rendered-mine', 'rendered-plant')
+    assert tuple(component.id for component in rendered) == (
+        'rendered-mine',
+        'rendered-haulage',
+        'rendered-plant',
+    )
     assert tuple(observed) == binding.components
-    assert observed[0] is binding.components[0]
-    assert observed[1] is binding.components[1]
-    assert observed[0].component.subcomponents[0].key == 'mine_phase'
-    assert observed[1].component.subcomponents[0].key == 'plant_phase'
-    assert observed[0].store.state is ComponentStoreState.EMPTY
-    assert observed[1].store.state is ComponentStoreState.EMPTY
+    assert tuple(item.store.state for item in observed) == (
+        ComponentStoreState.EMPTY,
+        ComponentStoreState.EMPTY,
+        ComponentStoreState.EMPTY,
+    )
+
+
+def test_renderer_can_resolve_linked_subcomponent_to_single_owner_store() -> None:
+    binding, payload = _binding(populated_mine=True)
+    observed_owner_stores = []
+
+    def render_component(render_binding, component_binding):
+        if component_binding.component.key == 'haulage':
+            address = render_binding.structure.subcomponent_address(
+                component_key='haulage',
+                subcomponent_key='mine_phase',
+            )
+            assert address == ToolSubcomponentAddress('mine', 'mine_phase')
+            owner_binding = next(
+                item
+                for item in render_binding.components
+                if item.component.key == address.owner_component_key
+            )
+            observed_owner_stores.append(owner_binding.store)
+        return html.Div(id=f'rendered-{component_binding.component.key}')
+
+    materialize_operational_components(
+        binding,
+        renderers={
+            'mine': render_component,
+            'haulage': render_component,
+            'plant': render_component,
+        },
+    )
+
+    assert len(observed_owner_stores) == 1
+    assert observed_owner_stores[0] is binding.components[0].store
+    assert observed_owner_stores[0].payload is payload
+    assert binding.components[1].store.payload is None
 
 
 def test_materialization_preserves_populated_payload_without_normalization() -> None:
     binding, payload = _binding(populated_mine=True)
     observed_payloads = []
 
-    def render_component(component_binding):
+    def render_component(_render_binding, component_binding):
         observed_payloads.append(component_binding.store.payload)
         return html.Div(id=f'rendered-{component_binding.component.key}')
 
@@ -94,13 +151,14 @@ def test_materialization_preserves_populated_payload_without_normalization() -> 
         binding,
         renderers={
             'mine': render_component,
+            'haulage': render_component,
             'plant': render_component,
         },
     )
 
     assert binding.components[0].store.state is ComponentStoreState.POPULATED
     assert observed_payloads[0] is payload
-    assert observed_payloads[1] is None
+    assert observed_payloads[1:] == [None, None]
 
 
 def test_materialization_requires_renderer_for_every_configured_component() -> None:
@@ -109,7 +167,10 @@ def test_materialization_requires_renderer_for_every_configured_component() -> N
     try:
         materialize_operational_components(
             binding,
-            renderers={'mine': lambda _binding: html.Div()},
+            renderers={
+                'mine': lambda _render_binding, _binding: html.Div(),
+                'haulage': lambda _render_binding, _binding: html.Div(),
+            },
         )
     except ValueError as error:
         assert str(error) == "Missing operational component renderer: 'plant'"
@@ -124,9 +185,10 @@ def test_materialization_rejects_renderer_for_unknown_component() -> None:
         materialize_operational_components(
             binding,
             renderers={
-                'mine': lambda _binding: html.Div(),
-                'plant': lambda _binding: html.Div(),
-                'port': lambda _binding: html.Div(),
+                'mine': lambda _render_binding, _binding: html.Div(),
+                'haulage': lambda _render_binding, _binding: html.Div(),
+                'plant': lambda _render_binding, _binding: html.Div(),
+                'port': lambda _render_binding, _binding: html.Div(),
             },
         )
     except ValueError as error:
@@ -143,7 +205,8 @@ def test_materialization_rejects_non_callable_renderer() -> None:
             binding,
             renderers={
                 'mine': object(),
-                'plant': lambda _binding: html.Div(),
+                'haulage': lambda _render_binding, _binding: html.Div(),
+                'plant': lambda _render_binding, _binding: html.Div(),
             },
         )
     except TypeError as error:
@@ -159,8 +222,9 @@ def test_materialization_requires_dash_component_result() -> None:
         materialize_operational_components(
             binding,
             renderers={
-                'mine': lambda _binding: object(),
-                'plant': lambda _binding: html.Div(),
+                'mine': lambda _render_binding, _binding: object(),
+                'haulage': lambda _render_binding, _binding: html.Div(),
+                'plant': lambda _render_binding, _binding: html.Div(),
             },
         )
     except TypeError as error:
