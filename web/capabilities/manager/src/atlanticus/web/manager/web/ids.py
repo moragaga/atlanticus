@@ -6,7 +6,6 @@ SIDEBAR_TOGGLE_ID = 'atlanticus-manager-sidebar-toggle'
 SIDEBAR_CLOSE_ID = 'atlanticus-manager-sidebar-close'
 SIDEBAR_MODULES_ID = 'atlanticus-manager-sidebar-modules'
 CONTENT_ID = 'atlanticus-manager-content'
-REFRESH_BUTTON_ID = 'atlanticus-manager-refresh'
 STATUS_STORE_ID = 'atlanticus-manager-status-store'
 REFRESH_SIGNAL_ID = 'atlanticus-manager-refresh-signal'
 

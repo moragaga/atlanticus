@@ -14,7 +14,7 @@ dependencies = [
     "ada-configuration-kpi-configuration==0.2.0",
     "ada-configuration-kpi-definition==0.4.0",
     "ada-configuration-tool-sources==0.1.0",
-    "ada-configuration-tools==0.3.0",
+    "ada-configuration-tools==0.4.0",
     "ada-configuration-tools-lifecycle==0.2.0",
     "ada-web-tool-configuration-editor==0.2.0",
     "atlanticus-web==0.1.0",

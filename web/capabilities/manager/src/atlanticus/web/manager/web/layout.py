@@ -8,14 +8,7 @@ from dash import dcc, html
 from atlanticus.web.manager.authorization import ManagerAuthorizationPolicy
 from atlanticus.web.manager.coordinator import ManagerProjectionCoordinator
 from atlanticus.web.manager.errors import ManagerError
-from atlanticus.web.manager.models import (
-    ManagerApplicationDefinition,
-    ManagerBrand,
-    ManagerBrandMark,
-    ManagerModule,
-    ManagerPrincipal,
-    ManagerSurfaceDefinition,
-)
+from atlanticus.web.manager.models import ManagerModule, ManagerPrincipal, ManagerSurfaceDefinition
 from atlanticus.web.manager.projection import (
     ManagerDraft,
     ProjectionIssue,
@@ -30,7 +23,6 @@ from atlanticus.web.manager.registry import ManagerModuleRegistry
 from atlanticus.web.manager.web.ids import (
     CONTENT_ID,
     LOCATION_ID,
-    REFRESH_BUTTON_ID,
     REFRESH_SIGNAL_ID,
     SIDEBAR_BACKDROP_ID,
     SIDEBAR_CLOSE_ID,
@@ -81,36 +73,6 @@ _STATE_LABELS = {
     ProjectionState.READY: 'Lista',
     ProjectionState.UNAVAILABLE: 'No disponible',
 }
-
-
-def build_manager_header(
-    *,
-    definition: ManagerApplicationDefinition,
-    services: ServiceRegistry,
-) -> object:
-    return html.Header(
-        [
-            _build_header_identity(
-                definition.brand,
-                title=definition.metadata.display_name,
-                subtitle=definition.subtitle,
-            ),
-            html.Div(
-                [
-                    html.Button(
-                        'Actualizar estados',
-                        id=REFRESH_BUTTON_ID,
-                        className='atlanticus-manager__button atlanticus-manager__button--header',
-                    ),
-                    definition.header_actions(services)
-                    if definition.header_actions is not None
-                    else None,
-                ],
-                className='atlanticus-manager__header-actions',
-            ),
-        ],
-        className='atlanticus-manager__header',
-    )
 
 
 def build_manager_surface(
@@ -748,59 +710,6 @@ def _can_project(status: ProjectionStatus | None) -> bool:
     if status is None or status.source_revision is None:
         return False
     return status.active_source_revision != status.source_revision
-
-
-def _build_header_identity(
-    brand: ManagerBrand | None,
-    *,
-    title: str,
-    subtitle: str,
-) -> object:
-    product = _brand_mark(brand, 'product')
-    supporting = tuple(
-        mark
-        for role in ('framework', 'organization')
-        if (mark := _brand_mark(brand, role)) is not None
-    )
-    return html.Div(
-        [
-            _build_brand_mark(product)
-            if product is not None
-            else html.Div('A', className='atlanticus-manager__brand-fallback'),
-            html.Div(
-                [html.H1(title), html.P(subtitle)],
-                className='atlanticus-manager__title',
-            ),
-            html.Div(
-                [_build_brand_mark(mark) for mark in supporting],
-                className='atlanticus-manager__brand-supporting',
-            )
-            if supporting
-            else None,
-        ],
-        className='atlanticus-manager__header-identity',
-    )
-
-
-def _brand_mark(brand: ManagerBrand | None, role: str) -> ManagerBrandMark | None:
-    if brand is None:
-        return None
-    return next((mark for mark in brand.marks if mark.role == role), None)
-
-
-def _build_brand_mark(mark: ManagerBrandMark) -> object:
-    return html.Div(
-        [
-            html.Img(src=mark.logo_src, alt=mark.logo_alt),
-            html.Div(
-                [
-                    html.Small(mark.eyebrow) if mark.eyebrow else None,
-                    html.Span(mark.label) if mark.label else None,
-                ]
-            ),
-        ],
-        className=f'atlanticus-manager__brand-mark atlanticus-manager__brand-mark--{mark.role}',
-    )
 
 
 def _build_module_status(module_key: str, status: ProjectionStatus | None) -> object:

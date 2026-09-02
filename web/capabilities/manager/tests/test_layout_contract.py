@@ -60,19 +60,6 @@ def test_source_audit_is_specific_and_history_opens_preview_before_loading_draft
     assert 'history_load_id(' not in layout
 
 
-def test_header_keeps_atlanticus_identity_without_duplicate_user_identity() -> None:
-    root = Path(__file__).parents[1]
-    layout = (root / 'src/atlanticus/web/manager/web/layout.py').read_text(encoding='utf-8')
-    css = (root / 'src/atlanticus/web/manager/resources/css/10_manager.css').read_text(
-        encoding='utf-8'
-    )
-
-    assert "for role in ('framework', 'organization')" in layout
-    assert 'principal.display_name' not in layout
-    assert '.atlanticus-manager__brand-supporting' in css
-    assert 'font-family: var(--atlanticus-manager-font-brand) !important' in css
-
-
 def test_traceability_is_grouped_as_a_five_stage_pipeline() -> None:
     root = Path(__file__).parents[1]
     layout = (root / 'src/atlanticus/web/manager/web/layout.py').read_text(encoding='utf-8')

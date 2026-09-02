@@ -2,16 +2,10 @@
 # La responsabilidad semántica permanece en el módulo mientras Manager conserva la orquestación genérica.
 
 import re
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from pathlib import Path
 
 from atlanticus.web.manager.errors import ManagerDefinitionError
-from atlanticus.web.models import (
-    ApplicationMetadata,
-    DashSettings,
-    IndexPageDefinition,
-)
 from atlanticus.web.modules import WebModule
 from atlanticus.web.services import ServiceRegistry
 
@@ -21,9 +15,6 @@ ManagerPrincipalProvider = Callable[[], 'ManagerPrincipal']
 
 _PROFILE_KEY_PATTERN = re.compile(r'^[a-z0-9][a-z0-9._-]*$')
 _ROUTE_PREFIX_PATTERN = re.compile(r'^/[a-z0-9][a-z0-9/_-]*$')
-_BRAND_MARK_ROLES = frozenset({'product', 'framework', 'organization'})
-
-
 @dataclass(frozen=True, slots=True)
 class ManagerPrincipal:
     subject_id: str
@@ -40,41 +31,6 @@ class ManagerPrincipal:
         for key in self.profile_keys + self.access_keys:
             if not _PROFILE_KEY_PATTERN.fullmatch(key):
                 raise ManagerDefinitionError('Manager principal key has an invalid format')
-
-
-@dataclass(frozen=True, slots=True)
-class ManagerBrandMark:
-    role: str
-    logo_src: str
-    logo_alt: str
-    label: str | None = None
-    eyebrow: str | None = None
-
-    def __post_init__(self) -> None:
-        if self.role not in _BRAND_MARK_ROLES:
-            raise ManagerDefinitionError('Manager brand role is not supported')
-        if not self.logo_src.strip():
-            raise ManagerDefinitionError('Manager brand logo source must not be empty')
-        if not self.logo_alt.strip():
-            raise ManagerDefinitionError('Manager brand logo alternative text must not be empty')
-        if self.label is not None and not self.label.strip():
-            raise ManagerDefinitionError('Manager brand label must not be empty')
-        if self.eyebrow is not None and not self.eyebrow.strip():
-            raise ManagerDefinitionError('Manager brand eyebrow must not be empty')
-
-
-@dataclass(frozen=True, slots=True)
-class ManagerBrand:
-    marks: tuple[ManagerBrandMark, ...]
-
-    def __post_init__(self) -> None:
-        if not self.marks:
-            raise ManagerDefinitionError('Manager brand must contain at least one mark')
-        roles = tuple(mark.role for mark in self.marks)
-        if len(set(roles)) != len(roles):
-            raise ManagerDefinitionError('Manager brand roles must be unique')
-        if 'product' not in roles:
-            raise ManagerDefinitionError('Manager brand must contain a product mark')
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,19 +86,3 @@ class ManagerSurfaceDefinition:
             raise ManagerDefinitionError('Manager route prefix has an invalid format')
         if not self.default_module_key.strip():
             raise ManagerDefinitionError('Manager default module key must not be empty')
-
-
-@dataclass(frozen=True, slots=True)
-class ManagerApplicationDefinition:
-    import_name: str
-    metadata: ApplicationMetadata
-    publications_root: Path
-    surface: ManagerSurfaceDefinition
-    subtitle: str = 'Gestión de configuraciones y proyecciones'
-    brand: ManagerBrand | None = None
-    web_modules: tuple[WebModule, ...] = ()
-    index: IndexPageDefinition = field(default_factory=IndexPageDefinition)
-    dash: DashSettings = field(default_factory=DashSettings)
-    flask_config: Mapping[str, object] = field(default_factory=dict)
-    header_actions: ManagerLayoutFactory | None = None
-    shell_overlays: ManagerLayoutFactory | None = None

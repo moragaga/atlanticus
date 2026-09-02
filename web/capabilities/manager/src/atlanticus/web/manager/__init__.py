@@ -12,9 +12,6 @@ from atlanticus.web.manager.errors import (
 )
 from atlanticus.web.manager.lifecycle import ManagerLifecycleState, resolve_manager_lifecycle
 from atlanticus.web.manager.models import (
-    ManagerApplicationDefinition,
-    ManagerBrand,
-    ManagerBrandMark,
     ManagerHistoryPreviewRenderer,
     ManagerModule,
     ManagerModuleAccess,
@@ -48,11 +45,8 @@ __all__ = [
     'ConfigurationLifecycleWorkflow',
     'DefaultManagerAuthorizationPolicy',
     'DraftValidationResult',
-    'ManagerApplicationDefinition',
     'ManagerAuthorizationError',
     'ManagerAuthorizationPolicy',
-    'ManagerBrand',
-    'ManagerBrandMark',
     'ManagerDefinitionError',
     'ManagerDraft',
     'ManagerError',
