@@ -6,6 +6,7 @@ classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "ada-command-center-alarms-core==1.0.0",
     "ada-command-center-alarms-persistence==1.0.0",
+    "ada-command-center-alarms-runtime-process==1.0.0",
 ]
 
 [dependency-groups]
@@ -20,15 +21,20 @@ package = false
 [tool.uv.sources]
 ada-command-center-alarms-core = { workspace = true }
 ada-command-center-alarms-persistence = { workspace = true }
+ada-command-center-alarms-runtime-process = { workspace = true }
 atlanticus-json = { path = "../../../backend/json", editable = true }
 atlanticus-state = { path = "../../../backend/state", editable = true }
 atlanticus-observability = { path = "../../../backend/observability", editable = true }
 atlanticus-kernel = { path = "../../../backend/kernel", editable = true }
+atlanticus-job-runtime = { path = "../../../backend/runtime", editable = true }
+atlanticus-operational-data-core = { path = "../../operational-data/core", editable = true }
+atlanticus-operational-data-planner = { path = "../../operational-data/planner", editable = true }
 
 [tool.uv.workspace]
 members = [
     "alarms/core",
     "alarms/persistence",
+    "processes/alarms-runtime",
 ]
 
 [tool.ruff]

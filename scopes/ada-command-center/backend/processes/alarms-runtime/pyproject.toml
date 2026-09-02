@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ada-command-center-alarms-runtime-process"
+version = "1.0.0"
+description = "Alarm runtime process composition for ADA Command Center."
+requires-python = "==3.14.2"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "ada-command-center-alarms-core==1.0.0",
+    "ada-command-center-alarms-persistence==1.0.0",
+    "atlanticus-job-runtime==1.0.0",
+    "atlanticus-operational-data-core==1.0.0",
+    "atlanticus-operational-data-planner==1.0.0",
+]
+
+[dependency-groups]
+dev = ["pytest==9.1.1", "ruff==0.15.22"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["ada_command_center.processes.alarms_runtime*"]
+namespaces = true
+
+[tool.setuptools.package-data]
+"ada_command_center.processes.alarms_runtime" = ["py.typed"]
+
+[tool.pytest.ini_options]
+addopts = "-q --import-mode=importlib"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+extend-exclude = ["commented"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ada_command_center", "atlanticus"]
+combine-as-imports = true
