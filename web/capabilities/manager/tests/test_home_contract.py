@@ -51,7 +51,12 @@ def test_home_css_is_an_isolated_asset_layer() -> None:
     css_list = (root / 'css.list').read_text(encoding='utf-8').splitlines()
     home = (root / '20_home.css').read_text(encoding='utf-8')
 
-    assert css_list == ['00_tokens.css', '10_manager.css', '20_home.css']
+    assert css_list == [
+        '00_tokens.css',
+        '10_manager.css',
+        '20_home.css',
+        '30_visual_normalization.css',
+    ]
     assert 'grid-template-columns: repeat(3, minmax(0, 1fr))' in home
     assert '@media (max-width: 1365px)' in home
     assert '@media (max-width: 767px)' in home

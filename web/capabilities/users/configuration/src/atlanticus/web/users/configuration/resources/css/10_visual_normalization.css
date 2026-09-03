@@ -1,0 +1,96 @@
+.atlanticus-users-admin,
+.atlanticus-users-admin__runtime-context,
+.atlanticus-users-admin__section,
+.atlanticus-users-admin__panel,
+.atlanticus-users-admin__panel-content,
+.atlanticus-users-admin__system-grid,
+.atlanticus-users-admin__list,
+.atlanticus-users-admin__field,
+.atlanticus-users-admin__import {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.atlanticus-users-admin__runtime-context,
+.atlanticus-users-admin__import {
+    flex-wrap: wrap;
+}
+
+.atlanticus-users-admin__runtime-help {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.atlanticus-users-admin__tabs {
+    gap: .85rem;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--atlanticus-manager-border);
+    border-radius: 0;
+}
+
+.atlanticus-users-admin__tab {
+    min-height: var(--atlanticus-admin-control-height);
+    padding: .62rem .2rem .58rem;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+}
+
+.atlanticus-users-admin__tab--active {
+    color: var(--atlanticus-manager-color-primary-dark);
+    background: transparent;
+    border-bottom-color: var(--atlanticus-manager-color-primary);
+    box-shadow: none;
+}
+
+.atlanticus-users-admin__tab:focus-visible {
+    color: var(--atlanticus-manager-color-primary-dark);
+    border-bottom-color: var(--atlanticus-manager-color-primary);
+    box-shadow: 0 .2rem 0 0 var(--atlanticus-manager-color-primary);
+    outline: none;
+}
+
+.atlanticus-users-admin__field--reference code {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: var(--atlanticus-admin-control-height);
+    padding: .48rem .62rem;
+    overflow: hidden;
+    color: var(--atlanticus-manager-text-muted);
+    background: var(--atlanticus-manager-control-disabled);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: var(--atlanticus-admin-control-radius);
+    font-family: var(--atlanticus-manager-font);
+    font-size: .76rem;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.atlanticus-users-admin__modal-backdrop {
+    background: var(--atlanticus-manager-overlay);
+}
+
+.atlanticus-users-admin__modal-dialog {
+    border-radius: var(--atlanticus-manager-modal-radius);
+    box-shadow: var(--atlanticus-manager-modal-shadow);
+}
+
+.atlanticus-users-admin__modal-header,
+.atlanticus-users-admin__modal-actions {
+    min-height: 3.65rem;
+    padding: .85rem 1rem;
+}
+
+.atlanticus-users-admin__modal-body {
+    gap: .8rem;
+    padding: 1rem;
+}
+
+.atlanticus-users-admin__field > input:disabled {
+    color: var(--atlanticus-manager-text-muted);
+    background: var(--atlanticus-manager-control-disabled);
+}

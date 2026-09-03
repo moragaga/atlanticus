@@ -1,0 +1,187 @@
+:root {
+    --atlanticus-manager-border-strong: #BBC3CB;
+    --atlanticus-manager-color-accent: var(--atlanticus-manager-color-primary);
+    --atlanticus-manager-text-soft: #68727C;
+    --atlanticus-manager-control-background: var(--atlanticus-manager-surface);
+    --atlanticus-manager-control-disabled: #F0F2F4;
+    --atlanticus-manager-overlay: rgba(7, 21, 34, .56);
+    --atlanticus-manager-modal-radius: .9rem;
+    --atlanticus-manager-modal-shadow: 0 1.2rem 3.6rem rgba(7, 21, 34, .22);
+}
+
+.atlanticus-manager,
+.atlanticus-manager__content,
+.atlanticus-manager__module,
+.atlanticus-manager__section-panel,
+.atlanticus-manager__workflow,
+.atlanticus-manager__workflow-status,
+.atlanticus-manager__workflow-actions,
+.atlanticus-manager__workflow-group,
+.atlanticus-manager__workflow-action-grid,
+.atlanticus-manager__home-surface {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.atlanticus-manager {
+    overflow-x: clip;
+}
+
+.atlanticus-manager__content,
+.atlanticus-manager__home-surface {
+    width: 100%;
+}
+
+.atlanticus-manager__workflow-actions {
+    display: grid;
+    align-items: stretch;
+    gap: 1rem;
+}
+
+.atlanticus-manager__workflow-action-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.atlanticus-manager__workflow-action-step {
+    min-height: 7.5rem;
+}
+
+.atlanticus-manager__workflow-step-heading > div {
+    min-width: 0;
+}
+
+.atlanticus-manager__workflow-step-heading p,
+.atlanticus-manager__workflow-group-header p,
+.atlanticus-manager__workspace-help {
+    overflow-wrap: anywhere;
+}
+
+.atlanticus-manager__module-tabs {
+    gap: .85rem;
+    padding-inline: 0;
+}
+
+.atlanticus-manager__tab {
+    min-height: var(--atlanticus-admin-control-height);
+    padding: .62rem .2rem .58rem;
+}
+
+.atlanticus-manager__tab:focus-visible {
+    color: var(--atlanticus-manager-color-primary-dark);
+    border-bottom-color: var(--atlanticus-manager-color-primary);
+    box-shadow: 0 .2rem 0 0 var(--atlanticus-manager-color-primary);
+    outline: none;
+}
+
+.atlanticus-manager input[type='checkbox'],
+.atlanticus-manager input[type='radio'] {
+    accent-color: var(--atlanticus-manager-color-primary);
+}
+
+.atlanticus-manager .Select,
+.atlanticus-manager .Select-control,
+.atlanticus-manager .Select-menu-outer {
+    min-width: 0;
+    max-width: 100%;
+    font-family: var(--atlanticus-manager-font);
+}
+
+.atlanticus-manager .Select-control {
+    min-height: var(--atlanticus-admin-control-height);
+    background: var(--atlanticus-manager-control-background);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: var(--atlanticus-admin-control-radius);
+    box-shadow: none;
+}
+
+.atlanticus-manager .Select.is-focused > .Select-control,
+.atlanticus-manager .Select.is-open > .Select-control {
+    border-color: var(--atlanticus-manager-color-primary);
+    box-shadow: var(--atlanticus-admin-focus-ring);
+}
+
+.atlanticus-manager .Select.is-disabled > .Select-control {
+    background: var(--atlanticus-manager-control-disabled);
+    color: var(--atlanticus-manager-text-muted);
+}
+
+.atlanticus-manager .Select-placeholder,
+.atlanticus-manager .Select-value-label,
+.atlanticus-manager .Select-input > input {
+    color: var(--atlanticus-manager-text) !important;
+    font-family: var(--atlanticus-manager-font);
+}
+
+.atlanticus-manager .Select-placeholder {
+    color: var(--atlanticus-manager-text-muted) !important;
+}
+
+.atlanticus-manager .Select-menu-outer {
+    z-index: 1500;
+    margin-top: .25rem;
+    overflow: hidden;
+    background: var(--atlanticus-manager-surface);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: var(--atlanticus-admin-control-radius);
+    box-shadow: var(--atlanticus-manager-shadow);
+}
+
+.atlanticus-manager .Select-option {
+    padding: .62rem .75rem;
+    color: var(--atlanticus-manager-text);
+    background: var(--atlanticus-manager-surface);
+    font-size: .76rem;
+}
+
+.atlanticus-manager .Select-option.is-focused {
+    color: var(--atlanticus-manager-color-primary-ink);
+    background: var(--atlanticus-manager-color-primary-soft);
+}
+
+.atlanticus-manager .Select-option.is-selected {
+    color: var(--atlanticus-manager-color-primary-dark);
+    background: rgba(201, 162, 75, .18);
+    font-weight: 750;
+}
+
+.atlanticus-manager .Select--multi .Select-value {
+    color: var(--atlanticus-manager-color-primary-dark);
+    background: var(--atlanticus-manager-color-primary-soft);
+    border-color: rgba(201, 162, 75, .4);
+    border-radius: .45rem;
+}
+
+.atlanticus-manager .Select--multi .Select-value-icon {
+    border-right-color: rgba(201, 162, 75, .34);
+}
+
+.atlanticus-manager .Select--multi .Select-value-icon:hover {
+    color: var(--atlanticus-manager-danger);
+    background: var(--atlanticus-manager-danger-soft);
+}
+
+.atlanticus-manager input:not([type='checkbox']):not([type='radio']):focus-visible,
+.atlanticus-manager textarea:focus-visible,
+.atlanticus-manager select:focus-visible {
+    border-color: var(--atlanticus-manager-color-primary) !important;
+    box-shadow: var(--atlanticus-admin-focus-ring) !important;
+    outline: none;
+}
+
+@media (max-width: 1279px) {
+    .atlanticus-manager__workflow-action-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767px) {
+    .atlanticus-manager__workflow-action-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 479px) {
+    .atlanticus-manager__workflow-action-grid {
+        grid-template-columns: 1fr;
+    }
+}
