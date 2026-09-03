@@ -1,0 +1,93 @@
+/* MANAGER-UX-001D — Navigation configuration modal only.
+   No selector in this file is allowed to style unrelated modals. */
+
+.atlanticus-navigation-admin__modal--open {
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 2rem 1rem;
+}
+
+.atlanticus-navigation-admin__modal-card {
+    width: min(52rem, 100%);
+    max-height: none !important;
+    overflow: hidden !important;
+    border-radius: var(--atlanticus-manager-modal-radius) !important;
+    box-shadow: var(--atlanticus-manager-modal-shadow);
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.atlanticus-navigation-admin__modal-card > h3 {
+    border-radius:
+        var(--atlanticus-manager-modal-radius)
+        var(--atlanticus-manager-modal-radius)
+        0
+        0;
+}
+
+.atlanticus-navigation-admin__modal-actions {
+    border-radius:
+        0
+        0
+        var(--atlanticus-manager-modal-radius)
+        var(--atlanticus-manager-modal-radius);
+}
+
+.atlanticus-navigation-admin__modal-card input,
+.atlanticus-navigation-admin__modal-card textarea,
+.atlanticus-navigation-admin__modal-card [contenteditable='true'] {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.atlanticus-navigation-admin__modal-card .atlanticus-manager__button:not(:disabled),
+.atlanticus-navigation-admin__mini-button:not(:disabled),
+.atlanticus-navigation-admin__import .atlanticus-manager__button:not(:disabled) {
+    cursor: pointer !important;
+}
+
+.atlanticus-navigation-admin__modal-card
+.atlanticus-navigation-admin__field input:focus,
+.atlanticus-navigation-admin__modal-card
+.atlanticus-navigation-admin__field input:focus-visible {
+    border-color: var(--atlanticus-manager-color-primary) !important;
+    outline: 0 !important;
+    box-shadow: var(--atlanticus-admin-focus-ring) !important;
+}
+
+.atlanticus-navigation-admin__modal-card .Select-control {
+    border-color: var(--atlanticus-manager-border) !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+}
+
+.atlanticus-navigation-admin__modal-card
+.Select.is-focused > .Select-control,
+.atlanticus-navigation-admin__modal-card
+.Select.is-open > .Select-control,
+.atlanticus-navigation-admin__modal-card
+.Select-control:focus-within {
+    border-color: var(--atlanticus-manager-color-primary) !important;
+    outline: 0 !important;
+    box-shadow: var(--atlanticus-admin-focus-ring) !important;
+}
+
+.atlanticus-navigation-admin__modal-card
+.Select-input > input,
+.atlanticus-navigation-admin__modal-card
+.Select-input > input:focus,
+.atlanticus-navigation-admin__modal-card
+.Select-input > input:focus-visible {
+    border: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+}
+
+.atlanticus-navigation-admin__modal-card
+input[type='checkbox']:focus,
+.atlanticus-navigation-admin__modal-card
+input[type='checkbox']:focus-visible {
+    outline: 0 !important;
+    box-shadow: none !important;
+    accent-color: var(--atlanticus-manager-color-primary) !important;
+}

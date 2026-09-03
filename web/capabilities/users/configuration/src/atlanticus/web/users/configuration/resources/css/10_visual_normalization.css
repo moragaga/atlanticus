@@ -134,3 +134,52 @@
     min-width: 0;
     max-width: 100%;
 }
+
+/* MANAGER-UX-001C — interaction and visual closure */
+
+.atlanticus-users-admin__modal--open {
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-block: 2rem;
+}
+
+/* El modal completo no selecciona copy accidentalmente.
+   Los controles editables recuperan selección por la regla global del Manager. */
+.atlanticus-users-admin__modal-dialog {
+    max-height: none;
+    overflow: visible;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.atlanticus-users-admin__modal-body {
+    max-height: none;
+    overflow: visible;
+}
+
+.atlanticus-users-admin__modal-dialog input,
+.atlanticus-users-admin__modal-dialog textarea,
+.atlanticus-users-admin__modal-dialog [contenteditable='true'] {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.atlanticus-users-admin__modal-header .atlanticus-manager__icon-button:hover,
+.atlanticus-users-admin__modal-header .atlanticus-manager__icon-button:focus-visible {
+    color: #FFFFFF;
+    background: rgba(255, 255, 255, .12);
+    border-color: rgba(201, 162, 75, .72);
+}
+
+.atlanticus-users-admin__field > input:focus,
+.atlanticus-users-admin__field > input:focus-visible {
+    border-color: var(--atlanticus-manager-color-primary) !important;
+    box-shadow: var(--atlanticus-admin-focus-ring) !important;
+    outline: none !important;
+}
+
+.atlanticus-users-admin__message--notice {
+    color: var(--atlanticus-manager-warning);
+    background: var(--atlanticus-manager-warning-soft);
+    border: 1px solid rgba(160, 112, 24, .2);
+}

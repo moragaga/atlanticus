@@ -144,10 +144,10 @@ def build_configuration_manager_surface(
             ManagerModule(
                 key='tools',
                 group_key='configuration',
-                title='Tool',
+                title='Herramienta',
                 route='/tools',
                 order=30,
-                description='Configuración de la herramienta que construye esta aplicación.',
+                description='Configuración de la herramienta operacional de esta aplicación.',
                 layout=lambda _services: build_tool_manager_configuration(),
                 history_preview_renderer=build_tool_history_preview,
                 workflow_service=TOOLS_WORKFLOW_SERVICE,

@@ -1,0 +1,127 @@
+/* MANAGER-UX-001D — terminal interaction/layout surface.
+   This file intentionally loads after visual normalization. */
+
+.atlanticus-manager__button:not(:disabled),
+.atlanticus-manager__icon-button:not(:disabled),
+.atlanticus-manager__tab:not(:disabled),
+.atlanticus-manager__sidebar-trigger:not(:disabled),
+.atlanticus-manager__home-pagination-button:not(:disabled),
+.atlanticus-manager__home-card,
+.atlanticus-manager__home-return,
+.atlanticus-manager__sidebar-link {
+    cursor: pointer !important;
+}
+
+/* Explicit grid rows prevent implicit auto-placement from allowing
+   published state to overlap the local row. */
+.atlanticus-manager__workflow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+}
+
+.atlanticus-manager__workflow-status--draft {
+    display: flex;
+    grid-column: 1;
+    grid-row: 1;
+    align-self: stretch;
+}
+
+.atlanticus-manager__workflow-actions {
+    display: contents;
+}
+
+.atlanticus-manager__workflow-actions > .atlanticus-manager__workflow-group:first-child {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: stretch;
+}
+
+.atlanticus-manager__workflow-status--published {
+    grid-column: 1 / -1;
+    grid-row: 2;
+}
+
+.atlanticus-manager__workflow-actions > .atlanticus-manager__workflow-group:nth-child(2) {
+    grid-column: 1 / -1;
+    grid-row: 3;
+}
+
+.atlanticus-manager__workflow-actions > .atlanticus-manager__workspace-confirm {
+    grid-column: 1 / -1;
+    grid-row: 4;
+}
+
+.atlanticus-manager__workflow-status--draft > *,
+.atlanticus-manager__workflow-status--published > *,
+.atlanticus-manager__workflow-actions > .atlanticus-manager__workflow-group {
+    height: auto !important;
+}
+
+.atlanticus-manager__workflow-status--draft > .atlanticus-manager__workflow-group {
+    width: 100%;
+}
+
+/* The local empty state belongs immediately below its heading. */
+.atlanticus-manager__workflow-status--draft .atlanticus-manager__workflow-empty {
+    margin-top: 0;
+    align-self: start;
+}
+
+/* Add Atlanticus blue without replacing the approved gold accent. */
+.atlanticus-manager__home-header {
+    background:
+        linear-gradient(
+            90deg,
+            rgba(38, 66, 90, .075) 0,
+            rgba(38, 66, 90, .025) 28%,
+            var(--atlanticus-manager-surface) 58%
+        );
+    border-left: .2rem solid var(--atlanticus-manager-color-primary-strong);
+}
+
+.atlanticus-manager__home-card {
+    border-left: .18rem solid rgba(38, 66, 90, .42);
+}
+
+.atlanticus-manager__home-card:hover,
+.atlanticus-manager__home-card:focus-visible {
+    border-left-color: var(--atlanticus-manager-color-primary-strong);
+}
+
+/* Separate Home from the configuration catalogue inside the sidebar. */
+.atlanticus-manager__sidebar-link--home {
+    margin-bottom: 1rem;
+}
+
+.atlanticus-manager__sidebar-link--home + .atlanticus-manager__sidebar-group {
+    margin-top: 0;
+    padding-top: .9rem;
+    border-top: 1px solid var(--atlanticus-manager-border);
+}
+
+@media (max-width: 1100px) {
+    .atlanticus-manager__workflow-status--draft,
+    .atlanticus-manager__workflow-actions > .atlanticus-manager__workflow-group:first-child {
+        grid-column: 1 / -1;
+    }
+
+    .atlanticus-manager__workflow-status--draft {
+        grid-row: 1;
+    }
+
+    .atlanticus-manager__workflow-actions > .atlanticus-manager__workflow-group:first-child {
+        grid-row: 2;
+    }
+
+    .atlanticus-manager__workflow-status--published {
+        grid-row: 3;
+    }
+
+    .atlanticus-manager__workflow-actions > .atlanticus-manager__workflow-group:nth-child(2) {
+        grid-row: 4;
+    }
+
+    .atlanticus-manager__workflow-actions > .atlanticus-manager__workspace-confirm {
+        grid-row: 5;
+    }
+}

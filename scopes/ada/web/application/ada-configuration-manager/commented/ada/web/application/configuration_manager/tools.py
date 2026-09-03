@@ -55,7 +55,7 @@ def build_tool_history_preview(payload: dict[str, object]) -> object:
             html.H4(configuration.display_name),
             html.Div(
                 [
-                    _history_item('Tool key', configuration.tool_key),
+                    _history_item('Identificador', configuration.tool_key),
                     _history_item('Tipo', configuration.kind.value),
                     _history_item('Fuentes', ', '.join(source_keys) if source_keys else '—'),
                     _history_item('Componentes', str(components)),

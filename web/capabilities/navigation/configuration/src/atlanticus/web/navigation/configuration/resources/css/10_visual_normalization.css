@@ -121,3 +121,36 @@
     min-width: 0;
     max-width: 100%;
 }
+
+/* MANAGER-UX-001C — interaction and visual closure */
+
+.atlanticus-navigation-admin__modal--open {
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-block: 2rem;
+}
+
+.atlanticus-navigation-admin__modal-card {
+    max-height: none;
+    overflow: visible;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.atlanticus-navigation-admin__modal-card input,
+.atlanticus-navigation-admin__modal-card textarea,
+.atlanticus-navigation-admin__modal-card [contenteditable='true'] {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.atlanticus-navigation-admin__field input:focus,
+.atlanticus-navigation-admin__field input:focus-visible {
+    border-color: var(--atlanticus-manager-color-primary) !important;
+    box-shadow: var(--atlanticus-admin-focus-ring) !important;
+    outline: none !important;
+}
+
+.atlanticus-navigation-admin__modal-card .Select-menu-outer {
+    overflow: visible;
+}

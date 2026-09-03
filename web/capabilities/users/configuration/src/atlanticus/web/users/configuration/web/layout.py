@@ -184,7 +184,7 @@ def _editor_navigation() -> object:
                 className='atlanticus-users-admin__tab',
             ),
             html.Button(
-                'Descubiertos',
+                'Pendientes',
                 id=DISCOVERED_TAB_ID,
                 n_clicks=0,
                 className='atlanticus-users-admin__tab',
@@ -303,10 +303,10 @@ def _discovered_panel() -> object:
             html.Div(
                 [
                     _section_heading(
-                        'Usuarios descubiertos',
+                        'Identidades pendientes de incorporación',
                         (
-                            'Identidades válidas detectadas por Atlanticus que todavía operan '
-                            'como Guest y no forman parte de la configuración publicada.'
+                            'Identidades detectadas por Microsoft Entra ID que todavía no '
+                            'forman parte de la configuración de usuarios.'
                         ),
                     ),
                     html.Button(
@@ -552,7 +552,6 @@ def _color_picker(*, label: str, picker_id: str, value: str) -> object:
                 id=color_picker_button_id(picker_id),
                 n_clicks=0,
                 type='button',
-                title=f'Seleccionar {label.lower()}',
                 className='atlanticus-users-admin__color-picker',
             ),
         ],
@@ -674,7 +673,6 @@ def _modal_header(eyebrow: str, title_id: str, close_id: str) -> object:
                 id=close_id,
                 n_clicks=0,
                 className='atlanticus-manager__icon-button',
-                title='Cerrar',
             ),
         ],
         className='atlanticus-users-admin__modal-header',

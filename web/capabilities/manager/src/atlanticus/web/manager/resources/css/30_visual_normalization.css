@@ -328,3 +328,126 @@ body,
         min-height: 0;
     }
 }
+
+/* MANAGER-UX-001C — interaction and visual closure */
+
+/* 001B ocultó el overflow. 001C corrige la geometría y vuelve a dejar
+   visibles los hijos internos para no recortar cards, dropdowns ni controles. */
+.atlanticus-manager__home-surface,
+.atlanticus-manager__content {
+    width: calc(100% - 1rem);
+    max-width: 118rem;
+    margin-inline: auto;
+    overflow-x: visible;
+}
+
+.atlanticus-manager__module,
+.atlanticus-manager__section-panel {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: visible;
+}
+
+/* Evita el alto artificial que introducía scroll vertical aun con poco contenido. */
+.atlanticus-manager__home-surface {
+    min-height: 0;
+}
+
+.atlanticus-manager__home {
+    min-height: calc(100dvh - 10.5rem);
+}
+
+/* Todas las acciones interactivas deben comunicar clic explícitamente. */
+.atlanticus-manager button:not(:disabled),
+.atlanticus-manager a[href],
+.atlanticus-manager [role='button']:not([aria-disabled='true']),
+.atlanticus-manager .Select-control,
+.atlanticus-manager input[type='checkbox']:not(:disabled),
+.atlanticus-manager input[type='radio']:not(:disabled) {
+    cursor: pointer !important;
+}
+
+.atlanticus-manager button:disabled,
+.atlanticus-manager input:disabled {
+    cursor: not-allowed !important;
+}
+
+/* Elimina el foco morado/nativo y conserva una sola familia Atlanticus. */
+.atlanticus-manager input:focus,
+.atlanticus-manager input:focus-visible,
+.atlanticus-manager textarea:focus,
+.atlanticus-manager textarea:focus-visible,
+.atlanticus-manager select:focus,
+.atlanticus-manager select:focus-visible {
+    border-color: var(--atlanticus-manager-color-primary) !important;
+    box-shadow: var(--atlanticus-admin-focus-ring) !important;
+    outline: none !important;
+}
+
+.atlanticus-manager input[type='checkbox'],
+.atlanticus-manager input[type='radio'] {
+    accent-color: var(--atlanticus-manager-color-primary) !important;
+}
+
+.atlanticus-manager .Select.is-focused > .Select-control,
+.atlanticus-manager .Select.is-open > .Select-control,
+.atlanticus-manager .Select-control:focus-within {
+    border-color: var(--atlanticus-manager-color-primary) !important;
+    box-shadow: var(--atlanticus-admin-focus-ring) !important;
+    outline: none !important;
+}
+
+/* Trabajo local no debe estirar el estado vacío hacia el fondo de la card. */
+.atlanticus-manager__workflow-status--draft .atlanticus-manager__workflow-group {
+    grid-template-rows: auto auto;
+    align-content: start;
+}
+
+.atlanticus-manager__workflow-status--draft .atlanticus-manager__workflow-empty {
+    min-height: 0;
+    align-self: start;
+}
+
+/* Estado publicado siempre conserva su lugar en la trazabilidad. */
+.atlanticus-manager__workflow-group--published-empty {
+    min-height: 7.5rem;
+    align-content: start;
+}
+
+/* Home con más identidad y menos sensación de caja vacía. */
+.atlanticus-manager__home-card {
+    position: relative;
+    min-height: 8.5rem;
+    overflow: hidden;
+    border-top: .2rem solid rgba(201, 162, 75, .62);
+    box-shadow: 0 .45rem 1.2rem rgba(7, 21, 34, .07);
+}
+
+.atlanticus-manager__home-card::before {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: .18rem;
+    background: var(--atlanticus-manager-color-primary);
+    content: '';
+    opacity: .72;
+}
+
+.atlanticus-manager__home-card-action {
+    margin-top: auto;
+}
+
+.atlanticus-manager__home-card:hover,
+.atlanticus-manager__home-card:focus-visible {
+    box-shadow: var(--atlanticus-admin-focus-ring), 0 .65rem 1.45rem rgba(7, 21, 34, .1);
+}
+
+@media (max-width: 767px) {
+    .atlanticus-manager__home-surface,
+    .atlanticus-manager__content {
+        width: calc(100% - .75rem);
+    }
+
+    .atlanticus-manager__home {
+        min-height: 0;
+    }
+}

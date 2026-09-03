@@ -78,7 +78,7 @@ def test_tools_module_represents_the_application_tool_without_selector() -> None
     tools = definition.modules[2]
 
     assert tools.key == 'tools'
-    assert tools.title == 'Tool'
+    assert tools.title == 'Herramienta'
     assert tools.route == '/tools'
     assert tools.workflow_service == TOOLS_WORKFLOW_SERVICE
     assert tools.web_module is not None

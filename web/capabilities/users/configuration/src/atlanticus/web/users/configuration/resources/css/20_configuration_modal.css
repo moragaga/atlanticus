@@ -1,0 +1,118 @@
+/* MANAGER-UX-001D — Users configuration modal only.
+   No selector in this file is allowed to style unrelated modals. */
+
+.atlanticus-users-admin__modal--open {
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 2rem 1rem;
+}
+
+.atlanticus-users-admin__modal-dialog {
+    width: min(38rem, 100%);
+    max-height: none !important;
+    overflow: hidden !important;
+    border-radius: var(--atlanticus-manager-modal-radius) !important;
+    box-shadow: var(--atlanticus-manager-modal-shadow);
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.atlanticus-users-admin__modal-header {
+    border-radius:
+        var(--atlanticus-manager-modal-radius)
+        var(--atlanticus-manager-modal-radius)
+        0
+        0;
+}
+
+.atlanticus-users-admin__modal-body {
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+.atlanticus-users-admin__modal-actions {
+    border-radius:
+        0
+        0
+        var(--atlanticus-manager-modal-radius)
+        var(--atlanticus-manager-modal-radius);
+}
+
+.atlanticus-users-admin__modal-dialog input,
+.atlanticus-users-admin__modal-dialog textarea,
+.atlanticus-users-admin__modal-dialog [contenteditable='true'] {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.atlanticus-users-admin__modal-dialog .atlanticus-manager__button:not(:disabled),
+.atlanticus-users-admin__modal-dialog .atlanticus-manager__icon-button:not(:disabled),
+.atlanticus-users-admin__modal-dialog .atlanticus-users-admin__color-picker:not(:disabled),
+.atlanticus-users-admin__tab:not(:disabled),
+.atlanticus-users-admin__import .atlanticus-manager__button:not(:disabled) {
+    cursor: pointer !important;
+}
+
+/* One focus owner per control: text inputs own their ring. */
+.atlanticus-users-admin__modal-dialog
+.atlanticus-users-admin__field > input:focus,
+.atlanticus-users-admin__modal-dialog
+.atlanticus-users-admin__field > input:focus-visible {
+    border-color: var(--atlanticus-manager-color-primary) !important;
+    outline: 0 !important;
+    box-shadow: var(--atlanticus-admin-focus-ring) !important;
+}
+
+/* React Select owns the ring on Select-control, never on its inner input. */
+.atlanticus-users-admin__modal-dialog .Select-control {
+    border-color: var(--atlanticus-manager-border) !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+}
+
+.atlanticus-users-admin__modal-dialog
+.Select.is-focused > .Select-control,
+.atlanticus-users-admin__modal-dialog
+.Select.is-open > .Select-control,
+.atlanticus-users-admin__modal-dialog
+.Select-control:focus-within {
+    border-color: var(--atlanticus-manager-color-primary) !important;
+    outline: 0 !important;
+    box-shadow: var(--atlanticus-admin-focus-ring) !important;
+}
+
+.atlanticus-users-admin__modal-dialog
+.Select-input > input,
+.atlanticus-users-admin__modal-dialog
+.Select-input > input:focus,
+.atlanticus-users-admin__modal-dialog
+.Select-input > input:focus-visible {
+    border: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+}
+
+.atlanticus-users-admin__modal-dialog
+input[type='checkbox']:focus,
+.atlanticus-users-admin__modal-dialog
+input[type='checkbox']:focus-visible {
+    outline: 0 !important;
+    box-shadow: none !important;
+    accent-color: var(--atlanticus-manager-color-primary) !important;
+}
+
+.atlanticus-users-admin__modal-header
+.atlanticus-manager__icon-button:not(:disabled) {
+    cursor: pointer !important;
+}
+
+.atlanticus-users-admin__modal-header
+.atlanticus-manager__icon-button:hover,
+.atlanticus-users-admin__modal-header
+.atlanticus-manager__icon-button:focus-visible {
+    color: #FFFFFF !important;
+    background: rgba(255, 255, 255, .12) !important;
+    border-color: rgba(201, 162, 75, .72) !important;
+    outline: 0 !important;
+    box-shadow: var(--atlanticus-admin-focus-ring) !important;
+}

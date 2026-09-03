@@ -272,7 +272,7 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
         try:
             discovered = context.services.administration.list_discovered()
         except Exception:
-            return _error('No fue posible cargar las identidades pendientes.')
+            return _notice('No fue posible actualizar las identidades pendientes.')
         available = tuple(user for user in discovered if user.user_id not in configured_ids)
         return _discovered_cards(available, catalog)
 
@@ -903,11 +903,7 @@ def _profile_cards(catalog: UsersConfigurationCatalog) -> object:
                                 id=profile_delete_id(profile.key),
                                 n_clicks=0,
                                 disabled=profile.key in used,
-                                title=(
-                                    'El perfil está asignado a usuarios'
-                                    if profile.key in used
-                                    else 'Eliminar perfil del borrador'
-                                ),
+                                **{'aria-label': 'Eliminar perfil'},
                                 className=(
                                     'atlanticus-users-admin__action '
                                     'atlanticus-users-admin__action--danger'
@@ -1284,6 +1280,17 @@ def _optional_text(value: object) -> str | None:
 def _empty(message: str) -> object:
     return html.Div(message, className='atlanticus-users-admin__empty')
 
+
+
+# Aviso no bloqueante para capacidades auxiliares como discovery de identidades.
+def _notice(message: str) -> object:
+    return html.Div(
+        message,
+        className=(
+            'atlanticus-users-admin__message '
+            'atlanticus-users-admin__message--notice'
+        ),
+    )
 
 def _error(message: str) -> object:
     return html.Div(

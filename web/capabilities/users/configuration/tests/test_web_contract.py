@@ -10,7 +10,7 @@ def test_users_admin_ui_keeps_profiles_users_and_discovered_separate() -> None:
 
     assert "'Perfiles'" in layout
     assert "'Usuarios'" in layout
-    assert "'Descubiertos'" in layout
+    assert "'Pendientes'" in layout
     assert 'Local conserva identidades visuales fijas' in layout
     assert 'Administrator y Guest' in layout
 

@@ -475,15 +475,43 @@ def build_workflow_status_content(
     status: ProjectionStatus | None,
     error: str | None,
 ) -> object:
+    # Mantiene siempre visible la base publicada, incluso cuando la consulta falla.
     if error is not None:
-        return html.Div(
-            error,
-            className='atlanticus-manager__message atlanticus-manager__message--error',
+        return html.Section(
+            [
+                _workflow_group_header(
+                    'Estado publicado',
+                    'Fuente de verdad y proyección activa de esta configuración.',
+                ),
+                html.Div(
+                    'No fue posible consultar el estado publicado en este momento.',
+                    className=(
+                        'atlanticus-manager__message '
+                        'atlanticus-manager__message--notice'
+                    ),
+                ),
+            ],
+            className=(
+                'atlanticus-manager__workflow-group '
+                'atlanticus-manager__workflow-group--published-empty'
+            ),
         )
     if status is None:
-        return html.Div(
-            'Aún no existe información de estado para esta configuración.',
-            className='atlanticus-manager__message atlanticus-manager__message--notice',
+        return html.Section(
+            [
+                _workflow_group_header(
+                    'Estado publicado',
+                    'Fuente de verdad y proyección activa de esta configuración.',
+                ),
+                html.Div(
+                    'Aún no existe una configuración publicada.',
+                    className='atlanticus-manager__workflow-empty',
+                ),
+            ],
+            className=(
+                'atlanticus-manager__workflow-group '
+                'atlanticus-manager__workflow-group--published-empty'
+            ),
         )
     state = resolve_projection_state(status)
     return html.Section(

@@ -23,4 +23,4 @@ def test_ux_001b_users_modal_has_atlanticus_header_without_horizontal_scroll() -
 def test_ux_001b_users_visible_discovery_error_is_spanish() -> None:
     source = CALLBACKS.read_text(encoding='utf-8')
     assert 'Discovered users could not be loaded' not in source
-    assert 'No fue posible cargar las identidades pendientes.' in source
+    assert 'No fue posible actualizar las identidades pendientes.' in source
