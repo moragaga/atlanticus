@@ -27,7 +27,6 @@ class ManagerSurface:
             definition.modules,
             route_prefix=definition.route_prefix,
         )
-        self._registry.require(definition.default_module_key)
         self._web_modules = self._build_web_modules()
 
     @property
@@ -41,10 +40,6 @@ class ManagerSurface:
     @property
     def authorization(self) -> ManagerAuthorizationPolicy:
         return self._authorization
-
-    @property
-    def default_path(self) -> str:
-        return self._registry.route_for(self._registry.require(self._definition.default_module_key))
 
     @property
     def web_modules(self) -> tuple[WebModule, ...]:

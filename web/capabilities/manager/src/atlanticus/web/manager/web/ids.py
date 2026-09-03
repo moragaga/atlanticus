@@ -8,6 +8,12 @@ SIDEBAR_MODULES_ID = 'atlanticus-manager-sidebar-modules'
 CONTENT_ID = 'atlanticus-manager-content'
 STATUS_STORE_ID = 'atlanticus-manager-status-store'
 REFRESH_SIGNAL_ID = 'atlanticus-manager-refresh-signal'
+HOME_ID = 'atlanticus-manager-home'
+HOME_CARDS_ID = 'atlanticus-manager-home-cards'
+HOME_PAGE_STORE_ID = 'atlanticus-manager-home-page-store'
+HOME_PREVIOUS_ID = 'atlanticus-manager-home-previous'
+HOME_NEXT_ID = 'atlanticus-manager-home-next'
+HOME_PAGE_LABEL_ID = 'atlanticus-manager-home-page-label'
 
 
 def workflow_action_id(module_key: str, action: str) -> dict[str, str]:

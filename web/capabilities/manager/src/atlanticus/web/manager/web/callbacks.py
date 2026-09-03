@@ -22,6 +22,12 @@ from atlanticus.web.manager.projection import (
 from atlanticus.web.manager.registry import ManagerModuleRegistry
 from atlanticus.web.manager.web.ids import (
     CONTENT_ID,
+    HOME_CARDS_ID,
+    HOME_ID,
+    HOME_NEXT_ID,
+    HOME_PAGE_LABEL_ID,
+    HOME_PAGE_STORE_ID,
+    HOME_PREVIOUS_ID,
     LOCATION_ID,
     REFRESH_SIGNAL_ID,
     SIDEBAR_BACKDROP_ID,
@@ -64,6 +70,10 @@ from atlanticus.web.manager.web.ids import (
     workflow_workspace_confirmation_message_id,
     workflow_workspace_confirmation_title_id,
     workflow_workspace_reset_signal_id,
+)
+from atlanticus.web.manager.web.home import (
+    build_home_page_content,
+    build_manager_home_return,
 )
 from atlanticus.web.manager.web.layout import (
     build_module_content,
@@ -135,6 +145,17 @@ def register_manager_callbacks(
         return states, build_summary(resolved_states)
 
     @app.callback(
+        Output(SUMMARY_ID, 'hidden'),
+        Output(HOME_ID, 'hidden'),
+        Output(CONTENT_ID, 'hidden'),
+        Input(LOCATION_ID, 'pathname'),
+    )
+    def render_surface_visibility(pathname: str | None):
+        current_path = pathname or registry.root_route
+        home_active = current_path == registry.root_route
+        return not home_active, not home_active, home_active
+
+    @app.callback(
         Output(workflow_validation_id(ALL), 'data', allow_duplicate=True),
         Output(workflow_source_verification_id(ALL), 'data', allow_duplicate=True),
         Input(REFRESH_SIGNAL_ID, 'data'),
@@ -159,10 +180,40 @@ def register_manager_callbacks(
         return build_sidebar_modules(
             registry=registry,
             modules=registry.visible_modules(principal, authorization),
-            current_path=(
-                pathname or registry.route_for(registry.require(definition.default_module_key))
-            ),
+            current_path=pathname or registry.root_route,
             states=states,
+        )
+
+    @app.callback(
+        Output(HOME_CARDS_ID, 'children'),
+        Output(HOME_PAGE_LABEL_ID, 'children'),
+        Output(HOME_PREVIOUS_ID, 'disabled'),
+        Output(HOME_NEXT_ID, 'disabled'),
+        Output(HOME_PAGE_STORE_ID, 'data'),
+        Input(HOME_PREVIOUS_ID, 'n_clicks'),
+        Input(HOME_NEXT_ID, 'n_clicks'),
+        Input(STATUS_STORE_ID, 'data'),
+        State(HOME_PAGE_STORE_ID, 'data'),
+    )
+    def render_home_page(
+        previous_clicks: int | None,
+        next_clicks: int | None,
+        states_data: dict[str, str] | None,
+        current_page: int | None,
+    ):
+        page = current_page if isinstance(current_page, int) else 1
+        trigger = ctx.triggered_id
+        if trigger == HOME_PREVIOUS_ID and _click_is_real(previous_clicks):
+            page -= 1
+        elif trigger == HOME_NEXT_ID and _click_is_real(next_clicks):
+            page += 1
+        principal = definition.principal_provider()
+        states = {key: _safe_state(value) for key, value in (states_data or {}).items()}
+        return build_home_page_content(
+            registry=registry,
+            modules=registry.visible_modules(principal, authorization),
+            states=states,
+            page=page,
         )
 
     @app.callback(
@@ -170,20 +221,27 @@ def register_manager_callbacks(
         Input(LOCATION_ID, 'pathname'),
     )
     def render_content(pathname: str | None):
+        current_path = pathname or registry.root_route
+        if current_path == registry.root_route:
+            return None
         principal = definition.principal_provider()
-        module = _active_module(registry, definition, pathname)
+        module = _active_module(registry, pathname)
         if module is None or not authorization.can_view(principal, module):
-            from dash import html
-
             return html.Div(
                 'Configuration module was not found',
                 className='atlanticus-manager__message atlanticus-manager__message--error',
             )
-        return build_module_content(
-            module=module,
-            services=services,
-            coordinator=coordinator,
-            principal=principal,
+        return html.Div(
+            [
+                build_manager_home_return(registry.root_route),
+                build_module_content(
+                    module=module,
+                    services=services,
+                    coordinator=coordinator,
+                    principal=principal,
+                ),
+            ],
+            className='atlanticus-manager__module-page',
         )
 
     @app.callback(
@@ -256,7 +314,7 @@ def register_manager_callbacks(
         _workflow_signals: list[object],
     ):
         principal = definition.principal_provider()
-        module = _active_module(registry, definition, pathname)
+        module = _active_module(registry, pathname)
         if module is None or not authorization.can_view(principal, module):
             return [], [], [], [], [], []
         status, history, can_load_history, status_error = _load_workflow_state(
@@ -1219,16 +1277,12 @@ def _load_workflow_state(
 
 def _active_module(
     registry: ManagerModuleRegistry,
-    definition: ManagerSurfaceDefinition,
     pathname: str | None,
 ):
-    default_module = registry.require(definition.default_module_key)
-    route = pathname or registry.route_for(default_module)
-    module = registry.find_by_route(route)
-    if module is None and route == registry.root_route:
-        module = default_module
-    return module
-
+    route = pathname or registry.root_route
+    if route == registry.root_route:
+        return None
+    return registry.find_by_route(route)
 
 def _safe_draft(
     data: dict[str, object] | None,

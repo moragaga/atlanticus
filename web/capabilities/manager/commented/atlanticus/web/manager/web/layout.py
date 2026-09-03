@@ -26,8 +26,10 @@ from atlanticus.web.manager.projection import (
     resolve_projection_state,
 )
 from atlanticus.web.manager.registry import ManagerModuleRegistry
+from atlanticus.web.manager.web.home import build_manager_home
 from atlanticus.web.manager.web.ids import (
     CONTENT_ID,
+    HOME_ID,
     LOCATION_ID,
     REFRESH_SIGNAL_ID,
     SIDEBAR_BACKDROP_ID,
@@ -90,7 +92,7 @@ def build_manager_surface(
     authorization: ManagerAuthorizationPolicy,
 ) -> object:
     visible_modules = registry.visible_modules(principal, authorization)
-    current_path = registry.route_for(registry.require(definition.default_module_key))
+    current_path = registry.root_route
     return html.Div(
         [
             dcc.Location(id=LOCATION_ID, refresh=False),
@@ -168,7 +170,21 @@ def build_manager_surface(
                 )
                 for module in visible_modules
             ],
-            html.Section(id=SUMMARY_ID, className='atlanticus-manager__summary'),
+            html.Section(
+                id=SUMMARY_ID,
+                className='atlanticus-manager__summary',
+                hidden=True,
+            ),
+            html.Div(
+                id=HOME_ID,
+                children=build_manager_home(
+                    registry=registry,
+                    modules=visible_modules,
+                    states={},
+                ),
+                className='atlanticus-manager__home-surface',
+                hidden=True,
+            ),
             html.Button(
                 '⚙',
                 id=SIDEBAR_TOGGLE_ID,
@@ -176,7 +192,11 @@ def build_manager_surface(
                 title='Abrir configuraciones',
                 **{'aria-label': 'Abrir configuraciones'},
             ),
-            html.Main(id=CONTENT_ID, className='atlanticus-manager__content'),
+            html.Main(
+                id=CONTENT_ID,
+                className='atlanticus-manager__content',
+                hidden=True,
+            ),
             html.Aside(
                 [
                     html.Header(
@@ -259,6 +279,25 @@ def build_sidebar_modules(
     states: Mapping[str, ProjectionState],
 ) -> tuple[object, ...]:
     result: list[object] = []
+    home_class = (
+        'atlanticus-manager__sidebar-link atlanticus-manager__sidebar-link--home'
+    )
+    if current_path == registry.root_route:
+        home_class += ' atlanticus-manager__sidebar-link--active'
+    result.append(
+        dcc.Link(
+            [
+                html.Div(
+                    [
+                        html.Strong('Manager Home'),
+                        html.Span('Resumen y acceso a configuraciones.'),
+                    ]
+                )
+            ],
+            href=registry.root_route,
+            className=home_class,
+        )
+    )
     for group in registry.groups:
         group_modules = tuple(module for module in modules if module.group_key == group.key)
         if not group_modules:

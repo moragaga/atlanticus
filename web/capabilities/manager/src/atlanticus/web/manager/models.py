@@ -75,7 +75,6 @@ class ManagerSurfaceDefinition:
     principal_provider: ManagerPrincipalProvider
     groups: tuple[ManagerModuleGroup, ...]
     modules: tuple[ManagerModule, ...]
-    default_module_key: str
     route_prefix: str = ''
     web_modules: tuple[WebModule, ...] = ()
 
@@ -83,5 +82,3 @@ class ManagerSurfaceDefinition:
         prefix = self.route_prefix
         if prefix and (not _ROUTE_PREFIX_PATTERN.fullmatch(prefix) or prefix.endswith('/')):
             raise ManagerDefinitionError('Manager route prefix has an invalid format')
-        if not self.default_module_key.strip():
-            raise ManagerDefinitionError('Manager default module key must not be empty')

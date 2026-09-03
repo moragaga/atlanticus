@@ -75,7 +75,6 @@ def test_manager_callbacks_register_with_real_dash_application() -> None:
         principal_provider=lambda: principal,
         groups=(group,),
         modules=(module,),
-        default_module_key=module.key,
     )
     registry = ManagerModuleRegistry(definition.groups, definition.modules)
     services = ServiceRegistry()

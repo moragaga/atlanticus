@@ -39,7 +39,6 @@ def _surface(route_prefix: str = '/manager') -> ManagerSurfaceDefinition:
                 workflow_service='tools.workflow',
             ),
         ),
-        default_module_key='tools',
         route_prefix=route_prefix,
     )
 
@@ -47,7 +46,7 @@ def _surface(route_prefix: str = '/manager') -> ManagerSurfaceDefinition:
 def test_manager_surface_is_host_independent_and_prefix_aware() -> None:
     surface = ManagerSurface(_surface())
 
-    assert surface.default_path == '/manager/tools'
+    assert not hasattr(surface, 'default_path')
     assert surface.registry.root_route == '/manager'
     assert [module.name for module in surface.web_modules] == ['manager-surface']
     assert all(not module.page_packages for module in surface.web_modules)

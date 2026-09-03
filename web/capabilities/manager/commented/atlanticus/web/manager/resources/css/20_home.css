@@ -1,0 +1,164 @@
+/* La superficie Home reutiliza el ancho y respiración del contenido principal del Manager. */
+.atlanticus-manager__home-surface {
+    width: min(100%, 118rem);
+    margin: 0 auto;
+    padding: 1.25rem 1.5rem 2rem;
+}
+
+/* Home genérica: cards, paginación local y retorno explícito al inicio del Manager. */
+.atlanticus-manager__home,
+.atlanticus-manager__module-page {
+    display: grid;
+    gap: 1rem;
+}
+
+.atlanticus-manager__home-header {
+    display: grid;
+    gap: .25rem;
+    padding: 1rem 1.1rem;
+    background: var(--atlanticus-manager-surface);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-top: .24rem solid var(--atlanticus-manager-color-primary);
+    border-radius: var(--atlanticus-manager-radius);
+    box-shadow: 0 4px 16px rgba(25, 30, 38, .04);
+}
+
+.atlanticus-manager__home-header h1,
+.atlanticus-manager__home-header p {
+    margin: 0;
+}
+
+.atlanticus-manager__home-header h1 {
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: 1.15rem;
+    font-weight: 780;
+}
+
+.atlanticus-manager__home-header p:last-child {
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .8rem;
+}
+
+.atlanticus-manager__home-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .85rem;
+}
+
+.atlanticus-manager__home-card {
+    display: grid;
+    gap: .8rem;
+    min-width: 0;
+    min-height: 9.25rem;
+    padding: 1rem;
+    color: inherit;
+    background: var(--atlanticus-manager-surface);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: var(--atlanticus-manager-radius);
+    box-shadow: 0 4px 16px rgba(25, 30, 38, .04);
+    text-decoration: none;
+    transition:
+        border-color var(--atlanticus-admin-transition),
+        box-shadow var(--atlanticus-admin-transition),
+        transform var(--atlanticus-admin-transition);
+}
+
+.atlanticus-manager__home-card:hover,
+.atlanticus-manager__home-card:focus-visible {
+    border-color: rgba(201, 162, 75, .52);
+    box-shadow: var(--atlanticus-admin-focus-ring), 0 7px 20px rgba(25, 30, 38, .07);
+    outline: none;
+    transform: translateY(-1px);
+}
+
+.atlanticus-manager__home-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+}
+
+.atlanticus-manager__home-card-header strong {
+    min-width: 0;
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: .92rem;
+}
+
+.atlanticus-manager__home-card p {
+    margin: 0;
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .76rem;
+    line-height: 1.45;
+}
+
+.atlanticus-manager__home-card-action {
+    align-self: end;
+    color: var(--atlanticus-manager-color-primary-dark);
+    font-size: .74rem;
+    font-weight: 750;
+}
+
+.atlanticus-manager__home-empty {
+    grid-column: 1 / -1;
+    padding: 1.2rem;
+    color: var(--atlanticus-manager-text-muted);
+    background: var(--atlanticus-manager-surface);
+    border: 1px dashed var(--atlanticus-manager-border);
+    border-radius: var(--atlanticus-manager-radius);
+    text-align: center;
+}
+
+.atlanticus-manager__home-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .6rem;
+    min-height: var(--atlanticus-admin-control-height);
+}
+
+.atlanticus-manager__home-pagination-button {
+    min-width: 2.4rem;
+    padding-inline: .65rem;
+}
+
+.atlanticus-manager__home-page-label {
+    min-width: 3.5rem;
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .76rem;
+    font-weight: 750;
+    text-align: center;
+}
+
+.atlanticus-manager__home-return {
+    width: fit-content;
+    color: var(--atlanticus-manager-color-primary-dark);
+    font-size: .76rem;
+    font-weight: 750;
+    text-decoration: none;
+}
+
+.atlanticus-manager__home-return:hover,
+.atlanticus-manager__home-return:focus-visible {
+    text-decoration: underline;
+    outline: none;
+}
+
+.atlanticus-manager__sidebar-link--home {
+    margin-bottom: .75rem;
+}
+
+@media (max-width: 1365px) {
+    .atlanticus-manager__home-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767px) {
+    .atlanticus-manager__home-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .atlanticus-manager__home-card {
+        min-height: 0;
+    }
+}
