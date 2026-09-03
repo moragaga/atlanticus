@@ -51,3 +51,24 @@ def test_public_api_contains_lifecycle_foundation() -> None:
         'reset_group_for_reconfiguration',
     }
     assert expected <= set(core.__all__)
+
+
+def test_public_api_contains_canonical_alarm_definition_contract() -> None:
+    expected = {
+        'AlarmColor',
+        'AlarmDeactivationDefinition',
+        'AlarmDefinition',
+        'AlarmEscalationDefinition',
+        'AlarmEscalationStepDefinition',
+        'AlarmVisualSubcomponentTarget',
+        'AlarmVisualTarget',
+        'BusinessCategory',
+        'MessageDeactivationDefinition',
+        'MessageDefinition',
+        'MessageScope',
+        'OperationalArea',
+        'ProcessAlarmProjectionMode',
+        'ReappearanceDefinition',
+        'VisibilityMode',
+    }
+    assert expected <= set(core.__all__)
