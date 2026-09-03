@@ -145,7 +145,7 @@ def _runtime_context(context: UsersAdminWebContext) -> object:
                     dcc.Upload(
                         id=IMPORT_UPLOAD_ID,
                         children=html.Button(
-                            'Importar archivo de Users',
+                            'Importar',
                             className=(
                                 'atlanticus-manager__button atlanticus-manager__button--secondary'
                             ),
@@ -212,7 +212,7 @@ def _profiles_panel(catalog: UsersConfigurationCatalog) -> object:
                             _system_profile_card(
                                 title='Administrator',
                                 key='administrator',
-                                description='Acceso total. No requiere asignaciones de Navigation.',
+                                description='Acceso total. No requiere asignaciones de Navegación.',
                                 background_color=catalog.administrator_background_color,
                                 text_color=catalog.administrator_text_color,
                                 background_color_id=ADMINISTRATOR_BACKGROUND_COLOR_ID,
@@ -222,7 +222,7 @@ def _profiles_panel(catalog: UsersConfigurationCatalog) -> object:
                             _system_profile_card(
                                 title='Guest',
                                 key='guest',
-                                description='Acceso definido posteriormente por Navigation.',
+                                description='Acceso definido posteriormente por Navegación.',
                                 background_color=catalog.guest_background_color,
                                 text_color=catalog.guest_text_color,
                                 background_color_id=GUEST_BACKGROUND_COLOR_ID,
@@ -277,7 +277,7 @@ def _users_panel(catalog: UsersConfigurationCatalog) -> object:
                         'Usuarios configurados',
                         (
                             'Asigna un único perfil efectivo y controla si el usuario puede '
-                            'acceder. Las páginas se definirán en Navigation.'
+                            'acceder. Las páginas se definirán en Navegación.'
                         ),
                     ),
                     html.Button(
@@ -333,7 +333,7 @@ def _save_section() -> object:
                 [
                     html.Div(
                         [
-                            html.H3('Borrador de Users · perfiles y usuarios'),
+                            html.H3('Borrador local · perfiles y usuarios'),
                             html.P(
                                 (
                                     'Guarda perfiles y usuarios en este navegador. Validar, '
@@ -344,7 +344,7 @@ def _save_section() -> object:
                         className='atlanticus-users-admin__section-heading-copy',
                     ),
                     html.Button(
-                        'Guardar borrador de Users',
+                        'Guardar borrador',
                         id=SAVE_BUTTON_ID,
                         n_clicks=0,
                         className=(
@@ -480,7 +480,7 @@ def _profile_modal() -> object:
                             _reference_field(
                                 'Identificador',
                                 PROFILE_KEY_ID,
-                                'Se usa internamente por Users y Navigation.',
+                                'Se usa internamente por Usuarios y Navegación.',
                             ),
                             html.Div(
                                 [

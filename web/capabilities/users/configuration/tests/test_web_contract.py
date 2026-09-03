@@ -93,10 +93,10 @@ def test_users_admin_profile_text_color_wins_inside_avatar() -> None:
 def test_users_admin_labels_configuration_as_profiles_and_users() -> None:
     layout = layout_source()
 
-    assert 'Importar archivo de Users' in layout
+    assert "'Importar'" in layout
     assert 'Incluye perfiles y usuarios.' in layout
-    assert 'Borrador de Users · perfiles y usuarios' in layout
-    assert 'Guardar borrador de Users' in layout
+    assert 'Borrador local · perfiles y usuarios' in layout
+    assert "'Guardar borrador'" in layout
 
 
 def test_users_admin_import_refreshes_the_whole_users_catalog() -> None:

@@ -272,7 +272,7 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
         try:
             discovered = context.services.administration.list_discovered()
         except Exception:
-            return _error('Discovered users could not be loaded')
+            return _error('No fue posible cargar las identidades pendientes.')
         available = tuple(user for user in discovered if user.user_id not in configured_ids)
         return _discovered_cards(available, catalog)
 

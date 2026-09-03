@@ -37,12 +37,12 @@ def test_manager_lifecycle_exposes_draft_validate_publish_and_project() -> None:
     assert "workflow_action_id(module.key, 'discard-saved-draft')" in layout
     assert "workflow_action_id(module.key, 'update-source')" in layout
     assert "workflow_action_id(module.key, 'force-publish')" in layout
-    assert "f'Verificar {module.source_name}'" in layout
-    assert "f'Guardar en {module.source_name}'" in layout
+    assert "'Verificar'" in layout
+    assert "'Publicar'" in layout
     assert "f'Usar versión de {module.source_name}'" in layout
     assert "workflow_action_id(module.key, 'keep-draft')" in layout
     assert "'Mantener mi borrador'" in layout
-    assert "f'Proyectar en {module.projection_name}'" in layout
+    assert "'Proyectar'" in layout
     assert 'module.force_publish_enabled' in layout
 
 
@@ -71,7 +71,7 @@ def test_traceability_is_grouped_as_a_five_stage_pipeline() -> None:
     assert "title='Validación'" in layout
     assert "title='Verificación de fuente'" in layout
     assert "title='Fuente de verdad'" in layout
-    assert "title='Proyección runtime'" in layout
+    assert "title='Proyección activa'" in layout
     assert "'Flujo de publicación'" in layout
     assert "html.Span('Revisión')" in layout
     assert "html.Span('Publicado por')" in layout

@@ -99,7 +99,7 @@ def _runtime_context(context: NavigationAdminWebContext) -> object:
                     dcc.Upload(
                         id=IMPORT_UPLOAD_ID,
                         children=html.Button(
-                            'Importar archivo de Navigation',
+                            'Importar',
                             className=(
                                 'atlanticus-manager__button atlanticus-manager__button--secondary'
                             ),
@@ -213,7 +213,7 @@ def _save_section() -> object:
                 [
                     html.Div(
                         [
-                            html.H3('Borrador de Navigation'),
+                            html.H3('Borrador local · navegación'),
                             html.P(
                                 'Guarda la estructura, rutas y permisos de Navigation '
                                 'en este navegador.'
@@ -222,7 +222,7 @@ def _save_section() -> object:
                         className='atlanticus-navigation-admin__section-copy',
                     ),
                     html.Button(
-                        'Guardar borrador de Navigation',
+                        'Guardar borrador',
                         id=SAVE_BUTTON_ID,
                         n_clicks=0,
                         className=(
@@ -249,7 +249,7 @@ def _link_modal() -> object:
                     [
                         _field('Nombre', dcc.Input(id=LINK_NAME_ID, type='text')),
                         _field(
-                            'Key',
+                            'Identificador',
                             dcc.Input(
                                 id=LINK_KEY_ID,
                                 type='text',
@@ -331,7 +331,7 @@ def _group_modal() -> object:
                     [
                         _field('Nombre', dcc.Input(id=GROUP_NAME_ID, type='text')),
                         _field(
-                            'Key',
+                            'Identificador',
                             dcc.Input(
                                 id=GROUP_KEY_ID,
                                 type='text',

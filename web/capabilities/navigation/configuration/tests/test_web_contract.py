@@ -75,7 +75,7 @@ def test_navigation_workspace_starts_empty_and_does_not_read_source_implicitly()
     assert 'context.services.administration.load_source()' not in layout
     assert '_structure_section(catalog)' in layout
     assert 'html.Div(navigation_structure(catalog), id=STRUCTURE_ID)' in layout
-    assert "'Importar archivo de Navigation'" in layout
+    assert "'Importar'" in layout
     assert 'if draft_data is None:' in callbacks
     assert (
         'prevent_initial_call=True'

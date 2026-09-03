@@ -189,7 +189,6 @@ def build_manager_surface(
                 '⚙',
                 id=SIDEBAR_TOGGLE_ID,
                 className='atlanticus-manager__sidebar-trigger',
-                title='Abrir configuraciones',
                 **{'aria-label': 'Abrir configuraciones'},
             ),
             html.Main(
@@ -211,7 +210,6 @@ def build_manager_surface(
                                 '×',
                                 id=SIDEBAR_CLOSE_ID,
                                 className='atlanticus-manager__icon-button',
-                                title='Cerrar configuraciones',
                             ),
                         ],
                         className='atlanticus-manager__sidebar-header',
@@ -348,12 +346,12 @@ def build_module_content(
         status = None
         history = ()
         can_load_history = False
-        status_error = str(error)
+        status_error = 'No fue posible consultar el estado de configuración.'
     except Exception:
         status = None
         history = ()
         can_load_history = False
-        status_error = 'Configuration status could not be loaded'
+        status_error = 'No fue posible consultar el estado de configuración.'
     else:
         status_error = None
 
@@ -436,7 +434,10 @@ def build_workflow_panel(
             ),
             html.Div(
                 id=workflow_draft_status_id(module.key),
-                className='atlanticus-manager__workflow-status',
+                className=(
+                    'atlanticus-manager__workflow-status '
+                    'atlanticus-manager__workflow-status--draft'
+                ),
             ),
             html.Div(
                 build_workflow_status_content(
@@ -445,7 +446,10 @@ def build_workflow_panel(
                     error=error,
                 ),
                 id=workflow_status_id(module.key),
-                className='atlanticus-manager__workflow-status',
+                className=(
+                    'atlanticus-manager__workflow-status '
+                    'atlanticus-manager__workflow-status--published'
+                ),
             ),
             _build_workflow_actions(module, status),
             html.Div(id=workflow_result_id(module.key)),
@@ -478,15 +482,15 @@ def build_workflow_status_content(
         )
     if status is None:
         return html.Div(
-            'Configuration status is unavailable',
-            className='atlanticus-manager__message atlanticus-manager__message--error',
+            'Aún no existe información de estado para esta configuración.',
+            className='atlanticus-manager__message atlanticus-manager__message--notice',
         )
     state = resolve_projection_state(status)
     return html.Section(
         [
             _workflow_group_header(
                 'Estado publicado',
-                'Lo que ya existe en la fuente de verdad y en la proyección runtime.',
+                'Lo que ya existe en la fuente de verdad y en la proyección activa.',
                 state=state,
             ),
             html.Div(
@@ -502,7 +506,7 @@ def build_workflow_status_content(
                     ),
                     _workflow_stage_card(
                         step='5',
-                        title='Proyección runtime',
+                        title='Proyección activa',
                         subtitle=module.projection_name,
                         items=(
                             (
@@ -926,7 +930,7 @@ def _build_workflow_actions(
                                 'Validar',
                                 'Comprueba el borrador sin escribir en la fuente de verdad.',
                                 html.Button(
-                                    'Validar borrador',
+                                    'Validar',
                                     id=workflow_action_id(module.key, 'validate'),
                                     n_clicks=0,
                                     className=(
@@ -941,7 +945,7 @@ def _build_workflow_actions(
                                 'Verificar fuente',
                                 f'Comprueba que {module.source_name} siga en la revisión base del borrador.',
                                 html.Button(
-                                    f'Verificar {module.source_name}',
+                                    'Verificar',
                                     id=workflow_action_id(module.key, 'verify-source'),
                                     n_clicks=0,
                                     className=(
@@ -956,7 +960,7 @@ def _build_workflow_actions(
                                 'Publicar',
                                 f'Guarda la revisión validada en {module.source_name}.',
                                 html.Button(
-                                    f'Guardar en {module.source_name}',
+                                    'Publicar',
                                     id=workflow_action_id(module.key, 'publish'),
                                     n_clicks=0,
                                     className=(
@@ -969,9 +973,9 @@ def _build_workflow_actions(
                             _workflow_action_step(
                                 '5',
                                 'Proyectar',
-                                f'Actualiza manualmente el runtime disponible en {module.projection_name}.',
+                                f'Actualiza manualmente la proyección disponible en {module.projection_name}.',
                                 html.Button(
-                                    f'Proyectar en {module.projection_name}',
+                                    'Proyectar',
                                     id=workflow_action_id(module.key, 'project'),
                                     n_clicks=0,
                                     className=(

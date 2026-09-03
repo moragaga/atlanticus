@@ -94,3 +94,43 @@
     color: var(--atlanticus-manager-text-muted);
     background: var(--atlanticus-manager-control-disabled);
 }
+
+/* MANAGER-UX-001B — corrective visual closure */
+.atlanticus-users-admin__modal-dialog {
+    max-width: 100%;
+    max-height: calc(100dvh - 2rem);
+    overflow: hidden;
+}
+
+.atlanticus-users-admin__modal-header {
+    color: #FFFFFF;
+    background: var(--atlanticus-manager-color-primary-action);
+    border-bottom-color: rgba(255, 255, 255, .14);
+}
+
+.atlanticus-users-admin__modal-header h3 {
+    color: #FFFFFF;
+}
+
+.atlanticus-users-admin__modal-eyebrow {
+    color: var(--atlanticus-manager-color-primary);
+}
+
+.atlanticus-users-admin__modal-header .atlanticus-manager__icon-button {
+    color: #FFFFFF;
+}
+
+.atlanticus-users-admin__modal-body {
+    min-width: 0;
+    max-width: 100%;
+    max-height: calc(100dvh - 9.5rem);
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.atlanticus-users-admin__modal-body > *,
+.atlanticus-users-admin__color-pickers,
+.atlanticus-users-admin__field {
+    min-width: 0;
+    max-width: 100%;
+}

@@ -94,3 +94,30 @@
         width: 100%;
     }
 }
+
+/* MANAGER-UX-001B — corrective visual closure */
+.atlanticus-navigation-admin__modal-card {
+    max-width: 100%;
+    max-height: calc(100dvh - 2rem);
+    overflow-x: hidden;
+}
+
+.atlanticus-navigation-admin__modal-card > h3 {
+    color: #FFFFFF;
+    background: var(--atlanticus-manager-color-primary-action);
+    border-bottom-color: rgba(255, 255, 255, .14);
+}
+
+.atlanticus-navigation-admin__form-grid,
+.atlanticus-navigation-admin__check-row,
+.atlanticus-navigation-admin__field {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.atlanticus-navigation-admin__modal-card .Select,
+.atlanticus-navigation-admin__modal-card .Select-control,
+.atlanticus-navigation-admin__modal-card .Select-menu-outer {
+    min-width: 0;
+    max-width: 100%;
+}
