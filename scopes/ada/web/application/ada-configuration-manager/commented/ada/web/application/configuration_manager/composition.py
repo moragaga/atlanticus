@@ -162,7 +162,6 @@ def build_configuration_manager_surface(
                 force_publish_enabled=dependencies.force_publish_enabled,
             ),
         ),
-        default_module_key='users',
         route_prefix=MANAGER_ROUTE_PREFIX,
         web_modules=(
             WebModule(

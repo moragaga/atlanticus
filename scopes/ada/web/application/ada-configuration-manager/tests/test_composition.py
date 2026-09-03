@@ -46,13 +46,12 @@ def test_surface_uses_manager_route_and_functional_module_order() -> None:
     surface = ManagerSurface(definition)
 
     assert definition.route_prefix == MANAGER_ROUTE_PREFIX == '/manager'
-    assert definition.default_module_key == 'users'
     assert tuple(module.key for module in surface.registry.modules) == (
         'users',
         'navigation',
         'tools',
     )
-    assert surface.default_path == '/manager/users'
+    assert not hasattr(surface, 'default_path')
     assert surface.registry.root_route == '/manager'
 
 
