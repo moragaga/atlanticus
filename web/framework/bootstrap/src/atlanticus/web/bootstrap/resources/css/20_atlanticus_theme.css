@@ -1,7 +1,9 @@
 .atlanticus-bootstrap {
     --bs-primary: var(--atlanticus-ui-primary);
-    --bs-primary-hover: var(--atlanticus-ui-primary-hover);
+    --bs-primary-hover: var(--atlanticus-ui-secondary);
     --bs-secondary: var(--atlanticus-ui-secondary);
+    --bs-accent: var(--atlanticus-ui-accent);
+    --bs-accent-border: rgb(201 162 75 / 55%);
     --bs-danger: var(--atlanticus-ui-danger);
     --bs-danger-border: rgb(198 40 40 / 32%);
     --bs-body-color: var(--atlanticus-ui-text);

@@ -187,15 +187,25 @@
 .atlanticus-navigation-admin__form-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
     gap: .75rem .9rem;
 }
 
 .atlanticus-navigation-admin__field {
-    display: grid;
+    display: flex;
     min-width: 0;
+    flex-direction: column;
+    align-items: stretch;
     gap: .35rem;
     font-size: .76rem;
     font-weight: 700;
+}
+
+.atlanticus-navigation-admin__field > .form-control,
+.atlanticus-navigation-admin__field > .form-select,
+.atlanticus-navigation-admin__field > .atlanticus-navigation-admin__profiles-select {
+    min-width: 0;
+    max-width: 100%;
 }
 
 .atlanticus-navigation-admin__field-check {

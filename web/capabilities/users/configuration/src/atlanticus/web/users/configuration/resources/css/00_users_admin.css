@@ -285,7 +285,10 @@
 
 .atlanticus-users-admin__field,
 .atlanticus-users-admin__profile-preview-field {
-    display: grid;
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: stretch;
     gap: .35rem;
 }
 

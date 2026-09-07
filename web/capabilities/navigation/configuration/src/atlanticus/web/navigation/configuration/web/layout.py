@@ -287,6 +287,13 @@ def _link_modal() -> object:
                                         className='atlanticus-navigation-admin__profiles-select',
                                         multi=True,
                                         placeholder='Seleccionar perfiles',
+                                        labels={
+                                            'search': 'Buscar',
+                                            'clear_search': 'Limpiar búsqueda',
+                                            'select_all': 'Seleccionar todo',
+                                            'deselect_all': 'Deseleccionar todo',
+                                            'selected_count': '{num_selected} seleccionados',
+                                        },
                                     ),
                                 ),
                             ],
@@ -420,7 +427,6 @@ def _modal_header(*, title_id: str, close_id: str) -> object:
         [
             html.H3(id=title_id),
             html.Button(
-                '×',
                 id=close_id,
                 n_clicks=0,
                 className='btn-close',

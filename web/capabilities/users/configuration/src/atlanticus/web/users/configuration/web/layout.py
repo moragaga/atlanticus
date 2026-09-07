@@ -489,15 +489,18 @@ def _profile_modal() -> object:
 def _color_picker(*, label: str, picker_id: str, value: str) -> object:
     return html.Div(
         [
-            html.Span(label, className='atlanticus-users-admin__field-label'),
+            html.Label(
+                label,
+                htmlFor=picker_id,
+                className='atlanticus-users-admin__field-label',
+            ),
             html.Div(
                 [
-                    dbc.Input(
+                    html.Input(
                         id=picker_id,
                         type='color',
                         value=value,
-                        class_name='form-control-color',
-                        **{'aria-label': label},
+                        className='form-control form-control-color',
                     ),
                     html.Span(value, className='atlanticus-users-admin__color-value'),
                 ],
@@ -601,7 +604,6 @@ def _modal_header(title_id: str, close_id: str) -> object:
         [
             html.H3(id=title_id),
             html.Button(
-                '×',
                 id=close_id,
                 n_clicks=0,
                 className='btn-close',

@@ -35,6 +35,18 @@ def test_bootstrap_assets_are_scoped_and_do_not_ship_reboot() -> None:
     assert '.container' not in source
     assert '.row {' not in source
 
+    form_start = source.index('.atlanticus-bootstrap .form-control,')
+    form_body_start = source.index('{', form_start)
+    form_body_end = source.index('}', form_body_start)
+    form_control = source[form_body_start + 1 : form_body_end]
+
+    assert not any(
+        line.strip() == 'width: 100%;'
+        for line in form_control.splitlines()
+    )
+    assert 'max-width: 100%;' in form_control
+    assert 'box-sizing: border-box;' in form_control
+
 
 def test_productive_and_commented_python_are_ast_equivalent() -> None:
     for source in SOURCE.glob('*.py'):

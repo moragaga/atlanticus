@@ -99,3 +99,22 @@ def test_navigation_structure_renderer_is_shared_by_layout_and_callbacks() -> No
     assert 'def navigation_structure(' in rendering
     assert 'def navigation_section_options(' in rendering
     assert 'def _navigation_structure(' not in callbacks
+
+def test_navigation_profiles_multiselect_owns_dash_theme_locally() -> None:
+    root = Path(__file__).parents[1]
+    layout = (
+        root / 'src/atlanticus/web/navigation/configuration/web/layout.py'
+    ).read_text(encoding='utf-8')
+    adapter = (
+        root
+        / 'src/atlanticus/web/navigation/configuration/resources/css/20_dash_adapters.css'
+    ).read_text(encoding='utf-8')
+
+    assert layout.count('dcc.Dropdown(') == 1
+    assert 'atlanticus-navigation-admin__profiles-select' in layout
+    assert "'search': 'Buscar'" in layout
+    assert '--Dash-Fill-Interactive-Strong: var(--atlanticus-ui-secondary);' in adapter
+    assert '.dash-dropdown-search-container:focus-within' in adapter
+    assert '.dash-options-list-option-checkbox' in adapter
+    assert '.Select-control' not in adapter
+
