@@ -15,6 +15,7 @@ from ada.web.application.configuration_manager.workflows import (
     ToolConfigurationManagerWorkflowAdapter,
     UsersManagerWorkflowAdapter,
 )
+from atlanticus.web.bootstrap import create_bootstrap_web_module
 from atlanticus.web.manager import (
     ManagerModule,
     ManagerModuleAccess,
@@ -164,6 +165,7 @@ def build_configuration_manager_surface(
         ),
         route_prefix=MANAGER_ROUTE_PREFIX,
         web_modules=(
+            create_bootstrap_web_module(),
             WebModule(
                 name='ada-configuration-manager-services',
                 register_services=lambda services: _register_services(

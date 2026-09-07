@@ -1,0 +1,343 @@
+/*
+Bootstrap-compatible component subset for Atlanticus Web.
+Component contract aligned with Bootstrap 5.3.8.
+No Reboot, global document rules, containers, rows, columns or utilities.
+*/
+
+.atlanticus-bootstrap .btn {
+    --bs-btn-color: var(--bs-body-color);
+    --bs-btn-bg: transparent;
+    --bs-btn-border-color: transparent;
+    --bs-btn-hover-color: var(--bs-btn-color);
+    --bs-btn-hover-bg: var(--bs-btn-bg);
+    --bs-btn-hover-border-color: var(--bs-btn-border-color);
+    --bs-btn-focus-shadow-rgb: var(--bs-focus-ring-rgb);
+    --bs-btn-disabled-opacity: .5;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    padding: .55rem .85rem;
+    color: var(--bs-btn-color);
+    background: var(--bs-btn-bg);
+    border: var(--bs-border-width) solid var(--bs-btn-border-color);
+    border-radius: var(--bs-border-radius);
+    cursor: pointer;
+    font: inherit;
+    font-size: .78rem;
+    font-weight: 700;
+    line-height: 1.35;
+    text-align: center;
+    text-decoration: none;
+    transition:
+        color var(--bs-transition),
+        background-color var(--bs-transition),
+        border-color var(--bs-transition),
+        box-shadow var(--bs-transition);
+}
+
+.atlanticus-bootstrap .btn:hover:not(:disabled) {
+    color: var(--bs-btn-hover-color);
+    background: var(--bs-btn-hover-bg);
+    border-color: var(--bs-btn-hover-border-color);
+}
+
+.atlanticus-bootstrap .btn:focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 var(--bs-focus-ring-width) var(--bs-focus-ring-color);
+}
+
+.atlanticus-bootstrap .btn:disabled,
+.atlanticus-bootstrap .btn.disabled {
+    pointer-events: none;
+    opacity: var(--bs-btn-disabled-opacity);
+}
+
+.atlanticus-bootstrap .btn-primary {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: var(--bs-primary);
+    --bs-btn-border-color: var(--bs-primary);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--bs-primary-hover);
+    --bs-btn-hover-border-color: var(--bs-primary-hover);
+}
+
+.atlanticus-bootstrap .btn-outline-secondary {
+    --bs-btn-color: var(--bs-secondary);
+    --bs-btn-bg: var(--bs-surface);
+    --bs-btn-border-color: var(--bs-border-color);
+    --bs-btn-hover-color: var(--bs-primary);
+    --bs-btn-hover-bg: var(--bs-selection-bg);
+    --bs-btn-hover-border-color: var(--bs-secondary);
+}
+
+.atlanticus-bootstrap .btn-outline-danger {
+    --bs-btn-color: var(--bs-danger);
+    --bs-btn-bg: var(--bs-surface);
+    --bs-btn-border-color: var(--bs-danger-border);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--bs-danger);
+    --bs-btn-hover-border-color: var(--bs-danger);
+}
+
+.atlanticus-bootstrap .btn-sm {
+    padding: .34rem .56rem;
+    font-size: .7rem;
+}
+
+.atlanticus-bootstrap .btn-close {
+    position: relative;
+    display: inline-grid;
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 auto;
+    padding: 0;
+    place-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.atlanticus-bootstrap .btn-close::before,
+.atlanticus-bootstrap .btn-close::after {
+    position: absolute;
+    width: .82rem;
+    height: .1rem;
+    content: '';
+    background: currentColor;
+    border-radius: 999px;
+}
+
+.atlanticus-bootstrap .btn-close::before {
+    transform: rotate(45deg);
+}
+
+.atlanticus-bootstrap .btn-close::after {
+    transform: rotate(-45deg);
+}
+
+.atlanticus-bootstrap .btn-close:focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 var(--bs-focus-ring-width) var(--bs-focus-ring-color);
+}
+
+.atlanticus-bootstrap .form-control,
+.atlanticus-bootstrap .form-select {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    padding: .5rem .68rem;
+    color: var(--bs-body-color);
+    background-color: var(--bs-surface);
+    border: var(--bs-border-width) solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    font: inherit;
+    font-size: .82rem;
+    line-height: 1.4;
+    transition:
+        border-color var(--bs-transition),
+        box-shadow var(--bs-transition),
+        background-color var(--bs-transition);
+}
+
+.atlanticus-bootstrap .form-select {
+    padding-right: 2.2rem;
+    appearance: none;
+    background-image:
+        linear-gradient(45deg, transparent 50%, var(--bs-secondary-color) 50%),
+        linear-gradient(135deg, var(--bs-secondary-color) 50%, transparent 50%);
+    background-position:
+        calc(100% - .9rem) 50%,
+        calc(100% - .62rem) 50%;
+    background-repeat: no-repeat;
+    background-size: .3rem .3rem, .3rem .3rem;
+}
+
+.atlanticus-bootstrap .form-control:hover:not(:disabled),
+.atlanticus-bootstrap .form-select:hover:not(:disabled) {
+    border-color: var(--bs-border-color-strong);
+}
+
+.atlanticus-bootstrap .form-control:focus,
+.atlanticus-bootstrap .form-select:focus {
+    color: var(--bs-body-color);
+    background-color: var(--bs-surface);
+    border-color: var(--bs-focus-border-color);
+    outline: 0;
+    box-shadow: 0 0 0 var(--bs-focus-ring-width) var(--bs-focus-ring-color);
+}
+
+.atlanticus-bootstrap .form-control:disabled,
+.atlanticus-bootstrap .form-select:disabled {
+    color: var(--bs-secondary-color);
+    background-color: var(--bs-disabled-bg);
+    opacity: 1;
+}
+
+.atlanticus-bootstrap .form-control-color {
+    width: 2.6rem;
+    height: 2.35rem;
+    padding: .2rem;
+    cursor: pointer;
+}
+
+.atlanticus-bootstrap .form-control-color::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.atlanticus-bootstrap .form-control-color::-webkit-color-swatch {
+    border: 0;
+    border-radius: calc(var(--bs-border-radius) - .18rem);
+}
+
+.atlanticus-bootstrap .form-control-color::-moz-color-swatch {
+    border: 0;
+    border-radius: calc(var(--bs-border-radius) - .18rem);
+}
+
+.atlanticus-bootstrap .form-check {
+    display: flex;
+    align-items: center;
+    gap: .48rem;
+    min-width: 0;
+}
+
+.atlanticus-bootstrap .form-check-input {
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 auto;
+    margin: 0;
+    appearance: none;
+    background-color: var(--bs-surface);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: .7rem .7rem;
+    border: var(--bs-border-width) solid var(--bs-border-color-strong);
+    border-radius: .25rem;
+    cursor: pointer;
+}
+
+.atlanticus-bootstrap .form-check-input:checked {
+    background-color: var(--bs-secondary);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='m3 8 3 3 7-7'/%3e%3c/svg%3e");
+    border-color: var(--bs-secondary);
+}
+
+.atlanticus-bootstrap .form-check-input:focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 var(--bs-focus-ring-width) var(--bs-focus-ring-color);
+}
+
+.atlanticus-bootstrap .form-check-input:disabled {
+    cursor: not-allowed;
+    opacity: .48;
+}
+
+.atlanticus-bootstrap .form-check-label {
+    min-width: 0;
+    color: var(--bs-body-color);
+    cursor: pointer;
+    font-size: .78rem;
+    font-weight: 650;
+    line-height: 1.35;
+}
+
+.atlanticus-bootstrap .form-check:hover .form-check-label {
+    color: var(--bs-secondary);
+}
+
+.atlanticus-bootstrap .nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.atlanticus-bootstrap .nav-tabs {
+    border-bottom: var(--bs-border-width) solid var(--bs-border-color);
+}
+
+.atlanticus-bootstrap .nav-link {
+    padding: .55rem .75rem;
+    color: var(--bs-secondary-color);
+    background: transparent;
+    border: var(--bs-border-width) solid transparent;
+    border-radius: var(--bs-border-radius) var(--bs-border-radius) 0 0;
+    cursor: pointer;
+    font: inherit;
+    font-size: .76rem;
+    font-weight: 700;
+}
+
+.atlanticus-bootstrap .nav-link:hover {
+    color: var(--bs-primary);
+    background: var(--bs-selection-bg);
+}
+
+.atlanticus-bootstrap .nav-link:focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 var(--bs-focus-ring-width) var(--bs-focus-ring-color);
+}
+
+.atlanticus-bootstrap .nav-link.active {
+    color: var(--bs-primary);
+    background: var(--bs-surface);
+    border-color:
+        var(--bs-border-color)
+        var(--bs-border-color)
+        var(--bs-surface);
+}
+
+.atlanticus-bootstrap .modal-content {
+    color: var(--bs-body-color);
+    background: var(--bs-surface);
+    border: var(--bs-border-width) solid var(--bs-border-color);
+    border-radius: var(--bs-modal-border-radius);
+    box-shadow: var(--bs-modal-shadow);
+}
+
+.atlanticus-bootstrap .modal-header,
+.atlanticus-bootstrap .modal-footer {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .9rem 1rem;
+}
+
+.atlanticus-bootstrap .modal-header {
+    justify-content: space-between;
+    color: #fff;
+    background: var(--bs-primary);
+    border-bottom: 0;
+    border-radius:
+        var(--bs-modal-border-radius)
+        var(--bs-modal-border-radius)
+        0
+        0;
+}
+
+.atlanticus-bootstrap .modal-header .btn-close {
+    color: #fff;
+}
+
+.atlanticus-bootstrap .modal-header .btn-close:hover {
+    background: rgb(255 255 255 / 10%);
+}
+
+.atlanticus-bootstrap .modal-body {
+    padding: 1rem;
+}
+
+.atlanticus-bootstrap .modal-footer {
+    justify-content: flex-end;
+    border-top: var(--bs-border-width) solid var(--bs-border-color);
+    border-radius:
+        0
+        0
+        var(--bs-modal-border-radius)
+        var(--bs-modal-border-radius);
+}

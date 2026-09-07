@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 from datetime import UTC, datetime
 
+import dash_bootstrap_components as dbc
 from dash import ALL, Input, Output, State, ctx, html, no_update
 
 from atlanticus.web.users.configuration.bundle import (
@@ -18,7 +19,6 @@ from atlanticus.web.users.configuration.models import (
 )
 from atlanticus.web.users.configuration.web.ids import (
     ADD_PROFILE_ID,
-    ADD_USER_ID,
     ADMINISTRATOR_BACKGROUND_COLOR_ID,
     ADMINISTRATOR_PREVIEW_ID,
     ADMINISTRATOR_TEXT_COLOR_ID,
@@ -64,8 +64,6 @@ from atlanticus.web.users.configuration.web.ids import (
     USERS_LIST_ID,
     USERS_PANEL_ID,
     USERS_TAB_ID,
-    color_picker_button_id,
-    color_picker_swatch_id,
     discovered_add_id,
     profile_delete_id,
     profile_edit_id,
@@ -92,16 +90,6 @@ _BROWSER_DRAFT_SCHEMA_VERSION = 1
 
 
 def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -> None:
-    for picker_id in (
-        ADMINISTRATOR_BACKGROUND_COLOR_ID,
-        ADMINISTRATOR_TEXT_COLOR_ID,
-        GUEST_BACKGROUND_COLOR_ID,
-        GUEST_TEXT_COLOR_ID,
-        PROFILE_BACKGROUND_COLOR_ID,
-        PROFILE_TEXT_COLOR_ID,
-    ):
-        _register_native_color_picker(app, picker_id)
-
     @app.callback(
         Output(CATALOG_STORE_ID, 'data'),
         Output(ADMINISTRATOR_BACKGROUND_COLOR_ID, 'value'),
@@ -298,7 +286,6 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
         prevent_initial_call=True,
     )
     def profile_editor(
-        add_clicks: int | None,
         edit_clicks: list[int | None] | None,
         cancel_clicks: int | None,
         header_cancel_clicks: int | None,
@@ -446,7 +433,6 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
         Output(USER_EMAIL_ID, 'disabled'),
         Output(USER_RESULT_ID, 'children'),
         Output(CATALOG_STORE_ID, 'data', allow_duplicate=True),
-        Input(ADD_USER_ID, 'n_clicks'),
         Input(user_edit_id(ALL), 'n_clicks'),
         Input(discovered_add_id(ALL), 'n_clicks'),
         Input(USER_CANCEL_ID, 'n_clicks'),
@@ -477,7 +463,7 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
         name: str | None,
         email: str | None,
         profile_key: str | None,
-        enabled_values: list[str] | None,
+        enabled_value: bool | None,
         catalog_data: dict[str, object] | None,
     ):
         del cancel_clicks, header_cancel_clicks, footer_cancel_clicks
@@ -491,16 +477,6 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
             USER_CANCEL_ID + '-footer',
         ):
             return _user_modal_response(closed=True, options=options)
-        if trigger == ADD_USER_ID and _click_is_real(add_clicks):
-            return _user_modal_response(
-                editor={'mode': 'create'},
-                title='Nuevo usuario',
-                name='',
-                email='',
-                options=options,
-                profile=None,
-                enabled=True,
-            )
         if _pattern_click_is_real(trigger, edit_clicks, edit_ids):
             user_id = str(trigger.get('user_id', ''))
             user = next((item for item in catalog.users if item.user_id == user_id), None)
@@ -519,6 +495,7 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
                 options=options,
                 profile=user.profile_key,
                 enabled=user.enabled,
+                identity_locked=True,
             )
         if _pattern_click_is_real(trigger, discovered_clicks, discovered_ids):
             user_id = str(trigger.get('user_id', ''))
@@ -562,21 +539,18 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
                 email=email,
                 options=options,
                 profile=profile_key,
-                enabled='enabled' in (enabled_values or []),
+                enabled=bool(enabled_value),
                 identity_locked=_user_identity_locked(editor_data),
                 error='Management access is denied',
             )
         try:
-            discovered = None
-            if str((editor_data or {}).get('mode', 'create')) == 'create':
-                discovered = _find_discovered_by_email(context, str(email or ''))
             updated = _save_user(
                 catalog,
                 editor_data,
                 display_name=name,
                 email=email,
                 profile_key=profile_key,
-                enabled='enabled' in (enabled_values or []),
+                enabled=bool(enabled_value),
                 discovered=discovered,
             )
         except Exception as error:
@@ -587,7 +561,7 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
                 email=email,
                 options=options,
                 profile=profile_key,
-                enabled='enabled' in (enabled_values or []),
+                enabled=bool(enabled_value),
                 identity_locked=_user_identity_locked(editor_data),
                 error=str(error),
             )
@@ -766,7 +740,7 @@ def _save_profile(
     text_color: str | None,
 ) -> UsersConfigurationCatalog:
     label = str(name or '').strip()
-    mode = str((editor_data or {}).get('mode', 'create'))
+    mode = str((editor_data or {}).get('mode', ''))
     if mode == 'edit':
         key = str((editor_data or {}).get('key', '')).strip()
     else:
@@ -801,14 +775,17 @@ def _save_user(
     email: str | None,
     profile_key: str | None,
     enabled: bool,
-    discovered: DiscoveredUser | None = None,
 ) -> UsersConfigurationCatalog:
-    editor = editor_data or {'mode': 'create'}
-    mode = str(editor.get('mode', 'create'))
+    editor = editor_data or {}
+    mode = str(editor.get('mode', '')).strip()
+    if mode not in {'edit', 'discovered'}:
+        raise ValueError('User editor mode is invalid')
+
     replace_user_id = _optional_text(editor.get('replace_user_id'))
-    existing = None
     if mode == 'edit':
-        replace_user_id = str(editor.get('user_id', '')).strip()
+        replace_user_id = _optional_text(editor.get('user_id'))
+
+    existing = None
     if replace_user_id is not None:
         existing = next(
             (user for user in catalog.users if user.user_id == replace_user_id),
@@ -817,30 +794,30 @@ def _save_user(
         if existing is None:
             raise ValueError('User does not exist')
 
-    issuer = _optional_text(editor.get('issuer'))
-    subject_id = _optional_text(editor.get('subject_id'))
-    user_id = str(editor.get('user_id', '')).strip() or None
-    if mode == 'create' and discovered is not None:
-        issuer = discovered.issuer
-        subject_id = discovered.subject_id
-        user_id = discovered.user_id
     user = UserConfiguration.create(
-        user_id=user_id,
-        issuer=issuer,
-        subject_id=subject_id,
+        user_id=_optional_text(editor.get('user_id')),
+        issuer=_optional_text(editor.get('issuer')),
+        subject_id=_optional_text(editor.get('subject_id')),
         display_name=str(display_name or ''),
         email=str(email or ''),
         profile_key=str(profile_key or ''),
         enabled=enabled,
     )
+
     if existing is not None:
-        users = tuple(user if item.user_id == existing.user_id else item for item in catalog.users)
+        users = tuple(
+            user if item.user_id == existing.user_id else item
+            for item in catalog.users
+        )
     else:
+        if mode != 'discovered':
+            raise ValueError('New users must originate from a discovered identity')
         if any(item.user_id == user.user_id for item in catalog.users):
             raise ValueError('User already exists')
         if any(item.email == user.email for item in catalog.users):
             raise ValueError('User email already exists')
         users = (*catalog.users, user)
+
     return UsersConfigurationCatalog(
         administrator_background_color=catalog.administrator_background_color,
         administrator_text_color=catalog.administrator_text_color,
@@ -882,28 +859,28 @@ def _profile_cards(catalog: UsersConfigurationCatalog) -> object:
                                     profile.text_color,
                                 ),
                             ),
-                            html.Code(profile.key),
                         ],
                         className='atlanticus-users-admin__profile-copy',
                     ),
                     html.Div(
                         [
-                            html.Button(
+                            dbc.Button(
                                 'Editar',
                                 id=profile_edit_id(profile.key),
                                 n_clicks=0,
-                                className='atlanticus-users-admin__action',
+                                color='secondary',
+                                outline=True,
+                                size='sm',
                             ),
-                            html.Button(
+                            dbc.Button(
                                 'Eliminar',
                                 id=profile_delete_id(profile.key),
                                 n_clicks=0,
                                 disabled=profile.key in used,
+                                color='danger',
+                                outline=True,
+                                size='sm',
                                 **{'aria-label': 'Eliminar perfil'},
-                                className=(
-                                    'atlanticus-users-admin__action '
-                                    'atlanticus-users-admin__action--danger'
-                                ),
                             ),
                         ],
                         className='atlanticus-users-admin__card-actions',
@@ -947,11 +924,13 @@ def _user_cards(catalog: UsersConfigurationCatalog) -> object:
                                     )
                                 ),
                             ),
-                            html.Button(
+                            dbc.Button(
                                 'Editar',
                                 id=user_edit_id(user.user_id),
                                 n_clicks=0,
-                                className='atlanticus-users-admin__action',
+                                color='secondary',
+                                outline=True,
+                                size='sm',
                             ),
                         ],
                         className='atlanticus-users-admin__card-actions',
@@ -970,7 +949,7 @@ def _discovered_cards(
     catalog: UsersConfigurationCatalog,
 ) -> object:
     if not users:
-        return _empty('No hay usuarios Guest pendientes de incorporar.')
+        return _empty('No hay identidades pendientes de incorporación.')
     configured_by_email = {user.email: user for user in catalog.users}
     return html.Div(
         [
@@ -994,7 +973,7 @@ def _discovered_cards(
                                 ),
                                 className='atlanticus-users-admin__status',
                             ),
-                            html.Button(
+                            dbc.Button(
                                 (
                                     'Vincular identidad'
                                     if user.email in configured_by_email
@@ -1002,10 +981,9 @@ def _discovered_cards(
                                 ),
                                 id=discovered_add_id(user.user_id),
                                 n_clicks=0,
-                                className=(
-                                    'atlanticus-ui-button '
-                                    'atlanticus-ui-button--secondary'
-                                ),
+                                color='secondary',
+                                outline=True,
+                                size='sm',
                             ),
                         ],
                         className='atlanticus-users-admin__card-actions',
@@ -1044,25 +1022,6 @@ def _find_discovered(context: UsersAdminWebContext, user_id: str) -> DiscoveredU
         return None
 
 
-def _find_discovered_by_email(
-    context: UsersAdminWebContext,
-    email: str,
-) -> DiscoveredUser | None:
-    normalized = email.strip().casefold()
-    if not normalized:
-        return None
-    try:
-        matches = tuple(
-            item
-            for item in context.services.administration.list_discovered()
-            if item.email == normalized
-        )
-    except Exception:
-        return None
-    if len(matches) > 1:
-        raise ValueError('Multiple discovered identities use the same email')
-    return matches[0] if matches else None
-
 
 def _profile_preview_style(
     background_color: str,
@@ -1100,11 +1059,11 @@ def _user_editor_title(editor_data: dict[str, object] | None) -> str:
         )
     if mode == 'edit':
         return 'Editar usuario'
-    return 'Nuevo usuario'
+    return 'Usuario'
 
 
 def _user_identity_locked(editor_data: dict[str, object] | None) -> bool:
-    return str((editor_data or {}).get('mode', '')) == 'discovered'
+    return str((editor_data or {}).get('mode', '')) in {'edit', 'discovered'}
 
 
 def _profile_modal_response(
@@ -1173,7 +1132,7 @@ def _user_modal_response(
             '',
             options or [],
             None,
-            ['enabled'],
+            True,
             False,
             False,
             None,
@@ -1187,7 +1146,7 @@ def _user_modal_response(
         email or '',
         options or [],
         profile,
-        ['enabled'] if enabled else [],
+        bool(enabled),
         identity_locked,
         identity_locked,
         _error(error) if error else None,
@@ -1208,40 +1167,6 @@ def _save_draft_click_is_real(
         return dict(trigger) == dict(workflow_id) and _click_is_real(workflow_clicks)
     return False
 
-
-def _register_native_color_picker(app: object, picker_id: str) -> None:
-    button_id = color_picker_button_id(picker_id)
-    swatch_id = color_picker_swatch_id(picker_id)
-    script = f"""
-    function(nClicks, currentColor) {{
-        if (!nClicks) {{
-            return dash_clientside.no_update;
-        }}
-        const picker = document.createElement('input');
-        picker.type = 'color';
-        picker.value = currentColor || '#000000';
-        picker.style.position = 'fixed';
-        picker.style.left = '-9999px';
-        picker.addEventListener('input', function(event) {{
-            const color = event.target.value;
-            dash_clientside.set_props('{picker_id}', {{value: color}});
-            dash_clientside.set_props('{swatch_id}', {{style: {{backgroundColor: color}}}});
-        }});
-        picker.addEventListener('change', function() {{
-            picker.remove();
-        }}, {{once: true}});
-        document.body.appendChild(picker);
-        picker.click();
-        return dash_clientside.no_update;
-    }}
-    """
-    app.clientside_callback(
-        script,
-        Output(button_id, 'title'),
-        Input(button_id, 'n_clicks'),
-        State(picker_id, 'value'),
-        prevent_initial_call=True,
-    )
 
 
 def _click_is_real(clicks: int | None) -> bool:

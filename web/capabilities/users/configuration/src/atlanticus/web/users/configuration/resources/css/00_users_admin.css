@@ -12,7 +12,7 @@
     background: var(--atlanticus-ui-surface);
     border: 1px solid var(--atlanticus-ui-border);
     border-radius: .85rem;
-    box-shadow: 0 4px 16px rgba(25, 30, 38, .035);
+    box-shadow: 0 4px 16px rgb(25 30 38 / 3.5%);
 }
 
 .atlanticus-users-admin__runtime-context {
@@ -31,7 +31,7 @@
     padding: .38rem .62rem;
     color: var(--atlanticus-ui-primary-hover);
     background: var(--atlanticus-ui-background);
-    border: 1px solid rgba(201, 162, 75, .3);
+    border: 1px solid rgb(201 162 75 / 30%);
     border-radius: 999px;
     font-size: .7rem;
 }
@@ -55,34 +55,16 @@
 }
 
 .atlanticus-users-admin__tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .3rem;
-    padding: .25rem;
-    background: var(--atlanticus-ui-surface-muted);
-    border: 1px solid var(--atlanticus-ui-border);
-    border-radius: .75rem;
+    padding-inline: .25rem;
+    background: transparent;
 }
 
 .atlanticus-users-admin__tab {
-    padding: .42rem .78rem;
-    color: var(--atlanticus-ui-text-muted);
-    background: transparent;
-    border: 0;
-    border-radius: .55rem;
-    cursor: pointer;
-    font: inherit;
-    font-size: .74rem;
-    font-weight: 750;
+    border-radius: .55rem .55rem 0 0;
 }
 
-.atlanticus-users-admin__tab:hover,
-.atlanticus-users-admin__tab:focus-visible,
-.atlanticus-users-admin__tab--active {
-    color: var(--atlanticus-ui-text);
-    background: var(--atlanticus-ui-surface);
-    box-shadow: var(--atlanticus-ui-control-focus-ring);
-    outline: 0;
+.atlanticus-users-admin__tab:focus:not(:focus-visible) {
+    box-shadow: none;
 }
 
 .atlanticus-users-admin__panel {
@@ -162,9 +144,7 @@
     font-size: .82rem;
 }
 
-.atlanticus-users-admin__profile-copy code,
 .atlanticus-users-admin__user-copy code,
-.atlanticus-users-admin__profile-copy span,
 .atlanticus-users-admin__user-copy span {
     min-width: 0;
     color: var(--atlanticus-ui-text-muted);
@@ -190,10 +170,6 @@
     gap: .5rem;
 }
 
-.atlanticus-users-admin__profile-preview strong {
-    color: var(--atlanticus-ui-text);
-}
-
 .atlanticus-users-admin__profile-avatar,
 .atlanticus-users-admin__persona-swatch {
     display: inline-grid;
@@ -206,55 +182,36 @@
     font-weight: 800;
 }
 
-.atlanticus-users-admin__profile-copy .atlanticus-users-admin__profile-avatar,
 .atlanticus-users-admin__profile-avatar {
     color: var(--atlanticus-users-profile-text-color);
     background: var(--atlanticus-users-profile-background-color);
-    border: 1px solid color-mix(
-        in srgb,
-        var(--atlanticus-users-profile-background-color) 74%,
-        black
-    );
+    border: 1px solid rgb(0 0 0 / 14%);
 }
 
-.atlanticus-users-admin__persona strong {
-    font-size: .72rem;
+.atlanticus-users-admin__local-dual-swatch {
+    display: inline-block;
+    width: 1.8rem;
+    height: 1.8rem;
+    flex: 0 0 auto;
+    background:
+        linear-gradient(
+            90deg,
+            var(--atlanticus-users-local-john) 0 50%,
+            var(--atlanticus-users-local-jane) 50% 100%
+        );
+    border: 1px solid var(--atlanticus-ui-border-strong);
+    border-radius: 50%;
 }
 
-.atlanticus-users-admin__color-picker-field,
-.atlanticus-users-admin__profile-preview-field,
-.atlanticus-users-admin__field {
+.atlanticus-users-admin__color-picker-field {
     display: grid;
-    gap: .35rem;
+    gap: .3rem;
 }
 
-.atlanticus-users-admin__color-picker {
-    display: inline-flex;
+.atlanticus-users-admin__color-picker-row {
+    display: flex;
     align-items: center;
     gap: .45rem;
-    padding: .28rem .55rem;
-    color: var(--atlanticus-ui-text);
-    background: var(--atlanticus-ui-surface);
-    border: 1px solid var(--atlanticus-ui-border);
-    border-radius: var(--atlanticus-ui-control-radius);
-    cursor: pointer;
-    font: inherit;
-    font-size: .68rem;
-    font-weight: 700;
-}
-
-.atlanticus-users-admin__color-picker:hover,
-.atlanticus-users-admin__color-picker:focus-visible {
-    border-color: var(--atlanticus-ui-control-focus);
-    box-shadow: var(--atlanticus-ui-control-focus-ring);
-    outline: 0;
-}
-
-.atlanticus-users-admin__color-picker-swatch {
-    width: 1.25rem;
-    height: 1.25rem;
-    border: 1px solid rgba(0, 0, 0, .18);
-    border-radius: .35rem;
 }
 
 .atlanticus-users-admin__field-label,
@@ -282,34 +239,6 @@
     justify-content: flex-end;
 }
 
-.atlanticus-users-admin__action {
-    padding: .35rem .58rem;
-    color: var(--atlanticus-ui-primary-hover);
-    background: var(--atlanticus-ui-surface);
-    border: 1px solid var(--atlanticus-ui-border);
-    border-radius: .5rem;
-    cursor: pointer;
-    font: inherit;
-    font-size: .68rem;
-    font-weight: 700;
-}
-
-.atlanticus-users-admin__action:hover,
-.atlanticus-users-admin__action:focus-visible {
-    border-color: var(--atlanticus-ui-secondary);
-    box-shadow: var(--atlanticus-ui-control-focus-ring);
-    outline: 0;
-}
-
-.atlanticus-users-admin__action:disabled {
-    cursor: not-allowed;
-    opacity: .4;
-}
-
-.atlanticus-users-admin__action--danger {
-    color: var(--atlanticus-ui-danger);
-}
-
 .atlanticus-users-admin__profile-badge,
 .atlanticus-users-admin__status {
     padding: .28rem .5rem;
@@ -319,7 +248,7 @@
 }
 
 .atlanticus-users-admin__profile-badge {
-    border: 1px solid rgba(0, 0, 0, .08);
+    border: 1px solid rgb(0 0 0 / 8%);
 }
 
 .atlanticus-users-admin__status {
@@ -336,8 +265,12 @@
     color: var(--atlanticus-ui-danger);
 }
 
+.atlanticus-users-admin__empty,
+.atlanticus-users-admin__message {
+    margin-top: .75rem;
+}
+
 .atlanticus-users-admin__empty {
-    margin-top: .8rem;
     padding: .9rem;
     color: var(--atlanticus-ui-text-muted);
     background: var(--atlanticus-ui-surface-muted);
@@ -350,13 +283,10 @@
     border-top: .2rem solid var(--atlanticus-ui-accent);
 }
 
-.atlanticus-users-admin__field > .atlanticus-ui-input,
-.atlanticus-users-admin__field > .atlanticus-ui-select {
-    width: 100%;
-}
-
-.atlanticus-users-admin__field > .atlanticus-ui-input {
-    padding: .48rem .62rem;
+.atlanticus-users-admin__field,
+.atlanticus-users-admin__profile-preview-field {
+    display: grid;
+    gap: .35rem;
 }
 
 .atlanticus-users-admin__field small {
@@ -373,12 +303,6 @@
     border-radius: var(--atlanticus-ui-control-radius);
 }
 
-.atlanticus-users-admin__enabled-field {
-    color: var(--atlanticus-ui-text);
-    font-size: .76rem;
-    font-weight: 700;
-}
-
 .atlanticus-users-admin__message {
     padding: .6rem .72rem;
     border-radius: .65rem;
@@ -387,12 +311,13 @@
 
 .atlanticus-users-admin__message--error {
     color: var(--atlanticus-ui-danger);
+    background: var(--atlanticus-ui-danger-soft);
 }
 
 .atlanticus-users-admin__message--notice {
     color: var(--atlanticus-ui-warning);
     background: var(--atlanticus-ui-warning-soft);
-    border: 1px solid rgba(160, 112, 24, .2);
+    border: 1px solid rgb(160 112 24 / 20%);
 }
 
 @media (max-width: 56rem) {

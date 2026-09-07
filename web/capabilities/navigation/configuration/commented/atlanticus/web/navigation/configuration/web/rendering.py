@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import dash_bootstrap_components as dbc
 from dash import html
 
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
@@ -66,15 +67,13 @@ def _group_card(group) -> object:
                 className='atlanticus-navigation-admin__card-head',
             ),
             html.Div(children, className='atlanticus-navigation-admin__children'),
-            html.Button(
+            dbc.Button(
                 '+ Enlace',
                 id=group_add_link_id(group.key),
                 n_clicks=0,
-                className=(
-                    'atlanticus-ui-button '
-                    'atlanticus-ui-button--secondary '
-                    'atlanticus-navigation-admin__group-add'
-                ),
+                color='secondary',
+                outline=True,
+                size='sm',
             ),
         ],
         className='atlanticus-navigation-admin__group-card',
@@ -155,11 +154,13 @@ def _group_actions(key: str) -> object:
 
 
 def _mini_button(label: str, component_id: object) -> object:
-    return html.Button(
+    return dbc.Button(
         label,
         id=component_id,
         n_clicks=0,
-        className='atlanticus-navigation-admin__mini-button',
+        color='secondary',
+        outline=True,
+        size='sm',
     )
 
 

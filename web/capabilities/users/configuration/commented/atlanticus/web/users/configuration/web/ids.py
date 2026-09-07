@@ -36,7 +36,6 @@ PROFILE_SAVE_ID = 'atlanticus-users-admin-profile-save'
 PROFILE_CANCEL_ID = 'atlanticus-users-admin-profile-cancel'
 PROFILE_RESULT_ID = 'atlanticus-users-admin-profile-result'
 USERS_LIST_ID = 'atlanticus-users-admin-users-list'
-ADD_USER_ID = 'atlanticus-users-admin-add-user'
 USER_MODAL_ID = 'atlanticus-users-admin-user-modal'
 USER_MODAL_TITLE_ID = 'atlanticus-users-admin-user-modal-title'
 USER_NAME_ID = 'atlanticus-users-admin-user-name'
@@ -51,13 +50,6 @@ DISCOVERED_REFRESH_ID = 'atlanticus-users-admin-discovered-refresh'
 SAVE_BUTTON_ID = 'atlanticus-users-admin-save'
 SAVE_RESULT_ID = 'atlanticus-users-admin-save-result'
 
-
-def color_picker_button_id(picker_id: str) -> str:
-    return f'{picker_id}-picker'
-
-
-def color_picker_swatch_id(picker_id: str) -> str:
-    return f'{picker_id}-swatch'
 
 
 def profile_edit_id(key: str | object) -> dict[str, object]:

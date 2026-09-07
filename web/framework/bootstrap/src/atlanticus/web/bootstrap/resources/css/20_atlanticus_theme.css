@@ -1,0 +1,23 @@
+.atlanticus-bootstrap {
+    --bs-primary: var(--atlanticus-ui-primary);
+    --bs-primary-hover: var(--atlanticus-ui-primary-hover);
+    --bs-secondary: var(--atlanticus-ui-secondary);
+    --bs-danger: var(--atlanticus-ui-danger);
+    --bs-danger-border: rgb(198 40 40 / 32%);
+    --bs-body-color: var(--atlanticus-ui-text);
+    --bs-secondary-color: var(--atlanticus-ui-text-muted);
+    --bs-surface: var(--atlanticus-ui-surface);
+    --bs-selection-bg: var(--atlanticus-ui-selection-soft);
+    --bs-disabled-bg: var(--atlanticus-ui-control-disabled);
+    --bs-border-width: 1px;
+    --bs-border-color: var(--atlanticus-ui-border);
+    --bs-border-color-strong: var(--atlanticus-ui-border-strong);
+    --bs-border-radius: var(--atlanticus-ui-control-radius);
+    --bs-focus-border-color: var(--atlanticus-ui-secondary);
+    --bs-focus-ring-width: .18rem;
+    --bs-focus-ring-rgb: 38, 66, 90;
+    --bs-focus-ring-color: rgb(var(--bs-focus-ring-rgb) / 18%);
+    --bs-modal-border-radius: var(--atlanticus-ui-modal-radius);
+    --bs-modal-shadow: var(--atlanticus-ui-modal-shadow);
+    --bs-transition: var(--atlanticus-ui-transition);
+}

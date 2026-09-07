@@ -54,7 +54,12 @@ def test_profile_editor_generates_stable_key_and_user_can_consume_it() -> None:
     with_profile = _with_operator()
     with_user = _save_user(
         with_profile,
-        {'mode': 'create'},
+        {
+            'mode': 'discovered',
+            'user_id': 'user:one',
+            'issuer': 'entra',
+            'subject_id': 'subject-one',
+        },
         display_name='Usuario Uno',
         email='user.one@example.com',
         profile_key='operador_planta',
@@ -89,24 +94,7 @@ def test_discovered_user_keeps_identity_when_added_to_draft() -> None:
     assert user.subject_id == 'subject-1'
 
 
-def test_manual_user_uses_discovered_identity_when_email_matches() -> None:
-    updated = _save_user(
-        _with_operator(),
-        {'mode': 'create'},
-        display_name='Usuario Descubierto',
-        email='discovered@example.com',
-        profile_key='operador_planta',
-        enabled=True,
-        discovered=_discovered(),
-    )
-
-    assert len(updated.users) == 1
-    assert updated.users[0].user_id == 'user:stable'
-    assert updated.users[0].issuer == 'entra'
-    assert updated.users[0].subject_id == 'subject-1'
-
-
-def test_discovered_identity_replaces_matching_manual_user_without_duplication() -> None:
+def test_discovered_identity_replaces_matching_configured_user_without_duplication() -> None:
     base = _with_operator()
     manual = UserConfiguration.create(
         display_name='Usuario Descubierto',

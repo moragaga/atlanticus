@@ -32,23 +32,31 @@ def test_users_admin_browser_draft_does_not_publish_source() -> None:
 def layout_source() -> str:
     return (WEB / 'layout.py').read_text(encoding='utf-8')
 
-def test_users_admin_uses_native_browser_color_pickers() -> None:
+def test_users_admin_uses_bootstrap_native_color_inputs() -> None:
     layout = layout_source()
     callbacks = (WEB / 'callbacks.py').read_text(encoding='utf-8')
 
-    assert 'html.Input(' not in layout
-    assert "type='color'" not in layout
-    assert "type='text'" in layout
-    assert "style={'display': 'none'}" in layout
-    assert '_register_native_color_picker' in callbacks
-    assert "picker.type = 'color'" in callbacks
-    assert 'dash_clientside.set_props' in callbacks
+    assert 'dbc.Input(' in layout
+    assert "type='color'" in layout
+    assert '_register_native_color_picker' not in callbacks
+    assert 'dash_clientside.set_props' not in callbacks
     assert 'PROFILE_BACKGROUND_COLOR_ID' in layout
     assert 'PROFILE_TEXT_COLOR_ID' in layout
     assert 'ADMINISTRATOR_BACKGROUND_COLOR_ID' in layout
     assert 'ADMINISTRATOR_TEXT_COLOR_ID' in layout
     assert 'GUEST_BACKGROUND_COLOR_ID' in layout
     assert 'GUEST_TEXT_COLOR_ID' in layout
+
+
+def test_users_admin_only_incorporates_new_users_from_pending_identities() -> None:
+    layout = layout_source()
+    callbacks = (WEB / 'callbacks.py').read_text(encoding='utf-8')
+
+    assert "'+ Usuario'" not in layout
+    assert 'ADD_USER_ID' not in layout
+    assert 'ADD_USER_ID' not in callbacks
+    assert 'discovered_add_id' in callbacks
+    assert "mode not in {'edit', 'discovered'}" in callbacks
 
 def test_users_admin_dynamic_layout_is_not_driven_by_global_manager_stores() -> None:
     callbacks = (WEB / 'callbacks.py').read_text(encoding='utf-8')

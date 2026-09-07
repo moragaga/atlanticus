@@ -13,12 +13,15 @@ dependencies = ["atlanticus-web-users==0.1.0"]
 [project.optional-dependencies]
 web = [
     "atlanticus-web==0.1.0",
+    "atlanticus-web-bootstrap==0.1.0",
+    "dash-bootstrap-components==2.0.4",
     "dash==4.4.1",
 ]
 
 [tool.uv.sources]
 atlanticus-web-users = { workspace = true }
 atlanticus-web = { workspace = true }
+atlanticus-web-bootstrap = { workspace = true }
 
 [tool.setuptools]
 package-dir = {"" = "src"}

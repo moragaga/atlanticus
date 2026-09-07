@@ -87,7 +87,11 @@ def test_tools_module_represents_the_application_tool_without_selector() -> None
 
 def test_service_module_registers_only_surface_workflow_adapters() -> None:
     definition = build_configuration_manager_surface(dependencies())
-    service_module = definition.web_modules[0]
+    service_module = next(
+        module
+        for module in definition.web_modules
+        if module.name == 'ada-configuration-manager-services'
+    )
     services = ServiceRegistry()
 
     assert service_module.register_services is not None

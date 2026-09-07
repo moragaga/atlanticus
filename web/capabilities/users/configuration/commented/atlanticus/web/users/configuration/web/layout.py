@@ -3,12 +3,12 @@
 
 from __future__ import annotations
 
+import dash_bootstrap_components as dbc
 from dash import dcc, html
 
 from atlanticus.web.users.configuration.models import UsersConfigurationCatalog
 from atlanticus.web.users.configuration.web.ids import (
     ADD_PROFILE_ID,
-    ADD_USER_ID,
     ADMINISTRATOR_BACKGROUND_COLOR_ID,
     ADMINISTRATOR_PREVIEW_ID,
     ADMINISTRATOR_TEXT_COLOR_ID,
@@ -56,8 +56,6 @@ from atlanticus.web.users.configuration.web.ids import (
     USERS_LIST_ID,
     USERS_PANEL_ID,
     USERS_TAB_ID,
-    color_picker_button_id,
-    color_picker_swatch_id,
 )
 from atlanticus.web.users.configuration.web.models import UsersAdminWebContext
 from atlanticus.web.users.profiles import (
@@ -113,7 +111,7 @@ def build_users_admin_configuration(context: UsersAdminWebContext) -> object:
             _profile_modal(),
             _user_modal(),
         ],
-        className='atlanticus-users-admin',
+        className='atlanticus-users-admin atlanticus-bootstrap',
     )
 
 
@@ -147,11 +145,10 @@ def _runtime_context(context: UsersAdminWebContext) -> object:
                 [
                     dcc.Upload(
                         id=IMPORT_UPLOAD_ID,
-                        children=html.Button(
+                        children=dbc.Button(
                             'Importar',
-                            className=(
-                                'atlanticus-ui-button atlanticus-ui-button--secondary'
-                            ),
+                            color='secondary',
+                            outline=True,
                         ),
                         multiple=False,
                     ),
@@ -178,22 +175,22 @@ def _editor_navigation() -> object:
                 'Perfiles',
                 id=PROFILE_TAB_ID,
                 n_clicks=0,
-                className=('atlanticus-users-admin__tab atlanticus-users-admin__tab--active'),
+                className='nav-link active atlanticus-users-admin__tab',
             ),
             html.Button(
                 'Usuarios',
                 id=USERS_TAB_ID,
                 n_clicks=0,
-                className='atlanticus-users-admin__tab',
+                className='nav-link atlanticus-users-admin__tab',
             ),
             html.Button(
                 'Pendientes',
                 id=DISCOVERED_TAB_ID,
                 n_clicks=0,
-                className='atlanticus-users-admin__tab',
+                className='nav-link atlanticus-users-admin__tab',
             ),
         ],
-        className='atlanticus-users-admin__tabs',
+        className='nav nav-tabs atlanticus-users-admin__tabs',
     )
 
 
@@ -214,7 +211,6 @@ def _profiles_panel(catalog: UsersConfigurationCatalog) -> object:
                             _local_profile_card(),
                             _system_profile_card(
                                 title='Administrator',
-                                key='administrator',
                                 description='Acceso total. No requiere asignaciones de Navegación.',
                                 background_color=catalog.administrator_background_color,
                                 text_color=catalog.administrator_text_color,
@@ -224,7 +220,6 @@ def _profiles_panel(catalog: UsersConfigurationCatalog) -> object:
                             ),
                             _system_profile_card(
                                 title='Guest',
-                                key='guest',
                                 description='Acceso definido posteriormente por Navegación.',
                                 background_color=catalog.guest_background_color,
                                 text_color=catalog.guest_text_color,
@@ -249,14 +244,12 @@ def _profiles_panel(catalog: UsersConfigurationCatalog) -> object:
                                     'automáticamente y permanece estable.'
                                 ),
                             ),
-                            html.Button(
+                            dbc.Button(
                                 '+ Perfil',
                                 id=ADD_PROFILE_ID,
                                 n_clicks=0,
-                                className=(
-                                    'atlanticus-ui-button '
-                                    'atlanticus-ui-button--secondary'
-                                ),
+                                color='secondary',
+                                outline=True,
                             ),
                         ],
                         className='atlanticus-users-admin__section-heading-row',
@@ -274,25 +267,12 @@ def _users_panel(catalog: UsersConfigurationCatalog) -> object:
     del catalog
     return html.Section(
         [
-            html.Div(
-                [
-                    _section_heading(
-                        'Usuarios configurados',
-                        (
-                            'Asigna un único perfil efectivo y controla si el usuario puede '
-                            'acceder. Las páginas se definirán en Navegación.'
-                        ),
-                    ),
-                    html.Button(
-                        '+ Usuario',
-                        id=ADD_USER_ID,
-                        n_clicks=0,
-                        className=(
-                            'atlanticus-ui-button atlanticus-ui-button--secondary'
-                        ),
-                    ),
-                ],
-                className='atlanticus-users-admin__section-heading-row',
+            _section_heading(
+                'Usuarios configurados',
+                (
+                    'Los usuarios se incorporan desde Pendientes. Aquí sólo se modifica '
+                    'su perfil efectivo y si pueden acceder.'
+                ),
             ),
             html.Div(id=USERS_LIST_ID),
         ],
@@ -312,13 +292,12 @@ def _discovered_panel() -> object:
                             'forman parte de la configuración de usuarios.'
                         ),
                     ),
-                    html.Button(
+                    dbc.Button(
                         'Actualizar',
                         id=DISCOVERED_REFRESH_ID,
                         n_clicks=0,
-                        className=(
-                            'atlanticus-ui-button atlanticus-ui-button--secondary'
-                        ),
+                        color='secondary',
+                        outline=True,
                     ),
                 ],
                 className='atlanticus-users-admin__section-heading-row',
@@ -346,13 +325,11 @@ def _save_section() -> object:
                         ],
                         className='atlanticus-users-admin__section-heading-copy',
                     ),
-                    html.Button(
+                    dbc.Button(
                         'Guardar borrador',
                         id=SAVE_BUTTON_ID,
                         n_clicks=0,
-                        className=(
-                            'atlanticus-ui-button atlanticus-ui-button--primary'
-                        ),
+                        color='primary',
                     ),
                 ],
                 className='atlanticus-users-admin__section-heading-row',
@@ -369,23 +346,20 @@ def _local_profile_card() -> object:
             html.Div(
                 [
                     html.Strong('Local'),
-                    html.Code('local'),
                     html.P('Controlado por Atlanticus. Acceso total en modo local.'),
                 ],
                 className='atlanticus-users-admin__profile-copy',
             ),
             html.Div(
                 [
-                    _fixed_persona(
-                        'John Doe',
-                        LOCAL_JOHN_BACKGROUND_COLOR,
-                        LOCAL_JOHN_TEXT_COLOR,
+                    html.Span(
+                        className='atlanticus-users-admin__local-dual-swatch',
+                        style={
+                            '--atlanticus-users-local-john': LOCAL_JOHN_BACKGROUND_COLOR,
+                            '--atlanticus-users-local-jane': LOCAL_JANE_BACKGROUND_COLOR,
+                        },
                     ),
-                    _fixed_persona(
-                        'Jane Doe',
-                        LOCAL_JANE_BACKGROUND_COLOR,
-                        LOCAL_JANE_TEXT_COLOR,
-                    ),
+                    html.Strong('John · Jane'),
                 ],
                 className='atlanticus-users-admin__local-personas',
             ),
@@ -394,27 +368,10 @@ def _local_profile_card() -> object:
     )
 
 
-def _fixed_persona(label: str, background_color: str, text_color: str) -> object:
-    return html.Div(
-        [
-            html.Span(
-                label[:1].upper(),
-                style={
-                    'backgroundColor': background_color,
-                    'color': text_color,
-                },
-                className='atlanticus-users-admin__persona-swatch',
-            ),
-            html.Strong(label),
-        ],
-        className='atlanticus-users-admin__persona',
-    )
-
 
 def _system_profile_card(
     *,
     title: str,
-    key: str,
     description: str,
     background_color: str,
     text_color: str,
@@ -432,7 +389,6 @@ def _system_profile_card(
                         background_color=background_color,
                         text_color=text_color,
                     ),
-                    html.Code(key),
                     html.P(description),
                 ],
                 className='atlanticus-users-admin__profile-copy',
@@ -472,9 +428,8 @@ def _profile_modal() -> object:
                         [
                             _field(
                                 'Nombre',
-                                dcc.Input(
+                                dbc.Input(
                                     id=PROFILE_NAME_ID,
-                                    className='atlanticus-ui-input',
                                     type='text',
                                     placeholder='Ej. Operador Planta',
                                     autoComplete='off',
@@ -518,7 +473,7 @@ def _profile_modal() -> object:
                             ),
                             html.Div(id=PROFILE_RESULT_ID),
                         ],
-                        className='atlanticus-users-admin__modal-body atlanticus-ui-modal-body',
+                        className='modal-body atlanticus-users-admin__modal-body',
                     ),
                     _modal_actions(
                         cancel_id=PROFILE_CANCEL_ID + '-footer',
@@ -526,7 +481,7 @@ def _profile_modal() -> object:
                         save_label='Guardar perfil',
                     ),
                 ],
-                className='atlanticus-users-admin__modal-dialog',
+                className='modal-content atlanticus-users-admin__modal-dialog',
             ),
         ],
         id=PROFILE_MODAL_ID,
@@ -538,25 +493,18 @@ def _color_picker(*, label: str, picker_id: str, value: str) -> object:
     return html.Div(
         [
             html.Span(label, className='atlanticus-users-admin__field-label'),
-            dcc.Input(
-                id=picker_id,
-                type='text',
-                value=value,
-                style={'display': 'none'},
-            ),
-            html.Button(
+            html.Div(
                 [
-                    html.Span(
-                        id=color_picker_swatch_id(picker_id),
-                        className='atlanticus-users-admin__color-picker-swatch',
-                        style={'backgroundColor': value},
+                    dbc.Input(
+                        id=picker_id,
+                        type='color',
+                        value=value,
+                        class_name='form-control-color',
+                        **{'aria-label': label},
                     ),
-                    html.Span('Seleccionar'),
+                    html.Span(value, className='atlanticus-users-admin__color-value'),
                 ],
-                id=color_picker_button_id(picker_id),
-                n_clicks=0,
-                type='button',
-                className='atlanticus-users-admin__color-picker',
+                className='atlanticus-users-admin__color-picker-row',
             ),
         ],
         className='atlanticus-users-admin__color-picker-field',
@@ -602,9 +550,8 @@ def _user_modal() -> object:
                         [
                             _field(
                                 'Nombre',
-                                dcc.Input(
+                                dbc.Input(
                                     id=USER_NAME_ID,
-                                    className='atlanticus-ui-input',
                                     type='text',
                                     placeholder='Nombre visible',
                                     autoComplete='off',
@@ -613,9 +560,8 @@ def _user_modal() -> object:
                             ),
                             _field(
                                 'Correo',
-                                dcc.Input(
+                                dbc.Input(
                                     id=USER_EMAIL_ID,
-                                    className='atlanticus-ui-input',
                                     type='email',
                                     placeholder='usuario@empresa.cl',
                                     autoComplete='off',
@@ -624,34 +570,20 @@ def _user_modal() -> object:
                             ),
                             _field(
                                 'Perfil',
-                                dcc.Dropdown(
+                                dbc.Select(
                                     id=USER_PROFILE_ID,
-                                    className='atlanticus-ui-select',
-                                    clearable=False,
-                                    searchable=False,
                                     placeholder='Selecciona un perfil',
                                 ),
                                 'Administrator o uno de los perfiles personalizados.',
                             ),
-                            html.Label(
-                                [
-                                    dcc.Checklist(
-                                        id=USER_ENABLED_ID,
-                                        className='atlanticus-ui-check',
-                                        options=[
-                                            {
-                                                'label': ' Usuario habilitado',
-                                                'value': 'enabled',
-                                            }
-                                        ],
-                                        value=['enabled'],
-                                    )
-                                ],
-                                className='atlanticus-users-admin__enabled-field',
+                            dbc.Checkbox(
+                                id=USER_ENABLED_ID,
+                                label='Usuario habilitado',
+                                value=True,
                             ),
                             html.Div(id=USER_RESULT_ID),
                         ],
-                        className='atlanticus-users-admin__modal-body atlanticus-ui-modal-body',
+                        className='modal-body atlanticus-users-admin__modal-body',
                     ),
                     _modal_actions(
                         cancel_id=USER_CANCEL_ID + '-footer',
@@ -659,7 +591,7 @@ def _user_modal() -> object:
                         save_label='Guardar usuario',
                     ),
                 ],
-                className='atlanticus-users-admin__modal-dialog',
+                className='modal-content atlanticus-users-admin__modal-dialog',
             ),
         ],
         id=USER_MODAL_ID,
@@ -675,31 +607,32 @@ def _modal_header(title_id: str, close_id: str) -> object:
                 '×',
                 id=close_id,
                 n_clicks=0,
-                className='atlanticus-ui-icon-button atlanticus-ui-modal-close',
+                className='btn-close',
                 **{'aria-label': 'Cerrar formulario'},
             ),
         ],
-        className='atlanticus-users-admin__modal-header atlanticus-ui-modal-header',
+        className='modal-header atlanticus-users-admin__modal-header',
     )
 
 
 def _modal_actions(*, cancel_id: str, save_id: str, save_label: str) -> object:
     return html.Footer(
         [
-            html.Button(
+            dbc.Button(
                 'Cancelar',
                 id=cancel_id,
                 n_clicks=0,
-                className=('atlanticus-ui-button atlanticus-ui-button--secondary'),
+                color='secondary',
+                outline=True,
             ),
-            html.Button(
+            dbc.Button(
                 save_label,
                 id=save_id,
                 n_clicks=0,
-                className='atlanticus-ui-button atlanticus-ui-button--primary',
+                color='primary',
             ),
         ],
-        className='atlanticus-users-admin__modal-actions atlanticus-ui-modal-footer',
+        className='modal-footer atlanticus-users-admin__modal-actions',
     )
 
 

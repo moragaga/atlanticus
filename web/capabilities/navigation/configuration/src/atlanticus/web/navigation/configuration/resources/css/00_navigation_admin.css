@@ -12,7 +12,7 @@
     background: var(--atlanticus-ui-surface);
     border: 1px solid var(--atlanticus-ui-border);
     border-radius: .85rem;
-    box-shadow: 0 4px 16px rgba(25, 30, 38, .035);
+    box-shadow: 0 4px 16px rgb(25 30 38 / 3.5%);
 }
 
 .atlanticus-navigation-admin__runtime-context {
@@ -31,7 +31,7 @@
     padding: .38rem .62rem;
     color: var(--atlanticus-ui-primary-hover);
     background: var(--atlanticus-ui-background);
-    border: 1px solid rgba(201, 162, 75, .3);
+    border: 1px solid rgb(201 162 75 / 30%);
     border-radius: 999px;
     font-size: .7rem;
 }
@@ -115,7 +115,7 @@
 }
 
 .atlanticus-navigation-admin__profile--unrestricted {
-    border-color: rgba(201, 162, 75, .55);
+    border-color: rgb(201 162 75 / 55%);
 }
 
 .atlanticus-navigation-admin__link-card,
@@ -170,29 +170,6 @@
     border-left: 2px solid var(--atlanticus-ui-border);
 }
 
-.atlanticus-navigation-admin__group-add,
-.atlanticus-navigation-admin__mini-button {
-    padding: .34rem .62rem;
-}
-
-.atlanticus-navigation-admin__mini-button {
-    color: var(--atlanticus-ui-text);
-    background: var(--atlanticus-ui-surface);
-    border: 1px solid var(--atlanticus-ui-border);
-    border-radius: .45rem;
-    cursor: pointer;
-    font: inherit;
-    font-size: .7rem;
-    font-weight: 700;
-}
-
-.atlanticus-navigation-admin__mini-button:hover,
-.atlanticus-navigation-admin__mini-button:focus-visible {
-    border-color: var(--atlanticus-ui-secondary);
-    box-shadow: var(--atlanticus-ui-control-focus-ring);
-    outline: 0;
-}
-
 .atlanticus-navigation-admin__empty,
 .atlanticus-navigation-admin__empty-child {
     margin: .55rem 0 0;
@@ -219,15 +196,6 @@
     gap: .35rem;
     font-size: .76rem;
     font-weight: 700;
-}
-
-.atlanticus-navigation-admin__field > .atlanticus-ui-input,
-.atlanticus-navigation-admin__field > .atlanticus-ui-select {
-    width: 100%;
-}
-
-.atlanticus-navigation-admin__field > .atlanticus-ui-input {
-    padding: .5rem .62rem;
 }
 
 .atlanticus-navigation-admin__field-check {

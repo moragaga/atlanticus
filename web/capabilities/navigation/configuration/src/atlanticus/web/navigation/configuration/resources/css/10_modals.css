@@ -16,24 +16,6 @@
 .atlanticus-navigation-admin__modal-card {
     display: grid;
     width: min(100%, 64rem);
-    background: var(--atlanticus-ui-surface);
-    border: 1px solid var(--atlanticus-ui-border);
-    border-top: .2rem solid var(--atlanticus-ui-accent);
-    border-radius: var(--atlanticus-ui-modal-radius);
-    box-shadow: var(--atlanticus-ui-modal-shadow);
-}
-
-.atlanticus-navigation-admin__modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: .9rem 1rem;
-    border-radius:
-        var(--atlanticus-ui-modal-radius)
-        var(--atlanticus-ui-modal-radius)
-        0
-        0;
 }
 
 .atlanticus-navigation-admin__modal-header h3 {
@@ -44,20 +26,6 @@
 .atlanticus-navigation-admin__modal-body {
     display: grid;
     gap: .85rem;
-    padding: 1rem;
-}
-
-.atlanticus-navigation-admin__modal-actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: .55rem;
-    padding: .85rem 1rem;
-    border-radius:
-        0
-        0
-        var(--atlanticus-ui-modal-radius)
-        var(--atlanticus-ui-modal-radius);
 }
 
 .atlanticus-navigation-admin__modal-card,

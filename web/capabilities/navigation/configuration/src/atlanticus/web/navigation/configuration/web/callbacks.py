@@ -208,9 +208,9 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         href: str | None,
         icon: str | None,
         section: str | None,
-        enabled: list[str] | None,
-        new_tab: list[str] | None,
-        force_reload: list[str] | None,
+        enabled: bool | None,
+        new_tab: bool | None,
+        force_reload: bool | None,
         profiles: list[str] | None,
         catalog_data: dict[str, object] | None,
     ):
@@ -226,9 +226,9 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
                 label=str(name or ''),
                 href=str(href or ''),
                 icon=_optional_text(icon),
-                enabled='enabled' in (enabled or []),
-                new_tab='new_tab' in (new_tab or []),
-                force_reload='force_reload' in (force_reload or []),
+                enabled=bool(enabled),
+                new_tab=bool(new_tab),
+                force_reload=bool(force_reload),
                 allowed_profiles=_profile_keys(profiles),
             )
         except Exception as error:
@@ -334,7 +334,7 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         editor: dict[str, object] | None,
         name: str | None,
         icon: str | None,
-        enabled: list[str] | None,
+        enabled: bool | None,
         catalog_data: dict[str, object] | None,
     ):
         if not _click_is_real(clicks):
@@ -349,7 +349,7 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
                     catalog,
                     label=str(name or ''),
                     icon=_optional_text(icon),
-                    enabled='enabled' in (enabled or []),
+                    enabled=bool(enabled),
                 )
             else:
                 updated = update_group(
@@ -357,7 +357,7 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
                     key=key,
                     label=str(name or ''),
                     icon=_optional_text(icon),
-                    enabled='enabled' in (enabled or []),
+                    enabled=bool(enabled),
                 )
         except Exception as error:
             return no_update, no_update, _error(str(error))
@@ -498,9 +498,9 @@ def _link_editor_response(
         link.icon if link else '',
         section_options,
         section_value,
-        ['enabled'] if link is None or link.enabled else [],
-        ['new_tab'] if link is not None and link.new_tab else [],
-        ['force_reload'] if link is not None and link.force_reload else [],
+        bool(link is None or link.enabled),
+        bool(link is not None and link.new_tab),
+        bool(link is not None and link.force_reload),
         profile_options,
         selected_profiles,
         None,
@@ -515,7 +515,7 @@ def _group_editor_response(*, group=None):
         group.label if group else '',
         group.key if group else '',
         group.icon if group else '',
-        ['enabled'] if group is None or group.enabled else [],
+        bool(group is None or group.enabled),
         None,
     )
 

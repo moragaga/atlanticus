@@ -1,0 +1,87 @@
+/*
+The profiles control is intentionally the only React Select exception in
+Navigation because it needs multi-selection. Its Dash internals are contained
+inside this capability-owned adapter.
+*/
+
+.atlanticus-navigation-admin__profiles-select,
+.atlanticus-navigation-admin__profiles-select .Select,
+.atlanticus-navigation-admin__profiles-select .Select-control,
+.atlanticus-navigation-admin__profiles-select .Select-menu-outer {
+    min-width: 0;
+    color: var(--atlanticus-ui-text);
+    font-family: var(--atlanticus-ui-font);
+}
+
+.atlanticus-navigation-admin__profiles-select .Select-control {
+    background: var(--atlanticus-ui-surface) !important;
+    border: 1px solid var(--atlanticus-ui-border) !important;
+    border-radius: var(--atlanticus-ui-control-radius) !important;
+    box-shadow: none !important;
+}
+
+.atlanticus-navigation-admin__profiles-select .Select-control:hover {
+    border-color: var(--atlanticus-ui-border-strong) !important;
+}
+
+.atlanticus-navigation-admin__profiles-select .Select.is-focused > .Select-control,
+.atlanticus-navigation-admin__profiles-select .Select.is-open > .Select-control,
+.atlanticus-navigation-admin__profiles-select .Select-control:focus-within {
+    border-color: var(--atlanticus-ui-secondary) !important;
+    box-shadow: var(--atlanticus-ui-control-focus-ring) !important;
+    outline: 0 !important;
+}
+
+.atlanticus-navigation-admin__profiles-select .Select-placeholder,
+.atlanticus-navigation-admin__profiles-select .Select-value-label,
+.atlanticus-navigation-admin__profiles-select .Select-input > input {
+    color: var(--atlanticus-ui-text) !important;
+    font-family: var(--atlanticus-ui-font) !important;
+}
+
+.atlanticus-navigation-admin__profiles-select .Select-placeholder {
+    color: var(--atlanticus-ui-text-muted) !important;
+}
+
+.atlanticus-navigation-admin__profiles-select .Select-menu-outer {
+    z-index: 1500;
+    margin-top: .2rem;
+    background: var(--atlanticus-ui-surface) !important;
+    border: 1px solid var(--atlanticus-ui-border) !important;
+    border-radius: var(--atlanticus-ui-control-radius) !important;
+    box-shadow: var(--atlanticus-ui-shadow) !important;
+}
+
+.atlanticus-navigation-admin__profiles-select .Select-option,
+.atlanticus-navigation-admin__profiles-select .VirtualizedSelectOption {
+    color: var(--atlanticus-ui-text) !important;
+    background: var(--atlanticus-ui-surface) !important;
+}
+
+.atlanticus-navigation-admin__profiles-select .Select-option.is-focused,
+.atlanticus-navigation-admin__profiles-select .VirtualizedSelectFocusedOption,
+.atlanticus-navigation-admin__profiles-select .Select-option.is-selected,
+.atlanticus-navigation-admin__profiles-select .VirtualizedSelectSelectedOption {
+    color: var(--atlanticus-ui-primary-hover) !important;
+    background: var(--atlanticus-ui-selection-soft) !important;
+}
+
+.atlanticus-navigation-admin__profiles-select .Select-input > input,
+.atlanticus-navigation-admin__profiles-select .Select-input > input:hover,
+.atlanticus-navigation-admin__profiles-select .Select-input > input:focus,
+.atlanticus-navigation-admin__profiles-select .Select-input > input:focus-visible {
+    border: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+}
+
+.atlanticus-navigation-admin__profiles-select .Select--multi .Select-value {
+    color: var(--atlanticus-ui-primary-hover) !important;
+    background: var(--atlanticus-ui-selection-soft) !important;
+    border-color: var(--atlanticus-ui-border-strong) !important;
+}
+
+.atlanticus-navigation-admin__profiles-select .Select--multi .Select-value-icon:hover {
+    color: #fff !important;
+    background: var(--atlanticus-ui-secondary) !important;
+}

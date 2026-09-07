@@ -17,16 +17,12 @@
 }
 
 .atlanticus-ui-button:not(:disabled),
-.atlanticus-ui-icon-button:not(:disabled),
-.atlanticus-ui-select .Select-control,
-.atlanticus-ui-check input:not(:disabled),
-.atlanticus-ui-check label {
+.atlanticus-ui-icon-button:not(:disabled) {
     cursor: pointer;
 }
 
 .atlanticus-ui-button:disabled,
-.atlanticus-ui-icon-button:disabled,
-.atlanticus-ui-check input:disabled {
+.atlanticus-ui-icon-button:disabled {
     cursor: not-allowed;
     opacity: .48;
 }
@@ -39,7 +35,8 @@
 
 .atlanticus-ui-button--secondary:hover:not(:disabled),
 .atlanticus-ui-button--secondary:focus-visible:not(:disabled) {
-    background: var(--atlanticus-ui-background);
+    color: var(--atlanticus-ui-primary);
+    background: var(--atlanticus-ui-selection-soft);
     border-color: var(--atlanticus-ui-secondary);
     box-shadow: var(--atlanticus-ui-control-focus-ring);
     outline: 0;
@@ -62,7 +59,7 @@
 .atlanticus-ui-button--danger {
     color: var(--atlanticus-ui-danger);
     background: var(--atlanticus-ui-danger-soft);
-    border-color: rgba(198, 40, 40, .32);
+    border-color: rgb(198 40 40 / 32%);
 }
 
 .atlanticus-ui-button--danger:hover:not(:disabled),
@@ -84,203 +81,7 @@
 
 .atlanticus-ui-icon-button:hover:not(:disabled),
 .atlanticus-ui-icon-button:focus-visible:not(:disabled) {
-    background: var(--atlanticus-ui-background);
+    background: var(--atlanticus-ui-selection-soft);
     box-shadow: var(--atlanticus-ui-control-focus-ring);
     outline: 0;
-}
-
-.atlanticus-ui-modal-close {
-    padding: .28rem .36rem;
-    border: 0;
-}
-
-.atlanticus-ui-input {
-    box-sizing: border-box;
-    min-width: 0;
-    color: var(--atlanticus-ui-text);
-    background: var(--atlanticus-ui-surface);
-    border: 1px solid var(--atlanticus-ui-border);
-    border-radius: var(--atlanticus-ui-control-radius);
-    font: inherit;
-    transition:
-        background-color var(--atlanticus-ui-transition),
-        border-color var(--atlanticus-ui-transition),
-        box-shadow var(--atlanticus-ui-transition);
-}
-
-.atlanticus-ui-input:hover:not(:disabled) {
-    border-color: var(--atlanticus-ui-border-strong) !important;
-    box-shadow: none !important;
-    outline: 0 !important;
-}
-
-.atlanticus-ui-input:focus,
-.atlanticus-ui-input:focus-visible {
-    border-color: var(--atlanticus-ui-control-focus) !important;
-    box-shadow: var(--atlanticus-ui-control-focus-ring) !important;
-    outline: 0 !important;
-}
-
-.atlanticus-ui-input:disabled {
-    color: var(--atlanticus-ui-text-muted);
-    background: var(--atlanticus-ui-control-disabled);
-    opacity: 1;
-}
-
-.atlanticus-ui-check,
-.atlanticus-ui-check label {
-    color: var(--atlanticus-ui-text);
-}
-
-.atlanticus-ui-check label:hover {
-    color: var(--atlanticus-ui-secondary);
-}
-
-.atlanticus-ui-check input[type='checkbox'],
-.atlanticus-ui-check input[type='radio'] {
-    accent-color: var(--atlanticus-ui-secondary);
-}
-
-.atlanticus-ui-check input:focus,
-.atlanticus-ui-check input:focus-visible {
-    outline: 0;
-    box-shadow: none;
-}
-
-.atlanticus-ui-select,
-.atlanticus-ui-select .Select,
-.atlanticus-ui-select .Select-control,
-.atlanticus-ui-select .Select-menu-outer {
-    min-width: 0;
-    color: var(--atlanticus-ui-text);
-    font-family: var(--atlanticus-ui-font);
-}
-
-.atlanticus-ui-select .Select-control {
-    background: var(--atlanticus-ui-surface) !important;
-    border: 1px solid var(--atlanticus-ui-border) !important;
-    border-radius: var(--atlanticus-ui-control-radius) !important;
-    box-shadow: none !important;
-}
-
-.atlanticus-ui-select .Select-control:hover {
-    border-color: var(--atlanticus-ui-border-strong) !important;
-}
-
-.atlanticus-ui-select .Select.is-focused > .Select-control,
-.atlanticus-ui-select .Select.is-open > .Select-control,
-.atlanticus-ui-select .Select-control:focus-within {
-    border-color: var(--atlanticus-ui-control-focus) !important;
-    box-shadow: var(--atlanticus-ui-control-focus-ring) !important;
-    outline: 0 !important;
-}
-
-.atlanticus-ui-select .Select.is-disabled > .Select-control {
-    color: var(--atlanticus-ui-text-muted) !important;
-    background: var(--atlanticus-ui-control-disabled) !important;
-}
-
-.atlanticus-ui-select .Select-placeholder,
-.atlanticus-ui-select .Select-value-label,
-.atlanticus-ui-select .Select-input > input {
-    color: var(--atlanticus-ui-text) !important;
-    font-family: var(--atlanticus-ui-font) !important;
-}
-
-.atlanticus-ui-select .Select-placeholder {
-    color: var(--atlanticus-ui-text-muted) !important;
-}
-
-.atlanticus-ui-select .Select-arrow {
-    border-top-color: var(--atlanticus-ui-text-muted) !important;
-}
-
-.atlanticus-ui-select .Select-arrow-zone:hover > .Select-arrow {
-    border-top-color: var(--atlanticus-ui-secondary) !important;
-}
-
-.atlanticus-ui-select .Select-menu-outer {
-    z-index: 1500;
-    margin-top: .2rem;
-    background: var(--atlanticus-ui-surface) !important;
-    border: 1px solid var(--atlanticus-ui-border) !important;
-    border-radius: var(--atlanticus-ui-control-radius) !important;
-    box-shadow: var(--atlanticus-ui-shadow) !important;
-}
-
-.atlanticus-ui-select .Select-option,
-.atlanticus-ui-select .VirtualizedSelectOption {
-    color: var(--atlanticus-ui-text) !important;
-    background: var(--atlanticus-ui-surface) !important;
-}
-
-.atlanticus-ui-select .Select-option.is-focused,
-.atlanticus-ui-select .VirtualizedSelectFocusedOption {
-    color: var(--atlanticus-ui-text) !important;
-    background: var(--atlanticus-ui-selection-soft) !important;
-}
-
-.atlanticus-ui-select .Select-option.is-selected,
-.atlanticus-ui-select .VirtualizedSelectSelectedOption {
-    color: var(--atlanticus-ui-primary-hover) !important;
-    background: var(--atlanticus-ui-selection-soft) !important;
-}
-
-.atlanticus-ui-select .Select-input > input,
-.atlanticus-ui-select .Select-input > input:hover,
-.atlanticus-ui-select .Select-input > input:focus,
-.atlanticus-ui-select .Select-input > input:focus-visible {
-    border: 0 !important;
-    outline: 0 !important;
-    box-shadow: none !important;
-}
-
-.atlanticus-ui-select .Select--multi .Select-value {
-    color: var(--atlanticus-ui-primary-hover) !important;
-    background: var(--atlanticus-ui-selection-soft) !important;
-    border-color: var(--atlanticus-ui-border-strong) !important;
-}
-
-.atlanticus-ui-select .Select--multi .Select-value-icon {
-    border-right-color: var(--atlanticus-ui-border-strong) !important;
-}
-
-.atlanticus-ui-select .Select--multi .Select-value-icon:hover {
-    color: #FFFFFF !important;
-    background: var(--atlanticus-ui-secondary) !important;
-}
-
-.atlanticus-ui-modal-header {
-    color: #FFFFFF;
-    background: var(--atlanticus-ui-primary);
-    border: 0;
-}
-
-.atlanticus-ui-modal-header h1,
-.atlanticus-ui-modal-header h2,
-.atlanticus-ui-modal-header h3,
-.atlanticus-ui-modal-header p {
-    color: inherit;
-}
-
-.atlanticus-ui-modal-header .atlanticus-ui-icon-button {
-    color: #FFFFFF;
-}
-
-.atlanticus-ui-modal-header .atlanticus-ui-icon-button:hover:not(:disabled),
-.atlanticus-ui-modal-header .atlanticus-ui-icon-button:focus-visible:not(:disabled) {
-    color: #FFFFFF;
-    background: rgba(255, 255, 255, .12);
-    border-color: transparent;
-    box-shadow: var(--atlanticus-ui-control-focus-ring);
-}
-
-.atlanticus-ui-modal-body,
-.atlanticus-ui-modal-footer {
-    color: var(--atlanticus-ui-text);
-    background: var(--atlanticus-ui-surface);
-}
-
-.atlanticus-ui-modal-footer {
-    border-top: 1px solid var(--atlanticus-ui-border);
 }
