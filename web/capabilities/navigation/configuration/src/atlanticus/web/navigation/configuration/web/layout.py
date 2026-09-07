@@ -276,24 +276,49 @@ def _link_modal() -> object:
                                 ),
                                 _field(
                                     'Sección',
-                                    dbc.Select(
-                                        id=LINK_SECTION_ID,
+                                    html.Div(
+                                        dcc.Dropdown(
+                                            id=LINK_SECTION_ID,
+                                            className=(
+                                                'atlanticus-navigation-admin__section-select'
+                                            ),
+                                            clearable=False,
+                                            searchable=True,
+                                            placeholder='Sin sección / raíz',
+                                            labels={
+                                                'search': 'Buscar sección',
+                                                'clear_search': 'Limpiar búsqueda',
+                                            },
+                                        ),
+                                        className=(
+                                            'atlanticus-navigation-admin__dash-select-shell'
+                                        ),
                                     ),
                                 ),
                                 _field(
                                     'Perfiles con acceso',
-                                    dcc.Dropdown(
-                                        id=LINK_PROFILES_ID,
-                                        className='atlanticus-navigation-admin__profiles-select',
-                                        multi=True,
-                                        placeholder='Seleccionar perfiles',
-                                        labels={
-                                            'search': 'Buscar',
-                                            'clear_search': 'Limpiar búsqueda',
-                                            'select_all': 'Seleccionar todo',
-                                            'deselect_all': 'Deseleccionar todo',
-                                            'selected_count': '{num_selected} seleccionados',
-                                        },
+                                    html.Div(
+                                        dcc.Dropdown(
+                                            id=LINK_PROFILES_ID,
+                                            className=(
+                                                'atlanticus-navigation-admin__profiles-select'
+                                            ),
+                                            multi=True,
+                                            searchable=True,
+                                            placeholder='Seleccionar perfiles',
+                                            labels={
+                                                'search': 'Buscar perfil',
+                                                'clear_search': 'Limpiar búsqueda',
+                                                'select_all': 'Seleccionar todo',
+                                                'deselect_all': 'Deseleccionar todo',
+                                                'selected_count': (
+                                                    '{num_selected} seleccionados'
+                                                ),
+                                            },
+                                        ),
+                                        className=(
+                                            'atlanticus-navigation-admin__dash-select-shell'
+                                        ),
                                     ),
                                 ),
                             ],

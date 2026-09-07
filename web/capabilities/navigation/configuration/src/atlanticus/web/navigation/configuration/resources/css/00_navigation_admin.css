@@ -203,7 +203,13 @@
 
 .atlanticus-navigation-admin__field > .form-control,
 .atlanticus-navigation-admin__field > .form-select,
-.atlanticus-navigation-admin__field > .atlanticus-navigation-admin__profiles-select {
+.atlanticus-navigation-admin__field > .atlanticus-navigation-admin__dash-select-shell {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.atlanticus-navigation-admin__dash-select-shell,
+.atlanticus-navigation-admin__dash-select-shell .dash-dropdown-wrapper {
     min-width: 0;
     max-width: 100%;
 }

@@ -1,12 +1,13 @@
 /*
-Navigation owns exactly one DCC visual exception: the profiles multi-select.
-Dash 4 exposes its visual contract through --Dash-* variables and
-.dash-dropdown-* classes. Keep the bridge local so no other scope inherits it.
+Navigation owns two Dash Dropdown controls in the link editor: section
+(single-select) and profiles (multi-select). The shell is deliberate: Dash 4
+renders dropdown content through a portal into its internal wrapper, so the
+--Dash-* variables must live above both the trigger and portal content.
 */
 
-.atlanticus-navigation-admin__profiles-select {
+.atlanticus-navigation-admin__dash-select-shell {
     --Dash-Spacing: 4px;
-    --Dash-Stroke-Strong: var(--atlanticus-ui-border-strong);
+    --Dash-Stroke-Strong: var(--atlanticus-ui-secondary);
     --Dash-Stroke-Weak: var(--atlanticus-ui-border);
     --Dash-Fill-Interactive-Strong: var(--atlanticus-ui-secondary);
     --Dash-Fill-Interactive-Weak: var(--atlanticus-ui-selection-soft);
@@ -25,55 +26,85 @@ Dash 4 exposes its visual contract through --Dash-* variables and
     max-width: 100%;
     color: var(--atlanticus-ui-text);
     font-family: var(--atlanticus-ui-font);
+    font-size: .76rem;
 }
 
-.atlanticus-navigation-admin__profiles-select .dash-dropdown {
+.atlanticus-navigation-admin__dash-select-shell .dash-dropdown {
     min-width: 0;
     max-width: 100%;
     color: var(--atlanticus-ui-text);
     background: var(--atlanticus-ui-surface);
+    border-color: var(--atlanticus-ui-border);
+    outline-color: transparent;
 }
 
-.atlanticus-navigation-admin__profiles-select .dash-dropdown:hover {
+.atlanticus-navigation-admin__dash-select-shell .dash-dropdown:hover {
     border-color: var(--atlanticus-ui-border-strong);
 }
 
-.atlanticus-navigation-admin__profiles-select .dash-dropdown:focus {
+.atlanticus-navigation-admin__dash-select-shell .dash-dropdown:focus {
     border-color: var(--atlanticus-ui-secondary);
-    outline-color: var(--atlanticus-ui-secondary);
+    outline: 1px solid var(--atlanticus-ui-secondary);
 }
 
-.atlanticus-navigation-admin__profiles-select .dash-dropdown-content {
+.atlanticus-navigation-admin__dash-select-shell .dash-dropdown-content {
     color: var(--atlanticus-ui-text);
     background: var(--atlanticus-ui-surface);
     border-color: var(--atlanticus-ui-border);
 }
 
-.atlanticus-navigation-admin__profiles-select
-.dash-dropdown-search-container:focus-within {
-    border-color: var(--atlanticus-ui-secondary);
-    outline-color: var(--atlanticus-ui-secondary);
+.atlanticus-navigation-admin__dash-select-shell
+.dash-dropdown-search-container {
+    border-color: var(--atlanticus-ui-border);
+    background: var(--atlanticus-ui-surface);
 }
 
-.atlanticus-navigation-admin__profiles-select
+.atlanticus-navigation-admin__dash-select-shell
+.dash-dropdown-search-container:focus-within {
+    border-color: var(--atlanticus-ui-secondary);
+    outline: 1px solid var(--atlanticus-ui-secondary);
+}
+
+.atlanticus-navigation-admin__dash-select-shell
 .dash-dropdown-search-container:focus-within
 .dash-dropdown-search-icon {
     color: var(--atlanticus-ui-secondary);
 }
 
-.atlanticus-navigation-admin__profiles-select
+.atlanticus-navigation-admin__dash-select-shell
+.dash-dropdown-search,
+.atlanticus-navigation-admin__dash-select-shell
+.dash-dropdown-value,
+.atlanticus-navigation-admin__dash-select-shell
+.dash-dropdown-action-button,
+.atlanticus-navigation-admin__dash-select-shell
+.dash-options-list-option {
+    color: var(--atlanticus-ui-text);
+}
+
+.atlanticus-navigation-admin__dash-select-shell
+.dash-dropdown-action-button {
+    font-size: .68rem;
+}
+
+.atlanticus-navigation-admin__dash-select-shell
 .dash-dropdown-action-button:hover,
-.atlanticus-navigation-admin__profiles-select
+.atlanticus-navigation-admin__dash-select-shell
 .dash-options-list-option:not(:has(input[disabled])):hover,
-.atlanticus-navigation-admin__profiles-select
+.atlanticus-navigation-admin__dash-select-shell
 .dash-options-list-option:not(:has(input[disabled])):focus-within {
     color: var(--atlanticus-ui-secondary);
 }
 
-.atlanticus-navigation-admin__profiles-select
+.atlanticus-navigation-admin__dash-select-shell
+.dash-options-list-option {
+    font-size: .72rem;
+}
+
+.atlanticus-navigation-admin__dash-select-shell
 .dash-options-list-option-checkbox {
-    width: .82rem;
-    height: .82rem;
+    width: .78rem;
+    height: .78rem;
     accent-color: var(--atlanticus-ui-secondary);
     outline-color: var(--atlanticus-ui-secondary);
 }

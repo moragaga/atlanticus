@@ -36,10 +36,12 @@ def test_users_admin_uses_bootstrap_native_color_inputs() -> None:
     layout = layout_source()
     callbacks = (WEB / 'callbacks.py').read_text(encoding='utf-8')
 
-    assert 'html.Input(' in layout
+    assert 'dbc.Input(' in layout
     assert "type='color'" in layout
-    assert "className='form-control form-control-color'" in layout
+    assert "class_name='form-control-color'" in layout
     assert 'htmlFor=picker_id' in layout
+    assert "**{'aria-label': label}" not in layout
+    assert 'html.Input(' not in layout
     assert '_register_native_color_picker' not in callbacks
     assert 'dash_clientside.set_props' not in callbacks
     assert 'PROFILE_BACKGROUND_COLOR_ID' in layout

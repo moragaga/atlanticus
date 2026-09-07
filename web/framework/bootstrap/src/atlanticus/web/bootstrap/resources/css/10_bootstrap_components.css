@@ -247,7 +247,7 @@ No Reboot, global document rules, containers, rows, columns or utilities.
     min-width: 0;
     color: var(--bs-body-color);
     cursor: pointer;
-    font-size: .74rem;
+    font-size: .68rem;
     font-weight: 650;
     line-height: 1.35;
 }
@@ -321,7 +321,7 @@ No Reboot, global document rules, containers, rows, columns or utilities.
     justify-content: space-between;
     color: #fff;
     background: var(--bs-primary);
-    border-bottom: 0;
+    border-bottom: 1px solid var(--bs-accent-border);
     box-shadow: inset 0 .18rem 0 var(--bs-accent);
     border-radius:
         var(--bs-modal-border-radius)

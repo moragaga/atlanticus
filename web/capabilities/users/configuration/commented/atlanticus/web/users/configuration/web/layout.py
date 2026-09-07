@@ -499,11 +499,11 @@ def _color_picker(*, label: str, picker_id: str, value: str) -> object:
             ),
             html.Div(
                 [
-                    html.Input(
+                    dbc.Input(
                         id=picker_id,
                         type='color',
                         value=value,
-                        className='form-control form-control-color',
+                        class_name='form-control-color',
                     ),
                     html.Span(value, className='atlanticus-users-admin__color-value'),
                 ],
