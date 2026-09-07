@@ -6,7 +6,7 @@ from pathlib import Path
 _PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 _SOURCE_ROOT = _PACKAGE_ROOT / 'src' / 'atlanticus' / 'web' / 'manager'
 _COMMENTED_ROOT = _PACKAGE_ROOT / 'commented' / 'atlanticus' / 'web' / 'manager'
-_CSS_PATH = _SOURCE_ROOT / 'resources' / 'css' / '10_manager.css'
+_CSS_ROOT = _SOURCE_ROOT / 'resources' / 'css'
 
 _REMOVED_NAMES = {
     'ManagerApplicationDefinition',
@@ -60,7 +60,10 @@ def test_manager_public_api_does_not_export_removed_host_contract() -> None:
 
 
 def test_standalone_header_css_is_absent() -> None:
-    css = _CSS_PATH.read_text(encoding='utf-8')
+    css = '\n'.join(
+        path.read_text(encoding='utf-8')
+        for path in sorted(_CSS_ROOT.glob('*.css'))
+    )
     for selector in _DEAD_CSS_SELECTORS:
         assert selector not in css
 

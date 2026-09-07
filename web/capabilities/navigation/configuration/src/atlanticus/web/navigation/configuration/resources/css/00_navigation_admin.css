@@ -1,6 +1,8 @@
 .atlanticus-navigation-admin {
     display: grid;
+    min-width: 0;
     gap: .9rem;
+    padding: 0 1rem 1rem;
 }
 
 .atlanticus-navigation-admin__runtime-context,
@@ -52,7 +54,6 @@
 }
 
 .atlanticus-navigation-admin__runtime-help {
-    max-width: 32rem;
     font-size: .68rem;
     line-height: 1.35;
 }
@@ -67,8 +68,8 @@
 
 .atlanticus-navigation-admin__section-copy {
     display: grid;
-    gap: .2rem;
     min-width: 0;
+    gap: .2rem;
 }
 
 .atlanticus-navigation-admin__section-copy h3,
@@ -83,17 +84,16 @@
 }
 
 .atlanticus-navigation-admin__section-copy p {
-    max-width: 64rem;
     font-size: .72rem;
     line-height: 1.4;
 }
 
 .atlanticus-navigation-admin__heading-actions,
 .atlanticus-navigation-admin__actions,
-.atlanticus-navigation-admin__check-row,
-.atlanticus-navigation-admin__modal-actions {
+.atlanticus-navigation-admin__check-row {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: .45rem;
 }
 
@@ -143,8 +143,8 @@
 
 .atlanticus-navigation-admin__card-copy {
     display: grid;
-    gap: .18rem;
     min-width: 0;
+    gap: .18rem;
 }
 
 .atlanticus-navigation-admin__card-title,
@@ -170,14 +170,12 @@
     border-left: 2px solid var(--atlanticus-ui-border);
 }
 
-.atlanticus-navigation-admin__group-add {
-    min-height: 2rem;
+.atlanticus-navigation-admin__group-add,
+.atlanticus-navigation-admin__mini-button {
     padding: .34rem .62rem;
 }
 
 .atlanticus-navigation-admin__mini-button {
-    min-height: 2rem;
-    padding: .32rem .5rem;
     color: var(--atlanticus-ui-text);
     background: var(--atlanticus-ui-surface);
     border: 1px solid var(--atlanticus-ui-border);
@@ -186,6 +184,13 @@
     font: inherit;
     font-size: .7rem;
     font-weight: 700;
+}
+
+.atlanticus-navigation-admin__mini-button:hover,
+.atlanticus-navigation-admin__mini-button:focus-visible {
+    border-color: var(--atlanticus-ui-secondary);
+    box-shadow: var(--atlanticus-ui-control-focus-ring);
+    outline: 0;
 }
 
 .atlanticus-navigation-admin__empty,
@@ -199,34 +204,8 @@
 }
 
 .atlanticus-navigation-admin__section--footer {
-    border-top: 2px solid var(--atlanticus-ui-accent);
+    border-top: .2rem solid var(--atlanticus-ui-accent);
 }
-
-.atlanticus-navigation-admin__modal {
-    position: fixed;
-    inset: 0;
-    z-index: 1200;
-    display: none;
-    padding: 2rem;
-    overflow: auto;
-    background: rgb(7 21 34 / 48%);
-}
-
-.atlanticus-navigation-admin__modal--open {
-    display: grid;
-    place-items: center;
-}
-
-.atlanticus-navigation-admin__modal-card {
-    display: grid;
-    gap: .9rem;
-    width: min(52rem, 100%);
-    padding: 1.25rem;
-    background: var(--atlanticus-ui-surface);
-    border-radius: .85rem;
-    box-shadow: 0 1rem 3rem rgb(0 0 0 / 20%);
-}
-
 
 .atlanticus-navigation-admin__form-grid {
     display: grid;
@@ -236,15 +215,18 @@
 
 .atlanticus-navigation-admin__field {
     display: grid;
-    gap: .35rem;
     min-width: 0;
+    gap: .35rem;
     font-size: .76rem;
     font-weight: 700;
 }
 
-.atlanticus-navigation-admin__field > .atlanticus-ui-input {
+.atlanticus-navigation-admin__field > .atlanticus-ui-input,
+.atlanticus-navigation-admin__field > .atlanticus-ui-select {
     width: 100%;
-    min-width: 0;
+}
+
+.atlanticus-navigation-admin__field > .atlanticus-ui-input {
     padding: .5rem .62rem;
 }
 
@@ -255,34 +237,27 @@
 }
 
 .atlanticus-navigation-admin__check-row {
-    flex-wrap: wrap;
     gap: .65rem 1.2rem;
-}
-
-.atlanticus-navigation-admin__modal-actions {
-    justify-content: flex-end;
-    margin-top: .2rem;
 }
 
 .atlanticus-navigation-admin__error {
     padding: .55rem .7rem;
-    color: #9b1c1c;
-    background: #fff0f0;
+    color: var(--atlanticus-ui-danger);
+    background: var(--atlanticus-ui-danger-soft);
     border-radius: .45rem;
     font-size: .78rem;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 48rem) {
+    .atlanticus-navigation-admin {
+        padding-inline: .75rem;
+    }
+
     .atlanticus-navigation-admin__section-heading,
     .atlanticus-navigation-admin__link-card,
     .atlanticus-navigation-admin__card-head {
         align-items: stretch;
         flex-direction: column;
-    }
-
-    .atlanticus-navigation-admin__heading-actions,
-    .atlanticus-navigation-admin__actions {
-        flex-wrap: wrap;
     }
 
     .atlanticus-navigation-admin__form-grid {

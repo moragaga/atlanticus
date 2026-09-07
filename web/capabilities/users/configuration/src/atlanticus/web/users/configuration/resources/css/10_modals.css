@@ -1,0 +1,89 @@
+.atlanticus-users-admin__modal {
+    position: fixed;
+    z-index: 1300;
+    inset: 0;
+    display: none;
+    place-items: center;
+    padding: 1rem;
+    overflow: auto;
+}
+
+.atlanticus-users-admin__modal--open {
+    display: grid;
+}
+
+.atlanticus-users-admin__modal-backdrop {
+    position: absolute;
+    inset: 0;
+    padding: 0;
+    background: var(--atlanticus-ui-overlay);
+    border: 0;
+}
+
+.atlanticus-users-admin__modal-dialog {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    width: min(100%, 48rem);
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-top: .2rem solid var(--atlanticus-ui-accent);
+    border-radius: var(--atlanticus-ui-modal-radius);
+    box-shadow: var(--atlanticus-ui-modal-shadow);
+}
+
+.atlanticus-users-admin__modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .9rem 1rem;
+    border-radius:
+        var(--atlanticus-ui-modal-radius)
+        var(--atlanticus-ui-modal-radius)
+        0
+        0;
+}
+
+.atlanticus-users-admin__modal-header h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.atlanticus-users-admin__modal-body {
+    display: grid;
+    gap: .85rem;
+    padding: 1rem;
+}
+
+.atlanticus-users-admin__modal-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .55rem;
+    padding: .85rem 1rem;
+    border-radius:
+        0
+        0
+        var(--atlanticus-ui-modal-radius)
+        var(--atlanticus-ui-modal-radius);
+}
+
+.atlanticus-users-admin__modal-dialog,
+.atlanticus-users-admin__modal-dialog * {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.atlanticus-users-admin__modal-dialog input,
+.atlanticus-users-admin__modal-dialog textarea,
+.atlanticus-users-admin__modal-dialog [contenteditable='true'] {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+@media (max-width: 48rem) {
+    .atlanticus-users-admin__modal {
+        padding: .75rem;
+    }
+}

@@ -451,7 +451,7 @@ def _modal_header(*, title_id: str, close_id: str) -> object:
                 '×',
                 id=close_id,
                 n_clicks=0,
-                className='atlanticus-ui-icon-button',
+                className='atlanticus-ui-icon-button atlanticus-ui-modal-close',
                 **{'aria-label': 'Cerrar formulario'},
             ),
         ],

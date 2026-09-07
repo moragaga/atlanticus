@@ -1,25 +1,5 @@
 from pathlib import Path
 
-
-def test_manager_css_recovers_atlanticus_identity_and_true_offcanvas_layout() -> None:
-    root = Path(__file__).parents[1] / 'src/atlanticus/web/manager/resources/css'
-    tokens = (root / '00_tokens.css').read_text(encoding='utf-8')
-    base_tokens = (
-        Path(__file__).resolve().parents[3]
-        / 'framework/core/src/atlanticus/web/resources/base/css/00_tokens.css'
-    ).read_text(encoding='utf-8')
-    layout = (root / '10_manager.css').read_text(encoding='utf-8')
-
-    assert '#0D1B2A' in base_tokens
-    assert '#C9A24B' in base_tokens
-    assert '#F5F1E6' in base_tokens
-    assert "'Inter'" in base_tokens
-    assert "'Cinzel'" in tokens
-    assert 'transform: translateX(-105%)' in layout
-    assert '.atlanticus-manager__sidebar--open' in layout
-    assert 'width: min(100%, 118rem)' in layout
-
-
 def test_manager_lifecycle_exposes_draft_validate_publish_and_project() -> None:
     root = Path(__file__).parents[1]
     layout = (root / 'src/atlanticus/web/manager/web/layout.py').read_text(encoding='utf-8')
@@ -49,7 +29,6 @@ def test_manager_lifecycle_exposes_draft_validate_publish_and_project() -> None:
     assert "'Proyectar'" in layout
     assert 'module.force_publish_enabled' in layout
 
-
 def test_source_audit_is_specific_and_history_opens_preview_before_loading_draft() -> None:
     root = Path(__file__).parents[1]
     layout = (root / 'src/atlanticus/web/manager/web/layout.py').read_text(encoding='utf-8')
@@ -63,14 +42,9 @@ def test_source_audit_is_specific_and_history_opens_preview_before_loading_draft
     assert 'workflow_history_preview_load_id(module.key)' in layout
     assert 'history_load_id(' not in layout
 
-
 def test_traceability_is_grouped_as_a_five_stage_pipeline() -> None:
     root = Path(__file__).parents[1]
     layout = (root / 'src/atlanticus/web/manager/web/layout.py').read_text(encoding='utf-8')
-    css = (root / 'src/atlanticus/web/manager/resources/css/10_manager.css').read_text(
-        encoding='utf-8'
-    )
-
     assert "title='Borrador del navegador'" in layout
     assert "title='Validación'" in layout
     assert "title='Verificación de fuente'" in layout
@@ -79,10 +53,6 @@ def test_traceability_is_grouped_as_a_five_stage_pipeline() -> None:
     assert "'Flujo de publicación'" in layout
     assert "html.Span('Revisión')" in layout
     assert "html.Span('Publicado por')" in layout
-    assert '.atlanticus-manager__workflow-stage-grid' in css
-    assert '.atlanticus-manager__workflow-action-grid' in css
-    assert '.atlanticus-manager__history-row--header' in css
-
 
 def test_source_conflict_is_rendered_as_functional_state_with_actor_and_revisions() -> None:
     root = Path(__file__).parents[1]
@@ -95,7 +65,6 @@ def test_source_conflict_is_rendered_as_functional_state_with_actor_and_revision
     assert 'source_actor' in layout
     assert 'source_occurred_at' in layout
 
-
 def test_manager_tracks_editor_revision_and_source_verification_as_transient_state() -> None:
     root = Path(__file__).parents[1]
     layout = (root / 'src/atlanticus/web/manager/web/layout.py').read_text(encoding='utf-8')
@@ -105,14 +74,9 @@ def test_manager_tracks_editor_revision_and_source_verification_as_transient_sta
     assert "storage_type='memory'" in layout
     assert "'Cambios sin guardar'" in layout
 
-
 def test_workspace_actions_explain_refresh_and_post_publish_verification() -> None:
     root = Path(__file__).parents[1]
     layout = (root / 'src/atlanticus/web/manager/web/layout.py').read_text(encoding='utf-8')
-    css = (root / 'src/atlanticus/web/manager/resources/css/10_manager.css').read_text(
-        encoding='utf-8'
-    )
-
     assert "'Workspace local'" in layout
     assert "'Descartar cambios locales'" in layout
     assert "'Recargar'" in layout
@@ -124,8 +88,6 @@ def test_workspace_actions_explain_refresh_and_post_publish_verification() -> No
     assert "f'Cargar configuración desde {module.source_name}'" not in layout
     assert "'No requerida' if draft.revision == source_revision else 'Pendiente'" in layout
     assert 'workflow_workspace_confirmation_id(module.key)' in layout
-    assert '.atlanticus-manager__workspace-confirm' in css
-
 
 def test_history_preview_is_non_destructive_until_explicit_load() -> None:
     root = Path(__file__).parents[1]

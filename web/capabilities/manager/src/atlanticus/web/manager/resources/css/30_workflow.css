@@ -1,0 +1,649 @@
+.atlanticus-manager__workflow {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 1rem;
+    min-width: 0;
+    padding: 0 1rem 1rem;
+}
+
+.atlanticus-manager__workflow-status--draft {
+    grid-column: 1;
+    order: 1;
+}
+
+.atlanticus-manager__workflow-actions {
+    display: contents;
+}
+
+.atlanticus-manager__workflow-actions > .atlanticus-manager__workflow-group:first-child {
+    grid-column: 2;
+    order: 2;
+}
+
+.atlanticus-manager__workflow-status--published {
+    grid-column: 1 / -1;
+    order: 3;
+}
+
+.atlanticus-manager__workflow-actions > .atlanticus-manager__workflow-group:nth-child(2) {
+    grid-column: 1 / -1;
+    order: 4;
+}
+
+.atlanticus-manager__workspace-confirm {
+    grid-column: 1 / -1;
+    order: 5;
+}
+
+.atlanticus-manager__workflow-result {
+    grid-column: 1 / -1;
+    order: 6;
+}
+
+.atlanticus-manager__workflow-history-slot {
+    grid-column: 1 / -1;
+    order: 7;
+}
+
+.atlanticus-manager__history-preview {
+    order: 8;
+}
+
+.atlanticus-manager__workflow-status:empty,
+.atlanticus-manager__message:empty {
+    display: none;
+}
+
+.atlanticus-manager__workflow-group {
+    display: grid;
+    min-width: 0;
+    align-content: start;
+    gap: .75rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, .72);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: .85rem;
+}
+
+.atlanticus-manager__workflow-group-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.atlanticus-manager__workflow-group-header h3,
+.atlanticus-manager__workflow-group-header p,
+.atlanticus-manager__workflow-stage-header h4,
+.atlanticus-manager__workflow-stage-header p,
+.atlanticus-manager__workflow-step-heading p {
+    margin: 0;
+}
+
+.atlanticus-manager__workflow-group-header h3 {
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: .9rem;
+}
+
+.atlanticus-manager__workflow-group-header p {
+    margin-top: .2rem;
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .72rem;
+    line-height: 1.35;
+}
+
+.atlanticus-manager__workflow-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: .85rem;
+    color: var(--atlanticus-manager-text-muted);
+    background: var(--atlanticus-manager-surface-muted);
+    border: 1px dashed var(--atlanticus-manager-border);
+    border-radius: .72rem;
+    font-size: .74rem;
+    text-align: center;
+}
+
+.atlanticus-manager__workflow-stage-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: .75rem;
+}
+
+.atlanticus-manager__workflow-stage-card {
+    display: grid;
+    min-width: 0;
+    gap: .8rem;
+    padding: .9rem;
+    background: var(--atlanticus-manager-surface);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-top: .18rem solid var(--atlanticus-manager-color-primary);
+    border-radius: .75rem;
+}
+
+.atlanticus-manager__workflow-stage-header,
+.atlanticus-manager__workflow-step-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: .65rem;
+}
+
+.atlanticus-manager__workflow-step-number {
+    display: inline-grid;
+    flex: 0 0 auto;
+    width: 1.65rem;
+    height: 1.65rem;
+    place-items: center;
+    color: var(--atlanticus-manager-color-primary-dark);
+    background: var(--atlanticus-manager-color-primary-soft);
+    border: 1px solid rgba(201, 162, 75, .42);
+    border-radius: 999px;
+    font-size: .7rem;
+    font-weight: 800;
+}
+
+.atlanticus-manager__workflow-stage-header h4 {
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: .82rem;
+}
+
+.atlanticus-manager__workflow-stage-header p {
+    margin-top: .12rem;
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .7rem;
+}
+
+.atlanticus-manager__workflow-stage-items {
+    display: grid;
+    gap: .42rem;
+}
+
+.atlanticus-manager__workflow-stage-item {
+    display: grid;
+    grid-template-columns: minmax(7rem, .55fr) minmax(0, 1fr);
+    gap: .7rem;
+    align-items: baseline;
+    padding-top: .42rem;
+    border-top: 1px solid var(--atlanticus-manager-border);
+}
+
+.atlanticus-manager__workflow-stage-item span {
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .66rem;
+    font-weight: 700;
+}
+
+.atlanticus-manager__workflow-stage-item strong {
+    min-width: 0;
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: .72rem;
+    overflow-wrap: anywhere;
+}
+
+.atlanticus-manager__workflow-action-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: .65rem;
+}
+
+.atlanticus-manager__workflow-action-step {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: .8rem;
+    padding: .8rem;
+    background: var(--atlanticus-manager-surface);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: .72rem;
+}
+
+.atlanticus-manager__workflow-step-heading > div {
+    min-width: 0;
+}
+
+.atlanticus-manager__workflow-step-heading strong {
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: .76rem;
+}
+
+.atlanticus-manager__workflow-step-heading p {
+    margin-top: .15rem;
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .66rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.atlanticus-manager__workflow-action-step .atlanticus-ui-button {
+    width: 100%;
+}
+
+.atlanticus-manager__workspace-actions,
+.atlanticus-manager__conflict-actions,
+.atlanticus-manager__workspace-confirm-actions,
+.atlanticus-manager__history-preview-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .55rem;
+}
+
+.atlanticus-manager__workspace-help {
+    margin: 0;
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .7rem;
+    line-height: 1.4;
+}
+
+.atlanticus-manager__message {
+    padding: .78rem .85rem;
+    border: 1px solid transparent;
+    border-radius: .72rem;
+    font-size: .78rem;
+}
+
+.atlanticus-manager__message--success {
+    color: var(--atlanticus-manager-success);
+    background: var(--atlanticus-manager-success-soft);
+    border-color: rgba(35, 134, 54, .24);
+}
+
+.atlanticus-manager__message--error {
+    color: var(--atlanticus-manager-danger);
+    background: var(--atlanticus-manager-danger-soft);
+    border-color: rgba(198, 40, 40, .24);
+}
+
+.atlanticus-manager__message--notice {
+    color: var(--atlanticus-manager-warning);
+    background: var(--atlanticus-manager-warning-soft);
+    border-color: rgba(201, 162, 75, .32);
+}
+
+.atlanticus-manager__conflict {
+    display: grid;
+    gap: .8rem;
+    padding: .9rem;
+    background: var(--atlanticus-manager-warning-soft);
+    border: 1px solid rgba(201, 162, 75, .38);
+    border-radius: .75rem;
+}
+
+.atlanticus-manager__conflict[hidden],
+.atlanticus-manager__workspace-confirm[hidden],
+.atlanticus-manager__history-preview[hidden] {
+    display: none;
+}
+
+.atlanticus-manager__conflict-details {
+    display: grid;
+    gap: .35rem;
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: .76rem;
+}
+
+.atlanticus-manager__conflict-details p {
+    margin: 0;
+    color: var(--atlanticus-manager-text-muted);
+    line-height: 1.4;
+}
+
+.atlanticus-manager__conflict-revisions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .55rem;
+}
+
+.atlanticus-manager__conflict-revisions span {
+    display: grid;
+    gap: .15rem;
+    padding: .55rem;
+    background: rgba(255, 255, 255, .62);
+    border-radius: .55rem;
+}
+
+.atlanticus-manager__conflict-revisions small {
+    color: var(--atlanticus-manager-text-muted);
+}
+
+.atlanticus-manager__history {
+    display: grid;
+    gap: .55rem;
+    padding: 1rem;
+    background: var(--atlanticus-manager-surface);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: .85rem;
+}
+
+.atlanticus-manager__history h3,
+.atlanticus-manager__history p {
+    margin: 0;
+}
+
+.atlanticus-manager__history h3 {
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: .9rem;
+}
+
+.atlanticus-manager__history p {
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .72rem;
+}
+
+.atlanticus-manager__history-row {
+    display: grid;
+    grid-template-columns: minmax(7rem, .8fr) 1fr 1fr minmax(7rem, .8fr) auto;
+    gap: .7rem;
+    align-items: center;
+    padding: .7rem .2rem;
+    border-bottom: 1px solid var(--atlanticus-manager-border);
+    font-size: .72rem;
+}
+
+.atlanticus-manager__history-row:last-child {
+    border-bottom: 0;
+}
+
+.atlanticus-manager__history-row--header {
+    padding-block: .45rem;
+    color: var(--atlanticus-manager-text-muted);
+    background: var(--atlanticus-manager-surface-muted);
+    border-bottom: 0;
+    border-radius: .55rem;
+    font-size: .64rem;
+    font-weight: 750;
+    text-transform: uppercase;
+}
+
+.atlanticus-manager__history-status {
+    color: var(--atlanticus-manager-color-primary-dark);
+    font-weight: 700;
+}
+
+.atlanticus-manager__history-preview-open {
+    justify-self: end;
+}
+
+.atlanticus-manager__issues {
+    margin: .45rem 0 0;
+}
+
+.atlanticus-manager__workspace-confirm,
+.atlanticus-manager__history-preview {
+    position: fixed;
+    z-index: 2100;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(7, 21, 34, .48);
+}
+
+.atlanticus-manager__history-preview {
+    z-index: 2200;
+}
+
+.atlanticus-manager__workspace-confirm-card {
+    display: grid;
+    width: min(100%, 34rem);
+    gap: .75rem;
+    padding: 1rem;
+    background: var(--atlanticus-manager-surface);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: .85rem;
+    box-shadow: 0 1rem 3rem rgba(7, 21, 34, .18);
+}
+
+.atlanticus-manager__workspace-confirm-card h3,
+.atlanticus-manager__workspace-confirm-card p {
+    margin: 0;
+}
+
+.atlanticus-manager__workspace-confirm-card h3 {
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: .9rem;
+}
+
+.atlanticus-manager__workspace-confirm-card p {
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .76rem;
+    line-height: 1.45;
+}
+
+.atlanticus-manager__workspace-confirm-actions,
+.atlanticus-manager__history-preview-actions {
+    justify-content: flex-end;
+}
+
+.atlanticus-manager__history-preview-card {
+    display: grid;
+    width: min(100%, 72rem);
+    max-height: 88vh;
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    gap: .8rem;
+    padding: 1rem;
+    overflow: hidden;
+    background: var(--atlanticus-manager-surface);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: .9rem;
+    box-shadow: 0 1.4rem 4rem rgba(7, 21, 34, .24);
+}
+
+.atlanticus-manager__history-preview-header h3,
+.atlanticus-manager__history-preview-header p,
+.atlanticus-manager__history-preview-help {
+    margin: 0;
+}
+
+.atlanticus-manager__history-preview-header h3 {
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: 1rem;
+}
+
+.atlanticus-manager__history-preview-meta-grid,
+.atlanticus-manager__preview-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .55rem;
+}
+
+.atlanticus-manager__history-preview-meta-item,
+.atlanticus-manager__preview-summary-item {
+    display: grid;
+    gap: .18rem;
+    padding: .65rem .7rem;
+    background: var(--atlanticus-manager-surface-muted);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: .65rem;
+}
+
+.atlanticus-manager__history-preview-meta-item small,
+.atlanticus-manager__preview-summary-item small,
+.atlanticus-manager__preview-section-copy small,
+.atlanticus-manager__preview-detail,
+.atlanticus-manager__preview-source span,
+.atlanticus-manager__preview-empty {
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .68rem;
+}
+
+.atlanticus-manager__history-preview-meta-item strong,
+.atlanticus-manager__preview-summary-item strong {
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: .76rem;
+}
+
+.atlanticus-manager__history-preview-body {
+    min-height: 0;
+    overflow: auto;
+}
+
+.atlanticus-manager__history-preview-help {
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .72rem;
+    line-height: 1.45;
+}
+
+.atlanticus-manager__preview-content,
+.atlanticus-manager__preview-tree,
+.atlanticus-manager__preview-list,
+.atlanticus-manager__preview-children,
+.atlanticus-manager__preview-subcomponents,
+.atlanticus-manager__preview-sources {
+    display: grid;
+    gap: .65rem;
+}
+
+.atlanticus-manager__preview-content {
+    gap: .85rem;
+}
+
+.atlanticus-manager__preview-section {
+    display: grid;
+    gap: .65rem;
+    padding: .8rem;
+    background: var(--atlanticus-manager-surface);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: .75rem;
+}
+
+.atlanticus-manager__preview-section h4 {
+    margin: 0;
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: .82rem;
+}
+
+.atlanticus-manager__preview-section-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .7rem;
+}
+
+.atlanticus-manager__preview-section-copy,
+.atlanticus-manager__preview-entity-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: .45rem;
+}
+
+.atlanticus-manager__preview-section-copy {
+    display: grid;
+    gap: .14rem;
+}
+
+.atlanticus-manager__preview-section-copy strong,
+.atlanticus-manager__preview-entity-title strong {
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: .78rem;
+}
+
+.atlanticus-manager__preview-entity,
+.atlanticus-manager__preview-subcomponent,
+.atlanticus-manager__preview-source {
+    display: grid;
+    gap: .4rem;
+    padding: .65rem .7rem;
+    background: var(--atlanticus-manager-surface-muted);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: .65rem;
+}
+
+.atlanticus-manager__preview-children,
+.atlanticus-manager__preview-subcomponents {
+    padding-left: .75rem;
+    border-left: 2px solid var(--atlanticus-manager-border);
+}
+
+.atlanticus-manager__preview-url {
+    color: var(--atlanticus-manager-color-primary-dark);
+    font-family: monospace;
+    font-size: .7rem;
+    overflow-wrap: anywhere;
+}
+
+.atlanticus-manager__preview-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+}
+
+.atlanticus-manager__preview-badge {
+    padding: .2rem .42rem;
+    color: var(--atlanticus-manager-color-primary-dark);
+    background: var(--atlanticus-manager-color-primary-soft);
+    border-radius: 999px;
+    font-size: .62rem;
+    font-weight: 700;
+}
+
+.atlanticus-manager__preview-source {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+}
+
+.atlanticus-manager__preview-empty {
+    margin: 0;
+}
+
+@media (max-width: 72rem) {
+    .atlanticus-manager__workflow-action-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 60rem) {
+    .atlanticus-manager__workflow-status--draft,
+    .atlanticus-manager__workflow-actions > .atlanticus-manager__workflow-group:first-child,
+    .atlanticus-manager__workflow-status--published,
+    .atlanticus-manager__workflow-actions > .atlanticus-manager__workflow-group:nth-child(2),
+    .atlanticus-manager__workspace-confirm,
+    .atlanticus-manager__workflow-result,
+    .atlanticus-manager__workflow-history-slot {
+        grid-column: 1 / -1;
+    }
+
+    .atlanticus-manager__workflow-status--draft {
+        order: 1;
+    }
+
+    .atlanticus-manager__workflow-actions > .atlanticus-manager__workflow-group:first-child {
+        order: 2;
+    }
+
+    .atlanticus-manager__workflow-status--published {
+        order: 3;
+    }
+}
+
+@media (max-width: 48rem) {
+    .atlanticus-manager__workflow {
+        grid-template-columns: 1fr;
+        padding-inline: .75rem;
+    }
+
+    .atlanticus-manager__workflow-action-grid,
+    .atlanticus-manager__history-row,
+    .atlanticus-manager__conflict-revisions,
+    .atlanticus-manager__history-preview-meta-grid,
+    .atlanticus-manager__preview-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .atlanticus-manager__history-row--header {
+        display: none;
+    }
+
+    .atlanticus-manager__history-preview-open {
+        justify-self: start;
+    }
+
+    .atlanticus-manager__preview-section-heading,
+    .atlanticus-manager__preview-source {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+}

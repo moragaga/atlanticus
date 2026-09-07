@@ -444,7 +444,10 @@ def build_workflow_panel(
                 ),
             ),
             _build_workflow_actions(module, status),
-            html.Div(id=workflow_result_id(module.key)),
+            html.Div(
+                id=workflow_result_id(module.key),
+                className='atlanticus-manager__workflow-result',
+            ),
             html.Div(
                 build_workflow_history_content(
                     module=module,
@@ -454,6 +457,7 @@ def build_workflow_panel(
                     error=error,
                 ),
                 id=workflow_history_id(module.key),
+                className='atlanticus-manager__workflow-history-slot',
             ),
             _build_history_preview_shell(module),
         ],

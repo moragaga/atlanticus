@@ -464,7 +464,7 @@ def _profile_modal() -> object:
             ),
             html.Section(
                 [
-                    _modal_header('Perfil', PROFILE_MODAL_TITLE_ID, PROFILE_CANCEL_ID + '-header'),
+                    _modal_header(PROFILE_MODAL_TITLE_ID, PROFILE_CANCEL_ID + '-header'),
                     html.Div(
                         [
                             _field(
@@ -594,7 +594,7 @@ def _user_modal() -> object:
             ),
             html.Section(
                 [
-                    _modal_header('Usuario', USER_MODAL_TITLE_ID, USER_CANCEL_ID + '-header'),
+                    _modal_header(USER_MODAL_TITLE_ID, USER_CANCEL_ID + '-header'),
                     html.Div(
                         [
                             _field(
@@ -664,20 +664,15 @@ def _user_modal() -> object:
     )
 
 
-def _modal_header(eyebrow: str, title_id: str, close_id: str) -> object:
+def _modal_header(title_id: str, close_id: str) -> object:
     return html.Header(
         [
-            html.Div(
-                [
-                    html.P(eyebrow, className='atlanticus-users-admin__modal-eyebrow'),
-                    html.H3(id=title_id),
-                ]
-            ),
+            html.H3(id=title_id),
             html.Button(
                 '×',
                 id=close_id,
                 n_clicks=0,
-                className='atlanticus-ui-icon-button',
+                className='atlanticus-ui-icon-button atlanticus-ui-modal-close',
                 **{'aria-label': 'Cerrar formulario'},
             ),
         ],

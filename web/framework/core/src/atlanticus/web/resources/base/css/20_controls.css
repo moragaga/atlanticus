@@ -41,8 +41,8 @@
 .atlanticus-ui-button--secondary:focus-visible:not(:disabled) {
     background: var(--atlanticus-ui-background);
     border-color: var(--atlanticus-ui-secondary);
-    box-shadow: var(--atlanticus-ui-focus-ring);
-    outline: none;
+    box-shadow: var(--atlanticus-ui-control-focus-ring);
+    outline: 0;
 }
 
 .atlanticus-ui-button--primary {
@@ -55,8 +55,8 @@
 .atlanticus-ui-button--primary:focus-visible:not(:disabled) {
     background: var(--atlanticus-ui-primary-hover);
     border-color: var(--atlanticus-ui-primary-hover);
-    box-shadow: var(--atlanticus-ui-focus-ring);
-    outline: none;
+    box-shadow: var(--atlanticus-ui-control-focus-ring);
+    outline: 0;
 }
 
 .atlanticus-ui-button--danger {
@@ -70,8 +70,8 @@
     color: #FFFFFF;
     background: var(--atlanticus-ui-danger);
     border-color: var(--atlanticus-ui-danger);
-    box-shadow: var(--atlanticus-ui-focus-ring);
-    outline: none;
+    box-shadow: var(--atlanticus-ui-control-focus-ring);
+    outline: 0;
 }
 
 .atlanticus-ui-icon-button {
@@ -79,17 +79,24 @@
     place-items: center;
     color: var(--atlanticus-ui-text);
     background: transparent;
+    line-height: 1;
 }
 
 .atlanticus-ui-icon-button:hover:not(:disabled),
 .atlanticus-ui-icon-button:focus-visible:not(:disabled) {
     background: var(--atlanticus-ui-background);
-    box-shadow: var(--atlanticus-ui-focus-ring);
-    outline: none;
+    box-shadow: var(--atlanticus-ui-control-focus-ring);
+    outline: 0;
+}
+
+.atlanticus-ui-modal-close {
+    padding: .28rem .36rem;
+    border: 0;
 }
 
 .atlanticus-ui-input {
     box-sizing: border-box;
+    min-width: 0;
     color: var(--atlanticus-ui-text);
     background: var(--atlanticus-ui-surface);
     border: 1px solid var(--atlanticus-ui-border);
@@ -102,14 +109,16 @@
 }
 
 .atlanticus-ui-input:hover:not(:disabled) {
-    border-color: var(--atlanticus-ui-border-strong);
+    border-color: var(--atlanticus-ui-border-strong) !important;
+    box-shadow: none !important;
+    outline: 0 !important;
 }
 
 .atlanticus-ui-input:focus,
 .atlanticus-ui-input:focus-visible {
-    border-color: var(--atlanticus-ui-control-focus);
-    box-shadow: var(--atlanticus-ui-control-focus-ring);
-    outline: none;
+    border-color: var(--atlanticus-ui-control-focus) !important;
+    box-shadow: var(--atlanticus-ui-control-focus-ring) !important;
+    outline: 0 !important;
 }
 
 .atlanticus-ui-input:disabled {
@@ -118,10 +127,7 @@
     opacity: 1;
 }
 
-.atlanticus-ui-check {
-    color: var(--atlanticus-ui-text);
-}
-
+.atlanticus-ui-check,
 .atlanticus-ui-check label {
     color: var(--atlanticus-ui-text);
 }
@@ -137,40 +143,48 @@
 
 .atlanticus-ui-check input:focus,
 .atlanticus-ui-check input:focus-visible {
-    outline: none;
+    outline: 0;
     box-shadow: none;
+}
+
+.atlanticus-ui-select,
+.atlanticus-ui-select .Select,
+.atlanticus-ui-select .Select-control,
+.atlanticus-ui-select .Select-menu-outer {
+    min-width: 0;
+    color: var(--atlanticus-ui-text);
+    font-family: var(--atlanticus-ui-font);
 }
 
 .atlanticus-ui-select .Select-control {
-    color: var(--atlanticus-ui-text);
-    background: var(--atlanticus-ui-surface);
-    border: 1px solid var(--atlanticus-ui-border);
-    border-radius: var(--atlanticus-ui-control-radius);
-    box-shadow: none;
+    background: var(--atlanticus-ui-surface) !important;
+    border: 1px solid var(--atlanticus-ui-border) !important;
+    border-radius: var(--atlanticus-ui-control-radius) !important;
+    box-shadow: none !important;
 }
 
 .atlanticus-ui-select .Select-control:hover {
-    border-color: var(--atlanticus-ui-border-strong);
+    border-color: var(--atlanticus-ui-border-strong) !important;
 }
 
 .atlanticus-ui-select .Select.is-focused > .Select-control,
 .atlanticus-ui-select .Select.is-open > .Select-control,
 .atlanticus-ui-select .Select-control:focus-within {
-    border-color: var(--atlanticus-ui-control-focus);
-    box-shadow: var(--atlanticus-ui-control-focus-ring);
-    outline: none;
+    border-color: var(--atlanticus-ui-control-focus) !important;
+    box-shadow: var(--atlanticus-ui-control-focus-ring) !important;
+    outline: 0 !important;
 }
 
 .atlanticus-ui-select .Select.is-disabled > .Select-control {
-    color: var(--atlanticus-ui-text-muted);
-    background: var(--atlanticus-ui-control-disabled);
+    color: var(--atlanticus-ui-text-muted) !important;
+    background: var(--atlanticus-ui-control-disabled) !important;
 }
 
 .atlanticus-ui-select .Select-placeholder,
 .atlanticus-ui-select .Select-value-label,
 .atlanticus-ui-select .Select-input > input {
     color: var(--atlanticus-ui-text) !important;
-    font-family: var(--atlanticus-ui-font);
+    font-family: var(--atlanticus-ui-font) !important;
 }
 
 .atlanticus-ui-select .Select-placeholder {
@@ -178,23 +192,26 @@
 }
 
 .atlanticus-ui-select .Select-arrow {
-    border-top-color: var(--atlanticus-ui-text-muted);
+    border-top-color: var(--atlanticus-ui-text-muted) !important;
 }
 
 .atlanticus-ui-select .Select-arrow-zone:hover > .Select-arrow {
-    border-top-color: var(--atlanticus-ui-secondary);
+    border-top-color: var(--atlanticus-ui-secondary) !important;
 }
 
 .atlanticus-ui-select .Select-menu-outer {
-    color: var(--atlanticus-ui-text);
-    background: var(--atlanticus-ui-surface);
-    border-color: var(--atlanticus-ui-border);
-    box-shadow: var(--atlanticus-ui-shadow);
+    z-index: 1500;
+    margin-top: .2rem;
+    background: var(--atlanticus-ui-surface) !important;
+    border: 1px solid var(--atlanticus-ui-border) !important;
+    border-radius: var(--atlanticus-ui-control-radius) !important;
+    box-shadow: var(--atlanticus-ui-shadow) !important;
 }
 
-.atlanticus-ui-select .Select-option {
-    color: var(--atlanticus-ui-text);
-    background: var(--atlanticus-ui-surface);
+.atlanticus-ui-select .Select-option,
+.atlanticus-ui-select .VirtualizedSelectOption {
+    color: var(--atlanticus-ui-text) !important;
+    background: var(--atlanticus-ui-surface) !important;
 }
 
 .atlanticus-ui-select .Select-option.is-focused,
@@ -210,6 +227,7 @@
 }
 
 .atlanticus-ui-select .Select-input > input,
+.atlanticus-ui-select .Select-input > input:hover,
 .atlanticus-ui-select .Select-input > input:focus,
 .atlanticus-ui-select .Select-input > input:focus-visible {
     border: 0 !important;
@@ -218,24 +236,24 @@
 }
 
 .atlanticus-ui-select .Select--multi .Select-value {
-    color: var(--atlanticus-ui-primary-hover);
-    background: var(--atlanticus-ui-selection-soft);
-    border-color: var(--atlanticus-ui-border-strong);
+    color: var(--atlanticus-ui-primary-hover) !important;
+    background: var(--atlanticus-ui-selection-soft) !important;
+    border-color: var(--atlanticus-ui-border-strong) !important;
 }
 
 .atlanticus-ui-select .Select--multi .Select-value-icon {
-    border-right-color: var(--atlanticus-ui-border-strong);
+    border-right-color: var(--atlanticus-ui-border-strong) !important;
 }
 
 .atlanticus-ui-select .Select--multi .Select-value-icon:hover {
-    color: #FFFFFF;
-    background: var(--atlanticus-ui-secondary);
+    color: #FFFFFF !important;
+    background: var(--atlanticus-ui-secondary) !important;
 }
 
 .atlanticus-ui-modal-header {
     color: #FFFFFF;
     background: var(--atlanticus-ui-primary);
-    border-color: rgba(255, 255, 255, .14);
+    border: 0;
 }
 
 .atlanticus-ui-modal-header h1,
@@ -253,7 +271,7 @@
 .atlanticus-ui-modal-header .atlanticus-ui-icon-button:focus-visible:not(:disabled) {
     color: #FFFFFF;
     background: rgba(255, 255, 255, .12);
-    border-color: rgba(255, 255, 255, .24);
+    border-color: transparent;
     box-shadow: var(--atlanticus-ui-control-focus-ring);
 }
 
@@ -264,5 +282,5 @@
 }
 
 .atlanticus-ui-modal-footer {
-    border-color: var(--atlanticus-ui-border);
+    border-top: 1px solid var(--atlanticus-ui-border);
 }
