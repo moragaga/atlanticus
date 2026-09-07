@@ -16,9 +16,9 @@ def test_ux_001c_keeps_published_state_visible_when_status_is_missing() -> None:
 
 def test_ux_001c_uses_pointer_and_atlanticus_focus() -> None:
     css = CSS.read_text(encoding='utf-8')
-    assert 'cursor: pointer !important;' in css
-    assert 'accent-color: var(--atlanticus-manager-color-primary) !important;' in css
-    assert 'box-shadow: var(--atlanticus-admin-focus-ring) !important;' in css
+    assert '.atlanticus-manager .Select' not in css
+    assert "input[type='checkbox']" not in css
+    assert '.atlanticus-manager input:focus' not in css
 
 
 def test_ux_001c_does_not_hide_inner_overflow_to_mask_geometry() -> None:

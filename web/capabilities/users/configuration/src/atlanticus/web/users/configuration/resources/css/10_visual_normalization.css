@@ -26,12 +26,11 @@
     padding: 0;
     background: transparent;
     border: 0;
-    border-bottom: 1px solid var(--atlanticus-manager-border);
+    border-bottom: 1px solid var(--atlanticus-ui-border);
     border-radius: 0;
 }
 
 .atlanticus-users-admin__tab {
-    min-height: var(--atlanticus-admin-control-height);
     padding: .62rem .2rem .58rem;
     border: 0;
     border-bottom: 2px solid transparent;
@@ -39,16 +38,16 @@
 }
 
 .atlanticus-users-admin__tab--active {
-    color: var(--atlanticus-manager-color-primary-dark);
+    color: var(--atlanticus-ui-primary-hover);
     background: transparent;
-    border-bottom-color: var(--atlanticus-manager-color-primary);
+    border-bottom-color: var(--atlanticus-ui-accent);
     box-shadow: none;
 }
 
 .atlanticus-users-admin__tab:focus-visible {
-    color: var(--atlanticus-manager-color-primary-dark);
-    border-bottom-color: var(--atlanticus-manager-color-primary);
-    box-shadow: 0 .2rem 0 0 var(--atlanticus-manager-color-primary);
+    color: var(--atlanticus-ui-primary-hover);
+    border-bottom-color: var(--atlanticus-ui-accent);
+    box-shadow: 0 .2rem 0 0 var(--atlanticus-ui-accent);
     outline: none;
 }
 
@@ -56,14 +55,13 @@
     display: flex;
     align-items: center;
     width: 100%;
-    min-height: var(--atlanticus-admin-control-height);
     padding: .48rem .62rem;
     overflow: hidden;
-    color: var(--atlanticus-manager-text-muted);
-    background: var(--atlanticus-manager-control-disabled);
-    border: 1px solid var(--atlanticus-manager-border);
-    border-radius: var(--atlanticus-admin-control-radius);
-    font-family: var(--atlanticus-manager-font);
+    color: var(--atlanticus-ui-text-muted);
+    background: var(--atlanticus-ui-control-disabled);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: var(--atlanticus-ui-control-radius);
+    font-family: var(--atlanticus-ui-font);
     font-size: .76rem;
     line-height: 1.2;
     text-overflow: ellipsis;
@@ -71,12 +69,12 @@
 }
 
 .atlanticus-users-admin__modal-backdrop {
-    background: var(--atlanticus-manager-overlay);
+    background: var(--atlanticus-ui-overlay);
 }
 
 .atlanticus-users-admin__modal-dialog {
-    border-radius: var(--atlanticus-manager-modal-radius);
-    box-shadow: var(--atlanticus-manager-modal-shadow);
+    border-radius: var(--atlanticus-ui-modal-radius);
+    box-shadow: var(--atlanticus-ui-modal-shadow);
 }
 
 .atlanticus-users-admin__modal-header,
@@ -90,10 +88,6 @@
     padding: 1rem;
 }
 
-.atlanticus-users-admin__field > input:disabled {
-    color: var(--atlanticus-manager-text-muted);
-    background: var(--atlanticus-manager-control-disabled);
-}
 
 /* MANAGER-UX-001B — corrective visual closure */
 .atlanticus-users-admin__modal-dialog {
@@ -102,23 +96,10 @@
     overflow: hidden;
 }
 
-.atlanticus-users-admin__modal-header {
-    color: #FFFFFF;
-    background: var(--atlanticus-manager-color-primary-action);
-    border-bottom-color: rgba(255, 255, 255, .14);
-}
-
-.atlanticus-users-admin__modal-header h3 {
-    color: #FFFFFF;
-}
-
 .atlanticus-users-admin__modal-eyebrow {
-    color: var(--atlanticus-manager-color-primary);
+    color: var(--atlanticus-ui-accent);
 }
 
-.atlanticus-users-admin__modal-header .atlanticus-manager__icon-button {
-    color: #FFFFFF;
-}
 
 .atlanticus-users-admin__modal-body {
     min-width: 0;
@@ -164,22 +145,10 @@
     user-select: text;
 }
 
-.atlanticus-users-admin__modal-header .atlanticus-manager__icon-button:hover,
-.atlanticus-users-admin__modal-header .atlanticus-manager__icon-button:focus-visible {
-    color: #FFFFFF;
-    background: rgba(255, 255, 255, .12);
-    border-color: rgba(201, 162, 75, .72);
-}
 
-.atlanticus-users-admin__field > input:focus,
-.atlanticus-users-admin__field > input:focus-visible {
-    border-color: var(--atlanticus-manager-color-primary) !important;
-    box-shadow: var(--atlanticus-admin-focus-ring) !important;
-    outline: none !important;
-}
 
 .atlanticus-users-admin__message--notice {
-    color: var(--atlanticus-manager-warning);
-    background: var(--atlanticus-manager-warning-soft);
+    color: var(--atlanticus-ui-warning);
+    background: var(--atlanticus-ui-warning-soft);
     border: 1px solid rgba(160, 112, 24, .2);
 }

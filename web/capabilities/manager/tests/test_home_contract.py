@@ -56,6 +56,7 @@ def test_home_css_is_an_isolated_asset_layer() -> None:
         '10_manager.css',
         '20_home.css',
         '30_visual_normalization.css',
+        '40_interaction_surface.css',
     ]
     assert 'grid-template-columns: repeat(3, minmax(0, 1fr))' in home
     assert '@media (max-width: 1365px)' in home

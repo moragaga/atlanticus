@@ -73,101 +73,6 @@
     outline: none;
 }
 
-.atlanticus-manager input[type='checkbox'],
-.atlanticus-manager input[type='radio'] {
-    accent-color: var(--atlanticus-manager-color-primary);
-}
-
-.atlanticus-manager .Select,
-.atlanticus-manager .Select-control,
-.atlanticus-manager .Select-menu-outer {
-    min-width: 0;
-    max-width: 100%;
-    font-family: var(--atlanticus-manager-font);
-}
-
-.atlanticus-manager .Select-control {
-    min-height: var(--atlanticus-admin-control-height);
-    background: var(--atlanticus-manager-control-background);
-    border: 1px solid var(--atlanticus-manager-border);
-    border-radius: var(--atlanticus-admin-control-radius);
-    box-shadow: none;
-}
-
-.atlanticus-manager .Select.is-focused > .Select-control,
-.atlanticus-manager .Select.is-open > .Select-control {
-    border-color: var(--atlanticus-manager-color-primary);
-    box-shadow: var(--atlanticus-admin-focus-ring);
-}
-
-.atlanticus-manager .Select.is-disabled > .Select-control {
-    background: var(--atlanticus-manager-control-disabled);
-    color: var(--atlanticus-manager-text-muted);
-}
-
-.atlanticus-manager .Select-placeholder,
-.atlanticus-manager .Select-value-label,
-.atlanticus-manager .Select-input > input {
-    color: var(--atlanticus-manager-text) !important;
-    font-family: var(--atlanticus-manager-font);
-}
-
-.atlanticus-manager .Select-placeholder {
-    color: var(--atlanticus-manager-text-muted) !important;
-}
-
-.atlanticus-manager .Select-menu-outer {
-    z-index: 1500;
-    margin-top: .25rem;
-    overflow: hidden;
-    background: var(--atlanticus-manager-surface);
-    border: 1px solid var(--atlanticus-manager-border);
-    border-radius: var(--atlanticus-admin-control-radius);
-    box-shadow: var(--atlanticus-manager-shadow);
-}
-
-.atlanticus-manager .Select-option {
-    padding: .62rem .75rem;
-    color: var(--atlanticus-manager-text);
-    background: var(--atlanticus-manager-surface);
-    font-size: .76rem;
-}
-
-.atlanticus-manager .Select-option.is-focused {
-    color: var(--atlanticus-manager-color-primary-ink);
-    background: var(--atlanticus-manager-color-primary-soft);
-}
-
-.atlanticus-manager .Select-option.is-selected {
-    color: var(--atlanticus-manager-color-primary-dark);
-    background: rgba(201, 162, 75, .18);
-    font-weight: 750;
-}
-
-.atlanticus-manager .Select--multi .Select-value {
-    color: var(--atlanticus-manager-color-primary-dark);
-    background: var(--atlanticus-manager-color-primary-soft);
-    border-color: rgba(201, 162, 75, .4);
-    border-radius: .45rem;
-}
-
-.atlanticus-manager .Select--multi .Select-value-icon {
-    border-right-color: rgba(201, 162, 75, .34);
-}
-
-.atlanticus-manager .Select--multi .Select-value-icon:hover {
-    color: var(--atlanticus-manager-danger);
-    background: var(--atlanticus-manager-danger-soft);
-}
-
-.atlanticus-manager input:not([type='checkbox']):not([type='radio']):focus-visible,
-.atlanticus-manager textarea:focus-visible,
-.atlanticus-manager select:focus-visible {
-    border-color: var(--atlanticus-manager-color-primary) !important;
-    box-shadow: var(--atlanticus-admin-focus-ring) !important;
-    outline: none;
-}
-
 @media (max-width: 1279px) {
     .atlanticus-manager__workflow-action-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -187,14 +92,6 @@
 }
 
 /* MANAGER-UX-001B — corrective visual closure */
-html,
-body,
-#react-entry-point,
-#_dash-app-content {
-    max-width: 100%;
-    overflow-x: hidden;
-}
-
 .atlanticus-manager__home-surface,
 .atlanticus-manager__content,
 .atlanticus-manager__module,
@@ -271,44 +168,6 @@ body,
     height: 100%;
 }
 
-.atlanticus-manager .Select-control,
-.atlanticus-manager .Select-menu-outer,
-.atlanticus-manager .Select-input > input,
-.atlanticus-manager .Select-input > input:focus {
-    border-color: var(--atlanticus-manager-border) !important;
-    outline: none !important;
-}
-
-.atlanticus-manager .Select.is-focused > .Select-control,
-.atlanticus-manager .Select.is-open > .Select-control {
-    border-color: var(--atlanticus-manager-color-primary) !important;
-    box-shadow: var(--atlanticus-admin-focus-ring) !important;
-}
-
-.atlanticus-manager .Select-option,
-.atlanticus-manager .VirtualizedSelectOption,
-.atlanticus-manager .VirtualizedSelectFocusedOption,
-.atlanticus-manager .VirtualizedSelectSelectedOption {
-    color: var(--atlanticus-manager-text) !important;
-}
-
-.atlanticus-manager .Select-option.is-focused,
-.atlanticus-manager .VirtualizedSelectFocusedOption {
-    color: var(--atlanticus-manager-color-primary-ink) !important;
-    background: var(--atlanticus-manager-color-primary-soft) !important;
-}
-
-.atlanticus-manager .Select-option.is-selected,
-.atlanticus-manager .VirtualizedSelectSelectedOption {
-    color: var(--atlanticus-manager-color-primary-dark) !important;
-    background: rgba(201, 162, 75, .18) !important;
-}
-
-.atlanticus-manager input[type='checkbox'],
-.atlanticus-manager input[type='radio'] {
-    accent-color: var(--atlanticus-manager-color-primary) !important;
-}
-
 .atlanticus-manager__message--notice {
     color: var(--atlanticus-manager-warning);
     background: var(--atlanticus-manager-warning-soft);
@@ -355,46 +214,6 @@ body,
 
 .atlanticus-manager__home {
     min-height: calc(100dvh - 10.5rem);
-}
-
-/* Todas las acciones interactivas deben comunicar clic explícitamente. */
-.atlanticus-manager button:not(:disabled),
-.atlanticus-manager a[href],
-.atlanticus-manager [role='button']:not([aria-disabled='true']),
-.atlanticus-manager .Select-control,
-.atlanticus-manager input[type='checkbox']:not(:disabled),
-.atlanticus-manager input[type='radio']:not(:disabled) {
-    cursor: pointer !important;
-}
-
-.atlanticus-manager button:disabled,
-.atlanticus-manager input:disabled {
-    cursor: not-allowed !important;
-}
-
-/* Elimina el foco morado/nativo y conserva una sola familia Atlanticus. */
-.atlanticus-manager input:focus,
-.atlanticus-manager input:focus-visible,
-.atlanticus-manager textarea:focus,
-.atlanticus-manager textarea:focus-visible,
-.atlanticus-manager select:focus,
-.atlanticus-manager select:focus-visible {
-    border-color: var(--atlanticus-manager-color-primary) !important;
-    box-shadow: var(--atlanticus-admin-focus-ring) !important;
-    outline: none !important;
-}
-
-.atlanticus-manager input[type='checkbox'],
-.atlanticus-manager input[type='radio'] {
-    accent-color: var(--atlanticus-manager-color-primary) !important;
-}
-
-.atlanticus-manager .Select.is-focused > .Select-control,
-.atlanticus-manager .Select.is-open > .Select-control,
-.atlanticus-manager .Select-control:focus-within {
-    border-color: var(--atlanticus-manager-color-primary) !important;
-    box-shadow: var(--atlanticus-admin-focus-ring) !important;
-    outline: none !important;
 }
 
 /* Trabajo local no debe estirar el estado vacío hacia el fondo de la card. */

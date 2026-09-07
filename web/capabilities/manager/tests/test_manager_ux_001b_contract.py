@@ -8,7 +8,7 @@ LAYOUT = ROOT / 'src/atlanticus/web/manager/web/layout.py'
 def test_ux_001b_keeps_home_pagination_at_page_bottom() -> None:
     css = CSS.read_text(encoding='utf-8')
     assert 'margin-top: auto;' in css
-    assert 'overflow-x: hidden;' in css
+    assert 'overflow-x: hidden;' not in css
 
 
 def test_ux_001b_groups_workflow_sections() -> None:

@@ -1,14 +1,3 @@
-html,
-body,
-#react-entry-point,
-#_dash-app-content {
-    width: 100%;
-    min-width: 100%;
-    min-height: 100%;
-    margin: 0;
-    padding: 0;
-}
-
 .atlanticus-manager,
 .atlanticus-manager * {
     box-sizing: border-box;
@@ -30,21 +19,9 @@ body,
     min-height: 100%;
 }
 
-.atlanticus-manager input,
-.atlanticus-manager select,
-.atlanticus-manager textarea,
-.atlanticus-manager [contenteditable='true'] {
-    -webkit-user-select: text;
-    user-select: text;
-}
 
-.atlanticus-manager button:not(:disabled),
-.atlanticus-manager a[href],
-.atlanticus-manager select:not(:disabled),
-.atlanticus-manager input:not(:disabled),
-.atlanticus-manager [role='button']:not([aria-disabled='true']) {
-    cursor: pointer;
-}
+
+
 
 .atlanticus-manager__workflow-actions,
 .atlanticus-manager__workflow-context {
@@ -59,8 +36,6 @@ body,
     margin: 0;
 }
 
-.atlanticus-manager__button,
-.atlanticus-manager__icon-button,
 .atlanticus-manager__tab,
 .atlanticus-manager__sidebar-trigger {
     min-height: var(--atlanticus-admin-control-height);
@@ -75,61 +50,21 @@ body,
         transform var(--atlanticus-admin-transition);
 }
 
-.atlanticus-manager__button {
-    padding: .58rem .9rem;
-    font-size: .78rem;
-    font-weight: 700;
-}
 
-.atlanticus-manager__button--secondary {
-    color: var(--atlanticus-manager-color-primary-dark);
-    background: var(--atlanticus-manager-surface);
-    border-color: var(--atlanticus-manager-color-primary-muted);
-}
 
-.atlanticus-manager__button--secondary:hover:not(:disabled),
-.atlanticus-manager__button--secondary:focus-visible:not(:disabled) {
-    background: var(--atlanticus-manager-color-primary-soft);
-    border-color: var(--atlanticus-manager-color-primary-strong);
-    box-shadow: var(--atlanticus-admin-focus-ring);
-    outline: none;
-}
 
-.atlanticus-manager__button--primary {
-    color: #FFFFFF;
-    background: var(--atlanticus-manager-color-primary-action);
-    border-color: var(--atlanticus-manager-color-primary-action);
-}
 
-.atlanticus-manager__button--primary:hover:not(:disabled),
-.atlanticus-manager__button--primary:focus-visible:not(:disabled) {
-    background: var(--atlanticus-manager-color-primary-dark);
-    border-color: var(--atlanticus-manager-color-primary-dark);
-    box-shadow: var(--atlanticus-admin-focus-ring);
-    outline: none;
-}
 
-.atlanticus-manager__button:disabled {
-    cursor: not-allowed;
-    opacity: .48;
-}
 
-.atlanticus-manager__icon-button {
-    display: grid;
-    width: 2.5rem;
-    padding: 0;
-    place-items: center;
-    color: var(--atlanticus-manager-text);
-    background: transparent;
-    font-size: 1.25rem;
-}
 
-.atlanticus-manager__icon-button:hover,
-.atlanticus-manager__icon-button:focus-visible {
-    background: var(--atlanticus-manager-color-primary-soft);
-    box-shadow: var(--atlanticus-admin-focus-ring);
-    outline: none;
-}
+
+
+
+
+
+
+
+
 
 .atlanticus-manager__summary {
     position: relative;
@@ -612,7 +547,7 @@ body,
     line-height: 1.35;
 }
 
-.atlanticus-manager__workflow-action-step .atlanticus-manager__button {
+.atlanticus-manager__workflow-action-step .atlanticus-ui-button {
     width: 100%;
 }
 
@@ -812,20 +747,9 @@ body,
     }
 }
 
-.atlanticus-manager__button--danger {
-    color: var(--atlanticus-manager-danger);
-    background: var(--atlanticus-manager-danger-soft);
-    border-color: rgba(198, 40, 40, .32);
-}
 
-.atlanticus-manager__button--danger:hover:not(:disabled),
-.atlanticus-manager__button--danger:focus-visible:not(:disabled) {
-    color: #FFFFFF;
-    background: var(--atlanticus-manager-danger);
-    border-color: var(--atlanticus-manager-danger);
-    box-shadow: var(--atlanticus-admin-focus-ring);
-    outline: none;
-}
+
+
 
 .atlanticus-manager__message--notice {
     color: var(--atlanticus-manager-warning);

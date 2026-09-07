@@ -209,7 +209,7 @@ def build_manager_surface(
                             html.Button(
                                 '×',
                                 id=SIDEBAR_CLOSE_ID,
-                                className='atlanticus-manager__icon-button',
+                                className='atlanticus-ui-icon-button',
                             ),
                         ],
                         className='atlanticus-manager__sidebar-header',
@@ -831,8 +831,8 @@ def _build_workflow_actions(
                                 id=workflow_action_id(module.key, 'discard-local'),
                                 n_clicks=0,
                                 className=(
-                                    'atlanticus-manager__button '
-                                    'atlanticus-manager__button--secondary'
+                                    'atlanticus-ui-button '
+                                    'atlanticus-ui-button--secondary'
                                 ),
                                 disabled=True,
                             ),
@@ -841,8 +841,8 @@ def _build_workflow_actions(
                                 id=workflow_action_id(module.key, 'reload'),
                                 n_clicks=0,
                                 className=(
-                                    'atlanticus-manager__button '
-                                    'atlanticus-manager__button--secondary'
+                                    'atlanticus-ui-button '
+                                    'atlanticus-ui-button--secondary'
                                 ),
                             ),
                         ],
@@ -860,8 +860,8 @@ def _build_workflow_actions(
                                 id=workflow_action_id(module.key, 'recover-saved-draft'),
                                 n_clicks=0,
                                 className=(
-                                    'atlanticus-manager__button '
-                                    'atlanticus-manager__button--secondary'
+                                    'atlanticus-ui-button '
+                                    'atlanticus-ui-button--secondary'
                                 ),
                                 disabled=True,
                             ),
@@ -870,8 +870,8 @@ def _build_workflow_actions(
                                 id=workflow_action_id(module.key, 'discard-saved-draft'),
                                 n_clicks=0,
                                 className=(
-                                    'atlanticus-manager__button '
-                                    'atlanticus-manager__button--secondary'
+                                    'atlanticus-ui-button '
+                                    'atlanticus-ui-button--secondary'
                                 ),
                                 disabled=True,
                             ),
@@ -904,8 +904,8 @@ def _build_workflow_actions(
                                         id=workflow_action_id(module.key, 'update-source'),
                                         n_clicks=0,
                                         className=(
-                                            'atlanticus-manager__button '
-                                            'atlanticus-manager__button--secondary'
+                                            'atlanticus-ui-button '
+                                            'atlanticus-ui-button--secondary'
                                         ),
                                     ),
                                     html.Button(
@@ -913,8 +913,8 @@ def _build_workflow_actions(
                                         id=workflow_action_id(module.key, 'keep-draft'),
                                         n_clicks=0,
                                         className=(
-                                            'atlanticus-manager__button '
-                                            'atlanticus-manager__button--secondary'
+                                            'atlanticus-ui-button '
+                                            'atlanticus-ui-button--secondary'
                                         ),
                                     ),
                                     html.Button(
@@ -922,8 +922,8 @@ def _build_workflow_actions(
                                         id=workflow_action_id(module.key, 'force-publish'),
                                         n_clicks=0,
                                         className=(
-                                            'atlanticus-manager__button '
-                                            'atlanticus-manager__button--danger'
+                                            'atlanticus-ui-button '
+                                            'atlanticus-ui-button--danger'
                                         ),
                                         disabled=True,
                                         hidden=not module.force_publish_enabled,
@@ -947,8 +947,8 @@ def _build_workflow_actions(
                                     id=workflow_action_id(module.key, 'save-draft'),
                                     n_clicks=0,
                                     className=(
-                                        'atlanticus-manager__button '
-                                        'atlanticus-manager__button--secondary'
+                                        'atlanticus-ui-button '
+                                        'atlanticus-ui-button--secondary'
                                     ),
                                     disabled=True,
                                 ),
@@ -962,8 +962,8 @@ def _build_workflow_actions(
                                     id=workflow_action_id(module.key, 'validate'),
                                     n_clicks=0,
                                     className=(
-                                        'atlanticus-manager__button '
-                                        'atlanticus-manager__button--secondary'
+                                        'atlanticus-ui-button '
+                                        'atlanticus-ui-button--secondary'
                                     ),
                                     disabled=True,
                                 ),
@@ -977,8 +977,8 @@ def _build_workflow_actions(
                                     id=workflow_action_id(module.key, 'verify-source'),
                                     n_clicks=0,
                                     className=(
-                                        'atlanticus-manager__button '
-                                        'atlanticus-manager__button--secondary'
+                                        'atlanticus-ui-button '
+                                        'atlanticus-ui-button--secondary'
                                     ),
                                     disabled=True,
                                 ),
@@ -992,8 +992,8 @@ def _build_workflow_actions(
                                     id=workflow_action_id(module.key, 'publish'),
                                     n_clicks=0,
                                     className=(
-                                        'atlanticus-manager__button '
-                                        'atlanticus-manager__button--secondary'
+                                        'atlanticus-ui-button '
+                                        'atlanticus-ui-button--secondary'
                                     ),
                                     disabled=True,
                                 ),
@@ -1007,8 +1007,8 @@ def _build_workflow_actions(
                                     id=workflow_action_id(module.key, 'project'),
                                     n_clicks=0,
                                     className=(
-                                        'atlanticus-manager__button '
-                                        'atlanticus-manager__button--primary'
+                                        'atlanticus-ui-button '
+                                        'atlanticus-ui-button--primary'
                                     ),
                                     disabled=not _can_project(status),
                                 ),
@@ -1038,7 +1038,7 @@ def _workspace_confirmation(module: ManagerModule) -> object:
                             id=workflow_action_id(module.key, 'workspace-cancel'),
                             n_clicks=0,
                             className=(
-                                'atlanticus-manager__button atlanticus-manager__button--secondary'
+                                'atlanticus-ui-button atlanticus-ui-button--secondary'
                             ),
                         ),
                         html.Button(
@@ -1046,7 +1046,7 @@ def _workspace_confirmation(module: ManagerModule) -> object:
                             id=workflow_action_id(module.key, 'workspace-confirm'),
                             n_clicks=0,
                             className=(
-                                'atlanticus-manager__button atlanticus-manager__button--danger'
+                                'atlanticus-ui-button atlanticus-ui-button--danger'
                             ),
                         ),
                     ],
@@ -1173,8 +1173,8 @@ def _build_history(
                 ),
                 n_clicks=0,
                 className=(
-                    'atlanticus-manager__button '
-                    'atlanticus-manager__button--secondary '
+                    'atlanticus-ui-button '
+                    'atlanticus-ui-button--secondary '
                     'atlanticus-manager__history-preview-open'
                 ),
             )
@@ -1263,15 +1263,15 @@ def _build_history_preview_shell(module: ManagerModule) -> object:
                                         id=workflow_history_preview_close_id(module.key),
                                         n_clicks=0,
                                         className=(
-                                            'atlanticus-manager__button '
-                                            'atlanticus-manager__button--secondary'
+                                            'atlanticus-ui-button '
+                                            'atlanticus-ui-button--secondary'
                                         ),
                                     ),
                                     html.Button(
                                         'Cargar como borrador',
                                         id=workflow_history_preview_load_id(module.key),
                                         n_clicks=0,
-                                        className='atlanticus-manager__button',
+                                        className='atlanticus-ui-button',
                                     ),
                                 ],
                                 className='atlanticus-manager__history-preview-actions',

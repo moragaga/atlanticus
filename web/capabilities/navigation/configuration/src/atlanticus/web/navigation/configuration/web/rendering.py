@@ -68,8 +68,8 @@ def _group_card(group) -> object:
                 id=group_add_link_id(group.key),
                 n_clicks=0,
                 className=(
-                    'atlanticus-manager__button '
-                    'atlanticus-manager__button--secondary '
+                    'atlanticus-ui-button '
+                    'atlanticus-ui-button--secondary '
                     'atlanticus-navigation-admin__group-add'
                 ),
             ),

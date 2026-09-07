@@ -20,25 +20,11 @@
     overflow-wrap: anywhere;
 }
 
-.atlanticus-navigation-admin__field input {
-    min-height: var(--atlanticus-admin-control-height);
-    padding: .48rem .62rem;
-    color: var(--atlanticus-manager-text);
-    background: var(--atlanticus-manager-control-background);
-    border-color: var(--atlanticus-manager-border);
-    border-radius: var(--atlanticus-admin-control-radius);
-    font: inherit;
-}
 
-.atlanticus-navigation-admin__field input:disabled {
-    color: var(--atlanticus-manager-text-muted);
-    background: var(--atlanticus-manager-control-disabled);
-    opacity: 1;
-}
 
 .atlanticus-navigation-admin__modal {
     padding: 1rem;
-    background: var(--atlanticus-manager-overlay);
+    background: var(--atlanticus-ui-overlay);
 }
 
 .atlanticus-navigation-admin__modal-card {
@@ -46,45 +32,39 @@
     gap: 0;
     padding: 0;
     overflow: hidden;
-    background: var(--atlanticus-manager-surface);
-    border: 1px solid var(--atlanticus-manager-border);
-    border-top: .24rem solid var(--atlanticus-manager-color-primary);
-    border-radius: var(--atlanticus-manager-modal-radius);
-    box-shadow: var(--atlanticus-manager-modal-shadow);
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-top: .24rem solid var(--atlanticus-ui-accent);
+    border-radius: var(--atlanticus-ui-modal-radius);
+    box-shadow: var(--atlanticus-ui-modal-shadow);
 }
 
-.atlanticus-navigation-admin__modal-card > h3 {
-    min-height: 3.65rem;
+.atlanticus-navigation-admin__modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .8rem;
+    padding: .85rem 1rem;
+}
+
+.atlanticus-navigation-admin__modal-header h3 {
     margin: 0;
-    padding: .95rem 1rem .8rem;
-    border-bottom: 1px solid var(--atlanticus-manager-border);
     font-size: .95rem;
 }
 
-.atlanticus-navigation-admin__modal-card > .atlanticus-navigation-admin__form-grid,
-.atlanticus-navigation-admin__modal-card > .atlanticus-navigation-admin__check-row,
-.atlanticus-navigation-admin__modal-card > div[id] {
-    margin-inline: 1rem;
-}
-
-.atlanticus-navigation-admin__modal-card > .atlanticus-navigation-admin__form-grid {
-    padding-top: 1rem;
-}
-
-.atlanticus-navigation-admin__modal-card > .atlanticus-navigation-admin__check-row {
-    padding-top: .75rem;
+.atlanticus-navigation-admin__modal-body {
+    display: grid;
+    gap: .8rem;
+    padding: 1rem;
 }
 
 .atlanticus-navigation-admin__modal-actions {
-    min-height: 3.65rem;
-    margin-top: 1rem;
     padding: .85rem 1rem;
-    border-top: 1px solid var(--atlanticus-manager-border);
 }
 
 .atlanticus-navigation-admin__error {
-    color: var(--atlanticus-manager-danger);
-    background: var(--atlanticus-manager-danger-soft);
+    color: var(--atlanticus-ui-danger);
+    background: var(--atlanticus-ui-danger-soft);
     border: 1px solid rgba(198, 40, 40, .24);
     border-radius: .65rem;
 }
@@ -102,12 +82,6 @@
     overflow-x: hidden;
 }
 
-.atlanticus-navigation-admin__modal-card > h3 {
-    color: #FFFFFF;
-    background: var(--atlanticus-manager-color-primary-action);
-    border-bottom-color: rgba(255, 255, 255, .14);
-}
-
 .atlanticus-navigation-admin__form-grid,
 .atlanticus-navigation-admin__check-row,
 .atlanticus-navigation-admin__field {
@@ -115,9 +89,7 @@
     max-width: 100%;
 }
 
-.atlanticus-navigation-admin__modal-card .Select,
-.atlanticus-navigation-admin__modal-card .Select-control,
-.atlanticus-navigation-admin__modal-card .Select-menu-outer {
+.atlanticus-navigation-admin__field .atlanticus-ui-select {
     min-width: 0;
     max-width: 100%;
 }
@@ -144,13 +116,4 @@
     user-select: text;
 }
 
-.atlanticus-navigation-admin__field input:focus,
-.atlanticus-navigation-admin__field input:focus-visible {
-    border-color: var(--atlanticus-manager-color-primary) !important;
-    box-shadow: var(--atlanticus-admin-focus-ring) !important;
-    outline: none !important;
-}
 
-.atlanticus-navigation-admin__modal-card .Select-menu-outer {
-    overflow: visible;
-}

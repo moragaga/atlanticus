@@ -16,7 +16,9 @@ def test_ux_001b_users_uses_generic_local_actions() -> None:
 
 def test_ux_001b_users_modal_has_atlanticus_header_without_horizontal_scroll() -> None:
     css = CSS.read_text(encoding='utf-8')
-    assert 'background: var(--atlanticus-manager-color-primary-action);' in css
+    source = LAYOUT.read_text(encoding='utf-8')
+    assert 'atlanticus-ui-modal-header' in source
+    assert 'background: var(--atlanticus-ui-primary);' not in css
     assert 'overflow-x: hidden;' in css
 
 

@@ -1,8 +1,6 @@
 /* MANAGER-UX-001D — terminal interaction/layout surface.
    This file intentionally loads after visual normalization. */
 
-.atlanticus-manager__button:not(:disabled),
-.atlanticus-manager__icon-button:not(:disabled),
 .atlanticus-manager__tab:not(:disabled),
 .atlanticus-manager__sidebar-trigger:not(:disabled),
 .atlanticus-manager__home-pagination-button:not(:disabled),

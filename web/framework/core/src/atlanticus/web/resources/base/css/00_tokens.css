@@ -1,5 +1,38 @@
 :root {
-  --atlanticus-web-font-family: Inter, Arial, sans-serif;
-  --atlanticus-web-background: #f5f1e6;
-  --atlanticus-web-foreground: #0d1b2a;
+    --atlanticus-ui-primary: #0D1B2A;
+    --atlanticus-ui-primary-hover: #071522;
+    --atlanticus-ui-secondary: #26425A;
+    --atlanticus-ui-accent: #C9A24B;
+    --atlanticus-ui-background: #F5F1E6;
+    --atlanticus-ui-surface: #FFFFFF;
+    --atlanticus-ui-surface-muted: #FAF8F2;
+    --atlanticus-ui-border: #D6DADE;
+    --atlanticus-ui-border-strong: #BBC3CB;
+    --atlanticus-ui-text: #0D1B2A;
+    --atlanticus-ui-text-muted: #4D5660;
+    --atlanticus-ui-text-soft: #68727C;
+    --atlanticus-ui-control-disabled: #F0F2F4;
+    --atlanticus-ui-control-focus: var(--atlanticus-ui-secondary);
+    --atlanticus-ui-control-focus-ring: 0 0 0 .2rem rgba(38, 66, 90, .18);
+    --atlanticus-ui-selection-soft: #E9EEF2;
+    --atlanticus-ui-success: #238636;
+    --atlanticus-ui-success-soft: #EAF7ED;
+    --atlanticus-ui-warning: #B26A00;
+    --atlanticus-ui-warning-soft: #FFF4DF;
+    --atlanticus-ui-danger: #C62828;
+    --atlanticus-ui-danger-soft: #FDECEC;
+    --atlanticus-ui-neutral: #7A818C;
+    --atlanticus-ui-neutral-soft: #EEF0F3;
+    --atlanticus-ui-overlay: rgba(7, 21, 34, .56);
+    --atlanticus-ui-focus-ring: 0 0 0 .2rem rgba(201, 162, 75, .3);
+    --atlanticus-ui-font: 'Inter', Helvetica, Arial, sans-serif;
+    --atlanticus-ui-control-radius: .65rem;
+    --atlanticus-ui-modal-radius: .9rem;
+    --atlanticus-ui-shadow: 0 12px 32px rgba(7, 21, 34, .09);
+    --atlanticus-ui-modal-shadow: 0 1.2rem 3.6rem rgba(7, 21, 34, .22);
+    --atlanticus-ui-transition: .16s ease;
+
+    --atlanticus-web-font-family: var(--atlanticus-ui-font);
+    --atlanticus-web-background: var(--atlanticus-ui-background);
+    --atlanticus-web-foreground: var(--atlanticus-ui-text);
 }

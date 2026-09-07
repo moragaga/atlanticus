@@ -179,10 +179,13 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
     @app.callback(
         Output(LINK_MODAL_ID, 'className', allow_duplicate=True),
         Input(LINK_CANCEL_ID, 'n_clicks'),
+        Input(LINK_CANCEL_ID + '-header', 'n_clicks'),
         prevent_initial_call=True,
     )
-    def close_link_editor(clicks: int | None):
-        return _MODAL_CLOSED if _click_is_real(clicks) else no_update
+    def close_link_editor(clicks: int | None, header_clicks: int | None):
+        if _click_is_real(clicks) or _click_is_real(header_clicks):
+            return _MODAL_CLOSED
+        return no_update
 
     @app.callback(
         Output(CATALOG_STORE_ID, 'data', allow_duplicate=True),
@@ -309,10 +312,13 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
     @app.callback(
         Output(GROUP_MODAL_ID, 'className', allow_duplicate=True),
         Input(GROUP_CANCEL_ID, 'n_clicks'),
+        Input(GROUP_CANCEL_ID + '-header', 'n_clicks'),
         prevent_initial_call=True,
     )
-    def close_group_editor(clicks: int | None):
-        return _MODAL_CLOSED if _click_is_real(clicks) else no_update
+    def close_group_editor(clicks: int | None, header_clicks: int | None):
+        if _click_is_real(clicks) or _click_is_real(header_clicks):
+            return _MODAL_CLOSED
+        return no_update
 
     @app.callback(
         Output(CATALOG_STORE_ID, 'data', allow_duplicate=True),

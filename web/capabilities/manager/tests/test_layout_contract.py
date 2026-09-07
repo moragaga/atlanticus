@@ -4,12 +4,16 @@ from pathlib import Path
 def test_manager_css_recovers_atlanticus_identity_and_true_offcanvas_layout() -> None:
     root = Path(__file__).parents[1] / 'src/atlanticus/web/manager/resources/css'
     tokens = (root / '00_tokens.css').read_text(encoding='utf-8')
+    base_tokens = (
+        Path(__file__).resolve().parents[3]
+        / 'framework/core/src/atlanticus/web/resources/base/css/00_tokens.css'
+    ).read_text(encoding='utf-8')
     layout = (root / '10_manager.css').read_text(encoding='utf-8')
 
-    assert '#0D1B2A' in tokens
-    assert '#C9A24B' in tokens
-    assert '#F5F1E6' in tokens
-    assert "'Inter'" in tokens
+    assert '#0D1B2A' in base_tokens
+    assert '#C9A24B' in base_tokens
+    assert '#F5F1E6' in base_tokens
+    assert "'Inter'" in base_tokens
     assert "'Cinzel'" in tokens
     assert 'transform: translateX(-105%)' in layout
     assert '.atlanticus-manager__sidebar--open' in layout

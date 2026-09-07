@@ -14,4 +14,4 @@ def test_ux_001c_navigation_modal_does_not_clip_dropdowns() -> None:
 
 def test_ux_001c_navigation_focus_uses_atlanticus_ring() -> None:
     css = CSS.read_text(encoding='utf-8')
-    assert 'box-shadow: var(--atlanticus-admin-focus-ring) !important;' in css
+    assert 'var(--atlanticus-admin-focus-ring)' not in css

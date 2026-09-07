@@ -147,7 +147,7 @@ def _runtime_context(context: UsersAdminWebContext) -> object:
                         children=html.Button(
                             'Importar',
                             className=(
-                                'atlanticus-manager__button atlanticus-manager__button--secondary'
+                                'atlanticus-ui-button atlanticus-ui-button--secondary'
                             ),
                         ),
                         multiple=False,
@@ -251,8 +251,8 @@ def _profiles_panel(catalog: UsersConfigurationCatalog) -> object:
                                 id=ADD_PROFILE_ID,
                                 n_clicks=0,
                                 className=(
-                                    'atlanticus-manager__button '
-                                    'atlanticus-manager__button--secondary'
+                                    'atlanticus-ui-button '
+                                    'atlanticus-ui-button--secondary'
                                 ),
                             ),
                         ],
@@ -285,7 +285,7 @@ def _users_panel(catalog: UsersConfigurationCatalog) -> object:
                         id=ADD_USER_ID,
                         n_clicks=0,
                         className=(
-                            'atlanticus-manager__button atlanticus-manager__button--secondary'
+                            'atlanticus-ui-button atlanticus-ui-button--secondary'
                         ),
                     ),
                 ],
@@ -314,7 +314,7 @@ def _discovered_panel() -> object:
                         id=DISCOVERED_REFRESH_ID,
                         n_clicks=0,
                         className=(
-                            'atlanticus-manager__button atlanticus-manager__button--secondary'
+                            'atlanticus-ui-button atlanticus-ui-button--secondary'
                         ),
                     ),
                 ],
@@ -348,7 +348,7 @@ def _save_section() -> object:
                         id=SAVE_BUTTON_ID,
                         n_clicks=0,
                         className=(
-                            'atlanticus-manager__button atlanticus-manager__button--primary'
+                            'atlanticus-ui-button atlanticus-ui-button--primary'
                         ),
                     ),
                 ],
@@ -471,6 +471,7 @@ def _profile_modal() -> object:
                                 'Nombre',
                                 dcc.Input(
                                     id=PROFILE_NAME_ID,
+                                    className='atlanticus-ui-input',
                                     type='text',
                                     placeholder='Ej. Operador Planta',
                                     autoComplete='off',
@@ -514,7 +515,7 @@ def _profile_modal() -> object:
                             ),
                             html.Div(id=PROFILE_RESULT_ID),
                         ],
-                        className='atlanticus-users-admin__modal-body',
+                        className='atlanticus-users-admin__modal-body atlanticus-ui-modal-body',
                     ),
                     _modal_actions(
                         cancel_id=PROFILE_CANCEL_ID + '-footer',
@@ -600,6 +601,7 @@ def _user_modal() -> object:
                                 'Nombre',
                                 dcc.Input(
                                     id=USER_NAME_ID,
+                                    className='atlanticus-ui-input',
                                     type='text',
                                     placeholder='Nombre visible',
                                     autoComplete='off',
@@ -610,6 +612,7 @@ def _user_modal() -> object:
                                 'Correo',
                                 dcc.Input(
                                     id=USER_EMAIL_ID,
+                                    className='atlanticus-ui-input',
                                     type='email',
                                     placeholder='usuario@empresa.cl',
                                     autoComplete='off',
@@ -620,6 +623,7 @@ def _user_modal() -> object:
                                 'Perfil',
                                 dcc.Dropdown(
                                     id=USER_PROFILE_ID,
+                                    className='atlanticus-ui-select',
                                     clearable=False,
                                     searchable=False,
                                     placeholder='Selecciona un perfil',
@@ -630,6 +634,7 @@ def _user_modal() -> object:
                                 [
                                     dcc.Checklist(
                                         id=USER_ENABLED_ID,
+                                        className='atlanticus-ui-check',
                                         options=[
                                             {
                                                 'label': ' Usuario habilitado',
@@ -643,7 +648,7 @@ def _user_modal() -> object:
                             ),
                             html.Div(id=USER_RESULT_ID),
                         ],
-                        className='atlanticus-users-admin__modal-body',
+                        className='atlanticus-users-admin__modal-body atlanticus-ui-modal-body',
                     ),
                     _modal_actions(
                         cancel_id=USER_CANCEL_ID + '-footer',
@@ -672,10 +677,11 @@ def _modal_header(eyebrow: str, title_id: str, close_id: str) -> object:
                 '×',
                 id=close_id,
                 n_clicks=0,
-                className='atlanticus-manager__icon-button',
+                className='atlanticus-ui-icon-button',
+                **{'aria-label': 'Cerrar formulario'},
             ),
         ],
-        className='atlanticus-users-admin__modal-header',
+        className='atlanticus-users-admin__modal-header atlanticus-ui-modal-header',
     )
 
 
@@ -686,16 +692,16 @@ def _modal_actions(*, cancel_id: str, save_id: str, save_label: str) -> object:
                 'Cancelar',
                 id=cancel_id,
                 n_clicks=0,
-                className=('atlanticus-manager__button atlanticus-manager__button--secondary'),
+                className=('atlanticus-ui-button atlanticus-ui-button--secondary'),
             ),
             html.Button(
                 save_label,
                 id=save_id,
                 n_clicks=0,
-                className='atlanticus-manager__button atlanticus-manager__button--primary',
+                className='atlanticus-ui-button atlanticus-ui-button--primary',
             ),
         ],
-        className='atlanticus-users-admin__modal-actions',
+        className='atlanticus-users-admin__modal-actions atlanticus-ui-modal-footer',
     )
 
 

@@ -36,8 +36,8 @@ def test_users_admin_browser_draft_does_not_publish_source() -> None:
 def test_users_admin_uses_atlanticus_visual_tokens() -> None:
     css = CSS.read_text(encoding='utf-8')
 
-    assert 'var(--atlanticus-manager-color-primary)' in css
-    assert 'var(--atlanticus-manager-surface)' in css
+    assert 'var(--atlanticus-ui-accent)' in css
+    assert 'var(--atlanticus-ui-surface)' in css
     assert '--atlanticus-users-profile-background-color' in css
     assert '--atlanticus-users-profile-text-color' in css
 

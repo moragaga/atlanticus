@@ -21,8 +21,8 @@ def test_ux_001d_workflow_uses_explicit_rows_without_forced_height() -> None:
 
 def test_ux_001d_explicit_interactive_classes_have_pointer() -> None:
     source = CSS.read_text(encoding='utf-8')
-    assert '.atlanticus-manager__button:not(:disabled)' in source
-    assert '.atlanticus-manager__icon-button:not(:disabled)' in source
+    assert '.atlanticus-manager__button' not in source
+    assert '.atlanticus-manager__icon-button' not in source
     assert '.atlanticus-manager__tab:not(:disabled)' in source
     assert 'cursor: pointer !important;' in source
 

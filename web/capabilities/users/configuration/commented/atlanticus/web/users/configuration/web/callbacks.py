@@ -1007,8 +1007,8 @@ def _discovered_cards(
                                 id=discovered_add_id(user.user_id),
                                 n_clicks=0,
                                 className=(
-                                    'atlanticus-manager__button '
-                                    'atlanticus-manager__button--secondary'
+                                    'atlanticus-ui-button '
+                                    'atlanticus-ui-button--secondary'
                                 ),
                             ),
                         ],

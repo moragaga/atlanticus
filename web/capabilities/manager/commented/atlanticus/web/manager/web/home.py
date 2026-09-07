@@ -85,8 +85,8 @@ def build_manager_home(
                         n_clicks=0,
                         disabled=previous_disabled,
                         className=(
-                            'atlanticus-manager__button '
-                            'atlanticus-manager__button--secondary '
+                            'atlanticus-ui-button '
+                            'atlanticus-ui-button--secondary '
                             'atlanticus-manager__home-pagination-button'
                         ),
                         **{'aria-label': 'Página anterior'},
@@ -102,8 +102,8 @@ def build_manager_home(
                         n_clicks=0,
                         disabled=next_disabled,
                         className=(
-                            'atlanticus-manager__button '
-                            'atlanticus-manager__button--secondary '
+                            'atlanticus-ui-button '
+                            'atlanticus-ui-button--secondary '
                             'atlanticus-manager__home-pagination-button'
                         ),
                         **{'aria-label': 'Página siguiente'},
