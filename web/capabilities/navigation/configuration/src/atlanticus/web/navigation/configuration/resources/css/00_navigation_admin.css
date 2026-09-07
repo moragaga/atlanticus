@@ -216,8 +216,8 @@
 
 .atlanticus-navigation-admin__field-check {
     display: flex;
-    align-items: end;
-    padding-bottom: .45rem;
+    align-items: center;
+    min-width: 0;
 }
 
 .atlanticus-navigation-admin__check-row {

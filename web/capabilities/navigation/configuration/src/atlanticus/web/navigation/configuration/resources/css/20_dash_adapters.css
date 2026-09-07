@@ -1,37 +1,25 @@
 /*
-Navigation owns two Dash Dropdown controls in the link editor: section
-(single-select) and profiles (multi-select). The shell is deliberate: Dash 4
-renders dropdown content through a portal into its internal wrapper, so the
---Dash-* variables must live above both the trigger and portal content.
+Navigation owns the visual bridge for its two Dash Dropdown controls.
+The --Dash-* values are injected with dcc.Dropdown.style so Dash places them
+on its internal .dash-dropdown-wrapper, which also owns the popover portal.
 */
 
-.atlanticus-navigation-admin__dash-select-shell {
-    --Dash-Spacing: 4px;
-    --Dash-Stroke-Strong: var(--atlanticus-ui-secondary);
-    --Dash-Stroke-Weak: var(--atlanticus-ui-border);
-    --Dash-Fill-Interactive-Strong: var(--atlanticus-ui-secondary);
-    --Dash-Fill-Interactive-Weak: var(--atlanticus-ui-selection-soft);
-    --Dash-Fill-Inverse-Strong: var(--atlanticus-ui-surface);
-    --Dash-Text-Primary: var(--atlanticus-ui-text);
-    --Dash-Text-Strong: var(--atlanticus-ui-text);
-    --Dash-Text-Weak: var(--atlanticus-ui-text-muted);
-    --Dash-Text-Disabled: var(--atlanticus-ui-text-soft);
-    --Dash-Fill-Primary-Hover: var(--atlanticus-ui-selection-soft);
-    --Dash-Fill-Primary-Active: var(--atlanticus-ui-selection-soft);
-    --Dash-Fill-Disabled: var(--atlanticus-ui-border);
-    --Dash-Shading-Strong: rgb(7 21 34 / 25%);
-    --Dash-Shading-Weak: rgb(7 21 34 / 12%);
-
+.atlanticus-navigation-admin__dash-select-shell,
+.atlanticus-navigation-admin__dash-select-shell .dash-dropdown-wrapper,
+.atlanticus-navigation-admin__dash-select-shell .dash-dropdown {
+    box-sizing: border-box;
     min-width: 0;
+    width: 100%;
     max-width: 100%;
+}
+
+.atlanticus-navigation-admin__dash-select-shell {
     color: var(--atlanticus-ui-text);
     font-family: var(--atlanticus-ui-font);
     font-size: .76rem;
 }
 
 .atlanticus-navigation-admin__dash-select-shell .dash-dropdown {
-    min-width: 0;
-    max-width: 100%;
     color: var(--atlanticus-ui-text);
     background: var(--atlanticus-ui-surface);
     border-color: var(--atlanticus-ui-border);
@@ -48,6 +36,10 @@ renders dropdown content through a portal into its internal wrapper, so the
 }
 
 .atlanticus-navigation-admin__dash-select-shell .dash-dropdown-content {
+    box-sizing: border-box;
+    width: var(--radix-popover-trigger-width);
+    min-width: var(--radix-popover-trigger-width);
+    max-width: var(--radix-popover-trigger-width);
     color: var(--atlanticus-ui-text);
     background: var(--atlanticus-ui-surface);
     border-color: var(--atlanticus-ui-border);
@@ -98,6 +90,7 @@ renders dropdown content through a portal into its internal wrapper, so the
 
 .atlanticus-navigation-admin__dash-select-shell
 .dash-options-list-option {
+    align-items: center;
     font-size: .72rem;
 }
 

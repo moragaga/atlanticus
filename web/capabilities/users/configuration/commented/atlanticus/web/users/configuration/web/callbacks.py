@@ -85,8 +85,11 @@ _MODAL_CLOSED = 'atlanticus-users-admin__modal'
 _MODAL_OPEN = 'atlanticus-users-admin__modal atlanticus-users-admin__modal--open'
 _PANEL = 'atlanticus-users-admin__panel'
 _PANEL_ACTIVE = 'atlanticus-users-admin__panel atlanticus-users-admin__panel--active'
-_TAB = 'atlanticus-users-admin__tab'
-_TAB_ACTIVE = 'atlanticus-users-admin__tab atlanticus-users-admin__tab--active'
+_TAB = 'nav-link atlanticus-users-admin__tab'
+_TAB_ACTIVE = (
+    'nav-link active atlanticus-users-admin__tab '
+    'atlanticus-users-admin__tab--active'
+)
 _DEFAULT_PROFILE_BACKGROUND_COLOR = '#C9A24B'
 _DEFAULT_PROFILE_TEXT_COLOR = '#071522'
 _BROWSER_DRAFT_SCHEMA_VERSION = 1
@@ -289,6 +292,7 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
         prevent_initial_call=True,
     )
     def profile_editor(
+        add_clicks: int | None,
         edit_clicks: list[int | None] | None,
         cancel_clicks: int | None,
         header_cancel_clicks: int | None,
@@ -453,7 +457,6 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
         prevent_initial_call=True,
     )
     def user_editor(
-        add_clicks: int | None,
         edit_clicks: list[int | None] | None,
         discovered_clicks: list[int | None] | None,
         cancel_clicks: int | None,

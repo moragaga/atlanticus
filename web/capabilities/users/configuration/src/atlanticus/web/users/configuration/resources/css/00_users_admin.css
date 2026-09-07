@@ -159,6 +159,7 @@
     line-height: 1.35;
 }
 
+.atlanticus-users-admin__local-title,
 .atlanticus-users-admin__profile-preview,
 .atlanticus-users-admin__persona,
 .atlanticus-users-admin__local-personas,
@@ -190,8 +191,8 @@
 
 .atlanticus-users-admin__local-dual-swatch {
     display: inline-block;
-    width: 1.8rem;
-    height: 1.8rem;
+    width: 1.05rem;
+    height: 1.05rem;
     flex: 0 0 auto;
     background:
         linear-gradient(

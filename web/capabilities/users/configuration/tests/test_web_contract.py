@@ -1,3 +1,4 @@
+import ast
 from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
@@ -125,3 +126,39 @@ def test_users_workspace_starts_empty_and_does_not_read_source_implicitly() -> N
         )
     ]
     assert 'prevent_initial_call=True' in tracker
+
+def test_users_callback_functions_match_input_and_state_arity() -> None:
+    tree = ast.parse((WEB / 'callbacks.py').read_text(encoding='utf-8'))
+
+    callbacks = 0
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+
+        decorator = next(
+            (
+                item
+                for item in node.decorator_list
+                if isinstance(item, ast.Call)
+                and isinstance(item.func, ast.Attribute)
+                and item.func.attr == 'callback'
+            ),
+            None,
+        )
+        if decorator is None:
+            continue
+
+        dependencies = sum(
+            1
+            for item in decorator.args
+            if isinstance(item, ast.Call)
+            and isinstance(item.func, ast.Name)
+            and item.func.id in {'Input', 'State'}
+        )
+        positional = len(node.args.posonlyargs) + len(node.args.args)
+
+        assert positional == dependencies, node.name
+        callbacks += 1
+
+    assert callbacks > 0
+

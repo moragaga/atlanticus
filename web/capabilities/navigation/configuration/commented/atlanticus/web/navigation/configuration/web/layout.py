@@ -288,6 +288,7 @@ def _link_modal() -> object:
                                             clearable=False,
                                             searchable=True,
                                             placeholder='Sin sección / raíz',
+                                            style=_dash_select_style(),
                                             labels={
                                                 'search': 'Buscar sección',
                                                 'clear_search': 'Limpiar búsqueda',
@@ -309,6 +310,7 @@ def _link_modal() -> object:
                                             multi=True,
                                             searchable=True,
                                             placeholder='Seleccionar perfiles',
+                                            style=_dash_select_style(),
                                             labels={
                                                 'search': 'Buscar perfil',
                                                 'clear_search': 'Limpiar búsqueda',
@@ -409,12 +411,12 @@ def _group_modal() -> object:
                                         placeholder='bi bi-grid',
                                     ),
                                 ),
-                                html.Div(
-                                    _check(GROUP_ENABLED_ID, 'Habilitada', 'enabled'),
-                                    className='atlanticus-navigation-admin__field-check',
-                                ),
                             ],
                             className='atlanticus-navigation-admin__form-grid',
+                        ),
+                        html.Div(
+                            _check(GROUP_ENABLED_ID, 'Habilitada', 'enabled'),
+                            className='atlanticus-navigation-admin__field-check',
                         ),
                         html.Div(id=GROUP_RESULT_ID),
                     ],
@@ -467,6 +469,26 @@ def _modal_header(*, title_id: str, close_id: str) -> object:
     )
 
 
+
+
+def _dash_select_style() -> dict[str, str]:
+    return {
+        '--Dash-Spacing': '4px',
+        '--Dash-Stroke-Strong': 'var(--atlanticus-ui-secondary)',
+        '--Dash-Stroke-Weak': 'var(--atlanticus-ui-border)',
+        '--Dash-Fill-Interactive-Strong': 'var(--atlanticus-ui-secondary)',
+        '--Dash-Fill-Interactive-Weak': 'var(--atlanticus-ui-selection-soft)',
+        '--Dash-Fill-Inverse-Strong': 'var(--atlanticus-ui-surface)',
+        '--Dash-Text-Primary': 'var(--atlanticus-ui-text)',
+        '--Dash-Text-Strong': 'var(--atlanticus-ui-text)',
+        '--Dash-Text-Weak': 'var(--atlanticus-ui-text-muted)',
+        '--Dash-Text-Disabled': 'var(--atlanticus-ui-text-soft)',
+        '--Dash-Fill-Primary-Hover': 'var(--atlanticus-ui-selection-soft)',
+        '--Dash-Fill-Primary-Active': 'var(--atlanticus-ui-selection-soft)',
+        '--Dash-Fill-Disabled': 'var(--atlanticus-ui-border)',
+        '--Dash-Shading-Strong': 'rgb(7 21 34 / 25%)',
+        '--Dash-Shading-Weak': 'rgb(7 21 34 / 12%)',
+    }
 
 
 def _field(label: str, control: object) -> object:

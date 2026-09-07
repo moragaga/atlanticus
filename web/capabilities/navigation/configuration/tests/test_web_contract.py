@@ -116,10 +116,12 @@ def test_navigation_link_selects_own_dash_theme_locally() -> None:
     assert layout.count('atlanticus-navigation-admin__dash-select-shell') == 2
     assert "'search': 'Buscar sección'" in layout
     assert "'search': 'Buscar perfil'" in layout
-    assert '--Dash-Stroke-Strong: var(--atlanticus-ui-secondary);' in adapter
-    assert '--Dash-Fill-Interactive-Strong: var(--atlanticus-ui-secondary);' in adapter
-    assert '--Dash-Text-Strong: var(--atlanticus-ui-text);' in adapter
+    assert 'style=_dash_select_style()' in layout
+    assert "'--Dash-Stroke-Strong': 'var(--atlanticus-ui-secondary)'" in layout
+    assert "'--Dash-Fill-Interactive-Strong': 'var(--atlanticus-ui-secondary)'" in layout
+    assert "'--Dash-Text-Strong': 'var(--atlanticus-ui-text)'" in layout
     assert '.dash-dropdown-search-container:focus-within' in adapter
     assert '.dash-options-list-option-checkbox' in adapter
+    assert 'align-items: center;' in adapter
     assert '.Select-control' not in adapter
 

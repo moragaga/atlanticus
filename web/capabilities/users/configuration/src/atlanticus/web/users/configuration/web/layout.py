@@ -342,21 +342,39 @@ def _local_profile_card() -> object:
         [
             html.Div(
                 [
-                    html.Strong('Local'),
+                    html.Div(
+                        [
+                            html.Strong('Local'),
+                            html.Span(
+                                className='atlanticus-users-admin__local-dual-swatch',
+                                style={
+                                    '--atlanticus-users-local-john': (
+                                        LOCAL_JOHN_BACKGROUND_COLOR
+                                    ),
+                                    '--atlanticus-users-local-jane': (
+                                        LOCAL_JANE_BACKGROUND_COLOR
+                                    ),
+                                },
+                            ),
+                        ],
+                        className='atlanticus-users-admin__local-title',
+                    ),
                     html.P('Controlado por Atlanticus. Acceso total en modo local.'),
                 ],
                 className='atlanticus-users-admin__profile-copy',
             ),
             html.Div(
                 [
-                    html.Span(
-                        className='atlanticus-users-admin__local-dual-swatch',
-                        style={
-                            '--atlanticus-users-local-john': LOCAL_JOHN_BACKGROUND_COLOR,
-                            '--atlanticus-users-local-jane': LOCAL_JANE_BACKGROUND_COLOR,
-                        },
+                    _fixed_persona(
+                        'John Doe',
+                        LOCAL_JOHN_BACKGROUND_COLOR,
+                        LOCAL_JOHN_TEXT_COLOR,
                     ),
-                    html.Strong('John · Jane'),
+                    _fixed_persona(
+                        'Jane Doe',
+                        LOCAL_JANE_BACKGROUND_COLOR,
+                        LOCAL_JANE_TEXT_COLOR,
+                    ),
                 ],
                 className='atlanticus-users-admin__local-personas',
             ),
@@ -364,6 +382,22 @@ def _local_profile_card() -> object:
         className='atlanticus-users-admin__profile-card',
     )
 
+
+def _fixed_persona(label: str, background_color: str, text_color: str) -> object:
+    return html.Div(
+        [
+            html.Span(
+                label[:1].upper(),
+                style={
+                    'backgroundColor': background_color,
+                    'color': text_color,
+                },
+                className='atlanticus-users-admin__persona-swatch',
+            ),
+            html.Strong(label),
+        ],
+        className='atlanticus-users-admin__persona',
+    )
 
 
 def _system_profile_card(
