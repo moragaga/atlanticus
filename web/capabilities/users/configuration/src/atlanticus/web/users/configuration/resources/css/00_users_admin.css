@@ -55,12 +55,32 @@
 }
 
 .atlanticus-users-admin__tabs {
-    padding-inline: .25rem;
+    gap: .75rem;
+    padding: 0;
     background: transparent;
+    border-bottom: 1px solid var(--atlanticus-ui-border);
 }
 
 .atlanticus-users-admin__tab {
-    border-radius: .55rem .55rem 0 0;
+    padding: .65rem .2rem;
+    color: var(--atlanticus-ui-text-muted);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    box-shadow: none;
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+.atlanticus-users-admin__tab:hover,
+.atlanticus-users-admin__tab:focus-visible,
+.atlanticus-users-admin__tab--active {
+    color: var(--atlanticus-ui-primary-hover);
+    background: transparent;
+    border-bottom-color: var(--atlanticus-ui-accent);
+    box-shadow: none;
+    outline: 0;
 }
 
 .atlanticus-users-admin__tab:focus:not(:focus-visible) {
@@ -206,19 +226,45 @@
 
 .atlanticus-users-admin__color-picker-field {
     display: grid;
-    gap: .3rem;
+    gap: .24rem;
 }
 
 .atlanticus-users-admin__color-picker-row {
     display: flex;
     align-items: center;
-    gap: .45rem;
+    gap: .5rem;
 }
 
 .atlanticus-users-admin__field-label,
 .atlanticus-users-admin__color-value {
     color: var(--atlanticus-ui-text-muted);
     font-size: .68rem;
+    font-weight: 700;
+}
+
+.atlanticus-users-admin__system-grid .atlanticus-users-admin__color-pickers {
+    gap: .55rem 1.25rem;
+}
+
+.atlanticus-users-admin__system-grid
+.atlanticus-users-admin__color-picker-field
+.atlanticus-users-admin__field-label {
+    font-size: .62rem;
+}
+
+.atlanticus-users-admin__system-grid .atlanticus-users-admin__color-value {
+    font-size: .64rem;
+    font-weight: 650;
+}
+
+.atlanticus-users-admin__persona-swatch {
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: .64rem;
+}
+
+.atlanticus-users-admin__persona strong {
+    font-size: .74rem;
     font-weight: 700;
 }
 
@@ -330,8 +376,7 @@
     }
 
     .atlanticus-users-admin__list-card,
-    .atlanticus-users-admin__section-heading-row,
-    .atlanticus-users-admin__import {
+    .atlanticus-users-admin__section-heading-row {
         align-items: stretch;
         flex-direction: column;
     }
@@ -344,5 +389,34 @@
 @media (max-width: 48rem) {
     .atlanticus-users-admin {
         padding-inline: .75rem;
+    }
+
+    .atlanticus-users-admin__runtime-context {
+        align-items: stretch;
+    }
+
+    .atlanticus-users-admin__runtime-source {
+        align-self: flex-start;
+    }
+
+    .atlanticus-users-admin__import {
+        flex: 1 0 100%;
+        align-items: stretch;
+        flex-direction: column;
+        justify-content: flex-start;
+        gap: .45rem;
+    }
+
+    .atlanticus-users-admin__import > div:first-child,
+    .atlanticus-users-admin__import > div:first-child .btn {
+        width: 100%;
+    }
+
+    .atlanticus-users-admin__import > div:last-child:empty {
+        display: none;
+    }
+
+    .atlanticus-users-admin__runtime-help {
+        display: block;
     }
 }

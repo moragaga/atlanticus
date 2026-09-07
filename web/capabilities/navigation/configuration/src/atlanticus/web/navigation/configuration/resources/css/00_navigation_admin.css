@@ -237,6 +237,35 @@
         padding-inline: .75rem;
     }
 
+    .atlanticus-navigation-admin__runtime-context {
+        align-items: stretch;
+    }
+
+    .atlanticus-navigation-admin__runtime-source {
+        align-self: flex-start;
+    }
+
+    .atlanticus-navigation-admin__import {
+        flex: 1 0 100%;
+        align-items: stretch;
+        flex-direction: column;
+        justify-content: flex-start;
+        gap: .45rem;
+    }
+
+    .atlanticus-navigation-admin__import > div:first-child,
+    .atlanticus-navigation-admin__import > div:first-child .btn {
+        width: 100%;
+    }
+
+    .atlanticus-navigation-admin__import > div:last-child:empty {
+        display: none;
+    }
+
+    .atlanticus-navigation-admin__runtime-help {
+        display: block;
+    }
+
     .atlanticus-navigation-admin__section-heading,
     .atlanticus-navigation-admin__link-card,
     .atlanticus-navigation-admin__card-head {
@@ -246,9 +275,5 @@
 
     .atlanticus-navigation-admin__form-grid {
         grid-template-columns: 1fr;
-    }
-
-    .atlanticus-navigation-admin__import {
-        justify-content: flex-start;
     }
 }

@@ -159,7 +159,7 @@ No Reboot, global document rules, containers, rows, columns or utilities.
 
 .atlanticus-bootstrap .form-control:hover:not(:disabled),
 .atlanticus-bootstrap .form-select:hover:not(:disabled) {
-    border-color: var(--bs-border-color-strong);
+    border-color: var(--bs-accent-border);
 }
 
 .atlanticus-bootstrap .form-control:focus,
