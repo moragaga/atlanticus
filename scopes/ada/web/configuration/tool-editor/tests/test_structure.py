@@ -1,13 +1,13 @@
 import pytest
 
-from ada.configuration.tools import (
-    ToolConfiguration,
-    ToolConfigurationKind,
-)
 from ada.configuration.tool_sources import (
     SourceControlPolicy,
     ToolSourceConsumption,
     ToolSourceOperationalParticipation,
+)
+from ada.configuration.tools import (
+    ToolConfiguration,
+    ToolConfigurationKind,
 )
 from ada.web.configuration.tool_editor import (
     ToolStructureEditorValidationError,
@@ -177,3 +177,28 @@ def test_integrated_shared_subcomponent_keeps_one_owner() -> None:
         ).owner_component_key
         == 'cmp_mine'
     )
+
+def test_process_ignores_stale_component_scope_and_uses_operational_coverage() -> None:
+    structure = build_structure_from_editor_tables(
+        base_configuration=_base(ToolConfigurationKind.PROCESS),
+        coverage='plant',
+        component_rows=[
+            {
+                'key': 'cmp_process',
+                'display_name': 'Proceso',
+                'scope': 'mine',
+            }
+        ],
+        subcomponent_rows=[
+            {
+                'owner_component_key': 'cmp_process',
+                'key': 'sub_process',
+                'display_name': 'Principal',
+                'linked_component_keys': [],
+            }
+        ],
+    )
+
+    assert structure.operational_scope is not None
+    assert structure.operational_scope.value == 'plant'
+    assert structure.components[0].scope is None

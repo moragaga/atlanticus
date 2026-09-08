@@ -474,6 +474,10 @@ def build_subcomponent_editor_row(
                             placeholder=(
                                 'Seleccionar componentes compatibles'
                             ),
+                            disabled=(
+                                linked_hidden
+                                or not linked_component_options
+                            ),
                         ),
                         id=nested_row_id(
                             SUBCOMPONENT_LINKED_WRAPPER_TYPE,
@@ -529,6 +533,7 @@ def _text_field(
                 placeholder=placeholder,
                 debounce=True,
                 className='ada-tool-structure-editor__text-input',
+                style=_dash_input_style(),
             ),
         ],
         className='ada-tool-structure-editor__field',
@@ -543,6 +548,7 @@ def _dropdown_field(
     options: Sequence[Mapping[str, str]],
     multi: bool = False,
     placeholder: str | None = None,
+    disabled: bool = False,
 ) -> Component:
     return html.Label(
         [
@@ -554,6 +560,7 @@ def _dropdown_field(
                 multi=multi,
                 clearable=multi,
                 placeholder=placeholder,
+                disabled=disabled,
                 className='ada-tool-structure-editor__select',
                 style=_dash_select_style(),
             ),
@@ -664,12 +671,31 @@ def _shared_label(linked_values: Sequence[str]) -> str:
     return f'Compartido con {count} componentes'
 
 
+def _dash_input_style() -> dict[str, str]:
+    return {
+        '--Dash-Stroke-Strong': 'var(--atlanticus-ui-primary)',
+        '--Dash-Stroke-Weak': 'var(--atlanticus-ui-border)',
+        '--Dash-Fill-Interactive-Strong': 'var(--atlanticus-ui-primary)',
+        '--Dash-Fill-Interactive-Weak': 'var(--atlanticus-ui-selection-soft)',
+        '--Dash-Fill-Inverse-Strong': 'var(--atlanticus-ui-surface)',
+        '--Dash-Text-Primary': 'var(--atlanticus-ui-text)',
+        '--Dash-Text-Strong': 'var(--atlanticus-ui-text)',
+        '--Dash-Text-Weak': 'var(--atlanticus-ui-text-muted)',
+        '--Dash-Text-Disabled': 'var(--atlanticus-ui-text-soft)',
+        '--Dash-Fill-Primary-Hover': 'var(--atlanticus-ui-selection-soft)',
+        '--Dash-Fill-Primary-Active': 'var(--atlanticus-ui-selection-soft)',
+        '--Dash-Fill-Disabled': 'var(--atlanticus-ui-border)',
+        '--Dash-Shading-Strong': 'rgb(7 21 34 / 25%)',
+        '--Dash-Shading-Weak': 'rgb(7 21 34 / 12%)',
+    }
+
+
 def _dash_select_style() -> dict[str, str]:
     return {
         '--Dash-Spacing': '4px',
-        '--Dash-Stroke-Strong': 'var(--atlanticus-ui-secondary)',
+        '--Dash-Stroke-Strong': 'var(--atlanticus-ui-primary)',
         '--Dash-Stroke-Weak': 'var(--atlanticus-ui-border)',
-        '--Dash-Fill-Interactive-Strong': 'var(--atlanticus-ui-secondary)',
+        '--Dash-Fill-Interactive-Strong': 'var(--atlanticus-ui-primary)',
         '--Dash-Fill-Interactive-Weak': 'var(--atlanticus-ui-selection-soft)',
         '--Dash-Fill-Inverse-Strong': 'var(--atlanticus-ui-surface)',
         '--Dash-Text-Primary': 'var(--atlanticus-ui-text)',

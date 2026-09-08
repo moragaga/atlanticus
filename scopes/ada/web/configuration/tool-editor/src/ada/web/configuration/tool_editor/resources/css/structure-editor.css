@@ -164,34 +164,35 @@
     font-weight: 700;
 }
 
-input.ada-tool-structure-editor__text-input {
+.ada-tool-structure-editor__text-input {
     box-sizing: border-box;
     width: 100%;
     min-width: 0;
-    padding: .5rem .68rem;
     color: var(--atlanticus-ui-text);
     background: var(--atlanticus-ui-surface);
-    border: 1px solid var(--atlanticus-ui-border);
+    border-color: var(--atlanticus-ui-border) !important;
     border-radius: var(--atlanticus-ui-control-radius);
-    box-shadow: none;
+    box-shadow: none !important;
     font: inherit;
     font-size: .82rem;
-    line-height: 1.4;
     outline: 0;
-    transition:
-        border-color var(--atlanticus-ui-transition),
-        box-shadow var(--atlanticus-ui-transition),
-        background-color var(--atlanticus-ui-transition);
 }
 
-input.ada-tool-structure-editor__text-input:hover {
-    border-color: var(--atlanticus-ui-accent);
+.ada-tool-structure-editor__text-input:hover {
+    border-color: var(--atlanticus-ui-accent) !important;
 }
 
-input.ada-tool-structure-editor__text-input:focus {
-    border-color: var(--atlanticus-ui-secondary);
-    box-shadow: 0 0 0 .18rem var(--atlanticus-ui-selection-soft);
+.ada-tool-structure-editor__text-input:focus,
+.ada-tool-structure-editor__text-input:focus-within {
+    border-color: var(--atlanticus-ui-primary) !important;
+    box-shadow: 0 0 0 .18rem rgb(7 21 34 / 10%) !important;
     outline: 0;
+}
+
+.ada-tool-structure-editor__text-input:hover:focus,
+.ada-tool-structure-editor__text-input:hover:focus-within {
+    border-color: var(--atlanticus-ui-accent) !important;
+    box-shadow: 0 0 0 .18rem rgb(201 162 75 / 12%) !important;
 }
 
 .ada-tool-structure-editor__subcomponents {
@@ -267,13 +268,18 @@ input.ada-tool-structure-editor__text-input:focus {
     border-color: var(--atlanticus-ui-border);
 }
 
-.ada-tool-structure-editor__select .dash-dropdown:hover {
-    border-color: var(--atlanticus-ui-accent);
+.ada-tool-structure-editor__select .dash-dropdown:focus,
+.ada-tool-structure-editor__select .dash-dropdown:focus-within {
+    border-color: var(--atlanticus-ui-primary) !important;
+    box-shadow: 0 0 0 .18rem rgb(7 21 34 / 10%);
+    outline: 0;
 }
 
-.ada-tool-structure-editor__select .dash-dropdown:focus {
-    border-color: var(--atlanticus-ui-secondary);
-    outline: 1px solid var(--atlanticus-ui-secondary);
+.ada-tool-structure-editor__select .dash-dropdown:hover,
+.ada-tool-structure-editor__select .dash-dropdown:hover:focus,
+.ada-tool-structure-editor__select .dash-dropdown:hover:focus-within {
+    border-color: var(--atlanticus-ui-accent) !important;
+    box-shadow: 0 0 0 .18rem rgb(201 162 75 / 10%);
 }
 
 .ada-tool-structure-editor__select .dash-dropdown-content {

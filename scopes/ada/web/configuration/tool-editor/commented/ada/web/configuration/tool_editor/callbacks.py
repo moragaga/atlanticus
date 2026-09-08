@@ -84,22 +84,30 @@ def register_tool_source_editor_callbacks(app: object) -> None:
         Output(COVERAGE_ID, 'options'),
         Output(COVERAGE_ID, 'value'),
         Output(COVERAGE_ID, 'disabled'),
+        Output(COVERAGE_ID, 'placeholder'),
         Input(CONFIGURATION_STORE_ID, 'data'),
         Input(KIND_ID, 'value'),
         State(COVERAGE_ID, 'value'),
     )
-# Operaciones Integradas fija Mina y Planta; Process permite Mina o Planta.
+    # Cobertura permanece bloqueada hasta resolver el tipo; Integrated fija Mina y Planta.
     def sync_coverage(
         configuration_document: dict[str, object] | None,
         kind_value: str | None,
         current_coverage: str | None,
     ):
         options = _coverage_options(kind_value)
+        if not options:
+            return [], None, True, 'Selecciona primero el tipo'
         if (
             kind_value
             == ToolConfigurationKind.INTEGRATED_OPERATIONS.value
         ):
-            return options, _COVERAGE_MINE_PLANT, True
+            return (
+                options,
+                _COVERAGE_MINE_PLANT,
+                True,
+                'Mina y Planta',
+            )
 
         valid_values = {option['value'] for option in options}
         if configuration_document is not None:
@@ -117,11 +125,11 @@ def register_tool_source_editor_callbacks(app: object) -> None:
                     configuration
                 )
                 if configured in valid_values:
-                    return options, configured, False
+                    return options, configured, False, 'Seleccionar cobertura'
 
         if current_coverage in valid_values:
-            return options, current_coverage, False
-        return options, None, False
+            return options, current_coverage, False, 'Seleccionar cobertura'
+        return options, None, False, 'Seleccionar cobertura'
 
     @app.callback(
         Output(DISPATCH_DEGRADATION_WRAPPER_ID, 'hidden'),

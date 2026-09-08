@@ -392,6 +392,22 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             },
             'value',
         ),
+        Output(
+            {
+                'type': SUBCOMPONENT_LINKED_TYPE,
+                'index': ALL,
+                'owner_index': ALL,
+            },
+            'disabled',
+        ),
+        Output(
+            {
+                'type': SUBCOMPONENT_LINKED_TYPE,
+                'index': ALL,
+                'owner_index': ALL,
+            },
+            'placeholder',
+        ),
         Input(KIND_ID, 'value'),
         Input({'type': COMPONENT_KEY_TYPE, 'index': ALL}, 'data'),
         Input(
@@ -431,7 +447,12 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             != ToolConfigurationKind.INTEGRATED_OPERATIONS.value
         ):
             empty = [[] for _ in linked_ids]
-            return empty, [list(value) for value in empty]
+            return (
+                empty,
+                [list(value) for value in empty],
+                [True for _ in linked_ids],
+                ['Disponible sólo en Operaciones integradas' for _ in linked_ids],
+            )
 
         rows = _component_rows_from_values(
             ids=component_ids,
@@ -440,28 +461,58 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             scopes=component_scopes,
         )
         ordered = list(rows.values())
+        positions = [
+            _owner_position(rows, _owner_index(linked_id))
+            for linked_id in linked_ids
+        ]
         options = [
             _linked_component_options(
                 ordered,
-                owner_index=_owner_position(
-                    rows,
-                    _owner_index(linked_id),
-                ),
+                owner_index=position,
             )
-            for linked_id in linked_ids
+            for position in positions
         ]
         values = [
-            _sanitize_linked_values(
-                current,
-                available,
-            )
+            _sanitize_linked_values(current, available)
             for current, available in zip(
                 linked_values,
                 options,
                 strict=True,
             )
         ]
-        return options, values
+        owner_scopes = [
+            (
+                str(ordered[position].get('scope') or '').strip()
+                if 0 <= position < len(ordered)
+                else ''
+            )
+            for position in positions
+        ]
+        disabled = [
+            not owner_scope or not available
+            for owner_scope, available in zip(
+                owner_scopes,
+                options,
+                strict=True,
+            )
+        ]
+        placeholders = [
+            (
+                'Define primero el ámbito'
+                if not owner_scope
+                else (
+                    'Seleccionar componentes compatibles'
+                    if available
+                    else 'No hay componentes compatibles'
+                )
+            )
+            for owner_scope, available in zip(
+                owner_scopes,
+                options,
+                strict=True,
+            )
+        ]
+        return options, values, disabled, placeholders
 
     @app.callback(
         Output(

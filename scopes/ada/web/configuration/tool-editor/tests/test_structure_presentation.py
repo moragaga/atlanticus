@@ -1,16 +1,16 @@
-from ada.configuration.tools import ToolConfiguration, ToolConfigurationKind
 from ada.configuration.tool_sources import (
     SourceControlPolicy,
     ToolSourceConsumption,
     ToolSourceOperationalParticipation,
 )
+from ada.configuration.tools import ToolConfiguration, ToolConfigurationKind
 from ada.web.configuration.tool_editor import build_tool_structure_editor
 from ada.web.configuration.tool_editor.structure_ids import (
     COMPONENT_ADD_SUBCOMPONENT_TYPE,
     COMPONENT_KEY_TYPE,
     COMPONENT_ROW_TYPE,
-    COMPONENT_SUMMARY_NAME_TYPE,
     COMPONENT_SUBCOMPONENTS_CONTAINER_TYPE,
+    COMPONENT_SUMMARY_NAME_TYPE,
     SUBCOMPONENT_KEY_TYPE,
     SUBCOMPONENT_LINKED_TYPE,
     SUBCOMPONENT_ROW_TYPE,
