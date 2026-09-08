@@ -135,23 +135,6 @@
     font-weight: 760;
 }
 
-.ada-tool-structure-editor__swatch {
-    width: .78rem;
-    height: .78rem;
-    flex: 0 0 auto;
-    border: 1px solid rgb(7 21 34 / 16%);
-    border-radius: 50%;
-}
-
-.ada-tool-structure-editor__swatch--blue { background: #246BCE; }
-.ada-tool-structure-editor__swatch--cyan { background: #32A7C7; }
-.ada-tool-structure-editor__swatch--green { background: #3B8F63; }
-.ada-tool-structure-editor__swatch--gold { background: #C9A24B; }
-.ada-tool-structure-editor__swatch--orange { background: #D87832; }
-.ada-tool-structure-editor__swatch--red { background: #B94B4B; }
-.ada-tool-structure-editor__swatch--gray { background: #7A8088; }
-.ada-tool-structure-editor__swatch--purple { background: #735A9A; }
-
 .ada-tool-structure-editor__row-fields,
 .ada-tool-structure-editor__subcomponent-fields {
     display: grid;

@@ -6,7 +6,6 @@ from typing import Any
 
 from ada.configuration.tools.enums import (
     ProcessLayoutRole,
-    ToolComponentAccent,
     ToolConfigurationKind,
     ToolScope,
 )
@@ -74,7 +73,6 @@ class ToolComponent:
     subcomponents: tuple[ToolSubcomponent, ...] = ()
     scope: ToolScope | None = None
     layout_role: ProcessLayoutRole | None = None
-    accent: ToolComponentAccent = ToolComponentAccent.GOLD
 
     def __post_init__(self) -> None:
         key = require_key(self.key, label='Tool component key')
@@ -99,8 +97,6 @@ class ToolComponent:
             ProcessLayoutRole,
         ):
             raise ToolConfigurationValidationError('Tool component layout role is invalid')
-        if not isinstance(self.accent, ToolComponentAccent):
-            raise ToolConfigurationValidationError('Tool component accent is invalid')
         object.__setattr__(self, 'key', key)
         object.__setattr__(self, 'display_name', display_name)
         object.__setattr__(self, 'subcomponents', subcomponents)
@@ -122,7 +118,6 @@ class ToolComponent:
             'layout_role': (
                 self.layout_role.value if self.layout_role is not None else None
             ),
-            'accent': self.accent.value,
             'subcomponents': [item.to_document() for item in self.subcomponents],
         }
 
@@ -136,7 +131,6 @@ class ToolComponent:
                 raise TypeError
             raw_scope = document.get('scope')
             raw_layout_role = document.get('layout_role')
-            raw_accent = document.get('accent', ToolComponentAccent.GOLD.value)
             return cls(
                 key=document['key'],
                 display_name=document['display_name'],
@@ -150,7 +144,6 @@ class ToolComponent:
                     if raw_layout_role is not None
                     else None
                 ),
-                accent=ToolComponentAccent(raw_accent),
             )
         except (KeyError, TypeError, ValueError) as error:
             if isinstance(error, ToolConfigurationValidationError):

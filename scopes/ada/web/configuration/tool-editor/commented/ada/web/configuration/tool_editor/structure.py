@@ -6,7 +6,6 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from ada.configuration.tools import (
-    ToolComponentAccent,
     ToolConfiguration,
     ToolConfigurationKind,
     ToolStructure,
@@ -43,7 +42,6 @@ def structure_editor_table_data_from_configuration(
                     if component.scope is not None
                     else None
                 ),
-                'accent': component.accent.value,
             }
         )
         for subcomponent in component.subcomponents:
@@ -151,7 +149,6 @@ def build_structure_from_editor_tables(
                     kind=kind,
                 ),
                 'layout_role': None,
-                'accent': _component_accent(row.get('accent')),
                 'subcomponents': grouped[key],
             }
             for key, row in zip(
@@ -204,19 +201,6 @@ def _component_scope(
             'Tool kind is not supported by this editor'
         )
     return _optional_text(row.get('scope'))
-
-
-def _component_accent(value: object) -> str:
-    resolved = (
-        _optional_text(value)
-        or ToolComponentAccent.GOLD.value
-    )
-    try:
-        return ToolComponentAccent(resolved).value
-    except ValueError as error:
-        raise ToolStructureEditorValidationError(
-            'Tool component accent is invalid'
-        ) from error
 
 
 def _coverage(

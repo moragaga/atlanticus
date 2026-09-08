@@ -6,7 +6,6 @@ from dash import dcc, html
 from dash.development.base_component import Component
 
 from ada.configuration.tools import (
-    ToolComponentAccent,
     ToolConfiguration,
     ToolConfigurationKind,
     ToolScope,
@@ -15,7 +14,6 @@ from ada.web.configuration.tool_editor.structure import (
     structure_editor_table_data_from_configuration,
 )
 from ada.web.configuration.tool_editor.structure_ids import (
-    COMPONENT_ACCENT_TYPE,
     COMPONENT_ADD_SUBCOMPONENT_TYPE,
     COMPONENT_DELETE_TYPE,
     COMPONENT_DISPLAY_NAME_TYPE,
@@ -27,7 +25,6 @@ from ada.web.configuration.tool_editor.structure_ids import (
     COMPONENT_SUMMARY_COUNT_TYPE,
     COMPONENT_SUMMARY_NAME_TYPE,
     COMPONENT_SUMMARY_SCOPE_TYPE,
-    COMPONENT_SUMMARY_SWATCH_TYPE,
     STRUCTURE_ADD_COMPONENT_ID,
     STRUCTURE_COMPONENTS_CONTAINER_ID,
     STRUCTURE_DOCUMENT_STORE_ID,
@@ -187,10 +184,6 @@ def build_component_editor_row(
         all_component_rows,
         owner_index=index,
     )
-    accent = str(
-        values.get('accent')
-        or ToolComponentAccent.GOLD.value
-    )
 
     return html.Details(
         [
@@ -198,13 +191,6 @@ def build_component_editor_row(
                 [
                     html.Div(
                         [
-                            html.Span(
-                                id=row_id(
-                                    COMPONENT_SUMMARY_SWATCH_TYPE,
-                                    index,
-                                ),
-                                className=_accent_class(accent),
-                            ),
                             html.Div(
                                 [
                                     html.Strong(
@@ -286,15 +272,6 @@ def build_component_editor_row(
                         ),
                         value=values.get('display_name'),
                         placeholder='Nombre del componente',
-                    ),
-                    _dropdown_field(
-                        label='Color',
-                        component_id=row_id(
-                            COMPONENT_ACCENT_TYPE,
-                            index,
-                        ),
-                        value=accent,
-                        options=_accent_options(),
                     ),
                     html.Div(
                         _dropdown_field(
@@ -588,23 +565,6 @@ def _dropdown_field(
     )
 
 
-def _accent_options() -> list[dict[str, str]]:
-    labels = {
-        ToolComponentAccent.BLUE: 'Azul',
-        ToolComponentAccent.CYAN: 'Celeste',
-        ToolComponentAccent.GREEN: 'Verde',
-        ToolComponentAccent.GOLD: 'Dorado',
-        ToolComponentAccent.ORANGE: 'Naranja',
-        ToolComponentAccent.RED: 'Rojo',
-        ToolComponentAccent.GRAY: 'Gris',
-        ToolComponentAccent.PURPLE: 'Morado',
-    }
-    return [
-        {'label': labels[accent], 'value': accent.value}
-        for accent in ToolComponentAccent
-    ]
-
-
 def _linked_component_options(
     rows: Sequence[Mapping[str, object]],
     *,
@@ -705,19 +665,6 @@ def _shared_label(linked_values: Sequence[str]) -> str:
     if count == 1:
         return 'Compartido con 1 componente'
     return f'Compartido con {count} componentes'
-
-
-def _accent_class(accent: str) -> str:
-    valid = {item.value for item in ToolComponentAccent}
-    resolved = (
-        accent
-        if accent in valid
-        else ToolComponentAccent.GOLD.value
-    )
-    return (
-        'ada-tool-structure-editor__swatch '
-        f'ada-tool-structure-editor__swatch--{resolved}'
-    )
 
 
 def _dash_select_style() -> dict[str, str]:

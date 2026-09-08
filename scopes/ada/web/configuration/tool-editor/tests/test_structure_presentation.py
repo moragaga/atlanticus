@@ -46,7 +46,6 @@ def _configuration() -> dict[str, object]:
                 'display_name': 'Mina',
                 'scope': 'mine',
                 'layout_role': None,
-                'accent': 'blue',
                 'subcomponents': [
                     {
                         'key': 'extraction',
@@ -60,7 +59,6 @@ def _configuration() -> dict[str, object]:
                 'display_name': 'Despacho',
                 'scope': 'mine',
                 'layout_role': None,
-                'accent': 'orange',
                 'subcomponents': [
                     {
                         'key': 'fleet',
@@ -74,7 +72,6 @@ def _configuration() -> dict[str, object]:
                 'display_name': 'Planta',
                 'scope': 'plant',
                 'layout_role': None,
-                'accent': 'green',
                 'subcomponents': [
                     {
                         'key': 'crusher',

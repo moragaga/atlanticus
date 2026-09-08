@@ -5,7 +5,6 @@ import pytest
 from ada.configuration.tools import (
     ProcessLayoutRole,
     ToolComponent,
-    ToolComponentAccent,
     ToolConfigurationKind,
     ToolConfigurationValidationError,
     ToolScope,
@@ -672,28 +671,3 @@ def test_process_layout_agnostic_component_requires_subcomponents() -> None:
                 ),
             ),
         )
-
-
-def test_component_accent_defaults_for_legacy_documents_and_roundtrips() -> None:
-    legacy_document = {
-        'key': 'component',
-        'display_name': 'Component',
-        'scope': None,
-        'layout_role': None,
-        'subcomponents': [
-            {
-                'key': 'detail',
-                'display_name': 'Detail',
-                'linked_component_keys': [],
-            }
-        ],
-    }
-
-    restored = ToolComponent.from_document(
-        MappingProxyType(legacy_document)
-    )
-
-    assert restored.accent is ToolComponentAccent.GOLD
-    assert ToolComponent.from_document(
-        MappingProxyType(restored.to_document())
-    ) == restored

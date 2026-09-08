@@ -51,7 +51,6 @@ def test_process_coverage_maps_to_structure_operational_scope() -> None:
                 'key': 'cmp_process',
                 'display_name': 'Proceso',
                 'scope': None,
-                'accent': 'blue',
             }
         ],
         subcomponent_rows=[
@@ -109,7 +108,6 @@ def test_integrated_mine_and_plant_requires_both_scopes() -> None:
                     'key': 'cmp_mine',
                     'display_name': 'Mina',
                     'scope': 'mine',
-                    'accent': 'gold',
                 }
             ],
             subcomponent_rows=[
@@ -134,19 +132,16 @@ def test_integrated_shared_subcomponent_keeps_one_owner() -> None:
                 'key': 'cmp_mine',
                 'display_name': 'Mina',
                 'scope': 'mine',
-                'accent': 'gold',
             },
             {
                 'key': 'cmp_dispatch',
                 'display_name': 'Despacho',
                 'scope': 'mine',
-                'accent': 'orange',
             },
             {
                 'key': 'cmp_plant',
                 'display_name': 'Planta',
                 'scope': 'plant',
-                'accent': 'green',
             },
         ],
         subcomponent_rows=[

@@ -15,7 +15,6 @@ from dash import (
 )
 
 from ada.configuration.tools import (
-    ToolComponentAccent,
     ToolConfiguration,
     ToolConfigurationKind,
 )
@@ -30,7 +29,6 @@ from ada.web.configuration.tool_editor.structure import (
     structure_editor_table_data_from_configuration,
 )
 from ada.web.configuration.tool_editor.structure_ids import (
-    COMPONENT_ACCENT_TYPE,
     COMPONENT_ADD_SUBCOMPONENT_TYPE,
     COMPONENT_DELETE_TYPE,
     COMPONENT_DISPLAY_NAME_TYPE,
@@ -41,7 +39,6 @@ from ada.web.configuration.tool_editor.structure_ids import (
     COMPONENT_SUMMARY_COUNT_TYPE,
     COMPONENT_SUMMARY_NAME_TYPE,
     COMPONENT_SUMMARY_SCOPE_TYPE,
-    COMPONENT_SUMMARY_SWATCH_TYPE,
     STRUCTURE_ADD_COMPONENT_ID,
     STRUCTURE_COMPONENTS_CONTAINER_ID,
     STRUCTURE_DOCUMENT_STORE_ID,
@@ -56,7 +53,6 @@ from ada.web.configuration.tool_editor.structure_ids import (
     SUBCOMPONENT_SUMMARY_NAME_TYPE,
 )
 from ada.web.configuration.tool_editor.structure_presentation import (
-    _accent_class,
     _linked_component_options,
     _linked_values,
     _shared_label,
@@ -153,7 +149,6 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
                     'key': _new_key('cmp', component_keys),
                     'display_name': '',
                     'scope': None,
-                    'accent': ToolComponentAccent.GOLD.value,
                 },
                 kind=kind,
                 coverage=coverage,
@@ -491,20 +486,14 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             {'type': COMPONENT_SUMMARY_SCOPE_TYPE, 'index': ALL},
             'children',
         ),
-        Output(
-            {'type': COMPONENT_SUMMARY_SWATCH_TYPE, 'index': ALL},
-            'className',
-        ),
         Input(KIND_ID, 'value'),
         Input(COVERAGE_ID, 'value'),
         Input({'type': COMPONENT_SCOPE_TYPE, 'index': ALL}, 'value'),
-        Input({'type': COMPONENT_ACCENT_TYPE, 'index': ALL}, 'value'),
     )
     def sync_component_context(
         kind_value: str | None,
         coverage: str | None,
         scopes: list[object],
-        accents: list[object],
     ):
         try:
             kind = (
@@ -514,7 +503,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             )
         except ValueError:
             kind = None
-        labels = [
+        return [
             _summary_scope(
                 kind=kind,
                 coverage=coverage,
@@ -522,16 +511,6 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             )
             for scope in scopes
         ]
-        swatches = [
-            _accent_class(
-                str(
-                    accent
-                    or ToolComponentAccent.GOLD.value
-                )
-            )
-            for accent in accents
-        ]
-        return labels, swatches
 
     @app.callback(
         Output(
@@ -611,7 +590,6 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             'value',
         ),
         Input({'type': COMPONENT_SCOPE_TYPE, 'index': ALL}, 'value'),
-        Input({'type': COMPONENT_ACCENT_TYPE, 'index': ALL}, 'value'),
         Input(
             {
                 'type': SUBCOMPONENT_KEY_TYPE,
@@ -652,7 +630,6 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         component_keys: list[object],
         component_names: list[object],
         component_scopes: list[object],
-        component_accents: list[object],
         subcomponent_keys: list[object],
         subcomponent_names: list[object],
         subcomponent_links: list[object],
@@ -693,10 +670,6 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
                         component_key_ids,
                         component_scopes,
                     ),
-                    accents=_indexed_values(
-                        component_key_ids,
-                        component_accents,
-                    ),
                 ),
                 subcomponent_rows=_subcomponent_rows(
                     key_ids=subcomponent_key_ids,
@@ -727,14 +700,12 @@ def _component_rows(
     keys: Mapping[int, object],
     names: Mapping[int, object],
     scopes: Mapping[int, object],
-    accents: Mapping[int, object],
 ) -> list[dict[str, object]]:
     return [
         {
             'key': value,
             'display_name': names.get(index),
             'scope': scopes.get(index),
-            'accent': accents.get(index),
         }
         for index, value in keys.items()
     ]
