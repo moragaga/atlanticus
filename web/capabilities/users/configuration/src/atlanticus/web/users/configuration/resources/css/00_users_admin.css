@@ -87,6 +87,108 @@
     box-shadow: none;
 }
 
+.atlanticus-users-admin.atlanticus-bootstrap
+.atlanticus-users-admin__tabs
+.atlanticus-users-admin__tab,
+.atlanticus-users-admin.atlanticus-bootstrap
+.atlanticus-users-admin__tabs
+.atlanticus-users-admin__tab.active {
+    color: var(--atlanticus-ui-text-muted);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.atlanticus-users-admin.atlanticus-bootstrap
+.atlanticus-users-admin__tabs
+.atlanticus-users-admin__tab:hover,
+.atlanticus-users-admin.atlanticus-bootstrap
+.atlanticus-users-admin__tabs
+.atlanticus-users-admin__tab:focus-visible,
+.atlanticus-users-admin.atlanticus-bootstrap
+.atlanticus-users-admin__tabs
+.atlanticus-users-admin__tab.active,
+.atlanticus-users-admin.atlanticus-bootstrap
+.atlanticus-users-admin__tabs
+.atlanticus-users-admin__tab--active {
+    color: var(--atlanticus-ui-primary-hover);
+    background: transparent;
+    border-bottom-color: var(--atlanticus-ui-accent);
+    border-radius: 0;
+    box-shadow: none;
+    outline: 0;
+}
+
+.atlanticus-users-admin.atlanticus-bootstrap
+.atlanticus-users-admin__tabs
+.atlanticus-users-admin__tab,
+.atlanticus-users-admin.atlanticus-bootstrap
+.atlanticus-users-admin__tabs
+.atlanticus-users-admin__tab.active {
+    color: var(--atlanticus-ui-text-muted);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.atlanticus-users-admin.atlanticus-bootstrap
+.atlanticus-users-admin__tabs
+.atlanticus-users-admin__tab:hover,
+.atlanticus-users-admin.atlanticus-bootstrap
+.atlanticus-users-admin__tabs
+.atlanticus-users-admin__tab:focus-visible,
+.atlanticus-users-admin.atlanticus-bootstrap
+.atlanticus-users-admin__tabs
+.atlanticus-users-admin__tab.active,
+.atlanticus-users-admin.atlanticus-bootstrap
+.atlanticus-users-admin__tabs
+.atlanticus-users-admin__tab--active {
+    color: var(--atlanticus-ui-primary-hover);
+    background: transparent;
+    border-bottom-color: var(--atlanticus-ui-accent);
+    border-radius: 0;
+    box-shadow: none;
+    outline: 0;
+}
+
+.atlanticus-users-admin.atlanticus-bootstrap
+.atlanticus-users-admin__tabs
+.atlanticus-users-admin__tab,
+.atlanticus-users-admin.atlanticus-bootstrap
+.atlanticus-users-admin__tabs
+.atlanticus-users-admin__tab.active {
+    color: var(--atlanticus-ui-text-muted);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.atlanticus-users-admin.atlanticus-bootstrap
+.atlanticus-users-admin__tabs
+.atlanticus-users-admin__tab:hover,
+.atlanticus-users-admin.atlanticus-bootstrap
+.atlanticus-users-admin__tabs
+.atlanticus-users-admin__tab:focus-visible,
+.atlanticus-users-admin.atlanticus-bootstrap
+.atlanticus-users-admin__tabs
+.atlanticus-users-admin__tab.active,
+.atlanticus-users-admin.atlanticus-bootstrap
+.atlanticus-users-admin__tabs
+.atlanticus-users-admin__tab--active {
+    color: var(--atlanticus-ui-primary-hover);
+    background: transparent;
+    border-bottom-color: var(--atlanticus-ui-accent);
+    border-radius: 0;
+    box-shadow: none;
+    outline: 0;
+}
+
 .atlanticus-users-admin__panel {
     display: none;
 }
