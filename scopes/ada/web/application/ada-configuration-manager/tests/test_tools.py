@@ -9,8 +9,11 @@ import pytest
 from ada.configuration.tools_lifecycle import build_tool_configuration_digest
 from ada.web.application.configuration_manager.tools import (
     TOOL_IMPORT_UPLOAD_ID,
+    TOOL_MANAGER_ASSET_LAYER,
     TOOL_MANAGER_ROOT_ID,
+    TOOL_PROJECTION_NAME_ID,
     TOOL_SAVE_BUTTON_ID,
+    TOOL_SOURCE_NAME_ID,
     ToolManagerWebContext,
     _decode_tool_configuration_import,
     _editor_configuration,
@@ -87,6 +90,8 @@ def tool_context() -> ToolManagerWebContext:
         editor_revision_store_id={'type': 'editor', 'module': 'tools'},
         result_id={'type': 'result', 'module': 'tools'},
         draft_owner_provider=lambda: 'local',
+        source_name='SharePoint',
+        projection_name='Cosmos DB',
     )
 
 
@@ -111,15 +116,37 @@ def component_ids(component: object) -> list[object]:
     return result
 
 
-def test_tool_manager_layout_wraps_current_editor_between_import_and_save() -> None:
-    layout = build_tool_manager_configuration()
+def component_by_id(component: object, component_id: object) -> object | None:
+    if getattr(component, 'id', None) == component_id:
+        return component
+    children = getattr(component, 'children', None)
+    if children is None:
+        return None
+    values = children if isinstance(children, (list, tuple)) else [children]
+    for child in values:
+        if not hasattr(child, 'children') and getattr(child, 'id', None) is None:
+            continue
+        found = component_by_id(child, component_id)
+        if found is not None:
+            return found
+    return None
+
+
+def test_tool_manager_layout_matches_existing_manager_import_and_save_pattern() -> None:
+    layout = build_tool_manager_configuration(tool_context())
 
     assert layout.id == TOOL_MANAGER_ROOT_ID
+    assert 'atlanticus-bootstrap' in layout.className
     assert layout.children[1].id == TOOL_CONFIGURATION_EDITOR_ROOT_ID
 
     ids = component_ids(layout)
     assert ids.index(TOOL_IMPORT_UPLOAD_ID) < ids.index(TOOL_CONFIGURATION_EDITOR_ROOT_ID)
     assert ids.index(TOOL_CONFIGURATION_EDITOR_ROOT_ID) < ids.index(TOOL_SAVE_BUTTON_ID)
+
+    source = component_by_id(layout, TOOL_SOURCE_NAME_ID)
+    projection = component_by_id(layout, TOOL_PROJECTION_NAME_ID)
+    assert source is not None and source.children == 'SharePoint'
+    assert projection is not None and projection.children == 'Cosmos DB'
 
 
 def test_tool_import_decodes_canonical_configuration() -> None:
@@ -231,9 +258,9 @@ def test_history_preview_is_descriptive_and_has_no_editor_selector() -> None:
     assert preview is not None
 
 
-def test_tool_manager_web_module_composes_complete_editor_assets() -> None:
+def test_tool_manager_web_module_composes_editor_and_manager_assets() -> None:
     module = create_tool_manager_web_module(tool_context())
 
     assert module.name == 'ada-configuration-manager-tools'
-    assert module.asset_layers
+    assert TOOL_MANAGER_ASSET_LAYER in module.asset_layers
     assert module.register_callbacks is not None

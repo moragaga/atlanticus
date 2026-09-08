@@ -3,9 +3,10 @@ from dash.development.base_component import Component
 from ada.web.configuration.tool_editor import (
     BRANDING_ID,
     COVERAGE_ID,
-    DISPLAY_NAME_ID,
     DISPATCH_DEGRADATION_ID,
     DISPATCH_ENABLED_ID,
+    DISPATCH_PREVENTIVE_ID,
+    DISPLAY_NAME_ID,
     KIND_ID,
     PI_DEGRADATION_ID,
     PI_PREVENTIVE_ID,
@@ -32,7 +33,7 @@ def _component_ids(component: Component) -> set[object]:
     return resolved
 
 
-def test_tool_editor_exposes_general_and_source_state_controls() -> None:
+def test_tool_editor_exposes_general_and_independent_source_state_controls() -> None:
     component = build_tool_source_editor()
     ids = _component_ids(component)
 
@@ -42,6 +43,7 @@ def test_tool_editor_exposes_general_and_source_state_controls() -> None:
     assert BRANDING_ID in ids
     assert PI_PREVENTIVE_ID in ids
     assert PI_DEGRADATION_ID in ids
+    assert DISPATCH_PREVENTIVE_ID in ids
     assert DISPATCH_DEGRADATION_ID in ids
     assert DISPATCH_ENABLED_ID in ids
 
@@ -53,3 +55,4 @@ def test_tool_editor_does_not_expose_legacy_source_configuration() -> None:
     assert 'observaciones adicionales' not in rendered
     assert 'additional observation' not in rendered
     assert 'source_key_adicional' not in rendered
+    assert 'comparte el umbral preventivo' not in rendered

@@ -58,7 +58,11 @@ namespaces = true
 include = ["ada.web.application.configuration_manager*"]
 
 [tool.setuptools.package-data]
-"ada.web.application.configuration_manager" = ["py.typed"]
+"ada.web.application.configuration_manager" = [
+    "py.typed",
+    "resources/css/*.css",
+    "resources/css/css.list",
+]
 
 [tool.ruff]
 line-length = 100

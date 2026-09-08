@@ -16,6 +16,10 @@ DISPATCH_ENABLED_ID = 'ada-tool-configuration-editor-dispatch-enabled'
 DISPATCH_DEGRADATION_WRAPPER_ID = (
     'ada-tool-configuration-editor-dispatch-degradation-wrapper'
 )
+# Identificador específico para el umbral preventivo independiente de Dispatch.
+DISPATCH_PREVENTIVE_ID = (
+    'ada-tool-configuration-editor-dispatch-preventive'
+)
 DISPATCH_DEGRADATION_ID = (
     'ada-tool-configuration-editor-dispatch-degradation'
 )

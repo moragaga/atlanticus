@@ -10,10 +10,11 @@ from ada.web.configuration.tool_editor.ids import (
     BRANDING_ID,
     CONFIGURATION_STORE_ID,
     COVERAGE_ID,
-    DISPLAY_NAME_ID,
     DISPATCH_DEGRADATION_ID,
     DISPATCH_DEGRADATION_WRAPPER_ID,
     DISPATCH_ENABLED_ID,
+    DISPATCH_PREVENTIVE_ID,
+    DISPLAY_NAME_ID,
     DRAFT_STORE_ID,
     KIND_ID,
     PI_DEGRADATION_ID,
@@ -140,8 +141,8 @@ def _source_state_section() -> Component:
                 'Estado de fuentes',
                 (
                     'PI determina el estado operacional de la herramienta. '
-                    'Dispatch puede participar opcionalmente con su propio '
-                    'umbral de degradación.'
+                    'Dispatch puede participar opcionalmente y mantiene '
+                    'umbrales preventivo y de degradación propios.'
                 ),
             ),
             html.Div(
@@ -196,14 +197,26 @@ def _source_state_section() -> Component:
                                 className='ada-tool-source-editor__dispatch-toggle',
                             ),
                             html.Div(
-                                _number_field(
-                                    label='Umbral de degradación',
-                                    component_id=DISPATCH_DEGRADATION_ID,
-                                    help_text=(
-                                        'Dispatch comparte el umbral preventivo '
-                                        'de PI y define su propio umbral de '
-                                        'degradación.'
-                                    ),
+                                html.Div(
+                                    [
+                                        _number_field(
+                                            label='Umbral preventivo',
+                                            component_id=DISPATCH_PREVENTIVE_ID,
+                                            help_text=(
+                                                'Segundos sin actualización antes '
+                                                'de entrar en alerta preventiva.'
+                                            ),
+                                        ),
+                                        _number_field(
+                                            label='Umbral de degradación',
+                                            component_id=DISPATCH_DEGRADATION_ID,
+                                            help_text=(
+                                                'Segundos sin actualización antes '
+                                                'de degradar la fuente Dispatch.'
+                                            ),
+                                        ),
+                                    ],
+                                    className='ada-tool-source-editor__threshold-grid',
                                 ),
                                 id=DISPATCH_DEGRADATION_WRAPPER_ID,
                                 hidden=True,

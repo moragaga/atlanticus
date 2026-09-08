@@ -22,15 +22,24 @@ from ada.web.configuration.tool_editor import (
     register_tool_source_editor_callbacks,
     register_tool_structure_editor_callbacks,
 )
+from atlanticus.web.assets import AssetLayer
 from atlanticus.web.manager import ManagerDraft
 from atlanticus.web.manager.errors import ManagerProjectionError
 from atlanticus.web.modules import WebModule
 
 TOOL_MANAGER_ROOT_ID = 'ada-configuration-manager-tools'
+TOOL_SOURCE_NAME_ID = 'ada-configuration-manager-tools-source-name'
+TOOL_PROJECTION_NAME_ID = 'ada-configuration-manager-tools-projection-name'
 TOOL_IMPORT_UPLOAD_ID = 'ada-configuration-manager-tools-import'
 TOOL_IMPORT_RESULT_ID = 'ada-configuration-manager-tools-import-result'
 TOOL_SAVE_BUTTON_ID = 'ada-configuration-manager-tools-save-draft'
 TOOL_SAVE_RESULT_ID = 'ada-configuration-manager-tools-save-result'
+
+TOOL_MANAGER_ASSET_LAYER = AssetLayer(
+    name='ada_configuration_manager_tools',
+    load_order=720,
+    package='ada.web.application.configuration_manager',
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,17 +51,19 @@ class ToolManagerWebContext:
     result_id: object
     draft_owner_provider: Callable[[], str]
     can_manage: Callable[[], bool] = lambda: True
+    source_name: str = 'Source'
+    projection_name: str = 'Projection'
 
 
-def build_tool_manager_configuration() -> object:
+def build_tool_manager_configuration(context: ToolManagerWebContext) -> object:
     return html.Div(
         [
-            _tool_import_section(),
+            _tool_runtime_context(context),
             build_tool_configuration_editor(),
             _tool_save_section(),
         ],
         id=TOOL_MANAGER_ROOT_ID,
-        className='d-grid gap-3',
+        className='ada-configuration-manager-tools atlanticus-bootstrap',
     )
 
 
@@ -90,7 +101,10 @@ def create_tool_manager_web_module(context: ToolManagerWebContext) -> WebModule:
 
     return WebModule(
         name='ada-configuration-manager-tools',
-        asset_layers=(ADA_TOOL_CONFIGURATION_EDITOR_ASSET_LAYER,),
+        asset_layers=(
+            ADA_TOOL_CONFIGURATION_EDITOR_ASSET_LAYER,
+            TOOL_MANAGER_ASSET_LAYER,
+        ),
         register_callbacks=register_callbacks,
     )
 
@@ -232,20 +246,25 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
         return None, _success('Borrador guardado en este navegador.'), document, document
 
 
-def _tool_import_section() -> object:
+def _tool_runtime_context(context: ToolManagerWebContext) -> object:
     return html.Section(
         [
             html.Div(
                 [
-                    html.Div(
-                        [
-                            html.H3('Importar configuración'),
-                            html.P(
-                                'Carga un archivo JSON de Tool Configuration en el editor. '
-                                'No guarda, publica ni proyecta cambios.'
-                            ),
-                        ]
-                    ),
+                    html.Span('Fuente de verdad'),
+                    html.Strong(context.source_name, id=TOOL_SOURCE_NAME_ID),
+                ],
+                className='ada-configuration-manager-tools__runtime-source',
+            ),
+            html.Div(
+                [
+                    html.Span('Proyección'),
+                    html.Strong(context.projection_name, id=TOOL_PROJECTION_NAME_ID),
+                ],
+                className='ada-configuration-manager-tools__runtime-source',
+            ),
+            html.Div(
+                [
                     dcc.Upload(
                         id=TOOL_IMPORT_UPLOAD_ID,
                         children=html.Button(
@@ -256,12 +275,19 @@ def _tool_import_section() -> object:
                         accept='.json,application/json',
                         multiple=False,
                     ),
+                    html.Span(
+                        (
+                            'Carga Tool Configuration en el editor. '
+                            'No guarda, publica ni proyecta cambios.'
+                        ),
+                        className='ada-configuration-manager-tools__runtime-help',
+                    ),
+                    html.Div(id=TOOL_IMPORT_RESULT_ID),
                 ],
-                className='atlanticus-manager__workflow-group-header',
+                className='ada-configuration-manager-tools__import',
             ),
-            html.Div(id=TOOL_IMPORT_RESULT_ID),
         ],
-        className='atlanticus-manager__workflow-group',
+        className='ada-configuration-manager-tools__runtime-context',
     )
 
 
@@ -277,7 +303,8 @@ def _tool_save_section() -> object:
                                 'Guarda la configuración actual en este navegador. '
                                 'Validar, publicar y proyectar se realiza en Estado y trazabilidad.'
                             ),
-                        ]
+                        ],
+                        className='ada-configuration-manager-tools__section-copy',
                     ),
                     html.Button(
                         'Guardar borrador',
@@ -287,11 +314,14 @@ def _tool_save_section() -> object:
                         className='btn btn-primary',
                     ),
                 ],
-                className='atlanticus-manager__workflow-group-header',
+                className='ada-configuration-manager-tools__section-heading',
             ),
             html.Div(id=TOOL_SAVE_RESULT_ID),
         ],
-        className='atlanticus-manager__workflow-group',
+        className=(
+            'ada-configuration-manager-tools__section '
+            'ada-configuration-manager-tools__section--footer'
+        ),
     )
 
 

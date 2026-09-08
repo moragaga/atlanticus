@@ -13,10 +13,11 @@ from ada.web.configuration.tool_editor.ids import (
     BRANDING_ID,
     CONFIGURATION_STORE_ID,
     COVERAGE_ID,
-    DISPLAY_NAME_ID,
     DISPATCH_DEGRADATION_ID,
     DISPATCH_DEGRADATION_WRAPPER_ID,
     DISPATCH_ENABLED_ID,
+    DISPATCH_PREVENTIVE_ID,
+    DISPLAY_NAME_ID,
     DRAFT_STORE_ID,
     KIND_ID,
     PI_DEGRADATION_ID,
@@ -46,6 +47,7 @@ def register_tool_source_editor_callbacks(app: object) -> None:
         Output(PI_PREVENTIVE_ID, 'value'),
         Output(PI_DEGRADATION_ID, 'value'),
         Output(DISPATCH_ENABLED_ID, 'value'),
+        Output(DISPATCH_PREVENTIVE_ID, 'value'),
         Output(DISPATCH_DEGRADATION_ID, 'value'),
         Input(CONFIGURATION_STORE_ID, 'data'),
     )
@@ -61,6 +63,7 @@ def register_tool_source_editor_callbacks(app: object) -> None:
                 None,
                 [],
                 None,
+                None,
             )
         configuration = ToolConfiguration.from_document(
             configuration_document
@@ -73,6 +76,7 @@ def register_tool_source_editor_callbacks(app: object) -> None:
             values.pi_preventive_after_seconds,
             values.pi_degradation_after_seconds,
             ['dispatch'] if values.dispatch_enabled else [],
+            values.dispatch_preventive_after_seconds,
             values.dispatch_degradation_after_seconds,
         )
 
@@ -138,9 +142,11 @@ def register_tool_source_editor_callbacks(app: object) -> None:
         Input(PI_PREVENTIVE_ID, 'value'),
         Input(PI_DEGRADATION_ID, 'value'),
         Input(DISPATCH_ENABLED_ID, 'value'),
+        Input(DISPATCH_PREVENTIVE_ID, 'value'),
         Input(DISPATCH_DEGRADATION_ID, 'value'),
         State(CONFIGURATION_STORE_ID, 'data'),
     )
+    # Cuando Dispatch participa, sus dos umbrales son obligatorios e independientes de PI.
     def build_source_draft(
         display_name: str | None,
         kind_value: str | None,
@@ -148,6 +154,7 @@ def register_tool_source_editor_callbacks(app: object) -> None:
         pi_preventive: int | float | None,
         pi_degradation: int | float | None,
         dispatch_values: list[str] | None,
+        dispatch_preventive: int | float | None,
         dispatch_degradation: int | float | None,
         configuration_document: dict[str, object] | None,
     ):
@@ -160,7 +167,10 @@ def register_tool_source_editor_callbacks(app: object) -> None:
             or pi_degradation is None
             or (
                 dispatch_enabled
-                and dispatch_degradation is None
+                and (
+                    dispatch_preventive is None
+                    or dispatch_degradation is None
+                )
             )
         ):
             return None, False, ''
@@ -178,6 +188,7 @@ def register_tool_source_editor_callbacks(app: object) -> None:
                 pi_preventive_after_seconds=pi_preventive,
                 pi_degradation_after_seconds=pi_degradation,
                 dispatch_enabled=dispatch_enabled,
+                dispatch_preventive_after_seconds=dispatch_preventive,
                 dispatch_degradation_after_seconds=dispatch_degradation,
             )
             updated = build_configuration_from_source_editor(

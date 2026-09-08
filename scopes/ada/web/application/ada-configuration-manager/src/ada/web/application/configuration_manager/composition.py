@@ -89,6 +89,8 @@ def build_configuration_manager_surface(
         result_id=workflow_result_id('tools'),
         draft_owner_provider=lambda: dependencies.principal_provider().subject_id,
         can_manage=lambda: _can_manage_tools(dependencies.principal_provider()),
+        source_name=dependencies.tools_source_name,
+        projection_name=dependencies.tools_projection_name,
     )
     return ManagerSurfaceDefinition(
         principal_provider=dependencies.principal_provider,
@@ -149,7 +151,7 @@ def build_configuration_manager_surface(
                 route='/tools',
                 order=30,
                 description='Configuración de la herramienta operacional de esta aplicación.',
-                layout=lambda _services: build_tool_manager_configuration(),
+                layout=lambda _services: build_tool_manager_configuration(tools_context),
                 history_preview_renderer=build_tool_history_preview,
                 workflow_service=TOOLS_WORKFLOW_SERVICE,
                 access=ManagerModuleAccess(

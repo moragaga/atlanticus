@@ -14,6 +14,9 @@ DISPATCH_ENABLED_ID = 'ada-tool-configuration-editor-dispatch-enabled'
 DISPATCH_DEGRADATION_WRAPPER_ID = (
     'ada-tool-configuration-editor-dispatch-degradation-wrapper'
 )
+DISPATCH_PREVENTIVE_ID = (
+    'ada-tool-configuration-editor-dispatch-preventive'
+)
 DISPATCH_DEGRADATION_ID = (
     'ada-tool-configuration-editor-dispatch-degradation'
 )

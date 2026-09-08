@@ -2,17 +2,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ada.configuration.tool_sources import (
+    SourceControlPolicy,
+    ToolSourceConsumption,
+    ToolSourceOperationalParticipation,
+)
 from ada.configuration.tools import (
     BrandingConfiguration,
     BrandingVariant,
     ToolConfiguration,
     ToolConfigurationKind,
     validate_ada_operational_tool_sources,
-)
-from ada.configuration.tool_sources import (
-    SourceControlPolicy,
-    ToolSourceConsumption,
-    ToolSourceOperationalParticipation,
 )
 from ada.web.configuration.tool_editor.errors import (
     ToolSourceEditorValidationError,
@@ -29,6 +29,7 @@ class ToolSourceEditorValues:
     pi_preventive_after_seconds: int | None
     pi_degradation_after_seconds: int | None
     dispatch_enabled: bool = False
+    dispatch_preventive_after_seconds: int | None = None
     dispatch_degradation_after_seconds: int | None = None
 
     def __post_init__(self) -> None:
@@ -77,6 +78,14 @@ class ToolSourceEditorValues:
         )
         object.__setattr__(
             self,
+            'dispatch_preventive_after_seconds',
+            _optional_seconds(
+                self.dispatch_preventive_after_seconds,
+                label='Dispatch preventive threshold',
+            ),
+        )
+        object.__setattr__(
+            self,
             'dispatch_degradation_after_seconds',
             _optional_seconds(
                 self.dispatch_degradation_after_seconds,
@@ -106,6 +115,11 @@ def source_editor_values_from_configuration(
             else None
         ),
         dispatch_enabled=configuration.source_consumption.consumes('dispatch'),
+        dispatch_preventive_after_seconds=(
+            dispatch_policy.pre_degrading_after_seconds
+            if dispatch_policy is not None
+            else None
+        ),
         dispatch_degradation_after_seconds=(
             dispatch_policy.degrading_after_seconds
             if dispatch_policy is not None
@@ -142,7 +156,10 @@ def build_configuration_from_source_editor(
         control_sources.append(
             SourceControlPolicy(
                 source_key='dispatch',
-                pre_degrading_after_seconds=pi_policy.pre_degrading_after_seconds,
+                pre_degrading_after_seconds=_required_seconds(
+                    values.dispatch_preventive_after_seconds,
+                    label='Dispatch preventive threshold',
+                ),
                 degrading_after_seconds=_required_seconds(
                     values.dispatch_degradation_after_seconds,
                     label='Dispatch degradation threshold',
