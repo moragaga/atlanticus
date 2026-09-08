@@ -1,99 +1,146 @@
+# Espejo comentado de callbacks de Información general y Estado de fuentes.
+
 from __future__ import annotations
 
-# Los callbacks conectan un documento ToolConfiguration de entrada con un draft válido de salida.
-# Cuando la edición es incompleta o inválida se invalida el draft para evitar guardar estado anterior.
 from dash import Input, Output, State
 
-from ada.configuration.tools import ToolConfiguration
+from ada.configuration.tools import (
+    BrandingVariant,
+    ToolConfiguration,
+    ToolConfigurationKind,
+)
 from ada.web.configuration.tool_editor.ids import (
-    ADDITIONAL_OBSERVATION_ID,
+    BRANDING_ID,
     CONFIGURATION_STORE_ID,
-    DISPATCH_DEGRADING_ID,
+    COVERAGE_ID,
+    DISPLAY_NAME_ID,
     DISPATCH_ENABLED_ID,
-    DISPATCH_FIELDS_ID,
-    DISPATCH_PRE_DEGRADING_ID,
     DRAFT_STORE_ID,
-    PI_DEGRADING_ID,
-    PI_PRE_DEGRADING_ID,
+    KIND_ID,
+    PI_DEGRADATION_ID,
+    PI_PREVENTIVE_ID,
     VALIDATION_MESSAGE_ID,
     VALIDITY_STORE_ID,
 )
 from ada.web.configuration.tool_editor.models import (
     ToolSourceEditorValues,
     build_configuration_from_source_editor,
-    parse_additional_observation_source_keys,
     source_editor_values_from_configuration,
 )
+from ada.web.configuration.tool_editor.structure import (
+    structure_editor_coverage_from_configuration,
+)
+
+_COVERAGE_MINE = 'mine'
+_COVERAGE_PLANT = 'plant'
+_COVERAGE_MINE_PLANT = 'mine_plant'
 
 
+# Carga configuración existente o permite crear una Tool inicial desde cero.
 def register_tool_source_editor_callbacks(app: object) -> None:
     @app.callback(
-        Output(PI_PRE_DEGRADING_ID, 'value'),
-        Output(PI_DEGRADING_ID, 'value'),
+        Output(DISPLAY_NAME_ID, 'value'),
+        Output(KIND_ID, 'value'),
+        Output(BRANDING_ID, 'value'),
+        Output(PI_PREVENTIVE_ID, 'value'),
+        Output(PI_DEGRADATION_ID, 'value'),
         Output(DISPATCH_ENABLED_ID, 'value'),
-        Output(DISPATCH_PRE_DEGRADING_ID, 'value'),
-        Output(DISPATCH_DEGRADING_ID, 'value'),
-        Output(ADDITIONAL_OBSERVATION_ID, 'value'),
         Input(CONFIGURATION_STORE_ID, 'data'),
     )
-    def load_source_editor(configuration_document: dict[str, object] | None):
+    def load_source_editor(
+        configuration_document: dict[str, object] | None,
+    ):
         if configuration_document is None:
-            return None, None, [], None, None, ''
+            return (
+                '',
+                None,
+                BrandingVariant.ORIGINAL.value,
+                None,
+                None,
+                [],
+            )
         configuration = ToolConfiguration.from_document(configuration_document)
         values = source_editor_values_from_configuration(configuration)
         return (
-            values.pi_pre_degrading_after_seconds,
-            values.pi_degrading_after_seconds,
+            values.display_name,
+            values.kind.value,
+            values.branding_variant.value,
+            values.pi_preventive_after_seconds,
+            values.pi_degradation_after_seconds,
             ['dispatch'] if values.dispatch_enabled else [],
-            values.dispatch_pre_degrading_after_seconds,
-            values.dispatch_degrading_after_seconds,
-            '\n'.join(values.additional_observation_source_keys),
         )
 
     @app.callback(
-        Output(DISPATCH_FIELDS_ID, 'hidden'),
-        Output(DISPATCH_PRE_DEGRADING_ID, 'disabled'),
-        Output(DISPATCH_DEGRADING_ID, 'disabled'),
-        Input(DISPATCH_ENABLED_ID, 'value'),
+        Output(COVERAGE_ID, 'options'),
+        Output(COVERAGE_ID, 'value'),
+        Input(CONFIGURATION_STORE_ID, 'data'),
+        Input(KIND_ID, 'value'),
+        State(COVERAGE_ID, 'value'),
     )
-    def toggle_dispatch_fields(dispatch_values: list[str] | None):
-        enabled = 'dispatch' in (dispatch_values or [])
-        return not enabled, not enabled, not enabled
+    def sync_coverage(
+        configuration_document: dict[str, object] | None,
+        kind_value: str | None,
+        current_coverage: str | None,
+    ):
+        options = _coverage_options(kind_value)
+        valid_values = {option['value'] for option in options}
+        if configuration_document is not None:
+            try:
+                configuration = ToolConfiguration.from_document(
+                    configuration_document
+                )
+            except ValueError:
+                configuration = None
+            if (
+                configuration is not None
+                and configuration.kind.value == kind_value
+            ):
+                configured = structure_editor_coverage_from_configuration(
+                    configuration
+                )
+                if configured in valid_values:
+                    return options, configured
+        if current_coverage in valid_values:
+            return options, current_coverage
+        return options, None
 
     @app.callback(
         Output(DRAFT_STORE_ID, 'data'),
         Output(VALIDITY_STORE_ID, 'data'),
         Output(VALIDATION_MESSAGE_ID, 'children'),
-        Input(PI_PRE_DEGRADING_ID, 'value'),
-        Input(PI_DEGRADING_ID, 'value'),
+        Input(DISPLAY_NAME_ID, 'value'),
+        Input(KIND_ID, 'value'),
+        Input(BRANDING_ID, 'value'),
+        Input(PI_PREVENTIVE_ID, 'value'),
+        Input(PI_DEGRADATION_ID, 'value'),
         Input(DISPATCH_ENABLED_ID, 'value'),
-        Input(DISPATCH_PRE_DEGRADING_ID, 'value'),
-        Input(DISPATCH_DEGRADING_ID, 'value'),
-        Input(ADDITIONAL_OBSERVATION_ID, 'value'),
         State(CONFIGURATION_STORE_ID, 'data'),
     )
+# Produce el borrador base que luego se combina con la estructura.
     def build_source_draft(
-        pi_pre_degrading: int | float | None,
-        pi_degrading: int | float | None,
+        display_name: str | None,
+        kind_value: str | None,
+        branding_value: str | None,
+        pi_preventive: int | float | None,
+        pi_degradation: int | float | None,
         dispatch_values: list[str] | None,
-        dispatch_pre_degrading: int | float | None,
-        dispatch_degrading: int | float | None,
-        additional_observation: str | None,
         configuration_document: dict[str, object] | None,
     ):
-        if configuration_document is None:
+        if not kind_value or not branding_value:
             return None, False, ''
         try:
-            base_configuration = ToolConfiguration.from_document(configuration_document)
+            base_configuration = (
+                ToolConfiguration.from_document(configuration_document)
+                if configuration_document is not None
+                else None
+            )
             values = ToolSourceEditorValues(
-                pi_pre_degrading_after_seconds=pi_pre_degrading,
-                pi_degrading_after_seconds=pi_degrading,
+                display_name=display_name or '',
+                kind=ToolConfigurationKind(kind_value),
+                branding_variant=BrandingVariant(branding_value),
+                pi_preventive_after_seconds=pi_preventive,
+                pi_degradation_after_seconds=pi_degradation,
                 dispatch_enabled='dispatch' in (dispatch_values or []),
-                dispatch_pre_degrading_after_seconds=dispatch_pre_degrading,
-                dispatch_degrading_after_seconds=dispatch_degrading,
-                additional_observation_source_keys=(
-                    parse_additional_observation_source_keys(additional_observation)
-                ),
             )
             updated = build_configuration_from_source_editor(
                 base_configuration=base_configuration,
@@ -102,3 +149,18 @@ def register_tool_source_editor_callbacks(app: object) -> None:
         except ValueError as error:
             return None, False, str(error)
         return updated.to_document(), True, ''
+
+
+def _coverage_options(kind_value: str | None) -> list[dict[str, str]]:
+    if kind_value == ToolConfigurationKind.PROCESS.value:
+        return [
+            {'label': 'Mina', 'value': _COVERAGE_MINE},
+            {'label': 'Planta', 'value': _COVERAGE_PLANT},
+        ]
+    if kind_value == ToolConfigurationKind.INTEGRATED_OPERATIONS.value:
+        return [
+            {'label': 'Mina', 'value': _COVERAGE_MINE},
+            {'label': 'Planta', 'value': _COVERAGE_PLANT},
+            {'label': 'Mina y Planta', 'value': _COVERAGE_MINE_PLANT},
+        ]
+    return []

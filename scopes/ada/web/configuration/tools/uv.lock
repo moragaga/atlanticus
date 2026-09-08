@@ -3,6 +3,19 @@ revision = 3
 requires-python = "==3.14.2"
 
 [[package]]
+name = "ada-configuration-branding"
+version = "0.1.0"
+source = { editable = "../branding" }
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
 name = "ada-configuration-tool-sources"
 version = "0.1.0"
 source = { editable = "../tool-sources" }
@@ -20,6 +33,7 @@ name = "ada-configuration-tools"
 version = "0.4.0"
 source = { editable = "." }
 dependencies = [
+    { name = "ada-configuration-branding" },
     { name = "ada-configuration-tool-sources" },
 ]
 
@@ -30,7 +44,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "ada-configuration-tool-sources", editable = "../tool-sources" }]
+requires-dist = [
+    { name = "ada-configuration-branding", editable = "../branding" },
+    { name = "ada-configuration-tool-sources", editable = "../tool-sources" },
+]
 
 [package.metadata.requires-dev]
 dev = [

@@ -6,14 +6,20 @@ from ada.web.configuration.tool_editor.configuration_editor import (
 )
 from ada.web.configuration.tool_editor.errors import ToolSourceEditorValidationError
 from ada.web.configuration.tool_editor.ids import (
+    BRANDING_ID,
     CONFIGURATION_STORE_ID,
+    COVERAGE_ID,
+    DISPLAY_NAME_ID,
+    DISPATCH_ENABLED_ID,
     DRAFT_STORE_ID,
+    KIND_ID,
+    PI_DEGRADATION_ID,
+    PI_PREVENTIVE_ID,
     VALIDITY_STORE_ID,
 )
 from ada.web.configuration.tool_editor.models import (
     ToolSourceEditorValues,
     build_configuration_from_source_editor,
-    parse_additional_observation_source_keys,
     source_editor_values_from_configuration,
 )
 from ada.web.configuration.tool_editor.module import (
@@ -25,6 +31,7 @@ from ada.web.configuration.tool_editor.structure import (
     ToolStructureEditorValidationError,
     build_configuration_from_structure_editor,
     build_structure_from_editor_tables,
+    structure_editor_coverage_from_configuration,
     structure_editor_table_data_from_configuration,
 )
 from ada.web.configuration.tool_editor.structure_callbacks import (
@@ -42,8 +49,15 @@ from ada.web.configuration.tool_editor.structure_presentation import (
 
 __all__ = [
     'ADA_TOOL_CONFIGURATION_EDITOR_ASSET_LAYER',
+    'BRANDING_ID',
     'CONFIGURATION_STORE_ID',
+    'COVERAGE_ID',
+    'DISPLAY_NAME_ID',
+    'DISPATCH_ENABLED_ID',
     'DRAFT_STORE_ID',
+    'KIND_ID',
+    'PI_DEGRADATION_ID',
+    'PI_PREVENTIVE_ID',
     'STRUCTURE_DOCUMENT_STORE_ID',
     'STRUCTURE_ROOT_ID',
     'STRUCTURE_VALIDITY_STORE_ID',
@@ -59,9 +73,9 @@ __all__ = [
     'build_tool_source_editor',
     'build_tool_structure_editor',
     'create_tool_configuration_editor_module',
-    'parse_additional_observation_source_keys',
     'register_tool_source_editor_callbacks',
     'register_tool_structure_editor_callbacks',
     'source_editor_values_from_configuration',
+    'structure_editor_coverage_from_configuration',
     'structure_editor_table_data_from_configuration',
 ]

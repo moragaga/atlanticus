@@ -2,10 +2,24 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from dash import ALL, MATCH, Input, Output, Patch, State, ctx, no_update
+from dash import (
+    ALL,
+    MATCH,
+    Input,
+    Output,
+    Patch,
+    State,
+    ctx,
+    no_update,
+)
 
 from ada.configuration.tools import ToolConfiguration, ToolConfigurationKind
-from ada.web.configuration.tool_editor.ids import CONFIGURATION_STORE_ID
+from ada.web.configuration.tool_editor.ids import (
+    CONFIGURATION_STORE_ID,
+    COVERAGE_ID,
+    DRAFT_STORE_ID,
+    KIND_ID,
+)
 from ada.web.configuration.tool_editor.structure import (
     build_structure_from_editor_tables,
     structure_editor_table_data_from_configuration,
@@ -16,66 +30,59 @@ from ada.web.configuration.tool_editor.structure_ids import (
     COMPONENT_DISPLAY_NAME_TYPE,
     COMPONENT_KEY_TYPE,
     COMPONENT_LAYOUT_ROLE_TYPE,
+    COMPONENT_LAYOUT_WRAPPER_TYPE,
     COMPONENT_SCOPE_TYPE,
+    COMPONENT_SCOPE_WRAPPER_TYPE,
     COMPONENT_SUBCOMPONENTS_CONTAINER_TYPE,
     STRUCTURE_ADD_COMPONENT_ID,
     STRUCTURE_COMPONENTS_CONTAINER_ID,
     STRUCTURE_DOCUMENT_STORE_ID,
-    STRUCTURE_KIND_ID,
-    STRUCTURE_KPI_DESTINATIONS_ID,
-    STRUCTURE_OPERATIONAL_SCOPE_ID,
-    STRUCTURE_OPERATIONAL_SCOPE_WRAPPER_ID,
     STRUCTURE_VALIDATION_MESSAGE_ID,
     STRUCTURE_VALIDITY_STORE_ID,
     SUBCOMPONENT_DELETE_TYPE,
     SUBCOMPONENT_DISPLAY_NAME_TYPE,
     SUBCOMPONENT_KEY_TYPE,
     SUBCOMPONENT_LINKED_TYPE,
+    SUBCOMPONENT_LINKED_WRAPPER_TYPE,
 )
 from ada.web.configuration.tool_editor.structure_presentation import (
-    _kind_label,
+    _linked_component_options,
     build_component_editor_row,
     build_subcomponent_editor_row,
 )
+
+_COVERAGE_MINE_PLANT = 'mine_plant'
 
 
 def register_tool_structure_editor_callbacks(app: object) -> None:
     @app.callback(
         Output(STRUCTURE_COMPONENTS_CONTAINER_ID, 'children'),
-        Output(STRUCTURE_OPERATIONAL_SCOPE_ID, 'value'),
-        Output(STRUCTURE_OPERATIONAL_SCOPE_WRAPPER_ID, 'hidden'),
-        Output(STRUCTURE_KIND_ID, 'children'),
         Input(CONFIGURATION_STORE_ID, 'data'),
     )
     def load_structure_editor(
         configuration_document: dict[str, object] | None,
     ):
         if configuration_document is None:
-            return [], None, True, 'Sin configuración'
+            return []
         configuration = ToolConfiguration.from_document(configuration_document)
-        components, subcomponents, operational_scope = (
+        components, subcomponents, coverage = (
             structure_editor_table_data_from_configuration(configuration)
         )
-        kind = configuration.kind
         nested_rows = _subcomponent_rows_by_owner(subcomponents)
-        return (
-            [
-                build_component_editor_row(
-                    index=index,
-                    row=row,
-                    kind=kind,
-                    subcomponent_rows=nested_rows.get(
-                        str(row.get('key') or '').strip(),
-                        (),
-                    ),
-                    all_component_rows=components,
-                )
-                for index, row in enumerate(components)
-            ],
-            operational_scope,
-            kind is not ToolConfigurationKind.PROCESS,
-            _kind_label(kind),
-        )
+        return [
+            build_component_editor_row(
+                index=index,
+                row=row,
+                kind=configuration.kind,
+                coverage=coverage,
+                subcomponent_rows=nested_rows.get(
+                    str(row.get('key') or ''),
+                    (),
+                ),
+                all_component_rows=components,
+            )
+            for index, row in enumerate(components)
+        ]
 
     @app.callback(
         Output(
@@ -85,37 +92,49 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         ),
         Input(STRUCTURE_ADD_COMPONENT_ID, 'n_clicks'),
         State({'type': COMPONENT_KEY_TYPE, 'index': ALL}, 'id'),
+        State(KIND_ID, 'value'),
+        State(COVERAGE_ID, 'value'),
         State({'type': COMPONENT_KEY_TYPE, 'index': ALL}, 'value'),
-        State({'type': COMPONENT_DISPLAY_NAME_TYPE, 'index': ALL}, 'value'),
+        State(
+            {'type': COMPONENT_DISPLAY_NAME_TYPE, 'index': ALL},
+            'value',
+        ),
         State({'type': COMPONENT_SCOPE_TYPE, 'index': ALL}, 'value'),
-        State(CONFIGURATION_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
     def add_component(
         clicks: int | None,
         component_ids: list[dict[str, object]],
+        kind_value: str | None,
+        coverage: str | None,
         component_keys: list[object],
         component_names: list[object],
         component_scopes: list[object],
-        configuration_document: dict[str, object] | None,
     ):
-        if not _click_is_real(clicks) or configuration_document is None:
+        if (
+            not _click_is_real(clicks)
+            or kind_value is None
+            or coverage is None
+        ):
             return no_update
-        configuration = ToolConfiguration.from_document(configuration_document)
+        try:
+            kind = ToolConfigurationKind(kind_value)
+        except ValueError:
+            return no_update
+        rows = _component_rows_from_values(
+            ids=component_ids,
+            keys=component_keys,
+            names=component_names,
+            scopes=component_scopes,
+        )
         patch = Patch()
         patch.append(
             build_component_editor_row(
                 index=_next_index(component_ids),
                 row=None,
-                kind=configuration.kind,
-                all_component_rows=list(
-                    _component_rows_from_values(
-                        ids=component_ids,
-                        keys=component_keys,
-                        names=component_names,
-                        scopes=component_scopes,
-                    ).values()
-                ),
+                kind=kind,
+                coverage=coverage,
+                all_component_rows=list(rows.values()),
             )
         )
         return patch
@@ -126,8 +145,14 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             'children',
             allow_duplicate=True,
         ),
-        Input({'type': COMPONENT_DELETE_TYPE, 'index': ALL}, 'n_clicks'),
-        State({'type': COMPONENT_DELETE_TYPE, 'index': ALL}, 'id'),
+        Input(
+            {'type': COMPONENT_DELETE_TYPE, 'index': ALL},
+            'n_clicks',
+        ),
+        State(
+            {'type': COMPONENT_DELETE_TYPE, 'index': ALL},
+            'id',
+        ),
         prevent_initial_call=True,
     )
     def delete_component(
@@ -174,9 +199,13 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         ),
         State({'type': COMPONENT_KEY_TYPE, 'index': ALL}, 'id'),
         State({'type': COMPONENT_KEY_TYPE, 'index': ALL}, 'value'),
-        State({'type': COMPONENT_DISPLAY_NAME_TYPE, 'index': ALL}, 'value'),
+        State(
+            {'type': COMPONENT_DISPLAY_NAME_TYPE, 'index': ALL},
+            'value',
+        ),
         State({'type': COMPONENT_SCOPE_TYPE, 'index': ALL}, 'value'),
-        State(CONFIGURATION_STORE_ID, 'data'),
+        State(KIND_ID, 'value'),
+        State(COVERAGE_ID, 'value'),
         prevent_initial_call=True,
     )
     def add_subcomponent(
@@ -187,19 +216,36 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         component_keys: list[object],
         component_names: list[object],
         component_scopes: list[object],
-        configuration_document: dict[str, object] | None,
+        kind_value: str | None,
+        coverage: str | None,
     ):
-        if not _click_is_real(clicks) or configuration_document is None:
+        if (
+            not _click_is_real(clicks)
+            or kind_value is None
+            or coverage is None
+        ):
             return no_update
         owner_index = _owner_index(add_button_id)
         if owner_index < 0:
             return no_update
-        configuration = ToolConfiguration.from_document(configuration_document)
+        try:
+            kind = ToolConfigurationKind(kind_value)
+        except ValueError:
+            return no_update
         rows = _component_rows_from_values(
             ids=component_ids,
             keys=component_keys,
             names=component_names,
             scopes=component_scopes,
+        )
+        linked_options = (
+            _linked_component_options(
+                list(rows.values()),
+                owner_index=_owner_position(rows, owner_index),
+                coverage=coverage,
+            )
+            if kind is ToolConfigurationKind.INTEGRATED_OPERATIONS
+            else []
         )
         patch = Patch()
         patch.append(
@@ -207,11 +253,10 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
                 index=_next_index(subcomponent_ids),
                 owner_index=owner_index,
                 row=None,
-                kind=configuration.kind,
-                linked_component_options=_linked_options_from_rows(
-                    rows,
-                    owner_index=owner_index,
+                linked_hidden=(
+                    kind is not ToolConfigurationKind.INTEGRATED_OPERATIONS
                 ),
+                linked_component_options=linked_options,
             )
         )
         return patch
@@ -256,6 +301,73 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
 
     @app.callback(
         Output(
+            {'type': COMPONENT_SCOPE_WRAPPER_TYPE, 'index': ALL},
+            'hidden',
+        ),
+        Output(
+            {'type': COMPONENT_LAYOUT_WRAPPER_TYPE, 'index': ALL},
+            'hidden',
+        ),
+        Output(
+            {'type': COMPONENT_SCOPE_TYPE, 'index': ALL},
+            'value',
+        ),
+        Output(
+            {
+                'type': SUBCOMPONENT_LINKED_WRAPPER_TYPE,
+                'index': ALL,
+                'owner_index': ALL,
+            },
+            'hidden',
+        ),
+        Input(KIND_ID, 'value'),
+        Input(COVERAGE_ID, 'value'),
+        State(
+            {'type': COMPONENT_SCOPE_WRAPPER_TYPE, 'index': ALL},
+            'id',
+        ),
+        State(
+            {'type': COMPONENT_LAYOUT_WRAPPER_TYPE, 'index': ALL},
+            'id',
+        ),
+        State({'type': COMPONENT_SCOPE_TYPE, 'index': ALL}, 'value'),
+        State(
+            {
+                'type': SUBCOMPONENT_LINKED_WRAPPER_TYPE,
+                'index': ALL,
+                'owner_index': ALL,
+            },
+            'id',
+        ),
+    )
+    def update_context_fields(
+        kind_value: str | None,
+        coverage: str | None,
+        scope_wrapper_ids: list[dict[str, object]],
+        layout_wrapper_ids: list[dict[str, object]],
+        current_scopes: list[object],
+        linked_wrapper_ids: list[dict[str, object]],
+    ):
+        integrated = (
+            kind_value == ToolConfigurationKind.INTEGRATED_OPERATIONS.value
+        )
+        process = kind_value == ToolConfigurationKind.PROCESS.value
+        mixed = integrated and coverage == _COVERAGE_MINE_PLANT
+        if integrated and coverage in {'mine', 'plant'}:
+            scope_values = [coverage for _ in current_scopes]
+        elif mixed:
+            scope_values = list(current_scopes)
+        else:
+            scope_values = [None for _ in current_scopes]
+        return (
+            [not mixed for _ in scope_wrapper_ids],
+            [not process for _ in layout_wrapper_ids],
+            scope_values,
+            [not integrated for _ in linked_wrapper_ids],
+        )
+
+    @app.callback(
+        Output(
             {
                 'type': SUBCOMPONENT_LINKED_TYPE,
                 'index': ALL,
@@ -263,8 +375,13 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             },
             'options',
         ),
+        Input(KIND_ID, 'value'),
+        Input(COVERAGE_ID, 'value'),
         Input({'type': COMPONENT_KEY_TYPE, 'index': ALL}, 'value'),
-        Input({'type': COMPONENT_DISPLAY_NAME_TYPE, 'index': ALL}, 'value'),
+        Input(
+            {'type': COMPONENT_DISPLAY_NAME_TYPE, 'index': ALL},
+            'value',
+        ),
         Input({'type': COMPONENT_SCOPE_TYPE, 'index': ALL}, 'value'),
         State({'type': COMPONENT_KEY_TYPE, 'index': ALL}, 'id'),
         State(
@@ -277,22 +394,34 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         ),
     )
     def refresh_linked_component_options(
+        kind_value: str | None,
+        coverage: str | None,
         component_keys: list[object],
         component_names: list[object],
         component_scopes: list[object],
         component_ids: list[dict[str, object]],
         linked_ids: list[dict[str, object]],
     ):
+        if (
+            kind_value != ToolConfigurationKind.INTEGRATED_OPERATIONS.value
+            or coverage is None
+        ):
+            return [[] for _ in linked_ids]
         rows = _component_rows_from_values(
             ids=component_ids,
             keys=component_keys,
             names=component_names,
             scopes=component_scopes,
         )
+        ordered = list(rows.values())
         return [
-            _linked_options_from_rows(
-                rows,
-                owner_index=_owner_index(linked_id),
+            _linked_component_options(
+                ordered,
+                owner_index=_owner_position(
+                    rows,
+                    _owner_index(linked_id),
+                ),
+                coverage=coverage,
             )
             for linked_id in linked_ids
         ]
@@ -301,11 +430,16 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         Output(STRUCTURE_DOCUMENT_STORE_ID, 'data'),
         Output(STRUCTURE_VALIDITY_STORE_ID, 'data'),
         Output(STRUCTURE_VALIDATION_MESSAGE_ID, 'children'),
-        Output(STRUCTURE_KPI_DESTINATIONS_ID, 'children'),
         Input({'type': COMPONENT_KEY_TYPE, 'index': ALL}, 'value'),
-        Input({'type': COMPONENT_DISPLAY_NAME_TYPE, 'index': ALL}, 'value'),
+        Input(
+            {'type': COMPONENT_DISPLAY_NAME_TYPE, 'index': ALL},
+            'value',
+        ),
         Input({'type': COMPONENT_SCOPE_TYPE, 'index': ALL}, 'value'),
-        Input({'type': COMPONENT_LAYOUT_ROLE_TYPE, 'index': ALL}, 'value'),
+        Input(
+            {'type': COMPONENT_LAYOUT_ROLE_TYPE, 'index': ALL},
+            'value',
+        ),
         Input(
             {
                 'type': SUBCOMPONENT_KEY_TYPE,
@@ -330,11 +464,18 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             },
             'value',
         ),
-        Input(STRUCTURE_OPERATIONAL_SCOPE_ID, 'value'),
+        Input(COVERAGE_ID, 'value'),
+        Input(DRAFT_STORE_ID, 'data'),
         State({'type': COMPONENT_KEY_TYPE, 'index': ALL}, 'id'),
-        State({'type': COMPONENT_DISPLAY_NAME_TYPE, 'index': ALL}, 'id'),
+        State(
+            {'type': COMPONENT_DISPLAY_NAME_TYPE, 'index': ALL},
+            'id',
+        ),
         State({'type': COMPONENT_SCOPE_TYPE, 'index': ALL}, 'id'),
-        State({'type': COMPONENT_LAYOUT_ROLE_TYPE, 'index': ALL}, 'id'),
+        State(
+            {'type': COMPONENT_LAYOUT_ROLE_TYPE, 'index': ALL},
+            'id',
+        ),
         State(
             {
                 'type': SUBCOMPONENT_KEY_TYPE,
@@ -359,7 +500,6 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             },
             'id',
         ),
-        State(CONFIGURATION_STORE_ID, 'data'),
     )
     def validate_structure(
         component_keys: list[object],
@@ -369,7 +509,8 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         subcomponent_keys: list[object],
         subcomponent_names: list[object],
         subcomponent_links: list[object],
-        operational_scope: object,
+        coverage: object,
+        source_document: dict[str, object] | None,
         component_key_ids: list[dict[str, object]],
         component_name_ids: list[dict[str, object]],
         component_scope_ids: list[dict[str, object]],
@@ -377,12 +518,11 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         subcomponent_key_ids: list[dict[str, object]],
         subcomponent_name_ids: list[dict[str, object]],
         subcomponent_link_ids: list[dict[str, object]],
-        configuration_document: dict[str, object] | None,
     ):
-        if configuration_document is None:
-            return None, False, '', '—'
+        if source_document is None:
+            return None, False, ''
         try:
-            configuration = ToolConfiguration.from_document(configuration_document)
+            configuration = ToolConfiguration.from_document(source_document)
             component_key_values = _indexed_values(
                 component_key_ids,
                 component_keys,
@@ -420,16 +560,11 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
                     ),
                     component_keys=component_key_values,
                 ),
-                operational_scope=operational_scope,
+                coverage=coverage,
             )
         except ValueError as error:
-            return None, False, str(error), '—'
-        return (
-            structure.to_document(),
-            True,
-            '',
-            ', '.join(structure.kpi_destination_keys),
-        )
+            return None, False, str(error)
+        return structure.to_document(), True, ''
 
 
 def _component_rows(
@@ -458,16 +593,18 @@ def _subcomponent_rows(
     links: Mapping[int, object],
     component_keys: Mapping[int, object],
 ) -> list[dict[str, object]]:
-    owner_by_subcomponent = {
-        component_id['index']: component_id['owner_index']
+    owner_indexes = {
+        component_id.get('index'): component_id.get('owner_index')
         for component_id in key_ids
-        if _index_from_id(component_id) is not None
-        and _owner_index(component_id) >= 0
+        if (
+            isinstance(component_id.get('index'), int)
+            and not isinstance(component_id.get('index'), bool)
+        )
     }
     return [
         {
             'owner_component_key': component_keys.get(
-                owner_by_subcomponent.get(index)
+                owner_indexes.get(index)
             ),
             'key': value,
             'display_name': names.get(index),
@@ -483,8 +620,8 @@ def _indexed_values(
 ) -> dict[int, object]:
     resolved: dict[int, object] = {}
     for component_id, value in zip(ids, values, strict=True):
-        index = _index_from_id(component_id)
-        if index is not None:
+        index = component_id.get('index')
+        if isinstance(index, int) and not isinstance(index, bool):
             resolved[index] = value
     return resolved
 
@@ -496,46 +633,31 @@ def _component_rows_from_values(
     names: list[object],
     scopes: list[object],
 ) -> dict[int, dict[str, object]]:
-    resolved: dict[int, dict[str, object]] = {}
-    for position, component_id in enumerate(ids):
-        index = _index_from_id(component_id)
-        if index is None:
-            continue
-        resolved[index] = {
-            'key': keys[position] if position < len(keys) else None,
-            'display_name': (
-                names[position] if position < len(names) else None
-            ),
-            'scope': (
-                scopes[position] if position < len(scopes) else None
-            ),
+    key_by_index = _indexed_values(ids, keys)
+    name_by_index = {
+        component_id['index']: value
+        for component_id, value in zip(ids, names, strict=True)
+        if (
+            isinstance(component_id.get('index'), int)
+            and not isinstance(component_id.get('index'), bool)
+        )
+    }
+    scope_by_index = {
+        component_id['index']: value
+        for component_id, value in zip(ids, scopes, strict=False)
+        if (
+            isinstance(component_id.get('index'), int)
+            and not isinstance(component_id.get('index'), bool)
+        )
+    }
+    return {
+        index: {
+            'key': value,
+            'display_name': name_by_index.get(index),
+            'scope': scope_by_index.get(index),
         }
-    return resolved
-
-
-def _linked_options_from_rows(
-    rows: Mapping[int, Mapping[str, object]],
-    *,
-    owner_index: int,
-) -> list[dict[str, str]]:
-    owner = rows.get(owner_index)
-    if owner is None:
-        return []
-    owner_scope = str(owner.get('scope') or '').strip()
-    if not owner_scope:
-        return []
-    options: list[dict[str, str]] = []
-    for index, row in rows.items():
-        if index == owner_index:
-            continue
-        if str(row.get('scope') or '').strip() != owner_scope:
-            continue
-        key = str(row.get('key') or '').strip()
-        if not key:
-            continue
-        display_name = str(row.get('display_name') or '').strip()
-        options.append({'label': display_name or key, 'value': key})
-    return options
+        for index, value in key_by_index.items()
+    }
 
 
 def _subcomponent_rows_by_owner(
@@ -548,13 +670,6 @@ def _subcomponent_rows_by_owner(
     return resolved
 
 
-def _index_from_id(component_id: Mapping[str, object]) -> int | None:
-    value = component_id.get('index')
-    if isinstance(value, int) and not isinstance(value, bool):
-        return value
-    return None
-
-
 def _owner_index(component_id: Mapping[str, object]) -> int:
     value = component_id.get('owner_index')
     if isinstance(value, int) and not isinstance(value, bool):
@@ -562,11 +677,24 @@ def _owner_index(component_id: Mapping[str, object]) -> int:
     return -1
 
 
+def _owner_position(
+    rows: Mapping[int, Mapping[str, object]],
+    owner_index: int,
+) -> int:
+    for position, index in enumerate(rows):
+        if index == owner_index:
+            return position
+    return -1
+
+
 def _next_index(ids: list[dict[str, object]]) -> int:
     indexes = [
         value
         for component_id in ids
-        if (value := _index_from_id(component_id)) is not None
+        if (
+            isinstance((value := component_id.get('index')), int)
+            and not isinstance(value, bool)
+        )
     ]
     return max(indexes, default=-1) + 1
 

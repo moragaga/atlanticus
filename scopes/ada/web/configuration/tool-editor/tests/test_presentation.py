@@ -1,19 +1,14 @@
 from dash.development.base_component import Component
 
-from ada.configuration.tool_sources import (
-    SourceControlPolicy,
-    ToolSourceConsumption,
-    ToolSourceOperationalParticipation,
-)
-from ada.configuration.tools import ToolConfiguration, ToolConfigurationKind
-from ada.web.configuration.tool_editor import build_tool_source_editor
-from ada.web.configuration.tool_editor.ids import (
-    ADDITIONAL_OBSERVATION_ID,
-    CONFIGURATION_STORE_ID,
+from ada.web.configuration.tool_editor import (
+    BRANDING_ID,
+    COVERAGE_ID,
+    DISPLAY_NAME_ID,
     DISPATCH_ENABLED_ID,
-    PI_DEGRADING_ID,
-    PI_PRE_DEGRADING_ID,
-    ROOT_ID,
+    KIND_ID,
+    PI_DEGRADATION_ID,
+    PI_PREVENTIVE_ID,
+    build_tool_source_editor,
 )
 
 
@@ -36,57 +31,23 @@ def _component_ids(component: Component) -> set[object]:
     return resolved
 
 
-def _configuration() -> ToolConfiguration:
-    return ToolConfiguration(
-        tool_key='process',
-        display_name='Process',
-        kind=ToolConfigurationKind.PROCESS,
-        source_consumption=ToolSourceConsumption(
-            tool_key='process',
-            source_keys=('pi',),
-        ),
-        source_operational_participation=ToolSourceOperationalParticipation(
-            tool_key='process',
-            control_sources=(
-                SourceControlPolicy(
-                    source_key='pi',
-                    pre_degrading_after_seconds=200,
-                    degrading_after_seconds=300,
-                ),
-            ),
-        ),
-    )
-
-
-def test_source_editor_exposes_required_source_controls() -> None:
+def test_tool_editor_exposes_general_and_source_state_controls() -> None:
     component = build_tool_source_editor()
     ids = _component_ids(component)
 
-    assert ROOT_ID in ids
-    assert CONFIGURATION_STORE_ID in ids
-    assert PI_PRE_DEGRADING_ID in ids
-    assert PI_DEGRADING_ID in ids
+    assert DISPLAY_NAME_ID in ids
+    assert KIND_ID in ids
+    assert COVERAGE_ID in ids
+    assert BRANDING_ID in ids
+    assert PI_PREVENTIVE_ID in ids
+    assert PI_DEGRADATION_ID in ids
     assert DISPATCH_ENABLED_ID in ids
-    assert ADDITIONAL_OBSERVATION_ID in ids
-    assert 'form-control' in str(component.to_plotly_json())
 
 
-def test_source_editor_accepts_initial_tool_configuration_document() -> None:
-    configuration = _configuration()
+def test_tool_editor_does_not_expose_legacy_source_configuration() -> None:
+    rendered = str(build_tool_source_editor().to_plotly_json()).casefold()
 
-    component = build_tool_source_editor(configuration_document=configuration.to_document())
-
-    configuration_store = next(
-        child
-        for child in component.children
-        if getattr(child, 'id', None) == CONFIGURATION_STORE_ID
-    )
-    assert configuration_store.data == configuration.to_document()
-
-
-def test_source_editor_does_not_embed_additional_source_catalog() -> None:
-    component = build_tool_source_editor()
-    rendered = str(component.to_plotly_json())
-
-    assert 'blockgrade' not in rendered.casefold()
-    assert 'geology' not in rendered.casefold()
+    assert 'pre-degrading' not in rendered
+    assert 'observaciones adicionales' not in rendered
+    assert 'additional observation' not in rendered
+    assert 'source_key_adicional' not in rendered

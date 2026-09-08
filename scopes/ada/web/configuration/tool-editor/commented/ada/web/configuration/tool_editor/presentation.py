@@ -1,22 +1,23 @@
+# Espejo comentado de Información general y Estado de fuentes.
+
 from __future__ import annotations
 
-# Presentación reusable de la sección Sources de una Tool.
-# No incluye navegación, persistencia ni shell de Manager; esas responsabilidades se componen fuera.
 from collections.abc import Mapping
 
 from dash import dcc, html
 from dash.development.base_component import Component
 
+from ada.configuration.tools import BrandingVariant, ToolConfigurationKind
 from ada.web.configuration.tool_editor.ids import (
-    ADDITIONAL_OBSERVATION_ID,
+    BRANDING_ID,
     CONFIGURATION_STORE_ID,
-    DISPATCH_DEGRADING_ID,
+    COVERAGE_ID,
+    DISPLAY_NAME_ID,
     DISPATCH_ENABLED_ID,
-    DISPATCH_FIELDS_ID,
-    DISPATCH_PRE_DEGRADING_ID,
     DRAFT_STORE_ID,
-    PI_DEGRADING_ID,
-    PI_PRE_DEGRADING_ID,
+    KIND_ID,
+    PI_DEGRADATION_ID,
+    PI_PREVENTIVE_ID,
     ROOT_ID,
     VALIDATION_MESSAGE_ID,
     VALIDITY_STORE_ID,
@@ -27,50 +28,30 @@ def build_tool_source_editor(
     *,
     configuration_document: Mapping[str, object] | None = None,
 ) -> Component:
-    initial_document = dict(configuration_document) if configuration_document is not None else None
-    return html.Section(
+    initial_document = (
+        dict(configuration_document)
+        if configuration_document is not None
+        else None
+    )
+    return html.Div(
         [
             dcc.Store(
                 id=CONFIGURATION_STORE_ID,
                 data=initial_document,
                 storage_type='memory',
             ),
-            dcc.Store(id=DRAFT_STORE_ID, data=None, storage_type='memory'),
-            dcc.Store(id=VALIDITY_STORE_ID, data=False, storage_type='memory'),
-            _heading(),
-            _control_source(
-                title='PI',
-                subtitle='Fuente principal · CONTROL obligatorio',
-                pre_degrading_id=PI_PRE_DEGRADING_ID,
-                degrading_id=PI_DEGRADING_ID,
+            dcc.Store(
+                id=DRAFT_STORE_ID,
+                data=None,
+                storage_type='memory',
             ),
-            html.Div(
-                [
-                    dcc.Checklist(
-                        id=DISPATCH_ENABLED_ID,
-                        options=[
-                            {
-                                'label': 'Usar Dispatch',
-                                'value': 'dispatch',
-                            }
-                        ],
-                        value=[],
-                        className='ada-tool-source-editor__dispatch-toggle',
-                    ),
-                    html.Div(
-                        _threshold_fields(
-                            pre_degrading_id=DISPATCH_PRE_DEGRADING_ID,
-                            degrading_id=DISPATCH_DEGRADING_ID,
-                        ),
-                        id=DISPATCH_FIELDS_ID,
-                        hidden=True,
-                        className='ada-tool-source-editor__threshold-grid',
-                    ),
-                ],
-                className='ada-tool-source-editor__source-card',
-                **{'data-source-key': 'dispatch'},
+            dcc.Store(
+                id=VALIDITY_STORE_ID,
+                data=False,
+                storage_type='memory',
             ),
-            _additional_observation(),
+            _general_section(),
+            _source_state_section(),
             html.Div(
                 id=VALIDATION_MESSAGE_ID,
                 className='ada-tool-source-editor__validation',
@@ -83,72 +64,227 @@ def build_tool_source_editor(
     )
 
 
-def _heading() -> Component:
+# Agrupa nombre, tipo, cobertura y branding.
+def _general_section() -> Component:
+    return html.Section(
+        [
+            _section_heading(
+                'Información general',
+                (
+                    'Define la identidad, el tipo de aplicación, '
+                    'su cobertura operacional y el branding activo.'
+                ),
+            ),
+            html.Div(
+                [
+                    _text_field(
+                        label='Nombre de la herramienta',
+                        component_id=DISPLAY_NAME_ID,
+                        placeholder='Operaciones Integradas',
+                    ),
+                    _select_field(
+                        label='Tipo de herramienta',
+                        component_id=KIND_ID,
+                        options=[
+                            {
+                                'label': 'Procesos',
+                                'value': ToolConfigurationKind.PROCESS.value,
+                            },
+                            {
+                                'label': 'Operaciones integradas',
+                                'value': (
+                                    ToolConfigurationKind
+                                    .INTEGRATED_OPERATIONS
+                                    .value
+                                ),
+                            },
+                        ],
+                        placeholder='Seleccionar tipo',
+                    ),
+                    _select_field(
+                        label='Cobertura operacional',
+                        component_id=COVERAGE_ID,
+                        options=[],
+                        placeholder='Seleccionar cobertura',
+                    ),
+                    _select_field(
+                        label='Branding',
+                        component_id=BRANDING_ID,
+                        options=[
+                            {
+                                'label': 'Normal',
+                                'value': BrandingVariant.ORIGINAL.value,
+                            },
+                            {
+                                'label': 'Fiestas Patrias',
+                                'value': BrandingVariant.FIESTAS_PATRIAS.value,
+                            },
+                            {
+                                'label': 'Mes de la Minería',
+                                'value': BrandingVariant.MINING_MONTH.value,
+                            },
+                            {
+                                'label': 'Navidad',
+                                'value': BrandingVariant.CHRISTMAS.value,
+                            },
+                            {
+                                'label': 'Año Nuevo',
+                                'value': BrandingVariant.NEW_YEAR.value,
+                            },
+                        ],
+                        placeholder='Seleccionar branding',
+                    ),
+                ],
+                className='ada-tool-source-editor__general-grid',
+            ),
+        ],
+        className='ada-tool-source-editor__section',
+    )
+
+
+# Expone sólo las fuentes que participan en el estado operacional.
+def _source_state_section() -> Component:
+    return html.Section(
+        [
+            _section_heading(
+                'Estado de fuentes',
+                (
+                    'PI determina el estado operacional de la herramienta. '
+                    'Dispatch puede participar opcionalmente en el mismo '
+                    'estado.'
+                ),
+            ),
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.Div(
+                                [
+                                    html.Strong('PI'),
+                                    html.Span('Fuente principal · obligatoria'),
+                                ],
+                                className='ada-tool-source-editor__source-heading',
+                            ),
+                            html.Div(
+                                [
+                                    _number_field(
+                                        label='Umbral preventivo',
+                                        component_id=PI_PREVENTIVE_ID,
+                                        help_text=(
+                                            'Segundos sin actualización antes '
+                                            'de entrar en alerta preventiva.'
+                                        ),
+                                    ),
+                                    _number_field(
+                                        label='Umbral de degradación',
+                                        component_id=PI_DEGRADATION_ID,
+                                        help_text=(
+                                            'Segundos sin actualización antes '
+                                            'de degradar la herramienta.'
+                                        ),
+                                    ),
+                                ],
+                                className='ada-tool-source-editor__threshold-grid',
+                            ),
+                        ],
+                        className=(
+                            'ada-tool-source-editor__source-card '
+                            'ada-tool-source-editor__source-card--primary'
+                        ),
+                    ),
+                    html.Div(
+                        [
+                            dcc.Checklist(
+                                id=DISPATCH_ENABLED_ID,
+                                options=[
+                                    {
+                                        'label': 'Usar Dispatch',
+                                        'value': 'dispatch',
+                                    }
+                                ],
+                                value=[],
+                                className='ada-tool-source-editor__dispatch-toggle',
+                            ),
+                            html.Small(
+                                (
+                                    'Al activarlo, Dispatch participa en el '
+                                    'estado con los mismos umbrales definidos '
+                                    'para PI.'
+                                ),
+                                className='ada-tool-source-editor__help',
+                            ),
+                        ],
+                        className='ada-tool-source-editor__dispatch-card',
+                    ),
+                ],
+                className='ada-tool-source-editor__source-stack',
+            ),
+        ],
+        className='ada-tool-source-editor__section',
+    )
+
+
+def _section_heading(title: str, copy: str) -> Component:
     return html.Div(
         [
-            html.H3('Fuentes', className='ada-tool-source-editor__title'),
-            html.P(
-                (
-                    'PI es la fuente CONTROL principal. Dispatch es opcional. '
-                    'Las observaciones adicionales describen fuentes consumidas que no '
-                    'participan en la degradación de la herramienta.'
-                ),
-                className='ada-tool-source-editor__copy',
-            ),
+            html.H3(title, className='ada-tool-source-editor__title'),
+            html.P(copy, className='ada-tool-source-editor__copy'),
         ],
         className='ada-tool-source-editor__heading',
     )
 
 
-def _control_source(
+def _text_field(
     *,
-    title: str,
-    subtitle: str,
-    pre_degrading_id: str,
-    degrading_id: str,
+    label: str,
+    component_id: str,
+    placeholder: str,
 ) -> Component:
-    return html.Div(
+    return html.Label(
         [
-            html.Div(
-                [
-                    html.Strong(title),
-                    html.Span(subtitle),
-                ],
-                className='ada-tool-source-editor__source-heading',
-            ),
-            html.Div(
-                _threshold_fields(
-                    pre_degrading_id=pre_degrading_id,
-                    degrading_id=degrading_id,
-                ),
-                className='ada-tool-source-editor__threshold-grid',
+            html.Span(label, className='ada-tool-source-editor__field-label'),
+            dcc.Input(
+                id=component_id,
+                type='text',
+                placeholder=placeholder,
+                debounce=True,
+                className='form-control ada-tool-source-editor__text-input',
             ),
         ],
-        className='ada-tool-source-editor__source-card',
-        **{'data-source-key': title.casefold()},
+        className='ada-tool-source-editor__field',
     )
 
 
-def _threshold_fields(
+def _select_field(
     *,
-    pre_degrading_id: str,
-    degrading_id: str,
-) -> list[Component]:
-    return [
-        _number_field(
-            label='Pre-degrading',
-            component_id=pre_degrading_id,
-            help_text='Segundos sin actualización antes de entrar en alerta preventiva.',
-        ),
-        _number_field(
-            label='Degrading',
-            component_id=degrading_id,
-            help_text='Segundos sin actualización antes de degradar la aplicación.',
-        ),
-    ]
+    label: str,
+    component_id: str,
+    options: list[dict[str, str]],
+    placeholder: str,
+) -> Component:
+    return html.Label(
+        [
+            html.Span(label, className='ada-tool-source-editor__field-label'),
+            dcc.Dropdown(
+                id=component_id,
+                options=options,
+                clearable=False,
+                searchable=False,
+                placeholder=placeholder,
+                className='ada-tool-source-editor__select',
+                style=_dash_select_style(),
+            ),
+        ],
+        className='ada-tool-source-editor__field',
+    )
 
 
-def _number_field(*, label: str, component_id: str, help_text: str) -> Component:
+def _number_field(
+    *,
+    label: str,
+    component_id: str,
+    help_text: str,
+) -> Component:
     return html.Label(
         [
             html.Span(label, className='ada-tool-source-editor__field-label'),
@@ -160,7 +296,10 @@ def _number_field(*, label: str, component_id: str, help_text: str) -> Component
                         min=1,
                         step=1,
                         debounce=True,
-                        className='form-control ada-tool-source-editor__number-input',
+                        className=(
+                            'form-control '
+                            'ada-tool-source-editor__number-input'
+                        ),
                     ),
                     html.Span('s', className='ada-tool-source-editor__unit'),
                 ],
@@ -172,28 +311,21 @@ def _number_field(*, label: str, component_id: str, help_text: str) -> Component
     )
 
 
-def _additional_observation() -> Component:
-    return html.Div(
-        [
-            html.Div(
-                [
-                    html.Strong('Observaciones adicionales'),
-                    html.Span('ADDITIONAL OBSERVATION'),
-                ],
-                className='ada-tool-source-editor__source-heading',
-            ),
-            dcc.Textarea(
-                id=ADDITIONAL_OBSERVATION_ID,
-                placeholder='source_key_adicional',
-                className='form-control ada-tool-source-editor__textarea',
-            ),
-            html.Small(
-                (
-                    'Ingresa una source_key por línea o separada por coma. '
-                    'Estas fuentes se agregan al consumo y a OBSERVATION, pero no a CONTROL.'
-                ),
-                className='ada-tool-source-editor__help',
-            ),
-        ],
-        className='ada-tool-source-editor__source-card',
-    )
+def _dash_select_style() -> dict[str, str]:
+    return {
+        '--Dash-Spacing': '4px',
+        '--Dash-Stroke-Strong': 'var(--atlanticus-ui-secondary)',
+        '--Dash-Stroke-Weak': 'var(--atlanticus-ui-border)',
+        '--Dash-Fill-Interactive-Strong': 'var(--atlanticus-ui-secondary)',
+        '--Dash-Fill-Interactive-Weak': 'var(--atlanticus-ui-selection-soft)',
+        '--Dash-Fill-Inverse-Strong': 'var(--atlanticus-ui-surface)',
+        '--Dash-Text-Primary': 'var(--atlanticus-ui-text)',
+        '--Dash-Text-Strong': 'var(--atlanticus-ui-text)',
+        '--Dash-Text-Weak': 'var(--atlanticus-ui-text-muted)',
+        '--Dash-Text-Disabled': 'var(--atlanticus-ui-text-soft)',
+        '--Dash-Fill-Primary-Hover': 'var(--atlanticus-ui-selection-soft)',
+        '--Dash-Fill-Primary-Active': 'var(--atlanticus-ui-selection-soft)',
+        '--Dash-Fill-Disabled': 'var(--atlanticus-ui-border)',
+        '--Dash-Shading-Strong': 'rgb(7 21 34 / 25%)',
+        '--Dash-Shading-Weak': 'rgb(7 21 34 / 12%)',
+    }

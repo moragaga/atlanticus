@@ -1,10 +1,12 @@
+# Espejo comentado del contrato ToolConfiguration con branding compuesto.
+
 from __future__ import annotations
 
-# ToolConfiguration agrega identidad, Sources y topología sin describir infraestructura ni representación visual.
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
+from ada.configuration.branding import BrandingConfiguration
 from ada.configuration.tool_sources import (
     ToolSourceConsumption,
     ToolSourceOperationalParticipation,
@@ -17,6 +19,7 @@ from ada.configuration.tools.validation import require_display_name, require_key
 
 
 @dataclass(frozen=True, slots=True)
+# La Tool conserva identidad, fuentes, estructura y branding como un único snapshot.
 class ToolConfiguration:
     tool_key: str
     display_name: str
@@ -24,6 +27,7 @@ class ToolConfiguration:
     source_consumption: ToolSourceConsumption
     source_operational_participation: ToolSourceOperationalParticipation
     structure: ToolStructure | None = None
+    branding: BrandingConfiguration = field(default_factory=BrandingConfiguration)
 
     def __post_init__(self) -> None:
         tool_key = require_key(self.tool_key, label='Tool key')
@@ -43,6 +47,10 @@ class ToolConfiguration:
         ):
             raise ToolConfigurationValidationError(
                 'Tool source operational participation contract is invalid'
+            )
+        if not isinstance(self.branding, BrandingConfiguration):
+            raise ToolConfigurationValidationError(
+                'Tool branding configuration is invalid'
             )
         if self.source_consumption.tool_key != tool_key:
             raise ToolConfigurationValidationError(
@@ -76,6 +84,7 @@ class ToolConfiguration:
         object.__setattr__(self, 'tool_key', tool_key)
         object.__setattr__(self, 'display_name', display_name)
 
+# El branding se serializa dentro del mismo documento versionado de la Tool.
     def to_document(self) -> dict[str, object]:
         return {
             'tool_key': self.tool_key,
@@ -85,22 +94,39 @@ class ToolConfiguration:
             'source_operational_participation': (
                 self.source_operational_participation.to_document()
             ),
-            'structure': self.structure.to_document() if self.structure is not None else None,
+            'structure': (
+                self.structure.to_document()
+                if self.structure is not None
+                else None
+            ),
+            'branding': self.branding.to_document(),
         }
 
     @classmethod
-    def from_document(cls, document: Mapping[str, Any]) -> ToolConfiguration:
+    def from_document(
+        cls,
+        document: Mapping[str, Any],
+    ) -> ToolConfiguration:
         try:
             source_consumption = document['source_consumption']
-            source_operational_participation = document[
-                'source_operational_participation'
-            ]
+            source_operational_participation = (
+                document['source_operational_participation']
+            )
             raw_structure = document.get('structure')
+            raw_branding = document.get('branding', {})
             if not isinstance(source_consumption, Mapping):
                 raise TypeError
-            if not isinstance(source_operational_participation, Mapping):
+            if not isinstance(
+                source_operational_participation,
+                Mapping,
+            ):
                 raise TypeError
-            if raw_structure is not None and not isinstance(raw_structure, Mapping):
+            if (
+                raw_structure is not None
+                and not isinstance(raw_structure, Mapping)
+            ):
+                raise TypeError
+            if not isinstance(raw_branding, Mapping):
                 raise TypeError
             return cls(
                 tool_key=document['tool_key'],
@@ -118,6 +144,9 @@ class ToolConfiguration:
                     ToolStructure.from_document(raw_structure)
                     if raw_structure is not None
                     else None
+                ),
+                branding=BrandingConfiguration.from_document(
+                    raw_branding
                 ),
             )
         except (KeyError, TypeError, ValueError) as error:

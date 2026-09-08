@@ -70,6 +70,7 @@ combine-as-imports = true
 testpaths = ["tests"]
 pythonpath = [
     "src",
+    "../branding/src",
     "../tools/src",
     "../tool-sources/src",
     "../../../../../web/framework/core/src",

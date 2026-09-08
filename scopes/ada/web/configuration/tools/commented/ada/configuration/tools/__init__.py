@@ -1,4 +1,6 @@
-# Este módulo expone la API pública estable de configuración de Tools.
+# Espejo comentado de las exportaciones públicas de configuración de Tools.
+
+from ada.configuration.branding import BrandingConfiguration, BrandingVariant
 from ada.configuration.tools.contracts import (
     validate_ada_operational_tool_configuration,
     validate_ada_operational_tool_sources,
@@ -18,6 +20,8 @@ from ada.configuration.tools.structure import (
 )
 
 __all__ = [
+    'BrandingConfiguration',
+    'BrandingVariant',
     'ProcessLayoutRole',
     'ToolComponent',
     'ToolConfiguration',

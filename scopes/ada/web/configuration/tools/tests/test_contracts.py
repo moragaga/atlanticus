@@ -8,6 +8,7 @@ from ada.configuration.tool_sources import (
     ToolSourceOperationalParticipation,
 )
 from ada.configuration.tools import (
+    BrandingConfiguration,
     ProcessLayoutRole,
     ToolComponent,
     ToolConfiguration,
@@ -143,7 +144,10 @@ def test_tool_configuration_contract_exposes_optional_structure_without_ui_field
         'source_consumption',
         'source_operational_participation',
         'structure',
+        'branding',
     )
+    assert fields['branding'].type == 'BrandingConfiguration'
+
     for field in (
         'alarm_points',
         'renderer',

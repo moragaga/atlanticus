@@ -8,6 +8,8 @@ from ada.configuration.tool_sources import (
     ToolSourceOperationalParticipation,
 )
 from ada.configuration.tools import (
+    BrandingConfiguration,
+    BrandingVariant,
     ProcessLayoutRole,
     ToolComponent,
     ToolConfiguration,
@@ -171,6 +173,7 @@ def test_document_shape_keeps_data003_and_data004_explicit() -> None:
         'source_consumption',
         'source_operational_participation',
         'structure',
+        'branding',
     )
     assert document['source_consumption'] == {
         'tool_key': 'process',
@@ -188,6 +191,7 @@ def test_document_shape_keeps_data003_and_data004_explicit() -> None:
         'additional_observation_source_keys': [],
     }
     assert document['structure'] is None
+    assert document['branding'] == {'variant': 'original'}
 
 
 def test_document_reader_rejects_invalid_shape() -> None:
@@ -359,3 +363,26 @@ def test_document_roundtrip_preserves_structure_when_present() -> None:
     restored = ToolConfiguration.from_document(MappingProxyType(configuration.to_document()))
 
     assert restored == configuration
+
+
+
+def test_document_roundtrip_preserves_branding_configuration() -> None:
+    configuration = _configuration()
+    configured = ToolConfiguration(
+        tool_key=configuration.tool_key,
+        display_name=configuration.display_name,
+        kind=configuration.kind,
+        source_consumption=configuration.source_consumption,
+        source_operational_participation=(
+            configuration.source_operational_participation
+        ),
+        branding=BrandingConfiguration(
+            variant=BrandingVariant.CHRISTMAS
+        ),
+    )
+
+    restored = ToolConfiguration.from_document(
+        MappingProxyType(configured.to_document())
+    )
+
+    assert restored.branding.variant is BrandingVariant.CHRISTMAS

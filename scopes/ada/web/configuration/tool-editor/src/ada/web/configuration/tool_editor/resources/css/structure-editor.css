@@ -44,27 +44,6 @@
     line-height: 1.4;
 }
 
-.ada-tool-structure-editor__kind {
-    justify-self: start;
-    padding: .25rem .52rem;
-    color: var(--atlanticus-ui-primary-hover);
-    background: var(--atlanticus-ui-background);
-    border: 1px solid rgb(201 162 75 / 40%);
-    border-radius: 999px;
-    font-size: .65rem;
-    font-weight: 750;
-}
-
-.ada-tool-structure-editor__scope {
-    display: grid;
-    min-width: 0;
-    gap: .3rem;
-    max-width: 22rem;
-    color: var(--atlanticus-ui-text);
-    font-size: .7rem;
-    font-weight: 700;
-}
-
 .ada-tool-structure-editor__collection {
     padding: .85rem;
     background: var(--atlanticus-ui-surface-muted);
@@ -135,12 +114,15 @@
     );
     gap: .7rem;
     min-width: 0;
-    flex: 1 1 auto;
+}
+
+.ada-tool-structure-editor__field,
+.ada-tool-structure-editor__context-field {
+    display: grid;
+    min-width: 0;
 }
 
 .ada-tool-structure-editor__field {
-    display: grid;
-    min-width: 0;
     gap: .3rem;
 }
 
@@ -198,25 +180,6 @@
     display: none;
 }
 
-.ada-tool-structure-editor__destinations {
-    display: flex;
-    align-items: baseline;
-    flex-wrap: wrap;
-    gap: .35rem .65rem;
-    padding: .65rem .75rem;
-    color: var(--atlanticus-ui-text-muted);
-    background: var(--atlanticus-ui-background);
-    border: 1px solid rgb(201 162 75 / 30%);
-    border-radius: .65rem;
-    font-size: .66rem;
-}
-
-.ada-tool-structure-editor__destinations strong {
-    color: var(--atlanticus-ui-text);
-    font-size: .7rem;
-    overflow-wrap: anywhere;
-}
-
 .ada-tool-structure-editor__select {
     min-width: 0;
     max-width: 100%;
@@ -257,20 +220,13 @@
     border-color: var(--atlanticus-ui-border);
 }
 
-.ada-tool-structure-editor__select
-.dash-dropdown-search-container:focus-within {
-    border-color: var(--atlanticus-ui-secondary);
-    outline: 1px solid var(--atlanticus-ui-secondary);
-}
-
 .ada-tool-structure-editor__select .dash-options-list-option {
     align-items: center;
     color: var(--atlanticus-ui-text);
     font-size: .7rem;
 }
 
-.ada-tool-structure-editor__select
-.dash-options-list-option-checkbox {
+.ada-tool-structure-editor__select .dash-options-list-option-checkbox {
     width: .78rem;
     height: .78rem;
     accent-color: var(--atlanticus-ui-secondary);
@@ -298,9 +254,5 @@
     .ada-tool-structure-editor__add-subcomponent,
     .ada-tool-structure-editor__delete {
         width: 100%;
-    }
-
-    .ada-tool-structure-editor__scope {
-        max-width: none;
     }
 }

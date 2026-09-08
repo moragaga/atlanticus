@@ -1,16 +1,22 @@
+# Espejo comentado de la adaptación entre UI estructural y dominio.
+
 from __future__ import annotations
 
-# Traduce tablas Web a ToolStructure y delega todas las reglas estructurales al dominio.
-import re
 from collections.abc import Iterable, Mapping
 from typing import Any
 
 from ada.configuration.tools import (
     ToolConfiguration,
+    ToolConfigurationKind,
     ToolStructure,
 )
 
-_SPLIT_KEYS = re.compile(r'[,\n]')
+_COVERAGE_MINE = 'mine'
+_COVERAGE_PLANT = 'plant'
+_COVERAGE_MINE_PLANT = 'mine_plant'
+_VALID_COVERAGES = frozenset(
+    {_COVERAGE_MINE, _COVERAGE_PLANT, _COVERAGE_MINE_PLANT}
+)
 
 
 class ToolStructureEditorValidationError(ValueError):
@@ -32,7 +38,9 @@ def structure_editor_table_data_from_configuration(
                 'display_name': component.display_name,
                 'scope': component.scope.value if component.scope is not None else None,
                 'layout_role': (
-                    component.layout_role.value if component.layout_role is not None else None
+                    component.layout_role.value
+                    if component.layout_role is not None
+                    else None
                 ),
             }
         )
@@ -42,30 +50,63 @@ def structure_editor_table_data_from_configuration(
                     'owner_component_key': component.key,
                     'key': subcomponent.key,
                     'display_name': subcomponent.display_name,
-                    'linked_component_keys': ', '.join(subcomponent.linked_component_keys),
+                    'linked_component_keys': list(subcomponent.linked_component_keys),
                 }
             )
-    operational_scope = (
-        structure.operational_scope.value if structure.operational_scope is not None else None
+    return (
+        components,
+        subcomponents,
+        structure_editor_coverage_from_configuration(configuration),
     )
-    return components, subcomponents, operational_scope
 
 
+# La cobertura de Operaciones Integradas se deriva de los scopes de sus Components.
+def structure_editor_coverage_from_configuration(
+    configuration: ToolConfiguration,
+) -> str | None:
+    structure = configuration.structure
+    if structure is None:
+        return None
+    if configuration.kind is ToolConfigurationKind.PROCESS:
+        return (
+            structure.operational_scope.value
+            if structure.operational_scope is not None
+            else None
+        )
+    if configuration.kind is ToolConfigurationKind.INTEGRATED_OPERATIONS:
+        scopes = {
+            component.scope.value
+            for component in structure.components
+            if component.scope is not None
+        }
+        if scopes == {_COVERAGE_MINE}:
+            return _COVERAGE_MINE
+        if scopes == {_COVERAGE_PLANT}:
+            return _COVERAGE_PLANT
+        if scopes == {_COVERAGE_MINE, _COVERAGE_PLANT}:
+            return _COVERAGE_MINE_PLANT
+    return None
+
+
+# La UI traduce cobertura y filas anidadas al contrato ToolStructure existente.
 def build_structure_from_editor_tables(
     *,
     base_configuration: ToolConfiguration,
     component_rows: Iterable[Mapping[str, Any]] | None,
     subcomponent_rows: Iterable[Mapping[str, Any]] | None,
-    operational_scope: object,
+    coverage: object,
 ) -> ToolStructure:
     components = _rows(component_rows, label='Tool component rows')
     subcomponents = _rows(subcomponent_rows, label='Tool subcomponent rows')
+    resolved_coverage = _coverage(coverage, kind=base_configuration.kind)
     component_keys = tuple(_text(row.get('key')) for row in components)
     if len(component_keys) != len(set(component_keys)):
         raise ToolStructureEditorValidationError(
             'Tool Structure component keys must be unique before assigning subcomponents'
         )
-    grouped: dict[str, list[dict[str, object]]] = {key: [] for key in component_keys}
+    grouped: dict[str, list[dict[str, object]]] = {
+        key: [] for key in component_keys
+    }
     for row in subcomponents:
         owner_key = _text(row.get('owner_component_key'))
         if owner_key not in grouped:
@@ -81,25 +122,52 @@ def build_structure_from_editor_tables(
                 ),
             }
         )
+
+    kind = base_configuration.kind
     document = {
         'tool_key': base_configuration.tool_key,
-        'kind': base_configuration.kind.value,
-        'operational_scope': _optional_text(operational_scope),
+        'kind': kind.value,
+        'operational_scope': (
+            resolved_coverage if kind is ToolConfigurationKind.PROCESS else None
+        ),
         'components': [
             {
                 'key': key,
                 'display_name': _text(row.get('display_name')),
-                'scope': _optional_text(row.get('scope')),
-                'layout_role': _optional_text(row.get('layout_role')),
+                'scope': _component_scope(
+                    row,
+                    kind=kind,
+                    coverage=resolved_coverage,
+                ),
+                'layout_role': (
+                    _optional_text(row.get('layout_role'))
+                    if kind is ToolConfigurationKind.PROCESS
+                    else None
+                ),
                 'subcomponents': grouped[key],
             }
             for key, row in zip(component_keys, components, strict=True)
         ],
     }
     try:
-        return ToolStructure.from_document(document)
+        structure = ToolStructure.from_document(document)
     except ValueError as error:
         raise ToolStructureEditorValidationError(str(error)) from error
+
+    if (
+        kind is ToolConfigurationKind.INTEGRATED_OPERATIONS
+        and resolved_coverage == _COVERAGE_MINE_PLANT
+    ):
+        scopes = {
+            component.scope.value
+            for component in structure.components
+            if component.scope is not None
+        }
+        if scopes != {_COVERAGE_MINE, _COVERAGE_PLANT}:
+            raise ToolStructureEditorValidationError(
+                'Mina y Planta requires at least one component for each operational scope'
+            )
+    return structure
 
 
 def build_configuration_from_structure_editor(
@@ -114,11 +182,54 @@ def build_configuration_from_structure_editor(
             display_name=base_configuration.display_name,
             kind=base_configuration.kind,
             source_consumption=base_configuration.source_consumption,
-            source_operational_participation=base_configuration.source_operational_participation,
+            source_operational_participation=(
+                base_configuration.source_operational_participation
+            ),
             structure=structure,
+            branding=base_configuration.branding,
         )
     except ValueError as error:
         raise ToolStructureEditorValidationError(str(error)) from error
+
+
+def _component_scope(
+    row: Mapping[str, Any],
+    *,
+    kind: ToolConfigurationKind,
+    coverage: str,
+) -> str | None:
+    if kind is ToolConfigurationKind.PROCESS:
+        return None
+    if kind is not ToolConfigurationKind.INTEGRATED_OPERATIONS:
+        raise ToolStructureEditorValidationError(
+            'Tool kind is not supported by this editor'
+        )
+    if coverage in {_COVERAGE_MINE, _COVERAGE_PLANT}:
+        return coverage
+    return _optional_text(row.get('scope'))
+
+
+def _coverage(value: object, *, kind: ToolConfigurationKind) -> str:
+    resolved = _text(value)
+    if resolved not in _VALID_COVERAGES:
+        raise ToolStructureEditorValidationError(
+            'Operational coverage is required'
+        )
+    if (
+        kind is ToolConfigurationKind.PROCESS
+        and resolved == _COVERAGE_MINE_PLANT
+    ):
+        raise ToolStructureEditorValidationError(
+            'Process Tool supports Mina or Planta, not both'
+        )
+    if kind not in {
+        ToolConfigurationKind.PROCESS,
+        ToolConfigurationKind.INTEGRATED_OPERATIONS,
+    }:
+        raise ToolStructureEditorValidationError(
+            'Tool kind is not supported by this editor'
+        )
+    return resolved
 
 
 def _rows(
@@ -129,13 +240,19 @@ def _rows(
     if value is None:
         return ()
     if isinstance(value, (str, bytes, Mapping)):
-        raise ToolStructureEditorValidationError(f'{label} must be a collection')
+        raise ToolStructureEditorValidationError(
+            f'{label} must be a collection'
+        )
     try:
         rows = tuple(value)
     except TypeError as error:
-        raise ToolStructureEditorValidationError(f'{label} must be a collection') from error
+        raise ToolStructureEditorValidationError(
+            f'{label} must be a collection'
+        ) from error
     if not all(isinstance(row, Mapping) for row in rows):
-        raise ToolStructureEditorValidationError(f'{label} must contain mappings')
+        raise ToolStructureEditorValidationError(
+            f'{label} must contain mappings'
+        )
     return rows
 
 
@@ -143,7 +260,7 @@ def _linked_component_keys(value: object) -> tuple[str, ...]:
     if value is None:
         return ()
     if isinstance(value, str):
-        return tuple(item.strip() for item in _SPLIT_KEYS.split(value) if item.strip())
+        return tuple(item.strip() for item in value.split(',') if item.strip())
     if isinstance(value, (bytes, Mapping)):
         raise ToolStructureEditorValidationError(
             'Tool linked component keys must be text or a collection'
@@ -155,7 +272,9 @@ def _linked_component_keys(value: object) -> tuple[str, ...]:
             'Tool linked component keys must be text or a collection'
         ) from error
     if not all(isinstance(item, str) for item in items):
-        raise ToolStructureEditorValidationError('Tool linked component keys must contain strings')
+        raise ToolStructureEditorValidationError(
+            'Tool linked component keys must contain strings'
+        )
     return tuple(item.strip() for item in items if item.strip())
 
 
