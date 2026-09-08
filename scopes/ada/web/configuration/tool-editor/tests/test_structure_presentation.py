@@ -79,6 +79,7 @@ def test_complete_editor_composes_sources_and_structure() -> None:
 
     assert layout.id == TOOL_CONFIGURATION_EDITOR_ROOT_ID
     assert len(layout.children) == 2
+    assert 'atlanticus-bootstrap' in layout.className
 
 
 def test_manual_structure_rows_use_pattern_matching_ids() -> None:

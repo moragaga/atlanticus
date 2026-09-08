@@ -68,6 +68,7 @@ def test_source_editor_exposes_required_source_controls() -> None:
     assert PI_DEGRADING_ID in ids
     assert DISPATCH_ENABLED_ID in ids
     assert ADDITIONAL_OBSERVATION_ID in ids
+    assert 'form-control' in str(component.to_plotly_json())
 
 
 def test_source_editor_accepts_initial_tool_configuration_document() -> None:

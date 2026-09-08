@@ -160,7 +160,7 @@ def _number_field(*, label: str, component_id: str, help_text: str) -> Component
                         min=1,
                         step=1,
                         debounce=True,
-                        className='ada-tool-source-editor__number-input',
+                        className='form-control ada-tool-source-editor__number-input',
                     ),
                     html.Span('s', className='ada-tool-source-editor__unit'),
                 ],
@@ -185,7 +185,7 @@ def _additional_observation() -> Component:
             dcc.Textarea(
                 id=ADDITIONAL_OBSERVATION_ID,
                 placeholder='source_key_adicional',
-                className='ada-tool-source-editor__textarea',
+                className='form-control ada-tool-source-editor__textarea',
             ),
             html.Small(
                 (

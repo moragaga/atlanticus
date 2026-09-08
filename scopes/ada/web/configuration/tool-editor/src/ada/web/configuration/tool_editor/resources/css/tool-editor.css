@@ -1,11 +1,19 @@
 .ada-tool-source-editor {
     display: grid;
-    gap: 1rem;
+    min-width: 0;
+    gap: .8rem;
+    padding: 1rem;
+    color: var(--atlanticus-ui-text);
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .85rem;
+    box-shadow: 0 4px 16px rgb(25 30 38 / 3.5%);
 }
 
 .ada-tool-source-editor__heading {
     display: grid;
-    gap: 0.25rem;
+    min-width: 0;
+    gap: .2rem;
 }
 
 .ada-tool-source-editor__title,
@@ -13,81 +21,142 @@
     margin: 0;
 }
 
-.ada-tool-source-editor__copy,
-.ada-tool-source-editor__help,
-.ada-tool-source-editor__source-heading span {
-    color: rgba(7, 21, 34, 0.66);
+.ada-tool-source-editor__title {
+    color: var(--atlanticus-ui-text);
+    font-size: .92rem;
+    font-weight: 780;
+}
+
+.ada-tool-source-editor__copy {
+    max-width: 72rem;
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .72rem;
+    line-height: 1.4;
 }
 
 .ada-tool-source-editor__source-card {
     display: grid;
-    gap: 0.8rem;
-    padding: 1rem;
-    border: 1px solid rgba(7, 21, 34, 0.14);
-    border-radius: 0.65rem;
-    background: rgba(255, 255, 255, 0.46);
+    min-width: 0;
+    gap: .7rem;
+    padding: .85rem;
+    background: var(--atlanticus-ui-surface-muted);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .72rem;
+}
+
+.ada-tool-source-editor__source-card[data-source-key='pi'] {
+    border-top: .18rem solid var(--atlanticus-ui-accent);
 }
 
 .ada-tool-source-editor__source-heading {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: 1rem;
+    gap: .75rem;
+    min-width: 0;
+}
+
+.ada-tool-source-editor__source-heading strong {
+    color: var(--atlanticus-ui-text);
+    font-size: .82rem;
+    font-weight: 760;
 }
 
 .ada-tool-source-editor__source-heading span {
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .64rem;
+    font-weight: 700;
+    letter-spacing: .04em;
 }
 
 .ada-tool-source-editor__threshold-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
+    gap: .75rem .9rem;
+    min-width: 0;
 }
 
 .ada-tool-source-editor__field {
     display: grid;
-    gap: 0.35rem;
+    min-width: 0;
+    gap: .3rem;
 }
 
 .ada-tool-source-editor__field-label {
-    font-weight: 600;
+    color: var(--atlanticus-ui-text);
+    font-size: .7rem;
+    font-weight: 700;
 }
 
 .ada-tool-source-editor__number-control {
     display: flex;
     align-items: center;
-    gap: 0.45rem;
+    min-width: 0;
+    gap: .45rem;
 }
 
-.ada-tool-source-editor__number-input,
-.ada-tool-source-editor__textarea {
-    width: 100%;
-    box-sizing: border-box;
-    border: 1px solid rgba(7, 21, 34, 0.22);
-    border-radius: 0.45rem;
-    background: rgba(255, 255, 255, 0.88);
-    padding: 0.55rem 0.65rem;
+.ada-tool-source-editor__number-input {
+    min-width: 0;
+    flex: 1 1 0;
 }
 
 .ada-tool-source-editor__textarea {
-    min-height: 5.5rem;
+    min-width: 0;
+    min-height: 5rem;
     resize: vertical;
 }
 
 .ada-tool-source-editor__unit {
-    color: rgba(7, 21, 34, 0.66);
+    flex: 0 0 auto;
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .68rem;
+    font-weight: 700;
+}
+
+.ada-tool-source-editor__help {
+    color: var(--atlanticus-ui-text-soft);
+    font-size: .64rem;
+    line-height: 1.35;
+}
+
+.ada-tool-source-editor__dispatch-toggle {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.ada-tool-source-editor__dispatch-toggle label {
+    display: inline-flex;
+    align-items: center;
+    gap: .38rem;
+    color: var(--atlanticus-ui-text);
+    cursor: pointer;
+    font-size: .7rem;
+    font-weight: 700;
+}
+
+.ada-tool-source-editor__dispatch-toggle input[type='checkbox'] {
+    width: .88rem;
+    height: .88rem;
+    margin: 0;
+    accent-color: var(--atlanticus-ui-secondary);
 }
 
 .ada-tool-source-editor__validation {
-    min-height: 1.2rem;
-    color: #8b1e1e;
-    font-size: 0.86rem;
+    min-height: 1.1rem;
+    color: var(--atlanticus-ui-danger);
+    font-size: .7rem;
 }
 
-@media (max-width: 720px) {
+.ada-tool-source-editor__validation:empty {
+    display: none;
+}
+
+@media (max-width: 48rem) {
+    .ada-tool-source-editor {
+        padding: .85rem;
+    }
+
     .ada-tool-source-editor__threshold-grid {
         grid-template-columns: 1fr;
     }
@@ -95,6 +164,6 @@
     .ada-tool-source-editor__source-heading {
         align-items: flex-start;
         flex-direction: column;
-        gap: 0.2rem;
+        gap: .18rem;
     }
 }

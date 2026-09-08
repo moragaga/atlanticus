@@ -29,5 +29,5 @@ def build_tool_configuration_editor(
             ),
         ],
         id=TOOL_CONFIGURATION_EDITOR_ROOT_ID,
-        className='ada-tool-configuration-editor-complete',
+        className='ada-tool-configuration-editor-complete atlanticus-bootstrap',
     )

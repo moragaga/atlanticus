@@ -85,6 +85,8 @@ def build_tool_structure_editor(
                         ],
                         value=operational_scope,
                         clearable=False,
+                        className='ada-tool-structure-editor__select',
+                        style=_dash_select_style(),
                     ),
                 ],
                 id=STRUCTURE_OPERATIONAL_SCOPE_WRAPPER_ID,
@@ -205,7 +207,7 @@ def build_component_editor_row(
                 id=row_id(COMPONENT_DELETE_TYPE, index),
                 type='button',
                 n_clicks=0,
-                className='ada-tool-structure-editor__delete',
+                className='btn btn-outline-danger btn-sm ada-tool-structure-editor__delete',
             ),
         ],
         id=row_id(COMPONENT_ROW_TYPE, index),
@@ -263,7 +265,7 @@ def build_subcomponent_editor_row(
                 id=row_id(SUBCOMPONENT_DELETE_TYPE, index),
                 type='button',
                 n_clicks=0,
-                className='ada-tool-structure-editor__delete',
+                className='btn btn-outline-danger btn-sm ada-tool-structure-editor__delete',
             ),
         ],
         id=row_id(SUBCOMPONENT_ROW_TYPE, index),
@@ -318,7 +320,7 @@ def _collection_section(
                         id=add_id,
                         type='button',
                         n_clicks=0,
-                        className='ada-tool-structure-editor__add',
+                        className='btn btn-outline-secondary ada-tool-structure-editor__add',
                     ),
                 ],
                 className='ada-tool-structure-editor__collection-heading',
@@ -349,6 +351,7 @@ def _text_field(
                 type='text',
                 placeholder=placeholder,
                 debounce=True,
+                className='form-control ada-tool-structure-editor__text-input',
             ),
         ],
         className='ada-tool-structure-editor__field',
@@ -372,10 +375,32 @@ def _dropdown_field(
                 options=list(options),
                 multi=multi,
                 clearable=multi,
+                className='ada-tool-structure-editor__select',
+                style=_dash_select_style(),
             ),
         ],
         className='ada-tool-structure-editor__field',
     )
+
+
+def _dash_select_style() -> dict[str, str]:
+    return {
+        '--Dash-Spacing': '4px',
+        '--Dash-Stroke-Strong': 'var(--atlanticus-ui-secondary)',
+        '--Dash-Stroke-Weak': 'var(--atlanticus-ui-border)',
+        '--Dash-Fill-Interactive-Strong': 'var(--atlanticus-ui-secondary)',
+        '--Dash-Fill-Interactive-Weak': 'var(--atlanticus-ui-selection-soft)',
+        '--Dash-Fill-Inverse-Strong': 'var(--atlanticus-ui-surface)',
+        '--Dash-Text-Primary': 'var(--atlanticus-ui-text)',
+        '--Dash-Text-Strong': 'var(--atlanticus-ui-text)',
+        '--Dash-Text-Weak': 'var(--atlanticus-ui-text-muted)',
+        '--Dash-Text-Disabled': 'var(--atlanticus-ui-text-soft)',
+        '--Dash-Fill-Primary-Hover': 'var(--atlanticus-ui-selection-soft)',
+        '--Dash-Fill-Primary-Active': 'var(--atlanticus-ui-selection-soft)',
+        '--Dash-Fill-Disabled': 'var(--atlanticus-ui-border)',
+        '--Dash-Shading-Strong': 'rgb(7 21 34 / 25%)',
+        '--Dash-Shading-Weak': 'rgb(7 21 34 / 12%)',
+    }
 
 
 def _component_options(

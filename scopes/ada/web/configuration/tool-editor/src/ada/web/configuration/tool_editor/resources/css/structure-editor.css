@@ -1,18 +1,28 @@
 .ada-tool-configuration-editor-complete {
     display: grid;
-    gap: 1.25rem;
+    min-width: 0;
+    gap: .9rem;
+    padding: 0 1rem 1rem;
 }
 
 .ada-tool-structure-editor {
     display: grid;
-    gap: 1rem;
+    min-width: 0;
+    gap: .8rem;
+    padding: 1rem;
+    color: var(--atlanticus-ui-text);
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .85rem;
+    box-shadow: 0 4px 16px rgb(25 30 38 / 3.5%);
 }
 
 .ada-tool-structure-editor__heading,
 .ada-tool-structure-editor__collection,
 .ada-tool-structure-editor__rows {
     display: grid;
-    gap: 0.75rem;
+    min-width: 0;
+    gap: .7rem;
 }
 
 .ada-tool-structure-editor__title,
@@ -22,82 +32,204 @@
     margin: 0;
 }
 
+.ada-tool-structure-editor__title {
+    color: var(--atlanticus-ui-text);
+    font-size: .92rem;
+    font-weight: 780;
+}
+
+.ada-tool-structure-editor__copy,
+.ada-tool-structure-editor__collection p {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .7rem;
+    line-height: 1.4;
+}
+
 .ada-tool-structure-editor__kind {
-    font-weight: 600;
+    justify-self: start;
+    padding: .25rem .52rem;
+    color: var(--atlanticus-ui-primary-hover);
+    background: var(--atlanticus-ui-background);
+    border: 1px solid rgb(201 162 75 / 40%);
+    border-radius: 999px;
+    font-size: .65rem;
+    font-weight: 750;
 }
 
 .ada-tool-structure-editor__scope {
     display: grid;
-    gap: 0.35rem;
+    min-width: 0;
+    gap: .3rem;
     max-width: 22rem;
+    color: var(--atlanticus-ui-text);
+    font-size: .7rem;
+    font-weight: 700;
 }
 
 .ada-tool-structure-editor__collection {
-    padding-top: 0.25rem;
+    padding: .85rem;
+    background: var(--atlanticus-ui-surface-muted);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .72rem;
 }
 
 .ada-tool-structure-editor__collection-heading {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 1rem;
+    gap: .8rem;
+    min-width: 0;
 }
 
 .ada-tool-structure-editor__collection-copy {
     display: grid;
-    gap: 0.25rem;
+    min-width: 0;
+    gap: .18rem;
+}
+
+.ada-tool-structure-editor__collection h4 {
+    color: var(--atlanticus-ui-text);
+    font-size: .82rem;
+    font-weight: 760;
 }
 
 .ada-tool-structure-editor__row {
     display: flex;
     align-items: flex-end;
-    gap: 0.75rem;
-    padding: 0.9rem;
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    border-radius: 0.65rem;
-    background: rgba(255, 255, 255, 0.28);
+    min-width: 0;
+    gap: .7rem;
+    padding: .75rem;
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .65rem;
 }
 
 .ada-tool-structure-editor__row-fields {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-    gap: 0.75rem;
-    flex: 1 1 auto;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+    gap: .7rem;
     min-width: 0;
+    flex: 1 1 auto;
 }
 
 .ada-tool-structure-editor__field {
     display: grid;
-    gap: 0.3rem;
     min-width: 0;
+    gap: .3rem;
 }
 
 .ada-tool-structure-editor__field > span {
-    font-size: 0.78rem;
-    font-weight: 600;
+    color: var(--atlanticus-ui-text);
+    font-size: .68rem;
+    font-weight: 700;
 }
 
-.ada-tool-structure-editor__field input {
-    width: 100%;
-    min-height: 2.35rem;
-    box-sizing: border-box;
+.ada-tool-structure-editor__text-input {
+    min-width: 0;
 }
 
 .ada-tool-structure-editor__add,
 .ada-tool-structure-editor__delete {
+    flex: 0 0 auto;
     white-space: nowrap;
 }
 
 .ada-tool-structure-editor__validation {
-    min-height: 1.25rem;
+    min-height: 1rem;
+    color: var(--atlanticus-ui-danger);
+    font-size: .7rem;
+}
+
+.ada-tool-structure-editor__validation:empty {
+    display: none;
 }
 
 .ada-tool-structure-editor__destinations {
-    display: grid;
-    gap: 0.25rem;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: .35rem .65rem;
+    padding: .65rem .75rem;
+    color: var(--atlanticus-ui-text-muted);
+    background: var(--atlanticus-ui-background);
+    border: 1px solid rgb(201 162 75 / 30%);
+    border-radius: .65rem;
+    font-size: .66rem;
 }
 
-@media (max-width: 720px) {
+.ada-tool-structure-editor__destinations strong {
+    color: var(--atlanticus-ui-text);
+    font-size: .7rem;
+    overflow-wrap: anywhere;
+}
+
+.ada-tool-structure-editor__select {
+    min-width: 0;
+    max-width: 100%;
+    color: var(--atlanticus-ui-text);
+    font-family: var(--atlanticus-ui-font);
+    font-size: .76rem;
+}
+
+.ada-tool-structure-editor__select.dash-dropdown-wrapper,
+.ada-tool-structure-editor__select .dash-dropdown {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.ada-tool-structure-editor__select .dash-dropdown {
+    color: var(--atlanticus-ui-text);
+    background: var(--atlanticus-ui-surface);
+    border-color: var(--atlanticus-ui-border);
+}
+
+.ada-tool-structure-editor__select .dash-dropdown:hover {
+    border-color: var(--atlanticus-ui-accent);
+}
+
+.ada-tool-structure-editor__select .dash-dropdown:focus {
+    border-color: var(--atlanticus-ui-secondary);
+    outline: 1px solid var(--atlanticus-ui-secondary);
+}
+
+.ada-tool-structure-editor__select .dash-dropdown-content {
+    box-sizing: border-box;
+    width: var(--radix-popover-trigger-width);
+    min-width: var(--radix-popover-trigger-width);
+    max-width: var(--radix-popover-trigger-width);
+    color: var(--atlanticus-ui-text);
+    background: var(--atlanticus-ui-surface);
+    border-color: var(--atlanticus-ui-border);
+}
+
+.ada-tool-structure-editor__select .dash-dropdown-search-container:focus-within {
+    border-color: var(--atlanticus-ui-secondary);
+    outline: 1px solid var(--atlanticus-ui-secondary);
+}
+
+.ada-tool-structure-editor__select .dash-options-list-option {
+    align-items: center;
+    color: var(--atlanticus-ui-text);
+    font-size: .7rem;
+}
+
+.ada-tool-structure-editor__select .dash-options-list-option-checkbox {
+    width: .78rem;
+    height: .78rem;
+    accent-color: var(--atlanticus-ui-secondary);
+    outline-color: var(--atlanticus-ui-secondary);
+}
+
+@media (max-width: 48rem) {
+    .ada-tool-configuration-editor-complete {
+        padding-inline: .75rem;
+    }
+
+    .ada-tool-structure-editor {
+        padding: .85rem;
+    }
+
     .ada-tool-structure-editor__collection-heading,
     .ada-tool-structure-editor__row {
         align-items: stretch;
@@ -107,5 +239,9 @@
     .ada-tool-structure-editor__add,
     .ada-tool-structure-editor__delete {
         width: 100%;
+    }
+
+    .ada-tool-structure-editor__scope {
+        max-width: none;
     }
 }
