@@ -6,8 +6,12 @@ from datetime import UTC, datetime
 
 import pytest
 
+from ada.configuration.tools import ToolConfiguration
 from ada.configuration.tools_lifecycle import build_tool_configuration_digest
 from ada.web.application.configuration_manager.tools import (
+    TOOL_DETAIL_BUTTON_ID,
+    TOOL_DETAIL_MODAL_ID,
+    TOOL_DETAIL_SECTION_ID,
     TOOL_IMPORT_UPLOAD_ID,
     TOOL_MANAGER_ASSET_LAYER,
     TOOL_MANAGER_ROOT_ID,
@@ -18,6 +22,7 @@ from ada.web.application.configuration_manager.tools import (
     _decode_tool_configuration_import,
     _editor_configuration,
     _owned_draft,
+    _tool_detail_snapshot,
     build_tool_history_preview,
     build_tool_manager_configuration,
     create_tool_manager_web_module,
@@ -141,7 +146,10 @@ def test_tool_manager_layout_matches_existing_manager_import_and_save_pattern() 
 
     ids = component_ids(layout)
     assert ids.index(TOOL_IMPORT_UPLOAD_ID) < ids.index(TOOL_CONFIGURATION_EDITOR_ROOT_ID)
-    assert ids.index(TOOL_CONFIGURATION_EDITOR_ROOT_ID) < ids.index(TOOL_SAVE_BUTTON_ID)
+    assert ids.index(TOOL_CONFIGURATION_EDITOR_ROOT_ID) < ids.index(TOOL_DETAIL_SECTION_ID)
+    assert ids.index(TOOL_DETAIL_SECTION_ID) < ids.index(TOOL_SAVE_BUTTON_ID)
+    assert TOOL_DETAIL_BUTTON_ID in ids
+    assert TOOL_DETAIL_MODAL_ID in ids
 
     source = component_by_id(layout, TOOL_SOURCE_NAME_ID)
     projection = component_by_id(layout, TOOL_PROJECTION_NAME_ID)
@@ -264,3 +272,91 @@ def test_tool_manager_web_module_composes_editor_and_manager_assets() -> None:
     assert module.name == 'ada-configuration-manager-tools'
     assert TOOL_MANAGER_ASSET_LAYER in module.asset_layers
     assert module.register_callbacks is not None
+
+
+def test_tool_detail_empty_state_is_neutral_and_keeps_fixed_destinations() -> None:
+    snapshot = _tool_detail_snapshot(
+        display_name=None,
+        kind_value=None,
+        coverage=None,
+        branding=None,
+        pi_preventive=None,
+        pi_degradation=None,
+        dispatch_values=[],
+        dispatch_preventive=None,
+        dispatch_degradation=None,
+        component_key_ids=[],
+        component_keys=[],
+        component_name_ids=[],
+        component_names=[],
+        component_scope_ids=[],
+        component_scopes=[],
+        subcomponent_key_ids=[],
+        subcomponent_keys=[],
+        subcomponent_name_ids=[],
+        subcomponent_names=[],
+        subcomponent_linked_ids=[],
+        subcomponent_links=[],
+        source_document=None,
+        structure_document=None,
+    )
+
+    assert snapshot['general']['display_name'] is None
+    assert snapshot['components'] == []
+    assert snapshot['contract'] is None
+    assert [item['key'] for item in snapshot['fixed_destinations']] == [
+        'global_indicators',
+        'time_status',
+    ]
+
+
+def test_tool_detail_preserves_accents_and_structural_identity() -> None:
+    document = tool_document()
+    document['display_name'] = 'Operaciones Integradas – Área Húmeda'
+    document['structure']['components'][0]['display_name'] = 'Chancado Primário'
+    document['structure']['components'][0]['subcomponents'][0]['display_name'] = (
+        'Extracción N° 1'
+    )
+    configuration = _editor_configuration(
+        source_document=document,
+        structure_document=document['structure'],
+    )
+    round_trip = ToolConfiguration.from_document(configuration.to_document())
+
+    snapshot = _tool_detail_snapshot(
+        display_name='Operaciones Integradas – Área Húmeda',
+        kind_value='process',
+        coverage='plant',
+        branding='original',
+        pi_preventive=200,
+        pi_degradation=300,
+        dispatch_values=[],
+        dispatch_preventive=None,
+        dispatch_degradation=None,
+        component_key_ids=[{'type': 'key', 'index': 0}],
+        component_keys=['crusher'],
+        component_name_ids=[{'type': 'name', 'index': 0}],
+        component_names=['Chancado Primário'],
+        component_scope_ids=[{'type': 'scope', 'index': 0}],
+        component_scopes=['plant'],
+        subcomponent_key_ids=[{'type': 'sub-key', 'owner_index': 0, 'index': 0}],
+        subcomponent_keys=['primary'],
+        subcomponent_name_ids=[{'type': 'sub-name', 'owner_index': 0, 'index': 0}],
+        subcomponent_names=['Extracción N° 1'],
+        subcomponent_linked_ids=[{'type': 'sub-linked', 'owner_index': 0, 'index': 0}],
+        subcomponent_links=[[]],
+        source_document=document,
+        structure_document=document['structure'],
+    )
+
+    assert round_trip.display_name == 'Operaciones Integradas – Área Húmeda'
+    assert round_trip.structure.component('crusher').display_name == 'Chancado Primário'
+    assert (
+        round_trip.structure.component('crusher').subcomponent('primary').display_name
+        == 'Extracción N° 1'
+    )
+    assert snapshot['components'][0]['key'] == 'crusher'
+    assert snapshot['components'][0]['display_name'] == 'Chancado Primário'
+    assert snapshot['components'][0]['subcomponents'][0]['key'] == 'primary'
+    assert snapshot['components'][0]['subcomponents'][0]['display_name'] == 'Extracción N° 1'
+    assert snapshot['contract']['display_name'] == 'Operaciones Integradas – Área Húmeda'

@@ -3,6 +3,8 @@
     min-width: 0;
     gap: .9rem;
     padding: 0 1rem 1rem;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 .ada-configuration-manager-tools__runtime-context,
@@ -134,5 +136,317 @@
     .ada-configuration-manager-tools__section-heading {
         align-items: stretch;
         flex-direction: column;
+    }
+}
+
+
+.ada-configuration-manager-tools input,
+.ada-configuration-manager-tools textarea,
+.ada-configuration-manager-tools [contenteditable='true'],
+.ada-configuration-manager-tools__selectable {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.ada-configuration-manager-tools__section--inspection {
+    background: var(--atlanticus-ui-surface-muted);
+}
+
+.ada-configuration-manager-tools__section--inspection
+.ada-configuration-manager-tools__section-heading {
+    margin-bottom: 0;
+}
+
+.ada-configuration-manager-tools__modal {
+    position: fixed;
+    z-index: 1350;
+    inset: 0;
+    display: none;
+    place-items: center;
+    padding: 1rem;
+}
+
+.ada-configuration-manager-tools__modal--open {
+    display: grid;
+}
+
+.ada-configuration-manager-tools__modal-backdrop {
+    position: absolute;
+    inset: 0;
+    padding: 0;
+    background: var(--atlanticus-ui-overlay);
+    border: 0;
+}
+
+.ada-configuration-manager-tools__modal-dialog {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    width: min(96vw, 72rem);
+    max-height: calc(100vh - 2rem);
+    overflow: hidden;
+    color: var(--atlanticus-ui-text);
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .9rem;
+    box-shadow: 0 1rem 3rem rgb(7 21 34 / 18%);
+}
+
+.ada-configuration-manager-tools__modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    border-bottom: 1px solid var(--atlanticus-ui-border);
+}
+
+.ada-configuration-manager-tools__modal-heading {
+    display: grid;
+    min-width: 0;
+    gap: .2rem;
+}
+
+.ada-configuration-manager-tools__modal-heading h2,
+.ada-configuration-manager-tools__modal-heading p,
+.ada-configuration-manager-tools__detail-section h3,
+.ada-configuration-manager-tools__detail-section > p {
+    margin: 0;
+}
+
+.ada-configuration-manager-tools__modal-heading h2 {
+    font-size: 1.02rem;
+    font-weight: 800;
+}
+
+.ada-configuration-manager-tools__modal-heading p,
+.ada-configuration-manager-tools__detail-section > p {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .7rem;
+    line-height: 1.4;
+}
+
+.ada-configuration-manager-tools__modal-body {
+    min-width: 0;
+    overflow: auto;
+    padding: 1rem 1.1rem 1.1rem;
+}
+
+.ada-configuration-manager-tools__detail {
+    display: grid;
+    min-width: 0;
+    gap: .85rem;
+}
+
+.ada-configuration-manager-tools__detail-section {
+    display: grid;
+    min-width: 0;
+    gap: .65rem;
+    padding: .85rem;
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .72rem;
+}
+
+.ada-configuration-manager-tools__detail-section h3 {
+    font-size: .82rem;
+    font-weight: 780;
+}
+
+.ada-configuration-manager-tools__detail-legend,
+.ada-configuration-manager-tools__detail-grid,
+.ada-configuration-manager-tools__detail-source-grid,
+.ada-configuration-manager-tools__detail-destinations,
+.ada-configuration-manager-tools__detail-components,
+.ada-configuration-manager-tools__detail-subcomponents {
+    display: grid;
+    min-width: 0;
+    gap: .6rem;
+}
+
+.ada-configuration-manager-tools__detail-legend {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ada-configuration-manager-tools__detail-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+}
+
+.ada-configuration-manager-tools__detail-source-grid,
+.ada-configuration-manager-tools__detail-destinations {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ada-configuration-manager-tools__detail-legend-item,
+.ada-configuration-manager-tools__detail-card,
+.ada-configuration-manager-tools__detail-subcomponent {
+    min-width: 0;
+    padding: .72rem .78rem;
+    background: var(--atlanticus-ui-surface-muted);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .65rem;
+}
+
+.ada-configuration-manager-tools__detail-legend-item {
+    display: grid;
+    gap: .15rem;
+}
+
+.ada-configuration-manager-tools__detail-legend-item strong,
+.ada-configuration-manager-tools__detail-card-heading strong {
+    font-size: .73rem;
+    font-weight: 780;
+}
+
+.ada-configuration-manager-tools__detail-legend-item span,
+.ada-configuration-manager-tools__detail-card-heading span {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .64rem;
+    line-height: 1.35;
+}
+
+.ada-configuration-manager-tools__detail-card {
+    display: grid;
+    gap: .65rem;
+}
+
+.ada-configuration-manager-tools__detail-card--component {
+    border-top: .16rem solid var(--atlanticus-ui-accent);
+}
+
+.ada-configuration-manager-tools__detail-card-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    min-width: 0;
+}
+
+.ada-configuration-manager-tools__detail-card-heading-copy {
+    display: grid;
+    min-width: 0;
+    gap: .12rem;
+}
+
+.ada-configuration-manager-tools__detail-value {
+    display: grid;
+    min-width: 0;
+    gap: .15rem;
+}
+
+.ada-configuration-manager-tools__detail-value small {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .61rem;
+    font-weight: 700;
+}
+
+.ada-configuration-manager-tools__detail-value strong,
+.ada-configuration-manager-tools__detail-code {
+    min-width: 0;
+    color: var(--atlanticus-ui-text);
+    font-size: .7rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.ada-configuration-manager-tools__detail-code {
+    padding: .18rem .28rem;
+    background: var(--atlanticus-ui-background);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .35rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.ada-configuration-manager-tools__detail-badges {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: .35rem;
+}
+
+.ada-configuration-manager-tools__detail-badge {
+    padding: .22rem .42rem;
+    color: var(--atlanticus-ui-primary-hover);
+    background: var(--atlanticus-ui-background);
+    border: 1px solid rgb(201 162 75 / 30%);
+    border-radius: 999px;
+    font-size: .61rem;
+    font-weight: 780;
+}
+
+.ada-configuration-manager-tools__detail-subcomponents {
+    padding-top: .1rem;
+}
+
+.ada-configuration-manager-tools__detail-subcomponent {
+    background: var(--atlanticus-ui-surface);
+}
+
+.ada-configuration-manager-tools__detail-empty {
+    padding: .72rem .78rem;
+    color: var(--atlanticus-ui-text-muted);
+    background: var(--atlanticus-ui-surface-muted);
+    border: 1px dashed var(--atlanticus-ui-border);
+    border-radius: .62rem;
+    font-size: .68rem;
+    line-height: 1.4;
+}
+
+.ada-configuration-manager-tools__detail-contract-box {
+    min-width: 0;
+    overflow: hidden;
+    background: var(--atlanticus-ui-surface-muted);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .62rem;
+}
+
+.ada-configuration-manager-tools__detail-contract-box summary {
+    padding: .65rem .75rem;
+    cursor: pointer;
+    font-size: .68rem;
+    font-weight: 750;
+}
+
+.ada-configuration-manager-tools__detail-contract {
+    max-height: 24rem;
+    margin: 0;
+    overflow: auto;
+    padding: .8rem;
+    color: var(--atlanticus-ui-text);
+    background: var(--atlanticus-ui-background);
+    border-top: 1px solid var(--atlanticus-ui-border);
+    font-size: .65rem;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 48rem) {
+    .ada-configuration-manager-tools__modal {
+        padding: .5rem;
+    }
+
+    .ada-configuration-manager-tools__modal-dialog {
+        width: 100%;
+        max-height: calc(100vh - 1rem);
+    }
+
+    .ada-configuration-manager-tools__modal-header,
+    .ada-configuration-manager-tools__detail-card-heading,
+    .ada-configuration-manager-tools__section--inspection
+    .ada-configuration-manager-tools__section-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .ada-configuration-manager-tools__detail-legend,
+    .ada-configuration-manager-tools__detail-source-grid,
+    .ada-configuration-manager-tools__detail-destinations {
+        grid-template-columns: 1fr;
+    }
+
+    .ada-configuration-manager-tools__detail-badges {
+        justify-content: flex-start;
     }
 }
