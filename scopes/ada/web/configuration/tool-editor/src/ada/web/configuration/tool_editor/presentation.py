@@ -257,7 +257,7 @@ def _text_field(
                 type='text',
                 placeholder=placeholder,
                 debounce=True,
-                className='form-control ada-tool-source-editor__text-input',
+                className='ada-tool-source-editor__text-input',
             ),
         ],
         className='ada-tool-source-editor__field',
@@ -305,10 +305,7 @@ def _number_field(
                         min=1,
                         step=1,
                         debounce=True,
-                        className=(
-                            'form-control '
-                            'ada-tool-source-editor__number-input'
-                        ),
+                        className='ada-tool-source-editor__number-input',
                     ),
                     html.Span('s', className='ada-tool-source-editor__unit'),
                 ],

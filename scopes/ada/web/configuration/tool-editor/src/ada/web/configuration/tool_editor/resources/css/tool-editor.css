@@ -59,9 +59,37 @@
     font-weight: 700;
 }
 
-.ada-tool-source-editor__text-input,
-.ada-tool-source-editor__number-input {
+input.ada-tool-source-editor__text-input,
+input.ada-tool-source-editor__number-input {
+    box-sizing: border-box;
+    width: 100%;
     min-width: 0;
+    padding: .5rem .68rem;
+    color: var(--atlanticus-ui-text);
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: var(--atlanticus-ui-control-radius);
+    box-shadow: none;
+    font: inherit;
+    font-size: .82rem;
+    line-height: 1.4;
+    outline: 0;
+    transition:
+        border-color var(--atlanticus-ui-transition),
+        box-shadow var(--atlanticus-ui-transition),
+        background-color var(--atlanticus-ui-transition);
+}
+
+input.ada-tool-source-editor__text-input:hover,
+input.ada-tool-source-editor__number-input:hover {
+    border-color: var(--atlanticus-ui-accent);
+}
+
+input.ada-tool-source-editor__text-input:focus,
+input.ada-tool-source-editor__number-input:focus {
+    border-color: var(--atlanticus-ui-secondary);
+    box-shadow: 0 0 0 .18rem var(--atlanticus-ui-selection-soft);
+    outline: 0;
 }
 
 .ada-tool-source-editor__select {
@@ -204,7 +232,8 @@
 }
 
 .ada-tool-source-editor__dispatch-threshold {
-    max-width: 36rem;
+    width: 100%;
+    max-width: none;
 }
 
 .ada-tool-source-editor__validation {

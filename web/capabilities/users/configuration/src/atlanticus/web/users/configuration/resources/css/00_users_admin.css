@@ -432,6 +432,11 @@
     border-top: .2rem solid var(--atlanticus-ui-accent);
 }
 
+.atlanticus-users-admin__section--footer
+.atlanticus-users-admin__section-heading-row {
+    align-items: center;
+}
+
 .atlanticus-users-admin__field,
 .atlanticus-users-admin__profile-preview-field {
     display: flex;

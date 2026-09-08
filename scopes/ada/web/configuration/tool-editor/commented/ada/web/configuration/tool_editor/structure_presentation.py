@@ -532,10 +532,7 @@ def _text_field(
                 type='text',
                 placeholder=placeholder,
                 debounce=True,
-                className=(
-                    'form-control '
-                    'ada-tool-structure-editor__text-input'
-                ),
+                className='ada-tool-structure-editor__text-input',
             ),
         ],
         className='ada-tool-structure-editor__field',

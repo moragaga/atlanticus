@@ -1,4 +1,4 @@
-from dash import Dash
+from dash import Dash, no_update
 
 from ada.web.configuration.tool_editor import (
     register_tool_source_editor_callbacks,
@@ -51,3 +51,30 @@ def test_linked_values_drop_deleted_or_incompatible_components() -> None:
             }
         ],
     ) == ['cmp_keep']
+
+def test_add_component_does_not_require_completed_general_configuration() -> None:
+    class CallbackApp:
+        def __init__(self) -> None:
+            self.callbacks: dict[str, object] = {}
+
+        def callback(self, *_args, **_kwargs):
+            def register(callback):
+                self.callbacks[callback.__name__] = callback
+                return callback
+
+            return register
+
+    app = CallbackApp()
+    register_tool_structure_editor_callbacks(app)
+
+    result = app.callbacks['add_component'](
+        1,
+        [],
+        [],
+        None,
+        None,
+        [],
+        [],
+    )
+
+    assert result is not no_update

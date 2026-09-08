@@ -126,16 +126,15 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         component_names: list[object],
         component_scopes: list[object],
     ):
-        if (
-            not _click_is_real(clicks)
-            or kind_value is None
-            or coverage is None
-        ):
+        # Crear la fila no depende de que Información general ya esté completa.
+        if not _click_is_real(clicks):
             return no_update
-        try:
-            kind = ToolConfigurationKind(kind_value)
-        except ValueError:
-            return no_update
+        kind = None
+        if kind_value is not None:
+            try:
+                kind = ToolConfigurationKind(kind_value)
+            except ValueError:
+                return no_update
 
         rows = _component_rows_from_values(
             ids=component_ids,

@@ -56,10 +56,23 @@
 
 .ada-configuration-manager-tools__section-heading {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: space-between;
     gap: 1rem;
     margin-bottom: .8rem;
+}
+
+.ada-configuration-manager-tools > .ada-tool-configuration-editor-complete {
+    padding: 0;
+}
+
+.ada-configuration-manager-tools__section--footer
+.ada-configuration-manager-tools__section-heading {
+    margin-bottom: 0;
+}
+
+.ada-configuration-manager-tools__section--footer > :last-child:empty {
+    display: none;
 }
 
 .ada-configuration-manager-tools__section-copy {
