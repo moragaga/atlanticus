@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import base64
+# El Manager recibe un JSON completo de Tool Configuration sólo para hidratar el editor.
+import json
+from binascii import Error as BinasciiError
 # Une Sources y Structure en un único ManagerDraft para la Tool de esta aplicación.
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from dash import Input, Output, State, html, no_update
+from dash import Input, Output, State, dcc, html, no_update
 
 from ada.configuration.tools import ToolConfiguration
 from ada.configuration.tools_lifecycle import build_tool_configuration_digest
@@ -24,6 +28,13 @@ from atlanticus.web.manager import ManagerDraft
 from atlanticus.web.manager.errors import ManagerProjectionError
 from atlanticus.web.modules import WebModule
 
+# Estos IDs pertenecen sólo a la superficie Tools del Manager y no reemplazan IDs del editor.
+TOOL_MANAGER_ROOT_ID = 'ada-configuration-manager-tools'
+TOOL_IMPORT_UPLOAD_ID = 'ada-configuration-manager-tools-import'
+TOOL_IMPORT_RESULT_ID = 'ada-configuration-manager-tools-import-result'
+TOOL_SAVE_BUTTON_ID = 'ada-configuration-manager-tools-save-draft'
+TOOL_SAVE_RESULT_ID = 'ada-configuration-manager-tools-save-result'
+
 
 @dataclass(frozen=True, slots=True)
 class ToolManagerWebContext:
@@ -36,8 +47,17 @@ class ToolManagerWebContext:
     can_manage: Callable[[], bool] = lambda: True
 
 
+# Envuelve el editor ya validado entre la importación local y el guardado del borrador.
 def build_tool_manager_configuration() -> object:
-    return build_tool_configuration_editor()
+    return html.Div(
+        [
+            _tool_import_section(),
+            build_tool_configuration_editor(),
+            _tool_save_section(),
+        ],
+        id=TOOL_MANAGER_ROOT_ID,
+        className='d-grid gap-3',
+    )
 
 
 def build_tool_history_preview(payload: dict[str, object]) -> object:
@@ -93,9 +113,27 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
                 owner_subject_id=context.draft_owner_provider(),
             )
             configuration = ToolConfiguration.from_document(draft.payload)
-        except ManagerProjectionError, ValueError:
+        except (ManagerProjectionError, ValueError):
             return None
         return configuration.to_document()
+
+    # Importar sólo alimenta el store de configuración del editor; no crea ni persiste drafts.
+    @app.callback(
+        Output(CONFIGURATION_STORE_ID, 'data', allow_duplicate=True),
+        Output(TOOL_IMPORT_RESULT_ID, 'children'),
+        Input(TOOL_IMPORT_UPLOAD_ID, 'contents'),
+        prevent_initial_call=True,
+    )
+    def import_tool_configuration(contents: str | None):
+        if contents is None:
+            return no_update, no_update
+        if not context.can_manage():
+            return no_update, _error('Management access is denied')
+        try:
+            configuration = _decode_tool_configuration_import(contents)
+        except ValueError as error:
+            return no_update, _error(str(error))
+        return configuration.to_document(), _success('Configuración importada en el editor.')
 
     @app.callback(
         Output(context.editor_revision_store_id, 'data', allow_duplicate=True),
@@ -124,10 +162,13 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
             return 'invalid'
         return build_tool_configuration_digest(configuration)
 
+    # El botón inferior y el botón del workflow reutilizan exactamente la misma persistencia.
     @app.callback(
         Output(context.result_id, 'children', allow_duplicate=True),
+        Output(TOOL_SAVE_RESULT_ID, 'children'),
         Output(context.draft_store_id, 'data', allow_duplicate=True),
         Output(context.saved_draft_store_id, 'data', allow_duplicate=True),
+        Input(TOOL_SAVE_BUTTON_ID, 'n_clicks'),
         Input(context.draft_save_action_id, 'n_clicks'),
         State(DRAFT_STORE_ID, 'data'),
         State(VALIDITY_STORE_ID, 'data'),
@@ -138,7 +179,8 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
         prevent_initial_call=True,
     )
     def save_tool_draft(
-        clicks: int | None,
+        local_clicks: int | None,
+        workflow_clicks: int | None,
         source_document: dict[str, object] | None,
         source_valid: bool | None,
         structure_document: dict[str, object] | None,
@@ -146,17 +188,27 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
         current_draft_data: dict[str, object] | None,
         editor_revision: str | None,
     ):
-        if not _click_is_real(clicks):
-            return no_update, no_update, no_update
+        if not (_click_is_real(local_clicks) or _click_is_real(workflow_clicks)):
+            return no_update, no_update, no_update, no_update
         if not context.can_manage():
-            return _error('Management access is denied'), no_update, no_update
+            return (
+                _error('Management access is denied'),
+                _error('Management access is denied'),
+                no_update,
+                no_update,
+            )
         if (
             source_valid is not True
             or structure_valid is not True
             or not isinstance(source_document, dict)
             or not isinstance(structure_document, dict)
         ):
-            return _error('Tool editor must be valid before saving'), no_update, no_update
+            return (
+                _error('Tool editor must be valid before saving'),
+                _error('Tool editor must be valid before saving'),
+                no_update,
+                no_update,
+            )
         try:
             configuration = _editor_configuration(
                 source_document=source_document,
@@ -181,9 +233,86 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
             if editor_revision != draft.revision:
                 raise ManagerProjectionError('Tool editor revision changed before draft save')
         except (ManagerProjectionError, ValueError) as error:
-            return _error(str(error)), no_update, no_update
+            return _error(str(error)), _error(str(error)), no_update, no_update
         document = draft.to_document()
-        return None, document, document
+        return None, _success('Borrador guardado en este navegador.'), document, document
+
+
+def _tool_import_section() -> object:
+    return html.Section(
+        [
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.H3('Importar configuración'),
+                            html.P(
+                                'Carga un archivo JSON de Tool Configuration en el editor. '
+                                'No guarda, publica ni proyecta cambios.'
+                            ),
+                        ]
+                    ),
+                    dcc.Upload(
+                        id=TOOL_IMPORT_UPLOAD_ID,
+                        children=html.Button(
+                            'Importar',
+                            type='button',
+                            className='btn btn-outline-secondary',
+                        ),
+                        accept='.json,application/json',
+                        multiple=False,
+                    ),
+                ],
+                className='atlanticus-manager__workflow-group-header',
+            ),
+            html.Div(id=TOOL_IMPORT_RESULT_ID),
+        ],
+        className='atlanticus-manager__workflow-group',
+    )
+
+
+def _tool_save_section() -> object:
+    return html.Section(
+        [
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.H3('Borrador local · herramienta'),
+                            html.P(
+                                'Guarda la configuración actual en este navegador. '
+                                'Validar, publicar y proyectar se realiza en Estado y trazabilidad.'
+                            ),
+                        ]
+                    ),
+                    html.Button(
+                        'Guardar borrador',
+                        id=TOOL_SAVE_BUTTON_ID,
+                        n_clicks=0,
+                        type='button',
+                        className='btn btn-primary',
+                    ),
+                ],
+                className='atlanticus-manager__workflow-group-header',
+            ),
+            html.Div(id=TOOL_SAVE_RESULT_ID),
+        ],
+        className='atlanticus-manager__workflow-group',
+    )
+
+
+# La importación acepta el documento canónico; no define un esquema de intercambio paralelo.
+def _decode_tool_configuration_import(contents: str) -> ToolConfiguration:
+    if ',' not in contents:
+        raise ValueError('Configuration file payload is invalid')
+    try:
+        payload = base64.b64decode(contents.split(',', 1)[1], validate=True)
+        document = json.loads(payload)
+    except (BinasciiError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError('Configuration file payload is invalid') from error
+    if not isinstance(document, dict):
+        raise ValueError('Tool Configuration contract is invalid')
+    return ToolConfiguration.from_document(document)
 
 
 def _editor_configuration(
@@ -211,6 +340,13 @@ def _owned_draft(
 
 def _history_item(label: str, value: str) -> object:
     return html.Div([html.Small(label), html.Strong(value)])
+
+
+def _success(message: str) -> object:
+    return html.Div(
+        message,
+        className='atlanticus-manager__message atlanticus-manager__message--success',
+    )
 
 
 def _error(message: str) -> object:
