@@ -1,12 +1,14 @@
+# Espejo comentado del contrato estructural de Tools R2.
+
 from __future__ import annotations
 
-# Este módulo modela la topología lógica de una Tool y las proyecciones derivadas que consumen KPI, alarmas y composición.
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
 from ada.configuration.tools.enums import (
     ProcessLayoutRole,
+    ToolComponentAccent,
     ToolConfigurationKind,
     ToolScope,
 )
@@ -68,12 +70,14 @@ class ToolSubcomponent:
 
 
 @dataclass(frozen=True, slots=True)
+# layout_role permanece sólo para leer configuraciones Process antiguas; el contrato nuevo no lo genera.
 class ToolComponent:
     key: str
     display_name: str
     subcomponents: tuple[ToolSubcomponent, ...] = ()
     scope: ToolScope | None = None
     layout_role: ProcessLayoutRole | None = None
+    accent: ToolComponentAccent = ToolComponentAccent.GOLD
 
     def __post_init__(self) -> None:
         key = require_key(self.key, label='Tool component key')
@@ -98,6 +102,8 @@ class ToolComponent:
             ProcessLayoutRole,
         ):
             raise ToolConfigurationValidationError('Tool component layout role is invalid')
+        if not isinstance(self.accent, ToolComponentAccent):
+            raise ToolConfigurationValidationError('Tool component accent is invalid')
         object.__setattr__(self, 'key', key)
         object.__setattr__(self, 'display_name', display_name)
         object.__setattr__(self, 'subcomponents', subcomponents)
@@ -116,7 +122,10 @@ class ToolComponent:
             'key': self.key,
             'display_name': self.display_name,
             'scope': self.scope.value if self.scope is not None else None,
-            'layout_role': self.layout_role.value if self.layout_role is not None else None,
+            'layout_role': (
+                self.layout_role.value if self.layout_role is not None else None
+            ),
+            'accent': self.accent.value,
             'subcomponents': [item.to_document() for item in self.subcomponents],
         }
 
@@ -130,11 +139,13 @@ class ToolComponent:
                 raise TypeError
             raw_scope = document.get('scope')
             raw_layout_role = document.get('layout_role')
+            raw_accent = document.get('accent', ToolComponentAccent.GOLD.value)
             return cls(
                 key=document['key'],
                 display_name=document['display_name'],
                 subcomponents=tuple(
-                    ToolSubcomponent.from_document(item) for item in raw_subcomponents
+                    ToolSubcomponent.from_document(item)
+                    for item in raw_subcomponents
                 ),
                 scope=ToolScope(raw_scope) if raw_scope is not None else None,
                 layout_role=(
@@ -142,6 +153,7 @@ class ToolComponent:
                     if raw_layout_role is not None
                     else None
                 ),
+                accent=ToolComponentAccent(raw_accent),
             )
         except (KeyError, TypeError, ValueError) as error:
             if isinstance(error, ToolConfigurationValidationError):
@@ -211,42 +223,29 @@ class ToolStructure:
         object.__setattr__(self, 'components', components)
         _validate_linked_component_keys(self)
         _validate_visible_subcomponent_namespaces(self)
-
-        # PROCESS e INTEGRATED_OPERATIONS conservan sus validaciones conocidas.
         if self.kind is ToolConfigurationKind.PROCESS:
             _validate_process_structure(self)
         elif self.kind is ToolConfigurationKind.INTEGRATED_OPERATIONS:
             _validate_integrated_operations_structure(self)
-        # STRATEGIC sólo usa las invariantes estructurales comunes.
-        # Su forma funcional todavía no está definida y no se inventa aquí.
 
     @property
     def kpi_destination_keys(self) -> tuple[str, ...]:
         return (*_SYSTEM_KPI_DESTINATION_KEYS, *(item.key for item in self.components))
 
     @property
+# Las alarmas de Process consideran todos los Components y ya no dependen de CENTER.
     def alarm_baseline_component_keys(self) -> tuple[str, ...]:
-        # Tools expone el kind, pero no inventa una proyección de alarmas para Strategic.
         if self.kind is ToolConfigurationKind.STRATEGIC:
             raise ToolConfigurationValidationError(
                 'Alarm projection is not defined for Strategic Tool Structure'
             )
-        if self.kind is ToolConfigurationKind.PROCESS:
-            return (self.component_for_layout_role(ProcessLayoutRole.CENTER).key,)
         return tuple(component.key for component in self.components)
 
     @property
     def alarm_subcomponent_addresses(self) -> tuple[ToolSubcomponentAddress, ...]:
-        # El consumidor de alarmas debe resolver la semántica de Strategic usando kind.
         if self.kind is ToolConfigurationKind.STRATEGIC:
             raise ToolConfigurationValidationError(
                 'Alarm projection is not defined for Strategic Tool Structure'
-            )
-        if self.kind is ToolConfigurationKind.PROCESS:
-            center = self.component_for_layout_role(ProcessLayoutRole.CENTER)
-            return tuple(
-                ToolSubcomponentAddress(center.key, item.key)
-                for item in center.subcomponents
             )
         return tuple(
             ToolSubcomponentAddress(component.key, subcomponent.key)
@@ -263,7 +262,10 @@ class ToolStructure:
             f'Unknown Tool component: {normalized!r}'
         )
 
-    def component_for_layout_role(self, role: ProcessLayoutRole) -> ToolComponent:
+    def component_for_layout_role(
+        self,
+        role: ProcessLayoutRole,
+    ) -> ToolComponent:
         if not isinstance(role, ProcessLayoutRole):
             raise ToolConfigurationValidationError('Process layout role is invalid')
         for component in self.components:
@@ -292,7 +294,7 @@ class ToolStructure:
                 ):
                     return ToolSubcomponentAddress(owner.key, subcomponent.key)
         raise ToolConfigurationValidationError(
-            'Unknown Tool subcomponent for component '
+            f'Unknown Tool subcomponent for component '
             f'{component.key!r}: {normalized!r}'
         )
 
@@ -300,16 +302,11 @@ class ToolStructure:
         self,
         component_key: str,
     ) -> tuple[ToolSubcomponentAddress, ...]:
-        # No se reutiliza por defecto el comportamiento de Operaciones Integradas para Strategic.
         if self.kind is ToolConfigurationKind.STRATEGIC:
             raise ToolConfigurationValidationError(
                 'Alarm projection is not defined for Strategic Tool Structure'
             )
         component = self.component(component_key)
-        if self.kind is ToolConfigurationKind.PROCESS:
-            center = self.component_for_layout_role(ProcessLayoutRole.CENTER)
-            if component.key != center.key:
-                return ()
         direct = tuple(
             ToolSubcomponentAddress(component.key, item.key)
             for item in component.subcomponents
@@ -329,7 +326,9 @@ class ToolStructure:
             'tool_key': self.tool_key,
             'kind': self.kind.value,
             'operational_scope': (
-                self.operational_scope.value if self.operational_scope is not None else None
+                self.operational_scope.value
+                if self.operational_scope is not None
+                else None
             ),
             'components': [component.to_document() for component in self.components],
         }
@@ -347,7 +346,8 @@ class ToolStructure:
                 tool_key=document['tool_key'],
                 kind=ToolConfigurationKind(document['kind']),
                 components=tuple(
-                    ToolComponent.from_document(item) for item in raw_components
+                    ToolComponent.from_document(item)
+                    for item in raw_components
                 ),
                 operational_scope=(
                     ToolScope(raw_scope) if raw_scope is not None else None
@@ -390,8 +390,9 @@ def _validate_visible_subcomponent_namespaces(structure: ToolStructure) -> None:
         visible: set[str] = set()
         for owner in structure.components:
             for subcomponent in owner.subcomponents:
-                if owner.key != component.key and component.key not in (
-                    subcomponent.linked_component_keys
+                if (
+                    owner.key != component.key
+                    and component.key not in subcomponent.linked_component_keys
                 ):
                     continue
                 if subcomponent.key in visible:
@@ -402,51 +403,74 @@ def _validate_visible_subcomponent_namespaces(structure: ToolStructure) -> None:
                 visible.add(subcomponent.key)
 
 
-def _validate_process_structure(structure: ToolStructure) -> None:
+def _validate_process_structure(
+    structure: ToolStructure,
+) -> None:
     if structure.operational_scope is None:
         raise ToolConfigurationValidationError(
             'Process Tool Structure requires operational scope'
         )
-    roles: list[ProcessLayoutRole] = []
+
+    legacy_roles = tuple(
+        component.layout_role
+        for component in structure.components
+        if component.layout_role is not None
+    )
+    if legacy_roles:
+        if len(legacy_roles) != len(structure.components):
+            raise ToolConfigurationValidationError(
+                'Legacy Process layout roles must be declared '
+                'for every component or omitted entirely'
+            )
+        if len(legacy_roles) != len(set(legacy_roles)):
+            raise ToolConfigurationValidationError(
+                'Process Tool Structure contains duplicate layout roles'
+            )
+        if ProcessLayoutRole.CENTER not in legacy_roles:
+            raise ToolConfigurationValidationError(
+                'Process Tool Structure requires CENTER layout role'
+            )
+
     for component in structure.components:
         if component.scope is not None:
             raise ToolConfigurationValidationError(
-                'Process Tool components inherit operational scope and must not declare scope'
+                'Process Tool components inherit operational scope '
+                'and must not declare scope'
             )
-        if component.layout_role is None:
+        if not component.subcomponents:
+            if component.layout_role is ProcessLayoutRole.CENTER:
+                raise ToolConfigurationValidationError(
+                    'Process CENTER component requires at least one '
+                    'subcomponent'
+                )
+            if component.layout_role is None:
+                raise ToolConfigurationValidationError(
+                    f'Process Tool component {component.key!r} '
+                    'requires subcomponents'
+                )
+        if any(
+            item.linked_component_keys
+            for item in component.subcomponents
+        ):
             raise ToolConfigurationValidationError(
-                f'Process Tool component {component.key!r} requires layout role'
+                'Process Tool subcomponents must not declare '
+                'linked component keys'
             )
-        if any(item.linked_component_keys for item in component.subcomponents):
-            raise ToolConfigurationValidationError(
-                'Process Tool subcomponents must not declare linked component keys'
-            )
-        roles.append(component.layout_role)
-    if len(roles) != len(set(roles)):
-        raise ToolConfigurationValidationError(
-            'Process Tool Structure contains duplicate layout roles'
-        )
-    if ProcessLayoutRole.CENTER not in roles:
-        raise ToolConfigurationValidationError(
-            'Process Tool Structure requires CENTER layout role'
-        )
-    center = structure.component_for_layout_role(ProcessLayoutRole.CENTER)
-    if not center.subcomponents:
-        raise ToolConfigurationValidationError(
-            'Process CENTER component requires at least one subcomponent'
-        )
 
 
+# Operaciones Integradas exige presencia efectiva de Components Mina y Planta.
 def _validate_integrated_operations_structure(structure: ToolStructure) -> None:
     if structure.operational_scope is not None:
         raise ToolConfigurationValidationError(
             'Integrated Operations Tool Structure must not declare operational scope'
         )
+    scopes: set[ToolScope] = set()
     for component in structure.components:
         if component.scope is None:
             raise ToolConfigurationValidationError(
                 f'Integrated Operations component {component.key!r} requires scope'
             )
+        scopes.add(component.scope)
         if component.layout_role is not None:
             raise ToolConfigurationValidationError(
                 'Integrated Operations components must not declare Process layout roles'
@@ -455,3 +479,7 @@ def _validate_integrated_operations_structure(structure: ToolStructure) -> None:
             raise ToolConfigurationValidationError(
                 f'Integrated Operations component {component.key!r} requires subcomponents'
             )
+    if scopes != {ToolScope.MINE, ToolScope.PLANT}:
+        raise ToolConfigurationValidationError(
+            'Integrated Operations Tool Structure requires both Mina and Planta component scopes'
+        )

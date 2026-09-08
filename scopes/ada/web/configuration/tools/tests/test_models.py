@@ -312,7 +312,23 @@ def test_configuration_rejects_structure_kind_mismatch() -> None:
                 key='process_a',
                 display_name='Process A',
                 scope=ToolScope.MINE,
-                subcomponents=(ToolSubcomponent(key='principal', display_name='Principal'),),
+                subcomponents=(
+                    ToolSubcomponent(
+                        key='principal',
+                        display_name='Principal',
+                    ),
+                ),
+            ),
+            ToolComponent(
+                key='process_b',
+                display_name='Process B',
+                scope=ToolScope.PLANT,
+                subcomponents=(
+                    ToolSubcomponent(
+                        key='secondary',
+                        display_name='Secondary',
+                    ),
+                ),
             ),
         ),
     )
@@ -325,10 +341,17 @@ def test_configuration_rejects_structure_kind_mismatch() -> None:
             tool_key='process',
             display_name='Process',
             kind=ToolConfigurationKind.PROCESS,
-            source_consumption=ToolSourceConsumption(tool_key='process', source_keys=('pi',)),
-            source_operational_participation=ToolSourceOperationalParticipation(
+            source_consumption=ToolSourceConsumption(
                 tool_key='process',
-                control_sources=(SourceControlPolicy('pi', 200, 300),),
+                source_keys=('pi',),
+            ),
+            source_operational_participation=(
+                ToolSourceOperationalParticipation(
+                    tool_key='process',
+                    control_sources=(
+                        SourceControlPolicy('pi', 200, 300),
+                    ),
+                )
             ),
             structure=structure,
         )

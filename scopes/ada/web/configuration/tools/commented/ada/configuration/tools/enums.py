@@ -1,11 +1,11 @@
-# Estos enums representan identidades estructurales del contrato, no decisiones de renderizado.
+# Espejo comentado de enums de Tools R2.
+
 from enum import StrEnum
 
 
 class ToolConfigurationKind(StrEnum):
     INTEGRATED_OPERATIONS = 'integrated_operations'
     PROCESS = 'process'
-    # Strategic se expone como identidad de Tool; sus reglas funcionales pertenecen a sus consumidores.
     STRATEGIC = 'strategic'
 
 
@@ -19,3 +19,15 @@ class ProcessLayoutRole(StrEnum):
     CENTER = 'center'
     RIGHT = 'right'
     BOTTOM = 'bottom'
+
+
+# Los Components guardan un acento semántico; el branding resolverá su apariencia final.
+class ToolComponentAccent(StrEnum):
+    BLUE = 'blue'
+    CYAN = 'cyan'
+    GREEN = 'green'
+    GOLD = 'gold'
+    ORANGE = 'orange'
+    RED = 'red'
+    GRAY = 'gray'
+    PURPLE = 'purple'

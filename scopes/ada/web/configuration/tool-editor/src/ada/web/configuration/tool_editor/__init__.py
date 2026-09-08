@@ -4,12 +4,16 @@ from ada.web.configuration.tool_editor.callbacks import (
 from ada.web.configuration.tool_editor.configuration_editor import (
     build_tool_configuration_editor,
 )
-from ada.web.configuration.tool_editor.errors import ToolSourceEditorValidationError
+from ada.web.configuration.tool_editor.errors import (
+    ToolSourceEditorValidationError,
+)
 from ada.web.configuration.tool_editor.ids import (
     BRANDING_ID,
     CONFIGURATION_STORE_ID,
     COVERAGE_ID,
     DISPLAY_NAME_ID,
+    DISPATCH_DEGRADATION_ID,
+    DISPATCH_DEGRADATION_WRAPPER_ID,
     DISPATCH_ENABLED_ID,
     DRAFT_STORE_ID,
     KIND_ID,
@@ -26,7 +30,9 @@ from ada.web.configuration.tool_editor.module import (
     ADA_TOOL_CONFIGURATION_EDITOR_ASSET_LAYER,
     create_tool_configuration_editor_module,
 )
-from ada.web.configuration.tool_editor.presentation import build_tool_source_editor
+from ada.web.configuration.tool_editor.presentation import (
+    build_tool_source_editor,
+)
 from ada.web.configuration.tool_editor.structure import (
     ToolStructureEditorValidationError,
     build_configuration_from_structure_editor,
@@ -53,6 +59,8 @@ __all__ = [
     'CONFIGURATION_STORE_ID',
     'COVERAGE_ID',
     'DISPLAY_NAME_ID',
+    'DISPATCH_DEGRADATION_ID',
+    'DISPATCH_DEGRADATION_WRAPPER_ID',
     'DISPATCH_ENABLED_ID',
     'DRAFT_STORE_ID',
     'KIND_ID',

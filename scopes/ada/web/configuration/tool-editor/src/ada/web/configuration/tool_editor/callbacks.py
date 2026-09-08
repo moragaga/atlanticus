@@ -12,6 +12,8 @@ from ada.web.configuration.tool_editor.ids import (
     CONFIGURATION_STORE_ID,
     COVERAGE_ID,
     DISPLAY_NAME_ID,
+    DISPATCH_DEGRADATION_ID,
+    DISPATCH_DEGRADATION_WRAPPER_ID,
     DISPATCH_ENABLED_ID,
     DRAFT_STORE_ID,
     KIND_ID,
@@ -42,6 +44,7 @@ def register_tool_source_editor_callbacks(app: object) -> None:
         Output(PI_PREVENTIVE_ID, 'value'),
         Output(PI_DEGRADATION_ID, 'value'),
         Output(DISPATCH_ENABLED_ID, 'value'),
+        Output(DISPATCH_DEGRADATION_ID, 'value'),
         Input(CONFIGURATION_STORE_ID, 'data'),
     )
     def load_source_editor(
@@ -55,8 +58,11 @@ def register_tool_source_editor_callbacks(app: object) -> None:
                 None,
                 None,
                 [],
+                None,
             )
-        configuration = ToolConfiguration.from_document(configuration_document)
+        configuration = ToolConfiguration.from_document(
+            configuration_document
+        )
         values = source_editor_values_from_configuration(configuration)
         return (
             values.display_name,
@@ -65,11 +71,13 @@ def register_tool_source_editor_callbacks(app: object) -> None:
             values.pi_preventive_after_seconds,
             values.pi_degradation_after_seconds,
             ['dispatch'] if values.dispatch_enabled else [],
+            values.dispatch_degradation_after_seconds,
         )
 
     @app.callback(
         Output(COVERAGE_ID, 'options'),
         Output(COVERAGE_ID, 'value'),
+        Output(COVERAGE_ID, 'disabled'),
         Input(CONFIGURATION_STORE_ID, 'data'),
         Input(KIND_ID, 'value'),
         State(COVERAGE_ID, 'value'),
@@ -80,6 +88,12 @@ def register_tool_source_editor_callbacks(app: object) -> None:
         current_coverage: str | None,
     ):
         options = _coverage_options(kind_value)
+        if (
+            kind_value
+            == ToolConfigurationKind.INTEGRATED_OPERATIONS.value
+        ):
+            return options, _COVERAGE_MINE_PLANT, True
+
         valid_values = {option['value'] for option in options}
         if configuration_document is not None:
             try:
@@ -96,10 +110,20 @@ def register_tool_source_editor_callbacks(app: object) -> None:
                     configuration
                 )
                 if configured in valid_values:
-                    return options, configured
+                    return options, configured, False
+
         if current_coverage in valid_values:
-            return options, current_coverage
-        return options, None
+            return options, current_coverage, False
+        return options, None, False
+
+    @app.callback(
+        Output(DISPATCH_DEGRADATION_WRAPPER_ID, 'hidden'),
+        Input(DISPATCH_ENABLED_ID, 'value'),
+    )
+    def toggle_dispatch_threshold(
+        dispatch_values: list[str] | None,
+    ) -> bool:
+        return 'dispatch' not in (dispatch_values or [])
 
     @app.callback(
         Output(DRAFT_STORE_ID, 'data'),
@@ -111,6 +135,7 @@ def register_tool_source_editor_callbacks(app: object) -> None:
         Input(PI_PREVENTIVE_ID, 'value'),
         Input(PI_DEGRADATION_ID, 'value'),
         Input(DISPATCH_ENABLED_ID, 'value'),
+        Input(DISPATCH_DEGRADATION_ID, 'value'),
         State(CONFIGURATION_STORE_ID, 'data'),
     )
     def build_source_draft(
@@ -120,10 +145,23 @@ def register_tool_source_editor_callbacks(app: object) -> None:
         pi_preventive: int | float | None,
         pi_degradation: int | float | None,
         dispatch_values: list[str] | None,
+        dispatch_degradation: int | float | None,
         configuration_document: dict[str, object] | None,
     ):
-        if not kind_value or not branding_value:
+        dispatch_enabled = 'dispatch' in (dispatch_values or [])
+        if (
+            not str(display_name or '').strip()
+            or not kind_value
+            or not branding_value
+            or pi_preventive is None
+            or pi_degradation is None
+            or (
+                dispatch_enabled
+                and dispatch_degradation is None
+            )
+        ):
             return None, False, ''
+
         try:
             base_configuration = (
                 ToolConfiguration.from_document(configuration_document)
@@ -136,7 +174,8 @@ def register_tool_source_editor_callbacks(app: object) -> None:
                 branding_variant=BrandingVariant(branding_value),
                 pi_preventive_after_seconds=pi_preventive,
                 pi_degradation_after_seconds=pi_degradation,
-                dispatch_enabled='dispatch' in (dispatch_values or []),
+                dispatch_enabled=dispatch_enabled,
+                dispatch_degradation_after_seconds=dispatch_degradation,
             )
             updated = build_configuration_from_source_editor(
                 base_configuration=base_configuration,
@@ -144,19 +183,26 @@ def register_tool_source_editor_callbacks(app: object) -> None:
             )
         except ValueError as error:
             return None, False, str(error)
+
         return updated.to_document(), True, ''
 
 
-def _coverage_options(kind_value: str | None) -> list[dict[str, str]]:
+def _coverage_options(
+    kind_value: str | None,
+) -> list[dict[str, str]]:
     if kind_value == ToolConfigurationKind.PROCESS.value:
         return [
             {'label': 'Mina', 'value': _COVERAGE_MINE},
             {'label': 'Planta', 'value': _COVERAGE_PLANT},
         ]
-    if kind_value == ToolConfigurationKind.INTEGRATED_OPERATIONS.value:
+    if (
+        kind_value
+        == ToolConfigurationKind.INTEGRATED_OPERATIONS.value
+    ):
         return [
-            {'label': 'Mina', 'value': _COVERAGE_MINE},
-            {'label': 'Planta', 'value': _COVERAGE_PLANT},
-            {'label': 'Mina y Planta', 'value': _COVERAGE_MINE_PLANT},
+            {
+                'label': 'Mina y Planta',
+                'value': _COVERAGE_MINE_PLANT,
+            }
         ]
     return []

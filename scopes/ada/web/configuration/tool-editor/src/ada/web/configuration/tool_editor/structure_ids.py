@@ -11,22 +11,25 @@ COMPONENT_KEY_TYPE = 'ada-tool-structure-component-key'
 COMPONENT_DISPLAY_NAME_TYPE = 'ada-tool-structure-component-display-name'
 COMPONENT_SCOPE_TYPE = 'ada-tool-structure-component-scope'
 COMPONENT_SCOPE_WRAPPER_TYPE = 'ada-tool-structure-component-scope-wrapper'
-COMPONENT_LAYOUT_ROLE_TYPE = 'ada-tool-structure-component-layout-role'
-COMPONENT_LAYOUT_WRAPPER_TYPE = 'ada-tool-structure-component-layout-wrapper'
+COMPONENT_ACCENT_TYPE = 'ada-tool-structure-component-accent'
 COMPONENT_DELETE_TYPE = 'ada-tool-structure-component-delete'
 COMPONENT_ADD_SUBCOMPONENT_TYPE = 'ada-tool-structure-component-add-subcomponent'
 COMPONENT_SUBCOMPONENTS_CONTAINER_TYPE = (
     'ada-tool-structure-component-subcomponents-container'
 )
+COMPONENT_SUMMARY_NAME_TYPE = 'ada-tool-structure-component-summary-name'
+COMPONENT_SUMMARY_SCOPE_TYPE = 'ada-tool-structure-component-summary-scope'
+COMPONENT_SUMMARY_COUNT_TYPE = 'ada-tool-structure-component-summary-count'
+COMPONENT_SUMMARY_SWATCH_TYPE = 'ada-tool-structure-component-summary-swatch'
 
 SUBCOMPONENT_ROW_TYPE = 'ada-tool-structure-subcomponent-row'
 SUBCOMPONENT_KEY_TYPE = 'ada-tool-structure-subcomponent-key'
 SUBCOMPONENT_DISPLAY_NAME_TYPE = 'ada-tool-structure-subcomponent-display-name'
 SUBCOMPONENT_LINKED_TYPE = 'ada-tool-structure-subcomponent-linked'
-SUBCOMPONENT_LINKED_WRAPPER_TYPE = (
-    'ada-tool-structure-subcomponent-linked-wrapper'
-)
+SUBCOMPONENT_LINKED_WRAPPER_TYPE = 'ada-tool-structure-subcomponent-linked-wrapper'
 SUBCOMPONENT_DELETE_TYPE = 'ada-tool-structure-subcomponent-delete'
+SUBCOMPONENT_SUMMARY_NAME_TYPE = 'ada-tool-structure-subcomponent-summary-name'
+SUBCOMPONENT_SUMMARY_LINK_TYPE = 'ada-tool-structure-subcomponent-summary-link'
 
 
 def row_id(row_type: str, index: int) -> dict[str, object]:

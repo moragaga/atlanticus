@@ -29,6 +29,7 @@ class ToolSourceEditorValues:
     pi_preventive_after_seconds: int | None
     pi_degradation_after_seconds: int | None
     dispatch_enabled: bool = False
+    dispatch_degradation_after_seconds: int | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.display_name, str):
@@ -41,9 +42,7 @@ class ToolSourceEditorValues:
                 'Tool display name is required'
             )
         if not isinstance(self.kind, ToolConfigurationKind):
-            raise ToolSourceEditorValidationError(
-                'Tool kind is invalid'
-            )
+            raise ToolSourceEditorValidationError('Tool kind is invalid')
         if self.kind not in {
             ToolConfigurationKind.PROCESS,
             ToolConfigurationKind.INTEGRATED_OPERATIONS,
@@ -76,6 +75,14 @@ class ToolSourceEditorValues:
                 label='PI degradation threshold',
             ),
         )
+        object.__setattr__(
+            self,
+            'dispatch_degradation_after_seconds',
+            _optional_seconds(
+                self.dispatch_degradation_after_seconds,
+                label='Dispatch degradation threshold',
+            ),
+        )
 
 
 def source_editor_values_from_configuration(
@@ -83,6 +90,7 @@ def source_editor_values_from_configuration(
 ) -> ToolSourceEditorValues:
     participation = configuration.source_operational_participation
     pi_policy = participation.control_policy('pi')
+    dispatch_policy = participation.control_policy('dispatch')
     return ToolSourceEditorValues(
         display_name=configuration.display_name,
         kind=configuration.kind,
@@ -97,8 +105,11 @@ def source_editor_values_from_configuration(
             if pi_policy is not None
             else None
         ),
-        dispatch_enabled=configuration.source_consumption.consumes(
-            'dispatch'
+        dispatch_enabled=configuration.source_consumption.consumes('dispatch'),
+        dispatch_degradation_after_seconds=(
+            dispatch_policy.degrading_after_seconds
+            if dispatch_policy is not None
+            else None
         ),
     )
 
@@ -131,11 +142,10 @@ def build_configuration_from_source_editor(
         control_sources.append(
             SourceControlPolicy(
                 source_key='dispatch',
-                pre_degrading_after_seconds=(
-                    pi_policy.pre_degrading_after_seconds
-                ),
-                degrading_after_seconds=(
-                    pi_policy.degrading_after_seconds
+                pre_degrading_after_seconds=pi_policy.pre_degrading_after_seconds,
+                degrading_after_seconds=_required_seconds(
+                    values.dispatch_degradation_after_seconds,
+                    label='Dispatch degradation threshold',
                 ),
             )
         )
@@ -144,9 +154,7 @@ def build_configuration_from_source_editor(
     if base_configuration is not None:
         source_keys.extend(
             source_key
-            for source_key in (
-                base_configuration.source_consumption.source_keys
-            )
+            for source_key in base_configuration.source_consumption.source_keys
             if source_key not in _CONTROL_SOURCE_KEYS
         )
 
@@ -175,9 +183,7 @@ def build_configuration_from_source_editor(
             )
         ),
         structure=structure,
-        branding=BrandingConfiguration(
-            variant=values.branding_variant
-        ),
+        branding=BrandingConfiguration(variant=values.branding_variant),
     )
     validate_ada_operational_tool_sources(configuration)
     return configuration
@@ -201,17 +207,13 @@ def _optional_seconds(
     if value is None:
         return None
     if isinstance(value, bool):
-        raise ToolSourceEditorValidationError(
-            f'{label} must be an integer'
-        )
+        raise ToolSourceEditorValidationError(f'{label} must be an integer')
     if isinstance(value, int):
         resolved = value
     elif isinstance(value, float) and value.is_integer():
         resolved = int(value)
     else:
-        raise ToolSourceEditorValidationError(
-            f'{label} must be an integer'
-        )
+        raise ToolSourceEditorValidationError(f'{label} must be an integer')
     if resolved <= 0:
         raise ToolSourceEditorValidationError(
             f'{label} must be greater than zero'
@@ -225,7 +227,5 @@ def _required_seconds(
     label: str,
 ) -> int:
     if value is None:
-        raise ToolSourceEditorValidationError(
-            f'{label} is required'
-        )
+        raise ToolSourceEditorValidationError(f'{label} is required')
     return value

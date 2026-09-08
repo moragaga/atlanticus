@@ -45,6 +45,7 @@ def test_editor_values_load_identity_branding_and_source_state() -> None:
     assert values.pi_preventive_after_seconds == 200
     assert values.pi_degradation_after_seconds == 300
     assert values.dispatch_enabled is False
+    assert values.dispatch_degradation_after_seconds is None
 
 
 def test_editor_can_create_initial_tool_without_existing_document() -> None:
@@ -57,6 +58,7 @@ def test_editor_can_create_initial_tool_without_existing_document() -> None:
             pi_preventive_after_seconds=200,
             pi_degradation_after_seconds=300,
             dispatch_enabled=True,
+            dispatch_degradation_after_seconds=450,
         ),
     )
 
@@ -64,9 +66,16 @@ def test_editor_can_create_initial_tool_without_existing_document() -> None:
     assert configuration.display_name == 'Operaciones Integradas'
     assert configuration.kind is ToolConfigurationKind.INTEGRATED_OPERATIONS
     assert configuration.branding.variant is BrandingVariant.MINING_MONTH
+    dispatch_policy = (
+        configuration.source_operational_participation.control_policy(
+            'dispatch'
+        )
+    )
+    assert dispatch_policy is not None
+    assert dispatch_policy.degrading_after_seconds == 450
 
 
-def test_dispatch_uses_same_operational_thresholds_as_pi() -> None:
+def test_dispatch_shares_pi_preventive_and_uses_own_degradation() -> None:
     configuration = build_configuration_from_source_editor(
         base_configuration=_configuration(),
         values=ToolSourceEditorValues(
@@ -76,6 +85,7 @@ def test_dispatch_uses_same_operational_thresholds_as_pi() -> None:
             pi_preventive_after_seconds=250,
             pi_degradation_after_seconds=400,
             dispatch_enabled=True,
+            dispatch_degradation_after_seconds=700,
         ),
     )
 
@@ -89,9 +99,7 @@ def test_dispatch_uses_same_operational_thresholds_as_pi() -> None:
     assert dispatch_policy.pre_degrading_after_seconds == (
         pi_policy.pre_degrading_after_seconds
     )
-    assert dispatch_policy.degrading_after_seconds == (
-        pi_policy.degrading_after_seconds
-    )
+    assert dispatch_policy.degrading_after_seconds == 700
 
 
 def test_tool_editor_preserves_non_control_consumption_for_other_domains() -> None:

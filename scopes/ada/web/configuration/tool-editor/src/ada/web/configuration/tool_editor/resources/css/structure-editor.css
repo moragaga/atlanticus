@@ -52,7 +52,6 @@
 }
 
 .ada-tool-structure-editor__collection-heading,
-.ada-tool-structure-editor__component-head,
 .ada-tool-structure-editor__subcomponents-heading {
     display: flex;
     align-items: flex-start;
@@ -62,8 +61,8 @@
 }
 
 .ada-tool-structure-editor__collection-copy,
-.ada-tool-structure-editor__component-title,
-.ada-tool-structure-editor__subcomponents-copy {
+.ada-tool-structure-editor__subcomponents-copy,
+.ada-tool-structure-editor__summary-copy {
     display: grid;
     min-width: 0;
     gap: .18rem;
@@ -78,42 +77,92 @@
 .ada-tool-structure-editor__components {
     display: grid;
     min-width: 0;
-    gap: .8rem;
+    gap: .65rem;
 }
 
-.ada-tool-structure-editor__component-card {
-    display: grid;
+.ada-tool-structure-editor__component-card,
+.ada-tool-structure-editor__subcomponent-row {
     min-width: 0;
-    gap: .75rem;
-    padding: .8rem;
     background: var(--atlanticus-ui-surface);
     border: 1px solid var(--atlanticus-ui-border);
-    border-top: .18rem solid var(--atlanticus-ui-accent);
-    border-radius: .68rem;
+    border-radius: .65rem;
 }
 
-.ada-tool-structure-editor__component-title strong,
-.ada-tool-structure-editor__subcomponents-copy strong {
+.ada-tool-structure-editor__component-card[open] {
+    border-top: .18rem solid var(--atlanticus-ui-accent);
+}
+
+.ada-tool-structure-editor__component-summary,
+.ada-tool-structure-editor__subcomponent-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+    gap: .8rem;
+    padding: .72rem .8rem;
+    cursor: pointer;
+    list-style: none;
+}
+
+.ada-tool-structure-editor__component-summary::-webkit-details-marker,
+.ada-tool-structure-editor__subcomponent-summary::-webkit-details-marker {
+    display: none;
+}
+
+.ada-tool-structure-editor__summary-main,
+.ada-tool-structure-editor__summary-actions {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: .65rem;
+}
+
+.ada-tool-structure-editor__summary-copy strong {
     color: var(--atlanticus-ui-text);
-    font-size: .76rem;
+    font-size: .75rem;
     font-weight: 760;
 }
 
-.ada-tool-structure-editor__component-title small,
-.ada-tool-structure-editor__subcomponents-copy small {
+.ada-tool-structure-editor__summary-copy > span,
+.ada-tool-structure-editor__summary-meta {
     color: var(--atlanticus-ui-text-muted);
     font-size: .64rem;
-    line-height: 1.35;
 }
 
-.ada-tool-structure-editor__row-fields {
+.ada-tool-structure-editor__summary-action {
+    color: var(--atlanticus-ui-primary-hover);
+    font-size: .68rem;
+    font-weight: 760;
+}
+
+.ada-tool-structure-editor__swatch {
+    width: .78rem;
+    height: .78rem;
+    flex: 0 0 auto;
+    border: 1px solid rgb(7 21 34 / 16%);
+    border-radius: 50%;
+}
+
+.ada-tool-structure-editor__swatch--blue { background: #246BCE; }
+.ada-tool-structure-editor__swatch--cyan { background: #32A7C7; }
+.ada-tool-structure-editor__swatch--green { background: #3B8F63; }
+.ada-tool-structure-editor__swatch--gold { background: #C9A24B; }
+.ada-tool-structure-editor__swatch--orange { background: #D87832; }
+.ada-tool-structure-editor__swatch--red { background: #B94B4B; }
+.ada-tool-structure-editor__swatch--gray { background: #7A8088; }
+.ada-tool-structure-editor__swatch--purple { background: #735A9A; }
+
+.ada-tool-structure-editor__row-fields,
+.ada-tool-structure-editor__subcomponent-fields {
     display: grid;
     grid-template-columns: repeat(
         auto-fit,
-        minmax(min(100%, 12rem), 1fr)
+        minmax(min(100%, 14rem), 1fr)
     );
     gap: .7rem;
     min-width: 0;
+    padding: .75rem .8rem;
+    border-top: 1px solid var(--atlanticus-ui-border);
 }
 
 .ada-tool-structure-editor__field,
@@ -140,32 +189,40 @@
     display: grid;
     min-width: 0;
     gap: .6rem;
+    margin: 0 .8rem .75rem;
     padding: .7rem;
     background: var(--atlanticus-ui-background);
     border: 1px solid var(--atlanticus-ui-border);
     border-radius: .62rem;
 }
 
+.ada-tool-structure-editor__subcomponents-copy strong {
+    color: var(--atlanticus-ui-text);
+    font-size: .74rem;
+    font-weight: 760;
+}
+
+.ada-tool-structure-editor__subcomponents-copy small {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .63rem;
+    line-height: 1.35;
+}
+
 .ada-tool-structure-editor__subcomponents-rows {
     display: grid;
     min-width: 0;
-    gap: .55rem;
+    gap: .5rem;
 }
 
-.ada-tool-structure-editor__subcomponent-row {
+.ada-tool-structure-editor__destructive-actions {
     display: flex;
-    align-items: flex-end;
-    min-width: 0;
-    gap: .65rem;
-    padding: .65rem;
-    background: var(--atlanticus-ui-surface);
-    border: 1px solid var(--atlanticus-ui-border);
-    border-radius: .58rem;
+    justify-content: flex-end;
+    padding: .68rem .8rem;
+    border-top: 1px solid var(--atlanticus-ui-border);
 }
 
 .ada-tool-structure-editor__add,
-.ada-tool-structure-editor__add-subcomponent,
-.ada-tool-structure-editor__delete {
+.ada-tool-structure-editor__add-subcomponent {
     flex: 0 0 auto;
     white-space: nowrap;
 }
@@ -243,16 +300,23 @@
     }
 
     .ada-tool-structure-editor__collection-heading,
-    .ada-tool-structure-editor__component-head,
     .ada-tool-structure-editor__subcomponents-heading,
-    .ada-tool-structure-editor__subcomponent-row {
+    .ada-tool-structure-editor__component-summary,
+    .ada-tool-structure-editor__subcomponent-summary {
         align-items: stretch;
         flex-direction: column;
     }
 
+    .ada-tool-structure-editor__summary-actions {
+        justify-content: space-between;
+    }
+
     .ada-tool-structure-editor__add,
-    .ada-tool-structure-editor__add-subcomponent,
-    .ada-tool-structure-editor__delete {
+    .ada-tool-structure-editor__add-subcomponent {
         width: 100%;
+    }
+
+    .ada-tool-structure-editor__subcomponents {
+        margin-inline: .65rem;
     }
 }

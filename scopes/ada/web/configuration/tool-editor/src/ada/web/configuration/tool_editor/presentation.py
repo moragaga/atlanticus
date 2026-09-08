@@ -11,6 +11,8 @@ from ada.web.configuration.tool_editor.ids import (
     CONFIGURATION_STORE_ID,
     COVERAGE_ID,
     DISPLAY_NAME_ID,
+    DISPATCH_DEGRADATION_ID,
+    DISPATCH_DEGRADATION_WRAPPER_ID,
     DISPATCH_ENABLED_ID,
     DRAFT_STORE_ID,
     KIND_ID,
@@ -38,16 +40,8 @@ def build_tool_source_editor(
                 data=initial_document,
                 storage_type='memory',
             ),
-            dcc.Store(
-                id=DRAFT_STORE_ID,
-                data=None,
-                storage_type='memory',
-            ),
-            dcc.Store(
-                id=VALIDITY_STORE_ID,
-                data=False,
-                storage_type='memory',
-            ),
+            dcc.Store(id=DRAFT_STORE_ID, data=None, storage_type='memory'),
+            dcc.Store(id=VALIDITY_STORE_ID, data=False, storage_type='memory'),
             _general_section(),
             _source_state_section(),
             html.Div(
@@ -146,8 +140,8 @@ def _source_state_section() -> Component:
                 'Estado de fuentes',
                 (
                     'PI determina el estado operacional de la herramienta. '
-                    'Dispatch puede participar opcionalmente en el mismo '
-                    'estado.'
+                    'Dispatch puede participar opcionalmente con su propio '
+                    'umbral de degradación.'
                 ),
             ),
             html.Div(
@@ -201,13 +195,19 @@ def _source_state_section() -> Component:
                                 value=[],
                                 className='ada-tool-source-editor__dispatch-toggle',
                             ),
-                            html.Small(
-                                (
-                                    'Al activarlo, Dispatch participa en el '
-                                    'estado con los mismos umbrales definidos '
-                                    'para PI.'
+                            html.Div(
+                                _number_field(
+                                    label='Umbral de degradación',
+                                    component_id=DISPATCH_DEGRADATION_ID,
+                                    help_text=(
+                                        'Dispatch comparte el umbral preventivo '
+                                        'de PI y define su propio umbral de '
+                                        'degradación.'
+                                    ),
                                 ),
-                                className='ada-tool-source-editor__help',
+                                id=DISPATCH_DEGRADATION_WRAPPER_ID,
+                                hidden=True,
+                                className='ada-tool-source-editor__dispatch-threshold',
                             ),
                         ],
                         className='ada-tool-source-editor__dispatch-card',

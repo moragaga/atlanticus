@@ -1,4 +1,4 @@
-# Espejo comentado de las exportaciones públicas de configuración de Tools.
+# Espejo comentado de exportaciones públicas de Tools R2.
 
 from ada.configuration.branding import BrandingConfiguration, BrandingVariant
 from ada.configuration.tools.contracts import (
@@ -7,6 +7,7 @@ from ada.configuration.tools.contracts import (
 )
 from ada.configuration.tools.enums import (
     ProcessLayoutRole,
+    ToolComponentAccent,
     ToolConfigurationKind,
     ToolScope,
 )
@@ -24,6 +25,7 @@ __all__ = [
     'BrandingVariant',
     'ProcessLayoutRole',
     'ToolComponent',
+    'ToolComponentAccent',
     'ToolConfiguration',
     'ToolConfigurationKind',
     'ToolConfigurationValidationError',

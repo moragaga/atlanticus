@@ -7,8 +7,11 @@ from ada.configuration.tool_sources import (
 from ada.web.configuration.tool_editor import build_tool_structure_editor
 from ada.web.configuration.tool_editor.structure_ids import (
     COMPONENT_ADD_SUBCOMPONENT_TYPE,
+    COMPONENT_KEY_TYPE,
     COMPONENT_ROW_TYPE,
+    COMPONENT_SUMMARY_NAME_TYPE,
     COMPONENT_SUBCOMPONENTS_CONTAINER_TYPE,
+    SUBCOMPONENT_KEY_TYPE,
     SUBCOMPONENT_LINKED_TYPE,
     SUBCOMPONENT_ROW_TYPE,
 )
@@ -43,6 +46,7 @@ def _configuration() -> dict[str, object]:
                 'display_name': 'Mina',
                 'scope': 'mine',
                 'layout_role': None,
+                'accent': 'blue',
                 'subcomponents': [
                     {
                         'key': 'extraction',
@@ -56,10 +60,25 @@ def _configuration() -> dict[str, object]:
                 'display_name': 'Despacho',
                 'scope': 'mine',
                 'layout_role': None,
+                'accent': 'orange',
                 'subcomponents': [
                     {
                         'key': 'fleet',
                         'display_name': 'Flota',
+                        'linked_component_keys': [],
+                    }
+                ],
+            },
+            {
+                'key': 'plant',
+                'display_name': 'Planta',
+                'scope': 'plant',
+                'layout_role': None,
+                'accent': 'green',
+                'subcomponents': [
+                    {
+                        'key': 'crusher',
+                        'display_name': 'Chancado',
                         'linked_component_keys': [],
                     }
                 ],
@@ -139,3 +158,24 @@ def test_shared_visibility_excludes_owner_and_incompatible_scope() -> None:
     assert linked.options == [
         {'label': 'Despacho', 'value': 'dispatch'}
     ]
+def test_structure_uses_compact_summary_and_internal_keys() -> None:
+    layout = build_tool_structure_editor(
+        configuration_document=_configuration()
+    )
+    ids = _ids(layout)
+
+    assert {'type': COMPONENT_KEY_TYPE, 'index': 0} in ids
+    assert {
+        'type': COMPONENT_SUMMARY_NAME_TYPE,
+        'index': 0,
+    } in ids
+    assert {
+        'type': SUBCOMPONENT_KEY_TYPE,
+        'index': 0,
+        'owner_index': 0,
+    } in ids
+
+    rendered = str(layout.to_plotly_json())
+    assert 'Identificador' not in rendered
+    assert 'Posición' not in rendered
+    assert 'Eliminar subcomponente' in rendered

@@ -5,6 +5,7 @@ import pytest
 from ada.configuration.tools import (
     ProcessLayoutRole,
     ToolComponent,
+    ToolComponentAccent,
     ToolConfigurationKind,
     ToolConfigurationValidationError,
     ToolScope,
@@ -125,14 +126,27 @@ def test_component_rejects_duplicate_subcomponent_keys() -> None:
         )
 
 
-def test_process_allows_only_center_component() -> None:
-    structure = _process_structure()
+def test_process_allows_single_layout_agnostic_component() -> None:
+    structure = ToolStructure(
+        tool_key='process',
+        kind=ToolConfigurationKind.PROCESS,
+        operational_scope=ToolScope.MINE,
+        components=(
+            ToolComponent(
+                key='mina',
+                display_name='Mina',
+                subcomponents=(_subcomponent('principal'),),
+            ),
+        ),
+    )
 
-    assert structure.component_for_layout_role(ProcessLayoutRole.CENTER).key == 'mina'
     assert structure.alarm_baseline_component_keys == ('mina',)
+    assert structure.alarm_subcomponent_addresses == (
+        ToolSubcomponentAddress('mina', 'principal'),
+    )
 
 
-def test_process_allows_optional_left_right_and_bottom() -> None:
+def test_legacy_process_layout_roles_do_not_limit_alarm_baseline() -> None:
     structure = ToolStructure(
         tool_key='process',
         kind=ToolConfigurationKind.PROCESS,
@@ -155,16 +169,33 @@ def test_process_allows_optional_left_right_and_bottom() -> None:
         ProcessLayoutRole.RIGHT,
         ProcessLayoutRole.BOTTOM,
     )
-    assert structure.alarm_baseline_component_keys == ('center_box',)
+    assert structure.alarm_baseline_component_keys == (
+        'left_box',
+        'center_box',
+        'right_box',
+        'bottom_box',
+    )
+    assert structure.alarm_subcomponent_addresses == (
+        ToolSubcomponentAddress('center_box', 'principal'),
+    )
 
 
-def test_process_center_is_expandable_to_multiple_alarm_subcomponents() -> None:
-    structure = _process_structure(
-        center_subcomponents=(
-            _subcomponent('carguio'),
-            _subcomponent('transporte'),
-            _subcomponent('chancado'),
-        )
+def test_process_component_is_expandable_to_multiple_alarm_subcomponents() -> None:
+    structure = ToolStructure(
+        tool_key='process',
+        kind=ToolConfigurationKind.PROCESS,
+        operational_scope=ToolScope.MINE,
+        components=(
+            ToolComponent(
+                key='mina',
+                display_name='Mina',
+                subcomponents=(
+                    _subcomponent('carguio'),
+                    _subcomponent('transporte'),
+                    _subcomponent('chancado'),
+                ),
+            ),
+        ),
     )
 
     assert structure.alarm_subcomponent_addresses == (
@@ -175,15 +206,15 @@ def test_process_center_is_expandable_to_multiple_alarm_subcomponents() -> None:
     assert structure.alarm_baseline_component_keys == ('mina',)
 
 
-def test_process_center_can_be_one_single_full_size_alarm_subcomponent() -> None:
+def test_process_component_can_have_one_alarm_subcomponent() -> None:
     structure = ToolStructure(
         tool_key='flotacion',
         kind=ToolConfigurationKind.PROCESS,
         operational_scope=ToolScope.PLANT,
         components=(
-            _process_component(
-                'flotacion',
-                ProcessLayoutRole.CENTER,
+            ToolComponent(
+                key='flotacion',
+                display_name='Flotación',
                 subcomponents=(_subcomponent('flotacion'),),
             ),
         ),
@@ -195,29 +226,32 @@ def test_process_center_can_be_one_single_full_size_alarm_subcomponent() -> None
     assert structure.alarm_baseline_component_keys == ('flotacion',)
 
 
-def test_process_non_center_subcomponents_are_not_alarm_targets() -> None:
+def test_process_all_component_subcomponents_are_alarm_targets() -> None:
     structure = ToolStructure(
         tool_key='process',
         kind=ToolConfigurationKind.PROCESS,
         operational_scope=ToolScope.PLANT,
         components=(
-            _process_component(
-                'left_box',
-                ProcessLayoutRole.LEFT,
-                subcomponents=(_subcomponent('left_detail'),),
+            ToolComponent(
+                key='first',
+                display_name='First',
+                subcomponents=(_subcomponent('first_detail'),),
             ),
-            _process_component(
-                'center_box',
-                ProcessLayoutRole.CENTER,
-                subcomponents=(_subcomponent('center_detail'),),
+            ToolComponent(
+                key='second',
+                display_name='Second',
+                subcomponents=(_subcomponent('second_detail'),),
             ),
         ),
     )
 
     assert structure.alarm_subcomponent_addresses == (
-        ToolSubcomponentAddress('center_box', 'center_detail'),
+        ToolSubcomponentAddress('first', 'first_detail'),
+        ToolSubcomponentAddress('second', 'second_detail'),
     )
-    assert structure.alarm_subcomponent_addresses_for_component('left_box') == ()
+    assert structure.alarm_subcomponent_addresses_for_component('first') == (
+        ToolSubcomponentAddress('first', 'first_detail'),
+    )
 
 
 def test_process_requires_operational_scope() -> None:
@@ -238,17 +272,26 @@ def test_process_requires_operational_scope() -> None:
         )
 
 
-def test_process_requires_center_role() -> None:
-    with pytest.raises(ToolConfigurationValidationError, match='requires CENTER'):
+def test_legacy_process_layout_roles_still_require_center_when_present() -> None:
+    with pytest.raises(
+        ToolConfigurationValidationError,
+        match='requires CENTER',
+    ):
         ToolStructure(
             tool_key='process',
             kind=ToolConfigurationKind.PROCESS,
             operational_scope=ToolScope.MINE,
-            components=(_process_component('left', ProcessLayoutRole.LEFT),),
+            components=(
+                _process_component(
+                    'left',
+                    ProcessLayoutRole.LEFT,
+                    subcomponents=(_subcomponent('detail'),),
+                ),
+            ),
         )
 
 
-def test_process_rejects_duplicate_layout_roles() -> None:
+def test_legacy_process_layout_roles_remain_unique_when_present() -> None:
     with pytest.raises(
         ToolConfigurationValidationError,
         match='duplicate layout roles',
@@ -272,7 +315,7 @@ def test_process_rejects_duplicate_layout_roles() -> None:
         )
 
 
-def test_process_requires_at_least_one_center_subcomponent() -> None:
+def test_legacy_process_center_still_requires_subcomponent() -> None:
     with pytest.raises(
         ToolConfigurationValidationError,
         match='CENTER component requires at least one subcomponent',
@@ -281,7 +324,12 @@ def test_process_requires_at_least_one_center_subcomponent() -> None:
             tool_key='process',
             kind=ToolConfigurationKind.PROCESS,
             operational_scope=ToolScope.PLANT,
-            components=(_process_component('center', ProcessLayoutRole.CENTER),),
+            components=(
+                _process_component(
+                    'center',
+                    ProcessLayoutRole.CENTER,
+                ),
+            ),
         )
 
 
@@ -337,21 +385,23 @@ def test_integrated_operations_accepts_n_components_without_fixed_count() -> Non
     )
 
 
-def test_integrated_operations_accepts_single_component() -> None:
-    structure = ToolStructure(
-        tool_key='small_integrated',
-        kind=ToolConfigurationKind.INTEGRATED_OPERATIONS,
-        components=(
-            ToolComponent(
-                key='process_a',
-                display_name='Process A',
-                scope=ToolScope.MINE,
-                subcomponents=(_subcomponent('detail'),),
+def test_integrated_operations_requires_both_mine_and_plant_scopes() -> None:
+    with pytest.raises(
+        ToolConfigurationValidationError,
+        match='requires both Mina and Planta',
+    ):
+        ToolStructure(
+            tool_key='small_integrated',
+            kind=ToolConfigurationKind.INTEGRATED_OPERATIONS,
+            components=(
+                ToolComponent(
+                    key='process_a',
+                    display_name='Process A',
+                    scope=ToolScope.MINE,
+                    subcomponents=(_subcomponent('detail'),),
+                ),
             ),
-        ),
-    )
-
-    assert structure.alarm_baseline_component_keys == ('process_a',)
+        )
 
 
 def test_integrated_operations_requires_scope_per_component() -> None:
@@ -606,3 +656,44 @@ def test_structure_document_contains_topology_not_rendering_details() -> None:
         'alarm_points',
     ):
         assert forbidden not in serialized
+def test_process_layout_agnostic_component_requires_subcomponents() -> None:
+    with pytest.raises(
+        ToolConfigurationValidationError,
+        match='requires subcomponents',
+    ):
+        ToolStructure(
+            tool_key='process',
+            kind=ToolConfigurationKind.PROCESS,
+            operational_scope=ToolScope.MINE,
+            components=(
+                ToolComponent(
+                    key='component',
+                    display_name='Component',
+                ),
+            ),
+        )
+
+
+def test_component_accent_defaults_for_legacy_documents_and_roundtrips() -> None:
+    legacy_document = {
+        'key': 'component',
+        'display_name': 'Component',
+        'scope': None,
+        'layout_role': None,
+        'subcomponents': [
+            {
+                'key': 'detail',
+                'display_name': 'Detail',
+                'linked_component_keys': [],
+            }
+        ],
+    }
+
+    restored = ToolComponent.from_document(
+        MappingProxyType(legacy_document)
+    )
+
+    assert restored.accent is ToolComponentAccent.GOLD
+    assert ToolComponent.from_document(
+        MappingProxyType(restored.to_document())
+    ) == restored

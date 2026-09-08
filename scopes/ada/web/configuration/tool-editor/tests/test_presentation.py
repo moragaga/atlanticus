@@ -4,6 +4,7 @@ from ada.web.configuration.tool_editor import (
     BRANDING_ID,
     COVERAGE_ID,
     DISPLAY_NAME_ID,
+    DISPATCH_DEGRADATION_ID,
     DISPATCH_ENABLED_ID,
     KIND_ID,
     PI_DEGRADATION_ID,
@@ -41,6 +42,7 @@ def test_tool_editor_exposes_general_and_source_state_controls() -> None:
     assert BRANDING_ID in ids
     assert PI_PREVENTIVE_ID in ids
     assert PI_DEGRADATION_ID in ids
+    assert DISPATCH_DEGRADATION_ID in ids
     assert DISPATCH_ENABLED_ID in ids
 
 

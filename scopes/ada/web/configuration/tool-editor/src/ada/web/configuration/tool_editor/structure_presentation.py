@@ -6,7 +6,7 @@ from dash import dcc, html
 from dash.development.base_component import Component
 
 from ada.configuration.tools import (
-    ProcessLayoutRole,
+    ToolComponentAccent,
     ToolConfiguration,
     ToolConfigurationKind,
     ToolScope,
@@ -15,16 +15,19 @@ from ada.web.configuration.tool_editor.structure import (
     structure_editor_table_data_from_configuration,
 )
 from ada.web.configuration.tool_editor.structure_ids import (
+    COMPONENT_ACCENT_TYPE,
     COMPONENT_ADD_SUBCOMPONENT_TYPE,
     COMPONENT_DELETE_TYPE,
     COMPONENT_DISPLAY_NAME_TYPE,
     COMPONENT_KEY_TYPE,
-    COMPONENT_LAYOUT_ROLE_TYPE,
-    COMPONENT_LAYOUT_WRAPPER_TYPE,
     COMPONENT_ROW_TYPE,
     COMPONENT_SCOPE_TYPE,
     COMPONENT_SCOPE_WRAPPER_TYPE,
     COMPONENT_SUBCOMPONENTS_CONTAINER_TYPE,
+    COMPONENT_SUMMARY_COUNT_TYPE,
+    COMPONENT_SUMMARY_NAME_TYPE,
+    COMPONENT_SUMMARY_SCOPE_TYPE,
+    COMPONENT_SUMMARY_SWATCH_TYPE,
     STRUCTURE_ADD_COMPONENT_ID,
     STRUCTURE_COMPONENTS_CONTAINER_ID,
     STRUCTURE_DOCUMENT_STORE_ID,
@@ -37,12 +40,12 @@ from ada.web.configuration.tool_editor.structure_ids import (
     SUBCOMPONENT_LINKED_TYPE,
     SUBCOMPONENT_LINKED_WRAPPER_TYPE,
     SUBCOMPONENT_ROW_TYPE,
+    SUBCOMPONENT_SUMMARY_LINK_TYPE,
+    SUBCOMPONENT_SUMMARY_NAME_TYPE,
     component_nested_id,
     nested_row_id,
     row_id,
 )
-
-_COVERAGE_MINE_PLANT = 'mine_plant'
 
 
 def build_tool_structure_editor(
@@ -62,11 +65,16 @@ def build_tool_structure_editor(
     structure = configuration.structure if configuration is not None else None
     kind = configuration.kind if configuration is not None else None
     nested_rows = _subcomponent_rows_by_owner(subcomponent_rows)
+
     return html.Section(
         [
             dcc.Store(
                 id=STRUCTURE_DOCUMENT_STORE_ID,
-                data=structure.to_document() if structure is not None else None,
+                data=(
+                    structure.to_document()
+                    if structure is not None
+                    else None
+                ),
                 storage_type='memory',
             ),
             dcc.Store(
@@ -82,10 +90,10 @@ def build_tool_structure_editor(
                     ),
                     html.P(
                         (
-                            'Cada componente contiene sus subcomponentes. '
-                            'En Operaciones integradas, un subcomponente '
-                            'puede ser visible también en otros componentes '
-                            'compatibles.'
+                            'Los componentes se muestran como un resumen '
+                            'compacto. Cada uno contiene sus subcomponentes '
+                            'y puede editarse sin exponer identificadores '
+                            'internos.'
                         ),
                         className='ada-tool-structure-editor__copy',
                     ),
@@ -101,10 +109,10 @@ def build_tool_structure_editor(
                                     html.H4('Componentes'),
                                     html.P(
                                         (
-                                            'La estructura se configura en '
-                                            'conjunto: componente, '
-                                            'subcomponentes y relaciones de '
-                                            'visibilidad.'
+                                            'Agrega los bloques de la '
+                                            'herramienta. La paginación se '
+                                            'podrá aplicar sobre esta lista '
+                                            'de resumen.'
                                         )
                                     ),
                                 ],
@@ -166,104 +174,155 @@ def build_component_editor_row(
     row: Mapping[str, object] | None,
     kind: ToolConfigurationKind | None,
     coverage: str | None,
-    subcomponent_rows: Sequence[tuple[int, Mapping[str, object]]] = (),
+    subcomponent_rows: Sequence[
+        tuple[int, Mapping[str, object]]
+    ] = (),
     all_component_rows: Sequence[Mapping[str, object]] = (),
 ) -> Component:
     values = row or {}
-    scope_hidden = not (
+    integrated = (
         kind is ToolConfigurationKind.INTEGRATED_OPERATIONS
-        and coverage == _COVERAGE_MINE_PLANT
     )
-    layout_hidden = kind is not ToolConfigurationKind.PROCESS
-    linked_hidden = kind is not ToolConfigurationKind.INTEGRATED_OPERATIONS
-    owner_key = str(values.get('key') or '').strip()
     linked_options = _linked_component_options(
         all_component_rows,
         owner_index=index,
-        coverage=coverage,
     )
-    return html.Article(
+    accent = str(
+        values.get('accent')
+        or ToolComponentAccent.GOLD.value
+    )
+
+    return html.Details(
         [
-            html.Div(
+            html.Summary(
                 [
                     html.Div(
                         [
-                            html.Strong(
-                                str(values.get('display_name') or '').strip()
-                                or f'Componente {index + 1}'
+                            html.Span(
+                                id=row_id(
+                                    COMPONENT_SUMMARY_SWATCH_TYPE,
+                                    index,
+                                ),
+                                className=_accent_class(accent),
                             ),
-                            html.Small('Componente'),
+                            html.Div(
+                                [
+                                    html.Strong(
+                                        (
+                                            str(
+                                                values.get(
+                                                    'display_name'
+                                                )
+                                                or ''
+                                            ).strip()
+                                            or 'Nuevo componente'
+                                        ),
+                                        id=row_id(
+                                            COMPONENT_SUMMARY_NAME_TYPE,
+                                            index,
+                                        ),
+                                    ),
+                                    html.Span(
+                                        _summary_scope(
+                                            kind=kind,
+                                            coverage=coverage,
+                                            scope=values.get('scope'),
+                                        ),
+                                        id=row_id(
+                                            COMPONENT_SUMMARY_SCOPE_TYPE,
+                                            index,
+                                        ),
+                                    ),
+                                ],
+                                className=(
+                                    'ada-tool-structure-editor__summary-copy'
+                                ),
+                            ),
                         ],
-                        className='ada-tool-structure-editor__component-title',
-                    ),
-                    html.Button(
-                        'Eliminar',
-                        id=row_id(COMPONENT_DELETE_TYPE, index),
-                        type='button',
-                        n_clicks=0,
                         className=(
-                            'btn btn-outline-danger btn-sm '
-                            'ada-tool-structure-editor__delete'
+                            'ada-tool-structure-editor__summary-main'
+                        ),
+                    ),
+                    html.Div(
+                        [
+                            html.Span(
+                                _subcomponent_count_label(
+                                    len(subcomponent_rows)
+                                ),
+                                id=row_id(
+                                    COMPONENT_SUMMARY_COUNT_TYPE,
+                                    index,
+                                ),
+                                className=(
+                                    'ada-tool-structure-editor__summary-meta'
+                                ),
+                            ),
+                            html.Span(
+                                'Editar',
+                                className=(
+                                    'ada-tool-structure-editor__summary-action'
+                                ),
+                            ),
+                        ],
+                        className=(
+                            'ada-tool-structure-editor__summary-actions'
                         ),
                     ),
                 ],
-                className='ada-tool-structure-editor__component-head',
+                className='ada-tool-structure-editor__component-summary',
+            ),
+            dcc.Store(
+                id=row_id(COMPONENT_KEY_TYPE, index),
+                data=values.get('key'),
+                storage_type='memory',
             ),
             html.Div(
                 [
                     _text_field(
-                        label='Identificador',
-                        component_id=row_id(COMPONENT_KEY_TYPE, index),
-                        value=values.get('key'),
-                        placeholder='component_key',
-                    ),
-                    _text_field(
                         label='Nombre',
-                        component_id=row_id(COMPONENT_DISPLAY_NAME_TYPE, index),
+                        component_id=row_id(
+                            COMPONENT_DISPLAY_NAME_TYPE,
+                            index,
+                        ),
                         value=values.get('display_name'),
                         placeholder='Nombre del componente',
+                    ),
+                    _dropdown_field(
+                        label='Color',
+                        component_id=row_id(
+                            COMPONENT_ACCENT_TYPE,
+                            index,
+                        ),
+                        value=accent,
+                        options=_accent_options(),
                     ),
                     html.Div(
                         _dropdown_field(
                             label='Ámbito',
-                            component_id=row_id(COMPONENT_SCOPE_TYPE, index),
+                            component_id=row_id(
+                                COMPONENT_SCOPE_TYPE,
+                                index,
+                            ),
                             value=values.get('scope'),
                             options=[
-                                {'label': 'Mina', 'value': ToolScope.MINE.value},
-                                {'label': 'Planta', 'value': ToolScope.PLANT.value},
-                            ],
-                        ),
-                        id=row_id(COMPONENT_SCOPE_WRAPPER_TYPE, index),
-                        hidden=scope_hidden,
-                        className='ada-tool-structure-editor__context-field',
-                    ),
-                    html.Div(
-                        _dropdown_field(
-                            label='Posición',
-                            component_id=row_id(COMPONENT_LAYOUT_ROLE_TYPE, index),
-                            value=values.get('layout_role'),
-                            options=[
                                 {
-                                    'label': 'Izquierda',
-                                    'value': ProcessLayoutRole.LEFT.value,
+                                    'label': 'Mina',
+                                    'value': ToolScope.MINE.value,
                                 },
                                 {
-                                    'label': 'Centro',
-                                    'value': ProcessLayoutRole.CENTER.value,
-                                },
-                                {
-                                    'label': 'Derecha',
-                                    'value': ProcessLayoutRole.RIGHT.value,
-                                },
-                                {
-                                    'label': 'Inferior',
-                                    'value': ProcessLayoutRole.BOTTOM.value,
+                                    'label': 'Planta',
+                                    'value': ToolScope.PLANT.value,
                                 },
                             ],
                         ),
-                        id=row_id(COMPONENT_LAYOUT_WRAPPER_TYPE, index),
-                        hidden=layout_hidden,
-                        className='ada-tool-structure-editor__context-field',
+                        id=row_id(
+                            COMPONENT_SCOPE_WRAPPER_TYPE,
+                            index,
+                        ),
+                        hidden=not integrated,
+                        className=(
+                            'ada-tool-structure-editor__context-field'
+                        ),
                     ),
                 ],
                 className='ada-tool-structure-editor__row-fields',
@@ -277,14 +336,17 @@ def build_component_editor_row(
                                     html.Strong('Subcomponentes'),
                                     html.Small(
                                         (
-                                            'Pertenecen a este componente. '
-                                            'La relación "Visible también en" '
-                                            'no duplica el subcomponente.'
+                                            'Cada subcomponente tiene un '
+                                            'único propietario. En '
+                                            'Operaciones integradas puede '
+                                            'ser visible en otros '
+                                            'componentes compatibles.'
                                         )
                                     ),
                                 ],
                                 className=(
-                                    'ada-tool-structure-editor__subcomponents-copy'
+                                    'ada-tool-structure-editor__'
+                                    'subcomponents-copy'
                                 ),
                             ),
                             html.Button(
@@ -297,24 +359,26 @@ def build_component_editor_row(
                                 n_clicks=0,
                                 className=(
                                     'btn btn-outline-secondary btn-sm '
-                                    'ada-tool-structure-editor__add-subcomponent'
+                                    'ada-tool-structure-editor__'
+                                    'add-subcomponent'
                                 ),
                             ),
                         ],
                         className=(
-                            'ada-tool-structure-editor__subcomponents-heading'
+                            'ada-tool-structure-editor__'
+                            'subcomponents-heading'
                         ),
                     ),
                     html.Div(
                         [
                             build_subcomponent_editor_row(
-                                index=subcomponent_index,
+                                index=sub_index,
                                 owner_index=index,
-                                row=subcomponent_row,
-                                linked_hidden=linked_hidden,
+                                row=sub_row,
+                                linked_hidden=not integrated,
                                 linked_component_options=linked_options,
                             )
-                            for subcomponent_index, subcomponent_row in subcomponent_rows
+                            for sub_index, sub_row in subcomponent_rows
                         ],
                         id=component_nested_id(
                             COMPONENT_SUBCOMPONENTS_CONTAINER_TYPE,
@@ -326,11 +390,21 @@ def build_component_editor_row(
                     ),
                 ],
                 className='ada-tool-structure-editor__subcomponents',
-                **{'data-owner-component-key': owner_key},
+            ),
+            html.Div(
+                html.Button(
+                    'Eliminar componente',
+                    id=row_id(COMPONENT_DELETE_TYPE, index),
+                    type='button',
+                    n_clicks=0,
+                    className='btn btn-outline-danger btn-sm',
+                ),
+                className='ada-tool-structure-editor__destructive-actions',
             ),
         ],
         id=row_id(COMPONENT_ROW_TYPE, index),
         className='ada-tool-structure-editor__component-card',
+        open=False,
         **{'data-structure-row': 'component'},
     )
 
@@ -344,20 +418,61 @@ def build_subcomponent_editor_row(
     linked_component_options: Sequence[Mapping[str, str]] = (),
 ) -> Component:
     values = row or {}
-    return html.Article(
+    linked_values = _linked_values(
+        values.get('linked_component_keys')
+    )
+    return html.Details(
         [
+            html.Summary(
+                [
+                    html.Div(
+                        [
+                            html.Strong(
+                                (
+                                    str(
+                                        values.get('display_name')
+                                        or ''
+                                    ).strip()
+                                    or 'Nuevo subcomponente'
+                                ),
+                                id=nested_row_id(
+                                    SUBCOMPONENT_SUMMARY_NAME_TYPE,
+                                    index,
+                                    owner_index,
+                                ),
+                            ),
+                            html.Span(
+                                _shared_label(linked_values),
+                                id=nested_row_id(
+                                    SUBCOMPONENT_SUMMARY_LINK_TYPE,
+                                    index,
+                                    owner_index,
+                                ),
+                                className=(
+                                    'ada-tool-structure-editor__summary-meta'
+                                ),
+                            ),
+                        ],
+                        className='ada-tool-structure-editor__summary-copy',
+                    ),
+                    html.Span(
+                        'Editar',
+                        className='ada-tool-structure-editor__summary-action',
+                    ),
+                ],
+                className='ada-tool-structure-editor__subcomponent-summary',
+            ),
+            dcc.Store(
+                id=nested_row_id(
+                    SUBCOMPONENT_KEY_TYPE,
+                    index,
+                    owner_index,
+                ),
+                data=values.get('key'),
+                storage_type='memory',
+            ),
             html.Div(
                 [
-                    _text_field(
-                        label='Identificador',
-                        component_id=nested_row_id(
-                            SUBCOMPONENT_KEY_TYPE,
-                            index,
-                            owner_index,
-                        ),
-                        value=values.get('key'),
-                        placeholder='subcomponent_key',
-                    ),
                     _text_field(
                         label='Nombre',
                         component_id=nested_row_id(
@@ -376,12 +491,12 @@ def build_subcomponent_editor_row(
                                 index,
                                 owner_index,
                             ),
-                            value=_linked_values(
-                                values.get('linked_component_keys')
-                            ),
+                            value=linked_values,
                             options=linked_component_options,
                             multi=True,
-                            placeholder='Seleccionar componentes compatibles',
+                            placeholder=(
+                                'Seleccionar componentes compatibles'
+                            ),
                         ),
                         id=nested_row_id(
                             SUBCOMPONENT_LINKED_WRAPPER_TYPE,
@@ -392,25 +507,30 @@ def build_subcomponent_editor_row(
                         className='ada-tool-structure-editor__context-field',
                     ),
                 ],
-                className='ada-tool-structure-editor__row-fields',
+                className='ada-tool-structure-editor__subcomponent-fields',
             ),
-            html.Button(
-                'Eliminar',
-                id=nested_row_id(
-                    SUBCOMPONENT_DELETE_TYPE,
-                    index,
-                    owner_index,
+            html.Div(
+                html.Button(
+                    'Eliminar subcomponente',
+                    id=nested_row_id(
+                        SUBCOMPONENT_DELETE_TYPE,
+                        index,
+                        owner_index,
+                    ),
+                    type='button',
+                    n_clicks=0,
+                    className='btn btn-outline-danger btn-sm',
                 ),
-                type='button',
-                n_clicks=0,
-                className=(
-                    'btn btn-outline-danger btn-sm '
-                    'ada-tool-structure-editor__delete'
-                ),
+                className='ada-tool-structure-editor__destructive-actions',
             ),
         ],
-        id=nested_row_id(SUBCOMPONENT_ROW_TYPE, index, owner_index),
+        id=nested_row_id(
+            SUBCOMPONENT_ROW_TYPE,
+            index,
+            owner_index,
+        ),
         className='ada-tool-structure-editor__subcomponent-row',
+        open=False,
         **{'data-structure-row': 'subcomponent'},
     )
 
@@ -431,7 +551,10 @@ def _text_field(
                 type='text',
                 placeholder=placeholder,
                 debounce=True,
-                className='form-control ada-tool-structure-editor__text-input',
+                className=(
+                    'form-control '
+                    'ada-tool-structure-editor__text-input'
+                ),
             ),
         ],
         className='ada-tool-structure-editor__field',
@@ -465,47 +588,67 @@ def _dropdown_field(
     )
 
 
+def _accent_options() -> list[dict[str, str]]:
+    labels = {
+        ToolComponentAccent.BLUE: 'Azul',
+        ToolComponentAccent.CYAN: 'Celeste',
+        ToolComponentAccent.GREEN: 'Verde',
+        ToolComponentAccent.GOLD: 'Dorado',
+        ToolComponentAccent.ORANGE: 'Naranja',
+        ToolComponentAccent.RED: 'Rojo',
+        ToolComponentAccent.GRAY: 'Gris',
+        ToolComponentAccent.PURPLE: 'Morado',
+    }
+    return [
+        {'label': labels[accent], 'value': accent.value}
+        for accent in ToolComponentAccent
+    ]
+
+
 def _linked_component_options(
     rows: Sequence[Mapping[str, object]],
     *,
     owner_index: int,
-    coverage: str | None,
 ) -> list[dict[str, str]]:
     if owner_index < 0 or owner_index >= len(rows):
         return []
-    owner_scope = _effective_scope(rows[owner_index], coverage=coverage)
+    owner_scope = str(
+        rows[owner_index].get('scope') or ''
+    ).strip()
     if not owner_scope:
         return []
     options: list[dict[str, str]] = []
     for index, row in enumerate(rows):
         if index == owner_index:
             continue
-        if _effective_scope(row, coverage=coverage) != owner_scope:
+        if str(row.get('scope') or '').strip() != owner_scope:
             continue
         key = str(row.get('key') or '').strip()
         if not key:
             continue
-        display_name = str(row.get('display_name') or '').strip()
-        options.append({'label': display_name or key, 'value': key})
+        display_name = str(
+            row.get('display_name') or ''
+        ).strip()
+        options.append(
+            {
+                'label': display_name or key,
+                'value': key,
+            }
+        )
     return options
-
-
-def _effective_scope(
-    row: Mapping[str, object],
-    *,
-    coverage: str | None,
-) -> str:
-    if coverage in {'mine', 'plant'}:
-        return coverage
-    return str(row.get('scope') or '').strip()
 
 
 def _subcomponent_rows_by_owner(
     rows: Sequence[Mapping[str, object]],
 ) -> dict[str, list[tuple[int, Mapping[str, object]]]]:
-    resolved: dict[str, list[tuple[int, Mapping[str, object]]]] = {}
+    resolved: dict[
+        str,
+        list[tuple[int, Mapping[str, object]]],
+    ] = {}
     for index, row in enumerate(rows):
-        owner_key = str(row.get('owner_component_key') or '').strip()
+        owner_key = str(
+            row.get('owner_component_key') or ''
+        ).strip()
         resolved.setdefault(owner_key, []).append((index, row))
     return resolved
 
@@ -514,10 +657,67 @@ def _linked_values(value: object) -> list[str]:
     if value is None:
         return []
     if isinstance(value, str):
-        return [item.strip() for item in value.split(',') if item.strip()]
+        return [
+            item.strip()
+            for item in value.split(',')
+            if item.strip()
+        ]
     if isinstance(value, (list, tuple)):
-        return [str(item).strip() for item in value if str(item).strip()]
+        return [
+            str(item).strip()
+            for item in value
+            if str(item).strip()
+        ]
     return []
+
+
+def _summary_scope(
+    *,
+    kind: ToolConfigurationKind | None,
+    coverage: str | None,
+    scope: object,
+) -> str:
+    if kind is ToolConfigurationKind.PROCESS:
+        if coverage == 'mine':
+            return 'Mina'
+        if coverage == 'plant':
+            return 'Planta'
+        return 'Definir ámbito'
+    if kind is ToolConfigurationKind.INTEGRATED_OPERATIONS:
+        if scope == ToolScope.MINE.value:
+            return 'Mina'
+        if scope == ToolScope.PLANT.value:
+            return 'Planta'
+        return 'Definir ámbito'
+    return 'Sin tipo'
+
+
+def _subcomponent_count_label(count: int) -> str:
+    if count == 1:
+        return '1 subcomponente'
+    return f'{count} subcomponentes'
+
+
+def _shared_label(linked_values: Sequence[str]) -> str:
+    count = len(linked_values)
+    if count == 0:
+        return 'Sin compartir'
+    if count == 1:
+        return 'Compartido con 1 componente'
+    return f'Compartido con {count} componentes'
+
+
+def _accent_class(accent: str) -> str:
+    valid = {item.value for item in ToolComponentAccent}
+    resolved = (
+        accent
+        if accent in valid
+        else ToolComponentAccent.GOLD.value
+    )
+    return (
+        'ada-tool-structure-editor__swatch '
+        f'ada-tool-structure-editor__swatch--{resolved}'
+    )
 
 
 def _dash_select_style() -> dict[str, str]:

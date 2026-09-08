@@ -42,10 +42,7 @@
 
 .ada-tool-source-editor__general-grid {
     display: grid;
-    grid-template-columns: repeat(
-        auto-fit,
-        minmax(min(100%, 15rem), 1fr)
-    );
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
     gap: .8rem;
     min-width: 0;
 }
@@ -206,6 +203,10 @@
     accent-color: var(--atlanticus-ui-secondary);
 }
 
+.ada-tool-source-editor__dispatch-threshold {
+    max-width: 36rem;
+}
+
 .ada-tool-source-editor__validation {
     min-height: 1rem;
     color: var(--atlanticus-ui-danger);
@@ -229,5 +230,9 @@
         align-items: flex-start;
         flex-direction: column;
         gap: .18rem;
+    }
+
+    .ada-tool-source-editor__dispatch-threshold {
+        max-width: none;
     }
 }

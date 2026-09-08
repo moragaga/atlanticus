@@ -4,6 +4,10 @@ from ada.web.configuration.tool_editor import (
     register_tool_source_editor_callbacks,
     register_tool_structure_editor_callbacks,
 )
+from ada.web.configuration.tool_editor.structure_callbacks import (
+    _new_key,
+    _sanitize_linked_values,
+)
 from ada.web.configuration.tool_editor.structure_ids import (
     COMPONENT_ADD_SUBCOMPONENT_TYPE,
     COMPONENT_SUBCOMPONENTS_CONTAINER_TYPE,
@@ -29,3 +33,21 @@ def test_nested_pattern_contract_uses_owner_index() -> None:
     assert COMPONENT_ADD_SUBCOMPONENT_TYPE in rendered
     assert SUBCOMPONENT_DELETE_TYPE in rendered
     assert 'owner_index' in rendered
+def test_generated_internal_keys_are_stable_format_and_collision_safe() -> None:
+    key = _new_key('cmp', ['cmp_existing'])
+
+    assert key.startswith('cmp_')
+    assert key != 'cmp_existing'
+    assert ' ' not in key
+
+
+def test_linked_values_drop_deleted_or_incompatible_components() -> None:
+    assert _sanitize_linked_values(
+        ['cmp_keep', 'cmp_removed'],
+        [
+            {
+                'label': 'Keep',
+                'value': 'cmp_keep',
+            }
+        ],
+    ) == ['cmp_keep']

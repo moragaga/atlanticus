@@ -142,6 +142,17 @@ def _integrated_structure() -> ToolStructure:
                     ),
                 ),
             ),
+            ToolComponent(
+                key='grinding',
+                display_name='Molienda',
+                scope=ToolScope.PLANT,
+                subcomponents=(
+                    ToolSubcomponent(
+                        key='grinding_line',
+                        display_name='Línea de molienda',
+                    ),
+                ),
+            ),
         ),
     )
 
@@ -193,9 +204,11 @@ def test_integrated_linked_subcomponent_is_alarm_visibility_not_kpi_destination(
         'time_status',
         'loading',
         'transport',
+        'grinding',
     )
     assert 'loading_transport' not in catalog.keys
     assert 'haulage' not in catalog.keys
+    assert 'grinding_line' not in catalog.keys
 
 
 def test_catalog_preserves_component_display_names_for_manager_presentation() -> None:
@@ -210,6 +223,7 @@ def test_catalog_preserves_component_display_names_for_manager_presentation() ->
         'time_status': 'Time Status',
         'loading': 'Carguío',
         'transport': 'Transporte',
+        'grinding': 'Molienda',
     }
 
 

@@ -5,6 +5,7 @@ from ada.configuration.tools.contracts import (
 )
 from ada.configuration.tools.enums import (
     ProcessLayoutRole,
+    ToolComponentAccent,
     ToolConfigurationKind,
     ToolScope,
 )
@@ -22,6 +23,7 @@ __all__ = [
     'BrandingVariant',
     'ProcessLayoutRole',
     'ToolComponent',
+    'ToolComponentAccent',
     'ToolConfiguration',
     'ToolConfigurationKind',
     'ToolConfigurationValidationError',

@@ -48,16 +48,16 @@ def test_process_coverage_maps_to_structure_operational_scope() -> None:
         coverage='plant',
         component_rows=[
             {
-                'key': 'center',
-                'display_name': 'Centro',
+                'key': 'cmp_process',
+                'display_name': 'Proceso',
                 'scope': None,
-                'layout_role': 'center',
+                'accent': 'blue',
             }
         ],
         subcomponent_rows=[
             {
-                'owner_component_key': 'center',
-                'key': 'primary',
+                'owner_component_key': 'cmp_process',
+                'key': 'sub_primary',
                 'display_name': 'Principal',
                 'linked_component_keys': [],
             }
@@ -75,39 +75,29 @@ def test_process_coverage_maps_to_structure_operational_scope() -> None:
 
     assert structure.operational_scope is not None
     assert structure.operational_scope.value == 'plant'
+    assert structure.components[0].layout_role is None
     assert structure_editor_coverage_from_configuration(configured) == 'plant'
 
 
-def test_integrated_single_scope_is_inherited_by_components() -> None:
-    structure = build_structure_from_editor_tables(
-        base_configuration=_base(ToolConfigurationKind.INTEGRATED_OPERATIONS),
-        coverage='mine',
-        component_rows=[
-            {
-                'key': 'mine',
-                'display_name': 'Mina',
-                'scope': None,
-                'layout_role': None,
-            }
-        ],
-        subcomponent_rows=[
-            {
-                'owner_component_key': 'mine',
-                'key': 'extraction',
-                'display_name': 'Extracción',
-                'linked_component_keys': [],
-            }
-        ],
-    )
-
-    assert structure.component('mine').scope is not None
-    assert structure.component('mine').scope.value == 'mine'
+def test_integrated_operations_rejects_single_scope_coverage() -> None:
+    with pytest.raises(
+        ToolStructureEditorValidationError,
+        match='must be Mina y Planta',
+    ):
+        build_structure_from_editor_tables(
+            base_configuration=_base(
+                ToolConfigurationKind.INTEGRATED_OPERATIONS
+            ),
+            coverage='mine',
+            component_rows=[],
+            subcomponent_rows=[],
+        )
 
 
 def test_integrated_mine_and_plant_requires_both_scopes() -> None:
     with pytest.raises(
         ToolStructureEditorValidationError,
-        match='at least one component',
+        match='requires both Mina and Planta',
     ):
         build_structure_from_editor_tables(
             base_configuration=_base(
@@ -116,16 +106,16 @@ def test_integrated_mine_and_plant_requires_both_scopes() -> None:
             coverage='mine_plant',
             component_rows=[
                 {
-                    'key': 'mine',
+                    'key': 'cmp_mine',
                     'display_name': 'Mina',
                     'scope': 'mine',
-                    'layout_role': None,
+                    'accent': 'gold',
                 }
             ],
             subcomponent_rows=[
                 {
-                    'owner_component_key': 'mine',
-                    'key': 'extraction',
+                    'owner_component_key': 'cmp_mine',
+                    'key': 'sub_extraction',
                     'display_name': 'Extracción',
                     'linked_component_keys': [],
                 }
@@ -135,44 +125,60 @@ def test_integrated_mine_and_plant_requires_both_scopes() -> None:
 
 def test_integrated_shared_subcomponent_keeps_one_owner() -> None:
     structure = build_structure_from_editor_tables(
-        base_configuration=_base(ToolConfigurationKind.INTEGRATED_OPERATIONS),
-        coverage='mine',
+        base_configuration=_base(
+            ToolConfigurationKind.INTEGRATED_OPERATIONS
+        ),
+        coverage='mine_plant',
         component_rows=[
             {
-                'key': 'mine',
+                'key': 'cmp_mine',
                 'display_name': 'Mina',
-                'scope': None,
-                'layout_role': None,
+                'scope': 'mine',
+                'accent': 'gold',
             },
             {
-                'key': 'dispatch',
+                'key': 'cmp_dispatch',
                 'display_name': 'Despacho',
-                'scope': None,
-                'layout_role': None,
+                'scope': 'mine',
+                'accent': 'orange',
+            },
+            {
+                'key': 'cmp_plant',
+                'display_name': 'Planta',
+                'scope': 'plant',
+                'accent': 'green',
             },
         ],
         subcomponent_rows=[
             {
-                'owner_component_key': 'mine',
-                'key': 'extraction',
+                'owner_component_key': 'cmp_mine',
+                'key': 'sub_extraction',
                 'display_name': 'Extracción',
-                'linked_component_keys': ['dispatch'],
+                'linked_component_keys': ['cmp_dispatch'],
             },
             {
-                'owner_component_key': 'dispatch',
-                'key': 'fleet',
+                'owner_component_key': 'cmp_dispatch',
+                'key': 'sub_fleet',
                 'display_name': 'Flota',
+                'linked_component_keys': [],
+            },
+            {
+                'owner_component_key': 'cmp_plant',
+                'key': 'sub_crusher',
+                'display_name': 'Chancado',
                 'linked_component_keys': [],
             },
         ],
     )
 
-    extraction = structure.component('mine').subcomponent('extraction')
-    assert extraction.linked_component_keys == ('dispatch',)
+    extraction = structure.component('cmp_mine').subcomponent(
+        'sub_extraction'
+    )
+    assert extraction.linked_component_keys == ('cmp_dispatch',)
     assert (
         structure.subcomponent_address(
-            component_key='dispatch',
-            subcomponent_key='extraction',
+            component_key='cmp_dispatch',
+            subcomponent_key='sub_extraction',
         ).owner_component_key
-        == 'mine'
+        == 'cmp_mine'
     )
