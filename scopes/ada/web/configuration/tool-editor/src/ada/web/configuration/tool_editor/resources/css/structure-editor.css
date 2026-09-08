@@ -185,14 +185,14 @@
 .ada-tool-structure-editor__text-input:focus,
 .ada-tool-structure-editor__text-input:focus-within {
     border-color: var(--atlanticus-ui-primary) !important;
-    box-shadow: 0 0 0 .18rem rgb(7 21 34 / 10%) !important;
+    box-shadow: none !important;
     outline: 0;
 }
 
 .ada-tool-structure-editor__text-input:hover:focus,
 .ada-tool-structure-editor__text-input:hover:focus-within {
     border-color: var(--atlanticus-ui-accent) !important;
-    box-shadow: 0 0 0 .18rem rgb(201 162 75 / 12%) !important;
+    box-shadow: none !important;
 }
 
 .ada-tool-structure-editor__subcomponents {

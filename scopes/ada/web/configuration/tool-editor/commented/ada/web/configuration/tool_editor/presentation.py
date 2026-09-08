@@ -21,6 +21,7 @@ from ada.web.configuration.tool_editor.ids import (
     KIND_ID,
     PI_DEGRADATION_ID,
     PI_PREVENTIVE_ID,
+    PROCESS_COVERAGE_STORE_ID,
     ROOT_ID,
     VALIDATION_MESSAGE_ID,
     VALIDITY_STORE_ID,
@@ -45,6 +46,12 @@ def build_tool_source_editor(
             ),
             dcc.Store(id=DRAFT_STORE_ID, data=None, storage_type='memory'),
             dcc.Store(id=VALIDITY_STORE_ID, data=False, storage_type='memory'),
+            # Mantiene la cobertura Process al alternar temporalmente a Integrated.
+            dcc.Store(
+                id=PROCESS_COVERAGE_STORE_ID,
+                data=None,
+                storage_type='memory',
+            ),
             _general_section(),
             _source_state_section(),
             html.Div(

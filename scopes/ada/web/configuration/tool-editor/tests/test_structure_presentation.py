@@ -183,3 +183,59 @@ def test_structure_inputs_do_not_depend_on_bootstrap_form_control() -> None:
     )
 
     assert 'form-control' not in rendered
+
+
+def test_process_component_scope_inherits_coverage_and_is_read_only() -> None:
+    from ada.web.configuration.tool_editor.structure_ids import (
+        COMPONENT_SCOPE_TYPE,
+        row_id,
+    )
+    from ada.web.configuration.tool_editor.structure_presentation import (
+        build_component_editor_row,
+    )
+
+    def find(component, target_id):
+        if getattr(component, 'id', None) == target_id:
+            return component
+        children = getattr(component, 'children', None)
+        if isinstance(children, (list, tuple)):
+            for child in children:
+                if hasattr(child, 'children') or hasattr(child, 'id'):
+                    found = find(child, target_id)
+                    if found is not None:
+                        return found
+        elif hasattr(children, 'children') or hasattr(children, 'id'):
+            return find(children, target_id)
+        return None
+
+    row = build_component_editor_row(
+        index=0,
+        row={
+            'key': 'cmp_process',
+            'display_name': 'Proceso',
+            'scope': None,
+        },
+        kind=ToolConfigurationKind.PROCESS,
+        coverage='plant',
+    )
+    scope = find(row, row_id(COMPONENT_SCOPE_TYPE, 0))
+
+    assert scope is not None
+    assert scope.value == 'plant'
+    assert scope.disabled is True
+
+    row = build_component_editor_row(
+        index=0,
+        row={
+            'key': 'cmp_integrated',
+            'display_name': 'Integrado',
+            'scope': None,
+        },
+        kind=ToolConfigurationKind.INTEGRATED_OPERATIONS,
+        coverage='mine_plant',
+    )
+    scope = find(row, row_id(COMPONENT_SCOPE_TYPE, 0))
+
+    assert scope is not None
+    assert scope.value is None
+    assert scope.disabled is False

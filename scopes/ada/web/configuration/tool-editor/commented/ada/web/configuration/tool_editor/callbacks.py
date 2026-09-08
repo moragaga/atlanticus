@@ -22,6 +22,7 @@ from ada.web.configuration.tool_editor.ids import (
     KIND_ID,
     PI_DEGRADATION_ID,
     PI_PREVENTIVE_ID,
+    PROCESS_COVERAGE_STORE_ID,
     VALIDATION_MESSAGE_ID,
     VALIDITY_STORE_ID,
 )
@@ -85,28 +86,45 @@ def register_tool_source_editor_callbacks(app: object) -> None:
         Output(COVERAGE_ID, 'value'),
         Output(COVERAGE_ID, 'disabled'),
         Output(COVERAGE_ID, 'placeholder'),
+        Output(PROCESS_COVERAGE_STORE_ID, 'data'),
         Input(CONFIGURATION_STORE_ID, 'data'),
         Input(KIND_ID, 'value'),
         State(COVERAGE_ID, 'value'),
+        State(PROCESS_COVERAGE_STORE_ID, 'data'),
     )
-    # Cobertura permanece bloqueada hasta resolver el tipo; Integrated fija Mina y Planta.
+    # Process recuerda su cobertura; Integrated fija Mina y Planta sin destruirla.
     def sync_coverage(
         configuration_document: dict[str, object] | None,
         kind_value: str | None,
         current_coverage: str | None,
+        process_coverage: str | None,
     ):
+        remembered = (
+            process_coverage
+            if process_coverage in {_COVERAGE_MINE, _COVERAGE_PLANT}
+            else None
+        )
         options = _coverage_options(kind_value)
         if not options:
-            return [], None, True, 'Selecciona primero el tipo'
+            return (
+                [],
+                None,
+                True,
+                'Selecciona primero el tipo',
+                remembered,
+            )
         if (
             kind_value
             == ToolConfigurationKind.INTEGRATED_OPERATIONS.value
         ):
+            if current_coverage in {_COVERAGE_MINE, _COVERAGE_PLANT}:
+                remembered = current_coverage
             return (
                 options,
                 _COVERAGE_MINE_PLANT,
                 True,
                 'Mina y Planta',
+                remembered,
             )
 
         valid_values = {option['value'] for option in options}
@@ -125,11 +143,37 @@ def register_tool_source_editor_callbacks(app: object) -> None:
                     configuration
                 )
                 if configured in valid_values:
-                    return options, configured, False, 'Seleccionar cobertura'
+                    return (
+                        options,
+                        configured,
+                        False,
+                        'Seleccionar cobertura',
+                        configured,
+                    )
 
         if current_coverage in valid_values:
-            return options, current_coverage, False, 'Seleccionar cobertura'
-        return options, None, False, 'Seleccionar cobertura'
+            return (
+                options,
+                current_coverage,
+                False,
+                'Seleccionar cobertura',
+                current_coverage,
+            )
+        if remembered in valid_values:
+            return (
+                options,
+                remembered,
+                False,
+                'Seleccionar cobertura',
+                remembered,
+            )
+        return (
+            options,
+            None,
+            False,
+            'Seleccionar cobertura',
+            remembered,
+        )
 
     @app.callback(
         Output(DISPATCH_DEGRADATION_WRAPPER_ID, 'hidden'),

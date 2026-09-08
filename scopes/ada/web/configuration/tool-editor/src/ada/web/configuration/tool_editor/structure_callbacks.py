@@ -333,6 +333,10 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             'value',
         ),
         Output(
+            {'type': COMPONENT_SCOPE_TYPE, 'index': ALL},
+            'disabled',
+        ),
+        Output(
             {
                 'type': SUBCOMPONENT_LINKED_WRAPPER_TYPE,
                 'index': ALL,
@@ -341,6 +345,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             'hidden',
         ),
         Input(KIND_ID, 'value'),
+        Input(COVERAGE_ID, 'value'),
         State(
             {'type': COMPONENT_SCOPE_WRAPPER_TYPE, 'index': ALL},
             'id',
@@ -357,21 +362,40 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
     )
     def update_context_fields(
         kind_value: str | None,
+        coverage: str | None,
         scope_wrapper_ids: list[dict[str, object]],
         current_scopes: list[object],
         linked_wrapper_ids: list[dict[str, object]],
     ):
+        process = kind_value == ToolConfigurationKind.PROCESS.value
         integrated = (
             kind_value
             == ToolConfigurationKind.INTEGRATED_OPERATIONS.value
         )
+        if process:
+            inherited = (
+                coverage
+                if coverage in {'mine', 'plant'}
+                else None
+            )
+            scopes = [inherited for _ in current_scopes]
+        elif integrated:
+            explicit_scopes = {
+                str(scope).strip()
+                for scope in current_scopes
+                if str(scope or '').strip() in {'mine', 'plant'}
+            }
+            scopes = (
+                [None for _ in current_scopes]
+                if len(explicit_scopes) <= 1
+                else list(current_scopes)
+            )
+        else:
+            scopes = [None for _ in current_scopes]
         return (
-            [not integrated for _ in scope_wrapper_ids],
-            (
-                list(current_scopes)
-                if integrated
-                else [None for _ in current_scopes]
-            ),
+            [kind_value is None for _ in scope_wrapper_ids],
+            scopes,
+            [not integrated for _ in current_scopes],
             [not integrated for _ in linked_wrapper_ids],
         )
 

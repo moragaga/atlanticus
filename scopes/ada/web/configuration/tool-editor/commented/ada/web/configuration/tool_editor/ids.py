@@ -9,6 +9,10 @@ DISPLAY_NAME_ID = 'ada-tool-configuration-editor-display-name'
 KIND_ID = 'ada-tool-configuration-editor-kind'
 BRANDING_ID = 'ada-tool-configuration-editor-branding'
 COVERAGE_ID = 'ada-tool-configuration-editor-coverage'
+# Conserva la última cobertura de Process mientras el usuario alterna el tipo.
+PROCESS_COVERAGE_STORE_ID = (
+    'ada-tool-configuration-editor-process-coverage-store'
+)
 
 PI_PREVENTIVE_ID = 'ada-tool-configuration-editor-pi-preventive'
 PI_DEGRADATION_ID = 'ada-tool-configuration-editor-pi-degradation'

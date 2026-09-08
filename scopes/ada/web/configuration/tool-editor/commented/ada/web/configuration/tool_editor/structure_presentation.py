@@ -183,6 +183,9 @@ def build_component_editor_row(
     integrated = (
         kind is ToolConfigurationKind.INTEGRATED_OPERATIONS
     )
+    process = kind is ToolConfigurationKind.PROCESS
+    # Process muestra el ámbito heredado del padre; Integrated lo hace editable.
+    scope_value = coverage if process else values.get('scope')
     linked_options = _linked_component_options(
         all_component_rows,
         owner_index=index,
@@ -283,7 +286,7 @@ def build_component_editor_row(
                                 COMPONENT_SCOPE_TYPE,
                                 index,
                             ),
-                            value=values.get('scope'),
+                            value=scope_value,
                             options=[
                                 {
                                     'label': 'Mina',
@@ -294,12 +297,13 @@ def build_component_editor_row(
                                     'value': ToolScope.PLANT.value,
                                 },
                             ],
+                            disabled=not integrated,
                         ),
                         id=row_id(
                             COMPONENT_SCOPE_WRAPPER_TYPE,
                             index,
                         ),
-                        hidden=not integrated,
+                        hidden=kind is None,
                         className=(
                             'ada-tool-structure-editor__context-field'
                         ),

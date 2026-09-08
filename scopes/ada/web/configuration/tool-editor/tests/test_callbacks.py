@@ -79,7 +79,7 @@ def test_add_component_does_not_require_completed_general_configuration() -> Non
 
     assert result is not no_update
 
-def test_coverage_waits_for_kind_and_integrated_is_fixed() -> None:
+def test_coverage_waits_for_kind_and_restores_process_coverage() -> None:
     class CallbackApp:
         def __init__(self) -> None:
             self.callbacks: dict[str, object] = {}
@@ -94,26 +94,44 @@ def test_coverage_waits_for_kind_and_integrated_is_fixed() -> None:
     app = CallbackApp()
     register_tool_source_editor_callbacks(app)
 
-    assert app.callbacks['sync_coverage'](None, None, None) == (
+    assert app.callbacks['sync_coverage'](None, None, None, None) == (
         [],
         None,
         True,
         'Selecciona primero el tipo',
-    )
-
-    options, value, disabled, placeholder = app.callbacks['sync_coverage'](
-        None,
-        'integrated_operations',
         None,
     )
 
+    options, value, disabled, placeholder, remembered = (
+        app.callbacks['sync_coverage'](
+            None,
+            'integrated_operations',
+            'plant',
+            None,
+        )
+    )
     assert [option['value'] for option in options] == ['mine_plant']
     assert value == 'mine_plant'
     assert disabled is True
     assert placeholder == 'Mina y Planta'
+    assert remembered == 'plant'
+
+    options, value, disabled, placeholder, remembered = (
+        app.callbacks['sync_coverage'](
+            None,
+            'process',
+            'mine_plant',
+            remembered,
+        )
+    )
+    assert [option['value'] for option in options] == ['mine', 'plant']
+    assert value == 'plant'
+    assert disabled is False
+    assert placeholder == 'Seleccionar cobertura'
+    assert remembered == 'plant'
 
 
-def test_process_context_clears_component_scope_and_integrated_preserves_it() -> None:
+def test_process_context_inherits_parent_and_integrated_clears_inherited_scope() -> None:
     class CallbackApp:
         def __init__(self) -> None:
             self.callbacks: dict[str, object] = {}
@@ -128,25 +146,38 @@ def test_process_context_clears_component_scope_and_integrated_preserves_it() ->
     app = CallbackApp()
     register_tool_structure_editor_callbacks(app)
 
-    hidden, scopes, linked_hidden = app.callbacks['update_context_fields'](
+    hidden, scopes, disabled, linked_hidden = app.callbacks['update_context_fields'](
         'process',
-        [{'index': 0}],
-        ['mine'],
-        [{'owner_index': 0}],
+        'plant',
+        [{'index': 0}, {'index': 1}],
+        ['mine', None],
+        [{'owner_index': 0}, {'owner_index': 1}],
     )
-    assert hidden == [True]
-    assert scopes == [None]
-    assert linked_hidden == [True]
+    assert hidden == [False, False]
+    assert scopes == ['plant', 'plant']
+    assert disabled == [True, True]
+    assert linked_hidden == [True, True]
 
-    hidden, scopes, linked_hidden = app.callbacks['update_context_fields'](
+    hidden, scopes, disabled, linked_hidden = app.callbacks['update_context_fields'](
         'integrated_operations',
-        [{'index': 0}],
-        ['mine'],
-        [{'owner_index': 0}],
+        'mine_plant',
+        [{'index': 0}, {'index': 1}],
+        ['plant', 'plant'],
+        [{'owner_index': 0}, {'owner_index': 1}],
     )
-    assert hidden == [False]
-    assert scopes == ['mine']
-    assert linked_hidden == [False]
+    assert hidden == [False, False]
+    assert scopes == [None, None]
+    assert disabled == [False, False]
+    assert linked_hidden == [False, False]
+
+    _, scopes, _, _ = app.callbacks['update_context_fields'](
+        'integrated_operations',
+        'mine_plant',
+        [{'index': 0}, {'index': 1}],
+        ['mine', 'plant'],
+        [{'owner_index': 0}, {'owner_index': 1}],
+    )
+    assert scopes == ['mine', 'plant']
 
 
 def test_visible_also_in_refreshes_same_scope_components() -> None:
