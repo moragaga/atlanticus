@@ -13,16 +13,21 @@ from ada.web.configuration.tool_editor import (
     build_tool_structure_editor,
 )
 from ada.web.configuration.tool_editor.structure_ids import (
+    COMPONENT_ADD_SUBCOMPONENT_TYPE,
     COMPONENT_ROW_TYPE,
+    COMPONENT_SUBCOMPONENTS_CONTAINER_TYPE,
+    SUBCOMPONENT_LINKED_TYPE,
     SUBCOMPONENT_ROW_TYPE,
 )
 
 
-def _configuration() -> dict[str, object]:
+def _configuration(
+    kind: ToolConfigurationKind = ToolConfigurationKind.PROCESS,
+) -> ToolConfiguration:
     return ToolConfiguration(
         tool_key='process',
         display_name='Proceso',
-        kind=ToolConfigurationKind.PROCESS,
+        kind=kind,
         source_consumption=ToolSourceConsumption(
             tool_key='process',
             source_keys=('pi',),
@@ -39,7 +44,7 @@ def _configuration() -> dict[str, object]:
             additional_observation_source_keys=(),
         ),
         structure=None,
-    ).to_document()
+    )
 
 
 def _ids(component) -> list[object]:
@@ -57,8 +62,25 @@ def _ids(component) -> list[object]:
     return resolved
 
 
+def _find_by_id(component, component_id):
+    if getattr(component, 'id', None) == component_id:
+        return component
+    children = getattr(component, 'children', None)
+    if isinstance(children, (list, tuple)):
+        for child in children:
+            if hasattr(child, 'children') or hasattr(child, 'id'):
+                found = _find_by_id(child, component_id)
+                if found is not None:
+                    return found
+    elif hasattr(children, 'children') or hasattr(children, 'id'):
+        return _find_by_id(children, component_id)
+    return None
+
+
 def test_structure_editor_has_dedicated_root_without_grid_component() -> None:
-    layout = build_tool_structure_editor(configuration_document=_configuration())
+    layout = build_tool_structure_editor(
+        configuration_document=_configuration().to_document()
+    )
 
     assert layout.id == STRUCTURE_ROOT_ID
     source = (
@@ -82,8 +104,8 @@ def test_complete_editor_composes_sources_and_structure() -> None:
     assert 'atlanticus-bootstrap' in layout.className
 
 
-def test_manual_structure_rows_use_pattern_matching_ids() -> None:
-    document = _configuration()
+def test_subcomponents_are_nested_under_their_owner_component() -> None:
+    document = _configuration().to_document()
     document['structure'] = {
         'tool_key': 'process',
         'kind': 'process',
@@ -109,4 +131,82 @@ def test_manual_structure_rows_use_pattern_matching_ids() -> None:
     ids = _ids(layout)
 
     assert {'type': COMPONENT_ROW_TYPE, 'index': 0} in ids
-    assert {'type': SUBCOMPONENT_ROW_TYPE, 'index': 0} in ids
+    assert {
+        'type': COMPONENT_SUBCOMPONENTS_CONTAINER_TYPE,
+        'owner_index': 0,
+    } in ids
+    assert {
+        'type': COMPONENT_ADD_SUBCOMPONENT_TYPE,
+        'owner_index': 0,
+    } in ids
+    assert {
+        'type': SUBCOMPONENT_ROW_TYPE,
+        'index': 0,
+        'owner_index': 0,
+    } in ids
+
+
+def test_integrated_operations_link_selector_excludes_owner_and_other_scope() -> None:
+    document = _configuration(
+        ToolConfigurationKind.INTEGRATED_OPERATIONS
+    ).to_document()
+    document['structure'] = {
+        'tool_key': 'process',
+        'kind': 'integrated_operations',
+        'operational_scope': None,
+        'components': [
+            {
+                'key': 'mine',
+                'display_name': 'Mina',
+                'scope': 'mine',
+                'layout_role': None,
+                'subcomponents': [
+                    {
+                        'key': 'extraction',
+                        'display_name': 'Extracción',
+                        'linked_component_keys': ['dispatch'],
+                    }
+                ],
+            },
+            {
+                'key': 'dispatch',
+                'display_name': 'Despacho',
+                'scope': 'mine',
+                'layout_role': None,
+                'subcomponents': [
+                    {
+                        'key': 'fleet',
+                        'display_name': 'Flota',
+                        'linked_component_keys': [],
+                    }
+                ],
+            },
+            {
+                'key': 'plant',
+                'display_name': 'Planta',
+                'scope': 'plant',
+                'layout_role': None,
+                'subcomponents': [
+                    {
+                        'key': 'crusher',
+                        'display_name': 'Chancado',
+                        'linked_component_keys': [],
+                    }
+                ],
+            },
+        ],
+    }
+
+    layout = build_tool_structure_editor(configuration_document=document)
+    linked_id = {
+        'type': SUBCOMPONENT_LINKED_TYPE,
+        'index': 0,
+        'owner_index': 0,
+    }
+    linked = _find_by_id(layout, linked_id)
+
+    assert linked is not None
+    assert linked.value == ['dispatch']
+    assert linked.options == [
+        {'label': 'Despacho', 'value': 'dispatch'}
+    ]

@@ -18,8 +18,7 @@
 }
 
 .ada-tool-structure-editor__heading,
-.ada-tool-structure-editor__collection,
-.ada-tool-structure-editor__rows {
+.ada-tool-structure-editor__collection {
     display: grid;
     min-width: 0;
     gap: .7rem;
@@ -73,7 +72,9 @@
     border-radius: .72rem;
 }
 
-.ada-tool-structure-editor__collection-heading {
+.ada-tool-structure-editor__collection-heading,
+.ada-tool-structure-editor__component-head,
+.ada-tool-structure-editor__subcomponents-heading {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
@@ -81,7 +82,9 @@
     min-width: 0;
 }
 
-.ada-tool-structure-editor__collection-copy {
+.ada-tool-structure-editor__collection-copy,
+.ada-tool-structure-editor__component-title,
+.ada-tool-structure-editor__subcomponents-copy {
     display: grid;
     min-width: 0;
     gap: .18rem;
@@ -93,20 +96,43 @@
     font-weight: 760;
 }
 
-.ada-tool-structure-editor__row {
-    display: flex;
-    align-items: flex-end;
+.ada-tool-structure-editor__components {
+    display: grid;
     min-width: 0;
-    gap: .7rem;
-    padding: .75rem;
+    gap: .8rem;
+}
+
+.ada-tool-structure-editor__component-card {
+    display: grid;
+    min-width: 0;
+    gap: .75rem;
+    padding: .8rem;
     background: var(--atlanticus-ui-surface);
     border: 1px solid var(--atlanticus-ui-border);
-    border-radius: .65rem;
+    border-top: .18rem solid var(--atlanticus-ui-accent);
+    border-radius: .68rem;
+}
+
+.ada-tool-structure-editor__component-title strong,
+.ada-tool-structure-editor__subcomponents-copy strong {
+    color: var(--atlanticus-ui-text);
+    font-size: .76rem;
+    font-weight: 760;
+}
+
+.ada-tool-structure-editor__component-title small,
+.ada-tool-structure-editor__subcomponents-copy small {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .64rem;
+    line-height: 1.35;
 }
 
 .ada-tool-structure-editor__row-fields {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(min(100%, 12rem), 1fr)
+    );
     gap: .7rem;
     min-width: 0;
     flex: 1 1 auto;
@@ -128,7 +154,35 @@
     min-width: 0;
 }
 
+.ada-tool-structure-editor__subcomponents {
+    display: grid;
+    min-width: 0;
+    gap: .6rem;
+    padding: .7rem;
+    background: var(--atlanticus-ui-background);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .62rem;
+}
+
+.ada-tool-structure-editor__subcomponents-rows {
+    display: grid;
+    min-width: 0;
+    gap: .55rem;
+}
+
+.ada-tool-structure-editor__subcomponent-row {
+    display: flex;
+    align-items: flex-end;
+    min-width: 0;
+    gap: .65rem;
+    padding: .65rem;
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .58rem;
+}
+
 .ada-tool-structure-editor__add,
+.ada-tool-structure-editor__add-subcomponent,
 .ada-tool-structure-editor__delete {
     flex: 0 0 auto;
     white-space: nowrap;
@@ -203,7 +257,8 @@
     border-color: var(--atlanticus-ui-border);
 }
 
-.ada-tool-structure-editor__select .dash-dropdown-search-container:focus-within {
+.ada-tool-structure-editor__select
+.dash-dropdown-search-container:focus-within {
     border-color: var(--atlanticus-ui-secondary);
     outline: 1px solid var(--atlanticus-ui-secondary);
 }
@@ -214,7 +269,8 @@
     font-size: .7rem;
 }
 
-.ada-tool-structure-editor__select .dash-options-list-option-checkbox {
+.ada-tool-structure-editor__select
+.dash-options-list-option-checkbox {
     width: .78rem;
     height: .78rem;
     accent-color: var(--atlanticus-ui-secondary);
@@ -231,12 +287,15 @@
     }
 
     .ada-tool-structure-editor__collection-heading,
-    .ada-tool-structure-editor__row {
+    .ada-tool-structure-editor__component-head,
+    .ada-tool-structure-editor__subcomponents-heading,
+    .ada-tool-structure-editor__subcomponent-row {
         align-items: stretch;
         flex-direction: column;
     }
 
     .ada-tool-structure-editor__add,
+    .ada-tool-structure-editor__add-subcomponent,
     .ada-tool-structure-editor__delete {
         width: 100%;
     }
