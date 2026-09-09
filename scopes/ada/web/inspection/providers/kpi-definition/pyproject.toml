@@ -11,7 +11,7 @@ classifiers = [
     "Private :: Do Not Upload",
 ]
 dependencies = [
-    "ada-configuration-kpi-definition==0.1.0",
+    "ada-web-kpi-definition==0.1.0",
     "ada-web-kpi-inspection-core==0.2.0",
 ]
 
@@ -22,7 +22,7 @@ dev = [
 ]
 
 [tool.uv.sources]
-ada-configuration-kpi-definition = { path = "../../../configuration/kpi-definition", editable = true }
+ada-web-kpi-definition = { path = "../../../kpis/definition", editable = true }
 ada-web-kpi-inspection-core = { path = "../../core", editable = true }
 
 [tool.setuptools]
@@ -61,5 +61,5 @@ combine-as-imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src", "../../core/src", "../../../configuration/kpi-definition/src"]
+pythonpath = ["src", "../../core/src", "../../../kpis/definition/src"]
 addopts = "-q --import-mode=importlib"

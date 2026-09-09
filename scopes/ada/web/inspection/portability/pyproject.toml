@@ -11,7 +11,7 @@ classifiers = [
     "Private :: Do Not Upload",
 ]
 dependencies = [
-    "ada-configuration-kpi-definition==0.1.0",
+    "ada-web-kpi-definition==0.1.0",
     "ada-web-kpi-inspection-api==0.1.0",
     "ada-web-kpi-inspection-core==0.2.0",
     "ada-web-kpi-inspection-definition-provider==0.1.0",
@@ -27,7 +27,7 @@ dev = [
 ]
 
 [tool.uv.sources]
-ada-configuration-kpi-definition = { path = "../../configuration/kpi-definition", editable = true }
+ada-web-kpi-definition = { path = "../../kpis/definition", editable = true }
 ada-web-kpi-inspection-api = { path = "../api", editable = true }
 ada-web-kpi-inspection-core = { path = "../core", editable = true }
 ada-web-kpi-inspection-definition-provider = { path = "../providers/kpi-definition", editable = true }
@@ -70,7 +70,7 @@ combine-as-imports = true
 testpaths = ["tests"]
 pythonpath = [
     "src",
-    "../../configuration/kpi-definition/src",
+    "../../kpis/definition/src",
     "../core/src",
     "../providers/kpi-definition/src",
     "../runtime/src",

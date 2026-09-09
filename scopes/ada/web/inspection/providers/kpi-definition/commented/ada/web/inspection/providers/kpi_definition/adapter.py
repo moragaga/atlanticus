@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ada.configuration.kpi_definition import KpiDefinitionProjectionRepository
+from ada.web.kpis.definition import KpiDefinitionProjectionRepository
 from ada.web.inspection.core import KpiDefinition, KpiDefinitionSnapshot
 
 

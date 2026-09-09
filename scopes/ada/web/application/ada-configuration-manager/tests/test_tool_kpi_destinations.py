@@ -2,10 +2,10 @@ from datetime import UTC, datetime
 
 import pytest
 
-from ada.configuration.kpi_configuration import KpiConfigurationValidationError
 from ada.web.application.configuration_manager.tool_kpi_destinations import (
     ToolConfigurationKpiDestinationCatalogProvider,
 )
+from ada.web.kpis.configuration import KpiConfigurationValidationError
 from ada.web.tools.configuration import ToolConfiguration, ToolConfigurationProjectionSnapshot
 from ada.web.tools.enums import (
     ProcessLayoutRole,

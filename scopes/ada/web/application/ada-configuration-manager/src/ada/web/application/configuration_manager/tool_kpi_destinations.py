@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ada.configuration.kpi_configuration import (
+from ada.web.kpis.configuration import (
     KpiConfigurationValidationError,
     KpiDestination,
     KpiDestinationCatalog,

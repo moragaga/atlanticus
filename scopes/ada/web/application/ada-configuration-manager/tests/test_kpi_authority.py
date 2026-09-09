@@ -1,12 +1,12 @@
 from datetime import UTC, datetime
 
-from ada.configuration.kpi_configuration import (
+from ada.web.application.configuration_manager.kpi_authority import (
+    KpiConfigurationDefinitionAuthorityProvider,
+)
+from ada.web.kpis.configuration import (
     KpiConfiguration,
     KpiConfigurationBinding,
     KpiConfigurationProjection,
-)
-from ada.web.application.configuration_manager.kpi_authority import (
-    KpiConfigurationDefinitionAuthorityProvider,
 )
 
 

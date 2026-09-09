@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 # Adapta exclusivamente la Tool proyectada al catálogo de destinos KPI. La regla de destinos permanece en ToolStructure y los Subcomponents siguen siendo fases visuales.
-from ada.configuration.kpi_configuration import (
+from ada.web.kpis.configuration import (
     KpiConfigurationValidationError,
     KpiDestination,
     KpiDestinationCatalog,

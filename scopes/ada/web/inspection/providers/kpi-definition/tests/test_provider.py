@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from ada.configuration.kpi_definition import (
+from ada.web.kpis.definition import (
     KpiDefinition as ConfigurationKpiDefinition,
     KpiDefinitionConfiguration,
     KpiDefinitionProjection,

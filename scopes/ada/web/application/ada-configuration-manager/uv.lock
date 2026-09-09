@@ -3,38 +3,12 @@ revision = 3
 requires-python = "==3.14.2"
 
 [[package]]
-name = "ada-configuration-kpi-configuration"
-version = "0.2.0"
-source = { editable = "../../configuration/kpi-configuration" }
-
-[package.metadata]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-configuration-kpi-definition"
-version = "0.4.0"
-source = { editable = "../../configuration/kpi-definition" }
-
-[package.metadata]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
 name = "ada-configuration-manager"
 version = "0.4.3"
 source = { editable = "." }
 dependencies = [
-    { name = "ada-configuration-kpi-configuration" },
-    { name = "ada-configuration-kpi-definition" },
+    { name = "ada-web-kpi-configuration" },
+    { name = "ada-web-kpi-definition" },
     { name = "ada-web-tools" },
     { name = "ada-web-tools-configuration", extra = ["web"] },
     { name = "atlanticus-web" },
@@ -55,8 +29,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-configuration-kpi-configuration", editable = "../../configuration/kpi-configuration" },
-    { name = "ada-configuration-kpi-definition", editable = "../../configuration/kpi-definition" },
+    { name = "ada-web-kpi-configuration", editable = "../../kpis/configuration" },
+    { name = "ada-web-kpi-definition", editable = "../../kpis/definition" },
     { name = "ada-web-tools", editable = "../../tools/core" },
     { name = "ada-web-tools-configuration", extras = ["web"], editable = "../../tools/configuration" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
@@ -93,6 +67,32 @@ dev = [
     { name = "ada-web-ui-core", editable = "../../ui/core" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "dash", specifier = "==4.4.1" },
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-kpi-configuration"
+version = "0.2.0"
+source = { editable = "../../kpis/configuration" }
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-kpi-definition"
+version = "0.4.0"
+source = { editable = "../../kpis/definition" }
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]

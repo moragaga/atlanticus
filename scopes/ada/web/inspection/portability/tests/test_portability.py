@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from flask import Flask
 
-from ada.configuration.kpi_definition import (
+from ada.web.kpis.definition import (
     KpiDefinition as ConfigurationKpiDefinition,
     KpiDefinitionConfiguration,
     KpiDefinitionProjection,
@@ -191,7 +191,7 @@ def test_failed_refresh_preserves_last_valid_snapshot_served_by_api() -> None:
 def test_portability_dependency_graph_has_no_direct_azure_or_cosmos_imports() -> None:
     root = Path(__file__).resolve().parents[1]
     capability_roots = (
-        root / '../../configuration/kpi-definition',
+        root / '../../kpis/definition',
         root / '../core',
         root / '../providers/kpi-definition',
         root / '../runtime',

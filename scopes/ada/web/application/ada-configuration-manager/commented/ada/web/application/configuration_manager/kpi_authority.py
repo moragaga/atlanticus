@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 # Adapta el catálogo proyectado de KPI Configuration al contrato autoritativo que consume KPI Definition.
-from ada.configuration.kpi_configuration import KpiConfigurationProjectionRepository
-from ada.configuration.kpi_definition import KpiDefinitionAuthorityCatalog
+from ada.web.kpis.configuration import KpiConfigurationProjectionRepository
+from ada.web.kpis.definition import KpiDefinitionAuthorityCatalog
 
 
 class KpiConfigurationDefinitionAuthorityProvider:

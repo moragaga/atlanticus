@@ -3,11 +3,32 @@ revision = 3
 requires-python = "==3.14.2"
 
 [[package]]
-name = "ada-configuration-kpi-definition"
-version = "0.1.0"
-source = { editable = "../../../configuration/kpi-definition" }
+name = "ada-web-kpi-configuration"
+version = "0.2.0"
+source = { editable = "../../../kpis/configuration" }
+dependencies = [
+    { name = "ada-web-tools" },
+]
 
 [package.metadata]
+requires-dist = [{ name = "ada-web-tools", editable = "../../../tools/core" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-kpi-definition"
+version = "0.4.0"
+source = { editable = "../../../kpis/definition" }
+dependencies = [
+    { name = "ada-web-kpi-configuration" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "ada-web-kpi-configuration", editable = "../../../kpis/configuration" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -33,7 +54,7 @@ name = "ada-web-kpi-inspection-definition-provider"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "ada-configuration-kpi-definition" },
+    { name = "ada-web-kpi-definition" },
     { name = "ada-web-kpi-inspection-core" },
 ]
 
@@ -45,9 +66,22 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-configuration-kpi-definition", editable = "../../../configuration/kpi-definition" },
+    { name = "ada-web-kpi-definition", editable = "../../../kpis/definition" },
     { name = "ada-web-kpi-inspection-core", editable = "../../core" },
 ]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-tools"
+version = "0.1.0"
+source = { editable = "../../../tools/core" }
+
+[package.metadata]
 
 [package.metadata.requires-dev]
 dev = [

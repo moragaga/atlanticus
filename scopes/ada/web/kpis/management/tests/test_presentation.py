@@ -1,0 +1,231 @@
+from __future__ import annotations
+
+from dash.development.base_component import Component
+
+from ada.web.configuration import (
+    ConfigurationMutationState,
+    ConfigurationMutationStatus,
+    ConfigurationPageRequest,
+)
+from ada.web.kpis.configuration import (
+    KpiConfiguration,
+    KpiConfigurationBinding,
+    KpiDestination,
+    KpiDestinationCatalog,
+)
+from ada.web.kpis.management import (
+    KpiConfigurationQuery,
+    build_kpi_configuration_editor_modal,
+    build_kpi_configuration_management,
+    query_kpi_configuration,
+)
+
+
+def _prop(component: Component, name: str) -> object:
+    return component.to_plotly_json()['props'].get(name)
+
+
+def _walk(component: object) -> list[Component]:
+    found: list[Component] = []
+    if isinstance(component, Component):
+        found.append(component)
+        children = getattr(component, 'children', None)
+        if isinstance(children, (list, tuple)):
+            for child in children:
+                found.extend(_walk(child))
+        elif children is not None:
+            found.extend(_walk(children))
+    return found
+
+
+def _catalog() -> KpiDestinationCatalog:
+    return KpiDestinationCatalog(
+        tool_projection_revision='tool-1',
+        destinations=(
+            KpiDestination(key='plant', display_name='Plant'),
+            KpiDestination(key='crusher', display_name='Crusher'),
+        ),
+    )
+
+
+def _configuration() -> KpiConfiguration:
+    return KpiConfiguration(
+        bindings=tuple(
+            KpiConfigurationBinding(
+                kpi_key=f'kpi_{index:02d}',
+                destination_keys=('plant', 'crusher'),
+                latest_enabled=True,
+                series_enabled=index % 2 == 0,
+                series_hours=12 if index % 2 == 0 else None,
+            )
+            for index in range(12)
+        )
+    )
+
+
+def test_management_surface_renders_first_ten_rows_and_pagination() -> None:
+    query = KpiConfigurationQuery()
+    page = query_kpi_configuration(_configuration(), query)
+    component = build_kpi_configuration_management(
+        page,
+        destination_catalog=_catalog(),
+        query=query,
+    )
+    nodes = _walk(component)
+
+    rows = [
+        node
+        for node in nodes
+        if isinstance(getattr(node, 'id', None), dict)
+        and node.id.get('type') == 'ada-kpi-management--row-actions'
+    ]
+    assert len(rows) == 10
+
+    page_size = next(
+        node
+        for node in nodes
+        if getattr(node, 'id', None) == 'ada-kpi-management--pagination-page-size'
+    )
+    assert tuple(option['value'] for option in page_size.options) == (10, 20)
+
+
+def test_partial_page_keeps_ten_visual_slots() -> None:
+    configuration = KpiConfiguration(
+        bindings=tuple(
+            KpiConfigurationBinding(
+                kpi_key=f'kpi_{index:02d}',
+                destination_keys=('plant',),
+            )
+            for index in range(3)
+        )
+    )
+    query = KpiConfigurationQuery()
+    page = query_kpi_configuration(configuration, query)
+    component = build_kpi_configuration_management(
+        page,
+        destination_catalog=_catalog(),
+        query=query,
+    )
+
+    slots = [
+        node
+        for node in _walk(component)
+        if _prop(node, 'data-row-slot') in {'record', 'empty', 'placeholder'}
+    ]
+    assert len(slots) == 10
+    assert sum(_prop(node, 'data-row-slot') == 'placeholder' for node in slots) == 7
+
+
+def test_twenty_row_page_keeps_twenty_visual_slots() -> None:
+    configuration = KpiConfiguration(
+        bindings=tuple(
+            KpiConfigurationBinding(
+                kpi_key=f'kpi_{index:02d}',
+                destination_keys=('plant',),
+            )
+            for index in range(3)
+        )
+    )
+    query = KpiConfigurationQuery(
+        page=ConfigurationPageRequest(page_size=20),
+    )
+    page = query_kpi_configuration(configuration, query)
+    component = build_kpi_configuration_management(
+        page,
+        destination_catalog=_catalog(),
+        query=query,
+    )
+
+    slots = [
+        node
+        for node in _walk(component)
+        if _prop(node, 'data-row-slot') in {'record', 'empty', 'placeholder'}
+    ]
+    assert len(slots) == 20
+    assert sum(_prop(node, 'data-row-slot') == 'placeholder' for node in slots) == 17
+
+
+def test_empty_configuration_distinguishes_empty_from_filtered() -> None:
+    configuration = KpiConfiguration()
+    query = KpiConfigurationQuery()
+    page = query_kpi_configuration(configuration, query)
+    component = build_kpi_configuration_management(
+        page,
+        destination_catalog=_catalog(),
+        query=query,
+    )
+    nodes = _walk(component)
+
+    body = next(
+        node
+        for node in nodes
+        if getattr(node, 'id', None) == 'ada-kpi-management--table-body'
+    )
+    assert _prop(body, 'data-empty-reason') == 'empty'
+
+    slots = [
+        node
+        for node in nodes
+        if _prop(node, 'data-row-slot') in {'record', 'empty', 'placeholder'}
+    ]
+    assert len(slots) == 10
+    assert _prop(slots[0], 'data-row-slot') == 'empty'
+
+
+def test_filtered_empty_configuration_reports_filter_state() -> None:
+    configuration = KpiConfiguration(
+        bindings=(
+            KpiConfigurationBinding(
+                kpi_key='availability',
+                destination_keys=('plant',),
+            ),
+        )
+    )
+    query = KpiConfigurationQuery(search='does-not-exist')
+    page = query_kpi_configuration(configuration, query)
+    component = build_kpi_configuration_management(
+        page,
+        destination_catalog=_catalog(),
+        query=query,
+    )
+
+    body = next(
+        node
+        for node in _walk(component)
+        if getattr(node, 'id', None) == 'ada-kpi-management--table-body'
+    )
+    assert _prop(body, 'data-empty-reason') == 'filtered'
+
+
+def test_busy_row_disables_only_its_actions() -> None:
+    query = KpiConfigurationQuery()
+    page = query_kpi_configuration(_configuration(), query)
+    component = build_kpi_configuration_management(
+        page,
+        destination_catalog=_catalog(),
+        query=query,
+        mutation=ConfigurationMutationState(
+            status=ConfigurationMutationStatus.SAVING,
+            item_key='kpi_00',
+        ),
+    )
+    actions = {
+        node.id['index']: node
+        for node in _walk(component)
+        if isinstance(getattr(node, 'id', None), dict)
+        and node.id.get('type') == 'ada-kpi-management--row-actions'
+    }
+
+    assert actions['kpi_00'].disabled is True
+    assert actions['kpi_01'].disabled is False
+
+
+def test_editor_hours_are_disabled_until_timeseries_is_enabled() -> None:
+    modal = build_kpi_configuration_editor_modal(destination_catalog=_catalog())
+    hours = next(
+        node
+        for node in _walk(modal)
+        if getattr(node, 'id', None) == 'ada-kpi-management--editor-hours'
+    )
+
+    assert hours.disabled is True
