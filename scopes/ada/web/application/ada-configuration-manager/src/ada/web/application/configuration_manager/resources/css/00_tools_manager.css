@@ -168,6 +168,13 @@
 
 .ada-configuration-manager-tools__modal--open {
     display: grid;
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+html:has(.ada-configuration-manager-tools__modal--open),
+body:has(.ada-configuration-manager-tools__modal--open) {
+    overflow: hidden;
 }
 
 .ada-configuration-manager-tools__modal-backdrop {
@@ -184,6 +191,7 @@
     display: grid;
     width: min(96vw, 72rem);
     max-height: calc(100vh - 2rem);
+    grid-template-rows: auto minmax(0, 1fr);
     overflow: hidden;
     color: var(--atlanticus-ui-text);
     background: var(--atlanticus-ui-surface);
@@ -219,6 +227,16 @@
     font-weight: 800;
 }
 
+.ada-configuration-manager-tools__modal-header
+.ada-configuration-manager-tools__modal-heading h2 {
+    color: #fff;
+}
+
+.ada-configuration-manager-tools__modal-header
+.ada-configuration-manager-tools__modal-heading p {
+    color: rgb(255 255 255 / 74%);
+}
+
 .ada-configuration-manager-tools__modal-heading p,
 .ada-configuration-manager-tools__detail-section > p {
     color: var(--atlanticus-ui-text-muted);
@@ -228,8 +246,12 @@
 
 .ada-configuration-manager-tools__modal-body {
     min-width: 0;
+    min-height: 0;
     overflow: auto;
+    overscroll-behavior: contain;
     padding: 1rem 1.1rem 1.1rem;
+    background: var(--atlanticus-ui-background);
+    scrollbar-gutter: stable;
 }
 
 .ada-configuration-manager-tools__detail {
@@ -243,7 +265,7 @@
     min-width: 0;
     gap: .65rem;
     padding: .85rem;
-    background: var(--atlanticus-ui-surface);
+    background: var(--atlanticus-ui-surface-muted);
     border: 1px solid var(--atlanticus-ui-border);
     border-radius: .72rem;
 }
@@ -282,9 +304,17 @@
 .ada-configuration-manager-tools__detail-subcomponent {
     min-width: 0;
     padding: .72rem .78rem;
-    background: var(--atlanticus-ui-surface-muted);
     border: 1px solid var(--atlanticus-ui-border);
     border-radius: .65rem;
+}
+
+.ada-configuration-manager-tools__detail-legend-item,
+.ada-configuration-manager-tools__detail-card {
+    background: var(--atlanticus-ui-surface);
+}
+
+.ada-configuration-manager-tools__detail-subcomponent {
+    background: var(--atlanticus-ui-background);
 }
 
 .ada-configuration-manager-tools__detail-legend-item {
@@ -380,13 +410,13 @@
 }
 
 .ada-configuration-manager-tools__detail-subcomponent {
-    background: var(--atlanticus-ui-surface);
+    background: var(--atlanticus-ui-background);
 }
 
 .ada-configuration-manager-tools__detail-empty {
     padding: .72rem .78rem;
     color: var(--atlanticus-ui-text-muted);
-    background: var(--atlanticus-ui-surface-muted);
+    background: var(--atlanticus-ui-surface);
     border: 1px dashed var(--atlanticus-ui-border);
     border-radius: .62rem;
     font-size: .68rem;
@@ -396,7 +426,7 @@
 .ada-configuration-manager-tools__detail-contract-box {
     min-width: 0;
     overflow: hidden;
-    background: var(--atlanticus-ui-surface-muted);
+    background: var(--atlanticus-ui-surface);
     border: 1px solid var(--atlanticus-ui-border);
     border-radius: .62rem;
 }

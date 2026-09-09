@@ -151,6 +151,17 @@ def test_tool_manager_layout_matches_existing_manager_import_and_save_pattern() 
     assert TOOL_DETAIL_BUTTON_ID in ids
     assert TOOL_DETAIL_MODAL_ID in ids
 
+    detail_modal = component_by_id(layout, TOOL_DETAIL_MODAL_ID)
+    assert detail_modal is not None
+    detail_dialog = detail_modal.children[1]
+    detail_header = detail_dialog.children[0]
+    detail_body = detail_dialog.children[1]
+    detail_close = detail_header.children[1]
+    assert 'modal-content' in detail_dialog.className
+    assert 'modal-header' in detail_header.className
+    assert 'modal-body' in detail_body.className
+    assert detail_close.className == 'btn-close'
+
     source = component_by_id(layout, TOOL_SOURCE_NAME_ID)
     projection = component_by_id(layout, TOOL_PROJECTION_NAME_ID)
     assert source is not None and source.children == 'SharePoint'

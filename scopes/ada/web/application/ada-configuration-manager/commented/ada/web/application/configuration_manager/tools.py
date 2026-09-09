@@ -516,21 +516,34 @@ def _tool_detail_modal() -> object:
                                 className='ada-configuration-manager-tools__modal-heading',
                             ),
                             html.Button(
-                                'Cerrar',
                                 id=TOOL_DETAIL_CLOSE_ID,
                                 n_clicks=0,
                                 type='button',
-                                className='btn btn-outline-secondary btn-sm',
+                                className='btn-close',
+                                **{
+                                    'aria-label': (
+                                        'Cerrar detalle de configuración'
+                                    )
+                                },
                             ),
                         ],
-                        className='ada-configuration-manager-tools__modal-header',
+                        className=(
+                            'modal-header '
+                            'ada-configuration-manager-tools__modal-header'
+                        ),
                     ),
                     html.Div(
                         id=TOOL_DETAIL_BODY_ID,
-                        className='ada-configuration-manager-tools__modal-body',
+                        className=(
+                            'modal-body '
+                            'ada-configuration-manager-tools__modal-body'
+                        ),
                     ),
                 ],
-                className='ada-configuration-manager-tools__modal-dialog',
+                className=(
+                    'modal-content '
+                    'ada-configuration-manager-tools__modal-dialog'
+                ),
                 role='dialog',
                 **{'aria-modal': 'true'},
             ),
