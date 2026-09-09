@@ -137,9 +137,9 @@ dev = [
 ]
 
 [[package]]
-name = "ada-web-component-store"
+name = "ada-web-components"
 version = "0.1.0"
-source = { editable = "../../component-store" }
+source = { editable = "../../components/core" }
 dependencies = [
     { name = "ada-web-tools" },
 ]
@@ -280,13 +280,13 @@ name = "ada-web-operational-render-binding"
 version = "0.1.0"
 source = { editable = "../../operational-render-binding" }
 dependencies = [
-    { name = "ada-web-component-store" },
+    { name = "ada-web-components" },
     { name = "ada-web-tools" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-web-component-store", editable = "../../component-store" },
+    { name = "ada-web-components", editable = "../../components/core" },
     { name = "ada-web-tools", editable = "../../tools/core" },
 ]
 

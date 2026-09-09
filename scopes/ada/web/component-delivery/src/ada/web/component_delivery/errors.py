@@ -1,2 +1,0 @@
-class ComponentDeliveryValidationError(ValueError):
-    pass

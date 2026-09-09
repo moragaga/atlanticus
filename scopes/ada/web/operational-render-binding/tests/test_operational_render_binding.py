@@ -1,6 +1,6 @@
 import pytest
 
-from ada.web.component_store import ComponentStoreSnapshot, ComponentStoreState
+from ada.web.components import ComponentStoreSnapshot, ComponentStoreState
 from ada.web.operational_render_binding import (
     OperationalRenderBindingError,
     bind_operational_render,

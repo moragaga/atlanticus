@@ -5,26 +5,8 @@ requires-python = "==3.14.2"
 [[package]]
 name = "ada-web-components"
 version = "0.1.0"
-source = { editable = "../components/core" }
-dependencies = [
-    { name = "ada-web-tools" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "ada-web-tools", editable = "../tools/core" }]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-operational-render-binding"
-version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "ada-web-components" },
     { name = "ada-web-tools" },
 ]
 
@@ -35,10 +17,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "ada-web-components", editable = "../components/core" },
-    { name = "ada-web-tools", editable = "../tools/core" },
-]
+requires-dist = [{ name = "ada-web-tools", editable = "../../tools/core" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -49,7 +28,7 @@ dev = [
 [[package]]
 name = "ada-web-tools"
 version = "0.1.0"
-source = { editable = "../tools/core" }
+source = { editable = "../../tools/core" }
 
 [package.metadata]
 

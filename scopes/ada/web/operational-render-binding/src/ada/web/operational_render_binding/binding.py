@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 
-from ada.web.component_store import ComponentStoreSnapshot
+from ada.web.components import ComponentStoreSnapshot
 from ada.web.operational_render_binding.errors import OperationalRenderBindingError
 from ada.web.operational_render_binding.models import (
     OperationalComponentBinding,

@@ -9,7 +9,7 @@ from ada.web.application.generic.composition import AdaApplicationComposition
 from ada.web.application.generic.layout import build_body_application_layout
 from ada.web.application.generic.operational_render import build_operational_body
 from ada.web.application.generic.runtime import create_application_runtime
-from ada.web.component_store import ComponentStoreState, build_empty_component_stores
+from ada.web.components import ComponentStoreState, build_empty_component_stores
 from ada.web.operational_render_binding import bind_operational_render
 from ada.web.tools.enums import (
     ToolConfigurationKind,
