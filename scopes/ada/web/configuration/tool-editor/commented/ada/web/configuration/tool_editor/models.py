@@ -26,19 +26,30 @@ from ada.web.configuration.tool_editor.errors import (
 _CONTROL_SOURCE_KEYS = frozenset({'pi', 'dispatch'})
 
 # La parte legible de la identidad se normaliza a ASCII técnico; el token asegura unicidad.
-_TOOL_KEY_SLUG_PATTERN = re.compile(r'[^a-z0-9]+')
-_TOOL_KEY_SLUG_MAX_LENGTH = 48
+_KEY_SLUG_PATTERN = re.compile(r'[^a-z0-9]+')
+_KEY_SLUG_MAX_LENGTH = 48
 
 
-def generate_tool_key(display_name: str) -> str:
+# Tool, Component y Subcomponent comparten una identidad legible, ASCII, única e inmutable.
+def generate_named_key(
+    prefix: str,
+    display_name: str,
+    *,
+    existing: list[object] | tuple[object, ...] = (),
+) -> str:
+    normalized_prefix = str(prefix).strip().casefold()
+    if normalized_prefix not in {'tool', 'cmp', 'sub'}:
+        raise ToolSourceEditorValidationError(
+            'Tool editor key prefix is invalid'
+        )
     if not isinstance(display_name, str):
         raise ToolSourceEditorValidationError(
-            'Tool display name must be text'
+            'Tool editor display name must be text'
         )
     resolved_name = display_name.strip()
     if not resolved_name:
         raise ToolSourceEditorValidationError(
-            'Tool display name is required'
+            'Tool editor display name is required'
         )
     ascii_name = (
         normalize('NFKD', resolved_name)
@@ -46,11 +57,23 @@ def generate_tool_key(display_name: str) -> str:
         .decode('ascii')
         .casefold()
     )
-    slug = _TOOL_KEY_SLUG_PATTERN.sub('_', ascii_name).strip('_')
-    slug = slug[:_TOOL_KEY_SLUG_MAX_LENGTH].rstrip('_')
+    slug = _KEY_SLUG_PATTERN.sub('_', ascii_name).strip('_')
+    slug = slug[:_KEY_SLUG_MAX_LENGTH].rstrip('_')
     if not slug:
-        slug = 'tool'
-    return f'tool_{slug}_{token_hex(6)}'
+        slug = 'item'
+    occupied = {
+        str(value).strip()
+        for value in existing
+        if str(value or '').strip()
+    }
+    while True:
+        candidate = f'{normalized_prefix}_{slug}_{token_hex(6)}'
+        if candidate not in occupied:
+            return candidate
+
+
+def generate_tool_key(display_name: str) -> str:
+    return generate_named_key('tool', display_name)
 
 
 @dataclass(frozen=True, slots=True)

@@ -364,6 +364,15 @@ body:has(.ada-configuration-manager-tools__modal--open) {
     gap: .15rem;
 }
 
+.ada-configuration-manager-tools__detail-value--wide {
+    grid-column: 1 / -1;
+}
+
+.ada-configuration-manager-tools__detail-value--wide
+.ada-configuration-manager-tools__detail-code {
+    width: 100%;
+}
+
 .ada-configuration-manager-tools__detail-value small {
     color: var(--atlanticus-ui-text-muted);
     font-size: .61rem;
@@ -421,6 +430,12 @@ body:has(.ada-configuration-manager-tools__modal--open) {
     border-radius: .62rem;
     font-size: .68rem;
     line-height: 1.4;
+}
+
+.ada-configuration-manager-tools__detail-contract-state {
+    display: grid;
+    min-width: 0;
+    gap: .6rem;
 }
 
 .ada-configuration-manager-tools__detail-contract-box {

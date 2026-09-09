@@ -31,6 +31,7 @@ from ada.web.configuration.tool_editor import (
     register_tool_source_editor_callbacks,
     register_tool_structure_editor_callbacks,
 )
+from ada.web.configuration.tool_editor.ids import TOOL_KEY_STORE_ID
 from ada.web.configuration.tool_editor.structure_ids import (
     COMPONENT_DISPLAY_NAME_TYPE,
     COMPONENT_KEY_TYPE,
@@ -183,6 +184,7 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
         Input(TOOL_DETAIL_CLOSE_ID, 'n_clicks'),
         Input(TOOL_DETAIL_BACKDROP_ID, 'n_clicks'),
         State(DISPLAY_NAME_ID, 'value'),
+        State(TOOL_KEY_STORE_ID, 'data'),
         State(KIND_ID, 'value'),
         State(COVERAGE_ID, 'value'),
         State(BRANDING_ID, 'value'),
@@ -254,6 +256,7 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
         close_clicks: int | None,
         backdrop_clicks: int | None,
         display_name: str | None,
+        tool_key: str | None,
         kind_value: str | None,
         coverage: str | None,
         branding: str | None,
@@ -284,6 +287,7 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
             return no_update, no_update
         snapshot = _tool_detail_snapshot(
             display_name=display_name,
+            tool_key=tool_key,
             kind_value=kind_value,
             coverage=coverage,
             branding=branding,
@@ -557,6 +561,7 @@ def _tool_detail_modal() -> object:
 def _tool_detail_snapshot(
     *,
     display_name: str | None,
+    tool_key: str | None,
     kind_value: str | None,
     coverage: str | None,
     branding: str | None,
@@ -646,7 +651,11 @@ def _tool_detail_snapshot(
             }
         )
 
-    # Sólo serializa ToolConfiguration cuando Sources y Structure ya forman un contrato válido.
+    # La vista de inspección conserva un documento parcial aunque el contrato publicable aún no sea válido.
+    resolved_tool_key = _optional_text(tool_key)
+    if resolved_tool_key is None and isinstance(source_document, dict):
+        resolved_tool_key = _optional_text(source_document.get('tool_key'))
+
     contract = None
     if isinstance(source_document, dict) and isinstance(structure_document, dict):
         try:
@@ -657,13 +666,19 @@ def _tool_detail_snapshot(
         except ValueError:
             contract = None
 
+    inspection_document = _tool_inspection_document(
+        tool_key=resolved_tool_key,
+        display_name=_optional_text(display_name),
+        kind=_optional_text(kind_value),
+        coverage=_optional_text(coverage),
+        branding=_optional_text(branding),
+        components=components,
+        source_document=source_document,
+    )
+
     return {
         'general': {
-            'tool_key': (
-                _optional_text(source_document.get('tool_key'))
-                if isinstance(source_document, dict)
-                else None
-            ),
+            'tool_key': resolved_tool_key,
             'display_name': _optional_text(display_name),
             'kind': _optional_text(kind_value),
             'coverage': _optional_text(coverage),
@@ -690,7 +705,95 @@ def _tool_detail_snapshot(
         ),
         'components': components,
         'contract': contract,
+        'inspection_document': inspection_document,
     }
+
+
+# Construye una proyección de inspección parcial; no sustituye ToolConfiguration ni relaja su validación.
+def _tool_inspection_document(
+    *,
+    tool_key: str | None,
+    display_name: str | None,
+    kind: str | None,
+    coverage: str | None,
+    branding: str | None,
+    components: list[dict[str, object]],
+    source_document: dict[str, object] | None,
+) -> dict[str, object]:
+    document: dict[str, object] = {}
+    if tool_key is not None:
+        document['tool_key'] = tool_key
+    if display_name is not None:
+        document['display_name'] = display_name
+    if kind is not None:
+        document['kind'] = kind
+
+    if isinstance(source_document, dict):
+        for field in (
+            'source_consumption',
+            'source_operational_participation',
+        ):
+            value = source_document.get(field)
+            if isinstance(value, dict):
+                document[field] = value
+
+    if isinstance(source_document, dict) and isinstance(
+        source_document.get('branding'),
+        dict,
+    ):
+        document['branding'] = source_document['branding']
+    elif branding is not None:
+        document['branding'] = {'variant': branding}
+
+    structure: dict[str, object] = {}
+    if tool_key is not None:
+        structure['tool_key'] = tool_key
+    if kind is not None:
+        structure['kind'] = kind
+    if kind == 'process' and coverage in {'mine', 'plant'}:
+        structure['operational_scope'] = coverage
+
+    serialized_components: list[dict[str, object]] = []
+    for component in components:
+        component_document: dict[str, object] = {}
+        component_key = _optional_text(component.get('key'))
+        component_name = _optional_text(component.get('display_name'))
+        component_scope = _optional_text(component.get('scope'))
+        if component_key is not None:
+            component_document['key'] = component_key
+        if component_name is not None:
+            component_document['display_name'] = component_name
+        if kind == 'integrated_operations' and component_scope is not None:
+            component_document['scope'] = component_scope
+
+        serialized_subcomponents: list[dict[str, object]] = []
+        raw_subcomponents = component.get('subcomponents')
+        if isinstance(raw_subcomponents, list):
+            for subcomponent in raw_subcomponents:
+                if not isinstance(subcomponent, dict):
+                    continue
+                subcomponent_document: dict[str, object] = {}
+                subcomponent_key = _optional_text(subcomponent.get('key'))
+                subcomponent_name = _optional_text(
+                    subcomponent.get('display_name')
+                )
+                linked_keys = subcomponent.get('linked_component_keys')
+                if subcomponent_key is not None:
+                    subcomponent_document['key'] = subcomponent_key
+                if subcomponent_name is not None:
+                    subcomponent_document['display_name'] = subcomponent_name
+                if isinstance(linked_keys, (list, tuple)) and linked_keys:
+                    subcomponent_document['linked_component_keys'] = list(
+                        linked_keys
+                    )
+                serialized_subcomponents.append(subcomponent_document)
+
+        component_document['subcomponents'] = serialized_subcomponents
+        serialized_components.append(component_document)
+
+    structure['components'] = serialized_components
+    document['structure'] = structure
+    return document
 
 
 def _render_tool_detail(snapshot: dict[str, object]) -> object:
@@ -698,6 +801,7 @@ def _render_tool_detail(snapshot: dict[str, object]) -> object:
     sources = snapshot['sources']
     components = snapshot['components']
     contract = snapshot['contract']
+    inspection_document = snapshot['inspection_document']
     return html.Div(
         [
             html.Section(
@@ -726,14 +830,15 @@ def _render_tool_detail(snapshot: dict[str, object]) -> object:
                     html.Div(
                         [
                             _detail_value('Herramienta', general['display_name']),
+                            _detail_value('Tipo', _kind_label(general['kind'])),
+                            _detail_value('Cobertura', _coverage_label(general['coverage'])),
+                            _detail_value('Branding', _branding_label(general['branding'])),
                             _detail_value(
                                 'ID interno',
                                 general['tool_key'],
                                 technical=True,
+                                wide=True,
                             ),
-                            _detail_value('Tipo', _kind_label(general['kind'])),
-                            _detail_value('Cobertura', _coverage_label(general['coverage'])),
-                            _detail_value('Branding', _branding_label(general['branding'])),
                         ],
                         className='ada-configuration-manager-tools__detail-grid',
                     ),
@@ -813,32 +918,14 @@ def _render_tool_detail(snapshot: dict[str, object]) -> object:
             html.Section(
                 [
                     html.H3('Contrato actual'),
-                    (
-                        html.Details(
-                            [
-                                html.Summary('Ver Tool Configuration serializada'),
-                                html.Pre(
-                                    json.dumps(
-                                        contract,
-                                        ensure_ascii=False,
-                                        indent=2,
-                                    ),
-                                    className=(
-                                        'ada-configuration-manager-tools__detail-contract '
-                                        'ada-configuration-manager-tools__selectable'
-                                    ),
-                                ),
-                            ],
-                            className='ada-configuration-manager-tools__detail-contract-box',
-                        )
-                        if contract is not None
-                        else _detail_empty(
-                            _contract_pending_message(
-                                general=general,
-                                sources=sources,
-                                components=components,
-                            )
-                        )
+                    _detail_contract_view(
+                        contract=contract,
+                        inspection_document=inspection_document,
+                        pending_message=_contract_pending_message(
+                            general=general,
+                            sources=sources,
+                            components=components,
+                        ),
                     ),
                 ],
                 className='ada-configuration-manager-tools__detail-section',
@@ -855,7 +942,13 @@ def _detail_legend(label: str, copy: str) -> object:
     )
 
 
-def _detail_value(label: str, value: object, *, technical: bool = False) -> object:
+def _detail_value(
+    label: str,
+    value: object,
+    *,
+    technical: bool = False,
+    wide: bool = False,
+) -> object:
     resolved = _display_value(value)
     display = (
         html.Code(
@@ -868,9 +961,59 @@ def _detail_value(label: str, value: object, *, technical: bool = False) -> obje
         if technical and resolved != 'No configurado'
         else html.Strong(resolved)
     )
+    classes = ['ada-configuration-manager-tools__detail-value']
+    if wide:
+        classes.append('ada-configuration-manager-tools__detail-value--wide')
     return html.Div(
         [html.Small(label), display],
-        className='ada-configuration-manager-tools__detail-value',
+        className=' '.join(classes),
+    )
+
+
+# El contrato válido sigue siendo autoritativo; durante la edición mostramos el snapshot parcial por separado.
+def _detail_contract_view(
+    *,
+    contract: object,
+    inspection_document: object,
+    pending_message: str,
+) -> object:
+    if isinstance(contract, dict):
+        return _detail_serialized_document(
+            'Ver Tool Configuration serializada',
+            contract,
+        )
+    return html.Div(
+        [
+            _detail_empty(pending_message),
+            _detail_serialized_document(
+                'Ver configuración en edición',
+                inspection_document,
+            ),
+        ],
+        className='ada-configuration-manager-tools__detail-contract-state',
+    )
+
+
+def _detail_serialized_document(
+    summary: str,
+    document: object,
+) -> object:
+    return html.Details(
+        [
+            html.Summary(summary),
+            html.Pre(
+                json.dumps(
+                    document,
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                className=(
+                    'ada-configuration-manager-tools__detail-contract '
+                    'ada-configuration-manager-tools__selectable'
+                ),
+            ),
+        ],
+        className='ada-configuration-manager-tools__detail-contract-box',
     )
 
 

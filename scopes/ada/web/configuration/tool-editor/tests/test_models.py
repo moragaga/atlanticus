@@ -13,7 +13,10 @@ from ada.web.configuration.tool_editor import (
     build_configuration_from_source_editor,
     source_editor_values_from_configuration,
 )
-from ada.web.configuration.tool_editor.models import generate_tool_key
+from ada.web.configuration.tool_editor.models import (
+    generate_named_key,
+    generate_tool_key,
+)
 
 
 def _configuration() -> ToolConfiguration:
@@ -28,9 +31,7 @@ def _configuration() -> ToolConfiguration:
         source_operational_participation=(
             ToolSourceOperationalParticipation(
                 tool_key='process',
-                control_sources=(
-                    SourceControlPolicy('pi', 200, 300),
-                ),
+                control_sources=(SourceControlPolicy('pi', 200, 300),),
                 additional_observation_source_keys=(),
             )
         ),
@@ -102,11 +103,7 @@ def test_editor_can_create_initial_tool_without_existing_document() -> None:
     assert configuration.display_name == 'Operaciones Integradas'
     assert configuration.kind is ToolConfigurationKind.INTEGRATED_OPERATIONS
     assert configuration.branding.variant is BrandingVariant.MINING_MONTH
-    dispatch_policy = (
-        configuration.source_operational_participation.control_policy(
-            'dispatch'
-        )
-    )
+    dispatch_policy = configuration.source_operational_participation.control_policy('dispatch')
     assert dispatch_policy is not None
     assert dispatch_policy.pre_degrading_after_seconds == 350
     assert dispatch_policy.degrading_after_seconds == 450
@@ -129,9 +126,7 @@ def test_dispatch_uses_its_own_preventive_and_degradation_thresholds() -> None:
     )
 
     pi_policy = configuration.source_operational_participation.control_policy('pi')
-    dispatch_policy = (
-        configuration.source_operational_participation.control_policy('dispatch')
-    )
+    dispatch_policy = configuration.source_operational_participation.control_policy('dispatch')
 
     assert pi_policy is not None
     assert dispatch_policy is not None
@@ -158,12 +153,8 @@ def test_tool_editor_preserves_non_control_consumption_for_other_domains() -> No
         'pi',
         'future_kpi_source',
     )
-    assert (
-        configuration
-        .source_operational_participation
-        .additional_observation_source_keys
-        == ()
-    )
+    assert configuration.source_operational_participation.additional_observation_source_keys == ()
+
 
 def test_generated_tool_key_is_ascii_readable_and_unique() -> None:
     first = generate_tool_key('Área Húmeda – Flotación Ñandú')
@@ -193,3 +184,20 @@ def test_new_tool_identity_does_not_depend_on_tool_kind() -> None:
 
     assert configuration.tool_key == tool_key
     assert configuration.kind is ToolConfigurationKind.PROCESS
+
+
+def test_component_and_subcomponent_keys_are_readable_ascii_and_unique() -> None:
+    component_a = generate_named_key('cmp', 'Carguío Área Húmeda')
+    component_b = generate_named_key(
+        'cmp',
+        'Carguío Área Húmeda',
+        existing=[component_a],
+    )
+    subcomponent = generate_named_key('sub', 'Extracción N° 1')
+
+    assert component_a.startswith('cmp_carguio_area_humeda_')
+    assert component_b.startswith('cmp_carguio_area_humeda_')
+    assert component_a != component_b
+    assert subcomponent.startswith('sub_extraccion_n_1_')
+    assert component_a.isascii()
+    assert subcomponent.isascii()

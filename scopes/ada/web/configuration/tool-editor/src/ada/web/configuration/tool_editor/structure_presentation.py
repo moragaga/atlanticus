@@ -68,11 +68,7 @@ def build_tool_structure_editor(
         [
             dcc.Store(
                 id=STRUCTURE_DOCUMENT_STORE_ID,
-                data=(
-                    structure.to_document()
-                    if structure is not None
-                    else None
-                ),
+                data=(structure.to_document() if structure is not None else None),
                 storage_type='memory',
             ),
             dcc.Store(
@@ -119,9 +115,7 @@ def build_tool_structure_editor(
                                         )
                                     ),
                                 ],
-                                className=(
-                                    'ada-tool-structure-editor__collection-copy'
-                                ),
+                                className=('ada-tool-structure-editor__collection-copy'),
                             ),
                             html.Button(
                                 'Agregar componente',
@@ -129,14 +123,11 @@ def build_tool_structure_editor(
                                 type='button',
                                 n_clicks=0,
                                 className=(
-                                    'btn btn-outline-secondary '
-                                    'ada-tool-structure-editor__add'
+                                    'btn btn-outline-secondary ada-tool-structure-editor__add'
                                 ),
                             ),
                         ],
-                        className=(
-                            'ada-tool-structure-editor__collection-heading'
-                        ),
+                        className=('ada-tool-structure-editor__collection-heading'),
                     ),
                     html.Div(
                         [
@@ -177,15 +168,11 @@ def build_component_editor_row(
     row: Mapping[str, object] | None,
     kind: ToolConfigurationKind | None,
     coverage: str | None,
-    subcomponent_rows: Sequence[
-        tuple[int, Mapping[str, object]]
-    ] = (),
+    subcomponent_rows: Sequence[tuple[int, Mapping[str, object]]] = (),
     all_component_rows: Sequence[Mapping[str, object]] = (),
 ) -> Component:
     values = row or {}
-    integrated = (
-        kind is ToolConfigurationKind.INTEGRATED_OPERATIONS
-    )
+    integrated = kind is ToolConfigurationKind.INTEGRATED_OPERATIONS
     process = kind is ToolConfigurationKind.PROCESS
     scope_value = coverage if process else values.get('scope')
     linked_options = _linked_component_options(
@@ -203,12 +190,7 @@ def build_component_editor_row(
                                 [
                                     html.Strong(
                                         (
-                                            str(
-                                                values.get(
-                                                    'display_name'
-                                                )
-                                                or ''
-                                            ).strip()
+                                            str(values.get('display_name') or '').strip()
                                             or 'Nuevo componente'
                                         ),
                                         id=row_id(
@@ -228,39 +210,27 @@ def build_component_editor_row(
                                         ),
                                     ),
                                 ],
-                                className=(
-                                    'ada-tool-structure-editor__summary-copy'
-                                ),
+                                className=('ada-tool-structure-editor__summary-copy'),
                             ),
                         ],
-                        className=(
-                            'ada-tool-structure-editor__summary-main'
-                        ),
+                        className=('ada-tool-structure-editor__summary-main'),
                     ),
                     html.Div(
                         [
                             html.Span(
-                                _subcomponent_count_label(
-                                    len(subcomponent_rows)
-                                ),
+                                _subcomponent_count_label(len(subcomponent_rows)),
                                 id=row_id(
                                     COMPONENT_SUMMARY_COUNT_TYPE,
                                     index,
                                 ),
-                                className=(
-                                    'ada-tool-structure-editor__summary-meta'
-                                ),
+                                className=('ada-tool-structure-editor__summary-meta'),
                             ),
                             html.Span(
                                 'Editar',
-                                className=(
-                                    'ada-tool-structure-editor__summary-action'
-                                ),
+                                className=('ada-tool-structure-editor__summary-action'),
                             ),
                         ],
-                        className=(
-                            'ada-tool-structure-editor__summary-actions'
-                        ),
+                        className=('ada-tool-structure-editor__summary-actions'),
                     ),
                 ],
                 className='ada-tool-structure-editor__component-summary',
@@ -306,9 +276,7 @@ def build_component_editor_row(
                             index,
                         ),
                         hidden=kind is None,
-                        className=(
-                            'ada-tool-structure-editor__context-field'
-                        ),
+                        className=('ada-tool-structure-editor__context-field'),
                     ),
                 ],
                 className='ada-tool-structure-editor__row-fields',
@@ -330,10 +298,7 @@ def build_component_editor_row(
                                         )
                                     ),
                                 ],
-                                className=(
-                                    'ada-tool-structure-editor__'
-                                    'subcomponents-copy'
-                                ),
+                                className=('ada-tool-structure-editor__subcomponents-copy'),
                             ),
                             html.Button(
                                 'Agregar subcomponente',
@@ -350,10 +315,7 @@ def build_component_editor_row(
                                 ),
                             ),
                         ],
-                        className=(
-                            'ada-tool-structure-editor__'
-                            'subcomponents-heading'
-                        ),
+                        className=('ada-tool-structure-editor__subcomponents-heading'),
                     ),
                     html.Div(
                         [
@@ -370,9 +332,7 @@ def build_component_editor_row(
                             COMPONENT_SUBCOMPONENTS_CONTAINER_TYPE,
                             index,
                         ),
-                        className=(
-                            'ada-tool-structure-editor__subcomponents-rows'
-                        ),
+                        className=('ada-tool-structure-editor__subcomponents-rows'),
                     ),
                 ],
                 className='ada-tool-structure-editor__subcomponents',
@@ -404,9 +364,7 @@ def build_subcomponent_editor_row(
     linked_component_options: Sequence[Mapping[str, str]] = (),
 ) -> Component:
     values = row or {}
-    linked_values = _linked_values(
-        values.get('linked_component_keys')
-    )
+    linked_values = _linked_values(values.get('linked_component_keys'))
     return html.Details(
         [
             html.Summary(
@@ -415,10 +373,7 @@ def build_subcomponent_editor_row(
                         [
                             html.Strong(
                                 (
-                                    str(
-                                        values.get('display_name')
-                                        or ''
-                                    ).strip()
+                                    str(values.get('display_name') or '').strip()
                                     or 'Nuevo subcomponente'
                                 ),
                                 id=nested_row_id(
@@ -434,9 +389,7 @@ def build_subcomponent_editor_row(
                                     index,
                                     owner_index,
                                 ),
-                                className=(
-                                    'ada-tool-structure-editor__summary-meta'
-                                ),
+                                className=('ada-tool-structure-editor__summary-meta'),
                             ),
                         ],
                         className='ada-tool-structure-editor__summary-copy',
@@ -480,13 +433,8 @@ def build_subcomponent_editor_row(
                             value=linked_values,
                             options=linked_component_options,
                             multi=True,
-                            placeholder=(
-                                'Seleccionar componentes compatibles'
-                            ),
-                            disabled=(
-                                linked_hidden
-                                or not linked_component_options
-                            ),
+                            placeholder=('Seleccionar componentes compatibles'),
+                            disabled=(linked_hidden or not linked_component_options),
                         ),
                         id=nested_row_id(
                             SUBCOMPONENT_LINKED_WRAPPER_TYPE,
@@ -585,9 +533,7 @@ def _linked_component_options(
 ) -> list[dict[str, str]]:
     if owner_index < 0 or owner_index >= len(rows):
         return []
-    owner_scope = str(
-        rows[owner_index].get('scope') or ''
-    ).strip()
+    owner_scope = str(rows[owner_index].get('scope') or '').strip()
     if not owner_scope:
         return []
     options: list[dict[str, str]] = []
@@ -599,9 +545,7 @@ def _linked_component_options(
         key = str(row.get('key') or '').strip()
         if not key:
             continue
-        display_name = str(
-            row.get('display_name') or ''
-        ).strip()
+        display_name = str(row.get('display_name') or '').strip()
         options.append(
             {
                 'label': display_name or key,
@@ -619,9 +563,7 @@ def _subcomponent_rows_by_owner(
         list[tuple[int, Mapping[str, object]]],
     ] = {}
     for index, row in enumerate(rows):
-        owner_key = str(
-            row.get('owner_component_key') or ''
-        ).strip()
+        owner_key = str(row.get('owner_component_key') or '').strip()
         resolved.setdefault(owner_key, []).append((index, row))
     return resolved
 
@@ -630,17 +572,9 @@ def _linked_values(value: object) -> list[str]:
     if value is None:
         return []
     if isinstance(value, str):
-        return [
-            item.strip()
-            for item in value.split(',')
-            if item.strip()
-        ]
+        return [item.strip() for item in value.split(',') if item.strip()]
     if isinstance(value, (list, tuple)):
-        return [
-            str(item).strip()
-            for item in value
-            if str(item).strip()
-        ]
+        return [str(item).strip() for item in value if str(item).strip()]
     return []
 
 

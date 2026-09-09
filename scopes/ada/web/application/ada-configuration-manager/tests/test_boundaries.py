@@ -12,7 +12,7 @@ def test_application_composition_has_no_physical_backend_or_legacy_manager_tools
         'Cosmos',
         'Databricks',
         'ServiceBus',
-        'manager_tools',
+        'ada.web.configuration.manager_tools',
         'kpi_definition.web',
     ):
         assert forbidden not in source

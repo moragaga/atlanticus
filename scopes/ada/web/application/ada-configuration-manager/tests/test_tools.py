@@ -289,6 +289,7 @@ def test_tool_manager_web_module_composes_editor_and_manager_assets() -> None:
 def test_tool_detail_empty_state_is_neutral_and_keeps_fixed_destinations() -> None:
     snapshot = _tool_detail_snapshot(
         display_name=None,
+        tool_key=None,
         kind_value=None,
         coverage=None,
         branding=None,
@@ -316,6 +317,7 @@ def test_tool_detail_empty_state_is_neutral_and_keeps_fixed_destinations() -> No
     assert snapshot['general']['display_name'] is None
     assert snapshot['components'] == []
     assert snapshot['contract'] is None
+    assert snapshot['inspection_document']['structure']['components'] == []
     assert [item['key'] for item in snapshot['fixed_destinations']] == [
         'global_indicators',
         'time_status',
@@ -326,9 +328,7 @@ def test_tool_detail_preserves_accents_and_structural_identity() -> None:
     document = tool_document()
     document['display_name'] = 'Operaciones Integradas – Área Húmeda'
     document['structure']['components'][0]['display_name'] = 'Chancado Primário'
-    document['structure']['components'][0]['subcomponents'][0]['display_name'] = (
-        'Extracción N° 1'
-    )
+    document['structure']['components'][0]['subcomponents'][0]['display_name'] = 'Extracción N° 1'
     configuration = _editor_configuration(
         source_document=document,
         structure_document=document['structure'],
@@ -337,6 +337,7 @@ def test_tool_detail_preserves_accents_and_structural_identity() -> None:
 
     snapshot = _tool_detail_snapshot(
         display_name='Operaciones Integradas – Área Húmeda',
+        tool_key=document['tool_key'],
         kind_value='process',
         coverage='plant',
         branding='original',
@@ -378,6 +379,7 @@ def test_tool_detail_preserves_accents_and_structural_identity() -> None:
     assert 'scope' not in component_document
     assert 'additional_observation_source_keys' not in participation_document
 
+
 def test_tool_detail_pending_message_explains_integrated_scope_requirement() -> None:
     message = _contract_pending_message(
         general={
@@ -412,6 +414,71 @@ def test_tool_detail_pending_message_explains_integrated_scope_requirement() -> 
     )
 
     assert message == (
-        'Pendiente de completar. Operaciones integradas requiere '
-        'componentes de Mina y Planta.'
+        'Pendiente de completar. Operaciones integradas requiere componentes de Mina y Planta.'
     )
+
+
+def test_tool_detail_keeps_partial_serialization_before_integrated_is_complete() -> None:
+    snapshot = _tool_detail_snapshot(
+        display_name='Operaciones Integradas',
+        tool_key='tool_operaciones_integradas_a1b2c3d4e5f6',
+        kind_value='integrated_operations',
+        coverage='mine_plant',
+        branding='original',
+        pi_preventive=300,
+        pi_degradation=600,
+        dispatch_values=[],
+        dispatch_preventive=None,
+        dispatch_degradation=None,
+        component_key_ids=[{'type': 'key', 'index': 0}],
+        component_keys=['cmp_carguio_123456789abc'],
+        component_name_ids=[{'type': 'name', 'index': 0}],
+        component_names=['Carguío'],
+        component_scope_ids=[{'type': 'scope', 'index': 0}],
+        component_scopes=['mine'],
+        subcomponent_key_ids=[{'type': 'sub-key', 'owner_index': 0, 'index': 0}],
+        subcomponent_keys=['sub_caex_abcdef123456'],
+        subcomponent_name_ids=[{'type': 'sub-name', 'owner_index': 0, 'index': 0}],
+        subcomponent_names=['CAEX'],
+        subcomponent_linked_ids=[{'type': 'sub-linked', 'owner_index': 0, 'index': 0}],
+        subcomponent_links=[[]],
+        source_document={
+            'tool_key': 'tool_operaciones_integradas_a1b2c3d4e5f6',
+            'display_name': 'Operaciones Integradas',
+            'kind': 'integrated_operations',
+            'source_consumption': {
+                'tool_key': 'tool_operaciones_integradas_a1b2c3d4e5f6',
+                'source_keys': ['pi'],
+            },
+            'source_operational_participation': {
+                'tool_key': 'tool_operaciones_integradas_a1b2c3d4e5f6',
+                'control_sources': [
+                    {
+                        'source_key': 'pi',
+                        'pre_degrading_after_seconds': 300,
+                        'degrading_after_seconds': 600,
+                    }
+                ],
+            },
+            'structure': None,
+            'branding': {'variant': 'original'},
+        },
+        structure_document=None,
+    )
+
+    assert snapshot['contract'] is None
+    preview = snapshot['inspection_document']
+    assert preview['tool_key'] == 'tool_operaciones_integradas_a1b2c3d4e5f6'
+    assert preview['structure']['components'] == [
+        {
+            'key': 'cmp_carguio_123456789abc',
+            'display_name': 'Carguío',
+            'scope': 'mine',
+            'subcomponents': [
+                {
+                    'key': 'sub_caex_abcdef123456',
+                    'display_name': 'CAEX',
+                }
+            ],
+        }
+    ]

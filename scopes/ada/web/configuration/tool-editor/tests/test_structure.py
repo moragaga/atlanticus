@@ -17,11 +17,7 @@ from ada.web.configuration.tool_editor import (
 
 
 def _base(kind: ToolConfigurationKind) -> ToolConfiguration:
-    key = (
-        'process'
-        if kind is ToolConfigurationKind.PROCESS
-        else 'integrated_operations'
-    )
+    key = 'process' if kind is ToolConfigurationKind.PROCESS else 'integrated_operations'
     return ToolConfiguration(
         tool_key=key,
         display_name='Tool',
@@ -33,9 +29,7 @@ def _base(kind: ToolConfigurationKind) -> ToolConfiguration:
         source_operational_participation=(
             ToolSourceOperationalParticipation(
                 tool_key=key,
-                control_sources=(
-                    SourceControlPolicy('pi', 200, 300),
-                ),
+                control_sources=(SourceControlPolicy('pi', 200, 300),),
             )
         ),
     )
@@ -84,9 +78,7 @@ def test_integrated_operations_rejects_single_scope_coverage() -> None:
         match='must be Mina y Planta',
     ):
         build_structure_from_editor_tables(
-            base_configuration=_base(
-                ToolConfigurationKind.INTEGRATED_OPERATIONS
-            ),
+            base_configuration=_base(ToolConfigurationKind.INTEGRATED_OPERATIONS),
             coverage='mine',
             component_rows=[],
             subcomponent_rows=[],
@@ -99,9 +91,7 @@ def test_integrated_mine_and_plant_requires_both_scopes() -> None:
         match='requires both Mina and Planta',
     ):
         build_structure_from_editor_tables(
-            base_configuration=_base(
-                ToolConfigurationKind.INTEGRATED_OPERATIONS
-            ),
+            base_configuration=_base(ToolConfigurationKind.INTEGRATED_OPERATIONS),
             coverage='mine_plant',
             component_rows=[
                 {
@@ -123,9 +113,7 @@ def test_integrated_mine_and_plant_requires_both_scopes() -> None:
 
 def test_integrated_shared_subcomponent_keeps_one_owner() -> None:
     structure = build_structure_from_editor_tables(
-        base_configuration=_base(
-            ToolConfigurationKind.INTEGRATED_OPERATIONS
-        ),
+        base_configuration=_base(ToolConfigurationKind.INTEGRATED_OPERATIONS),
         coverage='mine_plant',
         component_rows=[
             {
@@ -166,9 +154,7 @@ def test_integrated_shared_subcomponent_keeps_one_owner() -> None:
         ],
     )
 
-    extraction = structure.component('cmp_mine').subcomponent(
-        'sub_extraction'
-    )
+    extraction = structure.component('cmp_mine').subcomponent('sub_extraction')
     assert extraction.linked_component_keys == ('cmp_dispatch',)
     assert (
         structure.subcomponent_address(
@@ -177,6 +163,7 @@ def test_integrated_shared_subcomponent_keeps_one_owner() -> None:
         ).owner_component_key
         == 'cmp_mine'
     )
+
 
 def test_process_ignores_stale_component_scope_and_uses_operational_coverage() -> None:
     structure = build_structure_from_editor_tables(

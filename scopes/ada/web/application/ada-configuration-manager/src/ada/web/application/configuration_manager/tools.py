@@ -31,6 +31,7 @@ from ada.web.configuration.tool_editor import (
     register_tool_source_editor_callbacks,
     register_tool_structure_editor_callbacks,
 )
+from ada.web.configuration.tool_editor.ids import TOOL_KEY_STORE_ID
 from ada.web.configuration.tool_editor.structure_ids import (
     COMPONENT_DISPLAY_NAME_TYPE,
     COMPONENT_KEY_TYPE,
@@ -60,8 +61,7 @@ TOOL_DETAIL_BODY_ID = 'ada-configuration-manager-tools-detail-body'
 
 _TOOL_DETAIL_MODAL_CLOSED = 'ada-configuration-manager-tools__modal'
 _TOOL_DETAIL_MODAL_OPEN = (
-    'ada-configuration-manager-tools__modal '
-    'ada-configuration-manager-tools__modal--open'
+    'ada-configuration-manager-tools__modal ada-configuration-manager-tools__modal--open'
 )
 
 TOOL_MANAGER_ASSET_LAYER = AssetLayer(
@@ -154,7 +154,7 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
                 owner_subject_id=context.draft_owner_provider(),
             )
             configuration = ToolConfiguration.from_document(draft.payload)
-        except (ManagerProjectionError, ValueError):
+        except ManagerProjectionError, ValueError:
             return None
         return configuration.to_document()
 
@@ -182,6 +182,7 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
         Input(TOOL_DETAIL_CLOSE_ID, 'n_clicks'),
         Input(TOOL_DETAIL_BACKDROP_ID, 'n_clicks'),
         State(DISPLAY_NAME_ID, 'value'),
+        State(TOOL_KEY_STORE_ID, 'data'),
         State(KIND_ID, 'value'),
         State(COVERAGE_ID, 'value'),
         State(BRANDING_ID, 'value'),
@@ -253,6 +254,7 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
         close_clicks: int | None,
         backdrop_clicks: int | None,
         display_name: str | None,
+        tool_key: str | None,
         kind_value: str | None,
         coverage: str | None,
         branding: str | None,
@@ -283,6 +285,7 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
             return no_update, no_update
         snapshot = _tool_detail_snapshot(
             display_name=display_name,
+            tool_key=tool_key,
             kind_value=kind_value,
             coverage=coverage,
             branding=branding,
@@ -455,7 +458,6 @@ def _tool_runtime_context(context: ToolManagerWebContext) -> object:
     )
 
 
-
 def _tool_detail_section() -> object:
     return html.Section(
         [
@@ -518,30 +520,17 @@ def _tool_detail_modal() -> object:
                                 n_clicks=0,
                                 type='button',
                                 className='btn-close',
-                                **{
-                                    'aria-label': (
-                                        'Cerrar detalle de configuración'
-                                    )
-                                },
+                                **{'aria-label': ('Cerrar detalle de configuración')},
                             ),
                         ],
-                        className=(
-                            'modal-header '
-                            'ada-configuration-manager-tools__modal-header'
-                        ),
+                        className=('modal-header ada-configuration-manager-tools__modal-header'),
                     ),
                     html.Div(
                         id=TOOL_DETAIL_BODY_ID,
-                        className=(
-                            'modal-body '
-                            'ada-configuration-manager-tools__modal-body'
-                        ),
+                        className=('modal-body ada-configuration-manager-tools__modal-body'),
                     ),
                 ],
-                className=(
-                    'modal-content '
-                    'ada-configuration-manager-tools__modal-dialog'
-                ),
+                className=('modal-content ada-configuration-manager-tools__modal-dialog'),
                 role='dialog',
                 **{'aria-modal': 'true'},
             ),
@@ -554,6 +543,7 @@ def _tool_detail_modal() -> object:
 def _tool_detail_snapshot(
     *,
     display_name: str | None,
+    tool_key: str | None,
     kind_value: str | None,
     coverage: str | None,
     branding: str | None,
@@ -631,9 +621,7 @@ def _tool_detail_snapshot(
         owner['subcomponents'].append(
             {
                 'key': _optional_text(sub_keys.get((owner_index, sub_index))),
-                'display_name': _optional_text(
-                    sub_names.get((owner_index, sub_index))
-                ),
+                'display_name': _optional_text(sub_names.get((owner_index, sub_index))),
                 'owner_component_key': owner_key,
                 'linked_component_keys': links,
                 'linked_component_labels': tuple(
@@ -642,6 +630,10 @@ def _tool_detail_snapshot(
                 'uses': ('Alarmas',),
             }
         )
+
+    resolved_tool_key = _optional_text(tool_key)
+    if resolved_tool_key is None and isinstance(source_document, dict):
+        resolved_tool_key = _optional_text(source_document.get('tool_key'))
 
     contract = None
     if isinstance(source_document, dict) and isinstance(structure_document, dict):
@@ -653,13 +645,19 @@ def _tool_detail_snapshot(
         except ValueError:
             contract = None
 
+    inspection_document = _tool_inspection_document(
+        tool_key=resolved_tool_key,
+        display_name=_optional_text(display_name),
+        kind=_optional_text(kind_value),
+        coverage=_optional_text(coverage),
+        branding=_optional_text(branding),
+        components=components,
+        source_document=source_document,
+    )
+
     return {
         'general': {
-            'tool_key': (
-                _optional_text(source_document.get('tool_key'))
-                if isinstance(source_document, dict)
-                else None
-            ),
+            'tool_key': resolved_tool_key,
             'display_name': _optional_text(display_name),
             'kind': _optional_text(kind_value),
             'coverage': _optional_text(coverage),
@@ -686,7 +684,90 @@ def _tool_detail_snapshot(
         ),
         'components': components,
         'contract': contract,
+        'inspection_document': inspection_document,
     }
+
+
+def _tool_inspection_document(
+    *,
+    tool_key: str | None,
+    display_name: str | None,
+    kind: str | None,
+    coverage: str | None,
+    branding: str | None,
+    components: list[dict[str, object]],
+    source_document: dict[str, object] | None,
+) -> dict[str, object]:
+    document: dict[str, object] = {}
+    if tool_key is not None:
+        document['tool_key'] = tool_key
+    if display_name is not None:
+        document['display_name'] = display_name
+    if kind is not None:
+        document['kind'] = kind
+
+    if isinstance(source_document, dict):
+        for field in (
+            'source_consumption',
+            'source_operational_participation',
+        ):
+            value = source_document.get(field)
+            if isinstance(value, dict):
+                document[field] = value
+
+    if isinstance(source_document, dict) and isinstance(
+        source_document.get('branding'),
+        dict,
+    ):
+        document['branding'] = source_document['branding']
+    elif branding is not None:
+        document['branding'] = {'variant': branding}
+
+    structure: dict[str, object] = {}
+    if tool_key is not None:
+        structure['tool_key'] = tool_key
+    if kind is not None:
+        structure['kind'] = kind
+    if kind == 'process' and coverage in {'mine', 'plant'}:
+        structure['operational_scope'] = coverage
+
+    serialized_components: list[dict[str, object]] = []
+    for component in components:
+        component_document: dict[str, object] = {}
+        component_key = _optional_text(component.get('key'))
+        component_name = _optional_text(component.get('display_name'))
+        component_scope = _optional_text(component.get('scope'))
+        if component_key is not None:
+            component_document['key'] = component_key
+        if component_name is not None:
+            component_document['display_name'] = component_name
+        if kind == 'integrated_operations' and component_scope is not None:
+            component_document['scope'] = component_scope
+
+        serialized_subcomponents: list[dict[str, object]] = []
+        raw_subcomponents = component.get('subcomponents')
+        if isinstance(raw_subcomponents, list):
+            for subcomponent in raw_subcomponents:
+                if not isinstance(subcomponent, dict):
+                    continue
+                subcomponent_document: dict[str, object] = {}
+                subcomponent_key = _optional_text(subcomponent.get('key'))
+                subcomponent_name = _optional_text(subcomponent.get('display_name'))
+                linked_keys = subcomponent.get('linked_component_keys')
+                if subcomponent_key is not None:
+                    subcomponent_document['key'] = subcomponent_key
+                if subcomponent_name is not None:
+                    subcomponent_document['display_name'] = subcomponent_name
+                if isinstance(linked_keys, (list, tuple)) and linked_keys:
+                    subcomponent_document['linked_component_keys'] = list(linked_keys)
+                serialized_subcomponents.append(subcomponent_document)
+
+        component_document['subcomponents'] = serialized_subcomponents
+        serialized_components.append(component_document)
+
+    structure['components'] = serialized_components
+    document['structure'] = structure
+    return document
 
 
 def _render_tool_detail(snapshot: dict[str, object]) -> object:
@@ -694,6 +775,7 @@ def _render_tool_detail(snapshot: dict[str, object]) -> object:
     sources = snapshot['sources']
     components = snapshot['components']
     contract = snapshot['contract']
+    inspection_document = snapshot['inspection_document']
     return html.Div(
         [
             html.Section(
@@ -722,14 +804,15 @@ def _render_tool_detail(snapshot: dict[str, object]) -> object:
                     html.Div(
                         [
                             _detail_value('Herramienta', general['display_name']),
+                            _detail_value('Tipo', _kind_label(general['kind'])),
+                            _detail_value('Cobertura', _coverage_label(general['coverage'])),
+                            _detail_value('Branding', _branding_label(general['branding'])),
                             _detail_value(
                                 'ID interno',
                                 general['tool_key'],
                                 technical=True,
+                                wide=True,
                             ),
-                            _detail_value('Tipo', _kind_label(general['kind'])),
-                            _detail_value('Cobertura', _coverage_label(general['coverage'])),
-                            _detail_value('Branding', _branding_label(general['branding'])),
                         ],
                         className='ada-configuration-manager-tools__detail-grid',
                     ),
@@ -779,10 +862,7 @@ def _render_tool_detail(snapshot: dict[str, object]) -> object:
                         'como destinos de configuración KPI.'
                     ),
                     html.Div(
-                        [
-                            _detail_destination(item)
-                            for item in snapshot['fixed_destinations']
-                        ],
+                        [_detail_destination(item) for item in snapshot['fixed_destinations']],
                         className='ada-configuration-manager-tools__detail-destinations',
                     ),
                 ],
@@ -809,32 +889,14 @@ def _render_tool_detail(snapshot: dict[str, object]) -> object:
             html.Section(
                 [
                     html.H3('Contrato actual'),
-                    (
-                        html.Details(
-                            [
-                                html.Summary('Ver Tool Configuration serializada'),
-                                html.Pre(
-                                    json.dumps(
-                                        contract,
-                                        ensure_ascii=False,
-                                        indent=2,
-                                    ),
-                                    className=(
-                                        'ada-configuration-manager-tools__detail-contract '
-                                        'ada-configuration-manager-tools__selectable'
-                                    ),
-                                ),
-                            ],
-                            className='ada-configuration-manager-tools__detail-contract-box',
-                        )
-                        if contract is not None
-                        else _detail_empty(
-                            _contract_pending_message(
-                                general=general,
-                                sources=sources,
-                                components=components,
-                            )
-                        )
+                    _detail_contract_view(
+                        contract=contract,
+                        inspection_document=inspection_document,
+                        pending_message=_contract_pending_message(
+                            general=general,
+                            sources=sources,
+                            components=components,
+                        ),
                     ),
                 ],
                 className='ada-configuration-manager-tools__detail-section',
@@ -851,7 +913,13 @@ def _detail_legend(label: str, copy: str) -> object:
     )
 
 
-def _detail_value(label: str, value: object, *, technical: bool = False) -> object:
+def _detail_value(
+    label: str,
+    value: object,
+    *,
+    technical: bool = False,
+    wide: bool = False,
+) -> object:
     resolved = _display_value(value)
     display = (
         html.Code(
@@ -864,9 +932,58 @@ def _detail_value(label: str, value: object, *, technical: bool = False) -> obje
         if technical and resolved != 'No configurado'
         else html.Strong(resolved)
     )
+    classes = ['ada-configuration-manager-tools__detail-value']
+    if wide:
+        classes.append('ada-configuration-manager-tools__detail-value--wide')
     return html.Div(
         [html.Small(label), display],
-        className='ada-configuration-manager-tools__detail-value',
+        className=' '.join(classes),
+    )
+
+
+def _detail_contract_view(
+    *,
+    contract: object,
+    inspection_document: object,
+    pending_message: str,
+) -> object:
+    if isinstance(contract, dict):
+        return _detail_serialized_document(
+            'Ver Tool Configuration serializada',
+            contract,
+        )
+    return html.Div(
+        [
+            _detail_empty(pending_message),
+            _detail_serialized_document(
+                'Ver configuración en edición',
+                inspection_document,
+            ),
+        ],
+        className='ada-configuration-manager-tools__detail-contract-state',
+    )
+
+
+def _detail_serialized_document(
+    summary: str,
+    document: object,
+) -> object:
+    return html.Details(
+        [
+            html.Summary(summary),
+            html.Pre(
+                json.dumps(
+                    document,
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                className=(
+                    'ada-configuration-manager-tools__detail-contract '
+                    'ada-configuration-manager-tools__selectable'
+                ),
+            ),
+        ],
+        className='ada-configuration-manager-tools__detail-contract-box',
     )
 
 
@@ -999,7 +1116,6 @@ def _detail_badges(values: object) -> object:
     )
 
 
-
 def _contract_pending_message(
     *,
     general: object,
@@ -1024,10 +1140,7 @@ def _contract_pending_message(
     if not component_items:
         return 'Pendiente de completar. Agrega al menos un componente.'
     if any(not item.get('subcomponents') for item in component_items):
-        return (
-            'Pendiente de completar. Cada componente requiere al menos '
-            'un subcomponente.'
-        )
+        return 'Pendiente de completar. Cada componente requiere al menos un subcomponente.'
 
     if kind == 'integrated_operations':
         scopes = {
@@ -1057,10 +1170,7 @@ def _contract_pending_message(
                 links = subcomponent.get('linked_component_keys')
                 if not isinstance(links, (list, tuple)):
                     continue
-                if any(
-                    scope_by_key.get(str(link)) not in {None, owner_scope}
-                    for link in links
-                ):
+                if any(scope_by_key.get(str(link)) not in {None, owner_scope} for link in links):
                     return (
                         'Pendiente de completar. Visible también en sólo puede '
                         'enlazar componentes del mismo ámbito.'
@@ -1072,20 +1182,12 @@ def _contract_pending_message(
         return 'Pendiente de completar. Configura el umbral de degradación de PI.'
     if bool(sources_data.get('dispatch_enabled')):
         if sources_data.get('dispatch_preventive') is None:
-            return (
-                'Pendiente de completar. Configura el umbral preventivo '
-                'de Dispatch.'
-            )
+            return 'Pendiente de completar. Configura el umbral preventivo de Dispatch.'
         if sources_data.get('dispatch_degradation') is None:
-            return (
-                'Pendiente de completar. Configura el umbral de degradación '
-                'de Dispatch.'
-            )
+            return 'Pendiente de completar. Configura el umbral de degradación de Dispatch.'
 
-    return (
-        'Pendiente de completar. La configuración actual todavía no forma '
-        'un contrato válido.'
-    )
+    return 'Pendiente de completar. La configuración actual todavía no forma un contrato válido.'
+
 
 def _detail_empty(message: str) -> object:
     return html.Div(
@@ -1105,7 +1207,7 @@ def _pattern_value_map(
             continue
         try:
             key = tuple(int(component_id[field]) for field in fields)
-        except (KeyError, TypeError, ValueError):
+        except KeyError, TypeError, ValueError:
             continue
         resolved[key] = value
     return resolved
@@ -1114,11 +1216,7 @@ def _pattern_value_map(
 def _linked_values(value: object) -> tuple[str, ...]:
     if not isinstance(value, (list, tuple)):
         return ()
-    return tuple(
-        text
-        for item in value
-        if (text := _optional_text(item)) is not None
-    )
+    return tuple(text for item in value if (text := _optional_text(item)) is not None)
 
 
 def _optional_text(value: object) -> str | None:
@@ -1169,6 +1267,7 @@ def _branding_label(value: object) -> str | None:
         'christmas': 'Navidad',
         'new_year': 'Año Nuevo',
     }.get(_optional_text(value) or '')
+
 
 def _tool_save_section() -> object:
     return html.Section(

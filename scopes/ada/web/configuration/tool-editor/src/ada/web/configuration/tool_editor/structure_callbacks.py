@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from secrets import token_hex
 
 from dash import (
     ALL,
@@ -24,6 +23,7 @@ from ada.web.configuration.tool_editor.ids import (
     DRAFT_STORE_ID,
     KIND_ID,
 )
+from ada.web.configuration.tool_editor.models import generate_named_key
 from ada.web.configuration.tool_editor.structure import (
     build_structure_from_editor_tables,
     structure_editor_table_data_from_configuration,
@@ -74,13 +74,9 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
     ):
         if configuration_document is None:
             return []
-        configuration = ToolConfiguration.from_document(
-            configuration_document
-        )
-        components, subcomponents, coverage = (
-            structure_editor_table_data_from_configuration(
-                configuration
-            )
+        configuration = ToolConfiguration.from_document(configuration_document)
+        components, subcomponents, coverage = structure_editor_table_data_from_configuration(
+            configuration
         )
         nested_rows = _subcomponent_rows_by_owner(subcomponents)
         return [
@@ -145,7 +141,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             build_component_editor_row(
                 index=_next_index(component_ids),
                 row={
-                    'key': _new_key('cmp', component_keys),
+                    'key': None,
                     'display_name': '',
                     'scope': None,
                 },
@@ -274,13 +270,11 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
                 index=_next_index(subcomponent_ids),
                 owner_index=owner_index,
                 row={
-                    'key': _new_key('sub', subcomponent_keys),
+                    'key': None,
                     'display_name': '',
                     'linked_component_keys': [],
                 },
-                linked_hidden=(
-                    kind is not ToolConfigurationKind.INTEGRATED_OPERATIONS
-                ),
+                linked_hidden=(kind is not ToolConfigurationKind.INTEGRATED_OPERATIONS),
                 linked_component_options=linked_options,
             )
         )
@@ -323,6 +317,66 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         patch = Patch()
         del patch[position]
         return patch
+
+    @app.callback(
+        Output(
+            {'type': COMPONENT_KEY_TYPE, 'index': ALL},
+            'data',
+        ),
+        Input(
+            {'type': COMPONENT_DISPLAY_NAME_TYPE, 'index': ALL},
+            'value',
+        ),
+        State(
+            {'type': COMPONENT_KEY_TYPE, 'index': ALL},
+            'data',
+        ),
+    )
+    def stabilize_component_keys(
+        names: list[object],
+        current_keys: list[object],
+    ) -> list[object]:
+        return _stabilize_named_keys(
+            prefix='cmp',
+            names=names,
+            current_keys=current_keys,
+        )
+
+    @app.callback(
+        Output(
+            {
+                'type': SUBCOMPONENT_KEY_TYPE,
+                'index': ALL,
+                'owner_index': ALL,
+            },
+            'data',
+        ),
+        Input(
+            {
+                'type': SUBCOMPONENT_DISPLAY_NAME_TYPE,
+                'index': ALL,
+                'owner_index': ALL,
+            },
+            'value',
+        ),
+        State(
+            {
+                'type': SUBCOMPONENT_KEY_TYPE,
+                'index': ALL,
+                'owner_index': ALL,
+            },
+            'data',
+        ),
+    )
+    def stabilize_subcomponent_keys(
+        names: list[object],
+        current_keys: list[object],
+    ) -> list[object]:
+        return _stabilize_named_keys(
+            prefix='sub',
+            names=names,
+            current_keys=current_keys,
+        )
 
     @app.callback(
         Output(
@@ -372,16 +426,9 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         previous_kind: str | None,
     ):
         process = kind_value == ToolConfigurationKind.PROCESS.value
-        integrated = (
-            kind_value
-            == ToolConfigurationKind.INTEGRATED_OPERATIONS.value
-        )
+        integrated = kind_value == ToolConfigurationKind.INTEGRATED_OPERATIONS.value
         if process:
-            inherited = (
-                coverage
-                if coverage in {'mine', 'plant'}
-                else None
-            )
+            inherited = coverage if coverage in {'mine', 'plant'} else None
             scopes = [inherited for _ in current_scopes]
         elif integrated:
             scopes = (
@@ -466,10 +513,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         linked_ids: list[dict[str, object]],
         linked_values: list[object],
     ):
-        if (
-            kind_value
-            != ToolConfigurationKind.INTEGRATED_OPERATIONS.value
-        ):
+        if kind_value != ToolConfigurationKind.INTEGRATED_OPERATIONS.value:
             empty = [[] for _ in linked_ids]
             return (
                 empty,
@@ -485,10 +529,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             scopes=component_scopes,
         )
         ordered = list(rows.values())
-        positions = [
-            _owner_position(rows, _owner_index(linked_id))
-            for linked_id in linked_ids
-        ]
+        positions = [_owner_position(rows, _owner_index(linked_id)) for linked_id in linked_ids]
         options = [
             _linked_component_options(
                 ordered,
@@ -549,10 +590,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         ),
     )
     def sync_component_names(names: list[object]):
-        return [
-            str(name or '').strip() or 'Nuevo componente'
-            for name in names
-        ]
+        return [str(name or '').strip() or 'Nuevo componente' for name in names]
 
     @app.callback(
         Output(
@@ -569,11 +607,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         scopes: list[object],
     ):
         try:
-            kind = (
-                ToolConfigurationKind(kind_value)
-                if kind_value
-                else None
-            )
+            kind = ToolConfigurationKind(kind_value) if kind_value else None
         except ValueError:
             kind = None
         return [
@@ -599,10 +633,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         ),
     )
     def sync_component_counts(rows: list[object]):
-        return [
-            _subcomponent_count_label(_children_count(row))
-            for row in rows
-        ]
+        return [_subcomponent_count_label(_children_count(row)) for row in rows]
 
     @app.callback(
         Output(
@@ -643,14 +674,8 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         links: list[object],
     ):
         return (
-            [
-                str(name or '').strip() or 'Nuevo subcomponente'
-                for name in names
-            ],
-            [
-                _shared_label(_linked_values(link))
-                for link in links
-            ],
+            [str(name or '').strip() or 'Nuevo subcomponente' for name in names],
+            [_shared_label(_linked_values(link)) for link in links],
         )
 
     @app.callback(
@@ -724,9 +749,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             return None, False, ''
 
         try:
-            configuration = ToolConfiguration.from_document(
-                source_document
-            )
+            configuration = ToolConfiguration.from_document(source_document)
             component_key_values = _indexed_values(
                 component_key_ids,
                 component_keys,
@@ -802,9 +825,7 @@ def _subcomponent_rows(
     }
     return [
         {
-            'owner_component_key': component_keys.get(
-                owner_indexes.get(index)
-            ),
+            'owner_component_key': component_keys.get(owner_indexes.get(index)),
             'key': value,
             'display_name': names.get(index),
             'linked_component_keys': links.get(index, []),
@@ -853,9 +874,7 @@ def _subcomponent_rows_by_owner(
         list[tuple[int, dict[str, object]]],
     ] = {}
     for index, row in enumerate(rows):
-        owner_key = str(
-            row.get('owner_component_key') or ''
-        ).strip()
+        owner_key = str(row.get('owner_component_key') or '').strip()
         resolved.setdefault(owner_key, []).append((index, row))
     return resolved
 
@@ -892,16 +911,36 @@ def _next_index(ids: list[dict[str, object]]) -> int:
     return max(indexes, default=-1) + 1
 
 
-def _new_key(prefix: str, existing: list[object]) -> str:
-    occupied = {
-        str(value)
-        for value in existing
-        if value is not None
-    }
-    while True:
-        candidate = f'{prefix}_{token_hex(6)}'
-        if candidate not in occupied:
-            return candidate
+def _stabilize_named_keys(
+    *,
+    prefix: str,
+    names: list[object],
+    current_keys: list[object],
+) -> list[object]:
+    if len(names) != len(current_keys):
+        return list(current_keys)
+
+    occupied = {str(value).strip() for value in current_keys if str(value or '').strip()}
+    resolved: list[object] = []
+    for name, current_key in zip(names, current_keys, strict=True):
+        stable_key = str(current_key or '').strip()
+        if stable_key:
+            resolved.append(stable_key)
+            continue
+
+        display_name = str(name or '').strip()
+        if not display_name:
+            resolved.append(None)
+            continue
+
+        generated = generate_named_key(
+            prefix,
+            display_name,
+            existing=tuple(occupied),
+        )
+        occupied.add(generated)
+        resolved.append(generated)
+    return resolved
 
 
 def _triggered_position(
@@ -911,20 +950,14 @@ def _triggered_position(
     triggered_id = ctx.triggered_id
     if not isinstance(triggered_id, dict):
         return None
-    for position, (click_count, button_id) in enumerate(
-        zip(clicks, button_ids, strict=True)
-    ):
+    for position, (click_count, button_id) in enumerate(zip(clicks, button_ids, strict=True)):
         if button_id == triggered_id and _click_is_real(click_count):
             return position
     return None
 
 
 def _click_is_real(clicks: int | None) -> bool:
-    return (
-        isinstance(clicks, int)
-        and not isinstance(clicks, bool)
-        and clicks > 0
-    )
+    return isinstance(clicks, int) and not isinstance(clicks, bool) and clicks > 0
 
 
 def _children_count(value: object) -> int:
@@ -935,20 +968,13 @@ def _children_count(value: object) -> int:
     return 1
 
 
-
 def _sanitize_linked_values(
     value: object,
     options: list[dict[str, str]],
 ) -> list[str]:
-    allowed = {
-        option['value']
-        for option in options
-    }
-    return [
-        item
-        for item in _linked_values(value)
-        if item in allowed
-    ]
+    allowed = {option['value'] for option in options}
+    return [item for item in _linked_values(value) if item in allowed]
+
 
 def _editor_is_incomplete(
     *,
@@ -961,34 +987,17 @@ def _editor_is_incomplete(
 ) -> bool:
     if not component_ids:
         return True
-    if any(
-        not str(name or '').strip()
-        for name in component_names
-    ):
+    if any(not str(name or '').strip() for name in component_names):
         return True
-    integrated = (
-        kind_value
-        == ToolConfigurationKind.INTEGRATED_OPERATIONS.value
-    )
+    integrated = kind_value == ToolConfigurationKind.INTEGRATED_OPERATIONS.value
     if integrated:
         resolved_scopes = {
-            str(scope or '').strip()
-            for scope in component_scopes
-            if str(scope or '').strip()
+            str(scope or '').strip() for scope in component_scopes if str(scope or '').strip()
         }
         if resolved_scopes != {'mine', 'plant'}:
             return True
-    if any(
-        not str(name or '').strip()
-        for name in subcomponent_names
-    ):
+    if any(not str(name or '').strip() for name in subcomponent_names):
         return True
-    owners = {
-        item.get('owner_index')
-        for item in subcomponent_ids
-    }
-    component_indexes = {
-        item.get('index')
-        for item in component_ids
-    }
+    owners = {item.get('owner_index') for item in subcomponent_ids}
+    component_indexes = {item.get('index') for item in component_ids}
     return not component_indexes.issubset(owners)

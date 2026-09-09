@@ -57,6 +57,7 @@ def test_tool_editor_does_not_expose_legacy_source_configuration() -> None:
     assert 'source_key_adicional' not in rendered
     assert 'comparte el umbral preventivo' not in rendered
 
+
 def test_tool_source_inputs_do_not_depend_on_bootstrap_form_control() -> None:
     rendered = str(build_tool_source_editor().to_plotly_json())
 

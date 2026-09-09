@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSITION = ROOT / 'src/ada/web/application/configuration_manager/composition.py'
 TOOLS = ROOT / 'src/ada/web/application/configuration_manager/tools.py'

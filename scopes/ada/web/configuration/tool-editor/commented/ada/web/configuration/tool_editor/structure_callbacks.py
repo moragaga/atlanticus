@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from secrets import token_hex
 
 from dash import (
     ALL,
@@ -26,6 +25,7 @@ from ada.web.configuration.tool_editor.ids import (
     DRAFT_STORE_ID,
     KIND_ID,
 )
+from ada.web.configuration.tool_editor.models import generate_named_key
 from ada.web.configuration.tool_editor.structure import (
     build_structure_from_editor_tables,
     structure_editor_table_data_from_configuration,
@@ -148,7 +148,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             build_component_editor_row(
                 index=_next_index(component_ids),
                 row={
-                    'key': _new_key('cmp', component_keys),
+                    'key': None,
                     'display_name': '',
                     'scope': None,
                 },
@@ -277,7 +277,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
                 index=_next_index(subcomponent_ids),
                 owner_index=owner_index,
                 row={
-                    'key': _new_key('sub', subcomponent_keys),
+                    'key': None,
                     'display_name': '',
                     'linked_component_keys': [],
                 },
@@ -326,6 +326,68 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         patch = Patch()
         del patch[position]
         return patch
+
+    @app.callback(
+        Output(
+            {'type': COMPONENT_KEY_TYPE, 'index': ALL},
+            'data',
+        ),
+        Input(
+            {'type': COMPONENT_DISPLAY_NAME_TYPE, 'index': ALL},
+            'value',
+        ),
+        State(
+            {'type': COMPONENT_KEY_TYPE, 'index': ALL},
+            'data',
+        ),
+    )
+    # La key nace con el primer nombre válido y no vuelve a cambiar aunque el nombre visible cambie.
+    def stabilize_component_keys(
+        names: list[object],
+        current_keys: list[object],
+    ) -> list[object]:
+        return _stabilize_named_keys(
+            prefix='cmp',
+            names=names,
+            current_keys=current_keys,
+        )
+
+    @app.callback(
+        Output(
+            {
+                'type': SUBCOMPONENT_KEY_TYPE,
+                'index': ALL,
+                'owner_index': ALL,
+            },
+            'data',
+        ),
+        Input(
+            {
+                'type': SUBCOMPONENT_DISPLAY_NAME_TYPE,
+                'index': ALL,
+                'owner_index': ALL,
+            },
+            'value',
+        ),
+        State(
+            {
+                'type': SUBCOMPONENT_KEY_TYPE,
+                'index': ALL,
+                'owner_index': ALL,
+            },
+            'data',
+        ),
+    )
+    # Los subcomponentes siguen la misma regla de identidad estable usada por Alarmas.
+    def stabilize_subcomponent_keys(
+        names: list[object],
+        current_keys: list[object],
+    ) -> list[object]:
+        return _stabilize_named_keys(
+            prefix='sub',
+            names=names,
+            current_keys=current_keys,
+        )
 
     @app.callback(
         Output(
@@ -898,17 +960,41 @@ def _next_index(ids: list[dict[str, object]]) -> int:
     return max(indexes, default=-1) + 1
 
 
-# Las keys internas nacen una sola vez y no se exponen como campos editables.
-def _new_key(prefix: str, existing: list[object]) -> str:
+# Preserva cualquier key importada o ya materializada; sólo genera para filas nuevas con nombre.
+def _stabilize_named_keys(
+    *,
+    prefix: str,
+    names: list[object],
+    current_keys: list[object],
+) -> list[object]:
+    if len(names) != len(current_keys):
+        return list(current_keys)
+
     occupied = {
-        str(value)
-        for value in existing
-        if value is not None
+        str(value).strip()
+        for value in current_keys
+        if str(value or '').strip()
     }
-    while True:
-        candidate = f'{prefix}_{token_hex(6)}'
-        if candidate not in occupied:
-            return candidate
+    resolved: list[object] = []
+    for name, current_key in zip(names, current_keys, strict=True):
+        stable_key = str(current_key or '').strip()
+        if stable_key:
+            resolved.append(stable_key)
+            continue
+
+        display_name = str(name or '').strip()
+        if not display_name:
+            resolved.append(None)
+            continue
+
+        generated = generate_named_key(
+            prefix,
+            display_name,
+            existing=tuple(occupied),
+        )
+        occupied.add(generated)
+        resolved.append(generated)
+    return resolved
 
 
 def _triggered_position(

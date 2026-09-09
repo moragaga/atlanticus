@@ -31,11 +31,7 @@ def build_tool_source_editor(
     *,
     configuration_document: Mapping[str, object] | None = None,
 ) -> Component:
-    initial_document = (
-        dict(configuration_document)
-        if configuration_document is not None
-        else None
-    )
+    initial_document = dict(configuration_document) if configuration_document is not None else None
     return html.Div(
         [
             dcc.Store(
@@ -46,11 +42,7 @@ def build_tool_source_editor(
             dcc.Store(id=DRAFT_STORE_ID, data=None, storage_type='memory'),
             dcc.Store(
                 id=TOOL_KEY_STORE_ID,
-                data=(
-                    initial_document.get('tool_key')
-                    if initial_document is not None
-                    else None
-                ),
+                data=(initial_document.get('tool_key') if initial_document is not None else None),
                 storage_type='memory',
             ),
             dcc.Store(id=VALIDITY_STORE_ID, data=False, storage_type='memory'),
@@ -100,11 +92,7 @@ def _general_section() -> Component:
                             },
                             {
                                 'label': 'Operaciones integradas',
-                                'value': (
-                                    ToolConfigurationKind
-                                    .INTEGRATED_OPERATIONS
-                                    .value
-                                ),
+                                'value': (ToolConfigurationKind.INTEGRATED_OPERATIONS.value),
                             },
                         ],
                         placeholder='Seleccionar tipo',

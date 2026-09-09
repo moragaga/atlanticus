@@ -29,9 +29,7 @@ def _configuration() -> dict[str, object]:
         source_operational_participation=(
             ToolSourceOperationalParticipation(
                 tool_key='integrated_operations',
-                control_sources=(
-                    SourceControlPolicy('pi', 200, 300),
-                ),
+                control_sources=(SourceControlPolicy('pi', 200, 300),),
             )
         ),
     )
@@ -116,9 +114,7 @@ def _find_by_id(component, component_id):
 
 
 def test_subcomponents_are_nested_under_owner_component() -> None:
-    layout = build_tool_structure_editor(
-        configuration_document=_configuration()
-    )
+    layout = build_tool_structure_editor(configuration_document=_configuration())
     ids = _ids(layout)
 
     assert {'type': COMPONENT_ROW_TYPE, 'index': 0} in ids
@@ -138,9 +134,7 @@ def test_subcomponents_are_nested_under_owner_component() -> None:
 
 
 def test_shared_visibility_excludes_owner_and_incompatible_scope() -> None:
-    layout = build_tool_structure_editor(
-        configuration_document=_configuration()
-    )
+    layout = build_tool_structure_editor(configuration_document=_configuration())
     linked = _find_by_id(
         layout,
         {
@@ -152,13 +146,11 @@ def test_shared_visibility_excludes_owner_and_incompatible_scope() -> None:
 
     assert linked is not None
     assert linked.value == ['dispatch']
-    assert linked.options == [
-        {'label': 'Despacho', 'value': 'dispatch'}
-    ]
+    assert linked.options == [{'label': 'Despacho', 'value': 'dispatch'}]
+
+
 def test_structure_uses_compact_summary_and_internal_keys() -> None:
-    layout = build_tool_structure_editor(
-        configuration_document=_configuration()
-    )
+    layout = build_tool_structure_editor(configuration_document=_configuration())
     ids = _ids(layout)
 
     assert {'type': COMPONENT_KEY_TYPE, 'index': 0} in ids
@@ -176,6 +168,7 @@ def test_structure_uses_compact_summary_and_internal_keys() -> None:
     assert 'Identificador' not in rendered
     assert 'Posición' not in rendered
     assert 'Eliminar subcomponente' in rendered
+
 
 def test_structure_inputs_do_not_depend_on_bootstrap_form_control() -> None:
     rendered = str(
