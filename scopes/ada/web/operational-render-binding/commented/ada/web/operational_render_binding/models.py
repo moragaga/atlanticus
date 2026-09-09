@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ada.configuration.tools import ToolComponent, ToolStructure
 from ada.web.component_store import ComponentStoreSnapshot
 from ada.web.operational_render_binding.errors import OperationalRenderBindingError
+from ada.web.tools.structure import (
+    ToolComponent,
+    ToolStructure,
+)
 
 
 # Une la definición estructural del Component con el Store runtime que le pertenece.
@@ -40,9 +43,7 @@ class OperationalRenderBinding:
 
     def __post_init__(self) -> None:
         if not isinstance(self.structure, ToolStructure):
-            raise OperationalRenderBindingError(
-                'Operational render binding requires ToolStructure'
-            )
+            raise OperationalRenderBindingError('Operational render binding requires ToolStructure')
         components = tuple(self.components)
         if any(not isinstance(item, OperationalComponentBinding) for item in components):
             raise OperationalRenderBindingError(

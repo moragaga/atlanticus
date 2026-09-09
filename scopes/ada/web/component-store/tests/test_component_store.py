@@ -2,19 +2,21 @@ from dataclasses import dataclass
 
 import pytest
 
-from ada.configuration.tools import (
-    ProcessLayoutRole,
-    ToolComponent,
-    ToolConfigurationKind,
-    ToolScope,
-    ToolStructure,
-    ToolSubcomponent,
-)
 from ada.web.component_store import (
     ComponentStoreSnapshot,
     ComponentStoreState,
     ComponentStoreValidationError,
     build_empty_component_stores,
+)
+from ada.web.tools.enums import (
+    ProcessLayoutRole,
+    ToolConfigurationKind,
+    ToolScope,
+)
+from ada.web.tools.structure import (
+    ToolComponent,
+    ToolStructure,
+    ToolSubcomponent,
 )
 
 

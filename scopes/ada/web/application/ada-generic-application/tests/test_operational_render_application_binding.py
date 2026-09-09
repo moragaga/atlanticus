@@ -4,13 +4,6 @@ import json
 
 from dash import html, page_container
 
-from ada.configuration.tools import (
-    ToolComponent,
-    ToolConfigurationKind,
-    ToolScope,
-    ToolStructure,
-    ToolSubcomponent,
-)
 from ada.web.application.generic.application import create_application_definition
 from ada.web.application.generic.composition import AdaApplicationComposition
 from ada.web.application.generic.layout import build_body_application_layout
@@ -18,6 +11,15 @@ from ada.web.application.generic.operational_render import build_operational_bod
 from ada.web.application.generic.runtime import create_application_runtime
 from ada.web.component_store import ComponentStoreState, build_empty_component_stores
 from ada.web.operational_render_binding import bind_operational_render
+from ada.web.tools.enums import (
+    ToolConfigurationKind,
+    ToolScope,
+)
+from ada.web.tools.structure import (
+    ToolComponent,
+    ToolStructure,
+    ToolSubcomponent,
+)
 from atlanticus.web.services import ServiceRegistry
 
 

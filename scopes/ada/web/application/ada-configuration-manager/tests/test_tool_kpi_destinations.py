@@ -3,23 +3,24 @@ from datetime import UTC, datetime
 import pytest
 
 from ada.configuration.kpi_configuration import KpiConfigurationValidationError
-from ada.configuration.tool_sources import (
-    SourceControlPolicy,
-    ToolSourceConsumption,
-    ToolSourceOperationalParticipation,
+from ada.web.application.configuration_manager.tool_kpi_destinations import (
+    ToolConfigurationKpiDestinationCatalogProvider,
 )
-from ada.configuration.tools import (
+from ada.web.tools.enums import (
     ProcessLayoutRole,
-    ToolComponent,
-    ToolConfiguration,
     ToolConfigurationKind,
     ToolScope,
+)
+from ada.web.tools.structure import (
+    ToolComponent,
     ToolStructure,
     ToolSubcomponent,
 )
-from ada.configuration.tools_lifecycle import ToolConfigurationProjectionSnapshot
-from ada.web.application.configuration_manager.tool_kpi_destinations import (
-    ToolConfigurationKpiDestinationCatalogProvider,
+from ada.web.tools.configuration import ToolConfiguration, ToolConfigurationProjectionSnapshot
+from ada.web.tools.sources import (
+    SourceControlPolicy,
+    ToolSourceConsumption,
+    ToolSourceOperationalParticipation,
 )
 
 

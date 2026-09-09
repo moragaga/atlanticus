@@ -1,14 +1,14 @@
 # Proyecta la topología validada de una Tool hacia los puntos contractuales del baseline.
-from ada.configuration.tools import (
-    ProcessLayoutRole,
-    ToolConfigurationKind,
-    ToolStructure,
-)
 from ada.web.alarms.baseline_projection.models import (
     AlarmBaselineAnchorKind,
     AlarmBaselinePoint,
     AlarmBaselineProjection,
 )
+from ada.web.tools.enums import (
+    ProcessLayoutRole,
+    ToolConfigurationKind,
+)
+from ada.web.tools.structure import ToolStructure
 
 
 def project_alarm_baseline(structure: ToolStructure) -> AlarmBaselineProjection:

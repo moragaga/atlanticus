@@ -1,12 +1,12 @@
 from collections.abc import Iterable
 
-from ada.configuration.tools import ToolStructure
 from ada.web.component_store import ComponentStoreSnapshot
 from ada.web.operational_render_binding.errors import OperationalRenderBindingError
 from ada.web.operational_render_binding.models import (
     OperationalComponentBinding,
     OperationalRenderBinding,
 )
+from ada.web.tools.structure import ToolStructure
 
 
 def bind_operational_render(

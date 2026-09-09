@@ -29,9 +29,7 @@ class ComponentDelivery:
             _require_key(self.component_key, label='Component Delivery component key'),
         )
         if self.payload is None:
-            raise ComponentDeliveryValidationError(
-                'Component Delivery payload must not be None'
-            )
+            raise ComponentDeliveryValidationError('Component Delivery payload must not be None')
 
 
 def _require_key(value: object, *, label: str) -> str:

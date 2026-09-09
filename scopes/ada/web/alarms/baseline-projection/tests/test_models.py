@@ -1,11 +1,14 @@
 import pytest
 
-from ada.configuration.tools import ToolConfigurationKind, ToolScope
 from ada.web.alarms.baseline_projection import (
     AlarmBaselineAnchorKind,
     AlarmBaselinePoint,
     AlarmBaselineProjection,
     AlarmBaselineProjectionError,
+)
+from ada.web.tools.enums import (
+    ToolConfigurationKind,
+    ToolScope,
 )
 
 

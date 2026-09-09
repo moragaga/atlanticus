@@ -1,17 +1,19 @@
 import pytest
 
-from ada.configuration.tools import (
-    ProcessLayoutRole,
-    ToolComponent,
-    ToolConfigurationKind,
-    ToolScope,
-    ToolStructure,
-    ToolSubcomponent,
-)
 from ada.web.component_store import ComponentStoreSnapshot, ComponentStoreState
 from ada.web.operational_render_binding import (
     OperationalRenderBindingError,
     bind_operational_render,
+)
+from ada.web.tools.enums import (
+    ProcessLayoutRole,
+    ToolConfigurationKind,
+    ToolScope,
+)
+from ada.web.tools.structure import (
+    ToolComponent,
+    ToolStructure,
+    ToolSubcomponent,
 )
 
 
@@ -24,17 +26,13 @@ def _integrated_structure() -> ToolStructure:
                 key='carguio',
                 display_name='Carguío',
                 scope=ToolScope.MINE,
-                subcomponents=(
-                    ToolSubcomponent(key='palas', display_name='Palas'),
-                ),
+                subcomponents=(ToolSubcomponent(key='palas', display_name='Palas'),),
             ),
             ToolComponent(
                 key='transporte',
                 display_name='Transporte',
                 scope=ToolScope.MINE,
-                subcomponents=(
-                    ToolSubcomponent(key='camiones', display_name='Camiones'),
-                ),
+                subcomponents=(ToolSubcomponent(key='camiones', display_name='Camiones'),),
             ),
         ),
     )
@@ -171,9 +169,11 @@ def test_process_center_remains_one_component_binding_with_many_subcomponents() 
     )
 
     assert len(binding.components) == 1
-    assert tuple(
-        item.key for item in binding.components[0].component.subcomponents
-    ) == ('rougher', 'cleaner', 'scavenger')
+    assert tuple(item.key for item in binding.components[0].component.subcomponents) == (
+        'rougher',
+        'cleaner',
+        'scavenger',
+    )
 
 
 def test_linked_subcomponent_does_not_create_an_extra_component_binding() -> None:
@@ -197,9 +197,7 @@ def test_linked_subcomponent_does_not_create_an_extra_component_binding() -> Non
                 key='transporte',
                 display_name='Transporte',
                 scope=ToolScope.MINE,
-                subcomponents=(
-                    ToolSubcomponent(key='camiones', display_name='Camiones'),
-                ),
+                subcomponents=(ToolSubcomponent(key='camiones', display_name='Camiones'),),
             ),
         ),
     )
@@ -213,18 +211,14 @@ def test_linked_subcomponent_does_not_create_an_extra_component_binding() -> Non
 
     assert binding.component_keys == ('carguio', 'transporte')
     assert len(binding.components) == 2
-    assert binding.components[0].component.subcomponents[0].linked_component_keys == (
-        'transporte',
-    )
+    assert binding.components[0].component.subcomponents[0].linked_component_keys == ('transporte',)
 
 
 def test_strategic_uses_same_binding_contract_without_kind_specific_render_logic() -> None:
     structure = ToolStructure(
         tool_key='strategic_tool',
         kind=ToolConfigurationKind.STRATEGIC,
-        components=(
-            ToolComponent(key='overview', display_name='Overview'),
-        ),
+        components=(ToolComponent(key='overview', display_name='Overview'),),
     )
     binding = bind_operational_render(
         structure,

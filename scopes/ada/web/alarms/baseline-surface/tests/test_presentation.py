@@ -1,12 +1,15 @@
 from dash.development.base_component import Component
 
-from ada.configuration.tools import ToolConfigurationKind, ToolScope
 from ada.web.alarms.baseline_projection import (
     AlarmBaselineAnchorKind,
     AlarmBaselinePoint,
     AlarmBaselineProjection,
 )
 from ada.web.alarms.baseline_surface import build_alarm_baseline_surface
+from ada.web.tools.enums import (
+    ToolConfigurationKind,
+    ToolScope,
+)
 
 
 def _props(component: Component):

@@ -35,10 +35,8 @@ source = { editable = "." }
 dependencies = [
     { name = "ada-configuration-kpi-configuration" },
     { name = "ada-configuration-kpi-definition" },
-    { name = "ada-configuration-tool-sources" },
-    { name = "ada-configuration-tools" },
-    { name = "ada-configuration-tools-lifecycle" },
-    { name = "ada-web-tool-configuration-editor" },
+    { name = "ada-web-tools" },
+    { name = "ada-web-tools-configuration", extra = ["web"] },
     { name = "atlanticus-web" },
     { name = "atlanticus-web-bootstrap" },
     { name = "atlanticus-web-identity" },
@@ -59,10 +57,8 @@ dev = [
 requires-dist = [
     { name = "ada-configuration-kpi-configuration", editable = "../../configuration/kpi-configuration" },
     { name = "ada-configuration-kpi-definition", editable = "../../configuration/kpi-definition" },
-    { name = "ada-configuration-tool-sources", editable = "../../configuration/tool-sources" },
-    { name = "ada-configuration-tools", editable = "../../configuration/tools" },
-    { name = "ada-configuration-tools-lifecycle", editable = "../../configuration/tools-lifecycle" },
-    { name = "ada-web-tool-configuration-editor", editable = "../../configuration/tool-editor" },
+    { name = "ada-web-tools", editable = "../../tools/core" },
+    { name = "ada-web-tools-configuration", extras = ["web"], editable = "../../tools/configuration" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "atlanticus-web-bootstrap", editable = "../../../../../web/framework/bootstrap" },
     { name = "atlanticus-web-identity", editable = "../../../../../web/capabilities/identity/core" },
@@ -72,57 +68,6 @@ requires-dist = [
     { name = "atlanticus-web-users", editable = "../../../../../web/capabilities/users/core" },
     { name = "atlanticus-web-users-configuration", extras = ["web"], editable = "../../../../../web/capabilities/users/configuration" },
 ]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-configuration-tool-sources"
-version = "0.1.0"
-source = { editable = "../../configuration/tool-sources" }
-
-[package.metadata]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-configuration-tools"
-version = "0.4.0"
-source = { editable = "../../configuration/tools" }
-dependencies = [
-    { name = "ada-configuration-tool-sources" },
-    { name = "ada-web-branding" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-configuration-tool-sources", editable = "../../configuration/tool-sources" },
-    { name = "ada-web-branding", editable = "../../branding" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-configuration-tools-lifecycle"
-version = "0.2.0"
-source = { editable = "../../configuration/tools-lifecycle" }
-dependencies = [
-    { name = "ada-configuration-tools" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "ada-configuration-tools", editable = "../../configuration/tools" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -153,26 +98,46 @@ dev = [
 ]
 
 [[package]]
-name = "ada-web-tool-configuration-editor"
-version = "0.2.0"
-source = { editable = "../../configuration/tool-editor" }
+name = "ada-web-tools"
+version = "0.1.0"
+source = { editable = "../../tools/core" }
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-tools-configuration"
+version = "0.1.0"
+source = { editable = "../../tools/configuration" }
 dependencies = [
-    { name = "ada-configuration-tool-sources" },
-    { name = "ada-configuration-tools" },
+    { name = "ada-web-branding" },
+    { name = "ada-web-tools" },
+]
+
+[package.optional-dependencies]
+web = [
     { name = "atlanticus-web" },
     { name = "dash" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-configuration-tool-sources", editable = "../../configuration/tool-sources" },
-    { name = "ada-configuration-tools", editable = "../../configuration/tools" },
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "dash", specifier = "==4.4.1" },
+    { name = "ada-web-branding", editable = "../../branding" },
+    { name = "ada-web-tools", editable = "../../tools/core" },
+    { name = "atlanticus-web", marker = "extra == 'web'", editable = "../../../../../web/framework/core" },
+    { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
 ]
+provides-extras = ["web"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
+    { name = "dash", specifier = "==4.4.1" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]

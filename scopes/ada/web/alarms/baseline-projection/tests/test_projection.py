@@ -1,17 +1,19 @@
 import pytest
 
-from ada.configuration.tools import (
-    ProcessLayoutRole,
-    ToolComponent,
-    ToolConfigurationKind,
-    ToolScope,
-    ToolStructure,
-    ToolSubcomponent,
-)
 from ada.web.alarms.baseline_projection import (
     AlarmBaselineAnchorKind,
     AlarmBaselineProjectionError,
     project_alarm_baseline,
+)
+from ada.web.tools.enums import (
+    ProcessLayoutRole,
+    ToolConfigurationKind,
+    ToolScope,
+)
+from ada.web.tools.structure import (
+    ToolComponent,
+    ToolStructure,
+    ToolSubcomponent,
 )
 
 

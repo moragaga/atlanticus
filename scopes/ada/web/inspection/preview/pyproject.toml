@@ -46,6 +46,7 @@ ada-web-alarm-management-summary = { path = "../../alarms/management-summary", e
 ada-web-alarm-status = { path = "../../alarms/status", editable = true }
 ada-web-shell-header = { path = "../../shell/header", editable = true }
 ada-web-shell-navigation = { path = "../../shell/navigation", editable = true }
+ada-web-tools = { path = "../../tools/core", editable = true }
 
 [tool.setuptools]
 package-dir = {"" = "src"}

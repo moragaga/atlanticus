@@ -1,7 +1,7 @@
 # Declara las dependencias de dominio que la composition root recibe explícitamente.
 from dataclasses import dataclass
 
-from ada.configuration.tools_lifecycle import ToolLifecycleServices
+from ada.web.tools.configuration import ToolLifecycleServices
 from atlanticus.web.manager import ManagerPrincipalProvider
 from atlanticus.web.navigation.configuration import NavigationConfigurationServices
 from atlanticus.web.users.configuration import UsersConfigurationServices

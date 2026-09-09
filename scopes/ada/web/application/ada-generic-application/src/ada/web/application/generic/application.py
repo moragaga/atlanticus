@@ -6,10 +6,6 @@ from functools import partial
 from importlib.metadata import version
 from pathlib import Path
 
-from ada.configuration.tool_sources import (
-    ToolSourceConsumption,
-    ToolSourceOperationalParticipation,
-)
 from ada.web.alarms.management_summary import AlarmManagementSummaryState
 from ada.web.alarms.status import AlarmStatusState
 from ada.web.application.generic.composition import (
@@ -26,6 +22,10 @@ from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.operational_state import resolve_ada_operational_state
 from ada.web.shell.navigation import AdaNavigationView
 from ada.web.time_status.store_adapter import TimeStatusStoreSnapshot
+from ada.web.tools.sources import (
+    ToolSourceConsumption,
+    ToolSourceOperationalParticipation,
+)
 from ada.web.ui.content_state import ContentState, ContentStatePresentationMode
 from ada.web.ui.global_indicator import GlobalIndicatorCollection
 from ada.web.ui.time_status import TimeStatusDetailState

@@ -19,8 +19,7 @@ def collect_component_deliveries(
     delivery_by_address = _validate_deliveries(delivery_values, store_addresses)
     # Se conserva exactamente el orden de entrada de los Stores.
     return tuple(
-        _hydrate_store(store, delivery_by_address.get(_address(store)))
-        for store in store_values
+        _hydrate_store(store, delivery_by_address.get(_address(store))) for store in store_values
     )
 
 

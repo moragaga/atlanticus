@@ -3,41 +3,11 @@ revision = 3
 requires-python = "==3.14.2"
 
 [[package]]
-name = "ada-configuration-tool-sources"
-version = "0.1.0"
-source = { editable = "../../configuration/tool-sources" }
-
-[package.metadata]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-configuration-tools"
-version = "0.3.0"
-source = { editable = "../../configuration/tools" }
-dependencies = [
-    { name = "ada-configuration-tool-sources" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "ada-configuration-tool-sources", editable = "../../configuration/tool-sources" }]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
 name = "ada-web-alarm-baseline-projection"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "ada-configuration-tools" },
+    { name = "ada-web-tools" },
 ]
 
 [package.dev-dependencies]
@@ -47,7 +17,20 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "ada-configuration-tools", editable = "../../configuration/tools" }]
+requires-dist = [{ name = "ada-web-tools", editable = "../../tools/core" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-tools"
+version = "0.1.0"
+source = { editable = "../../tools/core" }
+
+[package.metadata]
 
 [package.metadata.requires-dev]
 dev = [

@@ -8,9 +8,8 @@ from dataclasses import dataclass
 
 from dash import ALL, Input, Output, State, ctx, dcc, html, no_update
 
-from ada.configuration.tools import ToolConfiguration
-from ada.configuration.tools_lifecycle import build_tool_configuration_digest
-from ada.web.configuration.tool_editor import (
+from ada.web.tools.configuration import ToolConfiguration, build_tool_configuration_digest
+from ada.web.tools.configuration.web import (
     ADA_TOOL_CONFIGURATION_EDITOR_ASSET_LAYER,
     BRANDING_ID,
     CONFIGURATION_STORE_ID,
@@ -31,8 +30,8 @@ from ada.web.configuration.tool_editor import (
     register_tool_source_editor_callbacks,
     register_tool_structure_editor_callbacks,
 )
-from ada.web.configuration.tool_editor.ids import TOOL_KEY_STORE_ID
-from ada.web.configuration.tool_editor.structure_ids import (
+from ada.web.tools.configuration.web.ids import TOOL_KEY_STORE_ID
+from ada.web.tools.configuration.web.structure_ids import (
     COMPONENT_DISPLAY_NAME_TYPE,
     COMPONENT_KEY_TYPE,
     COMPONENT_SCOPE_TYPE,

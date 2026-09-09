@@ -7,8 +7,6 @@ from pathlib import Path
 
 import pytest
 
-from ada.configuration.tools import ToolConfiguration
-from ada.configuration.tools_lifecycle import build_tool_configuration_digest
 from ada.web.application.configuration_manager.tools import (
     TOOL_DETAIL_BUTTON_ID,
     TOOL_DETAIL_MODAL_ID,
@@ -30,7 +28,8 @@ from ada.web.application.configuration_manager.tools import (
     create_tool_manager_web_module,
     register_tool_manager_callbacks,
 )
-from ada.web.configuration.tool_editor import TOOL_CONFIGURATION_EDITOR_ROOT_ID
+from ada.web.tools.configuration import ToolConfiguration, build_tool_configuration_digest
+from ada.web.tools.configuration.web import TOOL_CONFIGURATION_EDITOR_ROOT_ID
 from atlanticus.web.manager import ManagerDraft
 
 

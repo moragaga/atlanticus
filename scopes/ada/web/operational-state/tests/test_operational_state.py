@@ -4,13 +4,6 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from ada.configuration.tool_sources import (
-    SourceControlPolicy,
-    ToolSourceConsumption,
-    ToolSourceConsumptionValidationError,
-    ToolSourceOperationalParticipation,
-    ToolSourceOperationalParticipationValidationError,
-)
 from ada.web.content_state.core import ContentState
 from ada.web.content_state.dependency_resolver import ContentStateDependency
 from ada.web.operational_state import AdaOperationalState, resolve_ada_operational_state
@@ -18,6 +11,13 @@ from ada.web.time_status.store_adapter import (
     TimeStatusSourceTimestamp,
     TimeStatusStoreSnapshot,
     TimeStatusTimestampQuality,
+)
+from ada.web.tools.sources import (
+    SourceControlPolicy,
+    ToolSourceConsumption,
+    ToolSourceConsumptionValidationError,
+    ToolSourceOperationalParticipation,
+    ToolSourceOperationalParticipationValidationError,
 )
 from ada.web.ui.time_status import (
     TimeStatusDetailSourceState,

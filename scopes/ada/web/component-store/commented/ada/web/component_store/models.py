@@ -7,7 +7,7 @@ from enum import StrEnum
 from ada.web.component_store.errors import ComponentStoreValidationError
 
 # La identidad del Store usa el mismo formato canónico de keys que Tool Structure,
-# pero el paquete no depende de helpers privados de ada.configuration.tools.
+# pero el paquete no depende de helpers privados de ada.web.tools.
 _KEY_PATTERN = re.compile(r'^[a-z][a-z0-9_]*$')
 
 

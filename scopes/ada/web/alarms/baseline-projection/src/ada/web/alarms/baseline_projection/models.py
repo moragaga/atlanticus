@@ -3,8 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from ada.configuration.tools import ToolConfigurationKind, ToolScope
 from ada.web.alarms.baseline_projection.errors import AlarmBaselineProjectionError
+from ada.web.tools.enums import (
+    ToolConfigurationKind,
+    ToolScope,
+)
 
 
 class AlarmBaselineAnchorKind(StrEnum):

@@ -3,19 +3,6 @@ revision = 3
 requires-python = "==3.14.2"
 
 [[package]]
-name = "ada-configuration-tool-sources"
-version = "0.1.0"
-source = { editable = "../configuration/tool-sources" }
-
-[package.metadata]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
 name = "ada-web-content-state-core"
 version = "0.1.0"
 source = { editable = "../content-state/core" }
@@ -50,10 +37,10 @@ name = "ada-web-operational-state"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "ada-configuration-tool-sources" },
     { name = "ada-web-content-state-core" },
     { name = "ada-web-content-state-dependency-resolver" },
     { name = "ada-web-time-status-store-adapter" },
+    { name = "ada-web-tools" },
     { name = "ada-web-ui-time-status" },
 ]
 
@@ -65,10 +52,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-configuration-tool-sources", editable = "../configuration/tool-sources" },
     { name = "ada-web-content-state-core", editable = "../content-state/core" },
     { name = "ada-web-content-state-dependency-resolver", editable = "../content-state/dependency-resolver" },
     { name = "ada-web-time-status-store-adapter", editable = "../time-status/store-adapter" },
+    { name = "ada-web-tools", editable = "../tools/core" },
     { name = "ada-web-ui-time-status", editable = "../ui/time-status" },
 ]
 
@@ -82,6 +69,19 @@ dev = [
 name = "ada-web-time-status-store-adapter"
 version = "0.1.0"
 source = { editable = "../time-status/store-adapter" }
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-tools"
+version = "0.1.0"
+source = { editable = "../tools/core" }
 
 [package.metadata]
 

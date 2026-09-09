@@ -1,8 +1,7 @@
 # Adapta contratos de dominio al Manager sin incorporar reglas de negocio.
 from __future__ import annotations
 
-from ada.configuration.tools import ToolConfiguration
-from ada.configuration.tools_lifecycle import ToolLifecycleServices
+from ada.web.tools.configuration import ToolConfiguration, ToolLifecycleServices
 from atlanticus.web.manager import (
     DraftValidationResult,
     ProjectionAuditRecord,

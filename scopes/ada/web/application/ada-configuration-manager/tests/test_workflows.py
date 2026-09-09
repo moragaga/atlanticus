@@ -5,12 +5,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from ada.configuration.tools import ToolConfiguration
 from ada.web.application.configuration_manager import (
     NavigationManagerWorkflowAdapter,
     ToolConfigurationManagerWorkflowAdapter,
     UsersManagerWorkflowAdapter,
 )
+from ada.web.tools.configuration import ToolConfiguration
 from atlanticus.web.manager import (
     ConfigurationLifecycleWorkflow,
     RevisionHistoryWorkflow,

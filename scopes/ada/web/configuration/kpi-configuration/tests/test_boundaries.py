@@ -18,7 +18,7 @@ def test_domain_has_no_physical_infrastructure_or_web_dependency() -> None:
 
 def test_domain_does_not_import_tool_or_definition_implementation() -> None:
     source = '\n'.join(path.read_text(encoding='utf-8') for path in ROOT.rglob('*.py'))
-    assert 'ada.configuration.tools' not in source
+    assert 'ada.web.tools' not in source
     assert 'ada.configuration.kpi_definition' not in source
 
 

@@ -6,7 +6,7 @@ from ada.configuration.kpi_configuration import (
     KpiDestination,
     KpiDestinationCatalog,
 )
-from ada.configuration.tools_lifecycle import ToolConfigurationProjectionRepository
+from ada.web.tools.configuration import ToolConfigurationProjectionRepository
 
 _SYSTEM_DESTINATION_DISPLAY_NAMES = {
     'global_indicators': 'Global Indicators',

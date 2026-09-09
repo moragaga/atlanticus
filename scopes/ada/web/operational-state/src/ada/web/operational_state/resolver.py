@@ -1,13 +1,5 @@
 from __future__ import annotations
 
-from ada.configuration.tool_sources import (
-    SourceControlPolicy,
-    ToolSourceConsumption,
-    ToolSourceConsumptionValidationError,
-    ToolSourceOperationalParticipation,
-    ToolSourceOperationalParticipationValidationError,
-    validate_operational_participation_against_consumption,
-)
 from ada.web.content_state.core import ContentState, SourceFreshnessCondition
 from ada.web.content_state.dependency_resolver import (
     ContentStateDependency,
@@ -16,6 +8,14 @@ from ada.web.content_state.dependency_resolver import (
 from ada.web.time_status.store_adapter import (
     TimeStatusStoreSnapshot,
     TimeStatusTimestampQuality,
+)
+from ada.web.tools.sources import (
+    SourceControlPolicy,
+    ToolSourceConsumption,
+    ToolSourceConsumptionValidationError,
+    ToolSourceOperationalParticipation,
+    ToolSourceOperationalParticipationValidationError,
+    validate_operational_participation_against_consumption,
 )
 from ada.web.ui.time_status import (
     TimeStatusDetailState,

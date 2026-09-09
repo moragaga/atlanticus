@@ -4,8 +4,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from ada.configuration.tools import ToolConfigurationKind, ToolScope
 from ada.web.alarms.baseline_projection.errors import AlarmBaselineProjectionError
+from ada.web.tools.enums import (
+    ToolConfigurationKind,
+    ToolScope,
+)
 
 
 class AlarmBaselineAnchorKind(StrEnum):
@@ -32,9 +35,7 @@ class AlarmBaselinePoint:
             ('display name', self.display_name),
         ):
             if not isinstance(value, str) or not value.strip():
-                raise AlarmBaselineProjectionError(
-                    f'Alarm baseline point {label} is required'
-                )
+                raise AlarmBaselineProjectionError(f'Alarm baseline point {label} is required')
         object.__setattr__(self, 'anchor_key', self.anchor_key.strip())
         object.__setattr__(self, 'component_key', self.component_key.strip())
         object.__setattr__(self, 'display_name', self.display_name.strip())
@@ -72,9 +73,7 @@ class AlarmBaselineProjection:
             raise AlarmBaselineProjectionError('Alarm baseline contains duplicate anchors')
         component_keys = tuple(point.component_key for point in points)
         if len(component_keys) != len(set(component_keys)):
-            raise AlarmBaselineProjectionError(
-                'Alarm baseline contains duplicate component keys'
-            )
+            raise AlarmBaselineProjectionError('Alarm baseline contains duplicate component keys')
         object.__setattr__(self, 'tool_key', self.tool_key.strip())
         object.__setattr__(self, 'points', points)
 

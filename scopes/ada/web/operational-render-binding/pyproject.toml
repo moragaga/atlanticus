@@ -11,14 +11,13 @@ classifiers = [
     "Private :: Do Not Upload",
 ]
 dependencies = [
-    "ada-configuration-tools==0.4.0",
+    "ada-web-tools==0.1.0",
     "ada-web-component-store==0.1.0",
 ]
 
 [tool.uv.sources]
 ada-web-component-store = { path = "../component-store", editable = true }
-ada-configuration-tools = { path = "../configuration/tools", editable = true }
-ada-configuration-tool-sources = { path = "../configuration/tool-sources", editable = true }
+ada-web-tools = { path = "../tools/core", editable = true }
 
 [dependency-groups]
 dev = [
@@ -62,10 +61,5 @@ combine-as-imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = [
-    "src",
-    "../component-store/src",
-    "../configuration/tools/src",
-    "../configuration/tool-sources/src",
-]
+pythonpath = ["src", "../component-store/src", "../tools/core/src"]
 addopts = "-q --import-mode=importlib"
