@@ -4,7 +4,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from ada.configuration.branding import BrandingConfiguration
 from ada.configuration.tool_sources import (
     ToolSourceConsumption,
     ToolSourceOperationalParticipation,
@@ -14,6 +13,7 @@ from ada.configuration.tools.enums import ToolConfigurationKind
 from ada.configuration.tools.errors import ToolConfigurationValidationError
 from ada.configuration.tools.structure import ToolStructure
 from ada.configuration.tools.validation import require_display_name, require_key
+from ada.web.branding import BrandingConfiguration
 
 
 @dataclass(frozen=True, slots=True)

@@ -17,9 +17,7 @@ COMPONENT_SCOPE_TYPE = 'ada-tool-structure-component-scope'
 COMPONENT_SCOPE_WRAPPER_TYPE = 'ada-tool-structure-component-scope-wrapper'
 COMPONENT_DELETE_TYPE = 'ada-tool-structure-component-delete'
 COMPONENT_ADD_SUBCOMPONENT_TYPE = 'ada-tool-structure-component-add-subcomponent'
-COMPONENT_SUBCOMPONENTS_CONTAINER_TYPE = (
-    'ada-tool-structure-component-subcomponents-container'
-)
+COMPONENT_SUBCOMPONENTS_CONTAINER_TYPE = 'ada-tool-structure-component-subcomponents-container'
 COMPONENT_SUMMARY_NAME_TYPE = 'ada-tool-structure-component-summary-name'
 COMPONENT_SUMMARY_SCOPE_TYPE = 'ada-tool-structure-component-summary-scope'
 COMPONENT_SUMMARY_COUNT_TYPE = 'ada-tool-structure-component-summary-count'

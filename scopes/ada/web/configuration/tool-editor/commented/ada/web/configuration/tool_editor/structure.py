@@ -37,11 +37,7 @@ def structure_editor_table_data_from_configuration(
             {
                 'key': component.key,
                 'display_name': component.display_name,
-                'scope': (
-                    component.scope.value
-                    if component.scope is not None
-                    else None
-                ),
+                'scope': (component.scope.value if component.scope is not None else None),
             }
         )
         for subcomponent in component.subcomponents:
@@ -50,9 +46,7 @@ def structure_editor_table_data_from_configuration(
                     'owner_component_key': component.key,
                     'key': subcomponent.key,
                     'display_name': subcomponent.display_name,
-                    'linked_component_keys': list(
-                        subcomponent.linked_component_keys
-                    ),
+                    'linked_component_keys': list(subcomponent.linked_component_keys),
                 }
             )
     return (
@@ -70,14 +64,9 @@ def structure_editor_coverage_from_configuration(
         return None
     if configuration.kind is ToolConfigurationKind.PROCESS:
         return (
-            structure.operational_scope.value
-            if structure.operational_scope is not None
-            else None
+            structure.operational_scope.value if structure.operational_scope is not None else None
         )
-    if (
-        configuration.kind
-        is ToolConfigurationKind.INTEGRATED_OPERATIONS
-    ):
+    if configuration.kind is ToolConfigurationKind.INTEGRATED_OPERATIONS:
         return _COVERAGE_MINE_PLANT
     return None
 
@@ -98,49 +87,35 @@ def build_structure_from_editor_tables(
         coverage,
         kind=base_configuration.kind,
     )
-    component_keys = tuple(
-        _text(row.get('key'))
-        for row in components
-    )
+    component_keys = tuple(_text(row.get('key')) for row in components)
     if len(component_keys) != len(set(component_keys)):
         raise ToolStructureEditorValidationError(
-            'Tool Structure component keys must be unique '
-            'before assigning subcomponents'
+            'Tool Structure component keys must be unique before assigning subcomponents'
         )
 
-    grouped: dict[str, list[dict[str, object]]] = {
-        key: []
-        for key in component_keys
-    }
+    grouped: dict[str, list[dict[str, object]]] = {key: [] for key in component_keys}
     for row in subcomponents:
         owner_key = _text(row.get('owner_component_key'))
         if owner_key not in grouped:
             raise ToolStructureEditorValidationError(
-                'Tool subcomponent owner component does not exist: '
-                f'{owner_key!r}'
+                f'Tool subcomponent owner component does not exist: {owner_key!r}'
             )
         grouped[owner_key].append(
             {
                 'key': _text(row.get('key')),
                 'display_name': _text(row.get('display_name')),
                 'linked_component_keys': list(
-                    _linked_component_keys(
-                        row.get('linked_component_keys')
-                    )
+                    _linked_component_keys(row.get('linked_component_keys'))
                 ),
             }
         )
 
     kind = base_configuration.kind
-# El editor actual no emite layout_role: la posición visual no forma parte del contrato editable.
+    # El editor actual no emite layout_role: la posición visual no forma parte del contrato editable.
     document = {
         'tool_key': base_configuration.tool_key,
         'kind': kind.value,
-        'operational_scope': (
-            resolved_coverage
-            if kind is ToolConfigurationKind.PROCESS
-            else None
-        ),
+        'operational_scope': (resolved_coverage if kind is ToolConfigurationKind.PROCESS else None),
         'components': [
             {
                 'key': key,
@@ -177,9 +152,7 @@ def build_configuration_from_structure_editor(
             display_name=base_configuration.display_name,
             kind=base_configuration.kind,
             source_consumption=base_configuration.source_consumption,
-            source_operational_participation=(
-                base_configuration.source_operational_participation
-            ),
+            source_operational_participation=(base_configuration.source_operational_participation),
             structure=structure,
             branding=base_configuration.branding,
         )
@@ -204,9 +177,7 @@ def _component_scope(
             )
         return resolved
     if kind is not ToolConfigurationKind.INTEGRATED_OPERATIONS:
-        raise ToolStructureEditorValidationError(
-            'Tool kind is not supported by this editor'
-        )
+        raise ToolStructureEditorValidationError('Tool kind is not supported by this editor')
     return resolved
 
 
@@ -225,19 +196,13 @@ def _coverage(
                 'Process operational coverage must be Mina or Planta'
             )
         return resolved
-    if (
-        kind
-        is ToolConfigurationKind.INTEGRATED_OPERATIONS
-    ):
+    if kind is ToolConfigurationKind.INTEGRATED_OPERATIONS:
         if resolved != _COVERAGE_MINE_PLANT:
             raise ToolStructureEditorValidationError(
-                'Integrated Operations operational coverage '
-                'must be Mina y Planta'
+                'Integrated Operations operational coverage must be Mina y Planta'
             )
         return resolved
-    raise ToolStructureEditorValidationError(
-        'Tool kind is not supported by this editor'
-    )
+    raise ToolStructureEditorValidationError('Tool kind is not supported by this editor')
 
 
 def _rows(
@@ -248,19 +213,13 @@ def _rows(
     if value is None:
         return ()
     if isinstance(value, (str, bytes, Mapping)):
-        raise ToolStructureEditorValidationError(
-            f'{label} must be a collection'
-        )
+        raise ToolStructureEditorValidationError(f'{label} must be a collection')
     try:
         rows = tuple(value)
     except TypeError as error:
-        raise ToolStructureEditorValidationError(
-            f'{label} must be a collection'
-        ) from error
+        raise ToolStructureEditorValidationError(f'{label} must be a collection') from error
     if not all(isinstance(row, Mapping) for row in rows):
-        raise ToolStructureEditorValidationError(
-            f'{label} must contain mappings'
-        )
+        raise ToolStructureEditorValidationError(f'{label} must contain mappings')
     return rows
 
 
@@ -268,11 +227,7 @@ def _linked_component_keys(value: object) -> tuple[str, ...]:
     if value is None:
         return ()
     if isinstance(value, str):
-        return tuple(
-            item.strip()
-            for item in value.split(',')
-            if item.strip()
-        )
+        return tuple(item.strip() for item in value.split(',') if item.strip())
     if isinstance(value, (bytes, Mapping)):
         raise ToolStructureEditorValidationError(
             'Tool linked component keys must be text or a collection'
@@ -284,14 +239,8 @@ def _linked_component_keys(value: object) -> tuple[str, ...]:
             'Tool linked component keys must be text or a collection'
         ) from error
     if not all(isinstance(item, str) for item in items):
-        raise ToolStructureEditorValidationError(
-            'Tool linked component keys must contain strings'
-        )
-    return tuple(
-        item.strip()
-        for item in items
-        if item.strip()
-    )
+        raise ToolStructureEditorValidationError('Tool linked component keys must contain strings')
+    return tuple(item.strip() for item in items if item.strip())
 
 
 def _text(value: object) -> str:

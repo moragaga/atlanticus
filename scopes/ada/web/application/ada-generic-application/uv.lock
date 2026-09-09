@@ -21,10 +21,14 @@ version = "0.4.0"
 source = { editable = "../../configuration/tools" }
 dependencies = [
     { name = "ada-configuration-tool-sources" },
+    { name = "ada-web-branding" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "ada-configuration-tool-sources", editable = "../../configuration/tool-sources" }]
+requires-dist = [
+    { name = "ada-configuration-tool-sources", editable = "../../configuration/tool-sources" },
+    { name = "ada-web-branding", editable = "../../branding" },
+]
 
 [package.metadata.requires-dev]
 dev = [
@@ -40,6 +44,7 @@ dependencies = [
     { name = "ada-configuration-tool-sources" },
     { name = "ada-web-alarm-management-summary" },
     { name = "ada-web-alarm-status" },
+    { name = "ada-web-branding", extra = ["web"] },
     { name = "ada-web-content-state-dependency-resolver" },
     { name = "ada-web-operational-render-binding" },
     { name = "ada-web-operational-state" },
@@ -47,7 +52,6 @@ dependencies = [
     { name = "ada-web-shell-header" },
     { name = "ada-web-shell-navigation" },
     { name = "ada-web-time-status-store-adapter" },
-    { name = "ada-web-ui-branding" },
     { name = "ada-web-ui-content-state" },
     { name = "ada-web-ui-core" },
     { name = "ada-web-ui-display-status" },
@@ -71,6 +75,7 @@ requires-dist = [
     { name = "ada-configuration-tool-sources", editable = "../../configuration/tool-sources" },
     { name = "ada-web-alarm-management-summary", editable = "../../alarms/management-summary" },
     { name = "ada-web-alarm-status", editable = "../../alarms/status" },
+    { name = "ada-web-branding", extras = ["web"], editable = "../../branding" },
     { name = "ada-web-content-state-dependency-resolver", editable = "../../content-state/dependency-resolver" },
     { name = "ada-web-operational-render-binding", editable = "../../operational-render-binding" },
     { name = "ada-web-operational-state", editable = "../../operational-state" },
@@ -78,7 +83,6 @@ requires-dist = [
     { name = "ada-web-shell-header", editable = "../../shell/header" },
     { name = "ada-web-shell-navigation", editable = "../../shell/navigation" },
     { name = "ada-web-time-status-store-adapter", editable = "../../time-status/store-adapter" },
-    { name = "ada-web-ui-branding", editable = "../../ui/branding" },
     { name = "ada-web-ui-content-state", editable = "../../ui/content-state" },
     { name = "ada-web-ui-core", editable = "../../ui/core" },
     { name = "ada-web-ui-display-status", editable = "../../ui/display-status" },
@@ -139,6 +143,35 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-branding"
+version = "0.1.0"
+source = { editable = "../../branding" }
+
+[package.optional-dependencies]
+web = [
+    { name = "ada-web-ui-core" },
+    { name = "atlanticus-web" },
+    { name = "dash" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-web-ui-core", marker = "extra == 'web'", editable = "../../ui/core" },
+    { name = "atlanticus-web", marker = "extra == 'web'", editable = "../../../../../web/framework/core" },
+    { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
+]
+provides-extras = ["web"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "ada-web-ui-core", editable = "../../ui/core" },
+    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
+    { name = "dash", specifier = "==4.4.1" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]
@@ -311,29 +344,6 @@ version = "0.1.0"
 source = { editable = "../../time-status/store-adapter" }
 
 [package.metadata]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-ui-branding"
-version = "0.1.6"
-source = { editable = "../../ui/branding" }
-dependencies = [
-    { name = "ada-web-ui-core" },
-    { name = "atlanticus-web" },
-    { name = "dash" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-web-ui-core", editable = "../../ui/core" },
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "dash", specifier = "==4.4.1" },
-]
 
 [package.metadata.requires-dev]
 dev = [

@@ -1,0 +1,149 @@
+from __future__ import annotations
+
+from importlib.resources import files
+
+import pytest
+from dash.development.base_component import Component
+
+from ada.web.branding.web import (
+    ADA_BRANDING_ASSET_LAYER,
+    DEFAULT_OPERATIONAL_BRAND_LOGO_SRC,
+    DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC,
+    DEFAULT_PELAMBRES_BRAND_LOGO_SRC,
+    OperationalBrandState,
+    build_operational_brand,
+    create_ada_branding_module,
+)
+
+
+def test_branding_module_publishes_small_operational_asset_layer() -> None:
+    module = create_ada_branding_module()
+    operational_resource = files('ada.web.branding.web').joinpath(
+        'resources/img/ada-operational-primary.svg'
+    )
+    secondary_resource = files('ada.web.branding.web').joinpath(
+        'resources/img/ada-operational-secondary.svg'
+    )
+    pelambres_resource = files('ada.web.branding.web').joinpath(
+        'resources/img/amsa-pelambres-primary.png'
+    )
+
+    assert module.name == 'ada-branding'
+    assert module.asset_layers == (ADA_BRANDING_ASSET_LAYER,)
+    assert DEFAULT_OPERATIONAL_BRAND_LOGO_SRC == (
+        f'/assets/{ADA_BRANDING_ASSET_LAYER.target_name}/img/ada-operational-primary.svg'
+    )
+    assert DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC == (
+        f'/assets/{ADA_BRANDING_ASSET_LAYER.target_name}/img/ada-operational-secondary.svg'
+    )
+    assert DEFAULT_PELAMBRES_BRAND_LOGO_SRC == (
+        f'/assets/{ADA_BRANDING_ASSET_LAYER.target_name}/img/amsa-pelambres-primary.png'
+    )
+    assert operational_resource.is_file()
+    assert secondary_resource.is_file()
+    assert pelambres_resource.is_file()
+    assert len(operational_resource.read_bytes()) < 100_000
+    assert len(pelambres_resource.read_bytes()) < 100_000
+
+
+def test_operational_brand_renders_injected_context_without_header_dependency() -> None:
+    component = build_operational_brand(
+        OperationalBrandState(context_name='Operaciones Integradas')
+    )
+
+    assert _prop(component, 'data-ada-component-key') == 'operational_brand'
+    logo = _require_by_class(component, 'ada-operational-brand__logo')
+    context = _require_by_class(component, 'ada-operational-brand__context')
+
+    assert _prop(logo, 'src') == DEFAULT_OPERATIONAL_BRAND_LOGO_SRC
+    assert _prop(logo, 'alt') == 'ADA'
+    assert 'Operaciones Integradas' in _text_content(context)
+    assert _find_by_class(component, 'ada-header') is None
+
+
+def test_operational_brand_does_not_invent_context_when_configuration_is_absent() -> None:
+    component = build_operational_brand(OperationalBrandState())
+
+    assert _find_by_class(component, 'ada-operational-brand__context') is None
+    assistant = _require_by_class(component, 'ada-operational-brand__assistant')
+    assert _text_content(assistant) == 'Asistente de Decisiones Ágiles'
+
+
+def test_operational_brand_rejects_blank_text_contracts() -> None:
+    with pytest.raises(ValueError, match='context_name cannot be empty'):
+        OperationalBrandState(context_name='   ')
+    with pytest.raises(ValueError, match='assistant_label cannot be empty'):
+        OperationalBrandState(assistant_label='')
+    with pytest.raises(ValueError, match='logo_src cannot be empty'):
+        OperationalBrandState(logo_src='  ')
+
+
+def _require_by_class(component: Component, class_name: str) -> Component:
+    result = _find_by_class(component, class_name)
+    if result is None:
+        raise AssertionError(f'Component with class {class_name!r} was not found')
+    return result
+
+
+def _find_by_class(component: Component, class_name: str) -> Component | None:
+    classes = getattr(component, 'className', '') or ''
+    if class_name in classes.split():
+        return component
+    for child in _children(component):
+        result = _find_by_class(child, class_name)
+        if result is not None:
+            return result
+    return None
+
+
+def _children(component: Component) -> list[Component]:
+    children = getattr(component, 'children', None)
+    if children is None:
+        return []
+    if not isinstance(children, (list, tuple)):
+        children = [children]
+    return [child for child in children if isinstance(child, Component)]
+
+
+def _prop(component: Component, name: str):
+    return component.to_plotly_json()['props'][name]
+
+
+def _text_content(component: Component) -> str:
+    children = getattr(component, 'children', None)
+    if isinstance(children, str):
+        return children
+    if children is None:
+        return ''
+    if not isinstance(children, (list, tuple)):
+        children = [children]
+    return ''.join(
+        child if isinstance(child, str) else _text_content(child)
+        for child in children
+        if isinstance(child, (str, Component))
+    )
+
+
+def test_operational_brand_css_tracks_pelambres_responsive_scale() -> None:
+    css = (
+        files('ada.web.branding.web')
+        .joinpath('resources/css/10-operational-brand.css')
+        .read_text(encoding='utf-8')
+    )
+
+    assert 'width: 100%;' in css
+    assert 'height: 100%;' in css
+    for width in (350, 480, 1280, 1366, 1536, 1920, 2560):
+        assert f'@media only screen and (min-width: {width}px)' in css
+
+
+def test_operational_brand_mobile_and_large_display_calibration_is_explicit() -> None:
+    css = (
+        files('ada.web.branding.web')
+        .joinpath('resources/css/10-operational-brand.css')
+        .read_text(encoding='utf-8')
+    )
+
+    assert 'max-width: 8rem; max-height: 2.9rem;' in css
+    assert 'max-width: 8.75rem; max-height: 3.15rem;' in css
+    assert 'max-width: 10.5rem; max-height: 3.75rem;' in css

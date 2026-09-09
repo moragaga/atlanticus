@@ -14,6 +14,7 @@ from ada.web.application.generic.layout import (
     build_body_application_layout,
     create_ada_operational_layout,
 )
+
 # Factory público para que la composición concreta defina su body operacional.
 from ada.web.application.generic.operational_render import (
     AdaOperationalBodyFactory,

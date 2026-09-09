@@ -68,9 +68,7 @@ def register_tool_source_editor_callbacks(app: object) -> None:
                 None,
                 None,
             )
-        configuration = ToolConfiguration.from_document(
-            configuration_document
-        )
+        configuration = ToolConfiguration.from_document(configuration_document)
         values = source_editor_values_from_configuration(configuration)
         return (
             values.display_name,
@@ -97,9 +95,7 @@ def register_tool_source_editor_callbacks(app: object) -> None:
     ) -> str | None:
         if configuration_document is not None:
             try:
-                configuration = ToolConfiguration.from_document(
-                    configuration_document
-                )
+                configuration = ToolConfiguration.from_document(configuration_document)
             except ValueError:
                 configuration = None
             if configuration is not None:
@@ -136,9 +132,7 @@ def register_tool_source_editor_callbacks(app: object) -> None:
         process_coverage: str | None,
     ):
         remembered = (
-            process_coverage
-            if process_coverage in {_COVERAGE_MINE, _COVERAGE_PLANT}
-            else None
+            process_coverage if process_coverage in {_COVERAGE_MINE, _COVERAGE_PLANT} else None
         )
         options = _coverage_options(kind_value)
         if not options:
@@ -149,10 +143,7 @@ def register_tool_source_editor_callbacks(app: object) -> None:
                 'Selecciona primero el tipo',
                 remembered,
             )
-        if (
-            kind_value
-            == ToolConfigurationKind.INTEGRATED_OPERATIONS.value
-        ):
+        if kind_value == ToolConfigurationKind.INTEGRATED_OPERATIONS.value:
             if current_coverage in {_COVERAGE_MINE, _COVERAGE_PLANT}:
                 remembered = current_coverage
             return (
@@ -166,18 +157,11 @@ def register_tool_source_editor_callbacks(app: object) -> None:
         valid_values = {option['value'] for option in options}
         if configuration_document is not None:
             try:
-                configuration = ToolConfiguration.from_document(
-                    configuration_document
-                )
+                configuration = ToolConfiguration.from_document(configuration_document)
             except ValueError:
                 configuration = None
-            if (
-                configuration is not None
-                and configuration.kind.value == kind_value
-            ):
-                configured = structure_editor_coverage_from_configuration(
-                    configuration
-                )
+            if configuration is not None and configuration.kind.value == kind_value:
+                configured = structure_editor_coverage_from_configuration(configuration)
                 if configured in valid_values:
                     return (
                         options,
@@ -256,13 +240,7 @@ def register_tool_source_editor_callbacks(app: object) -> None:
             or not branding_value
             or pi_preventive is None
             or pi_degradation is None
-            or (
-                dispatch_enabled
-                and (
-                    dispatch_preventive is None
-                    or dispatch_degradation is None
-                )
-            )
+            or (dispatch_enabled and (dispatch_preventive is None or dispatch_degradation is None))
         ):
             return None, False, ''
 
@@ -301,10 +279,7 @@ def _coverage_options(
             {'label': 'Mina', 'value': _COVERAGE_MINE},
             {'label': 'Planta', 'value': _COVERAGE_PLANT},
         ]
-    if (
-        kind_value
-        == ToolConfigurationKind.INTEGRATED_OPERATIONS.value
-    ):
+    if kind_value == ToolConfigurationKind.INTEGRATED_OPERATIONS.value:
         return [
             {
                 'label': 'Mina y Planta',

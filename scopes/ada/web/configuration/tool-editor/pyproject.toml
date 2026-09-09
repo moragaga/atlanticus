@@ -12,7 +12,7 @@ classifiers = [
 ]
 dependencies = [
     "ada-configuration-tool-sources==0.1.0",
-    "ada-configuration-tools==0.3.0",
+    "ada-configuration-tools==0.4.0",
     "atlanticus-web==0.1.0",
     "dash==4.4.1",
 ]
@@ -70,7 +70,7 @@ combine-as-imports = true
 testpaths = ["tests"]
 pythonpath = [
     "src",
-    "../branding/src",
+    "../../branding/src",
     "../tools/src",
     "../tool-sources/src",
     "../../../../../web/framework/core/src",

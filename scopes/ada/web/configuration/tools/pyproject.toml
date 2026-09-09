@@ -11,12 +11,12 @@ classifiers = [
     "Private :: Do Not Upload",
 ]
 dependencies = [
-    "ada-configuration-branding==0.1.0",
+    "ada-web-branding==0.1.0",
     "ada-configuration-tool-sources==0.1.0",
 ]
 
 [tool.uv.sources]
-ada-configuration-branding = { path = "../branding", editable = true }
+ada-web-branding = { path = "../../branding", editable = true }
 ada-configuration-tool-sources = { path = "../tool-sources", editable = true }
 
 [dependency-groups]
@@ -61,5 +61,5 @@ combine-as-imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src", "../branding/src", "../tool-sources/src"]
+pythonpath = ["src", "../../branding/src", "../tool-sources/src"]
 addopts = "-q --import-mode=importlib"

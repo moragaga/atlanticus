@@ -1,6 +1,5 @@
 # Espejo comentado de exportaciones públicas de Tools R2.
 
-from ada.configuration.branding import BrandingConfiguration, BrandingVariant
 from ada.configuration.tools.contracts import (
     validate_ada_operational_tool_configuration,
     validate_ada_operational_tool_sources,
@@ -18,6 +17,7 @@ from ada.configuration.tools.structure import (
     ToolSubcomponent,
     ToolSubcomponentAddress,
 )
+from ada.web.branding import BrandingConfiguration, BrandingVariant
 
 __all__ = [
     'BrandingConfiguration',

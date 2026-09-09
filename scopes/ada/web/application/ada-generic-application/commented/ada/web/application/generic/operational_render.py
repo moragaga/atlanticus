@@ -68,9 +68,7 @@ def materialize_operational_components(
         if component_key not in expected_key_set:
             raise ValueError(f'Unknown operational component renderer: {component_key!r}')
         if not callable(renderer):
-            raise TypeError(
-                f'Operational component renderer must be callable: {component_key!r}'
-            )
+            raise TypeError(f'Operational component renderer must be callable: {component_key!r}')
 
     missing_key = next((key for key in expected_keys if key not in renderers), None)
     if missing_key is not None:

@@ -23,6 +23,12 @@ from ada.web.alarms.management_summary import (
 from ada.web.alarms.status import ADA_ALARM_STATUS_ASSET_LAYER, AlarmStatusState
 from ada.web.application.generic.application import create_application_definition
 from ada.web.application.generic.runtime import create_application_runtime
+from ada.web.branding.web import (
+    ADA_BRANDING_ASSET_LAYER,
+    DEFAULT_OPERATIONAL_BRAND_LOGO_SRC,
+    DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC,
+    DEFAULT_PELAMBRES_BRAND_LOGO_SRC,
+)
 from ada.web.content_state.dependency_resolver import ContentStateDependency
 from ada.web.shell.header import ADA_OPERATIONAL_HEADER_ASSET_LAYER
 from ada.web.shell.navigation import ADA_NAVIGATION_ASSET_LAYER, AdaNavigationView
@@ -30,12 +36,6 @@ from ada.web.time_status.store_adapter import (
     TimeStatusSourceTimestamp,
     TimeStatusStoreSnapshot,
     TimeStatusTimestampQuality,
-)
-from ada.web.ui.branding import (
-    ADA_BRANDING_ASSET_LAYER,
-    DEFAULT_OPERATIONAL_BRAND_LOGO_SRC,
-    DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC,
-    DEFAULT_PELAMBRES_BRAND_LOGO_SRC,
 )
 from ada.web.ui.content_state import (
     ADA_CONTENT_STATE_ASSET_LAYER,

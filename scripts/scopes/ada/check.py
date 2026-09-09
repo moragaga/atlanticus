@@ -175,7 +175,7 @@ CAPABILITIES: dict[str, AdaCapability] = {
     ),
     'branding': AdaCapability(
         key='branding',
-        project_root='scopes/ada/web/ui/branding',
+        project_root='scopes/ada/web/branding',
         ruff_roots=('src', 'tests', 'commented'),
         tests_root='tests',
         source_root='src',

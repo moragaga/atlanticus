@@ -62,8 +62,7 @@ TOOL_DETAIL_BODY_ID = 'ada-configuration-manager-tools-detail-body'
 
 _TOOL_DETAIL_MODAL_CLOSED = 'ada-configuration-manager-tools__modal'
 _TOOL_DETAIL_MODAL_OPEN = (
-    'ada-configuration-manager-tools__modal '
-    'ada-configuration-manager-tools__modal--open'
+    'ada-configuration-manager-tools__modal ada-configuration-manager-tools__modal--open'
 )
 
 TOOL_MANAGER_ASSET_LAYER = AssetLayer(
@@ -156,7 +155,7 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
                 owner_subject_id=context.draft_owner_provider(),
             )
             configuration = ToolConfiguration.from_document(draft.payload)
-        except (ManagerProjectionError, ValueError):
+        except ManagerProjectionError, ValueError:
             return None
         return configuration.to_document()
 
@@ -460,7 +459,6 @@ def _tool_runtime_context(context: ToolManagerWebContext) -> object:
     )
 
 
-
 # La inspección vive entre edición y persistencia; no forma parte de Importar ni Guardar.
 def _tool_detail_section() -> object:
     return html.Section(
@@ -524,30 +522,17 @@ def _tool_detail_modal() -> object:
                                 n_clicks=0,
                                 type='button',
                                 className='btn-close',
-                                **{
-                                    'aria-label': (
-                                        'Cerrar detalle de configuración'
-                                    )
-                                },
+                                **{'aria-label': ('Cerrar detalle de configuración')},
                             ),
                         ],
-                        className=(
-                            'modal-header '
-                            'ada-configuration-manager-tools__modal-header'
-                        ),
+                        className=('modal-header ada-configuration-manager-tools__modal-header'),
                     ),
                     html.Div(
                         id=TOOL_DETAIL_BODY_ID,
-                        className=(
-                            'modal-body '
-                            'ada-configuration-manager-tools__modal-body'
-                        ),
+                        className=('modal-body ada-configuration-manager-tools__modal-body'),
                     ),
                 ],
-                className=(
-                    'modal-content '
-                    'ada-configuration-manager-tools__modal-dialog'
-                ),
+                className=('modal-content ada-configuration-manager-tools__modal-dialog'),
                 role='dialog',
                 **{'aria-modal': 'true'},
             ),
@@ -639,9 +624,7 @@ def _tool_detail_snapshot(
         owner['subcomponents'].append(
             {
                 'key': _optional_text(sub_keys.get((owner_index, sub_index))),
-                'display_name': _optional_text(
-                    sub_names.get((owner_index, sub_index))
-                ),
+                'display_name': _optional_text(sub_names.get((owner_index, sub_index))),
                 'owner_component_key': owner_key,
                 'linked_component_keys': links,
                 'linked_component_labels': tuple(
@@ -764,12 +747,8 @@ def _tool_inspection_document(
         if component_name is not None:
             component_document['display_name'] = component_name
         # En Process sólo exponemos el override real; el scope general sigue en operational_scope.
-        if (
-            component_scope is not None
-            and (
-                kind == 'integrated_operations'
-                or (kind == 'process' and component_scope != coverage)
-            )
+        if component_scope is not None and (
+            kind == 'integrated_operations' or (kind == 'process' and component_scope != coverage)
         ):
             component_document['scope'] = component_scope
 
@@ -781,18 +760,14 @@ def _tool_inspection_document(
                     continue
                 subcomponent_document: dict[str, object] = {}
                 subcomponent_key = _optional_text(subcomponent.get('key'))
-                subcomponent_name = _optional_text(
-                    subcomponent.get('display_name')
-                )
+                subcomponent_name = _optional_text(subcomponent.get('display_name'))
                 linked_keys = subcomponent.get('linked_component_keys')
                 if subcomponent_key is not None:
                     subcomponent_document['key'] = subcomponent_key
                 if subcomponent_name is not None:
                     subcomponent_document['display_name'] = subcomponent_name
                 if isinstance(linked_keys, (list, tuple)) and linked_keys:
-                    subcomponent_document['linked_component_keys'] = list(
-                        linked_keys
-                    )
+                    subcomponent_document['linked_component_keys'] = list(linked_keys)
                 serialized_subcomponents.append(subcomponent_document)
 
         component_document['subcomponents'] = serialized_subcomponents
@@ -895,10 +870,7 @@ def _render_tool_detail(snapshot: dict[str, object]) -> object:
                         'como destinos de configuración KPI.'
                     ),
                     html.Div(
-                        [
-                            _detail_destination(item)
-                            for item in snapshot['fixed_destinations']
-                        ],
+                        [_detail_destination(item) for item in snapshot['fixed_destinations']],
                         className='ada-configuration-manager-tools__detail-destinations',
                     ),
                 ],
@@ -1155,6 +1127,7 @@ def _detail_badges(values: object) -> object:
 
 # Explica por qué el contrato todavía no puede materializarse sin convertir una edición parcial en un error visual.
 
+
 def _contract_pending_message(
     *,
     general: object,
@@ -1179,16 +1152,12 @@ def _contract_pending_message(
     if not component_items:
         return 'Pendiente de completar. Agrega al menos un componente.'
     if any(not item.get('subcomponents') for item in component_items):
-        return (
-            'Pendiente de completar. Cada componente requiere al menos '
-            'un subcomponente.'
-        )
+        return 'Pendiente de completar. Cada componente requiere al menos un subcomponente.'
 
     if kind == 'integrated_operations':
         # Integrated clasifica cada componente; no exige coexistencia simultánea de Mina y Planta.
         if any(
-            _optional_text(item.get('scope')) not in {'mine', 'plant'}
-            for item in component_items
+            _optional_text(item.get('scope')) not in {'mine', 'plant'} for item in component_items
         ):
             return (
                 'Pendiente de completar. Operaciones integradas requiere '
@@ -1211,10 +1180,7 @@ def _contract_pending_message(
                 links = subcomponent.get('linked_component_keys')
                 if not isinstance(links, (list, tuple)):
                     continue
-                if any(
-                    scope_by_key.get(str(link)) not in {None, owner_scope}
-                    for link in links
-                ):
+                if any(scope_by_key.get(str(link)) not in {None, owner_scope} for link in links):
                     return (
                         'Pendiente de completar. Visible también en sólo puede '
                         'enlazar componentes del mismo ámbito.'
@@ -1226,20 +1192,12 @@ def _contract_pending_message(
         return 'Pendiente de completar. Configura el umbral de degradación de PI.'
     if bool(sources_data.get('dispatch_enabled')):
         if sources_data.get('dispatch_preventive') is None:
-            return (
-                'Pendiente de completar. Configura el umbral preventivo '
-                'de Dispatch.'
-            )
+            return 'Pendiente de completar. Configura el umbral preventivo de Dispatch.'
         if sources_data.get('dispatch_degradation') is None:
-            return (
-                'Pendiente de completar. Configura el umbral de degradación '
-                'de Dispatch.'
-            )
+            return 'Pendiente de completar. Configura el umbral de degradación de Dispatch.'
 
-    return (
-        'Pendiente de completar. La configuración actual todavía no forma '
-        'un contrato válido.'
-    )
+    return 'Pendiente de completar. La configuración actual todavía no forma un contrato válido.'
+
 
 def _detail_empty(message: str) -> object:
     return html.Div(
@@ -1260,7 +1218,7 @@ def _pattern_value_map(
             continue
         try:
             key = tuple(int(component_id[field]) for field in fields)
-        except (KeyError, TypeError, ValueError):
+        except KeyError, TypeError, ValueError:
             continue
         resolved[key] = value
     return resolved
@@ -1269,11 +1227,7 @@ def _pattern_value_map(
 def _linked_values(value: object) -> tuple[str, ...]:
     if not isinstance(value, (list, tuple)):
         return ()
-    return tuple(
-        text
-        for item in value
-        if (text := _optional_text(item)) is not None
-    )
+    return tuple(text for item in value if (text := _optional_text(item)) is not None)
 
 
 def _optional_text(value: object) -> str | None:
@@ -1324,6 +1278,7 @@ def _branding_label(value: object) -> str | None:
         'christmas': 'Navidad',
         'new_year': 'Año Nuevo',
     }.get(_optional_text(value) or '')
+
 
 def _tool_save_section() -> object:
     return html.Section(

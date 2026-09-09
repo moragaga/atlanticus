@@ -10,10 +10,10 @@ from ada.web.application.generic.layout import (
     create_ada_operational_layout,
 )
 from ada.web.application.generic.operational_render import AdaOperationalBodyFactory
+from ada.web.branding.web import create_ada_branding_module
 from ada.web.runtime_experience import create_ada_session_module, create_ada_wake_lock_module
 from ada.web.shell.header import create_ada_operational_header_module
 from ada.web.shell.navigation import create_ada_navigation_presentation_module
-from ada.web.ui.branding import create_ada_branding_module
 from ada.web.ui.content_state import create_ada_content_state_module
 from ada.web.ui.core import create_ada_ui_module
 from ada.web.ui.display_status import create_ada_display_status_module

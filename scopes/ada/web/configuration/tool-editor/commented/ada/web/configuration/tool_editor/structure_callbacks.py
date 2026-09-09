@@ -76,13 +76,9 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
     ):
         if configuration_document is None:
             return []
-        configuration = ToolConfiguration.from_document(
-            configuration_document
-        )
-        components, subcomponents, coverage = (
-            structure_editor_table_data_from_configuration(
-                configuration
-            )
+        configuration = ToolConfiguration.from_document(configuration_document)
+        components, subcomponents, coverage = structure_editor_table_data_from_configuration(
+            configuration
         )
         nested_rows = _subcomponent_rows_by_owner(subcomponents)
         return [
@@ -281,9 +277,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
                     'display_name': '',
                     'linked_component_keys': [],
                 },
-                linked_hidden=(
-                    kind is not ToolConfigurationKind.INTEGRATED_OPERATIONS
-                ),
+                linked_hidden=(kind is not ToolConfigurationKind.INTEGRATED_OPERATIONS),
                 linked_component_options=linked_options,
             )
         )
@@ -439,16 +433,10 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
     ):
         # None conserva herencia Process; un override que coincide con el scope general vuelve a herencia.
         process = kind_value == ToolConfigurationKind.PROCESS.value
-        integrated = (
-            kind_value
-            == ToolConfigurationKind.INTEGRATED_OPERATIONS.value
-        )
+        integrated = kind_value == ToolConfigurationKind.INTEGRATED_OPERATIONS.value
         if process:
             scopes = [
-                None
-                if str(scope or '').strip() == coverage
-                else scope
-                for scope in current_scopes
+                None if str(scope or '').strip() == coverage else scope for scope in current_scopes
             ]
         elif integrated:
             scopes = list(current_scopes)
@@ -530,10 +518,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         linked_ids: list[dict[str, object]],
         linked_values: list[object],
     ):
-        if (
-            kind_value
-            != ToolConfigurationKind.INTEGRATED_OPERATIONS.value
-        ):
+        if kind_value != ToolConfigurationKind.INTEGRATED_OPERATIONS.value:
             empty = [[] for _ in linked_ids]
             return (
                 empty,
@@ -549,10 +534,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             scopes=component_scopes,
         )
         ordered = list(rows.values())
-        positions = [
-            _owner_position(rows, _owner_index(linked_id))
-            for linked_id in linked_ids
-        ]
+        positions = [_owner_position(rows, _owner_index(linked_id)) for linked_id in linked_ids]
         options = [
             _linked_component_options(
                 ordered,
@@ -613,10 +595,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         ),
     )
     def sync_component_names(names: list[object]):
-        return [
-            str(name or '').strip() or 'Nuevo componente'
-            for name in names
-        ]
+        return [str(name or '').strip() or 'Nuevo componente' for name in names]
 
     @app.callback(
         Output(
@@ -633,11 +612,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         scopes: list[object],
     ):
         try:
-            kind = (
-                ToolConfigurationKind(kind_value)
-                if kind_value
-                else None
-            )
+            kind = ToolConfigurationKind(kind_value) if kind_value else None
         except ValueError:
             kind = None
         return [
@@ -663,10 +638,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         ),
     )
     def sync_component_counts(rows: list[object]):
-        return [
-            _subcomponent_count_label(_children_count(row))
-            for row in rows
-        ]
+        return [_subcomponent_count_label(_children_count(row)) for row in rows]
 
     @app.callback(
         Output(
@@ -707,14 +679,8 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         links: list[object],
     ):
         return (
-            [
-                str(name or '').strip() or 'Nuevo subcomponente'
-                for name in names
-            ],
-            [
-                _shared_label(_linked_values(link))
-                for link in links
-            ],
+            [str(name or '').strip() or 'Nuevo subcomponente' for name in names],
+            [_shared_label(_linked_values(link)) for link in links],
         )
 
     @app.callback(
@@ -788,9 +754,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             return None, False, ''
 
         try:
-            configuration = ToolConfiguration.from_document(
-                source_document
-            )
+            configuration = ToolConfiguration.from_document(source_document)
             component_key_values = _indexed_values(
                 component_key_ids,
                 component_keys,
@@ -866,9 +830,7 @@ def _subcomponent_rows(
     }
     return [
         {
-            'owner_component_key': component_keys.get(
-                owner_indexes.get(index)
-            ),
+            'owner_component_key': component_keys.get(owner_indexes.get(index)),
             'key': value,
             'display_name': names.get(index),
             'linked_component_keys': links.get(index, []),
@@ -917,9 +879,7 @@ def _subcomponent_rows_by_owner(
         list[tuple[int, dict[str, object]]],
     ] = {}
     for index, row in enumerate(rows):
-        owner_key = str(
-            row.get('owner_component_key') or ''
-        ).strip()
+        owner_key = str(row.get('owner_component_key') or '').strip()
         resolved.setdefault(owner_key, []).append((index, row))
     return resolved
 
@@ -966,11 +926,7 @@ def _stabilize_named_keys(
     if len(names) != len(current_keys):
         return list(current_keys)
 
-    occupied = {
-        str(value).strip()
-        for value in current_keys
-        if str(value or '').strip()
-    }
+    occupied = {str(value).strip() for value in current_keys if str(value or '').strip()}
     resolved: list[object] = []
     for name, current_key in zip(names, current_keys, strict=True):
         stable_key = str(current_key or '').strip()
@@ -1000,20 +956,14 @@ def _triggered_position(
     triggered_id = ctx.triggered_id
     if not isinstance(triggered_id, dict):
         return None
-    for position, (click_count, button_id) in enumerate(
-        zip(clicks, button_ids, strict=True)
-    ):
+    for position, (click_count, button_id) in enumerate(zip(clicks, button_ids, strict=True)):
         if button_id == triggered_id and _click_is_real(click_count):
             return position
     return None
 
 
 def _click_is_real(clicks: int | None) -> bool:
-    return (
-        isinstance(clicks, int)
-        and not isinstance(clicks, bool)
-        and clicks > 0
-    )
+    return isinstance(clicks, int) and not isinstance(clicks, bool) and clicks > 0
 
 
 def _children_count(value: object) -> int:
@@ -1024,20 +974,13 @@ def _children_count(value: object) -> int:
     return 1
 
 
-
 def _sanitize_linked_values(
     value: object,
     options: list[dict[str, str]],
 ) -> list[str]:
-    allowed = {
-        option['value']
-        for option in options
-    }
-    return [
-        item
-        for item in _linked_values(value)
-        if item in allowed
-    ]
+    allowed = {option['value'] for option in options}
+    return [item for item in _linked_values(value) if item in allowed]
+
 
 def _editor_is_incomplete(
     *,
@@ -1050,32 +993,17 @@ def _editor_is_incomplete(
 ) -> bool:
     if not component_ids:
         return True
-    if any(
-        not str(name or '').strip()
-        for name in component_names
-    ):
+    if any(not str(name or '').strip() for name in component_names):
         return True
     # Integrated exige scope explícito por componente, no la coexistencia obligatoria de Mina y Planta.
     integrated = kind_value == ToolConfigurationKind.INTEGRATED_OPERATIONS.value
     if integrated:
         if len(component_scopes) != len(component_ids):
             return True
-        if any(
-            str(scope or '').strip() not in {'mine', 'plant'}
-            for scope in component_scopes
-        ):
+        if any(str(scope or '').strip() not in {'mine', 'plant'} for scope in component_scopes):
             return True
-    if any(
-        not str(name or '').strip()
-        for name in subcomponent_names
-    ):
+    if any(not str(name or '').strip() for name in subcomponent_names):
         return True
-    owners = {
-        item.get('owner_index')
-        for item in subcomponent_ids
-    }
-    component_indexes = {
-        item.get('index')
-        for item in component_ids
-    }
+    owners = {item.get('owner_index') for item in subcomponent_ids}
+    component_indexes = {item.get('index') for item in component_ids}
     return not component_indexes.issubset(owners)

@@ -39,33 +39,20 @@ def generate_named_key(
 ) -> str:
     normalized_prefix = str(prefix).strip().casefold()
     if normalized_prefix not in {'tool', 'cmp', 'sub'}:
-        raise ToolSourceEditorValidationError(
-            'Tool editor key prefix is invalid'
-        )
+        raise ToolSourceEditorValidationError('Tool editor key prefix is invalid')
     if not isinstance(display_name, str):
-        raise ToolSourceEditorValidationError(
-            'Tool editor display name must be text'
-        )
+        raise ToolSourceEditorValidationError('Tool editor display name must be text')
     resolved_name = display_name.strip()
     if not resolved_name:
-        raise ToolSourceEditorValidationError(
-            'Tool editor display name is required'
-        )
+        raise ToolSourceEditorValidationError('Tool editor display name is required')
     ascii_name = (
-        normalize('NFKD', resolved_name)
-        .encode('ascii', 'ignore')
-        .decode('ascii')
-        .casefold()
+        normalize('NFKD', resolved_name).encode('ascii', 'ignore').decode('ascii').casefold()
     )
     slug = _KEY_SLUG_PATTERN.sub('_', ascii_name).strip('_')
     slug = slug[:_KEY_SLUG_MAX_LENGTH].rstrip('_')
     if not slug:
         slug = 'item'
-    occupied = {
-        str(value).strip()
-        for value in existing
-        if str(value or '').strip()
-    }
+    occupied = {str(value).strip() for value in existing if str(value or '').strip()}
     while True:
         candidate = f'{normalized_prefix}_{slug}_{token_hex(6)}'
         if candidate not in occupied:
@@ -90,31 +77,21 @@ class ToolSourceEditorValues:
 
     def __post_init__(self) -> None:
         if not isinstance(self.display_name, str):
-            raise ToolSourceEditorValidationError(
-                'Tool display name must be text'
-            )
+            raise ToolSourceEditorValidationError('Tool display name must be text')
         display_name = self.display_name.strip()
         if not display_name:
-            raise ToolSourceEditorValidationError(
-                'Tool display name is required'
-            )
+            raise ToolSourceEditorValidationError('Tool display name is required')
         if not isinstance(self.kind, ToolConfigurationKind):
             raise ToolSourceEditorValidationError('Tool kind is invalid')
         if self.kind not in {
             ToolConfigurationKind.PROCESS,
             ToolConfigurationKind.INTEGRATED_OPERATIONS,
         }:
-            raise ToolSourceEditorValidationError(
-                'Tool kind is not supported by this editor'
-            )
+            raise ToolSourceEditorValidationError('Tool kind is not supported by this editor')
         if not isinstance(self.branding_variant, BrandingVariant):
-            raise ToolSourceEditorValidationError(
-                'Tool branding variant is invalid'
-            )
+            raise ToolSourceEditorValidationError('Tool branding variant is invalid')
         if not isinstance(self.dispatch_enabled, bool):
-            raise ToolSourceEditorValidationError(
-                'Dispatch enabled flag must be a boolean'
-            )
+            raise ToolSourceEditorValidationError('Dispatch enabled flag must be a boolean')
         object.__setattr__(self, 'display_name', display_name)
         object.__setattr__(
             self,
@@ -161,25 +138,17 @@ def source_editor_values_from_configuration(
         kind=configuration.kind,
         branding_variant=configuration.branding.variant,
         pi_preventive_after_seconds=(
-            pi_policy.pre_degrading_after_seconds
-            if pi_policy is not None
-            else None
+            pi_policy.pre_degrading_after_seconds if pi_policy is not None else None
         ),
         pi_degradation_after_seconds=(
-            pi_policy.degrading_after_seconds
-            if pi_policy is not None
-            else None
+            pi_policy.degrading_after_seconds if pi_policy is not None else None
         ),
         dispatch_enabled=configuration.source_consumption.consumes('dispatch'),
         dispatch_preventive_after_seconds=(
-            dispatch_policy.pre_degrading_after_seconds
-            if dispatch_policy is not None
-            else None
+            dispatch_policy.pre_degrading_after_seconds if dispatch_policy is not None else None
         ),
         dispatch_degradation_after_seconds=(
-            dispatch_policy.degrading_after_seconds
-            if dispatch_policy is not None
-            else None
+            dispatch_policy.degrading_after_seconds if dispatch_policy is not None else None
         ),
     )
 
@@ -236,10 +205,7 @@ def build_configuration_from_source_editor(
 
     structure = (
         base_configuration.structure
-        if (
-            base_configuration is not None
-            and base_configuration.kind is values.kind
-        )
+        if (base_configuration is not None and base_configuration.kind is values.kind)
         else None
     )
 
@@ -268,9 +234,7 @@ def build_configuration_from_source_editor(
 # Exige que la identidad de una Tool nueva ya haya sido generada y estabilizada por el editor.
 def _required_tool_key(value: str | None) -> str:
     if not isinstance(value, str) or not value.strip():
-        raise ToolSourceEditorValidationError(
-            'Tool key is required for a new Tool'
-        )
+        raise ToolSourceEditorValidationError('Tool key is required for a new Tool')
     return value.strip()
 
 
@@ -290,9 +254,7 @@ def _optional_seconds(
     else:
         raise ToolSourceEditorValidationError(f'{label} must be an integer')
     if resolved <= 0:
-        raise ToolSourceEditorValidationError(
-            f'{label} must be greater than zero'
-        )
+        raise ToolSourceEditorValidationError(f'{label} must be greater than zero')
     return resolved
 
 

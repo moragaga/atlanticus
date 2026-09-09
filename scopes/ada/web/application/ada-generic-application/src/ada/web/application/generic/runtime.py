@@ -8,6 +8,7 @@ from ada.web.alarms.management_summary import AlarmManagementSummaryState
 from ada.web.alarms.status import AlarmStatusState
 from ada.web.application.generic.application import create_application_definition
 from ada.web.application.generic.composition import AdaApplicationComposition
+from ada.web.branding import BrandingConfiguration
 from ada.web.content_state.dependency_resolver import ContentStateDependency
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.shell.navigation import AdaNavigationView
@@ -24,6 +25,7 @@ def create_application_runtime(
     composition: AdaApplicationComposition | None = None,
     operational_render_binding: OperationalRenderBinding | None = None,
     tool_display_name: str | None = None,
+    branding_configuration: BrandingConfiguration | None = None,
     navigation_view: AdaNavigationView | None = None,
     global_indicators: GlobalIndicatorCollection | None = None,
     global_indicators_content_state: ContentState = ContentState.READY,
@@ -43,6 +45,7 @@ def create_application_runtime(
             composition=composition,
             operational_render_binding=operational_render_binding,
             tool_display_name=tool_display_name,
+            branding_configuration=branding_configuration,
             navigation_view=navigation_view,
             global_indicators=global_indicators,
             global_indicators_content_state=global_indicators_content_state,

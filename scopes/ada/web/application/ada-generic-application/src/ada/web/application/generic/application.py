@@ -19,16 +19,13 @@ from ada.web.application.generic.composition import (
 from ada.web.application.generic.operational_render import (
     validate_operational_render_application_binding,
 )
+from ada.web.branding import BrandingConfiguration
+from ada.web.branding.web import BrandingAssetSet, OperationalBrandState, resolve_branding_assets
 from ada.web.content_state.dependency_resolver import ContentStateDependency
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.operational_state import resolve_ada_operational_state
 from ada.web.shell.navigation import AdaNavigationView
 from ada.web.time_status.store_adapter import TimeStatusStoreSnapshot
-from ada.web.ui.branding import (
-    DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC,
-    DEFAULT_PELAMBRES_BRAND_LOGO_SRC,
-    OperationalBrandState,
-)
 from ada.web.ui.content_state import ContentState, ContentStatePresentationMode
 from ada.web.ui.global_indicator import GlobalIndicatorCollection
 from ada.web.ui.time_status import TimeStatusDetailState
@@ -44,6 +41,7 @@ def create_application_definition(
     composition: AdaApplicationComposition | None = None,
     operational_render_binding: OperationalRenderBinding | None = None,
     tool_display_name: str | None = None,
+    branding_configuration: BrandingConfiguration | None = None,
     navigation_view: AdaNavigationView | None = None,
     global_indicators: GlobalIndicatorCollection | None = None,
     global_indicators_content_state: ContentState = ContentState.READY,
@@ -62,7 +60,12 @@ def create_application_definition(
     if content_state_presentation_mode is ContentStatePresentationMode.AUTHORING:
         _LOGGER.info('Content State presentation override is active: authoring')
     application_version = version(_APPLICATION_DISTRIBUTION)
-    operational_brand = OperationalBrandState(context_name=tool_display_name)
+    resolved_branding_configuration = branding_configuration or BrandingConfiguration()
+    branding_assets = resolve_branding_assets(resolved_branding_configuration)
+    operational_brand = OperationalBrandState(
+        context_name=tool_display_name,
+        logo_src=branding_assets.operational_logo_src,
+    )
     resolved_global_indicators = global_indicators or GlobalIndicatorCollection(())
     operational_state = resolve_ada_operational_state(
         has_global_indicators=bool(len(resolved_global_indicators)),
@@ -94,6 +97,7 @@ def create_application_definition(
             navigation_view=_resolve_navigation_view(
                 navigation_view,
                 application_version=application_version,
+                branding_assets=branding_assets,
             ),
             global_indicators=resolved_global_indicators,
             global_indicators_content_state=global_indicators_content_state,
@@ -124,11 +128,12 @@ def _resolve_navigation_view(
     view: AdaNavigationView | None,
     *,
     application_version: str,
+    branding_assets: BrandingAssetSet,
 ) -> AdaNavigationView:
     resolved = view or AdaNavigationView()
     return replace(
         resolved,
-        brand_logo_src=(resolved.brand_logo_src or DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC),
-        footer_logo_src=resolved.footer_logo_src or DEFAULT_PELAMBRES_BRAND_LOGO_SRC,
+        brand_logo_src=(resolved.brand_logo_src or branding_assets.navigation_logo_src),
+        footer_logo_src=resolved.footer_logo_src or branding_assets.partner_logo_src,
         application_version=resolved.application_version or application_version,
     )

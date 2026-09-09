@@ -52,6 +52,8 @@ MANAGER_ROUTE_PREFIX = '/manager'
 USERS_WORKFLOW_SERVICE = 'ada.configuration-manager.users.workflow'
 NAVIGATION_WORKFLOW_SERVICE = 'ada.configuration-manager.navigation.workflow'
 TOOLS_WORKFLOW_SERVICE = 'ada.configuration-manager.tools.workflow'
+
+
 def build_configuration_manager_surface(
     dependencies: ConfigurationManagerDependencies,
 ) -> ManagerSurfaceDefinition:
@@ -197,6 +199,8 @@ def _register_services(
         TOOLS_WORKFLOW_SERVICE,
         ToolConfigurationManagerWorkflowAdapter(dependencies.tools),
     )
+
+
 def _can_manage_users(principal: ManagerPrincipal) -> bool:
     return (
         principal.is_local
