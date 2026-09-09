@@ -5,6 +5,7 @@ from ada.web.configuration.tool_editor import (
     register_tool_structure_editor_callbacks,
 )
 from ada.web.configuration.tool_editor.structure_callbacks import (
+    _editor_is_incomplete,
     _sanitize_linked_values,
 )
 from ada.web.configuration.tool_editor.structure_ids import (
@@ -372,3 +373,25 @@ def test_subcomponent_key_materializes_once_and_removes_accents() -> None:
         generated,
     )
     assert renamed == generated
+
+
+def test_integrated_editor_requires_scope_per_component_not_both_scopes() -> None:
+    complete_mine_only = _editor_is_incomplete(
+        component_ids=[{'index': 0}],
+        component_names=['Carguío'],
+        component_scopes=['mine'],
+        subcomponent_ids=[{'index': 0, 'owner_index': 0}],
+        subcomponent_names=['CAEX'],
+        kind_value='integrated_operations',
+    )
+    missing_scope = _editor_is_incomplete(
+        component_ids=[{'index': 0}],
+        component_names=['Carguío'],
+        component_scopes=[None],
+        subcomponent_ids=[{'index': 0, 'owner_index': 0}],
+        subcomponent_names=['CAEX'],
+        kind_value='integrated_operations',
+    )
+
+    assert complete_mine_only is False
+    assert missing_scope is True

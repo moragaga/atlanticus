@@ -435,13 +435,11 @@ def _validate_integrated_operations_structure(structure: ToolStructure) -> None:
         raise ToolConfigurationValidationError(
             'Integrated Operations Tool Structure must not declare operational scope'
         )
-    scopes: set[ToolScope] = set()
     for component in structure.components:
         if component.scope is None:
             raise ToolConfigurationValidationError(
                 f'Integrated Operations component {component.key!r} requires scope'
             )
-        scopes.add(component.scope)
         if component.layout_role is not None:
             raise ToolConfigurationValidationError(
                 'Integrated Operations components must not declare Process layout roles'
@@ -450,7 +448,3 @@ def _validate_integrated_operations_structure(structure: ToolStructure) -> None:
             raise ToolConfigurationValidationError(
                 f'Integrated Operations component {component.key!r} requires subcomponents'
             )
-    if scopes != {ToolScope.MINE, ToolScope.PLANT}:
-        raise ToolConfigurationValidationError(
-            'Integrated Operations Tool Structure requires both Mina and Planta component scopes'
-        )

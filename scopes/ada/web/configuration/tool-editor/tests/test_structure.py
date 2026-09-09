@@ -85,30 +85,29 @@ def test_integrated_operations_rejects_single_scope_coverage() -> None:
         )
 
 
-def test_integrated_mine_and_plant_requires_both_scopes() -> None:
-    with pytest.raises(
-        ToolStructureEditorValidationError,
-        match='requires both Mina and Planta',
-    ):
-        build_structure_from_editor_tables(
-            base_configuration=_base(ToolConfigurationKind.INTEGRATED_OPERATIONS),
-            coverage='mine_plant',
-            component_rows=[
-                {
-                    'key': 'cmp_mine',
-                    'display_name': 'Mina',
-                    'scope': 'mine',
-                }
-            ],
-            subcomponent_rows=[
-                {
-                    'owner_component_key': 'cmp_mine',
-                    'key': 'sub_extraction',
-                    'display_name': 'Extracción',
-                    'linked_component_keys': [],
-                }
-            ],
-        )
+def test_integrated_mine_and_plant_allows_single_component_scope() -> None:
+    structure = build_structure_from_editor_tables(
+        base_configuration=_base(ToolConfigurationKind.INTEGRATED_OPERATIONS),
+        coverage='mine_plant',
+        component_rows=[
+            {
+                'key': 'cmp_mine',
+                'display_name': 'Mina',
+                'scope': 'mine',
+            }
+        ],
+        subcomponent_rows=[
+            {
+                'owner_component_key': 'cmp_mine',
+                'key': 'sub_extraction',
+                'display_name': 'Extracción',
+                'linked_component_keys': [],
+            }
+        ],
+    )
+
+    assert structure.components[0].scope is not None
+    assert structure.components[0].scope.value == 'mine'
 
 
 def test_integrated_shared_subcomponent_keeps_one_owner() -> None:

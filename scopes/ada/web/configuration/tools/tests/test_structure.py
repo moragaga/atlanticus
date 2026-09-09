@@ -401,23 +401,22 @@ def test_integrated_operations_accepts_n_components_without_fixed_count() -> Non
     )
 
 
-def test_integrated_operations_requires_both_mine_and_plant_scopes() -> None:
-    with pytest.raises(
-        ToolConfigurationValidationError,
-        match='requires both Mina and Planta',
-    ):
-        ToolStructure(
-            tool_key='small_integrated',
-            kind=ToolConfigurationKind.INTEGRATED_OPERATIONS,
-            components=(
-                ToolComponent(
-                    key='process_a',
-                    display_name='Process A',
-                    scope=ToolScope.MINE,
-                    subcomponents=(_subcomponent('detail'),),
-                ),
+def test_integrated_operations_allows_single_scope_topology() -> None:
+    structure = ToolStructure(
+        tool_key='integrated_mine_only',
+        kind=ToolConfigurationKind.INTEGRATED_OPERATIONS,
+        components=(
+            ToolComponent(
+                key='mine_process',
+                display_name='Mine Process',
+                scope=ToolScope.MINE,
+                subcomponents=(_subcomponent('detail'),),
             ),
-        )
+        ),
+    )
+
+    assert structure.components[0].scope is ToolScope.MINE
+    assert structure.effective_component_scope('mine_process') is ToolScope.MINE
 
 
 def test_integrated_operations_requires_scope_per_component() -> None:

@@ -1185,15 +1185,14 @@ def _contract_pending_message(
         )
 
     if kind == 'integrated_operations':
-        scopes = {
-            scope
+        # Integrated clasifica cada componente; no exige coexistencia simultánea de Mina y Planta.
+        if any(
+            _optional_text(item.get('scope')) not in {'mine', 'plant'}
             for item in component_items
-            if (scope := _optional_text(item.get('scope'))) is not None
-        }
-        if not {'mine', 'plant'}.issubset(scopes):
+        ):
             return (
                 'Pendiente de completar. Operaciones integradas requiere '
-                'componentes de Mina y Planta.'
+                'ámbito Mina o Planta en cada componente.'
             )
 
         scope_by_key = {

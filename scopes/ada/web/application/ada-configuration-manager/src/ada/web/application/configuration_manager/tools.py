@@ -1145,15 +1145,12 @@ def _contract_pending_message(
         return 'Pendiente de completar. Cada componente requiere al menos un subcomponente.'
 
     if kind == 'integrated_operations':
-        scopes = {
-            scope
-            for item in component_items
-            if (scope := _optional_text(item.get('scope'))) is not None
-        }
-        if not {'mine', 'plant'}.issubset(scopes):
+        if any(
+            _optional_text(item.get('scope')) not in {'mine', 'plant'} for item in component_items
+        ):
             return (
                 'Pendiente de completar. Operaciones integradas requiere '
-                'componentes de Mina y Planta.'
+                'ámbito Mina o Planta en cada componente.'
             )
 
         scope_by_key = {

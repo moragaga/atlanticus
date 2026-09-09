@@ -988,10 +988,9 @@ def _editor_is_incomplete(
         return True
     integrated = kind_value == ToolConfigurationKind.INTEGRATED_OPERATIONS.value
     if integrated:
-        resolved_scopes = {
-            str(scope or '').strip() for scope in component_scopes if str(scope or '').strip()
-        }
-        if resolved_scopes != {'mine', 'plant'}:
+        if len(component_scopes) != len(component_ids):
+            return True
+        if any(str(scope or '').strip() not in {'mine', 'plant'} for scope in component_scopes):
             return True
     if any(not str(name or '').strip() for name in subcomponent_names):
         return True

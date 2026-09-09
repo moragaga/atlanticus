@@ -381,7 +381,7 @@ def test_tool_detail_preserves_accents_and_structural_identity() -> None:
     assert 'additional_observation_source_keys' not in participation_document
 
 
-def test_tool_detail_pending_message_explains_integrated_scope_requirement() -> None:
+def test_tool_detail_pending_message_requires_scope_per_integrated_component() -> None:
     message = _contract_pending_message(
         general={
             'kind': 'integrated_operations',
@@ -395,27 +395,20 @@ def test_tool_detail_pending_message_explains_integrated_scope_requirement() -> 
         components=[
             {
                 'key': 'cmp_a',
-                'scope': 'plant',
-                'subcomponents': [
-                    {
-                        'linked_component_keys': ['cmp_b'],
-                    }
-                ],
+                'scope': 'mine',
+                'subcomponents': [{'linked_component_keys': []}],
             },
             {
                 'key': 'cmp_b',
-                'scope': 'plant',
-                'subcomponents': [
-                    {
-                        'linked_component_keys': [],
-                    }
-                ],
+                'scope': None,
+                'subcomponents': [{'linked_component_keys': []}],
             },
         ],
     )
 
     assert message == (
-        'Pendiente de completar. Operaciones integradas requiere componentes de Mina y Planta.'
+        'Pendiente de completar. Operaciones integradas requiere '
+        'ámbito Mina o Planta en cada componente.'
     )
 
 
@@ -436,7 +429,7 @@ def test_tool_detail_keeps_partial_serialization_before_integrated_is_complete()
         component_name_ids=[{'type': 'name', 'index': 0}],
         component_names=['Carguío'],
         component_scope_ids=[{'type': 'scope', 'index': 0}],
-        component_scopes=['mine'],
+        component_scopes=[None],
         subcomponent_key_ids=[{'type': 'sub-key', 'owner_index': 0, 'index': 0}],
         subcomponent_keys=['sub_caex_abcdef123456'],
         subcomponent_name_ids=[{'type': 'sub-name', 'owner_index': 0, 'index': 0}],
@@ -474,7 +467,6 @@ def test_tool_detail_keeps_partial_serialization_before_integrated_is_complete()
         {
             'key': 'cmp_carguio_123456789abc',
             'display_name': 'Carguío',
-            'scope': 'mine',
             'subcomponents': [
                 {
                     'key': 'sub_caex_abcdef123456',
@@ -549,3 +541,76 @@ def test_tool_detail_partial_process_serializes_only_real_component_scope_overri
     components = snapshot['inspection_document']['structure']['components']
     assert 'scope' not in components[0]
     assert components[1]['scope'] == 'mine'
+
+
+def test_tool_detail_integrated_contract_allows_mine_only_components() -> None:
+    tool_key = 'tool_integrated_mine_only_a1b2c3d4e5f6'
+    structure_document = {
+        'tool_key': tool_key,
+        'kind': 'integrated_operations',
+        'components': [
+            {
+                'key': 'cmp_carguio_123456789abc',
+                'display_name': 'Carguío',
+                'scope': 'mine',
+                'subcomponents': [
+                    {
+                        'key': 'sub_caex_abcdef123456',
+                        'display_name': 'CAEX',
+                        'linked_component_keys': [],
+                    }
+                ],
+            }
+        ],
+    }
+    source_document = {
+        'tool_key': tool_key,
+        'display_name': 'Operaciones Integradas',
+        'kind': 'integrated_operations',
+        'source_consumption': {
+            'tool_key': tool_key,
+            'source_keys': ['pi'],
+        },
+        'source_operational_participation': {
+            'tool_key': tool_key,
+            'control_sources': [
+                {
+                    'source_key': 'pi',
+                    'pre_degrading_after_seconds': 300,
+                    'degrading_after_seconds': 600,
+                }
+            ],
+        },
+        'structure': structure_document,
+        'branding': {'variant': 'original'},
+    }
+
+    snapshot = _tool_detail_snapshot(
+        display_name='Operaciones Integradas',
+        tool_key=tool_key,
+        kind_value='integrated_operations',
+        coverage='mine_plant',
+        branding='original',
+        pi_preventive=300,
+        pi_degradation=600,
+        dispatch_values=[],
+        dispatch_preventive=None,
+        dispatch_degradation=None,
+        component_key_ids=[{'type': 'key', 'index': 0}],
+        component_keys=['cmp_carguio_123456789abc'],
+        component_name_ids=[{'type': 'name', 'index': 0}],
+        component_names=['Carguío'],
+        component_scope_ids=[{'type': 'scope', 'index': 0}],
+        component_scopes=['mine'],
+        subcomponent_key_ids=[{'type': 'sub-key', 'owner_index': 0, 'index': 0}],
+        subcomponent_keys=['sub_caex_abcdef123456'],
+        subcomponent_name_ids=[{'type': 'sub-name', 'owner_index': 0, 'index': 0}],
+        subcomponent_names=['CAEX'],
+        subcomponent_linked_ids=[{'type': 'sub-linked', 'owner_index': 0, 'index': 0}],
+        subcomponent_links=[[]],
+        source_document=source_document,
+        structure_document=structure_document,
+    )
+
+    assert snapshot['contract'] is not None
+    assert snapshot['contract']['structure']['components'][0]['scope'] == 'mine'

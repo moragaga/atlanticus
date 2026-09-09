@@ -1055,17 +1055,15 @@ def _editor_is_incomplete(
         for name in component_names
     ):
         return True
-    integrated = (
-        kind_value
-        == ToolConfigurationKind.INTEGRATED_OPERATIONS.value
-    )
+    # Integrated exige scope explícito por componente, no la coexistencia obligatoria de Mina y Planta.
+    integrated = kind_value == ToolConfigurationKind.INTEGRATED_OPERATIONS.value
     if integrated:
-        resolved_scopes = {
-            str(scope or '').strip()
+        if len(component_scopes) != len(component_ids):
+            return True
+        if any(
+            str(scope or '').strip() not in {'mine', 'plant'}
             for scope in component_scopes
-            if str(scope or '').strip()
-        }
-        if resolved_scopes != {'mine', 'plant'}:
+        ):
             return True
     if any(
         not str(name or '').strip()
