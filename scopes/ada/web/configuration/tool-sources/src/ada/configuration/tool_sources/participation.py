@@ -117,17 +117,24 @@ class ToolSourceOperationalParticipation:
         return normalized in self.effective_observation_source_keys
 
     def to_document(self) -> dict[str, object]:
-        return {
+        document: dict[str, object] = {
             'tool_key': self.tool_key,
             'control_sources': [policy.to_document() for policy in self.control_sources],
-            'additional_observation_source_keys': list(self.additional_observation_source_keys),
         }
+        if self.additional_observation_source_keys:
+            document['additional_observation_source_keys'] = list(
+                self.additional_observation_source_keys
+            )
+        return document
 
     @classmethod
     def from_document(cls, document: Mapping[str, Any]) -> ToolSourceOperationalParticipation:
         try:
             control_sources = document['control_sources']
-            additional_observation_source_keys = document['additional_observation_source_keys']
+            additional_observation_source_keys = document.get(
+                'additional_observation_source_keys',
+                [],
+            )
             if not isinstance(control_sources, list):
                 raise TypeError
             if not all(isinstance(item, Mapping) for item in control_sources):

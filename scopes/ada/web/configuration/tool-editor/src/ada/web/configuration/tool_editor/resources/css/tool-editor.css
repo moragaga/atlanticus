@@ -227,29 +227,36 @@
     display: inline-flex;
     align-items: center;
     gap: .38rem;
-    color: var(--atlanticus-ui-text);
+    color: var(--atlanticus-ui-text) !important;
     cursor: pointer;
     font-size: .72rem;
     font-weight: 720;
+}
+
+.ada-tool-source-editor__dispatch-toggle,
+.ada-tool-source-editor__dispatch-toggle label:hover,
+.ada-tool-source-editor__dispatch-toggle label:focus-within,
+.ada-tool-source-editor__dispatch-toggle label span {
+    color: var(--atlanticus-ui-text) !important;
 }
 
 .ada-tool-source-editor__dispatch-toggle input[type='checkbox'] {
     width: .88rem;
     height: .88rem;
     margin: 0;
-    accent-color: var(--atlanticus-ui-primary);
+    accent-color: var(--atlanticus-ui-primary) !important;
 }
 
 .ada-tool-source-editor__dispatch-toggle input[type='checkbox']:focus,
 .ada-tool-source-editor__dispatch-toggle input[type='checkbox']:focus-visible {
-    outline: 1px solid var(--atlanticus-ui-primary);
+    outline: 1px solid var(--atlanticus-ui-primary) !important;
     outline-offset: 2px;
-    box-shadow: none;
+    box-shadow: none !important;
 }
 
 .ada-tool-source-editor__dispatch-toggle input[type='checkbox']:hover:focus,
 .ada-tool-source-editor__dispatch-toggle input[type='checkbox']:hover:focus-visible {
-    outline-color: var(--atlanticus-ui-accent);
+    outline-color: var(--atlanticus-ui-accent) !important;
 }
 
 .ada-tool-source-editor__dispatch-threshold {

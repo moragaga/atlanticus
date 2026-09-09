@@ -132,6 +132,7 @@ def build_structure_from_editor_tables(
         )
 
     kind = base_configuration.kind
+# El editor actual no emite layout_role: la posición visual no forma parte del contrato editable.
     document = {
         'tool_key': base_configuration.tool_key,
         'kind': kind.value,
@@ -148,7 +149,6 @@ def build_structure_from_editor_tables(
                     row,
                     kind=kind,
                 ),
-                'layout_role': None,
                 'subcomponents': grouped[key],
             }
             for key, row in zip(

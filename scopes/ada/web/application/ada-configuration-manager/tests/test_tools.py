@@ -19,6 +19,7 @@ from ada.web.application.configuration_manager.tools import (
     TOOL_SAVE_BUTTON_ID,
     TOOL_SOURCE_NAME_ID,
     ToolManagerWebContext,
+    _contract_pending_message,
     _decode_tool_configuration_import,
     _editor_configuration,
     _owned_draft,
@@ -371,3 +372,45 @@ def test_tool_detail_preserves_accents_and_structural_identity() -> None:
     assert snapshot['components'][0]['subcomponents'][0]['key'] == 'primary'
     assert snapshot['components'][0]['subcomponents'][0]['display_name'] == 'Extracción N° 1'
     assert snapshot['contract']['display_name'] == 'Operaciones Integradas – Área Húmeda'
+    component_document = snapshot['contract']['structure']['components'][0]
+    participation_document = snapshot['contract']['source_operational_participation']
+    assert 'scope' not in component_document
+    assert 'additional_observation_source_keys' not in participation_document
+
+def test_tool_detail_pending_message_explains_integrated_scope_requirement() -> None:
+    message = _contract_pending_message(
+        general={
+            'kind': 'integrated_operations',
+            'coverage': 'mine_plant',
+        },
+        sources={
+            'pi_preventive': 300,
+            'pi_degradation': 600,
+            'dispatch_enabled': False,
+        },
+        components=[
+            {
+                'key': 'cmp_a',
+                'scope': 'plant',
+                'subcomponents': [
+                    {
+                        'linked_component_keys': ['cmp_b'],
+                    }
+                ],
+            },
+            {
+                'key': 'cmp_b',
+                'scope': 'plant',
+                'subcomponents': [
+                    {
+                        'linked_component_keys': [],
+                    }
+                ],
+            },
+        ],
+    )
+
+    assert message == (
+        'Pendiente de completar. Operaciones integradas requiere '
+        'componentes de Mina y Planta.'
+    )

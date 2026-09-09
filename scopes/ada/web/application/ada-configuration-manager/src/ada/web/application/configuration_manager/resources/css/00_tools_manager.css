@@ -314,7 +314,7 @@ body:has(.ada-configuration-manager-tools__modal--open) {
 }
 
 .ada-configuration-manager-tools__detail-subcomponent {
-    background: var(--atlanticus-ui-background);
+    background: var(--atlanticus-ui-surface);
 }
 
 .ada-configuration-manager-tools__detail-legend-item {
@@ -410,7 +410,7 @@ body:has(.ada-configuration-manager-tools__modal--open) {
 }
 
 .ada-configuration-manager-tools__detail-subcomponent {
-    background: var(--atlanticus-ui-background);
+    background: var(--atlanticus-ui-surface);
 }
 
 .ada-configuration-manager-tools__detail-empty {

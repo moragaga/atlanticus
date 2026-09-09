@@ -671,3 +671,32 @@ def test_process_layout_agnostic_component_requires_subcomponents() -> None:
                 ),
             ),
         )
+
+def test_process_document_omits_inherited_scope_and_empty_layout_role() -> None:
+    structure = ToolStructure(
+        tool_key='process',
+        kind=ToolConfigurationKind.PROCESS,
+        operational_scope=ToolScope.PLANT,
+        components=(
+            ToolComponent(
+                key='flotacion',
+                display_name='Flotación',
+                subcomponents=(_subcomponent('principal'),),
+            ),
+        ),
+    )
+
+    document = structure.to_document()
+    component = document['components'][0]
+
+    assert document['operational_scope'] == 'plant'
+    assert 'scope' not in component
+    assert 'layout_role' not in component
+
+
+def test_integrated_document_keeps_component_scope_and_omits_root_scope() -> None:
+    document = _integrated_structure().to_document()
+
+    assert 'operational_scope' not in document
+    assert document['components'][0]['scope'] == 'mine'
+    assert document['components'][-1]['scope'] == 'plant'

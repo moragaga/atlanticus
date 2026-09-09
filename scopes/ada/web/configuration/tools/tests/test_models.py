@@ -188,7 +188,6 @@ def test_document_shape_keeps_data003_and_data004_explicit() -> None:
                 'degrading_after_seconds': 300,
             }
         ],
-        'additional_observation_source_keys': [],
     }
     assert document['structure'] is None
     assert document['branding'] == {'variant': 'original'}

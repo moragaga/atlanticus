@@ -823,8 +823,11 @@ def _render_tool_detail(snapshot: dict[str, object]) -> object:
                         )
                         if contract is not None
                         else _detail_empty(
-                            'No configurado. El contrato completo aparecerá cuando '
-                            'la configuración actual sea válida.'
+                            _contract_pending_message(
+                                general=general,
+                                sources=sources,
+                                components=components,
+                            )
                         )
                     ),
                 ],
@@ -989,6 +992,95 @@ def _detail_badges(values: object) -> object:
         className='ada-configuration-manager-tools__detail-badges',
     )
 
+
+# Explica por qué el contrato todavía no puede materializarse sin convertir una edición parcial en un error visual.
+
+def _contract_pending_message(
+    *,
+    general: object,
+    sources: object,
+    components: object,
+) -> str:
+    general_data = general if isinstance(general, dict) else {}
+    sources_data = sources if isinstance(sources, dict) else {}
+    component_items = (
+        tuple(item for item in components if isinstance(item, dict))
+        if isinstance(components, (list, tuple))
+        else ()
+    )
+
+    kind = _optional_text(general_data.get('kind'))
+    coverage = _optional_text(general_data.get('coverage'))
+
+    if kind is None:
+        return 'No configurado. Selecciona primero el tipo de herramienta.'
+    if kind == 'process' and coverage not in {'mine', 'plant'}:
+        return 'Pendiente de completar. Procesos requiere cobertura Mina o Planta.'
+    if not component_items:
+        return 'Pendiente de completar. Agrega al menos un componente.'
+    if any(not item.get('subcomponents') for item in component_items):
+        return (
+            'Pendiente de completar. Cada componente requiere al menos '
+            'un subcomponente.'
+        )
+
+    if kind == 'integrated_operations':
+        scopes = {
+            scope
+            for item in component_items
+            if (scope := _optional_text(item.get('scope'))) is not None
+        }
+        if not {'mine', 'plant'}.issubset(scopes):
+            return (
+                'Pendiente de completar. Operaciones integradas requiere '
+                'componentes de Mina y Planta.'
+            )
+
+        scope_by_key = {
+            key: _optional_text(item.get('scope'))
+            for item in component_items
+            if (key := _optional_text(item.get('key'))) is not None
+        }
+        for owner in component_items:
+            owner_scope = _optional_text(owner.get('scope'))
+            subcomponents = owner.get('subcomponents')
+            if not isinstance(subcomponents, list):
+                continue
+            for subcomponent in subcomponents:
+                if not isinstance(subcomponent, dict):
+                    continue
+                links = subcomponent.get('linked_component_keys')
+                if not isinstance(links, (list, tuple)):
+                    continue
+                if any(
+                    scope_by_key.get(str(link)) not in {None, owner_scope}
+                    for link in links
+                ):
+                    return (
+                        'Pendiente de completar. Visible también en sólo puede '
+                        'enlazar componentes del mismo ámbito.'
+                    )
+
+    if sources_data.get('pi_preventive') is None:
+        return 'Pendiente de completar. Configura el umbral preventivo de PI.'
+    if sources_data.get('pi_degradation') is None:
+        return 'Pendiente de completar. Configura el umbral de degradación de PI.'
+    if bool(sources_data.get('dispatch_enabled')):
+        if sources_data.get('dispatch_preventive') is None:
+            return (
+                'Pendiente de completar. Configura el umbral preventivo '
+                'de Dispatch.'
+            )
+        if sources_data.get('dispatch_degradation') is None:
+            return (
+                'Pendiente de completar. Configura el umbral de degradación '
+                'de Dispatch.'
+            )
+
+    return (
+        'Pendiente de completar. La configuración actual todavía no forma '
+        'un contrato válido.'
+    )
 
 def _detail_empty(message: str) -> object:
     return html.Div(

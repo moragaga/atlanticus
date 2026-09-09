@@ -8,7 +8,6 @@ from ada.configuration.tool_sources import (
     ToolSourceOperationalParticipation,
 )
 from ada.configuration.tools import (
-    BrandingConfiguration,
     ProcessLayoutRole,
     ToolComponent,
     ToolConfiguration,

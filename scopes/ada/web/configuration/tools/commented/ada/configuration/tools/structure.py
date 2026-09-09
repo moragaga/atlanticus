@@ -113,16 +113,18 @@ class ToolComponent:
             f'Unknown Tool subcomponent for component {self.key!r}: {normalized!r}'
         )
 
+# Los campos de ámbito y layout sólo se serializan cuando tienen semántica real; Process hereda el ámbito desde operational_scope.
     def to_document(self) -> dict[str, object]:
-        return {
+        document: dict[str, object] = {
             'key': self.key,
             'display_name': self.display_name,
-            'scope': self.scope.value if self.scope is not None else None,
-            'layout_role': (
-                self.layout_role.value if self.layout_role is not None else None
-            ),
             'subcomponents': [item.to_document() for item in self.subcomponents],
         }
+        if self.scope is not None:
+            document['scope'] = self.scope.value
+        if self.layout_role is not None:
+            document['layout_role'] = self.layout_role.value
+        return document
 
     @classmethod
     def from_document(cls, document: Mapping[str, Any]) -> ToolComponent:
@@ -315,16 +317,16 @@ class ToolStructure:
         return (*direct, *linked)
 
     def to_document(self) -> dict[str, object]:
-        return {
+        document: dict[str, object] = {
             'tool_key': self.tool_key,
             'kind': self.kind.value,
-            'operational_scope': (
-                self.operational_scope.value
-                if self.operational_scope is not None
-                else None
-            ),
-            'components': [component.to_document() for component in self.components],
         }
+        if self.operational_scope is not None:
+            document['operational_scope'] = self.operational_scope.value
+        document['components'] = [
+            component.to_document() for component in self.components
+        ]
+        return document
 
     @classmethod
     def from_document(cls, document: Mapping[str, Any]) -> ToolStructure:

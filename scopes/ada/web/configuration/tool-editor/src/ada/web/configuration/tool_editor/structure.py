@@ -146,7 +146,6 @@ def build_structure_from_editor_tables(
                     row,
                     kind=kind,
                 ),
-                'layout_role': None,
                 'subcomponents': grouped[key],
             }
             for key, row in zip(

@@ -112,3 +112,15 @@ def test_contract_does_not_require_named_source_catalog() -> None:
         consumption=consumption,
         participation=participation,
     )
+
+def test_contract_omits_empty_additional_observation_sources() -> None:
+    participation = ToolSourceOperationalParticipation(
+        tool_key='process',
+        control_sources=(SourceControlPolicy('pi', 200, 300),),
+    )
+
+    document = participation.to_document()
+    restored = ToolSourceOperationalParticipation.from_document(document)
+
+    assert 'additional_observation_source_keys' not in document
+    assert restored.additional_observation_source_keys == ()
