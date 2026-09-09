@@ -41,7 +41,7 @@ def build_ada_operational_header(
             html.Div(
                 mobile_navigation_trigger,
                 className=(
-                    'ada-operational-header__mobile-navigation ada-navigation__mobile-anchor'
+                    'ada-operational-header__mobile-navigation'
                 ),
                 **slot_identity_attributes('navigation_mobile'),
             )
@@ -70,7 +70,7 @@ def build_ada_operational_header(
         [
             html.Div(
                 primary_children,
-                className='ada-operational-header__primary ada-navigation__anchor-host',
+                className='ada-operational-header__primary',
             ),
             _build_slot(
                 'time_status',

@@ -112,6 +112,7 @@ def test_header_source_has_no_tool_or_alarm_domain_imports() -> None:
     assert 'GlobalIndicator' not in source
     assert 'Alarm' not in source
     assert 'ServiceRegistry' not in source
+    assert 'ada-navigation__' not in source
 
 
 def _require_slot(component: Component, slot_key: str) -> Component:
@@ -215,7 +216,7 @@ def test_time_status_slot_sits_below_primary_header_row() -> None:
     assert len(children) == 2
     primary, time_slot = children
     assert 'ada-operational-header__primary' in (_prop(primary, 'className') or '')
-    assert 'ada-navigation__anchor-host' in (_prop(primary, 'className') or '')
+    assert 'ada-navigation__' not in (_prop(primary, 'className') or '')
     assert _prop(time_slot, 'data-ada-slot-key') == 'time_status'
     assert _prop(time_slot, 'data-slot-empty') == 'false'
     assert _require_id(time_slot, 'time-status') is time_status

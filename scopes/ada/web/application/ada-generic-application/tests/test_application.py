@@ -111,7 +111,8 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
     assert 'ada-navigation-desktop-toggle' in payload
     assert 'ada-navigation-mobile-toggle' in payload
     assert 'ada-navigation-offcanvas' in payload
-    assert 'ada-navigation__anchor-host' in payload
+    assert 'ada-operational-header__primary' in payload
+    assert 'ada-navigation__anchor-host' not in payload
     assert 'Test User' in payload
     assert 'Asistente de Decisiones Ágiles' in payload
     assert DEFAULT_OPERATIONAL_BRAND_LOGO_SRC in payload
