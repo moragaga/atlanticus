@@ -6,21 +6,21 @@ from ada.configuration.kpi_configuration import KpiConfigurationValidationError
 from ada.web.application.configuration_manager.tool_kpi_destinations import (
     ToolConfigurationKpiDestinationCatalogProvider,
 )
+from ada.web.tools.configuration import ToolConfiguration, ToolConfigurationProjectionSnapshot
 from ada.web.tools.enums import (
     ProcessLayoutRole,
     ToolConfigurationKind,
     ToolScope,
 )
-from ada.web.tools.structure import (
-    ToolComponent,
-    ToolStructure,
-    ToolSubcomponent,
-)
-from ada.web.tools.configuration import ToolConfiguration, ToolConfigurationProjectionSnapshot
 from ada.web.tools.sources import (
     SourceControlPolicy,
     ToolSourceConsumption,
     ToolSourceOperationalParticipation,
+)
+from ada.web.tools.structure import (
+    ToolComponent,
+    ToolStructure,
+    ToolSubcomponent,
 )
 
 
