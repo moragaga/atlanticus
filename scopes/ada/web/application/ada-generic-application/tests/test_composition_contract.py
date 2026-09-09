@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from ada.web.application.generic.application import create_application_definition
+from ada.web.application.generic import create_application_definition
 from ada.web.application.generic.composition import (
     AdaApplicationComposition,
     create_ada_alarm_surface_modules,

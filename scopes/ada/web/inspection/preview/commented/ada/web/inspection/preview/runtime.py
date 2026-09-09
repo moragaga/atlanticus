@@ -9,7 +9,7 @@ from time import sleep
 from dash import Dash, Input, Output, dcc
 from dash.development.base_component import Component
 
-from ada.web.application.generic.application import create_application_definition
+from ada.web.application.generic import create_application_definition
 from ada.web.inspection.api import create_kpi_inspection_api_module
 from ada.web.inspection.core import KpiDefinition, KpiDefinitionSnapshot, KpiDefinitionSnapshotStore
 from ada.web.inspection.surface import create_kpi_inspection_surface_module

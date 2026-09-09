@@ -1,4 +1,5 @@
 # Espejo comentado: API pública de la composición ADA y su frontera de render operacional.
+from ada.web.application.generic.application import create_application_definition
 from ada.web.application.generic.composition import (
     AdaApplicationComposition,
     create_ada_alarm_surface_modules,
@@ -34,6 +35,7 @@ __all__ = [
     'create_ada_operational_shell_modules',
     'create_ada_runtime_experience_modules',
     'create_ada_shared_ui_modules',
+    'create_application_definition',
     'create_application_runtime',
     'create_identity_navigation_modules',
     'create_local_identity_modules',
