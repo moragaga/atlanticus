@@ -28,6 +28,7 @@ from ada.web.configuration.tool_editor.structure_ids import (
     STRUCTURE_ADD_COMPONENT_ID,
     STRUCTURE_COMPONENTS_CONTAINER_ID,
     STRUCTURE_DOCUMENT_STORE_ID,
+    STRUCTURE_KIND_STORE_ID,
     STRUCTURE_ROOT_ID,
     STRUCTURE_VALIDATION_MESSAGE_ID,
     STRUCTURE_VALIDITY_STORE_ID,
@@ -77,6 +78,11 @@ def build_tool_structure_editor(
             dcc.Store(
                 id=STRUCTURE_VALIDITY_STORE_ID,
                 data=structure is not None,
+                storage_type='memory',
+            ),
+            dcc.Store(
+                id=STRUCTURE_KIND_STORE_ID,
+                data=kind.value if kind is not None else None,
                 storage_type='memory',
             ),
             html.Div(

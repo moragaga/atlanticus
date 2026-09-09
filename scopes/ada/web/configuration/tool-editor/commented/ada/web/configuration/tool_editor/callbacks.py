@@ -23,12 +23,14 @@ from ada.web.configuration.tool_editor.ids import (
     PI_DEGRADATION_ID,
     PI_PREVENTIVE_ID,
     PROCESS_COVERAGE_STORE_ID,
+    TOOL_KEY_STORE_ID,
     VALIDATION_MESSAGE_ID,
     VALIDITY_STORE_ID,
 )
 from ada.web.configuration.tool_editor.models import (
     ToolSourceEditorValues,
     build_configuration_from_source_editor,
+    generate_tool_key,
     source_editor_values_from_configuration,
 )
 from ada.web.configuration.tool_editor.structure import (
@@ -80,6 +82,40 @@ def register_tool_source_editor_callbacks(app: object) -> None:
             values.dispatch_preventive_after_seconds,
             values.dispatch_degradation_after_seconds,
         )
+
+    @app.callback(
+        Output(TOOL_KEY_STORE_ID, 'data'),
+        Input(CONFIGURATION_STORE_ID, 'data'),
+        Input(DISPLAY_NAME_ID, 'value'),
+        State(TOOL_KEY_STORE_ID, 'data'),
+    )
+    # Genera la identidad una sola vez; renombrar o cambiar tipo no la reemplaza.
+    def sync_tool_key(
+        configuration_document: dict[str, object] | None,
+        display_name: str | None,
+        current_tool_key: str | None,
+    ) -> str | None:
+        if configuration_document is not None:
+            try:
+                configuration = ToolConfiguration.from_document(
+                    configuration_document
+                )
+            except ValueError:
+                configuration = None
+            if configuration is not None:
+                return configuration.tool_key
+
+        current = str(current_tool_key or '').strip()
+        if current:
+            return current
+
+        name = str(display_name or '').strip()
+        if not name:
+            return None
+        try:
+            return generate_tool_key(name)
+        except ValueError:
+            return None
 
     @app.callback(
         Output(COVERAGE_ID, 'options'),
@@ -189,6 +225,7 @@ def register_tool_source_editor_callbacks(app: object) -> None:
         Output(VALIDITY_STORE_ID, 'data'),
         Output(VALIDATION_MESSAGE_ID, 'children'),
         Input(DISPLAY_NAME_ID, 'value'),
+        Input(TOOL_KEY_STORE_ID, 'data'),
         Input(KIND_ID, 'value'),
         Input(BRANDING_ID, 'value'),
         Input(PI_PREVENTIVE_ID, 'value'),
@@ -201,6 +238,7 @@ def register_tool_source_editor_callbacks(app: object) -> None:
     # Cuando Dispatch participa, sus dos umbrales son obligatorios e independientes de PI.
     def build_source_draft(
         display_name: str | None,
+        tool_key: str | None,
         kind_value: str | None,
         branding_value: str | None,
         pi_preventive: int | float | None,
@@ -213,6 +251,7 @@ def register_tool_source_editor_callbacks(app: object) -> None:
         dispatch_enabled = 'dispatch' in (dispatch_values or [])
         if (
             not str(display_name or '').strip()
+            or not str(tool_key or '').strip()
             or not kind_value
             or not branding_value
             or pi_preventive is None
@@ -245,6 +284,7 @@ def register_tool_source_editor_callbacks(app: object) -> None:
             )
             updated = build_configuration_from_source_editor(
                 base_configuration=base_configuration,
+                tool_key=tool_key,
                 values=values,
             )
         except ValueError as error:

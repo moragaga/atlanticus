@@ -1,6 +1,7 @@
 STRUCTURE_ROOT_ID = 'ada-tool-structure-editor'
 STRUCTURE_DOCUMENT_STORE_ID = 'ada-tool-structure-editor-document-store'
 STRUCTURE_VALIDITY_STORE_ID = 'ada-tool-structure-editor-validity-store'
+STRUCTURE_KIND_STORE_ID = 'ada-tool-structure-editor-kind-store'
 STRUCTURE_COMPONENTS_CONTAINER_ID = 'ada-tool-structure-editor-components'
 STRUCTURE_ADD_COMPONENT_ID = 'ada-tool-structure-editor-add-component'
 STRUCTURE_VALIDATION_MESSAGE_ID = 'ada-tool-structure-editor-validation-message'

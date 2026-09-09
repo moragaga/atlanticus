@@ -3,6 +3,8 @@ CONFIGURATION_STORE_ID = 'ada-tool-configuration-editor-configuration-store'
 DRAFT_STORE_ID = 'ada-tool-configuration-editor-draft-store'
 VALIDITY_STORE_ID = 'ada-tool-configuration-editor-validity-store'
 
+TOOL_KEY_STORE_ID = 'ada-tool-configuration-editor-tool-key-store'
+
 DISPLAY_NAME_ID = 'ada-tool-configuration-editor-display-name'
 KIND_ID = 'ada-tool-configuration-editor-kind'
 BRANDING_ID = 'ada-tool-configuration-editor-branding'

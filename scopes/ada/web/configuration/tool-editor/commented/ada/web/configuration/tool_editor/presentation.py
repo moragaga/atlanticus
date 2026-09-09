@@ -23,6 +23,7 @@ from ada.web.configuration.tool_editor.ids import (
     PI_PREVENTIVE_ID,
     PROCESS_COVERAGE_STORE_ID,
     ROOT_ID,
+    TOOL_KEY_STORE_ID,
     VALIDATION_MESSAGE_ID,
     VALIDITY_STORE_ID,
 )
@@ -45,6 +46,16 @@ def build_tool_source_editor(
                 storage_type='memory',
             ),
             dcc.Store(id=DRAFT_STORE_ID, data=None, storage_type='memory'),
+            # Conserva la identidad generada aunque cambie nombre o tipo.
+            dcc.Store(
+                id=TOOL_KEY_STORE_ID,
+                data=(
+                    initial_document.get('tool_key')
+                    if initial_document is not None
+                    else None
+                ),
+                storage_type='memory',
+            ),
             dcc.Store(id=VALIDITY_STORE_ID, data=False, storage_type='memory'),
             # Mantiene la cobertura Process al alternar temporalmente a Integrated.
             dcc.Store(

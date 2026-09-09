@@ -367,6 +367,7 @@ def test_tool_detail_preserves_accents_and_structural_identity() -> None:
         round_trip.structure.component('crusher').subcomponent('primary').display_name
         == 'Extracción N° 1'
     )
+    assert snapshot['general']['tool_key'] == document['tool_key']
     assert snapshot['components'][0]['key'] == 'crusher'
     assert snapshot['components'][0]['display_name'] == 'Chancado Primário'
     assert snapshot['components'][0]['subcomponents'][0]['key'] == 'primary'

@@ -42,6 +42,7 @@ from ada.web.configuration.tool_editor.structure_ids import (
     STRUCTURE_ADD_COMPONENT_ID,
     STRUCTURE_COMPONENTS_CONTAINER_ID,
     STRUCTURE_DOCUMENT_STORE_ID,
+    STRUCTURE_KIND_STORE_ID,
     STRUCTURE_VALIDATION_MESSAGE_ID,
     STRUCTURE_VALIDITY_STORE_ID,
     SUBCOMPONENT_DELETE_TYPE,
@@ -344,6 +345,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             },
             'hidden',
         ),
+        Output(STRUCTURE_KIND_STORE_ID, 'data'),
         Input(KIND_ID, 'value'),
         Input(COVERAGE_ID, 'value'),
         State(
@@ -359,6 +361,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             },
             'id',
         ),
+        State(STRUCTURE_KIND_STORE_ID, 'data'),
     )
     def update_context_fields(
         kind_value: str | None,
@@ -366,6 +369,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         scope_wrapper_ids: list[dict[str, object]],
         current_scopes: list[object],
         linked_wrapper_ids: list[dict[str, object]],
+        previous_kind: str | None,
     ):
         process = kind_value == ToolConfigurationKind.PROCESS.value
         integrated = (
@@ -380,14 +384,9 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             )
             scopes = [inherited for _ in current_scopes]
         elif integrated:
-            explicit_scopes = {
-                str(scope).strip()
-                for scope in current_scopes
-                if str(scope or '').strip() in {'mine', 'plant'}
-            }
             scopes = (
                 [None for _ in current_scopes]
-                if len(explicit_scopes) <= 1
+                if previous_kind == ToolConfigurationKind.PROCESS.value
                 else list(current_scopes)
             )
         else:
@@ -397,6 +396,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             scopes,
             [not integrated for _ in current_scopes],
             [not integrated for _ in linked_wrapper_ids],
+            kind_value,
         )
 
     @app.callback(

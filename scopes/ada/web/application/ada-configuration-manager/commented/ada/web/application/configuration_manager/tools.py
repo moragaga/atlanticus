@@ -659,6 +659,11 @@ def _tool_detail_snapshot(
 
     return {
         'general': {
+            'tool_key': (
+                _optional_text(source_document.get('tool_key'))
+                if isinstance(source_document, dict)
+                else None
+            ),
             'display_name': _optional_text(display_name),
             'kind': _optional_text(kind_value),
             'coverage': _optional_text(coverage),
@@ -721,6 +726,11 @@ def _render_tool_detail(snapshot: dict[str, object]) -> object:
                     html.Div(
                         [
                             _detail_value('Herramienta', general['display_name']),
+                            _detail_value(
+                                'ID interno',
+                                general['tool_key'],
+                                technical=True,
+                            ),
                             _detail_value('Tipo', _kind_label(general['kind'])),
                             _detail_value('Cobertura', _coverage_label(general['coverage'])),
                             _detail_value('Branding', _branding_label(general['branding'])),

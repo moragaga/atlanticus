@@ -13,6 +13,7 @@ from ada.web.configuration.tool_editor import (
     build_configuration_from_source_editor,
     source_editor_values_from_configuration,
 )
+from ada.web.configuration.tool_editor.models import generate_tool_key
 
 
 def _configuration() -> ToolConfiguration:
@@ -84,6 +85,7 @@ def test_editor_values_preserve_independent_dispatch_thresholds() -> None:
 def test_editor_can_create_initial_tool_without_existing_document() -> None:
     configuration = build_configuration_from_source_editor(
         base_configuration=None,
+        tool_key='tool_operaciones_integradas_a1b2c3d4e5f6',
         values=ToolSourceEditorValues(
             display_name='Operaciones Integradas',
             kind=ToolConfigurationKind.INTEGRATED_OPERATIONS,
@@ -96,7 +98,7 @@ def test_editor_can_create_initial_tool_without_existing_document() -> None:
         ),
     )
 
-    assert configuration.tool_key == 'integrated_operations'
+    assert configuration.tool_key == 'tool_operaciones_integradas_a1b2c3d4e5f6'
     assert configuration.display_name == 'Operaciones Integradas'
     assert configuration.kind is ToolConfigurationKind.INTEGRATED_OPERATIONS
     assert configuration.branding.variant is BrandingVariant.MINING_MONTH
@@ -113,6 +115,7 @@ def test_editor_can_create_initial_tool_without_existing_document() -> None:
 def test_dispatch_uses_its_own_preventive_and_degradation_thresholds() -> None:
     configuration = build_configuration_from_source_editor(
         base_configuration=_configuration(),
+        tool_key=None,
         values=ToolSourceEditorValues(
             display_name='Proceso',
             kind=ToolConfigurationKind.PROCESS,
@@ -141,6 +144,7 @@ def test_dispatch_uses_its_own_preventive_and_degradation_thresholds() -> None:
 def test_tool_editor_preserves_non_control_consumption_for_other_domains() -> None:
     configuration = build_configuration_from_source_editor(
         base_configuration=_configuration(),
+        tool_key=None,
         values=ToolSourceEditorValues(
             display_name='Proceso',
             kind=ToolConfigurationKind.PROCESS,
@@ -160,3 +164,32 @@ def test_tool_editor_preserves_non_control_consumption_for_other_domains() -> No
         .additional_observation_source_keys
         == ()
     )
+
+def test_generated_tool_key_is_ascii_readable_and_unique() -> None:
+    first = generate_tool_key('Área Húmeda – Flotación Ñandú')
+    second = generate_tool_key('Área Húmeda – Flotación Ñandú')
+
+    assert first.startswith('tool_area_humeda_flotacion_nandu_')
+    assert second.startswith('tool_area_humeda_flotacion_nandu_')
+    assert first != second
+    assert first.isascii()
+    assert 'á' not in first
+    assert 'ñ' not in first
+
+
+def test_new_tool_identity_does_not_depend_on_tool_kind() -> None:
+    tool_key = 'tool_flotacion_74bc3319a120'
+    configuration = build_configuration_from_source_editor(
+        base_configuration=None,
+        tool_key=tool_key,
+        values=ToolSourceEditorValues(
+            display_name='Flotación',
+            kind=ToolConfigurationKind.PROCESS,
+            branding_variant=BrandingVariant.ORIGINAL,
+            pi_preventive_after_seconds=200,
+            pi_degradation_after_seconds=300,
+        ),
+    )
+
+    assert configuration.tool_key == tool_key
+    assert configuration.kind is ToolConfigurationKind.PROCESS

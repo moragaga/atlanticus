@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from secrets import token_hex
+from unicodedata import normalize
 
 from ada.configuration.tool_sources import (
     SourceControlPolicy,
@@ -19,6 +22,32 @@ from ada.web.configuration.tool_editor.errors import (
 )
 
 _CONTROL_SOURCE_KEYS = frozenset({'pi', 'dispatch'})
+
+_TOOL_KEY_SLUG_PATTERN = re.compile(r'[^a-z0-9]+')
+_TOOL_KEY_SLUG_MAX_LENGTH = 48
+
+
+def generate_tool_key(display_name: str) -> str:
+    if not isinstance(display_name, str):
+        raise ToolSourceEditorValidationError(
+            'Tool display name must be text'
+        )
+    resolved_name = display_name.strip()
+    if not resolved_name:
+        raise ToolSourceEditorValidationError(
+            'Tool display name is required'
+        )
+    ascii_name = (
+        normalize('NFKD', resolved_name)
+        .encode('ascii', 'ignore')
+        .decode('ascii')
+        .casefold()
+    )
+    slug = _TOOL_KEY_SLUG_PATTERN.sub('_', ascii_name).strip('_')
+    slug = slug[:_TOOL_KEY_SLUG_MAX_LENGTH].rstrip('_')
+    if not slug:
+        slug = 'tool'
+    return f'tool_{slug}_{token_hex(6)}'
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,12 +160,13 @@ def source_editor_values_from_configuration(
 def build_configuration_from_source_editor(
     *,
     base_configuration: ToolConfiguration | None,
+    tool_key: str | None,
     values: ToolSourceEditorValues,
 ) -> ToolConfiguration:
-    tool_key = (
+    resolved_tool_key = (
         base_configuration.tool_key
         if base_configuration is not None
-        else _initial_tool_key(values.kind)
+        else _required_tool_key(tool_key)
     )
     pi_policy = SourceControlPolicy(
         source_key='pi',
@@ -185,16 +215,16 @@ def build_configuration_from_source_editor(
     )
 
     configuration = ToolConfiguration(
-        tool_key=tool_key,
+        tool_key=resolved_tool_key,
         display_name=values.display_name,
         kind=values.kind,
         source_consumption=ToolSourceConsumption(
-            tool_key=tool_key,
+            tool_key=resolved_tool_key,
             source_keys=tuple(dict.fromkeys(source_keys)),
         ),
         source_operational_participation=(
             ToolSourceOperationalParticipation(
-                tool_key=tool_key,
+                tool_key=resolved_tool_key,
                 control_sources=tuple(control_sources),
                 additional_observation_source_keys=(),
             )
@@ -206,14 +236,12 @@ def build_configuration_from_source_editor(
     return configuration
 
 
-def _initial_tool_key(kind: ToolConfigurationKind) -> str:
-    if kind is ToolConfigurationKind.PROCESS:
-        return 'process'
-    if kind is ToolConfigurationKind.INTEGRATED_OPERATIONS:
-        return 'integrated_operations'
-    raise ToolSourceEditorValidationError(
-        'Tool kind is not supported by this editor'
-    )
+def _required_tool_key(value: str | None) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ToolSourceEditorValidationError(
+            'Tool key is required for a new Tool'
+        )
+    return value.strip()
 
 
 def _optional_seconds(
