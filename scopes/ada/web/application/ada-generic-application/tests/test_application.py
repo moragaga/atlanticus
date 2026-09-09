@@ -22,7 +22,7 @@ from ada.web.branding.web import (
     DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC,
     DEFAULT_PELAMBRES_BRAND_LOGO_SRC,
 )
-from ada.web.content_state import ContentStateDependency
+from ada.web.content_state import ContentState, ContentStateDependency
 from ada.web.shell.header import ADA_OPERATIONAL_HEADER_ASSET_LAYER
 from ada.web.shell.navigation import ADA_NAVIGATION_ASSET_LAYER, AdaNavigationView
 from ada.web.time_status.store_adapter import (
@@ -39,7 +39,6 @@ from ada.web.tools.sources import (
 )
 from ada.web.ui.content_state import (
     ADA_CONTENT_STATE_ASSET_LAYER,
-    ContentState,
     ContentStatePresentationMode,
 )
 from ada.web.ui.core import ADA_UI_ASSET_LAYER

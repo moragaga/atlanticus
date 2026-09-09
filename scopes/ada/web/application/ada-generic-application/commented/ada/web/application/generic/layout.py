@@ -17,6 +17,7 @@ from ada.web.application.generic.operational_render import (
     build_operational_body,
 )
 from ada.web.branding.web import OperationalBrandState, build_operational_brand
+from ada.web.content_state import ContentState
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.shell.header import build_ada_operational_header
 from ada.web.shell.navigation import (
@@ -26,7 +27,6 @@ from ada.web.shell.navigation import (
     build_ada_navigation_offcanvas,
 )
 from ada.web.ui.content_state import (
-    ContentState,
     ContentStatePresentationMode,
     build_content_state_wrapper,
 )

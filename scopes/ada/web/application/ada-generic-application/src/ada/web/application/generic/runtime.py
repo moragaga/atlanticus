@@ -5,7 +5,7 @@ from ada.web.alarms.status import AlarmStatusState
 from ada.web.application.generic.application import create_application_definition
 from ada.web.application.generic.composition import AdaApplicationComposition
 from ada.web.branding import BrandingConfiguration
-from ada.web.content_state import ContentStateDependency
+from ada.web.content_state import ContentState, ContentStateDependency
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.shell.navigation import AdaNavigationView
 from ada.web.time_status.store_adapter import TimeStatusStoreSnapshot
@@ -13,7 +13,7 @@ from ada.web.tools.sources import (
     ToolSourceConsumption,
     ToolSourceOperationalParticipation,
 )
-from ada.web.ui.content_state import ContentState, ContentStatePresentationMode
+from ada.web.ui.content_state import ContentStatePresentationMode
 from ada.web.ui.global_indicator import GlobalIndicatorCollection
 from ada.web.ui.time_status import TimeStatusDetailState
 from atlanticus.web.application import create_web_application

@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from ada.web.ui.content_state import (
+from ada.web.content_state import (
     ContentState,
-    ContentStatePresentationMode,
     resolve_content_state,
+)
+from ada.web.ui.content_state import (
+    ContentStatePresentationMode,
     resolve_content_state_visual,
 )
 

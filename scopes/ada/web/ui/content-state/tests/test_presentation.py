@@ -3,8 +3,8 @@ from __future__ import annotations
 import pytest
 from dash import html
 
+from ada.web.content_state import ContentState
 from ada.web.ui.content_state import (
-    ContentState,
     ContentStatePresentationMode,
     build_content_state_wrapper,
 )

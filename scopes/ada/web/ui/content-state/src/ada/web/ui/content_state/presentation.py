@@ -6,14 +6,10 @@ from collections.abc import Sequence
 from dash import html
 from dash.development.base_component import Component
 
+from ada.web.content_state import ContentState, resolve_content_state
 from ada.web.ui.core import component_identity_attributes
 
-from .models import (
-    ContentState,
-    ContentStatePresentationMode,
-    resolve_content_state,
-    resolve_content_state_visual,
-)
+from .models import ContentStatePresentationMode, resolve_content_state_visual
 
 _KEY_PATTERN = re.compile(r'^[a-z][a-z0-9_]*$')
 

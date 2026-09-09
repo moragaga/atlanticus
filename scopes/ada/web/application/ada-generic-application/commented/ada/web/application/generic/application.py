@@ -18,7 +18,7 @@ from ada.web.application.generic.operational_render import (
 )
 from ada.web.branding import BrandingConfiguration
 from ada.web.branding.web import BrandingAssetSet, OperationalBrandState, resolve_branding_assets
-from ada.web.content_state import ContentStateDependency
+from ada.web.content_state import ContentState, ContentStateDependency
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.operational_state import resolve_ada_operational_state
 from ada.web.shell.navigation import AdaNavigationView
@@ -27,7 +27,7 @@ from ada.web.tools.sources import (
     ToolSourceConsumption,
     ToolSourceOperationalParticipation,
 )
-from ada.web.ui.content_state import ContentState, ContentStatePresentationMode
+from ada.web.ui.content_state import ContentStatePresentationMode
 from ada.web.ui.global_indicator import GlobalIndicatorCollection
 from ada.web.ui.time_status import TimeStatusDetailState
 from atlanticus.web.models import ApplicationMetadata, WebApplicationDefinition

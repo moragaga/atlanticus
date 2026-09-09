@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from ada.web.content_state import ContentState, resolve_content_state
+from ada.web.content_state import ContentState
 
 
 class ContentStatePresentationMode(str, Enum):
@@ -40,9 +40,7 @@ def resolve_content_state_visual(state: ContentState) -> ContentStateVisual | No
 
 
 __all__ = [
-    'ContentState',
     'ContentStatePresentationMode',
     'ContentStateVisual',
-    'resolve_content_state',
     'resolve_content_state_visual',
 ]
