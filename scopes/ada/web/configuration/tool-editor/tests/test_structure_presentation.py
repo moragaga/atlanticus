@@ -178,7 +178,7 @@ def test_structure_inputs_do_not_depend_on_bootstrap_form_control() -> None:
     assert 'form-control' not in rendered
 
 
-def test_process_component_scope_inherits_coverage_and_is_read_only() -> None:
+def test_process_component_scope_is_optional_editable_override() -> None:
     from ada.web.configuration.tool_editor.structure_ids import (
         COMPONENT_SCOPE_TYPE,
         row_id,
@@ -201,7 +201,7 @@ def test_process_component_scope_inherits_coverage_and_is_read_only() -> None:
             return find(children, target_id)
         return None
 
-    row = build_component_editor_row(
+    inherited_row = build_component_editor_row(
         index=0,
         row={
             'key': 'cmp_process',
@@ -211,14 +211,38 @@ def test_process_component_scope_inherits_coverage_and_is_read_only() -> None:
         kind=ToolConfigurationKind.PROCESS,
         coverage='plant',
     )
-    scope = find(row, row_id(COMPONENT_SCOPE_TYPE, 0))
+    inherited_scope = find(
+        inherited_row,
+        row_id(COMPONENT_SCOPE_TYPE, 0),
+    )
 
-    assert scope is not None
-    assert scope.value == 'plant'
-    assert scope.disabled is True
+    assert inherited_scope is not None
+    assert inherited_scope.value is None
+    assert inherited_scope.disabled is False
+    assert inherited_scope.clearable is True
+    assert inherited_scope.placeholder == 'Heredar ámbito general'
 
-    row = build_component_editor_row(
-        index=0,
+    override_row = build_component_editor_row(
+        index=1,
+        row={
+            'key': 'cmp_override',
+            'display_name': 'Aguas abajo',
+            'scope': 'mine',
+        },
+        kind=ToolConfigurationKind.PROCESS,
+        coverage='plant',
+    )
+    override_scope = find(
+        override_row,
+        row_id(COMPONENT_SCOPE_TYPE, 1),
+    )
+
+    assert override_scope is not None
+    assert override_scope.value == 'mine'
+    assert override_scope.disabled is False
+
+    integrated_row = build_component_editor_row(
+        index=2,
         row={
             'key': 'cmp_integrated',
             'display_name': 'Integrado',
@@ -227,8 +251,11 @@ def test_process_component_scope_inherits_coverage_and_is_read_only() -> None:
         kind=ToolConfigurationKind.INTEGRATED_OPERATIONS,
         coverage='mine_plant',
     )
-    scope = find(row, row_id(COMPONENT_SCOPE_TYPE, 0))
+    integrated_scope = find(
+        integrated_row,
+        row_id(COMPONENT_SCOPE_TYPE, 2),
+    )
 
-    assert scope is not None
-    assert scope.value is None
-    assert scope.disabled is False
+    assert integrated_scope is not None
+    assert integrated_scope.value is None
+    assert integrated_scope.disabled is False

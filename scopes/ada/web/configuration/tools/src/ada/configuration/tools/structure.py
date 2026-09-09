@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from ada.configuration.tools.enums import (
@@ -136,22 +136,17 @@ class ToolComponent:
                 key=document['key'],
                 display_name=document['display_name'],
                 subcomponents=tuple(
-                    ToolSubcomponent.from_document(item)
-                    for item in raw_subcomponents
+                    ToolSubcomponent.from_document(item) for item in raw_subcomponents
                 ),
                 scope=ToolScope(raw_scope) if raw_scope is not None else None,
                 layout_role=(
-                    ProcessLayoutRole(raw_layout_role)
-                    if raw_layout_role is not None
-                    else None
+                    ProcessLayoutRole(raw_layout_role) if raw_layout_role is not None else None
                 ),
             )
         except (KeyError, TypeError, ValueError) as error:
             if isinstance(error, ToolConfigurationValidationError):
                 raise
-            raise ToolConfigurationValidationError(
-                'Tool component contract is invalid'
-            ) from error
+            raise ToolConfigurationValidationError('Tool component contract is invalid') from error
 
 
 @dataclass(frozen=True, slots=True)
@@ -207,8 +202,13 @@ class ToolStructure:
             self.operational_scope,
             ToolScope,
         ):
-            raise ToolConfigurationValidationError(
-                'Tool Structure operational scope is invalid'
+            raise ToolConfigurationValidationError('Tool Structure operational scope is invalid')
+        if self.kind is ToolConfigurationKind.PROCESS and self.operational_scope is not None:
+            components = tuple(
+                replace(component, scope=None)
+                if component.scope is self.operational_scope
+                else component
+                for component in components
             )
         object.__setattr__(self, 'tool_key', tool_key)
         object.__setattr__(self, 'components', components)
@@ -248,8 +248,16 @@ class ToolStructure:
         for component in self.components:
             if component.key == normalized:
                 return component
+        raise ToolConfigurationValidationError(f'Unknown Tool component: {normalized!r}')
+
+    def effective_component_scope(self, component_key: str) -> ToolScope:
+        component = self.component(component_key)
+        if component.scope is not None:
+            return component.scope
+        if self.kind is ToolConfigurationKind.PROCESS and self.operational_scope is not None:
+            return self.operational_scope
         raise ToolConfigurationValidationError(
-            f'Unknown Tool component: {normalized!r}'
+            f'Tool component effective scope is not defined: {component.key!r}'
         )
 
     def component_for_layout_role(
@@ -261,9 +269,7 @@ class ToolStructure:
         for component in self.components:
             if component.layout_role is role:
                 return component
-        raise ToolConfigurationValidationError(
-            f'Unknown Process layout role: {role.value!r}'
-        )
+        raise ToolConfigurationValidationError(f'Unknown Process layout role: {role.value!r}')
 
     def subcomponent_address(
         self,
@@ -284,8 +290,7 @@ class ToolStructure:
                 ):
                     return ToolSubcomponentAddress(owner.key, subcomponent.key)
         raise ToolConfigurationValidationError(
-            f'Unknown Tool subcomponent for component '
-            f'{component.key!r}: {normalized!r}'
+            f'Unknown Tool subcomponent for component {component.key!r}: {normalized!r}'
         )
 
     def alarm_subcomponent_addresses_for_component(
@@ -298,8 +303,7 @@ class ToolStructure:
             )
         component = self.component(component_key)
         direct = tuple(
-            ToolSubcomponentAddress(component.key, item.key)
-            for item in component.subcomponents
+            ToolSubcomponentAddress(component.key, item.key) for item in component.subcomponents
         )
         if self.kind is ToolConfigurationKind.PROCESS:
             return direct
@@ -318,9 +322,7 @@ class ToolStructure:
         }
         if self.operational_scope is not None:
             document['operational_scope'] = self.operational_scope.value
-        document['components'] = [
-            component.to_document() for component in self.components
-        ]
+        document['components'] = [component.to_document() for component in self.components]
         return document
 
     @classmethod
@@ -335,20 +337,13 @@ class ToolStructure:
             return cls(
                 tool_key=document['tool_key'],
                 kind=ToolConfigurationKind(document['kind']),
-                components=tuple(
-                    ToolComponent.from_document(item)
-                    for item in raw_components
-                ),
-                operational_scope=(
-                    ToolScope(raw_scope) if raw_scope is not None else None
-                ),
+                components=tuple(ToolComponent.from_document(item) for item in raw_components),
+                operational_scope=(ToolScope(raw_scope) if raw_scope is not None else None),
             )
         except (KeyError, TypeError, ValueError) as error:
             if isinstance(error, ToolConfigurationValidationError):
                 raise
-            raise ToolConfigurationValidationError(
-                'Tool Structure contract is invalid'
-            ) from error
+            raise ToolConfigurationValidationError('Tool Structure contract is invalid') from error
 
 
 def _validate_linked_component_keys(structure: ToolStructure) -> None:
@@ -397,9 +392,7 @@ def _validate_process_structure(
     structure: ToolStructure,
 ) -> None:
     if structure.operational_scope is None:
-        raise ToolConfigurationValidationError(
-            'Process Tool Structure requires operational scope'
-        )
+        raise ToolConfigurationValidationError('Process Tool Structure requires operational scope')
 
     legacy_roles = tuple(
         component.layout_role
@@ -422,29 +415,18 @@ def _validate_process_structure(
             )
 
     for component in structure.components:
-        if component.scope is not None:
-            raise ToolConfigurationValidationError(
-                'Process Tool components inherit operational scope '
-                'and must not declare scope'
-            )
         if not component.subcomponents:
             if component.layout_role is ProcessLayoutRole.CENTER:
                 raise ToolConfigurationValidationError(
-                    'Process CENTER component requires at least one '
-                    'subcomponent'
+                    'Process CENTER component requires at least one subcomponent'
                 )
             if component.layout_role is None:
                 raise ToolConfigurationValidationError(
-                    f'Process Tool component {component.key!r} '
-                    'requires subcomponents'
+                    f'Process Tool component {component.key!r} requires subcomponents'
                 )
-        if any(
-            item.linked_component_keys
-            for item in component.subcomponents
-        ):
+        if any(item.linked_component_keys for item in component.subcomponents):
             raise ToolConfigurationValidationError(
-                'Process Tool subcomponents must not declare '
-                'linked component keys'
+                'Process Tool subcomponents must not declare linked component keys'
             )
 
 

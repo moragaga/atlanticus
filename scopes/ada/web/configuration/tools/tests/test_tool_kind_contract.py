@@ -61,9 +61,7 @@ def test_tool_configuration_roundtrip_preserves_strategic_kind() -> None:
         structure=structure,
     )
 
-    restored = ToolConfiguration.from_document(
-        MappingProxyType(configuration.to_document())
-    )
+    restored = ToolConfiguration.from_document(MappingProxyType(configuration.to_document()))
 
     assert restored == configuration
     assert restored.kind is ToolConfigurationKind.STRATEGIC

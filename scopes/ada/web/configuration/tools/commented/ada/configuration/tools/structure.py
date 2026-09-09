@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from ada.configuration.tools.enums import (
@@ -214,6 +214,14 @@ class ToolStructure:
             raise ToolConfigurationValidationError(
                 'Tool Structure operational scope is invalid'
             )
+        # Un scope igual al general no es un override: se normaliza a herencia.
+        if self.kind is ToolConfigurationKind.PROCESS and self.operational_scope is not None:
+            components = tuple(
+                replace(component, scope=None)
+                if component.scope is self.operational_scope
+                else component
+                for component in components
+            )
         object.__setattr__(self, 'tool_key', tool_key)
         object.__setattr__(self, 'components', components)
         _validate_linked_component_keys(self)
@@ -255,6 +263,20 @@ class ToolStructure:
                 return component
         raise ToolConfigurationValidationError(
             f'Unknown Tool component: {normalized!r}'
+        )
+
+    # Resuelve el ámbito efectivo sin obligar a los consumidores a repetir la regla de herencia.
+    def effective_component_scope(self, component_key: str) -> ToolScope:
+        component = self.component(component_key)
+        if component.scope is not None:
+            return component.scope
+        if (
+            self.kind is ToolConfigurationKind.PROCESS
+            and self.operational_scope is not None
+        ):
+            return self.operational_scope
+        raise ToolConfigurationValidationError(
+            f'Tool component effective scope is not defined: {component.key!r}'
         )
 
     def component_for_layout_role(
@@ -427,11 +449,6 @@ def _validate_process_structure(
             )
 
     for component in structure.components:
-        if component.scope is not None:
-            raise ToolConfigurationValidationError(
-                'Process Tool components inherit operational scope '
-                'and must not declare scope'
-            )
         if not component.subcomponents:
             if component.layout_role is ProcessLayoutRole.CENTER:
                 raise ToolConfigurationValidationError(

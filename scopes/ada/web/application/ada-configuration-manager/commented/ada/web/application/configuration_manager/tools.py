@@ -763,7 +763,14 @@ def _tool_inspection_document(
             component_document['key'] = component_key
         if component_name is not None:
             component_document['display_name'] = component_name
-        if kind == 'integrated_operations' and component_scope is not None:
+        # En Process sólo exponemos el override real; el scope general sigue en operational_scope.
+        if (
+            component_scope is not None
+            and (
+                kind == 'integrated_operations'
+                or (kind == 'process' and component_scope != coverage)
+            )
+        ):
             component_document['scope'] = component_scope
 
         serialized_subcomponents: list[dict[str, object]] = []

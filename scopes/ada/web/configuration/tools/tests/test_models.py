@@ -347,9 +347,7 @@ def test_configuration_rejects_structure_kind_mismatch() -> None:
             source_operational_participation=(
                 ToolSourceOperationalParticipation(
                     tool_key='process',
-                    control_sources=(
-                        SourceControlPolicy('pi', 200, 300),
-                    ),
+                    control_sources=(SourceControlPolicy('pi', 200, 300),),
                 )
             ),
             structure=structure,
@@ -387,7 +385,6 @@ def test_document_roundtrip_preserves_structure_when_present() -> None:
     assert restored == configuration
 
 
-
 def test_document_roundtrip_preserves_branding_configuration() -> None:
     configuration = _configuration()
     configured = ToolConfiguration(
@@ -395,16 +392,10 @@ def test_document_roundtrip_preserves_branding_configuration() -> None:
         display_name=configuration.display_name,
         kind=configuration.kind,
         source_consumption=configuration.source_consumption,
-        source_operational_participation=(
-            configuration.source_operational_participation
-        ),
-        branding=BrandingConfiguration(
-            variant=BrandingVariant.CHRISTMAS
-        ),
+        source_operational_participation=(configuration.source_operational_participation),
+        branding=BrandingConfiguration(variant=BrandingVariant.CHRISTMAS),
     )
 
-    restored = ToolConfiguration.from_document(
-        MappingProxyType(configured.to_document())
-    )
+    restored = ToolConfiguration.from_document(MappingProxyType(configured.to_document()))
 
     assert restored.branding.variant is BrandingVariant.CHRISTMAS

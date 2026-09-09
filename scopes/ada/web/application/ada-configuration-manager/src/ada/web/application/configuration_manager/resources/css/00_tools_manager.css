@@ -368,11 +368,6 @@ body:has(.ada-configuration-manager-tools__modal--open) {
     grid-column: 1 / -1;
 }
 
-.ada-configuration-manager-tools__detail-value--wide
-.ada-configuration-manager-tools__detail-code {
-    width: 100%;
-}
-
 .ada-configuration-manager-tools__detail-value small {
     color: var(--atlanticus-ui-text-muted);
     font-size: .61rem;

@@ -437,31 +437,27 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         linked_wrapper_ids: list[dict[str, object]],
         previous_kind: str | None,
     ):
+        # None conserva herencia Process; un override que coincide con el scope general vuelve a herencia.
         process = kind_value == ToolConfigurationKind.PROCESS.value
         integrated = (
             kind_value
             == ToolConfigurationKind.INTEGRATED_OPERATIONS.value
         )
         if process:
-            inherited = (
-                coverage
-                if coverage in {'mine', 'plant'}
-                else None
-            )
-            scopes = [inherited for _ in current_scopes]
+            scopes = [
+                None
+                if str(scope or '').strip() == coverage
+                else scope
+                for scope in current_scopes
+            ]
         elif integrated:
-            # Sólo una transición real desde Process elimina valores heredados; la edición normal conserva lo elegido.
-            scopes = (
-                [None for _ in current_scopes]
-                if previous_kind == ToolConfigurationKind.PROCESS.value
-                else list(current_scopes)
-            )
+            scopes = list(current_scopes)
         else:
             scopes = [None for _ in current_scopes]
         return (
             [kind_value is None for _ in scope_wrapper_ids],
             scopes,
-            [not integrated for _ in current_scopes],
+            [not (process or integrated) for _ in current_scopes],
             [not integrated for _ in linked_wrapper_ids],
             kind_value,
         )

@@ -35,9 +35,7 @@ class ToolConfiguration:
         if not isinstance(self.kind, ToolConfigurationKind):
             raise ToolConfigurationValidationError('Tool kind is invalid')
         if not isinstance(self.source_consumption, ToolSourceConsumption):
-            raise ToolConfigurationValidationError(
-                'Tool source consumption contract is invalid'
-            )
+            raise ToolConfigurationValidationError('Tool source consumption contract is invalid')
         if not isinstance(
             self.source_operational_participation,
             ToolSourceOperationalParticipation,
@@ -46,9 +44,7 @@ class ToolConfiguration:
                 'Tool source operational participation contract is invalid'
             )
         if not isinstance(self.branding, BrandingConfiguration):
-            raise ToolConfigurationValidationError(
-                'Tool branding configuration is invalid'
-            )
+            raise ToolConfigurationValidationError('Tool branding configuration is invalid')
         if self.source_consumption.tool_key != tool_key:
             raise ToolConfigurationValidationError(
                 'Tool source consumption tool key must match Tool Configuration tool key'
@@ -60,9 +56,7 @@ class ToolConfiguration:
             )
         if self.structure is not None:
             if not isinstance(self.structure, ToolStructure):
-                raise ToolConfigurationValidationError(
-                    'Tool Structure contract is invalid'
-                )
+                raise ToolConfigurationValidationError('Tool Structure contract is invalid')
             if self.structure.tool_key != tool_key:
                 raise ToolConfigurationValidationError(
                     'Tool Structure tool key must match Tool Configuration tool key'
@@ -90,11 +84,7 @@ class ToolConfiguration:
             'source_operational_participation': (
                 self.source_operational_participation.to_document()
             ),
-            'structure': (
-                self.structure.to_document()
-                if self.structure is not None
-                else None
-            ),
+            'structure': (self.structure.to_document() if self.structure is not None else None),
             'branding': self.branding.to_document(),
         }
 
@@ -105,9 +95,7 @@ class ToolConfiguration:
     ) -> ToolConfiguration:
         try:
             source_consumption = document['source_consumption']
-            source_operational_participation = (
-                document['source_operational_participation']
-            )
+            source_operational_participation = document['source_operational_participation']
             raw_structure = document.get('structure')
             raw_branding = document.get('branding', {})
             if not isinstance(source_consumption, Mapping):
@@ -117,10 +105,7 @@ class ToolConfiguration:
                 Mapping,
             ):
                 raise TypeError
-            if (
-                raw_structure is not None
-                and not isinstance(raw_structure, Mapping)
-            ):
+            if raw_structure is not None and not isinstance(raw_structure, Mapping):
                 raise TypeError
             if not isinstance(raw_branding, Mapping):
                 raise TypeError
@@ -128,9 +113,7 @@ class ToolConfiguration:
                 tool_key=document['tool_key'],
                 display_name=document['display_name'],
                 kind=ToolConfigurationKind(document['kind']),
-                source_consumption=ToolSourceConsumption.from_document(
-                    source_consumption
-                ),
+                source_consumption=ToolSourceConsumption.from_document(source_consumption),
                 source_operational_participation=(
                     ToolSourceOperationalParticipation.from_document(
                         source_operational_participation
@@ -141,9 +124,7 @@ class ToolConfiguration:
                     if raw_structure is not None
                     else None
                 ),
-                branding=BrandingConfiguration.from_document(
-                    raw_branding
-                ),
+                branding=BrandingConfiguration.from_document(raw_branding),
             )
         except (KeyError, TypeError, ValueError) as error:
             if isinstance(error, ToolConfigurationValidationError):

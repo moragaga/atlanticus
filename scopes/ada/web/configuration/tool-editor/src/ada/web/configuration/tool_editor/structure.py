@@ -120,6 +120,7 @@ def build_structure_from_editor_tables(
                 'scope': _component_scope(
                     row,
                     kind=kind,
+                    coverage=resolved_coverage,
                 ),
                 'subcomponents': grouped[key],
             }
@@ -160,12 +161,20 @@ def _component_scope(
     row: Mapping[str, Any],
     *,
     kind: ToolConfigurationKind,
+    coverage: str,
 ) -> str | None:
+    resolved = _optional_text(row.get('scope'))
     if kind is ToolConfigurationKind.PROCESS:
-        return None
+        if resolved is None or resolved == coverage:
+            return None
+        if resolved not in {_COVERAGE_MINE, _COVERAGE_PLANT}:
+            raise ToolStructureEditorValidationError(
+                'Process component scope must be Mina or Planta'
+            )
+        return resolved
     if kind is not ToolConfigurationKind.INTEGRATED_OPERATIONS:
         raise ToolStructureEditorValidationError('Tool kind is not supported by this editor')
-    return _optional_text(row.get('scope'))
+    return resolved
 
 
 def _coverage(

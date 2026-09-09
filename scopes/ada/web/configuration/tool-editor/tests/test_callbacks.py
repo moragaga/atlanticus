@@ -122,7 +122,7 @@ def test_coverage_waits_for_kind_and_restores_process_coverage() -> None:
     assert remembered == 'plant'
 
 
-def test_process_context_inherits_parent_and_integrated_clears_inherited_scope() -> None:
+def test_process_context_preserves_optional_scope_overrides() -> None:
     class CallbackApp:
         def __init__(self) -> None:
             self.callbacks: dict[str, object] = {}
@@ -148,8 +148,21 @@ def test_process_context_inherits_parent_and_integrated_clears_inherited_scope()
         'process',
     )
     assert hidden == [False, False]
-    assert scopes == ['plant', 'plant']
-    assert disabled == [True, True]
+    assert scopes == ['mine', None]
+    assert disabled == [False, False]
+    assert linked_hidden == [True, True]
+    assert remembered_kind == 'process'
+
+    _, scopes, disabled, linked_hidden, remembered_kind = app.callbacks['update_context_fields'](
+        'process',
+        'mine',
+        [{'index': 0}, {'index': 1}],
+        ['mine', None],
+        [{'owner_index': 0}, {'owner_index': 1}],
+        'process',
+    )
+    assert scopes == [None, None]
+    assert disabled == [False, False]
     assert linked_hidden == [True, True]
     assert remembered_kind == 'process'
 
@@ -159,7 +172,7 @@ def test_process_context_inherits_parent_and_integrated_clears_inherited_scope()
         'integrated_operations',
         'mine_plant',
         [{'index': 0}, {'index': 1}],
-        ['plant', 'plant'],
+        [None, None],
         [{'owner_index': 0}, {'owner_index': 1}],
         'process',
     )

@@ -165,7 +165,7 @@ def test_integrated_shared_subcomponent_keeps_one_owner() -> None:
     )
 
 
-def test_process_ignores_stale_component_scope_and_uses_operational_coverage() -> None:
+def test_process_keeps_component_scope_when_it_overrides_operational_coverage() -> None:
     structure = build_structure_from_editor_tables(
         base_configuration=_base(ToolConfigurationKind.PROCESS),
         coverage='plant',
@@ -188,4 +188,29 @@ def test_process_ignores_stale_component_scope_and_uses_operational_coverage() -
 
     assert structure.operational_scope is not None
     assert structure.operational_scope.value == 'plant'
+    assert structure.components[0].scope is not None
+    assert structure.components[0].scope.value == 'mine'
+
+
+def test_process_editor_canonicalizes_scope_equal_to_operational_coverage() -> None:
+    structure = build_structure_from_editor_tables(
+        base_configuration=_base(ToolConfigurationKind.PROCESS),
+        coverage='plant',
+        component_rows=[
+            {
+                'key': 'cmp_process',
+                'display_name': 'Proceso',
+                'scope': 'plant',
+            }
+        ],
+        subcomponent_rows=[
+            {
+                'owner_component_key': 'cmp_process',
+                'key': 'sub_process',
+                'display_name': 'Principal',
+                'linked_component_keys': [],
+            }
+        ],
+    )
+
     assert structure.components[0].scope is None

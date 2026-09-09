@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
@@ -482,3 +483,69 @@ def test_tool_detail_keeps_partial_serialization_before_integrated_is_complete()
             ],
         }
     ]
+
+
+def test_tool_detail_css_does_not_force_wide_code_to_full_width() -> None:
+    css = (
+        Path(__file__).parents[1]
+        / 'src'
+        / 'ada'
+        / 'web'
+        / 'application'
+        / 'configuration_manager'
+        / 'resources'
+        / 'css'
+        / '00_tools_manager.css'
+    ).read_text(encoding='utf-8')
+
+    assert (
+        '.ada-configuration-manager-tools__detail-value--wide\n'
+        '.ada-configuration-manager-tools__detail-code {\n'
+        '    width: 100%;\n'
+        '}'
+    ) not in css
+
+
+def test_tool_detail_partial_process_serializes_only_real_component_scope_override() -> None:
+    snapshot = _tool_detail_snapshot(
+        display_name='Proceso Planta',
+        tool_key='tool_proceso_planta_a1b2c3d4e5f6',
+        kind_value='process',
+        coverage='plant',
+        branding='original',
+        pi_preventive=300,
+        pi_degradation=600,
+        dispatch_values=[],
+        dispatch_preventive=None,
+        dispatch_degradation=None,
+        component_key_ids=[
+            {'type': 'key', 'index': 0},
+            {'type': 'key', 'index': 1},
+        ],
+        component_keys=[
+            'cmp_centro_111111111111',
+            'cmp_aguas_abajo_222222222222',
+        ],
+        component_name_ids=[
+            {'type': 'name', 'index': 0},
+            {'type': 'name', 'index': 1},
+        ],
+        component_names=['Centro', 'Aguas abajo'],
+        component_scope_ids=[
+            {'type': 'scope', 'index': 0},
+            {'type': 'scope', 'index': 1},
+        ],
+        component_scopes=[None, 'mine'],
+        subcomponent_key_ids=[],
+        subcomponent_keys=[],
+        subcomponent_name_ids=[],
+        subcomponent_names=[],
+        subcomponent_linked_ids=[],
+        subcomponent_links=[],
+        source_document=None,
+        structure_document=None,
+    )
+
+    components = snapshot['inspection_document']['structure']['components']
+    assert 'scope' not in components[0]
+    assert components[1]['scope'] == 'mine'

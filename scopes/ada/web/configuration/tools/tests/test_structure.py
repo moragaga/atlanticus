@@ -140,9 +140,7 @@ def test_process_allows_single_layout_agnostic_component() -> None:
     )
 
     assert structure.alarm_baseline_component_keys == ('mina',)
-    assert structure.alarm_subcomponent_addresses == (
-        ToolSubcomponentAddress('mina', 'principal'),
-    )
+    assert structure.alarm_subcomponent_addresses == (ToolSubcomponentAddress('mina', 'principal'),)
 
 
 def test_legacy_process_layout_roles_do_not_limit_alarm_baseline() -> None:
@@ -332,25 +330,44 @@ def test_legacy_process_center_still_requires_subcomponent() -> None:
         )
 
 
-def test_process_rejects_component_scope_because_it_inherits_operational_scope() -> None:
-    with pytest.raises(
-        ToolConfigurationValidationError,
-        match='must not declare scope',
-    ):
-        ToolStructure(
-            tool_key='process',
-            kind=ToolConfigurationKind.PROCESS,
-            operational_scope=ToolScope.PLANT,
-            components=(
-                ToolComponent(
-                    key='center',
-                    display_name='Center',
-                    scope=ToolScope.PLANT,
-                    layout_role=ProcessLayoutRole.CENTER,
-                    subcomponents=(_subcomponent('principal'),),
-                ),
+def test_process_component_scope_can_override_operational_scope() -> None:
+    structure = ToolStructure(
+        tool_key='process',
+        kind=ToolConfigurationKind.PROCESS,
+        operational_scope=ToolScope.PLANT,
+        components=(
+            ToolComponent(
+                key='upstream',
+                display_name='Aguas arriba',
+                scope=ToolScope.MINE,
+                subcomponents=(_subcomponent('principal'),),
             ),
-        )
+        ),
+    )
+
+    assert structure.components[0].scope is ToolScope.MINE
+    assert structure.effective_component_scope('upstream') is ToolScope.MINE
+    assert structure.to_document()['components'][0]['scope'] == 'mine'
+
+
+def test_process_component_scope_matching_root_is_canonical_inheritance() -> None:
+    structure = ToolStructure(
+        tool_key='process',
+        kind=ToolConfigurationKind.PROCESS,
+        operational_scope=ToolScope.PLANT,
+        components=(
+            ToolComponent(
+                key='center',
+                display_name='Centro',
+                scope=ToolScope.PLANT,
+                subcomponents=(_subcomponent('principal'),),
+            ),
+        ),
+    )
+
+    assert structure.components[0].scope is None
+    assert structure.effective_component_scope('center') is ToolScope.PLANT
+    assert 'scope' not in structure.to_document()['components'][0]
 
 
 def test_process_rejects_shared_subcomponents() -> None:
@@ -655,6 +672,8 @@ def test_structure_document_contains_topology_not_rendering_details() -> None:
         'alarm_points',
     ):
         assert forbidden not in serialized
+
+
 def test_process_layout_agnostic_component_requires_subcomponents() -> None:
     with pytest.raises(
         ToolConfigurationValidationError,
@@ -671,6 +690,7 @@ def test_process_layout_agnostic_component_requires_subcomponents() -> None:
                 ),
             ),
         )
+
 
 def test_process_document_omits_inherited_scope_and_empty_layout_role() -> None:
     structure = ToolStructure(
@@ -700,3 +720,10 @@ def test_integrated_document_keeps_component_scope_and_omits_root_scope() -> Non
     assert 'operational_scope' not in document
     assert document['components'][0]['scope'] == 'mine'
     assert document['components'][-1]['scope'] == 'plant'
+
+
+def test_integrated_effective_component_scope_uses_component_scope() -> None:
+    structure = _integrated_structure()
+
+    assert structure.effective_component_scope('carguio') is ToolScope.MINE
+    assert structure.effective_component_scope('molienda') is ToolScope.PLANT

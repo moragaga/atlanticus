@@ -192,7 +192,7 @@ def build_component_editor_row(
     )
     process = kind is ToolConfigurationKind.PROCESS
     # Process muestra el ámbito heredado del padre; Integrated lo hace editable.
-    scope_value = coverage if process else values.get('scope')
+    scope_value = values.get('scope')
     linked_options = _linked_component_options(
         all_component_rows,
         owner_index=index,
@@ -304,7 +304,11 @@ def build_component_editor_row(
                                     'value': ToolScope.PLANT.value,
                                 },
                             ],
-                            disabled=not integrated,
+                            clearable=process,
+                            placeholder=(
+                                'Heredar ámbito general' if process else None
+                            ),
+                            disabled=not (process or integrated),
                         ),
                         id=row_id(
                             COMPONENT_SCOPE_WRAPPER_TYPE,
@@ -562,6 +566,7 @@ def _dropdown_field(
     value: object,
     options: Sequence[Mapping[str, str]],
     multi: bool = False,
+    clearable: bool | None = None,
     placeholder: str | None = None,
     disabled: bool = False,
 ) -> Component:
@@ -573,7 +578,7 @@ def _dropdown_field(
                 value=value,
                 options=list(options),
                 multi=multi,
-                clearable=multi,
+                clearable=multi if clearable is None else clearable,
                 placeholder=placeholder,
                 disabled=disabled,
                 className='ada-tool-structure-editor__select',
@@ -656,10 +661,12 @@ def _summary_scope(
     coverage: str | None,
     scope: object,
 ) -> str:
+    # El resumen muestra el scope efectivo: override del componente o, en su defecto, el general.
     if kind is ToolConfigurationKind.PROCESS:
-        if coverage == 'mine':
+        resolved = scope if scope in {'mine', 'plant'} else coverage
+        if resolved == 'mine':
             return 'Mina'
-        if coverage == 'plant':
+        if resolved == 'plant':
             return 'Planta'
         return 'Definir ámbito'
     if kind is ToolConfigurationKind.INTEGRATED_OPERATIONS:
