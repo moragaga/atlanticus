@@ -12,8 +12,7 @@ classifiers = [
 ]
 dependencies = [
     "ada-web-tools==0.1.0",
-    "ada-web-content-state-core==0.1.0",
-    "ada-web-content-state-dependency-resolver==0.2.0",
+    "ada-web-content-state==0.1.0",
     "ada-web-time-status-store-adapter==0.1.0",
     "ada-web-ui-time-status==0.1.15",
 ]
@@ -25,8 +24,7 @@ dev = [
 ]
 
 [tool.uv.sources]
-ada-web-content-state-core = { path = "../content-state/core", editable = true }
-ada-web-content-state-dependency-resolver = { path = "../content-state/dependency-resolver", editable = true }
+ada-web-content-state = { path = "../content-state/core", editable = true }
 ada-web-time-status-store-adapter = { path = "../time-status/store-adapter", editable = true }
 ada-web-ui-time-status = { path = "../ui/time-status", editable = true }
 ada-web-tools = { path = "../tools/core", editable = true }

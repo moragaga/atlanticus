@@ -17,7 +17,7 @@ from ada.web.application.generic.operational_render import (
 )
 from ada.web.branding import BrandingConfiguration
 from ada.web.branding.web import BrandingAssetSet, OperationalBrandState, resolve_branding_assets
-from ada.web.content_state.dependency_resolver import ContentStateDependency
+from ada.web.content_state import ContentStateDependency
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.operational_state import resolve_ada_operational_state
 from ada.web.shell.navigation import AdaNavigationView

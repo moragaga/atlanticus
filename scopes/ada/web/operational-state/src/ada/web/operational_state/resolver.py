@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from ada.web.content_state.core import ContentState, SourceFreshnessCondition
-from ada.web.content_state.dependency_resolver import (
+from ada.web.content_state import (
+    ContentState,
     ContentStateDependency,
     ContentStateDependencyGraph,
+    SourceFreshnessCondition,
 )
 from ada.web.time_status.store_adapter import (
     TimeStatusStoreSnapshot,

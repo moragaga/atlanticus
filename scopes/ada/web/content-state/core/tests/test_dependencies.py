@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from ada.web.content_state.dependency_resolver import (
+from ada.web.content_state import (
     ContentStateDependency,
     ContentStateDependencyError,
 )

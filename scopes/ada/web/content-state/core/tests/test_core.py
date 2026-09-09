@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from ada.web.content_state.core import (
+from ada.web.content_state import (
     ContentState,
     SourceFreshnessCondition,
     resolve_content_state,

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ada.web.content_state.core import ContentState
+from ada.web.content_state import ContentState
 from ada.web.ui.time_status import TimeStatusSummaryState
 
 

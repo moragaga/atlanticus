@@ -11,7 +11,7 @@ classifiers = [
     "Private :: Do Not Upload",
 ]
 dependencies = [
-    "ada-web-content-state-core==0.1.0",
+    "ada-web-content-state==0.1.0",
     "ada-web-ui-core==0.2.0",
     "atlanticus-web==0.1.0",
     "dash==4.4.1",
@@ -24,7 +24,7 @@ dev = [
 ]
 
 [tool.uv.sources]
-ada-web-content-state-core = { path = "../../content-state/core", editable = true }
+ada-web-content-state = { path = "../../content-state/core", editable = true }
 ada-web-ui-core = { path = "../core", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
 

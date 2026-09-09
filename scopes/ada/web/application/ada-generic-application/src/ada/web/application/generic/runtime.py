@@ -5,7 +5,7 @@ from ada.web.alarms.status import AlarmStatusState
 from ada.web.application.generic.application import create_application_definition
 from ada.web.application.generic.composition import AdaApplicationComposition
 from ada.web.branding import BrandingConfiguration
-from ada.web.content_state.dependency_resolver import ContentStateDependency
+from ada.web.content_state import ContentStateDependency
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.shell.navigation import AdaNavigationView
 from ada.web.time_status.store_adapter import TimeStatusStoreSnapshot

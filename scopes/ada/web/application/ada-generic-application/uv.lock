@@ -10,7 +10,7 @@ dependencies = [
     { name = "ada-web-alarm-management-summary" },
     { name = "ada-web-alarm-status" },
     { name = "ada-web-branding", extra = ["web"] },
-    { name = "ada-web-content-state-dependency-resolver" },
+    { name = "ada-web-content-state" },
     { name = "ada-web-operational-render-binding" },
     { name = "ada-web-operational-state" },
     { name = "ada-web-runtime-experience" },
@@ -41,7 +41,7 @@ requires-dist = [
     { name = "ada-web-alarm-management-summary", editable = "../../alarms/management-summary" },
     { name = "ada-web-alarm-status", editable = "../../alarms/status" },
     { name = "ada-web-branding", extras = ["web"], editable = "../../branding" },
-    { name = "ada-web-content-state-dependency-resolver", editable = "../../content-state/dependency-resolver" },
+    { name = "ada-web-content-state", editable = "../../content-state/core" },
     { name = "ada-web-operational-render-binding", editable = "../../operational-render-binding" },
     { name = "ada-web-operational-state", editable = "../../operational-state" },
     { name = "ada-web-runtime-experience", editable = "../../runtime-experience" },
@@ -160,28 +160,11 @@ dev = [
 ]
 
 [[package]]
-name = "ada-web-content-state-core"
+name = "ada-web-content-state"
 version = "0.1.0"
 source = { editable = "../../content-state/core" }
 
 [package.metadata]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-content-state-dependency-resolver"
-version = "0.2.0"
-source = { editable = "../../content-state/dependency-resolver" }
-dependencies = [
-    { name = "ada-web-content-state-core" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "ada-web-content-state-core", editable = "../../content-state/core" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -215,8 +198,7 @@ name = "ada-web-operational-state"
 version = "0.1.0"
 source = { editable = "../../operational-state" }
 dependencies = [
-    { name = "ada-web-content-state-core" },
-    { name = "ada-web-content-state-dependency-resolver" },
+    { name = "ada-web-content-state" },
     { name = "ada-web-time-status-store-adapter" },
     { name = "ada-web-tools" },
     { name = "ada-web-ui-time-status" },
@@ -224,8 +206,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-web-content-state-core", editable = "../../content-state/core" },
-    { name = "ada-web-content-state-dependency-resolver", editable = "../../content-state/dependency-resolver" },
+    { name = "ada-web-content-state", editable = "../../content-state/core" },
     { name = "ada-web-time-status-store-adapter", editable = "../../time-status/store-adapter" },
     { name = "ada-web-tools", editable = "../../tools/core" },
     { name = "ada-web-ui-time-status", editable = "../../ui/time-status" },
@@ -335,7 +316,7 @@ name = "ada-web-ui-content-state"
 version = "0.1.6"
 source = { editable = "../../ui/content-state" }
 dependencies = [
-    { name = "ada-web-content-state-core" },
+    { name = "ada-web-content-state" },
     { name = "ada-web-ui-core" },
     { name = "atlanticus-web" },
     { name = "dash" },
@@ -343,7 +324,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-web-content-state-core", editable = "../../content-state/core" },
+    { name = "ada-web-content-state", editable = "../../content-state/core" },
     { name = "ada-web-ui-core", editable = "../../ui/core" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "dash", specifier = "==4.4.1" },

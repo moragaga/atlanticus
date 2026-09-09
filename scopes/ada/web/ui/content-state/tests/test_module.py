@@ -13,7 +13,7 @@ def test_content_state_module_publishes_its_asset_layer() -> None:
 
 
 def test_content_state_ui_reexports_core_contract_identity() -> None:
-    from ada.web.content_state.core import (
+    from ada.web.content_state import (
         ContentState as CoreContentState,
         SourceFreshnessCondition as CoreSourceFreshnessCondition,
     )

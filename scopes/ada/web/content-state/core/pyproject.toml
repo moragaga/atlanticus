@@ -3,9 +3,9 @@ requires = ["setuptools==83.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ada-web-content-state-core"
+name = "ada-web-content-state"
 version = "0.1.0"
-description = "Contratos y políticas puras de Content State para ADA Web"
+description = "Contratos y resolución pura de Content State para ADA Web"
 requires-python = "==3.14.2"
 classifiers = [
     "Private :: Do Not Upload",
@@ -24,10 +24,10 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 namespaces = true
-include = ["ada.web.content_state.core*"]
+include = ["ada.web.content_state*"]
 
 [tool.setuptools.package-data]
-"ada.web.content_state.core" = ["py.typed"]
+"ada.web.content_state" = ["py.typed"]
 
 [tool.ruff]
 line-length = 100

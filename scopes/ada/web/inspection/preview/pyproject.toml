@@ -29,6 +29,7 @@ dev = [
 ada-kpi-inspection-preview = "ada.web.inspection.preview.__main__:main"
 
 [tool.uv.sources]
+ada-web-content-state = { path = "../../content-state/core", editable = true }
 ada-generic-application = { path = "../../application/ada-generic-application", editable = true }
 ada-web-kpi-inspection-api = { path = "../api", editable = true }
 ada-web-kpi-inspection-core = { path = "../core", editable = true }

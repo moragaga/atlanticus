@@ -4,12 +4,13 @@ from types import MappingProxyType
 
 import pytest
 
-from ada.web.content_state.core import ContentState, SourceFreshnessCondition
-from ada.web.content_state.dependency_resolver import (
+from ada.web.content_state import (
+    ContentState,
     ContentStateDependency,
     ContentStateDependencyError,
     ContentStateDependencyGraph,
     MissingSourceFreshnessError,
+    SourceFreshnessCondition,
 )
 
 

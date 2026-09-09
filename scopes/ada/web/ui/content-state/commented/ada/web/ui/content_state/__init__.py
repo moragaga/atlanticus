@@ -1,6 +1,4 @@
 from .freshness import SourceFreshnessCondition, resolve_content_state_from_freshness
-
-# Superficie pública mínima de la capability Content State.
 from .models import (
     ContentState,
     ContentStatePresentationMode,

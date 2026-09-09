@@ -3,8 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-# El dominio reusable se extrae a core cuando aparece el segundo consumidor real en CS-004.
-from ada.web.content_state.core import ContentState, resolve_content_state
+from ada.web.content_state import ContentState, resolve_content_state
 
 
 # Este modo cambia únicamente la presentación del overlay; el estado de dominio permanece real.

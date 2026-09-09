@@ -4,8 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from ada.web.content_state.core import ContentState
-from ada.web.content_state.dependency_resolver import ContentStateDependency
+from ada.web.content_state import ContentState, ContentStateDependency
 from ada.web.operational_state import AdaOperationalState, resolve_ada_operational_state
 from ada.web.time_status.store_adapter import (
     TimeStatusSourceTimestamp,

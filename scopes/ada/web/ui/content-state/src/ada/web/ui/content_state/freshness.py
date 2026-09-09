@@ -1,4 +1,4 @@
-from ada.web.content_state.core import (
+from ada.web.content_state import (
     SourceFreshnessCondition,
     resolve_content_state_from_freshness,
 )
