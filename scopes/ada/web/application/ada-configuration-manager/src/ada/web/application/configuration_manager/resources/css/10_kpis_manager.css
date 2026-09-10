@@ -1,0 +1,133 @@
+.ada-configuration-manager-kpis {
+    display: grid;
+    min-width: 0;
+    gap: .9rem;
+    padding: 0 1rem 1rem;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.ada-configuration-manager-kpis__runtime-context,
+.ada-configuration-manager-kpis__section {
+    min-width: 0;
+    padding: 1rem;
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .85rem;
+    box-shadow: 0 4px 16px rgb(25 30 38 / 3.5%);
+}
+
+.ada-configuration-manager-kpis__runtime-context {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .55rem .75rem;
+    padding-block: .72rem;
+    background: var(--atlanticus-ui-surface-muted);
+}
+
+.ada-configuration-manager-kpis__runtime-source {
+    display: flex;
+    align-items: baseline;
+    gap: .42rem;
+    padding: .38rem .62rem;
+    color: var(--atlanticus-ui-primary-hover);
+    background: var(--atlanticus-ui-background);
+    border: 1px solid rgb(201 162 75 / 30%);
+    border-radius: 999px;
+    font-size: .7rem;
+}
+
+.ada-configuration-manager-kpis__import {
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    gap: .6rem;
+}
+
+.ada-configuration-manager-kpis__runtime-help,
+.ada-configuration-manager-kpis__section-copy p {
+    color: var(--atlanticus-ui-text-muted);
+}
+
+.ada-configuration-manager-kpis__runtime-help {
+    font-size: .68rem;
+    line-height: 1.35;
+}
+
+.ada-configuration-manager-kpis__section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.ada-configuration-manager-kpis__section-copy {
+    display: grid;
+    min-width: 0;
+    gap: .2rem;
+}
+
+.ada-configuration-manager-kpis__section-copy h3,
+.ada-configuration-manager-kpis__section-copy p {
+    margin: 0;
+}
+
+.ada-configuration-manager-kpis__section-copy h3 {
+    color: var(--atlanticus-ui-text);
+    font-size: .9rem;
+    font-weight: 780;
+}
+
+.ada-configuration-manager-kpis__section-copy p {
+    font-size: .72rem;
+    line-height: 1.4;
+}
+
+.ada-configuration-manager-kpis__section--footer {
+    border-top: .2rem solid var(--atlanticus-ui-accent);
+}
+
+.ada-configuration-manager-kpis__section--footer > :last-child:empty {
+    display: none;
+}
+
+.ada-configuration-manager-kpis input,
+.ada-configuration-manager-kpis textarea,
+.ada-configuration-manager-kpis [contenteditable='true'] {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+@media (max-width: 48rem) {
+    .ada-configuration-manager-kpis {
+        padding-inline: .75rem;
+    }
+
+    .ada-configuration-manager-kpis__runtime-context {
+        align-items: stretch;
+    }
+
+    .ada-configuration-manager-kpis__runtime-source {
+        align-self: flex-start;
+    }
+
+    .ada-configuration-manager-kpis__import {
+        flex: 1 0 100%;
+        align-items: stretch;
+        flex-direction: column;
+        justify-content: flex-start;
+        gap: .45rem;
+    }
+
+    .ada-configuration-manager-kpis__import > div:first-child,
+    .ada-configuration-manager-kpis__import > div:first-child .btn {
+        width: 100%;
+    }
+
+    .ada-configuration-manager-kpis__section-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}

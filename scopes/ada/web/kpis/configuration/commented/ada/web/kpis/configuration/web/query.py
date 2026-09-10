@@ -62,9 +62,9 @@ def query_kpi_configuration(
     query: KpiConfigurationQuery,
 ) -> ConfigurationPage[KpiConfigurationBinding]:
     if not isinstance(configuration, KpiConfiguration):
-        raise TypeError('KPI management query requires KpiConfiguration')
+        raise TypeError('KPI configuration query requires KpiConfiguration')
     if not isinstance(query, KpiConfigurationQuery):
-        raise TypeError('KPI management query requires KpiConfigurationQuery')
+        raise TypeError('KPI configuration query requires KpiConfigurationQuery')
 
     items = tuple(
         binding

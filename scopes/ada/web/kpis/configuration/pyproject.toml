@@ -4,17 +4,32 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-web-kpi-configuration"
-version = "0.2.0"
-description = "Configuración, lifecycle y proyección de KPI para ADA"
+version = "0.3.1"
+description = "Configuración, lifecycle, proyección y editor Web de KPI para ADA"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
+
+[project.optional-dependencies]
+web = [
+    "ada-web-configuration==0.1.1",
+    "atlanticus-web==0.1.0",
+    "dash==4.4.1",
+    "dash-bootstrap-components==2.0.4",
+]
+
 [dependency-groups]
 dev = [
+    "ada-web-configuration==0.1.1",
+    "atlanticus-web==0.1.0",
+    "dash==4.4.1",
+    "dash-bootstrap-components==2.0.4",
     "pytest==9.1.1",
     "ruff==0.15.22",
 ]
 
 [tool.uv.sources]
+ada-web-configuration = { path = "../../configuration/core", editable = true }
+atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -26,6 +41,11 @@ include = ["ada.web.kpis.configuration*"]
 
 [tool.setuptools.package-data]
 "ada.web.kpis.configuration" = ["py.typed"]
+"ada.web.kpis.configuration.web" = [
+    "py.typed",
+    "resources/css/*.css",
+    "resources/css/css.list",
+]
 
 [tool.ruff]
 line-length = 100
@@ -48,5 +68,9 @@ combine-as-imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = [
+    "src",
+    "../../configuration/core/src",
+    "../../../../../web/framework/core/src",
+]
 addopts = "-q --import-mode=importlib"

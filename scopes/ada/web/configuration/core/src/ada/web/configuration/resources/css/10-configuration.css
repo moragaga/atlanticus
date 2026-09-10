@@ -7,7 +7,7 @@
 }
 
 .ada-configuration-pagination__summary {
-  color: var(--ada-text-muted, #6a6b72);
+  color: var(--atlanticus-ui-text-muted);
   font-size: 0.82rem;
   font-weight: 500;
 }
@@ -21,10 +21,10 @@
 
 .ada-configuration-pagination__button {
   align-items: center;
-  background: var(--ada-surface, #ffffff);
-  border: 1px solid var(--ada-border-subtle, #dddddf);
+  background: var(--atlanticus-ui-surface);
+  border: 1px solid var(--atlanticus-ui-border);
   border-radius: 0.55rem;
-  color: var(--ada-text, #45464d);
+  color: var(--atlanticus-ui-text);
   cursor: pointer;
   display: inline-flex;
   font: inherit;
@@ -37,8 +37,8 @@
 }
 
 .ada-configuration-pagination__button:not(:disabled):hover {
-  border-color: var(--ada-border-strong, #b7b8bd);
-  box-shadow: 0 3px 10px rgb(0 0 0 / 7%);
+  border-color: var(--atlanticus-ui-accent);
+  box-shadow: 0 3px 10px rgb(7 21 34 / 7%);
   transform: translateY(-1px);
 }
 
@@ -48,14 +48,14 @@
 }
 
 .ada-configuration-pagination__button--active {
-  background: var(--ada-text, #55565d);
-  border-color: var(--ada-text, #55565d);
+  background: var(--atlanticus-ui-primary-hover);
+  border-color: var(--atlanticus-ui-primary-hover);
   color: #ffffff;
   opacity: 1 !important;
 }
 
 .ada-configuration-pagination__ellipsis {
-  color: var(--ada-text-muted, #77787e);
+  color: var(--atlanticus-ui-text-muted);
   padding: 0 0.2rem;
 }
 
@@ -67,7 +67,7 @@
 }
 
 .ada-configuration-pagination__page-size-label {
-  color: var(--ada-text-muted, #6a6b72);
+  color: var(--atlanticus-ui-text-muted);
   font-size: 0.78rem;
   font-weight: 600;
 }

@@ -1,6 +1,6 @@
 from ada.web.configuration import ConfigurationPageRequest, SortDirection
 from ada.web.kpis.configuration import KpiConfiguration, KpiConfigurationBinding
-from ada.web.kpis.management import (
+from ada.web.kpis.configuration.web import (
     KpiConfigurationDataMode,
     KpiConfigurationQuery,
     KpiConfigurationSortField,

@@ -4,10 +4,10 @@ requires-python = "==3.14.2"
 
 [[package]]
 name = "ada-configuration-manager"
-version = "0.4.3"
+version = "0.4.4"
 source = { editable = "." }
 dependencies = [
-    { name = "ada-web-kpi-configuration" },
+    { name = "ada-web-kpi-configuration", extra = ["web"] },
     { name = "ada-web-kpi-definition" },
     { name = "ada-web-tools" },
     { name = "ada-web-tools-configuration", extra = ["web"] },
@@ -29,7 +29,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-web-kpi-configuration", editable = "../../kpis/configuration" },
+    { name = "ada-web-kpi-configuration", extras = ["web"], editable = "../../kpis/configuration" },
     { name = "ada-web-kpi-definition", editable = "../../kpis/definition" },
     { name = "ada-web-tools", editable = "../../tools/core" },
     { name = "ada-web-tools-configuration", extras = ["web"], editable = "../../tools/configuration" },
@@ -72,14 +72,54 @@ dev = [
 ]
 
 [[package]]
-name = "ada-web-kpi-configuration"
-version = "0.2.0"
-source = { editable = "../../kpis/configuration" }
+name = "ada-web-configuration"
+version = "0.1.1"
+source = { editable = "../../configuration/core" }
+dependencies = [
+    { name = "atlanticus-web" },
+    { name = "dash" },
+]
 
 [package.metadata]
+requires-dist = [
+    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
+    { name = "dash", specifier = "==4.4.1" },
+]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-kpi-configuration"
+version = "0.3.1"
+source = { editable = "../../kpis/configuration" }
+
+[package.optional-dependencies]
+web = [
+    { name = "ada-web-configuration" },
+    { name = "atlanticus-web" },
+    { name = "dash" },
+    { name = "dash-bootstrap-components" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-web-configuration", marker = "extra == 'web'", editable = "../../configuration/core" },
+    { name = "atlanticus-web", marker = "extra == 'web'", editable = "../../../../../web/framework/core" },
+    { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
+    { name = "dash-bootstrap-components", marker = "extra == 'web'", specifier = "==2.0.4" },
+]
+provides-extras = ["web"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "ada-web-configuration", editable = "../../configuration/core" },
+    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
+    { name = "dash", specifier = "==4.4.1" },
+    { name = "dash-bootstrap-components", specifier = "==2.0.4" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]

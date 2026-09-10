@@ -1,8 +1,15 @@
 from __future__ import annotations
 
-# Compone Users, Navigation y la Tool única de esta aplicación dentro del Manager.
 from ada.web.application.configuration_manager.dependencies import (
     ConfigurationManagerDependencies,
+)
+
+# Compone Users, Navigation y la Tool única de esta aplicación dentro del Manager.
+from ada.web.application.configuration_manager.kpis import (
+    KpiManagerWebContext,
+    build_kpi_history_preview,
+    build_kpi_manager_configuration,
+    create_kpi_manager_web_module,
 )
 from ada.web.application.configuration_manager.tools import (
     ToolManagerWebContext,
@@ -11,6 +18,7 @@ from ada.web.application.configuration_manager.tools import (
     create_tool_manager_web_module,
 )
 from ada.web.application.configuration_manager.workflows import (
+    KpiConfigurationManagerWorkflowAdapter,
     NavigationManagerWorkflowAdapter,
     ToolConfigurationManagerWorkflowAdapter,
     UsersManagerWorkflowAdapter,
@@ -52,6 +60,7 @@ MANAGER_ROUTE_PREFIX = '/manager'
 USERS_WORKFLOW_SERVICE = 'ada.configuration-manager.users.workflow'
 NAVIGATION_WORKFLOW_SERVICE = 'ada.configuration-manager.navigation.workflow'
 TOOLS_WORKFLOW_SERVICE = 'ada.configuration-manager.tools.workflow'
+KPI_WORKFLOW_SERVICE = 'ada.configuration-manager.kpis.workflow'
 
 
 def build_configuration_manager_surface(
@@ -94,6 +103,7 @@ def build_configuration_manager_surface(
         source_name=dependencies.tools_source_name,
         projection_name=dependencies.tools_projection_name,
     )
+    kpi_context = _kpi_context(dependencies)
     return ManagerSurfaceDefinition(
         principal_provider=dependencies.principal_provider,
         groups=(
@@ -168,6 +178,7 @@ def build_configuration_manager_surface(
                 projection_name=dependencies.tools_projection_name,
                 force_publish_enabled=dependencies.force_publish_enabled,
             ),
+            *_kpi_modules(kpi_context, dependencies),
         ),
         route_prefix=MANAGER_ROUTE_PREFIX,
         web_modules=(
@@ -199,6 +210,11 @@ def _register_services(
         TOOLS_WORKFLOW_SERVICE,
         ToolConfigurationManagerWorkflowAdapter(dependencies.tools),
     )
+    if dependencies.kpis is not None:
+        services.add(
+            KPI_WORKFLOW_SERVICE,
+            KpiConfigurationManagerWorkflowAdapter(dependencies.kpis),
+        )
 
 
 def _can_manage_users(principal: ManagerPrincipal) -> bool:
@@ -222,6 +238,65 @@ def _can_manage_tools(principal: ManagerPrincipal) -> bool:
         principal.is_local
         or 'administrator' in principal.profile_keys
         or 'tools.manage' in principal.access_keys
+    )
+
+
+
+def _can_manage_kpis(principal: ManagerPrincipal) -> bool:
+    return (
+        principal.is_local
+        or 'administrator' in principal.profile_keys
+        or 'kpis.manage' in principal.access_keys
+    )
+
+
+def _kpi_context(
+    dependencies: ConfigurationManagerDependencies,
+) -> KpiManagerWebContext | None:
+    if dependencies.kpis is None or dependencies.kpi_destinations is None:
+        return None
+    return KpiManagerWebContext(
+        destinations=dependencies.kpi_destinations,
+        draft_store_id=workflow_draft_id('kpis'),
+        saved_draft_store_id=workflow_saved_draft_id('kpis'),
+        draft_save_action_id=workflow_action_id('kpis', 'save-draft'),
+        editor_revision_store_id=workflow_editor_revision_id('kpis'),
+        result_id=workflow_result_id('kpis'),
+        draft_owner_provider=lambda: dependencies.principal_provider().subject_id,
+        can_manage=lambda: _can_manage_kpis(dependencies.principal_provider()),
+        source_name=dependencies.kpis_source_name,
+        projection_name=dependencies.kpis_projection_name,
+    )
+
+
+def _kpi_modules(
+    context: KpiManagerWebContext | None,
+    dependencies: ConfigurationManagerDependencies,
+) -> tuple[ManagerModule, ...]:
+    if context is None:
+        return ()
+    return (
+        ManagerModule(
+            key='kpis',
+            group_key='configuration',
+            title='KPI',
+            route='/kpis',
+            order=40,
+            description='Configuración de KPI y sus destinos de consumo en ADA.',
+            layout=lambda _services: build_kpi_manager_configuration(context),
+            history_preview_renderer=build_kpi_history_preview,
+            workflow_service=KPI_WORKFLOW_SERVICE,
+            access=ManagerModuleAccess(
+                view='kpis.manage',
+                validate='kpis.manage',
+                project='kpis.manage',
+                publish='kpis.manage',
+            ),
+            web_module=create_kpi_manager_web_module(context),
+            source_name=dependencies.kpis_source_name,
+            projection_name=dependencies.kpis_projection_name,
+            force_publish_enabled=dependencies.force_publish_enabled,
+        ),
     )
 
 

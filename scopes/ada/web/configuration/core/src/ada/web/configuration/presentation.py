@@ -35,7 +35,7 @@ def build_configuration_pagination(
                         type='button',
                         disabled=not page.has_previous,
                         className='ada-configuration-pagination__button',
-                        **{'aria-label': 'Previous page'},
+                        **{'aria-label': 'Página anterior'},
                     ),
                     *_page_buttons(page, id_prefix=prefix),
                     html.Button(
@@ -44,7 +44,7 @@ def build_configuration_pagination(
                         type='button',
                         disabled=not page.has_next,
                         className='ada-configuration-pagination__button',
-                        **{'aria-label': 'Next page'},
+                        **{'aria-label': 'Página siguiente'},
                     ),
                 ],
                 className='ada-configuration-pagination__navigation',
@@ -52,7 +52,7 @@ def build_configuration_pagination(
             html.Label(
                 [
                     html.Span(
-                        'Rows',
+                        'Filas',
                         className='ada-configuration-pagination__page-size-label',
                     ),
                     dcc.Dropdown(
@@ -81,8 +81,8 @@ def build_configuration_pagination(
 
 def _summary(page: ConfigurationPage[object]) -> str:
     if page.total_count == 0:
-        return 'Showing 0 of 0'
-    return f'Showing {page.start_index}–{page.end_index} of {page.total_count}'
+        return 'Mostrando 0 de 0'
+    return f'Mostrando {page.start_index}–{page.end_index} de {page.total_count}'
 
 
 def _page_buttons(
@@ -121,7 +121,7 @@ def _page_buttons(
                     else 'ada-configuration-pagination__button'
                 ),
                 **{
-                    'aria-label': f'Page {value}',
+                    'aria-label': f'Página {value}',
                     'aria-current': 'page' if current else 'false',
                 },
             )

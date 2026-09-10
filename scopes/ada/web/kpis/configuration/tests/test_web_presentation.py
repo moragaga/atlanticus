@@ -13,10 +13,10 @@ from ada.web.kpis.configuration import (
     KpiDestination,
     KpiDestinationCatalog,
 )
-from ada.web.kpis.management import (
+from ada.web.kpis.configuration.web import (
     KpiConfigurationQuery,
+    build_kpi_configuration_editor,
     build_kpi_configuration_editor_modal,
-    build_kpi_configuration_management,
     query_kpi_configuration,
 )
 
@@ -63,28 +63,35 @@ def _configuration() -> KpiConfiguration:
     )
 
 
-def test_management_surface_renders_first_ten_rows_and_pagination() -> None:
+def test_configuration_editor_renders_first_ten_rows_and_pagination() -> None:
     query = KpiConfigurationQuery()
     page = query_kpi_configuration(_configuration(), query)
-    component = build_kpi_configuration_management(
+    component = build_kpi_configuration_editor(
         page,
         destination_catalog=_catalog(),
         query=query,
     )
     nodes = _walk(component)
 
-    rows = [
+    edit_actions = [
         node
         for node in nodes
         if isinstance(getattr(node, 'id', None), dict)
-        and node.id.get('type') == 'ada-kpi-management--row-actions'
+        and node.id.get('type') == 'ada-kpi-configuration--row-edit'
     ]
-    assert len(rows) == 10
+    delete_actions = [
+        node
+        for node in nodes
+        if isinstance(getattr(node, 'id', None), dict)
+        and node.id.get('type') == 'ada-kpi-configuration--row-delete'
+    ]
+    assert len(edit_actions) == 10
+    assert len(delete_actions) == 10
 
     page_size = next(
         node
         for node in nodes
-        if getattr(node, 'id', None) == 'ada-kpi-management--pagination-page-size'
+        if getattr(node, 'id', None) == 'ada-kpi-configuration--pagination-page-size'
     )
     assert tuple(option['value'] for option in page_size.options) == (10, 20)
 
@@ -101,7 +108,7 @@ def test_partial_page_keeps_ten_visual_slots() -> None:
     )
     query = KpiConfigurationQuery()
     page = query_kpi_configuration(configuration, query)
-    component = build_kpi_configuration_management(
+    component = build_kpi_configuration_editor(
         page,
         destination_catalog=_catalog(),
         query=query,
@@ -130,7 +137,7 @@ def test_twenty_row_page_keeps_twenty_visual_slots() -> None:
         page=ConfigurationPageRequest(page_size=20),
     )
     page = query_kpi_configuration(configuration, query)
-    component = build_kpi_configuration_management(
+    component = build_kpi_configuration_editor(
         page,
         destination_catalog=_catalog(),
         query=query,
@@ -149,7 +156,7 @@ def test_empty_configuration_distinguishes_empty_from_filtered() -> None:
     configuration = KpiConfiguration()
     query = KpiConfigurationQuery()
     page = query_kpi_configuration(configuration, query)
-    component = build_kpi_configuration_management(
+    component = build_kpi_configuration_editor(
         page,
         destination_catalog=_catalog(),
         query=query,
@@ -159,7 +166,7 @@ def test_empty_configuration_distinguishes_empty_from_filtered() -> None:
     body = next(
         node
         for node in nodes
-        if getattr(node, 'id', None) == 'ada-kpi-management--table-body'
+        if getattr(node, 'id', None) == 'ada-kpi-configuration--table-body'
     )
     assert _prop(body, 'data-empty-reason') == 'empty'
 
@@ -183,7 +190,7 @@ def test_filtered_empty_configuration_reports_filter_state() -> None:
     )
     query = KpiConfigurationQuery(search='does-not-exist')
     page = query_kpi_configuration(configuration, query)
-    component = build_kpi_configuration_management(
+    component = build_kpi_configuration_editor(
         page,
         destination_catalog=_catalog(),
         query=query,
@@ -192,15 +199,15 @@ def test_filtered_empty_configuration_reports_filter_state() -> None:
     body = next(
         node
         for node in _walk(component)
-        if getattr(node, 'id', None) == 'ada-kpi-management--table-body'
+        if getattr(node, 'id', None) == 'ada-kpi-configuration--table-body'
     )
     assert _prop(body, 'data-empty-reason') == 'filtered'
 
 
-def test_busy_row_disables_only_its_actions() -> None:
+def test_busy_row_disables_only_its_direct_actions() -> None:
     query = KpiConfigurationQuery()
     page = query_kpi_configuration(_configuration(), query)
-    component = build_kpi_configuration_management(
+    component = build_kpi_configuration_editor(
         page,
         destination_catalog=_catalog(),
         query=query,
@@ -209,15 +216,24 @@ def test_busy_row_disables_only_its_actions() -> None:
             item_key='kpi_00',
         ),
     )
-    actions = {
-        node.id['index']: node
+
+    edit_actions = {
+        node.id['key']: node
         for node in _walk(component)
         if isinstance(getattr(node, 'id', None), dict)
-        and node.id.get('type') == 'ada-kpi-management--row-actions'
+        and node.id.get('type') == 'ada-kpi-configuration--row-edit'
+    }
+    delete_actions = {
+        node.id['key']: node
+        for node in _walk(component)
+        if isinstance(getattr(node, 'id', None), dict)
+        and node.id.get('type') == 'ada-kpi-configuration--row-delete'
     }
 
-    assert actions['kpi_00'].disabled is True
-    assert actions['kpi_01'].disabled is False
+    assert edit_actions['kpi_00'].disabled is True
+    assert delete_actions['kpi_00'].disabled is True
+    assert edit_actions['kpi_01'].disabled is False
+    assert delete_actions['kpi_01'].disabled is False
 
 
 def test_editor_hours_are_disabled_until_timeseries_is_enabled() -> None:
@@ -225,7 +241,7 @@ def test_editor_hours_are_disabled_until_timeseries_is_enabled() -> None:
     hours = next(
         node
         for node in _walk(modal)
-        if getattr(node, 'id', None) == 'ada-kpi-management--editor-hours'
+        if getattr(node, 'id', None) == 'ada-kpi-configuration--editor-hours'
     )
 
     assert hours.disabled is True
