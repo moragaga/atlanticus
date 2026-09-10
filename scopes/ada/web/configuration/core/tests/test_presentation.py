@@ -46,3 +46,11 @@ def test_pagination_surface_exposes_ten_twenty_and_page_navigation() -> None:
     assert previous.disabled is False
     assert following.disabled is False
     assert tuple(option['value'] for option in page_size.options) == (10, 20)
+    assert page_size.style['--Dash-Stroke-Strong'] == 'var(--atlanticus-ui-secondary)'
+    page_size_shell = next(
+        node
+        for node in nodes
+        if 'ada-configuration-dash-select-shell'
+        in str(getattr(node, 'className', '')).split()
+    )
+    assert 'ada-configuration-pagination__page-size' in page_size_shell.className.split()

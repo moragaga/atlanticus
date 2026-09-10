@@ -15,7 +15,6 @@ from ada.web.kpis.configuration import (
     build_kpi_configuration_digest,
 )
 from ada.web.kpis.configuration.web import (
-    ADA_KPI_CONFIGURATION_EDITOR_ASSET_LAYER,
     KpiConfigurationEditorContext,
     build_kpi_configuration_editor_surface,
     create_kpi_configuration_editor_module,
@@ -112,7 +111,7 @@ def create_kpi_manager_web_module(context: KpiManagerWebContext) -> WebModule:
     return WebModule(
         name='ada-configuration-manager-kpis',
         asset_layers=(
-            ADA_KPI_CONFIGURATION_EDITOR_ASSET_LAYER,
+            *editor_module.asset_layers,
             KPI_MANAGER_ASSET_LAYER,
         ),
         register_callbacks=register_callbacks,

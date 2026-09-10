@@ -128,7 +128,7 @@ requires-dist = [
 
 [[package]]
 name = "atlanticus-web-manager"
-version = "0.3.12"
+version = "0.3.13"
 source = { editable = "capabilities/manager" }
 dependencies = [
     { name = "atlanticus-web" },

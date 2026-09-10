@@ -76,6 +76,94 @@
   min-width: 4.4rem;
 }
 
+.ada-configuration-dash-select-shell,
+.ada-configuration-dash-select-shell .dash-dropdown-wrapper,
+.ada-configuration-dash-select-shell .dash-dropdown {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+.ada-configuration-dash-select-shell {
+  color: var(--atlanticus-ui-text);
+  font-family: var(--atlanticus-ui-font);
+  font-size: 0.76rem;
+}
+
+.ada-configuration-dash-select-shell .dash-dropdown {
+  color: var(--atlanticus-ui-text);
+  background: var(--atlanticus-ui-surface);
+  border-color: var(--atlanticus-ui-border);
+  outline-color: transparent;
+}
+
+.ada-configuration-dash-select-shell .dash-dropdown:hover {
+  border-color: var(--atlanticus-ui-border-strong);
+}
+
+.ada-configuration-dash-select-shell .dash-dropdown:focus {
+  border-color: var(--atlanticus-ui-secondary);
+  outline: 1px solid var(--atlanticus-ui-secondary);
+}
+
+.ada-configuration-dash-select-shell .dash-dropdown-content {
+  box-sizing: border-box;
+  width: var(--radix-popover-trigger-width);
+  min-width: var(--radix-popover-trigger-width);
+  max-width: var(--radix-popover-trigger-width);
+  color: var(--atlanticus-ui-text);
+  background: var(--atlanticus-ui-surface);
+  border-color: var(--atlanticus-ui-border);
+}
+
+.ada-configuration-dash-select-shell .dash-dropdown-search-container {
+  border-color: var(--atlanticus-ui-border);
+  background: var(--atlanticus-ui-surface);
+}
+
+.ada-configuration-dash-select-shell .dash-dropdown-search-container:focus-within {
+  border-color: var(--atlanticus-ui-secondary);
+  outline: 1px solid var(--atlanticus-ui-secondary);
+}
+
+.ada-configuration-dash-select-shell
+.dash-dropdown-search-container:focus-within
+.dash-dropdown-search-icon {
+  color: var(--atlanticus-ui-secondary);
+}
+
+.ada-configuration-dash-select-shell .dash-dropdown-search,
+.ada-configuration-dash-select-shell .dash-dropdown-value,
+.ada-configuration-dash-select-shell .dash-dropdown-action-button,
+.ada-configuration-dash-select-shell .dash-options-list-option {
+  color: var(--atlanticus-ui-text);
+}
+
+.ada-configuration-dash-select-shell .dash-dropdown-action-button {
+  font-size: 0.68rem;
+}
+
+.ada-configuration-dash-select-shell .dash-dropdown-action-button:hover,
+.ada-configuration-dash-select-shell
+.dash-options-list-option:not(:has(input[disabled])):hover,
+.ada-configuration-dash-select-shell
+.dash-options-list-option:not(:has(input[disabled])):focus-within {
+  color: var(--atlanticus-ui-secondary);
+}
+
+.ada-configuration-dash-select-shell .dash-options-list-option {
+  align-items: center;
+  font-size: 0.72rem;
+}
+
+.ada-configuration-dash-select-shell .dash-options-list-option-checkbox {
+  width: 0.78rem;
+  height: 0.78rem;
+  accent-color: var(--atlanticus-ui-secondary);
+  outline-color: var(--atlanticus-ui-secondary);
+}
+
 @media (max-width: 720px) {
   .ada-configuration-pagination {
     grid-template-columns: 1fr;

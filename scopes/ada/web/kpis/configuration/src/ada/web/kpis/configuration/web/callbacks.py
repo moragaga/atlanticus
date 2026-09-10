@@ -19,7 +19,9 @@ from ada.web.kpis.configuration.web.ids import (
     CONFIGURATION_STORE_ID,
     DATA_MODE_FILTER_ID,
     DESTINATION_FILTER_ID,
+    EDITOR_BACKDROP_ID,
     EDITOR_CANCEL_ID,
+    EDITOR_CLOSE_ID,
     EDITOR_DESTINATIONS_ID,
     EDITOR_HOURS_ID,
     EDITOR_KPI_KEY_ID,
@@ -184,7 +186,7 @@ def register_kpi_configuration_editor_callbacks(
         )
 
     @app.callback(
-        Output(EDITOR_MODAL_ID, 'is_open'),
+        Output(EDITOR_MODAL_ID, 'className'),
         Output(EDITOR_TITLE_ID, 'children'),
         Output(EDITOR_KPI_KEY_ID, 'value'),
         Output(EDITOR_KPI_KEY_ID, 'disabled'),
@@ -197,6 +199,8 @@ def register_kpi_configuration_editor_callbacks(
         Output(CONFIGURATION_STORE_ID, 'data', allow_duplicate=True),
         Input(ADD_BUTTON_ID, 'n_clicks'),
         Input(row_edit_id(ALL), 'n_clicks'),
+        Input(EDITOR_BACKDROP_ID, 'n_clicks'),
+        Input(EDITOR_CLOSE_ID, 'n_clicks'),
         Input(EDITOR_CANCEL_ID, 'n_clicks'),
         Input(EDITOR_SAVE_ID, 'n_clicks'),
         State(EDITOR_STORE_ID, 'data'),
@@ -211,6 +215,8 @@ def register_kpi_configuration_editor_callbacks(
     def edit_kpi(
         add_clicks: int | None,
         _edit_clicks: list[int | None] | None,
+        _backdrop_clicks: int | None,
+        _close_clicks: int | None,
         _cancel_clicks: int | None,
         save_clicks: int | None,
         editor_data: dict[str, object] | None,
@@ -224,7 +230,7 @@ def register_kpi_configuration_editor_callbacks(
         trigger = ctx.triggered_id
         configuration = parse_configuration(configuration_data)
 
-        if trigger == EDITOR_CANCEL_ID:
+        if trigger in {EDITOR_BACKDROP_ID, EDITOR_CLOSE_ID, EDITOR_CANCEL_ID}:
             return editor_response(closed=True)
 
         if trigger == ADD_BUTTON_ID and click_is_real(add_clicks):
@@ -500,7 +506,7 @@ def editor_response(
         return (no_update,) * 11
     if closed:
         return (
-            False,
+            'ada-kpi-configuration__modal',
             'Nuevo KPI',
             '',
             False,
@@ -513,7 +519,7 @@ def editor_response(
             configuration,
         )
     return (
-        True,
+        'ada-kpi-configuration__modal ada-kpi-configuration__modal--open',
         title,
         key,
         key_disabled,

@@ -26,6 +26,10 @@ from atlanticus.web.manager.projection import (
     resolve_projection_state,
 )
 from atlanticus.web.manager.registry import ManagerModuleRegistry
+from atlanticus.web.manager.web.home import (
+    build_home_page_content,
+    build_manager_home_return,
+)
 from atlanticus.web.manager.web.ids import (
     CONTENT_ID,
     HOME_CARDS_ID,
@@ -76,10 +80,6 @@ from atlanticus.web.manager.web.ids import (
     workflow_workspace_confirmation_message_id,
     workflow_workspace_confirmation_title_id,
     workflow_workspace_reset_signal_id,
-)
-from atlanticus.web.manager.web.home import (
-    build_home_page_content,
-    build_manager_home_return,
 )
 from atlanticus.web.manager.web.layout import (
     build_module_content,

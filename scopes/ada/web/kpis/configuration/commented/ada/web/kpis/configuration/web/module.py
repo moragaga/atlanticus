@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ada.web.configuration import ADA_CONFIGURATION_ASSET_LAYER
 from ada.web.kpis.configuration.web.callbacks import (
     register_kpi_configuration_editor_callbacks,
 )
@@ -23,6 +24,9 @@ def create_kpi_configuration_editor_module(
 
     return WebModule(
         name='ada-kpi-configuration',
-        asset_layers=(ADA_KPI_CONFIGURATION_EDITOR_ASSET_LAYER,),
+        asset_layers=(
+            ADA_CONFIGURATION_ASSET_LAYER,
+            ADA_KPI_CONFIGURATION_EDITOR_ASSET_LAYER,
+        ),
         register_callbacks=register_callbacks if context is not None else None,
     )

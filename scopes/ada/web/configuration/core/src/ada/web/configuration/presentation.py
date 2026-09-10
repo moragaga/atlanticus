@@ -55,16 +55,22 @@ def build_configuration_pagination(
                         'Filas',
                         className='ada-configuration-pagination__page-size-label',
                     ),
-                    dcc.Dropdown(
-                        id=f'{prefix}--pagination-page-size',
-                        options=[
-                            {'label': str(value), 'value': value}
-                            for value in ALLOWED_CONFIGURATION_PAGE_SIZES
-                        ],
-                        value=page.request.page_size,
-                        clearable=False,
-                        searchable=False,
-                        className='ada-configuration-pagination__page-size',
+                    html.Div(
+                        dcc.Dropdown(
+                            id=f'{prefix}--pagination-page-size',
+                            options=[
+                                {'label': str(value), 'value': value}
+                                for value in ALLOWED_CONFIGURATION_PAGE_SIZES
+                            ],
+                            value=page.request.page_size,
+                            clearable=False,
+                            searchable=False,
+                            style=configuration_dash_select_style(),
+                        ),
+                        className=(
+                            'ada-configuration-dash-select-shell '
+                            'ada-configuration-pagination__page-size'
+                        ),
                     ),
                 ],
                 className='ada-configuration-pagination__page-size-control',
@@ -77,6 +83,25 @@ def build_configuration_pagination(
             'data-total-count': str(page.total_count),
         },
     )
+
+def configuration_dash_select_style() -> dict[str, str]:
+    return {
+        '--Dash-Spacing': '4px',
+        '--Dash-Stroke-Strong': 'var(--atlanticus-ui-secondary)',
+        '--Dash-Stroke-Weak': 'var(--atlanticus-ui-border)',
+        '--Dash-Fill-Interactive-Strong': 'var(--atlanticus-ui-secondary)',
+        '--Dash-Fill-Interactive-Weak': 'var(--atlanticus-ui-selection-soft)',
+        '--Dash-Fill-Inverse-Strong': 'var(--atlanticus-ui-surface)',
+        '--Dash-Text-Primary': 'var(--atlanticus-ui-text)',
+        '--Dash-Text-Strong': 'var(--atlanticus-ui-text)',
+        '--Dash-Text-Weak': 'var(--atlanticus-ui-text-muted)',
+        '--Dash-Text-Disabled': 'var(--atlanticus-ui-text-soft)',
+        '--Dash-Fill-Primary-Hover': 'var(--atlanticus-ui-selection-soft)',
+        '--Dash-Fill-Primary-Active': 'var(--atlanticus-ui-selection-soft)',
+        '--Dash-Fill-Disabled': 'var(--atlanticus-ui-border)',
+        '--Dash-Shading-Strong': 'rgb(7 21 34 / 25%)',
+        '--Dash-Shading-Weak': 'rgb(7 21 34 / 12%)',
+    }
 
 
 def _summary(page: ConfigurationPage[object]) -> str:

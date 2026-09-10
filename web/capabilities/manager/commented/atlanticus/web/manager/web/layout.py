@@ -342,7 +342,7 @@ def build_module_content(
         status = coordinator.get_status(module.key, principal)
         history = coordinator.list_history(module.key, principal, limit=20)
         can_load_history = coordinator.can_load_history(module.key, principal)
-    except ManagerError as error:
+    except ManagerError:
         status = None
         history = ()
         can_load_history = False
@@ -1212,9 +1212,28 @@ def _build_history(
                 'Abre una revisión para inspeccionarla antes de cargarla como borrador local.'
             ),
             header if rows else None,
-            html.Div(rows) if rows else html.Div('Sin revisiones históricas.'),
+            html.Div(rows) if rows else _history_empty_state(),
         ],
         className='atlanticus-manager__history',
+    )
+
+
+def _history_empty_state() -> object:
+    return html.Div(
+        [
+            html.Span(
+                '↺',
+                className='atlanticus-manager__history-empty-icon',
+                **{'aria-hidden': 'true'},
+            ),
+            html.Strong('Aún no hay revisiones publicadas.'),
+            html.Span(
+                'Las revisiones aparecerán aquí después de la primera publicación '
+                'en la fuente de verdad.'
+            ),
+        ],
+        className='atlanticus-manager__history-empty',
+        role='status',
     )
 
 

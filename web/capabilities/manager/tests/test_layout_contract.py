@@ -1,5 +1,6 @@
 from pathlib import Path
 
+
 def test_manager_lifecycle_exposes_draft_validate_publish_and_project() -> None:
     root = Path(__file__).parents[1]
     layout = (root / 'src/atlanticus/web/manager/web/layout.py').read_text(encoding='utf-8')

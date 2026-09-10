@@ -245,3 +245,59 @@ def test_editor_hours_are_disabled_until_timeseries_is_enabled() -> None:
     )
 
     assert hours.disabled is True
+
+    assert _prop(modal, 'className') == 'ada-kpi-configuration__modal'
+    assert any(
+        getattr(node, 'id', None) == 'ada-kpi-configuration--editor-backdrop'
+        for node in _walk(modal)
+    )
+    assert any(
+        getattr(node, 'id', None) == 'ada-kpi-configuration--editor-close'
+        for node in _walk(modal)
+    )
+
+
+def test_empty_states_are_centered_visual_overlays() -> None:
+    empty_page = query_kpi_configuration(KpiConfiguration(), KpiConfigurationQuery())
+    empty = build_kpi_configuration_editor(
+        empty_page,
+        destination_catalog=_catalog(),
+    )
+    empty_state = next(
+        node
+        for node in _walk(empty)
+        if _prop(node, 'data-empty-state') == 'empty'
+    )
+    assert 'Todavía no hay KPI configurados.' in str(empty_state.children)
+
+    filtered_query = KpiConfigurationQuery(search='missing')
+    filtered_page = query_kpi_configuration(_configuration(), filtered_query)
+    filtered = build_kpi_configuration_editor(
+        filtered_page,
+        destination_catalog=_catalog(),
+        query=filtered_query,
+    )
+    filtered_state = next(
+        node
+        for node in _walk(filtered)
+        if _prop(node, 'data-empty-state') == 'filtered'
+    )
+    assert 'No se encontraron KPI.' in str(filtered_state.children)
+
+
+def test_dash_selects_use_atlanticus_configuration_adapter() -> None:
+    page = query_kpi_configuration(_configuration(), KpiConfigurationQuery())
+    component = build_kpi_configuration_editor(
+        page,
+        destination_catalog=_catalog(),
+    )
+    component_filter = next(
+        node
+        for node in _walk(component)
+        if getattr(node, 'id', None) == 'ada-kpi-configuration--destination-filter'
+    )
+    assert (
+        component_filter.style['--Dash-Fill-Interactive-Strong']
+        == 'var(--atlanticus-ui-secondary)'
+    )
+    assert component_filter.labels['search'] == 'Buscar componente'

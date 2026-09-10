@@ -345,6 +345,44 @@
     font-size: .72rem;
 }
 
+.atlanticus-manager__history-empty {
+    display: grid;
+    min-height: 8rem;
+    align-content: center;
+    justify-items: center;
+    gap: .35rem;
+    padding: 1rem;
+    color: var(--atlanticus-manager-text-muted);
+    background: var(--atlanticus-manager-surface-muted);
+    border: 1px dashed var(--atlanticus-manager-border);
+    border-radius: .72rem;
+    text-align: center;
+}
+
+.atlanticus-manager__history-empty strong {
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: .78rem;
+}
+
+.atlanticus-manager__history-empty > span:last-child {
+    max-width: 38rem;
+    font-size: .7rem;
+    line-height: 1.4;
+}
+
+.atlanticus-manager__history-empty-icon {
+    display: grid;
+    width: 2.5rem;
+    height: 2.5rem;
+    place-items: center;
+    color: var(--atlanticus-manager-color-primary-dark);
+    background: var(--atlanticus-manager-color-primary-soft);
+    border: 1px solid rgba(201, 162, 75, .42);
+    border-radius: 50%;
+    font-size: 1.15rem;
+    font-weight: 800;
+}
+
 .atlanticus-manager__history-row {
     display: grid;
     grid-template-columns: minmax(7rem, .8fr) 1fr 1fr minmax(7rem, .8fr) auto;

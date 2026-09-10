@@ -11,6 +11,7 @@ from ada.web.configuration import (
     ConfigurationMutationStatus,
     ConfigurationPage,
     build_configuration_pagination,
+    configuration_dash_select_style,
 )
 from ada.web.kpis.configuration import (
     KpiConfigurationBinding,
@@ -22,7 +23,9 @@ from ada.web.kpis.configuration.web.ids import (
     AVAILABILITY_ID,
     DATA_MODE_FILTER_ID,
     DESTINATION_FILTER_ID,
+    EDITOR_BACKDROP_ID,
     EDITOR_CANCEL_ID,
+    EDITOR_CLOSE_ID,
     EDITOR_DESTINATIONS_ID,
     EDITOR_HOURS_ID,
     EDITOR_KPI_KEY_ID,
@@ -50,6 +53,9 @@ _SYSTEM_DESTINATION_LABELS = {
     'global_indicators': 'Indicadores globales',
     'time_status': 'Estado temporal',
 }
+
+_MODAL_CLOSED = 'ada-kpi-configuration__modal'
+_MODAL_OPEN = 'ada-kpi-configuration__modal ada-kpi-configuration__modal--open'
 
 
 def build_kpi_configuration_editor(
@@ -159,6 +165,7 @@ def build_kpi_configuration_grid(
     ]
 
     empty_reason: str | None = None
+    empty_state: Component | None = None
     if not page.items:
         filtered = bool(
             resolved_query.search
@@ -166,56 +173,64 @@ def build_kpi_configuration_grid(
             or resolved_query.data_mode is not KpiConfigurationDataMode.ALL
         )
         if filtered:
-            rows.append(
-                _empty_row(
-                    title='No hay KPI que coincidan con los filtros.',
-                    detail='Ajusta o limpia los filtros para volver a mostrar configuraciones.',
-                    reason='filtered',
-                )
-            )
             empty_reason = 'filtered'
-        else:
-            rows.append(
-                _empty_row(
-                    title='Todavía no hay KPI configurados.',
-                    detail='Agrega el primer KPI cuando la Herramienta tenga componentes disponibles.',
-                    reason='empty',
-                )
+            empty_state = _empty_state(
+                icon='⌕',
+                title='No se encontraron KPI.',
+                detail='Ajusta o limpia los filtros para volver a mostrar configuraciones.',
+                reason=empty_reason,
             )
+        else:
             empty_reason = 'empty'
+            empty_state = _empty_state(
+                icon='+',
+                title='Todavía no hay KPI configurados.',
+                detail='Agrega el primer KPI cuando la Herramienta tenga componentes disponibles.',
+                reason=empty_reason,
+            )
+        rows.append(_empty_row(empty_reason))
 
     placeholder_count = page.request.page_size - len(rows)
     rows.extend(_placeholder_row(index) for index in range(max(0, placeholder_count)))
 
-    return html.Div(
-        html.Table(
-            [
-                html.Thead(
-                    html.Tr(
-                        [
-                            html.Th('KPI'),
-                            html.Th('Último'),
-                            html.Th('Serie temporal'),
-                            html.Th('Horas'),
-                            html.Th('Componentes'),
-                            html.Th('Acciones', className='ada-kpi-configuration__actions-heading'),
-                        ]
-                    )
-                ),
-                html.Tbody(
-                    rows,
-                    id=TABLE_BODY_ID,
-                    **{
-                        'data-page-size': str(page.request.page_size),
-                        'data-empty-reason': empty_reason or 'none',
-                    },
-                ),
-            ],
-            className='ada-kpi-configuration__table',
-        ),
-        className='ada-kpi-configuration__table-shell',
-    )
+    shell_class = 'ada-kpi-configuration__table-shell'
+    if empty_state is not None:
+        shell_class += ' ada-kpi-configuration__table-shell--empty'
 
+    return html.Div(
+        [
+            html.Table(
+                [
+                    html.Thead(
+                        html.Tr(
+                            [
+                                html.Th('KPI'),
+                                html.Th('Último'),
+                                html.Th('Serie temporal'),
+                                html.Th('Horas'),
+                                html.Th('Componentes'),
+                                html.Th(
+                                    'Acciones',
+                                    className='ada-kpi-configuration__actions-heading',
+                                ),
+                            ]
+                        )
+                    ),
+                    html.Tbody(
+                        rows,
+                        id=TABLE_BODY_ID,
+                        **{
+                            'data-page-size': str(page.request.page_size),
+                            'data-empty-reason': empty_reason or 'none',
+                        },
+                    ),
+                ],
+                className='ada-kpi-configuration__table',
+            ),
+            empty_state,
+        ],
+        className=shell_class,
+    )
 
 def build_kpi_configuration_editor_modal(
     *,
@@ -228,96 +243,131 @@ def build_kpi_configuration_editor_modal(
     series = binding.series_enabled if binding is not None else False
     destinations = list(binding.destination_keys) if binding is not None else []
 
-    return dbc.Modal(
+    return html.Div(
         [
-            dbc.ModalHeader(
-                dbc.ModalTitle(
-                    'Editar KPI' if editing else 'Nuevo KPI',
-                    id=EDITOR_TITLE_ID,
-                ),
-                close_button=False,
+            html.Button(
+                id=EDITOR_BACKDROP_ID,
+                n_clicks=0,
+                className='ada-kpi-configuration__modal-backdrop',
+                **{'aria-label': 'Cerrar formulario'},
             ),
-            dbc.ModalBody(
+            html.Section(
                 [
-                    _field(
-                        'Identificador KPI',
-                        dbc.Input(
-                            id=EDITOR_KPI_KEY_ID,
-                            type='text',
-                            value=binding.kpi_key if binding is not None else '',
-                            disabled=editing,
-                            placeholder='availability',
-                            autoComplete='off',
-                            class_name='ada-kpi-configuration__input',
-                        ),
+                    html.Header(
+                        [
+                            html.H3(
+                                'Editar KPI' if editing else 'Nuevo KPI',
+                                id=EDITOR_TITLE_ID,
+                            ),
+                            html.Button(
+                                id=EDITOR_CLOSE_ID,
+                                n_clicks=0,
+                                className='btn-close',
+                                **{'aria-label': 'Cerrar formulario'},
+                            ),
+                        ],
+                        className='modal-header ada-kpi-configuration__modal-header',
                     ),
                     html.Div(
                         [
-                            _toggle('Último', EDITOR_LATEST_ID, enabled=latest),
-                            _toggle('Serie temporal', EDITOR_SERIES_ID, enabled=series),
-                        ],
-                        className='ada-kpi-configuration__toggle-grid',
-                    ),
-                    _field(
-                        'Ventana histórica',
-                        html.Div(
-                            [
+                            _field(
+                                'Identificador KPI',
                                 dbc.Input(
-                                    id=EDITOR_HOURS_ID,
-                                    type='number',
-                                    min=1,
-                                    max=24,
-                                    step=1,
-                                    value=binding.series_hours if binding is not None else None,
-                                    disabled=not series,
+                                    id=EDITOR_KPI_KEY_ID,
+                                    type='text',
+                                    value=binding.kpi_key if binding is not None else '',
+                                    disabled=editing,
+                                    placeholder='availability',
+                                    autoComplete='off',
                                     class_name='ada-kpi-configuration__input',
                                 ),
-                                html.Span('horas'),
-                            ],
-                            className='ada-kpi-configuration__hours',
-                        ),
+                            ),
+                            html.Div(
+                                [
+                                    _toggle('Último', EDITOR_LATEST_ID, enabled=latest),
+                                    _toggle(
+                                        'Serie temporal',
+                                        EDITOR_SERIES_ID,
+                                        enabled=series,
+                                    ),
+                                ],
+                                className='ada-kpi-configuration__toggle-grid',
+                            ),
+                            _field(
+                                'Ventana histórica',
+                                html.Div(
+                                    [
+                                        dbc.Input(
+                                            id=EDITOR_HOURS_ID,
+                                            type='number',
+                                            min=1,
+                                            max=24,
+                                            step=1,
+                                            value=(
+                                                binding.series_hours
+                                                if binding is not None
+                                                else None
+                                            ),
+                                            disabled=not series,
+                                            class_name='ada-kpi-configuration__input',
+                                        ),
+                                        html.Span('horas'),
+                                    ],
+                                    className='ada-kpi-configuration__hours',
+                                ),
+                            ),
+                            _field(
+                                'Componentes',
+                                html.Div(
+                                    dcc.Dropdown(
+                                        id=EDITOR_DESTINATIONS_ID,
+                                        options=_destination_options(destination_catalog),
+                                        value=destinations,
+                                        multi=True,
+                                        clearable=True,
+                                        searchable=True,
+                                        placeholder='Seleccionar componentes',
+                                        style=configuration_dash_select_style(),
+                                        labels={
+                                            'search': 'Buscar componente',
+                                            'clear_search': 'Limpiar búsqueda',
+                                            'select_all': 'Seleccionar todo',
+                                            'deselect_all': 'Deseleccionar todo',
+                                            'selected_count': '{num_selected} seleccionados',
+                                        },
+                                    ),
+                                    className='ada-configuration-dash-select-shell',
+                                ),
+                            ),
+                            html.Div(id=EDITOR_RESULT_ID),
+                        ],
+                        className='modal-body ada-kpi-configuration__modal-body',
                     ),
-                    _field(
-                        'Componentes',
-                        dcc.Dropdown(
-                            id=EDITOR_DESTINATIONS_ID,
-                            options=_destination_options(destination_catalog),
-                            value=destinations,
-                            multi=True,
-                            clearable=True,
-                            searchable=True,
-                            placeholder='Seleccionar componentes',
-                            className='ada-kpi-configuration__select',
-                        ),
+                    html.Footer(
+                        [
+                            dbc.Button(
+                                'Cancelar',
+                                id=EDITOR_CANCEL_ID,
+                                n_clicks=0,
+                                color='secondary',
+                                outline=True,
+                            ),
+                            dbc.Button(
+                                'Guardar KPI',
+                                id=EDITOR_SAVE_ID,
+                                n_clicks=0,
+                                color='primary',
+                            ),
+                        ],
+                        className='modal-footer ada-kpi-configuration__modal-actions',
                     ),
-                    html.Div(id=EDITOR_RESULT_ID),
                 ],
-                className='ada-kpi-configuration__modal-body',
-            ),
-            dbc.ModalFooter(
-                [
-                    dbc.Button(
-                        'Cancelar',
-                        id=EDITOR_CANCEL_ID,
-                        color='secondary',
-                        outline=True,
-                    ),
-                    dbc.Button(
-                        'Guardar KPI',
-                        id=EDITOR_SAVE_ID,
-                        color='primary',
-                    ),
-                ]
+                className='modal-content ada-kpi-configuration__modal-card',
             ),
         ],
         id=EDITOR_MODAL_ID,
-        is_open=is_open,
-        centered=True,
-        scrollable=True,
-        size='lg',
-        className='ada-kpi-configuration__modal',
+        className=_MODAL_OPEN if is_open else _MODAL_CLOSED,
     )
-
 
 def _toolbar(
     *,
@@ -362,34 +412,62 @@ def _toolbar(
                         placeholder='Buscar KPI…',
                         class_name='ada-kpi-configuration__search',
                     ),
-                    dcc.Dropdown(
-                        id=DESTINATION_FILTER_ID,
-                        options=_destination_options(destination_catalog),
-                        value=list(query.destination_keys),
-                        multi=True,
-                        clearable=True,
-                        searchable=True,
-                        placeholder='Componentes',
-                        className='ada-kpi-configuration__filter',
+                    html.Div(
+                        dcc.Dropdown(
+                            id=DESTINATION_FILTER_ID,
+                            options=_destination_options(destination_catalog),
+                            value=list(query.destination_keys),
+                            multi=True,
+                            clearable=True,
+                            searchable=True,
+                            placeholder='Componentes',
+                            style=configuration_dash_select_style(),
+                            labels={
+                                'search': 'Buscar componente',
+                                'clear_search': 'Limpiar búsqueda',
+                                'select_all': 'Seleccionar todo',
+                                'deselect_all': 'Deseleccionar todo',
+                                'selected_count': '{num_selected} seleccionados',
+                            },
+                        ),
+                        className=(
+                            'ada-configuration-dash-select-shell '
+                            'ada-kpi-configuration__filter'
+                        ),
                     ),
-                    dcc.Dropdown(
-                        id=DATA_MODE_FILTER_ID,
-                        options=[
-                            {'label': 'Todos los modos', 'value': KpiConfigurationDataMode.ALL.value},
-                            {'label': 'Sólo último', 'value': KpiConfigurationDataMode.LATEST.value},
-                            {
-                                'label': 'Sólo serie temporal',
-                                'value': KpiConfigurationDataMode.TIMESERIES.value,
-                            },
-                            {
-                                'label': 'Último + serie temporal',
-                                'value': KpiConfigurationDataMode.LATEST_AND_TIMESERIES.value,
-                            },
-                        ],
-                        value=query.data_mode.value,
-                        clearable=False,
-                        searchable=False,
-                        className='ada-kpi-configuration__filter ada-kpi-configuration__filter--mode',
+                    html.Div(
+                        dcc.Dropdown(
+                            id=DATA_MODE_FILTER_ID,
+                            options=[
+                                {
+                                    'label': 'Todos los modos',
+                                    'value': KpiConfigurationDataMode.ALL.value,
+                                },
+                                {
+                                    'label': 'Sólo último',
+                                    'value': KpiConfigurationDataMode.LATEST.value,
+                                },
+                                {
+                                    'label': 'Sólo serie temporal',
+                                    'value': KpiConfigurationDataMode.TIMESERIES.value,
+                                },
+                                {
+                                    'label': 'Último + serie temporal',
+                                    'value': (
+                                        KpiConfigurationDataMode.LATEST_AND_TIMESERIES.value
+                                    ),
+                                },
+                            ],
+                            value=query.data_mode.value,
+                            clearable=False,
+                            searchable=False,
+                            style=configuration_dash_select_style(),
+                        ),
+                        className=(
+                            'ada-configuration-dash-select-shell '
+                            'ada-kpi-configuration__filter '
+                            'ada-kpi-configuration__filter--mode'
+                        ),
                     ),
                 ],
                 className='ada-kpi-configuration__filters',
@@ -397,7 +475,6 @@ def _toolbar(
         ],
         className='ada-kpi-configuration__toolbar',
     )
-
 
 def _availability_content(message: str | None) -> Component | None:
     if message is None:
@@ -411,30 +488,39 @@ def _availability_content(message: str | None) -> Component | None:
     )
 
 
-def _empty_row(
-    *,
-    title: str,
-    detail: str,
-    reason: str,
-) -> Component:
+def _empty_row(reason: str) -> Component:
     return html.Tr(
-        html.Td(
-            html.Div(
-                [
-                    html.Strong(title),
-                    html.Span(detail),
-                ],
-                className='ada-kpi-configuration__empty',
-            ),
-            colSpan=6,
-        ),
+        html.Td('', colSpan=6, **{'aria-hidden': 'true'}),
         className='ada-kpi-configuration__row ada-kpi-configuration__row--empty',
         **{
+            'aria-hidden': 'true',
             'data-row-slot': 'empty',
             'data-empty-reason': reason,
         },
     )
 
+
+def _empty_state(
+    *,
+    icon: str,
+    title: str,
+    detail: str,
+    reason: str,
+) -> Component:
+    return html.Div(
+        [
+            html.Span(
+                icon,
+                className='ada-kpi-configuration__empty-icon',
+                **{'aria-hidden': 'true'},
+            ),
+            html.Strong(title),
+            html.Span(detail),
+        ],
+        className='ada-kpi-configuration__empty-state',
+        role='status',
+        **{'data-empty-state': reason},
+    )
 
 def _placeholder_row(index: int) -> Component:
     return html.Tr(

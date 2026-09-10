@@ -14,7 +14,10 @@ from ada.web.configuration.pagination import (
     SortDirection,
     paginate_items,
 )
-from ada.web.configuration.presentation import build_configuration_pagination
+from ada.web.configuration.presentation import (
+    build_configuration_pagination,
+    configuration_dash_select_style,
+)
 
 __all__ = [
     'ADA_CONFIGURATION_ASSET_LAYER',
@@ -26,6 +29,7 @@ __all__ = [
     'ConfigurationPageRequest',
     'SortDirection',
     'build_configuration_pagination',
+    'configuration_dash_select_style',
     'create_ada_configuration_module',
     'paginate_items',
 ]

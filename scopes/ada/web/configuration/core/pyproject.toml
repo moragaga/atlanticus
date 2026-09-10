@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-web-configuration"
-version = "0.1.1"
+version = "0.1.2"
 description = "Contratos y presentación reutilizable para superficies de configuración ADA"
 requires-python = "==3.14.2"
 classifiers = [
