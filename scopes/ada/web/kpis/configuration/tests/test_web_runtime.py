@@ -80,6 +80,50 @@ def test_editor_module_registers_callbacks() -> None:
     module.register_callbacks(app, SimpleNamespace())
 
     assert len(app.callback_map) >= 5
+def test_pattern_actions_require_real_clicks() -> None:
+    from ada.web.kpis.configuration.web.callbacks import (
+        _pattern_action_key,
+        _static_trigger_matches,
+    )
+    from ada.web.kpis.configuration.web.ids import ROW_DELETE_TYPE, ROW_EDIT_TYPE
+
+    edit = {'type': ROW_EDIT_TYPE, 'key': 'availability'}
+    delete = {'type': ROW_DELETE_TYPE, 'key': 'availability'}
+
+    assert _static_trigger_matches(edit, ADD_BUTTON_ID) is False
+    assert _pattern_action_key(edit, ROW_EDIT_TYPE, 0) is None
+    assert _pattern_action_key(edit, ROW_EDIT_TYPE, 1) == 'availability'
+    assert _pattern_action_key(delete, ROW_DELETE_TYPE, 0) is None
+    assert _pattern_action_key(delete, ROW_DELETE_TYPE, 1) == 'availability'
+
+
+def test_second_create_preserves_first_binding() -> None:
+    first = save_binding(
+        KpiConfiguration(),
+        {'mode': 'create'},
+        kpi_key='availability',
+        latest_enabled=True,
+        series_enabled=False,
+        series_hours=None,
+        destination_keys=('plant',),
+        creation_allowed=True,
+    )
+    second = save_binding(
+        first,
+        {'mode': 'create'},
+        kpi_key='throughput',
+        latest_enabled=True,
+        series_enabled=True,
+        series_hours=12,
+        destination_keys=('plant',),
+        creation_allowed=True,
+    )
+
+    assert tuple(item.kpi_key for item in second.bindings) == (
+        'availability',
+        'throughput',
+    )
+
 
 def test_series_hours_callback_contract_is_registered() -> None:
     context = KpiConfigurationEditorContext(destinations=Destinations())

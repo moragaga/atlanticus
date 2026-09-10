@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from dash import ALL, Input, Output, State, ctx, html, no_update
 
 from ada.web.configuration import (
@@ -229,12 +231,18 @@ def register_kpi_configuration_editor_callbacks(
         configuration_data: dict[str, object] | None,
     ):
         trigger = ctx.triggered_id
+        trigger_value = _triggered_value()
         configuration = parse_configuration(configuration_data)
 
-        if trigger in {EDITOR_BACKDROP_ID, EDITOR_CLOSE_ID, EDITOR_CANCEL_ID}:
+        if _static_trigger_matches(
+            trigger,
+            EDITOR_BACKDROP_ID,
+            EDITOR_CLOSE_ID,
+            EDITOR_CANCEL_ID,
+        ):
             return editor_response(closed=True)
 
-        if trigger == ADD_BUTTON_ID and click_is_real(add_clicks):
+        if _static_trigger_matches(trigger, ADD_BUTTON_ID) and click_is_real(add_clicks):
             allowed, reason = creation_state(load_catalog(context))
             if not allowed:
                 return editor_response(
@@ -253,8 +261,9 @@ def register_kpi_configuration_editor_callbacks(
                 editor={'mode': 'create'},
             )
 
-        if isinstance(trigger, dict) and trigger.get('type') == ROW_EDIT_TYPE:
-            key = str(trigger.get('key', '')).strip()
+        edit_key = _pattern_action_key(trigger, ROW_EDIT_TYPE, trigger_value)
+        if edit_key is not None:
+            key = edit_key
             try:
                 binding = configuration.binding(key)
             except KpiConfigurationValidationError:
@@ -272,7 +281,10 @@ def register_kpi_configuration_editor_callbacks(
                 editor={'mode': 'edit', 'key': binding.kpi_key},
             )
 
-        if trigger != EDITOR_SAVE_ID or not click_is_real(save_clicks):
+        if (
+            not _static_trigger_matches(trigger, EDITOR_SAVE_ID)
+            or not click_is_real(save_clicks)
+        ):
             return editor_response(no_change=True)
 
         if not context.can_manage():
@@ -332,12 +344,13 @@ def register_kpi_configuration_editor_callbacks(
         _delete_clicks: list[int | None] | None,
         configuration_data: dict[str, object] | None,
     ):
-        trigger = ctx.triggered_id
-        if not isinstance(trigger, dict) or trigger.get('type') != ROW_DELETE_TYPE:
+        key = _pattern_action_key(
+            ctx.triggered_id,
+            ROW_DELETE_TYPE,
+            _triggered_value(),
+        )
+        if key is None or not context.can_manage():
             return no_update
-        if not context.can_manage():
-            return no_update
-        key = str(trigger.get('key', '')).strip()
         configuration = parse_configuration(configuration_data)
         try:
             exists = configuration.binding(key)
@@ -352,6 +365,28 @@ def register_kpi_configuration_editor_callbacks(
                 if binding.kpi_key != key
             )
         ).to_document()
+
+def _static_trigger_matches(trigger: object, *component_ids: str) -> bool:
+    return isinstance(trigger, str) and trigger in component_ids
+
+
+def _pattern_action_key(
+    trigger: object,
+    expected_type: str,
+    triggered_value: object,
+) -> str | None:
+    if not isinstance(trigger, Mapping):
+        return None
+    if trigger.get('type') != expected_type or not click_is_real(triggered_value):
+        return None
+    key = str(trigger.get('key', '')).strip()
+    return key or None
+
+
+def _triggered_value() -> object:
+    if not ctx.triggered:
+        return None
+    return ctx.triggered[0].get('value')
 
 
 def parse_configuration(

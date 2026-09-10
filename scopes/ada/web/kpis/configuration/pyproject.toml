@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-web-kpi-configuration"
-version = "0.3.3"
+version = "0.3.4"
 description = "Configuración, lifecycle, proyección y editor Web de KPI para ADA"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]

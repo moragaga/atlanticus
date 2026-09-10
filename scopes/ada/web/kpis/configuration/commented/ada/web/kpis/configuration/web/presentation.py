@@ -284,8 +284,14 @@ def build_kpi_configuration_editor_modal(
                                 ),
                             ),
                             html.Div(
+                                _toggle('Último', EDITOR_LATEST_ID, enabled=latest),
+                                className=(
+                                    'ada-kpi-configuration__toggle-row '
+                                    'ada-kpi-configuration__toggle-row--latest'
+                                ),
+                            ),
+                            html.Div(
                                 [
-                                    _toggle('Último', EDITOR_LATEST_ID, enabled=latest),
                                     _toggle(
                                         'Serie temporal',
                                         EDITOR_SERIES_ID,
@@ -320,7 +326,10 @@ def build_kpi_configuration_editor_modal(
                                         className='ada-kpi-configuration__hours-field',
                                     ),
                                 ],
-                                className='ada-kpi-configuration__toggle-grid',
+                                className=(
+                                    'ada-kpi-configuration__toggle-row '
+                                    'ada-kpi-configuration__toggle-row--series'
+                                ),
                             ),
                             _field(
                                 'Componentes',

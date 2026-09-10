@@ -269,6 +269,26 @@ def test_editor_hours_are_disabled_until_timeseries_is_enabled() -> None:
         for node in _walk(modal)
     )
 
+def test_modal_uses_latest_row_and_series_hours_row() -> None:
+    modal = build_kpi_configuration_editor_modal(destination_catalog=_catalog())
+    rows = [
+        node
+        for node in _walk(modal)
+        if 'ada-kpi-configuration__toggle-row'
+        in str(getattr(node, 'className', ''))
+    ]
+
+    assert len(rows) == 2
+    assert 'ada-kpi-configuration__toggle-row--latest' in rows[0].className
+    assert 'ada-kpi-configuration__toggle-row--series' in rows[1].className
+
+    hours = next(
+        node
+        for node in _walk(modal)
+        if getattr(node, 'id', None) == 'ada-kpi-configuration--editor-hours-field'
+    )
+    assert hours.hidden is True
+
 
 def test_empty_states_are_centered_visual_overlays() -> None:
     empty_page = query_kpi_configuration(KpiConfiguration(), KpiConfigurationQuery())
