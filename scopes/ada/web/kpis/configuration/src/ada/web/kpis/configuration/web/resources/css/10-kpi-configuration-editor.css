@@ -541,6 +541,9 @@
     }
 
     .ada-kpi-configuration__row {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
         margin-bottom: .7rem;
         padding: .35rem .7rem;
         background: var(--atlanticus-ui-surface);

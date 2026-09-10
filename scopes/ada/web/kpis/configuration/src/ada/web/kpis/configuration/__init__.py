@@ -47,7 +47,7 @@ from ada.web.kpis.configuration.source import (
     build_kpi_configuration_digest,
 )
 
-__version__ = '0.3.4'
+__version__ = '0.3.5'
 
 __all__ = [
     'KPI_CONFIGURATION_PROJECTION_DOCUMENT_TYPE',
