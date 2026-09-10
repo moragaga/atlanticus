@@ -5,21 +5,19 @@ def test_manager_registers_only_workflows_owned_by_surface_modules() -> None:
     package = (
         Path(__file__).parents[1] / 'src' / 'ada' / 'web' / 'application' / 'configuration_manager'
     )
-    source = '\n'.join(
-        path.read_text(encoding='utf-8')
-        for path in (
-            package / '__init__.py',
-            package / 'composition.py',
-            package / 'dependencies.py',
-            package / 'workflows.py',
-        )
-    )
+    composition = (package / 'composition.py').read_text(encoding='utf-8')
+    dependencies = (package / 'dependencies.py').read_text(encoding='utf-8')
+    workflows = (package / 'workflows.py').read_text(encoding='utf-8')
 
-    assert 'KPI_DEFINITIONS_WORKFLOW_SERVICE' not in source
-    assert 'KpiDefinitionManagerWorkflowAdapter' not in source
-    assert 'kpi_definitions:' not in source
-    assert 'kpi_definitions_source_name:' not in source
-    assert 'kpi_definitions_projection_name:' not in source
+    assert "key='kpi-definitions'" in composition
+    assert 'KPI_DEFINITION_WORKFLOW_SERVICE' in composition
+    assert 'KpiDefinitionManagerWorkflowAdapter' in composition
+    assert 'KpiDefinitionManagerWorkflowAdapter' in workflows
+    assert 'kpi_definitions:' in dependencies
+    assert 'kpi_definition_authority:' in dependencies
+    assert 'kpi_definitions_source_name:' in dependencies
+    assert 'kpi_definitions_projection_name:' in dependencies
+    assert 'KPI_DEFINITIONS_WORKFLOW_SERVICE' not in composition
 
 
 def test_kpi_composition_bridges_remain_available_without_dormant_manager_workflow() -> None:

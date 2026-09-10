@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ada.web.kpis.configuration import KpiConfiguration, KpiConfigurationServices
+from ada.web.kpis.definition import KpiDefinitionConfiguration, KpiDefinitionServices
 from ada.web.tools.configuration import ToolConfiguration, ToolLifecycleServices
 from atlanticus.web.manager import (
     DraftValidationResult,
@@ -64,6 +65,48 @@ class KpiConfigurationManagerWorkflowAdapter:
             for document in self._administration.list_history(limit=limit)
         )
 
+
+class KpiDefinitionManagerWorkflowAdapter:
+    def __init__(self, services: KpiDefinitionServices) -> None:
+        self._workflow = services.projection_workflow
+        self._administration = services.administration
+
+    def get_status(self) -> ProjectionStatus:
+        return _status(self._workflow.get_status())
+
+    def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult:
+        configuration = KpiDefinitionConfiguration.from_document(payload)
+        return _validation(self._administration.validate_configuration(configuration))
+
+    def publish_draft(
+        self,
+        payload: dict[str, object],
+        expected_source_revision: str | None,
+    ) -> SourcePublicationResult:
+        configuration = KpiDefinitionConfiguration.from_document(payload)
+        return _publication(
+            self._administration.publish_configuration(
+                configuration,
+                expected_source_revision=expected_source_revision,
+            )
+        )
+
+    def project(self, expected_source_revision: str) -> ProjectionExecutionResult:
+        return _projection(self._workflow.project(expected_source_revision))
+
+    def load_revision(self, revision: str) -> dict[str, object]:
+        return self._administration.load_revision_configuration(revision).to_document()
+
+    def list_history(self, *, limit: int = 20) -> tuple[RevisionHistoryEntry, ...]:
+        status = self._workflow.get_status()
+        return tuple(
+            _history_entry(
+                document,
+                active_source_revision=status.active_source_revision,
+                source_revision=status.source_revision,
+            )
+            for document in self._administration.list_history(limit=limit)
+        )
 
 class ToolConfigurationManagerWorkflowAdapter:
     def __init__(self, services: ToolLifecycleServices) -> None:

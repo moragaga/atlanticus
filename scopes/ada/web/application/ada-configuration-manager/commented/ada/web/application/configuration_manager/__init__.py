@@ -4,6 +4,7 @@ from ada.web.application.configuration_manager.application import (
     create_configuration_manager_web_definition,
 )
 from ada.web.application.configuration_manager.composition import (
+    KPI_DEFINITION_WORKFLOW_SERVICE,
     KPI_WORKFLOW_SERVICE,
     MANAGER_ROUTE_PREFIX,
     NAVIGATION_WORKFLOW_SERVICE,
@@ -16,6 +17,7 @@ from ada.web.application.configuration_manager.dependencies import (
 )
 from ada.web.application.configuration_manager.workflows import (
     KpiConfigurationManagerWorkflowAdapter,
+    KpiDefinitionManagerWorkflowAdapter,
     NavigationManagerWorkflowAdapter,
     ToolConfigurationManagerWorkflowAdapter,
     UsersManagerWorkflowAdapter,
@@ -23,8 +25,10 @@ from ada.web.application.configuration_manager.workflows import (
 
 __all__ = [
     'ConfigurationManagerDependencies',
+    'KPI_DEFINITION_WORKFLOW_SERVICE',
     'KPI_WORKFLOW_SERVICE',
     'KpiConfigurationManagerWorkflowAdapter',
+    'KpiDefinitionManagerWorkflowAdapter',
     'MANAGER_ROUTE_PREFIX',
     'NAVIGATION_WORKFLOW_SERVICE',
     'NavigationManagerWorkflowAdapter',

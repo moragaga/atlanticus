@@ -13,7 +13,6 @@ def test_application_composition_has_no_physical_backend_or_legacy_manager_tools
         'Databricks',
         'ServiceBus',
         'ada.web.configuration.manager_tools',
-        'kpi_definition.web',
     ):
         assert forbidden not in source
 
@@ -50,7 +49,7 @@ def test_tools_manager_combines_sources_and_structure_without_kpi_configuration(
     assert 'KpiConfiguration' not in tools
 
 
-def test_cl003b1_exposes_users_navigation_and_single_tool_surface() -> None:
+def test_manager_declares_configuration_and_definition_surfaces() -> None:
     composition = (
         Path(__file__).parents[1]
         / 'src'
@@ -64,7 +63,8 @@ def test_cl003b1_exposes_users_navigation_and_single_tool_surface() -> None:
     assert "key='users'" in composition
     assert "key='navigation'" in composition
     assert "key='tools'" in composition
-    assert "key='kpi-definitions'" not in composition
+    assert "key='kpis'" in composition
+    assert "key='kpi-definitions'" in composition
 
 
 def test_legacy_manager_tools_package_is_physically_absent() -> None:

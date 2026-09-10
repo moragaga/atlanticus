@@ -3,6 +3,12 @@ from __future__ import annotations
 from ada.web.application.configuration_manager.dependencies import (
     ConfigurationManagerDependencies,
 )
+from ada.web.application.configuration_manager.kpi_definitions import (
+    KpiDefinitionManagerWebContext,
+    build_kpi_definition_history_preview,
+    build_kpi_definition_manager_configuration,
+    create_kpi_definition_manager_web_module,
+)
 from ada.web.application.configuration_manager.kpis import (
     KpiManagerWebContext,
     build_kpi_history_preview,
@@ -17,6 +23,7 @@ from ada.web.application.configuration_manager.tools import (
 )
 from ada.web.application.configuration_manager.workflows import (
     KpiConfigurationManagerWorkflowAdapter,
+    KpiDefinitionManagerWorkflowAdapter,
     NavigationManagerWorkflowAdapter,
     ToolConfigurationManagerWorkflowAdapter,
     UsersManagerWorkflowAdapter,
@@ -59,6 +66,7 @@ USERS_WORKFLOW_SERVICE = 'ada.configuration-manager.users.workflow'
 NAVIGATION_WORKFLOW_SERVICE = 'ada.configuration-manager.navigation.workflow'
 TOOLS_WORKFLOW_SERVICE = 'ada.configuration-manager.tools.workflow'
 KPI_WORKFLOW_SERVICE = 'ada.configuration-manager.kpis.workflow'
+KPI_DEFINITION_WORKFLOW_SERVICE = 'ada.configuration-manager.kpi-definitions.workflow'
 
 
 def build_configuration_manager_surface(
@@ -101,6 +109,7 @@ def build_configuration_manager_surface(
         projection_name=dependencies.tools_projection_name,
     )
     kpi_context = _kpi_context(dependencies)
+    kpi_definition_context = _kpi_definition_context(dependencies)
     return ManagerSurfaceDefinition(
         principal_provider=dependencies.principal_provider,
         groups=(
@@ -175,6 +184,7 @@ def build_configuration_manager_surface(
                 force_publish_enabled=dependencies.force_publish_enabled,
             ),
             *_kpi_modules(kpi_context, dependencies),
+            *_kpi_definition_modules(kpi_definition_context, dependencies),
         ),
         route_prefix=MANAGER_ROUTE_PREFIX,
         web_modules=(
@@ -210,6 +220,11 @@ def _register_services(
         services.add(
             KPI_WORKFLOW_SERVICE,
             KpiConfigurationManagerWorkflowAdapter(dependencies.kpis),
+        )
+    if dependencies.kpi_definitions is not None:
+        services.add(
+            KPI_DEFINITION_WORKFLOW_SERVICE,
+            KpiDefinitionManagerWorkflowAdapter(dependencies.kpi_definitions),
         )
 
 
@@ -295,6 +310,58 @@ def _kpi_modules(
         ),
     )
 
+
+def _kpi_definition_context(
+    dependencies: ConfigurationManagerDependencies,
+) -> KpiDefinitionManagerWebContext | None:
+    if (
+        dependencies.kpi_definitions is None
+        or dependencies.kpi_definition_authority is None
+    ):
+        return None
+    return KpiDefinitionManagerWebContext(
+        authority=dependencies.kpi_definition_authority,
+        draft_store_id=workflow_draft_id('kpi-definitions'),
+        saved_draft_store_id=workflow_saved_draft_id('kpi-definitions'),
+        draft_save_action_id=workflow_action_id('kpi-definitions', 'save-draft'),
+        editor_revision_store_id=workflow_editor_revision_id('kpi-definitions'),
+        result_id=workflow_result_id('kpi-definitions'),
+        draft_owner_provider=lambda: dependencies.principal_provider().subject_id,
+        can_manage=lambda: _can_manage_kpis(dependencies.principal_provider()),
+        source_name=dependencies.kpi_definitions_source_name,
+        projection_name=dependencies.kpi_definitions_projection_name,
+    )
+
+
+def _kpi_definition_modules(
+    context: KpiDefinitionManagerWebContext | None,
+    dependencies: ConfigurationManagerDependencies,
+) -> tuple[ManagerModule, ...]:
+    if context is None:
+        return ()
+    return (
+        ManagerModule(
+            key='kpi-definitions',
+            group_key='configuration',
+            title='Definiciones KPI',
+            route='/kpi-definitions',
+            order=50,
+            description='Información descriptiva asociada a los KPI configurados en ADA.',
+            layout=lambda _services: build_kpi_definition_manager_configuration(context),
+            history_preview_renderer=build_kpi_definition_history_preview,
+            workflow_service=KPI_DEFINITION_WORKFLOW_SERVICE,
+            access=ManagerModuleAccess(
+                view='kpis.manage',
+                validate='kpis.manage',
+                project='kpis.manage',
+                publish='kpis.manage',
+            ),
+            web_module=create_kpi_definition_manager_web_module(context),
+            source_name=dependencies.kpi_definitions_source_name,
+            projection_name=dependencies.kpi_definitions_projection_name,
+            force_publish_enabled=dependencies.force_publish_enabled,
+        ),
+    )
 
 def _navigation_profile_options(
     dependencies: ConfigurationManagerDependencies,
