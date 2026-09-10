@@ -551,8 +551,8 @@
         border-radius: .72rem;
     }
 
-    .ada-kpi-configuration__row--placeholder,
-    .ada-kpi-configuration__row--empty {
+    .ada-kpi-configuration__table tr.ada-kpi-configuration__row--placeholder,
+    .ada-kpi-configuration__table tr.ada-kpi-configuration__row--empty {
         display: none;
     }
 
