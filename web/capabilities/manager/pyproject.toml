@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "atlanticus-web-manager"
-version = "0.3.13"
+version = "0.3.14"
 description = "Capability administrativa modular para aplicaciones Atlanticus Web"
 requires-python = "==3.14.2"
 classifiers = [

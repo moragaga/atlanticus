@@ -657,12 +657,16 @@ def build_saved_draft_content(
 ) -> object:
     if incompatible:
         return html.Div(
-            'Hay un borrador guardado antiguo o incompatible. No se aplicará automáticamente; '
-            'puedes descartarlo desde este navegador.',
+            'Hay un borrador guardado antiguo o incompatible. '
+            'No se aplicará automáticamente; puedes descartarlo desde este navegador.',
             className='atlanticus-manager__message atlanticus-manager__message--notice',
         )
     if draft is None:
-        return html.Div('No hay un borrador guardado para recuperar.')
+        return html.Div(
+            'No hay un borrador guardado para recuperar.',
+            className='atlanticus-manager__saved-draft-empty',
+        )
+
     source_changed = draft.base_source_revision != source_revision
     details = [
         html.Span(
@@ -687,26 +691,35 @@ def build_saved_draft_content(
                 ]
             )
         )
+
     return html.Div(
         [
-            html.Strong(
-                'La fuente cambió desde que se guardó este borrador.'
-                if source_changed
-                else 'Hay un borrador guardado disponible.'
+            html.Div(
+                [
+                    html.Strong(
+                        'La fuente cambió desde que se guardó este borrador.'
+                        if source_changed
+                        else 'Hay un borrador guardado disponible.'
+                    ),
+                    html.P(
+                        'La configuración publicada se mantiene visible hasta que elijas '
+                        'recuperar este borrador.'
+                    ),
+                ],
+                className='atlanticus-manager__saved-draft-copy',
             ),
-            html.P(
-                'La configuración publicada se mantiene visible hasta que elijas recuperar '
-                'este borrador.'
+            html.Div(
+                details,
+                className='atlanticus-manager__saved-draft-meta',
             ),
-            html.Div(details, className='atlanticus-manager__conflict-revisions'),
         ],
         className=(
-            'atlanticus-manager__message atlanticus-manager__message--notice'
+            'atlanticus-manager__saved-draft-card '
+            'atlanticus-manager__saved-draft-card--warning'
             if source_changed
-            else 'atlanticus-manager__workflow-empty'
+            else 'atlanticus-manager__saved-draft-card'
         ),
     )
-
 
 def build_source_conflict_content(
     *,
@@ -747,6 +760,26 @@ def build_source_conflict_content(
             ),
         ],
         className='atlanticus-manager__conflict-details',
+    )
+
+
+def _history_cell(
+    label: str,
+    value: object | None,
+    *,
+    action: bool = False,
+) -> object:
+    return html.Div(
+        [
+            html.Small(label, className='atlanticus-manager__history-cell-label'),
+            value if value is not None else html.Span('—'),
+        ],
+        className=(
+            'atlanticus-manager__history-cell '
+            'atlanticus-manager__history-cell--action'
+            if action
+            else 'atlanticus-manager__history-cell'
+        ),
     )
 
 
@@ -844,7 +877,7 @@ def _build_workflow_actions(
                     ),
                     html.Div(
                         id=workflow_saved_draft_status_id(module.key),
-                        className='atlanticus-manager__workflow-empty',
+                        className='atlanticus-manager__saved-draft-slot',
                     ),
                     html.Div(
                         [
@@ -1174,11 +1207,30 @@ def _build_history(
         rows.append(
             html.Div(
                 [
-                    html.Code(_short_revision(entry.revision)),
-                    html.Span(entry.saved_by),
-                    html.Time(_format_datetime(entry.saved_at)),
-                    html.Span(status, className='atlanticus-manager__history-status'),
-                    action,
+                    _history_cell(
+                        'Revisión',
+                        html.Code(_short_revision(entry.revision)),
+                    ),
+                    _history_cell(
+                        'Publicado por',
+                        html.Span(entry.saved_by),
+                    ),
+                    _history_cell(
+                        'Fecha',
+                        html.Time(_format_datetime(entry.saved_at)),
+                    ),
+                    _history_cell(
+                        'Estado',
+                        html.Span(
+                            status,
+                            className='atlanticus-manager__history-status',
+                        ),
+                    ),
+                    _history_cell(
+                        'Acción',
+                        action,
+                        action=True,
+                    ),
                 ],
                 className='atlanticus-manager__history-row',
             )
@@ -1344,17 +1396,105 @@ def _validation_issues(
 def _build_validation_issues(issues: tuple[ProjectionIssue, ...]) -> object:
     if not issues:
         return None
-    return html.Ul(
-        [
-            html.Li(
-                f'{issue.path}: {issue.message}' if issue.path else issue.message,
-                className=f'atlanticus-manager__issue atlanticus-manager__issue--{issue.level}',
-            )
-            for issue in issues
-        ],
-        className='atlanticus-manager__issues',
-    )
 
+    errors = tuple(issue for issue in issues if issue.level == 'error')
+    warnings = tuple(issue for issue in issues if issue.level == 'warning')
+    preview = issues[:8]
+    hidden_count = len(issues) - len(preview)
+
+    counts = []
+    if errors:
+        counts.append(f'{len(errors)} error' if len(errors) == 1 else f'{len(errors)} errores')
+    if warnings:
+        counts.append(
+            f'{len(warnings)} advertencia'
+            if len(warnings) == 1
+            else f'{len(warnings)} advertencias'
+        )
+    summary_text = ' · '.join(counts)
+
+    return html.Div(
+        [
+            html.Div(
+                [
+                    html.Strong(
+                        'La validación requiere atención.'
+                        if errors
+                        else 'La validación contiene advertencias.'
+                    ),
+                    html.Span(summary_text),
+                ],
+                className='atlanticus-manager__issues-summary-copy',
+            ),
+            html.Details(
+                [
+                    html.Summary(
+                        f'Ver detalle técnico ({len(issues)})',
+                        className='atlanticus-manager__issues-toggle',
+                    ),
+                    html.Div(
+                        [
+                            *[
+                                html.Div(
+                                    [
+                                        html.Span(
+                                            'Error'
+                                            if issue.level == 'error'
+                                            else 'Advertencia',
+                                            className=(
+                                                'atlanticus-manager__issue-level '
+                                                f'atlanticus-manager__issue-level--{issue.level}'
+                                            ),
+                                        ),
+                                        html.Div(
+                                            [
+                                                html.Strong(issue.message),
+                                                html.Small(
+                                                    ' · '.join(
+                                                        value
+                                                        for value in (
+                                                            issue.path,
+                                                            issue.code,
+                                                        )
+                                                        if value
+                                                    )
+                                                ),
+                                            ],
+                                            className='atlanticus-manager__issue-copy',
+                                        ),
+                                    ],
+                                    className=(
+                                        'atlanticus-manager__issue '
+                                        f'atlanticus-manager__issue--{issue.level}'
+                                    ),
+                                )
+                                for issue in preview
+                            ],
+                            (
+                                html.Div(
+                                    f'{hidden_count} observaciones adicionales no se muestran '
+                                    'en esta vista.',
+                                    className='atlanticus-manager__issues-more',
+                                )
+                                if hidden_count
+                                else None
+                            ),
+                        ],
+                        className='atlanticus-manager__issues-detail',
+                    ),
+                ],
+                className='atlanticus-manager__issues-disclosure',
+            ),
+        ],
+        className=(
+            'atlanticus-manager__issues '
+            + (
+                'atlanticus-manager__issues--error'
+                if errors
+                else 'atlanticus-manager__issues--warning'
+            )
+        ),
+    )
 
 def _build_summary_items(items: tuple[ProjectionSummaryItem, ...]) -> object:
     if not items:

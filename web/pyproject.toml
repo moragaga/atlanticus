@@ -12,7 +12,7 @@ dependencies = [
     "atlanticus-web-identity-local==0.1.0",
     "atlanticus-web-navigation==0.1.0",
     "atlanticus-web-navigation-configuration==0.1.5",
-    "atlanticus-web-manager==0.3.12",
+    "atlanticus-web-manager==0.3.14",
     "atlanticus-web-configuration==0.1.0",
     "atlanticus-web-pwa==0.1.0",
     "atlanticus-web-users==0.1.0",

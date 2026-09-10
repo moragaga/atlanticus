@@ -83,7 +83,8 @@ def test_workspace_actions_explain_refresh_and_post_publish_verification() -> No
     assert "'Recargar'" in layout
     assert "'Recuperar borrador'" in layout
     assert "'Descartar borrador guardado'" in layout
-    assert "'La configuración publicada se mantiene visible hasta que elijas recuperar '" in layout
+    assert "La configuración publicada se mantiene visible hasta que elijas " in layout
+    assert "recuperar este borrador." in layout
     assert "f'Recargar restaura la versión actual de {module.source_name} y vuelve '" in layout
     assert "'a consultar fuente, historial y proyección.'" in layout
     assert "f'Cargar configuración desde {module.source_name}'" not in layout

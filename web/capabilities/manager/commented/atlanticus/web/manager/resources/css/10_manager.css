@@ -1357,3 +1357,279 @@ body,
         display: grid;
     }
 }
+
+/* Pulido final de trazabilidad: errores acotados, borrador único y etiquetas semánticas para historial móvil. */
+.atlanticus-manager__saved-draft-slot:empty {
+    display: none;
+}
+
+.atlanticus-manager__saved-draft-empty {
+    margin: 0;
+    padding: .75rem .85rem;
+    color: var(--atlanticus-manager-text-muted);
+    background: var(--atlanticus-manager-surface-muted);
+    border: 1px dashed var(--atlanticus-manager-border);
+    border-radius: .7rem;
+    font-size: .72rem;
+}
+
+.atlanticus-manager__saved-draft-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .9rem 1.25rem;
+    padding: .85rem 1rem;
+    background: var(--atlanticus-manager-surface-muted);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: .75rem;
+}
+
+.atlanticus-manager__saved-draft-card--warning {
+    background: var(--atlanticus-manager-warning-soft);
+    border-color: var(--atlanticus-manager-warning);
+}
+
+.atlanticus-manager__saved-draft-copy {
+    display: grid;
+    min-width: 0;
+    gap: .2rem;
+}
+
+.atlanticus-manager__saved-draft-copy strong,
+.atlanticus-manager__saved-draft-copy p {
+    margin: 0;
+}
+
+.atlanticus-manager__saved-draft-copy strong {
+    color: var(--atlanticus-manager-text);
+    font-size: .74rem;
+}
+
+.atlanticus-manager__saved-draft-copy p {
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .7rem;
+    line-height: 1.4;
+}
+
+.atlanticus-manager__saved-draft-meta {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(6.5rem, auto));
+    gap: .45rem;
+}
+
+.atlanticus-manager__saved-draft-meta > span {
+    display: grid;
+    min-width: 0;
+    gap: .12rem;
+    padding: .48rem .6rem;
+    background: var(--atlanticus-manager-surface);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: .58rem;
+}
+
+.atlanticus-manager__saved-draft-meta small {
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .61rem;
+}
+
+.atlanticus-manager__saved-draft-meta code {
+    overflow: hidden;
+    color: var(--atlanticus-manager-text);
+    font-size: .68rem;
+    text-overflow: ellipsis;
+}
+
+.atlanticus-manager__issues {
+    display: grid;
+    gap: .55rem;
+    margin: .55rem 0 0;
+    padding: .72rem .8rem;
+    background: var(--atlanticus-manager-surface-muted);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-left: .2rem solid var(--atlanticus-manager-warning);
+    border-radius: .65rem;
+}
+
+.atlanticus-manager__issues--error {
+    border-left-color: var(--atlanticus-manager-danger);
+}
+
+.atlanticus-manager__issues-summary-copy {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: .3rem .55rem;
+}
+
+.atlanticus-manager__issues-summary-copy strong {
+    color: var(--atlanticus-manager-text);
+    font-size: .72rem;
+}
+
+.atlanticus-manager__issues-summary-copy span {
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .68rem;
+}
+
+.atlanticus-manager__issues-disclosure {
+    margin: 0;
+}
+
+.atlanticus-manager__issues-toggle {
+    width: fit-content;
+    color: var(--atlanticus-manager-text);
+    font-size: .68rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.atlanticus-manager__issues-detail {
+    display: grid;
+    gap: .4rem;
+    margin-top: .55rem;
+}
+
+.atlanticus-manager__issue {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: .55rem;
+    padding: .5rem .6rem;
+    background: var(--atlanticus-manager-surface);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: .55rem;
+}
+
+.atlanticus-manager__issue-level {
+    display: inline-flex;
+    justify-content: center;
+    min-width: 4.8rem;
+    padding: .18rem .38rem;
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: 999px;
+    font-size: .59rem;
+    font-weight: 760;
+}
+
+.atlanticus-manager__issue-level--warning {
+    color: var(--atlanticus-manager-warning);
+    background: var(--atlanticus-manager-warning-soft);
+    border-color: var(--atlanticus-manager-warning);
+}
+
+.atlanticus-manager__issue-level--error {
+    color: var(--atlanticus-manager-danger);
+    background: var(--atlanticus-manager-danger-soft);
+    border-color: var(--atlanticus-manager-danger);
+}
+
+.atlanticus-manager__issue-copy {
+    display: grid;
+    min-width: 0;
+    gap: .12rem;
+}
+
+.atlanticus-manager__issue-copy strong {
+    color: var(--atlanticus-manager-text);
+    font-size: .67rem;
+    font-weight: 600;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.atlanticus-manager__issue-copy small,
+.atlanticus-manager__issues-more {
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .61rem;
+    line-height: 1.35;
+}
+
+.atlanticus-manager__issues-more {
+    padding-inline: .15rem;
+}
+
+.atlanticus-manager__history-cell {
+    min-width: 0;
+}
+
+.atlanticus-manager__history-cell-label {
+    display: none;
+}
+
+.atlanticus-manager__history-cell > code,
+.atlanticus-manager__history-cell > span,
+.atlanticus-manager__history-cell > time {
+    overflow-wrap: anywhere;
+}
+
+.atlanticus-manager__history-cell--action {
+    justify-self: end;
+}
+
+@media (max-width: 48rem) {
+    .atlanticus-manager__saved-draft-card {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .atlanticus-manager__saved-draft-meta {
+        grid-template-columns: 1fr;
+    }
+
+    .atlanticus-manager__issues-summary-copy {
+        display: grid;
+        gap: .18rem;
+    }
+
+    .atlanticus-manager__issue {
+        grid-template-columns: 1fr;
+    }
+
+    .atlanticus-manager__issue-level {
+        justify-self: start;
+    }
+
+    .atlanticus-manager__history-row:not(.atlanticus-manager__history-row--header) {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0;
+        margin-top: .65rem;
+        padding: .3rem .72rem;
+        background: var(--atlanticus-manager-surface);
+        border: 1px solid var(--atlanticus-manager-border);
+        border-radius: .72rem;
+    }
+
+    .atlanticus-manager__history-row:not(.atlanticus-manager__history-row--header)
+        .atlanticus-manager__history-cell {
+        display: grid;
+        grid-template-columns: 6.5rem minmax(0, 1fr);
+        align-items: center;
+        gap: .7rem;
+        padding: .5rem 0;
+        border-bottom: 1px solid var(--atlanticus-manager-border);
+    }
+
+    .atlanticus-manager__history-row:not(.atlanticus-manager__history-row--header)
+        .atlanticus-manager__history-cell:last-child {
+        border-bottom: 0;
+    }
+
+    .atlanticus-manager__history-cell-label {
+        display: block;
+        color: var(--atlanticus-manager-text-muted);
+        font-size: .61rem;
+        font-weight: 760;
+        letter-spacing: .035em;
+        text-transform: uppercase;
+    }
+
+    .atlanticus-manager__history-cell--action {
+        justify-self: stretch;
+    }
+
+    .atlanticus-manager__history-cell--action
+        .atlanticus-manager__history-preview-open {
+        justify-self: start;
+    }
+}
