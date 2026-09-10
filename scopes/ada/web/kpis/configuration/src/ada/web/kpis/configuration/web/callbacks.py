@@ -23,6 +23,7 @@ from ada.web.kpis.configuration.web.ids import (
     EDITOR_CANCEL_ID,
     EDITOR_CLOSE_ID,
     EDITOR_DESTINATIONS_ID,
+    EDITOR_HOURS_FIELD_ID,
     EDITOR_HOURS_ID,
     EDITOR_KPI_KEY_ID,
     EDITOR_LATEST_ID,
@@ -314,10 +315,12 @@ def register_kpi_configuration_editor_callbacks(
 
     @app.callback(
         Output(EDITOR_HOURS_ID, 'disabled'),
+        Output(EDITOR_HOURS_FIELD_ID, 'hidden'),
         Input(EDITOR_SERIES_ID, 'value'),
     )
     def toggle_series_hours(series_values: list[str] | None):
-        return 'enabled' not in (series_values or ())
+        enabled = 'enabled' in (series_values or ())
+        return not enabled, not enabled
 
     @app.callback(
         Output(CONFIGURATION_STORE_ID, 'data', allow_duplicate=True),

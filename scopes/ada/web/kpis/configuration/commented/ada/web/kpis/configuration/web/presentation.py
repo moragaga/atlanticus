@@ -27,6 +27,7 @@ from ada.web.kpis.configuration.web.ids import (
     EDITOR_CANCEL_ID,
     EDITOR_CLOSE_ID,
     EDITOR_DESTINATIONS_ID,
+    EDITOR_HOURS_FIELD_ID,
     EDITOR_HOURS_ID,
     EDITOR_KPI_KEY_ID,
     EDITOR_LATEST_ID,
@@ -290,31 +291,36 @@ def build_kpi_configuration_editor_modal(
                                         EDITOR_SERIES_ID,
                                         enabled=series,
                                     ),
+                                    html.Div(
+                                        _field(
+                                            'Ventana histórica',
+                                            html.Div(
+                                                [
+                                                    dbc.Input(
+                                                        id=EDITOR_HOURS_ID,
+                                                        type='number',
+                                                        min=1,
+                                                        max=24,
+                                                        step=1,
+                                                        value=(
+                                                            binding.series_hours
+                                                            if binding is not None
+                                                            else None
+                                                        ),
+                                                        disabled=not series,
+                                                        class_name='ada-kpi-configuration__input',
+                                                    ),
+                                                    html.Span('horas'),
+                                                ],
+                                                className='ada-kpi-configuration__hours',
+                                            ),
+                                        ),
+                                        id=EDITOR_HOURS_FIELD_ID,
+                                        hidden=not series,
+                                        className='ada-kpi-configuration__hours-field',
+                                    ),
                                 ],
                                 className='ada-kpi-configuration__toggle-grid',
-                            ),
-                            _field(
-                                'Ventana histórica',
-                                html.Div(
-                                    [
-                                        dbc.Input(
-                                            id=EDITOR_HOURS_ID,
-                                            type='number',
-                                            min=1,
-                                            max=24,
-                                            step=1,
-                                            value=(
-                                                binding.series_hours
-                                                if binding is not None
-                                                else None
-                                            ),
-                                            disabled=not series,
-                                            class_name='ada-kpi-configuration__input',
-                                        ),
-                                        html.Span('horas'),
-                                    ],
-                                    className='ada-kpi-configuration__hours',
-                                ),
                             ),
                             _field(
                                 'Componentes',

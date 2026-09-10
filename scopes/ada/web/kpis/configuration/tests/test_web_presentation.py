@@ -245,6 +245,19 @@ def test_editor_hours_are_disabled_until_timeseries_is_enabled() -> None:
     )
 
     assert hours.disabled is True
+    hours_field = next(
+        node
+        for node in _walk(modal)
+        if getattr(node, 'id', None) == 'ada-kpi-configuration--editor-hours-field'
+    )
+    assert hours_field.hidden is True
+
+    title = next(
+        node
+        for node in _walk(modal)
+        if getattr(node, 'id', None) == 'ada-kpi-configuration--editor-title'
+    )
+    assert title.children == 'Nuevo KPI'
 
     assert _prop(modal, 'className') == 'ada-kpi-configuration__modal'
     assert any(

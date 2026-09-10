@@ -1,6 +1,10 @@
 .ada-configuration-manager-kpis {
     display: grid;
+    width: 100%;
+    max-width: 100%;
     min-width: 0;
+    box-sizing: border-box;
+    overflow-x: clip;
     gap: .9rem;
     padding: 0 1rem 1rem;
     -webkit-user-select: none;

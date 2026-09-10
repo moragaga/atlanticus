@@ -1,6 +1,10 @@
 .ada-kpi-configuration {
     display: grid;
+    width: 100%;
+    max-width: 100%;
     min-width: 0;
+    box-sizing: border-box;
+    overflow-x: clip;
     gap: .75rem;
     padding: 1rem;
     color: var(--atlanticus-ui-text);
@@ -53,6 +57,17 @@
 
 .ada-kpi-configuration__search,
 .ada-kpi-configuration__input {
+    min-height: 2.35rem;
+}
+
+.ada-kpi-configuration__search {
+    height: 2.35rem;
+}
+
+.ada-kpi-configuration__filter,
+.ada-kpi-configuration__filter .dash-dropdown-wrapper,
+.ada-kpi-configuration__filter .dash-dropdown {
+    height: 2.35rem;
     min-height: 2.35rem;
 }
 
@@ -119,7 +134,10 @@
 }
 
 .ada-kpi-configuration__table-shell {
+    width: 100%;
+    max-width: 100%;
     min-width: 0;
+    box-sizing: border-box;
     overflow-x: auto;
     border: 1px solid var(--atlanticus-ui-border);
     border-radius: .72rem;
@@ -290,6 +308,12 @@
     gap: .7rem;
 }
 
+.ada-kpi-configuration__toggle-grid:has(
+    .ada-kpi-configuration__hours-field:not([hidden])
+) {
+    grid-template-columns: minmax(0, .8fr) minmax(0, .8fr) minmax(16rem, 1.4fr);
+}
+
 .ada-kpi-configuration__toggle-field {
     padding: .72rem;
     background: var(--atlanticus-ui-surface-muted);
@@ -297,11 +321,23 @@
     border-radius: .65rem;
 }
 
+.ada-kpi-configuration__hours-field {
+    min-width: 0;
+}
+
+.ada-kpi-configuration__hours-field[hidden] {
+    display: none;
+}
+
 .ada-kpi-configuration__hours {
     display: grid;
-    grid-template-columns: minmax(0, 8rem) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: .5rem;
+}
+
+.ada-kpi-configuration__hours .ada-kpi-configuration__input {
+    width: 100%;
 }
 
 .ada-kpi-configuration__table-shell--empty {
@@ -388,8 +424,9 @@
 
 .ada-kpi-configuration__modal-header h3 {
     margin: 0;
-    color: var(--atlanticus-ui-text);
+    color: var(--atlanticus-ui-surface);
     font-size: 1rem;
+    font-weight: 760;
 }
 
 .ada-kpi-configuration__modal-actions {
@@ -410,7 +447,18 @@
 }
 
 .ada-kpi-configuration__toggle input[type='checkbox'] {
+    width: .78rem;
+    height: .78rem;
+    margin-right: .4rem;
     accent-color: var(--atlanticus-ui-secondary);
+}
+
+.ada-kpi-configuration-editor-surface {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow-x: clip;
 }
 
 @media (max-width: 72rem) {

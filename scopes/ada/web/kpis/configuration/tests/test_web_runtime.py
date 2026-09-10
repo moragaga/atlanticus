@@ -81,6 +81,22 @@ def test_editor_module_registers_callbacks() -> None:
 
     assert len(app.callback_map) >= 5
 
+def test_series_hours_callback_contract_is_registered() -> None:
+    context = KpiConfigurationEditorContext(destinations=Destinations())
+    module = create_kpi_configuration_editor_module(context)
+    app = Dash(__name__, suppress_callback_exceptions=True)
+    app.layout = build_kpi_configuration_editor_surface(context)
+
+    assert module.register_callbacks is not None
+    module.register_callbacks(app, SimpleNamespace())
+
+    callback_keys = tuple(app.callback_map)
+    assert any(
+        'ada-kpi-configuration--editor-hours.disabled' in key
+        and 'ada-kpi-configuration--editor-hours-field.hidden' in key
+        for key in callback_keys
+    )
+
 
 def test_save_binding_supports_create_and_edit() -> None:
     created = save_binding(
