@@ -5,6 +5,7 @@ from dash import dcc, html
 
 from ada.web.shell.navigation.ids import AdaNavigationIds
 from ada.web.shell.navigation.models import AdaNavigationAction, AdaNavigationView
+from ada.web.ui.core import component_identity_attributes
 from atlanticus.web.navigation.api import (
     NavigationGroup,
     NavigationLink,
@@ -16,7 +17,7 @@ from atlanticus.web.navigation.api import (
 def build_ada_navigation_desktop_trigger() -> dbc.Button:
     return dbc.Button(
         id=AdaNavigationIds.DESKTOP_TOGGLE,
-        className='ada-navigation__trigger ada-navigation__trigger--desktop d-none d-md-flex dark-theme',
+        className='ada-navigation__trigger ada-navigation__trigger--desktop d-none d-md-flex',
         color='dark',
         n_clicks=0,
         title='Abrir navegación',
@@ -27,7 +28,7 @@ def build_ada_navigation_desktop_trigger() -> dbc.Button:
 def build_ada_navigation_mobile_trigger() -> dbc.Button:
     return dbc.Button(
         id=AdaNavigationIds.MOBILE_TOGGLE,
-        className='ada-navigation__trigger ada-navigation__trigger--mobile dark-theme',
+        className='ada-navigation__trigger ada-navigation__trigger--mobile',
         color='dark',
         n_clicks=0,
         title='Abrir navegación',
@@ -46,13 +47,14 @@ def build_ada_navigation_offcanvas(
         title=_build_title(resolved_view),
         is_open=False,
         placement='end',
-        className='ada-navigation__offcanvas',
+        className='ada-navigation ada-navigation__offcanvas',
         children=[
             dcc.Location(id=AdaNavigationIds.LOCATION, refresh=False),
             html.Div(
                 _build_menu_content(menu, resolved_view),
                 id=AdaNavigationIds.MENU_CONTENT,
                 className='ada-navigation__content',
+                **component_identity_attributes('navigation'),
             ),
         ],
     )
@@ -226,10 +228,10 @@ def _build_node(node: NavigationLink | NavigationGroup) -> html.Div | dcc.Link |
 def _build_group(group: NavigationGroup) -> html.Div:
     group_class = 'ada-navigation__root-item ada-navigation__group'
     if not group.enabled:
-        group_class += ' is-disabled'
+        group_class += ' ada-navigation__group--disabled'
     button_class = 'ada-navigation__button ada-navigation__group-button'
     if group.expanded:
-        button_class += ' is-open'
+        button_class += ' ada-navigation__group-button--open'
     return html.Div(
         className=group_class,
         children=[
@@ -287,7 +289,7 @@ def _build_link(
     )
     wrapper_class = 'ada-navigation__link-wrapper d-block text-decoration-none'
     if not link.enabled:
-        wrapper_class += ' is-disabled'
+        wrapper_class += ' ada-navigation__link-wrapper--disabled'
     common = {
         'id': AdaNavigationIds.link(link.key),
         'href': link.href,

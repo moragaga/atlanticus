@@ -30,7 +30,7 @@ def register_ada_navigation_callbacks(app: Dash, _services: ServiceRegistry) -> 
             const className = [
                 'ada-navigation__button',
                 'ada-navigation__group-button',
-                nextOpen ? 'is-open' : '',
+                nextOpen ? 'ada-navigation__group-button--open' : '',
             ].filter(Boolean).join(' ');
             return [nextOpen, className];
         }
@@ -66,9 +66,12 @@ def register_ada_navigation_callbacks(app: Dash, _services: ServiceRegistry) -> 
             const current = normalize(pathname);
             return (hrefs || []).map((href, index) => {
                 const source = String((classNames || [])[index] || '');
-                const tokens = source.split(/\\s+/).filter(Boolean).filter((token) => token !== 'is-active');
+                const tokens = source
+                    .split(/\\s+/)
+                    .filter(Boolean)
+                    .filter((token) => token !== 'ada-navigation__link-wrapper--active');
                 if (typeof href === 'string' && href.startsWith('/') && normalize(href) === current) {
-                    tokens.push('is-active');
+                    tokens.push('ada-navigation__link-wrapper--active');
                 }
                 return Array.from(new Set(tokens)).join(' ');
             });

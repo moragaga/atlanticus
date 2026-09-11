@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-# Presentación visual ADA: conserva el patrón aprobado y recibe datos ya resueltos.
+# Presentación de Navigation: recibe contratos resueltos y mantiene Bootstrap como integración externa.
 import dash_bootstrap_components as dbc
 from dash import dcc, html
 
 from ada.web.shell.navigation.ids import AdaNavigationIds
 from ada.web.shell.navigation.models import AdaNavigationAction, AdaNavigationView
+from ada.web.ui.core import component_identity_attributes
 from atlanticus.web.navigation.api import (
     NavigationGroup,
     NavigationLink,
@@ -14,10 +15,11 @@ from atlanticus.web.navigation.api import (
 )
 
 
+# Las utilities Bootstrap pueden convivir con nuestras clases BEM sin convertirse en contrato de dominio.
 def build_ada_navigation_desktop_trigger() -> dbc.Button:
     return dbc.Button(
         id=AdaNavigationIds.DESKTOP_TOGGLE,
-        className='ada-navigation__trigger ada-navigation__trigger--desktop d-none d-md-flex dark-theme',
+        className='ada-navigation__trigger ada-navigation__trigger--desktop d-none d-md-flex',
         color='dark',
         n_clicks=0,
         title='Abrir navegación',
@@ -28,7 +30,7 @@ def build_ada_navigation_desktop_trigger() -> dbc.Button:
 def build_ada_navigation_mobile_trigger() -> dbc.Button:
     return dbc.Button(
         id=AdaNavigationIds.MOBILE_TOGGLE,
-        className='ada-navigation__trigger ada-navigation__trigger--mobile dark-theme',
+        className='ada-navigation__trigger ada-navigation__trigger--mobile',
         color='dark',
         n_clicks=0,
         title='Abrir navegación',
@@ -36,6 +38,7 @@ def build_ada_navigation_mobile_trigger() -> dbc.Button:
     )
 
 
+# El contenido expone identidad DOM estable separada de las clases usadas sólo para presentación.
 def build_ada_navigation_offcanvas(
     menu: NavigationMenu,
     *,
@@ -47,19 +50,19 @@ def build_ada_navigation_offcanvas(
         title=_build_title(resolved_view),
         is_open=False,
         placement='end',
-        className='ada-navigation__offcanvas',
+        className='ada-navigation ada-navigation__offcanvas',
         children=[
             dcc.Location(id=AdaNavigationIds.LOCATION, refresh=False),
             html.Div(
                 _build_menu_content(menu, resolved_view),
                 id=AdaNavigationIds.MENU_CONTENT,
                 className='ada-navigation__content',
+                **component_identity_attributes('navigation'),
             ),
         ],
     )
 
 
-# Header institucional del canvas; assets y versión llegan por inyección.
 def _build_title(view: AdaNavigationView) -> html.Div:
     brand_mark = (
         html.Img(
@@ -112,7 +115,6 @@ def _build_menu_content(menu: NavigationMenu, view: AdaNavigationView) -> html.D
     )
 
 
-# Footer institucional permanece fuera del área scrollable del menú.
 def _build_footer(view: AdaNavigationView) -> html.Div | None:
     if view.footer_logo_src is None and view.application_version is None:
         return None
@@ -226,13 +228,14 @@ def _build_node(node: NavigationLink | NavigationGroup) -> html.Div | dcc.Link |
     return _build_link(node, is_child=False)
 
 
+# Los estados creados por ADA usan modificadores BEM; Collapse sigue siendo responsabilidad Bootstrap.
 def _build_group(group: NavigationGroup) -> html.Div:
     group_class = 'ada-navigation__root-item ada-navigation__group'
     if not group.enabled:
-        group_class += ' is-disabled'
+        group_class += ' ada-navigation__group--disabled'
     button_class = 'ada-navigation__button ada-navigation__group-button'
     if group.expanded:
-        button_class += ' is-open'
+        button_class += ' ada-navigation__group-button--open'
     return html.Div(
         className=group_class,
         children=[
@@ -290,7 +293,7 @@ def _build_link(
     )
     wrapper_class = 'ada-navigation__link-wrapper d-block text-decoration-none'
     if not link.enabled:
-        wrapper_class += ' is-disabled'
+        wrapper_class += ' ada-navigation__link-wrapper--disabled'
     common = {
         'id': AdaNavigationIds.link(link.key),
         'href': link.href,

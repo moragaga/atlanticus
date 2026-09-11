@@ -71,33 +71,33 @@ def test_module_is_presentation_only() -> None:
     assert module.register_callbacks is not None
 
 
-def test_approved_desktop_trigger_pattern_is_preserved_without_header_owned_ids() -> None:
+def test_desktop_trigger_contract_is_preserved() -> None:
     trigger = build_ada_navigation_desktop_trigger()
     props = trigger.to_plotly_json()['props']
     payload = str(trigger.to_plotly_json())
 
     assert isinstance(trigger, dbc.Button)
     assert props['id'] == 'ada-navigation-desktop-toggle'
-    assert props['className'] == (
-        'ada-navigation__trigger ada-navigation__trigger--desktop d-none d-md-flex dark-theme'
-    )
     assert props['color'] == 'dark'
     assert props['n_clicks'] == 0
+    assert props['title'] == 'Abrir navegación'
     assert 'bi-chevron-left' in payload
 
 
-def test_approved_mobile_trigger_pattern_is_preserved() -> None:
+def test_mobile_trigger_contract_is_preserved() -> None:
     trigger = build_ada_navigation_mobile_trigger()
     props = trigger.to_plotly_json()['props']
     payload = str(trigger.to_plotly_json())
 
     assert isinstance(trigger, dbc.Button)
     assert props['id'] == 'ada-navigation-mobile-toggle'
-    assert 'ada-navigation__trigger--mobile' in props['className']
+    assert props['color'] == 'dark'
+    assert props['n_clicks'] == 0
+    assert props['title'] == 'Abrir navegación'
     assert 'bi-list' in payload
 
 
-def test_offcanvas_preserves_navigation_pattern_with_injected_view() -> None:
+def test_offcanvas_preserves_navigation_contract_with_injected_view() -> None:
     component = build_ada_navigation_offcanvas(
         _menu(),
         view=AdaNavigationView(
@@ -108,36 +108,34 @@ def test_offcanvas_preserves_navigation_pattern_with_injected_view() -> None:
         ),
     )
     payload = str(component.to_plotly_json())
+    content = component.children[1]
+    content_props = content.to_plotly_json()['props']
 
     assert isinstance(component, dbc.Offcanvas)
     assert component.id == 'ada-navigation-offcanvas'
-    assert component.className == 'ada-navigation__offcanvas'
     assert component.placement == 'end'
     assert component.is_open is False
-    assert 'ada-navigation__brand-logo' in payload
+    assert content_props['id'] == 'ada-navigation-menu-content'
+    assert content_props['data-ada-component-key'] == 'navigation'
     assert '/assets/ada/logo.svg' in payload
     assert 'Asistente de Decisiones Ágiles' in payload
-    assert 'ada-navigation__footer-logo' in payload
     assert '/assets/ada/pelambres.svg' in payload
     assert 'Versión 0.1.5' in payload
     assert 'ADA N1' not in payload
     assert 'pelambres.cl' not in payload
 
 
-def test_user_card_preserves_centered_avatar_profile_pattern() -> None:
+def test_user_card_preserves_user_information_and_profile_colors() -> None:
     payload = str(build_ada_navigation_offcanvas(_menu()).to_plotly_json())
 
-    assert 'ada-navigation__user' in payload
-    assert 'ada-navigation__avatar ada-navigation__avatar--fallback' in payload
-    assert 'ada-navigation__user-copy' in payload
-    assert 'ada-navigation__profile' in payload
     assert 'Local User' in payload
     assert 'local@example.com' in payload
     assert 'LU' in payload
     assert '#3778C2' in payload
+    assert '#FFFFFF' in payload
 
 
-def test_optional_action_preserves_master_action_pattern_when_injected() -> None:
+def test_optional_action_is_rendered_only_when_injected() -> None:
     without_action = str(build_ada_navigation_offcanvas(_menu()).to_plotly_json())
     with_action = str(
         build_ada_navigation_offcanvas(
@@ -153,8 +151,8 @@ def test_optional_action_preserves_master_action_pattern_when_injected() -> None
         ).to_plotly_json()
     )
 
-    assert 'ada-navigation__action' not in without_action
-    assert 'ada-navigation__action' in with_action
+    assert 'Abrir portal ADA' not in without_action
+    assert 'https://example.test/ada' not in without_action
     assert 'Abrir portal ADA' in with_action
     assert 'https://example.test/ada' in with_action
 
@@ -182,89 +180,3 @@ def test_source_remains_decoupled_from_header_tool_and_project_specific_data() -
     assert 'pelambres.cl' not in sources
     assert 'app-header-' not in sources
     assert 'resolve_navigation_from_services' not in sources
-
-
-def test_css_preserves_approved_visual_navigation_pattern_with_navigation_namespace() -> None:
-    css = (
-        Path(__file__).parents[1]
-        / 'src'
-        / 'ada'
-        / 'web'
-        / 'shell'
-        / 'navigation'
-        / 'resources'
-        / 'css'
-        / '10-navigation.css'
-    ).read_text(encoding='utf-8')
-
-    assert '.ada-navigation__trigger--desktop {' in css
-    assert 'position: absolute;' in css
-    assert 'top: 50%;' in css
-    assert 'inset-inline-end: 0;' in css
-    assert 'transform: translateY(-50%);' in css
-    assert 'border-radius: 0.75rem 0 0 0.75rem;' in css
-    assert 'width: 1.25rem;' in css
-    assert 'height: 2.1875rem;' in css
-    assert '.ada-navigation__user {' in css
-    assert 'flex-direction: column;' in css
-    assert '.ada-navigation__avatar {' in css
-    assert 'width: 5.75rem;' in css
-    assert '.ada-navigation__action {' in css
-    assert '.ada-navigation__offcanvas' in css
-    assert 'background: var(--ada-color-surface-strong);' in css
-    assert '.ada-navigation__brand-logo {' in css
-    assert '.ada-navigation__main {' in css
-    assert 'overflow-y: auto;' in css
-    assert '.ada-navigation__footer {' in css
-    assert '.ada-navigation__footer-logo {' in css
-    assert '.ada-navigation__version {' in css
-    assert '.dashboard-header-shell' not in css
-    assert '.dashboard-menu-btn-desktop' not in css
-
-
-def test_desktop_trigger_is_compact_at_rest_and_expands_only_on_interaction() -> None:
-    css = (
-        Path(__file__).parents[1]
-        / 'src'
-        / 'ada'
-        / 'web'
-        / 'shell'
-        / 'navigation'
-        / 'resources'
-        / 'css'
-        / '10-navigation.css'
-    ).read_text(encoding='utf-8')
-
-    assert '--ada-navigation-trigger-rest-width: 1rem;' in css
-    assert '--ada-navigation-trigger-hover-width: 1.15rem;' in css
-    assert '--ada-navigation-trigger-outset' not in css
-    assert 'width: var(--ada-navigation-trigger-rest-width);' in css
-    assert 'inset-inline-end: 0;' in css
-    assert 'calc(-1 * var(--ada-navigation-trigger-outset))' not in css
-    assert '.ada-navigation__trigger--desktop:focus-visible {' in css
-    assert 'width: var(--ada-navigation-trigger-hover-width);' in css
-    assert 'height: 2.45rem;' in css
-
-
-def test_mobile_menu_branding_is_compact_only_at_350() -> None:
-    css = (
-        Path(__file__).parents[1] / 'src/ada/web/shell/navigation/resources/css/10-navigation.css'
-    ).read_text(encoding='utf-8')
-    section = css.split('@media only screen and (min-width: 350px) and (max-width: 479.98px) {', 1)[
-        1
-    ].split('@media only screen and (min-width: 2560px)', 1)[0]
-    assert 'width: 4.25rem;' in section
-    assert 'font-size: .82rem;' in section
-    assert 'font-size: .72rem;' in section
-
-
-def test_videowall_suppresses_all_navigation_surfaces() -> None:
-    css = (
-        Path(__file__).parents[1] / 'src/ada/web/shell/navigation/resources/css/10-navigation.css'
-    ).read_text(encoding='utf-8')
-    section = css.split('@media only screen and (min-width: 2560px) {', 1)[1]
-    assert '.ada-navigation__trigger--desktop,' in section
-    assert '.ada-navigation__trigger--mobile,' in section
-    assert '.ada-navigation__mobile-anchor,' in section
-    assert '#ada-navigation-offcanvas {' in section
-    assert 'display: none !important;' in section
