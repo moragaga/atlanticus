@@ -25,6 +25,7 @@ dependencies = [
     { name = "ada-web-ui-page-readiness" },
     { name = "ada-web-ui-time-status" },
     { name = "atlanticus-web" },
+    { name = "atlanticus-web-bootstrap" },
     { name = "atlanticus-web-identity" },
     { name = "atlanticus-web-identity-local" },
     { name = "atlanticus-web-navigation" },
@@ -56,6 +57,7 @@ requires-dist = [
     { name = "ada-web-ui-page-readiness", editable = "../../ui/page-readiness" },
     { name = "ada-web-ui-time-status", editable = "../../ui/time-status" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
+    { name = "atlanticus-web-bootstrap", editable = "../../../../../web/framework/bootstrap" },
     { name = "atlanticus-web-identity", editable = "../../../../../web/capabilities/identity/core" },
     { name = "atlanticus-web-identity-local", editable = "../../../../../web/capabilities/identity/local" },
     { name = "atlanticus-web-navigation", editable = "../../../../../web/capabilities/navigation/core" },
@@ -475,6 +477,21 @@ requires-dist = [
     { name = "flask", specifier = "==3.1.3" },
     { name = "rcssmin", specifier = "==1.2.2" },
     { name = "rjsmin", specifier = "==1.2.5" },
+]
+
+[[package]]
+name = "atlanticus-web-bootstrap"
+version = "0.1.0"
+source = { editable = "../../../../../web/framework/bootstrap" }
+dependencies = [
+    { name = "atlanticus-web" },
+    { name = "dash-bootstrap-components" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
+    { name = "dash-bootstrap-components", specifier = "==2.0.4" },
 ]
 
 [[package]]

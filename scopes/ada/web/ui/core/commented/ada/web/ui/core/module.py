@@ -1,5 +1,5 @@
-# Registra únicamente la fundación visual común de ADA. Las capabilities concretas agregan sus
-# propias capas de assets y no deben quedar embebidas en este módulo.
+# Registra únicamente la fundación visual propia de ADA. Bootstrap e iconos pertenecen a la
+# capability Atlanticus Bootstrap y la composición decide explícitamente si los consume.
 from __future__ import annotations
 
 from atlanticus.web.assets import AssetLayer
@@ -12,12 +12,10 @@ ADA_UI_ASSET_LAYER = AssetLayer(
     package='ada.web.ui.core',
 )
 
+# Inter mantiene en este incremento su mecanismo externo actual; no forma parte del traslado.
 _INTER_STYLESHEET = (
     'https://fonts.googleapis.com/css2?'
     'family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap'
-)
-_BOOTSTRAP_ICONS_STYLESHEET = (
-    'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css'
 )
 
 
@@ -30,7 +28,6 @@ def create_ada_ui_module() -> WebModule:
                 '<link rel="preconnect" href="https://fonts.googleapis.com">',
                 '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
                 f'<link rel="stylesheet" href="{_INTER_STYLESHEET}">',
-                f'<link rel="stylesheet" href="{_BOOTSTRAP_ICONS_STYLESHEET}">',
             ),
         ),
     )

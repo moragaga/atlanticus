@@ -17,7 +17,7 @@ _LAYER_NAME_PATTERN = re.compile(r'^[a-z0-9][a-z0-9._-]*$')
 _FILENAME_ORDER_PATTERN = re.compile(r'^\d{2,4}[-_][a-zA-Z0-9][a-zA-Z0-9._-]*$')
 _LIST_FILES = {'css': 'css.list', 'js': 'js.list'}
 _LOADABLE_KINDS = ('css', 'js')
-_COPY_KINDS = ('img',)
+_COPY_KINDS = ('img', 'fonts')
 _MANIFEST_NAME = 'manifest.json'
 _SCHEMA_VERSION = 1
 

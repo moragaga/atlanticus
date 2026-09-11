@@ -28,6 +28,7 @@ dependencies = [
     "ada-web-shell-navigation==0.1.7",
     "ada-web-runtime-experience==0.1.0",
     "atlanticus-web==0.1.0",
+    "atlanticus-web-bootstrap==0.1.0",
     "atlanticus-web-identity==0.1.0",
     "atlanticus-web-identity-local==0.1.0",
     "atlanticus-web-navigation==0.1.0",
@@ -60,6 +61,7 @@ ada-web-shell-header = { path = "../../shell/header", editable = true }
 ada-web-shell-navigation = { path = "../../shell/navigation", editable = true }
 ada-web-runtime-experience = { path = "../../runtime-experience", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
+atlanticus-web-bootstrap = { path = "../../../../../web/framework/bootstrap", editable = true }
 atlanticus-web-observability = { path = "../../../../../web/framework/observability", editable = true }
 atlanticus-web-identity = { path = "../../../../../web/capabilities/identity/core", editable = true }
 atlanticus-web-identity-local = { path = "../../../../../web/capabilities/identity/local", editable = true }

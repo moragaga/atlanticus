@@ -20,6 +20,7 @@ from ada.web.ui.display_status import create_ada_display_status_module
 from ada.web.ui.global_indicator import create_ada_global_indicator_module
 from ada.web.ui.page_readiness import create_ada_page_readiness_module
 from ada.web.ui.time_status import create_ada_time_status_module
+from atlanticus.web.bootstrap import create_bootstrap_foundation_web_module
 from atlanticus.web.identity.access import AccessRuntime
 from atlanticus.web.identity.local import LocalIdentityProvider
 from atlanticus.web.identity.module import create_identity_module
@@ -51,6 +52,7 @@ def create_ada_shared_ui_modules(
     include_time_status: bool = False,
 ) -> tuple[WebModule, ...]:
     return (
+        create_bootstrap_foundation_web_module(),
         create_ada_ui_module(),
         create_ada_display_status_module(),
         create_ada_global_indicator_module(),

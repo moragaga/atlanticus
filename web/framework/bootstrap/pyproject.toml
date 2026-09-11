@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "atlanticus-web-bootstrap"
 version = "0.1.0"
-description = "Scoped Bootstrap component integration for Atlanticus Web"
+description = "Bootstrap asset integration for Atlanticus Web"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
@@ -29,4 +29,8 @@ include = ["atlanticus.web.bootstrap*"]
     "py.typed",
     "resources/css/*.css",
     "resources/css/css.list",
+    "resources/foundation/css/*.css",
+    "resources/foundation/css/css.list",
+    "resources/foundation/fonts/*.woff",
+    "resources/foundation/fonts/*.woff2",
 ]

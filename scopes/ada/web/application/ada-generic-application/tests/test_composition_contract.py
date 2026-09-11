@@ -94,6 +94,7 @@ def test_local_operational_composition_is_built_from_explicit_responsibility_blo
     composition = create_local_operational_composition()
 
     assert tuple(module.name for module in create_ada_shared_ui_modules()) == (
+        'bootstrap-foundation',
         'ada-ui',
         'ada-display-status',
         'ada-global-indicator',
@@ -114,6 +115,7 @@ def test_local_operational_composition_is_built_from_explicit_responsibility_blo
         'ada-page-readiness',
     )
     assert tuple(module.name for module in composition.modules) == (
+        'bootstrap-foundation',
         'ada-ui',
         'ada-display-status',
         'ada-global-indicator',

@@ -56,6 +56,7 @@ from ada.web.ui.time_status import (
     TimeStatusDetailState,
     TimeStatusSourceCondition,
 )
+from atlanticus.web.bootstrap import BOOTSTRAP_FOUNDATION_ASSET_LAYER
 from atlanticus.web.identity.access import ACCESS_RUNTIME_SERVICE_KEY
 from atlanticus.web.navigation.api import (
     NAVIGATION_DEFINITION_PROVIDER_SERVICE_KEY,
@@ -71,6 +72,7 @@ def test_definition_composes_current_ada_web_capabilities() -> None:
     assert definition.metadata.display_name == 'ADA'
     assert definition.metadata.version == '0.2.17'
     assert tuple(module.name for module in definition.modules) == (
+        'bootstrap-foundation',
         'ada-ui',
         'ada-display-status',
         'ada-global-indicator',
@@ -120,6 +122,10 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
     assert 'Versión 0.2.17' in payload
     assert runtime.services.contains(ACCESS_RUNTIME_SERVICE_KEY)
     assert runtime.services.contains(NAVIGATION_PRINCIPAL_PROVIDER_SERVICE_KEY)
+    assert any(
+        entry.startswith(f'{BOOTSTRAP_FOUNDATION_ASSET_LAYER.target_name}/css/')
+        for entry in runtime.assets.css_entries
+    )
     assert any(
         entry.startswith(f'{ADA_UI_ASSET_LAYER.target_name}/css/')
         for entry in runtime.assets.css_entries
