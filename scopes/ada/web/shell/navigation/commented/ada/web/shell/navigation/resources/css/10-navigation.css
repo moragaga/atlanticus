@@ -1,9 +1,8 @@
 /* Espejo comentado de Navigation.
-   - ada-navigation__*: propiedad de ADA y convención BEM.
-   - .offcanvas-*, .btn y --bs-*: frontera local con Bootstrap.
-   - Los valores visuales reproducen el resultado efectivo del CSS productivo anterior.
-   - El responsive interno conserva sólo reglas con efecto real; 2560 mantiene la supresión contractual. */
+   Bootstrap/DBC se mantiene como implementación externa; las clases ada-navigation__* son propiedad de ADA.
+   R2 conserva el diseño actual y corrige únicamente ownership responsive, scroll interno, footer y borde del Offcanvas. */
 
+/* Triggers: el Header controla qué variante se expone según viewport; Navigation sólo define su geometría. */
 .ada-navigation__trigger {
     cursor: pointer;
 }
@@ -81,16 +80,21 @@
     box-shadow: none;
 }
 
+/* Frontera con Bootstrap Offcanvas: se fuerza el borde visible sin cambiar la superficie cromática. */
 .ada-navigation__offcanvas {
     background: var(--ada-color-surface-primary);
     border: 1px solid var(--ada-color-border-strong);
+}
+
+.ada-navigation__offcanvas.offcanvas-end {
+    border-inline-start: 1px solid var(--ada-color-border-strong);
 }
 
 .ada-navigation__offcanvas .offcanvas-header {
     align-items: center;
     padding: 1.5rem 1rem;
     background: var(--ada-color-surface-strong);
-    border-bottom: 0;
+    border-bottom: 1px solid var(--ada-color-border-strong);
 }
 
 .ada-navigation__offcanvas .offcanvas-title {
@@ -173,6 +177,7 @@
     opacity: 1;
 }
 
+/* La identidad y el footer quedan fuera del único sector scrollable para mantenerlos estables. */
 .ada-navigation__body {
     display: flex;
     width: 100%;
@@ -182,13 +187,18 @@
     gap: 0;
 }
 
+.ada-navigation__identity {
+    flex: 0 0 auto;
+    padding: .5rem .5rem 0;
+}
+
 .ada-navigation__main {
     display: flex;
     min-height: 0;
     flex: 1 1 auto;
     flex-direction: column;
     gap: .75rem;
-    padding: .5rem;
+    padding: .75rem .5rem .5rem;
     overflow-y: auto;
 }
 
@@ -486,6 +496,7 @@
     transform: rotate(180deg);
 }
 
+/* Footer institucional compacto para liberar altura útil al menú. */
 .ada-navigation__footer {
     display: flex;
     width: 100%;
@@ -493,21 +504,21 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: .45rem;
-    padding: .8rem 1rem .9rem;
+    gap: .25rem;
+    padding: .45rem .75rem .5rem;
     background: var(--ada-color-surface-primary);
     border-top: 1px solid rgba(0, 0, 0, .10);
 }
 
 .ada-navigation__footer-logo {
     display: block;
-    width: min(7rem, 70%);
+    width: min(5.25rem, 60%);
     height: auto;
 }
 
 .ada-navigation__version {
     color: var(--ada-color-text-emphasis);
-    font-size: .7rem;
+    font-size: .625rem;
     font-weight: 650;
     line-height: 1;
     opacity: .78;
@@ -566,10 +577,11 @@
     }
 }
 
+/* Videowall: supresión contractual completa, con especificidad suficiente frente a adapters externos. */
 @media only screen and (min-width: 2560px) {
-    .ada-navigation__trigger--desktop,
-    .ada-navigation__trigger--mobile,
-    .ada-navigation__offcanvas {
+    .ada-navigation__trigger.ada-navigation__trigger--desktop,
+    .ada-navigation__trigger.ada-navigation__trigger--mobile,
+    .ada-navigation.ada-navigation__offcanvas {
         display: none !important;
     }
 }

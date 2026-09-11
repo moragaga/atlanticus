@@ -5,7 +5,7 @@ from dash import dcc, html
 
 from ada.web.shell.navigation.ids import AdaNavigationIds
 from ada.web.shell.navigation.models import AdaNavigationAction, AdaNavigationView
-from ada.web.ui.core import component_identity_attributes
+from ada.web.ui.core import component_identity_attributes, slot_identity_attributes
 from atlanticus.web.navigation.api import (
     NavigationGroup,
     NavigationLink,
@@ -17,7 +17,7 @@ from atlanticus.web.navigation.api import (
 def build_ada_navigation_desktop_trigger() -> dbc.Button:
     return dbc.Button(
         id=AdaNavigationIds.DESKTOP_TOGGLE,
-        className='ada-navigation__trigger ada-navigation__trigger--desktop d-none d-md-flex',
+        className='ada-navigation__trigger ada-navigation__trigger--desktop',
         color='dark',
         n_clicks=0,
         title='Abrir navegación',
@@ -94,10 +94,10 @@ def _build_menu_content(menu: NavigationMenu, view: AdaNavigationView) -> html.D
         [*menu.links, *menu.groups],
         key=lambda node: (node.order, node.label, node.key),
     )
-    main_children = [_build_user_card(menu.user)]
+    scroll_children: list[object] = []
     if view.action is not None:
-        main_children.append(_build_action(view.action))
-    main_children.extend(
+        scroll_children.append(_build_action(view.action))
+    scroll_children.extend(
         [
             html.Div(className='ada-navigation__divider'),
             _build_navigation_nodes(nodes),
@@ -106,7 +106,16 @@ def _build_menu_content(menu: NavigationMenu, view: AdaNavigationView) -> html.D
     return html.Div(
         className='ada-navigation__body',
         children=[
-            html.Div(main_children, className='ada-navigation__main'),
+            html.Div(
+                _build_user_card(menu.user),
+                className='ada-navigation__identity',
+                **slot_identity_attributes('navigation_identity'),
+            ),
+            html.Div(
+                scroll_children,
+                className='ada-navigation__main',
+                **slot_identity_attributes('navigation_scroll'),
+            ),
             _build_footer(view),
         ],
     )
@@ -136,6 +145,7 @@ def _build_footer(view: AdaNavigationView) -> html.Div | None:
                 else None
             ),
         ],
+        **slot_identity_attributes('navigation_footer'),
     )
 
 

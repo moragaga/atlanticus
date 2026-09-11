@@ -110,6 +110,8 @@ def test_offcanvas_preserves_navigation_contract_with_injected_view() -> None:
     payload = str(component.to_plotly_json())
     content = component.children[1]
     content_props = content.to_plotly_json()['props']
+    body = content.children
+    identity, scroll, footer = body.children
 
     assert isinstance(component, dbc.Offcanvas)
     assert component.id == 'ada-navigation-offcanvas'
@@ -117,6 +119,11 @@ def test_offcanvas_preserves_navigation_contract_with_injected_view() -> None:
     assert component.is_open is False
     assert content_props['id'] == 'ada-navigation-menu-content'
     assert content_props['data-ada-component-key'] == 'navigation'
+    assert identity.to_plotly_json()['props']['data-ada-slot-key'] == 'navigation_identity'
+    assert scroll.to_plotly_json()['props']['data-ada-slot-key'] == 'navigation_scroll'
+    assert footer.to_plotly_json()['props']['data-ada-slot-key'] == 'navigation_footer'
+    assert 'Local User' in str(identity.to_plotly_json())
+    assert 'Local User' not in str(scroll.to_plotly_json())
     assert '/assets/ada/logo.svg' in payload
     assert 'Asistente de Decisiones Ágiles' in payload
     assert '/assets/ada/pelambres.svg' in payload

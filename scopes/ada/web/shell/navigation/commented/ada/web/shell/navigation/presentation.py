@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-# Presentación de Navigation: recibe contratos resueltos y mantiene Bootstrap como integración externa.
+# Presentación de Navigation: recibe contratos resueltos y deja el responsive al shell que la contiene.
 import dash_bootstrap_components as dbc
 from dash import dcc, html
 
 from ada.web.shell.navigation.ids import AdaNavigationIds
 from ada.web.shell.navigation.models import AdaNavigationAction, AdaNavigationView
-from ada.web.ui.core import component_identity_attributes
+from ada.web.ui.core import component_identity_attributes, slot_identity_attributes
 from atlanticus.web.navigation.api import (
     NavigationGroup,
     NavigationLink,
@@ -15,11 +15,11 @@ from atlanticus.web.navigation.api import (
 )
 
 
-# Las utilities Bootstrap pueden convivir con nuestras clases BEM sin convertirse en contrato de dominio.
+# El trigger no fuerza display con utilities Bootstrap; Header es el dueño del cambio mobile/desktop/videowall.
 def build_ada_navigation_desktop_trigger() -> dbc.Button:
     return dbc.Button(
         id=AdaNavigationIds.DESKTOP_TOGGLE,
-        className='ada-navigation__trigger ada-navigation__trigger--desktop d-none d-md-flex',
+        className='ada-navigation__trigger ada-navigation__trigger--desktop',
         color='dark',
         n_clicks=0,
         title='Abrir navegación',
@@ -38,7 +38,7 @@ def build_ada_navigation_mobile_trigger() -> dbc.Button:
     )
 
 
-# El contenido expone identidad DOM estable separada de las clases usadas sólo para presentación.
+# El Offcanvas expone identidad DOM estable y conserva Bootstrap sólo como frontera de implementación.
 def build_ada_navigation_offcanvas(
     menu: NavigationMenu,
     *,
@@ -92,15 +92,16 @@ def _build_title(view: AdaNavigationView) -> html.Div:
     )
 
 
+# Identidad y footer quedan fuera del área scrollable; sólo acción y opciones de Navigation se desplazan.
 def _build_menu_content(menu: NavigationMenu, view: AdaNavigationView) -> html.Div:
     nodes = sorted(
         [*menu.links, *menu.groups],
         key=lambda node: (node.order, node.label, node.key),
     )
-    main_children = [_build_user_card(menu.user)]
+    scroll_children: list[object] = []
     if view.action is not None:
-        main_children.append(_build_action(view.action))
-    main_children.extend(
+        scroll_children.append(_build_action(view.action))
+    scroll_children.extend(
         [
             html.Div(className='ada-navigation__divider'),
             _build_navigation_nodes(nodes),
@@ -109,12 +110,22 @@ def _build_menu_content(menu: NavigationMenu, view: AdaNavigationView) -> html.D
     return html.Div(
         className='ada-navigation__body',
         children=[
-            html.Div(main_children, className='ada-navigation__main'),
+            html.Div(
+                _build_user_card(menu.user),
+                className='ada-navigation__identity',
+                **slot_identity_attributes('navigation_identity'),
+            ),
+            html.Div(
+                scroll_children,
+                className='ada-navigation__main',
+                **slot_identity_attributes('navigation_scroll'),
+            ),
             _build_footer(view),
         ],
     )
 
 
+# El footer es una región institucional fija y compacta al pie del panel.
 def _build_footer(view: AdaNavigationView) -> html.Div | None:
     if view.footer_logo_src is None and view.application_version is None:
         return None
@@ -139,6 +150,7 @@ def _build_footer(view: AdaNavigationView) -> html.Div | None:
                 else None
             ),
         ],
+        **slot_identity_attributes('navigation_footer'),
     )
 
 
@@ -228,7 +240,7 @@ def _build_node(node: NavigationLink | NavigationGroup) -> html.Div | dcc.Link |
     return _build_link(node, is_child=False)
 
 
-# Los estados creados por ADA usan modificadores BEM; Collapse sigue siendo responsabilidad Bootstrap.
+# Los estados propios usan modificadores BEM; Collapse continúa bajo responsabilidad Bootstrap.
 def _build_group(group: NavigationGroup) -> html.Div:
     group_class = 'ada-navigation__root-item ada-navigation__group'
     if not group.enabled:
