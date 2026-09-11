@@ -450,6 +450,10 @@
 }
 
 .ada-navigation__group-button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
     color: var(--ada-nav-text-strong);
     background: rgba(255, 255, 255, .64);
     font-weight: 750;
