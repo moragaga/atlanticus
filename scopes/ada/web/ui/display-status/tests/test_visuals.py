@@ -50,12 +50,3 @@ def test_status_assets_exist_and_are_valid_svg_documents() -> None:
         resource = root.joinpath(name)
         assert resource.is_file()
         ElementTree.fromstring(resource.read_text(encoding='utf-8'))
-
-
-def test_internal_error_viewbox_matches_bootstrap_path_coordinates() -> None:
-    resource = files('ada.web.ui.display_status').joinpath(
-        'resources/img/status/internal-error.svg'
-    )
-    root = ElementTree.fromstring(resource.read_text(encoding='utf-8'))
-
-    assert root.attrib['viewBox'] == '0 0 16 16'

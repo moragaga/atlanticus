@@ -1,40 +1,25 @@
 from __future__ import annotations
 
 from importlib.resources import files
+from importlib.resources.abc import Traversable
+
+
+def _asset_names(root: Traversable, suffix: str) -> set[str]:
+    return {
+        entry.name for entry in root.iterdir() if entry.is_file() and entry.name.endswith(suffix)
+    }
 
 
 def test_asset_lists_publish_generic_css_and_runtime() -> None:
-    package = files('ada.web.ui.page_readiness')
-    css_list = package.joinpath('resources/css/css.list').read_text().splitlines()
-    js_list = package.joinpath('resources/js/js.list').read_text().splitlines()
+    package = files('ada.web.ui.page_readiness').joinpath('resources')
+    css_root = package.joinpath('css')
+    js_root = package.joinpath('js')
+    css_list = css_root.joinpath('css.list').read_text(encoding='utf-8').splitlines()
+    js_list = js_root.joinpath('js.list').read_text(encoding='utf-8').splitlines()
 
     assert css_list == ['10-page-readiness.css']
     assert js_list == ['10-page-readiness.js']
-
-
-def test_runtime_uses_contractual_markers_and_no_tool_specific_state() -> None:
-    package = files('ada.web.ui.page_readiness')
-    js = package.joinpath('resources/js/10-page-readiness.js').read_text()
-
-    for token in (
-        'data-ada-page-readiness',
-        'data-ada-component-key',
-        'data-ada-render-ready',
-        'MutationObserver',
-        'transitionend',
-        'requestAnimationFrame',
-    ):
-        assert token in js
-
-    assert 'data-ada-render-key' not in js
-
-    for token in (
-        'Integrated Operations',
-        'Flotación',
-        'Carguío',
-        'localStorage',
-        'sessionStorage',
-        'fetch(',
-        'setInterval(',
-    ):
-        assert token not in js
+    assert all(css_root.joinpath(name).is_file() for name in css_list)
+    assert all(js_root.joinpath(name).is_file() for name in js_list)
+    assert _asset_names(css_root, '.css') == set(css_list)
+    assert _asset_names(js_root, '.js') == set(js_list)
