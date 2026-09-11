@@ -1,4 +1,4 @@
-# Presentación reusable: sólo el nodo que representa un valor recibe el atributo de Inspection.
+# Presentation traduce escalas semánticas a BEM propio y conserva aparte las utilities externas permitidas.
 from __future__ import annotations
 
 import re
@@ -18,24 +18,34 @@ from .models import (
     GlobalIndicatorMeasurementState,
     GlobalIndicatorState,
     GlobalIndicatorStyle,
+    GlobalIndicatorTextScale,
     IndicatorColorClass,
 )
 
 _CLASS_TOKEN = re.compile(r'^[A-Za-z_][A-Za-z0-9_-]*$')
+# Único borde donde una escala del modelo se convierte en una clase de presentación.
+_TEXT_SCALE_CLASS: dict[GlobalIndicatorTextScale, str] = {
+    'prominent': 'ada-global-indicator__text--prominent',
+    'standard': 'ada-global-indicator__text--standard',
+    'compact': 'ada-global-indicator__text--compact',
+    'micro': 'ada-global-indicator__text--micro',
+}
 
 
+# La colección declara identidad semántica sin convertir className en contrato de pruebas.
 def build_global_indicators(*, collection: GlobalIndicatorCollection) -> Component:
     return html.Div(
-        className='global-indicators',
+        className='ada-global-indicator-grid',
+        **{'data-ada-component-key': 'global-indicators'},
         children=[build_global_indicator(state=indicator) for indicator in collection.indicators],
     )
 
 
 def build_global_indicator(*, state: GlobalIndicatorState) -> Component:
-    # El root/heading siguen neutrales para evitar que todo el slot parezca seleccionable.
     return html.Div(
-        className='global-indicator',
+        className='ada-global-indicator',
         **{
+            'data-ada-component-key': 'global-indicator',
             'data-indicator-key': state.key,
             'data-measurement-count': str(len(state.measurements)),
             'data-has-last-measurement': 'true' if state.last_measurement is not None else 'false',
@@ -44,10 +54,11 @@ def build_global_indicator(*, state: GlobalIndicatorState) -> Component:
             _build_label(
                 label=state.label,
                 unit=state.unit,
-                class_name=state.style.heading_class,
+                scale=state.style.heading_scale,
             ),
             html.Div(
-                className='global-indicator__content',
+                className='ada-global-indicator__content',
+                **{'data-ada-slot': 'content'},
                 children=_build_indicator_content(
                     measurements=state.measurements,
                     last_measurement=state.last_measurement,
@@ -58,17 +69,17 @@ def build_global_indicator(*, state: GlobalIndicatorState) -> Component:
     )
 
 
-def _build_label(*, label: str, unit: str, class_name: str) -> Component:
+def _build_label(*, label: str, unit: str, scale: GlobalIndicatorTextScale) -> Component:
     return html.Div(
-        className=f'global-indicator__heading {class_name}',
+        className=_text_class_name('ada-global-indicator__heading', scale),
         children=[
             html.P(
-                className='global-indicator__label',
+                className='ada-global-indicator__label',
                 title=label,
                 children=[label],
             ),
-            html.I(className='global-indicator__icon bi bi-arrow-right-short px-1'),
-            html.P(className='global-indicator__unit', children=[unit]),
+            html.I(className='ada-global-indicator__icon bi bi-arrow-right-short px-1'),
+            html.P(className='ada-global-indicator__unit', children=[unit]),
         ],
     )
 
@@ -96,7 +107,7 @@ def _build_indicator_content(
 
 def _build_table(*, rows: list[Component]) -> Component:
     return html.Table(
-        className='global-indicator__table',
+        className='ada-global-indicator__table',
         children=[html.Tbody(children=rows)],
     )
 
@@ -107,28 +118,33 @@ def _build_table_row(
     style: GlobalIndicatorStyle,
 ) -> Component:
     return html.Tr(
-        className='global-indicator__row',
+        className='ada-global-indicator__row',
         **{'data-measurement-key': state.key},
         children=[
             _build_table_value_cell(
                 value=DisplayValue.ok(state.label),
-                value_class_name=(
-                    f'global-indicator__value--measurement-label {style.measurement_label_class}'
+                value_class_name=_text_class_name(
+                    'ada-global-indicator__value--measurement-label',
+                    style.measurement_label_scale,
                 ),
                 is_header=True,
             ),
             _build_table_value_cell(
                 value=state.actual_value,
                 color_class=state.color_class,
-                value_class_name=f'global-indicator__value--actual {style.actual_value_class}',
-                # Actual puede apuntar a una Definition distinta del plan de la misma fila.
+                value_class_name=_text_class_name(
+                    'ada-global-indicator__value--actual',
+                    style.actual_value_scale,
+                ),
                 inspection_key=state.actual_kpi_key,
             ),
-            _build_table_separator_cell(class_name=style.plan_value_class),
+            _build_table_separator_cell(scale=style.plan_value_scale),
             _build_table_value_cell(
                 value=state.plan_value,
-                value_class_name=f'global-indicator__value--plan {style.plan_value_class}',
-                # Plan participa sólo cuando la composición declara explícitamente su propia identidad.
+                value_class_name=_text_class_name(
+                    'ada-global-indicator__value--plan',
+                    style.plan_value_scale,
+                ),
                 inspection_key=state.plan_kpi_key,
             ),
         ],
@@ -147,13 +163,13 @@ def _build_table_value_cell(
     attributes = {'scope': 'row'} if is_header else {}
     resolved_value = value or DisplayValue.empty()
     return component(
-        className='global-indicator__cell',
+        className='ada-global-indicator__cell',
         children=[
             html.P(
                 className=' '.join(
                     part
                     for part in (
-                        'global-indicator__value',
+                        'ada-global-indicator__value',
                         value_class_name,
                         _safe_class_names(value=color_class)
                         if resolved_value.status is DisplayStatus.OK
@@ -169,12 +185,12 @@ def _build_table_value_cell(
     )
 
 
-def _build_table_separator_cell(*, class_name: str) -> Component:
+def _build_table_separator_cell(*, scale: GlobalIndicatorTextScale) -> Component:
     return html.Td(
-        className='global-indicator__cell',
+        className='ada-global-indicator__cell',
         children=[
             html.P(
-                className=f'global-indicator__separator {class_name}',
+                className=_text_class_name('ada-global-indicator__separator', scale),
                 children=['/'],
             )
         ],
@@ -187,12 +203,16 @@ def _build_last_measurement_slot(
     style: GlobalIndicatorStyle,
 ) -> Component:
     return html.Div(
-        className='global-indicator__last-measurement',
-        **{'data-measurement-key': state.key},
+        className='ada-global-indicator__last-measurement',
+        **{
+            'data-ada-slot': 'last-measurement',
+            'data-measurement-key': state.key,
+        },
         children=[
             html.P(
-                className=(
-                    f'global-indicator__last-measurement-label {style.last_measurement_label_class}'
+                className=_text_class_name(
+                    'ada-global-indicator__last-measurement-label',
+                    style.last_measurement_label_scale,
                 ),
                 children=[state.label],
             ),
@@ -200,8 +220,10 @@ def _build_last_measurement_slot(
                 className=' '.join(
                     part
                     for part in (
-                        'global-indicator__last-measurement-value',
-                        style.last_measurement_value_class,
+                        _text_class_name(
+                            'ada-global-indicator__last-measurement-value',
+                            style.last_measurement_value_scale,
+                        ),
                         _safe_class_names(value=state.color_class)
                         if state.actual_value.status is DisplayStatus.OK
                         else '',
@@ -215,8 +237,13 @@ def _build_last_measurement_slot(
     )
 
 
+# Cada nodo tipográfico participa como su elemento BEM y como el elemento compartido __text.
+def _text_class_name(base_class: str, scale: GlobalIndicatorTextScale) -> str:
+    return f'{base_class} ada-global-indicator__text {_TEXT_SCALE_CLASS[scale]}'
+
+
+# Inspection sigue siendo opt-in por valor; la limpieza CSS no altera ese contrato.
 def _inspection_attributes(kpi_key: str | None) -> dict[str, str]:
-    # La frontera con Inspection es click-only: el valor no entra al orden de tabulación.
     if kpi_key is None:
         return {}
     return {'data-kpi-inspection-key': kpi_key}
@@ -230,7 +257,7 @@ def _build_display_value(value: DisplayValue) -> str | Component:
 
     icon = build_display_status_icon(
         value.status,
-        class_name='global-indicator__status-icon',
+        class_name='ada-global-indicator__status-icon',
     )
     if icon is not None:
         return icon

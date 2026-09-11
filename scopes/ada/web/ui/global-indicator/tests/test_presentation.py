@@ -66,7 +66,6 @@ def test_degraded_values_delegate_icons_to_shared_display_status() -> None:
     assert any(source.endswith('/not-mapped.svg') for source in sources)
     assert any(source.endswith('/empty-data.svg') for source in sources)
     assert any(source.endswith('/internal-error.svg') for source in sources)
-    assert all('ada-display-status__icon' in _props(item)['className'] for item in images)
 
 
 def test_two_measurements_render_only_real_rows_and_omit_optional_last_measurement() -> None:
@@ -85,14 +84,12 @@ def test_two_measurements_render_only_real_rows_and_omit_optional_last_measureme
     last_slots = [
         item
         for item in _walk(component)
-        if 'global-indicator__last-measurement' in (_props(item).get('className') or '')
+        if _props(item).get('data-ada-slot') == 'last-measurement'
     ]
 
+    assert _props(component)['data-ada-component-key'] == 'global-indicator'
     assert _props(component)['data-measurement-count'] == '2'
     assert len(rows) == 2
-    assert all(
-        'global-indicator__row--empty' not in (_props(row).get('className') or '') for row in rows
-    )
     assert last_slots == []
 
 
@@ -118,19 +115,15 @@ def test_ok_values_keep_safe_color_classes_and_last_measurement_below_table() ->
         if item.__class__.__name__ == 'P'
     ]
     content = next(
-        item
-        for item in _walk(component)
-        if _props(item).get('className') == 'global-indicator__content'
+        item for item in _walk(component) if _props(item).get('data-ada-slot') == 'content'
     )
     table, last_measurement = content.children
     label, actual_value = last_measurement.children
 
     assert any('text-success fw-bold' in value for value in values)
     assert table.__class__.__name__ == 'Table'
-    assert _props(last_measurement)['className'] == 'global-indicator__last-measurement'
-    assert _props(label)['className'].startswith('global-indicator__last-measurement-label')
+    assert _props(last_measurement)['data-ada-slot'] == 'last-measurement'
     assert label.children == ['Última medición']
-    assert _props(actual_value)['className'].startswith('global-indicator__last-measurement-value')
     assert actual_value.children == ['198']
 
 
@@ -151,7 +144,7 @@ def test_collection_renders_exactly_the_indicators_received() -> None:
 
         component = build_global_indicators(collection=GlobalIndicatorCollection(indicators))
 
-        assert _props(component)['className'] == 'global-indicators'
+        assert _props(component)['data-ada-component-key'] == 'global-indicators'
         assert len(component.children) == count
         assert [_props(child)['data-indicator-key'] for child in component.children] == [
             indicator.key for indicator in indicators
@@ -171,15 +164,10 @@ def test_indicator_uses_table_measurements_and_protects_long_heading_text() -> N
 
     component = build_global_indicator(state=state)
     tables = [item for item in _walk(component) if item.__class__.__name__ == 'Table']
-    labels = [
-        item
-        for item in _walk(component)
-        if 'global-indicator__label' in (_props(item).get('className') or '')
-    ]
+    titled = [item for item in _walk(component) if _props(item).get('title') == state.label]
 
     assert len(tables) == 1
-    assert len(labels) == 1
-    assert _props(labels[0])['title'] == state.label
+    assert len(titled) == 1
 
 
 def test_indicator_is_not_inspectable_without_value_kpi_keys() -> None:
@@ -194,6 +182,7 @@ def test_indicator_is_not_inspectable_without_value_kpi_keys() -> None:
     )
 
     component = build_global_indicator(state=state)
+
     assert all('data-kpi-inspection-key' not in _props(item) for item in _walk(component))
     assert 'data-definition-key' not in _props(component)
 
@@ -246,11 +235,9 @@ def test_each_value_can_opt_into_its_own_kpi_definition() -> None:
     assert all('aria-haspopup' not in _props(item) for item in triggers)
 
     measurement_labels = [
-        item
-        for item in _walk(component)
-        if 'global-indicator__value--measurement-label' in (_props(item).get('className') or '')
+        item for item in _walk(component) if item.__class__.__name__ == 'Th'
     ]
-    assert all('data-kpi-inspection-key' not in _props(item) for item in measurement_labels)
+    assert all('data-kpi-inspection-key' not in _props(item.children[0]) for item in measurement_labels)
 
 
 def test_value_without_kpi_key_remains_neutral_inside_inspectable_row() -> None:

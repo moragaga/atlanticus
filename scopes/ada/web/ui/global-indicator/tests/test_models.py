@@ -7,6 +7,7 @@ from ada.web.ui.global_indicator import (
     GlobalIndicatorLastMeasurementState,
     GlobalIndicatorMeasurementState,
     GlobalIndicatorState,
+    GlobalIndicatorStyle,
     global_indicator_measurement_capacity,
 )
 
@@ -72,6 +73,22 @@ def test_collection_rejects_duplicate_indicator_keys() -> None:
 
     with pytest.raises(GlobalIndicatorDefinitionError, match='duplicate keys'):
         GlobalIndicatorCollection((indicator, indicator))
+
+
+def test_global_indicator_style_uses_semantic_text_scales() -> None:
+    style = GlobalIndicatorStyle()
+
+    assert style.heading_scale == 'compact'
+    assert style.measurement_label_scale == 'standard'
+    assert style.actual_value_scale == 'prominent'
+    assert style.plan_value_scale == 'standard'
+    assert style.last_measurement_label_scale == 'micro'
+    assert style.last_measurement_value_scale == 'compact'
+
+
+def test_global_indicator_style_rejects_css_class_names_as_text_scales() -> None:
+    with pytest.raises(GlobalIndicatorDefinitionError, match='Invalid global indicator text scale'):
+        GlobalIndicatorStyle(actual_value_scale='font-size-gi-100')
 
 
 def test_measurement_values_accept_independent_optional_kpi_keys() -> None:

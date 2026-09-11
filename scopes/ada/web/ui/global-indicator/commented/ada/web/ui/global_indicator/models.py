@@ -1,10 +1,10 @@
-# Cada valor visual declara su identidad KPI opcional; el slot no impone una Definition compartida.
+# El modelo expone escalas semánticas de texto; las clases CSS quedan confinadas a presentation.py.
 from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
-from typing import TypeAlias
+from typing import Literal, TypeAlias
 
 from dash.development.base_component import Component
 
@@ -13,37 +13,39 @@ from ada.web.ui.display_status import DisplayValue, coerce_display_value
 from .errors import GlobalIndicatorDefinitionError
 
 _KEY_PATTERN = re.compile(r'^[a-z][a-z0-9_]*$')
-_CLASS_TOKEN = re.compile(r'^[A-Za-z_][A-Za-z0-9_-]*$')
 _GLOBAL_INDICATOR_MEASUREMENT_CAPACITY = 3
+_GLOBAL_INDICATOR_TEXT_SCALES = frozenset({'prominent', 'standard', 'compact', 'micro'})
 
 IndicatorPrimitive: TypeAlias = str | int | float | Component
 IndicatorInput: TypeAlias = IndicatorPrimitive | DisplayValue | None
 IndicatorColorClass: TypeAlias = str | Component | None
+GlobalIndicatorTextScale: TypeAlias = Literal['prominent', 'standard', 'compact', 'micro']
 
 
+# Las escalas describen intención visual reutilizable y no nombres de clases ni utilidades CSS.
 @dataclass(frozen=True, slots=True)
 class GlobalIndicatorStyle:
-    heading_class: str = 'font-size-gi-300'
-    measurement_label_class: str = 'font-size-gi-200'
-    actual_value_class: str = 'font-size-gi-100'
-    plan_value_class: str = 'font-size-gi-200'
-    last_measurement_label_class: str = 'font-size-gi-400'
-    last_measurement_value_class: str = 'font-size-gi-300'
+    heading_scale: GlobalIndicatorTextScale = 'compact'
+    measurement_label_scale: GlobalIndicatorTextScale = 'standard'
+    actual_value_scale: GlobalIndicatorTextScale = 'prominent'
+    plan_value_scale: GlobalIndicatorTextScale = 'standard'
+    last_measurement_label_scale: GlobalIndicatorTextScale = 'micro'
+    last_measurement_value_scale: GlobalIndicatorTextScale = 'compact'
 
     def __post_init__(self) -> None:
         for field_name in (
-            'heading_class',
-            'measurement_label_class',
-            'actual_value_class',
-            'plan_value_class',
-            'last_measurement_label_class',
-            'last_measurement_value_class',
+            'heading_scale',
+            'measurement_label_scale',
+            'actual_value_scale',
+            'plan_value_scale',
+            'last_measurement_label_scale',
+            'last_measurement_value_scale',
         ):
-            _require_class_tokens(getattr(self, field_name), field_name=field_name)
+            _require_text_scale(getattr(self, field_name), field_name=field_name)
 
 
-@dataclass(frozen=True, slots=True)
 # Actual y plan son superficies semánticas independientes aunque pertenezcan a la misma fila visual.
+@dataclass(frozen=True, slots=True)
 class GlobalIndicatorMeasurementState:
     key: str
     label: str
@@ -58,7 +60,6 @@ class GlobalIndicatorMeasurementState:
         _require_text(self.label, field_name='measurement label')
         object.__setattr__(self, 'actual_value', coerce_display_value(self.actual_value))
         object.__setattr__(self, 'plan_value', coerce_display_value(self.plan_value))
-        # Sólo se normaliza la identidad; Inspection/provider permanecen fuera del componente.
         if self.actual_kpi_key is not None:
             object.__setattr__(
                 self,
@@ -93,8 +94,8 @@ class GlobalIndicatorLastMeasurementState:
             )
 
 
+# El estado conserva sólo semántica/configuración; presentation resuelve BEM y composición HTML.
 @dataclass(frozen=True, slots=True)
-# El estado del slot ya no posee kpi_key global: las identidades viven exclusivamente en cada valor.
 class GlobalIndicatorState:
     key: str
     label: str
@@ -199,7 +200,6 @@ def _require_key(value: str, *, field_name: str) -> None:
 
 
 def _require_kpi_key(value: str, *, field_name: str) -> str:
-    # KPI Definition acepta identidad textual; UI sólo rechaza valores vacíos.
     normalized = value.strip()
     if not normalized:
         raise GlobalIndicatorDefinitionError(f'Global indicator {field_name} cannot be empty')
@@ -211,9 +211,9 @@ def _require_text(value: str | None, *, field_name: str) -> None:
         raise GlobalIndicatorDefinitionError(f'Global indicator {field_name} cannot be empty')
 
 
-def _require_class_tokens(value: str, *, field_name: str) -> None:
-    tokens = value.split()
-    if not tokens or not all(_CLASS_TOKEN.fullmatch(token) for token in tokens):
+# El gate rechaza que una clase CSS vuelva a filtrarse dentro del contrato de dominio.
+def _require_text_scale(value: str, *, field_name: str) -> None:
+    if value not in _GLOBAL_INDICATOR_TEXT_SCALES:
         raise GlobalIndicatorDefinitionError(
-            f'Invalid global indicator CSS classes for {field_name}: {value!r}'
+            f'Invalid global indicator text scale for {field_name}: {value!r}'
         )
