@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-# Callbacks de presentación: la URL gobierna la ruta activa y la apertura obligatoria de su grupo padre.
+# Callbacks de presentación: la URL gobierna la ruta activa, la apertura del grupo padre y el cierre del panel al navegar.
 from dash import ALL, Dash, Input, Output, State
 
 from ada.web.shell.navigation.ids import AdaNavigationIds
@@ -8,15 +8,22 @@ from atlanticus.web.services import ServiceRegistry
 
 
 def register_ada_navigation_callbacks(app: Dash, _services: ServiceRegistry) -> None:
+    # Los triggers alternan el panel; un cambio efectivo de pathname siempre lo cierra.
     app.clientside_callback(
         """
-        function(_mobileClicks, _desktopClicks, isOpen) {
+        function(_mobileClicks, _desktopClicks, _pathname, isOpen) {
+            const context = window.dash_clientside.callback_context;
+            const triggeredId = context ? context.triggered_id : null;
+            if (triggeredId === 'ada-navigation-location') {
+                return false;
+            }
             return !Boolean(isOpen);
         }
         """,
         Output(AdaNavigationIds.OFFCANVAS, 'is_open'),
         Input(AdaNavigationIds.MOBILE_TOGGLE, 'n_clicks'),
         Input(AdaNavigationIds.DESKTOP_TOGGLE, 'n_clicks'),
+        Input(AdaNavigationIds.LOCATION, 'pathname'),
         State(AdaNavigationIds.OFFCANVAS, 'is_open'),
         prevent_initial_call=True,
     )
