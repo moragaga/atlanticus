@@ -1,6 +1,5 @@
-/* Espejo pedagógico: la cascada histórica se consolidó en un único bloque por responsabilidad. */
+/* El slot conserva su geometría; sólo el marcador derecho gana presencia visual. */
 .ada-alarm-status {
-    /* Sólo permanecen los tokens que participan en el diseño final. */
     --ada-alarm-status-row-hover: rgba(91, 92, 100, .14);
     --ada-alarm-status-divider: rgba(91, 92, 100, .34);
     display: flex;
@@ -83,7 +82,7 @@
     top: 50%;
     color: var(--ada-color-text-strong);
     content: '•';
-    font-size: .9rem;
+    font-size: 1rem;
     line-height: 1;
     transform: translateY(-50%);
 }
@@ -116,7 +115,7 @@
     white-space: nowrap;
 }
 
-/* Mobile conserva las dos acciones legibles y el reparto actual del slot. */
+/* Mobile mantiene dos acciones compactas y centradas dentro del slot. */
 @media only screen and (min-width: 350px) and (max-width: 1279.98px) {
     .ada-alarm-status { padding: .35rem .6rem; }
     .ada-alarm-status__label { font-size: .6rem; }
@@ -133,7 +132,7 @@
     .ada-alarm-status__text { font-size: .8rem; }
 }
 
-/* Tablet Pelambres mantiene las dos filas legibles dentro del slot compacto. */
+/* Tablet Pelambres y desktop conservan la calibración aprobada. */
 @media only screen and (min-width: 1280px) {
     .ada-alarm-status { padding: .2rem .38rem; }
     .ada-alarm-status__label { font-size: .42rem; }
@@ -166,12 +165,13 @@
     .ada-alarm-status__text { font-size: .64rem; }
 }
 
-/* Videowall aumenta filas, icono y tipografía sin cambiar la estructura. */
+/* Videowall escala también el marcador derecho para lectura a distancia. */
 @media only screen and (min-width: 2560px) {
     .ada-alarm-status { padding: .28rem .48rem; }
     .ada-alarm-status__label { font-size: .6rem; }
     .ada-alarm-status__icon { font-size: .72rem; }
     .ada-alarm-status__action { height: 1.7rem; grid-template-columns: 1.75rem minmax(0, 1fr); }
+    .ada-alarm-status__action::after { font-size: 1.15rem; }
     .ada-alarm-status__count { font-size: .82rem; }
     .ada-alarm-status__text { font-size: .72rem; }
 }

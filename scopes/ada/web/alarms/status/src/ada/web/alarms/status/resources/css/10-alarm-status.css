@@ -81,7 +81,7 @@
     top: 50%;
     color: var(--ada-color-text-strong);
     content: '•';
-    font-size: .9rem;
+    font-size: 1rem;
     line-height: 1;
     transform: translateY(-50%);
 }
@@ -167,6 +167,7 @@
     .ada-alarm-status__label { font-size: .6rem; }
     .ada-alarm-status__icon { font-size: .72rem; }
     .ada-alarm-status__action { height: 1.7rem; grid-template-columns: 1.75rem minmax(0, 1fr); }
+    .ada-alarm-status__action::after { font-size: 1.15rem; }
     .ada-alarm-status__count { font-size: .82rem; }
     .ada-alarm-status__text { font-size: .72rem; }
 }
