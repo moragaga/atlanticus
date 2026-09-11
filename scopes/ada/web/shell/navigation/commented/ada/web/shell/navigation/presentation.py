@@ -59,6 +59,10 @@ def build_ada_navigation_offcanvas(
                 className='ada-navigation__content',
                 **component_identity_attributes('navigation'),
             ),
+            dcc.Store(
+                id=AdaNavigationIds.ROUTE_GROUPS,
+                data=_build_route_group_map(menu),
+            ),
         ],
     )
 
@@ -93,6 +97,18 @@ def _build_title(view: AdaNavigationView) -> html.Div:
 
 
 # Identidad y footer quedan fuera del área scrollable; sólo acción y opciones de Navigation se desplazan.
+
+# Navigation publica la relación ruta→grupo ya resuelta para que la URL pueda mantener abierto
+# y marcado su grupo padre sin deducir jerarquía desde el DOM ni desde clases de presentación.
+def _build_route_group_map(menu: NavigationMenu) -> dict[str, str]:
+    route_groups: dict[str, str] = {}
+    for group in menu.groups:
+        for link in group.links:
+            if link.is_external:
+                continue
+            route_groups.setdefault(link.href, group.key)
+    return route_groups
+
 def _build_menu_content(menu: NavigationMenu, view: AdaNavigationView) -> html.Div:
     nodes = sorted(
         [*menu.links, *menu.groups],

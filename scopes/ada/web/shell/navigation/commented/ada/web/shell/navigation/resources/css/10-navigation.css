@@ -459,9 +459,13 @@
     font-weight: 750;
 }
 
-/* --open sólo expresa expansión. El foco nativo decide qué único grupo abierto conserva el resaltado. */
+/* --open expresa expansión; --route-active identifica de forma persistente el padre de la URL actual. */
 .ada-navigation__group:not(.ada-navigation__group--disabled)
-    .ada-navigation__group-button--open:focus {
+    .ada-navigation__group-button--route-active,
+.ada-navigation__group:not(.ada-navigation__group--disabled)
+    .ada-navigation__group-button--route-active:hover,
+.ada-navigation__group:not(.ada-navigation__group--disabled)
+    .ada-navigation__group-button--route-active:focus {
     color: var(--ada-nav-text-strong);
     background: rgba(0, 0, 0, .12);
     border-color: rgba(0, 0, 0, .20);

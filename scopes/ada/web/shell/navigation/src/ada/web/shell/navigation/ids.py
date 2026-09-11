@@ -7,6 +7,7 @@ class AdaNavigationIds:
     OFFCANVAS = 'ada-navigation-offcanvas'
     LOCATION = 'ada-navigation-location'
     MENU_CONTENT = 'ada-navigation-menu-content'
+    ROUTE_GROUPS = 'ada-navigation-route-groups'
     GROUP_TOGGLE = 'ada-navigation-group-toggle'
     GROUP_COLLAPSE = 'ada-navigation-group-collapse'
     LINK = 'ada-navigation-link'

@@ -109,6 +109,7 @@ def test_offcanvas_preserves_navigation_contract_with_injected_view() -> None:
     )
     payload = str(component.to_plotly_json())
     content = component.children[1]
+    route_groups = component.children[2]
     content_props = content.to_plotly_json()['props']
     body = content.children
     identity, scroll, footer = body.children
@@ -124,6 +125,9 @@ def test_offcanvas_preserves_navigation_contract_with_injected_view() -> None:
     assert footer.to_plotly_json()['props']['data-ada-slot-key'] == 'navigation_footer'
     assert 'Local User' in str(identity.to_plotly_json())
     assert 'Local User' not in str(scroll.to_plotly_json())
+    assert route_groups.id == 'ada-navigation-route-groups'
+    assert route_groups.data == {'/status': 'configuration'}
+    assert '/' not in route_groups.data
     assert '/assets/ada/logo.svg' in payload
     assert 'Asistente de Decisiones Ágiles' in payload
     assert '/assets/ada/pelambres.svg' in payload
