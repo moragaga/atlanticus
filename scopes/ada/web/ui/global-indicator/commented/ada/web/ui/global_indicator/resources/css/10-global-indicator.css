@@ -1,6 +1,7 @@
-/* Layout uniforme: tres filas visuales por indicador, sin inflar el header. */
+/* Rebuild visual autoritativo: conserva sólo el contrato BEM y la geometría validada. */
 .ada-global-indicator-grid {
     --ada-global-indicator-border: var(--ada-color-border-primary);
+    --ada-global-indicator-mobile-divider: rgba(91, 92, 100, .12);
     --ada-global-indicator-ink: var(--ada-color-text-primary);
     display: flex;
     width: 100%;
@@ -11,23 +12,21 @@
     justify-content: center;
     flex-wrap: wrap;
     box-sizing: border-box;
-    row-gap: .25rem;
     padding-block: .2rem;
 }
 
 .ada-global-indicator {
-    --ada-global-indicator-row-height: 1rem;
     display: flex;
     flex: 0 0 100%;
     width: 100%;
     max-width: 100%;
     min-width: 0;
-    min-height: 4.25rem;
+    min-height: 0;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: .3rem;
-    padding: 0 .35rem;
+    gap: .28rem;
+    padding: .2rem .45rem;
     box-sizing: border-box;
     overflow: hidden;
     color: var(--ada-global-indicator-ink);
@@ -45,8 +44,9 @@
     min-width: 0;
     align-items: center;
     justify-content: center;
-    gap: .2rem;
+    gap: 0;
     font-weight: 600;
+    white-space: nowrap;
 }
 
 .ada-global-indicator__label {
@@ -64,20 +64,21 @@
 
 .ada-global-indicator__content {
     display: flex;
-    width: min(100%, 11.5rem);
+    width: 100%;
     min-width: 0;
     flex-direction: column;
-    align-items: stretch;
+    align-items: center;
     justify-content: center;
-    gap: 0;
+    gap: .04rem;
 }
 
+/* La tabla auto alinea cada fila por columnas: temporalidad, actual, separador y plan. */
 .ada-global-indicator__table {
-    width: 100%;
+    width: auto;
     max-width: 100%;
     background: transparent;
     border-collapse: collapse;
-    table-layout: fixed;
+    table-layout: auto;
 }
 
 .ada-global-indicator__cell {
@@ -86,145 +87,118 @@
     vertical-align: middle;
 }
 
-.ada-global-indicator__row {
-    height: var(--ada-global-indicator-row-height);
-}
-
-.ada-global-indicator__cell:nth-child(1) {
-    width: 36%;
-}
-
-.ada-global-indicator__cell:nth-child(2) {
-    width: 24%;
-}
-
-.ada-global-indicator__cell:nth-child(3) {
-    width: 8%;
-}
-
-.ada-global-indicator__cell:nth-child(4) {
-    width: 32%;
-}
-
 .ada-global-indicator__value,
 .ada-global-indicator__separator {
     line-height: 1;
+    white-space: nowrap;
 }
 
 .ada-global-indicator__value--measurement-label {
-    padding: 0 .45rem 0 0;
-    overflow: hidden;
+    padding: .14rem .42rem .14rem 0;
     font-weight: 600;
     text-align: start;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 .ada-global-indicator__value--actual {
-    padding: 0 .08rem 0 0;
-    text-align: end;
+    padding: .14rem .04rem .14rem 0;
     font-weight: 800;
-    white-space: nowrap;
+    text-align: end;
 }
 
 .ada-global-indicator__separator {
-    padding: 0 .08rem;
+    padding: .14rem .04rem;
     text-align: center;
-    white-space: nowrap;
 }
 
 .ada-global-indicator__value--plan {
-    padding: 0 0 0 .08rem;
-    text-align: start;
+    padding: .14rem 0 .14rem .04rem;
     font-weight: 500;
-    white-space: nowrap;
+    text-align: start;
 }
 
+/* Última medición permanece centrada y apilada: label arriba, valor abajo. */
 .ada-global-indicator__last-measurement {
     display: flex;
-    min-height: var(--ada-global-indicator-row-height);
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: .22rem;
+    gap: .02rem;
+    margin-top: .02rem;
 }
 
 .ada-global-indicator__last-measurement-label {
     font-weight: 600;
+    line-height: 1;
     white-space: nowrap;
 }
 
 .ada-global-indicator__last-measurement-value {
     font-weight: 800;
+    line-height: 1;
     white-space: nowrap;
 }
 
-.ada-global-indicator__text--prominent { font-size: .68rem; }
-.ada-global-indicator__text--standard { font-size: .58rem; }
-.ada-global-indicator__text--compact { font-size: .48rem; }
-.ada-global-indicator__text--micro { font-size: .4rem; }
+.ada-global-indicator__text--prominent { font-size: .76rem; }
+.ada-global-indicator__text--standard { font-size: .64rem; }
+.ada-global-indicator__text--compact { font-size: .55rem; }
+.ada-global-indicator__text--micro { font-size: .47rem; }
 
 .ada-global-indicator__status-icon {
     display: block;
     margin-inline: auto;
 }
 
-/* Mobile mantiene dos indicadores por fila y usa divisores sutiles en vez de gaps grandes. */
+/* Mobile: dos indicadores por fila, sin divisor vertical y con línea horizontal tenue. */
 @media only screen and (min-width: 350px) and (max-width: 1279.98px) {
     .ada-global-indicator-grid {
-        row-gap: 0;
-        padding-block: .2rem;
+        padding-block: .3rem;
     }
 
     .ada-global-indicator {
-        --ada-global-indicator-row-height: 1.08rem;
         flex: 0 0 50%;
         width: 50%;
         max-width: 50%;
-        min-height: 4.15rem;
-        padding: .18rem .6rem;
-    }
-
-    .ada-global-indicator:nth-child(odd) {
-        border-inline-end: 1px solid var(--ada-global-indicator-border);
+        gap: .36rem;
+        padding: .38rem .65rem;
     }
 
     .ada-global-indicator:nth-child(n + 3) {
-        border-top: 1px solid var(--ada-global-indicator-border);
+        margin-top: .18rem;
+        padding-top: .48rem;
+        border-top: 1px solid var(--ada-global-indicator-mobile-divider);
     }
 
     .ada-global-indicator-grid > .ada-global-indicator:last-child:nth-child(odd) {
-        border-inline-end: 0;
         margin-inline: auto;
     }
 
-    .ada-global-indicator__content {
-        width: 100%;
-    }
-
-    .ada-global-indicator__text--prominent { font-size: .8rem; }
-    .ada-global-indicator__text--standard { font-size: .7rem; }
-    .ada-global-indicator__text--compact { font-size: .6rem; }
-    .ada-global-indicator__text--micro { font-size: .5rem; }
-}
-
-@media only screen and (min-width: 480px) and (max-width: 1279.98px) {
-    .ada-global-indicator-grid {
-        padding-block: .25rem;
-    }
-
-    .ada-global-indicator {
-        --ada-global-indicator-row-height: 1.12rem;
-        min-height: 4.35rem;
-        padding-inline: .75rem;
+    .ada-global-indicator__value--measurement-label {
+        padding-inline-end: .48rem;
     }
 
     .ada-global-indicator__text--prominent { font-size: .88rem; }
-    .ada-global-indicator__text--standard { font-size: .76rem; }
-    .ada-global-indicator__text--compact { font-size: .66rem; }
-    .ada-global-indicator__text--micro { font-size: .56rem; }
+    .ada-global-indicator__text--standard { font-size: .74rem; }
+    .ada-global-indicator__text--compact { font-size: .62rem; }
+    .ada-global-indicator__text--micro { font-size: .54rem; }
 }
 
-/* Tablet Pelambres y superiores mantienen una sola fila y los separadores verticales aprobados. */
+@media only screen and (min-width: 480px) and (max-width: 1279.98px) {
+    .ada-global-indicator {
+        gap: .4rem;
+        padding-inline: .85rem;
+    }
+
+    .ada-global-indicator:nth-child(n + 3) {
+        margin-top: .22rem;
+        padding-top: .52rem;
+    }
+
+    .ada-global-indicator__value--measurement-label {
+        padding-inline-end: .55rem;
+    }
+}
+
+/* Desktop: una fila; sólo hay separadores entre indicadores, nunca en los bordes exteriores. */
 @media only screen and (min-width: 1280px) {
     .ada-global-indicator-grid {
         display: grid;
@@ -233,97 +207,99 @@
         align-items: stretch;
         justify-content: stretch;
         flex-wrap: nowrap;
-        row-gap: 0;
-        padding-block: .1rem .14rem;
+        padding-block: .08rem;
     }
 
     .ada-global-indicator {
-        --ada-global-indicator-row-height: .95rem;
         width: 100%;
         height: 100%;
         max-width: 100%;
-        min-width: 0;
-        min-height: 0;
-        gap: .18rem;
-        padding-inline: .25rem;
+        gap: .2rem;
+        padding: .12rem .35rem;
     }
 
-    .ada-global-indicator-grid > .ada-global-indicator {
-        border-inline-end: 1px solid var(--ada-global-indicator-border);
-    }
-
-    .ada-global-indicator-grid > .ada-global-indicator:first-child {
+    .ada-global-indicator + .ada-global-indicator {
         border-inline-start: 1px solid var(--ada-global-indicator-border);
     }
 
-    .ada-global-indicator-grid > .ada-global-indicator:last-child:nth-child(odd) {
-        margin-inline: 0;
+    .ada-global-indicator__value--measurement-label {
+        padding: .11rem .38rem .11rem 0;
     }
 
-    .ada-global-indicator__text--prominent { font-size: .72rem; }
-    .ada-global-indicator__text--standard { font-size: .62rem; }
-    .ada-global-indicator__text--compact { font-size: .52rem; }
-    .ada-global-indicator__text--micro { font-size: .44rem; }
-
-    .ada-global-indicator__heading {
-        width: 100%;
-        max-width: 100%;
+    .ada-global-indicator__value--actual {
+        padding: .11rem .035rem .11rem 0;
     }
 
-    .ada-global-indicator__label {
-        max-width: 100%;
-    }
-}
-
-@media only screen and (min-width: 1366px) {
-    .ada-global-indicator {
-        --ada-global-indicator-row-height: .98rem;
+    .ada-global-indicator__separator {
+        padding: .11rem .035rem;
     }
 
-    .ada-global-indicator-grid { padding-block: .11rem .15rem; }
-    .ada-global-indicator__text--prominent { font-size: .74rem; }
-    .ada-global-indicator__text--standard { font-size: .64rem; }
-    .ada-global-indicator__text--compact { font-size: .54rem; }
-    .ada-global-indicator__text--micro { font-size: .45rem; }
+    .ada-global-indicator__value--plan {
+        padding: .11rem 0 .11rem .035rem;
+    }
+
+    .ada-global-indicator__text--prominent { font-size: .75rem; }
+    .ada-global-indicator__text--standard { font-size: .625rem; }
+    .ada-global-indicator__text--compact { font-size: .5625rem; }
+    .ada-global-indicator__text--micro { font-size: .5rem; }
 }
 
 @media only screen and (min-width: 1536px) {
     .ada-global-indicator {
-        --ada-global-indicator-row-height: 1rem;
+        gap: .22rem;
+        padding-inline: .45rem;
     }
 
-    .ada-global-indicator-grid { padding-block: .12rem .16rem; }
-    .ada-global-indicator__text--prominent { font-size: .76rem; }
+    .ada-global-indicator__value--measurement-label {
+        padding-inline-end: .44rem;
+    }
+
+    .ada-global-indicator__text--prominent { font-size: .78rem; }
     .ada-global-indicator__text--standard { font-size: .66rem; }
-    .ada-global-indicator__text--compact { font-size: .56rem; }
-    .ada-global-indicator__text--micro { font-size: .48rem; }
+    .ada-global-indicator__text--compact { font-size: .58rem; }
+    .ada-global-indicator__text--micro { font-size: .5rem; }
 }
 
 @media only screen and (min-width: 1920px) {
     .ada-global-indicator {
-        --ada-global-indicator-row-height: 1.08rem;
+        gap: .24rem;
+        padding-inline: .55rem;
     }
 
-    .ada-global-indicator-grid { padding-block: .14rem .18rem; }
-    .ada-global-indicator__text--prominent { font-size: .82rem; }
+    .ada-global-indicator__value--measurement-label {
+        padding: .14rem .5rem .14rem 0;
+    }
+
+    .ada-global-indicator__value--actual {
+        padding-block: .14rem;
+    }
+
+    .ada-global-indicator__separator {
+        padding-block: .14rem;
+    }
+
+    .ada-global-indicator__value--plan {
+        padding-block: .14rem;
+    }
+
+    .ada-global-indicator__text--prominent { font-size: .86rem; }
     .ada-global-indicator__text--standard { font-size: .72rem; }
     .ada-global-indicator__text--compact { font-size: .62rem; }
     .ada-global-indicator__text--micro { font-size: .52rem; }
 }
 
-/* Videowall aumenta escala sin cambiar la geometría interna de tres filas. */
 @media only screen and (min-width: 2560px) {
     .ada-global-indicator {
-        --ada-global-indicator-row-height: 1.18rem;
+        gap: .3rem;
+        padding-inline: .75rem;
     }
 
-    .ada-global-indicator-grid { padding-block: .18rem .24rem; }
-    .ada-global-indicator__content { width: min(100%, 14rem); }
-    .ada-global-indicator__text--prominent { font-size: .92rem; }
-    .ada-global-indicator__text--standard { font-size: .8rem; }
+    .ada-global-indicator__value--measurement-label {
+        padding-inline-end: .65rem;
+    }
+
+    .ada-global-indicator__text--prominent { font-size: .96rem; }
+    .ada-global-indicator__text--standard { font-size: .82rem; }
     .ada-global-indicator__text--compact { font-size: .7rem; }
     .ada-global-indicator__text--micro { font-size: .58rem; }
-    .ada-global-indicator__label,
-    .ada-global-indicator__unit { font-size: .86rem; }
-    .ada-global-indicator__value--measurement-label { padding-inline-end: 1rem; }
 }
