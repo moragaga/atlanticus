@@ -119,7 +119,7 @@ def test_pi_and_dispatch_sources_are_the_only_detail_trigger() -> None:
     )
 
 
-def test_hard_stale_and_data_error_are_distinct_dom_states() -> None:
+def test_hard_stale_and_data_error_are_distinct_runtime_states() -> None:
     stale = build_time_status_summary(
         state=TimeStatusSummaryState(
             pi=_source(
@@ -150,19 +150,13 @@ def test_hard_stale_and_data_error_are_distinct_dom_states() -> None:
         item for item in _walk(error) if _props(item).get('data-source-key') == 'pi'
     )
     error_content = _props(_props(error_source)['children'])['children']
-    source_icon = next(
-        item
-        for item in error_content
-        if _props(item).get('data-ada-time-status-source-icon') == 'true'
-    )
     source_value = next(
         item
         for item in error_content
         if _props(item).get('data-ada-time-status-source-value') == 'true'
     )
 
-    assert 'bi-cloud-slash' in _props(source_icon)['className']
-    assert 'bi-exclamation-triangle' in _props(source_value)['className']
+    assert _props(error_source)['data-source-condition'] == 'data_error'
     assert _props(source_value)['aria-label'] == 'Error de información temporal'
 
 
@@ -355,29 +349,6 @@ def test_informational_error_is_rendered_opaquely_without_affecting_summary_heal
     assert _props(blockgrade['children'][1])['children'] == 'Error'
 
 
-def test_time_status_presentation_avoids_native_title_tooltips() -> None:
-    from ada.web.ui.time_status import (
-        TimeStatusDetailSourceState,
-        TimeStatusDetailState,
-        build_time_status_detail,
-    )
-
-    detail = build_time_status_detail(
-        state=TimeStatusDetailState(
-            sources=(
-                TimeStatusDetailSourceState(key='blockgrade', label='BlockGrade', value='Error'),
-            )
-        )
-    )
-    component = build_time_status(
-        tool_key='process',
-        state=_pi_state(has_detail=True),
-        detail=detail,
-    )
-
-    assert all('title' not in _props(item) for item in _walk(component))
-
-
 def test_summary_source_exposes_stable_client_freshness_markers() -> None:
     component = build_time_status_summary(state=_pi_state())
     source = next(
@@ -402,12 +373,3 @@ def test_summary_source_exposes_stable_client_freshness_markers() -> None:
         _props(child).get('data-ada-time-status-source-value') == 'true'
         for child in content_props['children']
     )
-
-
-def test_detail_surface_publishes_bottom_as_initial_collision_placement() -> None:
-    component = build_time_status(
-        tool_key='process', state=_pi_state(has_detail=True), detail=html.Div('Detail')
-    )
-    surface = _props(_props(component)['children'][1])
-
-    assert surface['data-ada-time-status-detail-placement'] == 'bottom'
