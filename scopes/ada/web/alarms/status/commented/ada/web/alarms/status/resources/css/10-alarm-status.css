@@ -83,7 +83,7 @@
     top: 50%;
     color: var(--ada-color-text-strong);
     content: '•';
-    font-size: .7rem;
+    font-size: .9rem;
     line-height: 1;
     transform: translateY(-50%);
 }

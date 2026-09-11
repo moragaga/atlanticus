@@ -139,7 +139,8 @@
 
 @media only screen and (min-width: 350px) {
     .ada-global-indicator-grid {
-        row-gap: .45rem;
+        column-gap: .5rem;
+        row-gap: .7rem;
         padding-block: .4rem;
     }
 
@@ -149,10 +150,11 @@
     .ada-global-indicator__text--micro { font-size: .5rem; }
 
     .ada-global-indicator {
-        flex: 0 0 50%;
-        width: 50%;
-        max-width: 50%;
+        flex: 0 0 calc(50% - .25rem);
+        width: calc(50% - .25rem);
+        max-width: calc(50% - .25rem);
         min-height: 4.6rem;
+        padding-inline: .5rem;
     }
 
     .ada-global-indicator-grid > .ada-global-indicator:last-child:nth-child(odd) {
@@ -162,12 +164,17 @@
 
 @media only screen and (min-width: 480px) {
     .ada-global-indicator-grid {
-        row-gap: .55rem;
+        column-gap: .75rem;
+        row-gap: .8rem;
         padding-block: .5rem;
     }
 
     .ada-global-indicator {
+        flex-basis: calc(50% - .375rem);
+        width: calc(50% - .375rem);
+        max-width: calc(50% - .375rem);
         min-height: 4.9rem;
+        padding-inline: .65rem;
     }
 
     .ada-global-indicator__text--prominent { font-size: .88rem; }
@@ -179,6 +186,7 @@
 @media only screen and (min-width: 1280px) {
     .ada-global-indicator-grid {
         display: grid;
+        column-gap: 0;
         grid-auto-flow: column;
         grid-auto-columns: minmax(0, 1fr);
         align-items: stretch;
