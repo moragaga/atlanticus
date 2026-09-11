@@ -459,18 +459,12 @@
     font-weight: 750;
 }
 
-.ada-navigation__group-button--open {
+/* --open sólo expresa expansión. El foco nativo decide qué único grupo abierto conserva el resaltado. */
+.ada-navigation__group:not(.ada-navigation__group--disabled)
+    .ada-navigation__group-button--open:focus {
     color: var(--ada-nav-text-strong);
     background: rgba(0, 0, 0, .12);
     border-color: rgba(0, 0, 0, .20);
-    font-weight: 750;
-}
-
-.ada-navigation__group-button--open:hover,
-.ada-navigation__group-button--open:focus {
-    color: var(--ada-nav-text-strong);
-    background-color: var(--ada-nav-hover-bg);
-    border-color: var(--ada-nav-hover-bg);
 }
 
 .ada-navigation__group-links {
