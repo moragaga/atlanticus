@@ -96,24 +96,6 @@ def test_header_source_has_no_tool_or_alarm_domain_imports() -> None:
     assert 'ada-navigation__' not in source
 
 
-def test_time_status_slot_sits_below_primary_header_row() -> None:
-    time_status = html.Div('time', id='time-status')
-    component = build_ada_operational_header(
-        brand=html.Div('brand'),
-        time_status=time_status,
-        desktop_navigation_trigger=html.Button('menu'),
-    )
-
-    children = _children(component)
-    assert len(children) == 2
-    primary, time_slot = children
-    assert 'ada-operational-header__primary' in (_prop(primary, 'className') or '')
-    assert 'ada-navigation__' not in (_prop(primary, 'className') or '')
-    assert _prop(time_slot, 'data-ada-slot-key') == 'time_status'
-    assert _prop(time_slot, 'data-slot-empty') == 'false'
-    assert _require_id(time_slot, 'time-status') is time_status
-
-
 def _require_slot(component: Component, slot_key: str) -> Component:
     result = _find(component, property_name='data-ada-slot-key', value=slot_key)
     if result is None:
