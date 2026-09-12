@@ -13,6 +13,7 @@ dependencies = [
     "atlanticus-web-navigation==0.1.0",
     "atlanticus-web-navigation-configuration==0.1.5",
     "atlanticus-web-manager==0.3.14",
+    "atlanticus-web-projection==0.1.0",
     "atlanticus-web-source==0.1.0",
     "atlanticus-web-source-local==0.1.0",
     "atlanticus-web-source-blob==0.1.0",
@@ -42,6 +43,7 @@ atlanticus-web-identity-local = { workspace = true }
 atlanticus-web-navigation = { workspace = true }
 atlanticus-web-navigation-configuration = { workspace = true }
 atlanticus-web-manager = { workspace = true }
+atlanticus-web-projection = { workspace = true }
 atlanticus-web-source = { workspace = true }
 atlanticus-web-source-local = { workspace = true }
 atlanticus-web-source-blob = { workspace = true }
@@ -65,6 +67,7 @@ members = [
     "capabilities/navigation/core",
     "capabilities/navigation/configuration",
     "capabilities/manager",
+    "capabilities/projection/core",
     "capabilities/source/core",
     "capabilities/source/local",
     "capabilities/source/blob",
@@ -109,6 +112,7 @@ testpaths = [
     "capabilities/navigation/core/tests",
     "capabilities/navigation/configuration/tests",
     "capabilities/manager/tests",
+    "capabilities/projection/core/tests",
     "capabilities/source/core/tests",
     "capabilities/source/local/tests",
     "capabilities/source/blob/tests",

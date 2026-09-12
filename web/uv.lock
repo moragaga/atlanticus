@@ -14,6 +14,7 @@ members = [
     "atlanticus-web-navigation",
     "atlanticus-web-navigation-configuration",
     "atlanticus-web-observability",
+    "atlanticus-web-projection",
     "atlanticus-web-pwa",
     "atlanticus-web-source",
     "atlanticus-web-source-blob",
@@ -224,6 +225,17 @@ dependencies = [
 requires-dist = [{ name = "flask", specifier = "==3.1.3" }]
 
 [[package]]
+name = "atlanticus-web-projection"
+version = "0.1.0"
+source = { editable = "capabilities/projection/core" }
+dependencies = [
+    { name = "atlanticus-web-source" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "atlanticus-web-source", editable = "capabilities/source/core" }]
+
+[[package]]
 name = "atlanticus-web-pwa"
 version = "0.1.0"
 source = { editable = "framework/pwa" }
@@ -343,6 +355,7 @@ dependencies = [
     { name = "atlanticus-web-manager" },
     { name = "atlanticus-web-navigation" },
     { name = "atlanticus-web-navigation-configuration" },
+    { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-pwa" },
     { name = "atlanticus-web-source" },
     { name = "atlanticus-web-source-blob" },
@@ -369,6 +382,7 @@ requires-dist = [
     { name = "atlanticus-web-manager", editable = "capabilities/manager" },
     { name = "atlanticus-web-navigation", editable = "capabilities/navigation/core" },
     { name = "atlanticus-web-navigation-configuration", editable = "capabilities/navigation/configuration" },
+    { name = "atlanticus-web-projection", editable = "capabilities/projection/core" },
     { name = "atlanticus-web-pwa", editable = "framework/pwa" },
     { name = "atlanticus-web-source", editable = "capabilities/source/core" },
     { name = "atlanticus-web-source-blob", editable = "capabilities/source/blob" },
