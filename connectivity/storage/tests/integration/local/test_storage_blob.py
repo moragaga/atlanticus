@@ -16,6 +16,7 @@ from azure.storage.blob import (
 from atlanticus.connectivity.storage import (
     StorageBlobNotFoundError,
     StorageClient,
+    StorageConflictError,
     StorageConnectionStringCredential,
     StorageSasCredential,
     StorageSettings,
@@ -164,3 +165,30 @@ def test_missing_blob_is_sanitized() -> None:
             client.download(container_name=_CONTAINER, blob_name='missing/private.bin')
         assert 'http://' not in repr(captured.value)
         assert captured.value.__cause__ is None
+
+
+def test_conditional_upload_accepts_current_etag_and_rejects_stale_etag() -> None:
+    blob_name = 'conditional/manifest.json'
+    with _connection_client() as client:
+        client.upload(container_name=_CONTAINER, blob_name=blob_name, data=b'initial')
+        observed = client.get_properties(container_name=_CONTAINER, blob_name=blob_name)
+        assert observed.etag is not None
+
+        client.upload_if_match(
+            container_name=_CONTAINER,
+            blob_name=blob_name,
+            data=b'promoted',
+            etag=observed.etag,
+            content_type='application/json',
+        )
+        assert client.download(container_name=_CONTAINER, blob_name=blob_name) == b'promoted'
+
+        with pytest.raises(StorageConflictError):
+            client.upload_if_match(
+                container_name=_CONTAINER,
+                blob_name=blob_name,
+                data=b'stale-writer',
+                etag=observed.etag,
+            )
+
+        assert client.download(container_name=_CONTAINER, blob_name=blob_name) == b'promoted'

@@ -41,14 +41,17 @@ class _StorageSdk:
     HttpResponseError: type[BaseException]
     ServiceRequestError: type[BaseException]
     ServiceResponseError: type[BaseException]
+    MatchConditions: Any = None
 
 
 def _load_sdk() -> _StorageSdk:
+    core = import_module('azure.core')
     blob = import_module('azure.storage.blob')
     exceptions = import_module('azure.core.exceptions')
     return _StorageSdk(
         BlobServiceClient=blob.BlobServiceClient,
         ContentSettings=blob.ContentSettings,
+        MatchConditions=core.MatchConditions,
         HttpResponseError=exceptions.HttpResponseError,
         ServiceRequestError=exceptions.ServiceRequestError,
         ServiceResponseError=exceptions.ServiceResponseError,
@@ -242,6 +245,42 @@ class StorageClient:
             raise self._map_error(error, resource='blob') from None
 
     @runtime_guard(
+        operation='storage.upload_if_match',
+        component=_COMPONENT,
+        parameter_mapper=_safe_parameters,
+        error_mapper=_safe_error,
+    )
+    def upload_if_match(
+        self,
+        *,
+        container_name: str,
+        blob_name: str,
+        data: bytes | bytearray | BinaryIO,
+        etag: str,
+        metadata: Mapping[str, str] | None = None,
+        content_type: str | None = None,
+    ) -> None:
+        """Sobrescribe un blob sólo si conserva el ETag observado."""
+
+        normalized_etag = _require_etag(etag)
+        normalized_metadata = _normalize_metadata(metadata)
+        normalized_content_type = _normalize_content_type(content_type)
+        sdk = self._get_sdk()
+        blob = self._blob_client(container_name=container_name, blob_name=blob_name)
+        kwargs: dict[str, Any] = {
+            'overwrite': True,
+            'metadata': normalized_metadata,
+            'etag': normalized_etag,
+            'match_condition': sdk.MatchConditions.IfNotModified,
+        }
+        if normalized_content_type is not None:
+            kwargs['content_settings'] = sdk.ContentSettings(content_type=normalized_content_type)
+        try:
+            blob.upload_blob(data, **kwargs)
+        except Exception as error:
+            raise self._map_error(error, resource='blob') from None
+
+    @runtime_guard(
         operation='storage.delete',
         component=_COMPONENT,
         parameter_mapper=_safe_parameters,
@@ -386,6 +425,16 @@ def _require_blob_name(value: Any) -> str:
         raise TypeError('blob_name must not be empty')
     if any(character in value for character in '\x00\r\n'):
         raise TypeError('blob_name contains unsupported characters')
+    return value
+
+
+def _require_etag(value: Any) -> str:
+    if not isinstance(value, str):
+        raise TypeError('etag must be text')
+    if not value or value != value.strip():
+        raise TypeError('etag must be non-empty text without surrounding whitespace')
+    if any(character in value for character in '\x00\r\n'):
+        raise TypeError('etag contains unsupported characters')
     return value
 
 

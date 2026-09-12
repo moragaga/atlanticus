@@ -1,5 +1,5 @@
-# Espejo pedagógico: este archivo conserva exactamente el código ejecutable del módulo
-# productivo y añade sólo comentarios para explicar sus límites y responsabilidades.
+# Espejo pedagógico: conserva exactamente el código ejecutable del módulo productivo.
+# Los comentarios explican responsabilidades, límites y la nueva primitiva condicional.
 """Cliente síncrono y genérico para Azure Blob Storage."""
 
 from __future__ import annotations
@@ -36,8 +36,8 @@ from atlanticus.observability import ErrorInfo, ResultSummary, runtime_guard
 _COMPONENT = 'atlanticus.connectivity.storage'
 
 
-# El SDK se agrupa detrás de este contenedor interno para no filtrar tipos Azure al contrato público
-# y para poder reemplazarlo por fakes deterministas en unit tests.
+# El SDK queda encapsulado en una estructura interna para no filtrar tipos Azure al contrato público
+# y para permitir fakes deterministas en pruebas unitarias.
 @dataclass(frozen=True, slots=True)
 class _StorageSdk:
     BlobServiceClient: Any
@@ -45,15 +45,19 @@ class _StorageSdk:
     HttpResponseError: type[BaseException]
     ServiceRequestError: type[BaseException]
     ServiceResponseError: type[BaseException]
+    MatchConditions: Any = None
 
 
-# La carga es lazy: importar atlanticus.connectivity.storage no abre conexiones ni crea clientes Azure.
+# La carga sigue siendo lazy: importar el paquete no crea clientes ni fuerza conexiones Azure.
+# MatchConditions se incorpora sólo como detalle técnico necesario para traducir If-Match.
 def _load_sdk() -> _StorageSdk:
+    core = import_module('azure.core')
     blob = import_module('azure.storage.blob')
     exceptions = import_module('azure.core.exceptions')
     return _StorageSdk(
         BlobServiceClient=blob.BlobServiceClient,
         ContentSettings=blob.ContentSettings,
+        MatchConditions=core.MatchConditions,
         HttpResponseError=exceptions.HttpResponseError,
         ServiceRequestError=exceptions.ServiceRequestError,
         ServiceResponseError=exceptions.ServiceResponseError,
@@ -97,8 +101,7 @@ def _properties_result(value: Any) -> ResultSummary:
     return ResultSummary()
 
 
-# Una instancia representa una conexión ya compuesta. El nombre lógico de esa conexión vive fuera
-# de Connectivity; por eso aquí sólo existen credenciales, containers y blobs.
+# StorageClient sigue siendo una conexión técnica genérica: no conoce Source, releases ni manifests.
 class StorageClient:
     """Opera containers y blobs sin conocer nombres de conexión ni reglas de negocio."""
 
@@ -187,8 +190,7 @@ class StorageClient:
         result_mapper=_bytes_result,
         error_mapper=_safe_error,
     )
-    # Esta variante prioriza ergonomía para payloads acotados. Para archivos grandes existe
-    # download_to(), que evita materializar el cuerpo completo en memoria.
+    # Para payloads acotados existe descarga completa; download_to() cubre streaming.
     def download(self, *, container_name: str, blob_name: str) -> bytes:
         """Descarga un blob completo como bytes para cargas acotadas."""
 
@@ -250,6 +252,47 @@ class StorageClient:
         except Exception as error:
             raise self._map_error(error, resource='blob') from None
 
+    # Esta operación es aditiva y no altera upload(): expresa únicamente la precondición técnica
+    # de Azure 'escribir si el ETag observado aún coincide'. El consumidor decide qué significa
+    # funcionalmente un conflicto; Connectivity sólo preserva la garantía atómica del proveedor.
+    @runtime_guard(
+        operation='storage.upload_if_match',
+        component=_COMPONENT,
+        parameter_mapper=_safe_parameters,
+        error_mapper=_safe_error,
+    )
+    def upload_if_match(
+        self,
+        *,
+        container_name: str,
+        blob_name: str,
+        data: bytes | bytearray | BinaryIO,
+        etag: str,
+        metadata: Mapping[str, str] | None = None,
+        content_type: str | None = None,
+    ) -> None:
+        """Sobrescribe un blob sólo si conserva el ETag observado."""
+
+        normalized_etag = _require_etag(etag)
+        normalized_metadata = _normalize_metadata(metadata)
+        normalized_content_type = _normalize_content_type(content_type)
+        sdk = self._get_sdk()
+        blob = self._blob_client(container_name=container_name, blob_name=blob_name)
+        kwargs: dict[str, Any] = {
+            'overwrite': True,
+            'metadata': normalized_metadata,
+            # El ETag permanece dentro de Connectivity; no se transforma en token de dominio.
+            'etag': normalized_etag,
+            # IfNotModified corresponde a If-Match sobre el ETag suministrado.
+            'match_condition': sdk.MatchConditions.IfNotModified,
+        }
+        if normalized_content_type is not None:
+            kwargs['content_settings'] = sdk.ContentSettings(content_type=normalized_content_type)
+        try:
+            blob.upload_blob(data, **kwargs)
+        except Exception as error:
+            raise self._map_error(error, resource='blob') from None
+
     @runtime_guard(
         operation='storage.delete',
         component=_COMPONENT,
@@ -272,8 +315,7 @@ class StorageClient:
         result_mapper=_list_result,
         error_mapper=_safe_error,
     )
-    # Se solicita un elemento adicional para detectar de forma estricta si el consumidor excedió
-    # el límite, sin enumerar accidentalmente todo el container.
+    # Se solicita un elemento adicional al límite para detectar overflow sin enumerar el container.
     def list_blobs(
         self,
         *,
@@ -328,8 +370,8 @@ class StorageClient:
             self._sdk = _load_sdk()
         return self._sdk
 
-    # La credencial tipada decide exclusivamente cómo se construye BlobServiceClient. Después de
-    # este punto todas las operaciones usan exactamente el mismo camino.
+    # La credencial tipada decide cómo construir BlobServiceClient. El resto del cliente comparte
+    # exactamente el mismo camino sin conocer nombres lógicos de conexiones.
     def _get_client(self) -> Any:
         if self._closed:
             raise StorageClosedError('Storage client is closed')
@@ -399,6 +441,18 @@ def _require_blob_name(value: Any) -> str:
         raise TypeError('blob_name must not be empty')
     if any(character in value for character in '\x00\r\n'):
         raise TypeError('blob_name contains unsupported characters')
+    return value
+
+
+# El ETag es opaco para Atlanticus: sólo se valida que sea texto utilizable como header y se
+# entrega al SDK sin interpretarlo, recodificarlo ni exponerlo como concepto funcional.
+def _require_etag(value: Any) -> str:
+    if not isinstance(value, str):
+        raise TypeError('etag must be text')
+    if not value or value != value.strip():
+        raise TypeError('etag must be non-empty text without surrounding whitespace')
+    if any(character in value for character in '\x00\r\n'):
+        raise TypeError('etag contains unsupported characters')
     return value
 
 
