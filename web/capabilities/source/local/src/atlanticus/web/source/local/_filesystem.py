@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 import os
 import shutil
 from pathlib import Path
@@ -57,10 +56,6 @@ class SourceFileLock:
         finally:
             stream.close()
             self._stream = None
-
-
-def encode_segment(value: str) -> str:
-    return base64.urlsafe_b64encode(value.encode('utf-8')).decode('ascii').rstrip('=')
 
 
 def write_new_bytes(path: Path, payload: bytes) -> None:

@@ -24,6 +24,11 @@ SCHEMA_VERSION = 1
 _DIGEST_ALGORITHM = 'sha256'
 
 
+# Codifica una identidad lógica como segmento físico estable sin introducir reglas de un provider.
+def encode_segment(value: str) -> str:
+    return base64.urlsafe_b64encode(value.encode('utf-8')).decode('ascii').rstrip('=')
+
+
 # Calcula metadata determinista a partir de los bytes reales del recurso.
 def resource_metadata(logical_path: str, content: bytes) -> SourceResourceMetadata:
     return SourceResourceMetadata(

@@ -13,6 +13,7 @@ from atlanticus.web.source._codec import (
     content_hash,
     decode_cursor,
     encode_cursor,
+    encode_segment,
     manifest_from_bytes,
     manifest_to_bytes,
     release_metadata_from_bytes,
@@ -29,7 +30,6 @@ from atlanticus.web.source.errors import (
 from atlanticus.web.source.local._filesystem import (
     SourceFileLock,
     atomic_write_bytes,
-    encode_segment,
     fsync_directory,
     remove_temporary_tree,
     write_new_bytes,

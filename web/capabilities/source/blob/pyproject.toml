@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atlanticus-web-source-blob"
+version = "0.1.0"
+description = "Proveedor durable Azure Blob de Source para aplicaciones web Atlanticus"
+requires-python = "==3.14.2"
+classifiers = [
+    "Private :: Do Not Upload",
+]
+dependencies = [
+    "atlanticus-storage==1.0.0",
+    "atlanticus-web-source==0.1.0",
+]
+
+[tool.uv.sources]
+atlanticus-web-source = { workspace = true }
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+include = ["atlanticus.web.source.blob*"]
+
+[tool.setuptools.package-data]
+"atlanticus.web.source.blob" = ["py.typed"]

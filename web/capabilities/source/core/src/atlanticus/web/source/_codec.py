@@ -22,6 +22,10 @@ SCHEMA_VERSION = 1
 _DIGEST_ALGORITHM = 'sha256'
 
 
+def encode_segment(value: str) -> str:
+    return base64.urlsafe_b64encode(value.encode('utf-8')).decode('ascii').rstrip('=')
+
+
 def resource_metadata(logical_path: str, content: bytes) -> SourceResourceMetadata:
     return SourceResourceMetadata(
         logical_path=logical_path,
