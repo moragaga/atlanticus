@@ -15,6 +15,8 @@ members = [
     "atlanticus-web-navigation-configuration",
     "atlanticus-web-observability",
     "atlanticus-web-pwa",
+    "atlanticus-web-source",
+    "atlanticus-web-source-local",
     "atlanticus-web-users",
     "atlanticus-web-users-activity",
     "atlanticus-web-users-configuration",
@@ -205,6 +207,22 @@ requires-dist = [
 ]
 
 [[package]]
+name = "atlanticus-web-source"
+version = "0.1.0"
+source = { editable = "capabilities/source/core" }
+
+[[package]]
+name = "atlanticus-web-source-local"
+version = "0.1.0"
+source = { editable = "capabilities/source/local" }
+dependencies = [
+    { name = "atlanticus-web-source" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "atlanticus-web-source", editable = "capabilities/source/core" }]
+
+[[package]]
 name = "atlanticus-web-users"
 version = "0.1.0"
 source = { editable = "capabilities/users/core" }
@@ -279,6 +297,8 @@ dependencies = [
     { name = "atlanticus-web-navigation" },
     { name = "atlanticus-web-navigation-configuration" },
     { name = "atlanticus-web-pwa" },
+    { name = "atlanticus-web-source" },
+    { name = "atlanticus-web-source-local" },
     { name = "atlanticus-web-users" },
     { name = "atlanticus-web-users-activity" },
     { name = "atlanticus-web-users-configuration" },
@@ -302,6 +322,8 @@ requires-dist = [
     { name = "atlanticus-web-navigation", editable = "capabilities/navigation/core" },
     { name = "atlanticus-web-navigation-configuration", editable = "capabilities/navigation/configuration" },
     { name = "atlanticus-web-pwa", editable = "framework/pwa" },
+    { name = "atlanticus-web-source", editable = "capabilities/source/core" },
+    { name = "atlanticus-web-source-local", editable = "capabilities/source/local" },
     { name = "atlanticus-web-users", editable = "capabilities/users/core" },
     { name = "atlanticus-web-users-activity", editable = "capabilities/users/activity" },
     { name = "atlanticus-web-users-configuration", editable = "capabilities/users/configuration" },
