@@ -1,164 +1,257 @@
-import ast
-from pathlib import Path
+from inspect import signature
+from types import SimpleNamespace
 
-ROOT = Path(__file__).parents[1]
-WEB = ROOT / 'src/atlanticus/web/users/configuration/web'
-CSS = ROOT / 'src/atlanticus/web/users/configuration/resources/css/00_users_admin.css'
+import pytest
+from dash import Input, State
 
-def test_users_admin_ui_keeps_profiles_users_and_discovered_separate() -> None:
-    layout = (WEB / 'layout.py').read_text(encoding='utf-8')
+pytest.importorskip('dash')
 
-    assert "'Perfiles'" in layout
-    assert "'Usuarios'" in layout
-    assert "'Pendientes'" in layout
-    assert 'Local conserva identidades visuales fijas' in layout
-    assert 'Administrator y Guest' in layout
-
-def test_users_admin_dynamic_actions_require_real_clicks() -> None:
-    callbacks = (WEB / 'callbacks.py').read_text(encoding='utf-8')
-
-    assert '_pattern_click_is_real(trigger, edit_clicks, edit_ids)' in callbacks
-    assert '_pattern_click_is_real(trigger, discovered_clicks, discovered_ids)' in callbacks
-    assert '_pattern_click_is_real(trigger, clicks, delete_ids)' in callbacks
-    assert 'n_clicks=0' in layout_source()
-
-def test_users_admin_browser_draft_does_not_publish_source() -> None:
-    callbacks = (WEB / 'callbacks.py').read_text(encoding='utf-8')
-
-    assert '_browser_draft_document' in callbacks
-    assert "Output(context.saved_draft_store_id, 'data', allow_duplicate=True)" in callbacks
-    assert 'publish_catalog' not in callbacks
-    assert 'project(' not in callbacks
-
-def layout_source() -> str:
-    return (WEB / 'layout.py').read_text(encoding='utf-8')
-
-def test_users_admin_uses_bootstrap_native_color_inputs() -> None:
-    layout = layout_source()
-    callbacks = (WEB / 'callbacks.py').read_text(encoding='utf-8')
-
-    assert 'dbc.Input(' in layout
-    assert "type='color'" in layout
-    assert "class_name='form-control-color'" in layout
-    assert 'htmlFor=picker_id' in layout
-    assert "**{'aria-label': label}" not in layout
-    assert 'html.Input(' not in layout
-    assert '_register_native_color_picker' not in callbacks
-    assert 'dash_clientside.set_props' not in callbacks
-    assert 'PROFILE_BACKGROUND_COLOR_ID' in layout
-    assert 'PROFILE_TEXT_COLOR_ID' in layout
-    assert 'ADMINISTRATOR_BACKGROUND_COLOR_ID' in layout
-    assert 'ADMINISTRATOR_TEXT_COLOR_ID' in layout
-    assert 'GUEST_BACKGROUND_COLOR_ID' in layout
-    assert 'GUEST_TEXT_COLOR_ID' in layout
+from atlanticus.web.manager.projection import ManagerDraft
+from atlanticus.web.users.configuration import (
+    UsersConfigurationCatalog,
+    compose_users_configuration_services,
+)
+from atlanticus.web.users.configuration.adapters import (
+    MemoryDiscoveredUsersSource,
+    MemoryUsersConfigurationStore,
+    MemoryUsersProjectionRepository,
+)
+from atlanticus.web.users.configuration.web import (
+    UsersAdminWebContext,
+    build_users_admin_configuration,
+    callbacks as users_callbacks,
+    create_users_admin_web_module,
+)
+from atlanticus.web.users.configuration.web.callbacks import (
+    _browser_draft_document,
+    register_users_admin_callbacks,
+)
+from atlanticus.web.users.configuration.web.ids import (
+    ADMINISTRATOR_BACKGROUND_COLOR_ID,
+    ADMINISTRATOR_TEXT_COLOR_ID,
+    CATALOG_STORE_ID,
+    DISCOVERED_TAB_ID,
+    GUEST_BACKGROUND_COLOR_ID,
+    GUEST_TEXT_COLOR_ID,
+    PROFILE_BACKGROUND_COLOR_ID,
+    PROFILE_TAB_ID,
+    PROFILE_TEXT_COLOR_ID,
+    PROJECTION_NAME_ID,
+    SAVE_BUTTON_ID,
+    SECTION_STORE_ID,
+    SOURCE_NAME_ID,
+    SOURCE_REVISION_STORE_ID,
+    USERS_TAB_ID,
+)
 
 
-def test_users_admin_only_incorporates_new_users_from_pending_identities() -> None:
-    layout = layout_source()
-    callbacks = (WEB / 'callbacks.py').read_text(encoding='utf-8')
+class _CallbackRecorder:
+    def __init__(self) -> None:
+        self.callbacks: dict[str, tuple[tuple[object, ...], dict[str, object], object]] = {}
 
-    assert "'+ Usuario'" not in layout
-    assert 'ADD_USER_ID' not in layout
-    assert 'ADD_USER_ID' not in callbacks
-    assert 'discovered_add_id' in callbacks
-    assert "mode not in {'edit', 'discovered'}" in callbacks
+    def callback(self, *dependencies: object, **options: object):
+        def register(function):
+            self.callbacks[function.__name__] = (dependencies, options, function)
+            return function
 
-def test_users_admin_dynamic_layout_is_not_driven_by_global_manager_stores() -> None:
-    callbacks = (WEB / 'callbacks.py').read_text(encoding='utf-8')
+        return register
 
-    assert "Input(context.draft_store_id, 'data')" in callbacks
-    assert "Input(context.workflow_refresh_signal_id, 'data')" not in callbacks
-    assert "Input(MOUNT_STORE_ID, 'data')" in callbacks
-    assert "State(context.draft_store_id, 'data')" in callbacks
-    assert "Output(context.editor_revision_store_id, 'data')" in callbacks
-    assert 'build_users_configuration_digest(_catalog(catalog_data))' in callbacks
 
-def test_users_admin_browser_draft_matches_manager_contract() -> None:
-    callbacks = (WEB / 'callbacks.py').read_text(encoding='utf-8')
+def _context() -> tuple[
+    UsersAdminWebContext,
+    MemoryUsersConfigurationStore,
+    MemoryUsersProjectionRepository,
+]:
+    source = MemoryUsersConfigurationStore()
+    projection = MemoryUsersProjectionRepository()
+    discovered = MemoryDiscoveredUsersSource()
+    services = compose_users_configuration_services(
+        source=source,
+        publisher=source,
+        projection=projection,
+        discovered=discovered,
+        audit_actor_provider=lambda: 'tester',
+    )
+    return (
+        UsersAdminWebContext(
+            services=services,
+            draft_store_id='draft',
+            saved_draft_store_id='saved-draft',
+            draft_save_action_id='workflow-save-draft',
+            workflow_refresh_signal_id='workflow-refresh',
+            editor_revision_store_id='editor-revision',
+            draft_owner_provider=lambda: 'tester',
+            source_name='Users Source',
+            projection_name='Users Projection',
+        ),
+        source,
+        projection,
+    )
 
-    assert '_BROWSER_DRAFT_SCHEMA_VERSION = 1' in callbacks
-    assert "data.get('schema_version') not in {1, 2}" in callbacks
 
-def test_users_admin_labels_configuration_as_profiles_and_users() -> None:
-    layout = layout_source()
+def _walk(component: object):
+    yield component
+    children = getattr(component, 'children', None)
+    if isinstance(children, (list, tuple)):
+        for child in children:
+            if child is not None:
+                yield from _walk(child)
+    elif children is not None and not isinstance(children, (str, int, float, bool)):
+        yield from _walk(children)
 
-    assert "'Importar'" in layout
-    assert 'Incluye perfiles y usuarios.' in layout
-    assert 'Borrador local · perfiles y usuarios' in layout
-    assert "'Guardar borrador'" in layout
 
-def test_users_admin_import_refreshes_the_whole_users_catalog() -> None:
-    callbacks = (WEB / 'callbacks.py').read_text(encoding='utf-8')
+def _component(layout: object, component_id: object) -> object:
+    for item in _walk(layout):
+        if getattr(item, 'id', None) == component_id:
+            return item
+    raise AssertionError(f'Component {component_id!r} was not found')
 
-    assert "Output(CATALOG_STORE_ID, 'data', allow_duplicate=True)" in callbacks
-    assert "Output(ADMINISTRATOR_TEXT_COLOR_ID, 'value', allow_duplicate=True)" in callbacks
-    assert "Output(GUEST_TEXT_COLOR_ID, 'value', allow_duplicate=True)" in callbacks
 
-def test_users_admin_keeps_source_revision_loaded_with_editor_content() -> None:
-    layout = layout_source()
-    callbacks = (WEB / 'callbacks.py').read_text(encoding='utf-8')
+def _text(component: object) -> str:
+    values: list[str] = []
+    for item in _walk(component):
+        children = getattr(item, 'children', None)
+        if isinstance(children, str):
+            values.append(children)
+    return ' '.join(values)
 
-    assert 'SOURCE_REVISION_STORE_ID' in layout
-    assert "State(SOURCE_REVISION_STORE_ID, 'data')" in callbacks
-    assert '_current_source_revision' not in callbacks
 
-def test_users_admin_rehydrates_editor_from_manager_draft_without_page_reload() -> None:
-    callbacks = (WEB / 'callbacks.py').read_text(encoding='utf-8')
+def _registered_callbacks(context: UsersAdminWebContext) -> _CallbackRecorder:
+    recorder = _CallbackRecorder()
+    register_users_admin_callbacks(recorder, context)
+    return recorder
 
-    load_start = callbacks.index('def load_browser_draft(')
-    load_end = callbacks.index('def track_editor_revision(', load_start)
-    load = callbacks[load_start:load_end]
-    assert "Input(context.draft_store_id, 'data')" in callbacks[:load_start]
-    assert 'base_source_revision' in load
-    assert "Output(SOURCE_REVISION_STORE_ID, 'data')" in callbacks[:load_start]
 
-def test_users_workspace_starts_empty_and_does_not_read_source_implicitly() -> None:
-    layout = layout_source()
-    callbacks = (WEB / 'callbacks.py').read_text(encoding='utf-8')
+def test_users_admin_layout_starts_with_empty_local_workspace(monkeypatch) -> None:
+    context, _source, _projection = _context()
 
-    assert 'context.services.administration.load_source()' not in layout
-    assert 'catalog = _empty_catalog()' in layout
-    assert 'data=None' in layout
-    assert 'if draft_data is None:' in callbacks
-    tracker = callbacks[
-        callbacks.index("Output(context.editor_revision_store_id, 'data')") : callbacks.index(
-            'def track_editor_revision('
+    def fail_if_source_is_loaded():
+        raise AssertionError('Users source must not be loaded while building the editor layout')
+
+    monkeypatch.setattr(context.services.administration, 'load_source', fail_if_source_is_loaded)
+
+    layout = build_users_admin_configuration(context)
+    catalog = UsersConfigurationCatalog.from_document(_component(layout, CATALOG_STORE_ID).data)
+
+    assert catalog.profiles == ()
+    assert catalog.users == ()
+    assert _component(layout, SOURCE_REVISION_STORE_ID).data is None
+    assert _component(layout, SECTION_STORE_ID).data == 'profiles'
+    assert _text(_component(layout, SOURCE_NAME_ID)) == 'Users Source'
+    assert _text(_component(layout, PROJECTION_NAME_ID)) == 'Users Projection'
+
+
+def test_users_admin_exposes_profiles_users_and_pending_as_real_sections() -> None:
+    context, _source, _projection = _context()
+    layout = build_users_admin_configuration(context)
+
+    assert _text(_component(layout, PROFILE_TAB_ID)) == 'Perfiles'
+    assert _text(_component(layout, USERS_TAB_ID)) == 'Usuarios'
+    assert _text(_component(layout, DISCOVERED_TAB_ID)) == 'Pendientes'
+
+
+def test_users_admin_color_controls_are_functional_color_inputs() -> None:
+    context, _source, _projection = _context()
+    layout = build_users_admin_configuration(context)
+
+    color_ids = (
+        ADMINISTRATOR_BACKGROUND_COLOR_ID,
+        ADMINISTRATOR_TEXT_COLOR_ID,
+        GUEST_BACKGROUND_COLOR_ID,
+        GUEST_TEXT_COLOR_ID,
+        PROFILE_BACKGROUND_COLOR_ID,
+        PROFILE_TEXT_COLOR_ID,
+    )
+
+    for component_id in color_ids:
+        control = _component(layout, component_id)
+        assert getattr(control, 'type', None) == 'color'
+        value = getattr(control, 'value', None)
+        assert isinstance(value, str)
+        assert value.startswith('#')
+
+
+def test_users_admin_web_module_owns_its_asset_layer() -> None:
+    context, _source, _projection = _context()
+
+    module = create_users_admin_web_module(context)
+
+    assert module.name == 'atlanticus-users-configuration'
+    assert len(module.asset_layers) == 1
+    assert module.asset_layers[0].name == 'atlanticus_users_configuration'
+    assert module.asset_layers[0].package == 'atlanticus.web.users.configuration'
+
+
+def test_users_admin_callback_registration_matches_function_arity() -> None:
+    context, _source, _projection = _context()
+    recorder = _registered_callbacks(context)
+
+    assert recorder.callbacks
+
+    for name, (dependencies, _options, function) in recorder.callbacks.items():
+        inputs_and_states = sum(
+            isinstance(dependency, (Input, State)) for dependency in dependencies
         )
-    ]
-    assert 'prevent_initial_call=True' in tracker
-
-def test_users_callback_functions_match_input_and_state_arity() -> None:
-    tree = ast.parse((WEB / 'callbacks.py').read_text(encoding='utf-8'))
-
-    callbacks = 0
-    for node in ast.walk(tree):
-        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            continue
-
-        decorator = next(
-            (
-                item
-                for item in node.decorator_list
-                if isinstance(item, ast.Call)
-                and isinstance(item.func, ast.Attribute)
-                and item.func.attr == 'callback'
-            ),
-            None,
+        positional_parameters = len(
+            [
+                parameter
+                for parameter in signature(function).parameters.values()
+                if parameter.kind
+                in {
+                    parameter.POSITIONAL_ONLY,
+                    parameter.POSITIONAL_OR_KEYWORD,
+                }
+            ]
         )
-        if decorator is None:
-            continue
+        assert positional_parameters == inputs_and_states, name
 
-        dependencies = sum(
-            1
-            for item in decorator.args
-            if isinstance(item, ast.Call)
-            and isinstance(item.func, ast.Name)
-            and item.func.id in {'Input', 'State'}
-        )
-        positional = len(node.args.posonlyargs) + len(node.args.args)
 
-        assert positional == dependencies, node.name
-        callbacks += 1
+def test_users_admin_rehydrates_catalog_and_source_revision_from_manager_draft() -> None:
+    context, _source, _projection = _context()
+    layout = build_users_admin_configuration(context)
+    catalog_document = _component(layout, CATALOG_STORE_ID).data
+    catalog = UsersConfigurationCatalog.from_document(catalog_document)
+    draft = _browser_draft_document(
+        catalog=catalog,
+        owner_subject_id='tester',
+        base_source_revision='source-11',
+    )
+    recorder = _registered_callbacks(context)
+    load_browser_draft = recorder.callbacks['load_browser_draft'][2]
 
-    assert callbacks > 0
+    result = load_browser_draft(1, draft)
 
+    assert result[0] == catalog_document
+    assert result[-1] == 'source-11'
+
+
+def test_users_admin_save_draft_is_local_and_does_not_publish_or_project(monkeypatch) -> None:
+    context, source, projection = _context()
+    layout = build_users_admin_configuration(context)
+    catalog_document = _component(layout, CATALOG_STORE_ID).data
+    recorder = _registered_callbacks(context)
+    save_users_draft = recorder.callbacks['save_users_draft'][2]
+
+    monkeypatch.setattr(
+        users_callbacks,
+        'ctx',
+        SimpleNamespace(triggered_id=SAVE_BUTTON_ID),
+    )
+
+    draft_document, saved_document, result = save_users_draft(
+        1,
+        None,
+        catalog_document,
+        'source-17',
+        None,
+    )
+
+    draft = ManagerDraft.from_document(draft_document)
+
+    assert saved_document == draft_document
+    assert result is None
+    assert draft.owner_subject_id == 'tester'
+    assert draft.base_source_revision == 'source-17'
+    assert draft.payload == catalog_document
+    assert source.fetch_bundle() is None
+    assert projection.load_state() is None

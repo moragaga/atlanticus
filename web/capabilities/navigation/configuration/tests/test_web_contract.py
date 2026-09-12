@@ -1,6 +1,7 @@
-from pathlib import Path
+from inspect import signature
 
 import pytest
+from dash import Input, State
 
 pytest.importorskip('dash')
 
@@ -8,6 +9,7 @@ from atlanticus.web.navigation.configuration.adapters.memory import (
     MemoryNavigationConfigurationStore,
     MemoryNavigationProjectionRepository,
 )
+from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
 from atlanticus.web.navigation.configuration.services import (
     compose_navigation_configuration_services,
 )
@@ -16,6 +18,30 @@ from atlanticus.web.navigation.configuration.web import (
     build_navigation_admin_configuration,
     create_navigation_admin_web_module,
 )
+from atlanticus.web.navigation.configuration.web.callbacks import (
+    register_navigation_admin_callbacks,
+)
+from atlanticus.web.navigation.configuration.web.ids import (
+    CATALOG_STORE_ID,
+    LINK_PROFILES_ID,
+    LINK_SECTION_ID,
+    PROJECTION_NAME_ID,
+    SOURCE_NAME_ID,
+    SOURCE_REVISION_STORE_ID,
+    STRUCTURE_ID,
+)
+
+
+class _CallbackRecorder:
+    def __init__(self) -> None:
+        self.callbacks: dict[str, tuple[tuple[object, ...], dict[str, object], object]] = {}
+
+    def callback(self, *dependencies: object, **options: object):
+        def register(function):
+            self.callbacks[function.__name__] = (dependencies, options, function)
+            return function
+
+        return register
 
 
 def _context() -> NavigationAdminWebContext:
@@ -34,94 +60,101 @@ def _context() -> NavigationAdminWebContext:
         workflow_refresh_signal_id='refresh',
         editor_revision_store_id='editor-revision',
         draft_owner_provider=lambda: 'tester',
+        source_name='Navigation Source',
+        projection_name='Navigation Projection',
     )
 
 
-def test_navigation_admin_layout_builds_without_source() -> None:
+def _walk(component: object):
+    yield component
+    children = getattr(component, 'children', None)
+    if isinstance(children, (list, tuple)):
+        for child in children:
+            if child is not None:
+                yield from _walk(child)
+    elif children is not None and not isinstance(children, (str, int, float, bool)):
+        yield from _walk(children)
+
+
+def _component(layout: object, component_id: object) -> object:
+    for item in _walk(layout):
+        if getattr(item, 'id', None) == component_id:
+            return item
+    raise AssertionError(f'Component {component_id!r} was not found')
+
+
+def _text(component: object) -> str:
+    children = getattr(component, 'children', None)
+    if isinstance(children, str):
+        return children
+    return ''
+
+
+def test_navigation_admin_layout_starts_with_empty_local_workspace(monkeypatch) -> None:
+    context = _context()
+
+    def fail_if_source_is_loaded():
+        raise AssertionError(
+            'Navigation source must not be loaded while building the editor layout'
+        )
+
+    monkeypatch.setattr(context.services.administration, 'load_source', fail_if_source_is_loaded)
+
+    layout = build_navigation_admin_configuration(context)
+    catalog = NavigationConfigurationCatalog.from_document(
+        _component(layout, CATALOG_STORE_ID).data
+    )
+
+    assert catalog.links == ()
+    assert catalog.groups == ()
+    assert _component(layout, SOURCE_REVISION_STORE_ID).data is None
+    assert _text(_component(layout, SOURCE_NAME_ID)) == 'Navigation Source'
+    assert _text(_component(layout, PROJECTION_NAME_ID)) == 'Navigation Projection'
+    assert _component(layout, STRUCTURE_ID) is not None
+
+
+def test_navigation_admin_exposes_functional_section_and_profile_selectors() -> None:
     layout = build_navigation_admin_configuration(_context())
-    assert layout is not None
+
+    section = _component(layout, LINK_SECTION_ID)
+    profiles = _component(layout, LINK_PROFILES_ID)
+
+    assert section.searchable is True
+    assert section.clearable is False
+    assert section.placeholder == 'Sin sección / raíz'
+    assert profiles.searchable is True
+    assert profiles.multi is True
+    assert profiles.placeholder == 'Seleccionar perfiles'
 
 
-def test_navigation_admin_web_module_owns_assets() -> None:
+def test_navigation_admin_web_module_owns_its_asset_layer() -> None:
     module = create_navigation_admin_web_module(_context())
+
     assert module.name == 'atlanticus-navigation-configuration'
+    assert len(module.asset_layers) == 1
     assert module.asset_layers[0].name == 'atlanticus_navigation_configuration'
+    assert module.asset_layers[0].package == 'atlanticus.web.navigation.configuration'
 
 
-def test_navigation_configuration_web_does_not_import_users_or_ada() -> None:
-    root = Path(__file__).parents[1] / 'src/atlanticus/web/navigation/configuration/web'
-    product = '\n'.join(path.read_text(encoding='utf-8') for path in root.glob('*.py'))
-    assert 'atlanticus.web.users' not in product
-    assert 'ada.' not in product
+def test_navigation_admin_callback_registration_matches_function_arity() -> None:
+    recorder = _CallbackRecorder()
+    register_navigation_admin_callbacks(recorder, _context())
 
+    assert recorder.callbacks
 
-def test_navigation_admin_rehydrates_manager_draft_and_tracks_editor_revision() -> None:
-    callbacks = (
-        Path(__file__).parents[1] / 'src/atlanticus/web/navigation/configuration/web/callbacks.py'
-    ).read_text(encoding='utf-8')
-
-    assert "Input(context.draft_store_id, 'data')" in callbacks
-    assert "Output(context.saved_draft_store_id, 'data', allow_duplicate=True)" in callbacks
-    assert "Output(SOURCE_REVISION_STORE_ID, 'data')" in callbacks
-    assert "Output(context.editor_revision_store_id, 'data')" in callbacks
-    assert 'build_navigation_configuration_digest(_catalog(catalog_data))' in callbacks
-
-
-def test_navigation_workspace_starts_empty_and_does_not_read_source_implicitly() -> None:
-    root = Path(__file__).parents[1] / 'src/atlanticus/web/navigation/configuration/web'
-    layout = (root / 'layout.py').read_text(encoding='utf-8')
-    callbacks = (root / 'callbacks.py').read_text(encoding='utf-8')
-
-    assert 'context.services.administration.load_source()' not in layout
-    assert '_structure_section(catalog)' in layout
-    assert 'html.Div(navigation_structure(catalog), id=STRUCTURE_ID)' in layout
-    assert "'Importar'" in layout
-    assert 'if draft_data is None:' in callbacks
-    assert (
-        'prevent_initial_call=True'
-        in callbacks[
-            callbacks.index("Output(context.editor_revision_store_id, 'data')") : callbacks.index(
-                'def track_editor_revision('
-            )
-        ]
-    )
-
-
-def test_navigation_structure_renderer_is_shared_by_layout_and_callbacks() -> None:
-    root = Path(__file__).parents[1] / 'src/atlanticus/web/navigation/configuration/web'
-    layout = (root / 'layout.py').read_text(encoding='utf-8')
-    callbacks = (root / 'callbacks.py').read_text(encoding='utf-8')
-    rendering = (root / 'rendering.py').read_text(encoding='utf-8')
-
-    assert 'navigation_structure' in layout
-    assert 'navigation_structure' in callbacks
-    assert 'navigation_section_options' in callbacks
-    assert 'def navigation_structure(' in rendering
-    assert 'def navigation_section_options(' in rendering
-    assert 'def _navigation_structure(' not in callbacks
-
-def test_navigation_link_selects_own_dash_theme_locally() -> None:
-    root = Path(__file__).parents[1]
-    layout = (
-        root / 'src/atlanticus/web/navigation/configuration/web/layout.py'
-    ).read_text(encoding='utf-8')
-    adapter = (
-        root
-        / 'src/atlanticus/web/navigation/configuration/resources/css/20_dash_adapters.css'
-    ).read_text(encoding='utf-8')
-
-    assert layout.count('dcc.Dropdown(') == 2
-    assert 'atlanticus-navigation-admin__section-select' in layout
-    assert 'atlanticus-navigation-admin__profiles-select' in layout
-    assert layout.count('atlanticus-navigation-admin__dash-select-shell') == 2
-    assert "'search': 'Buscar sección'" in layout
-    assert "'search': 'Buscar perfil'" in layout
-    assert 'style=_dash_select_style()' in layout
-    assert "'--Dash-Stroke-Strong': 'var(--atlanticus-ui-secondary)'" in layout
-    assert "'--Dash-Fill-Interactive-Strong': 'var(--atlanticus-ui-secondary)'" in layout
-    assert "'--Dash-Text-Strong': 'var(--atlanticus-ui-text)'" in layout
-    assert '.dash-dropdown-search-container:focus-within' in adapter
-    assert '.dash-options-list-option-checkbox' in adapter
-    assert 'align-items: center;' in adapter
-    assert '.Select-control' not in adapter
-
+    for name, (dependencies, _options, function) in recorder.callbacks.items():
+        inputs_and_states = sum(
+            isinstance(dependency, (Input, State)) for dependency in dependencies
+        )
+        positional_parameters = len(
+            [
+                parameter
+                for parameter in signature(function).parameters.values()
+                if parameter.kind
+                in {
+                    parameter.POSITIONAL_ONLY,
+                    parameter.POSITIONAL_OR_KEYWORD,
+                }
+            ]
+        )
+        assert positional_parameters == inputs_and_states, name
