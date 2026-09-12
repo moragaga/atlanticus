@@ -163,16 +163,20 @@ requires-dist = [
 
 [[package]]
 name = "atlanticus-web-manager"
-version = "0.3.14"
+version = "0.3.15"
 source = { editable = "capabilities/manager" }
 dependencies = [
     { name = "atlanticus-web" },
+    { name = "atlanticus-web-projection" },
+    { name = "atlanticus-web-source" },
     { name = "dash" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "atlanticus-web", editable = "framework/core" },
+    { name = "atlanticus-web-projection", editable = "capabilities/projection/core" },
+    { name = "atlanticus-web-source", editable = "capabilities/source/core" },
     { name = "dash", specifier = "==4.4.1" },
 ]
 

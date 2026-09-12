@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "atlanticus-web-manager"
-version = "0.3.14"
+version = "0.3.15"
 description = "Capability administrativa modular para aplicaciones Atlanticus Web"
 requires-python = "==3.14.2"
 classifiers = [
@@ -12,11 +12,15 @@ classifiers = [
 ]
 dependencies = [
     "atlanticus-web==0.1.0",
+    "atlanticus-web-projection==0.1.0",
+    "atlanticus-web-source==0.1.0",
     "dash==4.4.1",
 ]
 
 [tool.uv.sources]
 atlanticus-web = { workspace = true }
+atlanticus-web-projection = { workspace = true }
+atlanticus-web-source = { workspace = true }
 
 [tool.setuptools]
 package-dir = {"" = "src"}

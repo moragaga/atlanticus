@@ -40,6 +40,17 @@ from atlanticus.web.manager.projection import (
 )
 from atlanticus.web.manager.registry import ManagerModuleRegistry
 from atlanticus.web.manager.surface import ManagerSurface
+from atlanticus.web.manager.workspace import (
+    ManagerProjectionState,
+    ManagerPublicationContext,
+    ManagerSourceVerification,
+    ManagerWorkspace,
+    prepare_conflict_overwrite,
+    prepare_publication,
+    resolve_manager_projection_state,
+    select_projection_target,
+    verify_workspace_source,
+)
 
 __all__ = [
     'ConfigurationLifecycleWorkflow',
@@ -58,11 +69,15 @@ __all__ = [
     'ManagerModuleRegistry',
     'ManagerPrincipal',
     'ManagerPrincipalProvider',
-    'ManagerSurface',
-    'ManagerSurfaceDefinition',
     'ManagerProjectionCoordinator',
     'ManagerProjectionError',
+    'ManagerProjectionState',
+    'ManagerPublicationContext',
     'ManagerSourceConflictError',
+    'ManagerSourceVerification',
+    'ManagerSurface',
+    'ManagerSurfaceDefinition',
+    'ManagerWorkspace',
     'ProjectionAuditRecord',
     'ProjectionExecutionResult',
     'ProjectionIssue',
@@ -75,6 +90,11 @@ __all__ = [
     'SourceSnapshot',
     'SourceVerificationResult',
     'build_draft_revision',
+    'prepare_conflict_overwrite',
+    'prepare_publication',
     'resolve_manager_lifecycle',
+    'resolve_manager_projection_state',
     'resolve_projection_state',
+    'select_projection_target',
+    'verify_workspace_source',
 ]
