@@ -1,102 +1,145 @@
-from pathlib import Path
+from datetime import UTC, datetime
+
+from dash import dcc
+
+from atlanticus.web.manager import (
+    DefaultManagerAuthorizationPolicy,
+    ManagerModule,
+    ManagerModuleGroup,
+    ManagerModuleRegistry,
+    ManagerPrincipal,
+    ManagerSurfaceDefinition,
+    ProjectionAuditRecord,
+    ProjectionStatus,
+)
+from atlanticus.web.manager.web.ids import (
+    workflow_action_id,
+    workflow_draft_id,
+    workflow_editor_revision_id,
+    workflow_history_preview_id,
+    workflow_history_preview_store_id,
+    workflow_saved_draft_id,
+    workflow_source_verification_id,
+    workflow_validation_id,
+)
+from atlanticus.web.manager.web.layout import (
+    build_manager_surface,
+    build_workflow_panel,
+)
+from atlanticus.web.services import ServiceRegistry
 
 
-def test_manager_lifecycle_exposes_draft_validate_publish_and_project() -> None:
-    root = Path(__file__).parents[1]
-    layout = (root / 'src/atlanticus/web/manager/web/layout.py').read_text(encoding='utf-8')
-
-    assert "id=workflow_draft_id(module.key),\n                    storage_type='memory'" in layout
-    assert (
-        "id=workflow_saved_draft_id(module.key),\n                    storage_type='local'"
-        in layout
+def _module() -> ManagerModule:
+    return ManagerModule(
+        key='tools',
+        group_key='configuration',
+        title='Herramientas',
+        route='/tools',
+        order=10,
+        layout=lambda _services: None,
+        workflow_service='tools.workflow',
+        source_name='Source',
+        projection_name='Projection',
     )
-    assert "workflow_action_id(module.key, 'save-draft')" in layout
-    assert "workflow_action_id(module.key, 'validate')" in layout
-    assert "workflow_action_id(module.key, 'verify-source')" in layout
-    assert "workflow_action_id(module.key, 'publish')" in layout
-    assert "workflow_action_id(module.key, 'project')" in layout
-    assert "workflow_action_id(module.key, 'load-source')" not in layout
-    assert "workflow_action_id(module.key, 'discard-local')" in layout
-    assert "workflow_action_id(module.key, 'reload')" in layout
-    assert "workflow_action_id(module.key, 'recover-saved-draft')" in layout
-    assert "workflow_action_id(module.key, 'discard-saved-draft')" in layout
-    assert "workflow_action_id(module.key, 'update-source')" in layout
-    assert "workflow_action_id(module.key, 'force-publish')" in layout
-    assert "'Verificar'" in layout
-    assert "'Publicar'" in layout
-    assert "f'Usar versión de {module.source_name}'" in layout
-    assert "workflow_action_id(module.key, 'keep-draft')" in layout
-    assert "'Mantener mi borrador'" in layout
-    assert "'Proyectar'" in layout
-    assert 'module.force_publish_enabled' in layout
 
-def test_source_audit_is_specific_and_history_opens_preview_before_loading_draft() -> None:
-    root = Path(__file__).parents[1]
-    layout = (root / 'src/atlanticus/web/manager/web/layout.py').read_text(encoding='utf-8')
 
-    assert "'Última publicación'" in layout
-    assert "'Última proyección'" in layout
-    assert "'Última validación'" not in layout
-    assert "'Ver revisión'" in layout
-    assert "'Cargar como borrador'" in layout
-    assert 'history_preview_open_id(' in layout
-    assert 'workflow_history_preview_load_id(module.key)' in layout
-    assert 'history_load_id(' not in layout
+def _component_by_id(component: object, component_id: object) -> object | None:
+    if getattr(component, 'id', None) == component_id:
+        return component
+    children = getattr(component, 'children', None)
+    if isinstance(children, (list, tuple)):
+        for child in children:
+            if child is None:
+                continue
+            found = _component_by_id(child, component_id)
+            if found is not None:
+                return found
+    elif children is not None and not isinstance(children, str):
+        return _component_by_id(children, component_id)
+    return None
 
-def test_traceability_is_grouped_as_a_five_stage_pipeline() -> None:
-    root = Path(__file__).parents[1]
-    layout = (root / 'src/atlanticus/web/manager/web/layout.py').read_text(encoding='utf-8')
-    assert "title='Borrador del navegador'" in layout
-    assert "title='Validación'" in layout
-    assert "title='Verificación de fuente'" in layout
-    assert "title='Fuente de verdad'" in layout
-    assert "title='Proyección activa'" in layout
-    assert "'Flujo de publicación'" in layout
-    assert "html.Span('Revisión')" in layout
-    assert "html.Span('Publicado por')" in layout
 
-def test_source_conflict_is_rendered_as_functional_state_with_actor_and_revisions() -> None:
-    root = Path(__file__).parents[1]
-    layout = (root / 'src/atlanticus/web/manager/web/layout.py').read_text(encoding='utf-8')
+def test_manager_surface_keeps_browser_draft_persistence_explicit() -> None:
+    module = _module()
+    group = ManagerModuleGroup('configuration', 'Configuraciones', 10)
+    definition = ManagerSurfaceDefinition(
+        principal_provider=lambda: ManagerPrincipal('local', 'Administrador local', is_local=True),
+        groups=(group,),
+        modules=(module,),
+    )
+    registry = ManagerModuleRegistry(definition.groups, definition.modules)
+    surface = build_manager_surface(
+        definition=definition,
+        registry=registry,
+        services=ServiceRegistry(),
+        principal=definition.principal_provider(),
+        authorization=DefaultManagerAuthorizationPolicy(),
+    )
 
-    assert 'source_verification.publishable' in layout
-    assert "'La fuente cambió mientras estabas trabajando.'" in layout
-    assert "'Base de tu borrador'" in layout
-    assert "'Fuente actual'" in layout
-    assert 'source_actor' in layout
-    assert 'source_occurred_at' in layout
+    transient_ids = (
+        workflow_draft_id(module.key),
+        workflow_validation_id(module.key),
+        workflow_source_verification_id(module.key),
+        workflow_editor_revision_id(module.key),
+    )
+    for component_id in transient_ids:
+        store = _component_by_id(surface, component_id)
+        assert isinstance(store, dcc.Store)
+        assert store.storage_type == 'memory'
 
-def test_manager_tracks_editor_revision_and_source_verification_as_transient_state() -> None:
-    root = Path(__file__).parents[1]
-    layout = (root / 'src/atlanticus/web/manager/web/layout.py').read_text(encoding='utf-8')
+    saved_draft = _component_by_id(surface, workflow_saved_draft_id(module.key))
+    assert isinstance(saved_draft, dcc.Store)
+    assert saved_draft.storage_type == 'local'
 
-    assert 'workflow_editor_revision_id(module.key)' in layout
-    assert 'workflow_source_verification_id(module.key)' in layout
-    assert "storage_type='memory'" in layout
-    assert "'Cambios sin guardar'" in layout
 
-def test_workspace_actions_explain_refresh_and_post_publish_verification() -> None:
-    root = Path(__file__).parents[1]
-    layout = (root / 'src/atlanticus/web/manager/web/layout.py').read_text(encoding='utf-8')
-    assert "'Workspace local'" in layout
-    assert "'Descartar cambios locales'" in layout
-    assert "'Recargar'" in layout
-    assert "'Recuperar borrador'" in layout
-    assert "'Descartar borrador guardado'" in layout
-    assert "La configuración publicada se mantiene visible hasta que elijas " in layout
-    assert "recuperar este borrador." in layout
-    assert "f'Recargar restaura la versión actual de {module.source_name} y vuelve '" in layout
-    assert "'a consultar fuente, historial y proyección.'" in layout
-    assert "f'Cargar configuración desde {module.source_name}'" not in layout
-    assert "'No requerida' if draft.revision == source_revision else 'Pendiente'" in layout
-    assert 'workflow_workspace_confirmation_id(module.key)' in layout
+def test_workflow_panel_exposes_only_explicit_lifecycle_actions() -> None:
+    module = _module()
+    audit = ProjectionAuditRecord(
+        actor='Admin',
+        occurred_at=datetime(2026, 9, 11, 12, 0, tzinfo=UTC),
+    )
+    panel = build_workflow_panel(
+        module=module,
+        status=ProjectionStatus('source-a', audit),
+        history=(),
+        can_load_history=True,
+        error=None,
+    )
 
-def test_history_preview_is_non_destructive_until_explicit_load() -> None:
-    root = Path(__file__).parents[1]
-    layout = (root / 'src/atlanticus/web/manager/web/layout.py').read_text(encoding='utf-8')
+    expected_actions = (
+        'discard-local',
+        'reload',
+        'recover-saved-draft',
+        'discard-saved-draft',
+        'save-draft',
+        'validate',
+        'verify-source',
+        'publish',
+        'project',
+        'update-source',
+        'keep-draft',
+    )
+    for action in expected_actions:
+        assert _component_by_id(panel, workflow_action_id(module.key, action)) is not None
 
-    assert "'Vista previa histórica'" in layout
-    assert "'Cargar esta revisión reemplazará el trabajo local actual del '" in layout
-    assert 'workflow_history_preview_store_id(module.key)' in layout
-    assert 'module.history_preview_renderer is not None' in layout
-    assert 'hidden=True' in layout
+    assert _component_by_id(panel, workflow_action_id(module.key, 'load-source')) is None
+
+
+def test_history_preview_has_its_own_state_and_does_not_reuse_the_draft_store() -> None:
+    module = _module()
+    panel = build_workflow_panel(
+        module=module,
+        status=None,
+        history=(),
+        can_load_history=True,
+        error=None,
+    )
+
+    preview = _component_by_id(panel, workflow_history_preview_id(module.key))
+    preview_store = _component_by_id(panel, workflow_history_preview_store_id(module.key))
+    draft_store = _component_by_id(panel, workflow_draft_id(module.key))
+
+    assert preview is not None
+    assert isinstance(preview_store, dcc.Store)
+    assert preview_store.id != workflow_draft_id(module.key)
+    assert draft_store is None

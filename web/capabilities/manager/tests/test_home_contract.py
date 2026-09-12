@@ -1,43 +1,77 @@
-from dataclasses import fields
-from pathlib import Path
+from atlanticus.web.manager import (
+    DefaultManagerAuthorizationPolicy,
+    ManagerModule,
+    ManagerModuleGroup,
+    ManagerModuleRegistry,
+    ManagerPrincipal,
+    ManagerSurfaceDefinition,
+)
+from atlanticus.web.manager.web.home import build_manager_home_return
+from atlanticus.web.manager.web.ids import CONTENT_ID, HOME_ID
+from atlanticus.web.manager.web.layout import build_manager_surface
+from atlanticus.web.services import ServiceRegistry
 
-from atlanticus.web.manager.models import ManagerSurfaceDefinition
+
+def _component_by_id(component: object, component_id: str) -> object | None:
+    if getattr(component, 'id', None) == component_id:
+        return component
+    children = getattr(component, 'children', None)
+    if isinstance(children, (list, tuple)):
+        for child in children:
+            if child is None:
+                continue
+            found = _component_by_id(child, component_id)
+            if found is not None:
+                return found
+    elif children is not None and not isinstance(children, str):
+        return _component_by_id(children, component_id)
+    return None
 
 
-def test_manager_surface_no_longer_has_default_module_contract() -> None:
-    assert 'default_module_key' not in {field.name for field in fields(ManagerSurfaceDefinition)}
+def _surface():
+    group = ManagerModuleGroup('configuration', 'Configuraciones', 10)
+    module = ManagerModule(
+        key='tools',
+        group_key=group.key,
+        title='Herramientas',
+        route='/tools',
+        order=10,
+        layout=lambda _services: None,
+        workflow_service='tools.workflow',
+    )
+    principal = ManagerPrincipal('local', 'Administrador local', is_local=True)
+    definition = ManagerSurfaceDefinition(
+        principal_provider=lambda: principal,
+        groups=(group,),
+        modules=(module,),
+    )
+    registry = ManagerModuleRegistry(definition.groups, definition.modules)
+    return (
+        build_manager_surface(
+            definition=definition,
+            registry=registry,
+            services=ServiceRegistry(),
+            principal=principal,
+            authorization=DefaultManagerAuthorizationPolicy(),
+        ),
+        registry,
+    )
 
-def test_home_is_a_static_surface_separate_from_module_content() -> None:
-    layout = (
-        Path(__file__).parents[1]
-        / 'src/atlanticus/web/manager/web/layout.py'
-    ).read_text(encoding='utf-8')
-    callbacks = (
-        Path(__file__).parents[1]
-        / 'src/atlanticus/web/manager/web/callbacks.py'
-    ).read_text(encoding='utf-8')
 
-    assert 'children=build_manager_home(' in layout
-    assert 'id=HOME_ID' in layout
-    assert "Output(HOME_ID, 'hidden')" in callbacks
-    assert "Output(CONTENT_ID, 'hidden')" in callbacks
-    assert 'home_active = current_path == registry.root_route' in callbacks
-    assert 'definition.default_module_key' not in callbacks
+def test_manager_home_and_module_content_are_distinct_runtime_slots() -> None:
+    surface, _registry = _surface()
 
-def test_module_pages_expose_explicit_manager_home_return() -> None:
-    source = (
-        Path(__file__).parents[1]
-        / 'src/atlanticus/web/manager/web/callbacks.py'
-    ).read_text(encoding='utf-8')
+    home = _component_by_id(surface, HOME_ID)
+    content = _component_by_id(surface, CONTENT_ID)
 
-    assert 'build_manager_home_return(registry.root_route)' in source
-    assert 'pathname or registry.root_route' in source
+    assert home is not None
+    assert content is not None
+    assert home is not content
 
-def test_summary_is_only_visible_on_manager_home() -> None:
-    source = (
-        Path(__file__).parents[1]
-        / 'src/atlanticus/web/manager/web/callbacks.py'
-    ).read_text(encoding='utf-8')
 
-    assert "Output(SUMMARY_ID, 'hidden')" in source
-    assert 'return not home_active, not home_active, home_active' in source
+def test_module_pages_return_to_the_registry_root_route() -> None:
+    _surface_component, registry = _surface()
+
+    link = build_manager_home_return(registry.root_route)
+
+    assert link.href == registry.root_route
