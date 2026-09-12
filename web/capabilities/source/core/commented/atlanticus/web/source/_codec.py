@@ -1,5 +1,5 @@
-# Codec interno del proveedor Local.
-# Centraliza JSON canónico, hashes, cursores y reconstrucción de modelos sin ampliar el contrato público.
+# Codec interno compartido de Source.
+# Centraliza JSON canónico, hashes, cursores y reconstrucción de modelos para Local y Blob sin ampliar el contrato público.
 from __future__ import annotations
 
 import base64
@@ -46,7 +46,7 @@ def content_hash(resources: tuple[SourceResourceMetadata, ...]) -> Digest:
     return _digest(_json_bytes(document))
 
 
-# El token local identifica exactamente los bytes de manifest observados.
+# El token de Source identifica exactamente los bytes de manifest observados sin depender del provider.
 def token_for_manifest(payload: bytes) -> ConcurrencyToken:
     digest = hashlib.sha256(payload).digest()
     value = base64.urlsafe_b64encode(digest).decode('ascii').rstrip('=')
