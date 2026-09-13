@@ -9,6 +9,7 @@ pytest.importorskip('dash')
 from atlanticus.web.manager.projection import ManagerDraft
 from atlanticus.web.users.configuration import (
     UsersConfigurationCatalog,
+    build_user_key,
     compose_users_configuration_services,
 )
 from atlanticus.web.users.configuration.adapters import (
@@ -41,6 +42,7 @@ from atlanticus.web.users.configuration.web.ids import (
     SECTION_STORE_ID,
     SOURCE_NAME_ID,
     SOURCE_REVISION_STORE_ID,
+    USER_SAVE_ID,
     USERS_TAB_ID,
 )
 
@@ -255,3 +257,46 @@ def test_users_admin_save_draft_is_local_and_does_not_publish_or_project(monkeyp
     assert draft.payload == catalog_document
     assert source.fetch_bundle() is None
     assert projection.load_state() is None
+
+def test_users_admin_can_materialize_discovered_identity_into_draft(monkeypatch) -> None:
+    context, _source, _projection = _context()
+    recorder = _registered_callbacks(context)
+    user_editor = recorder.callbacks['user_editor'][2]
+    catalog = UsersConfigurationCatalog()
+    user_id = build_user_key(issuer='entra', subject_id='subject-new')
+
+    monkeypatch.setattr(
+        users_callbacks,
+        'ctx',
+        SimpleNamespace(triggered_id=USER_SAVE_ID),
+    )
+
+    result = user_editor(
+        None,
+        None,
+        None,
+        None,
+        None,
+        1,
+        [],
+        [],
+        {
+            'mode': 'discovered',
+            'user_id': user_id,
+            'issuer': 'entra',
+            'subject_id': 'subject-new',
+        },
+        'Discovered User',
+        'discovered@example.com',
+        'administrator',
+        True,
+        catalog.to_document(),
+    )
+
+    updated = UsersConfigurationCatalog.from_document(result[-1])
+
+    assert len(updated.users) == 1
+    assert updated.users[0].user_id == user_id
+    assert updated.users[0].issuer == 'entra'
+    assert updated.users[0].subject_id == 'subject-new'
+    assert updated.users[0].profile_key == 'administrator'

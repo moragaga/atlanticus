@@ -28,18 +28,13 @@ _PROFILE_KEY_PATTERN = re.compile(r'^[a-z][a-z0-9_]*$')
 _NON_KEY_PATTERN = re.compile(r'[^a-z0-9]+')
 
 
-def _required(value: str, *, label: str) -> str:
+def _required(value: str | None, *, label: str) -> str:
+    if value is None:
+        raise UsersConfigurationValidationError(f'{label} must not be empty')
     normalized = value.strip()
     if not normalized:
         raise UsersConfigurationValidationError(f'{label} must not be empty')
     return normalized
-
-
-def _optional(value: str | None) -> str | None:
-    if value is None:
-        return None
-    normalized = value.strip()
-    return normalized or None
 
 
 def build_profile_key(label: str) -> str:
@@ -62,8 +57,10 @@ def normalize_email(value: str) -> str:
     return normalized
 
 
-def build_user_key(*, issuer: str | None, subject_id: str | None, email: str) -> str:
-    identity = f'{issuer}|{subject_id}' if issuer and subject_id else normalize_email(email)
+def build_user_key(*, issuer: str | None, subject_id: str | None) -> str:
+    normalized_issuer = _required(issuer, label='User issuer')
+    normalized_subject_id = _required(subject_id, label='User subject id')
+    identity = f'{normalized_issuer}|{normalized_subject_id}'
     digest = hashlib.sha256(identity.encode('utf-8')).hexdigest()[:24]
     return f'user:{digest}'
 
@@ -127,10 +124,8 @@ class UserConfiguration:
     subject_id: str | None = None
 
     def __post_init__(self) -> None:
-        issuer = _optional(self.issuer)
-        subject_id = _optional(self.subject_id)
-        if (issuer is None) != (subject_id is None):
-            raise UsersConfigurationValidationError('User issuer and subject id must coexist')
+        issuer = _required(self.issuer, label='User issuer')
+        subject_id = _required(self.subject_id, label='User subject id')
         display_name = _required(self.display_name, label='User display name')
         email = normalize_email(self.email)
         profile_key = normalize_profile_key(self.profile_key)
@@ -140,14 +135,10 @@ class UserConfiguration:
             )
         if not isinstance(self.enabled, bool):
             raise UsersConfigurationValidationError('User enabled flag must be boolean')
-        expected_user_id = build_user_key(
-            issuer=issuer,
-            subject_id=subject_id,
-            email=email,
-        )
+        expected_user_id = build_user_key(issuer=issuer, subject_id=subject_id)
         user_id = self.user_id.strip() or expected_user_id
-        if not user_id:
-            raise UsersConfigurationValidationError('User id must not be empty')
+        if user_id != expected_user_id:
+            raise UsersConfigurationValidationError('User id must match authenticated identity')
         object.__setattr__(self, 'user_id', user_id)
         object.__setattr__(self, 'display_name', display_name)
         object.__setattr__(self, 'email', email)
@@ -168,7 +159,7 @@ class UserConfiguration:
         user_id: str | None = None,
     ) -> UserConfiguration:
         return cls(
-            user_id=user_id or build_user_key(issuer=issuer, subject_id=subject_id, email=email),
+            user_id=user_id or build_user_key(issuer=issuer, subject_id=subject_id),
             display_name=display_name,
             email=email,
             profile_key=profile_key,
@@ -200,8 +191,8 @@ class UserConfiguration:
                 email=str(document['email']),
                 profile_key=str(document['profile_key']),
                 enabled=enabled,
-                issuer=_optional_value(document.get('issuer')),
-                subject_id=_optional_value(document.get('subject_id')),
+                issuer=_required_document_string(document, 'issuer'),
+                subject_id=_required_document_string(document, 'subject_id'),
             )
         except (KeyError, TypeError, ValueError) as error:
             raise UsersConfigurationValidationError('User contract is invalid') from error
@@ -216,13 +207,17 @@ class DiscoveredUser:
     email: str
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, 'user_id', _required(self.user_id, label='Discovered user id'))
-        object.__setattr__(self, 'issuer', _required(self.issuer, label='Discovered user issuer'))
-        object.__setattr__(
-            self,
-            'subject_id',
-            _required(self.subject_id, label='Discovered user subject id'),
-        )
+        issuer = _required(self.issuer, label='Discovered user issuer')
+        subject_id = _required(self.subject_id, label='Discovered user subject id')
+        expected_user_id = build_user_key(issuer=issuer, subject_id=subject_id)
+        user_id = _required(self.user_id, label='Discovered user id')
+        if user_id != expected_user_id:
+            raise UsersConfigurationValidationError(
+                'Discovered user id must match authenticated identity'
+            )
+        object.__setattr__(self, 'user_id', user_id)
+        object.__setattr__(self, 'issuer', issuer)
+        object.__setattr__(self, 'subject_id', subject_id)
         object.__setattr__(
             self,
             'display_name',
@@ -268,11 +263,7 @@ class UsersConfigurationCatalog:
         emails = tuple(user.email for user in users)
         if len(emails) != len(set(emails)):
             raise UsersConfigurationValidationError('User emails must be unique')
-        identities = tuple(
-            (user.issuer, user.subject_id)
-            for user in users
-            if user.issuer is not None and user.subject_id is not None
-        )
+        identities = tuple((user.issuer, user.subject_id) for user in users)
         if len(identities) != len(set(identities)):
             raise UsersConfigurationValidationError('User identities must be unique')
         catalog = ProfileCatalog(
@@ -341,8 +332,8 @@ class UsersConfigurationCatalog:
             ) from error
 
 
-def _optional_value(value: object) -> str | None:
-    if value is None:
-        return None
-    normalized = str(value).strip()
-    return normalized or None
+def _required_document_string(document: dict[str, Any], key: str) -> str:
+    value = document[key]
+    if not isinstance(value, str):
+        raise TypeError
+    return value

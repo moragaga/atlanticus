@@ -264,10 +264,6 @@ def _matches_configured_identity(
     discovered: DiscoveredUser,
     configured: UserConfiguration,
 ) -> bool:
-    if discovered.user_id == configured.user_id:
-        return True
-    if configured.issuer is None or configured.subject_id is None:
-        return False
     return (
         discovered.issuer.casefold() == configured.issuer.casefold()
         and discovered.subject_id == configured.subject_id

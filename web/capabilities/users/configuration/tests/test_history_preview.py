@@ -1,3 +1,4 @@
+from atlanticus.web.users.configuration import build_user_key
 from atlanticus.web.users.configuration.web import build_users_history_preview
 
 
@@ -29,13 +30,16 @@ def test_users_history_preview_shows_profiles_and_assignments_without_access_sem
             ],
             'users': [
                 {
-                    'user_id': 'user:example',
+                    'user_id': build_user_key(
+                        issuer='entra',
+                        subject_id='jane-subject',
+                    ),
                     'display_name': 'Jane Doe',
                     'email': 'jane@example.com',
                     'profile_key': 'operator',
                     'enabled': True,
-                    'issuer': None,
-                    'subject_id': None,
+                    'issuer': 'entra',
+                    'subject_id': 'jane-subject',
                 }
             ],
         }
@@ -50,7 +54,11 @@ def test_users_history_preview_shows_profiles_and_assignments_without_access_sem
     assert 'Texto #0D1B2A' in text
     assert 'Acceso total' not in text
     assert 'Acceso restringido' not in text
-    assert 'Jane Doe user:example' in text
+    expected_user_id = build_user_key(
+        issuer='entra',
+        subject_id='jane-subject',
+    )
+    assert f'Jane Doe {expected_user_id}' in text
     assert 'jane@example.com' in text
     assert 'Perfil: operator' in text
     assert 'Activo' in text

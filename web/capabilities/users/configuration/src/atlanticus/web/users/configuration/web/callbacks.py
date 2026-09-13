@@ -262,7 +262,7 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
         except Exception:
             return _notice('No fue posible actualizar las identidades pendientes.')
         available = tuple(user for user in discovered if user.user_id not in configured_ids)
-        return _discovered_cards(available, catalog)
+        return _discovered_cards(available)
 
     @app.callback(
         Output(PROFILE_MODAL_ID, 'className'),
@@ -508,28 +508,19 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
                     options=options,
                     error='Discovered user does not exist',
                 )
-            existing = next(
-                (item for item in catalog.users if item.email == discovered.email),
-                None,
-            )
             return _user_modal_response(
                 editor={
                     'mode': 'discovered',
                     'user_id': discovered.user_id,
                     'issuer': discovered.issuer,
                     'subject_id': discovered.subject_id,
-                    'replace_user_id': existing.user_id if existing is not None else None,
                 },
-                title=(
-                    'Vincular identidad descubierta'
-                    if existing is not None
-                    else 'Incorporar usuario descubierto'
-                ),
+                title='Incorporar usuario descubierto',
                 name=discovered.display_name,
                 email=discovered.email,
                 options=options,
-                profile=existing.profile_key if existing is not None else None,
-                enabled=existing.enabled if existing is not None else True,
+                profile=None,
+                enabled=True,
                 identity_locked=True,
             )
         if trigger != USER_SAVE_ID or not _click_is_real(save_clicks):
@@ -554,7 +545,6 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
                 email=email,
                 profile_key=profile_key,
                 enabled=bool(enabled_value),
-                discovered=discovered,
             )
         except Exception as error:
             return _user_modal_response(
@@ -784,14 +774,13 @@ def _save_user(
     if mode not in {'edit', 'discovered'}:
         raise ValueError('User editor mode is invalid')
 
-    replace_user_id = _optional_text(editor.get('replace_user_id'))
-    if mode == 'edit':
-        replace_user_id = _optional_text(editor.get('user_id'))
-
     existing = None
-    if replace_user_id is not None:
+    if mode == 'edit':
+        user_id = _optional_text(editor.get('user_id'))
+        if user_id is None:
+            raise ValueError('User id is required for edit')
         existing = next(
-            (user for user in catalog.users if user.user_id == replace_user_id),
+            (user for user in catalog.users if user.user_id == user_id),
             None,
         )
         if existing is None:
@@ -949,11 +938,9 @@ def _user_cards(catalog: UsersConfigurationCatalog) -> object:
 
 def _discovered_cards(
     users: tuple[DiscoveredUser, ...],
-    catalog: UsersConfigurationCatalog,
 ) -> object:
     if not users:
         return _empty('No hay identidades pendientes de incorporación.')
-    configured_by_email = {user.email: user for user in catalog.users}
     return html.Div(
         [
             html.Article(
@@ -968,20 +955,9 @@ def _discovered_cards(
                     ),
                     html.Div(
                         [
-                            html.Span(
-                                (
-                                    'Identidad detectada'
-                                    if user.email in configured_by_email
-                                    else 'Guest'
-                                ),
-                                className='atlanticus-users-admin__status',
-                            ),
+                            html.Span('Guest', className='atlanticus-users-admin__status'),
                             dbc.Button(
-                                (
-                                    'Vincular identidad'
-                                    if user.email in configured_by_email
-                                    else 'Incorporar'
-                                ),
+                                'Incorporar',
                                 id=discovered_add_id(user.user_id),
                                 n_clicks=0,
                                 color='secondary',
@@ -1055,11 +1031,7 @@ def _profile_editor_title(editor_data: dict[str, object] | None) -> str:
 def _user_editor_title(editor_data: dict[str, object] | None) -> str:
     mode = str((editor_data or {}).get('mode', 'create'))
     if mode == 'discovered':
-        return (
-            'Vincular identidad descubierta'
-            if (editor_data or {}).get('replace_user_id')
-            else 'Incorporar usuario descubierto'
-        )
+        return 'Incorporar usuario descubierto'
     if mode == 'edit':
         return 'Editar usuario'
     return 'Usuario'

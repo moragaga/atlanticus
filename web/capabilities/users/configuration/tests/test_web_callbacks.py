@@ -7,6 +7,7 @@ from atlanticus.web.users.configuration.models import (
     DiscoveredUser,
     UserConfiguration,
     UsersConfigurationCatalog,
+    build_user_key,
 )
 from atlanticus.web.users.configuration.web.callbacks import (
     _browser_draft_document,
@@ -42,7 +43,7 @@ def _with_operator() -> UsersConfigurationCatalog:
 
 def _discovered() -> DiscoveredUser:
     return DiscoveredUser(
-        user_id='user:stable',
+        user_id=build_user_key(issuer='entra', subject_id='subject-1'),
         issuer='entra',
         subject_id='subject-1',
         display_name='Usuario Descubierto',
@@ -56,7 +57,7 @@ def test_profile_editor_generates_stable_key_and_user_can_consume_it() -> None:
         with_profile,
         {
             'mode': 'discovered',
-            'user_id': 'user:one',
+            'user_id': build_user_key(issuer='entra', subject_id='subject-one'),
             'issuer': 'entra',
             'subject_id': 'subject-one',
         },
@@ -78,7 +79,7 @@ def test_discovered_user_keeps_identity_when_added_to_draft() -> None:
         _with_operator(),
         {
             'mode': 'discovered',
-            'user_id': 'user:stable',
+            'user_id': build_user_key(issuer='entra', subject_id='subject-1'),
             'issuer': 'entra',
             'subject_id': 'subject-1',
         },
@@ -89,17 +90,19 @@ def test_discovered_user_keeps_identity_when_added_to_draft() -> None:
     )
 
     user = updated.users[0]
-    assert user.user_id == 'user:stable'
+    assert user.user_id == build_user_key(issuer='entra', subject_id='subject-1')
     assert user.issuer == 'entra'
     assert user.subject_id == 'subject-1'
 
 
-def test_discovered_identity_replaces_matching_configured_user_without_duplication() -> None:
+def test_discovered_identity_with_existing_email_is_not_rebound() -> None:
     base = _with_operator()
-    manual = UserConfiguration.create(
+    existing = UserConfiguration.create(
         display_name='Usuario Descubierto',
         email='discovered@example.com',
         profile_key='operador_planta',
+        issuer='entra',
+        subject_id='existing-subject',
     )
     catalog = UsersConfigurationCatalog(
         administrator_background_color=base.administrator_background_color,
@@ -107,29 +110,26 @@ def test_discovered_identity_replaces_matching_configured_user_without_duplicati
         guest_background_color=base.guest_background_color,
         guest_text_color=base.guest_text_color,
         profiles=base.profiles,
-        users=(manual,),
+        users=(existing,),
     )
     discovered = _discovered()
 
-    updated = _save_user(
-        catalog,
-        {
-            'mode': 'discovered',
-            'user_id': discovered.user_id,
-            'issuer': discovered.issuer,
-            'subject_id': discovered.subject_id,
-            'replace_user_id': manual.user_id,
-        },
-        display_name=discovered.display_name,
-        email=discovered.email,
-        profile_key='operador_planta',
-        enabled=True,
-    )
+    with pytest.raises(ValueError, match='User email already exists'):
+        _save_user(
+            catalog,
+            {
+                'mode': 'discovered',
+                'user_id': discovered.user_id,
+                'issuer': discovered.issuer,
+                'subject_id': discovered.subject_id,
+            },
+            display_name=discovered.display_name,
+            email=discovered.email,
+            profile_key='operador_planta',
+            enabled=True,
+        )
 
-    assert len(updated.users) == 1
-    assert updated.users[0].user_id == 'user:stable'
-    assert updated.users[0].issuer == 'entra'
-    assert updated.users[0].subject_id == 'subject-1'
+    assert catalog.users == (existing,)
 
 
 def test_users_browser_draft_is_accepted_by_manager_contract() -> None:

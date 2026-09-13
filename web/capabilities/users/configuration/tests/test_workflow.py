@@ -5,6 +5,7 @@ from atlanticus.web.users.configuration import (
     UserConfiguration,
     UserProfileConfiguration,
     UsersConfigurationCatalog,
+    build_user_key,
     compose_users_configuration_services,
 )
 from atlanticus.web.users.configuration.adapters import (
@@ -31,6 +32,8 @@ def _catalog(label: str = 'Operador') -> UsersConfigurationCatalog:
                 display_name='User One',
                 email='one@example.com',
                 profile_key='operator',
+                issuer='entra',
+                subject_id='configured-subject',
             ),
         ),
     )
@@ -111,7 +114,7 @@ def test_discovered_identity_remains_visible_until_it_is_materialized_in_source(
     discovered = MemoryDiscoveredUsersSource(
         users=[
             DiscoveredUser(
-                user_id='user:stable',
+                user_id=build_user_key(issuer='entra', subject_id='subject-1'),
                 issuer='entra',
                 subject_id='subject-1',
                 display_name='User One',
@@ -130,11 +133,10 @@ def test_discovered_identity_remains_visible_until_it_is_materialized_in_source(
     first = services.administration.publish_catalog(manual, expected_source_revision=None)
 
     assert tuple(user.user_id for user in services.administration.list_discovered()) == (
-        'user:stable',
+        build_user_key(issuer='entra', subject_id='subject-1'),
     )
 
     materialized_user = UserConfiguration.create(
-        user_id='user:stable',
         issuer='entra',
         subject_id='subject-1',
         display_name='User One',
