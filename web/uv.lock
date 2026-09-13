@@ -19,6 +19,7 @@ members = [
     "atlanticus-web-source",
     "atlanticus-web-source-blob",
     "atlanticus-web-source-local",
+    "atlanticus-web-storage-topology",
     "atlanticus-web-users",
     "atlanticus-web-users-activity",
     "atlanticus-web-users-configuration",
@@ -290,6 +291,11 @@ dependencies = [
 requires-dist = [{ name = "atlanticus-web-source", editable = "capabilities/source/core" }]
 
 [[package]]
+name = "atlanticus-web-storage-topology"
+version = "0.1.0"
+source = { editable = "capabilities/storage/topology" }
+
+[[package]]
 name = "atlanticus-web-users"
 version = "0.1.0"
 source = { editable = "capabilities/users/core" }
@@ -368,6 +374,7 @@ dependencies = [
     { name = "atlanticus-web-source" },
     { name = "atlanticus-web-source-blob" },
     { name = "atlanticus-web-source-local" },
+    { name = "atlanticus-web-storage-topology" },
     { name = "atlanticus-web-users" },
     { name = "atlanticus-web-users-activity" },
     { name = "atlanticus-web-users-configuration" },
@@ -395,6 +402,7 @@ requires-dist = [
     { name = "atlanticus-web-source", editable = "capabilities/source/core" },
     { name = "atlanticus-web-source-blob", editable = "capabilities/source/blob" },
     { name = "atlanticus-web-source-local", editable = "capabilities/source/local" },
+    { name = "atlanticus-web-storage-topology", editable = "capabilities/storage/topology" },
     { name = "atlanticus-web-users", editable = "capabilities/users/core" },
     { name = "atlanticus-web-users-activity", editable = "capabilities/users/activity" },
     { name = "atlanticus-web-users-configuration", editable = "capabilities/users/configuration" },
