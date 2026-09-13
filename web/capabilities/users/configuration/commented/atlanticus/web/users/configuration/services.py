@@ -1,5 +1,5 @@
-# Orquesta la configuración de Users y propaga expected_source_revision hasta la escritura final.
-# La verificación de negocio previa no reemplaza la comprobación fresca que ejecuta el store.
+# Orquesta Users Configuration sin duplicar el contrato Pending del core.
+# El reader administrativo sólo enumera Pending; Source sigue siendo la autoridad de Managed.
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ from datetime import UTC, datetime
 
 from atlanticus.web.users.configuration.bundle import UsersConfigurationBundle
 from atlanticus.web.users.configuration.contracts import (
-    DiscoveredUsersSource,
     UsersAuditActorProvider,
     UsersConfigurationPublisher,
     UsersConfigurationSource,
@@ -21,7 +20,6 @@ from atlanticus.web.users.configuration.errors import (
     UsersConfigurationSourceError,
 )
 from atlanticus.web.users.configuration.models import (
-    DiscoveredUser,
     UserConfiguration,
     UsersConfigurationCatalog,
 )
@@ -34,13 +32,15 @@ from atlanticus.web.users.configuration.projection import (
     UsersProjectionSummaryItem,
     UsersSourcePublicationResult,
 )
+from atlanticus.web.users.models import PendingUserRecord
+from atlanticus.web.users.store import PendingUsersReader
 
 
 @dataclass(frozen=True, slots=True)
 class UsersConfigurationServices:
     administration: UsersAdministrationService
     projection_workflow: UsersProjectionWorkflow
-    discovered: DiscoveredUsersSource
+    pending: PendingUsersReader
     projection: UsersProjectionRepository
 
 
@@ -50,12 +50,12 @@ class UsersAdministrationService:
         *,
         source: UsersConfigurationSource,
         publisher: UsersConfigurationPublisher,
-        discovered: DiscoveredUsersSource,
+        pending: PendingUsersReader,
         audit_actor_provider: UsersAuditActorProvider,
     ) -> None:
         self._source = source
         self._publisher = publisher
-        self._discovered = discovered
+        self._pending = pending
         self._audit_actor_provider = audit_actor_provider
 
     def load_source(self) -> UsersConfigurationBundle | None:
@@ -65,12 +65,13 @@ class UsersAdministrationService:
         bundle = self.load_source()
         return bundle.catalog if bundle is not None else None
 
-    def list_discovered(self) -> tuple[DiscoveredUser, ...]:
+    # Un Pending deja de ofrecerse apenas la misma identidad existe en Source.
+    def list_pending(self) -> tuple[PendingUserRecord, ...]:
         configured = self.load_catalog()
         configured_users = configured.users if configured else ()
         return tuple(
             user
-            for user in self._discovered.list_discovered()
+            for user in self._pending.list_pending()
             if not any(_matches_configured_identity(user, current) for current in configured_users)
         )
 
@@ -205,14 +206,14 @@ def compose_users_configuration_services(
     source: UsersConfigurationSource,
     publisher: UsersConfigurationPublisher,
     projection: UsersProjectionRepository,
-    discovered: DiscoveredUsersSource,
+    pending: PendingUsersReader,
     audit_actor_provider: UsersAuditActorProvider,
 ) -> UsersConfigurationServices:
     return UsersConfigurationServices(
         administration=UsersAdministrationService(
             source=source,
             publisher=publisher,
-            discovered=discovered,
+            pending=pending,
             audit_actor_provider=audit_actor_provider,
         ),
         projection_workflow=UsersProjectionWorkflow(
@@ -220,7 +221,7 @@ def compose_users_configuration_services(
             projection=projection,
             audit_actor_provider=audit_actor_provider,
         ),
-        discovered=discovered,
+        pending=pending,
         projection=projection,
     )
 
@@ -263,12 +264,12 @@ def _build_draft_revision(catalog: UsersConfigurationCatalog) -> str:
     return hashlib.sha256(canonical).hexdigest()
 
 
+# La coincidencia administrativa usa sólo la identidad autoritativa; email no participa.
 def _matches_configured_identity(
-    discovered: DiscoveredUser,
+    pending: PendingUserRecord,
     configured: UserConfiguration,
 ) -> bool:
-    # Discovery compara exactamente la identidad autenticada; el correo no participa.
     return (
-        discovered.issuer == configured.issuer
-        and discovered.subject_id == configured.subject_id
+        pending.issuer == configured.issuer
+        and pending.subject_id == configured.subject_id
     )

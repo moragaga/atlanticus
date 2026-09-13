@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from atlanticus.web.identity.models import AuthenticatedIdentity
-from atlanticus.web.users.models import RuntimeUserRecord
+from atlanticus.web.users.models import PendingUserRecord, RuntimeUserRecord
 
 
 class UsersRuntimeStore(ABC):
@@ -13,4 +13,9 @@ class UsersRuntimeStore(ABC):
 
     @abstractmethod
     def observe(self, identity: AuthenticatedIdentity) -> RuntimeUserRecord:
+        raise NotImplementedError
+
+class PendingUsersReader(ABC):
+    @abstractmethod
+    def list_pending(self) -> tuple[PendingUserRecord, ...]:
         raise NotImplementedError

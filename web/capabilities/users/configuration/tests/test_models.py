@@ -96,6 +96,45 @@ def test_managed_user_id_is_derived_from_authenticated_identity() -> None:
     assert user.email == 'user@example.com'
 
 
+def test_managed_user_email_is_optional_and_roundtrips() -> None:
+    user = UserConfiguration.create(
+        display_name='Managed User',
+        profile_key='administrator',
+        issuer='entra',
+        subject_id='subject-1',
+    )
+
+    assert user.email is None
+    assert UserConfiguration.from_document(user.to_document()) == user
+
+
+def test_catalog_allows_multiple_managed_users_without_email() -> None:
+    users = tuple(
+        UserConfiguration.create(
+            display_name=f'User {index}',
+            profile_key='administrator',
+            issuer='entra',
+            subject_id=f'subject-{index}',
+        )
+        for index in (1, 2)
+    )
+
+    catalog = UsersConfigurationCatalog(users=users)
+
+    assert tuple(user.email for user in catalog.users) == (None, None)
+
+
+def test_managed_user_rejects_invalid_non_empty_email() -> None:
+    with pytest.raises(UsersConfigurationValidationError, match='email is invalid'):
+        UserConfiguration.create(
+            display_name='Managed User',
+            email='not-an-email',
+            profile_key='administrator',
+            issuer='entra',
+            subject_id='subject-1',
+        )
+
+
 def test_managed_user_rejects_user_id_from_another_identity() -> None:
     with pytest.raises(UsersConfigurationValidationError, match='match authenticated identity'):
         UserConfiguration.create(

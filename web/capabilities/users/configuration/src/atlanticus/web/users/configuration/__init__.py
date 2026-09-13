@@ -7,13 +7,11 @@ from atlanticus.web.users.configuration.bundle import (
     encode_users_configuration_source,
 )
 from atlanticus.web.users.configuration.contracts import (
-    DiscoveredUsersSource,
     UsersConfigurationPublisher,
     UsersConfigurationSource,
     UsersProjectionRepository,
 )
 from atlanticus.web.users.configuration.models import (
-    DiscoveredUser,
     UserConfiguration,
     UserProfileConfiguration,
     UsersConfigurationCatalog,
@@ -27,8 +25,6 @@ from atlanticus.web.users.configuration.services import (
 )
 
 __all__ = [
-    'DiscoveredUser',
-    'DiscoveredUsersSource',
     'UserConfiguration',
     'UserProfileConfiguration',
     'UsersAdministrationService',

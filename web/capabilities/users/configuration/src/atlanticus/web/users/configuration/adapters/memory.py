@@ -7,8 +7,8 @@ from atlanticus.web.users.configuration.bundle import (
     UsersConfigurationSourceDocument,
 )
 from atlanticus.web.users.configuration.errors import UsersConfigurationSourceError
-from atlanticus.web.users.configuration.models import DiscoveredUser
 from atlanticus.web.users.configuration.projection import UsersProjectionState
+from atlanticus.web.users.models import PendingUserRecord
 
 
 @dataclass(slots=True)
@@ -61,8 +61,8 @@ class MemoryUsersProjectionRepository:
 
 
 @dataclass(slots=True)
-class MemoryDiscoveredUsersSource:
-    users: list[DiscoveredUser] = field(default_factory=list)
+class MemoryPendingUsersReader:
+    users: list[PendingUserRecord] = field(default_factory=list)
 
-    def list_discovered(self) -> tuple[DiscoveredUser, ...]:
+    def list_pending(self) -> tuple[PendingUserRecord, ...]:
         return tuple(self.users)

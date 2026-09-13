@@ -86,7 +86,10 @@ def _user(user) -> object:
                 [html.Strong(user.display_name), html.Code(user.user_id)],
                 className='atlanticus-manager__preview-entity-title',
             ),
-            html.Div(user.email, className='atlanticus-manager__preview-url'),
+            html.Div(
+                user.email or 'Sin correo',
+                className='atlanticus-manager__preview-url',
+            ),
             html.Small(identity, className='atlanticus-manager__preview-detail'),
             html.Div(
                 [

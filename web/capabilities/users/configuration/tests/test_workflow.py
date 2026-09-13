@@ -1,19 +1,19 @@
 import pytest
 
 from atlanticus.web.users.configuration import (
-    DiscoveredUser,
     UserConfiguration,
     UserProfileConfiguration,
     UsersConfigurationCatalog,
     compose_users_configuration_services,
 )
 from atlanticus.web.users.configuration.adapters import (
-    MemoryDiscoveredUsersSource,
+    MemoryPendingUsersReader,
     MemoryUsersConfigurationStore,
     MemoryUsersProjectionRepository,
 )
 from atlanticus.web.users.configuration.errors import UsersConfigurationSourceError
 from atlanticus.web.users.identity import build_user_key
+from atlanticus.web.users.models import PendingUserRecord
 
 
 def _catalog(label: str = 'Operador') -> UsersConfigurationCatalog:
@@ -46,7 +46,7 @@ def test_validate_publish_project_lifecycle_is_separated() -> None:
         source=source,
         publisher=source,
         projection=projection,
-        discovered=MemoryDiscoveredUsersSource(),
+        pending=MemoryPendingUsersReader(),
         audit_actor_provider=lambda: 'administrator',
     )
     catalog = _catalog()
@@ -74,7 +74,7 @@ def test_republishing_same_content_does_not_create_history_copy() -> None:
         source=source,
         publisher=source,
         projection=MemoryUsersProjectionRepository(),
-        discovered=MemoryDiscoveredUsersSource(),
+        pending=MemoryPendingUsersReader(),
         audit_actor_provider=lambda: 'administrator',
     )
     catalog = _catalog()
@@ -95,7 +95,7 @@ def test_stale_source_revision_is_rejected() -> None:
         source=source,
         publisher=source,
         projection=MemoryUsersProjectionRepository(),
-        discovered=MemoryDiscoveredUsersSource(),
+        pending=MemoryPendingUsersReader(),
         audit_actor_provider=lambda: 'administrator',
     )
     first = services.administration.publish_catalog(_catalog(), expected_source_revision=None)
@@ -109,11 +109,11 @@ def test_stale_source_revision_is_rejected() -> None:
     assert source.fetch_bundle().revision == first.source_revision
 
 
-def test_discovered_identity_remains_visible_until_it_is_materialized_in_source() -> None:
+def test_pending_identity_remains_visible_until_it_is_materialized_in_source() -> None:
     source = MemoryUsersConfigurationStore()
-    discovered = MemoryDiscoveredUsersSource(
+    pending = MemoryPendingUsersReader(
         users=[
-            DiscoveredUser(
+            PendingUserRecord(
                 user_id=build_user_key(issuer='entra', subject_id='subject-1'),
                 issuer='entra',
                 subject_id='subject-1',
@@ -126,13 +126,13 @@ def test_discovered_identity_remains_visible_until_it_is_materialized_in_source(
         source=source,
         publisher=source,
         projection=MemoryUsersProjectionRepository(),
-        discovered=discovered,
+        pending=pending,
         audit_actor_provider=lambda: 'administrator',
     )
     manual = _catalog()
     first = services.administration.publish_catalog(manual, expected_source_revision=None)
 
-    assert tuple(user.user_id for user in services.administration.list_discovered()) == (
+    assert tuple(user.user_id for user in services.administration.list_pending()) == (
         build_user_key(issuer='entra', subject_id='subject-1'),
     )
 
@@ -156,12 +156,30 @@ def test_discovered_identity_remains_visible_until_it_is_materialized_in_source(
         expected_source_revision=first.source_revision,
     )
 
-    assert services.administration.list_discovered() == ()
+    assert services.administration.list_pending() == ()
 
 
-def test_discovered_identity_matching_preserves_exact_issuer() -> None:
+def test_pending_identity_can_be_listed_without_optional_metadata() -> None:
+    pending_user = PendingUserRecord(
+        user_id=build_user_key(issuer='entra', subject_id='subject-1'),
+        issuer='entra',
+        subject_id='subject-1',
+    )
     source = MemoryUsersConfigurationStore()
-    discovered_user = DiscoveredUser(
+    services = compose_users_configuration_services(
+        source=source,
+        publisher=source,
+        projection=MemoryUsersProjectionRepository(),
+        pending=MemoryPendingUsersReader(users=[pending_user]),
+        audit_actor_provider=lambda: 'administrator',
+    )
+
+    assert services.administration.list_pending() == (pending_user,)
+
+
+def test_pending_identity_matching_preserves_exact_issuer() -> None:
+    source = MemoryUsersConfigurationStore()
+    pending_user = PendingUserRecord(
         user_id=build_user_key(issuer='ENTRA', subject_id='configured-subject'),
         issuer='ENTRA',
         subject_id='configured-subject',
@@ -172,10 +190,10 @@ def test_discovered_identity_matching_preserves_exact_issuer() -> None:
         source=source,
         publisher=source,
         projection=MemoryUsersProjectionRepository(),
-        discovered=MemoryDiscoveredUsersSource(users=[discovered_user]),
+        pending=MemoryPendingUsersReader(users=[pending_user]),
         audit_actor_provider=lambda: 'administrator',
     )
 
     services.administration.publish_catalog(_catalog(), expected_source_revision=None)
 
-    assert services.administration.list_discovered() == (discovered_user,)
+    assert services.administration.list_pending() == (pending_user,)

@@ -11,7 +11,6 @@ from atlanticus.web.users.configuration.bundle import (
     decode_users_configuration_import,
 )
 from atlanticus.web.users.configuration.models import (
-    DiscoveredUser,
     UserConfiguration,
     UserProfileConfiguration,
     UsersConfigurationCatalog,
@@ -70,6 +69,7 @@ from atlanticus.web.users.configuration.web.ids import (
     user_edit_id,
 )
 from atlanticus.web.users.configuration.web.models import UsersAdminWebContext
+from atlanticus.web.users.models import PendingUserRecord
 from atlanticus.web.users.profiles import (
     DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
     DEFAULT_ADMINISTRATOR_TEXT_COLOR,
@@ -157,14 +157,14 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
     def select_editor_section(
         profile_clicks: int | None,
         users_clicks: int | None,
-        discovered_clicks: int | None,
+        pending_clicks: int | None,
         current: str | None,
     ):
         trigger = ctx.triggered_id
         values = {
             PROFILE_TAB_ID: ('profiles', profile_clicks),
             USERS_TAB_ID: ('users', users_clicks),
-            DISCOVERED_TAB_ID: ('discovered', discovered_clicks),
+            DISCOVERED_TAB_ID: ('discovered', pending_clicks),
         }
         if trigger not in values:
             return current or 'profiles'
@@ -251,18 +251,18 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
         Input(CATALOG_STORE_ID, 'data'),
         Input(DISCOVERED_REFRESH_ID, 'n_clicks'),
     )
-    def render_discovered_users(
+    def render_pending_users(
         catalog_data: dict[str, object] | None,
         _refresh_clicks: int | None,
     ):
         catalog = _catalog(catalog_data)
         configured_ids = {user.user_id for user in catalog.users}
         try:
-            discovered = context.services.administration.list_discovered()
+            pending = context.services.administration.list_pending()
         except Exception:
             return _notice('No fue posible actualizar las identidades pendientes.')
-        available = tuple(user for user in discovered if user.user_id not in configured_ids)
-        return _discovered_cards(available)
+        available = tuple(user for user in pending if user.user_id not in configured_ids)
+        return _pending_cards(available)
 
     @app.callback(
         Output(PROFILE_MODAL_ID, 'className'),
@@ -455,13 +455,13 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
     )
     def user_editor(
         edit_clicks: list[int | None] | None,
-        discovered_clicks: list[int | None] | None,
+        pending_clicks: list[int | None] | None,
         cancel_clicks: int | None,
         header_cancel_clicks: int | None,
         footer_cancel_clicks: int | None,
         save_clicks: int | None,
         edit_ids: list[dict[str, object]] | None,
-        discovered_ids: list[dict[str, object]] | None,
+        pending_ids: list[dict[str, object]] | None,
         editor_data: dict[str, object] | None,
         name: str | None,
         email: str | None,
@@ -500,28 +500,28 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
                 enabled=user.enabled,
                 identity_locked=True,
             )
-        if _pattern_click_is_real(trigger, discovered_clicks, discovered_ids):
+        if _pattern_click_is_real(trigger, pending_clicks, pending_ids):
             user_id = str(trigger.get('user_id', ''))
-            discovered = _find_discovered(context, user_id)
-            if discovered is None:
+            pending = _find_pending(context, user_id)
+            if pending is None:
                 return _user_modal_response(
                     options=options,
-                    error='Discovered user does not exist',
+                    error='Pending user does not exist',
                 )
             return _user_modal_response(
                 editor={
-                    'mode': 'discovered',
-                    'user_id': discovered.user_id,
-                    'issuer': discovered.issuer,
-                    'subject_id': discovered.subject_id,
+                    'mode': 'pending',
+                    'user_id': pending.user_id,
+                    'issuer': pending.issuer,
+                    'subject_id': pending.subject_id,
                 },
-                title='Incorporar usuario descubierto',
-                name=discovered.display_name,
-                email=discovered.email,
+                title='Incorporar usuario pendiente',
+                name=pending.display_name or '',
+                email=pending.email or '',
                 options=options,
                 profile=None,
                 enabled=True,
-                identity_locked=True,
+                identity_locked=False,
             )
         if trigger != USER_SAVE_ID or not _click_is_real(save_clicks):
             return _user_modal_response(no_change=True, options=options)
@@ -771,7 +771,7 @@ def _save_user(
 ) -> UsersConfigurationCatalog:
     editor = editor_data or {}
     mode = str(editor.get('mode', '')).strip()
-    if mode not in {'edit', 'discovered'}:
+    if mode not in {'edit', 'pending'}:
         raise ValueError('User editor mode is invalid')
 
     existing = None
@@ -791,7 +791,7 @@ def _save_user(
         issuer=_optional_text(editor.get('issuer')),
         subject_id=_optional_text(editor.get('subject_id')),
         display_name=str(display_name or ''),
-        email=str(email or ''),
+        email=email,
         profile_key=str(profile_key or ''),
         enabled=enabled,
     )
@@ -802,11 +802,13 @@ def _save_user(
             for item in catalog.users
         )
     else:
-        if mode != 'discovered':
-            raise ValueError('New users must originate from a discovered identity')
+        if mode != 'pending':
+            raise ValueError('New users must originate from a pending identity')
         if any(item.user_id == user.user_id for item in catalog.users):
             raise ValueError('User already exists')
-        if any(item.email == user.email for item in catalog.users):
+        if user.email is not None and any(
+            item.email == user.email for item in catalog.users
+        ):
             raise ValueError('User email already exists')
         users = (*catalog.users, user)
 
@@ -897,7 +899,7 @@ def _user_cards(catalog: UsersConfigurationCatalog) -> object:
                     html.Div(
                         [
                             html.Strong(user.display_name),
-                            html.Span(user.email),
+                            html.Span(user.email or 'Sin correo'),
                             html.Code(user.user_id),
                         ],
                         className='atlanticus-users-admin__user-copy',
@@ -936,8 +938,8 @@ def _user_cards(catalog: UsersConfigurationCatalog) -> object:
     )
 
 
-def _discovered_cards(
-    users: tuple[DiscoveredUser, ...],
+def _pending_cards(
+    users: tuple[PendingUserRecord, ...],
 ) -> object:
     if not users:
         return _empty('No hay identidades pendientes de incorporación.')
@@ -947,8 +949,8 @@ def _discovered_cards(
                 [
                     html.Div(
                         [
-                            html.Strong(user.display_name),
-                            html.Span(user.email),
+                            html.Strong(user.display_name or 'Identidad pendiente'),
+                            html.Span(user.email or 'Sin correo'),
                             html.Code(user.user_id),
                         ],
                         className='atlanticus-users-admin__user-copy',
@@ -987,18 +989,22 @@ def _profile_badge(profile: ProfileDefinition) -> object:
     )
 
 
-def _find_discovered(context: UsersAdminWebContext, user_id: str) -> DiscoveredUser | None:
+def _find_pending(
+    context: UsersAdminWebContext,
+    user_id: str,
+) -> PendingUserRecord | None:
     try:
         return next(
             (
                 item
-                for item in context.services.administration.list_discovered()
+                for item in context.services.administration.list_pending()
                 if item.user_id == user_id
             ),
             None,
         )
     except Exception:
         return None
+
 
 
 
@@ -1030,15 +1036,15 @@ def _profile_editor_title(editor_data: dict[str, object] | None) -> str:
 
 def _user_editor_title(editor_data: dict[str, object] | None) -> str:
     mode = str((editor_data or {}).get('mode', 'create'))
-    if mode == 'discovered':
-        return 'Incorporar usuario descubierto'
+    if mode == 'pending':
+        return 'Incorporar usuario pendiente'
     if mode == 'edit':
         return 'Editar usuario'
     return 'Usuario'
 
 
 def _user_identity_locked(editor_data: dict[str, object] | None) -> bool:
-    return str((editor_data or {}).get('mode', '')) in {'edit', 'discovered'}
+    return str((editor_data or {}).get('mode', '')) == 'edit'
 
 
 def _profile_modal_response(

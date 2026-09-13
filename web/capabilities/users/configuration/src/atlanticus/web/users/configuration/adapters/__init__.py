@@ -5,7 +5,7 @@ from atlanticus.web.users.configuration.adapters.file import (
     FileUsersProjectionRepository,
 )
 from atlanticus.web.users.configuration.adapters.memory import (
-    MemoryDiscoveredUsersSource,
+    MemoryPendingUsersReader,
     MemoryUsersConfigurationStore,
     MemoryUsersProjectionRepository,
 )
@@ -19,7 +19,7 @@ __all__ = [
     'FileUsersConfigurationStore',
     'FileUsersProjectionProfileCatalog',
     'FileUsersProjectionRepository',
-    'MemoryDiscoveredUsersSource',
+    'MemoryPendingUsersReader',
     'MemoryUsersConfigurationStore',
     'MemoryUsersProjectionRepository',
     'SharePointUsersConfigurationSettings',

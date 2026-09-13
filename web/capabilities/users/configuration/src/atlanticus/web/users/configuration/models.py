@@ -50,9 +50,13 @@ def build_profile_key(label: str) -> str:
     return candidate
 
 
-def normalize_email(value: str) -> str:
+def normalize_email(value: str | None) -> str | None:
+    if value is None:
+        return None
     normalized = value.strip().casefold()
-    if not normalized or '@' not in normalized:
+    if not normalized:
+        return None
+    if '@' not in normalized:
         raise UsersConfigurationValidationError('User email is invalid')
     return normalized
 
@@ -109,7 +113,7 @@ class UserProfileConfiguration:
 class UserConfiguration:
     user_id: str
     display_name: str
-    email: str
+    email: str | None
     profile_key: str
     enabled: bool = True
     issuer: str | None = None
@@ -143,8 +147,8 @@ class UserConfiguration:
         cls,
         *,
         display_name: str,
-        email: str,
         profile_key: str,
+        email: str | None = None,
         enabled: bool = True,
         issuer: str | None = None,
         subject_id: str | None = None,
@@ -180,7 +184,7 @@ class UserConfiguration:
             return cls(
                 user_id=str(document['user_id']),
                 display_name=str(document['display_name']),
-                email=str(document['email']),
+                email=_optional_document_string(document, 'email'),
                 profile_key=str(document['profile_key']),
                 enabled=enabled,
                 issuer=_required_document_string(document, 'issuer'),
@@ -188,44 +192,6 @@ class UserConfiguration:
             )
         except (KeyError, TypeError, ValueError) as error:
             raise UsersConfigurationValidationError('User contract is invalid') from error
-
-
-@dataclass(frozen=True, slots=True)
-class DiscoveredUser:
-    user_id: str
-    issuer: str
-    subject_id: str
-    display_name: str
-    email: str
-
-    def __post_init__(self) -> None:
-        issuer = _required(self.issuer, label='Discovered user issuer')
-        subject_id = _required(self.subject_id, label='Discovered user subject id')
-        expected_user_id = build_user_key(issuer=issuer, subject_id=subject_id)
-        user_id = _required(self.user_id, label='Discovered user id')
-        if user_id != expected_user_id:
-            raise UsersConfigurationValidationError(
-                'Discovered user id must match authenticated identity'
-            )
-        object.__setattr__(self, 'user_id', user_id)
-        object.__setattr__(self, 'issuer', issuer)
-        object.__setattr__(self, 'subject_id', subject_id)
-        object.__setattr__(
-            self,
-            'display_name',
-            _required(self.display_name, label='Discovered user display name'),
-        )
-        object.__setattr__(self, 'email', normalize_email(self.email))
-
-    def to_configuration(self, *, profile_key: str) -> UserConfiguration:
-        return UserConfiguration.create(
-            user_id=self.user_id,
-            issuer=self.issuer,
-            subject_id=self.subject_id,
-            display_name=self.display_name,
-            email=self.email,
-            profile_key=profile_key,
-        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -252,7 +218,7 @@ class UsersConfigurationCatalog:
         user_ids = tuple(user.user_id for user in users)
         if len(user_ids) != len(set(user_ids)):
             raise UsersConfigurationValidationError('User ids must be unique')
-        emails = tuple(user.email for user in users)
+        emails = tuple(user.email for user in users if user.email is not None)
         if len(emails) != len(set(emails)):
             raise UsersConfigurationValidationError('User emails must be unique')
         identities = tuple((user.issuer, user.subject_id) for user in users)
@@ -326,6 +292,15 @@ class UsersConfigurationCatalog:
 
 def _required_document_string(document: dict[str, Any], key: str) -> str:
     value = document[key]
+    if not isinstance(value, str):
+        raise TypeError
+    return value
+
+
+def _optional_document_string(document: dict[str, Any], key: str) -> str | None:
+    value = document.get(key)
+    if value is None:
+        return None
     if not isinstance(value, str):
         raise TypeError
     return value

@@ -1,5 +1,4 @@
-# Implementa el History en memoria de Users y rechaza una publicación cuya revisión esperada ya quedó obsoleta.
-# Esto permite verificar la concurrencia de manera determinística en tests.
+# Implementaciones en memoria para comportamiento determinístico en tests y composición local.
 
 from __future__ import annotations
 
@@ -10,8 +9,8 @@ from atlanticus.web.users.configuration.bundle import (
     UsersConfigurationSourceDocument,
 )
 from atlanticus.web.users.configuration.errors import UsersConfigurationSourceError
-from atlanticus.web.users.configuration.models import DiscoveredUser
 from atlanticus.web.users.configuration.projection import UsersProjectionState
+from atlanticus.web.users.models import PendingUserRecord
 
 
 @dataclass(slots=True)
@@ -63,9 +62,10 @@ class MemoryUsersProjectionRepository:
         return True
 
 
+# Reader administrativo read-only de Pending; no crea ni promueve identidades.
 @dataclass(slots=True)
-class MemoryDiscoveredUsersSource:
-    users: list[DiscoveredUser] = field(default_factory=list)
+class MemoryPendingUsersReader:
+    users: list[PendingUserRecord] = field(default_factory=list)
 
-    def list_discovered(self) -> tuple[DiscoveredUser, ...]:
+    def list_pending(self) -> tuple[PendingUserRecord, ...]:
         return tuple(self.users)

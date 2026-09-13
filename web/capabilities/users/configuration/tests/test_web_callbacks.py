@@ -4,7 +4,6 @@ pytest.importorskip('dash')
 
 from atlanticus.web.manager.projection import ManagerDraft
 from atlanticus.web.users.configuration.models import (
-    DiscoveredUser,
     UserConfiguration,
     UsersConfigurationCatalog,
 )
@@ -14,6 +13,7 @@ from atlanticus.web.users.configuration.web.callbacks import (
     _save_user,
 )
 from atlanticus.web.users.identity import build_user_key
+from atlanticus.web.users.models import PendingUserRecord
 from atlanticus.web.users.profiles import (
     DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
     DEFAULT_ADMINISTRATOR_TEXT_COLOR,
@@ -41,13 +41,13 @@ def _with_operator() -> UsersConfigurationCatalog:
     )
 
 
-def _discovered() -> DiscoveredUser:
-    return DiscoveredUser(
+def _pending() -> PendingUserRecord:
+    return PendingUserRecord(
         user_id=build_user_key(issuer='entra', subject_id='subject-1'),
         issuer='entra',
         subject_id='subject-1',
-        display_name='Usuario Descubierto',
-        email='discovered@example.com',
+        display_name='Usuario Pendiente',
+        email='pending@example.com',
     )
 
 
@@ -56,7 +56,7 @@ def test_profile_editor_generates_stable_key_and_user_can_consume_it() -> None:
     with_user = _save_user(
         with_profile,
         {
-            'mode': 'discovered',
+            'mode': 'pending',
             'user_id': build_user_key(issuer='entra', subject_id='subject-one'),
             'issuer': 'entra',
             'subject_id': 'subject-one',
@@ -74,17 +74,17 @@ def test_profile_editor_generates_stable_key_and_user_can_consume_it() -> None:
     assert with_user.users[0].profile_key == 'operador_planta'
 
 
-def test_discovered_user_keeps_identity_when_added_to_draft() -> None:
+def test_pending_user_keeps_identity_when_added_to_draft() -> None:
     updated = _save_user(
         _with_operator(),
         {
-            'mode': 'discovered',
+            'mode': 'pending',
             'user_id': build_user_key(issuer='entra', subject_id='subject-1'),
             'issuer': 'entra',
             'subject_id': 'subject-1',
         },
-        display_name='Usuario Descubierto',
-        email='discovered@example.com',
+        display_name='Usuario Pendiente',
+        email='pending@example.com',
         profile_key='operador_planta',
         enabled=True,
     )
@@ -95,11 +95,29 @@ def test_discovered_user_keeps_identity_when_added_to_draft() -> None:
     assert user.subject_id == 'subject-1'
 
 
-def test_discovered_identity_with_existing_email_is_not_rebound() -> None:
+def test_pending_user_can_be_added_without_email() -> None:
+    updated = _save_user(
+        _with_operator(),
+        {
+            'mode': 'pending',
+            'user_id': build_user_key(issuer='entra', subject_id='subject-1'),
+            'issuer': 'entra',
+            'subject_id': 'subject-1',
+        },
+        display_name='Usuario Pendiente',
+        email=None,
+        profile_key='operador_planta',
+        enabled=True,
+    )
+
+    assert updated.users[0].email is None
+
+
+def test_pending_identity_with_existing_email_is_not_rebound() -> None:
     base = _with_operator()
     existing = UserConfiguration.create(
-        display_name='Usuario Descubierto',
-        email='discovered@example.com',
+        display_name='Usuario Existente',
+        email='pending@example.com',
         profile_key='operador_planta',
         issuer='entra',
         subject_id='existing-subject',
@@ -112,19 +130,19 @@ def test_discovered_identity_with_existing_email_is_not_rebound() -> None:
         profiles=base.profiles,
         users=(existing,),
     )
-    discovered = _discovered()
+    pending = _pending()
 
     with pytest.raises(ValueError, match='User email already exists'):
         _save_user(
             catalog,
             {
-                'mode': 'discovered',
-                'user_id': discovered.user_id,
-                'issuer': discovered.issuer,
-                'subject_id': discovered.subject_id,
+                'mode': 'pending',
+                'user_id': pending.user_id,
+                'issuer': pending.issuer,
+                'subject_id': pending.subject_id,
             },
-            display_name=discovered.display_name,
-            email=discovered.email,
+            display_name=pending.display_name,
+            email=pending.email,
             profile_key='operador_planta',
             enabled=True,
         )

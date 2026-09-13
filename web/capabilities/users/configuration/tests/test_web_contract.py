@@ -12,7 +12,7 @@ from atlanticus.web.users.configuration import (
     compose_users_configuration_services,
 )
 from atlanticus.web.users.configuration.adapters import (
-    MemoryDiscoveredUsersSource,
+    MemoryPendingUsersReader,
     MemoryUsersConfigurationStore,
     MemoryUsersProjectionRepository,
 )
@@ -43,8 +43,10 @@ from atlanticus.web.users.configuration.web.ids import (
     SOURCE_REVISION_STORE_ID,
     USER_SAVE_ID,
     USERS_TAB_ID,
+    discovered_add_id,
 )
 from atlanticus.web.users.identity import build_user_key
+from atlanticus.web.users.models import PendingUserRecord
 
 
 class _CallbackRecorder:
@@ -59,19 +61,21 @@ class _CallbackRecorder:
         return register
 
 
-def _context() -> tuple[
+def _context(
+    pending_users: list[PendingUserRecord] | None = None,
+) -> tuple[
     UsersAdminWebContext,
     MemoryUsersConfigurationStore,
     MemoryUsersProjectionRepository,
 ]:
     source = MemoryUsersConfigurationStore()
     projection = MemoryUsersProjectionRepository()
-    discovered = MemoryDiscoveredUsersSource()
+    pending = MemoryPendingUsersReader(users=list(pending_users or ()))
     services = compose_users_configuration_services(
         source=source,
         publisher=source,
         projection=projection,
-        discovered=discovered,
+        pending=pending,
         audit_actor_provider=lambda: 'tester',
     )
     return (
@@ -258,7 +262,7 @@ def test_users_admin_save_draft_is_local_and_does_not_publish_or_project(monkeyp
     assert source.fetch_bundle() is None
     assert projection.load_state() is None
 
-def test_users_admin_can_materialize_discovered_identity_into_draft(monkeypatch) -> None:
+def test_users_admin_can_materialize_pending_identity_into_draft(monkeypatch) -> None:
     context, _source, _projection = _context()
     recorder = _registered_callbacks(context)
     user_editor = recorder.callbacks['user_editor'][2]
@@ -281,13 +285,13 @@ def test_users_admin_can_materialize_discovered_identity_into_draft(monkeypatch)
         [],
         [],
         {
-            'mode': 'discovered',
+            'mode': 'pending',
             'user_id': user_id,
             'issuer': 'entra',
             'subject_id': 'subject-new',
         },
-        'Discovered User',
-        'discovered@example.com',
+        'Pending User',
+        'pending@example.com',
         'administrator',
         True,
         catalog.to_document(),
@@ -300,3 +304,80 @@ def test_users_admin_can_materialize_discovered_identity_into_draft(monkeypatch)
     assert updated.users[0].issuer == 'entra'
     assert updated.users[0].subject_id == 'subject-new'
     assert updated.users[0].profile_key == 'administrator'
+
+def test_pending_identity_metadata_can_be_completed_before_incorporation(monkeypatch) -> None:
+    pending = PendingUserRecord(
+        user_id=build_user_key(issuer='entra', subject_id='subject-pending'),
+        issuer='entra',
+        subject_id='subject-pending',
+    )
+    context, _source, _projection = _context([pending])
+    recorder = _registered_callbacks(context)
+    user_editor = recorder.callbacks['user_editor'][2]
+    trigger = discovered_add_id(pending.user_id)
+
+    monkeypatch.setattr(
+        users_callbacks,
+        'ctx',
+        SimpleNamespace(triggered_id=trigger),
+    )
+
+    result = user_editor(
+        None,
+        [1],
+        None,
+        None,
+        None,
+        None,
+        [],
+        [trigger],
+        None,
+        None,
+        None,
+        None,
+        None,
+        UsersConfigurationCatalog().to_document(),
+    )
+
+    assert result[1]['mode'] == 'pending'
+    assert result[1]['user_id'] == pending.user_id
+    assert result[3] == ''
+    assert result[4] == ''
+    assert result[8] is False
+    assert result[9] is False
+
+
+def test_pending_identity_that_disappeared_is_not_recreated_from_browser_state(
+    monkeypatch,
+) -> None:
+    context, _source, _projection = _context()
+    recorder = _registered_callbacks(context)
+    user_editor = recorder.callbacks['user_editor'][2]
+    missing_user_id = build_user_key(issuer='entra', subject_id='missing-subject')
+    trigger = discovered_add_id(missing_user_id)
+
+    monkeypatch.setattr(
+        users_callbacks,
+        'ctx',
+        SimpleNamespace(triggered_id=trigger),
+    )
+
+    result = user_editor(
+        None,
+        [1],
+        None,
+        None,
+        None,
+        None,
+        [],
+        [trigger],
+        None,
+        None,
+        None,
+        None,
+        None,
+        UsersConfigurationCatalog().to_document(),
+    )
+
+    assert result[1] is None
+    assert result[10] is not None

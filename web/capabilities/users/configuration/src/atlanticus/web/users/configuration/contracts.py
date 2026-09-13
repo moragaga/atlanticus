@@ -2,7 +2,6 @@ from collections.abc import Callable
 from typing import Protocol
 
 from atlanticus.web.users.configuration.bundle import UsersConfigurationBundle
-from atlanticus.web.users.configuration.models import DiscoveredUser
 from atlanticus.web.users.configuration.projection import UsersProjectionState
 
 UsersAuditActorProvider = Callable[[], str]
@@ -31,7 +30,3 @@ class UsersProjectionRepository(Protocol):
     def project(self, bundle: UsersConfigurationBundle, *, actor: str) -> UsersProjectionState: ...
 
     def health_check(self) -> bool: ...
-
-
-class DiscoveredUsersSource(Protocol):
-    def list_discovered(self) -> tuple[DiscoveredUser, ...]: ...
