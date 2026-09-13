@@ -75,6 +75,7 @@ def _managed(
     issuer: str = 'entra',
     subject_id: str = 'oid-1',
     enabled: bool = True,
+    profile_key: str = 'administrator',
 ) -> ResolvedUserRecord:
     return ResolvedUserRecord(
         user_id=build_user_key(issuer=issuer, subject_id=subject_id),
@@ -83,7 +84,7 @@ def _managed(
         display_name='Managed User',
         email='managed@example.com',
         enabled=enabled,
-        profile_key='administrator',
+        profile_key=profile_key,
     )
 
 
@@ -195,6 +196,35 @@ def test_concurrent_disable_during_observation_returns_disabled_decision() -> No
     assert decision.status is AccessStatus.USER_DISABLED
     assert decision.user_id == build_user_key(issuer='entra', subject_id='oid-1')
     assert store.observe_calls == 1
+
+
+def test_disabled_managed_user_does_not_require_retired_profile() -> None:
+    store = MemoryRuntimeStore(
+        resolved=_managed(enabled=False, profile_key='retired-custom-profile'),
+    )
+    runtime = UsersRuntime()
+    resolver = UsersAccessResolver(
+        store=store,
+        runtime=runtime,
+        profiles=ProfileCatalog(),
+    )
+
+    from flask import Flask
+
+    server = Flask(__name__)
+    server.secret_key = 'test-only'
+    with server.test_request_context('/'):
+        decision = resolver.resolve(_identity(), load_id='load-1')
+        access = AccessSnapshot.resolved(
+            load_id='load-1',
+            identity=_identity(),
+            decision=decision,
+        )
+        user = runtime.current_or_none(access)
+
+    assert decision.status is AccessStatus.USER_DISABLED
+    assert decision.user_id == build_user_key(issuer='entra', subject_id='oid-1')
+    assert user is None
 
 
 def test_runtime_store_resolve_failure_never_becomes_guest() -> None:

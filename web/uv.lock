@@ -25,6 +25,7 @@ members = [
     "atlanticus-web-users-activity",
     "atlanticus-web-users-configuration",
     "atlanticus-web-users-cosmos",
+    "atlanticus-web-users-projection-cosmos",
     "atlanticus-web-workspace",
 ]
 
@@ -365,7 +366,7 @@ requires-dist = [
 
 [[package]]
 name = "atlanticus-web-users-configuration"
-version = "0.1.6"
+version = "0.1.7"
 source = { editable = "capabilities/users/configuration" }
 dependencies = [
     { name = "atlanticus-web-users" },
@@ -405,6 +406,23 @@ requires-dist = [
 ]
 
 [[package]]
+name = "atlanticus-web-users-projection-cosmos"
+version = "0.1.0"
+source = { editable = "capabilities/users/projection-cosmos" }
+dependencies = [
+    { name = "atlanticus-cosmos" },
+    { name = "atlanticus-web-users" },
+    { name = "atlanticus-web-users-configuration" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-cosmos", directory = "../connectivity/cosmos" },
+    { name = "atlanticus-web-users", editable = "capabilities/users/core" },
+    { name = "atlanticus-web-users-configuration", editable = "capabilities/users/configuration" },
+]
+
+[[package]]
 name = "atlanticus-web-workspace"
 version = "0.1.0"
 source = { virtual = "." }
@@ -429,6 +447,7 @@ dependencies = [
     { name = "atlanticus-web-users-activity" },
     { name = "atlanticus-web-users-configuration" },
     { name = "atlanticus-web-users-cosmos" },
+    { name = "atlanticus-web-users-projection-cosmos" },
 ]
 
 [package.dev-dependencies]
@@ -459,6 +478,7 @@ requires-dist = [
     { name = "atlanticus-web-users-activity", editable = "capabilities/users/activity" },
     { name = "atlanticus-web-users-configuration", editable = "capabilities/users/configuration" },
     { name = "atlanticus-web-users-cosmos", editable = "capabilities/users/cosmos" },
+    { name = "atlanticus-web-users-projection-cosmos", editable = "capabilities/users/projection-cosmos" },
 ]
 
 [package.metadata.requires-dev]

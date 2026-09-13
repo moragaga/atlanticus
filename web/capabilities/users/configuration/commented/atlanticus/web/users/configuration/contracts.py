@@ -27,6 +27,14 @@ class UsersConfigurationPublisher(Protocol):
     ) -> None: ...
 
 
+# La proyección de runtime recibe el snapshot autoritativo completo.
+# No expone CRUD por usuario porque las ausencias del snapshot también tienen semántica durable.
+class UsersRuntimeProjectionWriter(Protocol):
+    def materialize(self, bundle: UsersConfigurationBundle, *, actor: str) -> None: ...
+
+    def health_check(self) -> bool: ...
+
+
 class UsersProjectionRepository(Protocol):
     def load_state(self) -> UsersProjectionState | None: ...
 

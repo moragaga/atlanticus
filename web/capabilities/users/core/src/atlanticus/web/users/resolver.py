@@ -45,12 +45,12 @@ class UsersAccessResolver(AccessResolver):
                 profile=self._profiles.require(GUEST_PROFILE_KEY),
             )
         else:
+            if not record.enabled:
+                return AccessDecision(status=AccessStatus.USER_DISABLED, user_id=record.user_id)
             profile = self._profiles.require(record.profile_key)
             user = record.to_effective_user(profile=profile)
 
         self._runtime.store(load_id=load_id, user=user)
-        if not user.enabled:
-            return AccessDecision(status=AccessStatus.USER_DISABLED, user_id=user.user_id)
         return AccessDecision(status=AccessStatus.READY, user_id=user.user_id)
 
 

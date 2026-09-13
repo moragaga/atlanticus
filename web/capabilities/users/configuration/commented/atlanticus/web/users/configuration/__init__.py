@@ -12,12 +12,16 @@ from atlanticus.web.users.configuration.contracts import (
     UsersConfigurationPublisher,
     UsersConfigurationSource,
     UsersProjectionRepository,
+    UsersRuntimeProjectionWriter,
 )
 from atlanticus.web.users.configuration.models import (
     UserConfiguration,
     UserProfileConfiguration,
     UsersConfigurationCatalog,
     build_profile_key,
+)
+from atlanticus.web.users.configuration.runtime_projection import (
+    UsersRuntimeMaterializingProjectionRepository,
 )
 from atlanticus.web.users.configuration.services import (
     UsersAdministrationService,
@@ -38,6 +42,8 @@ __all__ = [
     'UsersConfigurationSourceDocument',
     'UsersProjectionRepository',
     'UsersProjectionWorkflow',
+    'UsersRuntimeMaterializingProjectionRepository',
+    'UsersRuntimeProjectionWriter',
     'build_profile_key',
     'compose_users_configuration_services',
     'decode_users_configuration_import',
