@@ -22,7 +22,13 @@ from atlanticus.web.manager import (
 )
 from atlanticus.web.manager.web import callbacks as manager_callbacks
 from atlanticus.web.manager.web.ids import workflow_action_id
+from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.services import ServiceRegistry
+from atlanticus.web.source.models import (
+    SourceKey,
+    SourceReleaseId,
+    SourceReleaseRef,
+)
 
 
 class _RecordedCallback:
@@ -53,8 +59,15 @@ class _Workflow:
         self.status = ProjectionStatus('source-a', self.audit)
         self.validated: list[dict[str, object]] = []
         self.published: list[tuple[dict[str, object], str | None]] = []
-        self.projected: list[str] = []
+        self.projected: list[ProjectionTarget] = []
         self.loaded_revisions: list[str] = []
+        self.target = ProjectionTarget(
+            source_key=SourceKey('tools'),
+            source_release=SourceReleaseRef(
+                release_id=SourceReleaseId('release-a'),
+                published_at_utc=datetime(2026, 9, 11, 12, 1, tzinfo=UTC),
+            ),
+        )
         self.payloads = {
             'source-a': {'value': 'source'},
             'history-a': {'value': 'history'},
@@ -62,6 +75,9 @@ class _Workflow:
 
     def get_status(self) -> ProjectionStatus:
         return self.status
+
+    def get_current_projection_target(self) -> ProjectionTarget | None:
+        return self.target
 
     def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult:
         self.validated.append(dict(payload))
@@ -75,10 +91,10 @@ class _Workflow:
         self.published.append((dict(payload), expected_source_revision))
         return SourcePublicationResult(build_draft_revision(payload), True, self.audit)
 
-    def project(self, expected_source_revision: str) -> ProjectionExecutionResult:
-        self.projected.append(expected_source_revision)
+    def project(self, target: ProjectionTarget) -> ProjectionExecutionResult:
+        self.projected.append(target)
         return ProjectionExecutionResult(
-            source_revision=expected_source_revision,
+            target=target,
             projection_revision='projection-1',
             projected=True,
             audit=self.audit,
@@ -229,24 +245,25 @@ def test_publication_persists_verified_draft_without_automatic_projection(monkey
     assert workflow.projected == []
 
 
-def test_projection_is_an_explicit_action_using_the_current_source_revision(monkeypatch) -> None:
+def test_projection_is_an_explicit_action_using_the_exact_current_source_target(monkeypatch) -> None:
     app, workflow, _principal = _registered_manager()
     callback = _callback_for_action(app, 'project')
     _trigger(monkeypatch, 'project')
 
     message, refresh_signal, projection_signal = callback(
         1,
-        {'source_revision': 'source-a'},
         2,
     )
 
     assert message is None
     assert refresh_signal == 3
     assert projection_signal == {
-        'source_revision': 'source-a',
+        'source_key': 'tools',
+        'source_release_id': 'release-a',
+        'source_published_at_utc': '2026-09-11T12:01:00+00:00',
         'projection_revision': 'projection-1',
     }
-    assert workflow.projected == ['source-a']
+    assert workflow.projected == [workflow.target]
     assert workflow.published == []
 
 

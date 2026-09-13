@@ -322,6 +322,10 @@ def register_manager_callbacks(
             module.key,
             principal,
         )
+        try:
+            projection_target = coordinator.get_current_projection_target(module.key, principal)
+        except Exception:
+            projection_target = None
         state = (
             resolve_projection_state(status) if status is not None else ProjectionState.UNAVAILABLE
         )
@@ -343,7 +347,7 @@ def register_manager_callbacks(
                 )
             ],
             [_workflow_revision_state(status)],
-            [not _can_project(status)],
+            [projection_target is None],
             [_state_label(state)],
             [_state_class(state)],
         )
@@ -1205,34 +1209,35 @@ def register_manager_callbacks(
         Output(workflow_refresh_signal_id(MATCH), 'data', allow_duplicate=True),
         Output(workflow_projection_signal_id(MATCH), 'data'),
         Input(workflow_action_id(MATCH, 'project'), 'n_clicks'),
-        State(workflow_revision_id(MATCH), 'data'),
         State(workflow_refresh_signal_id(MATCH), 'data'),
         prevent_initial_call=True,
     )
     def project_configuration(
         clicks: int,
-        revision_state: dict[str, object] | None,
         refresh_signal: int | None,
     ):
         trigger = ctx.triggered_id
         if not isinstance(trigger, dict) or not _click_is_real(clicks):
             return no_update, no_update, no_update
-        source_revision = None if not revision_state else revision_state.get('source_revision')
-        if not source_revision:
-            return _error_message('A published source revision is required'), no_update, no_update
         module_key = str(trigger.get('module', ''))
         try:
+            principal = definition.principal_provider()
+            target = coordinator.get_current_projection_target(module_key, principal)
+            if target is None:
+                raise ManagerProjectionError('A published source target is required')
             result = coordinator.project(
                 module_key,
-                definition.principal_provider(),
-                str(source_revision),
+                principal,
+                target,
             )
         except ManagerError as error:
             return _error_message(str(error)), no_update, no_update
         except Exception:
             return _error_message('Projection could not be completed'), no_update, no_update
         signal = {
-            'source_revision': result.source_revision,
+            'source_key': result.target.source_key.value,
+            'source_release_id': result.target.source_release_id.value,
+            'source_published_at_utc': result.target.source_release.published_at_utc.isoformat(),
             'projection_revision': result.projection_revision,
         }
         return None, int(refresh_signal or 0) + 1, signal
@@ -1482,14 +1487,6 @@ def _workflow_revision_state(
         ),
         'active_source_revision': status.active_source_revision,
     }
-
-
-def _can_project(status: ProjectionStatus | None) -> bool:
-    return bool(
-        status
-        and status.source_revision
-        and status.active_source_revision != status.source_revision
-    )
 
 
 def _safe_state(value: str) -> ProjectionState:

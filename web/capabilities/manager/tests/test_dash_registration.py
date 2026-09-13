@@ -18,6 +18,7 @@ from atlanticus.web.manager import (
     build_draft_revision,
 )
 from atlanticus.web.manager.web.callbacks import register_manager_callbacks
+from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.services import ServiceRegistry
 
 
@@ -31,6 +32,9 @@ class _Workflow:
     def get_status(self) -> ProjectionStatus:
         return ProjectionStatus()
 
+    def get_current_projection_target(self) -> ProjectionTarget | None:
+        return None
+
     def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult:
         return DraftValidationResult(build_draft_revision(payload), True, self.audit)
 
@@ -41,9 +45,9 @@ class _Workflow:
     ) -> SourcePublicationResult:
         return SourcePublicationResult(build_draft_revision(payload), True, self.audit)
 
-    def project(self, expected_source_revision: str) -> ProjectionExecutionResult:
+    def project(self, target: ProjectionTarget) -> ProjectionExecutionResult:
         return ProjectionExecutionResult(
-            source_revision=expected_source_revision,
+            target=target,
             projection_revision='projection',
             projected=True,
             audit=self.audit,

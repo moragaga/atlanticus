@@ -12,6 +12,7 @@ from enum import StrEnum
 from typing import Literal, Protocol, runtime_checkable
 
 from atlanticus.web.manager.errors import ManagerProjectionError
+from atlanticus.web.projection.models import ProjectionTarget
 
 ProjectionIssueLevel = Literal['error', 'warning']
 
@@ -283,7 +284,8 @@ class SourcePublicationResult:
 
 @dataclass(frozen=True, slots=True)
 class ProjectionExecutionResult:
-    source_revision: str
+    # Conserva la identidad exacta de la publicación proyectada; no vuelve a degradarla a revisión textual.
+    target: ProjectionTarget
     projection_revision: str | None
     projected: bool
     audit: ProjectionAuditRecord
@@ -313,6 +315,9 @@ class RevisionHistoryEntry:
 class ConfigurationLifecycleWorkflow(Protocol):
     def get_status(self) -> ProjectionStatus: ...
 
+    # Selecciona el target current antes de ejecutar; project recibe luego ese target exacto sin releer current.
+    def get_current_projection_target(self) -> ProjectionTarget | None: ...
+
     def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult: ...
 
     def publish_draft(
@@ -321,7 +326,7 @@ class ConfigurationLifecycleWorkflow(Protocol):
         expected_source_revision: str | None,
     ) -> SourcePublicationResult: ...
 
-    def project(self, expected_source_revision: str) -> ProjectionExecutionResult: ...
+    def project(self, target: ProjectionTarget) -> ProjectionExecutionResult: ...
 
 
 @runtime_checkable

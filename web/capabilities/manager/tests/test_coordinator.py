@@ -20,7 +20,13 @@ from atlanticus.web.manager import (
     SourceVerificationResult,
     build_draft_revision,
 )
+from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.services import ServiceRegistry
+from atlanticus.web.source.models import (
+    SourceKey,
+    SourceReleaseId,
+    SourceReleaseRef,
+)
 
 
 class Workflow:
@@ -29,9 +35,20 @@ class Workflow:
             actor='Admin',
             occurred_at=datetime(2026, 8, 18, 12, 0, tzinfo=UTC),
         )
+        self.target = ProjectionTarget(
+            source_key=SourceKey('tools'),
+            source_release=SourceReleaseRef(
+                release_id=SourceReleaseId('release-current'),
+                published_at_utc=datetime(2026, 8, 18, 12, 1, tzinfo=UTC),
+            ),
+        )
+        self.projected_target: ProjectionTarget | None = None
 
     def get_status(self) -> ProjectionStatus:
         return ProjectionStatus('source', self.audit)
+
+    def get_current_projection_target(self) -> ProjectionTarget | None:
+        return self.target
 
     def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult:
         return DraftValidationResult(build_draft_revision(payload), True, self.audit)
@@ -44,9 +61,10 @@ class Workflow:
         assert expected_source_revision == 'source'
         return SourcePublicationResult(build_draft_revision(payload), True, self.audit)
 
-    def project(self, expected_source_revision: str) -> ProjectionExecutionResult:
+    def project(self, target: ProjectionTarget) -> ProjectionExecutionResult:
+        self.projected_target = target
         return ProjectionExecutionResult(
-            source_revision=expected_source_revision,
+            target=target,
             projection_revision='projection',
             projected=True,
             audit=self.audit,
@@ -94,9 +112,32 @@ def test_coordinator_orchestrates_draft_publish_projection_and_history() -> None
     assert validation.valid
     publication = coordinator.publish_draft('tools', principal, payload, 'source')
     assert publication.source_revision == build_draft_revision(payload)
-    assert coordinator.project('tools', principal, 'source').projection_revision == 'projection'
+    target = coordinator.get_current_projection_target('tools', principal)
+    assert target == services.require('tools.workflow').target
+    assert target is not None
+    assert coordinator.project('tools', principal, target).projection_revision == 'projection'
+    assert services.require('tools.workflow').projected_target == target
     assert coordinator.list_history('tools', principal)[0].revision == 'source'
     assert coordinator.load_history_revision('tools', principal, 'source') == {'revision': 'source'}
+
+
+def test_coordinator_projects_explicit_historical_target_without_reselecting_current() -> None:
+    workflow = Workflow()
+    coordinator = _coordinator_for(workflow)
+    principal = ManagerPrincipal('local', 'Administrador local', is_local=True)
+    historical = ProjectionTarget(
+        source_key=workflow.target.source_key,
+        source_release=SourceReleaseRef(
+            release_id=SourceReleaseId('release-historical'),
+            published_at_utc=datetime(2026, 8, 17, 12, 0, tzinfo=UTC),
+        ),
+    )
+
+    result = coordinator.project('tools', principal, historical)
+
+    assert result.target == historical
+    assert workflow.projected_target == historical
+    assert workflow.get_current_projection_target() == workflow.target
 
 
 class MutableWorkflow(Workflow):

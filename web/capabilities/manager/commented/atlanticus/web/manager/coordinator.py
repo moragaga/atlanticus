@@ -22,6 +22,7 @@ from atlanticus.web.manager.projection import (
     SourceVerificationResult,
 )
 from atlanticus.web.manager.registry import ManagerModuleRegistry
+from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.services import ServiceRegistry
 
 
@@ -42,6 +43,17 @@ class ManagerProjectionCoordinator:
         if not self._authorization.can_view(principal, module):
             raise ManagerAuthorizationError('Manager module access is denied')
         return workflow.get_status()
+
+    # La selección de current ocurre antes de project para congelar una identidad Source exacta.
+    def get_current_projection_target(
+        self,
+        module_key: str,
+        principal: ManagerPrincipal,
+    ) -> ProjectionTarget | None:
+        module, workflow = self._resolve(module_key)
+        if not self._authorization.can_view(principal, module):
+            raise ManagerAuthorizationError('Manager module access is denied')
+        return workflow.get_current_projection_target()
 
     def validate_draft(
         self,
@@ -143,15 +155,13 @@ class ManagerProjectionCoordinator:
         self,
         module_key: str,
         principal: ManagerPrincipal,
-        expected_source_revision: str,
+        target: ProjectionTarget,
     ) -> ProjectionExecutionResult:
         module, workflow = self._resolve(module_key)
         if not self._authorization.can_project(principal, module):
             raise ManagerAuthorizationError('Manager projection access is denied')
-        revision = expected_source_revision.strip()
-        if not revision:
-            raise ManagerProjectionError('Expected source revision must not be empty')
-        return workflow.project(revision)
+        # No se reconsulta Source current aquí: el workflow recibe exactamente el target ya seleccionado.
+        return workflow.project(target)
 
     def can_load_history(self, module_key: str, principal: ManagerPrincipal) -> bool:
         module, workflow = self._resolve(module_key)
