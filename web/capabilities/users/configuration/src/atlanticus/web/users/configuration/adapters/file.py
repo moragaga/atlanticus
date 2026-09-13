@@ -208,9 +208,6 @@ class FileUsersProjectionProfileCatalog(ProfileCatalog):
     def assignable(self) -> tuple[ProfileDefinition, ...]:
         return self._current().assignable()
 
-    def restricted_access_profiles(self) -> tuple[ProfileDefinition, ...]:
-        return self._current().restricted_access_profiles()
-
     def _current(self) -> ProfileCatalog:
         catalog = self._repository.load_catalog()
         if catalog is None:

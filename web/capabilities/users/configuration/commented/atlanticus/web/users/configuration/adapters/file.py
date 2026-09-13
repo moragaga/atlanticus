@@ -175,6 +175,8 @@ class FileUsersProjectionRepository:
         return self._settings.root / self._settings.projection_filename
 
 
+# Expone el catálogo de Profiles materializado por la proyección local.
+# La capa conserva sólo semántica de perfiles; las decisiones de autorización pertenecen a consumidores.
 class FileUsersProjectionProfileCatalog(ProfileCatalog):
     def __init__(self, repository: FileUsersProjectionRepository) -> None:
         if not isinstance(repository, FileUsersProjectionRepository):
@@ -210,9 +212,6 @@ class FileUsersProjectionProfileCatalog(ProfileCatalog):
 
     def assignable(self) -> tuple[ProfileDefinition, ...]:
         return self._current().assignable()
-
-    def restricted_access_profiles(self) -> tuple[ProfileDefinition, ...]:
-        return self._current().restricted_access_profiles()
 
     def _current(self) -> ProfileCatalog:
         catalog = self._repository.load_catalog()

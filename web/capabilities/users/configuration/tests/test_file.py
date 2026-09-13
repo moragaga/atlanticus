@@ -92,3 +92,31 @@ def test_file_projection_profile_catalog_reflects_latest_projected_catalog(tmp_p
 
     assert profiles.administrator_background_color == '#AABBCC'
     assert profiles.require('dispatcher').label == 'Despachador'
+
+
+def test_file_projection_profile_catalog_preserves_assignable_profile_contract(
+    tmp_path: Path,
+) -> None:
+    repository = FileUsersProjectionRepository(
+        FileUsersConfigurationSettings(root=tmp_path / 'projection')
+    )
+    profiles = FileUsersProjectionProfileCatalog(repository)
+    bundle = UsersConfigurationBundle.create(
+        catalog=UsersConfigurationCatalog(
+            profiles=(
+                UserProfileConfiguration(
+                    key='operator',
+                    label='Operador',
+                    background_color='#778899',
+                ),
+            ),
+        ),
+        saved_by='administrator',
+    )
+
+    repository.project(bundle, actor='administrator')
+
+    assert tuple(profile.key for profile in profiles.assignable()) == (
+        'administrator',
+        'operator',
+    )
