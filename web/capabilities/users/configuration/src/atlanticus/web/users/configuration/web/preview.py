@@ -3,7 +3,6 @@ from __future__ import annotations
 from dash import html
 
 from atlanticus.web.users.configuration.models import UsersConfigurationCatalog
-from atlanticus.web.users.profiles import has_full_access
 
 
 def build_users_history_preview(payload: dict[str, object]) -> object:
@@ -33,11 +32,6 @@ def build_users_history_preview(payload: dict[str, object]) -> object:
                                     ),
                                     html.Div(
                                         [
-                                            _badge(
-                                                'Acceso total'
-                                                if has_full_access(profile.key)
-                                                else 'Acceso restringido'
-                                            ),
                                             _badge(f'Fondo {profile.background_color}'),
                                             _badge(f'Texto {profile.text_color}'),
                                         ],

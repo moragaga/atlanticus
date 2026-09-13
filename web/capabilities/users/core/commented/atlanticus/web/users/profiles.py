@@ -1,12 +1,14 @@
-# Espejo pedagógico: Users clasifica perfiles por semántica de acceso genérica.
-# restricted_access_profiles no menciona Navigation y puede ser consumido por cualquier política externa.
 from __future__ import annotations
 
+# Este módulo define exclusivamente identidad y metadatos de perfiles.
+# La autorización funcional pertenece a una capa consumidora, no a Profiles.
 import re
 from dataclasses import dataclass
 
 from atlanticus.web.users.errors import UsersDefinitionError
 
+# Los perfiles de sistema existen como hechos de identidad del dominio.
+# Su presencia no implica por sí sola privilegios funcionales.
 LOCAL_PROFILE_KEY = 'local'
 ADMINISTRATOR_PROFILE_KEY = 'administrator'
 GUEST_PROFILE_KEY = 'guest'
@@ -30,6 +32,7 @@ _SYSTEM_PROFILE_KEYS = frozenset(
 _HEX_COLOR = re.compile(r'^#[0-9A-Fa-f]{6}$')
 
 
+# Un perfil describe una categoría de usuario y su representación visual.
 @dataclass(frozen=True, slots=True)
 class ProfileDefinition:
     key: str
@@ -50,6 +53,7 @@ class ProfileDefinition:
         object.__setattr__(self, 'text_color', text_color)
 
 
+# El catálogo reúne perfiles de sistema y personalizados y protege sus invariantes.
 class ProfileCatalog:
     def __init__(
         self,
@@ -84,9 +88,7 @@ class ProfileCatalog:
         custom_keys: list[str] = []
         for profile in custom_profiles:
             if profile.key in _SYSTEM_PROFILE_KEYS:
-                raise UsersDefinitionError(
-                    f'System profile {profile.key!r} cannot be redefined'
-                )
+                raise UsersDefinitionError(f'System profile {profile.key!r} cannot be redefined')
             if profile.key in profiles:
                 raise UsersDefinitionError(f'Duplicate profile key {profile.key!r}')
             profiles[profile.key] = profile
@@ -124,35 +126,16 @@ class ProfileCatalog:
     def all(self) -> tuple[ProfileDefinition, ...]:
         return tuple(self._profiles.values())
 
+    # Sólo administrator y los perfiles personalizados pueden asignarse a usuarios gestionados.
+    # Guest es operacional y Local se resuelve por el mecanismo local correspondiente.
     def assignable(self) -> tuple[ProfileDefinition, ...]:
         return (
             self._profiles[ADMINISTRATOR_PROFILE_KEY],
             *(self._profiles[key] for key in self._custom_keys),
         )
 
-    def restricted_access_profiles(self) -> tuple[ProfileDefinition, ...]:
-        return (
-            self._profiles[GUEST_PROFILE_KEY],
-            *(self._profiles[key] for key in self._custom_keys),
-        )
 
-
-def has_full_access(profile_key: str) -> bool:
-    return normalize_profile_key(profile_key) in {
-        LOCAL_PROFILE_KEY,
-        ADMINISTRATOR_PROFILE_KEY,
-    }
-
-
-def profile_has_access(profile_key: str, allowed_profiles: tuple[str, ...]) -> bool:
-    normalized_profile = normalize_profile_key(profile_key)
-    if has_full_access(normalized_profile):
-        return True
-    return normalized_profile in {
-        normalize_profile_key(value) for value in allowed_profiles
-    }
-
-
+# Las normalizaciones forman parte del contrato reusable del perfil.
 def normalize_profile_key(value: str) -> str:
     normalized = value.strip().casefold()
     if not normalized:

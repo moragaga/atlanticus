@@ -134,8 +134,10 @@ class UserConfiguration:
         display_name = _required(self.display_name, label='User display name')
         email = normalize_email(self.email)
         profile_key = normalize_profile_key(self.profile_key)
-        if profile_key == LOCAL_PROFILE_KEY:
-            raise UsersConfigurationValidationError('Local profile cannot be assigned')
+        if profile_key in {LOCAL_PROFILE_KEY, GUEST_PROFILE_KEY}:
+            raise UsersConfigurationValidationError(
+                'Guest and local profiles cannot be assigned to managed users'
+            )
         if not isinstance(self.enabled, bool):
             raise UsersConfigurationValidationError('User enabled flag must be boolean')
         expected_user_id = build_user_key(

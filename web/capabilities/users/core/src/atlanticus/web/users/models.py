@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 from atlanticus.web.users.errors import UsersDefinitionError
 from atlanticus.web.users.profiles import (
+    GUEST_PROFILE_KEY,
     ProfileDefinition,
-    has_full_access,
     normalize_profile_color,
 )
 
@@ -33,6 +33,15 @@ class EffectiveUser:
         if self.email is not None:
             email = self.email.strip().casefold()
             object.__setattr__(self, 'email', email or None)
+        if self.pending:
+            if not self.enabled:
+                raise UsersDefinitionError('Pending user must be enabled')
+            if self.profile.key != GUEST_PROFILE_KEY:
+                raise UsersDefinitionError('Pending user must use guest profile')
+            if self.is_local:
+                raise UsersDefinitionError('Pending user cannot be local')
+        elif self.profile.key == GUEST_PROFILE_KEY:
+            raise UsersDefinitionError('Guest profile is reserved for pending users')
         background = self.avatar_background_color or self.profile.background_color
         text = self.avatar_text_color or self.profile.text_color
         object.__setattr__(
@@ -41,10 +50,6 @@ class EffectiveUser:
             normalize_profile_color(background),
         )
         object.__setattr__(self, 'avatar_text_color', normalize_profile_color(text))
-
-    @property
-    def has_full_access(self) -> bool:
-        return has_full_access(self.profile.key)
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,7 +60,6 @@ class ResolvedUserRecord:
     email: str | None
     enabled: bool
     profile_key: str
-    pending: bool = False
     avatar_background_color: str | None = None
     avatar_text_color: str | None = None
     is_local: bool = False
@@ -64,6 +68,8 @@ class ResolvedUserRecord:
         profile_key = self.profile_key.strip().casefold()
         if not profile_key:
             raise UsersDefinitionError('Resolved user profile key must not be empty')
+        if profile_key == GUEST_PROFILE_KEY:
+            raise UsersDefinitionError('Resolved source user cannot use guest profile')
         object.__setattr__(self, 'profile_key', profile_key)
         if self.avatar_background_color is not None:
             object.__setattr__(
@@ -87,7 +93,7 @@ class ResolvedUserRecord:
             display_name=self.display_name,
             email=self.email,
             enabled=self.enabled,
-            pending=self.pending,
+            pending=False,
             avatar_text=build_avatar_text(self.display_name),
             profile=profile,
             avatar_background_color=self.avatar_background_color,

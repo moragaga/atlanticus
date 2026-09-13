@@ -13,7 +13,6 @@ from atlanticus.web.users.profiles import (
     LOCAL_PROFILE_TEXT_COLOR,
     ProfileCatalog,
     ProfileDefinition,
-    profile_has_access,
 )
 
 
@@ -73,29 +72,19 @@ def test_only_administrator_and_custom_profiles_are_assignable() -> None:
         'administrator',
         'operator',
     )
-    assert tuple(profile.key for profile in catalog.restricted_access_profiles()) == (
-        'guest',
-        'operator',
-    )
 
 
-def test_profile_access_policy_keeps_system_full_access_implicit() -> None:
-    assert profile_has_access('local', ()) is True
-    assert profile_has_access('administrator', ()) is True
-    assert profile_has_access('guest', ()) is False
-    assert profile_has_access('operator', ('operator',)) is True
-    assert profile_has_access('operator', ('viewer',)) is False
-
-
-def test_guest_visuals_are_configurable_and_guest_requires_explicit_access() -> None:
+def test_guest_remains_a_system_profile_but_is_not_assignable() -> None:
     catalog = ProfileCatalog(
         guest_background_color='#123456',
         guest_text_color='#FEDCBA',
     )
 
-    assert catalog.require('guest').background_color == '#123456'
-    assert catalog.require('guest').text_color == '#FEDCBA'
-    assert [profile.key for profile in catalog.restricted_access_profiles()] == ['guest']
+    guest = catalog.require(GUEST_PROFILE_KEY)
+
+    assert guest.background_color == '#123456'
+    assert guest.text_color == '#FEDCBA'
+    assert GUEST_PROFILE_KEY not in {profile.key for profile in catalog.assignable()}
 
 
 def test_users_core_has_no_navigation_dependency() -> None:

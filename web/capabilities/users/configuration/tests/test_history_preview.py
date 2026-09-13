@@ -12,7 +12,7 @@ def _text(value: object) -> str:
     return _text(children)
 
 
-def test_users_history_preview_shows_profiles_and_assignments() -> None:
+def test_users_history_preview_shows_profiles_and_assignments_without_access_semantics() -> None:
     preview = build_users_history_preview(
         {
             'administrator_background_color': '#26425A',
@@ -46,6 +46,10 @@ def test_users_history_preview_shows_profiles_and_assignments() -> None:
     assert 'Perfiles 4' in text
     assert 'Perfiles personalizados 1' in text
     assert 'Operador operator' in text
+    assert 'Fondo #C9A24B' in text
+    assert 'Texto #0D1B2A' in text
+    assert 'Acceso total' not in text
+    assert 'Acceso restringido' not in text
     assert 'Jane Doe user:example' in text
     assert 'jane@example.com' in text
     assert 'Perfil: operator' in text

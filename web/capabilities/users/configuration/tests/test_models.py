@@ -38,7 +38,7 @@ def test_catalog_configures_system_colors_and_custom_profiles() -> None:
     assert profiles.require('guest').text_color == '#000000'
     assert profiles.require('operator').background_color == '#778899'
     assert profiles.require('operator').text_color == '#101010'
-    assert [item.key for item in profiles.restricted_access_profiles()] == ['guest', 'operator']
+    assert [item.key for item in profiles.assignable()] == ['administrator', 'operator']
 
 
 def test_system_profile_cannot_be_redefined() -> None:
@@ -47,6 +47,16 @@ def test_system_profile_cannot_be_redefined() -> None:
             key='guest',
             label='Otro invitado',
             background_color='#123456',
+        )
+
+
+@pytest.mark.parametrize('profile_key', ['local', 'guest'])
+def test_managed_user_rejects_non_assignable_system_profiles(profile_key: str) -> None:
+    with pytest.raises(UsersConfigurationValidationError, match='cannot be assigned'):
+        UserConfiguration.create(
+            display_name='Managed User',
+            email='managed@example.com',
+            profile_key=profile_key,
         )
 
 

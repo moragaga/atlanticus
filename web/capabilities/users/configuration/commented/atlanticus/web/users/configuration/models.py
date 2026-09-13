@@ -1,7 +1,7 @@
-# Espejo pedagógico del módulo productivo.
-# Los comentarios explican responsabilidades sin alterar estructura ni comportamiento.
 from __future__ import annotations
 
+# Este módulo modela la configuración durable de usuarios y perfiles.
+# No contiene política de autorización funcional.
 import hashlib
 import re
 import unicodedata
@@ -23,6 +23,7 @@ from atlanticus.web.users.profiles import (
     normalize_profile_key,
 )
 
+# Los perfiles de sistema no pueden redefinirse como perfiles personalizados.
 _RESERVED_PROFILE_KEYS = frozenset(
     {LOCAL_PROFILE_KEY, ADMINISTRATOR_PROFILE_KEY, GUEST_PROFILE_KEY}
 )
@@ -30,7 +31,6 @@ _PROFILE_KEY_PATTERN = re.compile(r'^[a-z][a-z0-9_]*$')
 _NON_KEY_PATTERN = re.compile(r'[^a-z0-9]+')
 
 
-# Encapsula la operación required para mantener esta responsabilidad aislada.
 def _required(value: str, *, label: str) -> str:
     normalized = value.strip()
     if not normalized:
@@ -38,7 +38,6 @@ def _required(value: str, *, label: str) -> str:
     return normalized
 
 
-# Encapsula la operación optional para mantener esta responsabilidad aislada.
 def _optional(value: str | None) -> str | None:
     if value is None:
         return None
@@ -46,7 +45,7 @@ def _optional(value: str | None) -> str | None:
     return normalized or None
 
 
-# Encapsula la operación build profile key para mantener esta responsabilidad aislada.
+# Las claves personalizadas son estables, normalizadas y nunca colisionan con perfiles de sistema.
 def build_profile_key(label: str) -> str:
     normalized = unicodedata.normalize('NFKD', label.strip())
     ascii_text = ''.join(
@@ -60,7 +59,6 @@ def build_profile_key(label: str) -> str:
     return candidate
 
 
-# Encapsula la operación normalize email para mantener esta responsabilidad aislada.
 def normalize_email(value: str) -> str:
     normalized = value.strip().casefold()
     if not normalized or '@' not in normalized:
@@ -68,14 +66,13 @@ def normalize_email(value: str) -> str:
     return normalized
 
 
-# Encapsula la operación build user key para mantener esta responsabilidad aislada.
 def build_user_key(*, issuer: str | None, subject_id: str | None, email: str) -> str:
     identity = f'{issuer}|{subject_id}' if issuer and subject_id else normalize_email(email)
     digest = hashlib.sha256(identity.encode('utf-8')).hexdigest()[:24]
     return f'user:{digest}'
 
 
-# Define UserProfileConfiguration como frontera explícita del módulo y valida su contrato.
+# Configuración durable de un perfil personalizado.
 @dataclass(frozen=True, slots=True)
 class UserProfileConfiguration:
     key: str
@@ -124,7 +121,8 @@ class UserProfileConfiguration:
             raise UsersConfigurationValidationError('Profile contract is invalid') from error
 
 
-# Define UserConfiguration como frontera explícita del módulo y valida su contrato.
+# Un UserConfiguration es un usuario gestionado durablemente.
+# Guest y Local no son asignaciones válidas para esta superficie.
 @dataclass(frozen=True, slots=True)
 class UserConfiguration:
     user_id: str
@@ -143,8 +141,11 @@ class UserConfiguration:
         display_name = _required(self.display_name, label='User display name')
         email = normalize_email(self.email)
         profile_key = normalize_profile_key(self.profile_key)
-        if profile_key == LOCAL_PROFILE_KEY:
-            raise UsersConfigurationValidationError('Local profile cannot be assigned')
+        # Guest identifica al usuario autenticado todavía no administrado; Local se resuelve fuera de esta configuración.
+        if profile_key in {LOCAL_PROFILE_KEY, GUEST_PROFILE_KEY}:
+            raise UsersConfigurationValidationError(
+                'Guest and local profiles cannot be assigned to managed users'
+            )
         if not isinstance(self.enabled, bool):
             raise UsersConfigurationValidationError('User enabled flag must be boolean')
         expected_user_id = build_user_key(
@@ -175,8 +176,7 @@ class UserConfiguration:
         user_id: str | None = None,
     ) -> UserConfiguration:
         return cls(
-            user_id=user_id
-            or build_user_key(issuer=issuer, subject_id=subject_id, email=email),
+            user_id=user_id or build_user_key(issuer=issuer, subject_id=subject_id, email=email),
             display_name=display_name,
             email=email,
             profile_key=profile_key,
@@ -215,7 +215,7 @@ class UserConfiguration:
             raise UsersConfigurationValidationError('User contract is invalid') from error
 
 
-# Define DiscoveredUser como frontera explícita del módulo y valida su contrato.
+# DiscoveredUser representa una identidad observada que todavía puede promoverse a configuración durable.
 @dataclass(frozen=True, slots=True)
 class DiscoveredUser:
     user_id: str
@@ -239,6 +239,7 @@ class DiscoveredUser:
         )
         object.__setattr__(self, 'email', normalize_email(self.email))
 
+    # La promoción reutiliza UserConfiguration, de modo que también hereda la regla de perfiles asignables.
     def to_configuration(self, *, profile_key: str) -> UserConfiguration:
         return UserConfiguration.create(
             user_id=self.user_id,
@@ -250,7 +251,7 @@ class DiscoveredUser:
         )
 
 
-# Define UsersConfigurationCatalog como frontera explícita del módulo y valida su contrato.
+# El catálogo valida unicidad, perfiles existentes y serialización del documento durable.
 @dataclass(frozen=True, slots=True)
 class UsersConfigurationCatalog:
     administrator_background_color: str = DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR
@@ -336,9 +337,7 @@ class UsersConfigurationCatalog:
             if not isinstance(users, list) or not all(isinstance(item, dict) for item in users):
                 raise TypeError
             return cls(
-                administrator_background_color=str(
-                    document['administrator_background_color']
-                ),
+                administrator_background_color=str(document['administrator_background_color']),
                 administrator_text_color=str(document['administrator_text_color']),
                 guest_background_color=str(document['guest_background_color']),
                 guest_text_color=str(document['guest_text_color']),
@@ -353,7 +352,6 @@ class UsersConfigurationCatalog:
             ) from error
 
 
-# Encapsula la operación optional value para mantener esta responsabilidad aislada.
 def _optional_value(value: object) -> str | None:
     if value is None:
         return None

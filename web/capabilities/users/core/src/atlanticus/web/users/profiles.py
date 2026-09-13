@@ -126,26 +126,6 @@ class ProfileCatalog:
             *(self._profiles[key] for key in self._custom_keys),
         )
 
-    def restricted_access_profiles(self) -> tuple[ProfileDefinition, ...]:
-        return (
-            self._profiles[GUEST_PROFILE_KEY],
-            *(self._profiles[key] for key in self._custom_keys),
-        )
-
-
-def has_full_access(profile_key: str) -> bool:
-    return normalize_profile_key(profile_key) in {
-        LOCAL_PROFILE_KEY,
-        ADMINISTRATOR_PROFILE_KEY,
-    }
-
-
-def profile_has_access(profile_key: str, allowed_profiles: tuple[str, ...]) -> bool:
-    normalized_profile = normalize_profile_key(profile_key)
-    if has_full_access(normalized_profile):
-        return True
-    return normalized_profile in {normalize_profile_key(value) for value in allowed_profiles}
-
 
 def normalize_profile_key(value: str) -> str:
     normalized = value.strip().casefold()

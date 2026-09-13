@@ -1,15 +1,15 @@
 # Representa perfiles y usuarios de una revisión histórica de Users en una vista de solo lectura.
-# La inspección muestra asignaciones, estado e identidad sin tocar el workspace local.
+# La inspección muestra definiciones, asignaciones, estado e identidad sin inferir permisos.
 
 from __future__ import annotations
 
 from dash import html
 
 from atlanticus.web.users.configuration.models import UsersConfigurationCatalog
-from atlanticus.web.users.profiles import has_full_access
 
 
 def build_users_history_preview(payload: dict[str, object]) -> object:
+    # Reconstruye el catálogo histórico para presentar exactamente sus perfiles y usuarios.
     catalog = UsersConfigurationCatalog.from_document(payload)
     profiles = catalog.profile_catalog().all()
     enabled_users = sum(user.enabled for user in catalog.users)
@@ -34,13 +34,10 @@ def build_users_history_preview(payload: dict[str, object]) -> object:
                                         [html.Strong(profile.label), html.Code(profile.key)],
                                         className='atlanticus-manager__preview-entity-title',
                                     ),
+                                    # Users sólo presenta metadatos visuales del perfil. La semántica
+                                    # de autorización pertenece a los consumidores que aplican política.
                                     html.Div(
                                         [
-                                            _badge(
-                                                'Acceso total'
-                                                if has_full_access(profile.key)
-                                                else 'Acceso restringido'
-                                            ),
                                             _badge(f'Fondo {profile.background_color}'),
                                             _badge(f'Texto {profile.text_color}'),
                                         ],
@@ -77,6 +74,7 @@ def build_users_history_preview(payload: dict[str, object]) -> object:
 
 
 def _user(user) -> object:
+    # La identidad Entra puede no estar vinculada todavía en una revisión histórica.
     identity = (
         f'{user.issuer} · {user.subject_id}'
         if user.issuer is not None and user.subject_id is not None
@@ -103,6 +101,7 @@ def _user(user) -> object:
 
 
 def _summary(items: tuple[tuple[str, str], ...]) -> object:
+    # Mantiene el resumen compacto sin introducir reglas de autorización.
     return html.Div(
         [
             html.Div(
