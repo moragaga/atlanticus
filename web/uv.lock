@@ -193,7 +193,7 @@ requires-dist = [{ name = "atlanticus-web", editable = "framework/core" }]
 
 [[package]]
 name = "atlanticus-web-navigation-configuration"
-version = "0.1.6"
+version = "0.1.7"
 source = { editable = "capabilities/navigation/configuration" }
 dependencies = [
     { name = "atlanticus-web-navigation" },

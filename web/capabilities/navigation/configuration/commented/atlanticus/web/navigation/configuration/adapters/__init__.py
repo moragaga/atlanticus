@@ -13,6 +13,12 @@ from atlanticus.web.navigation.configuration.adapters.memory import (
     MemoryNavigationConfigurationStore,
     MemoryNavigationProjectionRepository,
 )
+from atlanticus.web.navigation.configuration.adapters.projection_store import (
+    CosmosNavigationProjectionStore,
+    CosmosNavigationProjectionStoreSettings,
+    LocalNavigationProjectionStore,
+    LocalNavigationProjectionStoreSettings,
+)
 from atlanticus.web.navigation.configuration.adapters.sharepoint import (
     SharePointNavigationConfigurationSettings,
     SharePointNavigationConfigurationStore,
@@ -21,10 +27,14 @@ from atlanticus.web.navigation.configuration.adapters.sharepoint import (
 __all__ = [
     'CosmosNavigationProjectionRepository',
     'CosmosNavigationProjectionSettings',
+    'CosmosNavigationProjectionStore',
+    'CosmosNavigationProjectionStoreSettings',
     'FileNavigationConfigurationSettings',
     'FileNavigationConfigurationStore',
     'FileNavigationProjectionRepository',
     'FileNavigationProjectionSettings',
+    'LocalNavigationProjectionStore',
+    'LocalNavigationProjectionStoreSettings',
     'MemoryNavigationConfigurationStore',
     'MemoryNavigationProjectionRepository',
     'SharePointNavigationConfigurationSettings',
