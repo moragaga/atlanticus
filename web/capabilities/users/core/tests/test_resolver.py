@@ -2,6 +2,7 @@ import pytest
 
 from atlanticus.web.identity.access import AccessDecision, AccessSnapshot, AccessStatus
 from atlanticus.web.identity.models import AuthenticatedIdentity
+from atlanticus.web.users.identity import build_user_key
 from atlanticus.web.users.models import ResolvedUserRecord
 from atlanticus.web.users.profiles import ProfileCatalog
 from atlanticus.web.users.resolver import UsersAccessResolver
@@ -51,8 +52,7 @@ def test_unknown_authenticated_identity_becomes_pending_guest() -> None:
         user = runtime.current(access)
 
     assert decision.status is AccessStatus.READY
-    assert decision.user_id is not None
-    assert decision.user_id.startswith('pending:')
+    assert decision.user_id == build_user_key(issuer='entra', subject_id='oid-1')
     assert user.pending is True
     assert user.profile.key == 'guest'
     assert source.calls == 1
@@ -66,7 +66,7 @@ def test_disabled_user_returns_disabled_access_decision() -> None:
     profiles = ProfileCatalog()
     source = MemorySource(
         ResolvedUserRecord(
-            user_id='user-1',
+            user_id=build_user_key(issuer='entra', subject_id='oid-1'),
             subject_id='oid-1',
             display_name='Disabled User',
             email='disabled@example.com',
@@ -80,7 +80,7 @@ def test_disabled_user_returns_disabled_access_decision() -> None:
         decision = resolver.resolve(_identity(), load_id='load-1')
 
     assert decision.status is AccessStatus.USER_DISABLED
-    assert decision.user_id == 'user-1'
+    assert decision.user_id == build_user_key(issuer='entra', subject_id='oid-1')
 
 
 def test_identity_conflict_is_reported_as_users_service_unavailable() -> None:
@@ -98,6 +98,34 @@ def test_identity_conflict_is_reported_as_users_service_unavailable() -> None:
     server.secret_key = 'test-only'
     resolver = UsersAccessResolver(
         source=ConflictSource(),
+        runtime=UsersRuntime(),
+        profiles=ProfileCatalog(),
+    )
+
+    with server.test_request_context('/'):
+        with pytest.raises(AccessResolverUnavailableError, match='Users source is unavailable'):
+            resolver.resolve(_identity(), load_id='load-1')
+
+
+def test_source_record_for_another_identity_is_rejected() -> None:
+    from flask import Flask
+
+    from atlanticus.web.identity.errors import AccessResolverUnavailableError
+
+    server = Flask(__name__)
+    server.secret_key = 'test-only'
+    source = MemorySource(
+        ResolvedUserRecord(
+            user_id=build_user_key(issuer='entra', subject_id='oid-2'),
+            subject_id='oid-2',
+            display_name='Another User',
+            email='another@example.com',
+            enabled=True,
+            profile_key='administrator',
+        )
+    )
+    resolver = UsersAccessResolver(
+        source=source,
         runtime=UsersRuntime(),
         profiles=ProfileCatalog(),
     )

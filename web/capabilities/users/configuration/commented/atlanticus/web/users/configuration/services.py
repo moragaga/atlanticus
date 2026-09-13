@@ -267,8 +267,8 @@ def _matches_configured_identity(
     discovered: DiscoveredUser,
     configured: UserConfiguration,
 ) -> bool:
-    # Discovery compara exclusivamente la identidad autenticada; el correo no participa.
+    # Discovery compara exactamente la identidad autenticada; el correo no participa.
     return (
-        discovered.issuer.casefold() == configured.issuer.casefold()
+        discovered.issuer == configured.issuer
         and discovered.subject_id == configured.subject_id
     )

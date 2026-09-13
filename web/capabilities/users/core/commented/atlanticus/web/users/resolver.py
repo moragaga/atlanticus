@@ -2,13 +2,12 @@
 # Los comentarios explican responsabilidades sin alterar estructura ni comportamiento.
 from __future__ import annotations
 
-import hashlib
-
 from atlanticus.web.identity.access import AccessDecision, AccessResolver, AccessStatus
 from atlanticus.web.identity.errors import AccessResolverUnavailableError
 from atlanticus.web.identity.models import AuthenticatedIdentity
 from atlanticus.web.users.errors import UsersIdentityConflictError, UsersSourceUnavailableError
-from atlanticus.web.users.models import EffectiveUser, build_avatar_text
+from atlanticus.web.users.identity import build_user_key
+from atlanticus.web.users.models import EffectiveUser, ResolvedUserRecord, build_avatar_text
 from atlanticus.web.users.profiles import GUEST_PROFILE_KEY, ProfileCatalog
 from atlanticus.web.users.runtime import UsersRuntime
 from atlanticus.web.users.source import UsersSource
@@ -30,6 +29,9 @@ class UsersAccessResolver(AccessResolver):
     def resolve(self, identity: AuthenticatedIdentity, *, load_id: str) -> AccessDecision:
         try:
             record = self._source.resolve(identity)
+            # Una fuente no puede devolver silenciosamente otra identidad autenticada.
+            if record is not None:
+                _require_resolved_identity(identity, record)
         except (UsersSourceUnavailableError, UsersIdentityConflictError) as error:
             raise AccessResolverUnavailableError('Users source is unavailable') from error
 
@@ -46,7 +48,11 @@ class UsersAccessResolver(AccessResolver):
     def _pending_guest(self, identity: AuthenticatedIdentity) -> EffectiveUser:
         display_name = identity.display_name or identity.email or 'Usuario pendiente'
         return EffectiveUser(
-            user_id=_pending_user_id(identity),
+            # Pending conserva desde el inicio la misma clave que tendrá Managed.
+            user_id=build_user_key(
+                issuer=identity.issuer,
+                subject_id=identity.subject_id,
+            ),
             subject_id=identity.subject_id,
             display_name=display_name,
             email=identity.email,
@@ -60,8 +66,17 @@ class UsersAccessResolver(AccessResolver):
         )
 
 
-# Encapsula la operación pending user id para mantener esta responsabilidad aislada.
-def _pending_user_id(identity: AuthenticatedIdentity) -> str:
-    material = f'{identity.provider_key}|{identity.issuer}|{identity.subject_id}'.encode()
-    digest = hashlib.sha256(material).hexdigest()[:24]
-    return f'pending:{digest}'
+# Verifica que el resultado de Source siga anclado a la identidad solicitada.
+def _require_resolved_identity(
+    identity: AuthenticatedIdentity,
+    record: ResolvedUserRecord,
+) -> None:
+    expected_user_id = build_user_key(
+        issuer=identity.issuer,
+        subject_id=identity.subject_id,
+    )
+    if (
+        record.user_id != expected_user_id
+        or record.subject_id.strip() != identity.subject_id.strip()
+    ):
+        raise UsersIdentityConflictError('Resolved user does not match authenticated identity')

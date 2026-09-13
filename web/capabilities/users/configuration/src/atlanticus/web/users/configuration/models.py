@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import hashlib
 import re
 import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
 from atlanticus.web.users.configuration.errors import UsersConfigurationValidationError
+from atlanticus.web.users.identity import build_user_key
 from atlanticus.web.users.profiles import (
     ADMINISTRATOR_PROFILE_KEY,
     DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
@@ -55,14 +55,6 @@ def normalize_email(value: str) -> str:
     if not normalized or '@' not in normalized:
         raise UsersConfigurationValidationError('User email is invalid')
     return normalized
-
-
-def build_user_key(*, issuer: str | None, subject_id: str | None) -> str:
-    normalized_issuer = _required(issuer, label='User issuer')
-    normalized_subject_id = _required(subject_id, label='User subject id')
-    identity = f'{normalized_issuer}|{normalized_subject_id}'
-    digest = hashlib.sha256(identity.encode('utf-8')).hexdigest()[:24]
-    return f'user:{digest}'
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,7 +151,7 @@ class UserConfiguration:
         user_id: str | None = None,
     ) -> UserConfiguration:
         return cls(
-            user_id=user_id or build_user_key(issuer=issuer, subject_id=subject_id),
+            user_id=user_id or '',
             display_name=display_name,
             email=email,
             profile_key=profile_key,

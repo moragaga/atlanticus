@@ -2,13 +2,14 @@ from __future__ import annotations
 
 # Este módulo modela la configuración durable de usuarios y perfiles.
 # No contiene política de autorización funcional.
-import hashlib
 import re
 import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
 from atlanticus.web.users.configuration.errors import UsersConfigurationValidationError
+# La clave durable pertenece a Users core; Configuration sólo la consume.
+from atlanticus.web.users.identity import build_user_key
 from atlanticus.web.users.profiles import (
     ADMINISTRATOR_PROFILE_KEY,
     DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
@@ -59,15 +60,6 @@ def normalize_email(value: str) -> str:
     if not normalized or '@' not in normalized:
         raise UsersConfigurationValidationError('User email is invalid')
     return normalized
-
-
-# La identidad autenticada es la única fuente de la clave durable del usuario.
-def build_user_key(*, issuer: str | None, subject_id: str | None) -> str:
-    normalized_issuer = _required(issuer, label='User issuer')
-    normalized_subject_id = _required(subject_id, label='User subject id')
-    identity = f'{normalized_issuer}|{normalized_subject_id}'
-    digest = hashlib.sha256(identity.encode('utf-8')).hexdigest()[:24]
-    return f'user:{digest}'
 
 
 # Configuración durable de un perfil personalizado.
@@ -170,7 +162,8 @@ class UserConfiguration:
         user_id: str | None = None,
     ) -> UserConfiguration:
         return cls(
-            user_id=user_id or build_user_key(issuer=issuer, subject_id=subject_id),
+            # __post_init__ valida primero issuer/subject_id y deriva la clave canónica.
+            user_id=user_id or '',
             display_name=display_name,
             email=email,
             profile_key=profile_key,

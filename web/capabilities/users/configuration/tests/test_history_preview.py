@@ -1,5 +1,5 @@
-from atlanticus.web.users.configuration import build_user_key
 from atlanticus.web.users.configuration.web import build_users_history_preview
+from atlanticus.web.users.identity import build_user_key
 
 
 def _text(value: object) -> str:

@@ -9,7 +9,6 @@ pytest.importorskip('dash')
 from atlanticus.web.manager.projection import ManagerDraft
 from atlanticus.web.users.configuration import (
     UsersConfigurationCatalog,
-    build_user_key,
     compose_users_configuration_services,
 )
 from atlanticus.web.users.configuration.adapters import (
@@ -45,6 +44,7 @@ from atlanticus.web.users.configuration.web.ids import (
     USER_SAVE_ID,
     USERS_TAB_ID,
 )
+from atlanticus.web.users.identity import build_user_key
 
 
 class _CallbackRecorder:

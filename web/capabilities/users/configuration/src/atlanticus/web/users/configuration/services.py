@@ -265,6 +265,6 @@ def _matches_configured_identity(
     configured: UserConfiguration,
 ) -> bool:
     return (
-        discovered.issuer.casefold() == configured.issuer.casefold()
+        discovered.issuer == configured.issuer
         and discovered.subject_id == configured.subject_id
     )

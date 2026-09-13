@@ -5,7 +5,6 @@ from atlanticus.web.users.configuration import (
     UserConfiguration,
     UserProfileConfiguration,
     UsersConfigurationCatalog,
-    build_user_key,
     compose_users_configuration_services,
 )
 from atlanticus.web.users.configuration.adapters import (
@@ -14,6 +13,7 @@ from atlanticus.web.users.configuration.adapters import (
     MemoryUsersProjectionRepository,
 )
 from atlanticus.web.users.configuration.errors import UsersConfigurationSourceError
+from atlanticus.web.users.identity import build_user_key
 
 
 def _catalog(label: str = 'Operador') -> UsersConfigurationCatalog:
@@ -157,3 +157,25 @@ def test_discovered_identity_remains_visible_until_it_is_materialized_in_source(
     )
 
     assert services.administration.list_discovered() == ()
+
+
+def test_discovered_identity_matching_preserves_exact_issuer() -> None:
+    source = MemoryUsersConfigurationStore()
+    discovered_user = DiscoveredUser(
+        user_id=build_user_key(issuer='ENTRA', subject_id='configured-subject'),
+        issuer='ENTRA',
+        subject_id='configured-subject',
+        display_name='User One',
+        email='one@example.com',
+    )
+    services = compose_users_configuration_services(
+        source=source,
+        publisher=source,
+        projection=MemoryUsersProjectionRepository(),
+        discovered=MemoryDiscoveredUsersSource(users=[discovered_user]),
+        audit_actor_provider=lambda: 'administrator',
+    )
+
+    services.administration.publish_catalog(_catalog(), expected_source_revision=None)
+
+    assert services.administration.list_discovered() == (discovered_user,)

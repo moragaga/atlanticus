@@ -4,9 +4,9 @@ from atlanticus.web.users.configuration import (
     UserConfiguration,
     UserProfileConfiguration,
     UsersConfigurationCatalog,
-    build_user_key,
 )
 from atlanticus.web.users.configuration.errors import UsersConfigurationValidationError
+from atlanticus.web.users.identity import build_user_key
 
 
 def test_catalog_configures_system_colors_and_custom_profiles() -> None:

@@ -7,13 +7,13 @@ from atlanticus.web.users.configuration.models import (
     DiscoveredUser,
     UserConfiguration,
     UsersConfigurationCatalog,
-    build_user_key,
 )
 from atlanticus.web.users.configuration.web.callbacks import (
     _browser_draft_document,
     _save_profile,
     _save_user,
 )
+from atlanticus.web.users.identity import build_user_key
 from atlanticus.web.users.profiles import (
     DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
     DEFAULT_ADMINISTRATOR_TEXT_COLOR,

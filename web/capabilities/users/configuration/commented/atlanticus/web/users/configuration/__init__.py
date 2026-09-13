@@ -20,7 +20,6 @@ from atlanticus.web.users.configuration.models import (
     UserProfileConfiguration,
     UsersConfigurationCatalog,
     build_profile_key,
-    build_user_key,
 )
 from atlanticus.web.users.configuration.services import (
     UsersAdministrationService,
@@ -44,7 +43,6 @@ __all__ = [
     'UsersProjectionRepository',
     'UsersProjectionWorkflow',
     'build_profile_key',
-    'build_user_key',
     'compose_users_configuration_services',
     'decode_users_configuration_import',
     'decode_users_configuration_source',
