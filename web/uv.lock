@@ -19,6 +19,7 @@ members = [
     "atlanticus-web-source",
     "atlanticus-web-source-blob",
     "atlanticus-web-source-local",
+    "atlanticus-web-storage-cosmos",
     "atlanticus-web-storage-topology",
     "atlanticus-web-users",
     "atlanticus-web-users-activity",
@@ -33,6 +34,21 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/5f/56/a8120250d128bed162cd73c76d45f6ef9991f3e068f62a8ee060afa3104a/annotated_types-0.8.0.tar.gz", hash = "sha256:13b2beaad985e05e2d6407ee4c4f35590b11f8d693a258a561055cac8f64cab7", size = 15893, upload-time = "2026-07-23T20:16:13.995Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/99/91/8acff4f5e50511b911bbccb72b8628a49c68ce14148cd9f6431094859a90/annotated_types-0.8.0-py3-none-any.whl", hash = "sha256:f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0", size = 13427, upload-time = "2026-07-23T20:16:12.938Z" },
+]
+
+[[package]]
+name = "atlanticus-cosmos"
+version = "1.0.0"
+source = { directory = "../connectivity/cosmos" }
+dependencies = [
+    { name = "atlanticus-observability" },
+    { name = "azure-cosmos" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-observability", editable = "../backend/observability" },
+    { name = "azure-cosmos", specifier = "==4.16.3" },
 ]
 
 [[package]]
@@ -291,6 +307,21 @@ dependencies = [
 requires-dist = [{ name = "atlanticus-web-source", editable = "capabilities/source/core" }]
 
 [[package]]
+name = "atlanticus-web-storage-cosmos"
+version = "0.1.0"
+source = { editable = "capabilities/storage/cosmos" }
+dependencies = [
+    { name = "atlanticus-cosmos" },
+    { name = "atlanticus-web-storage-topology" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-cosmos", directory = "../connectivity/cosmos" },
+    { name = "atlanticus-web-storage-topology", editable = "capabilities/storage/topology" },
+]
+
+[[package]]
 name = "atlanticus-web-storage-topology"
 version = "0.1.0"
 source = { editable = "capabilities/storage/topology" }
@@ -376,6 +407,7 @@ dependencies = [
     { name = "atlanticus-web-source" },
     { name = "atlanticus-web-source-blob" },
     { name = "atlanticus-web-source-local" },
+    { name = "atlanticus-web-storage-cosmos" },
     { name = "atlanticus-web-storage-topology" },
     { name = "atlanticus-web-users" },
     { name = "atlanticus-web-users-activity" },
@@ -404,6 +436,7 @@ requires-dist = [
     { name = "atlanticus-web-source", editable = "capabilities/source/core" },
     { name = "atlanticus-web-source-blob", editable = "capabilities/source/blob" },
     { name = "atlanticus-web-source-local", editable = "capabilities/source/local" },
+    { name = "atlanticus-web-storage-cosmos", editable = "capabilities/storage/cosmos" },
     { name = "atlanticus-web-storage-topology", editable = "capabilities/storage/topology" },
     { name = "atlanticus-web-users", editable = "capabilities/users/core" },
     { name = "atlanticus-web-users-activity", editable = "capabilities/users/activity" },
@@ -427,6 +460,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a6/f3/b416179e408990df5db0d516283022dde0f5d0111d98c1a848e41853e81c/azure_core-1.41.0.tar.gz", hash = "sha256:f46ff5dfcd230f25cf1c19e8a34b8dc08a337b2503e268bb600a16c00db8ad5a", size = 381042, upload-time = "2026-05-07T23:30:54.302Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/5b/db/325c6d7312d2200251c52323878281045aaffcb5586612296484e4280eaa/azure_core-1.41.0-py3-none-any.whl", hash = "sha256:522b4011e8180b1a3dcd2024396a4e7fe9ac37fb8597db47163d230b5efe892d", size = 220920, upload-time = "2026-05-07T23:30:56.357Z" },
+]
+
+[[package]]
+name = "azure-cosmos"
+version = "4.16.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "azure-core" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/35/21/59863ec67ff0284e6783fef67e2a03e17c3504a3ce0561d525ffb0caccec/azure_cosmos-4.16.3.tar.gz", hash = "sha256:da0a4d9957de7b3f018b2ebb728b7e0494623d4db58639eb92ccd140eddc12d3", size = 2459773, upload-time = "2026-07-29T22:39:46.757Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/17/f6/bf580f67645dcf4d2b4e9a6f7d5e1e3809bbe0c882519aedad647efcb8db/azure_cosmos-4.16.3-py3-none-any.whl", hash = "sha256:666fa5d40227bc233d0e49d8e6342998603a8ef57780d1986af1b23b6d08e987", size = 501516, upload-time = "2026-07-29T22:39:49.435Z" },
 ]
 
 [[package]]
