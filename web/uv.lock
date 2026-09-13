@@ -302,6 +302,7 @@ source = { editable = "capabilities/users/core" }
 dependencies = [
     { name = "atlanticus-web" },
     { name = "atlanticus-web-identity" },
+    { name = "atlanticus-web-storage-topology" },
     { name = "flask" },
 ]
 
@@ -309,6 +310,7 @@ dependencies = [
 requires-dist = [
     { name = "atlanticus-web", editable = "framework/core" },
     { name = "atlanticus-web-identity", editable = "capabilities/identity/core" },
+    { name = "atlanticus-web-storage-topology", editable = "capabilities/storage/topology" },
     { name = "flask", specifier = "==3.1.3" },
 ]
 
