@@ -4,19 +4,23 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "atlanticus-web-users-projection-cosmos"
-version = "0.1.0"
-description = "Materialización Cosmos de la proyección runtime de usuarios Atlanticus Web"
+version = "0.1.1"
+description = "Persistencia Cosmos de proyección canónica y materialización runtime de usuarios Atlanticus Web"
 requires-python = "==3.14.2"
 classifiers = [
     "Private :: Do Not Upload",
 ]
 dependencies = [
     "atlanticus-cosmos==1.0.0",
+    "atlanticus-web-projection==0.1.0",
+    "atlanticus-web-source==0.1.0",
     "atlanticus-web-users==0.1.0",
-    "atlanticus-web-users-configuration==0.1.7",
+    "atlanticus-web-users-configuration==0.1.9",
 ]
 
 [tool.uv.sources]
+atlanticus-web-projection = { workspace = true }
+atlanticus-web-source = { workspace = true }
 atlanticus-web-users = { workspace = true }
 atlanticus-web-users-configuration = { workspace = true }
 

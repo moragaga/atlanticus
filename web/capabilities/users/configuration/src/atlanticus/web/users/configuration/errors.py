@@ -16,3 +16,7 @@ class UsersConfigurationPublisherError(UsersConfigurationError):
 
 class UsersConfigurationProjectionError(UsersConfigurationError):
     pass
+
+
+class UsersConfigurationProjectionConflictError(UsersConfigurationProjectionError):
+    pass

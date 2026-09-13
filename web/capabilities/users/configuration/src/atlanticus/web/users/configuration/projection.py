@@ -3,11 +3,9 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Literal
 
 from atlanticus.web.users.configuration.errors import UsersConfigurationProjectionError
-
-IssueLevel = Literal['error', 'warning']
+from atlanticus.web.users.configuration.validation import UsersProjectionIssue
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,14 +21,6 @@ class UsersAuditRecord:
             raise UsersConfigurationProjectionError('Users audit timestamp must be timezone-aware')
         object.__setattr__(self, 'actor', actor)
         object.__setattr__(self, 'occurred_at_utc', self.occurred_at_utc.astimezone(UTC))
-
-
-@dataclass(frozen=True, slots=True)
-class UsersProjectionIssue:
-    code: str
-    message: str
-    level: IssueLevel = 'error'
-    path: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

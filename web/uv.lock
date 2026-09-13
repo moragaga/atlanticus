@@ -366,9 +366,10 @@ requires-dist = [
 
 [[package]]
 name = "atlanticus-web-users-configuration"
-version = "0.1.8"
+version = "0.1.9"
 source = { editable = "capabilities/users/configuration" }
 dependencies = [
+    { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
     { name = "atlanticus-web-users" },
 ]
@@ -385,6 +386,7 @@ web = [
 requires-dist = [
     { name = "atlanticus-web", marker = "extra == 'web'", editable = "framework/core" },
     { name = "atlanticus-web-bootstrap", marker = "extra == 'web'", editable = "framework/bootstrap" },
+    { name = "atlanticus-web-projection", editable = "capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "capabilities/source/core" },
     { name = "atlanticus-web-users", editable = "capabilities/users/core" },
     { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
@@ -409,10 +411,12 @@ requires-dist = [
 
 [[package]]
 name = "atlanticus-web-users-projection-cosmos"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "capabilities/users/projection-cosmos" }
 dependencies = [
     { name = "atlanticus-cosmos" },
+    { name = "atlanticus-web-projection" },
+    { name = "atlanticus-web-source" },
     { name = "atlanticus-web-users" },
     { name = "atlanticus-web-users-configuration" },
 ]
@@ -420,6 +424,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "atlanticus-cosmos", directory = "../connectivity/cosmos" },
+    { name = "atlanticus-web-projection", editable = "capabilities/projection/core" },
+    { name = "atlanticus-web-source", editable = "capabilities/source/core" },
     { name = "atlanticus-web-users", editable = "capabilities/users/core" },
     { name = "atlanticus-web-users-configuration", editable = "capabilities/users/configuration" },
 ]

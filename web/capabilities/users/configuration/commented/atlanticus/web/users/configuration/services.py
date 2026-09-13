@@ -27,11 +27,11 @@ from atlanticus.web.users.configuration.projection import (
     UsersAuditRecord,
     UsersDraftValidationResult,
     UsersProjectionExecutionResult,
-    UsersProjectionIssue,
     UsersProjectionStatus,
     UsersProjectionSummaryItem,
     UsersSourcePublicationResult,
 )
+from atlanticus.web.users.configuration.validation import validate_users_projection_catalog
 from atlanticus.web.users.models import PendingUserRecord
 from atlanticus.web.users.store import PendingUsersReader
 
@@ -80,7 +80,8 @@ class UsersAdministrationService:
             actor=self._audit_actor_provider(),
             occurred_at_utc=datetime.now(UTC),
         )
-        issues = _validate_catalog(catalog)
+        # El mismo contrato de validación alimenta tanto este workflow como Projection Core.
+        issues = validate_users_projection_catalog(catalog)
         return UsersDraftValidationResult(
             draft_revision=_build_draft_revision(catalog),
             valid=not any(issue.level == 'error' for issue in issues),
@@ -129,6 +130,7 @@ class UsersAdministrationService:
         return bundle.catalog
 
 
+# Este workflow permanece legacy hasta el cutover raíz de Manager; no se adapta a release IDs.
 class UsersProjectionWorkflow:
     def __init__(
         self,
@@ -170,7 +172,7 @@ class UsersProjectionWorkflow:
                 'Expected users source revision must not be empty'
             )
         bundle = self._require_source(expected)
-        issues = _validate_catalog(bundle.catalog)
+        issues = validate_users_projection_catalog(bundle.catalog)
         if any(issue.level == 'error' for issue in issues):
             raise UsersConfigurationProjectionError(
                 'Published users configuration is not valid for projection'
@@ -224,23 +226,6 @@ def compose_users_configuration_services(
         pending=pending,
         projection=projection,
     )
-
-
-def _validate_catalog(
-    catalog: UsersConfigurationCatalog,
-) -> tuple[UsersProjectionIssue, ...]:
-    issues: list[UsersProjectionIssue] = []
-    profile_keys = {profile.key for profile in catalog.profile_catalog().all()}
-    for index, user in enumerate(catalog.users):
-        if user.profile_key not in profile_keys:
-            issues.append(
-                UsersProjectionIssue(
-                    code='user.profile.invalid',
-                    message='User profile does not exist',
-                    path=f'users[{index}].profile_key',
-                )
-            )
-    return tuple(issues)
 
 
 def _catalog_summary(

@@ -1,5 +1,5 @@
-# Superficie pública de Users Configuration: conserva el contrato legacy mientras expone
-# el Source canónico.
+# Superficie pública de Users Configuration: conserva contratos legacy mientras expone
+# Source y Projection canónicos sin mezclar sus identidades.
 from atlanticus.web.users.configuration.bundle import (
     UsersConfigurationBundle,
     UsersConfigurationSourceDocument,
@@ -29,6 +29,10 @@ from atlanticus.web.users.configuration.services import (
     UsersProjectionWorkflow,
     compose_users_configuration_services,
 )
+from atlanticus.web.users.configuration.source_projection import (
+    UsersProjectionBuilder,
+    create_users_projection_service,
+)
 from atlanticus.web.users.configuration.source_release import (
     USERS_SOURCE_DOCUMENT_TYPE,
     USERS_SOURCE_RESOURCE_PATH,
@@ -52,6 +56,7 @@ __all__ = [
     'UsersConfigurationServices',
     'UsersConfigurationSource',
     'UsersConfigurationSourceDocument',
+    'UsersProjectionBuilder',
     'UsersProjectionRepository',
     'UsersProjectionWorkflow',
     'UsersRuntimeMaterializingProjectionRepository',
@@ -62,6 +67,7 @@ __all__ = [
     'UsersSourceService',
     'build_profile_key',
     'compose_users_configuration_services',
+    'create_users_projection_service',
     'decode_users_configuration_import',
     'decode_users_configuration_source',
     'encode_users_configuration_bundle',
