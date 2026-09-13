@@ -5,7 +5,8 @@ class UsersDefinitionError(ValueError):
     pass
 
 
-class UsersSourceUnavailableError(RuntimeError):
+# Indica que la superficie durable/runtime de Users no pudo resolverse de forma confiable.
+class UsersRuntimeStoreUnavailableError(RuntimeError):
     pass
 
 

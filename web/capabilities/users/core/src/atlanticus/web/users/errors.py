@@ -2,7 +2,7 @@ class UsersDefinitionError(ValueError):
     pass
 
 
-class UsersSourceUnavailableError(RuntimeError):
+class UsersRuntimeStoreUnavailableError(RuntimeError):
     pass
 
 
