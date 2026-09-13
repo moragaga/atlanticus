@@ -1,3 +1,4 @@
+# El paquete exporta tanto el contrato legacy aún consumido como la nueva frontera Source/Projection durante el cutover incremental.
 from atlanticus.web.navigation.configuration.bundle import (
     NavigationConfigurationBundle,
     NavigationConfigurationSourceDocument,
@@ -37,27 +38,51 @@ from atlanticus.web.navigation.configuration.services import (
     NavigationProjectionWorkflow,
     compose_navigation_configuration_services,
 )
+from atlanticus.web.navigation.configuration.source_projection import (
+    NavigationProjectionBuilder,
+    NavigationProjectionValidator,
+    create_navigation_projection_service,
+)
+from atlanticus.web.navigation.configuration.source_release import (
+    NAVIGATION_SOURCE_DOCUMENT_TYPE,
+    NAVIGATION_SOURCE_RESOURCE_PATH,
+    NAVIGATION_SOURCE_SCHEMA_VERSION,
+    NavigationSourceCodec,
+    NavigationSourcePayload,
+    NavigationSourceRelease,
+    NavigationSourceService,
+)
 
 __all__ = [
+    'NAVIGATION_COSMOS_REQUIREMENTS',
+    'NAVIGATION_SOURCE_DOCUMENT_TYPE',
+    'NAVIGATION_SOURCE_RESOURCE_PATH',
+    'NAVIGATION_SOURCE_SCHEMA_VERSION',
     'NavigationAdministrationService',
     'NavigationConfigurationBundle',
     'NavigationConfigurationCatalog',
     'NavigationConfigurationProjection',
-    'NAVIGATION_COSMOS_REQUIREMENTS',
     'NavigationConfigurationPublisher',
     'NavigationConfigurationServices',
     'NavigationConfigurationSource',
     'NavigationConfigurationSourceDocument',
-    'NavigationCosmosContainerRequirement',
     'NavigationConfigurationValidator',
+    'NavigationCosmosContainerRequirement',
     'NavigationGroupConfiguration',
     'NavigationLinkConfiguration',
     'NavigationProfileOption',
+    'NavigationProjectionBuilder',
     'NavigationProjectionIssue',
     'NavigationProjectionRepository',
+    'NavigationProjectionValidator',
     'NavigationProjectionWorkflow',
+    'NavigationSourceCodec',
+    'NavigationSourcePayload',
+    'NavigationSourceRelease',
+    'NavigationSourceService',
     'build_navigation_configuration_digest',
     'compose_navigation_configuration_services',
+    'create_navigation_projection_service',
     'create_projected_navigation_definition_provider',
     'create_projected_navigation_module',
     'decode_navigation_configuration_import',

@@ -193,10 +193,12 @@ requires-dist = [{ name = "atlanticus-web", editable = "framework/core" }]
 
 [[package]]
 name = "atlanticus-web-navigation-configuration"
-version = "0.1.5"
+version = "0.1.6"
 source = { editable = "capabilities/navigation/configuration" }
 dependencies = [
     { name = "atlanticus-web-navigation" },
+    { name = "atlanticus-web-projection" },
+    { name = "atlanticus-web-source" },
 ]
 
 [package.optional-dependencies]
@@ -212,6 +214,8 @@ requires-dist = [
     { name = "atlanticus-web", marker = "extra == 'web'", editable = "framework/core" },
     { name = "atlanticus-web-bootstrap", marker = "extra == 'web'", editable = "framework/bootstrap" },
     { name = "atlanticus-web-navigation", editable = "capabilities/navigation/core" },
+    { name = "atlanticus-web-projection", editable = "capabilities/projection/core" },
+    { name = "atlanticus-web-source", editable = "capabilities/source/core" },
     { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
     { name = "dash-bootstrap-components", marker = "extra == 'web'", specifier = "==2.0.4" },
 ]

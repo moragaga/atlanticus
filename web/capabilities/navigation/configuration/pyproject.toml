@@ -4,11 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "atlanticus-web-navigation-configuration"
-version = "0.1.5"
+version = "0.1.6"
 description = "Configuración administrativa de navegación para Atlanticus Web"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
-dependencies = ["atlanticus-web-navigation==0.1.0"]
+dependencies = [
+    "atlanticus-web-navigation==0.1.0",
+    "atlanticus-web-projection==0.1.0",
+    "atlanticus-web-source==0.1.0",
+]
 
 [project.optional-dependencies]
 web = [
@@ -20,6 +24,8 @@ web = [
 
 [tool.uv.sources]
 atlanticus-web-navigation = { workspace = true }
+atlanticus-web-projection = { workspace = true }
+atlanticus-web-source = { workspace = true }
 atlanticus-web = { workspace = true }
 atlanticus-web-bootstrap = { workspace = true }
 
