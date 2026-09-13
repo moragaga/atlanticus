@@ -23,7 +23,7 @@ dependencies = [
     "atlanticus-web-pwa==0.1.0",
     "atlanticus-web-users==0.1.0",
     "atlanticus-web-users-cosmos==0.1.0",
-    "atlanticus-web-users-configuration==0.1.7",
+    "atlanticus-web-users-configuration==0.1.8",
     "atlanticus-web-users-projection-cosmos==0.1.0",
     "atlanticus-web-users-activity==0.1.0",
     "atlanticus-web-composition-navigation-activity==0.1.0",

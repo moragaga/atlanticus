@@ -4,11 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "atlanticus-web-users-configuration"
-version = "0.1.7"
+version = "0.1.8"
 description = "Configuración administrativa de usuarios y perfiles para Atlanticus Web"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
-dependencies = ["atlanticus-web-users==0.1.0"]
+dependencies = [
+    "atlanticus-web-source==0.1.0",
+    "atlanticus-web-users==0.1.0",
+]
 
 [project.optional-dependencies]
 web = [
@@ -19,6 +22,7 @@ web = [
 ]
 
 [tool.uv.sources]
+atlanticus-web-source = { workspace = true }
 atlanticus-web-users = { workspace = true }
 atlanticus-web = { workspace = true }
 atlanticus-web-bootstrap = { workspace = true }

@@ -366,9 +366,10 @@ requires-dist = [
 
 [[package]]
 name = "atlanticus-web-users-configuration"
-version = "0.1.7"
+version = "0.1.8"
 source = { editable = "capabilities/users/configuration" }
 dependencies = [
+    { name = "atlanticus-web-source" },
     { name = "atlanticus-web-users" },
 ]
 
@@ -384,6 +385,7 @@ web = [
 requires-dist = [
     { name = "atlanticus-web", marker = "extra == 'web'", editable = "framework/core" },
     { name = "atlanticus-web-bootstrap", marker = "extra == 'web'", editable = "framework/bootstrap" },
+    { name = "atlanticus-web-source", editable = "capabilities/source/core" },
     { name = "atlanticus-web-users", editable = "capabilities/users/core" },
     { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
     { name = "dash-bootstrap-components", marker = "extra == 'web'", specifier = "==2.0.4" },

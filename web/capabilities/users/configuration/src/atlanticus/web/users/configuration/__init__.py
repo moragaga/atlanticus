@@ -27,8 +27,20 @@ from atlanticus.web.users.configuration.services import (
     UsersProjectionWorkflow,
     compose_users_configuration_services,
 )
+from atlanticus.web.users.configuration.source_release import (
+    USERS_SOURCE_DOCUMENT_TYPE,
+    USERS_SOURCE_RESOURCE_PATH,
+    USERS_SOURCE_SCHEMA_VERSION,
+    UsersSourceCodec,
+    UsersSourcePayload,
+    UsersSourceRelease,
+    UsersSourceService,
+)
 
 __all__ = [
+    'USERS_SOURCE_DOCUMENT_TYPE',
+    'USERS_SOURCE_RESOURCE_PATH',
+    'USERS_SOURCE_SCHEMA_VERSION',
     'UserConfiguration',
     'UserProfileConfiguration',
     'UsersAdministrationService',
@@ -42,6 +54,10 @@ __all__ = [
     'UsersProjectionWorkflow',
     'UsersRuntimeMaterializingProjectionRepository',
     'UsersRuntimeProjectionWriter',
+    'UsersSourceCodec',
+    'UsersSourcePayload',
+    'UsersSourceRelease',
+    'UsersSourceService',
     'build_profile_key',
     'compose_users_configuration_services',
     'decode_users_configuration_import',
