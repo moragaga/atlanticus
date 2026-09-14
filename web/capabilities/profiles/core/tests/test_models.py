@@ -3,56 +3,87 @@ from pathlib import Path
 import pytest
 
 from atlanticus.web.profiles.errors import ProfilesDefinitionError
-from atlanticus.web.profiles.models import (
-    ADMINISTRATOR_PROFILE_KEY,
-    DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
-    DEFAULT_ADMINISTRATOR_TEXT_COLOR,
-    DEFAULT_GUEST_BACKGROUND_COLOR,
-    DEFAULT_GUEST_TEXT_COLOR,
-    GUEST_PROFILE_KEY,
-    LOCAL_PROFILE_BACKGROUND_COLOR,
-    LOCAL_PROFILE_KEY,
-    LOCAL_PROFILE_TEXT_COLOR,
-    ProfileCatalog,
-    ProfileDefinition,
-)
+from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
 
 
-def test_system_profiles_preserve_current_contract_during_extraction() -> None:
-    default = ProfileCatalog()
-    changed = ProfileCatalog(
-        administrator_background_color='#112233',
-        administrator_text_color='#AABBCC',
+def test_profile_catalog_is_empty_by_default() -> None:
+    catalog = ProfileCatalog()
+
+    assert catalog.all() == ()
+
+
+def test_profile_catalog_preserves_explicit_profiles_and_order() -> None:
+    administrator = ProfileDefinition(
+        key='administrator',
+        label='Administrador',
+        background_color='#673AB7',
+    )
+    operator = ProfileDefinition(
+        key='operator',
+        label='Operador',
+        background_color='#112233',
+        text_color='#AABBCC',
     )
 
-    assert tuple(profile.key for profile in default.all()) == (
-        'local',
-        'administrator',
-        'guest',
-    )
-    assert default.require(LOCAL_PROFILE_KEY).background_color == LOCAL_PROFILE_BACKGROUND_COLOR
-    assert default.require(LOCAL_PROFILE_KEY).text_color == LOCAL_PROFILE_TEXT_COLOR
-    assert (
-        default.require(ADMINISTRATOR_PROFILE_KEY).background_color
-        == DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR
-    )
-    assert default.require(ADMINISTRATOR_PROFILE_KEY).text_color == DEFAULT_ADMINISTRATOR_TEXT_COLOR
-    assert default.require(GUEST_PROFILE_KEY).background_color == DEFAULT_GUEST_BACKGROUND_COLOR
-    assert default.require(GUEST_PROFILE_KEY).text_color == DEFAULT_GUEST_TEXT_COLOR
-    assert changed.require(ADMINISTRATOR_PROFILE_KEY).background_color == '#112233'
+    catalog = ProfileCatalog(profiles=(administrator, operator))
+
+    assert catalog.all() == (administrator, operator)
+    assert catalog.require('ADMINISTRATOR') is administrator
+    assert catalog.require(' operator ') is operator
 
 
-def test_system_profiles_cannot_be_redefined_as_custom_profiles() -> None:
-    with pytest.raises(ProfilesDefinitionError, match='cannot be redefined'):
-        ProfileCatalog(
-            custom_profiles=(
-                ProfileDefinition(
-                    key='administrator',
-                    label='Owner',
-                    background_color='#000000',
-                ),
-            )
+def test_profile_catalog_accepts_identity_and_users_terms_as_ordinary_keys() -> None:
+    profiles = tuple(
+        ProfileDefinition(
+            key=key,
+            label=key.title(),
+            background_color='#112233',
         )
+        for key in ('local', 'guest', 'root')
+    )
+
+    catalog = ProfileCatalog(profiles=profiles)
+
+    assert tuple(profile.key for profile in catalog.all()) == ('local', 'guest', 'root')
+
+
+def test_profile_catalog_rejects_duplicate_normalized_keys() -> None:
+    first = ProfileDefinition(
+        key='Operator',
+        label='Operador',
+        background_color='#112233',
+    )
+    duplicate = ProfileDefinition(
+        key=' operator ',
+        label='Operador alternativo',
+        background_color='#445566',
+    )
+
+    with pytest.raises(ProfilesDefinitionError, match="Duplicate profile key 'operator'"):
+        ProfileCatalog(profiles=(first, duplicate))
+
+
+def test_profile_catalog_rejects_unknown_profile() -> None:
+    catalog = ProfileCatalog()
+
+    with pytest.raises(ProfilesDefinitionError, match="Unknown profile 'missing'"):
+        catalog.require(' Missing ')
+
+
+def test_profile_definition_normalizes_values() -> None:
+    profile = ProfileDefinition(
+        key=' Operator ',
+        label=' Operador ',
+        background_color=' #aabbcc ',
+        text_color=' #112233 ',
+    )
+
+    assert profile == ProfileDefinition(
+        key='operator',
+        label='Operador',
+        background_color='#AABBCC',
+        text_color='#112233',
+    )
 
 
 def test_profiles_core_has_no_users_dependency() -> None:
