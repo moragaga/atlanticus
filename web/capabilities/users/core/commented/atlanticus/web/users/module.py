@@ -1,16 +1,14 @@
-# Espejo comentado: registra el runtime y el catálogo canónico de perfiles.
+# El módulo Users registra únicamente servicios que pertenecen a la capability Users.
 from atlanticus.web.modules import WebModule
 from atlanticus.web.services import ServiceRegistry
-from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.users.runtime import USERS_RUNTIME_SERVICE_KEY, UsersRuntime
 
-PROFILE_CATALOG_SERVICE_KEY = 'atlanticus.web.users.profiles'
 
-
-def create_users_module(runtime: UsersRuntime, profiles: ProfileCatalog) -> WebModule:
+def create_users_module(runtime: UsersRuntime) -> WebModule:
+    # El catálogo de Profiles se consume donde corresponde, por ejemplo en el resolver,
+    # pero no se publica desde Users como si fuera un servicio propio.
     def register_services(services: ServiceRegistry) -> None:
         services.add(USERS_RUNTIME_SERVICE_KEY, runtime)
-        services.add(PROFILE_CATALOG_SERVICE_KEY, profiles)
 
     return WebModule(
         name='users',
