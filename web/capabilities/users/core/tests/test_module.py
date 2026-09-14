@@ -1,6 +1,6 @@
+from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.users.module import PROFILE_CATALOG_SERVICE_KEY, create_users_module
-from atlanticus.web.users.profiles import ProfileCatalog
 from atlanticus.web.users.runtime import USERS_RUNTIME_SERVICE_KEY, UsersRuntime
 
 

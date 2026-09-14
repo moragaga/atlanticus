@@ -58,7 +58,7 @@ from atlanticus.web.users.configuration.web.ids import (
     USERS_TAB_ID,
 )
 from atlanticus.web.users.configuration.web.models import UsersAdminWebContext
-from atlanticus.web.users.profiles import (
+from atlanticus.web.profiles.models import (
     DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
     DEFAULT_ADMINISTRATOR_TEXT_COLOR,
     DEFAULT_GUEST_BACKGROUND_COLOR,

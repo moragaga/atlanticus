@@ -1,7 +1,7 @@
 # Espejo comentado: registra el runtime y el catálogo canónico de perfiles.
 from atlanticus.web.modules import WebModule
 from atlanticus.web.services import ServiceRegistry
-from atlanticus.web.users.profiles import ProfileCatalog
+from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.users.runtime import USERS_RUNTIME_SERVICE_KEY, UsersRuntime
 
 PROFILE_CATALOG_SERVICE_KEY = 'atlanticus.web.users.profiles'

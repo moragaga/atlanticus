@@ -2,8 +2,8 @@ from flask import Flask
 
 from atlanticus.web.identity.access import AccessDecision, AccessSnapshot, AccessStatus
 from atlanticus.web.identity.models import AuthenticatedIdentity
+from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.users.models import EffectiveUser
-from atlanticus.web.users.profiles import ProfileCatalog
 from atlanticus.web.users.runtime import UsersRuntime
 
 

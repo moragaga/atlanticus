@@ -23,7 +23,7 @@ from atlanticus.web.users.configuration.errors import (
 )
 from atlanticus.web.users.configuration.models import UsersConfigurationCatalog
 from atlanticus.web.users.configuration.projection import UsersProjectionState
-from atlanticus.web.users.profiles import ProfileCatalog, ProfileDefinition
+from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
 
 
 @dataclass(frozen=True, slots=True)

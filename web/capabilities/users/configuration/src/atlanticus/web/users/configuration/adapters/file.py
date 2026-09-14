@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
+from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
 from atlanticus.web.users.configuration.bundle import (
     UsersConfigurationBundle,
     UsersConfigurationSourceDocument,
@@ -20,7 +21,6 @@ from atlanticus.web.users.configuration.errors import (
 )
 from atlanticus.web.users.configuration.models import UsersConfigurationCatalog
 from atlanticus.web.users.configuration.projection import UsersProjectionState
-from atlanticus.web.users.profiles import ProfileCatalog, ProfileDefinition
 
 
 @dataclass(frozen=True, slots=True)

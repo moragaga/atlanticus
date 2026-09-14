@@ -3,6 +3,16 @@ from __future__ import annotations
 import dash_bootstrap_components as dbc
 from dash import dcc, html
 
+from atlanticus.web.profiles.models import (
+    DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
+    DEFAULT_ADMINISTRATOR_TEXT_COLOR,
+    DEFAULT_GUEST_BACKGROUND_COLOR,
+    DEFAULT_GUEST_TEXT_COLOR,
+    LOCAL_JANE_BACKGROUND_COLOR,
+    LOCAL_JANE_TEXT_COLOR,
+    LOCAL_JOHN_BACKGROUND_COLOR,
+    LOCAL_JOHN_TEXT_COLOR,
+)
 from atlanticus.web.users.configuration.models import UsersConfigurationCatalog
 from atlanticus.web.users.configuration.web.ids import (
     ADD_PROFILE_ID,
@@ -55,16 +65,6 @@ from atlanticus.web.users.configuration.web.ids import (
     USERS_TAB_ID,
 )
 from atlanticus.web.users.configuration.web.models import UsersAdminWebContext
-from atlanticus.web.users.profiles import (
-    DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
-    DEFAULT_ADMINISTRATOR_TEXT_COLOR,
-    DEFAULT_GUEST_BACKGROUND_COLOR,
-    DEFAULT_GUEST_TEXT_COLOR,
-    LOCAL_JANE_BACKGROUND_COLOR,
-    LOCAL_JANE_TEXT_COLOR,
-    LOCAL_JOHN_BACKGROUND_COLOR,
-    LOCAL_JOHN_TEXT_COLOR,
-)
 
 _MODAL_CLOSED = 'atlanticus-users-admin__modal'
 

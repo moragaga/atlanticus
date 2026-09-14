@@ -6,6 +6,13 @@ from datetime import UTC, datetime
 import dash_bootstrap_components as dbc
 from dash import ALL, Input, Output, State, ctx, html, no_update
 
+from atlanticus.web.profiles.models import (
+    DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
+    DEFAULT_ADMINISTRATOR_TEXT_COLOR,
+    DEFAULT_GUEST_BACKGROUND_COLOR,
+    DEFAULT_GUEST_TEXT_COLOR,
+    ProfileDefinition,
+)
 from atlanticus.web.users.configuration.bundle import (
     build_users_configuration_digest,
     decode_users_configuration_import,
@@ -70,13 +77,6 @@ from atlanticus.web.users.configuration.web.ids import (
 )
 from atlanticus.web.users.configuration.web.models import UsersAdminWebContext
 from atlanticus.web.users.models import PendingUserRecord
-from atlanticus.web.users.profiles import (
-    DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
-    DEFAULT_ADMINISTRATOR_TEXT_COLOR,
-    DEFAULT_GUEST_BACKGROUND_COLOR,
-    DEFAULT_GUEST_TEXT_COLOR,
-    ProfileDefinition,
-)
 
 _MODAL_CLOSED = 'atlanticus-users-admin__modal'
 _MODAL_OPEN = 'atlanticus-users-admin__modal atlanticus-users-admin__modal--open'

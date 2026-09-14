@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from atlanticus.web.users.errors import UsersDefinitionError
+from atlanticus.web.profiles.errors import ProfilesDefinitionError
 
 LOCAL_PROFILE_KEY = 'local'
 ADMINISTRATOR_PROFILE_KEY = 'administrator'
@@ -41,7 +41,7 @@ class ProfileDefinition:
         background_color = normalize_profile_color(self.background_color)
         text_color = normalize_profile_color(self.text_color)
         if not label:
-            raise UsersDefinitionError('Profile label must not be empty')
+            raise ProfilesDefinitionError('Profile label must not be empty')
         object.__setattr__(self, 'key', key)
         object.__setattr__(self, 'label', label)
         object.__setattr__(self, 'background_color', background_color)
@@ -82,9 +82,9 @@ class ProfileCatalog:
         custom_keys: list[str] = []
         for profile in custom_profiles:
             if profile.key in _SYSTEM_PROFILE_KEYS:
-                raise UsersDefinitionError(f'System profile {profile.key!r} cannot be redefined')
+                raise ProfilesDefinitionError(f'System profile {profile.key!r} cannot be redefined')
             if profile.key in profiles:
-                raise UsersDefinitionError(f'Duplicate profile key {profile.key!r}')
+                raise ProfilesDefinitionError(f'Duplicate profile key {profile.key!r}')
             profiles[profile.key] = profile
             custom_keys.append(profile.key)
         self._profiles = profiles
@@ -115,7 +115,7 @@ class ProfileCatalog:
         try:
             return self._profiles[normalized]
         except KeyError as error:
-            raise UsersDefinitionError(f'Unknown profile {normalized!r}') from error
+            raise ProfilesDefinitionError(f'Unknown profile {normalized!r}') from error
 
     def all(self) -> tuple[ProfileDefinition, ...]:
         return tuple(self._profiles.values())
@@ -130,14 +130,14 @@ class ProfileCatalog:
 def normalize_profile_key(value: str) -> str:
     normalized = value.strip().casefold()
     if not normalized:
-        raise UsersDefinitionError('Profile key must not be empty')
+        raise ProfilesDefinitionError('Profile key must not be empty')
     if any(character.isspace() for character in normalized):
-        raise UsersDefinitionError('Profile key must not contain spaces')
+        raise ProfilesDefinitionError('Profile key must not contain spaces')
     return normalized
 
 
 def normalize_profile_color(value: str) -> str:
     normalized = value.strip().upper()
     if not _HEX_COLOR.fullmatch(normalized):
-        raise UsersDefinitionError('Profile color must use #RRGGBB format')
+        raise ProfilesDefinitionError('Profile color must use #RRGGBB format')
     return normalized

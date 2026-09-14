@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from atlanticus.web.users.errors import UsersDefinitionError
 from atlanticus.web.users.identity import build_user_key
-from atlanticus.web.users.profiles import (
+from atlanticus.web.profiles.models import (
     GUEST_PROFILE_KEY,
     ProfileDefinition,
     normalize_profile_color,

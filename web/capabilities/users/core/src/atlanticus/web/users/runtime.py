@@ -6,9 +6,9 @@ from typing import Any
 from flask import has_request_context, session
 
 from atlanticus.web.identity.access import AccessSnapshot
+from atlanticus.web.profiles.models import ProfileDefinition
 from atlanticus.web.users.errors import UsersContextError, UsersDefinitionError
 from atlanticus.web.users.models import EffectiveUser
-from atlanticus.web.users.profiles import ProfileDefinition
 
 USERS_RUNTIME_SERVICE_KEY = 'atlanticus.web.users.runtime'
 _SESSION_KEY = '_atlanticus_users_snapshot'

@@ -1,0 +1,2 @@
+class ProfilesDefinitionError(ValueError):
+    pass

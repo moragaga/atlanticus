@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from atlanticus.web.users.errors import UsersDefinitionError
-from atlanticus.web.users.identity import build_user_key
-from atlanticus.web.users.profiles import (
+from atlanticus.web.profiles.errors import ProfilesDefinitionError
+from atlanticus.web.profiles.models import (
     GUEST_PROFILE_KEY,
     ProfileDefinition,
     normalize_profile_color,
 )
+from atlanticus.web.users.errors import UsersDefinitionError
+from atlanticus.web.users.identity import build_user_key
 
 
 def _required_text(value: str | None, *, label: str) -> str:
@@ -27,6 +28,13 @@ def _optional_text(value: str | None, *, casefold: bool = False) -> str | None:
     if not normalized:
         return None
     return normalized.casefold() if casefold else normalized
+
+
+def _user_profile_color(value: str) -> str:
+    try:
+        return normalize_profile_color(value)
+    except ProfilesDefinitionError as error:
+        raise UsersDefinitionError(str(error)) from error
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,12 +71,8 @@ class EffectiveUser:
             raise UsersDefinitionError('Guest profile is reserved for pending users')
         background = self.avatar_background_color or self.profile.background_color
         text = self.avatar_text_color or self.profile.text_color
-        object.__setattr__(
-            self,
-            'avatar_background_color',
-            normalize_profile_color(background),
-        )
-        object.__setattr__(self, 'avatar_text_color', normalize_profile_color(text))
+        object.__setattr__(self, 'avatar_background_color', _user_profile_color(background))
+        object.__setattr__(self, 'avatar_text_color', _user_profile_color(text))
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,17 +150,9 @@ class ResolvedUserRecord:
         object.__setattr__(self, 'email', _optional_text(self.email, casefold=True))
         object.__setattr__(self, 'profile_key', profile_key)
         if self.avatar_background_color is not None:
-            object.__setattr__(
-                self,
-                'avatar_background_color',
-                normalize_profile_color(self.avatar_background_color),
-            )
+            object.__setattr__(self, 'avatar_background_color', _user_profile_color(self.avatar_background_color))
         if self.avatar_text_color is not None:
-            object.__setattr__(
-                self,
-                'avatar_text_color',
-                normalize_profile_color(self.avatar_text_color),
-            )
+            object.__setattr__(self, 'avatar_text_color', _user_profile_color(self.avatar_text_color))
 
     def to_effective_user(self, *, profile: ProfileDefinition) -> EffectiveUser:
         if profile.key != self.profile_key:

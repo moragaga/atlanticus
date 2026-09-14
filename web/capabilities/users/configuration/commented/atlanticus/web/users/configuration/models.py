@@ -10,7 +10,7 @@ from typing import Any
 from atlanticus.web.users.configuration.errors import UsersConfigurationValidationError
 # La clave durable pertenece a Users core; Configuration sólo la consume.
 from atlanticus.web.users.identity import build_user_key
-from atlanticus.web.users.profiles import (
+from atlanticus.web.profiles.models import (
     ADMINISTRATOR_PROFILE_KEY,
     DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
     DEFAULT_ADMINISTRATOR_TEXT_COLOR,
