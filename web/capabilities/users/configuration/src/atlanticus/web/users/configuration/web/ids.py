@@ -17,9 +17,6 @@ DISCOVERED_PANEL_ID = 'atlanticus-users-admin-discovered-panel'
 ADMINISTRATOR_BACKGROUND_COLOR_ID = 'atlanticus-users-admin-administrator-background-color'
 ADMINISTRATOR_TEXT_COLOR_ID = 'atlanticus-users-admin-administrator-text-color'
 ADMINISTRATOR_PREVIEW_ID = 'atlanticus-users-admin-administrator-preview'
-GUEST_BACKGROUND_COLOR_ID = 'atlanticus-users-admin-guest-background-color'
-GUEST_TEXT_COLOR_ID = 'atlanticus-users-admin-guest-text-color'
-GUEST_PREVIEW_ID = 'atlanticus-users-admin-guest-preview'
 PROFILES_LIST_ID = 'atlanticus-users-admin-profiles-list'
 ADD_PROFILE_ID = 'atlanticus-users-admin-add-profile'
 PROFILE_MODAL_ID = 'atlanticus-users-admin-profile-modal'
@@ -46,7 +43,6 @@ DISCOVERED_LIST_ID = 'atlanticus-users-admin-discovered-list'
 DISCOVERED_REFRESH_ID = 'atlanticus-users-admin-discovered-refresh'
 SAVE_BUTTON_ID = 'atlanticus-users-admin-save'
 SAVE_RESULT_ID = 'atlanticus-users-admin-save-result'
-
 
 
 def profile_edit_id(key: str | object) -> dict[str, object]:

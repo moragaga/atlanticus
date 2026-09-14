@@ -2,12 +2,13 @@ from flask import Flask
 
 from atlanticus.web.identity.access import AccessDecision, AccessSnapshot, AccessStatus
 from atlanticus.web.identity.models import AuthenticatedIdentity
-from atlanticus.web.profiles.models import ProfileCatalog
-from atlanticus.web.users.models import EffectiveUser
-from atlanticus.web.users.runtime import UsersRuntime
+from atlanticus.web.profiles.models import ProfileDefinition
+from atlanticus.web.users.identity import build_user_key
+from atlanticus.web.users.models import EffectiveUser, PendingUserRecord
+from atlanticus.web.users.runtime import UsersRuntime, UsersSnapshot
 
 
-def _access(load_id: str) -> AccessSnapshot:
+def _access(load_id: str, *, user_id: str = 'user-1') -> AccessSnapshot:
     return AccessSnapshot.resolved(
         load_id=load_id,
         identity=AuthenticatedIdentity(
@@ -15,11 +16,11 @@ def _access(load_id: str) -> AccessSnapshot:
             issuer='atlanticus-local',
             subject_id='local:john-doe',
         ),
-        decision=AccessDecision(status=AccessStatus.READY, user_id='user-1'),
+        decision=AccessDecision(status=AccessStatus.READY, user_id=user_id),
     )
 
 
-def _user() -> EffectiveUser:
+def _managed_user() -> EffectiveUser:
     return EffectiveUser(
         user_id='user-1',
         subject_id='local:john-doe',
@@ -28,8 +29,22 @@ def _user() -> EffectiveUser:
         enabled=True,
         pending=False,
         avatar_text='JD',
-        profile=ProfileCatalog().require('local'),
+        profile=ProfileDefinition(
+            key='operator',
+            label='Operador',
+            background_color='#112233',
+            text_color='#FFFFFF',
+        ),
     )
+
+
+def _pending_user() -> EffectiveUser:
+    return PendingUserRecord(
+        user_id=build_user_key(issuer='entra', subject_id='subject-1'),
+        issuer='entra',
+        subject_id='subject-1',
+        display_name='Pending User',
+    ).to_effective_user()
 
 
 def test_users_snapshot_is_valid_only_for_matching_page_load() -> None:
@@ -38,6 +53,28 @@ def test_users_snapshot_is_valid_only_for_matching_page_load() -> None:
     runtime = UsersRuntime()
 
     with server.test_request_context('/'):
-        runtime.store(load_id='load-1', user=_user())
+        runtime.store(load_id='load-1', user=_managed_user())
         assert runtime.current(_access('load-1')).display_name == 'John Doe'
         assert runtime.current_or_none(_access('load-2')) is None
+
+
+def test_pending_snapshot_roundtrips_without_profile() -> None:
+    pending = _pending_user()
+    snapshot = UsersSnapshot(load_id='load-pending', user=pending)
+
+    restored = UsersSnapshot.from_session(snapshot.to_session())
+
+    assert restored.user.pending is True
+    assert restored.user.profile is None
+    assert restored.user.avatar_background_color == '#FF5722'
+    assert restored.user.avatar_text_color == '#FFFFFF'
+
+
+def test_managed_snapshot_roundtrips_profile() -> None:
+    managed = _managed_user()
+    snapshot = UsersSnapshot(load_id='load-managed', user=managed)
+
+    restored = UsersSnapshot.from_session(snapshot.to_session())
+
+    assert restored.user.pending is False
+    assert restored.user.profile == managed.profile

@@ -1,5 +1,8 @@
 from pathlib import Path
 
+import pytest
+
+from atlanticus.web.profiles.errors import ProfilesDefinitionError
 from atlanticus.web.users.configuration import (
     UserProfileConfiguration,
     UsersConfigurationBundle,
@@ -37,7 +40,7 @@ def test_file_source_and_projection_are_independent(tmp_path: Path) -> None:
     assert source.fetch_bundle().revision == bundle.revision
 
 
-def test_file_projection_profile_catalog_uses_defaults_before_first_projection(
+def test_file_projection_profile_catalog_is_empty_before_first_projection(
     tmp_path: Path,
 ) -> None:
     repository = FileUsersProjectionRepository(
@@ -45,8 +48,9 @@ def test_file_projection_profile_catalog_uses_defaults_before_first_projection(
     )
     profiles = FileUsersProjectionProfileCatalog(repository)
 
-    assert profiles.require('administrator').label == 'Administrador'
-    assert profiles.custom_profiles == ()
+    assert profiles.all() == ()
+    with pytest.raises(ProfilesDefinitionError, match='Unknown profile'):
+        profiles.require('administrator')
 
 
 def test_file_projection_profile_catalog_reflects_latest_projected_catalog(tmp_path: Path) -> None:
@@ -85,16 +89,20 @@ def test_file_projection_profile_catalog_reflects_latest_projected_catalog(tmp_p
 
     repository.project(first, actor='administrator')
 
-    assert profiles.administrator_background_color == '#112233'
+    assert profiles.require('administrator').background_color == '#112233'
     assert profiles.require('operator').label == 'Operador'
+    with pytest.raises(ProfilesDefinitionError, match='Unknown profile'):
+        profiles.require('guest')
 
     repository.project(second, actor='administrator')
 
-    assert profiles.administrator_background_color == '#AABBCC'
+    assert profiles.require('administrator').background_color == '#AABBCC'
     assert profiles.require('dispatcher').label == 'Despachador'
+    with pytest.raises(ProfilesDefinitionError, match='Unknown profile'):
+        profiles.require('operator')
 
 
-def test_file_projection_profile_catalog_preserves_assignable_profile_contract(
+def test_file_projection_profile_catalog_exposes_functional_profiles(
     tmp_path: Path,
 ) -> None:
     repository = FileUsersProjectionRepository(
@@ -116,7 +124,7 @@ def test_file_projection_profile_catalog_preserves_assignable_profile_contract(
 
     repository.project(bundle, actor='administrator')
 
-    assert tuple(profile.key for profile in profiles.assignable()) == (
+    assert tuple(profile.key for profile in profiles.all()) == (
         'administrator',
         'operator',
     )

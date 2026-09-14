@@ -11,7 +11,7 @@ from atlanticus.web.users.errors import UsersContextError, UsersDefinitionError
 from atlanticus.web.users.models import EffectiveUser
 
 USERS_RUNTIME_SERVICE_KEY = 'atlanticus.web.users.runtime'
-_SESSION_KEY = '_atlanticus_users_snapshot'
+_SESSION_KEY = '_atlanticus_users_snapshot_v2'
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,6 +26,7 @@ class UsersSnapshot:
         object.__setattr__(self, 'load_id', load_id)
 
     def to_session(self) -> dict[str, Any]:
+        profile = self.user.profile
         return {
             'load_id': self.load_id,
             'user': {
@@ -39,12 +40,16 @@ class UsersSnapshot:
                 'avatar_background_color': self.user.avatar_background_color,
                 'avatar_text_color': self.user.avatar_text_color,
                 'is_local': self.user.is_local,
-                'profile': {
-                    'key': self.user.profile.key,
-                    'label': self.user.profile.label,
-                    'background_color': self.user.profile.background_color,
-                    'text_color': self.user.profile.text_color,
-                },
+                'profile': (
+                    None
+                    if profile is None
+                    else {
+                        'key': profile.key,
+                        'label': profile.label,
+                        'background_color': profile.background_color,
+                        'text_color': profile.text_color,
+                    }
+                ),
             },
         }
 
@@ -56,15 +61,18 @@ class UsersSnapshot:
         if not isinstance(user_value, dict):
             raise UsersContextError('Users snapshot user is invalid')
         profile_value = user_value.get('profile')
-        if not isinstance(profile_value, dict):
-            raise UsersContextError('Users snapshot profile is invalid')
         try:
-            profile = ProfileDefinition(
-                key=str(profile_value['key']),
-                label=str(profile_value['label']),
-                background_color=str(profile_value['background_color']),
-                text_color=str(profile_value['text_color']),
-            )
+            if profile_value is None:
+                profile = None
+            elif isinstance(profile_value, dict):
+                profile = ProfileDefinition(
+                    key=str(profile_value['key']),
+                    label=str(profile_value['label']),
+                    background_color=str(profile_value['background_color']),
+                    text_color=str(profile_value['text_color']),
+                )
+            else:
+                raise TypeError
             user = EffectiveUser(
                 user_id=str(user_value['user_id']),
                 subject_id=str(user_value['subject_id']),
@@ -74,8 +82,16 @@ class UsersSnapshot:
                 pending=bool(user_value['pending']),
                 avatar_text=str(user_value['avatar_text']),
                 profile=profile,
-                avatar_background_color=_optional_string(user_value.get('avatar_background_color')),
-                avatar_text_color=_optional_string(user_value.get('avatar_text_color')),
+                avatar_background_color=(
+                    None
+                    if bool(user_value['pending'])
+                    else _optional_string(user_value.get('avatar_background_color'))
+                ),
+                avatar_text_color=(
+                    None
+                    if bool(user_value['pending'])
+                    else _optional_string(user_value.get('avatar_text_color'))
+                ),
                 is_local=bool(user_value.get('is_local', False)),
             )
             return cls(load_id=str(value['load_id']), user=user)

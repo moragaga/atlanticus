@@ -47,11 +47,13 @@ def test_users_history_preview_shows_profiles_and_assignments_without_access_sem
 
     text = _text(preview)
 
-    assert 'Perfiles 4' in text
+    assert 'Perfiles 2' in text
     assert 'Perfiles personalizados 1' in text
     assert 'Operador operator' in text
     assert 'Fondo #C9A24B' in text
     assert 'Texto #0D1B2A' in text
+    assert 'Guest guest' not in text
+    assert 'Local local' not in text
     assert 'Acceso total' not in text
     assert 'Acceso restringido' not in text
     expected_user_id = build_user_key(

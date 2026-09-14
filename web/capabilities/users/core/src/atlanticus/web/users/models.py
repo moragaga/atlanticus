@@ -3,13 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from atlanticus.web.profiles.errors import ProfilesDefinitionError
-from atlanticus.web.profiles.models import (
-    GUEST_PROFILE_KEY,
-    ProfileDefinition,
-    normalize_profile_color,
-)
+from atlanticus.web.profiles.models import ProfileDefinition, normalize_profile_color
 from atlanticus.web.users.errors import UsersDefinitionError
 from atlanticus.web.users.identity import build_user_key
+
+_GUEST_PROFILE_KEY = 'guest'
+_PENDING_USER_BACKGROUND_COLOR = '#FF5722'
+_PENDING_USER_TEXT_COLOR = '#FFFFFF'
 
 
 def _required_text(value: str | None, *, label: str) -> str:
@@ -46,7 +46,7 @@ class EffectiveUser:
     enabled: bool
     pending: bool
     avatar_text: str
-    profile: ProfileDefinition
+    profile: ProfileDefinition | None
     avatar_background_color: str | None = None
     avatar_text_color: str | None = None
     is_local: bool = False
@@ -63,14 +63,21 @@ class EffectiveUser:
         if self.pending:
             if not self.enabled:
                 raise UsersDefinitionError('Pending user must be enabled')
-            if self.profile.key != GUEST_PROFILE_KEY:
-                raise UsersDefinitionError('Pending user must use guest profile')
+            if self.profile is not None:
+                raise UsersDefinitionError('Pending user must not have a profile')
             if self.is_local:
                 raise UsersDefinitionError('Pending user cannot be local')
-        elif self.profile.key == GUEST_PROFILE_KEY:
-            raise UsersDefinitionError('Guest profile is reserved for pending users')
-        background = self.avatar_background_color or self.profile.background_color
-        text = self.avatar_text_color or self.profile.text_color
+            if self.avatar_background_color is not None or self.avatar_text_color is not None:
+                raise UsersDefinitionError('Pending user avatar colors are fixed')
+            background = _PENDING_USER_BACKGROUND_COLOR
+            text = _PENDING_USER_TEXT_COLOR
+        else:
+            if self.profile is None:
+                raise UsersDefinitionError('Resolved user must have a profile')
+            if self.profile.key == _GUEST_PROFILE_KEY:
+                raise UsersDefinitionError('Resolved user cannot use guest profile key')
+            background = self.avatar_background_color or self.profile.background_color
+            text = self.avatar_text_color or self.profile.text_color
         object.__setattr__(self, 'avatar_background_color', _user_profile_color(background))
         object.__setattr__(self, 'avatar_text_color', _user_profile_color(text))
 
@@ -96,9 +103,7 @@ class PendingUserRecord:
         object.__setattr__(self, 'display_name', _optional_text(self.display_name))
         object.__setattr__(self, 'email', _optional_text(self.email, casefold=True))
 
-    def to_effective_user(self, *, profile: ProfileDefinition) -> EffectiveUser:
-        if profile.key != GUEST_PROFILE_KEY:
-            raise UsersDefinitionError('Pending user must use guest profile')
+    def to_effective_user(self) -> EffectiveUser:
         display_name = self.display_name or self.email or 'Usuario pendiente'
         return EffectiveUser(
             user_id=self.user_id,
@@ -108,7 +113,7 @@ class PendingUserRecord:
             enabled=True,
             pending=True,
             avatar_text=build_avatar_text(display_name),
-            profile=profile,
+            profile=None,
             avatar_background_color=None,
             avatar_text_color=None,
             is_local=False,
@@ -141,8 +146,8 @@ class ResolvedUserRecord:
         profile_key = self.profile_key.strip().casefold()
         if not profile_key:
             raise UsersDefinitionError('Resolved user profile key must not be empty')
-        if profile_key == GUEST_PROFILE_KEY:
-            raise UsersDefinitionError('Resolved runtime user cannot use guest profile')
+        if profile_key == _GUEST_PROFILE_KEY:
+            raise UsersDefinitionError('Resolved runtime user cannot use guest profile key')
         object.__setattr__(self, 'user_id', user_id)
         object.__setattr__(self, 'issuer', issuer)
         object.__setattr__(self, 'subject_id', subject_id)
@@ -150,9 +155,17 @@ class ResolvedUserRecord:
         object.__setattr__(self, 'email', _optional_text(self.email, casefold=True))
         object.__setattr__(self, 'profile_key', profile_key)
         if self.avatar_background_color is not None:
-            object.__setattr__(self, 'avatar_background_color', _user_profile_color(self.avatar_background_color))
+            object.__setattr__(
+                self,
+                'avatar_background_color',
+                _user_profile_color(self.avatar_background_color),
+            )
         if self.avatar_text_color is not None:
-            object.__setattr__(self, 'avatar_text_color', _user_profile_color(self.avatar_text_color))
+            object.__setattr__(
+                self,
+                'avatar_text_color',
+                _user_profile_color(self.avatar_text_color),
+            )
 
     def to_effective_user(self, *, profile: ProfileDefinition) -> EffectiveUser:
         if profile.key != self.profile_key:

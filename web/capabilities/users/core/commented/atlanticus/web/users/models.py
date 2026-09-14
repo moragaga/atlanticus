@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-# Los modelos separan el usuario efectivo de los estados durables que puede resolver el runtime.
 from dataclasses import dataclass
 
+from atlanticus.web.profiles.errors import ProfilesDefinitionError
+from atlanticus.web.profiles.models import ProfileDefinition, normalize_profile_color
 from atlanticus.web.users.errors import UsersDefinitionError
 from atlanticus.web.users.identity import build_user_key
-from atlanticus.web.profiles.models import (
-    GUEST_PROFILE_KEY,
-    ProfileDefinition,
-    normalize_profile_color,
-)
+
+# Guest es una semántica de Users para Pending; no es un Profile del dominio Profiles.
+_GUEST_PROFILE_KEY = 'guest'
+# La identidad Pending usa presentación estática propia de Users y no depende de configuración proyectada.
+_PENDING_USER_BACKGROUND_COLOR = '#FF5722'
+_PENDING_USER_TEXT_COLOR = '#FFFFFF'
 
 
 def _required_text(value: str | None, *, label: str) -> str:
@@ -30,9 +32,15 @@ def _optional_text(value: str | None, *, casefold: bool = False) -> str | None:
     return normalized.casefold() if casefold else normalized
 
 
-# EffectiveUser representa al usuario utilizable durante una carga de página.
-# Pending sigue siendo un estado operacional y por contrato siempre usa Guest.
+def _user_profile_color(value: str) -> str:
+    try:
+        return normalize_profile_color(value)
+    except ProfilesDefinitionError as error:
+        raise UsersDefinitionError(str(error)) from error
+
+
 @dataclass(frozen=True, slots=True)
+# EffectiveUser representa el estado efectivo de acceso: Pending no tiene Profile; Managed sí.
 class EffectiveUser:
     user_id: str
     subject_id: str
@@ -41,7 +49,7 @@ class EffectiveUser:
     enabled: bool
     pending: bool
     avatar_text: str
-    profile: ProfileDefinition
+    profile: ProfileDefinition | None
     avatar_background_color: str | None = None
     avatar_text_color: str | None = None
     is_local: bool = False
@@ -55,27 +63,30 @@ class EffectiveUser:
         if self.email is not None:
             email = self.email.strip().casefold()
             object.__setattr__(self, 'email', email or None)
+        # Pending mantiene una invariante estricta y no puede recibir Profile ni colores configurables.
         if self.pending:
             if not self.enabled:
                 raise UsersDefinitionError('Pending user must be enabled')
-            if self.profile.key != GUEST_PROFILE_KEY:
-                raise UsersDefinitionError('Pending user must use guest profile')
+            if self.profile is not None:
+                raise UsersDefinitionError('Pending user must not have a profile')
             if self.is_local:
                 raise UsersDefinitionError('Pending user cannot be local')
-        elif self.profile.key == GUEST_PROFILE_KEY:
-            raise UsersDefinitionError('Guest profile is reserved for pending users')
-        background = self.avatar_background_color or self.profile.background_color
-        text = self.avatar_text_color or self.profile.text_color
-        object.__setattr__(
-            self,
-            'avatar_background_color',
-            normalize_profile_color(background),
-        )
-        object.__setattr__(self, 'avatar_text_color', normalize_profile_color(text))
+            if self.avatar_background_color is not None or self.avatar_text_color is not None:
+                raise UsersDefinitionError('Pending user avatar colors are fixed')
+            background = _PENDING_USER_BACKGROUND_COLOR
+            text = _PENDING_USER_TEXT_COLOR
+        else:
+            # Todo usuario resuelto debe apuntar a un Profile funcional ya disponible en el catálogo runtime.
+            if self.profile is None:
+                raise UsersDefinitionError('Resolved user must have a profile')
+            if self.profile.key == _GUEST_PROFILE_KEY:
+                raise UsersDefinitionError('Resolved user cannot use guest profile key')
+            background = self.avatar_background_color or self.profile.background_color
+            text = self.avatar_text_color or self.profile.text_color
+        object.__setattr__(self, 'avatar_background_color', _user_profile_color(background))
+        object.__setattr__(self, 'avatar_text_color', _user_profile_color(text))
 
 
-# PendingUserRecord es el hecho durable de una identidad observada todavía no gestionada.
-# No contiene perfil, enabled, permisos ni semántica específica de una aplicación.
 @dataclass(frozen=True, slots=True)
 class PendingUserRecord:
     user_id: str
@@ -97,10 +108,8 @@ class PendingUserRecord:
         object.__setattr__(self, 'display_name', _optional_text(self.display_name))
         object.__setattr__(self, 'email', _optional_text(self.email, casefold=True))
 
-    # Guest se materializa sólo al convertir Pending a usuario efectivo.
-    def to_effective_user(self, *, profile: ProfileDefinition) -> EffectiveUser:
-        if profile.key != GUEST_PROFILE_KEY:
-            raise UsersDefinitionError('Pending user must use guest profile')
+    # Materializar Pending no consulta Profiles: sólo deriva nombre, avatar y presentación estática.
+    def to_effective_user(self) -> EffectiveUser:
         display_name = self.display_name or self.email or 'Usuario pendiente'
         return EffectiveUser(
             user_id=self.user_id,
@@ -110,16 +119,15 @@ class PendingUserRecord:
             enabled=True,
             pending=True,
             avatar_text=build_avatar_text(display_name),
-            profile=profile,
+            profile=None,
             avatar_background_color=None,
             avatar_text_color=None,
             is_local=False,
         )
 
 
-# ResolvedUserRecord representa ACTIVE o DISABLED ya gestionado.
-# issuer + subject_id permanecen explícitos porque son la identidad autoritativa.
 @dataclass(frozen=True, slots=True)
+# ResolvedUserRecord conserva la referencia durable profile_key del usuario administrado.
 class ResolvedUserRecord:
     user_id: str
     issuer: str
@@ -145,8 +153,8 @@ class ResolvedUserRecord:
         profile_key = self.profile_key.strip().casefold()
         if not profile_key:
             raise UsersDefinitionError('Resolved user profile key must not be empty')
-        if profile_key == GUEST_PROFILE_KEY:
-            raise UsersDefinitionError('Resolved runtime user cannot use guest profile')
+        if profile_key == _GUEST_PROFILE_KEY:
+            raise UsersDefinitionError('Resolved runtime user cannot use guest profile key')
         object.__setattr__(self, 'user_id', user_id)
         object.__setattr__(self, 'issuer', issuer)
         object.__setattr__(self, 'subject_id', subject_id)
@@ -157,16 +165,15 @@ class ResolvedUserRecord:
             object.__setattr__(
                 self,
                 'avatar_background_color',
-                normalize_profile_color(self.avatar_background_color),
+                _user_profile_color(self.avatar_background_color),
             )
         if self.avatar_text_color is not None:
             object.__setattr__(
                 self,
                 'avatar_text_color',
-                normalize_profile_color(self.avatar_text_color),
+                _user_profile_color(self.avatar_text_color),
             )
 
-    # Managed se materializa con su perfil asignado y nunca como Pending.
     def to_effective_user(self, *, profile: ProfileDefinition) -> EffectiveUser:
         if profile.key != self.profile_key:
             raise UsersDefinitionError('Resolved profile does not match user profile key')
@@ -185,7 +192,6 @@ class ResolvedUserRecord:
         )
 
 
-# El runtime store sólo puede devolver uno de estos dos estados durables.
 RuntimeUserRecord = PendingUserRecord | ResolvedUserRecord
 
 

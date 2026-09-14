@@ -31,8 +31,6 @@ from atlanticus.web.users.configuration.web.ids import (
     ADMINISTRATOR_TEXT_COLOR_ID,
     CATALOG_STORE_ID,
     DISCOVERED_TAB_ID,
-    GUEST_BACKGROUND_COLOR_ID,
-    GUEST_TEXT_COLOR_ID,
     PROFILE_BACKGROUND_COLOR_ID,
     PROFILE_TAB_ID,
     PROFILE_TEXT_COLOR_ID,
@@ -156,15 +154,13 @@ def test_users_admin_exposes_profiles_users_and_pending_as_real_sections() -> No
     assert _text(_component(layout, DISCOVERED_TAB_ID)) == 'Pendientes'
 
 
-def test_users_admin_color_controls_are_functional_color_inputs() -> None:
+def test_users_admin_only_exposes_functional_profile_color_controls() -> None:
     context, _source, _projection = _context()
     layout = build_users_admin_configuration(context)
 
     color_ids = (
         ADMINISTRATOR_BACKGROUND_COLOR_ID,
         ADMINISTRATOR_TEXT_COLOR_ID,
-        GUEST_BACKGROUND_COLOR_ID,
-        GUEST_TEXT_COLOR_ID,
         PROFILE_BACKGROUND_COLOR_ID,
         PROFILE_TEXT_COLOR_ID,
     )
@@ -262,6 +258,7 @@ def test_users_admin_save_draft_is_local_and_does_not_publish_or_project(monkeyp
     assert source.fetch_bundle() is None
     assert projection.load_state() is None
 
+
 def test_users_admin_can_materialize_pending_identity_into_draft(monkeypatch) -> None:
     context, _source, _projection = _context()
     recorder = _registered_callbacks(context)
@@ -304,6 +301,7 @@ def test_users_admin_can_materialize_pending_identity_into_draft(monkeypatch) ->
     assert updated.users[0].issuer == 'entra'
     assert updated.users[0].subject_id == 'subject-new'
     assert updated.users[0].profile_key == 'administrator'
+
 
 def test_pending_identity_metadata_can_be_completed_before_incorporation(monkeypatch) -> None:
     pending = PendingUserRecord(

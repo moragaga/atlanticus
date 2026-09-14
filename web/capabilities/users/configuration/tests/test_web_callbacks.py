@@ -3,12 +3,6 @@ import pytest
 pytest.importorskip('dash')
 
 from atlanticus.web.manager.projection import ManagerDraft
-from atlanticus.web.profiles.models import (
-    DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
-    DEFAULT_ADMINISTRATOR_TEXT_COLOR,
-    DEFAULT_GUEST_BACKGROUND_COLOR,
-    DEFAULT_GUEST_TEXT_COLOR,
-)
 from atlanticus.web.users.configuration.models import (
     UserConfiguration,
     UsersConfigurationCatalog,
@@ -23,12 +17,7 @@ from atlanticus.web.users.models import PendingUserRecord
 
 
 def _catalog() -> UsersConfigurationCatalog:
-    return UsersConfigurationCatalog(
-        administrator_background_color=DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
-        administrator_text_color=DEFAULT_ADMINISTRATOR_TEXT_COLOR,
-        guest_background_color=DEFAULT_GUEST_BACKGROUND_COLOR,
-        guest_text_color=DEFAULT_GUEST_TEXT_COLOR,
-    )
+    return UsersConfigurationCatalog()
 
 
 def _with_operator() -> UsersConfigurationCatalog:

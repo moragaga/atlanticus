@@ -1,34 +1,42 @@
 from __future__ import annotations
 
-# Este módulo modela la configuración durable de usuarios y perfiles.
-# No contiene política de autorización funcional.
 import re
 import unicodedata
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable, TypeVar
 
-from atlanticus.web.users.configuration.errors import UsersConfigurationValidationError
-# La clave durable pertenece a Users core; Configuration sólo la consume.
-from atlanticus.web.users.identity import build_user_key
+from atlanticus.web.profiles.errors import ProfilesDefinitionError
 from atlanticus.web.profiles.models import (
-    ADMINISTRATOR_PROFILE_KEY,
-    DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
-    DEFAULT_ADMINISTRATOR_TEXT_COLOR,
-    DEFAULT_GUEST_BACKGROUND_COLOR,
-    DEFAULT_GUEST_TEXT_COLOR,
-    GUEST_PROFILE_KEY,
-    LOCAL_PROFILE_KEY,
     ProfileCatalog,
     ProfileDefinition,
     normalize_profile_color,
     normalize_profile_key,
 )
+from atlanticus.web.users.configuration.errors import UsersConfigurationValidationError
+from atlanticus.web.users.identity import build_user_key
 
+# Estas claves son restricciones privadas del aggregate de authoring actual; Profiles core no las reserva.
+_LOCAL_PROFILE_KEY = 'local'
+_ADMINISTRATOR_PROFILE_KEY = 'administrator'
+_GUEST_PROFILE_KEY = 'guest'
+# Los defaults permanecen aquí porque forman parte del documento durable UsersConfigurationCatalog vigente.
+_DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR = '#673AB7'
+_DEFAULT_ADMINISTRATOR_TEXT_COLOR = '#FFFFFF'
+_DEFAULT_GUEST_BACKGROUND_COLOR = '#FF5722'
+_DEFAULT_GUEST_TEXT_COLOR = '#FFFFFF'
 _RESERVED_PROFILE_KEYS = frozenset(
-    {LOCAL_PROFILE_KEY, ADMINISTRATOR_PROFILE_KEY, GUEST_PROFILE_KEY}
+    {_LOCAL_PROFILE_KEY, _ADMINISTRATOR_PROFILE_KEY, _GUEST_PROFILE_KEY}
 )
 _PROFILE_KEY_PATTERN = re.compile(r'^[a-z][a-z0-9_]*$')
 _NON_KEY_PATTERN = re.compile(r'[^a-z0-9]+')
+_T = TypeVar('_T')
+
+
+def _profile_value(factory: Callable[[], _T]) -> _T:
+    try:
+        return factory()
+    except ProfilesDefinitionError as error:
+        raise UsersConfigurationValidationError(str(error)) from error
 
 
 def _required(value: str | None, *, label: str) -> str:
@@ -40,7 +48,6 @@ def _required(value: str | None, *, label: str) -> str:
     return normalized
 
 
-# Las claves personalizadas son estables, normalizadas y nunca colisionan con perfiles de sistema.
 def build_profile_key(label: str) -> str:
     normalized = unicodedata.normalize('NFKD', label.strip())
     ascii_text = ''.join(
@@ -54,7 +61,6 @@ def build_profile_key(label: str) -> str:
     return candidate
 
 
-# El correo es metadata opcional: se normaliza si existe, pero no participa en la identidad.
 def normalize_email(value: str | None) -> str | None:
     if value is None:
         return None
@@ -66,8 +72,8 @@ def normalize_email(value: str | None) -> str | None:
     return normalized
 
 
-# Configuración durable de un perfil personalizado.
 @dataclass(frozen=True, slots=True)
+# Esta definición representa perfiles funcionales adicionales creados desde Users Configuration.
 class UserProfileConfiguration:
     key: str
     label: str
@@ -75,23 +81,25 @@ class UserProfileConfiguration:
     text_color: str = '#FFFFFF'
 
     def __post_init__(self) -> None:
-        key = normalize_profile_key(self.key)
+        key = _profile_value(lambda: normalize_profile_key(self.key))
         if key in _RESERVED_PROFILE_KEYS:
-            raise UsersConfigurationValidationError('System profiles cannot be redefined')
+            raise UsersConfigurationValidationError('Reserved profile key cannot be redefined')
         label = _required(self.label, label='Profile label')
-        background_color = normalize_profile_color(self.background_color)
-        text_color = normalize_profile_color(self.text_color)
+        background_color = _profile_value(lambda: normalize_profile_color(self.background_color))
+        text_color = _profile_value(lambda: normalize_profile_color(self.text_color))
         object.__setattr__(self, 'key', key)
         object.__setattr__(self, 'label', label)
         object.__setattr__(self, 'background_color', background_color)
         object.__setattr__(self, 'text_color', text_color)
 
     def to_profile_definition(self) -> ProfileDefinition:
-        return ProfileDefinition(
-            key=self.key,
-            label=self.label,
-            background_color=self.background_color,
-            text_color=self.text_color,
+        return _profile_value(
+            lambda: ProfileDefinition(
+                key=self.key,
+                label=self.label,
+                background_color=self.background_color,
+                text_color=self.text_color,
+            )
         )
 
     def to_document(self) -> dict[str, object]:
@@ -115,8 +123,6 @@ class UserProfileConfiguration:
             raise UsersConfigurationValidationError('Profile contract is invalid') from error
 
 
-# Un UserConfiguration es un usuario gestionado durablemente.
-# Guest y Local no son asignaciones válidas para esta superficie.
 @dataclass(frozen=True, slots=True)
 class UserConfiguration:
     user_id: str
@@ -132,8 +138,8 @@ class UserConfiguration:
         subject_id = _required(self.subject_id, label='User subject id')
         display_name = _required(self.display_name, label='User display name')
         email = normalize_email(self.email)
-        profile_key = normalize_profile_key(self.profile_key)
-        if profile_key in {LOCAL_PROFILE_KEY, GUEST_PROFILE_KEY}:
+        profile_key = _profile_value(lambda: normalize_profile_key(self.profile_key))
+        if profile_key in {_LOCAL_PROFILE_KEY, _GUEST_PROFILE_KEY}:
             raise UsersConfigurationValidationError(
                 'Guest and local profiles cannot be assigned to managed users'
             )
@@ -202,26 +208,27 @@ class UserConfiguration:
             raise UsersConfigurationValidationError('User contract is invalid') from error
 
 
-# Pending no se redefine en Configuration: la única representación vive en Users core.
-
-
-# El catálogo valida unicidad, perfiles existentes y serialización del documento durable.
 @dataclass(frozen=True, slots=True)
+# El aggregate durable conserva temporalmente campos Administrator/Guest por contrato histórico de Source.
 class UsersConfigurationCatalog:
-    administrator_background_color: str = DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR
-    administrator_text_color: str = DEFAULT_ADMINISTRATOR_TEXT_COLOR
-    guest_background_color: str = DEFAULT_GUEST_BACKGROUND_COLOR
-    guest_text_color: str = DEFAULT_GUEST_TEXT_COLOR
+    administrator_background_color: str = _DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR
+    administrator_text_color: str = _DEFAULT_ADMINISTRATOR_TEXT_COLOR
+    guest_background_color: str = _DEFAULT_GUEST_BACKGROUND_COLOR
+    guest_text_color: str = _DEFAULT_GUEST_TEXT_COLOR
     profiles: tuple[UserProfileConfiguration, ...] = ()
     users: tuple[UserConfiguration, ...] = ()
 
     def __post_init__(self) -> None:
-        administrator_background_color = normalize_profile_color(
-            self.administrator_background_color
+        administrator_background_color = _profile_value(
+            lambda: normalize_profile_color(self.administrator_background_color)
         )
-        administrator_text_color = normalize_profile_color(self.administrator_text_color)
-        guest_background_color = normalize_profile_color(self.guest_background_color)
-        guest_text_color = normalize_profile_color(self.guest_text_color)
+        administrator_text_color = _profile_value(
+            lambda: normalize_profile_color(self.administrator_text_color)
+        )
+        guest_background_color = _profile_value(
+            lambda: normalize_profile_color(self.guest_background_color)
+        )
+        guest_text_color = _profile_value(lambda: normalize_profile_color(self.guest_text_color))
         profiles = tuple(self.profiles)
         users = tuple(self.users)
         profile_keys = tuple(profile.key for profile in profiles)
@@ -236,20 +243,15 @@ class UsersConfigurationCatalog:
         identities = tuple((user.issuer, user.subject_id) for user in users)
         if len(identities) != len(set(identities)):
             raise UsersConfigurationValidationError('User identities must be unique')
-        catalog = ProfileCatalog(
+        # La validación runtime usa sólo Profiles funcionales: Administrator explícito + perfiles configurados.
+        catalog = _runtime_profile_catalog(
             administrator_background_color=administrator_background_color,
             administrator_text_color=administrator_text_color,
-            guest_background_color=guest_background_color,
-            guest_text_color=guest_text_color,
-            custom_profiles=tuple(profile.to_profile_definition() for profile in profiles),
+            profiles=profiles,
         )
         for user in users:
-            catalog.require(user.profile_key)
-        object.__setattr__(
-            self,
-            'administrator_background_color',
-            administrator_background_color,
-        )
+            _profile_value(lambda user=user: catalog.require(user.profile_key))
+        object.__setattr__(self, 'administrator_background_color', administrator_background_color)
         object.__setattr__(self, 'administrator_text_color', administrator_text_color)
         object.__setattr__(self, 'guest_background_color', guest_background_color)
         object.__setattr__(self, 'guest_text_color', guest_text_color)
@@ -257,14 +259,13 @@ class UsersConfigurationCatalog:
         object.__setattr__(self, 'users', users)
 
     def profile_catalog(self) -> ProfileCatalog:
-        return ProfileCatalog(
+        return _runtime_profile_catalog(
             administrator_background_color=self.administrator_background_color,
             administrator_text_color=self.administrator_text_color,
-            guest_background_color=self.guest_background_color,
-            guest_text_color=self.guest_text_color,
-            custom_profiles=tuple(profile.to_profile_definition() for profile in self.profiles),
+            profiles=self.profiles,
         )
 
+    # El shape durable no cambia en este incremento: Guest sigue round-trip aunque ya no sea Profile runtime.
     def to_document(self) -> dict[str, object]:
         return {
             'administrator_background_color': self.administrator_background_color,
@@ -280,9 +281,7 @@ class UsersConfigurationCatalog:
         try:
             profiles = document.get('profiles', [])
             users = document.get('users', [])
-            if not isinstance(profiles, list) or not all(
-                isinstance(item, dict) for item in profiles
-            ):
+            if not isinstance(profiles, list) or not all(isinstance(item, dict) for item in profiles):
                 raise TypeError
             if not isinstance(users, list) or not all(isinstance(item, dict) for item in users):
                 raise TypeError
@@ -291,15 +290,34 @@ class UsersConfigurationCatalog:
                 administrator_text_color=str(document['administrator_text_color']),
                 guest_background_color=str(document['guest_background_color']),
                 guest_text_color=str(document['guest_text_color']),
-                profiles=tuple(
-                    UserProfileConfiguration.from_document(dict(item)) for item in profiles
-                ),
+                profiles=tuple(UserProfileConfiguration.from_document(dict(item)) for item in profiles),
                 users=tuple(UserConfiguration.from_document(dict(item)) for item in users),
             )
         except (KeyError, TypeError, ValueError) as error:
-            raise UsersConfigurationValidationError(
-                'Users configuration contract is invalid'
-            ) from error
+            raise UsersConfigurationValidationError('Users configuration contract is invalid') from error
+
+
+# Esta frontera traduce el aggregate combinado vigente al contrato puro de Profiles sin fabricar Guest/Local.
+def _runtime_profile_catalog(
+    *,
+    administrator_background_color: str,
+    administrator_text_color: str,
+    profiles: tuple[UserProfileConfiguration, ...],
+) -> ProfileCatalog:
+    administrator = ProfileDefinition(
+        key=_ADMINISTRATOR_PROFILE_KEY,
+        label='Administrador',
+        background_color=administrator_background_color,
+        text_color=administrator_text_color,
+    )
+    return _profile_value(
+        lambda: ProfileCatalog(
+            profiles=(
+                administrator,
+                *(profile.to_profile_definition() for profile in profiles),
+            )
+        )
+    )
 
 
 def _required_document_string(document: dict[str, Any], key: str) -> str:

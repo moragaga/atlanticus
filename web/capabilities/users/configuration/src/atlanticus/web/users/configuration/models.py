@@ -7,13 +7,6 @@ from typing import Any, Callable, TypeVar
 
 from atlanticus.web.profiles.errors import ProfilesDefinitionError
 from atlanticus.web.profiles.models import (
-    ADMINISTRATOR_PROFILE_KEY,
-    DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
-    DEFAULT_ADMINISTRATOR_TEXT_COLOR,
-    DEFAULT_GUEST_BACKGROUND_COLOR,
-    DEFAULT_GUEST_TEXT_COLOR,
-    GUEST_PROFILE_KEY,
-    LOCAL_PROFILE_KEY,
     ProfileCatalog,
     ProfileDefinition,
     normalize_profile_color,
@@ -22,8 +15,15 @@ from atlanticus.web.profiles.models import (
 from atlanticus.web.users.configuration.errors import UsersConfigurationValidationError
 from atlanticus.web.users.identity import build_user_key
 
+_LOCAL_PROFILE_KEY = 'local'
+_ADMINISTRATOR_PROFILE_KEY = 'administrator'
+_GUEST_PROFILE_KEY = 'guest'
+_DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR = '#673AB7'
+_DEFAULT_ADMINISTRATOR_TEXT_COLOR = '#FFFFFF'
+_DEFAULT_GUEST_BACKGROUND_COLOR = '#FF5722'
+_DEFAULT_GUEST_TEXT_COLOR = '#FFFFFF'
 _RESERVED_PROFILE_KEYS = frozenset(
-    {LOCAL_PROFILE_KEY, ADMINISTRATOR_PROFILE_KEY, GUEST_PROFILE_KEY}
+    {_LOCAL_PROFILE_KEY, _ADMINISTRATOR_PROFILE_KEY, _GUEST_PROFILE_KEY}
 )
 _PROFILE_KEY_PATTERN = re.compile(r'^[a-z][a-z0-9_]*$')
 _NON_KEY_PATTERN = re.compile(r'[^a-z0-9]+')
@@ -80,7 +80,7 @@ class UserProfileConfiguration:
     def __post_init__(self) -> None:
         key = _profile_value(lambda: normalize_profile_key(self.key))
         if key in _RESERVED_PROFILE_KEYS:
-            raise UsersConfigurationValidationError('System profiles cannot be redefined')
+            raise UsersConfigurationValidationError('Reserved profile key cannot be redefined')
         label = _required(self.label, label='Profile label')
         background_color = _profile_value(lambda: normalize_profile_color(self.background_color))
         text_color = _profile_value(lambda: normalize_profile_color(self.text_color))
@@ -136,7 +136,7 @@ class UserConfiguration:
         display_name = _required(self.display_name, label='User display name')
         email = normalize_email(self.email)
         profile_key = _profile_value(lambda: normalize_profile_key(self.profile_key))
-        if profile_key in {LOCAL_PROFILE_KEY, GUEST_PROFILE_KEY}:
+        if profile_key in {_LOCAL_PROFILE_KEY, _GUEST_PROFILE_KEY}:
             raise UsersConfigurationValidationError(
                 'Guest and local profiles cannot be assigned to managed users'
             )
@@ -207,10 +207,10 @@ class UserConfiguration:
 
 @dataclass(frozen=True, slots=True)
 class UsersConfigurationCatalog:
-    administrator_background_color: str = DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR
-    administrator_text_color: str = DEFAULT_ADMINISTRATOR_TEXT_COLOR
-    guest_background_color: str = DEFAULT_GUEST_BACKGROUND_COLOR
-    guest_text_color: str = DEFAULT_GUEST_TEXT_COLOR
+    administrator_background_color: str = _DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR
+    administrator_text_color: str = _DEFAULT_ADMINISTRATOR_TEXT_COLOR
+    guest_background_color: str = _DEFAULT_GUEST_BACKGROUND_COLOR
+    guest_text_color: str = _DEFAULT_GUEST_TEXT_COLOR
     profiles: tuple[UserProfileConfiguration, ...] = ()
     users: tuple[UserConfiguration, ...] = ()
 
@@ -239,14 +239,10 @@ class UsersConfigurationCatalog:
         identities = tuple((user.issuer, user.subject_id) for user in users)
         if len(identities) != len(set(identities)):
             raise UsersConfigurationValidationError('User identities must be unique')
-        catalog = _profile_value(
-            lambda: ProfileCatalog(
-                administrator_background_color=administrator_background_color,
-                administrator_text_color=administrator_text_color,
-                guest_background_color=guest_background_color,
-                guest_text_color=guest_text_color,
-                custom_profiles=tuple(profile.to_profile_definition() for profile in profiles),
-            )
+        catalog = _runtime_profile_catalog(
+            administrator_background_color=administrator_background_color,
+            administrator_text_color=administrator_text_color,
+            profiles=profiles,
         )
         for user in users:
             _profile_value(lambda user=user: catalog.require(user.profile_key))
@@ -258,14 +254,10 @@ class UsersConfigurationCatalog:
         object.__setattr__(self, 'users', users)
 
     def profile_catalog(self) -> ProfileCatalog:
-        return _profile_value(
-            lambda: ProfileCatalog(
-                administrator_background_color=self.administrator_background_color,
-                administrator_text_color=self.administrator_text_color,
-                guest_background_color=self.guest_background_color,
-                guest_text_color=self.guest_text_color,
-                custom_profiles=tuple(profile.to_profile_definition() for profile in self.profiles),
-            )
+        return _runtime_profile_catalog(
+            administrator_background_color=self.administrator_background_color,
+            administrator_text_color=self.administrator_text_color,
+            profiles=self.profiles,
         )
 
     def to_document(self) -> dict[str, object]:
@@ -297,6 +289,28 @@ class UsersConfigurationCatalog:
             )
         except (KeyError, TypeError, ValueError) as error:
             raise UsersConfigurationValidationError('Users configuration contract is invalid') from error
+
+
+def _runtime_profile_catalog(
+    *,
+    administrator_background_color: str,
+    administrator_text_color: str,
+    profiles: tuple[UserProfileConfiguration, ...],
+) -> ProfileCatalog:
+    administrator = ProfileDefinition(
+        key=_ADMINISTRATOR_PROFILE_KEY,
+        label='Administrador',
+        background_color=administrator_background_color,
+        text_color=administrator_text_color,
+    )
+    return _profile_value(
+        lambda: ProfileCatalog(
+            profiles=(
+                administrator,
+                *(profile.to_profile_definition() for profile in profiles),
+            )
+        )
+    )
 
 
 def _required_document_string(document: dict[str, Any], key: str) -> str:

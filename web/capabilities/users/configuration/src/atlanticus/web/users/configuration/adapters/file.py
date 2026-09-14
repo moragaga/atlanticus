@@ -63,7 +63,7 @@ class FileUsersConfigurationStore:
                 self._source_path,
                 encode_users_configuration_source(updated),
             )
-        except UsersConfigurationPublisherError, UsersConfigurationSourceError:
+        except (UsersConfigurationPublisherError, UsersConfigurationSourceError):
             raise
         except Exception as error:
             raise UsersConfigurationPublisherError(
@@ -179,34 +179,11 @@ class FileUsersProjectionProfileCatalog(ProfileCatalog):
         super().__init__()
         self._repository = repository
 
-    @property
-    def administrator_background_color(self) -> str:
-        return self._current().administrator_background_color
-
-    @property
-    def administrator_text_color(self) -> str:
-        return self._current().administrator_text_color
-
-    @property
-    def guest_background_color(self) -> str:
-        return self._current().guest_background_color
-
-    @property
-    def guest_text_color(self) -> str:
-        return self._current().guest_text_color
-
-    @property
-    def custom_profiles(self) -> tuple[ProfileDefinition, ...]:
-        return self._current().custom_profiles
-
     def require(self, key: str) -> ProfileDefinition:
         return self._current().require(key)
 
     def all(self) -> tuple[ProfileDefinition, ...]:
         return self._current().all()
-
-    def assignable(self) -> tuple[ProfileDefinition, ...]:
-        return self._current().assignable()
 
     def _current(self) -> ProfileCatalog:
         catalog = self._repository.load_catalog()

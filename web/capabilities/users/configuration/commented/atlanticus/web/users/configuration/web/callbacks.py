@@ -1,6 +1,3 @@
-# Hidrata Users solo desde el draft explícito del Manager y conserva separada la revisión base asociada al contenido cargado.
-# Los cambios del editor informan su propia revisión sin convertir Source en workspace de forma implícita.
-
 from __future__ import annotations
 
 import base64
@@ -9,6 +6,7 @@ from datetime import UTC, datetime
 import dash_bootstrap_components as dbc
 from dash import ALL, Input, Output, State, ctx, html, no_update
 
+from atlanticus.web.profiles.models import ProfileDefinition
 from atlanticus.web.users.configuration.bundle import (
     build_users_configuration_digest,
     decode_users_configuration_import,
@@ -29,9 +27,6 @@ from atlanticus.web.users.configuration.web.ids import (
     DISCOVERED_PANEL_ID,
     DISCOVERED_REFRESH_ID,
     DISCOVERED_TAB_ID,
-    GUEST_BACKGROUND_COLOR_ID,
-    GUEST_PREVIEW_ID,
-    GUEST_TEXT_COLOR_ID,
     IMPORT_RESULT_ID,
     IMPORT_UPLOAD_ID,
     MOUNT_STORE_ID,
@@ -73,13 +68,6 @@ from atlanticus.web.users.configuration.web.ids import (
 )
 from atlanticus.web.users.configuration.web.models import UsersAdminWebContext
 from atlanticus.web.users.models import PendingUserRecord
-from atlanticus.web.profiles.models import (
-    DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
-    DEFAULT_ADMINISTRATOR_TEXT_COLOR,
-    DEFAULT_GUEST_BACKGROUND_COLOR,
-    DEFAULT_GUEST_TEXT_COLOR,
-    ProfileDefinition,
-)
 
 _MODAL_CLOSED = 'atlanticus-users-admin__modal'
 _MODAL_OPEN = 'atlanticus-users-admin__modal atlanticus-users-admin__modal--open'
@@ -90,25 +78,25 @@ _TAB_ACTIVE = (
     'nav-link active atlanticus-users-admin__tab '
     'atlanticus-users-admin__tab--active'
 )
+# Defaults del editor para nuevos perfiles funcionales; no representan perfiles de sistema.
 _DEFAULT_PROFILE_BACKGROUND_COLOR = '#C9A24B'
 _DEFAULT_PROFILE_TEXT_COLOR = '#071522'
 _BROWSER_DRAFT_SCHEMA_VERSION = 1
 
 
+# Los callbacks mantienen el draft combinado vigente mientras exponen sólo semántica funcional de Profiles.
 def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -> None:
     @app.callback(
         Output(CATALOG_STORE_ID, 'data'),
         Output(ADMINISTRATOR_BACKGROUND_COLOR_ID, 'value'),
         Output(ADMINISTRATOR_TEXT_COLOR_ID, 'value'),
-        Output(GUEST_BACKGROUND_COLOR_ID, 'value'),
-        Output(GUEST_TEXT_COLOR_ID, 'value'),
         Output(SOURCE_REVISION_STORE_ID, 'data'),
         Input(MOUNT_STORE_ID, 'data'),
         Input(context.draft_store_id, 'data'),
     )
     def load_browser_draft(_mounted: object, draft_data: dict[str, object] | None):
         if draft_data is None:
-            return (no_update,) * 6
+            return (no_update,) * 4
         try:
             catalog = _catalog_from_browser_draft(
                 draft_data,
@@ -125,16 +113,12 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
                 catalog.to_document(),
                 catalog.administrator_background_color,
                 catalog.administrator_text_color,
-                catalog.guest_background_color,
-                catalog.guest_text_color,
                 None,
             )
         return (
             catalog.to_document(),
             catalog.administrator_background_color,
             catalog.administrator_text_color,
-            catalog.guest_background_color,
-            catalog.guest_text_color,
             base_source_revision,
         )
 
@@ -197,19 +181,15 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
     @app.callback(
         Output(CATALOG_STORE_ID, 'data', allow_duplicate=True),
         Output(ADMINISTRATOR_PREVIEW_ID, 'style'),
-        Output(GUEST_PREVIEW_ID, 'style'),
         Input(ADMINISTRATOR_BACKGROUND_COLOR_ID, 'value'),
         Input(ADMINISTRATOR_TEXT_COLOR_ID, 'value'),
-        Input(GUEST_BACKGROUND_COLOR_ID, 'value'),
-        Input(GUEST_TEXT_COLOR_ID, 'value'),
         State(CATALOG_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
-    def update_system_colors(
+    # Guest conserva sus campos durables pero ya no tiene controles ni gobierna Pending.
+    def update_administrator_colors(
         administrator_background_color: str | None,
         administrator_text_color: str | None,
-        guest_background_color: str | None,
-        guest_text_color: str | None,
         catalog_data: dict[str, object] | None,
     ):
         catalog = _catalog(catalog_data)
@@ -221,22 +201,18 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
                 administrator_text_color=(
                     administrator_text_color or catalog.administrator_text_color
                 ),
-                guest_background_color=(guest_background_color or catalog.guest_background_color),
-                guest_text_color=guest_text_color or catalog.guest_text_color,
+                guest_background_color=catalog.guest_background_color,
+                guest_text_color=catalog.guest_text_color,
                 profiles=catalog.profiles,
                 users=catalog.users,
             )
         except Exception:
-            return no_update, no_update, no_update
+            return no_update, no_update
         return (
             updated.to_document(),
             _profile_preview_style(
                 updated.administrator_background_color,
                 updated.administrator_text_color,
-            ),
-            _profile_preview_style(
-                updated.guest_background_color,
-                updated.guest_text_color,
             ),
         )
 
@@ -511,7 +487,6 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
                     options=options,
                     error='Pending user does not exist',
                 )
-            # issuer, subject_id y user_id permanecen inmutables; nombre y correo son metadata administrativa.
             return _user_modal_response(
                 editor={
                     'mode': 'pending',
@@ -573,8 +548,6 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
         Output(CATALOG_STORE_ID, 'data', allow_duplicate=True),
         Output(ADMINISTRATOR_BACKGROUND_COLOR_ID, 'value', allow_duplicate=True),
         Output(ADMINISTRATOR_TEXT_COLOR_ID, 'value', allow_duplicate=True),
-        Output(GUEST_BACKGROUND_COLOR_ID, 'value', allow_duplicate=True),
-        Output(GUEST_TEXT_COLOR_ID, 'value', allow_duplicate=True),
         Output(IMPORT_RESULT_ID, 'children'),
         Input(IMPORT_UPLOAD_ID, 'contents'),
         State(SOURCE_REVISION_STORE_ID, 'data'),
@@ -585,9 +558,9 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
         source_revision: str | None,
     ):
         if contents is None:
-            return (no_update,) * 7
+            return (no_update,) * 5
         if not context.can_manage():
-            return (no_update,) * 6 + (_error('Management access is denied'),)
+            return (no_update,) * 4 + (_error('Management access is denied'),)
         try:
             if ',' not in contents:
                 raise ValueError('Configuration file payload is invalid')
@@ -599,20 +572,17 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
                 base_source_revision=source_revision,
             )
         except Exception as error:
-            return (no_update,) * 6 + (_error(str(error)),)
+            return (no_update,) * 4 + (_error(str(error)),)
         return (
             draft,
             catalog.to_document(),
             catalog.administrator_background_color,
             catalog.administrator_text_color,
-            catalog.guest_background_color,
-            catalog.guest_text_color,
             None,
         )
 
     @app.callback(
         Output(context.draft_store_id, 'data', allow_duplicate=True),
-        # Guardar actualiza a la vez el workspace activo y el checkpoint persistente recuperable.
         Output(context.saved_draft_store_id, 'data', allow_duplicate=True),
         Output(SAVE_RESULT_ID, 'children'),
         Input(SAVE_BUTTON_ID, 'n_clicks'),
@@ -656,23 +626,14 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
         return draft, draft, None
 
 
+# Los defaults durables pertenecen al aggregate y ya no se importan desde Profiles.
 def _empty_catalog() -> UsersConfigurationCatalog:
-    return UsersConfigurationCatalog(
-        administrator_background_color=DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
-        administrator_text_color=DEFAULT_ADMINISTRATOR_TEXT_COLOR,
-        guest_background_color=DEFAULT_GUEST_BACKGROUND_COLOR,
-        guest_text_color=DEFAULT_GUEST_TEXT_COLOR,
-    )
+    return UsersConfigurationCatalog()
 
 
 def _catalog(data: dict[str, object] | None) -> UsersConfigurationCatalog:
     if not isinstance(data, dict):
-        return UsersConfigurationCatalog(
-            administrator_background_color=DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
-            administrator_text_color=DEFAULT_ADMINISTRATOR_TEXT_COLOR,
-            guest_background_color=DEFAULT_GUEST_BACKGROUND_COLOR,
-            guest_text_color=DEFAULT_GUEST_TEXT_COLOR,
-        )
+        return UsersConfigurationCatalog()
     return UsersConfigurationCatalog.from_document(data)
 
 
@@ -784,7 +745,6 @@ def _save_user(
         user_id = _optional_text(editor.get('user_id'))
         if user_id is None:
             raise ValueError('User id is required for edit')
-        # Editar datos administrativos nunca permite sustituir la identidad autenticada del registro.
         existing = next(
             (user for user in catalog.users if user.user_id == user_id),
             None,
@@ -828,16 +788,17 @@ def _save_user(
     )
 
 
+# Todo Profile presente en el catálogo runtime es funcional y por tanto elegible en este editor.
 def _assignable_profile_options(catalog: UsersConfigurationCatalog) -> list[dict[str, str]]:
     return [
         {'label': profile.label, 'value': profile.key}
-        for profile in catalog.profile_catalog().assignable()
+        for profile in catalog.profile_catalog().all()
     ]
 
 
 def _profile_cards(catalog: UsersConfigurationCatalog) -> object:
     if not catalog.profiles:
-        return _empty('Todavía no hay perfiles personalizados.')
+        return _empty('Todavía no hay perfiles funcionales adicionales.')
     used = {user.profile_key for user in catalog.users}
     return html.Div(
         [
@@ -944,9 +905,7 @@ def _user_cards(catalog: UsersConfigurationCatalog) -> object:
     )
 
 
-def _pending_cards(
-    users: tuple[PendingUserRecord, ...],
-) -> object:
+def _pending_cards(users: tuple[PendingUserRecord, ...]) -> object:
     if not users:
         return _empty('No hay identidades pendientes de incorporación.')
     return html.Div(
@@ -963,8 +922,7 @@ def _pending_cards(
                     ),
                     html.Div(
                         [
-                            # Pending usa Guest hasta que Source lo materialice como Managed.
-                            html.Span('Guest', className='atlanticus-users-admin__status'),
+                            html.Span('Pendiente', className='atlanticus-users-admin__status'),
                             dbc.Button(
                                 'Incorporar',
                                 id=discovered_add_id(user.user_id),
@@ -1011,8 +969,6 @@ def _find_pending(
         )
     except Exception:
         return None
-
-
 
 
 def _profile_preview_style(
@@ -1156,7 +1112,6 @@ def _save_draft_click_is_real(
     return False
 
 
-
 def _click_is_real(clicks: int | None) -> bool:
     return isinstance(clicks, int) and not isinstance(clicks, bool) and clicks > 0
 
@@ -1190,8 +1145,6 @@ def _empty(message: str) -> object:
     return html.Div(message, className='atlanticus-users-admin__empty')
 
 
-
-# Aviso no bloqueante para capacidades auxiliares como discovery de identidades.
 def _notice(message: str) -> object:
     return html.Div(
         message,
@@ -1200,6 +1153,7 @@ def _notice(message: str) -> object:
             'atlanticus-users-admin__message--notice'
         ),
     )
+
 
 def _error(message: str) -> object:
     return html.Div(

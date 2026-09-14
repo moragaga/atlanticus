@@ -4,7 +4,7 @@ from atlanticus.web.identity.access import AccessDecision, AccessResolver, Acces
 from atlanticus.web.identity.errors import AccessResolverUnavailableError
 from atlanticus.web.identity.models import AuthenticatedIdentity
 from atlanticus.web.profiles.errors import ProfilesDefinitionError
-from atlanticus.web.profiles.models import GUEST_PROFILE_KEY, ProfileCatalog, ProfileDefinition
+from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
 from atlanticus.web.users.errors import (
     UsersDefinitionError,
     UsersIdentityConflictError,
@@ -36,7 +36,7 @@ class UsersAccessResolver(AccessResolver):
             raise AccessResolverUnavailableError('Users runtime store is unavailable') from error
 
         if isinstance(record, PendingUserRecord):
-            user = record.to_effective_user(profile=_require_profile(self._profiles, GUEST_PROFILE_KEY))
+            user = record.to_effective_user()
         else:
             if not record.enabled:
                 return AccessDecision(status=AccessStatus.USER_DISABLED, user_id=record.user_id)

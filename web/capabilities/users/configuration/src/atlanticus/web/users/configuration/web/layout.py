@@ -3,16 +3,6 @@ from __future__ import annotations
 import dash_bootstrap_components as dbc
 from dash import dcc, html
 
-from atlanticus.web.profiles.models import (
-    DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
-    DEFAULT_ADMINISTRATOR_TEXT_COLOR,
-    DEFAULT_GUEST_BACKGROUND_COLOR,
-    DEFAULT_GUEST_TEXT_COLOR,
-    LOCAL_JANE_BACKGROUND_COLOR,
-    LOCAL_JANE_TEXT_COLOR,
-    LOCAL_JOHN_BACKGROUND_COLOR,
-    LOCAL_JOHN_TEXT_COLOR,
-)
 from atlanticus.web.users.configuration.models import UsersConfigurationCatalog
 from atlanticus.web.users.configuration.web.ids import (
     ADD_PROFILE_ID,
@@ -24,9 +14,6 @@ from atlanticus.web.users.configuration.web.ids import (
     DISCOVERED_PANEL_ID,
     DISCOVERED_REFRESH_ID,
     DISCOVERED_TAB_ID,
-    GUEST_BACKGROUND_COLOR_ID,
-    GUEST_PREVIEW_ID,
-    GUEST_TEXT_COLOR_ID,
     IMPORT_RESULT_ID,
     IMPORT_UPLOAD_ID,
     MOUNT_STORE_ID,
@@ -113,12 +100,7 @@ def build_users_admin_configuration(context: UsersAdminWebContext) -> object:
 
 
 def _empty_catalog() -> UsersConfigurationCatalog:
-    return UsersConfigurationCatalog(
-        administrator_background_color=DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR,
-        administrator_text_color=DEFAULT_ADMINISTRATOR_TEXT_COLOR,
-        guest_background_color=DEFAULT_GUEST_BACKGROUND_COLOR,
-        guest_text_color=DEFAULT_GUEST_TEXT_COLOR,
-    )
+    return UsersConfigurationCatalog()
 
 
 def _runtime_context(context: UsersAdminWebContext) -> object:
@@ -197,32 +179,26 @@ def _profiles_panel(catalog: UsersConfigurationCatalog) -> object:
             html.Section(
                 [
                     _section_heading(
-                        'Perfiles del sistema',
+                        'Perfil Administrator',
                         (
-                            'Local conserva identidades visuales fijas. Administrator y Guest '
-                            'permiten configurar los colores de fondo y texto.'
+                            'Administrator es un perfil funcional asignable a usuarios '
+                            'gestionados. Su representación visual se conserva en la '
+                            'configuración durable actual.'
                         ),
                     ),
                     html.Div(
                         [
-                            _local_profile_card(),
-                            _system_profile_card(
+                            _configured_profile_card(
                                 title='Administrator',
-                                description='Acceso total. No requiere asignaciones de Navegación.',
+                                description=(
+                                    'Perfil funcional base. Sus permisos efectivos dependen '
+                                    'de las capacidades que consuman el perfil.'
+                                ),
                                 background_color=catalog.administrator_background_color,
                                 text_color=catalog.administrator_text_color,
                                 background_color_id=ADMINISTRATOR_BACKGROUND_COLOR_ID,
                                 text_color_id=ADMINISTRATOR_TEXT_COLOR_ID,
                                 preview_id=ADMINISTRATOR_PREVIEW_ID,
-                            ),
-                            _system_profile_card(
-                                title='Guest',
-                                description='Acceso definido posteriormente por Navegación.',
-                                background_color=catalog.guest_background_color,
-                                text_color=catalog.guest_text_color,
-                                background_color_id=GUEST_BACKGROUND_COLOR_ID,
-                                text_color_id=GUEST_TEXT_COLOR_ID,
-                                preview_id=GUEST_PREVIEW_ID,
                             ),
                         ],
                         className='atlanticus-users-admin__system-grid',
@@ -235,7 +211,7 @@ def _profiles_panel(catalog: UsersConfigurationCatalog) -> object:
                     html.Div(
                         [
                             _section_heading(
-                                'Perfiles personalizados',
+                                'Perfiles funcionales',
                                 (
                                     'Define perfiles reutilizables. El identificador se genera '
                                     'automáticamente y permanece estable.'
@@ -337,70 +313,7 @@ def _save_section() -> object:
     )
 
 
-def _local_profile_card() -> object:
-    return html.Article(
-        [
-            html.Div(
-                [
-                    html.Div(
-                        [
-                            html.Strong('Local'),
-                            html.Span(
-                                className='atlanticus-users-admin__local-dual-swatch',
-                                style={
-                                    '--atlanticus-users-local-john': (
-                                        LOCAL_JOHN_BACKGROUND_COLOR
-                                    ),
-                                    '--atlanticus-users-local-jane': (
-                                        LOCAL_JANE_BACKGROUND_COLOR
-                                    ),
-                                },
-                            ),
-                        ],
-                        className='atlanticus-users-admin__local-title',
-                    ),
-                    html.P('Controlado por Atlanticus. Acceso total en modo local.'),
-                ],
-                className='atlanticus-users-admin__profile-copy',
-            ),
-            html.Div(
-                [
-                    _fixed_persona(
-                        'John Doe',
-                        LOCAL_JOHN_BACKGROUND_COLOR,
-                        LOCAL_JOHN_TEXT_COLOR,
-                    ),
-                    _fixed_persona(
-                        'Jane Doe',
-                        LOCAL_JANE_BACKGROUND_COLOR,
-                        LOCAL_JANE_TEXT_COLOR,
-                    ),
-                ],
-                className='atlanticus-users-admin__local-personas',
-            ),
-        ],
-        className='atlanticus-users-admin__profile-card',
-    )
-
-
-def _fixed_persona(label: str, background_color: str, text_color: str) -> object:
-    return html.Div(
-        [
-            html.Span(
-                label[:1].upper(),
-                style={
-                    'backgroundColor': background_color,
-                    'color': text_color,
-                },
-                className='atlanticus-users-admin__persona-swatch',
-            ),
-            html.Strong(label),
-        ],
-        className='atlanticus-users-admin__persona',
-    )
-
-
-def _system_profile_card(
+def _configured_profile_card(
     *,
     title: str,
     description: str,
@@ -608,7 +521,7 @@ def _user_modal() -> object:
                                     id=USER_PROFILE_ID,
                                     placeholder='Selecciona un perfil',
                                 ),
-                                'Administrator o uno de los perfiles personalizados.',
+                                'Administrator o uno de los perfiles funcionales.',
                             ),
                             dbc.Checkbox(
                                 id=USER_ENABLED_ID,

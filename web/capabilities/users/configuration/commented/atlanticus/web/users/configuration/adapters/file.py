@@ -1,5 +1,6 @@
-# Implementa History local de Users y valida expected_source_revision inmediatamente antes de persistir.
-# La semántica de concurrencia se mantiene igual a la de SharePoint aunque el almacenamiento sea file.
+# Implementa el Source y la Projection locales de Users sin mezclar sus responsabilidades.
+# La persistencia conserva el contrato durable actual; este adapter sólo materializa Profiles proyectados.
+# Un catálogo de Profiles no contiene defaults implícitos: antes de la primera proyección está vacío.
 
 from __future__ import annotations
 
@@ -10,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
+from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
 from atlanticus.web.users.configuration.bundle import (
     UsersConfigurationBundle,
     UsersConfigurationSourceDocument,
@@ -23,7 +25,6 @@ from atlanticus.web.users.configuration.errors import (
 )
 from atlanticus.web.users.configuration.models import UsersConfigurationCatalog
 from atlanticus.web.users.configuration.projection import UsersProjectionState
-from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,7 +67,7 @@ class FileUsersConfigurationStore:
                 self._source_path,
                 encode_users_configuration_source(updated),
             )
-        except UsersConfigurationPublisherError, UsersConfigurationSourceError:
+        except (UsersConfigurationPublisherError, UsersConfigurationSourceError):
             raise
         except Exception as error:
             raise UsersConfigurationPublisherError(
@@ -175,8 +176,9 @@ class FileUsersProjectionRepository:
         return self._settings.root / self._settings.projection_filename
 
 
-# Expone el catálogo de Profiles materializado por la proyección local.
-# La capa conserva sólo semántica de perfiles; las decisiones de autorización pertenecen a consumidores.
+# Expone en forma dinámica únicamente la API vigente de ProfileCatalog.
+# La proyección es la autoridad de consumo: sin proyección no existen Profiles runtime.
+# Administrator aparece sólo cuando el UsersConfigurationCatalog proyectado lo materializa como Profile funcional.
 class FileUsersProjectionProfileCatalog(ProfileCatalog):
     def __init__(self, repository: FileUsersProjectionRepository) -> None:
         if not isinstance(repository, FileUsersProjectionRepository):
@@ -184,34 +186,11 @@ class FileUsersProjectionProfileCatalog(ProfileCatalog):
         super().__init__()
         self._repository = repository
 
-    @property
-    def administrator_background_color(self) -> str:
-        return self._current().administrator_background_color
-
-    @property
-    def administrator_text_color(self) -> str:
-        return self._current().administrator_text_color
-
-    @property
-    def guest_background_color(self) -> str:
-        return self._current().guest_background_color
-
-    @property
-    def guest_text_color(self) -> str:
-        return self._current().guest_text_color
-
-    @property
-    def custom_profiles(self) -> tuple[ProfileDefinition, ...]:
-        return self._current().custom_profiles
-
     def require(self, key: str) -> ProfileDefinition:
         return self._current().require(key)
 
     def all(self) -> tuple[ProfileDefinition, ...]:
         return self._current().all()
-
-    def assignable(self) -> tuple[ProfileDefinition, ...]:
-        return self._current().assignable()
 
     def _current(self) -> ProfileCatalog:
         catalog = self._repository.load_catalog()

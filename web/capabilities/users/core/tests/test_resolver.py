@@ -3,7 +3,7 @@ import pytest
 from atlanticus.web.identity.access import AccessDecision, AccessSnapshot, AccessStatus
 from atlanticus.web.identity.errors import AccessResolverUnavailableError
 from atlanticus.web.identity.models import AuthenticatedIdentity
-from atlanticus.web.profiles.models import ProfileCatalog
+from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
 from atlanticus.web.users.errors import (
     UsersIdentityConflictError,
     UsersRuntimeStoreUnavailableError,
@@ -44,6 +44,19 @@ class MemoryRuntimeStore(UsersRuntimeStore):
         if self.observed is None:
             raise AssertionError('observe result was not configured')
         return self.observed
+
+
+def _profiles() -> ProfileCatalog:
+    return ProfileCatalog(
+        profiles=(
+            ProfileDefinition(
+                key='administrator',
+                label='Administrador',
+                background_color='#673AB7',
+                text_color='#FFFFFF',
+            ),
+        )
+    )
 
 
 def _identity() -> AuthenticatedIdentity:
@@ -105,7 +118,7 @@ def _resolved_runtime_user(
     return decision, user
 
 
-def test_existing_pending_identity_becomes_guest_without_observation() -> None:
+def test_existing_pending_identity_resolves_without_profile_lookup() -> None:
     store = MemoryRuntimeStore(resolved=_pending())
     runtime = UsersRuntime()
     resolver = UsersAccessResolver(store=store, runtime=runtime, profiles=ProfileCatalog())
@@ -116,12 +129,12 @@ def test_existing_pending_identity_becomes_guest_without_observation() -> None:
     assert decision.user_id == build_user_key(issuer='entra', subject_id='oid-1')
     assert user is not None
     assert user.pending is True
-    assert user.profile.key == 'guest'
+    assert user.profile is None
     assert store.resolve_calls == 1
     assert store.observe_calls == 0
 
 
-def test_absent_identity_is_observed_as_pending_guest() -> None:
+def test_absent_identity_is_observed_as_pending_without_profile_lookup() -> None:
     store = MemoryRuntimeStore(resolved=None, observed=_pending())
     runtime = UsersRuntime()
     resolver = UsersAccessResolver(store=store, runtime=runtime, profiles=ProfileCatalog())
@@ -131,7 +144,7 @@ def test_absent_identity_is_observed_as_pending_guest() -> None:
     assert decision.status is AccessStatus.READY
     assert user is not None
     assert user.pending is True
-    assert user.profile.key == 'guest'
+    assert user.profile is None
     assert store.resolve_calls == 1
     assert store.observe_calls == 1
 
@@ -139,13 +152,14 @@ def test_absent_identity_is_observed_as_pending_guest() -> None:
 def test_concurrent_promotion_during_observation_returns_active_user() -> None:
     store = MemoryRuntimeStore(resolved=None, observed=_managed(enabled=True))
     runtime = UsersRuntime()
-    resolver = UsersAccessResolver(store=store, runtime=runtime, profiles=ProfileCatalog())
+    resolver = UsersAccessResolver(store=store, runtime=runtime, profiles=_profiles())
     decision, user = _resolved_runtime_user(
         resolver=resolver, runtime=runtime, identity=_identity()
     )
     assert decision.status is AccessStatus.READY
     assert user is not None
     assert user.pending is False
+    assert user.profile is not None
     assert user.profile.key == 'administrator'
     assert store.observe_calls == 1
 
@@ -187,7 +201,7 @@ def test_disabled_managed_user_does_not_require_retired_profile() -> None:
     assert user is None
 
 
-def test_runtime_store_resolve_failure_never_becomes_guest() -> None:
+def test_runtime_store_resolve_failure_never_becomes_pending() -> None:
     store = MemoryRuntimeStore(
         resolved=None,
         resolve_error=UsersRuntimeStoreUnavailableError('unavailable'),
@@ -207,7 +221,7 @@ def test_runtime_store_resolve_failure_never_becomes_guest() -> None:
     assert store.observe_calls == 0
 
 
-def test_runtime_store_observe_failure_never_becomes_guest() -> None:
+def test_runtime_store_observe_failure_never_becomes_pending() -> None:
     store = MemoryRuntimeStore(
         resolved=None,
         observed=UsersRuntimeStoreUnavailableError('unavailable'),
@@ -228,7 +242,7 @@ def test_runtime_store_observe_failure_never_becomes_guest() -> None:
 
 def test_runtime_record_for_another_identity_is_rejected() -> None:
     store = MemoryRuntimeStore(resolved=_managed(subject_id='oid-2'))
-    resolver = UsersAccessResolver(store=store, runtime=UsersRuntime(), profiles=ProfileCatalog())
+    resolver = UsersAccessResolver(store=store, runtime=UsersRuntime(), profiles=_profiles())
 
     from flask import Flask
 

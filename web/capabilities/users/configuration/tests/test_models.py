@@ -1,5 +1,6 @@
 import pytest
 
+from atlanticus.web.profiles.errors import ProfilesDefinitionError
 from atlanticus.web.users.configuration import (
     UserConfiguration,
     UserProfileConfiguration,
@@ -9,7 +10,7 @@ from atlanticus.web.users.configuration.errors import UsersConfigurationValidati
 from atlanticus.web.users.identity import build_user_key
 
 
-def test_catalog_configures_system_colors_and_custom_profiles() -> None:
+def test_catalog_projects_only_functional_profiles_and_preserves_durable_guest_fields() -> None:
     catalog = UsersConfigurationCatalog(
         administrator_background_color='#112233',
         administrator_text_color='#FFFFFF',
@@ -37,15 +38,33 @@ def test_catalog_configures_system_colors_and_custom_profiles() -> None:
     profiles = catalog.profile_catalog()
     assert profiles.require('administrator').background_color == '#112233'
     assert profiles.require('administrator').text_color == '#FFFFFF'
-    assert profiles.require('guest').background_color == '#445566'
-    assert profiles.require('guest').text_color == '#000000'
     assert profiles.require('operator').background_color == '#778899'
     assert profiles.require('operator').text_color == '#101010'
-    assert [item.key for item in profiles.assignable()] == ['administrator', 'operator']
+    assert [item.key for item in profiles.all()] == ['administrator', 'operator']
+    with pytest.raises(ProfilesDefinitionError, match="Unknown profile 'guest'"):
+        profiles.require('guest')
+
+    document = catalog.to_document()
+    assert document['guest_background_color'] == '#445566'
+    assert document['guest_text_color'] == '#000000'
 
 
-def test_system_profile_cannot_be_redefined() -> None:
-    with pytest.raises(UsersConfigurationValidationError):
+def test_catalog_document_shape_is_preserved_while_guest_is_not_projected() -> None:
+    catalog = UsersConfigurationCatalog()
+
+    assert catalog.to_document() == {
+        'administrator_background_color': '#673AB7',
+        'administrator_text_color': '#FFFFFF',
+        'guest_background_color': '#FF5722',
+        'guest_text_color': '#FFFFFF',
+        'profiles': [],
+        'users': [],
+    }
+    assert tuple(profile.key for profile in catalog.profile_catalog().all()) == ('administrator',)
+
+
+def test_reserved_profile_key_cannot_be_redefined() -> None:
+    with pytest.raises(UsersConfigurationValidationError, match='Reserved profile key'):
         UserProfileConfiguration(
             key='guest',
             label='Otro invitado',
@@ -54,7 +73,7 @@ def test_system_profile_cannot_be_redefined() -> None:
 
 
 @pytest.mark.parametrize('profile_key', ['local', 'guest'])
-def test_managed_user_rejects_non_assignable_system_profiles(profile_key: str) -> None:
+def test_managed_user_rejects_non_assignable_profile_keys(profile_key: str) -> None:
     with pytest.raises(UsersConfigurationValidationError, match='cannot be assigned'):
         UserConfiguration.create(
             display_name='Managed User',
