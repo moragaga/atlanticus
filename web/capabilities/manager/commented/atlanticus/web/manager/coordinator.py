@@ -1,6 +1,3 @@
-# Coordina autorización y workflows del Manager; verify_source consulta Source sin escribir ni proyectar.
-# La verificación queda asociada al draft exacto para separar contrato, concurrencia y publicación.
-
 from datetime import UTC, datetime
 
 from atlanticus.web.manager.authorization import ManagerAuthorizationPolicy
@@ -8,6 +5,11 @@ from atlanticus.web.manager.errors import (
     ManagerAuthorizationError,
     ManagerProjectionError,
     ManagerSourceConflictError,
+)
+# El protocolo exact-source es opt-in y convive con el lifecycle legacy.
+from atlanticus.web.manager.exact_source import (
+    ExactSourcePublicationResult,
+    ExactSourcePublicationWorkflow,
 )
 from atlanticus.web.manager.models import ManagerModule, ManagerPrincipal
 from atlanticus.web.manager.projection import (
@@ -24,6 +26,7 @@ from atlanticus.web.manager.projection import (
 from atlanticus.web.manager.registry import ManagerModuleRegistry
 from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.services import ServiceRegistry
+from atlanticus.web.source.models import SourceSnapshot as ExactSourceSnapshot
 
 
 class ManagerProjectionCoordinator:
@@ -44,7 +47,6 @@ class ManagerProjectionCoordinator:
             raise ManagerAuthorizationError('Manager module access is denied')
         return workflow.get_status()
 
-    # La selección de current ocurre antes de project para congelar una identidad Source exacta.
     def get_current_projection_target(
         self,
         module_key: str,
@@ -105,6 +107,44 @@ class ManagerProjectionCoordinator:
             expected_source_revision=expected_source_revision,
         )
 
+    # Devuelve el snapshot Source real, con release exacta y token CAS. No lo reduce a str.
+    def get_exact_source_snapshot(
+        self,
+        module_key: str,
+        principal: ManagerPrincipal,
+    ) -> ExactSourceSnapshot:
+        module, workflow = self._resolve_exact_source(module_key)
+        if not self._authorization.can_view(principal, module):
+            raise ManagerAuthorizationError('Manager module access is denied')
+        return workflow.get_source_snapshot()
+
+    # La comparación usa el value object completo. Si cambia current o el token, el draft
+    # queda obsoleto antes de invocar al workflow. El workflow/SourceStore conserva el CAS final.
+    def publish_draft_exact(
+        self,
+        module_key: str,
+        principal: ManagerPrincipal,
+        payload: dict[str, object],
+        expected_source_snapshot: ExactSourceSnapshot,
+    ) -> ExactSourcePublicationResult:
+        module, workflow = self._resolve_exact_source(module_key)
+        if not self._authorization.can_publish(principal, module):
+            raise ManagerAuthorizationError('Manager source publication access is denied')
+        current = workflow.get_source_snapshot()
+        if current != expected_source_snapshot:
+            raise ManagerSourceConflictError(
+                'Manager source changed while the draft was being edited'
+            )
+        try:
+            return workflow.publish_draft_exact(payload, expected_source_snapshot)
+        except Exception as error:
+            refreshed = workflow.get_source_snapshot()
+            if refreshed != expected_source_snapshot:
+                raise ManagerSourceConflictError(
+                    'Manager source changed before publication completed'
+                ) from error
+            raise
+
     def force_publish_draft(
         self,
         module_key: str,
@@ -160,7 +200,6 @@ class ManagerProjectionCoordinator:
         module, workflow = self._resolve(module_key)
         if not self._authorization.can_project(principal, module):
             raise ManagerAuthorizationError('Manager projection access is denied')
-        # No se reconsulta Source current aquí: el workflow recibe exactamente el target ya seleccionado.
         return workflow.project(target)
 
     def can_load_history(self, module_key: str, principal: ManagerPrincipal) -> bool:
@@ -229,9 +268,25 @@ class ManagerProjectionCoordinator:
             )
         return status
 
-    def _resolve(self, module_key: str) -> tuple[ManagerModule, ConfigurationLifecycleWorkflow]:
+    def _resolve(
+        self,
+        module_key: str,
+    ) -> tuple[ManagerModule, ConfigurationLifecycleWorkflow]:
         module = self._registry.require(module_key)
         workflow = self._services.require(module.workflow_service)
         if not isinstance(workflow, ConfigurationLifecycleWorkflow):
             raise ManagerProjectionError('Manager lifecycle workflow has an invalid contract')
+        return module, workflow
+
+    # Resolver exact-source por separado evita exigir el nuevo contrato a módulos legacy.
+    def _resolve_exact_source(
+        self,
+        module_key: str,
+    ) -> tuple[ManagerModule, ExactSourcePublicationWorkflow]:
+        module = self._registry.require(module_key)
+        workflow = self._services.require(module.workflow_service)
+        if not isinstance(workflow, ExactSourcePublicationWorkflow):
+            raise ManagerProjectionError(
+                'Manager workflow does not support exact source publication'
+            )
         return module, workflow

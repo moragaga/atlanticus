@@ -1,4 +1,18 @@
-# Se conservan exportaciones administrativas legacy mientras su migración siga fuera de UCS-1.
+# Superficie pública de Users Configuration. El bloque nuevo expone únicamente la composición
+# administrativa canónica; los símbolos legacy se conservan porque sus consumidores aún no han
+# sido migrados y su eliminación pertenece a un hito posterior explícito.
+from atlanticus.web.users.configuration.admin_composition import (
+    UsersProfilesAdminDraft,
+    UsersProfilesAdministrationService,
+    UsersProfilesAdminState,
+    add_pending_user,
+    build_users_profiles_admin_revision,
+    default_users_profiles_configuration,
+    delete_functional_profile,
+    save_functional_profile,
+    update_administrator_colors,
+    update_managed_user,
+)
 from atlanticus.web.users.configuration.bundle import (
     UsersConfigurationBundle,
     UsersConfigurationSourceDocument,
@@ -7,7 +21,6 @@ from atlanticus.web.users.configuration.bundle import (
     encode_users_configuration_bundle,
     encode_users_configuration_source,
 )
-# Los contratos canónicos separados se exponen sin crear shims hacia el agregado durable antiguo.
 from atlanticus.web.users.configuration.canonical import (
     UsersConfiguration,
     UsersProfilesConfiguration,
@@ -68,6 +81,9 @@ __all__ = [
     'UsersConfigurationServices',
     'UsersConfigurationSource',
     'UsersConfigurationSourceDocument',
+    'UsersProfilesAdminDraft',
+    'UsersProfilesAdminState',
+    'UsersProfilesAdministrationService',
     'UsersProfilesConfiguration',
     'UsersProjectionBuilder',
     'UsersProjectionRepository',
@@ -78,12 +94,19 @@ __all__ = [
     'UsersSourcePayload',
     'UsersSourceRelease',
     'UsersSourceService',
+    'add_pending_user',
     'build_profile_key',
+    'build_users_profiles_admin_revision',
     'compose_users_configuration_services',
     'create_users_projection_service',
     'decode_users_configuration_import',
     'decode_users_configuration_source',
+    'default_users_profiles_configuration',
+    'delete_functional_profile',
     'encode_users_configuration_bundle',
     'encode_users_configuration_source',
+    'save_functional_profile',
     'split_legacy_users_configuration_catalog',
+    'update_administrator_colors',
+    'update_managed_user',
 ]

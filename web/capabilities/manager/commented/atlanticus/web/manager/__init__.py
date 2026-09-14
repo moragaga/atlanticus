@@ -1,10 +1,5 @@
-# Expone el contrato público del renderer opcional de vista previa histórica por módulo.
-# El contrato permite extender Manager sin acoplarlo a la semántica de Tools, Users o Navigation.
-#
-# También expone el nuevo contrato tipado BASE/SOURCE/WORKSPACE/PROJECTION.
-# El contrato nuevo convive durante este incremento con el workflow vigente, pero no adapta ni traduce sus identidades.
-# Los consumidores concretos se migrarán después de cerrar esta frontera backend.
-
+# Superficie pública de Manager. ExactSourcePublicationWorkflow es una extensión opt-in: los
+# módulos legacy pueden seguir implementando ConfigurationLifecycleWorkflow sin cambios.
 from atlanticus.web.manager.authorization import (
     DefaultManagerAuthorizationPolicy,
     ManagerAuthorizationPolicy,
@@ -16,6 +11,10 @@ from atlanticus.web.manager.errors import (
     ManagerError,
     ManagerProjectionError,
     ManagerSourceConflictError,
+)
+from atlanticus.web.manager.exact_source import (
+    ExactSourcePublicationResult,
+    ExactSourcePublicationWorkflow,
 )
 from atlanticus.web.manager.lifecycle import ManagerLifecycleState, resolve_manager_lifecycle
 from atlanticus.web.manager.models import (
@@ -63,6 +62,8 @@ __all__ = [
     'ConfigurationLifecycleWorkflow',
     'DefaultManagerAuthorizationPolicy',
     'DraftValidationResult',
+    'ExactSourcePublicationResult',
+    'ExactSourcePublicationWorkflow',
     'ManagerAuthorizationError',
     'ManagerAuthorizationPolicy',
     'ManagerDefinitionError',

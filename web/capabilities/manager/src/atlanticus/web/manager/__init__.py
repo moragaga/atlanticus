@@ -10,6 +10,10 @@ from atlanticus.web.manager.errors import (
     ManagerProjectionError,
     ManagerSourceConflictError,
 )
+from atlanticus.web.manager.exact_source import (
+    ExactSourcePublicationResult,
+    ExactSourcePublicationWorkflow,
+)
 from atlanticus.web.manager.lifecycle import ManagerLifecycleState, resolve_manager_lifecycle
 from atlanticus.web.manager.models import (
     ManagerHistoryPreviewRenderer,
@@ -56,6 +60,8 @@ __all__ = [
     'ConfigurationLifecycleWorkflow',
     'DefaultManagerAuthorizationPolicy',
     'DraftValidationResult',
+    'ExactSourcePublicationResult',
+    'ExactSourcePublicationWorkflow',
     'ManagerAuthorizationError',
     'ManagerAuthorizationPolicy',
     'ManagerDefinitionError',

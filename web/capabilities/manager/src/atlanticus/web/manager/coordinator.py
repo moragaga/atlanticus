@@ -6,6 +6,10 @@ from atlanticus.web.manager.errors import (
     ManagerProjectionError,
     ManagerSourceConflictError,
 )
+from atlanticus.web.manager.exact_source import (
+    ExactSourcePublicationResult,
+    ExactSourcePublicationWorkflow,
+)
 from atlanticus.web.manager.models import ManagerModule, ManagerPrincipal
 from atlanticus.web.manager.projection import (
     ConfigurationLifecycleWorkflow,
@@ -21,6 +25,7 @@ from atlanticus.web.manager.projection import (
 from atlanticus.web.manager.registry import ManagerModuleRegistry
 from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.services import ServiceRegistry
+from atlanticus.web.source.models import SourceSnapshot as ExactSourceSnapshot
 
 
 class ManagerProjectionCoordinator:
@@ -100,6 +105,41 @@ class ManagerProjectionCoordinator:
             payload=payload,
             expected_source_revision=expected_source_revision,
         )
+
+    def get_exact_source_snapshot(
+        self,
+        module_key: str,
+        principal: ManagerPrincipal,
+    ) -> ExactSourceSnapshot:
+        module, workflow = self._resolve_exact_source(module_key)
+        if not self._authorization.can_view(principal, module):
+            raise ManagerAuthorizationError('Manager module access is denied')
+        return workflow.get_source_snapshot()
+
+    def publish_draft_exact(
+        self,
+        module_key: str,
+        principal: ManagerPrincipal,
+        payload: dict[str, object],
+        expected_source_snapshot: ExactSourceSnapshot,
+    ) -> ExactSourcePublicationResult:
+        module, workflow = self._resolve_exact_source(module_key)
+        if not self._authorization.can_publish(principal, module):
+            raise ManagerAuthorizationError('Manager source publication access is denied')
+        current = workflow.get_source_snapshot()
+        if current != expected_source_snapshot:
+            raise ManagerSourceConflictError(
+                'Manager source changed while the draft was being edited'
+            )
+        try:
+            return workflow.publish_draft_exact(payload, expected_source_snapshot)
+        except Exception as error:
+            refreshed = workflow.get_source_snapshot()
+            if refreshed != expected_source_snapshot:
+                raise ManagerSourceConflictError(
+                    'Manager source changed before publication completed'
+                ) from error
+            raise
 
     def force_publish_draft(
         self,
@@ -224,9 +264,24 @@ class ManagerProjectionCoordinator:
             )
         return status
 
-    def _resolve(self, module_key: str) -> tuple[ManagerModule, ConfigurationLifecycleWorkflow]:
+    def _resolve(
+        self,
+        module_key: str,
+    ) -> tuple[ManagerModule, ConfigurationLifecycleWorkflow]:
         module = self._registry.require(module_key)
         workflow = self._services.require(module.workflow_service)
         if not isinstance(workflow, ConfigurationLifecycleWorkflow):
             raise ManagerProjectionError('Manager lifecycle workflow has an invalid contract')
+        return module, workflow
+
+    def _resolve_exact_source(
+        self,
+        module_key: str,
+    ) -> tuple[ManagerModule, ExactSourcePublicationWorkflow]:
+        module = self._registry.require(module_key)
+        workflow = self._services.require(module.workflow_service)
+        if not isinstance(workflow, ExactSourcePublicationWorkflow):
+            raise ManagerProjectionError(
+                'Manager workflow does not support exact source publication'
+            )
         return module, workflow
