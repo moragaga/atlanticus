@@ -1,6 +1,6 @@
-# Persiste una única Projection activa por SourceKey usando create-only y CAS por ETag.
 from __future__ import annotations
 
+# El store persiste el payload canónico separado y mantiene lectura del schema histórico para exact-release replay.
 import hashlib
 from collections.abc import Mapping, Sequence
 from datetime import datetime
@@ -16,6 +16,10 @@ from atlanticus.connectivity.cosmos import (
 from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.models import SourceKey, SourceReleaseId
+from atlanticus.web.users.configuration.canonical import (
+    UsersProfilesConfiguration,
+    split_legacy_users_configuration_catalog,
+)
 from atlanticus.web.users.configuration.errors import (
     UsersConfigurationProjectionConflictError,
     UsersConfigurationProjectionError,
@@ -24,10 +28,10 @@ from atlanticus.web.users.configuration.errors import (
 from atlanticus.web.users.configuration.models import UsersConfigurationCatalog
 
 USERS_PROJECTION_DOCUMENT_TYPE = 'atlanticus_users_configuration_projection'
-USERS_PROJECTION_SCHEMA_VERSION = 1
+USERS_PROJECTION_SCHEMA_VERSION = 2
+_LEGACY_USERS_PROJECTION_SCHEMA_VERSION = 1
 
 
-# El adapter usa sólo las operaciones neutrales que Atlanticus Cosmos ya expone.
 class _CosmosProjectionClient(Protocol):
     def find_item(
         self,
@@ -58,7 +62,8 @@ class _CosmosProjectionClient(Protocol):
     ) -> dict[str, Any]: ...
 
 
-class CosmosUsersConfigurationProjectionStore(ProjectionStore[UsersConfigurationCatalog]):
+# El contrato físico y la semántica CAS permanecen; sólo cambia el payload durable a schema 2.
+class CosmosUsersConfigurationProjectionStore(ProjectionStore[UsersProfilesConfiguration]):
     def __init__(self, *, client: _CosmosProjectionClient, container_name: str) -> None:
         normalized_container_name = container_name.strip()
         if not normalized_container_name or normalized_container_name != container_name:
@@ -71,7 +76,7 @@ class CosmosUsersConfigurationProjectionStore(ProjectionStore[UsersConfiguration
     def get_active(
         self,
         source_key: SourceKey,
-    ) -> ProjectionRecord[UsersConfigurationCatalog] | None:
+    ) -> ProjectionRecord[UsersProfilesConfiguration] | None:
         document = self._find_document(source_key=source_key, include_metadata=False)
         if document is None:
             return None
@@ -81,13 +86,12 @@ class CosmosUsersConfigurationProjectionStore(ProjectionStore[UsersConfiguration
 
     def replace_active(
         self,
-        projection: ProjectionRecord[UsersConfigurationCatalog],
-    ) -> ProjectionRecord[UsersConfigurationCatalog]:
-        if not isinstance(projection.payload, UsersConfigurationCatalog):
+        projection: ProjectionRecord[UsersProfilesConfiguration],
+    ) -> ProjectionRecord[UsersProfilesConfiguration]:
+        if not isinstance(projection.payload, UsersProfilesConfiguration):
             raise UsersConfigurationProjectionError(
                 'Users configuration projection payload has an invalid type'
             )
-        # Leer primero permite distinguir idempotencia de una escritura que sí requiere CAS.
         current_document = self._find_document(
             source_key=projection.source_key,
             include_metadata=True,
@@ -106,22 +110,20 @@ class CosmosUsersConfigurationProjectionStore(ProjectionStore[UsersConfiguration
 
     def _create_active(
         self,
-        projection: ProjectionRecord[UsersConfigurationCatalog],
-    ) -> ProjectionRecord[UsersConfigurationCatalog]:
+        projection: ProjectionRecord[UsersProfilesConfiguration],
+    ) -> ProjectionRecord[UsersProfilesConfiguration]:
         document = _projection_to_document(
             projection,
             item_id=_cosmos_item_id(projection.source_key),
             partition_key=projection.source_key.value,
         )
         try:
-            # El primer writer crea; no se usa upsert para esconder carreras.
             saved = self._client.create_item(
                 container_name=self._container_name,
                 item=document,
                 include_metadata=True,
             )
         except CosmosConflictError as error:
-            # Otro writer ganó el create. Sólo es éxito si materializó exactamente el mismo target.
             concurrent_document = self._find_document(
                 source_key=projection.source_key,
                 include_metadata=True,
@@ -145,12 +147,11 @@ class CosmosUsersConfigurationProjectionStore(ProjectionStore[UsersConfiguration
         self,
         *,
         current_document: Mapping[str, Any],
-        projection: ProjectionRecord[UsersConfigurationCatalog],
-    ) -> ProjectionRecord[UsersConfigurationCatalog]:
+        projection: ProjectionRecord[UsersProfilesConfiguration],
+    ) -> ProjectionRecord[UsersProfilesConfiguration]:
         item_id = _cosmos_item_id(projection.source_key)
         etag = _required_etag(current_document)
         desired = _projection_to_document(projection)
-        # id y partition_key son estables; sólo se reemplaza el contenido lógico de Projection.
         operations = tuple(
             CosmosPatchOperation(operation='set', path=f'/{field}', value=value)
             for field, value in desired.items()
@@ -165,7 +166,6 @@ class CosmosUsersConfigurationProjectionStore(ProjectionStore[UsersConfiguration
                 include_metadata=True,
             )
         except CosmosPreconditionFailedError as error:
-            # Releer después del 412 permite reconocer un retry idempotente sin last-write-wins.
             concurrent_document = self._find_document(
                 source_key=projection.source_key,
                 include_metadata=True,
@@ -208,9 +208,9 @@ class CosmosUsersConfigurationProjectionStore(ProjectionStore[UsersConfiguration
             ) from error
 
 
-# La forma durable conserva sólo provenance canónica de Projection y el payload Users.
+# Toda escritura nueva usa schema 2 con Users y Profiles separados dentro del snapshot proyectado.
 def _projection_to_document(
-    projection: ProjectionRecord[UsersConfigurationCatalog],
+    projection: ProjectionRecord[UsersProfilesConfiguration],
     *,
     item_id: str | None = None,
     partition_key: str | None = None,
@@ -231,21 +231,29 @@ def _projection_to_document(
     return document
 
 
+# Schema 1 se normaliza al payload semántico nuevo antes de comparar idempotencia o devolverlo al consumidor.
 def _projection_from_document(
     document: Mapping[str, Any],
-) -> ProjectionRecord[UsersConfigurationCatalog]:
+) -> ProjectionRecord[UsersProfilesConfiguration]:
     if document.get('document_type') != USERS_PROJECTION_DOCUMENT_TYPE:
         raise UsersConfigurationProjectionError(
             'Users configuration projection document type is invalid'
         )
-    if document.get('schema_version') != USERS_PROJECTION_SCHEMA_VERSION:
-        raise UsersConfigurationProjectionError(
-            'Users configuration projection schema version is invalid'
-        )
+    schema_version = document.get('schema_version')
     try:
-        payload = document['payload']
-        if not isinstance(payload, Mapping):
+        payload_document = document['payload']
+        if not isinstance(payload_document, Mapping):
             raise TypeError
+        if schema_version == USERS_PROJECTION_SCHEMA_VERSION:
+            payload = UsersProfilesConfiguration.from_document(dict(payload_document))
+        elif schema_version == _LEGACY_USERS_PROJECTION_SCHEMA_VERSION:
+            payload = split_legacy_users_configuration_catalog(
+                UsersConfigurationCatalog.from_document(dict(payload_document))
+            )
+        else:
+            raise UsersConfigurationProjectionError(
+                'Users configuration projection schema version is invalid'
+            )
         return ProjectionRecord(
             source_key=SourceKey(str(document['source_key'])),
             source_release_id=SourceReleaseId(str(document['source_release_id'])),
@@ -253,20 +261,22 @@ def _projection_from_document(
                 str(document['source_published_at_utc'])
             ),
             projected_at_utc=datetime.fromisoformat(str(document['projected_at_utc'])),
-            payload=UsersConfigurationCatalog.from_document(dict(payload)),
+            payload=payload,
         )
+    except UsersConfigurationProjectionError:
+        raise
     except (KeyError, TypeError, ValueError, UsersConfigurationValidationError) as error:
         raise UsersConfigurationProjectionError(
             'Users configuration projection contract is invalid'
         ) from error
 
 
-# Una exact release sólo puede producir un payload lógico; el retry conserva projected_at original.
+# La idempotencia sigue definida por exact release + payload semántico, no por content hash.
 def _resolve_same_target(
     *,
-    existing: ProjectionRecord[UsersConfigurationCatalog],
-    candidate: ProjectionRecord[UsersConfigurationCatalog],
-) -> ProjectionRecord[UsersConfigurationCatalog] | None:
+    existing: ProjectionRecord[UsersProfilesConfiguration],
+    candidate: ProjectionRecord[UsersProfilesConfiguration],
+) -> ProjectionRecord[UsersProfilesConfiguration] | None:
     if existing.source_release_id == candidate.source_release_id:
         if existing.source_release != candidate.source_release:
             raise UsersConfigurationProjectionError(
@@ -280,13 +290,12 @@ def _resolve_same_target(
     return None
 
 
-# Un conflicto CAS sólo se reconcilia como éxito cuando el ganador dejó exactamente el mismo target.
 def _resolve_concurrent_projection(
     *,
     document: Mapping[str, Any],
-    candidate: ProjectionRecord[UsersConfigurationCatalog],
+    candidate: ProjectionRecord[UsersProfilesConfiguration],
     error: CosmosError,
-) -> ProjectionRecord[UsersConfigurationCatalog]:
+) -> ProjectionRecord[UsersProfilesConfiguration]:
     concurrent = _projection_from_document(document)
     _require_source_key(projection=concurrent, source_key=candidate.source_key)
     idempotent = _resolve_same_target(existing=concurrent, candidate=candidate)
@@ -300,8 +309,8 @@ def _resolve_concurrent_projection(
 def _require_persisted_projection(
     *,
     saved: Mapping[str, Any],
-    candidate: ProjectionRecord[UsersConfigurationCatalog],
-) -> ProjectionRecord[UsersConfigurationCatalog]:
+    candidate: ProjectionRecord[UsersProfilesConfiguration],
+) -> ProjectionRecord[UsersProfilesConfiguration]:
     persisted = _projection_from_document(saved)
     if persisted != candidate:
         raise UsersConfigurationProjectionError(
@@ -312,7 +321,7 @@ def _require_persisted_projection(
 
 def _require_source_key(
     *,
-    projection: ProjectionRecord[UsersConfigurationCatalog],
+    projection: ProjectionRecord[UsersProfilesConfiguration],
     source_key: SourceKey,
 ) -> None:
     if projection.source_key != source_key:
@@ -330,8 +339,6 @@ def _required_etag(document: Mapping[str, Any]) -> str:
     return value
 
 
-# Un hash estable evita restricciones de caracteres/tamaño de Cosmos sin cambiar
-# la partición lógica.
 def _cosmos_item_id(source_key: SourceKey) -> str:
     digest = hashlib.sha256(source_key.value.encode('utf-8')).hexdigest()
     return f'users-configuration-projection-{digest}'

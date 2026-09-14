@@ -1,5 +1,4 @@
-# Superficie pública de Users Configuration: conserva contratos legacy mientras expone
-# Source y Projection canónicos sin mezclar sus identidades.
+# Se conservan exportaciones administrativas legacy mientras su migración siga fuera de UCS-1.
 from atlanticus.web.users.configuration.bundle import (
     UsersConfigurationBundle,
     UsersConfigurationSourceDocument,
@@ -7,6 +6,12 @@ from atlanticus.web.users.configuration.bundle import (
     decode_users_configuration_source,
     encode_users_configuration_bundle,
     encode_users_configuration_source,
+)
+# Los contratos canónicos separados se exponen sin crear shims hacia el agregado durable antiguo.
+from atlanticus.web.users.configuration.canonical import (
+    UsersConfiguration,
+    UsersProfilesConfiguration,
+    split_legacy_users_configuration_catalog,
 )
 from atlanticus.web.users.configuration.contracts import (
     UsersConfigurationPublisher,
@@ -34,6 +39,9 @@ from atlanticus.web.users.configuration.source_projection import (
     create_users_projection_service,
 )
 from atlanticus.web.users.configuration.source_release import (
+    PROFILES_SOURCE_DOCUMENT_TYPE,
+    PROFILES_SOURCE_RESOURCE_PATH,
+    PROFILES_SOURCE_SCHEMA_VERSION,
     USERS_SOURCE_DOCUMENT_TYPE,
     USERS_SOURCE_RESOURCE_PATH,
     USERS_SOURCE_SCHEMA_VERSION,
@@ -44,18 +52,23 @@ from atlanticus.web.users.configuration.source_release import (
 )
 
 __all__ = [
+    'PROFILES_SOURCE_DOCUMENT_TYPE',
+    'PROFILES_SOURCE_RESOURCE_PATH',
+    'PROFILES_SOURCE_SCHEMA_VERSION',
     'USERS_SOURCE_DOCUMENT_TYPE',
     'USERS_SOURCE_RESOURCE_PATH',
     'USERS_SOURCE_SCHEMA_VERSION',
     'UserConfiguration',
     'UserProfileConfiguration',
     'UsersAdministrationService',
+    'UsersConfiguration',
     'UsersConfigurationBundle',
     'UsersConfigurationCatalog',
     'UsersConfigurationPublisher',
     'UsersConfigurationServices',
     'UsersConfigurationSource',
     'UsersConfigurationSourceDocument',
+    'UsersProfilesConfiguration',
     'UsersProjectionBuilder',
     'UsersProjectionRepository',
     'UsersProjectionWorkflow',
@@ -72,4 +85,5 @@ __all__ = [
     'decode_users_configuration_source',
     'encode_users_configuration_bundle',
     'encode_users_configuration_source',
+    'split_legacy_users_configuration_catalog',
 ]

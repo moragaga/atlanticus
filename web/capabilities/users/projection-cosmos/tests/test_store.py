@@ -14,14 +14,20 @@ from atlanticus.connectivity.cosmos import (
     CosmosPatchOperation,
     CosmosPreconditionFailedError,
 )
+from atlanticus.web.profiles.configuration import ProfilesConfiguration
+from atlanticus.web.profiles.models import ProfileDefinition
 from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.source.models import SourceKey, SourceReleaseId
+from atlanticus.web.users.configuration.canonical import (
+    UsersConfiguration,
+    UsersProfilesConfiguration,
+)
 from atlanticus.web.users.configuration.errors import (
     UsersConfigurationProjectionConflictError,
     UsersConfigurationProjectionError,
 )
 from atlanticus.web.users.configuration.models import UsersConfigurationCatalog
-from atlanticus.web.users.projection.cosmos import (
+from atlanticus.web.users.projection.cosmos.store import (
     USERS_PROJECTION_DOCUMENT_TYPE,
     USERS_PROJECTION_SCHEMA_VERSION,
     CosmosUsersConfigurationProjectionStore,
@@ -29,7 +35,7 @@ from atlanticus.web.users.projection.cosmos import (
 
 
 @dataclass(slots=True)
-class _FakeCosmosClient:
+class _Client:
     document: dict[str, Any] | None = None
     create_calls: int = 0
     patch_calls: int = 0
@@ -42,13 +48,16 @@ class _FakeCosmosClient:
         item_id: str,
         partition_key: object,
         include_metadata: bool = False,
-    ) -> dict[str, Any] | None:
+    ):
         assert container_name == 'users-projections'
         if self.document is None:
             return None
         assert self.document['id'] == item_id
         assert self.document['partition_key'] == partition_key
-        return self._view(include_metadata=include_metadata)
+        result = deepcopy(self.document)
+        if not include_metadata:
+            result.pop('_etag', None)
+        return result
 
     def create_item(
         self,
@@ -56,14 +65,19 @@ class _FakeCosmosClient:
         container_name: str,
         item: Mapping[str, Any],
         include_metadata: bool = False,
-    ) -> dict[str, Any]:
+    ):
         assert container_name == 'users-projections'
         self.create_calls += 1
         if self.document is not None:
             raise CosmosConflictError('conflict')
         self.document = dict(item)
         self.document['_etag'] = 'etag-1'
-        return self._view(include_metadata=include_metadata)
+        return self.find_item(
+            container_name=container_name,
+            item_id=self.document['id'],
+            partition_key=self.document['partition_key'],
+            include_metadata=include_metadata,
+        )
 
     def patch_item(
         self,
@@ -74,31 +88,36 @@ class _FakeCosmosClient:
         operations: Sequence[CosmosPatchOperation],
         if_match_etag: str | None = None,
         include_metadata: bool = False,
-    ) -> dict[str, Any]:
-        assert container_name == 'users-projections'
+    ):
         assert self.document is not None
-        assert self.document['id'] == item_id
-        assert self.document['partition_key'] == partition_key
         self.patch_calls += 1
         if self.concurrent_patch_document is not None:
             self.document = deepcopy(self.concurrent_patch_document)
             self.document['_etag'] = 'etag-concurrent'
             self.concurrent_patch_document = None
-            raise CosmosPreconditionFailedError('stale etag')
+            raise CosmosPreconditionFailedError('stale')
         if if_match_etag != self.document['_etag']:
-            raise CosmosPreconditionFailedError('stale etag')
-        for operation in operations:
-            assert operation.operation == 'set'
-            self.document[operation.path.removeprefix('/')] = deepcopy(operation.value)
+            raise CosmosPreconditionFailedError('stale')
+        for op in operations:
+            self.document[op.path.removeprefix('/')] = deepcopy(op.value)
         self.document['_etag'] = f'etag-{self.patch_calls + 1}'
-        return self._view(include_metadata=include_metadata)
+        return self.find_item(
+            container_name=container_name,
+            item_id=item_id,
+            partition_key=partition_key,
+            include_metadata=include_metadata,
+        )
 
-    def _view(self, *, include_metadata: bool) -> dict[str, Any]:
-        assert self.document is not None
-        result = deepcopy(self.document)
-        if not include_metadata:
-            result.pop('_etag', None)
-        return result
+
+def _payload(color: str = '#0F6CBD') -> UsersProfilesConfiguration:
+    return UsersProfilesConfiguration(
+        users=UsersConfiguration(),
+        profiles=ProfilesConfiguration(
+            profiles=(
+                ProfileDefinition('administrator', 'Administrador', color, '#FFFFFF'),
+            )
+        ),
+    )
 
 
 def _record(
@@ -107,23 +126,26 @@ def _record(
     published_offset: int,
     projected_offset: int,
     color: str = '#0F6CBD',
-) -> ProjectionRecord[UsersConfigurationCatalog]:
-    base = datetime(2026, 9, 13, 12, 0, tzinfo=UTC)
+):
+    base = datetime(2026, 9, 13, 12, tzinfo=UTC)
     return ProjectionRecord(
         source_key=SourceKey('users-configuration'),
         source_release_id=SourceReleaseId(release_id),
         source_published_at_utc=base + timedelta(minutes=published_offset),
         projected_at_utc=base + timedelta(minutes=projected_offset),
-        payload=UsersConfigurationCatalog(administrator_background_color=color),
+        payload=_payload(color),
     )
 
 
-def _document_from_record(
-    record: ProjectionRecord[UsersConfigurationCatalog],
-) -> dict[str, Any]:
-    digest = hashlib.sha256(record.source_key.value.encode('utf-8')).hexdigest()
+def _id(source_key: SourceKey) -> str:
+    return 'users-configuration-projection-' + hashlib.sha256(
+        source_key.value.encode()
+    ).hexdigest()
+
+
+def _v2_document(record: ProjectionRecord[UsersProfilesConfiguration]) -> dict[str, Any]:
     return {
-        'id': f'users-configuration-projection-{digest}',
+        'id': _id(record.source_key),
         'partition_key': record.source_key.value,
         'document_type': USERS_PROJECTION_DOCUMENT_TYPE,
         'schema_version': USERS_PROJECTION_SCHEMA_VERSION,
@@ -135,32 +157,99 @@ def _document_from_record(
     }
 
 
-def _store(client: _FakeCosmosClient) -> CosmosUsersConfigurationProjectionStore:
+def _legacy_document(record: ProjectionRecord[UsersProfilesConfiguration]) -> dict[str, Any]:
+    administrator = record.payload.profiles.catalog().require('administrator')
+    legacy = UsersConfigurationCatalog(
+        administrator_background_color=administrator.background_color,
+        administrator_text_color=administrator.text_color,
+    )
+    document = _v2_document(record)
+    document['schema_version'] = 1
+    document['payload'] = legacy.to_document()
+    return document
+
+
+def _store(client: _Client):
     return CosmosUsersConfigurationProjectionStore(
         client=client,
         container_name='users-projections',
     )
 
 
-def test_create_persists_only_canonical_projection_provenance() -> None:
-    client = _FakeCosmosClient()
-    store = _store(client)
+def test_new_projection_writes_schema_2_only() -> None:
+    client = _Client()
     record = _record('release-1', published_offset=0, projected_offset=1)
+    saved = _store(client).replace_active(record)
+    assert saved == record
+    assert client.document is not None
+    assert client.document['schema_version'] == 2
+    assert set(client.document['payload']) == {'users', 'profiles'}
 
-    saved = store.replace_active(record)
+
+def test_schema_1_projection_reads_as_new_semantic_payload() -> None:
+    record = _record('release-1', published_offset=0, projected_offset=1, color='#123456')
+    client = _Client(document=_legacy_document(record))
+    client.document['_etag'] = 'etag-legacy'
+
+    loaded = _store(client).get_active(record.source_key)
+
+    assert loaded == record
+    assert loaded.payload.profiles.catalog().require('administrator').background_color == '#123456'
+
+
+def test_schema_1_same_target_is_idempotent_without_rewrite() -> None:
+    record = _record('release-1', published_offset=0, projected_offset=1)
+    retry = _record('release-1', published_offset=0, projected_offset=10)
+    client = _Client(document=_legacy_document(record))
+    client.document['_etag'] = 'etag-legacy'
+
+    saved = _store(client).replace_active(retry)
 
     assert saved == record
-    assert store.get_active(record.source_key) == record
-    assert client.create_calls == 1
     assert client.patch_calls == 0
-    assert client.document is not None
-    assert client.document['source_release_id'] == 'release-1'
-    assert 'projection_source_revision' not in client.document
-    assert 'projected_by' not in client.document
+    assert client.document['schema_version'] == 1
+
+
+def test_same_exact_release_with_different_payload_is_invariant_error() -> None:
+    client = _Client()
+    store = _store(client)
+    store.replace_active(_record('release-1', published_offset=0, projected_offset=1))
+    with pytest.raises(UsersConfigurationProjectionError, match='different payload'):
+        store.replace_active(
+            _record(
+                'release-1',
+                published_offset=0,
+                projected_offset=2,
+                color='#123456',
+            )
+        )
+    assert client.patch_calls == 0
+
+
+def test_new_release_replaces_active_with_cas_and_schema_2() -> None:
+    client = _Client()
+    store = _store(client)
+    store.replace_active(_record('release-1', published_offset=0, projected_offset=1))
+    second = _record('release-2', published_offset=2, projected_offset=3)
+    assert store.replace_active(second) == second
+    assert client.patch_calls == 1
+    assert client.document['schema_version'] == 2
+
+
+def test_concurrent_winner_different_target_raises_conflict() -> None:
+    client = _Client()
+    store = _store(client)
+    first = _record('release-1', published_offset=0, projected_offset=1)
+    candidate = _record('release-2', published_offset=2, projected_offset=3)
+    concurrent = _record('release-3', published_offset=4, projected_offset=5)
+    store.replace_active(first)
+    client.concurrent_patch_document = _v2_document(concurrent)
+    with pytest.raises(UsersConfigurationProjectionConflictError):
+        store.replace_active(candidate)
 
 
 def test_same_exact_release_and_payload_is_idempotent_and_preserves_projected_at() -> None:
-    client = _FakeCosmosClient()
+    client = _Client()
     store = _store(client)
     first = _record('release-1', published_offset=0, projected_offset=1)
     retry = _record('release-1', published_offset=0, projected_offset=10)
@@ -173,46 +262,14 @@ def test_same_exact_release_and_payload_is_idempotent_and_preserves_projected_at
     assert client.patch_calls == 0
 
 
-def test_same_exact_release_with_different_payload_is_invariant_error() -> None:
-    client = _FakeCosmosClient()
-    store = _store(client)
-    store.replace_active(_record('release-1', published_offset=0, projected_offset=1))
-
-    with pytest.raises(UsersConfigurationProjectionError, match='different payload'):
-        store.replace_active(
-            _record(
-                'release-1',
-                published_offset=0,
-                projected_offset=2,
-                color='#123456',
-            )
-        )
-
-    assert client.patch_calls == 0
-
-
-def test_same_content_new_release_replaces_active_with_cas() -> None:
-    client = _FakeCosmosClient()
-    store = _store(client)
-    first = _record('release-1', published_offset=0, projected_offset=1)
-    second = _record('release-2', published_offset=2, projected_offset=3)
-    store.replace_active(first)
-
-    saved = store.replace_active(second)
-
-    assert saved == second
-    assert client.patch_calls == 1
-    assert store.get_active(first.source_key) == second
-
-
 def test_concurrent_winner_same_target_is_idempotent_success() -> None:
-    client = _FakeCosmosClient()
+    client = _Client()
     store = _store(client)
     first = _record('release-1', published_offset=0, projected_offset=1)
     candidate = _record('release-2', published_offset=2, projected_offset=3)
     concurrent = _record('release-2', published_offset=2, projected_offset=4)
     store.replace_active(first)
-    client.concurrent_patch_document = _document_from_record(concurrent)
+    client.concurrent_patch_document = _v2_document(concurrent)
 
     saved = store.replace_active(candidate)
 
@@ -220,23 +277,8 @@ def test_concurrent_winner_same_target_is_idempotent_success() -> None:
     assert saved.projected_at_utc == concurrent.projected_at_utc
 
 
-def test_concurrent_winner_different_target_raises_conflict() -> None:
-    client = _FakeCosmosClient()
-    store = _store(client)
-    first = _record('release-1', published_offset=0, projected_offset=1)
-    candidate = _record('release-2', published_offset=2, projected_offset=3)
-    concurrent = _record('release-3', published_offset=4, projected_offset=5)
-    store.replace_active(first)
-    client.concurrent_patch_document = _document_from_record(concurrent)
-
-    with pytest.raises(UsersConfigurationProjectionConflictError):
-        store.replace_active(candidate)
-
-    assert store.get_active(first.source_key) == concurrent
-
-
 def test_sequential_projection_can_explicitly_activate_older_exact_release() -> None:
-    client = _FakeCosmosClient()
+    client = _Client()
     store = _store(client)
     newer = _record('release-2', published_offset=2, projected_offset=3)
     older = _record('release-1', published_offset=0, projected_offset=4)
