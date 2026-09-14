@@ -13,7 +13,7 @@ from atlanticus.web.identity.errors import AccessContextError, IdentityDefinitio
 from atlanticus.web.identity.models import AuthenticatedIdentity
 
 ACCESS_RUNTIME_SERVICE_KEY = 'atlanticus.web.identity.access'
-_SESSION_KEY = '_atlanticus_access_snapshot'
+_SESSION_KEY = '_atlanticus_access_snapshot_v2'
 
 
 class AccessStatus(StrEnum):
@@ -26,8 +26,11 @@ class AccessStatus(StrEnum):
 class AccessDecision:
     status: AccessStatus
     user_id: str | None = None
+    bootstrap_root: bool = False
 
     def __post_init__(self) -> None:
+        if not isinstance(self.bootstrap_root, bool):
+            raise IdentityDefinitionError('Access bootstrap root flag must be boolean')
         if self.status is AccessStatus.INVALID_IDENTITY:
             raise IdentityDefinitionError('Access resolver cannot return invalid identity')
         if self.user_id is not None:
@@ -35,6 +38,10 @@ class AccessDecision:
             object.__setattr__(self, 'user_id', normalized or None)
         if self.status is AccessStatus.USER_DISABLED and self.user_id is None:
             raise IdentityDefinitionError('Disabled access decision requires user_id')
+        if self.bootstrap_root and self.status is not AccessStatus.READY:
+            raise IdentityDefinitionError('Bootstrap root access decision must be ready')
+        if self.bootstrap_root and self.user_id is not None:
+            raise IdentityDefinitionError('Bootstrap root access decision cannot contain user_id')
 
 
 class AccessResolver(ABC):
@@ -56,18 +63,25 @@ class AccessSnapshot:
     status: AccessStatus
     identity: AuthenticatedIdentity | None
     user_id: str | None = None
+    bootstrap_root: bool = False
 
     def __post_init__(self) -> None:
         load_id = self.load_id.strip()
         if not load_id:
             raise IdentityDefinitionError('Access load id must not be empty')
         object.__setattr__(self, 'load_id', load_id)
+        if not isinstance(self.bootstrap_root, bool):
+            raise IdentityDefinitionError('Access bootstrap root flag must be boolean')
         if self.status is AccessStatus.INVALID_IDENTITY and self.identity is not None:
             raise IdentityDefinitionError('Invalid identity snapshot cannot contain identity')
         if self.status is not AccessStatus.INVALID_IDENTITY and self.identity is None:
             raise IdentityDefinitionError('Resolved access snapshot requires identity')
         if self.status is AccessStatus.USER_DISABLED and self.user_id is None:
             raise IdentityDefinitionError('Disabled access snapshot requires user_id')
+        if self.bootstrap_root and self.status is not AccessStatus.READY:
+            raise IdentityDefinitionError('Bootstrap root access snapshot must be ready')
+        if self.bootstrap_root and self.user_id is not None:
+            raise IdentityDefinitionError('Bootstrap root access snapshot cannot contain user_id')
 
     @classmethod
     def resolved(
@@ -83,6 +97,7 @@ class AccessSnapshot:
             status=decision.status,
             identity=identity,
             user_id=decision.user_id,
+            bootstrap_root=decision.bootstrap_root,
         )
 
     @classmethod
@@ -108,6 +123,7 @@ class AccessSnapshot:
             'status': self.status.value,
             'identity': identity,
             'user_id': self.user_id,
+            'bootstrap_root': self.bootstrap_root,
         }
 
     @classmethod
@@ -128,14 +144,18 @@ class AccessSnapshot:
             except (KeyError, IdentityDefinitionError) as error:
                 raise AccessContextError('Access identity snapshot is invalid') from error
         try:
+            bootstrap_root = value['bootstrap_root']
+            if not isinstance(bootstrap_root, bool):
+                raise TypeError
             return cls(
                 load_id=str(value['load_id']),
                 resolved_at_utc=str(value['resolved_at_utc']),
                 status=AccessStatus(str(value['status'])),
                 identity=identity,
                 user_id=_optional_string(value.get('user_id')),
+                bootstrap_root=bootstrap_root,
             )
-        except (KeyError, ValueError) as error:
+        except (KeyError, TypeError, ValueError) as error:
             raise AccessContextError('Access snapshot is invalid') from error
 
 
