@@ -30,6 +30,7 @@ from ada.web.application.configuration_manager.workflows import (
 from atlanticus.web.bootstrap import create_bootstrap_web_module
 from atlanticus.web.compositions.users_manager import (
     create_users_manager_draft_validation_workflow,
+    create_users_manager_exact_source_history_workflow,
     create_users_manager_exact_source_reader_workflow,
     create_users_manager_exact_source_workflow,
 )
@@ -68,6 +69,7 @@ MANAGER_ROUTE_PREFIX = '/manager'
 
 USERS_DRAFT_VALIDATION_SERVICE = 'ada.configuration-manager.users.validation'
 USERS_EXACT_SOURCE_READER_SERVICE = 'ada.configuration-manager.users.exact-source-reader'
+USERS_EXACT_SOURCE_HISTORY_SERVICE = 'ada.configuration-manager.users.exact-source-history'
 USERS_EXACT_SOURCE_WORKFLOW_SERVICE = 'ada.configuration-manager.users.exact-source'
 USERS_EXACT_PROJECTION_SERVICE = 'ada.configuration-manager.users.exact-projection'
 NAVIGATION_WORKFLOW_SERVICE = 'ada.configuration-manager.navigation.workflow'
@@ -138,6 +140,7 @@ def build_configuration_manager_surface(
                 history_preview_renderer=build_users_history_preview,
                 draft_validation_service=USERS_DRAFT_VALIDATION_SERVICE,
                 exact_source_reader_service=USERS_EXACT_SOURCE_READER_SERVICE,
+                exact_source_history_service=USERS_EXACT_SOURCE_HISTORY_SERVICE,
                 exact_source_workflow_service=USERS_EXACT_SOURCE_WORKFLOW_SERVICE,
                 exact_projection_service=USERS_EXACT_PROJECTION_SERVICE,
                 access=ManagerModuleAccess(
@@ -224,6 +227,12 @@ def _register_services(
     services.add(
         USERS_EXACT_SOURCE_READER_SERVICE,
         create_users_manager_exact_source_reader_workflow(
+            administration=dependencies.users_profiles_administration,
+        ),
+    )
+    services.add(
+        USERS_EXACT_SOURCE_HISTORY_SERVICE,
+        create_users_manager_exact_source_history_workflow(
             administration=dependencies.users_profiles_administration,
         ),
     )

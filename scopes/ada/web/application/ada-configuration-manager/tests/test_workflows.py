@@ -8,7 +8,6 @@ import pytest
 from ada.web.application.configuration_manager import (
     NavigationManagerWorkflowAdapter,
     ToolConfigurationManagerWorkflowAdapter,
-    UsersManagerWorkflowAdapter,
 )
 from ada.web.tools.configuration import ToolConfiguration
 from atlanticus.web.manager import (
@@ -16,7 +15,6 @@ from atlanticus.web.manager import (
     RevisionHistoryWorkflow,
 )
 from atlanticus.web.navigation.configuration import NavigationConfigurationCatalog
-from atlanticus.web.users.configuration import UsersConfigurationCatalog
 
 NOW = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
 
@@ -162,7 +160,6 @@ def _tool_payload() -> dict[str, object]:
 def _cases():
     tool = ToolConfiguration.from_document(_tool_payload())
     navigation = NavigationConfigurationCatalog()
-    users = UsersConfigurationCatalog()
     return (
         (
             ToolConfigurationManagerWorkflowAdapter,
@@ -173,11 +170,6 @@ def _cases():
             NavigationManagerWorkflowAdapter,
             navigation.to_document(),
             navigation,
-        ),
-        (
-            UsersManagerWorkflowAdapter,
-            users.to_document(),
-            users,
         ),
     )
 

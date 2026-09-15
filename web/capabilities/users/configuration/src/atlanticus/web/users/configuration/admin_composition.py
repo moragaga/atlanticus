@@ -11,6 +11,7 @@ from atlanticus.web.profiles.models import ProfileDefinition
 from atlanticus.web.source.models import (
     ConcurrencyToken,
     Digest,
+    HistoryPage,
     PublishResult,
     SourceKey,
     SourceReleaseId,
@@ -192,6 +193,21 @@ class UsersProfilesAdministrationService:
             configuration=release.payload.projection_payload(),
             source_snapshot=snapshot,
         )
+
+    def query_history(
+        self,
+        *,
+        page_size: int = 20,
+        cursor: str | None = None,
+    ) -> HistoryPage:
+        return self._source.query_history(page_size=page_size, cursor=cursor)
+
+    def load_history_release(
+        self,
+        release_ref: SourceReleaseRef,
+    ) -> UsersProfilesConfiguration:
+        release = self._source.load_release(release_ref)
+        return release.payload.projection_payload()
 
     def create_draft(self, *, owner_subject_id: str) -> UsersProfilesAdminDraft:
         state = self.load_current()

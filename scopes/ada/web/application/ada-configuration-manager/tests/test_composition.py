@@ -6,6 +6,7 @@ from ada.web.application.configuration_manager import (
     TOOLS_WORKFLOW_SERVICE,
     USERS_DRAFT_VALIDATION_SERVICE,
     USERS_EXACT_PROJECTION_SERVICE,
+    USERS_EXACT_SOURCE_HISTORY_SERVICE,
     USERS_EXACT_SOURCE_READER_SERVICE,
     USERS_EXACT_SOURCE_WORKFLOW_SERVICE,
     ConfigurationManagerDependencies,
@@ -15,6 +16,7 @@ from ada.web.application.configuration_manager import (
 )
 from atlanticus.web.compositions.users_manager import (
     UsersManagerDraftValidationWorkflow,
+    UsersManagerExactSourceHistoryWorkflow,
     UsersManagerExactSourceReaderWorkflow,
     UsersManagerExactSourceWorkflow,
 )
@@ -100,6 +102,7 @@ def test_users_module_routes_authoring_through_exact_source_capabilities() -> No
     assert users.workflow_service is None
     assert users.draft_validation_service == USERS_DRAFT_VALIDATION_SERVICE
     assert users.exact_source_reader_service == USERS_EXACT_SOURCE_READER_SERVICE
+    assert users.exact_source_history_service == USERS_EXACT_SOURCE_HISTORY_SERVICE
     assert users.exact_source_workflow_service == USERS_EXACT_SOURCE_WORKFLOW_SERVICE
     assert users.exact_projection_service == USERS_EXACT_PROJECTION_SERVICE
 
@@ -136,6 +139,10 @@ def test_service_module_registers_users_exact_capabilities_and_remaining_legacy_
     assert isinstance(
         services.require(USERS_EXACT_SOURCE_READER_SERVICE),
         UsersManagerExactSourceReaderWorkflow,
+    )
+    assert isinstance(
+        services.require(USERS_EXACT_SOURCE_HISTORY_SERVICE),
+        UsersManagerExactSourceHistoryWorkflow,
     )
     assert isinstance(
         services.require(USERS_EXACT_SOURCE_WORKFLOW_SERVICE),

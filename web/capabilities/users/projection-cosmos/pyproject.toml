@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "atlanticus-web-users-projection-cosmos"
-version = "0.1.1"
+version = "0.1.2"
 description = "Persistencia Cosmos de proyección canónica y materialización runtime de usuarios Atlanticus Web"
 requires-python = "==3.14.2"
 classifiers = [
@@ -15,7 +15,7 @@ dependencies = [
     "atlanticus-web-projection==0.1.0",
     "atlanticus-web-source==0.1.0",
     "atlanticus-web-users==0.1.0",
-    "atlanticus-web-users-configuration==0.1.9",
+    "atlanticus-web-users-configuration==0.1.10",
 ]
 
 [tool.uv.sources]

@@ -75,6 +75,8 @@ class ManagerModule:
     exact_source_workflow_service: str | None = None
     draft_validation_service: str | None = None
     exact_source_reader_service: str | None = None
+    # History Source exacto es otra capability independiente del lifecycle legacy.
+    exact_source_history_service: str | None = None
     # Projection exacta se declara por separado del lifecycle legacy.
     exact_projection_service: str | None = None
 

@@ -71,6 +71,7 @@ class ManagerModule:
     exact_source_workflow_service: str | None = None
     draft_validation_service: str | None = None
     exact_source_reader_service: str | None = None
+    exact_source_history_service: str | None = None
     exact_projection_service: str | None = None
 
 

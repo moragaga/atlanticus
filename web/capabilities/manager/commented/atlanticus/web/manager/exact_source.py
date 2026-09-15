@@ -9,7 +9,12 @@ from typing import Protocol, runtime_checkable
 
 from atlanticus.web.manager.errors import ManagerProjectionError
 from atlanticus.web.manager.projection import ProjectionAuditRecord, ProjectionSummaryItem
-from atlanticus.web.source.models import PublishResult, SourceSnapshot
+from atlanticus.web.source.models import (
+    HistoryPage,
+    PublishResult,
+    SourceReleaseRef,
+    SourceSnapshot,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,6 +34,16 @@ class ExactSourceReadResult:
 
 
 @dataclass(frozen=True, slots=True)
+class ExactSourceHistoryReadResult:
+    # La identidad histórica conserva release id y timestamp como un único value object.
+    release_ref: SourceReleaseRef
+    payload: dict[str, object]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'payload', deepcopy(self.payload))
+
+
+@dataclass(frozen=True, slots=True)
 class ExactSourcePublicationResult:
     source: PublishResult
     audit: ProjectionAuditRecord
@@ -41,6 +56,18 @@ class ExactSourcePublicationResult:
 @runtime_checkable
 class ExactSourceReaderWorkflow(Protocol):
     def load_current_source_exact(self) -> ExactSourceReadResult: ...
+
+
+@runtime_checkable
+class ExactSourceHistoryWorkflow(Protocol):
+    # Lista publicaciones Source reales; no autosaves ni revisiones locales.
+    def list_history_exact(self, *, limit: int = 20) -> HistoryPage: ...
+
+    # La lectura exige SourceReleaseRef completo, no un alias textual.
+    def load_history_release_exact(
+        self,
+        release_ref: SourceReleaseRef,
+    ) -> ExactSourceHistoryReadResult: ...
 
 
 @runtime_checkable

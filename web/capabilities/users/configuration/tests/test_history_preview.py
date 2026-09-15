@@ -16,17 +16,19 @@ def _text(value: object) -> str:
 def test_users_history_preview_shows_profiles_and_assignments_without_access_semantics() -> None:
     preview = build_users_history_preview(
         {
-            'administrator_background_color': '#26425A',
-            'administrator_text_color': '#FFFFFF',
-            'guest_background_color': '#D6DADE',
-            'guest_text_color': '#0D1B2A',
             'profiles': [
+                {
+                    'key': 'administrator',
+                    'label': 'Administrador',
+                    'background_color': '#26425A',
+                    'text_color': '#FFFFFF',
+                },
                 {
                     'key': 'operator',
                     'label': 'Operador',
                     'background_color': '#C9A24B',
                     'text_color': '#0D1B2A',
-                }
+                },
             ],
             'users': [
                 {
@@ -48,7 +50,7 @@ def test_users_history_preview_shows_profiles_and_assignments_without_access_sem
     text = _text(preview)
 
     assert 'Perfiles 2' in text
-    assert 'Perfiles personalizados 1' in text
+    assert 'Perfiles funcionales 1' in text
     assert 'Operador operator' in text
     assert 'Fondo #C9A24B' in text
     assert 'Texto #0D1B2A' in text

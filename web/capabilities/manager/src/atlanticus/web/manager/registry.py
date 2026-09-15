@@ -147,6 +147,14 @@ class ManagerModuleRegistry:
                 raise ManagerDefinitionError(
                     'Manager exact projection service must not be empty'
                 )
+            exact_source_history_service = module.exact_source_history_service
+            if (
+                exact_source_history_service is not None
+                and not exact_source_history_service.strip()
+            ):
+                raise ManagerDefinitionError(
+                    'Manager exact source history service must not be empty'
+                )
             if module.source_signal_id is not None:
                 source_signal_id = module.source_signal_id.strip()
                 if not source_signal_id:

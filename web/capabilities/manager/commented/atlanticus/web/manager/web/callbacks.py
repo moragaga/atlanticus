@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from dash import ALL, MATCH, Input, Output, State, ctx, html, no_update
 
 from atlanticus.web.manager.authorization import ManagerAuthorizationPolicy
@@ -54,6 +56,7 @@ from atlanticus.web.manager.web.ids import (
     SIDEBAR_TOGGLE_ID,
     STATUS_STORE_ID,
     SUMMARY_ID,
+    exact_history_preview_open_id,
     history_preview_open_id,
     module_section_button_id,
     module_section_panel_id,
@@ -99,6 +102,7 @@ from atlanticus.web.manager.web.layout import (
     build_workflow_status_content,
 )
 from atlanticus.web.services import ServiceRegistry
+from atlanticus.web.source.models import SourceReleaseId, SourceReleaseRef
 
 
 def register_manager_callbacks(
@@ -1450,6 +1454,95 @@ def register_manager_callbacks(
         return False, f'Revisión {revision[:12]}', metadata, preview, preview_state, None
 
     @app.callback(
+        Output(workflow_history_preview_id(MATCH), 'hidden', allow_duplicate=True),
+        Output(workflow_history_preview_heading_id(MATCH), 'children', allow_duplicate=True),
+        Output(workflow_history_preview_meta_id(MATCH), 'children', allow_duplicate=True),
+        Output(workflow_history_preview_body_id(MATCH), 'children', allow_duplicate=True),
+        Output(workflow_history_preview_store_id(MATCH), 'data', allow_duplicate=True),
+        Output(workflow_result_id(MATCH), 'children', allow_duplicate=True),
+        Input(
+            exact_history_preview_open_id(
+                MATCH, ALL, ALL, ALL, current=ALL, active=ALL
+            ),
+            'n_clicks',
+        ),
+        State(
+            exact_history_preview_open_id(
+                MATCH, ALL, ALL, ALL, current=ALL, active=ALL
+            ),
+            'id',
+        ),
+        prevent_initial_call=True,
+    )
+    def manage_exact_history_preview(
+        clicks: list[int],
+        preview_ids: list[dict[str, object]],
+    ):
+        trigger = ctx.triggered_id
+        if not _pattern_click_is_real(trigger, clicks, preview_ids):
+            return (no_update,) * 6
+        module_key = str(trigger.get('module', ''))
+        principal = definition.principal_provider()
+        try:
+            module = registry.require(module_key)
+            renderer = module.history_preview_renderer
+            if renderer is None:
+                raise ManagerProjectionError('Manager module does not support history preview')
+            # Reconstruye SourceReleaseRef completo desde el id serializado por Dash.
+            release_ref = SourceReleaseRef(
+                release_id=SourceReleaseId(str(trigger.get('release_id', ''))),
+                published_at_utc=datetime.fromisoformat(
+                    str(trigger.get('published_at_utc', ''))
+                ),
+            )
+            # La lectura solicita exactamente esa release y no consulta current como sustituto.
+            history_result = coordinator.load_history_release_exact(
+                module_key,
+                principal,
+                release_ref,
+            )
+            preview = renderer(history_result.payload)
+        except ManagerError as error:
+            return True, None, None, None, None, _error_message(str(error))
+        except Exception:
+            return (
+                True,
+                None,
+                None,
+                None,
+                None,
+                _error_message('History release preview could not be loaded'),
+            )
+        labels = []
+        if bool(trigger.get('current')):
+            labels.append('Fuente actual')
+        if bool(trigger.get('active')):
+            labels.append('Proyección activa')
+        status = ' · '.join(labels) if labels else 'Histórica'
+        release_id = history_result.release_ref.release_id.value
+        metadata = html.Div(
+            [
+                _history_preview_meta_item('Release', release_id[:12]),
+                _history_preview_meta_item(
+                    'Fecha',
+                    history_result.release_ref.published_at_utc.isoformat(),
+                ),
+                _history_preview_meta_item('Estado', status),
+            ],
+            className='atlanticus-manager__history-preview-meta-grid',
+        )
+        preview_state = {
+            'schema_version': 2,
+            'module_key': module_key,
+            'source_release': {
+                'release_id': release_id,
+                'published_at_utc': history_result.release_ref.published_at_utc.isoformat(),
+            },
+            'payload': history_result.payload,
+        }
+        return False, f'Release {release_id[:12]}', metadata, preview, preview_state, None
+
+    @app.callback(
         Output(workflow_result_id(MATCH), 'children', allow_duplicate=True),
         Output(workflow_draft_id(MATCH), 'data', allow_duplicate=True),
         Output(workflow_validation_id(MATCH), 'data', allow_duplicate=True),
@@ -1459,12 +1552,14 @@ def register_manager_callbacks(
         Input(workflow_history_preview_load_id(MATCH), 'n_clicks'),
         State(workflow_history_preview_store_id(MATCH), 'data'),
         State(workflow_revision_id(MATCH), 'data'),
+        State(workflow_draft_id(MATCH), 'data'),
         prevent_initial_call=True,
     )
     def load_history_preview_as_draft(
         clicks: int,
         preview_data: dict[str, object] | None,
         revision_state: dict[str, object] | None,
+        workspace_data: dict[str, object] | None = None,
     ):
         trigger = ctx.triggered_id
         if not isinstance(trigger, dict) or not _click_is_real(clicks):
@@ -1473,11 +1568,37 @@ def register_manager_callbacks(
         principal = definition.principal_provider()
         try:
             module = registry.require(module_key)
-            if _uses_exact_workspace(module):
-                raise ManagerProjectionError(
-                    'Exact-source history loading as workspace is not supported'
-                )
             payload = _history_preview_payload(preview_data, module_key)
+            if _uses_exact_workspace(module):
+                if not _history_preview_is_exact(preview_data, module_key):
+                    raise ManagerProjectionError(
+                        'Exact-source history preview is required for this module'
+                    )
+                # History nunca restaura Source: sólo crea/modifica trabajo local sobre BASE current.
+                updated = (
+                    exact_workspace.replace_with_payload(
+                        principal=principal,
+                        workspace_document=workspace_data,
+                        payload=payload,
+                    )
+                    if isinstance(workspace_data, dict)
+                    else exact_workspace.create_with_payload_on_current_base(
+                        module_key=module_key,
+                        principal=principal,
+                        payload=payload,
+                    )
+                )
+                return (
+                    _notice_message(
+                        'Release histórica cargada como cambios locales. '
+                        'Valida y verifica Source antes de publicar.'
+                    ),
+                    updated,
+                    None,
+                    None,
+                    True,
+                    None,
+                )
             base_source_revision = None
             if revision_state:
                 raw = revision_state.get('source_revision')
@@ -1557,7 +1678,8 @@ def _history_preview_payload(
     data: dict[str, object] | None,
     module_key: str,
 ) -> dict[str, object]:
-    if not isinstance(data, dict) or data.get('schema_version') != 1:
+    # Schema 1 queda para módulos legacy; schema 2 representa un preview exact-release.
+    if not isinstance(data, dict) or data.get('schema_version') not in {1, 2}:
         raise ManagerProjectionError('History preview is not available')
     if str(data.get('module_key', '')) != module_key:
         raise ManagerProjectionError('History preview belongs to another module')
@@ -1565,6 +1687,18 @@ def _history_preview_payload(
     if not isinstance(payload, dict):
         raise ManagerProjectionError('History preview payload is invalid')
     return dict(payload)
+
+
+def _history_preview_is_exact(
+    data: dict[str, object] | None,
+    module_key: str,
+) -> bool:
+    return bool(
+        isinstance(data, dict)
+        and data.get('schema_version') == 2
+        and str(data.get('module_key', '')) == module_key
+        and isinstance(data.get('source_release'), dict)
+    )
 
 
 def _load_workflow_state(

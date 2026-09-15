@@ -11,6 +11,8 @@ from atlanticus.web.manager.errors import (
 )
 from atlanticus.web.manager.exact_projection import ExactProjectionWorkflow
 from atlanticus.web.manager.exact_source import (
+    ExactSourceHistoryReadResult,
+    ExactSourceHistoryWorkflow,
     ExactSourcePublicationResult,
     ExactSourcePublicationWorkflow,
     ExactSourceReaderWorkflow,
@@ -36,7 +38,11 @@ from atlanticus.web.projection.models import (
     ProjectionTarget,
 )
 from atlanticus.web.services import ServiceRegistry
-from atlanticus.web.source.models import SourceSnapshot as ExactSourceSnapshot
+from atlanticus.web.source.models import (
+    HistoryPage,
+    SourceReleaseRef,
+    SourceSnapshot as ExactSourceSnapshot,
+)
 
 
 class ManagerProjectionCoordinator:
@@ -239,10 +245,32 @@ class ManagerProjectionCoordinator:
         return workflow.project(target)
 
     def can_load_history(self, module_key: str, principal: ManagerPrincipal) -> bool:
+        module = self._registry.require(module_key)
+        # Un módulo exact-history nunca cae al RevisionHistoryWorkflow legacy.
+        if module.exact_source_history_service is not None:
+            module, _workflow = self._resolve_exact_source_history(module_key)
+            return self._authorization.can_view(principal, module)
         module, workflow = self._resolve(module_key)
         return isinstance(workflow, RevisionHistoryWorkflow) and self._authorization.can_view(
             principal, module
         )
+
+    def load_history_release_exact(
+        self,
+        module_key: str,
+        principal: ManagerPrincipal,
+        release_ref: SourceReleaseRef,
+    ) -> ExactSourceHistoryReadResult:
+        module, workflow = self._resolve_exact_source_history(module_key)
+        if not self._authorization.can_view(principal, module):
+            raise ManagerAuthorizationError('Manager module access is denied')
+        # La capability debe preservar exactamente la identidad solicitada.
+        result = workflow.load_history_release_exact(release_ref)
+        if result.release_ref != release_ref:
+            raise ManagerProjectionError(
+                'Manager exact history returned a different source release'
+            )
+        return result
 
     def load_history_revision(
         self,
@@ -266,7 +294,14 @@ class ManagerProjectionCoordinator:
         principal: ManagerPrincipal,
         *,
         limit: int = 20,
-    ) -> tuple[RevisionHistoryEntry, ...]:
+    ) -> tuple[RevisionHistoryEntry, ...] | HistoryPage:
+        module = self._registry.require(module_key)
+        # HistoryPage exacto se conserva tipado; no se convierte a RevisionHistoryEntry.
+        if module.exact_source_history_service is not None:
+            module, workflow = self._resolve_exact_source_history(module_key)
+            if not self._authorization.can_view(principal, module):
+                raise ManagerAuthorizationError('Manager module access is denied')
+            return workflow.list_history_exact(limit=limit)
         module, workflow = self._resolve(module_key)
         if not self._authorization.can_view(principal, module):
             raise ManagerAuthorizationError('Manager module access is denied')
@@ -355,6 +390,23 @@ class ManagerProjectionCoordinator:
         if not isinstance(workflow, ExactProjectionWorkflow):
             raise ManagerProjectionError(
                 'Manager exact projection workflow has an invalid contract'
+            )
+        return module, workflow
+
+    def _resolve_exact_source_history(
+        self,
+        module_key: str,
+    ) -> tuple[ManagerModule, ExactSourceHistoryWorkflow]:
+        module = self._registry.require(module_key)
+        service_key = module.exact_source_history_service
+        if service_key is None:
+            raise ManagerProjectionError(
+                'Manager module does not declare an exact source history service'
+            )
+        workflow = self._services.require(service_key)
+        if not isinstance(workflow, ExactSourceHistoryWorkflow):
+            raise ManagerProjectionError(
+                'Manager exact source history workflow has an invalid contract'
             )
         return module, workflow
 

@@ -43,6 +43,7 @@ from atlanticus.web.manager.web.ids import (
     SIDEBAR_TOGGLE_ID,
     STATUS_STORE_ID,
     SUMMARY_ID,
+    exact_history_preview_open_id,
     history_preview_open_id,
     module_section_button_id,
     module_section_panel_id,
@@ -78,6 +79,7 @@ from atlanticus.web.manager.web.ids import (
     workflow_workspace_reset_signal_id,
 )
 from atlanticus.web.services import ServiceRegistry
+from atlanticus.web.source.models import HistoryPage
 
 _STATE_LABELS = {
     ProjectionState.NO_SOURCE: 'Sin fuente',
@@ -427,7 +429,7 @@ def build_workflow_panel(
     *,
     module: ManagerModule,
     status: ProjectionStatus | ExactProjectionStatus | None,
-    history: tuple[RevisionHistoryEntry, ...],
+    history: tuple[RevisionHistoryEntry, ...] | HistoryPage,
     can_load_history: bool,
     error: str | None,
 ) -> object:
@@ -872,13 +874,23 @@ def _build_exact_workflow_status_content(
 def build_workflow_history_content(
     *,
     module: ManagerModule,
-    status: ProjectionStatus | None,
-    history: tuple[RevisionHistoryEntry, ...],
+    status: ProjectionStatus | ExactProjectionStatus | None,
+    history: tuple[RevisionHistoryEntry, ...] | HistoryPage,
     can_load_history: bool,
     error: str | None,
 ) -> object:
     if error is not None or status is None:
         return None
+    # History exacto permanece HistoryPage; no se convierte a RevisionHistoryEntry.
+    if isinstance(history, HistoryPage):
+        if not isinstance(status, ExactProjectionStatus):
+            return None
+        return _build_exact_history(
+            history,
+            status=status,
+            module=module,
+            can_load_history=can_load_history,
+        )
     return _build_history(
         history,
         module=module,
@@ -1366,6 +1378,97 @@ def _build_history(
             html.P(
                 'Solo aparecen revisiones publicadas en la fuente de verdad. '
                 'Abre una revisión para inspeccionarla antes de cargarla como borrador local.'
+            ),
+            header if rows else None,
+            html.Div(rows) if rows else _history_empty_state(),
+        ],
+        className='atlanticus-manager__history',
+    )
+
+
+def _build_exact_history(
+    history: HistoryPage,
+    *,
+    status: ExactProjectionStatus,
+    module: ManagerModule,
+    can_load_history: bool,
+) -> object:
+    # Current y active se derivan comparando SourceReleaseRef completos.
+    rows = []
+    for index, entry in enumerate(history.items):
+        release = entry.release_ref
+        current = release == status.source_current_release
+        active = release == status.projected_source_release
+        labels = []
+        if current:
+            labels.append('Fuente actual')
+        if active:
+            labels.append('Proyección activa')
+        state = ' · '.join(labels) if labels else 'Histórica'
+        action = None
+        if can_load_history and module.history_preview_renderer is not None:
+            action = html.Button(
+                'Ver release',
+                id=exact_history_preview_open_id(
+                    module.key,
+                    release.release_id.value,
+                    release.published_at_utc.isoformat(),
+                    f'{index}-{release.published_at_utc.isoformat()}',
+                    current=current,
+                    active=active,
+                ),
+                n_clicks=0,
+                className=(
+                    'atlanticus-ui-button '
+                    'atlanticus-ui-button--secondary '
+                    'atlanticus-manager__history-preview-open'
+                ),
+            )
+        rows.append(
+            html.Div(
+                [
+                    _history_cell(
+                        'Release',
+                        html.Code(_short_revision(release.release_id.value)),
+                    ),
+                    _history_cell(
+                        'Contenido',
+                        html.Code(
+                            f'{entry.content_hash.algorithm}:{entry.content_hash.value[:12]}'
+                        ),
+                    ),
+                    _history_cell(
+                        'Fecha',
+                        html.Time(_format_datetime(release.published_at_utc)),
+                    ),
+                    _history_cell(
+                        'Estado',
+                        html.Span(
+                            state,
+                            className='atlanticus-manager__history-status',
+                        ),
+                    ),
+                    _history_cell('Acción', action, action=True),
+                ],
+                className='atlanticus-manager__history-row',
+            )
+        )
+    header = html.Div(
+        [
+            html.Span('Release'),
+            html.Span('Contenido'),
+            html.Span('Fecha'),
+            html.Span('Estado'),
+            html.Span('Acción'),
+        ],
+        className='atlanticus-manager__history-row atlanticus-manager__history-row--header',
+    )
+    return html.Section(
+        [
+            html.H3('Historial publicado'),
+            html.P(
+                'Cada entrada es una publicación Source inmutable. '
+                'Abre una release para inspeccionarla antes de cargar su contenido como trabajo local.'
             ),
             header if rows else None,
             html.Div(rows) if rows else _history_empty_state(),

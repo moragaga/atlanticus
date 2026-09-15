@@ -280,6 +280,42 @@ class ManagerExactWorkspaceController:
         updated.update(replacement.to_document())
         return updated
 
+    def replace_with_payload(
+        self,
+        *,
+        principal: ManagerPrincipal,
+        workspace_document: dict[str, object] | None,
+        payload: dict[str, object],
+    ) -> dict[str, object]:
+        # Cambia sólo payload local y conserva BASE current para que History sea trabajo nuevo.
+        workspace = self.require_workspace(workspace_document, principal)
+        replacement = workspace.with_payload(payload)
+        if not isinstance(workspace_document, dict):
+            raise ManagerProjectionError('An exact-source browser workspace is required')
+        updated = deepcopy(workspace_document)
+        updated.update(replacement.to_document())
+        return updated
+
+    def create_with_payload_on_current_base(
+        self,
+        *,
+        module_key: str,
+        principal: ManagerPrincipal,
+        payload: dict[str, object],
+    ) -> dict[str, object]:
+        # Si aún no existe workspace local, primero captura current y luego aplica History encima.
+        source = self._coordinator.load_current_source_exact(module_key, principal)
+        if source.payload is None:
+            raise ManagerProjectionError(
+                'A current exact source is required to load historical work'
+            )
+        current = ManagerWorkspace.create(
+            owner_subject_id=principal.subject_id,
+            payload=source.payload,
+            base=source.snapshot,
+        )
+        return current.with_payload(payload).to_document()
+
     def source_changed(
         self,
         workspace: ManagerWorkspace,

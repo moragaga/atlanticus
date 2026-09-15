@@ -5,21 +5,23 @@ from __future__ import annotations
 
 from dash import html
 
-from atlanticus.web.users.configuration.models import UsersConfigurationCatalog
+from atlanticus.web.users.configuration.canonical import UsersProfilesConfiguration
 
 
 def build_users_history_preview(payload: dict[str, object]) -> object:
-    # Reconstruye el catálogo histórico para presentar exactamente sus perfiles y usuarios.
-    catalog = UsersConfigurationCatalog.from_document(payload)
-    profiles = catalog.profile_catalog().all()
-    enabled_users = sum(user.enabled for user in catalog.users)
+    # Reconstruye directamente UsersProfilesConfiguration; no revive UsersConfigurationCatalog legacy.
+    configuration = UsersProfilesConfiguration.from_document(payload)
+    profiles = configuration.profiles.profiles
+    users = configuration.users.users
+    functional_profiles = sum(profile.key != 'administrator' for profile in profiles)
+    enabled_users = sum(user.enabled for user in users)
     return html.Div(
         [
             _summary(
                 (
                     ('Perfiles', str(len(profiles))),
-                    ('Perfiles personalizados', str(len(catalog.profiles))),
-                    ('Usuarios configurados', str(len(catalog.users))),
+                    ('Perfiles funcionales', str(functional_profiles)),
+                    ('Usuarios configurados', str(len(users))),
                     ('Usuarios habilitados', str(enabled_users)),
                 )
             ),
@@ -57,8 +59,8 @@ def build_users_history_preview(payload: dict[str, object]) -> object:
                 [
                     html.H4('Usuarios'),
                     html.Div(
-                        [_user(user) for user in catalog.users]
-                        if catalog.users
+                        [_user(user) for user in users]
+                        if users
                         else html.P(
                             'Sin usuarios configurados.',
                             className='atlanticus-manager__preview-empty',

@@ -33,6 +33,7 @@ from atlanticus.web.bootstrap import create_bootstrap_web_module
 # Users ya no registra lifecycle legacy en el host productivo.
 from atlanticus.web.compositions.users_manager import (
     create_users_manager_draft_validation_workflow,
+    create_users_manager_exact_source_history_workflow,
     create_users_manager_exact_source_reader_workflow,
     create_users_manager_exact_source_workflow,
 )
@@ -69,9 +70,10 @@ from atlanticus.web.users.configuration.web import (
 
 MANAGER_ROUTE_PREFIX = '/manager'
 
-# Estas keys separan validate/read/publish y projection exacta sin lifecycle legacy.
+# Estas keys separan validate/read/history/publish y projection exacta sin lifecycle legacy.
 USERS_DRAFT_VALIDATION_SERVICE = 'ada.configuration-manager.users.validation'
 USERS_EXACT_SOURCE_READER_SERVICE = 'ada.configuration-manager.users.exact-source-reader'
+USERS_EXACT_SOURCE_HISTORY_SERVICE = 'ada.configuration-manager.users.exact-source-history'
 USERS_EXACT_SOURCE_WORKFLOW_SERVICE = 'ada.configuration-manager.users.exact-source'
 USERS_EXACT_PROJECTION_SERVICE = 'ada.configuration-manager.users.exact-projection'
 NAVIGATION_WORKFLOW_SERVICE = 'ada.configuration-manager.navigation.workflow'
@@ -144,6 +146,7 @@ def build_configuration_manager_surface(
                 # Users no declara lifecycle legacy; authoring y projection usan capabilities exactas.
                 draft_validation_service=USERS_DRAFT_VALIDATION_SERVICE,
                 exact_source_reader_service=USERS_EXACT_SOURCE_READER_SERVICE,
+                exact_source_history_service=USERS_EXACT_SOURCE_HISTORY_SERVICE,
                 exact_source_workflow_service=USERS_EXACT_SOURCE_WORKFLOW_SERVICE,
                 exact_projection_service=USERS_EXACT_PROJECTION_SERVICE,
                 access=ManagerModuleAccess(
@@ -232,6 +235,13 @@ def _register_services(
     services.add(
         USERS_EXACT_SOURCE_READER_SERVICE,
         create_users_manager_exact_source_reader_workflow(
+            administration=dependencies.users_profiles_administration,
+        ),
+    )
+    # History usa la misma frontera administrativa exacta; no recompone SourceStore.
+    services.add(
+        USERS_EXACT_SOURCE_HISTORY_SERVICE,
+        create_users_manager_exact_source_history_workflow(
             administration=dependencies.users_profiles_administration,
         ),
     )

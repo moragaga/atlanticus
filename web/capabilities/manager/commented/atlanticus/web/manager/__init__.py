@@ -14,6 +14,8 @@ from atlanticus.web.manager.errors import (
 )
 from atlanticus.web.manager.exact_projection import ExactProjectionWorkflow
 from atlanticus.web.manager.exact_source import (
+    ExactSourceHistoryReadResult,
+    ExactSourceHistoryWorkflow,
     ExactSourcePublicationResult,
     ExactSourcePublicationWorkflow,
     ExactSourceReaderWorkflow,
@@ -74,6 +76,8 @@ __all__ = [
     'DraftValidationResult',
     'DraftValidationWorkflow',
     'ExactProjectionWorkflow',
+    'ExactSourceHistoryReadResult',
+    'ExactSourceHistoryWorkflow',
     'ExactSourcePublicationResult',
     'ExactSourcePublicationWorkflow',
     'ExactSourceReaderWorkflow',

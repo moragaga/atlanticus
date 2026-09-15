@@ -216,6 +216,26 @@ def history_preview_open_id(
     }
 
 
+def exact_history_preview_open_id(
+    module_key: str,
+    release_id: str,
+    published_at_utc: str,
+    occurrence: str,
+    *,
+    current: bool,
+    active: bool,
+) -> dict[str, object]:
+    return {
+        'type': 'atlanticus-manager-exact-history-preview-open',
+        'module': module_key,
+        'release_id': release_id,
+        'published_at_utc': published_at_utc,
+        'occurrence': occurrence,
+        'current': current,
+        'active': active,
+    }
+
+
 def workflow_history_preview_id(module_key: str) -> dict[str, str]:
     return {
         'type': 'atlanticus-manager-history-preview',
