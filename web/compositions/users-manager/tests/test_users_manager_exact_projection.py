@@ -7,7 +7,13 @@ from atlanticus.web.compositions.users_manager import (
     create_users_manager_exact_projection_workflow,
 )
 from atlanticus.web.manager import ExactProjectionWorkflow
-from atlanticus.web.projection.models import ProjectionExecutionResult, ProjectionRecord, ProjectionTarget
+from atlanticus.web.projection.models import (
+    ProjectionAlignment,
+    ProjectionExecutionResult,
+    ProjectionRecord,
+    ProjectionStatus,
+    ProjectionTarget,
+)
 from atlanticus.web.source.models import (
     ConcurrencyToken,
     Digest,
@@ -59,6 +65,15 @@ class _ProjectionService:
         self.target = target
         self.selected: list[SourceKey] = []
         self.projected: list[ProjectionTarget] = []
+        self.status = ProjectionStatus(
+            alignment=ProjectionAlignment.CURRENT,
+            source_current_release=target.source_release,
+            projected_source_release=target.source_release,
+        )
+
+    def get_status(self, source_key: SourceKey) -> ProjectionStatus:
+        self.selected.append(source_key)
+        return self.status
 
     def select_current_target(self, source_key: SourceKey) -> ProjectionTarget | None:
         self.selected.append(source_key)
@@ -92,6 +107,23 @@ def test_factory_binds_explicit_users_source_key_without_legacy_contracts() -> N
     assert isinstance(workflow, ExactProjectionWorkflow)
     assert workflow.get_current_projection_target() == ProjectionTarget(source_key, release_ref)
     assert source.requested == [source_key]
+
+
+def test_workflow_returns_canonical_projection_status_unchanged() -> None:
+    source_key = SourceKey('users-configuration')
+    target = ProjectionTarget(source_key, _release_ref('release-1'))
+    projection = _ProjectionService(target)
+    workflow = UsersManagerExactProjectionWorkflow(
+        projection=projection,
+        source_key=source_key,
+    )
+
+    status = workflow.get_status()
+
+    assert status is projection.status
+    assert status.alignment is ProjectionAlignment.CURRENT
+    assert projection.selected == [source_key]
+    assert not hasattr(status, 'source_revision')
 
 
 def test_workflow_returns_canonical_projection_result_unchanged() -> None:

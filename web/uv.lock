@@ -141,7 +141,7 @@ requires-dist = [
 
 [[package]]
 name = "atlanticus-web-composition-users-manager"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "compositions/users-manager" }
 dependencies = [
     { name = "atlanticus-web-manager" },
@@ -203,7 +203,7 @@ requires-dist = [
 
 [[package]]
 name = "atlanticus-web-manager"
-version = "0.3.16"
+version = "0.3.17"
 source = { editable = "capabilities/manager" }
 dependencies = [
     { name = "atlanticus-web" },

@@ -28,6 +28,9 @@ class UsersAdministrationStub:
 
 
 class UsersExactProjectionStub:
+    def get_status(self):
+        return None
+
     def get_current_projection_target(self):
         return None
 

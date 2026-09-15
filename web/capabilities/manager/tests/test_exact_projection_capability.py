@@ -12,11 +12,14 @@ from atlanticus.web.manager import (
     ManagerProjectionCoordinator,
     ManagerSurfaceDefinition,
 )
+from atlanticus.web.manager.projection import ProjectionState, resolve_projection_state
 from atlanticus.web.manager.web import callbacks as manager_callbacks
 from atlanticus.web.manager.web.ids import workflow_action_id
 from atlanticus.web.projection.models import (
+    ProjectionAlignment,
     ProjectionExecutionResult,
     ProjectionRecord,
+    ProjectionStatus,
     ProjectionTarget,
 )
 from atlanticus.web.services import ServiceRegistry
@@ -37,6 +40,14 @@ class _ExactProjection:
             ),
         )
         self.projected: list[ProjectionTarget] = []
+        self.status = ProjectionStatus(
+            alignment=ProjectionAlignment.CURRENT,
+            source_current_release=self.target.source_release,
+            projected_source_release=self.target.source_release,
+        )
+
+    def get_status(self) -> ProjectionStatus:
+        return self.status
 
     def get_current_projection_target(self) -> ProjectionTarget | None:
         return self.target
@@ -87,6 +98,19 @@ def _coordinator(service: object):
         registry,
         services,
     )
+
+
+def test_exact_projection_status_is_canonical_and_does_not_use_legacy_revision_fields() -> None:
+    workflow = _ExactProjection()
+    coordinator, _registry, _services = _coordinator(workflow)
+    principal = ManagerPrincipal('local', 'Administrador local', is_local=True)
+
+    status = coordinator.get_status('users', principal)
+
+    assert status is workflow.status
+    assert status.alignment is ProjectionAlignment.CURRENT
+    assert resolve_projection_state(status) is ProjectionState.SYNCHRONIZED
+    assert not hasattr(status, 'source_revision')
 
 
 def test_exact_projection_routes_without_legacy_lifecycle() -> None:

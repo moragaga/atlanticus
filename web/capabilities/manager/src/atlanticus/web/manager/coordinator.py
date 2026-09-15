@@ -29,6 +29,7 @@ from atlanticus.web.manager.registry import ManagerModuleRegistry
 from atlanticus.web.manager.validation import DraftValidationWorkflow
 from atlanticus.web.projection.models import (
     ProjectionExecutionResult as ExactProjectionExecutionResult,
+    ProjectionStatus as ExactProjectionStatus,
     ProjectionTarget,
 )
 from atlanticus.web.services import ServiceRegistry
@@ -47,8 +48,16 @@ class ManagerProjectionCoordinator:
         self._services = services
         self._authorization = authorization
 
-    def get_status(self, module_key: str, principal: ManagerPrincipal) -> ProjectionStatus:
-        module, workflow = self._resolve(module_key)
+    def get_status(
+        self,
+        module_key: str,
+        principal: ManagerPrincipal,
+    ) -> ProjectionStatus | ExactProjectionStatus:
+        module = self._registry.require(module_key)
+        if module.exact_projection_service is not None:
+            module, workflow = self._resolve_exact_projection(module_key)
+        else:
+            module, workflow = self._resolve(module_key)
         if not self._authorization.can_view(principal, module):
             raise ManagerAuthorizationError('Manager module access is denied')
         return workflow.get_status()

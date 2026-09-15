@@ -26,6 +26,10 @@ from atlanticus.web.manager.projection import (
     resolve_projection_state,
 )
 from atlanticus.web.manager.registry import ManagerModuleRegistry
+from atlanticus.web.projection.models import (
+    ProjectionAlignment,
+    ProjectionStatus as ExactProjectionStatus,
+)
 from atlanticus.web.manager.web.home import build_manager_home
 from atlanticus.web.manager.web.ids import (
     CONTENT_ID,
@@ -340,20 +344,21 @@ def build_module_content(
 ) -> object:
     try:
         status = coordinator.get_status(module.key, principal)
-        history = coordinator.list_history(module.key, principal, limit=20)
-        can_load_history = coordinator.can_load_history(module.key, principal)
     except ManagerError:
         status = None
-        history = ()
-        can_load_history = False
         status_error = 'No fue posible consultar el estado de configuración.'
     except Exception:
         status = None
-        history = ()
-        can_load_history = False
         status_error = 'No fue posible consultar el estado de configuración.'
     else:
         status_error = None
+    # History es otra capability: su ausencia no degrada un status exacto válido.
+    try:
+        history = coordinator.list_history(module.key, principal, limit=20)
+        can_load_history = coordinator.can_load_history(module.key, principal)
+    except Exception:
+        history = ()
+        can_load_history = False
 
     content = module.layout(services)
     preamble = module.preamble(services) if module.preamble is not None else None
@@ -421,7 +426,7 @@ def build_module_content(
 def build_workflow_panel(
     *,
     module: ManagerModule,
-    status: ProjectionStatus | None,
+    status: ProjectionStatus | ExactProjectionStatus | None,
     history: tuple[RevisionHistoryEntry, ...],
     can_load_history: bool,
     error: str | None,
@@ -476,7 +481,7 @@ def build_workflow_panel(
 def build_workflow_status_content(
     *,
     module: ManagerModule,
-    status: ProjectionStatus | None,
+    status: ProjectionStatus | ExactProjectionStatus | None,
     error: str | None,
 ) -> object:
     # Mantiene siempre visible la base publicada, incluso cuando la consulta falla.
@@ -517,6 +522,8 @@ def build_workflow_status_content(
                 'atlanticus-manager__workflow-group--published-empty'
             ),
         )
+    if isinstance(status, ExactProjectionStatus):
+        return _build_exact_workflow_status_content(module=module, status=status)
     state = resolve_projection_state(status)
     return html.Section(
         [
@@ -793,6 +800,75 @@ def _history_cell(
     )
 
 
+
+def _build_exact_workflow_status_content(
+    *,
+    module: ManagerModule,
+    status: ExactProjectionStatus,
+) -> object:
+    # No sintetiza audit actor ni tiempo de proyección: sólo muestra datos presentes en core.
+    state = resolve_projection_state(status)
+    source = status.source_current_release
+    projected = status.projected_source_release
+    return html.Section(
+        [
+            _workflow_group_header(
+                'Estado publicado',
+                'Identidad exacta de Source y release actualmente proyectada.',
+                state=state,
+            ),
+            html.Div(
+                [
+                    _workflow_stage_card(
+                        step='4',
+                        title='Fuente de verdad',
+                        subtitle=module.source_name,
+                        items=(
+                            (
+                                'Release actual',
+                                _short_revision(
+                                    source.release_id.value if source is not None else None
+                                ),
+                            ),
+                            (
+                                'Publicada',
+                                (
+                                    _format_datetime(source.published_at_utc)
+                                    if source is not None
+                                    else 'Sin registro'
+                                ),
+                            ),
+                        ),
+                    ),
+                    _workflow_stage_card(
+                        step='5',
+                        title='Proyección activa',
+                        subtitle=module.projection_name,
+                        items=(
+                            (
+                                'Release proyectada',
+                                _short_revision(
+                                    projected.release_id.value if projected is not None else None
+                                ),
+                            ),
+                            (
+                                'Publicación de Source',
+                                (
+                                    _format_datetime(projected.published_at_utc)
+                                    if projected is not None
+                                    else 'Sin registro'
+                                ),
+                            ),
+                        ),
+                    ),
+                ],
+                className='atlanticus-manager__workflow-stage-grid',
+            ),
+        ],
+        className='atlanticus-manager__workflow-group',
+    )
+
+
 def build_workflow_history_content(
     *,
     module: ManagerModule,
@@ -810,9 +886,27 @@ def build_workflow_history_content(
     )
 
 
-def _workflow_revision_state(status: ProjectionStatus | None) -> dict[str, object] | None:
+def _workflow_revision_state(
+    status: ProjectionStatus | ExactProjectionStatus | None,
+) -> dict[str, object] | None:
     if status is None:
         return None
+    # Browser state serializa identidad exacta completa y nunca la llama source_revision.
+    if isinstance(status, ExactProjectionStatus):
+        source = status.source_current_release
+        projected = status.projected_source_release
+        return {
+            'source_release_id': source.release_id.value if source is not None else None,
+            'source_published_at_utc': (
+                source.published_at_utc.isoformat() if source is not None else None
+            ),
+            'projected_source_release_id': (
+                projected.release_id.value if projected is not None else None
+            ),
+            'projected_source_published_at_utc': (
+                projected.published_at_utc.isoformat() if projected is not None else None
+            ),
+        }
     return {
         'source_revision': status.source_revision,
         'source_actor': status.source_audit.actor if status.source_audit is not None else None,
@@ -823,13 +917,23 @@ def _workflow_revision_state(status: ProjectionStatus | None) -> dict[str, objec
     }
 
 
-def _can_project(status: ProjectionStatus | None) -> bool:
-    if status is None or status.source_revision is None:
+def _can_project(status: ProjectionStatus | ExactProjectionStatus | None) -> bool:
+    if status is None:
+        return False
+    if isinstance(status, ExactProjectionStatus):
+        return (
+            status.source_current_release is not None
+            and status.alignment is not ProjectionAlignment.CURRENT
+        )
+    if status.source_revision is None:
         return False
     return status.active_source_revision != status.source_revision
 
 
-def _build_module_status(module_key: str, status: ProjectionStatus | None) -> object:
+def _build_module_status(
+    module_key: str,
+    status: ProjectionStatus | ExactProjectionStatus | None,
+) -> object:
     state = resolve_projection_state(status) if status is not None else ProjectionState.UNAVAILABLE
     return html.Span(
         _STATE_LABELS[state],

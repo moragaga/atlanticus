@@ -8,7 +8,11 @@ from enum import StrEnum
 from typing import Literal, Protocol, runtime_checkable
 
 from atlanticus.web.manager.errors import ManagerProjectionError
-from atlanticus.web.projection.models import ProjectionTarget
+from atlanticus.web.projection.models import (
+    ProjectionAlignment,
+    ProjectionStatus as ExactProjectionStatus,
+    ProjectionTarget,
+)
 
 ProjectionIssueLevel = Literal['error', 'warning']
 
@@ -330,7 +334,15 @@ class RevisionHistoryWorkflow(Protocol):
     def load_revision(self, revision: str) -> dict[str, object]: ...
 
 
-def resolve_projection_state(status: ProjectionStatus) -> ProjectionState:
+def resolve_projection_state(
+    status: ProjectionStatus | ExactProjectionStatus,
+) -> ProjectionState:
+    if isinstance(status, ExactProjectionStatus):
+        if status.source_current_release is None:
+            return ProjectionState.NO_SOURCE
+        if status.alignment is ProjectionAlignment.CURRENT:
+            return ProjectionState.SYNCHRONIZED
+        return ProjectionState.READY
     if status.source_revision is None:
         return ProjectionState.NO_SOURCE
     if (

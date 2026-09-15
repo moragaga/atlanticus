@@ -27,6 +27,7 @@ from atlanticus.web.manager.projection import (
     resolve_projection_state,
 )
 from atlanticus.web.manager.registry import ManagerModuleRegistry
+from atlanticus.web.projection.models import ProjectionStatus as ExactProjectionStatus
 from atlanticus.web.manager.web.exact_workspace import (
     build_exact_saved_workspace_content,
     build_exact_source_conflict_content,
@@ -1573,12 +1574,17 @@ def _load_workflow_state(
 ) -> tuple[ProjectionStatus | None, tuple[object, ...], bool, str | None]:
     try:
         status = coordinator.get_status(module_key, principal)
-        history = coordinator.list_history(module_key, principal, limit=20)
-        can_load_history = coordinator.can_load_history(module_key, principal)
     except ManagerError as error:
         return None, (), False, str(error)
     except Exception:
         return None, (), False, 'Configuration status could not be loaded'
+    # History puede seguir no migrado sin convertir un status exacto válido en unavailable.
+    try:
+        history = coordinator.list_history(module_key, principal, limit=20)
+        can_load_history = coordinator.can_load_history(module_key, principal)
+    except Exception:
+        history = ()
+        can_load_history = False
     return status, history, can_load_history, None
 
 
@@ -1785,10 +1791,26 @@ def _pattern_click_is_real(
 
 
 def _workflow_revision_state(
-    status: ProjectionStatus | None,
+    status: ProjectionStatus | ExactProjectionStatus | None,
 ) -> dict[str, object] | None:
     if status is None:
         return None
+    # Conserva release id + timestamp juntos; no introduce un alias source_revision.
+    if isinstance(status, ExactProjectionStatus):
+        source = status.source_current_release
+        projected = status.projected_source_release
+        return {
+            'source_release_id': source.release_id.value if source is not None else None,
+            'source_published_at_utc': (
+                source.published_at_utc.isoformat() if source is not None else None
+            ),
+            'projected_source_release_id': (
+                projected.release_id.value if projected is not None else None
+            ),
+            'projected_source_published_at_utc': (
+                projected.published_at_utc.isoformat() if projected is not None else None
+            ),
+        }
     return {
         'source_revision': status.source_revision,
         'source_actor': status.source_audit.actor if status.source_audit is not None else None,

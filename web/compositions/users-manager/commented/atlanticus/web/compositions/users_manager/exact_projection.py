@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from atlanticus.web.projection.models import ProjectionExecutionResult, ProjectionTarget
+from atlanticus.web.projection.models import (
+    ProjectionExecutionResult,
+    ProjectionStatus,
+    ProjectionTarget,
+)
 from atlanticus.web.projection.service import SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.models import SourceKey
@@ -22,6 +26,10 @@ class UsersManagerExactProjectionWorkflow:
         # La composición fija el SourceKey del dominio; Manager no lo reconstruye ni lo convierte.
         self._projection = projection
         self._source_key = source_key
+
+    def get_status(self) -> ProjectionStatus:
+        # Mantiene ProjectionStatus canónico; no crea ProjectionStatus legacy de Manager.
+        return self._projection.get_status(self._source_key)
 
     def get_current_projection_target(self) -> ProjectionTarget | None:
         # SourceProjectionService selecciona current usando la identidad exacta del Source.
