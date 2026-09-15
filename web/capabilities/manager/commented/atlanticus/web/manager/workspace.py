@@ -1,19 +1,10 @@
-# Define el nuevo contrato backend de Manager para separar cuatro dimensiones que antes se mezclaban:
-# BASE es el SourceSnapshot exacto desde el que nació el trabajo local; SOURCE es otra lectura actual y fresca.
-# WORKSPACE conserva sólo contenido editable, propietario, fecha y una revisión local derivada del payload.
-# PROJECTION reutiliza el contrato canónico de Projection Core y sólo añade una traducción de presentación.
-#
-# El documento persistible del workspace incluye la BASE completa, incluido el ConcurrencyToken opaco.
-# Eso permite abandonar y volver a la página sin perder ni el draft ni la precondición asociada a su base.
-# History no vive aquí: el historial real debe seguir consultándose en SourceStore y nunca derivarse del draft.
-#
-# La publicación normal exige que BASE y SOURCE sigan en la misma publicación lógica.
-# El overwrite humano de un conflicto conserva basis_release de BASE, pero usa el token fresco de SOURCE.
-# Así previous_published_release puede avanzar sin borrar de qué publicación nació realmente el workspace.
-#
-# La selección de Projection produce un ProjectionTarget exacto a partir de un snapshot ya leído.
-# El target puede conservarse y reintentarse aunque Source avance después; no se vuelve a seleccionar en project().
 from __future__ import annotations
+
+# Este módulo modela el WORKSPACE genérico del Manager sin confundir su identidad local
+# con la identidad durable de Source. El payload editable tiene una revisión propia y
+# conserva además la revisión local que tenía al establecerse la BASE del trabajo.
+# SourceSnapshot permanece como value object exacto: release, hash y token no se reducen
+# a strings de revisión del Manager.
 
 import hashlib
 import json
@@ -34,6 +25,7 @@ from atlanticus.web.source.models import (
 )
 
 
+# Estado de presentación de la proyección respecto de Source.
 class ManagerProjectionState(StrEnum):
     NO_SOURCE = 'no_source'
     NEVER_PROJECTED = 'never_projected'
@@ -41,10 +33,14 @@ class ManagerProjectionState(StrEnum):
     OUTDATED = 'outdated'
 
 
+# WORKSPACE editable. revision identifica el contenido actual; base_payload_revision
+# identifica el contenido local observado al establecer la BASE. Ninguna de las dos
+# revisiones representa una SourceReleaseId.
 @dataclass(frozen=True, slots=True)
 class ManagerWorkspace:
     owner_subject_id: str
     revision: str
+    base_payload_revision: str
     saved_at_utc: datetime
     payload: dict[str, object]
     base: SourceSnapshot
@@ -56,13 +52,19 @@ class ManagerWorkspace:
         expected_revision = _build_workspace_revision(self.payload)
         if self.revision.strip() != expected_revision:
             raise ValueError('Manager workspace revision does not match payload')
+        base_payload_revision = self.base_payload_revision.strip()
+        if not base_payload_revision:
+            raise ValueError('Manager workspace base payload revision must not be empty')
         if self.saved_at_utc.tzinfo is None or self.saved_at_utc.utcoffset() is None:
             raise ValueError('Manager workspace timestamp must be timezone-aware')
         object.__setattr__(self, 'owner_subject_id', owner)
         object.__setattr__(self, 'revision', expected_revision)
+        object.__setattr__(self, 'base_payload_revision', base_payload_revision)
         object.__setattr__(self, 'saved_at_utc', self.saved_at_utc.astimezone(UTC))
         object.__setattr__(self, 'payload', deepcopy(self.payload))
 
+    # Un workspace recién establecido parte sin cambios locales: ambas revisiones
+    # de payload nacen iguales aunque Source tenga o no una release publicada.
     @classmethod
     def create(
         cls,
@@ -72,19 +74,63 @@ class ManagerWorkspace:
         base: SourceSnapshot,
         saved_at_utc: datetime | None = None,
     ) -> ManagerWorkspace:
+        revision = _build_workspace_revision(payload)
         return cls(
             owner_subject_id=owner_subject_id,
-            revision=_build_workspace_revision(payload),
+            revision=revision,
+            base_payload_revision=revision,
             saved_at_utc=(saved_at_utc or datetime.now(UTC)).astimezone(UTC),
             payload=payload,
             base=base,
         )
 
+    # La suciedad funcional se decide únicamente comparando identidades locales.
+    @property
+    def has_local_changes(self) -> bool:
+        return self.revision != self.base_payload_revision
+
+    # Una edición cambia revision pero conserva tanto la BASE Source exacta como la
+    # revisión local del payload base.
+    def with_payload(
+        self,
+        payload: dict[str, object],
+        *,
+        saved_at_utc: datetime | None = None,
+    ) -> ManagerWorkspace:
+        return ManagerWorkspace(
+            owner_subject_id=self.owner_subject_id,
+            revision=_build_workspace_revision(payload),
+            base_payload_revision=self.base_payload_revision,
+            saved_at_utc=(saved_at_utc or datetime.now(UTC)).astimezone(UTC),
+            payload=payload,
+            base=self.base,
+        )
+
+    # Tras una publicación confirmada, rebase convierte el payload actual en la nueva
+    # línea base local y adopta el SourceSnapshot publicado sin alterar el contenido.
+    def rebase(
+        self,
+        base: SourceSnapshot,
+        *,
+        saved_at_utc: datetime | None = None,
+    ) -> ManagerWorkspace:
+        return ManagerWorkspace(
+            owner_subject_id=self.owner_subject_id,
+            revision=self.revision,
+            base_payload_revision=self.revision,
+            saved_at_utc=(saved_at_utc or datetime.now(UTC)).astimezone(UTC),
+            payload=self.payload,
+            base=base,
+        )
+
+    # El schema 2 persiste explícitamente base_payload_revision; el shape anterior no
+    # puede expresar esta distinción y por eso no se interpreta silenciosamente.
     def to_document(self) -> dict[str, object]:
         return {
-            'schema_version': 1,
+            'schema_version': 2,
             'owner_subject_id': self.owner_subject_id,
             'revision': self.revision,
+            'base_payload_revision': self.base_payload_revision,
             'saved_at_utc': self.saved_at_utc.isoformat(),
             'payload': deepcopy(self.payload),
             'base': _source_snapshot_to_document(self.base),
@@ -95,13 +141,14 @@ class ManagerWorkspace:
         try:
             payload = document['payload']
             base_document = document['base']
-            if document.get('schema_version') != 1:
+            if document.get('schema_version') != 2:
                 raise TypeError
             if not isinstance(payload, dict) or not isinstance(base_document, dict):
                 raise TypeError
             return cls(
                 owner_subject_id=str(document['owner_subject_id']),
                 revision=str(document['revision']),
+                base_payload_revision=str(document['base_payload_revision']),
                 saved_at_utc=datetime.fromisoformat(str(document['saved_at_utc'])),
                 payload=deepcopy(payload),
                 base=_source_snapshot_from_document(base_document),
@@ -110,6 +157,8 @@ class ManagerWorkspace:
             raise ValueError('Manager workspace document is invalid') from error
 
 
+# Verificación exacta: el conflicto funcional depende de identidad de release, no del
+# token. Un token puede refrescarse manteniendo la misma release y seguir siendo publicable.
 @dataclass(frozen=True, slots=True)
 class ManagerSourceVerification:
     workspace_revision: str
@@ -141,6 +190,8 @@ class ManagerSourceVerification:
         return not self.matches
 
 
+# Contexto derivado para publicar: conserva basis_release de la BASE y usa el token
+# fresco de SOURCE como precondición CAS.
 @dataclass(frozen=True, slots=True)
 class ManagerPublicationContext:
     workspace_revision: str
@@ -201,6 +252,7 @@ def resolve_manager_projection_state(status: ProjectionStatus) -> ManagerProject
     raise ValueError('Unsupported projection alignment')
 
 
+# La revisión local es SHA-256 del JSON canónico del payload y no una identidad Source.
 def _build_workspace_revision(payload: dict[str, object]) -> str:
     canonical = json.dumps(
         payload,
@@ -263,9 +315,7 @@ def _source_snapshot_from_document(document: dict[str, object]) -> SourceSnapsho
         current = SourceReleaseSummary(
             release_ref=SourceReleaseRef(
                 release_id=SourceReleaseId(str(current_document['release_id'])),
-                published_at_utc=datetime.fromisoformat(
-                    str(current_document['published_at_utc'])
-                ),
+                published_at_utc=datetime.fromisoformat(str(current_document['published_at_utc'])),
             ),
             content_hash=Digest(
                 algorithm=str(content_hash_document['algorithm']),

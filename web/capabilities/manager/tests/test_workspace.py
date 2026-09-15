@@ -76,6 +76,54 @@ def test_workspace_document_preserves_empty_base_for_first_publication() -> None
     assert restored.base.concurrency_token is None
 
 
+def test_workspace_document_rejects_legacy_shape_without_base_payload_revision() -> None:
+    workspace = _workspace(_snapshot('release-1'))
+    document = workspace.to_document()
+    document['schema_version'] = 1
+    document.pop('base_payload_revision')
+
+    with pytest.raises(ValueError, match='document is invalid'):
+        ManagerWorkspace.from_document(document)
+
+
+def test_new_workspace_baselines_local_content_without_source_identity_comparison() -> None:
+    workspace = _workspace(_snapshot('release-1'))
+
+    assert workspace.base_payload_revision == workspace.revision
+    assert workspace.has_local_changes is False
+
+
+def test_workspace_edit_preserves_base_payload_revision_and_exact_source_base() -> None:
+    workspace = _workspace(_snapshot('release-1', token='etag-1'))
+
+    edited = workspace.with_payload(
+        {'tools': [{'key': 'one', 'enabled': False}]},
+        saved_at_utc=datetime(2026, 9, 12, 13, 5, tzinfo=UTC),
+    )
+
+    assert edited.revision != workspace.revision
+    assert edited.base_payload_revision == workspace.revision
+    assert edited.base == workspace.base
+    assert edited.has_local_changes is True
+
+
+def test_workspace_rebase_marks_current_payload_as_new_local_baseline() -> None:
+    workspace = _workspace(_snapshot('release-1')).with_payload(
+        {'tools': [{'key': 'one', 'enabled': False}]}
+    )
+    published = _snapshot('release-2', token='etag-2', minute=1)
+
+    rebased = workspace.rebase(
+        published,
+        saved_at_utc=datetime(2026, 9, 12, 13, 10, tzinfo=UTC),
+    )
+
+    assert rebased.revision == workspace.revision
+    assert rebased.base_payload_revision == workspace.revision
+    assert rebased.base == published
+    assert rebased.has_local_changes is False
+
+
 def test_workspace_revision_is_local_content_identity_not_source_release_identity() -> None:
     first = _workspace(_snapshot('release-1'))
     second = _workspace(_snapshot('release-2', minute=1))

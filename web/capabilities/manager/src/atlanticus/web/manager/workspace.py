@@ -30,6 +30,7 @@ class ManagerProjectionState(StrEnum):
 class ManagerWorkspace:
     owner_subject_id: str
     revision: str
+    base_payload_revision: str
     saved_at_utc: datetime
     payload: dict[str, object]
     base: SourceSnapshot
@@ -41,10 +42,14 @@ class ManagerWorkspace:
         expected_revision = _build_workspace_revision(self.payload)
         if self.revision.strip() != expected_revision:
             raise ValueError('Manager workspace revision does not match payload')
+        base_payload_revision = self.base_payload_revision.strip()
+        if not base_payload_revision:
+            raise ValueError('Manager workspace base payload revision must not be empty')
         if self.saved_at_utc.tzinfo is None or self.saved_at_utc.utcoffset() is None:
             raise ValueError('Manager workspace timestamp must be timezone-aware')
         object.__setattr__(self, 'owner_subject_id', owner)
         object.__setattr__(self, 'revision', expected_revision)
+        object.__setattr__(self, 'base_payload_revision', base_payload_revision)
         object.__setattr__(self, 'saved_at_utc', self.saved_at_utc.astimezone(UTC))
         object.__setattr__(self, 'payload', deepcopy(self.payload))
 
@@ -57,19 +62,56 @@ class ManagerWorkspace:
         base: SourceSnapshot,
         saved_at_utc: datetime | None = None,
     ) -> ManagerWorkspace:
+        revision = _build_workspace_revision(payload)
         return cls(
             owner_subject_id=owner_subject_id,
-            revision=_build_workspace_revision(payload),
+            revision=revision,
+            base_payload_revision=revision,
             saved_at_utc=(saved_at_utc or datetime.now(UTC)).astimezone(UTC),
             payload=payload,
             base=base,
         )
 
+    @property
+    def has_local_changes(self) -> bool:
+        return self.revision != self.base_payload_revision
+
+    def with_payload(
+        self,
+        payload: dict[str, object],
+        *,
+        saved_at_utc: datetime | None = None,
+    ) -> ManagerWorkspace:
+        return ManagerWorkspace(
+            owner_subject_id=self.owner_subject_id,
+            revision=_build_workspace_revision(payload),
+            base_payload_revision=self.base_payload_revision,
+            saved_at_utc=(saved_at_utc or datetime.now(UTC)).astimezone(UTC),
+            payload=payload,
+            base=self.base,
+        )
+
+    def rebase(
+        self,
+        base: SourceSnapshot,
+        *,
+        saved_at_utc: datetime | None = None,
+    ) -> ManagerWorkspace:
+        return ManagerWorkspace(
+            owner_subject_id=self.owner_subject_id,
+            revision=self.revision,
+            base_payload_revision=self.revision,
+            saved_at_utc=(saved_at_utc or datetime.now(UTC)).astimezone(UTC),
+            payload=self.payload,
+            base=base,
+        )
+
     def to_document(self) -> dict[str, object]:
         return {
-            'schema_version': 1,
+            'schema_version': 2,
             'owner_subject_id': self.owner_subject_id,
             'revision': self.revision,
+            'base_payload_revision': self.base_payload_revision,
             'saved_at_utc': self.saved_at_utc.isoformat(),
             'payload': deepcopy(self.payload),
             'base': _source_snapshot_to_document(self.base),
@@ -80,13 +122,14 @@ class ManagerWorkspace:
         try:
             payload = document['payload']
             base_document = document['base']
-            if document.get('schema_version') != 1:
+            if document.get('schema_version') != 2:
                 raise TypeError
             if not isinstance(payload, dict) or not isinstance(base_document, dict):
                 raise TypeError
             return cls(
                 owner_subject_id=str(document['owner_subject_id']),
                 revision=str(document['revision']),
+                base_payload_revision=str(document['base_payload_revision']),
                 saved_at_utc=datetime.fromisoformat(str(document['saved_at_utc'])),
                 payload=deepcopy(payload),
                 base=_source_snapshot_from_document(base_document),
