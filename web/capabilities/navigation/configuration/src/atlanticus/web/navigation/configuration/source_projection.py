@@ -6,6 +6,7 @@ from atlanticus.web.navigation.configuration.errors import NavigationConfigurati
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
 from atlanticus.web.navigation.configuration.projection import NavigationProjectionIssue
 from atlanticus.web.navigation.configuration.source_release import NavigationSourceCodec
+from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.projection.service import ProjectionBuilder, SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.models import SourceReleaseMetadata, SourceResource
@@ -30,9 +31,11 @@ class NavigationProjectionBuilder(ProjectionBuilder[NavigationConfigurationCatal
     def build(
         self,
         *,
+        target: ProjectionTarget,
         release: SourceReleaseMetadata,
         resources: tuple[SourceResource, ...],
     ) -> NavigationConfigurationCatalog:
+        del target, release
         catalog = self._codec.decode(resources).catalog
         catalog.to_definition()
         issues = tuple(issue for validator in self._validators for issue in validator(catalog))

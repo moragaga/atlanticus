@@ -25,6 +25,14 @@ class ProjectionAttemptOutcome(str, Enum):
 class ProjectionTarget:
     source_key: SourceKey
     source_release: SourceReleaseRef
+    dependencies: tuple[ProjectionTarget, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'dependencies',
+            _normalize_dependencies(self.source_key, self.dependencies),
+        )
 
     @property
     def source_release_id(self) -> SourceReleaseId:
@@ -38,6 +46,7 @@ class ProjectionRecord(Generic[PayloadT]):
     source_published_at_utc: datetime
     projected_at_utc: datetime
     payload: PayloadT
+    dependencies: tuple[ProjectionTarget, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -50,6 +59,11 @@ class ProjectionRecord(Generic[PayloadT]):
             'projected_at_utc',
             _normalize_utc(self.projected_at_utc, 'Projection time'),
         )
+        object.__setattr__(
+            self,
+            'dependencies',
+            _normalize_dependencies(self.source_key, self.dependencies),
+        )
 
     @property
     def source_release(self) -> SourceReleaseRef:
@@ -58,12 +72,34 @@ class ProjectionRecord(Generic[PayloadT]):
             published_at_utc=self.source_published_at_utc,
         )
 
+    @property
+    def target(self) -> ProjectionTarget:
+        return ProjectionTarget(
+            source_key=self.source_key,
+            source_release=self.source_release,
+            dependencies=self.dependencies,
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class ProjectionStatus:
     alignment: ProjectionAlignment
     source_current_release: SourceReleaseRef | None
     projected_source_release: SourceReleaseRef | None
+    current_dependencies: tuple[ProjectionTarget, ...] = ()
+    projected_dependencies: tuple[ProjectionTarget, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            'current_dependencies',
+            tuple(self.current_dependencies),
+        )
+        object.__setattr__(
+            self,
+            'projected_dependencies',
+            tuple(self.projected_dependencies),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,10 +112,23 @@ class ProjectionExecutionResult(Generic[PayloadT]):
     )
 
     def __post_init__(self) -> None:
-        if self.projection.source_key != self.target.source_key:
-            raise ValueError('Projection result source key does not match target')
-        if self.projection.source_release != self.target.source_release:
-            raise ValueError('Projection result source release does not match target')
+        if self.projection.target != self.target:
+            raise ValueError('Projection result target does not match requested target')
+
+
+def _normalize_dependencies(
+    source_key: SourceKey,
+    dependencies: tuple[ProjectionTarget, ...],
+) -> tuple[ProjectionTarget, ...]:
+    normalized = tuple(dependencies)
+    if not all(isinstance(dependency, ProjectionTarget) for dependency in normalized):
+        raise TypeError('Projection dependencies must contain projection targets')
+    keys = tuple(dependency.source_key for dependency in normalized)
+    if source_key in keys:
+        raise ValueError('Projection target must not depend on its own source key')
+    if len(keys) != len(set(keys)):
+        raise ValueError('Projection dependency source keys must be unique')
+    return tuple(sorted(normalized, key=lambda dependency: dependency.source_key.value))
 
 
 def _normalize_utc(value: datetime, label: str) -> datetime:

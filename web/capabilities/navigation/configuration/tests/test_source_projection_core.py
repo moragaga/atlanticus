@@ -308,9 +308,13 @@ def test_projection_builder_rejects_domain_validator_errors() -> None:
             ),
         )
     )
+    target = ProjectionTarget(
+        source_key=source_key,
+        source_release=release_ref,
+    )
 
     with pytest.raises(NavigationConfigurationProjectionError):
-        builder.build(release=metadata, resources=(resource,))
+        builder.build(target=target, release=metadata, resources=(resource,))
 
 
 def test_exact_release_projection_remains_r1_after_source_advances_to_r2() -> None:

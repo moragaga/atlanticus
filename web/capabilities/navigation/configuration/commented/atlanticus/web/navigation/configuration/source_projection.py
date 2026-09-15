@@ -7,6 +7,7 @@ from atlanticus.web.navigation.configuration.errors import NavigationConfigurati
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
 from atlanticus.web.navigation.configuration.projection import NavigationProjectionIssue
 from atlanticus.web.navigation.configuration.source_release import NavigationSourceCodec
+from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.projection.service import ProjectionBuilder, SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.models import SourceReleaseMetadata, SourceResource
@@ -15,7 +16,6 @@ from atlanticus.web.source.store import SourceStore
 NavigationProjectionValidator = Callable[
     [NavigationConfigurationCatalog],
     tuple[NavigationProjectionIssue, ...],
-# Los validadores siguen siendo inyectables para que la composición pueda imponer reglas externas sin acoplar Users.
 ]
 
 
@@ -23,7 +23,6 @@ class NavigationProjectionBuilder(ProjectionBuilder[NavigationConfigurationCatal
     def __init__(
         self,
         *,
-# El builder sólo transforma recursos de una release ya seleccionada; nunca consulta Source current.
         codec: NavigationSourceCodec | None = None,
         validators: tuple[NavigationProjectionValidator, ...] = (),
     ) -> None:
@@ -33,9 +32,12 @@ class NavigationProjectionBuilder(ProjectionBuilder[NavigationConfigurationCatal
     def build(
         self,
         *,
+        target: ProjectionTarget,
         release: SourceReleaseMetadata,
         resources: tuple[SourceResource, ...],
     ) -> NavigationConfigurationCatalog:
+        # Navigation no tiene dependencias externas; sólo consume los recursos exactos del target.
+        del target, release
         catalog = self._codec.decode(resources).catalog
         catalog.to_definition()
         issues = tuple(issue for validator in self._validators for issue in validator(catalog))
@@ -43,7 +45,6 @@ class NavigationProjectionBuilder(ProjectionBuilder[NavigationConfigurationCatal
             raise NavigationConfigurationProjectionError(
                 'Published navigation configuration is not valid for projection'
             )
-# La validación ocurre sobre el catálogo publicado exacto antes de reemplazar la proyección activa.
         return catalog
 
 
@@ -53,8 +54,8 @@ def create_navigation_projection_service(
     projection: ProjectionStore[NavigationConfigurationCatalog],
     validators: tuple[NavigationProjectionValidator, ...] = (),
 ) -> SourceProjectionService[NavigationConfigurationCatalog]:
+    # La factory reutiliza el servicio genérico sin agregar contratos de transición.
     return SourceProjectionService(
-# La factory reutiliza SourceProjectionService; Navigation aporta únicamente codec, builder y validadores de dominio.
         source=source,
         projection=projection,
         builder=NavigationProjectionBuilder(validators=validators),

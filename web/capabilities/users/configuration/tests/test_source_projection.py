@@ -120,8 +120,14 @@ def test_builder_returns_composed_contract_without_source_actor() -> None:
         datetime(2026, 9, 13, 12, tzinfo=UTC),
         payload,
     )
+    target = ProjectionTarget(
+        source_key=source_key,
+        source_release=metadata.release_ref,
+    )
 
-    projected = UsersProjectionBuilder().build(release=metadata, resources=resources)
+    projected = UsersProjectionBuilder().build(
+        target=target, release=metadata, resources=resources
+    )
 
     assert projected == payload
     assert not hasattr(projected, 'published_by')

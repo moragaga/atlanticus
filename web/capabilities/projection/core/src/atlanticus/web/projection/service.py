@@ -18,12 +18,14 @@ from atlanticus.web.source.store import SourceStore
 
 PayloadT = TypeVar('PayloadT')
 ProjectionClock = Callable[[], datetime]
+ProjectionDependencySelector = Callable[[SourceKey], tuple[ProjectionTarget, ...]]
 
 
 class ProjectionBuilder(Protocol[PayloadT]):
     def build(
         self,
         *,
+        target: ProjectionTarget,
         release: SourceReleaseMetadata,
         resources: tuple[SourceResource, ...],
     ) -> PayloadT: ...
@@ -36,11 +38,13 @@ class SourceProjectionService(Generic[PayloadT]):
         source: SourceStore,
         projection: ProjectionStore[PayloadT],
         builder: ProjectionBuilder[PayloadT],
+        dependency_selector: ProjectionDependencySelector | None = None,
         clock: ProjectionClock | None = None,
     ) -> None:
         self._source = source
         self._projection = projection
         self._builder = builder
+        self._dependency_selector = dependency_selector or _no_dependencies
         self._clock = clock or _utc_now
 
     def select_current_target(self, source_key: SourceKey) -> ProjectionTarget | None:
@@ -50,31 +54,39 @@ class SourceProjectionService(Generic[PayloadT]):
         return ProjectionTarget(
             source_key=source_key,
             source_release=snapshot.current.release_ref,
+            dependencies=self._dependency_selector(source_key),
         )
 
     def get_status(self, source_key: SourceKey) -> ProjectionStatus:
-        snapshot = self._source.get_current(source_key)
+        current_target = self.select_current_target(source_key)
         active = self._projection.get_active(source_key)
-        current_release = snapshot.current.release_ref if snapshot.current is not None else None
         if active is None:
             return ProjectionStatus(
                 alignment=ProjectionAlignment.NEVER_PROJECTED,
-                source_current_release=current_release,
+                source_current_release=(
+                    current_target.source_release if current_target is not None else None
+                ),
                 projected_source_release=None,
+                current_dependencies=(
+                    current_target.dependencies if current_target is not None else ()
+                ),
             )
         if active.source_key != source_key:
             raise ProjectionInvariantError('Projection store returned a different source key')
-        projected_release = active.source_release
+        projected_target = active.target
         alignment = (
             ProjectionAlignment.CURRENT
-            if current_release is not None
-            and projected_release.release_id == current_release.release_id
+            if current_target is not None and projected_target == current_target
             else ProjectionAlignment.OUTDATED
         )
         return ProjectionStatus(
             alignment=alignment,
-            source_current_release=current_release,
-            projected_source_release=projected_release,
+            source_current_release=(
+                current_target.source_release if current_target is not None else None
+            ),
+            projected_source_release=projected_target.source_release,
+            current_dependencies=(current_target.dependencies if current_target is not None else ()),
+            projected_dependencies=projected_target.dependencies,
         )
 
     def project(self, target: ProjectionTarget) -> ProjectionExecutionResult[PayloadT]:
@@ -84,13 +96,18 @@ class SourceProjectionService(Generic[PayloadT]):
                 target.source_release,
             )
             self._validate_release(target, release)
-            payload = self._builder.build(release=release, resources=resources)
+            payload = self._builder.build(
+                target=target,
+                release=release,
+                resources=resources,
+            )
             candidate = ProjectionRecord(
                 source_key=target.source_key,
                 source_release_id=target.source_release_id,
                 source_published_at_utc=target.source_release.published_at_utc,
                 projected_at_utc=self._clock(),
                 payload=payload,
+                dependencies=target.dependencies,
             )
             saved = self._projection.replace_active(candidate)
             self._validate_saved(target, saved)
@@ -118,10 +135,12 @@ class SourceProjectionService(Generic[PayloadT]):
         target: ProjectionTarget,
         projection: ProjectionRecord[PayloadT],
     ) -> None:
-        if projection.source_key != target.source_key:
-            raise ProjectionInvariantError('Projection store persisted a different source key')
-        if projection.source_release != target.source_release:
-            raise ProjectionInvariantError('Projection store persisted a different source release')
+        if projection.target != target:
+            raise ProjectionInvariantError('Projection store persisted a different projection target')
+
+
+def _no_dependencies(_source_key: SourceKey) -> tuple[ProjectionTarget, ...]:
+    return ()
 
 
 def _utc_now() -> datetime:

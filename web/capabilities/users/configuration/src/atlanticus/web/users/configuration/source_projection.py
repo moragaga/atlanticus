@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.projection.service import ProjectionBuilder, SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.models import SourceReleaseMetadata, SourceResource
@@ -19,10 +20,11 @@ class UsersProjectionBuilder(ProjectionBuilder[UsersProfilesConfiguration]):
     def build(
         self,
         *,
+        target: ProjectionTarget,
         release: SourceReleaseMetadata,
         resources: tuple[SourceResource, ...],
     ) -> UsersProfilesConfiguration:
-        del release
+        del target, release
         try:
             return self._codec.decode(resources).projection_payload()
         except UsersConfigurationSourceError as error:

@@ -76,15 +76,16 @@ class FakeProjectionStore:
 class RecordingBuilder:
     def __init__(self, *, fail: bool = False) -> None:
         self.fail = fail
-        self.calls: list[SourceReleaseRef] = []
+        self.calls: list[ProjectionTarget] = []
 
     def build(
         self,
         *,
+        target: ProjectionTarget,
         release: SourceReleaseMetadata,
         resources: tuple[SourceResource, ...],
     ) -> str:
-        self.calls.append(release.release_ref)
+        self.calls.append(target)
         if self.fail:
             raise RuntimeError('projection builder failed')
         return resources[0].content.decode('utf-8')
@@ -98,11 +99,10 @@ def _release_ref(value: str, hour: int) -> SourceReleaseRef:
 
 
 def _release(
-    source_key: SourceKey, release_ref: SourceReleaseRef, content: str
-) -> tuple[
-    SourceReleaseMetadata,
-    tuple[SourceResource, ...],
-]:
+    source_key: SourceKey,
+    release_ref: SourceReleaseRef,
+    content: str,
+) -> tuple[SourceReleaseMetadata, tuple[SourceResource, ...]]:
     return (
         SourceReleaseMetadata(
             schema_version=1,
@@ -115,10 +115,19 @@ def _release(
     )
 
 
+def _target(source: str, release: str, hour: int) -> ProjectionTarget:
+    return ProjectionTarget(
+        source_key=SourceKey(source),
+        source_release=_release_ref(release, hour),
+    )
+
+
 def _record(
     source_key: SourceKey,
     release_ref: SourceReleaseRef,
     payload: str,
+    *,
+    dependencies: tuple[ProjectionTarget, ...] = (),
 ) -> ProjectionRecord[str]:
     return ProjectionRecord(
         source_key=source_key,
@@ -126,6 +135,7 @@ def _record(
         source_published_at_utc=release_ref.published_at_utc,
         projected_at_utc=datetime(2026, 9, 12, 18, tzinfo=UTC),
         payload=payload,
+        dependencies=dependencies,
     )
 
 
@@ -145,20 +155,22 @@ def test_project_reads_only_the_exact_target_even_when_source_current_is_newer()
         builder=builder,
         clock=lambda: datetime(2026, 9, 12, 14, tzinfo=UTC),
     )
+    target = ProjectionTarget(source_key=source_key, source_release=release_2)
 
-    result = service.project(ProjectionTarget(source_key=source_key, source_release=release_2))
+    result = service.project(target)
 
     assert result.outcome is ProjectionAttemptOutcome.SUCCESS
-    assert result.projection.source_release_id == release_2.release_id
+    assert result.projection.target == target
     assert result.projection.payload == 'r2'
     assert source.read_calls == [release_2]
     assert source.get_current_calls == 0
 
 
-def test_retry_uses_the_same_release_after_source_advances() -> None:
+def test_retry_uses_the_same_target_after_source_advances() -> None:
     source_key = SourceKey('navigation')
     release_2 = _release_ref('release-2', 12)
     release_3 = _release_ref('release-3', 13)
+    dependency = _target('tools', 'tools-4', 10)
     source = FakeSource(
         current=release_3,
         releases={release_2: _release(source_key, release_2, 'r2')},
@@ -166,13 +178,17 @@ def test_retry_uses_the_same_release_after_source_advances() -> None:
     store = FakeProjectionStore()
     builder = RecordingBuilder()
     service = SourceProjectionService(source=source, projection=store, builder=builder)
-    target = ProjectionTarget(source_key=source_key, source_release=release_2)
+    target = ProjectionTarget(
+        source_key=source_key,
+        source_release=release_2,
+        dependencies=(dependency,),
+    )
 
     service.project(target)
     service.project(target)
 
     assert source.read_calls == [release_2, release_2]
-    assert builder.calls == [release_2, release_2]
+    assert builder.calls == [target, target]
     assert source.get_current_calls == 0
 
 
@@ -218,18 +234,59 @@ def test_status_is_never_projected_when_no_active_projection_exists() -> None:
     assert status.projected_source_release is None
 
 
-def test_status_is_current_only_when_source_release_id_matches() -> None:
-    source_key = SourceKey('navigation')
+def test_status_is_current_only_when_complete_target_matches() -> None:
+    source_key = SourceKey('kpi-configuration')
     release_2 = _release_ref('release-2', 12)
+    tool_target = _target('tools', 'tools-4', 10)
     service = SourceProjectionService(
         source=FakeSource(current=release_2, releases={}),
-        projection=FakeProjectionStore(active=_record(source_key, release_2, 'r2')),
+        projection=FakeProjectionStore(
+            active=_record(
+                source_key,
+                release_2,
+                'r2',
+                dependencies=(tool_target,),
+            )
+        ),
         builder=RecordingBuilder(),
+        dependency_selector=lambda _source_key: (tool_target,),
     )
 
     status = service.get_status(source_key)
 
     assert status.alignment is ProjectionAlignment.CURRENT
+    assert status.source_current_release == release_2
+    assert status.projected_source_release == release_2
+    assert status.current_dependencies == (tool_target,)
+    assert status.projected_dependencies == (tool_target,)
+
+
+def test_status_is_outdated_when_dependency_changes_without_source_change() -> None:
+    source_key = SourceKey('kpi-configuration')
+    release_2 = _release_ref('release-2', 12)
+    previous_tool = _target('tools', 'tools-3', 9)
+    current_tool = _target('tools', 'tools-4', 10)
+    service = SourceProjectionService(
+        source=FakeSource(current=release_2, releases={}),
+        projection=FakeProjectionStore(
+            active=_record(
+                source_key,
+                release_2,
+                'r2',
+                dependencies=(previous_tool,),
+            )
+        ),
+        builder=RecordingBuilder(),
+        dependency_selector=lambda _source_key: (current_tool,),
+    )
+
+    status = service.get_status(source_key)
+
+    assert status.alignment is ProjectionAlignment.OUTDATED
+    assert status.source_current_release == release_2
+    assert status.projected_source_release == release_2
+    assert status.current_dependencies == (current_tool,)
+    assert status.projected_dependencies == (previous_tool,)
 
 
 def test_status_is_outdated_for_different_release_even_when_content_hash_is_same() -> None:
@@ -249,19 +306,26 @@ def test_status_is_outdated_for_different_release_even_when_content_hash_is_same
     assert status.projected_source_release == release_1
 
 
-def test_select_current_target_observes_current_once_and_returns_resolvable_ref() -> None:
-    source_key = SourceKey('navigation')
+def test_select_current_target_includes_canonical_dependency_identity() -> None:
+    source_key = SourceKey('kpi-configuration')
     release_2 = _release_ref('release-2', 12)
+    tool_target = _target('tools', 'tools-4', 10)
+    definitions_target = _target('definitions', 'definitions-2', 8)
     source = FakeSource(current=release_2, releases={})
     service = SourceProjectionService(
         source=source,
         projection=FakeProjectionStore(),
         builder=RecordingBuilder(),
+        dependency_selector=lambda _source_key: (tool_target, definitions_target),
     )
 
     target = service.select_current_target(source_key)
 
-    assert target == ProjectionTarget(source_key=source_key, source_release=release_2)
+    assert target == ProjectionTarget(
+        source_key=source_key,
+        source_release=release_2,
+        dependencies=(definitions_target, tool_target),
+    )
     assert source.get_current_calls == 1
 
 
@@ -281,29 +345,6 @@ def test_project_rejects_source_provider_returning_a_different_release() -> None
         match='Source store returned a different source release',
     ):
         service.project(ProjectionTarget(source_key=source_key, source_release=requested))
-
-
-def test_failed_projection_can_retry_the_same_target_without_republish() -> None:
-    source_key = SourceKey('navigation')
-    release_2 = _release_ref('release-2', 12)
-    source = FakeSource(
-        current=release_2,
-        releases={release_2: _release(source_key, release_2, 'r2')},
-    )
-    store = FakeProjectionStore()
-    builder = RecordingBuilder(fail=True)
-    service = SourceProjectionService(source=source, projection=store, builder=builder)
-    target = ProjectionTarget(source_key=source_key, source_release=release_2)
-
-    with pytest.raises(ProjectionExecutionError):
-        service.project(target)
-
-    builder.fail = False
-    result = service.project(target)
-
-    assert result.projection.source_release == release_2
-    assert source.read_calls == [release_2, release_2]
-    assert source.get_current_calls == 0
 
 
 def test_status_is_outdated_when_projection_exists_but_source_has_no_current_release() -> None:

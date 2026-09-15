@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.projection.service import ProjectionBuilder, SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.models import SourceReleaseMetadata, SourceResource
@@ -12,7 +13,7 @@ from atlanticus.web.users.configuration.errors import (
 from atlanticus.web.users.configuration.source_release import UsersSourceCodec
 
 
-# El builder materializa exclusivamente los recursos de la exact release entregada por Projection core.
+# El builder materializa exclusivamente los recursos del target exacto entregado por Projection core.
 class UsersProjectionBuilder(ProjectionBuilder[UsersProfilesConfiguration]):
     def __init__(self, *, codec: UsersSourceCodec | None = None) -> None:
         self._codec = codec or UsersSourceCodec()
@@ -20,10 +21,12 @@ class UsersProjectionBuilder(ProjectionBuilder[UsersProfilesConfiguration]):
     def build(
         self,
         *,
+        target: ProjectionTarget,
         release: SourceReleaseMetadata,
         resources: tuple[SourceResource, ...],
     ) -> UsersProfilesConfiguration:
-        del release
+        # Users no usa dependencias de proyección, pero satisface la única firma genérica vigente.
+        del target, release
         try:
             return self._codec.decode(resources).projection_payload()
         except UsersConfigurationSourceError as error:
@@ -32,7 +35,6 @@ class UsersProjectionBuilder(ProjectionBuilder[UsersProfilesConfiguration]):
             ) from error
 
 
-# La infraestructura genérica sigue controlando target exacto, retry e invariantes de SourceReleaseRef.
 def create_users_projection_service(
     *,
     source: SourceStore,
