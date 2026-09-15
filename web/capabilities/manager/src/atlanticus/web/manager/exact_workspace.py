@@ -83,6 +83,28 @@ class ManagerExactWorkspaceController:
         except ManagerProjectionError:
             return None
 
+    def has_local_work(
+        self,
+        *,
+        module_key: str,
+        principal: ManagerPrincipal,
+        workspace_document: dict[str, object] | None,
+        editor_revision: object,
+    ) -> bool:
+        workspace = self.safe_workspace(workspace_document, principal)
+        local_editor_revision = _optional_revision(editor_revision)
+        if workspace is None:
+            return local_editor_revision is not None
+        source = self._coordinator.load_current_source_exact(module_key, principal)
+        lifecycle = resolve_exact_source_lifecycle(
+            workspace=workspace,
+            editor_revision=local_editor_revision,
+            source=source,
+            validation_current=False,
+            source_verification=None,
+        )
+        return lifecycle.can_discard_local
+
     def validation_is_current(
         self,
         workspace: ManagerWorkspace | None,

@@ -22,6 +22,7 @@ from atlanticus.web.manager.projection import (
 )
 from atlanticus.web.manager.registry import ManagerModuleRegistry
 from atlanticus.web.manager.web.exact_workspace import (
+    build_exact_saved_workspace_content,
     build_exact_source_conflict_content,
     build_exact_workspace_content,
 )
@@ -487,14 +488,54 @@ def register_manager_callbacks(
         Output(workflow_action_id(MATCH, 'discard-saved-draft'), 'disabled'),
         Input(workflow_saved_draft_id(MATCH), 'data'),
         Input(workflow_revision_id(MATCH), 'data'),
+        State(workflow_saved_draft_id(MATCH), 'id'),
     )
     def refresh_saved_draft_status(
         saved_draft_data: dict[str, object] | None,
         revision_state: dict[str, object] | None,
+        saved_draft_id: dict[str, object],
     ):
+        principal = definition.principal_provider()
+        module_key = str(saved_draft_id.get('module', ''))
+        try:
+            module = registry.require(module_key)
+        except ManagerError:
+            module = None
+        if module is not None and _uses_exact_workspace(module):
+            if saved_draft_data is None:
+                return (
+                    build_exact_saved_workspace_content(
+                        workspace=None,
+                        source=None,
+                    ),
+                    True,
+                    True,
+                )
+            workspace = exact_workspace.safe_workspace(saved_draft_data, principal)
+            if workspace is None:
+                return (
+                    build_exact_saved_workspace_content(
+                        workspace=None,
+                        source=None,
+                        incompatible=True,
+                    ),
+                    True,
+                    False,
+                )
+            try:
+                source = coordinator.load_current_source_exact(module_key, principal)
+            except Exception:
+                source = None
+            return (
+                build_exact_saved_workspace_content(
+                    workspace=workspace,
+                    source=source,
+                ),
+                False,
+                False,
+            )
         if saved_draft_data is None:
             return build_saved_draft_content(draft=None, source_revision=None), True, True
-        principal = definition.principal_provider()
         try:
             draft = _require_draft(saved_draft_data, principal)
         except ManagerError:
@@ -552,7 +593,27 @@ def register_manager_callbacks(
                 no_update,
             )
         principal = definition.principal_provider()
+        module_key = str(trigger.get('module', ''))
         try:
+            module = registry.require(module_key)
+            if _uses_exact_workspace(module):
+                workspace = exact_workspace.require_workspace(saved_draft_data, principal)
+                source = coordinator.load_current_source_exact(module_key, principal)
+                source_changed = exact_workspace.source_changed(workspace, source)
+                message = (
+                    'Workspace recuperado. Source cambió desde que se guardó; revisa el contenido '
+                    'y verifica Source antes de publicar.'
+                    if source_changed
+                    else 'Workspace recuperado en el navegador.'
+                )
+                return (
+                    _notice_message(message),
+                    saved_draft_data,
+                    no_update,
+                    None,
+                    None,
+                    workspace.revision,
+                )
             draft = _require_draft(saved_draft_data, principal)
         except ManagerError as error:
             return _error_message(str(error)), no_update, no_update, no_update, no_update, no_update
@@ -814,11 +875,36 @@ def register_manager_callbacks(
         ):
             return no_update, no_update, no_update, no_update
         principal = definition.principal_provider()
+        module_key = str((trigger if isinstance(trigger, dict) else revision_id).get('module', ''))
+        try:
+            module = registry.require(module_key)
+        except ManagerError:
+            return no_update, no_update, no_update, no_update
+        if _uses_exact_workspace(module):
+            try:
+                if exact_workspace.has_local_work(
+                    module_key=module_key,
+                    principal=principal,
+                    workspace_document=draft_data,
+                    editor_revision=editor_revision,
+                ):
+                    return no_update, no_update, no_update, no_update
+                if not isinstance(draft_data, dict):
+                    return no_update, no_update, no_update, no_update
+                updated = exact_workspace.replace_from_source(
+                    module_key=module_key,
+                    principal=principal,
+                    workspace_document=draft_data,
+                )
+            except Exception:
+                return no_update, no_update, no_update, no_update
+            if updated is None:
+                return None, None, None, None
+            return None, updated, None, None
         if _has_local_work(draft_data, editor_revision, principal):
             return no_update, no_update, no_update, no_update
         if _source_revision(revision_state) is None:
             return no_update, no_update, no_update, no_update
-        module_key = str((trigger if isinstance(trigger, dict) else revision_id).get('module', ''))
         try:
             snapshot = coordinator.load_current_source(
                 module_key,
@@ -863,8 +949,37 @@ def register_manager_callbacks(
         principal = definition.principal_provider()
         module_key = str(trigger.get('module', ''))
         try:
+            module = registry.require(module_key)
+            if _uses_exact_workspace(module):
+                if action == 'keep-draft':
+                    updated_document = exact_workspace.keep_draft(
+                        principal=principal,
+                        workspace_document=draft_data,
+                        verification_document=verification_data,
+                    )
+                    return (
+                        _notice_message(
+                            f'Tu workspace se conservó. Vuelve a verificar {module.source_name} '
+                            'antes de publicar.'
+                        ),
+                        updated_document,
+                        no_update,
+                        None,
+                        no_update,
+                    )
+                updated_document = exact_workspace.replace_from_source(
+                    module_key=module_key,
+                    principal=principal,
+                    workspace_document=draft_data,
+                )
+                return (
+                    None,
+                    updated_document,
+                    None,
+                    None,
+                    int(refresh_signal or 0) + 1,
+                )
             if action == 'keep-draft':
-                module = registry.require(module_key)
                 draft = _require_draft(draft_data, principal)
                 verification = _require_source_verification(verification_data, draft)
                 if not verification.conflict or verification.source_revision is None:
@@ -1051,12 +1166,36 @@ def register_manager_callbacks(
                 no_update,
             )
         principal = definition.principal_provider()
-        has_local_work = _has_local_work(draft_data, editor_revision, principal)
         module_key = str(trigger.get('module', '')) if isinstance(trigger, dict) else ''
         try:
             module = registry.require(module_key)
         except ManagerError:
             return (no_update,) * 11
+        try:
+            has_local_work = (
+                exact_workspace.has_local_work(
+                    module_key=module_key,
+                    principal=principal,
+                    workspace_document=draft_data,
+                    editor_revision=editor_revision,
+                )
+                if _uses_exact_workspace(module)
+                else _has_local_work(draft_data, editor_revision, principal)
+            )
+        except ManagerError as error:
+            return (
+                True,
+                None,
+                None,
+                None,
+                _error_message(str(error)),
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+            )
         if action == 'discard-local':
             if not has_local_work:
                 return (
@@ -1111,11 +1250,24 @@ def register_manager_callbacks(
         if resolved_command not in {'discard', 'reload'}:
             return (no_update,) * 11
         try:
-            source_workspace = _load_current_source_workspace_draft(
-                coordinator=coordinator,
-                module_key=module_key,
-                principal=principal,
-            )
+            if _uses_exact_workspace(module):
+                source_document = exact_workspace.replace_from_source(
+                    module_key=module_key,
+                    principal=principal,
+                    workspace_document=draft_data,
+                )
+                source_workspace = (
+                    exact_workspace.require_workspace(source_document, principal)
+                    if source_document is not None
+                    else None
+                )
+            else:
+                source_document = None
+                source_workspace = _load_current_source_workspace_draft(
+                    coordinator=coordinator,
+                    module_key=module_key,
+                    principal=principal,
+                )
         except ManagerSourceConflictError:
             return (
                 True,
@@ -1176,7 +1328,11 @@ def register_manager_callbacks(
                 if resolved_command == 'discard'
                 else f'Estado remoto recargado y workspace actualizado desde {module.source_name}.'
             )
-            draft_output = source_workspace.to_document()
+            draft_output = (
+                source_document
+                if _uses_exact_workspace(module)
+                else source_workspace.to_document()
+            )
             editor_output = source_workspace.revision
             reset_output = no_update
         return (
@@ -1297,6 +1453,11 @@ def register_manager_callbacks(
         module_key = str(trigger.get('module', ''))
         principal = definition.principal_provider()
         try:
+            module = registry.require(module_key)
+            if _uses_exact_workspace(module):
+                raise ManagerProjectionError(
+                    'Exact-source history loading as workspace is not supported'
+                )
             payload = _history_preview_payload(preview_data, module_key)
             base_source_revision = None
             if revision_state:
