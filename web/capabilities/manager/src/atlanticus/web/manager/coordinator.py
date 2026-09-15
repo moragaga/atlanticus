@@ -6,6 +6,7 @@ from atlanticus.web.manager.errors import (
     ManagerProjectionError,
     ManagerSourceConflictError,
 )
+from atlanticus.web.manager.exact_projection import ExactProjectionWorkflow
 from atlanticus.web.manager.exact_source import (
     ExactSourcePublicationResult,
     ExactSourcePublicationWorkflow,
@@ -26,7 +27,10 @@ from atlanticus.web.manager.projection import (
 )
 from atlanticus.web.manager.registry import ManagerModuleRegistry
 from atlanticus.web.manager.validation import DraftValidationWorkflow
-from atlanticus.web.projection.models import ProjectionTarget
+from atlanticus.web.projection.models import (
+    ProjectionExecutionResult as ExactProjectionExecutionResult,
+    ProjectionTarget,
+)
 from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.source.models import SourceSnapshot as ExactSourceSnapshot
 
@@ -54,7 +58,11 @@ class ManagerProjectionCoordinator:
         module_key: str,
         principal: ManagerPrincipal,
     ) -> ProjectionTarget | None:
-        module, workflow = self._resolve(module_key)
+        module = self._registry.require(module_key)
+        if module.exact_projection_service is not None:
+            module, workflow = self._resolve_exact_projection(module_key)
+        else:
+            module, workflow = self._resolve(module_key)
         if not self._authorization.can_view(principal, module):
             raise ManagerAuthorizationError('Manager module access is denied')
         return workflow.get_current_projection_target()
@@ -205,8 +213,12 @@ class ManagerProjectionCoordinator:
         module_key: str,
         principal: ManagerPrincipal,
         target: ProjectionTarget,
-    ) -> ProjectionExecutionResult:
-        module, workflow = self._resolve(module_key)
+    ) -> ProjectionExecutionResult | ExactProjectionExecutionResult[object]:
+        module = self._registry.require(module_key)
+        if module.exact_projection_service is not None:
+            module, workflow = self._resolve_exact_projection(module_key)
+        else:
+            module, workflow = self._resolve(module_key)
         if not self._authorization.can_project(principal, module):
             raise ManagerAuthorizationError('Manager projection access is denied')
         return workflow.project(target)
@@ -310,6 +322,23 @@ class ManagerProjectionCoordinator:
         workflow = self._services.require(service_key)
         if not isinstance(workflow, DraftValidationWorkflow):
             raise ManagerProjectionError('Manager draft validation workflow has an invalid contract')
+        return module, workflow
+
+    def _resolve_exact_projection(
+        self,
+        module_key: str,
+    ) -> tuple[ManagerModule, ExactProjectionWorkflow]:
+        module = self._registry.require(module_key)
+        service_key = module.exact_projection_service
+        if service_key is None:
+            raise ManagerProjectionError(
+                'Manager module does not declare an exact projection service'
+            )
+        workflow = self._services.require(service_key)
+        if not isinstance(workflow, ExactProjectionWorkflow):
+            raise ManagerProjectionError(
+                'Manager exact projection workflow has an invalid contract'
+            )
         return module, workflow
 
     def _resolve_exact_source(

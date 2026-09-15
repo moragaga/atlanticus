@@ -10,6 +10,7 @@ from atlanticus.web.manager.errors import (
     ManagerProjectionError,
     ManagerSourceConflictError,
 )
+from atlanticus.web.manager.exact_projection import ExactProjectionWorkflow
 from atlanticus.web.manager.exact_source import (
     ExactSourcePublicationResult,
     ExactSourcePublicationWorkflow,
@@ -70,6 +71,7 @@ __all__ = [
     'DefaultManagerAuthorizationPolicy',
     'DraftValidationResult',
     'DraftValidationWorkflow',
+    'ExactProjectionWorkflow',
     'ExactSourcePublicationResult',
     'ExactSourcePublicationWorkflow',
     'ExactSourceReaderWorkflow',

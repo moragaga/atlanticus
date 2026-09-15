@@ -1497,8 +1497,11 @@ def register_manager_callbacks(
         if not isinstance(trigger, dict) or not _click_is_real(clicks):
             return no_update, no_update, no_update
         module_key = str(trigger.get('module', ''))
+        exact_projection = False
         try:
             principal = definition.principal_provider()
+            module = registry.require(module_key)
+            exact_projection = module.exact_projection_service is not None
             target = coordinator.get_current_projection_target(module_key, principal)
             if target is None:
                 raise ManagerProjectionError('A published source target is required')
@@ -1515,8 +1518,11 @@ def register_manager_callbacks(
             'source_key': result.target.source_key.value,
             'source_release_id': result.target.source_release_id.value,
             'source_published_at_utc': result.target.source_release.published_at_utc.isoformat(),
-            'projection_revision': result.projection_revision,
         }
+        if exact_projection:
+            signal['projected_at_utc'] = result.projection.projected_at_utc.isoformat()
+        else:
+            signal['projection_revision'] = result.projection_revision
         return None, int(refresh_signal or 0) + 1, signal
 
 

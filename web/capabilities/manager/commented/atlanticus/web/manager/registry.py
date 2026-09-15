@@ -147,6 +147,12 @@ class ManagerModuleRegistry:
                     )
             elif not workflow_service.strip():
                 raise ManagerDefinitionError('Manager workflow service must not be empty')
+            # Si se declara projection exacta debe apuntar a una service key concreta.
+            exact_projection_service = module.exact_projection_service
+            if exact_projection_service is not None and not exact_projection_service.strip():
+                raise ManagerDefinitionError(
+                    'Manager exact projection service must not be empty'
+                )
             if module.source_signal_id is not None:
                 source_signal_id = module.source_signal_id.strip()
                 if not source_signal_id:
