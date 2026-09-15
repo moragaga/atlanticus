@@ -4,18 +4,20 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "atlanticus-web-composition-users-manager"
-version = "0.1.0"
+version = "0.1.1"
 description = "Users exact-source workflow composition for Atlanticus Web Manager"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
-    "atlanticus-web-manager==0.3.15",
+    "atlanticus-web-manager==0.3.16",
+    "atlanticus-web-projection==0.1.0",
     "atlanticus-web-source==0.1.0",
     "atlanticus-web-users-configuration==0.1.9",
 ]
 
 [tool.uv.sources]
 atlanticus-web-manager = { workspace = true }
+atlanticus-web-projection = { workspace = true }
 atlanticus-web-source = { workspace = true }
 atlanticus-web-users-configuration = { workspace = true }
 

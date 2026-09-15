@@ -12,7 +12,7 @@ dependencies = [
     "atlanticus-web-identity-local==0.1.0",
     "atlanticus-web-navigation==0.1.0",
     "atlanticus-web-navigation-configuration==0.1.8",
-    "atlanticus-web-manager==0.3.15",
+    "atlanticus-web-manager==0.3.16",
     "atlanticus-web-profiles==0.1.0",
     "atlanticus-web-projection==0.1.0",
     "atlanticus-web-source==0.1.0",
@@ -28,7 +28,7 @@ dependencies = [
     "atlanticus-web-users-projection-cosmos==0.1.1",
     "atlanticus-web-users-activity==0.1.0",
     "atlanticus-web-composition-navigation-activity==0.1.0",
-    "atlanticus-web-composition-users-manager==0.1.0",
+    "atlanticus-web-composition-users-manager==0.1.1",
 ]
 
 [dependency-groups]
