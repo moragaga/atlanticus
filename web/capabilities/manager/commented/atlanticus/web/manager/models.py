@@ -1,6 +1,6 @@
-# Declara los contratos de composición de Manager sin imponer implementaciones de dominio.
-# Cada capability puede apuntar a un servicio distinto cuando su frontera técnica lo requiere.
-
+# Modelos de composición de Manager.
+# Los servicios de validación, lectura exacta y publicación exacta se declaran por separado
+# para que cada módulo exponga solamente las capabilities que realmente implementa.
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -71,9 +71,9 @@ class ManagerModule:
     projection_name: str = 'Projection'
     force_publish_enabled: bool = False
     history_preview_renderer: ManagerHistoryPreviewRenderer | None = None
-    # Se agrega al final para conservar la firma posicional histórica del dataclass.
-    # La capability exact-source declara así una dependencia distinta del lifecycle clásico.
     exact_source_workflow_service: str | None = None
+    draft_validation_service: str | None = None
+    exact_source_reader_service: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

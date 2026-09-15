@@ -1,5 +1,5 @@
-# Superficie pública de Manager. El workspace exact-source permanece genérico:
-# Manager conoce el envelope, lifecycle y SourceSnapshot, pero no tipos concretos de dominio.
+# Superficie pública de Manager.
+# Exporta las capabilities exact-source y de validación sin introducir conocimiento de Users.
 from atlanticus.web.manager.authorization import (
     DefaultManagerAuthorizationPolicy,
     ManagerAuthorizationPolicy,
@@ -15,6 +15,8 @@ from atlanticus.web.manager.errors import (
 from atlanticus.web.manager.exact_source import (
     ExactSourcePublicationResult,
     ExactSourcePublicationWorkflow,
+    ExactSourceReaderWorkflow,
+    ExactSourceReadResult,
 )
 from atlanticus.web.manager.lifecycle import (
     ManagerLifecycleState,
@@ -50,11 +52,13 @@ from atlanticus.web.manager.projection import (
 )
 from atlanticus.web.manager.registry import ManagerModuleRegistry
 from atlanticus.web.manager.surface import ManagerSurface
+from atlanticus.web.manager.validation import DraftValidationWorkflow
 from atlanticus.web.manager.workspace import (
     ManagerProjectionState,
     ManagerPublicationContext,
     ManagerSourceVerification,
     ManagerWorkspace,
+    build_workspace_revision,
     prepare_conflict_overwrite,
     prepare_publication,
     rebase_workspace_document,
@@ -67,8 +71,11 @@ __all__ = [
     'ConfigurationLifecycleWorkflow',
     'DefaultManagerAuthorizationPolicy',
     'DraftValidationResult',
+    'DraftValidationWorkflow',
     'ExactSourcePublicationResult',
     'ExactSourcePublicationWorkflow',
+    'ExactSourceReaderWorkflow',
+    'ExactSourceReadResult',
     'ManagerAuthorizationError',
     'ManagerAuthorizationPolicy',
     'ManagerDefinitionError',
@@ -103,6 +110,7 @@ __all__ = [
     'SourceSnapshot',
     'SourceVerificationResult',
     'build_draft_revision',
+    'build_workspace_revision',
     'prepare_conflict_overwrite',
     'prepare_publication',
     'rebase_workspace_document',

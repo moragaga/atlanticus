@@ -69,6 +69,8 @@ class ManagerModule:
     force_publish_enabled: bool = False
     history_preview_renderer: ManagerHistoryPreviewRenderer | None = None
     exact_source_workflow_service: str | None = None
+    draft_validation_service: str | None = None
+    exact_source_reader_service: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

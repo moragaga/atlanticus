@@ -42,7 +42,7 @@ class ManagerWorkspace:
         owner = self.owner_subject_id.strip()
         if not owner:
             raise ValueError('Manager workspace owner must not be empty')
-        expected_revision = _build_workspace_revision(self.payload)
+        expected_revision = build_workspace_revision(self.payload)
         if self.revision.strip() != expected_revision:
             raise ValueError('Manager workspace revision does not match payload')
         base_payload_revision = self.base_payload_revision.strip()
@@ -65,7 +65,7 @@ class ManagerWorkspace:
         base: SourceSnapshot,
         saved_at_utc: datetime | None = None,
     ) -> ManagerWorkspace:
-        revision = _build_workspace_revision(payload)
+        revision = build_workspace_revision(payload)
         return cls(
             owner_subject_id=owner_subject_id,
             revision=revision,
@@ -87,7 +87,7 @@ class ManagerWorkspace:
     ) -> ManagerWorkspace:
         return ManagerWorkspace(
             owner_subject_id=self.owner_subject_id,
-            revision=_build_workspace_revision(payload),
+            revision=build_workspace_revision(payload),
             base_payload_revision=self.base_payload_revision,
             saved_at_utc=(saved_at_utc or datetime.now(UTC)).astimezone(UTC),
             payload=payload,
@@ -211,7 +211,7 @@ class ManagerPublicationContext:
     expected_concurrency_token: ConcurrencyToken | None
 
     def matches_payload(self, payload: dict[str, object]) -> bool:
-        return _build_workspace_revision(payload) == self.workspace_revision
+        return build_workspace_revision(payload) == self.workspace_revision
 
 
 def verify_workspace_source(
@@ -276,7 +276,7 @@ def resolve_manager_projection_state(status: ProjectionStatus) -> ManagerProject
     raise ValueError('Unsupported projection alignment')
 
 
-def _build_workspace_revision(payload: dict[str, object]) -> str:
+def build_workspace_revision(payload: dict[str, object]) -> str:
     canonical = json.dumps(
         payload,
         ensure_ascii=False,

@@ -1,10 +1,20 @@
-# Superficie pública de la composición que conecta Users con el contrato exact-source de Manager.
+# Expone por separado las capabilities de validación, lectura y publicación exact-source.
 from atlanticus.web.compositions.users_manager.exact_source import (
     UsersManagerExactSourceWorkflow,
     create_users_manager_exact_source_workflow,
 )
+from atlanticus.web.compositions.users_manager.workspace import (
+    UsersManagerDraftValidationWorkflow,
+    UsersManagerExactSourceReaderWorkflow,
+    create_users_manager_draft_validation_workflow,
+    create_users_manager_exact_source_reader_workflow,
+)
 
 __all__ = [
+    'UsersManagerDraftValidationWorkflow',
+    'UsersManagerExactSourceReaderWorkflow',
     'UsersManagerExactSourceWorkflow',
+    'create_users_manager_draft_validation_workflow',
+    'create_users_manager_exact_source_reader_workflow',
     'create_users_manager_exact_source_workflow',
 ]

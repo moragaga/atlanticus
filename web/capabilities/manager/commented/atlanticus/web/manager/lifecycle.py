@@ -1,11 +1,12 @@
-# Resuelve por separado los estados del lifecycle clásico y del workspace exact-source.
-# Ambos comparten la misma forma de salida, pero nunca mezclan identidades de revisión.
-
+# Estado del workflow local para módulos legacy y exact-source.
+# En exact-source, 'published' exige igualdad de payload con Source además de la misma release;
+# un rebase local por sí solo nunca demuestra que el contenido haya sido publicado.
 from dataclasses import dataclass
 
+from atlanticus.web.manager.exact_source import ExactSourceReadResult
 from atlanticus.web.manager.projection import ManagerDraft, SourceVerificationResult
 from atlanticus.web.manager.workspace import ManagerSourceVerification, ManagerWorkspace
-from atlanticus.web.source.models import SourceSnapshot as ExactSourceSnapshot
+from atlanticus.web.source.models import SourceSnapshot
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,11 +74,11 @@ def resolve_exact_source_lifecycle(
     *,
     workspace: ManagerWorkspace | None,
     editor_revision: str | None,
-    source_snapshot: ExactSourceSnapshot,
+    source: ExactSourceReadResult,
     validation_current: bool,
     source_verification: ManagerSourceVerification | None,
 ) -> ManagerLifecycleState:
-    # El source key es una frontera dura: un workspace nunca puede evaluarse contra otra fuente.
+    source_snapshot = source.snapshot
     if workspace is not None and workspace.base.source_key != source_snapshot.source_key:
         raise ValueError('Manager workspace source key does not match current source')
     normalized_editor_revision = _optional_revision(editor_revision)
@@ -86,16 +87,13 @@ def resolve_exact_source_lifecycle(
         and (workspace is None or normalized_editor_revision != workspace.revision)
     )
     has_local_work = workspace is not None or dirty
-    # "Publicado" significa que el payload local está en su baseline y ese baseline corresponde
-    # a la release publicada actual. El token CAS puede refrescarse sin cambiar esa identidad.
     published = bool(
         workspace is not None
-        and not workspace.has_local_changes
-        and source_snapshot.current is not None
+        and source.payload is not None
         and _same_release(workspace.base, source_snapshot)
+        and workspace.payload == source.payload
     )
     current_validation = bool(validation_current and not dirty and workspace is not None)
-    # Para publicar, la verificación sí debe conservar el snapshot completo y su token CAS actual.
     current_verification = bool(
         current_validation
         and source_verification is not None
@@ -121,13 +119,12 @@ def resolve_exact_source_lifecycle(
         ),
         can_verify_source=bool(current_validation and not published and not current_verification),
         can_publish=bool(verification_publishable and not published),
-        # Exact-source todavía no define overwrite. No se degrada al force-publish basado en strings.
         can_force_publish=False,
         can_discard_local=bool(dirty or (workspace is not None and not published)),
     )
 
 
-def _same_release(left: ExactSourceSnapshot, right: ExactSourceSnapshot) -> bool:
+def _same_release(left: SourceSnapshot, right: SourceSnapshot) -> bool:
     left_release = left.current.release_ref.release_id if left.current is not None else None
     right_release = right.current.release_ref.release_id if right.current is not None else None
     return left_release == right_release

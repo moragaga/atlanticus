@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 
+from atlanticus.web.manager.exact_source import ExactSourceReadResult
 from atlanticus.web.manager.projection import ManagerDraft, SourceVerificationResult
 from atlanticus.web.manager.workspace import ManagerSourceVerification, ManagerWorkspace
-from atlanticus.web.source.models import SourceSnapshot as ExactSourceSnapshot
+from atlanticus.web.source.models import SourceSnapshot
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,10 +71,11 @@ def resolve_exact_source_lifecycle(
     *,
     workspace: ManagerWorkspace | None,
     editor_revision: str | None,
-    source_snapshot: ExactSourceSnapshot,
+    source: ExactSourceReadResult,
     validation_current: bool,
     source_verification: ManagerSourceVerification | None,
 ) -> ManagerLifecycleState:
+    source_snapshot = source.snapshot
     if workspace is not None and workspace.base.source_key != source_snapshot.source_key:
         raise ValueError('Manager workspace source key does not match current source')
     normalized_editor_revision = _optional_revision(editor_revision)
@@ -84,9 +86,9 @@ def resolve_exact_source_lifecycle(
     has_local_work = workspace is not None or dirty
     published = bool(
         workspace is not None
-        and not workspace.has_local_changes
-        and source_snapshot.current is not None
+        and source.payload is not None
         and _same_release(workspace.base, source_snapshot)
+        and workspace.payload == source.payload
     )
     current_validation = bool(validation_current and not dirty and workspace is not None)
     current_verification = bool(
@@ -119,7 +121,7 @@ def resolve_exact_source_lifecycle(
     )
 
 
-def _same_release(left: ExactSourceSnapshot, right: ExactSourceSnapshot) -> bool:
+def _same_release(left: SourceSnapshot, right: SourceSnapshot) -> bool:
     left_release = left.current.release_ref.release_id if left.current is not None else None
     right_release = right.current.release_ref.release_id if right.current is not None else None
     return left_release == right_release

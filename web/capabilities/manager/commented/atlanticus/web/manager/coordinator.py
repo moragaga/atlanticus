@@ -1,3 +1,6 @@
+# Coordinador de Manager con routing explícito por capability.
+# Los módulos legacy conservan validación mediante workflow_service; un módulo exact-source
+# debe declarar validator y reader explícitos y nunca cae silenciosamente al lifecycle legacy.
 from datetime import UTC, datetime
 
 from atlanticus.web.manager.authorization import ManagerAuthorizationPolicy
@@ -6,10 +9,11 @@ from atlanticus.web.manager.errors import (
     ManagerProjectionError,
     ManagerSourceConflictError,
 )
-# Exact-source se resuelve como capability independiente del lifecycle clásico.
 from atlanticus.web.manager.exact_source import (
     ExactSourcePublicationResult,
     ExactSourcePublicationWorkflow,
+    ExactSourceReaderWorkflow,
+    ExactSourceReadResult,
 )
 from atlanticus.web.manager.models import ManagerModule, ManagerPrincipal
 from atlanticus.web.manager.projection import (
@@ -24,6 +28,7 @@ from atlanticus.web.manager.projection import (
     SourceVerificationResult,
 )
 from atlanticus.web.manager.registry import ManagerModuleRegistry
+from atlanticus.web.manager.validation import DraftValidationWorkflow
 from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.source.models import SourceSnapshot as ExactSourceSnapshot
@@ -63,7 +68,7 @@ class ManagerProjectionCoordinator:
         principal: ManagerPrincipal,
         payload: dict[str, object],
     ) -> DraftValidationResult:
-        module, workflow = self._resolve(module_key)
+        module, workflow = self._resolve_validation(module_key)
         if not self._authorization.can_validate(principal, module):
             raise ManagerAuthorizationError('Manager validation access is denied')
         return workflow.validate_draft(payload)
@@ -116,6 +121,16 @@ class ManagerProjectionCoordinator:
         if not self._authorization.can_view(principal, module):
             raise ManagerAuthorizationError('Manager module access is denied')
         return workflow.get_source_snapshot()
+
+    def load_current_source_exact(
+        self,
+        module_key: str,
+        principal: ManagerPrincipal,
+    ) -> ExactSourceReadResult:
+        module, workflow = self._resolve_exact_source_reader(module_key)
+        if not self._authorization.can_view(principal, module):
+            raise ManagerAuthorizationError('Manager module access is denied')
+        return workflow.load_current_source_exact()
 
     def publish_draft_exact(
         self,
@@ -275,13 +290,31 @@ class ManagerProjectionCoordinator:
             raise ManagerProjectionError('Manager lifecycle workflow has an invalid contract')
         return module, workflow
 
+    def _resolve_validation(
+        self,
+        module_key: str,
+    ) -> tuple[ManagerModule, DraftValidationWorkflow]:
+        module = self._registry.require(module_key)
+        service_key = module.draft_validation_service
+        if service_key is None:
+            if (
+                module.exact_source_workflow_service is not None
+                or module.exact_source_reader_service is not None
+            ):
+                raise ManagerProjectionError(
+                    'Manager exact-source module does not declare a draft validation service'
+                )
+            service_key = module.workflow_service
+        workflow = self._services.require(service_key)
+        if not isinstance(workflow, DraftValidationWorkflow):
+            raise ManagerProjectionError('Manager draft validation workflow has an invalid contract')
+        return module, workflow
+
     def _resolve_exact_source(
         self,
         module_key: str,
     ) -> tuple[ManagerModule, ExactSourcePublicationWorkflow]:
         module = self._registry.require(module_key)
-        # No existe fallback a workflow_service: una capability exact-source debe declararse
-        # explícitamente para impedir que Manager vuelva a acoplar ambos contratos al mismo objeto.
         service_key = module.exact_source_workflow_service
         if service_key is None:
             raise ManagerProjectionError(
@@ -291,5 +324,22 @@ class ManagerProjectionCoordinator:
         if not isinstance(workflow, ExactSourcePublicationWorkflow):
             raise ManagerProjectionError(
                 'Manager exact source workflow has an invalid contract'
+            )
+        return module, workflow
+
+    def _resolve_exact_source_reader(
+        self,
+        module_key: str,
+    ) -> tuple[ManagerModule, ExactSourceReaderWorkflow]:
+        module = self._registry.require(module_key)
+        service_key = module.exact_source_reader_service
+        if service_key is None:
+            raise ManagerProjectionError(
+                'Manager module does not declare an exact source reader service'
+            )
+        workflow = self._services.require(service_key)
+        if not isinstance(workflow, ExactSourceReaderWorkflow):
+            raise ManagerProjectionError(
+                'Manager exact source reader has an invalid contract'
             )
         return module, workflow
