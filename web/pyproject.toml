@@ -28,6 +28,7 @@ dependencies = [
     "atlanticus-web-users-projection-cosmos==0.1.1",
     "atlanticus-web-users-activity==0.1.0",
     "atlanticus-web-composition-navigation-activity==0.1.0",
+    "atlanticus-web-composition-users-manager==0.1.0",
 ]
 
 [dependency-groups]
@@ -68,6 +69,7 @@ atlanticus-web-users-configuration = { workspace = true }
 atlanticus-web-users-projection-cosmos = { workspace = true }
 atlanticus-web-users-activity = { workspace = true }
 atlanticus-web-composition-navigation-activity = { workspace = true }
+atlanticus-web-composition-users-manager = { workspace = true }
 
 [tool.uv.workspace]
 members = [
@@ -94,6 +96,7 @@ members = [
     "capabilities/users/projection-cosmos",
     "capabilities/users/activity",
     "compositions/navigation-activity",
+    "compositions/users-manager",
 ]
 
 [tool.ruff]
@@ -144,5 +147,6 @@ testpaths = [
     "capabilities/users/projection-cosmos/tests",
     "capabilities/users/activity/tests",
     "compositions/navigation-activity/tests",
+    "compositions/users-manager/tests",
 ]
 addopts = "-q --import-mode=importlib"

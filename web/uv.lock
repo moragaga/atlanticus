@@ -7,6 +7,7 @@ members = [
     "atlanticus-web",
     "atlanticus-web-bootstrap",
     "atlanticus-web-composition-navigation-activity",
+    "atlanticus-web-composition-users-manager",
     "atlanticus-web-configuration",
     "atlanticus-web-identity",
     "atlanticus-web-identity-local",
@@ -136,6 +137,23 @@ dependencies = [
 requires-dist = [
     { name = "atlanticus-web-navigation", editable = "capabilities/navigation/core" },
     { name = "atlanticus-web-users-activity", editable = "capabilities/users/activity" },
+]
+
+[[package]]
+name = "atlanticus-web-composition-users-manager"
+version = "0.1.0"
+source = { editable = "compositions/users-manager" }
+dependencies = [
+    { name = "atlanticus-web-manager" },
+    { name = "atlanticus-web-source" },
+    { name = "atlanticus-web-users-configuration" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-web-manager", editable = "capabilities/manager" },
+    { name = "atlanticus-web-source", editable = "capabilities/source/core" },
+    { name = "atlanticus-web-users-configuration", editable = "capabilities/users/configuration" },
 ]
 
 [[package]]
@@ -448,6 +466,7 @@ dependencies = [
     { name = "atlanticus-web" },
     { name = "atlanticus-web-bootstrap" },
     { name = "atlanticus-web-composition-navigation-activity" },
+    { name = "atlanticus-web-composition-users-manager" },
     { name = "atlanticus-web-configuration" },
     { name = "atlanticus-web-identity" },
     { name = "atlanticus-web-identity-local" },
@@ -480,6 +499,7 @@ requires-dist = [
     { name = "atlanticus-web", editable = "framework/core" },
     { name = "atlanticus-web-bootstrap", editable = "framework/bootstrap" },
     { name = "atlanticus-web-composition-navigation-activity", editable = "compositions/navigation-activity" },
+    { name = "atlanticus-web-composition-users-manager", editable = "compositions/users-manager" },
     { name = "atlanticus-web-configuration", editable = "framework/configuration" },
     { name = "atlanticus-web-identity", editable = "capabilities/identity/core" },
     { name = "atlanticus-web-identity-local", editable = "capabilities/identity/local" },
