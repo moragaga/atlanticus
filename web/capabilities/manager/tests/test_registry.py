@@ -43,6 +43,46 @@ def test_registry_orders_groups_and_modules_without_owning_domain_configuration(
     assert registry.find_by_route('/tools').key == 'tools'
 
 
+def test_registry_accepts_exact_source_module_without_legacy_workflow() -> None:
+    registry = ManagerModuleRegistry(
+        groups=(ManagerModuleGroup('configuration', 'Configuraciones', 10),),
+        modules=(
+            ManagerModule(
+                key='users',
+                group_key='configuration',
+                title='Usuarios',
+                route='/users',
+                order=10,
+                layout=_layout,
+                draft_validation_service='users.validation',
+                exact_source_reader_service='users.reader',
+                exact_source_workflow_service='users.exact',
+            ),
+        ),
+    )
+
+    assert registry.require('users').workflow_service is None
+
+
+def test_registry_rejects_incomplete_exact_source_module_without_legacy_workflow() -> None:
+    with pytest.raises(ManagerDefinitionError, match='exact-source services'):
+        ManagerModuleRegistry(
+            groups=(ManagerModuleGroup('configuration', 'Configuraciones', 10),),
+            modules=(
+                ManagerModule(
+                    key='users',
+                    group_key='configuration',
+                    title='Usuarios',
+                    route='/users',
+                    order=10,
+                    layout=_layout,
+                    draft_validation_service='users.validation',
+                    exact_source_reader_service='users.reader',
+                ),
+            ),
+        )
+
+
 def test_registry_rejects_duplicate_routes() -> None:
     with pytest.raises(ManagerDefinitionError, match='route is duplicated'):
         ManagerModuleRegistry(

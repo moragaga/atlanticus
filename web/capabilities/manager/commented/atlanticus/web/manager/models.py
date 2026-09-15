@@ -58,7 +58,8 @@ class ManagerModule:
     route: str
     order: int
     layout: ManagerLayoutFactory
-    workflow_service: str
+    # Los módulos completamente migrados pueden no declarar lifecycle legacy.
+    workflow_service: str | None = None
     description: str = ''
     access: ManagerModuleAccess = field(default_factory=ManagerModuleAccess)
     web_module: WebModule | None = None

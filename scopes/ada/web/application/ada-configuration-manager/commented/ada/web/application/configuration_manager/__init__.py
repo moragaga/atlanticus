@@ -9,7 +9,9 @@ from ada.web.application.configuration_manager.composition import (
     MANAGER_ROUTE_PREFIX,
     NAVIGATION_WORKFLOW_SERVICE,
     TOOLS_WORKFLOW_SERVICE,
-    USERS_WORKFLOW_SERVICE,
+    USERS_DRAFT_VALIDATION_SERVICE,
+    USERS_EXACT_SOURCE_READER_SERVICE,
+    USERS_EXACT_SOURCE_WORKFLOW_SERVICE,
     build_configuration_manager_surface,
 )
 from ada.web.application.configuration_manager.dependencies import (
@@ -34,7 +36,9 @@ __all__ = [
     'NavigationManagerWorkflowAdapter',
     'TOOLS_WORKFLOW_SERVICE',
     'ToolConfigurationManagerWorkflowAdapter',
-    'USERS_WORKFLOW_SERVICE',
+    'USERS_DRAFT_VALIDATION_SERVICE',
+    'USERS_EXACT_SOURCE_READER_SERVICE',
+    'USERS_EXACT_SOURCE_WORKFLOW_SERVICE',
     'UsersManagerWorkflowAdapter',
     'build_configuration_manager_surface',
     'create_configuration_manager_application',

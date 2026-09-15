@@ -4,12 +4,18 @@ from ada.web.application.configuration_manager import (
     MANAGER_ROUTE_PREFIX,
     NAVIGATION_WORKFLOW_SERVICE,
     TOOLS_WORKFLOW_SERVICE,
-    USERS_WORKFLOW_SERVICE,
+    USERS_DRAFT_VALIDATION_SERVICE,
+    USERS_EXACT_SOURCE_READER_SERVICE,
+    USERS_EXACT_SOURCE_WORKFLOW_SERVICE,
     ConfigurationManagerDependencies,
     NavigationManagerWorkflowAdapter,
     ToolConfigurationManagerWorkflowAdapter,
-    UsersManagerWorkflowAdapter,
     build_configuration_manager_surface,
+)
+from atlanticus.web.compositions.users_manager import (
+    UsersManagerDraftValidationWorkflow,
+    UsersManagerExactSourceReaderWorkflow,
+    UsersManagerExactSourceWorkflow,
 )
 from atlanticus.web.manager import ManagerPrincipal, ManagerSurface
 from atlanticus.web.services import ServiceRegistry
@@ -74,6 +80,16 @@ def test_surface_registers_explicit_access_contracts() -> None:
     assert tools.access.project == 'tools.manage'
 
 
+def test_users_module_routes_authoring_through_exact_source_capabilities() -> None:
+    definition = build_configuration_manager_surface(dependencies())
+    users = definition.modules[0]
+
+    assert users.workflow_service is None
+    assert users.draft_validation_service == USERS_DRAFT_VALIDATION_SERVICE
+    assert users.exact_source_reader_service == USERS_EXACT_SOURCE_READER_SERVICE
+    assert users.exact_source_workflow_service == USERS_EXACT_SOURCE_WORKFLOW_SERVICE
+
+
 def test_tools_module_represents_the_application_tool_without_selector() -> None:
     definition = build_configuration_manager_surface(dependencies())
     tools = definition.modules[2]
@@ -86,7 +102,7 @@ def test_tools_module_represents_the_application_tool_without_selector() -> None
     assert tools.web_module.name == 'ada-configuration-manager-tools'
 
 
-def test_service_module_registers_only_surface_workflow_adapters() -> None:
+def test_service_module_registers_users_exact_capabilities_and_remaining_legacy_lifecycles() -> None:
     definition = build_configuration_manager_surface(dependencies())
     service_module = next(
         module
@@ -99,8 +115,16 @@ def test_service_module_registers_only_surface_workflow_adapters() -> None:
     service_module.register_services(services)
 
     assert isinstance(
-        services.require(USERS_WORKFLOW_SERVICE),
-        UsersManagerWorkflowAdapter,
+        services.require(USERS_DRAFT_VALIDATION_SERVICE),
+        UsersManagerDraftValidationWorkflow,
+    )
+    assert isinstance(
+        services.require(USERS_EXACT_SOURCE_READER_SERVICE),
+        UsersManagerExactSourceReaderWorkflow,
+    )
+    assert isinstance(
+        services.require(USERS_EXACT_SOURCE_WORKFLOW_SERVICE),
+        UsersManagerExactSourceWorkflow,
     )
     assert isinstance(
         services.require(NAVIGATION_WORKFLOW_SERVICE),

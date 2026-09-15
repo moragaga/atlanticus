@@ -129,7 +129,23 @@ class ManagerModuleRegistry:
                 raise ManagerDefinitionError('Manager workflow section title must not be empty')
             if not module.content_section_title.strip():
                 raise ManagerDefinitionError('Manager content section title must not be empty')
-            if not module.workflow_service.strip():
+            # Un módulo puede omitir el lifecycle legacy sólo después de declarar explícitamente
+            # las tres capabilities exact-source usadas por el authoring productivo.
+            workflow_service = module.workflow_service
+            if workflow_service is None:
+                exact_services = (
+                    module.draft_validation_service,
+                    module.exact_source_reader_service,
+                    module.exact_source_workflow_service,
+                )
+                if any(
+                    service is None or not service.strip()
+                    for service in exact_services
+                ):
+                    raise ManagerDefinitionError(
+                        'Manager module without legacy workflow must declare exact-source services'
+                    )
+            elif not workflow_service.strip():
                 raise ManagerDefinitionError('Manager workflow service must not be empty')
             if module.source_signal_id is not None:
                 source_signal_id = module.source_signal_id.strip()

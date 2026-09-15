@@ -282,7 +282,12 @@ class ManagerProjectionCoordinator:
         module_key: str,
     ) -> tuple[ManagerModule, ConfigurationLifecycleWorkflow]:
         module = self._registry.require(module_key)
-        workflow = self._services.require(module.workflow_service)
+        service_key = module.workflow_service
+        if service_key is None:
+            raise ManagerProjectionError(
+                'Manager module does not declare a legacy lifecycle workflow service'
+            )
+        workflow = self._services.require(service_key)
         if not isinstance(workflow, ConfigurationLifecycleWorkflow):
             raise ManagerProjectionError('Manager lifecycle workflow has an invalid contract')
         return module, workflow
