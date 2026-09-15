@@ -4,9 +4,11 @@ import pytest
 
 from atlanticus.web.manager.workspace import (
     ManagerProjectionState,
+    ManagerSourceVerification,
     ManagerWorkspace,
     prepare_conflict_overwrite,
     prepare_publication,
+    rebase_workspace_document,
     resolve_manager_projection_state,
     select_projection_target,
     verify_workspace_source,
@@ -67,6 +69,13 @@ def test_workspace_document_round_trip_preserves_exact_base_snapshot() -> None:
     assert restored.base.concurrency_token == ConcurrencyToken('etag-1')
 
 
+def test_workspace_document_uses_source_snapshot_envelope() -> None:
+    document = _workspace(_snapshot('release-1')).to_document()
+
+    assert 'source_snapshot' in document
+    assert 'base' not in document
+
+
 def test_workspace_document_preserves_empty_base_for_first_publication() -> None:
     workspace = _workspace(_snapshot(None))
 
@@ -74,6 +83,25 @@ def test_workspace_document_preserves_empty_base_for_first_publication() -> None
 
     assert restored.base.current is None
     assert restored.base.concurrency_token is None
+
+
+def test_workspace_document_accepts_domain_owned_metadata_without_knowing_the_domain() -> None:
+    workspace = _workspace(_snapshot('release-1', token='etag-1'))
+    document = workspace.to_document()
+    document['document_type'] = 'domain_owned_workspace'
+    document['domain_metadata'] = {'kind': 'configuration'}
+
+    restored = ManagerWorkspace.from_document(document)
+
+    assert restored == workspace
+
+
+def test_workspace_document_rejects_previous_manager_base_shape() -> None:
+    document = _workspace(_snapshot('release-1')).to_document()
+    document['base'] = document.pop('source_snapshot')
+
+    with pytest.raises(ValueError, match='document is invalid'):
+        ManagerWorkspace.from_document(document)
 
 
 def test_workspace_document_rejects_legacy_shape_without_base_payload_revision() -> None:
@@ -124,6 +152,30 @@ def test_workspace_rebase_marks_current_payload_as_new_local_baseline() -> None:
     assert rebased.has_local_changes is False
 
 
+def test_rebase_workspace_document_preserves_domain_owned_metadata() -> None:
+    workspace = _workspace(_snapshot('release-1', token='etag-1')).with_payload(
+        {'tools': [{'key': 'one', 'enabled': False}]}
+    )
+    document = workspace.to_document()
+    document['document_type'] = 'domain_owned_workspace'
+    document['domain_metadata'] = {'owner': 'domain'}
+    published = _snapshot('release-2', token='etag-2', minute=1)
+
+    rebased_document = rebase_workspace_document(
+        document,
+        published,
+        saved_at_utc=datetime(2026, 9, 12, 13, 10, tzinfo=UTC),
+    )
+    rebased = ManagerWorkspace.from_document(rebased_document)
+
+    assert rebased_document['document_type'] == 'domain_owned_workspace'
+    assert rebased_document['domain_metadata'] == {'owner': 'domain'}
+    assert rebased.payload == workspace.payload
+    assert rebased.base == published
+    assert rebased.base_payload_revision == workspace.revision
+    assert rebased.has_local_changes is False
+
+
 def test_workspace_revision_is_local_content_identity_not_source_release_identity() -> None:
     first = _workspace(_snapshot('release-1'))
     second = _workspace(_snapshot('release-2', minute=1))
@@ -141,6 +193,32 @@ def test_same_content_republication_is_still_a_source_conflict() -> None:
     assert verification.matches is False
     assert verification.publishable is False
     assert verification.conflict is True
+
+
+def test_source_verification_document_round_trip_preserves_exact_snapshots() -> None:
+    workspace = _workspace(_snapshot('release-1', token='token-base'))
+    current = _snapshot('release-1', token='token-current')
+    verification = verify_workspace_source(
+        workspace,
+        current,
+        checked_at_utc=datetime(2026, 9, 12, 13, 20, tzinfo=UTC),
+    )
+
+    restored = ManagerSourceVerification.from_document(verification.to_document())
+
+    assert restored == verification
+    assert restored.base.concurrency_token == ConcurrencyToken('token-base')
+    assert restored.source.concurrency_token == ConcurrencyToken('token-current')
+
+
+def test_source_verification_document_rejects_non_exact_contract() -> None:
+    workspace = _workspace(_snapshot('release-1'))
+    verification = verify_workspace_source(workspace, _snapshot('release-1'))
+    document = verification.to_document()
+    document['schema_version'] = 1
+
+    with pytest.raises(ValueError, match='document is invalid'):
+        ManagerSourceVerification.from_document(document)
 
 
 def test_normal_publication_uses_original_basis_and_fresh_matching_token() -> None:

@@ -1,5 +1,5 @@
-# Superficie pública de Manager. ExactSourcePublicationWorkflow es una extensión opt-in: los
-# módulos legacy pueden seguir implementando ConfigurationLifecycleWorkflow sin cambios.
+# Superficie pública de Manager. El WORKSPACE exact-source permanece genérico:
+# Manager conoce el envelope y SourceSnapshot, pero no los tipos concretos de cada dominio.
 from atlanticus.web.manager.authorization import (
     DefaultManagerAuthorizationPolicy,
     ManagerAuthorizationPolicy,
@@ -53,6 +53,7 @@ from atlanticus.web.manager.workspace import (
     ManagerWorkspace,
     prepare_conflict_overwrite,
     prepare_publication,
+    rebase_workspace_document,
     resolve_manager_projection_state,
     select_projection_target,
     verify_workspace_source,
@@ -100,6 +101,7 @@ __all__ = [
     'build_draft_revision',
     'prepare_conflict_overwrite',
     'prepare_publication',
+    'rebase_workspace_document',
     'resolve_manager_lifecycle',
     'resolve_manager_projection_state',
     'resolve_projection_state',

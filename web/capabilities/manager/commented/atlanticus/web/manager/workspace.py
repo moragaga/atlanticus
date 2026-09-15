@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-# Este módulo modela el WORKSPACE genérico del Manager sin confundir su identidad local
-# con la identidad durable de Source. El payload editable tiene una revisión propia y
-# conserva además la revisión local que tenía al establecerse la BASE del trabajo.
-# SourceSnapshot permanece como value object exacto: release, hash y token no se reducen
-# a strings de revisión del Manager.
+# Este módulo modela el WORKSPACE exact-source del Manager sin imponer un contrato
+# específico de Users, Profiles u otro dominio. El envelope genérico sólo reconoce
+# metadata de sesión, payload y SourceSnapshot; cualquier metadata adicional pertenece
+# al dominio y debe conservarse cuando Manager transforma el workspace.
 
 import hashlib
 import json
@@ -24,6 +23,9 @@ from atlanticus.web.source.models import (
     SourceSnapshot,
 )
 
+_SOURCE_VERIFICATION_DOCUMENT_TYPE = 'atlanticus_manager_source_verification'
+_SOURCE_VERIFICATION_SCHEMA_VERSION = 2
+
 
 # Estado de presentación de la proyección respecto de Source.
 class ManagerProjectionState(StrEnum):
@@ -33,9 +35,9 @@ class ManagerProjectionState(StrEnum):
     OUTDATED = 'outdated'
 
 
-# WORKSPACE editable. revision identifica el contenido actual; base_payload_revision
-# identifica el contenido local observado al establecer la BASE. Ninguna de las dos
-# revisiones representa una SourceReleaseId.
+# WORKSPACE editable. revision y base_payload_revision son identidades exclusivamente
+# locales del payload. base conserva el SourceSnapshot exacto observado al establecer
+# la BASE y nunca se reduce a una revisión textual.
 @dataclass(frozen=True, slots=True)
 class ManagerWorkspace:
     owner_subject_id: str
@@ -63,8 +65,7 @@ class ManagerWorkspace:
         object.__setattr__(self, 'saved_at_utc', self.saved_at_utc.astimezone(UTC))
         object.__setattr__(self, 'payload', deepcopy(self.payload))
 
-    # Un workspace recién establecido parte sin cambios locales: ambas revisiones
-    # de payload nacen iguales aunque Source tenga o no una release publicada.
+    # Al crear una BASE nueva, el contenido actual también es la base local.
     @classmethod
     def create(
         cls,
@@ -84,13 +85,12 @@ class ManagerWorkspace:
             base=base,
         )
 
-    # La suciedad funcional se decide únicamente comparando identidades locales.
+    # Dirty depende sólo de las dos revisiones locales, no de identidad Source.
     @property
     def has_local_changes(self) -> bool:
         return self.revision != self.base_payload_revision
 
-    # Una edición cambia revision pero conserva tanto la BASE Source exacta como la
-    # revisión local del payload base.
+    # Editar cambia la revisión actual, pero preserva BASE local y SourceSnapshot exacto.
     def with_payload(
         self,
         payload: dict[str, object],
@@ -106,8 +106,7 @@ class ManagerWorkspace:
             base=self.base,
         )
 
-    # Tras una publicación confirmada, rebase convierte el payload actual en la nueva
-    # línea base local y adopta el SourceSnapshot publicado sin alterar el contenido.
+    # Rebase adopta un SourceSnapshot exacto nuevo y convierte el payload actual en BASE.
     def rebase(
         self,
         base: SourceSnapshot,
@@ -123,8 +122,8 @@ class ManagerWorkspace:
             base=base,
         )
 
-    # El schema 2 persiste explícitamente base_payload_revision; el shape anterior no
-    # puede expresar esta distinción y por eso no se interpreta silenciosamente.
+    # El envelope genérico usa source_snapshot de forma explícita. Manager no inventa
+    # un document_type de dominio y tampoco conserva el shape anterior basado en "base".
     def to_document(self) -> dict[str, object]:
         return {
             'schema_version': 2,
@@ -132,18 +131,20 @@ class ManagerWorkspace:
             'revision': self.revision,
             'base_payload_revision': self.base_payload_revision,
             'saved_at_utc': self.saved_at_utc.isoformat(),
+            'source_snapshot': _source_snapshot_to_document(self.base),
             'payload': deepcopy(self.payload),
-            'base': _source_snapshot_to_document(self.base),
         }
 
+    # Metadata adicional, como document_type de un dominio, se ignora al interpretar el
+    # contrato genérico. El shape exact-source requerido sí es estricto.
     @classmethod
     def from_document(cls, document: dict[str, object]) -> ManagerWorkspace:
         try:
             payload = document['payload']
-            base_document = document['base']
+            source_snapshot_document = document['source_snapshot']
             if document.get('schema_version') != 2:
                 raise TypeError
-            if not isinstance(payload, dict) or not isinstance(base_document, dict):
+            if not isinstance(payload, dict) or not isinstance(source_snapshot_document, dict):
                 raise TypeError
             return cls(
                 owner_subject_id=str(document['owner_subject_id']),
@@ -151,14 +152,15 @@ class ManagerWorkspace:
                 base_payload_revision=str(document['base_payload_revision']),
                 saved_at_utc=datetime.fromisoformat(str(document['saved_at_utc'])),
                 payload=deepcopy(payload),
-                base=_source_snapshot_from_document(base_document),
+                base=_source_snapshot_from_document(source_snapshot_document),
             )
         except (KeyError, TypeError, ValueError) as error:
             raise ValueError('Manager workspace document is invalid') from error
 
 
-# Verificación exacta: el conflicto funcional depende de identidad de release, no del
-# token. Un token puede refrescarse manteniendo la misma release y seguir siendo publicable.
+# Verificación exacta. Conflicto significa que la identidad de release de SOURCE ya no
+# coincide con la release de la BASE. Un refresh del token sin cambio de release sigue
+# siendo publicable y entrega el token fresco a la publicación.
 @dataclass(frozen=True, slots=True)
 class ManagerSourceVerification:
     workspace_revision: str
@@ -189,9 +191,41 @@ class ManagerSourceVerification:
     def conflict(self) -> bool:
         return not self.matches
 
+    # La verificación sí pertenece a Manager, por eso posee document_type propio.
+    # Ambos SourceSnapshot se conservan completos; no se almacenan revision strings.
+    def to_document(self) -> dict[str, object]:
+        return {
+            'document_type': _SOURCE_VERIFICATION_DOCUMENT_TYPE,
+            'schema_version': _SOURCE_VERIFICATION_SCHEMA_VERSION,
+            'workspace_revision': self.workspace_revision,
+            'base_source_snapshot': _source_snapshot_to_document(self.base),
+            'current_source_snapshot': _source_snapshot_to_document(self.source),
+            'checked_at_utc': self.checked_at_utc.isoformat(),
+        }
 
-# Contexto derivado para publicar: conserva basis_release de la BASE y usa el token
-# fresco de SOURCE como precondición CAS.
+    @classmethod
+    def from_document(cls, document: dict[str, object]) -> ManagerSourceVerification:
+        try:
+            base_document = document['base_source_snapshot']
+            source_document = document['current_source_snapshot']
+            if (
+                document.get('document_type') != _SOURCE_VERIFICATION_DOCUMENT_TYPE
+                or document.get('schema_version') != _SOURCE_VERIFICATION_SCHEMA_VERSION
+                or not isinstance(base_document, dict)
+                or not isinstance(source_document, dict)
+            ):
+                raise TypeError
+            return cls(
+                workspace_revision=str(document['workspace_revision']),
+                base=_source_snapshot_from_document(base_document),
+                source=_source_snapshot_from_document(source_document),
+                checked_at_utc=datetime.fromisoformat(str(document['checked_at_utc'])),
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise ValueError('Manager source verification document is invalid') from error
+
+
+# Contexto que deriva lo necesario para publicar sin degradar ninguna identidad exacta.
 @dataclass(frozen=True, slots=True)
 class ManagerPublicationContext:
     workspace_revision: str
@@ -215,6 +249,21 @@ def verify_workspace_source(
         source=source,
         checked_at_utc=(checked_at_utc or datetime.now(UTC)).astimezone(UTC),
     )
+
+
+# Manager transforma sólo los campos que posee y preserva metadata adicional del dominio.
+# Esto permite, por ejemplo, conservar document_type sin importar ninguna clase de Users.
+def rebase_workspace_document(
+    document: dict[str, object],
+    source_snapshot: SourceSnapshot,
+    *,
+    saved_at_utc: datetime | None = None,
+) -> dict[str, object]:
+    workspace = ManagerWorkspace.from_document(document)
+    rebased = workspace.rebase(source_snapshot, saved_at_utc=saved_at_utc)
+    updated = deepcopy(document)
+    updated.update(rebased.to_document())
+    return updated
 
 
 def prepare_publication(verification: ManagerSourceVerification) -> ManagerPublicationContext:
@@ -252,7 +301,7 @@ def resolve_manager_projection_state(status: ProjectionStatus) -> ManagerProject
     raise ValueError('Unsupported projection alignment')
 
 
-# La revisión local es SHA-256 del JSON canónico del payload y no una identidad Source.
+# La revisión local es SHA-256 del JSON canónico del payload y no identidad Source.
 def _build_workspace_revision(payload: dict[str, object]) -> str:
     canonical = json.dumps(
         payload,
@@ -283,6 +332,7 @@ def _release_id(snapshot: SourceSnapshot) -> SourceReleaseId | None:
     return snapshot.current.release_ref.release_id
 
 
+# Serialización exacta compartida conceptualmente con cualquier dominio que use Source.
 def _source_snapshot_to_document(snapshot: SourceSnapshot) -> dict[str, object]:
     current = None
     if snapshot.current is not None:

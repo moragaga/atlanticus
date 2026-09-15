@@ -18,6 +18,9 @@ from atlanticus.web.source.models import (
     SourceSnapshot,
 )
 
+_SOURCE_VERIFICATION_DOCUMENT_TYPE = 'atlanticus_manager_source_verification'
+_SOURCE_VERIFICATION_SCHEMA_VERSION = 2
+
 
 class ManagerProjectionState(StrEnum):
     NO_SOURCE = 'no_source'
@@ -113,18 +116,18 @@ class ManagerWorkspace:
             'revision': self.revision,
             'base_payload_revision': self.base_payload_revision,
             'saved_at_utc': self.saved_at_utc.isoformat(),
+            'source_snapshot': _source_snapshot_to_document(self.base),
             'payload': deepcopy(self.payload),
-            'base': _source_snapshot_to_document(self.base),
         }
 
     @classmethod
     def from_document(cls, document: dict[str, object]) -> ManagerWorkspace:
         try:
             payload = document['payload']
-            base_document = document['base']
+            source_snapshot_document = document['source_snapshot']
             if document.get('schema_version') != 2:
                 raise TypeError
-            if not isinstance(payload, dict) or not isinstance(base_document, dict):
+            if not isinstance(payload, dict) or not isinstance(source_snapshot_document, dict):
                 raise TypeError
             return cls(
                 owner_subject_id=str(document['owner_subject_id']),
@@ -132,7 +135,7 @@ class ManagerWorkspace:
                 base_payload_revision=str(document['base_payload_revision']),
                 saved_at_utc=datetime.fromisoformat(str(document['saved_at_utc'])),
                 payload=deepcopy(payload),
-                base=_source_snapshot_from_document(base_document),
+                base=_source_snapshot_from_document(source_snapshot_document),
             )
         except (KeyError, TypeError, ValueError) as error:
             raise ValueError('Manager workspace document is invalid') from error
@@ -168,6 +171,37 @@ class ManagerSourceVerification:
     def conflict(self) -> bool:
         return not self.matches
 
+    def to_document(self) -> dict[str, object]:
+        return {
+            'document_type': _SOURCE_VERIFICATION_DOCUMENT_TYPE,
+            'schema_version': _SOURCE_VERIFICATION_SCHEMA_VERSION,
+            'workspace_revision': self.workspace_revision,
+            'base_source_snapshot': _source_snapshot_to_document(self.base),
+            'current_source_snapshot': _source_snapshot_to_document(self.source),
+            'checked_at_utc': self.checked_at_utc.isoformat(),
+        }
+
+    @classmethod
+    def from_document(cls, document: dict[str, object]) -> ManagerSourceVerification:
+        try:
+            base_document = document['base_source_snapshot']
+            source_document = document['current_source_snapshot']
+            if (
+                document.get('document_type') != _SOURCE_VERIFICATION_DOCUMENT_TYPE
+                or document.get('schema_version') != _SOURCE_VERIFICATION_SCHEMA_VERSION
+                or not isinstance(base_document, dict)
+                or not isinstance(source_document, dict)
+            ):
+                raise TypeError
+            return cls(
+                workspace_revision=str(document['workspace_revision']),
+                base=_source_snapshot_from_document(base_document),
+                source=_source_snapshot_from_document(source_document),
+                checked_at_utc=datetime.fromisoformat(str(document['checked_at_utc'])),
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise ValueError('Manager source verification document is invalid') from error
+
 
 @dataclass(frozen=True, slots=True)
 class ManagerPublicationContext:
@@ -192,6 +226,19 @@ def verify_workspace_source(
         source=source,
         checked_at_utc=(checked_at_utc or datetime.now(UTC)).astimezone(UTC),
     )
+
+
+def rebase_workspace_document(
+    document: dict[str, object],
+    source_snapshot: SourceSnapshot,
+    *,
+    saved_at_utc: datetime | None = None,
+) -> dict[str, object]:
+    workspace = ManagerWorkspace.from_document(document)
+    rebased = workspace.rebase(source_snapshot, saved_at_utc=saved_at_utc)
+    updated = deepcopy(document)
+    updated.update(rebased.to_document())
+    return updated
 
 
 def prepare_publication(verification: ManagerSourceVerification) -> ManagerPublicationContext:
