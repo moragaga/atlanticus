@@ -1,6 +1,8 @@
 from atlanticus.web.assets import AssetLayer
 from atlanticus.web.modules import WebModule
-from atlanticus.web.users.configuration.web.callbacks import register_users_admin_callbacks
+from atlanticus.web.users.configuration.web.canonical_callbacks import (
+    register_users_admin_callbacks,
+)
 from atlanticus.web.users.configuration.web.models import UsersAdminWebContext
 
 

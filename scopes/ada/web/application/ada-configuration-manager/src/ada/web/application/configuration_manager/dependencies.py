@@ -11,12 +11,16 @@ from ada.web.kpis.definition import (
 from ada.web.tools.configuration import ToolLifecycleServices
 from atlanticus.web.manager import ManagerPrincipalProvider
 from atlanticus.web.navigation.configuration import NavigationConfigurationServices
-from atlanticus.web.users.configuration import UsersConfigurationServices
+from atlanticus.web.users.configuration import (
+    UsersConfigurationServices,
+    UsersProfilesAdministrationService,
+)
 
 
 @dataclass(frozen=True, slots=True)
 class ConfigurationManagerDependencies:
     users: UsersConfigurationServices
+    users_profiles_administration: UsersProfilesAdministrationService
     navigation: NavigationConfigurationServices
     tools: ToolLifecycleServices
     principal_provider: ManagerPrincipalProvider

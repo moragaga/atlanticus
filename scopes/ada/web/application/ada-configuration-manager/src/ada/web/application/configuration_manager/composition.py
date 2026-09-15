@@ -73,7 +73,7 @@ def build_configuration_manager_surface(
     dependencies: ConfigurationManagerDependencies,
 ) -> ManagerSurfaceDefinition:
     users_context = UsersAdminWebContext(
-        services=dependencies.users,
+        administration=dependencies.users_profiles_administration,
         draft_store_id=workflow_draft_id('users'),
         saved_draft_store_id=workflow_saved_draft_id('users'),
         draft_save_action_id=workflow_action_id('users', 'save-draft'),

@@ -1,17 +1,17 @@
-# Declara el store de revisión del editor de Users inyectado por la composición del Manager.
-# Users informa su estado editable y Manager conserva la responsabilidad de habilitar las acciones del lifecycle.
+# Contexto Web canónico de Users admin.
+# La UI recibe UsersProfilesAdministrationService directamente y no consume
+# UsersConfigurationServices ni UsersConfigurationCatalog legacy.
 
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from atlanticus.web.users.configuration.services import UsersConfigurationServices
+from atlanticus.web.users.configuration import UsersProfilesAdministrationService
 
 
 @dataclass(frozen=True, slots=True)
 class UsersAdminWebContext:
-    services: UsersConfigurationServices
+    administration: UsersProfilesAdministrationService
     draft_store_id: object
-    # Store persistente independiente usado únicamente cuando el usuario guarda o recupera un checkpoint.
     saved_draft_store_id: object
     draft_save_action_id: object
     workflow_refresh_signal_id: object

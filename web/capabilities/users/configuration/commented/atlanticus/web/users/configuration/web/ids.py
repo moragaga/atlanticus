@@ -1,5 +1,10 @@
-# IDs contractuales del editor; no existen controles Guest porque Pending no es un Profile configurable.
+# Identificadores Dash de Users admin.
+# DRAFT_BASIS_STORE_ID conserva el UsersProfilesAdminDraft schema 2 en memoria.
+# DRAFT_RECOVERY_RESULT_ID informa el descarte de un draft browser incompatible.
+
 CATALOG_STORE_ID = 'atlanticus-users-admin-catalog-store'
+DRAFT_BASIS_STORE_ID = 'atlanticus-users-admin-draft-basis-store'
+DRAFT_RECOVERY_RESULT_ID = 'atlanticus-users-admin-draft-recovery-result'
 SOURCE_REVISION_STORE_ID = 'atlanticus-users-admin-source-revision-store'
 SECTION_STORE_ID = 'atlanticus-users-admin-section-store'
 PROFILE_EDITOR_STORE_ID = 'atlanticus-users-admin-profile-editor-store'

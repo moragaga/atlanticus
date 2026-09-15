@@ -1,154 +1,148 @@
+from datetime import UTC, datetime
+
 import pytest
 
 pytest.importorskip('dash')
 
-from atlanticus.web.manager.projection import ManagerDraft
-from atlanticus.web.users.configuration.models import (
-    UserConfiguration,
-    UsersConfigurationCatalog,
+from atlanticus.web.source.models import SourceKey, SourceSnapshot
+from atlanticus.web.users.configuration import (
+    UsersProfilesAdminDraft,
+    UsersProfilesAdministrationService,
+    UsersProfilesConfiguration,
+    default_users_profiles_configuration,
 )
-from atlanticus.web.users.configuration.web.callbacks import (
-    _browser_draft_document,
+from atlanticus.web.users.configuration.errors import UsersConfigurationValidationError
+from atlanticus.web.users.configuration.web.canonical_callbacks import (
+    _draft,
     _save_profile,
     _save_user,
 )
+from atlanticus.web.users.configuration.web.models import UsersAdminWebContext
 from atlanticus.web.users.identity import build_user_key
 from atlanticus.web.users.models import PendingUserRecord
 
 
-def _catalog() -> UsersConfigurationCatalog:
-    return UsersConfigurationCatalog()
+class _Source:
+    def __init__(self) -> None:
+        self.source_key = SourceKey('users')
+        self.snapshot = SourceSnapshot(
+            source_key=self.source_key,
+            current=None,
+            concurrency_token=None,
+        )
+
+    def get_current(self) -> SourceSnapshot:
+        return self.snapshot
+
+    def load_release(self, _release_ref):
+        raise AssertionError('A source without current release must not be loaded')
 
 
-def _with_operator() -> UsersConfigurationCatalog:
-    return _save_profile(
-        _catalog(),
+class _PendingReader:
+    def __init__(self, users: tuple[PendingUserRecord, ...] = ()) -> None:
+        self._users = users
+
+    def list_pending(self) -> tuple[PendingUserRecord, ...]:
+        return self._users
+
+
+def _context(
+    pending: tuple[PendingUserRecord, ...] = (),
+) -> UsersAdminWebContext:
+    administration = UsersProfilesAdministrationService(
+        source=_Source(),
+        pending=_PendingReader(pending),
+    )
+    return UsersAdminWebContext(
+        administration=administration,
+        draft_store_id='draft',
+        saved_draft_store_id='saved-draft',
+        draft_save_action_id='workflow-save-draft',
+        workflow_refresh_signal_id='workflow-refresh',
+        editor_revision_store_id='editor-revision',
+        draft_owner_provider=lambda: 'tester',
+    )
+
+
+def test_profile_editor_generates_stable_key_inside_canonical_profiles() -> None:
+    updated = _save_profile(
+        default_users_profiles_configuration(),
         {'mode': 'create'},
         'Operador Planta',
         '#C9A24B',
         '#071522',
     )
 
+    assert updated.profile_catalog().require('administrator').key == 'administrator'
+    operator = updated.profile_catalog().require('operador_planta')
+    assert operator.label == 'Operador Planta'
+    assert operator.background_color == '#C9A24B'
+    assert operator.text_color == '#071522'
 
-def _pending() -> PendingUserRecord:
-    return PendingUserRecord(
+
+def test_pending_user_keeps_identity_when_added_to_canonical_draft() -> None:
+    pending = PendingUserRecord(
         user_id=build_user_key(issuer='entra', subject_id='subject-1'),
         issuer='entra',
         subject_id='subject-1',
         display_name='Usuario Pendiente',
         email='pending@example.com',
     )
+    context = _context((pending,))
+    configuration = default_users_profiles_configuration()
 
-
-def test_profile_editor_generates_stable_key_and_user_can_consume_it() -> None:
-    with_profile = _with_operator()
-    with_user = _save_user(
-        with_profile,
-        {
-            'mode': 'pending',
-            'user_id': build_user_key(issuer='entra', subject_id='subject-one'),
-            'issuer': 'entra',
-            'subject_id': 'subject-one',
-        },
-        display_name='Usuario Uno',
-        email='user.one@example.com',
-        profile_key='operador_planta',
-        enabled=True,
-    )
-
-    profile = with_profile.profiles[0]
-    assert profile.key == 'operador_planta'
-    assert profile.background_color == '#C9A24B'
-    assert profile.text_color == '#071522'
-    assert with_user.users[0].profile_key == 'operador_planta'
-
-
-def test_pending_user_keeps_identity_when_added_to_draft() -> None:
     updated = _save_user(
-        _with_operator(),
+        context,
+        configuration,
         {
             'mode': 'pending',
-            'user_id': build_user_key(issuer='entra', subject_id='subject-1'),
-            'issuer': 'entra',
-            'subject_id': 'subject-1',
+            'user_id': pending.user_id,
+            'issuer': pending.issuer,
+            'subject_id': pending.subject_id,
         },
         display_name='Usuario Pendiente',
         email='pending@example.com',
-        profile_key='operador_planta',
+        profile_key='administrator',
         enabled=True,
     )
 
-    user = updated.users[0]
-    assert user.user_id == build_user_key(issuer='entra', subject_id='subject-1')
-    assert user.issuer == 'entra'
-    assert user.subject_id == 'subject-1'
+    user = updated.users.users[0]
+    assert user.user_id == pending.user_id
+    assert user.issuer == pending.issuer
+    assert user.subject_id == pending.subject_id
+    assert user.profile_key == 'administrator'
 
 
-def test_pending_user_can_be_added_without_email() -> None:
-    updated = _save_user(
-        _with_operator(),
-        {
-            'mode': 'pending',
-            'user_id': build_user_key(issuer='entra', subject_id='subject-1'),
-            'issuer': 'entra',
-            'subject_id': 'subject-1',
-        },
-        display_name='Usuario Pendiente',
-        email=None,
-        profile_key='operador_planta',
-        enabled=True,
+def test_legacy_browser_draft_is_rejected_instead_of_migrated() -> None:
+    legacy = {
+        'schema_version': 1,
+        'owner_subject_id': 'tester',
+        'revision': 'legacy',
+        'saved_at': datetime(2026, 9, 15, tzinfo=UTC).isoformat(),
+        'base_source_revision': 'source-legacy',
+        'payload': {},
+    }
+
+    with pytest.raises(UsersConfigurationValidationError):
+        _draft(legacy, owner_subject_id='tester')
+
+
+def test_schema_2_draft_preserves_exact_snapshot_and_owner() -> None:
+    configuration = default_users_profiles_configuration()
+    snapshot = SourceSnapshot(
+        source_key=SourceKey('users'),
+        current=None,
+        concurrency_token=None,
+    )
+    draft = UsersProfilesAdminDraft.create(
+        owner_subject_id='tester',
+        configuration=configuration,
+        source_snapshot=snapshot,
+        saved_at_utc=datetime(2026, 9, 15, tzinfo=UTC),
     )
 
-    assert updated.users[0].email is None
+    restored = _draft(draft.to_document(), owner_subject_id='tester')
 
-
-def test_pending_identity_with_existing_email_is_not_rebound() -> None:
-    base = _with_operator()
-    existing = UserConfiguration.create(
-        display_name='Usuario Existente',
-        email='pending@example.com',
-        profile_key='operador_planta',
-        issuer='entra',
-        subject_id='existing-subject',
-    )
-    catalog = UsersConfigurationCatalog(
-        administrator_background_color=base.administrator_background_color,
-        administrator_text_color=base.administrator_text_color,
-        guest_background_color=base.guest_background_color,
-        guest_text_color=base.guest_text_color,
-        profiles=base.profiles,
-        users=(existing,),
-    )
-    pending = _pending()
-
-    with pytest.raises(ValueError, match='User email already exists'):
-        _save_user(
-            catalog,
-            {
-                'mode': 'pending',
-                'user_id': pending.user_id,
-                'issuer': pending.issuer,
-                'subject_id': pending.subject_id,
-            },
-            display_name=pending.display_name,
-            email=pending.email,
-            profile_key='operador_planta',
-            enabled=True,
-        )
-
-    assert catalog.users == (existing,)
-
-
-def test_users_browser_draft_is_accepted_by_manager_contract() -> None:
-    catalog = _with_operator()
-
-    document = _browser_draft_document(
-        catalog=catalog,
-        owner_subject_id='administrator-local',
-        base_source_revision=None,
-    )
-
-    draft = ManagerDraft.from_document(document)
-
-    assert draft.owner_subject_id == 'administrator-local'
-    assert draft.payload == catalog.to_document()
+    assert restored == draft
+    assert isinstance(restored.configuration, UsersProfilesConfiguration)
+    assert restored.source_snapshot == snapshot

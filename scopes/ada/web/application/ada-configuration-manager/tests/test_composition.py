@@ -35,6 +35,7 @@ def dependencies() -> ConfigurationManagerDependencies:
 
     return ConfigurationManagerDependencies(
         users=domain(UsersAdministrationStub()),
+        users_profiles_administration=SimpleNamespace(),
         navigation=domain(),
         tools=domain(),
         principal_provider=lambda: principal,

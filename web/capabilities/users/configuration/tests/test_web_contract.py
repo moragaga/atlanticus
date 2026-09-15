@@ -2,28 +2,24 @@ from inspect import signature
 from types import SimpleNamespace
 
 import pytest
-from dash import Input, State
 
 pytest.importorskip('dash')
+from dash import Input, State
 
-from atlanticus.web.manager.projection import ManagerDraft
+from atlanticus.web.source.models import SourceKey, SourceSnapshot
 from atlanticus.web.users.configuration import (
-    UsersConfigurationCatalog,
-    compose_users_configuration_services,
-)
-from atlanticus.web.users.configuration.adapters import (
-    MemoryPendingUsersReader,
-    MemoryUsersConfigurationStore,
-    MemoryUsersProjectionRepository,
+    UsersProfilesAdminDraft,
+    UsersProfilesAdministrationService,
+    UsersProfilesConfiguration,
+    default_users_profiles_configuration,
 )
 from atlanticus.web.users.configuration.web import (
     UsersAdminWebContext,
     build_users_admin_configuration,
-    callbacks as users_callbacks,
+    canonical_callbacks as users_callbacks,
     create_users_admin_web_module,
 )
-from atlanticus.web.users.configuration.web.callbacks import (
-    _browser_draft_document,
+from atlanticus.web.users.configuration.web.canonical_callbacks import (
     register_users_admin_callbacks,
 )
 from atlanticus.web.users.configuration.web.ids import (
@@ -31,6 +27,7 @@ from atlanticus.web.users.configuration.web.ids import (
     ADMINISTRATOR_TEXT_COLOR_ID,
     CATALOG_STORE_ID,
     DISCOVERED_TAB_ID,
+    DRAFT_BASIS_STORE_ID,
     PROFILE_BACKGROUND_COLOR_ID,
     PROFILE_TAB_ID,
     PROFILE_TEXT_COLOR_ID,
@@ -38,7 +35,6 @@ from atlanticus.web.users.configuration.web.ids import (
     SAVE_BUTTON_ID,
     SECTION_STORE_ID,
     SOURCE_NAME_ID,
-    SOURCE_REVISION_STORE_ID,
     USER_SAVE_ID,
     USERS_TAB_ID,
     discovered_add_id,
@@ -59,26 +55,46 @@ class _CallbackRecorder:
         return register
 
 
+class _Source:
+    def __init__(self) -> None:
+        self.source_key = SourceKey('users')
+        self.snapshot = SourceSnapshot(
+            source_key=self.source_key,
+            current=None,
+            concurrency_token=None,
+        )
+        self.publish_attempted = False
+
+    def get_current(self) -> SourceSnapshot:
+        return self.snapshot
+
+    def load_release(self, _release_ref):
+        raise AssertionError('A source without current release must not be loaded')
+
+    def publish_configuration(self, *_args, **_kwargs):
+        self.publish_attempted = True
+        raise AssertionError('Saving a browser draft must not publish Source')
+
+
+class _PendingReader:
+    def __init__(self, users: tuple[PendingUserRecord, ...] = ()) -> None:
+        self._users = users
+
+    def list_pending(self) -> tuple[PendingUserRecord, ...]:
+        return self._users
+
+
 def _context(
-    pending_users: list[PendingUserRecord] | None = None,
-) -> tuple[
-    UsersAdminWebContext,
-    MemoryUsersConfigurationStore,
-    MemoryUsersProjectionRepository,
-]:
-    source = MemoryUsersConfigurationStore()
-    projection = MemoryUsersProjectionRepository()
-    pending = MemoryPendingUsersReader(users=list(pending_users or ()))
-    services = compose_users_configuration_services(
+    pending_users: tuple[PendingUserRecord, ...] = (),
+) -> tuple[UsersAdminWebContext, _Source]:
+    source = _Source()
+    administration = UsersProfilesAdministrationService(
         source=source,
-        publisher=source,
-        projection=projection,
-        pending=pending,
-        audit_actor_provider=lambda: 'tester',
+        pending=_PendingReader(pending_users),
     )
     return (
         UsersAdminWebContext(
-            services=services,
+            administration=administration,
             draft_store_id='draft',
             saved_draft_store_id='saved-draft',
             draft_save_action_id='workflow-save-draft',
@@ -89,7 +105,6 @@ def _context(
             projection_name='Users Projection',
         ),
         source,
-        projection,
     )
 
 
@@ -126,27 +141,26 @@ def _registered_callbacks(context: UsersAdminWebContext) -> _CallbackRecorder:
     return recorder
 
 
-def test_users_admin_layout_starts_with_empty_local_workspace(monkeypatch) -> None:
-    context, _source, _projection = _context()
-
-    def fail_if_source_is_loaded():
-        raise AssertionError('Users source must not be loaded while building the editor layout')
-
-    monkeypatch.setattr(context.services.administration, 'load_source', fail_if_source_is_loaded)
+def test_users_admin_layout_starts_with_canonical_local_workspace() -> None:
+    context, _source = _context()
 
     layout = build_users_admin_configuration(context)
-    catalog = UsersConfigurationCatalog.from_document(_component(layout, CATALOG_STORE_ID).data)
+    configuration = UsersProfilesConfiguration.from_document(
+        _component(layout, CATALOG_STORE_ID).data
+    )
 
-    assert catalog.profiles == ()
-    assert catalog.users == ()
-    assert _component(layout, SOURCE_REVISION_STORE_ID).data is None
+    assert configuration.users.users == ()
+    assert tuple(profile.key for profile in configuration.profiles.profiles) == (
+        'administrator',
+    )
+    assert _component(layout, DRAFT_BASIS_STORE_ID).data is None
     assert _component(layout, SECTION_STORE_ID).data == 'profiles'
     assert _text(_component(layout, SOURCE_NAME_ID)) == 'Users Source'
     assert _text(_component(layout, PROJECTION_NAME_ID)) == 'Users Projection'
 
 
 def test_users_admin_exposes_profiles_users_and_pending_as_real_sections() -> None:
-    context, _source, _projection = _context()
+    context, _source = _context()
     layout = build_users_admin_configuration(context)
 
     assert _text(_component(layout, PROFILE_TAB_ID)) == 'Perfiles'
@@ -155,17 +169,15 @@ def test_users_admin_exposes_profiles_users_and_pending_as_real_sections() -> No
 
 
 def test_users_admin_only_exposes_functional_profile_color_controls() -> None:
-    context, _source, _projection = _context()
+    context, _source = _context()
     layout = build_users_admin_configuration(context)
 
-    color_ids = (
+    for component_id in (
         ADMINISTRATOR_BACKGROUND_COLOR_ID,
         ADMINISTRATOR_TEXT_COLOR_ID,
         PROFILE_BACKGROUND_COLOR_ID,
         PROFILE_TEXT_COLOR_ID,
-    )
-
-    for component_id in color_ids:
+    ):
         control = _component(layout, component_id)
         assert getattr(control, 'type', None) == 'color'
         value = getattr(control, 'value', None)
@@ -174,7 +186,7 @@ def test_users_admin_only_exposes_functional_profile_color_controls() -> None:
 
 
 def test_users_admin_web_module_owns_its_asset_layer() -> None:
-    context, _source, _projection = _context()
+    context, _source = _context()
 
     module = create_users_admin_web_module(context)
 
@@ -185,7 +197,7 @@ def test_users_admin_web_module_owns_its_asset_layer() -> None:
 
 
 def test_users_admin_callback_registration_matches_function_arity() -> None:
-    context, _source, _projection = _context()
+    context, _source = _context()
     recorder = _registered_callbacks(context)
 
     assert recorder.callbacks
@@ -208,29 +220,44 @@ def test_users_admin_callback_registration_matches_function_arity() -> None:
         assert positional_parameters == inputs_and_states, name
 
 
-def test_users_admin_rehydrates_catalog_and_source_revision_from_manager_draft() -> None:
-    context, _source, _projection = _context()
-    layout = build_users_admin_configuration(context)
-    catalog_document = _component(layout, CATALOG_STORE_ID).data
-    catalog = UsersConfigurationCatalog.from_document(catalog_document)
-    draft = _browser_draft_document(
-        catalog=catalog,
-        owner_subject_id='tester',
-        base_source_revision='source-11',
-    )
+def test_users_admin_rehydrates_schema_2_draft_with_exact_source_snapshot() -> None:
+    context, _source = _context()
+    draft = context.administration.create_draft(owner_subject_id='tester')
     recorder = _registered_callbacks(context)
     load_browser_draft = recorder.callbacks['load_browser_draft'][2]
 
-    result = load_browser_draft(1, draft)
+    result = load_browser_draft(1, draft.to_document())
 
-    assert result[0] == catalog_document
-    assert result[-1] == 'source-11'
+    restored = UsersProfilesAdminDraft.from_document(result[3])
+    assert result[0] == draft.configuration.to_document()
+    assert restored == draft
+    assert result[4] is None
 
 
-def test_users_admin_save_draft_is_local_and_does_not_publish_or_project(monkeypatch) -> None:
-    context, source, projection = _context()
-    layout = build_users_admin_configuration(context)
-    catalog_document = _component(layout, CATALOG_STORE_ID).data
+def test_legacy_browser_draft_is_discarded_without_fabricating_provenance() -> None:
+    context, _source = _context()
+    recorder = _registered_callbacks(context)
+    load_browser_draft = recorder.callbacks['load_browser_draft'][2]
+    legacy = {
+        'schema_version': 1,
+        'owner_subject_id': 'tester',
+        'revision': 'legacy',
+        'saved_at': '2026-09-15T00:00:00+00:00',
+        'base_source_revision': 'legacy-source',
+        'payload': {},
+    }
+
+    result = load_browser_draft(1, legacy)
+
+    recovered = UsersProfilesAdminDraft.from_document(result[3])
+    assert recovered.owner_subject_id == 'tester'
+    assert recovered.source_snapshot == context.administration.get_source_snapshot()
+    assert result[4] is not None
+
+
+def test_users_admin_save_draft_is_local_and_does_not_publish(monkeypatch) -> None:
+    context, source = _context()
+    basis = context.administration.create_draft(owner_subject_id='tester')
     recorder = _registered_callbacks(context)
     save_users_draft = recorder.callbacks['save_users_draft'][2]
 
@@ -240,31 +267,37 @@ def test_users_admin_save_draft_is_local_and_does_not_publish_or_project(monkeyp
         SimpleNamespace(triggered_id=SAVE_BUTTON_ID),
     )
 
-    draft_document, saved_document, result = save_users_draft(
+    draft_document, saved_document, basis_document, result = save_users_draft(
         1,
         None,
-        catalog_document,
-        'source-17',
-        None,
+        basis.configuration.to_document(),
+        basis.to_document(),
     )
 
-    draft = ManagerDraft.from_document(draft_document)
+    draft = UsersProfilesAdminDraft.from_document(draft_document)
 
     assert saved_document == draft_document
+    assert basis_document == draft_document
     assert result is None
     assert draft.owner_subject_id == 'tester'
-    assert draft.base_source_revision == 'source-17'
-    assert draft.payload == catalog_document
-    assert source.fetch_bundle() is None
-    assert projection.load_state() is None
+    assert draft.source_snapshot == basis.source_snapshot
+    assert source.publish_attempted is False
 
 
-def test_users_admin_can_materialize_pending_identity_into_draft(monkeypatch) -> None:
-    context, _source, _projection = _context()
+def test_users_admin_can_materialize_pending_identity_into_canonical_draft(
+    monkeypatch,
+) -> None:
+    pending = PendingUserRecord(
+        user_id=build_user_key(issuer='entra', subject_id='subject-new'),
+        issuer='entra',
+        subject_id='subject-new',
+        display_name='Pending User',
+        email='pending@example.com',
+    )
+    context, _source = _context((pending,))
     recorder = _registered_callbacks(context)
     user_editor = recorder.callbacks['user_editor'][2]
-    catalog = UsersConfigurationCatalog()
-    user_id = build_user_key(issuer='entra', subject_id='subject-new')
+    configuration = default_users_profiles_configuration()
 
     monkeypatch.setattr(
         users_callbacks,
@@ -283,72 +316,29 @@ def test_users_admin_can_materialize_pending_identity_into_draft(monkeypatch) ->
         [],
         {
             'mode': 'pending',
-            'user_id': user_id,
-            'issuer': 'entra',
-            'subject_id': 'subject-new',
+            'user_id': pending.user_id,
+            'issuer': pending.issuer,
+            'subject_id': pending.subject_id,
         },
         'Pending User',
         'pending@example.com',
         'administrator',
         True,
-        catalog.to_document(),
+        configuration.to_document(),
     )
 
-    updated = UsersConfigurationCatalog.from_document(result[-1])
-
-    assert len(updated.users) == 1
-    assert updated.users[0].user_id == user_id
-    assert updated.users[0].issuer == 'entra'
-    assert updated.users[0].subject_id == 'subject-new'
-    assert updated.users[0].profile_key == 'administrator'
-
-
-def test_pending_identity_metadata_can_be_completed_before_incorporation(monkeypatch) -> None:
-    pending = PendingUserRecord(
-        user_id=build_user_key(issuer='entra', subject_id='subject-pending'),
-        issuer='entra',
-        subject_id='subject-pending',
-    )
-    context, _source, _projection = _context([pending])
-    recorder = _registered_callbacks(context)
-    user_editor = recorder.callbacks['user_editor'][2]
-    trigger = discovered_add_id(pending.user_id)
-
-    monkeypatch.setattr(
-        users_callbacks,
-        'ctx',
-        SimpleNamespace(triggered_id=trigger),
-    )
-
-    result = user_editor(
-        None,
-        [1],
-        None,
-        None,
-        None,
-        None,
-        [],
-        [trigger],
-        None,
-        None,
-        None,
-        None,
-        None,
-        UsersConfigurationCatalog().to_document(),
-    )
-
-    assert result[1]['mode'] == 'pending'
-    assert result[1]['user_id'] == pending.user_id
-    assert result[3] == ''
-    assert result[4] == ''
-    assert result[8] is False
-    assert result[9] is False
+    updated = UsersProfilesConfiguration.from_document(result[-1])
+    assert len(updated.users.users) == 1
+    assert updated.users.users[0].user_id == pending.user_id
+    assert updated.users.users[0].issuer == pending.issuer
+    assert updated.users.users[0].subject_id == pending.subject_id
+    assert updated.users.users[0].profile_key == 'administrator'
 
 
 def test_pending_identity_that_disappeared_is_not_recreated_from_browser_state(
     monkeypatch,
 ) -> None:
-    context, _source, _projection = _context()
+    context, _source = _context()
     recorder = _registered_callbacks(context)
     user_editor = recorder.callbacks['user_editor'][2]
     missing_user_id = build_user_key(issuer='entra', subject_id='missing-subject')
@@ -374,7 +364,7 @@ def test_pending_identity_that_disappeared_is_not_recreated_from_browser_state(
         None,
         None,
         None,
-        UsersConfigurationCatalog().to_document(),
+        default_users_profiles_configuration().to_document(),
     )
 
     assert result[1] is None

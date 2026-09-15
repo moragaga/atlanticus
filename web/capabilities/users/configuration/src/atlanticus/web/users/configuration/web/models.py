@@ -1,12 +1,12 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from atlanticus.web.users.configuration.services import UsersConfigurationServices
+from atlanticus.web.users.configuration import UsersProfilesAdministrationService
 
 
 @dataclass(frozen=True, slots=True)
 class UsersAdminWebContext:
-    services: UsersConfigurationServices
+    administration: UsersProfilesAdministrationService
     draft_store_id: object
     saved_draft_store_id: object
     draft_save_action_id: object
