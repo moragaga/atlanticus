@@ -100,6 +100,100 @@ def test_admin_draft_round_trip_preserves_exact_source_snapshot() -> None:
     assert restored.source_snapshot.concurrency_token == ConcurrencyToken('etag-1')
 
 
+def test_admin_draft_rejects_previous_schema_without_local_baseline() -> None:
+    draft = UsersProfilesAdminDraft.create(
+        owner_subject_id='subject-admin',
+        configuration=_configuration(),
+        source_snapshot=_snapshot(),
+        saved_at_utc=datetime(2026, 9, 14, 12, 5, tzinfo=UTC),
+    )
+    document = draft.to_document()
+    document['schema_version'] = 1
+    document.pop('base_payload_revision')
+
+    with pytest.raises(UsersConfigurationValidationError, match='contract is invalid'):
+        UsersProfilesAdminDraft.from_document(document)
+
+
+def test_new_admin_draft_baselines_local_content_independently_from_source_identity() -> None:
+    draft = UsersProfilesAdminDraft.create(
+        owner_subject_id='subject-admin',
+        configuration=_configuration(),
+        source_snapshot=_snapshot(),
+    )
+
+    assert draft.base_payload_revision == draft.revision
+    assert draft.has_local_changes is False
+
+
+def test_admin_draft_edit_preserves_local_baseline_and_exact_source_snapshot() -> None:
+    draft = UsersProfilesAdminDraft.create(
+        owner_subject_id='subject-admin',
+        configuration=_configuration(),
+        source_snapshot=_snapshot(),
+    )
+    changed = update_administrator_colors(
+        draft.configuration,
+        background_color='#112233',
+        text_color='#AABBCC',
+    )
+
+    edited = draft.with_configuration(
+        changed,
+        saved_at_utc=datetime(2026, 9, 14, 12, 10, tzinfo=UTC),
+    )
+
+    assert edited.revision != draft.revision
+    assert edited.base_payload_revision == draft.revision
+    assert edited.source_snapshot == draft.source_snapshot
+    assert edited.has_local_changes is True
+
+
+def test_admin_draft_returning_to_base_content_is_clean_again() -> None:
+    draft = UsersProfilesAdminDraft.create(
+        owner_subject_id='subject-admin',
+        configuration=_configuration(),
+        source_snapshot=_snapshot(),
+    )
+    changed = update_administrator_colors(
+        draft.configuration,
+        background_color='#112233',
+        text_color='#AABBCC',
+    )
+
+    reverted = draft.with_configuration(changed).with_configuration(draft.configuration)
+
+    assert reverted.revision == draft.revision
+    assert reverted.base_payload_revision == draft.revision
+    assert reverted.has_local_changes is False
+
+
+def test_admin_draft_rebase_marks_current_content_as_new_local_baseline() -> None:
+    base_configuration = _configuration()
+    draft = UsersProfilesAdminDraft.create(
+        owner_subject_id='subject-admin',
+        configuration=base_configuration,
+        source_snapshot=_snapshot(),
+    ).with_configuration(
+        update_administrator_colors(
+            base_configuration,
+            background_color='#112233',
+            text_color='#AABBCC',
+        )
+    )
+    published = _snapshot('release-2', 'etag-2')
+
+    rebased = draft.rebase(
+        published,
+        saved_at_utc=datetime(2026, 9, 14, 12, 15, tzinfo=UTC),
+    )
+
+    assert rebased.revision == draft.revision
+    assert rebased.base_payload_revision == draft.revision
+    assert rebased.source_snapshot == published
+    assert rebased.has_local_changes is False
+
+
 @pytest.mark.parametrize('schema_version', [1, 2])
 def test_admin_draft_does_not_accept_legacy_browser_schema(schema_version: int) -> None:
     with pytest.raises(UsersConfigurationValidationError):

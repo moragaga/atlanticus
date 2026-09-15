@@ -37,7 +37,7 @@ _ADMINISTRATOR_PROFILE_KEY = 'administrator'
 _DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR = '#673AB7'
 _DEFAULT_ADMINISTRATOR_TEXT_COLOR = '#FFFFFF'
 _ADMIN_DRAFT_DOCUMENT_TYPE = 'atlanticus_users_profiles_admin_draft'
-_ADMIN_DRAFT_SCHEMA_VERSION = 1
+_ADMIN_DRAFT_SCHEMA_VERSION = 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +54,9 @@ class UsersProfilesAdminDraft:
     configuration: UsersProfilesConfiguration
     source_snapshot: SourceSnapshot
     revision: str
+    # Revisión local del contenido exacto que constituía la BASE al crear o rebasar el draft.
+    # No es SourceReleaseId ni ConcurrencyToken.
+    base_payload_revision: str
     saved_at_utc: datetime
 
     def __post_init__(self) -> None:
@@ -67,12 +70,18 @@ class UsersProfilesAdminDraft:
             raise UsersConfigurationValidationError(
                 'Users admin draft revision does not match content'
             )
+        base_payload_revision = self.base_payload_revision.strip()
+        if not base_payload_revision:
+            raise UsersConfigurationValidationError(
+                'Users admin draft base payload revision must not be empty'
+            )
         if self.saved_at_utc.tzinfo is None or self.saved_at_utc.utcoffset() is None:
             raise UsersConfigurationValidationError(
                 'Users admin draft timestamp must be timezone-aware'
             )
         object.__setattr__(self, 'owner_subject_id', owner)
         object.__setattr__(self, 'revision', expected_revision)
+        object.__setattr__(self, 'base_payload_revision', base_payload_revision)
         object.__setattr__(self, 'saved_at_utc', self.saved_at_utc.astimezone(UTC))
 
     @classmethod
@@ -84,11 +93,55 @@ class UsersProfilesAdminDraft:
         source_snapshot: SourceSnapshot,
         saved_at_utc: datetime | None = None,
     ) -> UsersProfilesAdminDraft:
+        # Un draft recién creado nace limpio: la revisión actual y la BASE local son iguales.
+        # La identidad Source se conserva por separado en el snapshot exacto.
+        revision = build_users_profiles_admin_revision(configuration)
         return cls(
             owner_subject_id=owner_subject_id,
             configuration=configuration,
             source_snapshot=source_snapshot,
+            revision=revision,
+            base_payload_revision=revision,
+            saved_at_utc=(saved_at_utc or datetime.now(UTC)).astimezone(UTC),
+        )
+
+    @property
+    def has_local_changes(self) -> bool:
+        # La suciedad funcional depende sólo de dos identidades locales de payload.
+        # Source puede refrescar su token sin convertir por eso el contenido local en modificado.
+        return self.revision != self.base_payload_revision
+
+    def with_configuration(
+        self,
+        configuration: UsersProfilesConfiguration,
+        *,
+        saved_at_utc: datetime | None = None,
+    ) -> UsersProfilesAdminDraft:
+        # Editar reemplaza el contenido actual y recalcula revision, pero conserva tanto
+        # la BASE local como el SourceSnapshot exacto con el que nació el trabajo.
+        return UsersProfilesAdminDraft(
+            owner_subject_id=self.owner_subject_id,
+            configuration=configuration,
+            source_snapshot=self.source_snapshot,
             revision=build_users_profiles_admin_revision(configuration),
+            base_payload_revision=self.base_payload_revision,
+            saved_at_utc=(saved_at_utc or datetime.now(UTC)).astimezone(UTC),
+        )
+
+    def rebase(
+        self,
+        source_snapshot: SourceSnapshot,
+        *,
+        saved_at_utc: datetime | None = None,
+    ) -> UsersProfilesAdminDraft:
+        # Rebase sólo debe usarse cuando un nuevo SourceSnapshot ya fue confirmado por el
+        # flujo de publicación. El contenido actual pasa a ser la nueva BASE local sin mutarlo.
+        return UsersProfilesAdminDraft(
+            owner_subject_id=self.owner_subject_id,
+            configuration=self.configuration,
+            source_snapshot=source_snapshot,
+            revision=self.revision,
+            base_payload_revision=self.revision,
             saved_at_utc=(saved_at_utc or datetime.now(UTC)).astimezone(UTC),
         )
 
@@ -100,6 +153,7 @@ class UsersProfilesAdminDraft:
             'schema_version': _ADMIN_DRAFT_SCHEMA_VERSION,
             'owner_subject_id': self.owner_subject_id,
             'revision': self.revision,
+            'base_payload_revision': self.base_payload_revision,
             'saved_at_utc': self.saved_at_utc.isoformat(),
             'source_snapshot': _source_snapshot_to_document(self.source_snapshot),
             'payload': self.configuration.to_document(),
@@ -124,6 +178,7 @@ class UsersProfilesAdminDraft:
                 configuration=UsersProfilesConfiguration.from_document(dict(payload)),
                 source_snapshot=_source_snapshot_from_document(dict(snapshot)),
                 revision=str(document['revision']),
+                base_payload_revision=str(document['base_payload_revision']),
                 saved_at_utc=datetime.fromisoformat(str(document['saved_at_utc'])),
             )
         except (KeyError, TypeError, ValueError, UsersConfigurationValidationError) as error:
