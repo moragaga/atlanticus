@@ -1,95 +1,50 @@
-from datetime import UTC, datetime
-
-from dash import Dash
-
 from atlanticus.web.manager import (
     DefaultManagerAuthorizationPolicy,
-    DraftValidationResult,
     ManagerModule,
     ManagerModuleGroup,
     ManagerModuleRegistry,
     ManagerPrincipal,
     ManagerSurfaceDefinition,
-    ProjectionAuditRecord,
-    ProjectionExecutionResult,
-    ProjectionStatus,
-    RevisionHistoryEntry,
-    SourcePublicationResult,
-    build_draft_revision,
 )
 from atlanticus.web.manager.web.callbacks import register_manager_callbacks
-from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.services import ServiceRegistry
+from atlanticus.web.source.models import SourceKey
 
 
-class _Workflow:
+class RecorderApp:
     def __init__(self) -> None:
-        self.audit = ProjectionAuditRecord(
-            actor='Admin',
-            occurred_at=datetime(2026, 8, 22, 0, 0, tzinfo=UTC),
-        )
+        self.callbacks = []
 
-    def get_status(self) -> ProjectionStatus:
-        return ProjectionStatus()
-
-    def get_current_projection_target(self) -> ProjectionTarget | None:
-        return None
-
-    def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult:
-        return DraftValidationResult(build_draft_revision(payload), True, self.audit)
-
-    def publish_draft(
-        self,
-        payload: dict[str, object],
-        expected_source_revision: str | None,
-    ) -> SourcePublicationResult:
-        return SourcePublicationResult(build_draft_revision(payload), True, self.audit)
-
-    def project(self, target: ProjectionTarget) -> ProjectionExecutionResult:
-        return ProjectionExecutionResult(
-            target=target,
-            projection_revision='projection',
-            projected=True,
-            audit=self.audit,
-        )
-
-    def load_revision(self, revision: str) -> dict[str, object]:
-        return {'revision': revision}
-
-    def list_history(self, *, limit: int = 20) -> tuple[RevisionHistoryEntry, ...]:
-        return ()
+    def callback(self, *dependencies, **options):
+        def register(function):
+            self.callbacks.append((dependencies, options, function))
+            return function
+        return register
 
 
-def test_manager_callbacks_register_with_real_dash_application() -> None:
-    app = Dash(__name__)
-    principal = ManagerPrincipal('local', 'Administrador local', is_local=True)
-    group = ManagerModuleGroup('configuration', 'Configuraciones', 10)
+def test_manager_callbacks_register_for_generic_module_without_resolving_services_eagerly() -> None:
+    principal = ManagerPrincipal('local', 'Local', is_local=True)
     module = ManagerModule(
-        key='tools',
-        group_key=group.key,
-        title='Herramientas',
-        route='/tools',
-        order=10,
-        layout=lambda _services: None,
-        workflow_service='tools.workflow',
-        source_name='Archivo local',
-        projection_name='Archivo local',
+        key='tools', group_key='configuration', title='Tools', route='/tools', order=10,
+        layout=lambda _services: None, source_key=SourceKey('tools'),
+        source_service='tools.source', source_reader_service='tools.reader',
+        source_history_service='tools.history', projection_service='tools.projection',
+        draft_validation_service='tools.validation',
     )
     definition = ManagerSurfaceDefinition(
         principal_provider=lambda: principal,
-        groups=(group,),
+        groups=(ManagerModuleGroup('configuration', 'Configuraciones', 10),),
         modules=(module,),
     )
     registry = ManagerModuleRegistry(definition.groups, definition.modules)
-    services = ServiceRegistry()
-    services.add(module.workflow_service, _Workflow())
+    app = RecorderApp()
 
     register_manager_callbacks(
         app,
         definition=definition,
         registry=registry,
-        services=services,
+        services=ServiceRegistry(),
         authorization=DefaultManagerAuthorizationPolicy(),
     )
 
-    assert app.callback_map
+    assert app.callbacks

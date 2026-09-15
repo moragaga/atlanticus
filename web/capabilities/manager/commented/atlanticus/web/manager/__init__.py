@@ -1,5 +1,7 @@
-# Superficie pública de Manager.
-# Exporta las capabilities exact-source y de validación sin introducir conocimiento de Users.
+# Espejo pedagógico del archivo productivo equivalente.
+# Expone únicamente el contrato público vigente de Manager. Los tipos Source y Projection publicados aquí son los genéricos del corte final.
+# Los comentarios no alteran la estructura ejecutable ni el comportamiento del archivo productivo.
+
 from atlanticus.web.manager.authorization import (
     DefaultManagerAuthorizationPolicy,
     ManagerAuthorizationPolicy,
@@ -12,22 +14,10 @@ from atlanticus.web.manager.errors import (
     ManagerProjectionError,
     ManagerSourceConflictError,
 )
-from atlanticus.web.manager.exact_projection import ExactProjectionWorkflow
-from atlanticus.web.manager.exact_source import (
-    ExactSourceHistoryReadResult,
-    ExactSourceHistoryWorkflow,
-    ExactSourcePublicationResult,
-    ExactSourcePublicationWorkflow,
-    ExactSourceReaderWorkflow,
-    ExactSourceReadResult,
-)
-from atlanticus.web.manager.lifecycle import (
-    ManagerLifecycleState,
-    resolve_exact_source_lifecycle,
-    resolve_manager_lifecycle,
-)
+from atlanticus.web.manager.lifecycle import ManagerLifecycleState, resolve_manager_lifecycle
 from atlanticus.web.manager.models import (
     ManagerHistoryPreviewRenderer,
+    ManagerLayoutFactory,
     ManagerModule,
     ManagerModuleAccess,
     ManagerModuleGroup,
@@ -36,24 +26,23 @@ from atlanticus.web.manager.models import (
     ManagerSurfaceDefinition,
 )
 from atlanticus.web.manager.projection import (
-    ConfigurationLifecycleWorkflow,
     DraftValidationResult,
-    ManagerDraft,
     ProjectionAuditRecord,
-    ProjectionExecutionResult,
     ProjectionIssue,
+    ProjectionIssueLevel,
     ProjectionState,
-    ProjectionStatus,
     ProjectionSummaryItem,
-    RevisionHistoryEntry,
-    RevisionHistoryWorkflow,
-    SourcePublicationResult,
-    SourceSnapshot,
-    SourceVerificationResult,
-    build_draft_revision,
     resolve_projection_state,
 )
 from atlanticus.web.manager.registry import ManagerModuleRegistry
+from atlanticus.web.manager.source import (
+    SourceHistoryReadResult,
+    SourceHistoryWorkflow,
+    SourcePublicationResult,
+    SourcePublicationWorkflow,
+    SourceReaderWorkflow,
+    SourceReadResult,
+)
 from atlanticus.web.manager.surface import ManagerSurface
 from atlanticus.web.manager.validation import DraftValidationWorkflow
 from atlanticus.web.manager.workspace import (
@@ -61,6 +50,8 @@ from atlanticus.web.manager.workspace import (
     ManagerPublicationContext,
     ManagerSourceVerification,
     ManagerWorkspace,
+    ManagerWorkspaceController,
+    ManagerWorkspaceState,
     build_workspace_revision,
     prepare_conflict_overwrite,
     prepare_publication,
@@ -71,23 +62,15 @@ from atlanticus.web.manager.workspace import (
 )
 
 __all__ = [
-    'ConfigurationLifecycleWorkflow',
     'DefaultManagerAuthorizationPolicy',
     'DraftValidationResult',
     'DraftValidationWorkflow',
-    'ExactProjectionWorkflow',
-    'ExactSourceHistoryReadResult',
-    'ExactSourceHistoryWorkflow',
-    'ExactSourcePublicationResult',
-    'ExactSourcePublicationWorkflow',
-    'ExactSourceReaderWorkflow',
-    'ExactSourceReadResult',
     'ManagerAuthorizationError',
     'ManagerAuthorizationPolicy',
     'ManagerDefinitionError',
-    'ManagerDraft',
     'ManagerError',
     'ManagerHistoryPreviewRenderer',
+    'ManagerLayoutFactory',
     'ManagerLifecycleState',
     'ManagerModule',
     'ManagerModuleAccess',
@@ -104,23 +87,23 @@ __all__ = [
     'ManagerSurface',
     'ManagerSurfaceDefinition',
     'ManagerWorkspace',
+    'ManagerWorkspaceController',
+    'ManagerWorkspaceState',
     'ProjectionAuditRecord',
-    'ProjectionExecutionResult',
     'ProjectionIssue',
+    'ProjectionIssueLevel',
     'ProjectionState',
-    'ProjectionStatus',
     'ProjectionSummaryItem',
-    'RevisionHistoryEntry',
-    'RevisionHistoryWorkflow',
+    'SourceHistoryReadResult',
+    'SourceHistoryWorkflow',
     'SourcePublicationResult',
-    'SourceSnapshot',
-    'SourceVerificationResult',
-    'build_draft_revision',
+    'SourcePublicationWorkflow',
+    'SourceReaderWorkflow',
+    'SourceReadResult',
     'build_workspace_revision',
     'prepare_conflict_overwrite',
     'prepare_publication',
     'rebase_workspace_document',
-    'resolve_exact_source_lifecycle',
     'resolve_manager_lifecycle',
     'resolve_manager_projection_state',
     'resolve_projection_state',

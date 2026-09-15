@@ -7,6 +7,10 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
 
+from atlanticus.web.manager.errors import ManagerProjectionError, ManagerSourceConflictError
+from atlanticus.web.manager.models import ManagerPrincipal
+from atlanticus.web.manager.projection import DraftValidationResult
+from atlanticus.web.manager.source import SourcePublicationResult, SourceReadResult
 from atlanticus.web.projection.models import ProjectionAlignment, ProjectionStatus, ProjectionTarget
 from atlanticus.web.source.models import (
     ConcurrencyToken,
@@ -161,7 +165,7 @@ class ManagerSourceVerification:
 
     @property
     def matches(self) -> bool:
-        return _release_id(self.base) == _release_id(self.source)
+        return self.base.current == self.source.current
 
     @property
     def publishable(self) -> bool:
@@ -214,6 +218,272 @@ class ManagerPublicationContext:
         return build_workspace_revision(payload) == self.workspace_revision
 
 
+@dataclass(frozen=True, slots=True)
+class ManagerWorkspaceState:
+    workspace: ManagerWorkspace | None
+    source: SourceReadResult
+    verification: ManagerSourceVerification | None
+    lifecycle: object
+
+
+class ManagerWorkspaceController:
+    def __init__(self, coordinator: object) -> None:
+        self._coordinator = coordinator
+
+    def load_state(
+        self,
+        *,
+        module_key: str,
+        principal: ManagerPrincipal,
+        workspace_document: dict[str, object] | None,
+        validation_document: dict[str, object] | None,
+        verification_document: dict[str, object] | None,
+        editor_revision: object,
+    ) -> ManagerWorkspaceState:
+        from atlanticus.web.manager.lifecycle import resolve_manager_lifecycle
+
+        workspace = self.safe_workspace(workspace_document, principal)
+        source = self._coordinator.load_current_source(module_key, principal)
+        verification = self.safe_verification(verification_document, workspace)
+        lifecycle = resolve_manager_lifecycle(
+            workspace=workspace,
+            editor_revision=_optional_revision(editor_revision),
+            source=source,
+            validation_current=self.validation_is_current(workspace, validation_document),
+            source_verification=verification,
+        )
+        return ManagerWorkspaceState(workspace, source, verification, lifecycle)
+
+    def require_workspace(
+        self,
+        document: dict[str, object] | None,
+        principal: ManagerPrincipal,
+    ) -> ManagerWorkspace:
+        if not isinstance(document, dict):
+            raise ManagerProjectionError('A browser workspace is required')
+        try:
+            workspace = ManagerWorkspace.from_document(document)
+        except ValueError as error:
+            raise ManagerProjectionError('Browser workspace is invalid') from error
+        if workspace.owner_subject_id != principal.subject_id:
+            raise ManagerProjectionError('Browser workspace belongs to another user')
+        return workspace
+
+    def safe_workspace(
+        self,
+        document: dict[str, object] | None,
+        principal: ManagerPrincipal,
+    ) -> ManagerWorkspace | None:
+        if document is None:
+            return None
+        try:
+            return self.require_workspace(document, principal)
+        except ManagerProjectionError:
+            return None
+
+    def validation_is_current(
+        self,
+        workspace: ManagerWorkspace | None,
+        validation: dict[str, object] | None,
+    ) -> bool:
+        return bool(
+            workspace is not None
+            and validation
+            and validation.get('draft_revision') == workspace.revision
+            and validation.get('valid') is True
+        )
+
+    def safe_verification(
+        self,
+        document: dict[str, object] | None,
+        workspace: ManagerWorkspace | None,
+    ) -> ManagerSourceVerification | None:
+        if workspace is None or not isinstance(document, dict):
+            return None
+        try:
+            verification = ManagerSourceVerification.from_document(document)
+        except ValueError:
+            return None
+        if verification.workspace_revision != workspace.revision:
+            return None
+        return verification
+
+    def require_verification(
+        self,
+        document: dict[str, object] | None,
+        workspace: ManagerWorkspace,
+    ) -> ManagerSourceVerification:
+        verification = self.safe_verification(document, workspace)
+        if verification is None:
+            raise ManagerProjectionError('A current source verification is required')
+        return verification
+
+    def has_local_work(
+        self,
+        *,
+        module_key: str,
+        principal: ManagerPrincipal,
+        workspace_document: dict[str, object] | None,
+        editor_revision: object,
+    ) -> bool:
+        from atlanticus.web.manager.lifecycle import resolve_manager_lifecycle
+
+        workspace = self.safe_workspace(workspace_document, principal)
+        local_editor_revision = _optional_revision(editor_revision)
+        if workspace is None:
+            if workspace_document is not None:
+                return False
+            return local_editor_revision is not None
+        source = self._coordinator.load_current_source(module_key, principal)
+        lifecycle = resolve_manager_lifecycle(
+            workspace=workspace,
+            editor_revision=local_editor_revision,
+            source=source,
+            validation_current=False,
+            source_verification=None,
+        )
+        return lifecycle.can_discard_local
+
+    def validate(
+        self,
+        *,
+        module_key: str,
+        principal: ManagerPrincipal,
+        workspace_document: dict[str, object] | None,
+        editor_revision: object,
+    ) -> DraftValidationResult:
+        workspace = self.require_workspace(workspace_document, principal)
+        if _optional_revision(editor_revision) != workspace.revision:
+            raise ManagerProjectionError('Current editor changes must be saved before validation')
+        result = self._coordinator.validate_draft(module_key, principal, workspace.payload)
+        if result.draft_revision != workspace.revision:
+            raise ManagerProjectionError('Validated draft revision does not match browser workspace')
+        return result
+
+    def verify(
+        self,
+        *,
+        module_key: str,
+        principal: ManagerPrincipal,
+        workspace_document: dict[str, object] | None,
+        validation_document: dict[str, object] | None,
+        editor_revision: object,
+    ) -> ManagerSourceVerification:
+        workspace = self.require_workspace(workspace_document, principal)
+        if _optional_revision(editor_revision) != workspace.revision:
+            raise ManagerProjectionError('Current editor changes must be saved before verification')
+        if not self.validation_is_current(workspace, validation_document):
+            raise ManagerProjectionError('A successful draft validation is required')
+        source = self._coordinator.get_source_snapshot(module_key, principal)
+        return verify_workspace_source(workspace, source)
+
+    def publish(
+        self,
+        *,
+        module_key: str,
+        principal: ManagerPrincipal,
+        workspace_document: dict[str, object] | None,
+        validation_document: dict[str, object] | None,
+        verification_document: dict[str, object] | None,
+        editor_revision: object,
+    ) -> tuple[SourcePublicationResult, dict[str, object]]:
+        workspace = self.require_workspace(workspace_document, principal)
+        if _optional_revision(editor_revision) != workspace.revision:
+            raise ManagerProjectionError('Current editor changes must be saved before publication')
+        if not self.validation_is_current(workspace, validation_document):
+            raise ManagerProjectionError('A successful draft validation is required')
+        verification = self.require_verification(verification_document, workspace)
+        if not verification.publishable:
+            raise ManagerSourceConflictError('Manager source verification detected a conflict')
+        result = self._coordinator.publish_draft(
+            module_key,
+            principal,
+            workspace.payload,
+            verification.source,
+        )
+        if not isinstance(workspace_document, dict):
+            raise ManagerProjectionError('A browser workspace is required')
+        return result, rebase_workspace_document(workspace_document, result.source.snapshot)
+
+    def refresh_verification(
+        self,
+        *,
+        module_key: str,
+        principal: ManagerPrincipal,
+        workspace_document: dict[str, object] | None,
+    ) -> dict[str, object] | None:
+        try:
+            workspace = self.require_workspace(workspace_document, principal)
+            source = self._coordinator.get_source_snapshot(module_key, principal)
+            return verify_workspace_source(workspace, source).to_document()
+        except ManagerProjectionError:
+            return None
+
+    def keep_draft(
+        self,
+        *,
+        principal: ManagerPrincipal,
+        workspace_document: dict[str, object] | None,
+        verification_document: dict[str, object] | None,
+    ) -> dict[str, object]:
+        workspace = self.require_workspace(workspace_document, principal)
+        verification = self.require_verification(verification_document, workspace)
+        if not verification.conflict:
+            raise ManagerProjectionError('Manager workspace does not have a source conflict')
+        if not isinstance(workspace_document, dict):
+            raise ManagerProjectionError('A browser workspace is required')
+        return rebase_workspace_document(workspace_document, verification.source)
+
+    def replace_from_source(
+        self,
+        *,
+        module_key: str,
+        principal: ManagerPrincipal,
+        workspace_document: dict[str, object] | None,
+    ) -> dict[str, object] | None:
+        source = self._coordinator.load_current_source(module_key, principal)
+        if source.payload is None:
+            return None
+        workspace = self.safe_workspace(workspace_document, principal)
+        owner = workspace.owner_subject_id if workspace is not None else principal.subject_id
+        replacement = ManagerWorkspace.create(
+            owner_subject_id=owner,
+            payload=source.payload,
+            base=source.snapshot,
+        )
+        return replacement.to_document()
+
+    def replace_with_payload(
+        self,
+        *,
+        principal: ManagerPrincipal,
+        workspace_document: dict[str, object] | None,
+        payload: dict[str, object],
+    ) -> dict[str, object]:
+        workspace = self.require_workspace(workspace_document, principal)
+        return workspace.with_payload(payload).to_document()
+
+    def create_with_payload_on_current_base(
+        self,
+        *,
+        module_key: str,
+        principal: ManagerPrincipal,
+        payload: dict[str, object],
+    ) -> dict[str, object]:
+        source = self._coordinator.load_current_source(module_key, principal)
+        current_payload = source.payload if source.payload is not None else {}
+        current = ManagerWorkspace.create(
+            owner_subject_id=principal.subject_id,
+            payload=current_payload,
+            base=source.snapshot,
+        )
+        return current.with_payload(payload).to_document()
+
+    @staticmethod
+    def source_changed(workspace: ManagerWorkspace, source: SourceReadResult) -> bool:
+        return workspace.base.current != source.snapshot.current
+
+
 def verify_workspace_source(
     workspace: ManagerWorkspace,
     source: SourceSnapshot,
@@ -258,10 +528,7 @@ def prepare_conflict_overwrite(
 def select_projection_target(source: SourceSnapshot) -> ProjectionTarget:
     if source.current is None:
         raise ValueError('Cannot select a projection target without a published source release')
-    return ProjectionTarget(
-        source_key=source.source_key,
-        source_release=source.current.release_ref,
-    )
+    return ProjectionTarget(source_key=source.source_key, source_release=source.current.release_ref)
 
 
 def resolve_manager_projection_state(status: ProjectionStatus) -> ManagerProjectionState:
@@ -289,21 +556,13 @@ def build_workspace_revision(payload: dict[str, object]) -> str:
 def _publication_context(
     verification: ManagerSourceVerification,
 ) -> ManagerPublicationContext:
-    basis_release = None
-    if verification.base.current is not None:
-        basis_release = verification.base.current.release_ref
+    basis_release = verification.base.current.release_ref if verification.base.current is not None else None
     return ManagerPublicationContext(
         workspace_revision=verification.workspace_revision,
         source_key=verification.source.source_key,
         basis_release=basis_release,
         expected_concurrency_token=verification.source.concurrency_token,
     )
-
-
-def _release_id(snapshot: SourceSnapshot) -> SourceReleaseId | None:
-    if snapshot.current is None:
-        return None
-    return snapshot.current.release_ref.release_id
 
 
 def _source_snapshot_to_document(snapshot: SourceSnapshot) -> dict[str, object]:
@@ -320,9 +579,7 @@ def _source_snapshot_to_document(snapshot: SourceSnapshot) -> dict[str, object]:
     return {
         'source_key': snapshot.source_key.value,
         'current': current,
-        'concurrency_token': (
-            snapshot.concurrency_token.value if snapshot.concurrency_token is not None else None
-        ),
+        'concurrency_token': snapshot.concurrency_token.value if snapshot.concurrency_token else None,
     }
 
 
@@ -352,3 +609,10 @@ def _source_snapshot_from_document(document: dict[str, object]) -> SourceSnapsho
         current=current,
         concurrency_token=token,
     )
+
+
+def _optional_revision(value: object) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized or None

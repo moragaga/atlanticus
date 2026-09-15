@@ -1,20 +1,21 @@
-from __future__ import annotations
+# Espejo pedagógico del archivo productivo equivalente.
+# Renderiza el estado del workspace, Source y conflictos usando snapshots y releases. No contiene lógica de persistencia ni compatibilidad legacy.
+# Los comentarios no alteran la estructura ejecutable ni el comportamiento del archivo productivo.
 
-# Renderers específicos del contrato exact-source. Presentan identidad de release sin
-# convertir SourceReleaseId o ConcurrencyToken a las revisiones legacy de ManagerDraft.
+from __future__ import annotations
 
 from dash import html
 
-from atlanticus.web.manager.exact_source import ExactSourceReadResult
 from atlanticus.web.manager.lifecycle import ManagerLifecycleState
 from atlanticus.web.manager.models import ManagerPrincipal
+from atlanticus.web.manager.source import SourceReadResult
 from atlanticus.web.manager.workspace import ManagerSourceVerification, ManagerWorkspace
 
 
-def build_exact_workspace_content(
+def build_workspace_content(
     *,
     workspace: ManagerWorkspace | None,
-    source: ExactSourceReadResult,
+    source: SourceReadResult,
     validation: dict[str, object] | None,
     verification: ManagerSourceVerification | None,
     lifecycle: ManagerLifecycleState,
@@ -22,28 +23,17 @@ def build_exact_workspace_content(
 ) -> object:
     if workspace is None:
         return html.Section(
-            [
-                html.Strong('Trabajo local'),
-                html.P('Todavía no hay un workspace exact-source guardado en este navegador.'),
-            ],
+            [html.Strong('Trabajo local'), html.P('Todavía no hay un workspace guardado en este navegador.')],
             className='atlanticus-manager__workflow-group',
         )
     if workspace.owner_subject_id != principal.subject_id:
         return _error('El workspace local pertenece a otro usuario.')
-    state = (
-        'Cambios sin guardar'
-        if lifecycle.dirty
-        else ('Publicado' if lifecycle.published else 'No publicado')
-    )
-    validation_label = 'Pendiente'
-    if lifecycle.validation_current:
-        validation_label = 'Validado'
-    elif validation and validation.get('draft_revision') == workspace.revision:
-        validation_label = 'Con errores' if validation.get('valid') is False else 'Pendiente'
-    verification_label = 'Pendiente'
-    if lifecycle.published:
-        verification_label = 'No requerida'
-    elif verification is not None:
+    state = 'Cambios sin guardar' if lifecycle.dirty else ('Publicado' if lifecycle.published else 'No publicado')
+    validation_label = 'Validado' if lifecycle.validation_current else 'Pendiente'
+    if validation and validation.get('draft_revision') == workspace.revision and validation.get('valid') is False:
+        validation_label = 'Con errores'
+    verification_label = 'No requerida' if lifecycle.published else 'Pendiente'
+    if verification is not None:
         verification_label = 'Verificada' if verification.publishable else 'Conflicto'
     return html.Section(
         [
@@ -65,10 +55,10 @@ def build_exact_workspace_content(
     )
 
 
-def build_exact_saved_workspace_content(
+def build_saved_workspace_content(
     *,
     workspace: ManagerWorkspace | None,
-    source: ExactSourceReadResult | None,
+    source: SourceReadResult | None,
     incompatible: bool = False,
 ) -> object:
     if incompatible:
@@ -77,29 +67,16 @@ def build_exact_saved_workspace_content(
             className='atlanticus-manager__message atlanticus-manager__message--notice',
         )
     if workspace is None:
-        return html.Div(
-            'No hay un workspace guardado para recuperar.',
-            className='atlanticus-manager__saved-draft-empty',
-        )
-    source_changed = source is not None and _release_id(workspace.base) != _release_id(
-        source.snapshot
-    )
+        return html.Div('No hay un workspace guardado para recuperar.', className='atlanticus-manager__saved-draft-empty')
+    source_changed = source is not None and workspace.base.current != source.snapshot.current
     return html.Div(
         [
-            html.Strong(
-                'Source cambió desde que se guardó este workspace.'
-                if source_changed
-                else 'Hay un workspace guardado disponible.'
-            ),
+            html.Strong('Source cambió desde que se guardó este workspace.' if source_changed else 'Hay un workspace guardado disponible.'),
             html.Div(
                 [
                     _item('Revisión local', workspace.revision[:12]),
                     _item('Base Source', _release_label(workspace.base)),
-                    *(
-                        [_item('Source actual', _release_label(source.snapshot))]
-                        if source_changed and source is not None
-                        else []
-                    ),
+                    *([_item('Source actual', _release_label(source.snapshot))] if source_changed and source is not None else []),
                 ],
                 className='atlanticus-manager__saved-draft-meta',
             ),
@@ -108,7 +85,7 @@ def build_exact_saved_workspace_content(
     )
 
 
-def build_exact_source_conflict_content(
+def build_source_conflict_content(
     *,
     workspace: ManagerWorkspace,
     verification: ManagerSourceVerification,
@@ -118,10 +95,7 @@ def build_exact_source_conflict_content(
             html.Strong('Source cambió mientras estabas trabajando.'),
             html.P('Tu workspace se conserva sin cambios hasta que elijas cómo continuar.'),
             html.Div(
-                [
-                    _item('Base de tu workspace', _release_label(workspace.base)),
-                    _item('Source actual', _release_label(verification.source)),
-                ],
+                [_item('Base de tu workspace', _release_label(workspace.base)), _item('Source actual', _release_label(verification.source))],
                 className='atlanticus-manager__conflict-revisions',
             ),
         ],
@@ -135,24 +109,12 @@ def _issues(validation: dict[str, object] | None) -> object | None:
     raw = validation.get('issues')
     if not isinstance(raw, list) or not raw:
         return None
-    messages = [
-        str(item.get('message', '')).strip()
-        for item in raw
-        if isinstance(item, dict) and str(item.get('message', '')).strip()
-    ]
-    if not messages:
-        return None
-    return html.Ul([html.Li(message) for message in messages])
+    messages = [str(item.get('message', '')).strip() for item in raw if isinstance(item, dict) and str(item.get('message', '')).strip()]
+    return html.Ul([html.Li(message) for message in messages]) if messages else None
 
 
 def _item(label: str, value: str) -> object:
     return html.Span([html.Small(label), html.Code(value)])
-
-
-def _release_id(snapshot) -> object:
-    if snapshot.current is None:
-        return None
-    return snapshot.current.release_ref.release_id
 
 
 def _release_label(snapshot) -> str:
@@ -162,7 +124,4 @@ def _release_label(snapshot) -> str:
 
 
 def _error(message: str) -> object:
-    return html.Div(
-        message,
-        className='atlanticus-manager__message atlanticus-manager__message--error',
-    )
+    return html.Div(message, className='atlanticus-manager__message atlanticus-manager__message--error')

@@ -1,5 +1,6 @@
-# Valida que cualquier renderer histórico declarado por un módulo sea invocable.
-# La validación falla temprano ante una definición de módulo inválida.
+# Espejo pedagógico del archivo productivo equivalente.
+# Valida y ordena la composición de módulos Manager. No adapta contratos antiguos ni resuelve aliases de servicios.
+# Los comentarios no alteran la estructura ejecutable ni el comportamiento del archivo productivo.
 
 import re
 
@@ -129,39 +130,19 @@ class ManagerModuleRegistry:
                 raise ManagerDefinitionError('Manager workflow section title must not be empty')
             if not module.content_section_title.strip():
                 raise ManagerDefinitionError('Manager content section title must not be empty')
-            # Un módulo puede omitir el lifecycle legacy sólo después de declarar explícitamente
-            # las tres capabilities exact-source usadas por el authoring productivo.
-            workflow_service = module.workflow_service
-            if workflow_service is None:
-                exact_services = (
-                    module.draft_validation_service,
-                    module.exact_source_reader_service,
-                    module.exact_source_workflow_service,
-                )
-                if any(
-                    service is None or not service.strip()
-                    for service in exact_services
-                ):
-                    raise ManagerDefinitionError(
-                        'Manager module without legacy workflow must declare exact-source services'
-                    )
-            elif not workflow_service.strip():
-                raise ManagerDefinitionError('Manager workflow service must not be empty')
-            # Si se declara projection exacta debe apuntar a una service key concreta.
-            exact_projection_service = module.exact_projection_service
-            if exact_projection_service is not None and not exact_projection_service.strip():
-                raise ManagerDefinitionError(
-                    'Manager exact projection service must not be empty'
-                )
-            # History exacto es opt-in durante migraciones; si se declara, la key debe ser válida.
-            exact_source_history_service = module.exact_source_history_service
+            service_keys = (
+                module.source_service,
+                module.source_reader_service,
+                module.projection_service,
+                module.draft_validation_service,
+            )
+            if any(not service_key.strip() for service_key in service_keys):
+                raise ManagerDefinitionError('Manager module service keys must not be empty')
             if (
-                exact_source_history_service is not None
-                and not exact_source_history_service.strip()
+                module.source_history_service is not None
+                and not module.source_history_service.strip()
             ):
-                raise ManagerDefinitionError(
-                    'Manager exact source history service must not be empty'
-                )
+                raise ManagerDefinitionError('Manager source history service key must not be empty')
             if module.source_signal_id is not None:
                 source_signal_id = module.source_signal_id.strip()
                 if not source_signal_id:
@@ -184,6 +165,11 @@ class ManagerModuleRegistry:
         )
 
     def _validate_access(self, module: ManagerModule) -> None:
-        for access_key in (module.access.view, module.access.validate, module.access.project):
+        for access_key in (
+            module.access.view,
+            module.access.validate,
+            module.access.project,
+            module.access.publish,
+        ):
             if access_key is not None and not _ACCESS_KEY_PATTERN.fullmatch(access_key):
                 raise ManagerDefinitionError('Manager access key has an invalid format')

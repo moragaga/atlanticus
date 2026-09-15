@@ -1,6 +1,7 @@
-# Modelos de composición de Manager.
-# Los servicios de validación, lectura exacta y publicación exacta se declaran por separado
-# para que cada módulo exponga solamente las capabilities que realmente implementa.
+# Espejo pedagógico del archivo productivo equivalente.
+# Define la composición declarativa de módulos Manager. Cada módulo nombra sus servicios Source, Projection y validación de forma explícita.
+# Los comentarios no alteran la estructura ejecutable ni el comportamiento del archivo productivo.
+
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -8,6 +9,7 @@ from dataclasses import dataclass, field
 from atlanticus.web.manager.errors import ManagerDefinitionError
 from atlanticus.web.modules import WebModule
 from atlanticus.web.services import ServiceRegistry
+from atlanticus.web.source.models import SourceKey
 
 ManagerLayoutFactory = Callable[[ServiceRegistry], object]
 ManagerHistoryPreviewRenderer = Callable[[dict[str, object]], object]
@@ -58,8 +60,12 @@ class ManagerModule:
     route: str
     order: int
     layout: ManagerLayoutFactory
-    # Los módulos completamente migrados pueden no declarar lifecycle legacy.
-    workflow_service: str | None = None
+    source_key: SourceKey
+    source_service: str
+    source_reader_service: str
+    projection_service: str
+    draft_validation_service: str
+    source_history_service: str | None = None
     description: str = ''
     access: ManagerModuleAccess = field(default_factory=ManagerModuleAccess)
     web_module: WebModule | None = None
@@ -70,15 +76,19 @@ class ManagerModule:
     default_section: str = 'content'
     source_name: str = 'Source'
     projection_name: str = 'Projection'
-    force_publish_enabled: bool = False
     history_preview_renderer: ManagerHistoryPreviewRenderer | None = None
-    exact_source_workflow_service: str | None = None
-    draft_validation_service: str | None = None
-    exact_source_reader_service: str | None = None
-    # History Source exacto es otra capability independiente del lifecycle legacy.
-    exact_source_history_service: str | None = None
-    # Projection exacta se declara por separado del lifecycle legacy.
-    exact_projection_service: str | None = None
+
+    def __post_init__(self) -> None:
+        service_keys = (
+            self.source_service,
+            self.source_reader_service,
+            self.projection_service,
+            self.draft_validation_service,
+        )
+        if any(not value.strip() for value in service_keys):
+            raise ManagerDefinitionError('Manager module service keys must not be empty')
+        if self.source_history_service is not None and not self.source_history_service.strip():
+            raise ManagerDefinitionError('Manager source history service key must not be empty')
 
 
 @dataclass(frozen=True, slots=True)
