@@ -15,6 +15,7 @@ from atlanticus.web.manager.errors import (
     ManagerProjectionError,
     ManagerSourceConflictError,
 )
+from atlanticus.web.manager.exact_workspace import ManagerExactWorkspaceController
 from atlanticus.web.manager.lifecycle import resolve_manager_lifecycle
 from atlanticus.web.manager.models import ManagerPrincipal, ManagerSurfaceDefinition
 from atlanticus.web.manager.projection import (
@@ -26,6 +27,10 @@ from atlanticus.web.manager.projection import (
     resolve_projection_state,
 )
 from atlanticus.web.manager.registry import ManagerModuleRegistry
+from atlanticus.web.manager.web.exact_workspace import (
+    build_exact_source_conflict_content,
+    build_exact_workspace_content,
+)
 from atlanticus.web.manager.web.home import (
     build_home_page_content,
     build_manager_home_return,
@@ -107,6 +112,7 @@ def register_manager_callbacks(
         services=services,
         authorization=authorization,
     )
+    exact_workspace = ManagerExactWorkspaceController(coordinator)
     source_inputs = [
         Input(module.source_signal_id, 'data')
         for module in registry.modules
@@ -374,6 +380,7 @@ def register_manager_callbacks(
         Input(workflow_source_verification_id(MATCH), 'data'),
         Input(workflow_revision_id(MATCH), 'data'),
         Input(workflow_editor_revision_id(MATCH), 'data'),
+        State(workflow_draft_id(MATCH), 'id'),
     )
     def refresh_draft_workflow(
         draft_data: dict[str, object] | None,
@@ -381,9 +388,68 @@ def register_manager_callbacks(
         verification_data: dict[str, object] | None,
         revision_state: dict[str, object] | None,
         editor_revision: str | None,
+        draft_id: dict[str, object],
     ):
         principal = definition.principal_provider()
-        # El estado del workflow se calcula sólo con el workspace del principal actual.
+        module_key = str(draft_id.get('module', ''))
+        try:
+            module = registry.require(module_key)
+        except ManagerError:
+            module = None
+        # El camino exact-source interpreta schema 2 directamente y nunca construye ManagerDraft.
+        if module is not None and _uses_exact_workspace(module):
+            try:
+                state = exact_workspace.load_state(
+                    module_key=module_key,
+                    principal=principal,
+                    workspace_document=draft_data,
+                    validation_document=validation_data,
+                    verification_document=verification_data,
+                    editor_revision=editor_revision,
+                )
+                if isinstance(draft_data, dict) and state.workspace is None:
+                    raise ManagerProjectionError('Exact-source browser workspace is invalid')
+            except ManagerError as error:
+                return (
+                    _error_message(str(error)),
+                    True,
+                    True,
+                    True,
+                    True,
+                    True,
+                    True,
+                    None,
+                    True,
+                )
+            conflict_content = None
+            if (
+                state.lifecycle.source_conflict
+                and state.workspace is not None
+                and state.verification is not None
+            ):
+                conflict_content = build_exact_source_conflict_content(
+                    workspace=state.workspace,
+                    verification=state.verification,
+                )
+            return (
+                build_exact_workspace_content(
+                    workspace=state.workspace,
+                    source=state.source,
+                    validation=None if state.lifecycle.dirty else validation_data,
+                    verification=None if state.lifecycle.dirty else state.verification,
+                    lifecycle=state.lifecycle,
+                    principal=principal,
+                ),
+                not state.lifecycle.can_save_draft,
+                not state.lifecycle.can_validate,
+                not state.lifecycle.can_verify_source,
+                not state.lifecycle.can_publish,
+                not state.lifecycle.can_discard_local,
+                not state.lifecycle.source_conflict,
+                conflict_content,
+                True,
+            )
+        # El camino schema 1 se conserva sólo para módulos todavía no migrados.
         draft, local_editor_revision = _local_workspace_state(
             draft_data,
             editor_revision,
@@ -536,21 +602,31 @@ def register_manager_callbacks(
         if not isinstance(trigger, dict) or not _click_is_real(clicks):
             return no_update, no_update, no_update
         principal = definition.principal_provider()
+        module_key = str(trigger.get('module', ''))
         try:
-            draft = _require_draft(draft_data, principal)
-            if _editor_revision(editor_revision) != draft.revision:
-                raise ManagerProjectionError(
-                    'Current editor changes must be saved before validation'
+            module = registry.require(module_key)
+            if _uses_exact_workspace(module):
+                result = exact_workspace.validate(
+                    module_key=module_key,
+                    principal=principal,
+                    workspace_document=draft_data,
+                    editor_revision=editor_revision,
                 )
-            result = coordinator.validate_draft(
-                str(trigger.get('module', '')),
-                principal,
-                draft.payload,
-            )
-            if result.draft_revision != draft.revision:
-                raise ManagerProjectionError(
-                    'Validated draft revision does not match browser draft'
+            else:
+                draft = _require_draft(draft_data, principal)
+                if _editor_revision(editor_revision) != draft.revision:
+                    raise ManagerProjectionError(
+                        'Current editor changes must be saved before validation'
+                    )
+                result = coordinator.validate_draft(
+                    module_key,
+                    principal,
+                    draft.payload,
                 )
+                if result.draft_revision != draft.revision:
+                    raise ManagerProjectionError(
+                        'Validated draft revision does not match browser draft'
+                    )
         except ManagerError as error:
             return _error_message(str(error)), no_update, no_update
         except Exception:
@@ -586,20 +662,31 @@ def register_manager_callbacks(
         if not isinstance(trigger, dict) or not _click_is_real(clicks):
             return no_update, no_update, no_update
         principal = definition.principal_provider()
+        module_key = str(trigger.get('module', ''))
         try:
-            draft = _require_draft(draft_data, principal)
-            if _editor_revision(editor_revision) != draft.revision:
-                raise ManagerProjectionError(
-                    'Current editor changes must be saved before verification'
+            module = registry.require(module_key)
+            if _uses_exact_workspace(module):
+                result = exact_workspace.verify(
+                    module_key=module_key,
+                    principal=principal,
+                    workspace_document=draft_data,
+                    validation_document=validation_data,
+                    editor_revision=editor_revision,
                 )
-            if not _validation_is_current(draft, validation_data):
-                raise ManagerProjectionError('A successful draft validation is required')
-            result = coordinator.verify_source(
-                str(trigger.get('module', '')),
-                principal,
-                draft_revision=draft.revision,
-                base_source_revision=draft.base_source_revision,
-            )
+            else:
+                draft = _require_draft(draft_data, principal)
+                if _editor_revision(editor_revision) != draft.revision:
+                    raise ManagerProjectionError(
+                        'Current editor changes must be saved before verification'
+                    )
+                if not _validation_is_current(draft, validation_data):
+                    raise ManagerProjectionError('A successful draft validation is required')
+                result = coordinator.verify_source(
+                    module_key,
+                    principal,
+                    draft_revision=draft.revision,
+                    base_source_revision=draft.base_source_revision,
+                )
         except ManagerError as error:
             return _error_message(str(error)), no_update, no_update
         except Exception:
@@ -637,30 +724,55 @@ def register_manager_callbacks(
             return no_update, no_update, no_update, no_update, no_update
         principal = definition.principal_provider()
         module_key = str(trigger.get('module', ''))
+        exact_mode = False
         try:
-            draft = _require_draft(draft_data, principal)
-            if _editor_revision(editor_revision) != draft.revision:
-                raise ManagerProjectionError(
-                    'Current editor changes must be saved before publication'
+            module = registry.require(module_key)
+            exact_mode = _uses_exact_workspace(module)
+            if exact_mode:
+                _result, updated_document = exact_workspace.publish(
+                    module_key=module_key,
+                    principal=principal,
+                    workspace_document=draft_data,
+                    validation_document=validation_data,
+                    verification_document=verification_data,
+                    editor_revision=editor_revision,
                 )
-            if not _validation_is_current(draft, validation_data):
-                raise ManagerProjectionError('A successful draft validation is required')
-            verification = _require_source_verification(verification_data, draft)
-            if not verification.publishable:
-                raise ManagerSourceConflictError('Manager source verification detected a conflict')
-            result = coordinator.publish_draft(
-                module_key,
-                principal,
-                draft.payload,
-                verification.source_revision,
-            )
-            updated_draft = draft.with_base_source_revision(result.source_revision)
+            else:
+                draft = _require_draft(draft_data, principal)
+                if _editor_revision(editor_revision) != draft.revision:
+                    raise ManagerProjectionError(
+                        'Current editor changes must be saved before publication'
+                    )
+                if not _validation_is_current(draft, validation_data):
+                    raise ManagerProjectionError('A successful draft validation is required')
+                verification = _require_source_verification(verification_data, draft)
+                if not verification.publishable:
+                    raise ManagerSourceConflictError(
+                        'Manager source verification detected a conflict'
+                    )
+                result = coordinator.publish_draft(
+                    module_key,
+                    principal,
+                    draft.payload,
+                    verification.source_revision,
+                )
+                updated_document = draft.with_base_source_revision(
+                    result.source_revision
+                ).to_document()
         except ManagerSourceConflictError:
-            refreshed_verification = _refresh_source_verification(
-                coordinator=coordinator,
-                module_key=module_key,
-                principal=principal,
-                draft_data=draft_data,
+            refreshed_verification = (
+                exact_workspace.refresh_verification(
+                    module_key=module_key,
+                    principal=principal,
+                    workspace_document=draft_data,
+                )
+                if exact_mode
+                else _refresh_source_verification(
+                    coordinator=coordinator,
+                    module_key=module_key,
+                    principal=principal,
+                    draft_data=draft_data,
+                )
             )
             return (
                 _notice_message(
@@ -685,7 +797,7 @@ def register_manager_callbacks(
         return (
             None,
             int(refresh_signal or 0) + 1,
-            updated_draft.to_document(),
+            updated_document,
             None,
             None,
         )
@@ -844,6 +956,11 @@ def register_manager_callbacks(
         principal = definition.principal_provider()
         module_key = str(trigger.get('module', ''))
         try:
+            module = registry.require(module_key)
+            if _uses_exact_workspace(module):
+                raise ManagerProjectionError(
+                    'Exact-source force publication is not supported'
+                )
             draft = _require_draft(draft_data, principal)
             if _editor_revision(editor_revision) != draft.revision:
                 raise ManagerProjectionError(
@@ -1306,6 +1423,10 @@ def _active_module(
     if route == registry.root_route:
         return None
     return registry.find_by_route(route)
+
+def _uses_exact_workspace(module: object) -> bool:
+    return getattr(module, 'exact_source_workflow_service', None) is not None
+
 
 def _safe_draft(
     data: dict[str, object] | None,
