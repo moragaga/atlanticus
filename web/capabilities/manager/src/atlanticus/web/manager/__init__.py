@@ -14,7 +14,11 @@ from atlanticus.web.manager.exact_source import (
     ExactSourcePublicationResult,
     ExactSourcePublicationWorkflow,
 )
-from atlanticus.web.manager.lifecycle import ManagerLifecycleState, resolve_manager_lifecycle
+from atlanticus.web.manager.lifecycle import (
+    ManagerLifecycleState,
+    resolve_exact_source_lifecycle,
+    resolve_manager_lifecycle,
+)
 from atlanticus.web.manager.models import (
     ManagerHistoryPreviewRenderer,
     ManagerModule,
@@ -100,6 +104,7 @@ __all__ = [
     'prepare_conflict_overwrite',
     'prepare_publication',
     'rebase_workspace_document',
+    'resolve_exact_source_lifecycle',
     'resolve_manager_lifecycle',
     'resolve_manager_projection_state',
     'resolve_projection_state',

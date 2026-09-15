@@ -6,7 +6,7 @@ from atlanticus.web.manager.errors import (
     ManagerProjectionError,
     ManagerSourceConflictError,
 )
-# El protocolo exact-source es opt-in y convive con el lifecycle legacy.
+# Exact-source se resuelve como capability independiente del lifecycle clásico.
 from atlanticus.web.manager.exact_source import (
     ExactSourcePublicationResult,
     ExactSourcePublicationWorkflow,
@@ -107,7 +107,6 @@ class ManagerProjectionCoordinator:
             expected_source_revision=expected_source_revision,
         )
 
-    # Devuelve el snapshot Source real, con release exacta y token CAS. No lo reduce a str.
     def get_exact_source_snapshot(
         self,
         module_key: str,
@@ -118,8 +117,6 @@ class ManagerProjectionCoordinator:
             raise ManagerAuthorizationError('Manager module access is denied')
         return workflow.get_source_snapshot()
 
-    # La comparación usa el value object completo. Si cambia current o el token, el draft
-    # queda obsoleto antes de invocar al workflow. El workflow/SourceStore conserva el CAS final.
     def publish_draft_exact(
         self,
         module_key: str,
@@ -278,15 +275,21 @@ class ManagerProjectionCoordinator:
             raise ManagerProjectionError('Manager lifecycle workflow has an invalid contract')
         return module, workflow
 
-    # Resolver exact-source por separado evita exigir el nuevo contrato a módulos legacy.
     def _resolve_exact_source(
         self,
         module_key: str,
     ) -> tuple[ManagerModule, ExactSourcePublicationWorkflow]:
         module = self._registry.require(module_key)
-        workflow = self._services.require(module.workflow_service)
+        # No existe fallback a workflow_service: una capability exact-source debe declararse
+        # explícitamente para impedir que Manager vuelva a acoplar ambos contratos al mismo objeto.
+        service_key = module.exact_source_workflow_service
+        if service_key is None:
+            raise ManagerProjectionError(
+                'Manager module does not declare an exact source workflow service'
+            )
+        workflow = self._services.require(service_key)
         if not isinstance(workflow, ExactSourcePublicationWorkflow):
             raise ManagerProjectionError(
-                'Manager workflow does not support exact source publication'
+                'Manager exact source workflow has an invalid contract'
             )
         return module, workflow

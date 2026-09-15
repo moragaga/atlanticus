@@ -83,7 +83,13 @@ class LegacyOnlyWorkflow:
     pass
 
 
-def _coordinator(workflow: object) -> ManagerProjectionCoordinator:
+def _coordinator(
+    exact_workflow: object,
+    *,
+    declare_exact_service: bool = True,
+    lifecycle_workflow: object | None = None,
+) -> ManagerProjectionCoordinator:
+    exact_service = 'users.exact-source' if declare_exact_service else None
     module = ManagerModule(
         key='users',
         group_key='configuration',
@@ -92,13 +98,16 @@ def _coordinator(workflow: object) -> ManagerProjectionCoordinator:
         order=10,
         layout=lambda _services: None,
         workflow_service='users.workflow',
+        exact_source_workflow_service=exact_service,
     )
     registry = ManagerModuleRegistry(
         (ManagerModuleGroup('configuration', 'Configuraciones', 10),),
         (module,),
     )
     services = ServiceRegistry()
-    services.add('users.workflow', workflow)
+    services.add('users.workflow', lifecycle_workflow or LegacyOnlyWorkflow())
+    if exact_service is not None:
+        services.add(exact_service, exact_workflow)
     return ManagerProjectionCoordinator(
         registry=registry,
         services=services,
@@ -176,11 +185,36 @@ def test_exact_publication_translates_concurrent_change_after_failure_to_conflic
         )
 
 
-def test_exact_source_api_is_opt_in_and_does_not_reinterpret_legacy_workflow() -> None:
+def test_exact_source_service_is_resolved_independently_from_lifecycle_service() -> None:
+    workflow = ExactWorkflow()
+    coordinator = _coordinator(
+        workflow,
+        lifecycle_workflow=LegacyOnlyWorkflow(),
+    )
+
+    assert coordinator.get_exact_source_snapshot('users', _principal()) == workflow.snapshot
+
+
+def test_exact_source_api_requires_an_explicit_capability_service() -> None:
+    workflow = ExactWorkflow()
+    coordinator = _coordinator(
+        workflow,
+        declare_exact_service=False,
+        lifecycle_workflow=workflow,
+    )
+
+    with pytest.raises(
+        ManagerProjectionError,
+        match='does not declare an exact source workflow service',
+    ):
+        coordinator.get_exact_source_snapshot('users', _principal())
+
+
+def test_exact_source_service_rejects_an_invalid_contract() -> None:
     coordinator = _coordinator(LegacyOnlyWorkflow())
 
     with pytest.raises(
         ManagerProjectionError,
-        match='does not support exact source publication',
+        match='exact source workflow has an invalid contract',
     ):
         coordinator.get_exact_source_snapshot('users', _principal())

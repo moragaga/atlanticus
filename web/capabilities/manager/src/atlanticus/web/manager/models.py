@@ -68,6 +68,7 @@ class ManagerModule:
     projection_name: str = 'Projection'
     force_publish_enabled: bool = False
     history_preview_renderer: ManagerHistoryPreviewRenderer | None = None
+    exact_source_workflow_service: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

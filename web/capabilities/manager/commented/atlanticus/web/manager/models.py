@@ -1,5 +1,5 @@
-# Declara el renderer opcional que cada módulo puede aportar para interpretar una revisión histórica.
-# La responsabilidad semántica permanece en el módulo mientras Manager conserva la orquestación genérica.
+# Declara los contratos de composición de Manager sin imponer implementaciones de dominio.
+# Cada capability puede apuntar a un servicio distinto cuando su frontera técnica lo requiere.
 
 import re
 from collections.abc import Callable
@@ -15,6 +15,8 @@ ManagerPrincipalProvider = Callable[[], 'ManagerPrincipal']
 
 _PROFILE_KEY_PATTERN = re.compile(r'^[a-z0-9][a-z0-9._-]*$')
 _ROUTE_PREFIX_PATTERN = re.compile(r'^/[a-z0-9][a-z0-9/_-]*$')
+
+
 @dataclass(frozen=True, slots=True)
 class ManagerPrincipal:
     subject_id: str
@@ -69,6 +71,9 @@ class ManagerModule:
     projection_name: str = 'Projection'
     force_publish_enabled: bool = False
     history_preview_renderer: ManagerHistoryPreviewRenderer | None = None
+    # Se agrega al final para conservar la firma posicional histórica del dataclass.
+    # La capability exact-source declara así una dependencia distinta del lifecycle clásico.
+    exact_source_workflow_service: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

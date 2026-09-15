@@ -279,9 +279,14 @@ class ManagerProjectionCoordinator:
         module_key: str,
     ) -> tuple[ManagerModule, ExactSourcePublicationWorkflow]:
         module = self._registry.require(module_key)
-        workflow = self._services.require(module.workflow_service)
+        service_key = module.exact_source_workflow_service
+        if service_key is None:
+            raise ManagerProjectionError(
+                'Manager module does not declare an exact source workflow service'
+            )
+        workflow = self._services.require(service_key)
         if not isinstance(workflow, ExactSourcePublicationWorkflow):
             raise ManagerProjectionError(
-                'Manager workflow does not support exact source publication'
+                'Manager exact source workflow has an invalid contract'
             )
         return module, workflow
