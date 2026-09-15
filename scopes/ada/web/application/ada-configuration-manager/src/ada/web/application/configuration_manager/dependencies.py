@@ -9,7 +9,7 @@ from ada.web.kpis.definition import (
     KpiDefinitionServices,
 )
 from ada.web.tools.configuration import ToolLifecycleServices
-from atlanticus.web.manager import ManagerPrincipalProvider
+from atlanticus.web.manager import ExactProjectionWorkflow, ManagerPrincipalProvider
 from atlanticus.web.navigation.configuration import NavigationConfigurationServices
 from atlanticus.web.users.configuration import (
     UsersConfigurationServices,
@@ -21,6 +21,7 @@ from atlanticus.web.users.configuration import (
 class ConfigurationManagerDependencies:
     users: UsersConfigurationServices
     users_profiles_administration: UsersProfilesAdministrationService
+    users_exact_projection: ExactProjectionWorkflow
     navigation: NavigationConfigurationServices
     tools: ToolLifecycleServices
     principal_provider: ManagerPrincipalProvider

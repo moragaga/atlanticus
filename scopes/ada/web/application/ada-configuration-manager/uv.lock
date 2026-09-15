@@ -252,10 +252,11 @@ requires-dist = [
 
 [[package]]
 name = "atlanticus-web-composition-users-manager"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "../../../../../web/compositions/users-manager" }
 dependencies = [
     { name = "atlanticus-web-manager" },
+    { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
     { name = "atlanticus-web-users-configuration" },
 ]
@@ -263,6 +264,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "atlanticus-web-manager", editable = "../../../../../web/capabilities/manager" },
+    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
     { name = "atlanticus-web-users-configuration", editable = "../../../../../web/capabilities/users/configuration" },
 ]
@@ -297,7 +299,7 @@ requires-dist = [
 
 [[package]]
 name = "atlanticus-web-manager"
-version = "0.3.15"
+version = "0.3.16"
 source = { editable = "../../../../../web/capabilities/manager" }
 dependencies = [
     { name = "atlanticus-web" },

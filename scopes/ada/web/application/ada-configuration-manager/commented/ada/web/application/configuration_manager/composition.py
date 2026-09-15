@@ -69,10 +69,11 @@ from atlanticus.web.users.configuration.web import (
 
 MANAGER_ROUTE_PREFIX = '/manager'
 
-# Estas tres keys son el camino productivo schema 2 para validate/read/publish.
+# Estas keys separan validate/read/publish y projection exacta sin lifecycle legacy.
 USERS_DRAFT_VALIDATION_SERVICE = 'ada.configuration-manager.users.validation'
 USERS_EXACT_SOURCE_READER_SERVICE = 'ada.configuration-manager.users.exact-source-reader'
 USERS_EXACT_SOURCE_WORKFLOW_SERVICE = 'ada.configuration-manager.users.exact-source'
+USERS_EXACT_PROJECTION_SERVICE = 'ada.configuration-manager.users.exact-projection'
 NAVIGATION_WORKFLOW_SERVICE = 'ada.configuration-manager.navigation.workflow'
 TOOLS_WORKFLOW_SERVICE = 'ada.configuration-manager.tools.workflow'
 KPI_WORKFLOW_SERVICE = 'ada.configuration-manager.kpis.workflow'
@@ -140,10 +141,11 @@ def build_configuration_manager_surface(
                 description='Perfiles, usuarios y acceso administrativo de ADA.',
                 layout=lambda _services: build_users_admin_configuration(users_context),
                 history_preview_renderer=build_users_history_preview,
-                # Users no declara lifecycle legacy: status/history/projection quedan fuera hasta su cutover exacto.
+                # Users no declara lifecycle legacy; authoring y projection usan capabilities exactas.
                 draft_validation_service=USERS_DRAFT_VALIDATION_SERVICE,
                 exact_source_reader_service=USERS_EXACT_SOURCE_READER_SERVICE,
                 exact_source_workflow_service=USERS_EXACT_SOURCE_WORKFLOW_SERVICE,
+                exact_projection_service=USERS_EXACT_PROJECTION_SERVICE,
                 access=ManagerModuleAccess(
                     view='users.manage',
                     validate='users.manage',
@@ -239,6 +241,11 @@ def _register_services(
             administration=dependencies.users_profiles_administration,
             audit_actor_provider=users_audit_actor_provider,
         ),
+    )
+    # Se registra exactamente la capability inyectada; ADA no recompone stores ni la envuelve.
+    services.add(
+        USERS_EXACT_PROJECTION_SERVICE,
+        dependencies.users_exact_projection,
     )
     services.add(
         NAVIGATION_WORKFLOW_SERVICE,

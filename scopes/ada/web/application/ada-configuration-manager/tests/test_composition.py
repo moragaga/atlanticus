@@ -5,6 +5,7 @@ from ada.web.application.configuration_manager import (
     NAVIGATION_WORKFLOW_SERVICE,
     TOOLS_WORKFLOW_SERVICE,
     USERS_DRAFT_VALIDATION_SERVICE,
+    USERS_EXACT_PROJECTION_SERVICE,
     USERS_EXACT_SOURCE_READER_SERVICE,
     USERS_EXACT_SOURCE_WORKFLOW_SERVICE,
     ConfigurationManagerDependencies,
@@ -17,13 +18,21 @@ from atlanticus.web.compositions.users_manager import (
     UsersManagerExactSourceReaderWorkflow,
     UsersManagerExactSourceWorkflow,
 )
-from atlanticus.web.manager import ManagerPrincipal, ManagerSurface
+from atlanticus.web.manager import ExactProjectionWorkflow, ManagerPrincipal, ManagerSurface
 from atlanticus.web.services import ServiceRegistry
 
 
 class UsersAdministrationStub:
     def load_catalog(self):
         return None
+
+
+class UsersExactProjectionStub:
+    def get_current_projection_target(self):
+        return None
+
+    def project(self, target):
+        raise AssertionError(f'Unexpected projection: {target!r}')
 
 
 def dependencies() -> ConfigurationManagerDependencies:
@@ -42,6 +51,7 @@ def dependencies() -> ConfigurationManagerDependencies:
     return ConfigurationManagerDependencies(
         users=domain(UsersAdministrationStub()),
         users_profiles_administration=SimpleNamespace(),
+        users_exact_projection=UsersExactProjectionStub(),
         navigation=domain(),
         tools=domain(),
         principal_provider=lambda: principal,
@@ -88,6 +98,7 @@ def test_users_module_routes_authoring_through_exact_source_capabilities() -> No
     assert users.draft_validation_service == USERS_DRAFT_VALIDATION_SERVICE
     assert users.exact_source_reader_service == USERS_EXACT_SOURCE_READER_SERVICE
     assert users.exact_source_workflow_service == USERS_EXACT_SOURCE_WORKFLOW_SERVICE
+    assert users.exact_projection_service == USERS_EXACT_PROJECTION_SERVICE
 
 
 def test_tools_module_represents_the_application_tool_without_selector() -> None:
@@ -103,7 +114,8 @@ def test_tools_module_represents_the_application_tool_without_selector() -> None
 
 
 def test_service_module_registers_users_exact_capabilities_and_remaining_legacy_lifecycles() -> None:
-    definition = build_configuration_manager_surface(dependencies())
+    injected = dependencies()
+    definition = build_configuration_manager_surface(injected)
     service_module = next(
         module
         for module in definition.web_modules
@@ -126,6 +138,9 @@ def test_service_module_registers_users_exact_capabilities_and_remaining_legacy_
         services.require(USERS_EXACT_SOURCE_WORKFLOW_SERVICE),
         UsersManagerExactSourceWorkflow,
     )
+    exact_projection = services.require(USERS_EXACT_PROJECTION_SERVICE)
+    assert exact_projection is injected.users_exact_projection
+    assert isinstance(exact_projection, ExactProjectionWorkflow)
     assert isinstance(
         services.require(NAVIGATION_WORKFLOW_SERVICE),
         NavigationManagerWorkflowAdapter,
