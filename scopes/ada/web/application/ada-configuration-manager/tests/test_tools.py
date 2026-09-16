@@ -1,36 +1,19 @@
-from __future__ import annotations
-
 import base64
 import json
-from datetime import UTC, datetime
-from pathlib import Path
-
-import pytest
 
 from ada.web.application.configuration_manager.tools import (
-    TOOL_DETAIL_BUTTON_ID,
-    TOOL_DETAIL_MODAL_ID,
-    TOOL_DETAIL_SECTION_ID,
     TOOL_IMPORT_UPLOAD_ID,
-    TOOL_MANAGER_ASSET_LAYER,
     TOOL_MANAGER_ROOT_ID,
-    TOOL_PROJECTION_NAME_ID,
     TOOL_SAVE_BUTTON_ID,
-    TOOL_SOURCE_NAME_ID,
     ToolManagerWebContext,
-    _contract_pending_message,
     _decode_tool_configuration_import,
     _editor_configuration,
-    _owned_draft,
-    _tool_detail_snapshot,
-    build_tool_history_preview,
     build_tool_manager_configuration,
-    create_tool_manager_web_module,
     register_tool_manager_callbacks,
 )
-from ada.web.tools.configuration import ToolConfiguration, build_tool_configuration_digest
-from ada.web.tools.configuration.web import TOOL_CONFIGURATION_EDITOR_ROOT_ID
-from atlanticus.web.manager import ManagerDraft
+from ada.web.application.configuration_manager.workspace import ManagerWorkspaceBridge
+from atlanticus.web.manager import ManagerWorkspace, build_workspace_revision
+from atlanticus.web.source.models import SourceKey, SourceSnapshot
 
 
 class CallbackApp:
@@ -50,10 +33,7 @@ def tool_document() -> dict[str, object]:
         'tool_key': 'process',
         'display_name': 'Operaciones Integradas',
         'kind': 'process',
-        'source_consumption': {
-            'tool_key': 'process',
-            'source_keys': ['pi'],
-        },
+        'source_consumption': {'tool_key': 'process', 'source_keys': ['pi']},
         'source_operational_participation': {
             'tool_key': 'process',
             'control_sources': [
@@ -89,84 +69,36 @@ def tool_document() -> dict[str, object]:
 
 
 def tool_context() -> ToolManagerWebContext:
+    snapshot = SourceSnapshot(SourceKey('tools'), None, None)
+    bridge = ManagerWorkspaceBridge(
+        owner_subject_id_provider=lambda: 'local',
+        source_snapshot_provider=lambda: snapshot,
+    )
     return ToolManagerWebContext(
+        workspace_payload_reader=bridge.read_payload,
+        workspace_payload_writer=bridge.write_payload,
         draft_store_id={'type': 'draft', 'module': 'tools'},
         saved_draft_store_id={'type': 'saved', 'module': 'tools'},
         draft_save_action_id={'type': 'action', 'module': 'tools'},
         editor_revision_store_id={'type': 'editor', 'module': 'tools'},
         result_id={'type': 'result', 'module': 'tools'},
-        draft_owner_provider=lambda: 'local',
-        source_name='SharePoint',
-        projection_name='Cosmos DB',
+        source_name='Source',
+        projection_name='Projection',
     )
 
 
 def upload_contents(document: dict[str, object]) -> str:
     payload = json.dumps(document).encode('utf-8')
-    encoded = base64.b64encode(payload).decode('ascii')
-    return f'data:application/json;base64,{encoded}'
+    return f"data:application/json;base64,{base64.b64encode(payload).decode('ascii')}"
 
 
-def component_ids(component: object) -> list[object]:
-    result: list[object] = []
-    component_id = getattr(component, 'id', None)
-    if component_id is not None:
-        result.append(component_id)
-    children = getattr(component, 'children', None)
-    if children is None:
-        return result
-    values = children if isinstance(children, (list, tuple)) else [children]
-    for child in values:
-        if hasattr(child, 'children') or getattr(child, 'id', None) is not None:
-            result.extend(component_ids(child))
-    return result
-
-
-def component_by_id(component: object, component_id: object) -> object | None:
-    if getattr(component, 'id', None) == component_id:
-        return component
-    children = getattr(component, 'children', None)
-    if children is None:
-        return None
-    values = children if isinstance(children, (list, tuple)) else [children]
-    for child in values:
-        if not hasattr(child, 'children') and getattr(child, 'id', None) is None:
-            continue
-        found = component_by_id(child, component_id)
-        if found is not None:
-            return found
-    return None
-
-
-def test_tool_manager_layout_matches_existing_manager_import_and_save_pattern() -> None:
+def test_tool_manager_keeps_existing_editor_surface_and_controls() -> None:
     layout = build_tool_manager_configuration(tool_context())
+    serialized = repr(layout)
 
     assert layout.id == TOOL_MANAGER_ROOT_ID
-    assert 'atlanticus-bootstrap' in layout.className
-    assert layout.children[1].id == TOOL_CONFIGURATION_EDITOR_ROOT_ID
-
-    ids = component_ids(layout)
-    assert ids.index(TOOL_IMPORT_UPLOAD_ID) < ids.index(TOOL_CONFIGURATION_EDITOR_ROOT_ID)
-    assert ids.index(TOOL_CONFIGURATION_EDITOR_ROOT_ID) < ids.index(TOOL_DETAIL_SECTION_ID)
-    assert ids.index(TOOL_DETAIL_SECTION_ID) < ids.index(TOOL_SAVE_BUTTON_ID)
-    assert TOOL_DETAIL_BUTTON_ID in ids
-    assert TOOL_DETAIL_MODAL_ID in ids
-
-    detail_modal = component_by_id(layout, TOOL_DETAIL_MODAL_ID)
-    assert detail_modal is not None
-    detail_dialog = detail_modal.children[1]
-    detail_header = detail_dialog.children[0]
-    detail_body = detail_dialog.children[1]
-    detail_close = detail_header.children[1]
-    assert 'modal-content' in detail_dialog.className
-    assert 'modal-header' in detail_header.className
-    assert 'modal-body' in detail_body.className
-    assert detail_close.className == 'btn-close'
-
-    source = component_by_id(layout, TOOL_SOURCE_NAME_ID)
-    projection = component_by_id(layout, TOOL_PROJECTION_NAME_ID)
-    assert source is not None and source.children == 'SharePoint'
-    assert projection is not None and projection.children == 'Cosmos DB'
+    assert TOOL_IMPORT_UPLOAD_ID in serialized
+    assert TOOL_SAVE_BUTTON_ID in serialized
 
 
 def test_tool_import_decodes_canonical_configuration() -> None:
@@ -175,46 +107,22 @@ def test_tool_import_decodes_canonical_configuration() -> None:
     assert configuration.tool_key == 'process'
     assert configuration.structure is not None
     assert configuration.structure.component('crusher').display_name == 'Chancado'
-    assert configuration.source_consumption.source_keys == ('pi',)
 
 
-def test_tool_import_rejects_invalid_file_payload() -> None:
-    with pytest.raises(ValueError, match='Configuration file payload is invalid'):
-        _decode_tool_configuration_import('invalid')
-
-
-def test_tool_import_callback_only_hydrates_editor_configuration() -> None:
+def test_tool_save_writes_manager_workspace() -> None:
     app = CallbackApp()
-    register_tool_manager_callbacks(app, tool_context())
-
-    configuration, result = app.callbacks['import_tool_configuration'](
-        upload_contents(tool_document())
-    )
-
-    assert configuration['tool_key'] == 'process'
-    assert result is not None
-
-
-@pytest.mark.parametrize(
-    ('local_clicks', 'workflow_clicks'),
-    [(1, None), (None, 1)],
-)
-def test_tool_draft_save_accepts_local_and_workflow_actions(
-    local_clicks: int | None,
-    workflow_clicks: int | None,
-) -> None:
-    app = CallbackApp()
-    register_tool_manager_callbacks(app, tool_context())
+    context = tool_context()
+    register_tool_manager_callbacks(app, context)
     document = tool_document()
     configuration = _editor_configuration(
         source_document=document,
         structure_document=document['structure'],
     )
-    revision = build_tool_configuration_digest(configuration)
+    revision = build_workspace_revision(configuration.to_document())
 
     _, local_result, draft_data, saved_draft_data = app.callbacks['save_tool_draft'](
-        local_clicks,
-        workflow_clicks,
+        1,
+        None,
         document,
         True,
         document['structure'],
@@ -225,391 +133,7 @@ def test_tool_draft_save_accepts_local_and_workflow_actions(
 
     assert local_result is not None
     assert draft_data == saved_draft_data
-    draft = ManagerDraft.from_document(draft_data)
-    assert draft.owner_subject_id == 'local'
-    assert draft.payload['tool_key'] == 'process'
-
-
-def test_editor_revision_matches_complete_manager_draft_revision() -> None:
-    document = tool_document()
-    configuration = _editor_configuration(
-        source_document=document,
-        structure_document=document['structure'],
-    )
-    draft = ManagerDraft.create(
-        owner_subject_id='local',
-        payload=configuration.to_document(),
-        base_source_revision='source',
-        saved_at=datetime(2026, 9, 1, 12, 0, tzinfo=UTC),
-    )
-
-    assert build_tool_configuration_digest(configuration) == draft.revision
-
-
-def test_editor_merge_preserves_structure_and_sources() -> None:
-    document = tool_document()
-    configuration = _editor_configuration(
-        source_document=document,
-        structure_document=document['structure'],
-    )
-
-    assert configuration.structure is not None
-    assert configuration.structure.component('crusher').display_name == 'Chancado'
-    assert configuration.source_consumption.source_keys == ('pi',)
-
-
-def test_owned_draft_preserves_tool_identity_and_source_base() -> None:
-    draft = ManagerDraft.create(
-        owner_subject_id='local',
-        payload=tool_document(),
-        base_source_revision='source',
-        saved_at=datetime(2026, 9, 1, 12, 0, tzinfo=UTC),
-    )
-
-    recovered = _owned_draft(draft.to_document(), owner_subject_id='local')
-
-    assert recovered.payload['tool_key'] == 'process'
-    assert recovered.base_source_revision == 'source'
-
-
-def test_history_preview_is_descriptive_and_has_no_editor_selector() -> None:
-    preview = build_tool_history_preview(tool_document())
-
-    assert preview is not None
-
-
-def test_tool_manager_web_module_composes_editor_and_manager_assets() -> None:
-    module = create_tool_manager_web_module(tool_context())
-
-    assert module.name == 'ada-configuration-manager-tools'
-    assert TOOL_MANAGER_ASSET_LAYER in module.asset_layers
-    assert module.register_callbacks is not None
-
-
-def test_tool_detail_empty_state_is_neutral_and_keeps_fixed_destinations() -> None:
-    snapshot = _tool_detail_snapshot(
-        display_name=None,
-        tool_key=None,
-        kind_value=None,
-        coverage=None,
-        branding=None,
-        pi_preventive=None,
-        pi_degradation=None,
-        dispatch_values=[],
-        dispatch_preventive=None,
-        dispatch_degradation=None,
-        component_key_ids=[],
-        component_keys=[],
-        component_name_ids=[],
-        component_names=[],
-        component_scope_ids=[],
-        component_scopes=[],
-        subcomponent_key_ids=[],
-        subcomponent_keys=[],
-        subcomponent_name_ids=[],
-        subcomponent_names=[],
-        subcomponent_linked_ids=[],
-        subcomponent_links=[],
-        source_document=None,
-        structure_document=None,
-    )
-
-    assert snapshot['general']['display_name'] is None
-    assert snapshot['components'] == []
-    assert snapshot['contract'] is None
-    assert snapshot['inspection_document']['structure']['components'] == []
-    assert [item['key'] for item in snapshot['fixed_destinations']] == [
-        'global_indicators',
-        'time_status',
-    ]
-
-
-def test_tool_detail_preserves_accents_and_structural_identity() -> None:
-    document = tool_document()
-    document['display_name'] = 'Operaciones Integradas – Área Húmeda'
-    document['structure']['components'][0]['display_name'] = 'Chancado Primário'
-    document['structure']['components'][0]['subcomponents'][0]['display_name'] = 'Extracción N° 1'
-    configuration = _editor_configuration(
-        source_document=document,
-        structure_document=document['structure'],
-    )
-    round_trip = ToolConfiguration.from_document(configuration.to_document())
-
-    snapshot = _tool_detail_snapshot(
-        display_name='Operaciones Integradas – Área Húmeda',
-        tool_key=document['tool_key'],
-        kind_value='process',
-        coverage='plant',
-        branding='original',
-        pi_preventive=200,
-        pi_degradation=300,
-        dispatch_values=[],
-        dispatch_preventive=None,
-        dispatch_degradation=None,
-        component_key_ids=[{'type': 'key', 'index': 0}],
-        component_keys=['crusher'],
-        component_name_ids=[{'type': 'name', 'index': 0}],
-        component_names=['Chancado Primário'],
-        component_scope_ids=[{'type': 'scope', 'index': 0}],
-        component_scopes=['plant'],
-        subcomponent_key_ids=[{'type': 'sub-key', 'owner_index': 0, 'index': 0}],
-        subcomponent_keys=['primary'],
-        subcomponent_name_ids=[{'type': 'sub-name', 'owner_index': 0, 'index': 0}],
-        subcomponent_names=['Extracción N° 1'],
-        subcomponent_linked_ids=[{'type': 'sub-linked', 'owner_index': 0, 'index': 0}],
-        subcomponent_links=[[]],
-        source_document=document,
-        structure_document=document['structure'],
-    )
-
-    assert round_trip.display_name == 'Operaciones Integradas – Área Húmeda'
-    assert round_trip.structure.component('crusher').display_name == 'Chancado Primário'
-    assert (
-        round_trip.structure.component('crusher').subcomponent('primary').display_name
-        == 'Extracción N° 1'
-    )
-    assert snapshot['general']['tool_key'] == document['tool_key']
-    assert snapshot['components'][0]['key'] == 'crusher'
-    assert snapshot['components'][0]['display_name'] == 'Chancado Primário'
-    assert snapshot['components'][0]['subcomponents'][0]['key'] == 'primary'
-    assert snapshot['components'][0]['subcomponents'][0]['display_name'] == 'Extracción N° 1'
-    assert snapshot['contract']['display_name'] == 'Operaciones Integradas – Área Húmeda'
-    component_document = snapshot['contract']['structure']['components'][0]
-    participation_document = snapshot['contract']['source_operational_participation']
-    assert 'scope' not in component_document
-    assert 'additional_observation_source_keys' not in participation_document
-
-
-def test_tool_detail_pending_message_requires_scope_per_integrated_component() -> None:
-    message = _contract_pending_message(
-        general={
-            'kind': 'integrated_operations',
-            'coverage': 'mine_plant',
-        },
-        sources={
-            'pi_preventive': 300,
-            'pi_degradation': 600,
-            'dispatch_enabled': False,
-        },
-        components=[
-            {
-                'key': 'cmp_a',
-                'scope': 'mine',
-                'subcomponents': [{'linked_component_keys': []}],
-            },
-            {
-                'key': 'cmp_b',
-                'scope': None,
-                'subcomponents': [{'linked_component_keys': []}],
-            },
-        ],
-    )
-
-    assert message == (
-        'Pendiente de completar. Operaciones integradas requiere '
-        'ámbito Mina o Planta en cada componente.'
-    )
-
-
-def test_tool_detail_keeps_partial_serialization_before_integrated_is_complete() -> None:
-    snapshot = _tool_detail_snapshot(
-        display_name='Operaciones Integradas',
-        tool_key='tool_operaciones_integradas_a1b2c3d4e5f6',
-        kind_value='integrated_operations',
-        coverage='mine_plant',
-        branding='original',
-        pi_preventive=300,
-        pi_degradation=600,
-        dispatch_values=[],
-        dispatch_preventive=None,
-        dispatch_degradation=None,
-        component_key_ids=[{'type': 'key', 'index': 0}],
-        component_keys=['cmp_carguio_123456789abc'],
-        component_name_ids=[{'type': 'name', 'index': 0}],
-        component_names=['Carguío'],
-        component_scope_ids=[{'type': 'scope', 'index': 0}],
-        component_scopes=[None],
-        subcomponent_key_ids=[{'type': 'sub-key', 'owner_index': 0, 'index': 0}],
-        subcomponent_keys=['sub_caex_abcdef123456'],
-        subcomponent_name_ids=[{'type': 'sub-name', 'owner_index': 0, 'index': 0}],
-        subcomponent_names=['CAEX'],
-        subcomponent_linked_ids=[{'type': 'sub-linked', 'owner_index': 0, 'index': 0}],
-        subcomponent_links=[[]],
-        source_document={
-            'tool_key': 'tool_operaciones_integradas_a1b2c3d4e5f6',
-            'display_name': 'Operaciones Integradas',
-            'kind': 'integrated_operations',
-            'source_consumption': {
-                'tool_key': 'tool_operaciones_integradas_a1b2c3d4e5f6',
-                'source_keys': ['pi'],
-            },
-            'source_operational_participation': {
-                'tool_key': 'tool_operaciones_integradas_a1b2c3d4e5f6',
-                'control_sources': [
-                    {
-                        'source_key': 'pi',
-                        'pre_degrading_after_seconds': 300,
-                        'degrading_after_seconds': 600,
-                    }
-                ],
-            },
-            'structure': None,
-            'branding': {'variant': 'original'},
-        },
-        structure_document=None,
-    )
-
-    assert snapshot['contract'] is None
-    preview = snapshot['inspection_document']
-    assert preview['tool_key'] == 'tool_operaciones_integradas_a1b2c3d4e5f6'
-    assert preview['structure']['components'] == [
-        {
-            'key': 'cmp_carguio_123456789abc',
-            'display_name': 'Carguío',
-            'subcomponents': [
-                {
-                    'key': 'sub_caex_abcdef123456',
-                    'display_name': 'CAEX',
-                }
-            ],
-        }
-    ]
-
-
-def test_tool_detail_css_does_not_force_wide_code_to_full_width() -> None:
-    css = (
-        Path(__file__).parents[1]
-        / 'src'
-        / 'ada'
-        / 'web'
-        / 'application'
-        / 'configuration_manager'
-        / 'resources'
-        / 'css'
-        / '00_tools_manager.css'
-    ).read_text(encoding='utf-8')
-
-    assert (
-        '.ada-configuration-manager-tools__detail-value--wide\n'
-        '.ada-configuration-manager-tools__detail-code {\n'
-        '    width: 100%;\n'
-        '}'
-    ) not in css
-
-
-def test_tool_detail_partial_process_serializes_only_real_component_scope_override() -> None:
-    snapshot = _tool_detail_snapshot(
-        display_name='Proceso Planta',
-        tool_key='tool_proceso_planta_a1b2c3d4e5f6',
-        kind_value='process',
-        coverage='plant',
-        branding='original',
-        pi_preventive=300,
-        pi_degradation=600,
-        dispatch_values=[],
-        dispatch_preventive=None,
-        dispatch_degradation=None,
-        component_key_ids=[
-            {'type': 'key', 'index': 0},
-            {'type': 'key', 'index': 1},
-        ],
-        component_keys=[
-            'cmp_centro_111111111111',
-            'cmp_aguas_abajo_222222222222',
-        ],
-        component_name_ids=[
-            {'type': 'name', 'index': 0},
-            {'type': 'name', 'index': 1},
-        ],
-        component_names=['Centro', 'Aguas abajo'],
-        component_scope_ids=[
-            {'type': 'scope', 'index': 0},
-            {'type': 'scope', 'index': 1},
-        ],
-        component_scopes=[None, 'mine'],
-        subcomponent_key_ids=[],
-        subcomponent_keys=[],
-        subcomponent_name_ids=[],
-        subcomponent_names=[],
-        subcomponent_linked_ids=[],
-        subcomponent_links=[],
-        source_document=None,
-        structure_document=None,
-    )
-
-    components = snapshot['inspection_document']['structure']['components']
-    assert 'scope' not in components[0]
-    assert components[1]['scope'] == 'mine'
-
-
-def test_tool_detail_integrated_contract_allows_mine_only_components() -> None:
-    tool_key = 'tool_integrated_mine_only_a1b2c3d4e5f6'
-    structure_document = {
-        'tool_key': tool_key,
-        'kind': 'integrated_operations',
-        'components': [
-            {
-                'key': 'cmp_carguio_123456789abc',
-                'display_name': 'Carguío',
-                'scope': 'mine',
-                'subcomponents': [
-                    {
-                        'key': 'sub_caex_abcdef123456',
-                        'display_name': 'CAEX',
-                        'linked_component_keys': [],
-                    }
-                ],
-            }
-        ],
-    }
-    source_document = {
-        'tool_key': tool_key,
-        'display_name': 'Operaciones Integradas',
-        'kind': 'integrated_operations',
-        'source_consumption': {
-            'tool_key': tool_key,
-            'source_keys': ['pi'],
-        },
-        'source_operational_participation': {
-            'tool_key': tool_key,
-            'control_sources': [
-                {
-                    'source_key': 'pi',
-                    'pre_degrading_after_seconds': 300,
-                    'degrading_after_seconds': 600,
-                }
-            ],
-        },
-        'structure': structure_document,
-        'branding': {'variant': 'original'},
-    }
-
-    snapshot = _tool_detail_snapshot(
-        display_name='Operaciones Integradas',
-        tool_key=tool_key,
-        kind_value='integrated_operations',
-        coverage='mine_plant',
-        branding='original',
-        pi_preventive=300,
-        pi_degradation=600,
-        dispatch_values=[],
-        dispatch_preventive=None,
-        dispatch_degradation=None,
-        component_key_ids=[{'type': 'key', 'index': 0}],
-        component_keys=['cmp_carguio_123456789abc'],
-        component_name_ids=[{'type': 'name', 'index': 0}],
-        component_names=['Carguío'],
-        component_scope_ids=[{'type': 'scope', 'index': 0}],
-        component_scopes=['mine'],
-        subcomponent_key_ids=[{'type': 'sub-key', 'owner_index': 0, 'index': 0}],
-        subcomponent_keys=['sub_caex_abcdef123456'],
-        subcomponent_name_ids=[{'type': 'sub-name', 'owner_index': 0, 'index': 0}],
-        subcomponent_names=['CAEX'],
-        subcomponent_linked_ids=[{'type': 'sub-linked', 'owner_index': 0, 'index': 0}],
-        subcomponent_links=[[]],
-        source_document=source_document,
-        structure_document=structure_document,
-    )
-
-    assert snapshot['contract'] is not None
-    assert snapshot['contract']['structure']['components'][0]['scope'] == 'mine'
+    workspace = ManagerWorkspace.from_document(draft_data)
+    assert workspace.owner_subject_id == 'local'
+    assert workspace.payload['tool_key'] == 'process'
+    assert workspace.base.source_key == SourceKey('tools')

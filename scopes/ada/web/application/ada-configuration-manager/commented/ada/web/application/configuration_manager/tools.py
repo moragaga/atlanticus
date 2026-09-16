@@ -8,7 +8,11 @@ from dataclasses import dataclass
 
 from dash import ALL, Input, Output, State, ctx, dcc, html, no_update
 
-from ada.web.tools.configuration import ToolConfiguration, build_tool_configuration_digest
+from ada.web.application.configuration_manager.workspace import (
+    WorkspacePayloadReader,
+    WorkspacePayloadWriter,
+)
+from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.configuration.web import (
     ADA_TOOL_CONFIGURATION_EDITOR_ASSET_LAYER,
     BRANDING_ID,
@@ -40,8 +44,11 @@ from ada.web.tools.configuration.web.structure_ids import (
     SUBCOMPONENT_LINKED_TYPE,
 )
 from atlanticus.web.assets import AssetLayer
-from atlanticus.web.manager import ManagerDraft
-from atlanticus.web.manager.errors import ManagerProjectionError
+from atlanticus.web.manager import (
+    ManagerProjectionError,
+    ManagerWorkspace,
+    build_workspace_revision,
+)
 from atlanticus.web.modules import WebModule
 
 TOOL_MANAGER_ROOT_ID = 'ada-configuration-manager-tools'
@@ -73,12 +80,13 @@ TOOL_MANAGER_ASSET_LAYER = AssetLayer(
 
 @dataclass(frozen=True, slots=True)
 class ToolManagerWebContext:
+    workspace_payload_reader: WorkspacePayloadReader
+    workspace_payload_writer: WorkspacePayloadWriter
     draft_store_id: object
     saved_draft_store_id: object
     draft_save_action_id: object
     editor_revision_store_id: object
     result_id: object
-    draft_owner_provider: Callable[[], str]
     can_manage: Callable[[], bool] = lambda: True
     source_name: str = 'Source'
     projection_name: str = 'Projection'
@@ -146,14 +154,11 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
         Input(context.draft_store_id, 'data'),
     )
     def load_manager_draft(draft_data: dict[str, object] | None):
-        if draft_data is None:
-            return None
         try:
-            draft = _owned_draft(
-                draft_data,
-                owner_subject_id=context.draft_owner_provider(),
-            )
-            configuration = ToolConfiguration.from_document(draft.payload)
+            payload = context.workspace_payload_reader(draft_data)
+            if payload is None:
+                return None
+            configuration = ToolConfiguration.from_document(payload)
         except ManagerProjectionError, ValueError:
             return None
         return configuration.to_document()
@@ -336,7 +341,7 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
             )
         except ValueError:
             return 'invalid'
-        return build_tool_configuration_digest(configuration)
+        return build_workspace_revision(configuration.to_document())
 
     @app.callback(
         Output(context.result_id, 'children', allow_duplicate=True),
@@ -389,27 +394,15 @@ def register_tool_manager_callbacks(app: object, context: ToolManagerWebContext)
                 source_document=source_document,
                 structure_document=structure_document,
             )
-            owner_subject_id = context.draft_owner_provider()
-            current = (
-                _owned_draft(
-                    current_draft_data,
-                    owner_subject_id=owner_subject_id,
-                )
-                if current_draft_data is not None
-                else None
+            document = context.workspace_payload_writer(
+                current_draft_data,
+                configuration.to_document(),
             )
-            draft = ManagerDraft.create(
-                owner_subject_id=owner_subject_id,
-                payload=configuration.to_document(),
-                base_source_revision=(
-                    current.base_source_revision if current is not None else None
-                ),
-            )
-            if editor_revision != draft.revision:
+            workspace = ManagerWorkspace.from_document(document)
+            if editor_revision != workspace.revision:
                 raise ManagerProjectionError('Tool editor revision changed before draft save')
         except (ManagerProjectionError, ValueError) as error:
             return _error(str(error)), _error(str(error)), no_update, no_update
-        document = draft.to_document()
         return None, _success('Borrador guardado en este navegador.'), document, document
 
 
@@ -1336,17 +1329,6 @@ def _editor_configuration(
         base_configuration=source_configuration,
         structure_document=structure_document,
     )
-
-
-def _owned_draft(
-    data: dict[str, object],
-    *,
-    owner_subject_id: str,
-) -> ManagerDraft:
-    draft = ManagerDraft.from_document(data)
-    if draft.owner_subject_id != owner_subject_id.strip():
-        raise ManagerProjectionError('Browser draft belongs to another user')
-    return draft
 
 
 def _history_item(label: str, value: str) -> object:

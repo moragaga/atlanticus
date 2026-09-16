@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from ada.web.application.configuration_manager.dependencies import (
-    ConfigurationManagerDependencies,
-)
+from collections.abc import Callable
+
+from ada.web.application.configuration_manager.dependencies import ConfigurationManagerDependencies
 from ada.web.application.configuration_manager.kpi_definitions import (
     KpiDefinitionManagerWebContext,
     build_kpi_definition_history_preview,
@@ -22,17 +22,20 @@ from ada.web.application.configuration_manager.tools import (
     create_tool_manager_web_module,
 )
 from ada.web.application.configuration_manager.workflows import (
-    KpiConfigurationManagerWorkflowAdapter,
-    KpiDefinitionManagerWorkflowAdapter,
-    NavigationManagerWorkflowAdapter,
-    ToolConfigurationManagerWorkflowAdapter,
+    KpiConfigurationManagerDraftValidationWorkflow,
+    KpiConfigurationManagerSourceWorkflow,
+    KpiDefinitionManagerDraftValidationWorkflow,
+    KpiDefinitionManagerSourceWorkflow,
+    NavigationManagerDraftValidationWorkflow,
+    NavigationManagerSourceWorkflow,
+    ToolManagerDraftValidationWorkflow,
+    ToolManagerSourceWorkflow,
 )
+from ada.web.application.configuration_manager.workspace import ManagerWorkspaceBridge
 from atlanticus.web.bootstrap import create_bootstrap_web_module
 from atlanticus.web.compositions.users_manager import (
     create_users_manager_draft_validation_workflow,
-    create_users_manager_exact_source_history_workflow,
-    create_users_manager_exact_source_reader_workflow,
-    create_users_manager_exact_source_workflow,
+    create_users_manager_source_workflow,
 )
 from atlanticus.web.manager import (
     ManagerModule,
@@ -67,20 +70,49 @@ from atlanticus.web.users.configuration.web import (
 
 MANAGER_ROUTE_PREFIX = '/manager'
 
+USERS_SOURCE_SERVICE = 'ada.configuration-manager.users.source'
+USERS_SOURCE_READER_SERVICE = 'ada.configuration-manager.users.source-reader'
+USERS_SOURCE_HISTORY_SERVICE = 'ada.configuration-manager.users.source-history'
+USERS_PROJECTION_SERVICE = 'ada.configuration-manager.users.projection'
 USERS_DRAFT_VALIDATION_SERVICE = 'ada.configuration-manager.users.validation'
-USERS_EXACT_SOURCE_READER_SERVICE = 'ada.configuration-manager.users.exact-source-reader'
-USERS_EXACT_SOURCE_HISTORY_SERVICE = 'ada.configuration-manager.users.exact-source-history'
-USERS_EXACT_SOURCE_WORKFLOW_SERVICE = 'ada.configuration-manager.users.exact-source'
-USERS_EXACT_PROJECTION_SERVICE = 'ada.configuration-manager.users.exact-projection'
-NAVIGATION_WORKFLOW_SERVICE = 'ada.configuration-manager.navigation.workflow'
-TOOLS_WORKFLOW_SERVICE = 'ada.configuration-manager.tools.workflow'
-KPI_WORKFLOW_SERVICE = 'ada.configuration-manager.kpis.workflow'
-KPI_DEFINITION_WORKFLOW_SERVICE = 'ada.configuration-manager.kpi-definitions.workflow'
+
+NAVIGATION_SOURCE_SERVICE = 'ada.configuration-manager.navigation.source'
+NAVIGATION_SOURCE_READER_SERVICE = 'ada.configuration-manager.navigation.source-reader'
+NAVIGATION_SOURCE_HISTORY_SERVICE = 'ada.configuration-manager.navigation.source-history'
+NAVIGATION_PROJECTION_SERVICE = 'ada.configuration-manager.navigation.projection'
+NAVIGATION_DRAFT_VALIDATION_SERVICE = 'ada.configuration-manager.navigation.validation'
+
+TOOLS_SOURCE_SERVICE = 'ada.configuration-manager.tools.source'
+TOOLS_SOURCE_READER_SERVICE = 'ada.configuration-manager.tools.source-reader'
+TOOLS_SOURCE_HISTORY_SERVICE = 'ada.configuration-manager.tools.source-history'
+TOOLS_PROJECTION_SERVICE = 'ada.configuration-manager.tools.projection'
+TOOLS_DRAFT_VALIDATION_SERVICE = 'ada.configuration-manager.tools.validation'
+
+KPI_SOURCE_SERVICE = 'ada.configuration-manager.kpis.source'
+KPI_SOURCE_READER_SERVICE = 'ada.configuration-manager.kpis.source-reader'
+KPI_SOURCE_HISTORY_SERVICE = 'ada.configuration-manager.kpis.source-history'
+KPI_PROJECTION_SERVICE = 'ada.configuration-manager.kpis.projection'
+KPI_DRAFT_VALIDATION_SERVICE = 'ada.configuration-manager.kpis.validation'
+
+KPI_DEFINITION_SOURCE_SERVICE = 'ada.configuration-manager.kpi-definitions.source'
+KPI_DEFINITION_SOURCE_READER_SERVICE = 'ada.configuration-manager.kpi-definitions.source-reader'
+KPI_DEFINITION_SOURCE_HISTORY_SERVICE = 'ada.configuration-manager.kpi-definitions.source-history'
+KPI_DEFINITION_PROJECTION_SERVICE = 'ada.configuration-manager.kpi-definitions.projection'
+KPI_DEFINITION_DRAFT_VALIDATION_SERVICE = 'ada.configuration-manager.kpi-definitions.validation'
 
 
 def build_configuration_manager_surface(
     dependencies: ConfigurationManagerDependencies,
 ) -> ManagerSurfaceDefinition:
+    actor_provider = lambda: dependencies.principal_provider().subject_id
+    navigation_workspace = ManagerWorkspaceBridge(
+        owner_subject_id_provider=actor_provider,
+        source_snapshot_provider=dependencies.navigation_source.get_current,
+    )
+    tools_workspace = ManagerWorkspaceBridge(
+        owner_subject_id_provider=actor_provider,
+        source_snapshot_provider=dependencies.tools_source.get_current,
+    )
     users_context = UsersAdminWebContext(
         administration=dependencies.users_profiles_administration,
         draft_store_id=workflow_draft_id('users'),
@@ -88,46 +120,40 @@ def build_configuration_manager_surface(
         draft_save_action_id=workflow_action_id('users', 'save-draft'),
         workflow_refresh_signal_id=workflow_refresh_signal_id('users'),
         editor_revision_store_id=workflow_editor_revision_id('users'),
-        draft_owner_provider=lambda: dependencies.principal_provider().subject_id,
+        draft_owner_provider=actor_provider,
         can_manage=lambda: _can_manage_users(dependencies.principal_provider()),
         source_name=dependencies.users_source_name,
         projection_name=dependencies.users_projection_name,
     )
     navigation_context = NavigationAdminWebContext(
-        services=dependencies.navigation,
+        workspace_payload_reader=navigation_workspace.read_payload,
+        workspace_payload_writer=navigation_workspace.write_payload,
         draft_store_id=workflow_draft_id('navigation'),
         saved_draft_store_id=workflow_saved_draft_id('navigation'),
         draft_save_action_id=workflow_action_id('navigation', 'save-draft'),
-        workflow_refresh_signal_id=workflow_refresh_signal_id('navigation'),
         editor_revision_store_id=workflow_editor_revision_id('navigation'),
-        draft_owner_provider=lambda: dependencies.principal_provider().subject_id,
         can_manage=lambda: _can_manage_navigation(dependencies.principal_provider()),
         source_name=dependencies.navigation_source_name,
         projection_name=dependencies.navigation_projection_name,
         profile_options_provider=lambda: _navigation_profile_options(dependencies),
     )
     tools_context = ToolManagerWebContext(
+        workspace_payload_reader=tools_workspace.read_payload,
+        workspace_payload_writer=tools_workspace.write_payload,
         draft_store_id=workflow_draft_id('tools'),
         saved_draft_store_id=workflow_saved_draft_id('tools'),
         draft_save_action_id=workflow_action_id('tools', 'save-draft'),
         editor_revision_store_id=workflow_editor_revision_id('tools'),
         result_id=workflow_result_id('tools'),
-        draft_owner_provider=lambda: dependencies.principal_provider().subject_id,
         can_manage=lambda: _can_manage_tools(dependencies.principal_provider()),
         source_name=dependencies.tools_source_name,
         projection_name=dependencies.tools_projection_name,
     )
-    kpi_context = _kpi_context(dependencies)
-    kpi_definition_context = _kpi_definition_context(dependencies)
+    kpi_context = _kpi_context(dependencies, actor_provider)
+    kpi_definition_context = _kpi_definition_context(dependencies, actor_provider)
     return ManagerSurfaceDefinition(
         principal_provider=dependencies.principal_provider,
-        groups=(
-            ManagerModuleGroup(
-                key='configuration',
-                title='Configuraciones',
-                order=10,
-            ),
-        ),
+        groups=(ManagerModuleGroup(key='configuration', title='Configuraciones', order=10),),
         modules=(
             ManagerModule(
                 key='users',
@@ -138,11 +164,12 @@ def build_configuration_manager_surface(
                 description='Perfiles, usuarios y acceso administrativo de ADA.',
                 layout=lambda _services: build_users_admin_configuration(users_context),
                 history_preview_renderer=build_users_history_preview,
+                source_key=dependencies.users_source_key,
+                source_service=USERS_SOURCE_SERVICE,
+                source_reader_service=USERS_SOURCE_READER_SERVICE,
+                source_history_service=USERS_SOURCE_HISTORY_SERVICE,
+                projection_service=USERS_PROJECTION_SERVICE,
                 draft_validation_service=USERS_DRAFT_VALIDATION_SERVICE,
-                exact_source_reader_service=USERS_EXACT_SOURCE_READER_SERVICE,
-                exact_source_history_service=USERS_EXACT_SOURCE_HISTORY_SERVICE,
-                exact_source_workflow_service=USERS_EXACT_SOURCE_WORKFLOW_SERVICE,
-                exact_projection_service=USERS_EXACT_PROJECTION_SERVICE,
                 access=ManagerModuleAccess(
                     view='users.manage',
                     validate='users.manage',
@@ -152,7 +179,6 @@ def build_configuration_manager_surface(
                 web_module=create_users_admin_web_module(users_context),
                 source_name=dependencies.users_source_name,
                 projection_name=dependencies.users_projection_name,
-                force_publish_enabled=dependencies.force_publish_enabled,
             ),
             ManagerModule(
                 key='navigation',
@@ -163,7 +189,12 @@ def build_configuration_manager_surface(
                 description='Rutas, secciones y perfiles habilitados en la navegación de ADA.',
                 layout=lambda _services: build_navigation_admin_configuration(navigation_context),
                 history_preview_renderer=build_navigation_history_preview,
-                workflow_service=NAVIGATION_WORKFLOW_SERVICE,
+                source_key=dependencies.navigation_source.source_key,
+                source_service=NAVIGATION_SOURCE_SERVICE,
+                source_reader_service=NAVIGATION_SOURCE_READER_SERVICE,
+                source_history_service=NAVIGATION_SOURCE_HISTORY_SERVICE,
+                projection_service=NAVIGATION_PROJECTION_SERVICE,
+                draft_validation_service=NAVIGATION_DRAFT_VALIDATION_SERVICE,
                 access=ManagerModuleAccess(
                     view='navigation.manage',
                     validate='navigation.manage',
@@ -173,7 +204,6 @@ def build_configuration_manager_surface(
                 web_module=create_navigation_admin_web_module(navigation_context),
                 source_name=dependencies.navigation_source_name,
                 projection_name=dependencies.navigation_projection_name,
-                force_publish_enabled=dependencies.force_publish_enabled,
             ),
             ManagerModule(
                 key='tools',
@@ -184,7 +214,12 @@ def build_configuration_manager_surface(
                 description='Configuración de la herramienta operacional de esta aplicación.',
                 layout=lambda _services: build_tool_manager_configuration(tools_context),
                 history_preview_renderer=build_tool_history_preview,
-                workflow_service=TOOLS_WORKFLOW_SERVICE,
+                source_key=dependencies.tools_source.source_key,
+                source_service=TOOLS_SOURCE_SERVICE,
+                source_reader_service=TOOLS_SOURCE_READER_SERVICE,
+                source_history_service=TOOLS_SOURCE_HISTORY_SERVICE,
+                projection_service=TOOLS_PROJECTION_SERVICE,
+                draft_validation_service=TOOLS_DRAFT_VALIDATION_SERVICE,
                 access=ManagerModuleAccess(
                     view='tools.manage',
                     validate='tools.manage',
@@ -194,7 +229,6 @@ def build_configuration_manager_surface(
                 web_module=create_tool_manager_web_module(tools_context),
                 source_name=dependencies.tools_source_name,
                 projection_name=dependencies.tools_projection_name,
-                force_publish_enabled=dependencies.force_publish_enabled,
             ),
             *_kpi_modules(kpi_context, dependencies),
             *_kpi_definition_modules(kpi_definition_context, dependencies),
@@ -204,10 +238,7 @@ def build_configuration_manager_surface(
             create_bootstrap_web_module(),
             WebModule(
                 name='ada-configuration-manager-services',
-                register_services=lambda services: _register_services(
-                    services,
-                    dependencies,
-                ),
+                register_services=lambda services: _register_services(services, dependencies),
             ),
         ),
     )
@@ -217,102 +248,159 @@ def _register_services(
     services: ServiceRegistry,
     dependencies: ConfigurationManagerDependencies,
 ) -> None:
-    users_audit_actor_provider = lambda: dependencies.principal_provider().subject_id
+    actor_provider = lambda: dependencies.principal_provider().subject_id
+    users_source = create_users_manager_source_workflow(
+        administration=dependencies.users_profiles_administration,
+        audit_actor_provider=actor_provider,
+    )
+    _register_source_workflow(
+        services,
+        workflow=users_source,
+        source_service=USERS_SOURCE_SERVICE,
+        source_reader_service=USERS_SOURCE_READER_SERVICE,
+        source_history_service=USERS_SOURCE_HISTORY_SERVICE,
+    )
     services.add(
         USERS_DRAFT_VALIDATION_SERVICE,
-        create_users_manager_draft_validation_workflow(
-            audit_actor_provider=users_audit_actor_provider,
-        ),
+        create_users_manager_draft_validation_workflow(audit_actor_provider=actor_provider),
+    )
+    services.add(USERS_PROJECTION_SERVICE, dependencies.users_projection)
+
+    navigation_source = NavigationManagerSourceWorkflow(
+        source=dependencies.navigation_source,
+        audit_actor_provider=actor_provider,
+    )
+    _register_source_workflow(
+        services,
+        workflow=navigation_source,
+        source_service=NAVIGATION_SOURCE_SERVICE,
+        source_reader_service=NAVIGATION_SOURCE_READER_SERVICE,
+        source_history_service=NAVIGATION_SOURCE_HISTORY_SERVICE,
     )
     services.add(
-        USERS_EXACT_SOURCE_READER_SERVICE,
-        create_users_manager_exact_source_reader_workflow(
-            administration=dependencies.users_profiles_administration,
-        ),
+        NAVIGATION_DRAFT_VALIDATION_SERVICE,
+        NavigationManagerDraftValidationWorkflow(audit_actor_provider=actor_provider),
+    )
+    services.add(NAVIGATION_PROJECTION_SERVICE, dependencies.navigation_projection)
+
+    tools_source = ToolManagerSourceWorkflow(
+        source=dependencies.tools_source,
+        audit_actor_provider=actor_provider,
+    )
+    _register_source_workflow(
+        services,
+        workflow=tools_source,
+        source_service=TOOLS_SOURCE_SERVICE,
+        source_reader_service=TOOLS_SOURCE_READER_SERVICE,
+        source_history_service=TOOLS_SOURCE_HISTORY_SERVICE,
     )
     services.add(
-        USERS_EXACT_SOURCE_HISTORY_SERVICE,
-        create_users_manager_exact_source_history_workflow(
-            administration=dependencies.users_profiles_administration,
-        ),
+        TOOLS_DRAFT_VALIDATION_SERVICE,
+        ToolManagerDraftValidationWorkflow(audit_actor_provider=actor_provider),
     )
-    services.add(
-        USERS_EXACT_SOURCE_WORKFLOW_SERVICE,
-        create_users_manager_exact_source_workflow(
-            administration=dependencies.users_profiles_administration,
-            audit_actor_provider=users_audit_actor_provider,
-        ),
-    )
-    services.add(
-        USERS_EXACT_PROJECTION_SERVICE,
-        dependencies.users_exact_projection,
-    )
-    services.add(
-        NAVIGATION_WORKFLOW_SERVICE,
-        NavigationManagerWorkflowAdapter(dependencies.navigation),
-    )
-    services.add(
-        TOOLS_WORKFLOW_SERVICE,
-        ToolConfigurationManagerWorkflowAdapter(dependencies.tools),
-    )
-    if dependencies.kpis is not None:
-        services.add(
-            KPI_WORKFLOW_SERVICE,
-            KpiConfigurationManagerWorkflowAdapter(dependencies.kpis),
+    services.add(TOOLS_PROJECTION_SERVICE, dependencies.tools_projection)
+
+    if (
+        dependencies.kpis_source is not None
+        and dependencies.kpis_projection is not None
+        and dependencies.kpi_destinations is not None
+    ):
+        kpi_source = KpiConfigurationManagerSourceWorkflow(
+            source=dependencies.kpis_source,
+            audit_actor_provider=actor_provider,
         )
-    if dependencies.kpi_definitions is not None:
-        services.add(
-            KPI_DEFINITION_WORKFLOW_SERVICE,
-            KpiDefinitionManagerWorkflowAdapter(dependencies.kpi_definitions),
+        _register_source_workflow(
+            services,
+            workflow=kpi_source,
+            source_service=KPI_SOURCE_SERVICE,
+            source_reader_service=KPI_SOURCE_READER_SERVICE,
+            source_history_service=KPI_SOURCE_HISTORY_SERVICE,
         )
+        services.add(
+            KPI_DRAFT_VALIDATION_SERVICE,
+            KpiConfigurationManagerDraftValidationWorkflow(
+                destinations=dependencies.kpi_destinations,
+                audit_actor_provider=actor_provider,
+            ),
+        )
+        services.add(KPI_PROJECTION_SERVICE, dependencies.kpis_projection)
+
+    if (
+        dependencies.kpi_definitions_source is not None
+        and dependencies.kpi_definitions_projection is not None
+        and dependencies.kpi_configuration_projection is not None
+        and dependencies.kpis_source is not None
+    ):
+        definition_source = KpiDefinitionManagerSourceWorkflow(
+            source=dependencies.kpi_definitions_source,
+            audit_actor_provider=actor_provider,
+        )
+        _register_source_workflow(
+            services,
+            workflow=definition_source,
+            source_service=KPI_DEFINITION_SOURCE_SERVICE,
+            source_reader_service=KPI_DEFINITION_SOURCE_READER_SERVICE,
+            source_history_service=KPI_DEFINITION_SOURCE_HISTORY_SERVICE,
+        )
+        services.add(
+            KPI_DEFINITION_DRAFT_VALIDATION_SERVICE,
+            KpiDefinitionManagerDraftValidationWorkflow(
+                kpi_configuration_projection=dependencies.kpi_configuration_projection,
+                kpi_configuration_source_key=dependencies.kpis_source.source_key,
+                audit_actor_provider=actor_provider,
+            ),
+        )
+        services.add(KPI_DEFINITION_PROJECTION_SERVICE, dependencies.kpi_definitions_projection)
+
+
+def _register_source_workflow(
+    services: ServiceRegistry,
+    *,
+    workflow: object,
+    source_service: str,
+    source_reader_service: str,
+    source_history_service: str,
+) -> None:
+    services.add(source_service, workflow)
+    services.add(source_reader_service, workflow)
+    services.add(source_history_service, workflow)
 
 
 def _can_manage_users(principal: ManagerPrincipal) -> bool:
-    return (
-        principal.is_local
-        or 'administrator' in principal.profile_keys
-        or 'users.manage' in principal.access_keys
-    )
+    return principal.is_local or 'administrator' in principal.profile_keys or 'users.manage' in principal.access_keys
 
 
 def _can_manage_navigation(principal: ManagerPrincipal) -> bool:
-    return (
-        principal.is_local
-        or 'administrator' in principal.profile_keys
-        or 'navigation.manage' in principal.access_keys
-    )
+    return principal.is_local or 'administrator' in principal.profile_keys or 'navigation.manage' in principal.access_keys
 
 
 def _can_manage_tools(principal: ManagerPrincipal) -> bool:
-    return (
-        principal.is_local
-        or 'administrator' in principal.profile_keys
-        or 'tools.manage' in principal.access_keys
-    )
-
+    return principal.is_local or 'administrator' in principal.profile_keys or 'tools.manage' in principal.access_keys
 
 
 def _can_manage_kpis(principal: ManagerPrincipal) -> bool:
-    return (
-        principal.is_local
-        or 'administrator' in principal.profile_keys
-        or 'kpis.manage' in principal.access_keys
-    )
+    return principal.is_local or 'administrator' in principal.profile_keys or 'kpis.manage' in principal.access_keys
 
 
 def _kpi_context(
     dependencies: ConfigurationManagerDependencies,
+    actor_provider: Callable[[], str],
 ) -> KpiManagerWebContext | None:
-    if dependencies.kpis is None or dependencies.kpi_destinations is None:
+    if dependencies.kpis_source is None or dependencies.kpi_destinations is None:
         return None
+    workspace = ManagerWorkspaceBridge(
+        owner_subject_id_provider=actor_provider,
+        source_snapshot_provider=dependencies.kpis_source.get_current,
+    )
     return KpiManagerWebContext(
         destinations=dependencies.kpi_destinations,
+        workspace_payload_reader=workspace.read_payload,
+        workspace_payload_writer=workspace.write_payload,
         draft_store_id=workflow_draft_id('kpis'),
         saved_draft_store_id=workflow_saved_draft_id('kpis'),
         draft_save_action_id=workflow_action_id('kpis', 'save-draft'),
         editor_revision_store_id=workflow_editor_revision_id('kpis'),
         result_id=workflow_result_id('kpis'),
-        draft_owner_provider=lambda: dependencies.principal_provider().subject_id,
         can_manage=lambda: _can_manage_kpis(dependencies.principal_provider()),
         source_name=dependencies.kpis_source_name,
         projection_name=dependencies.kpis_projection_name,
@@ -323,7 +411,7 @@ def _kpi_modules(
     context: KpiManagerWebContext | None,
     dependencies: ConfigurationManagerDependencies,
 ) -> tuple[ManagerModule, ...]:
-    if context is None:
+    if context is None or dependencies.kpis_source is None:
         return ()
     return (
         ManagerModule(
@@ -335,7 +423,12 @@ def _kpi_modules(
             description='Configuración de KPI y sus destinos de consumo en ADA.',
             layout=lambda _services: build_kpi_manager_configuration(context),
             history_preview_renderer=build_kpi_history_preview,
-            workflow_service=KPI_WORKFLOW_SERVICE,
+            source_key=dependencies.kpis_source.source_key,
+            source_service=KPI_SOURCE_SERVICE,
+            source_reader_service=KPI_SOURCE_READER_SERVICE,
+            source_history_service=KPI_SOURCE_HISTORY_SERVICE,
+            projection_service=KPI_PROJECTION_SERVICE,
+            draft_validation_service=KPI_DRAFT_VALIDATION_SERVICE,
             access=ManagerModuleAccess(
                 view='kpis.manage',
                 validate='kpis.manage',
@@ -345,27 +438,34 @@ def _kpi_modules(
             web_module=create_kpi_manager_web_module(context),
             source_name=dependencies.kpis_source_name,
             projection_name=dependencies.kpis_projection_name,
-            force_publish_enabled=dependencies.force_publish_enabled,
         ),
     )
 
 
 def _kpi_definition_context(
     dependencies: ConfigurationManagerDependencies,
+    actor_provider: Callable[[], str],
 ) -> KpiDefinitionManagerWebContext | None:
     if (
-        dependencies.kpi_definitions is None
-        or dependencies.kpi_definition_authority is None
+        dependencies.kpi_definitions_source is None
+        or dependencies.kpi_configuration_projection is None
+        or dependencies.kpis_source is None
     ):
         return None
+    workspace = ManagerWorkspaceBridge(
+        owner_subject_id_provider=actor_provider,
+        source_snapshot_provider=dependencies.kpi_definitions_source.get_current,
+    )
     return KpiDefinitionManagerWebContext(
-        authority=dependencies.kpi_definition_authority,
+        kpi_configuration_projection=dependencies.kpi_configuration_projection,
+        kpi_configuration_source_key=dependencies.kpis_source.source_key,
+        workspace_payload_reader=workspace.read_payload,
+        workspace_payload_writer=workspace.write_payload,
         draft_store_id=workflow_draft_id('kpi-definitions'),
         saved_draft_store_id=workflow_saved_draft_id('kpi-definitions'),
         draft_save_action_id=workflow_action_id('kpi-definitions', 'save-draft'),
         editor_revision_store_id=workflow_editor_revision_id('kpi-definitions'),
         result_id=workflow_result_id('kpi-definitions'),
-        draft_owner_provider=lambda: dependencies.principal_provider().subject_id,
         can_manage=lambda: _can_manage_kpis(dependencies.principal_provider()),
         source_name=dependencies.kpi_definitions_source_name,
         projection_name=dependencies.kpi_definitions_projection_name,
@@ -376,7 +476,7 @@ def _kpi_definition_modules(
     context: KpiDefinitionManagerWebContext | None,
     dependencies: ConfigurationManagerDependencies,
 ) -> tuple[ManagerModule, ...]:
-    if context is None:
+    if context is None or dependencies.kpi_definitions_source is None:
         return ()
     return (
         ManagerModule(
@@ -388,7 +488,12 @@ def _kpi_definition_modules(
             description='Información descriptiva asociada a los KPI configurados en ADA.',
             layout=lambda _services: build_kpi_definition_manager_configuration(context),
             history_preview_renderer=build_kpi_definition_history_preview,
-            workflow_service=KPI_DEFINITION_WORKFLOW_SERVICE,
+            source_key=dependencies.kpi_definitions_source.source_key,
+            source_service=KPI_DEFINITION_SOURCE_SERVICE,
+            source_reader_service=KPI_DEFINITION_SOURCE_READER_SERVICE,
+            source_history_service=KPI_DEFINITION_SOURCE_HISTORY_SERVICE,
+            projection_service=KPI_DEFINITION_PROJECTION_SERVICE,
+            draft_validation_service=KPI_DEFINITION_DRAFT_VALIDATION_SERVICE,
             access=ManagerModuleAccess(
                 view='kpis.manage',
                 validate='kpis.manage',
@@ -398,17 +503,16 @@ def _kpi_definition_modules(
             web_module=create_kpi_definition_manager_web_module(context),
             source_name=dependencies.kpi_definitions_source_name,
             projection_name=dependencies.kpi_definitions_projection_name,
-            force_publish_enabled=dependencies.force_publish_enabled,
         ),
     )
+
 
 def _navigation_profile_options(
     dependencies: ConfigurationManagerDependencies,
 ) -> tuple[NavigationProfileOption, ...]:
-    users_catalog = dependencies.users.administration.load_catalog()
-    if users_catalog is None:
+    state = dependencies.users_profiles_administration.load_current()
+    if state.configuration is None:
         return ()
-    profile_catalog = users_catalog.profile_catalog()
     return tuple(
         NavigationProfileOption(
             key=profile.key,
@@ -417,5 +521,5 @@ def _navigation_profile_options(
             background_color=profile.background_color,
             text_color=profile.text_color,
         )
-        for profile in profile_catalog.all()
+        for profile in state.configuration.profiles.profiles
     )

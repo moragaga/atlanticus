@@ -3,13 +3,17 @@ from pathlib import Path
 
 FILES = (
     '__init__.py',
+    '__main__.py',
     'application.py',
     'composition.py',
     'dependencies.py',
     'kpi_definitions.py',
     'kpis.py',
+    'local_runtime.py',
+    'tool_kpi_destinations.py',
     'tools.py',
     'workflows.py',
+    'workspace.py',
 )
 
 

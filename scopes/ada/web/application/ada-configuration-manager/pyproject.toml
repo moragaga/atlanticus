@@ -12,7 +12,7 @@ classifiers = [
 ]
 dependencies = [
     "ada-web-kpi-configuration[web]==0.3.6",
-    "ada-web-kpi-definition[web]==0.5.0",
+    "ada-web-kpi-definition[web]==0.6.0",
     "ada-web-tools==0.1.0",
     "ada-web-tools-configuration[web]==0.1.0",
     "atlanticus-web==0.1.0",
@@ -22,6 +22,8 @@ dependencies = [
     "atlanticus-web-composition-users-manager==0.1.3",
     "atlanticus-web-navigation==0.1.0",
     "atlanticus-web-navigation-configuration[web]==0.1.8",
+    "atlanticus-web-projection==0.1.0",
+    "atlanticus-web-source==0.1.0",
     "atlanticus-web-users==0.1.0",
     "atlanticus-web-users-configuration[web]==0.1.10",
 ]
@@ -36,6 +38,7 @@ atlanticus-web-manager = { path = "../../../../../web/capabilities/manager", edi
 atlanticus-web-profiles = { path = "../../../../../web/capabilities/profiles/core", editable = true }
 atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
+atlanticus-web-source-local = { path = "../../../../../web/capabilities/source/local", editable = true }
 atlanticus-web-composition-users-manager = { path = "../../../../../web/compositions/users-manager", editable = true }
 atlanticus-web-navigation = { path = "../../../../../web/capabilities/navigation/core", editable = true }
 atlanticus-web-navigation-configuration = { path = "../../../../../web/capabilities/navigation/configuration", editable = true }
@@ -46,6 +49,7 @@ ada-web-tools-configuration = { path = "../../tools/configuration", editable = t
 
 [dependency-groups]
 dev = [
+    "atlanticus-web-source-local==0.1.0",
     "pytest==9.1.1",
     "ruff==0.15.22",
 ]
@@ -103,6 +107,7 @@ pythonpath = [
     "../../../../../web/capabilities/profiles/core/src",
     "../../../../../web/capabilities/projection/core/src",
     "../../../../../web/capabilities/source/core/src",
+    "../../../../../web/capabilities/source/local/src",
     "../../../../../web/compositions/users-manager/src",
     "../../../../../web/capabilities/navigation/core/src",
     "../../../../../web/capabilities/navigation/configuration/src",

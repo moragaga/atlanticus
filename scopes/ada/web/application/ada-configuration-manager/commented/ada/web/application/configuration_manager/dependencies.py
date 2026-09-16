@@ -1,36 +1,46 @@
-# Declara las dependencias de dominio que la composition root recibe explícitamente.
+# Espejo pedagógico: declara únicamente dependencias finales y explícitas del composition root del Manager.
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 from ada.web.kpis.configuration import (
-    KpiConfigurationServices,
+    KpiConfiguration,
     KpiDestinationCatalogProvider,
+    KpiSourceService,
 )
-from ada.web.kpis.definition import (
-    KpiDefinitionAuthorityProvider,
-    KpiDefinitionServices,
+from ada.web.kpis.definition import KpiDefinitionCatalog, KpiDefinitionSourceService
+from ada.web.tools.configuration import ToolConfiguration, ToolSourceService
+from atlanticus.web.manager import ManagerPrincipalProvider
+from atlanticus.web.navigation.configuration import (
+    NavigationConfigurationCatalog,
+    NavigationSourceService,
 )
-from ada.web.tools.configuration import ToolLifecycleServices
-from atlanticus.web.manager import ExactProjectionWorkflow, ManagerPrincipalProvider
-from atlanticus.web.navigation.configuration import NavigationConfigurationServices
+from atlanticus.web.projection.service import SourceProjectionService
+from atlanticus.web.projection.store import ProjectionStore
+from atlanticus.web.source.models import SourceKey
 from atlanticus.web.users.configuration import (
-    UsersConfigurationServices,
     UsersProfilesAdministrationService,
+    UsersProfilesConfiguration,
 )
 
 
+# El composition root recibe servicios finales ya construidos; no agrupa dominios en bundles especiales.
 @dataclass(frozen=True, slots=True)
 class ConfigurationManagerDependencies:
-    users: UsersConfigurationServices
+    users_source_key: SourceKey
     users_profiles_administration: UsersProfilesAdministrationService
-    # El assembly externo compone SourceStore + ProjectionStore y entrega la capability lista.
-    users_exact_projection: ExactProjectionWorkflow
-    navigation: NavigationConfigurationServices
-    tools: ToolLifecycleServices
+    users_projection: SourceProjectionService[UsersProfilesConfiguration]
+    navigation_source: NavigationSourceService
+    navigation_projection: SourceProjectionService[NavigationConfigurationCatalog]
+    tools_source: ToolSourceService
+    tools_projection: SourceProjectionService[ToolConfiguration]
     principal_provider: ManagerPrincipalProvider
-    kpis: KpiConfigurationServices | None = None
+    kpis_source: KpiSourceService | None = None
+    kpis_projection: SourceProjectionService[KpiConfiguration] | None = None
     kpi_destinations: KpiDestinationCatalogProvider | None = None
-    kpi_definitions: KpiDefinitionServices | None = None
-    kpi_definition_authority: KpiDefinitionAuthorityProvider | None = None
+    kpi_configuration_projection: ProjectionStore[KpiConfiguration] | None = None
+    kpi_definitions_source: KpiDefinitionSourceService | None = None
+    kpi_definitions_projection: SourceProjectionService[KpiDefinitionCatalog] | None = None
     users_source_name: str = 'Source'
     users_projection_name: str = 'Projection'
     navigation_source_name: str = 'Source'
@@ -41,16 +51,34 @@ class ConfigurationManagerDependencies:
     kpis_projection_name: str = 'Projection'
     kpi_definitions_source_name: str = 'Source'
     kpi_definitions_projection_name: str = 'Projection'
-    force_publish_enabled: bool = False
 
+    # Las capacidades opcionales se habilitan como contratos completos para evitar estados parciales.
     def __post_init__(self) -> None:
-        if (self.kpis is None) != (self.kpi_destinations is None):
+        kpi_contract = (
+            self.kpis_source,
+            self.kpis_projection,
+            self.kpi_destinations,
+        )
+        if any(value is not None for value in kpi_contract) and not all(
+            value is not None for value in kpi_contract
+        ):
             raise ValueError(
-                'KPI services and KPI destination catalog provider must be injected together'
+                'KPI source, projection and destination provider must be injected together'
             )
-        if (self.kpi_definitions is None) != (self.kpi_definition_authority is None):
-            raise ValueError(
-                'KPI Definition services and authority provider must be injected together'
-            )
-        if self.kpi_definitions is not None and self.kpis is None:
+        definition_contract = (
+            self.kpi_definitions_source,
+            self.kpi_definitions_projection,
+        )
+        if any(value is not None for value in definition_contract) and not all(
+            value is not None for value in definition_contract
+        ):
+            raise ValueError('KPI Definition source and projection must be injected together')
+        if self.kpi_definitions_source is not None and self.kpis_source is None:
             raise ValueError('KPI Definition requires KPI Configuration')
+        if (
+            self.kpi_definitions_source is not None
+            and self.kpi_configuration_projection is None
+        ):
+            raise ValueError(
+                'KPI Definition requires the KPI Configuration projection store'
+            )

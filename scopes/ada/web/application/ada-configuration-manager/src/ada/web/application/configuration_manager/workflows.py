@@ -1,271 +1,498 @@
 from __future__ import annotations
 
-from ada.web.kpis.configuration import KpiConfiguration, KpiConfigurationServices
-from ada.web.kpis.definition import KpiDefinitionConfiguration, KpiDefinitionServices
-from ada.web.tools.configuration import ToolConfiguration, ToolLifecycleServices
+from collections.abc import Callable
+from datetime import UTC, datetime
+
+from ada.web.kpis.configuration import (
+    KpiConfiguration,
+    KpiConfigurationSourceError,
+    KpiConfigurationValidationError,
+    KpiDestinationCatalogProvider,
+    KpiSourceService,
+    validate_kpi_configuration_destinations,
+)
+from ada.web.kpis.definition import (
+    KpiDefinitionConfiguration,
+    KpiDefinitionSourceError,
+    KpiDefinitionSourceService,
+    KpiDefinitionValidationError,
+    validate_kpi_definition_configuration,
+)
+from ada.web.tools.configuration import (
+    ToolConfiguration,
+    ToolConfigurationSourceError,
+    ToolSourceService,
+    validate_ada_operational_tool_configuration,
+)
+from ada.web.tools.errors import ToolConfigurationValidationError
 from atlanticus.web.manager import (
     DraftValidationResult,
     ProjectionAuditRecord,
-    ProjectionExecutionResult,
     ProjectionIssue,
-    ProjectionStatus,
     ProjectionSummaryItem,
-    RevisionHistoryEntry,
+    SourceHistoryReadResult,
     SourcePublicationResult,
+    SourceReadResult,
+    build_workspace_revision,
 )
 from atlanticus.web.navigation.configuration import (
     NavigationConfigurationCatalog,
-    NavigationConfigurationServices,
+    NavigationSourceService,
 )
+from atlanticus.web.navigation.configuration.errors import (
+    NavigationConfigurationSourceError,
+    NavigationConfigurationValidationError,
+)
+from atlanticus.web.projection.store import ProjectionStore
+from atlanticus.web.source.models import HistoryPage, PublishResult, SourceKey, SourceReleaseRef, SourceSnapshot
 
-class KpiConfigurationManagerWorkflowAdapter:
-    def __init__(self, services: KpiConfigurationServices) -> None:
-        self._workflow = services.projection_workflow
-        self._administration = services.administration
 
-    def get_status(self) -> ProjectionStatus:
-        return _status(self._workflow.get_status())
+class NavigationManagerSourceWorkflow:
+    def __init__(
+        self,
+        *,
+        source: NavigationSourceService,
+        audit_actor_provider: Callable[[], str],
+    ) -> None:
+        self._source = source
+        self._audit_actor_provider = audit_actor_provider
 
-    def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult:
-        configuration = KpiConfiguration.from_document(payload)
-        return _validation(self._administration.validate_configuration(configuration))
+    def get_source_snapshot(self) -> SourceSnapshot:
+        return self._source.get_current()
+
+    def load_current_source(self) -> SourceReadResult:
+        snapshot = self._source.get_current()
+        if snapshot.current is None:
+            return SourceReadResult(snapshot=snapshot, payload=None)
+        release = self._source.load_release(snapshot.current.release_ref)
+        if self._source.get_current() != snapshot:
+            raise NavigationConfigurationSourceError(
+                'Navigation source changed while it was being loaded'
+            )
+        return SourceReadResult(snapshot=snapshot, payload=release.catalog.to_document())
+
+    def list_history(self, *, limit: int = 20) -> HistoryPage:
+        return self._source.query_history(page_size=limit)
+
+    def load_history_release(
+        self,
+        release_ref: SourceReleaseRef,
+    ) -> SourceHistoryReadResult:
+        release = self._source.load_release(release_ref)
+        return SourceHistoryReadResult(
+            release_ref=release_ref,
+            payload=release.catalog.to_document(),
+        )
 
     def publish_draft(
         self,
         payload: dict[str, object],
-        expected_source_revision: str | None,
+        expected_source_snapshot: SourceSnapshot,
     ) -> SourcePublicationResult:
-        configuration = KpiConfiguration.from_document(payload)
-        return _publication(
-            self._administration.publish_configuration(
+        _require_source_key(expected_source_snapshot, self._source.source_key)
+        catalog = NavigationConfigurationCatalog.from_document(dict(payload))
+        actor = _audit_actor(self._audit_actor_provider)
+        published = self._source.publish_catalog(
+            catalog,
+            published_by=actor,
+            expected_concurrency_token=expected_source_snapshot.concurrency_token,
+            basis_release=_basis_release(expected_source_snapshot),
+        )
+        return _publication_result(published, actor)
+
+
+class NavigationManagerDraftValidationWorkflow:
+    def __init__(self, *, audit_actor_provider: Callable[[], str]) -> None:
+        self._audit_actor_provider = audit_actor_provider
+
+    def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult:
+        revision = build_workspace_revision(payload)
+        audit = _audit(self._audit_actor_provider)
+        try:
+            catalog = NavigationConfigurationCatalog.from_document(dict(payload))
+        except NavigationConfigurationValidationError as error:
+            return _invalid(
+                revision,
+                audit,
+                code='navigation.configuration.invalid',
+                message=str(error),
+            )
+        return DraftValidationResult(
+            draft_revision=revision,
+            valid=True,
+            audit=audit,
+            summary=(
+                ProjectionSummaryItem('Enlaces raíz', str(len(catalog.links))),
+                ProjectionSummaryItem('Grupos', str(len(catalog.groups))),
+                ProjectionSummaryItem(
+                    'Enlaces en grupos',
+                    str(sum(len(group.links) for group in catalog.groups)),
+                ),
+            ),
+        )
+
+
+class ToolManagerSourceWorkflow:
+    def __init__(
+        self,
+        *,
+        source: ToolSourceService,
+        audit_actor_provider: Callable[[], str],
+    ) -> None:
+        self._source = source
+        self._audit_actor_provider = audit_actor_provider
+
+    def get_source_snapshot(self) -> SourceSnapshot:
+        return self._source.get_current()
+
+    def load_current_source(self) -> SourceReadResult:
+        snapshot = self._source.get_current()
+        if snapshot.current is None:
+            return SourceReadResult(snapshot=snapshot, payload=None)
+        release = self._source.load_release(snapshot.current.release_ref)
+        if self._source.get_current() != snapshot:
+            raise ToolConfigurationSourceError('Tool source changed while it was being loaded')
+        return SourceReadResult(
+            snapshot=snapshot,
+            payload=release.configuration.to_document(),
+        )
+
+    def list_history(self, *, limit: int = 20) -> HistoryPage:
+        return self._source.query_history(page_size=limit)
+
+    def load_history_release(
+        self,
+        release_ref: SourceReleaseRef,
+    ) -> SourceHistoryReadResult:
+        release = self._source.load_release(release_ref)
+        return SourceHistoryReadResult(
+            release_ref=release_ref,
+            payload=release.configuration.to_document(),
+        )
+
+    def publish_draft(
+        self,
+        payload: dict[str, object],
+        expected_source_snapshot: SourceSnapshot,
+    ) -> SourcePublicationResult:
+        _require_source_key(expected_source_snapshot, self._source.source_key)
+        configuration = ToolConfiguration.from_document(dict(payload))
+        actor = _audit_actor(self._audit_actor_provider)
+        published = self._source.publish_configuration(
+            configuration,
+            published_by=actor,
+            expected_concurrency_token=expected_source_snapshot.concurrency_token,
+            basis_release=_basis_release(expected_source_snapshot),
+        )
+        return _publication_result(published, actor)
+
+
+class ToolManagerDraftValidationWorkflow:
+    def __init__(self, *, audit_actor_provider: Callable[[], str]) -> None:
+        self._audit_actor_provider = audit_actor_provider
+
+    def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult:
+        revision = build_workspace_revision(payload)
+        audit = _audit(self._audit_actor_provider)
+        try:
+            configuration = ToolConfiguration.from_document(dict(payload))
+            validate_ada_operational_tool_configuration(configuration)
+        except ToolConfigurationValidationError as error:
+            return _invalid(
+                revision,
+                audit,
+                code='tools.configuration.invalid',
+                message=str(error),
+            )
+        structure = configuration.structure
+        return DraftValidationResult(
+            draft_revision=revision,
+            valid=True,
+            audit=audit,
+            summary=(
+                ProjectionSummaryItem('Herramienta', configuration.display_name),
+                ProjectionSummaryItem(
+                    'Fuentes',
+                    str(len(configuration.source_consumption.source_keys)),
+                ),
+                ProjectionSummaryItem(
+                    'Componentes',
+                    str(len(structure.components) if structure is not None else 0),
+                ),
+            ),
+        )
+
+
+class KpiConfigurationManagerSourceWorkflow:
+    def __init__(
+        self,
+        *,
+        source: KpiSourceService,
+        audit_actor_provider: Callable[[], str],
+    ) -> None:
+        self._source = source
+        self._audit_actor_provider = audit_actor_provider
+
+    def get_source_snapshot(self) -> SourceSnapshot:
+        return self._source.get_current()
+
+    def load_current_source(self) -> SourceReadResult:
+        snapshot = self._source.get_current()
+        if snapshot.current is None:
+            return SourceReadResult(snapshot=snapshot, payload=None)
+        release = self._source.load_release(snapshot.current.release_ref)
+        if self._source.get_current() != snapshot:
+            raise KpiConfigurationSourceError('KPI source changed while it was being loaded')
+        return SourceReadResult(
+            snapshot=snapshot,
+            payload=release.configuration.to_document(),
+        )
+
+    def list_history(self, *, limit: int = 20) -> HistoryPage:
+        return self._source.query_history(page_size=limit)
+
+    def load_history_release(
+        self,
+        release_ref: SourceReleaseRef,
+    ) -> SourceHistoryReadResult:
+        release = self._source.load_release(release_ref)
+        return SourceHistoryReadResult(
+            release_ref=release_ref,
+            payload=release.configuration.to_document(),
+        )
+
+    def publish_draft(
+        self,
+        payload: dict[str, object],
+        expected_source_snapshot: SourceSnapshot,
+    ) -> SourcePublicationResult:
+        _require_source_key(expected_source_snapshot, self._source.source_key)
+        configuration = KpiConfiguration.from_document(dict(payload))
+        actor = _audit_actor(self._audit_actor_provider)
+        published = self._source.publish_configuration(
+            configuration,
+            published_by=actor,
+            expected_concurrency_token=expected_source_snapshot.concurrency_token,
+            basis_release=_basis_release(expected_source_snapshot),
+        )
+        return _publication_result(published, actor)
+
+
+class KpiConfigurationManagerDraftValidationWorkflow:
+    def __init__(
+        self,
+        *,
+        destinations: KpiDestinationCatalogProvider,
+        audit_actor_provider: Callable[[], str],
+    ) -> None:
+        self._destinations = destinations
+        self._audit_actor_provider = audit_actor_provider
+
+    def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult:
+        revision = build_workspace_revision(payload)
+        audit = _audit(self._audit_actor_provider)
+        try:
+            configuration = KpiConfiguration.from_document(dict(payload))
+            destinations = self._destinations.load()
+            if destinations is None:
+                return _invalid(
+                    revision,
+                    audit,
+                    code='kpis.tools-projection.unavailable',
+                    message='Tool projection is not available',
+                )
+            validate_kpi_configuration_destinations(
                 configuration,
-                expected_source_revision=expected_source_revision,
+                destinations.catalog,
             )
+        except KpiConfigurationValidationError as error:
+            return _invalid(
+                revision,
+                audit,
+                code='kpis.configuration.invalid',
+                message=str(error),
+            )
+        destination_keys = {
+            destination
+            for binding in configuration.bindings
+            for destination in binding.destination_keys
+        }
+        return DraftValidationResult(
+            draft_revision=revision,
+            valid=True,
+            audit=audit,
+            summary=(
+                ProjectionSummaryItem('KPI', str(len(configuration.bindings))),
+                ProjectionSummaryItem('Destinos', str(len(destination_keys))),
+            ),
         )
 
-    def project(self, expected_source_revision: str) -> ProjectionExecutionResult:
-        return _projection(self._workflow.project(expected_source_revision))
 
-    def load_revision(self, revision: str) -> dict[str, object]:
-        return self._administration.load_revision_configuration(revision).to_document()
+class KpiDefinitionManagerSourceWorkflow:
+    def __init__(
+        self,
+        *,
+        source: KpiDefinitionSourceService,
+        audit_actor_provider: Callable[[], str],
+    ) -> None:
+        self._source = source
+        self._audit_actor_provider = audit_actor_provider
 
-    def list_history(self, *, limit: int = 20) -> tuple[RevisionHistoryEntry, ...]:
-        status = self._workflow.get_status()
-        return tuple(
-            _history_entry(
-                document,
-                active_source_revision=status.active_source_revision,
-                source_revision=status.source_revision,
+    def get_source_snapshot(self) -> SourceSnapshot:
+        return self._source.get_current()
+
+    def load_current_source(self) -> SourceReadResult:
+        snapshot = self._source.get_current()
+        if snapshot.current is None:
+            return SourceReadResult(snapshot=snapshot, payload=None)
+        release = self._source.load_release(snapshot.current.release_ref)
+        if self._source.get_current() != snapshot:
+            raise KpiDefinitionSourceError(
+                'KPI Definition source changed while it was being loaded'
             )
-            for document in self._administration.list_history(limit=limit)
+        return SourceReadResult(
+            snapshot=snapshot,
+            payload=release.configuration.to_document(),
         )
 
+    def list_history(self, *, limit: int = 20) -> HistoryPage:
+        return self._source.query_history(page_size=limit)
 
-class KpiDefinitionManagerWorkflowAdapter:
-    def __init__(self, services: KpiDefinitionServices) -> None:
-        self._workflow = services.projection_workflow
-        self._administration = services.administration
-
-    def get_status(self) -> ProjectionStatus:
-        return _status(self._workflow.get_status())
-
-    def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult:
-        configuration = KpiDefinitionConfiguration.from_document(payload)
-        return _validation(self._administration.validate_configuration(configuration))
+    def load_history_release(
+        self,
+        release_ref: SourceReleaseRef,
+    ) -> SourceHistoryReadResult:
+        release = self._source.load_release(release_ref)
+        return SourceHistoryReadResult(
+            release_ref=release_ref,
+            payload=release.configuration.to_document(),
+        )
 
     def publish_draft(
         self,
         payload: dict[str, object],
-        expected_source_revision: str | None,
+        expected_source_snapshot: SourceSnapshot,
     ) -> SourcePublicationResult:
-        configuration = KpiDefinitionConfiguration.from_document(payload)
-        return _publication(
-            self._administration.publish_configuration(
+        _require_source_key(expected_source_snapshot, self._source.source_key)
+        configuration = KpiDefinitionConfiguration.from_document(dict(payload))
+        actor = _audit_actor(self._audit_actor_provider)
+        published = self._source.publish_configuration(
+            configuration,
+            published_by=actor,
+            expected_concurrency_token=expected_source_snapshot.concurrency_token,
+            basis_release=_basis_release(expected_source_snapshot),
+        )
+        return _publication_result(published, actor)
+
+
+class KpiDefinitionManagerDraftValidationWorkflow:
+    def __init__(
+        self,
+        *,
+        kpi_configuration_projection: ProjectionStore[KpiConfiguration],
+        kpi_configuration_source_key: SourceKey,
+        audit_actor_provider: Callable[[], str],
+    ) -> None:
+        self._kpi_configuration_projection = kpi_configuration_projection
+        self._kpi_configuration_source_key = kpi_configuration_source_key
+        self._audit_actor_provider = audit_actor_provider
+
+    def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult:
+        revision = build_workspace_revision(payload)
+        audit = _audit(self._audit_actor_provider)
+        try:
+            configuration = KpiDefinitionConfiguration.from_document(dict(payload))
+            kpi_projection = self._kpi_configuration_projection.get_active(
+                self._kpi_configuration_source_key
+            )
+            if kpi_projection is None:
+                return _invalid(
+                    revision,
+                    audit,
+                    code='kpi-definitions.kpi-projection.unavailable',
+                    message='KPI Configuration projection is not available',
+                )
+            if not isinstance(kpi_projection.payload, KpiConfiguration):
+                return _invalid(
+                    revision,
+                    audit,
+                    code='kpi-definitions.kpi-projection.invalid',
+                    message='KPI Configuration projection payload is invalid',
+                )
+            validate_kpi_definition_configuration(
                 configuration,
-                expected_source_revision=expected_source_revision,
+                kpi_projection.payload,
             )
-        )
-
-    def project(self, expected_source_revision: str) -> ProjectionExecutionResult:
-        return _projection(self._workflow.project(expected_source_revision))
-
-    def load_revision(self, revision: str) -> dict[str, object]:
-        return self._administration.load_revision_configuration(revision).to_document()
-
-    def list_history(self, *, limit: int = 20) -> tuple[RevisionHistoryEntry, ...]:
-        status = self._workflow.get_status()
-        return tuple(
-            _history_entry(
-                document,
-                active_source_revision=status.active_source_revision,
-                source_revision=status.source_revision,
+        except KpiDefinitionValidationError as error:
+            return _invalid(
+                revision,
+                audit,
+                code='kpi-definitions.configuration.invalid',
+                message=str(error),
             )
-            for document in self._administration.list_history(limit=limit)
-        )
-
-class ToolConfigurationManagerWorkflowAdapter:
-    def __init__(self, services: ToolLifecycleServices) -> None:
-        self._workflow = services.projection_workflow
-        self._administration = services.administration
-
-    def get_status(self) -> ProjectionStatus:
-        return _status(self._workflow.get_status())
-
-    def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult:
-        configuration = ToolConfiguration.from_document(payload)
-        return _validation(self._administration.validate_configuration(configuration))
-
-    def publish_draft(
-        self,
-        payload: dict[str, object],
-        expected_source_revision: str | None,
-    ) -> SourcePublicationResult:
-        configuration = ToolConfiguration.from_document(payload)
-        return _publication(
-            self._administration.publish_configuration(
-                configuration,
-                expected_source_revision=expected_source_revision,
-            )
-        )
-
-    def project(self, expected_source_revision: str) -> ProjectionExecutionResult:
-        return _projection(self._workflow.project(expected_source_revision))
-
-    def load_revision(self, revision: str) -> dict[str, object]:
-        return self._administration.load_revision_configuration(revision).to_document()
-
-    def list_history(self, *, limit: int = 20) -> tuple[RevisionHistoryEntry, ...]:
-        status = self._workflow.get_status()
-        return tuple(
-            _history_entry(
-                document,
-                active_source_revision=status.active_source_revision,
-                source_revision=status.source_revision,
-            )
-            for document in self._administration.list_history(limit=limit)
+        return DraftValidationResult(
+            draft_revision=revision,
+            valid=True,
+            audit=audit,
+            summary=(
+                ProjectionSummaryItem(
+                    'Definiciones',
+                    str(len(configuration.definitions)),
+                ),
+                ProjectionSummaryItem(
+                    'Campos',
+                    str(sum(len(definition.fields) for definition in configuration.definitions)),
+                ),
+            ),
         )
 
 
-class NavigationManagerWorkflowAdapter:
-    def __init__(self, services: NavigationConfigurationServices) -> None:
-        self._workflow = services.projection_workflow
-        self._administration = services.administration
-
-    def get_status(self) -> ProjectionStatus:
-        return _status(self._workflow.get_status())
-
-    def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult:
-        catalog = NavigationConfigurationCatalog.from_document(payload)
-        return _validation(self._administration.validate_catalog(catalog))
-
-    def publish_draft(
-        self,
-        payload: dict[str, object],
-        expected_source_revision: str | None,
-    ) -> SourcePublicationResult:
-        catalog = NavigationConfigurationCatalog.from_document(payload)
-        return _publication(
-            self._administration.publish_catalog(
-                catalog,
-                expected_source_revision=expected_source_revision,
-            )
-        )
-
-    def project(self, expected_source_revision: str) -> ProjectionExecutionResult:
-        return _projection(self._workflow.project(expected_source_revision))
-
-    def load_revision(self, revision: str) -> dict[str, object]:
-        return self._administration.load_revision_catalog(revision).to_document()
-
-    def list_history(self, *, limit: int = 20) -> tuple[RevisionHistoryEntry, ...]:
-        status = self._workflow.get_status()
-        return tuple(
-            _history_entry(
-                bundle,
-                active_source_revision=status.active_source_revision,
-                source_revision=status.source_revision,
-            )
-            for bundle in self._administration.list_history(limit=limit)
-        )
+def _audit_actor(provider: Callable[[], str]) -> str:
+    actor = provider().strip()
+    if not actor:
+        raise ValueError('Manager audit actor must not be empty')
+    return actor
 
 
-def _status(status) -> ProjectionStatus:
-    return ProjectionStatus(
-        source_revision=status.source_revision,
-        source_audit=_optional_audit(status.source_audit),
-        active_revision=status.active_revision,
-        active_source_revision=status.active_source_revision,
-        projection_audit=_optional_audit(status.projection_audit),
-    )
-
-
-def _validation(result) -> DraftValidationResult:
-    return DraftValidationResult(
-        draft_revision=result.draft_revision,
-        valid=result.valid,
-        audit=_audit(result.audit),
-        issues=tuple(_issue(issue) for issue in result.issues),
-        summary=tuple(_summary(item) for item in result.summary),
-    )
-
-
-def _publication(result) -> SourcePublicationResult:
-    return SourcePublicationResult(
-        source_revision=result.source_revision,
-        published=result.published,
-        audit=_audit(result.audit),
-        summary=tuple(_summary(item) for item in result.summary),
-    )
-
-
-def _projection(result) -> ProjectionExecutionResult:
-    return ProjectionExecutionResult(
-        source_revision=result.source_revision,
-        projection_revision=result.projection_revision,
-        projected=result.projected,
-        audit=_audit(result.audit),
-        issues=tuple(_issue(issue) for issue in result.issues),
-        summary=tuple(_summary(item) for item in result.summary),
-    )
-
-
-def _optional_audit(record) -> ProjectionAuditRecord | None:
-    return _audit(record) if record is not None else None
-
-
-def _audit(record) -> ProjectionAuditRecord:
+def _audit(provider: Callable[[], str]) -> ProjectionAuditRecord:
     return ProjectionAuditRecord(
-        actor=record.actor,
-        occurred_at=record.occurred_at_utc,
+        actor=_audit_actor(provider),
+        occurred_at=datetime.now(UTC),
     )
 
 
-def _issue(issue) -> ProjectionIssue:
-    return ProjectionIssue(
-        code=issue.code,
-        message=issue.message,
-        level=issue.level,
-        path=issue.path,
-    )
-
-
-def _summary(item) -> ProjectionSummaryItem:
-    return ProjectionSummaryItem(
-        label=item.label,
-        value=item.value,
-    )
-
-
-def _history_entry(
-    document,
+def _invalid(
+    revision: str,
+    audit: ProjectionAuditRecord,
     *,
-    active_source_revision: str | None,
-    source_revision: str | None,
-) -> RevisionHistoryEntry:
-    return RevisionHistoryEntry(
-        revision=document.revision,
-        saved_by=document.saved_by,
-        saved_at=document.saved_at_utc,
-        active=document.revision == active_source_revision,
-        current=document.revision == source_revision,
+    code: str,
+    message: str,
+) -> DraftValidationResult:
+    return DraftValidationResult(
+        draft_revision=revision,
+        valid=False,
+        audit=audit,
+        issues=(ProjectionIssue(code=code, message=message),),
+    )
+
+
+def _require_source_key(snapshot: SourceSnapshot, source_key: SourceKey) -> None:
+    if snapshot.source_key != source_key:
+        raise ValueError('Manager source snapshot uses a different source key')
+
+
+def _basis_release(snapshot: SourceSnapshot) -> SourceReleaseRef | None:
+    return snapshot.current.release_ref if snapshot.current is not None else None
+
+
+def _publication_result(
+    published: PublishResult,
+    actor: str,
+) -> SourcePublicationResult:
+    return SourcePublicationResult(
+        source=published,
+        audit=ProjectionAuditRecord(
+            actor=actor,
+            occurred_at=published.release.release_ref.published_at_utc,
+        ),
     )

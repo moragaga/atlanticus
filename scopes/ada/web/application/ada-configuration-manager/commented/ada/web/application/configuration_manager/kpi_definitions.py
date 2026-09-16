@@ -1,4 +1,4 @@
-# Integra KPI Definition al flujo estándar de Atlanticus Manager.
+# Espejo pedagógico: integra definiciones KPI con el workspace genérico y la proyección KPI activa.
 from __future__ import annotations
 
 import base64
@@ -9,11 +9,14 @@ from dataclasses import dataclass
 
 from dash import Input, Output, State, dcc, html, no_update
 
+from ada.web.application.configuration_manager.workspace import (
+    WorkspacePayloadReader,
+    WorkspacePayloadWriter,
+)
+from ada.web.kpis.configuration import KpiConfiguration
 from ada.web.kpis.definition import (
-    KpiDefinitionAuthorityProvider,
     KpiDefinitionConfiguration,
     KpiDefinitionValidationError,
-    build_kpi_definition_digest,
 )
 from ada.web.kpis.definition.web import (
     KpiDefinitionEditorContext,
@@ -21,9 +24,10 @@ from ada.web.kpis.definition.web import (
     create_kpi_definition_editor_module,
 )
 from ada.web.kpis.definition.web.ids import CONFIGURATION_STORE_ID
-from atlanticus.web.manager import ManagerDraft
-from atlanticus.web.manager.errors import ManagerProjectionError
+from atlanticus.web.manager import ManagerProjectionError, ManagerWorkspace, build_workspace_revision
 from atlanticus.web.modules import WebModule
+from atlanticus.web.projection.store import ProjectionStore
+from atlanticus.web.source.models import SourceKey
 
 KPI_DEFINITION_MANAGER_ROOT_ID = 'ada-configuration-manager-kpi-definitions'
 KPI_DEFINITION_SOURCE_NAME_ID = 'ada-configuration-manager-kpi-definitions-source-name'
@@ -35,21 +39,25 @@ KPI_DEFINITION_SAVE_RESULT_ID = 'ada-configuration-manager-kpi-definitions-save-
 
 
 @dataclass(frozen=True, slots=True)
+# El editor consume directamente la proyección KPI y su SourceKey, que son la autoridad funcional vigente.
 class KpiDefinitionManagerWebContext:
-    authority: KpiDefinitionAuthorityProvider
+    kpi_configuration_projection: ProjectionStore[KpiConfiguration]
+    kpi_configuration_source_key: SourceKey
+    workspace_payload_reader: WorkspacePayloadReader
+    workspace_payload_writer: WorkspacePayloadWriter
     draft_store_id: object
     saved_draft_store_id: object
     draft_save_action_id: object
     editor_revision_store_id: object
     result_id: object
-    draft_owner_provider: Callable[[], str]
     can_manage: Callable[[], bool] = lambda: True
     source_name: str = 'Source'
     projection_name: str = 'Projection'
 
     def editor_context(self) -> KpiDefinitionEditorContext:
         return KpiDefinitionEditorContext(
-            authority=self.authority,
+            kpi_configuration_projection=self.kpi_configuration_projection,
+            kpi_configuration_source_key=self.kpi_configuration_source_key,
             can_manage=self.can_manage,
         )
 
@@ -76,10 +84,7 @@ def build_kpi_definition_history_preview(payload: dict[str, object]) -> object:
             html.H4('Definiciones KPI'),
             html.Div(
                 [
-                    _history_item(
-                        'Definiciones',
-                        str(len(configuration.definitions)),
-                    ),
+                    _history_item('Definiciones', str(len(configuration.definitions))),
                     _history_item('Campos', str(field_count)),
                 ]
             ),
@@ -107,6 +112,7 @@ def create_kpi_definition_manager_web_module(
     )
 
 
+# El borrador usa ManagerWorkspace; no existe authority ni revisión privada paralela.
 def register_kpi_definition_manager_callbacks(
     app: object,
     context: KpiDefinitionManagerWebContext,
@@ -116,17 +122,13 @@ def register_kpi_definition_manager_callbacks(
         Input(context.draft_store_id, 'data'),
     )
     def load_manager_draft(draft_data: dict[str, object] | None):
-        if draft_data is None:
-            return no_update
         try:
-            draft = _owned_draft(
-                draft_data,
-                owner_subject_id=context.draft_owner_provider(),
-            )
-            configuration = KpiDefinitionConfiguration.from_document(draft.payload)
+            payload = context.workspace_payload_reader(draft_data)
+            if payload is None:
+                return no_update
+            return KpiDefinitionConfiguration.from_document(payload).to_document()
         except (ManagerProjectionError, KpiDefinitionValidationError, ValueError):
             return no_update
-        return configuration.to_document()
 
     @app.callback(
         Output(CONFIGURATION_STORE_ID, 'data', allow_duplicate=True),
@@ -143,10 +145,7 @@ def register_kpi_definition_manager_callbacks(
             configuration = _decode_import(contents)
         except ValueError as error:
             return no_update, _error(str(error))
-        return (
-            configuration.to_document(),
-            _success('Definiciones KPI importadas en el editor.'),
-        )
+        return configuration.to_document(), _success('Definiciones KPI importadas en el editor.')
 
     @app.callback(
         Output(context.editor_revision_store_id, 'data', allow_duplicate=True),
@@ -158,7 +157,7 @@ def register_kpi_definition_manager_callbacks(
             configuration = _configuration(configuration_data)
         except ValueError:
             return 'invalid'
-        return build_kpi_definition_digest(configuration)
+        return build_workspace_revision(configuration.to_document())
 
     @app.callback(
         Output(context.result_id, 'children', allow_duplicate=True),
@@ -184,40 +183,21 @@ def register_kpi_definition_manager_callbacks(
         if not context.can_manage():
             message = _error('No tienes permisos para administrar definiciones KPI.')
             return message, message, no_update, no_update
-
         try:
             configuration = _configuration(configuration_data)
-            owner_subject_id = context.draft_owner_provider()
-            current = (
-                _owned_draft(
-                    current_draft_data,
-                    owner_subject_id=owner_subject_id,
-                )
-                if current_draft_data is not None
-                else None
+            document = context.workspace_payload_writer(
+                current_draft_data,
+                configuration.to_document(),
             )
-            draft = ManagerDraft.create(
-                owner_subject_id=owner_subject_id,
-                payload=configuration.to_document(),
-                base_source_revision=(
-                    current.base_source_revision if current is not None else None
-                ),
-            )
-            if editor_revision != draft.revision:
+            workspace = ManagerWorkspace.from_document(document)
+            if editor_revision != workspace.revision:
                 raise ManagerProjectionError(
                     'La revisión del editor cambió antes de guardar el borrador.'
                 )
         except (ManagerProjectionError, ValueError) as error:
             message = _error(str(error))
             return message, message, no_update, no_update
-
-        document = draft.to_document()
-        return (
-            None,
-            _success('Borrador guardado en este navegador.'),
-            document,
-            document,
-        )
+        return None, _success('Borrador guardado en este navegador.'), document, document
 
 
 def _runtime_context(context: KpiDefinitionManagerWebContext) -> object:
@@ -226,20 +206,14 @@ def _runtime_context(context: KpiDefinitionManagerWebContext) -> object:
             html.Div(
                 [
                     html.Span('Fuente de verdad'),
-                    html.Strong(
-                        context.source_name,
-                        id=KPI_DEFINITION_SOURCE_NAME_ID,
-                    ),
+                    html.Strong(context.source_name, id=KPI_DEFINITION_SOURCE_NAME_ID),
                 ],
                 className='ada-configuration-manager-kpis__runtime-source',
             ),
             html.Div(
                 [
                     html.Span('Proyección'),
-                    html.Strong(
-                        context.projection_name,
-                        id=KPI_DEFINITION_PROJECTION_NAME_ID,
-                    ),
+                    html.Strong(context.projection_name, id=KPI_DEFINITION_PROJECTION_NAME_ID),
                 ],
                 className='ada-configuration-manager-kpis__runtime-source',
             ),
@@ -256,10 +230,7 @@ def _runtime_context(context: KpiDefinitionManagerWebContext) -> object:
                         multiple=False,
                     ),
                     html.Span(
-                        (
-                            'Carga definiciones KPI en el editor. '
-                            'No guarda, publica ni proyecta cambios.'
-                        ),
+                        'Carga definiciones KPI en el editor. No guarda, publica ni proyecta cambios.',
                         className='ada-configuration-manager-kpis__runtime-help',
                     ),
                     html.Div(id=KPI_DEFINITION_IMPORT_RESULT_ID),
@@ -298,10 +269,7 @@ def _save_section() -> object:
             ),
             html.Div(id=KPI_DEFINITION_SAVE_RESULT_ID),
         ],
-        className=(
-            'ada-configuration-manager-kpis__section '
-            'ada-configuration-manager-kpis__section--footer'
-        ),
+        className='ada-configuration-manager-kpis__section ada-configuration-manager-kpis__section--footer',
     )
 
 
@@ -321,26 +289,13 @@ def _decode_import(contents: str) -> KpiDefinitionConfiguration:
         raise ValueError('El contrato de definiciones KPI no es válido.') from error
 
 
-def _configuration(
-    document: dict[str, object] | None,
-) -> KpiDefinitionConfiguration:
+def _configuration(document: dict[str, object] | None) -> KpiDefinitionConfiguration:
     if not isinstance(document, dict):
         raise ValueError('Las definiciones KPI del editor no son válidas.')
     try:
         return KpiDefinitionConfiguration.from_document(document)
     except KpiDefinitionValidationError as error:
         raise ValueError('Las definiciones KPI del editor no son válidas.') from error
-
-
-def _owned_draft(
-    data: dict[str, object],
-    *,
-    owner_subject_id: str,
-) -> ManagerDraft:
-    draft = ManagerDraft.from_document(data)
-    if draft.owner_subject_id != owner_subject_id.strip():
-        raise ManagerProjectionError('El borrador pertenece a otro usuario.')
-    return draft
 
 
 def _history_item(label: str, value: str) -> object:

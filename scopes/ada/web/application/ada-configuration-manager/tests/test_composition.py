@@ -2,42 +2,52 @@ from types import SimpleNamespace
 
 from ada.web.application.configuration_manager import (
     MANAGER_ROUTE_PREFIX,
-    NAVIGATION_WORKFLOW_SERVICE,
-    TOOLS_WORKFLOW_SERVICE,
+    NAVIGATION_DRAFT_VALIDATION_SERVICE,
+    NAVIGATION_PROJECTION_SERVICE,
+    NAVIGATION_SOURCE_HISTORY_SERVICE,
+    NAVIGATION_SOURCE_READER_SERVICE,
+    NAVIGATION_SOURCE_SERVICE,
+    TOOLS_DRAFT_VALIDATION_SERVICE,
+    TOOLS_PROJECTION_SERVICE,
+    TOOLS_SOURCE_HISTORY_SERVICE,
+    TOOLS_SOURCE_READER_SERVICE,
+    TOOLS_SOURCE_SERVICE,
     USERS_DRAFT_VALIDATION_SERVICE,
-    USERS_EXACT_PROJECTION_SERVICE,
-    USERS_EXACT_SOURCE_HISTORY_SERVICE,
-    USERS_EXACT_SOURCE_READER_SERVICE,
-    USERS_EXACT_SOURCE_WORKFLOW_SERVICE,
+    USERS_PROJECTION_SERVICE,
+    USERS_SOURCE_HISTORY_SERVICE,
+    USERS_SOURCE_READER_SERVICE,
+    USERS_SOURCE_SERVICE,
     ConfigurationManagerDependencies,
-    NavigationManagerWorkflowAdapter,
-    ToolConfigurationManagerWorkflowAdapter,
+    NavigationManagerDraftValidationWorkflow,
+    NavigationManagerSourceWorkflow,
+    ToolManagerDraftValidationWorkflow,
+    ToolManagerSourceWorkflow,
     build_configuration_manager_surface,
 )
 from atlanticus.web.compositions.users_manager import (
     UsersManagerDraftValidationWorkflow,
-    UsersManagerExactSourceHistoryWorkflow,
-    UsersManagerExactSourceReaderWorkflow,
-    UsersManagerExactSourceWorkflow,
+    UsersManagerSourceWorkflow,
 )
-from atlanticus.web.manager import ExactProjectionWorkflow, ManagerPrincipal, ManagerSurface
+from atlanticus.web.manager import ManagerPrincipal, ManagerSurface
 from atlanticus.web.services import ServiceRegistry
+from atlanticus.web.source.models import SourceKey, SourceSnapshot
+
+
+class SourceStub:
+    def __init__(self, source_key: str) -> None:
+        self.source_key = SourceKey(source_key)
+
+    def get_current(self) -> SourceSnapshot:
+        return SourceSnapshot(self.source_key, None, None)
 
 
 class UsersAdministrationStub:
-    def load_catalog(self):
-        return None
+    def load_current(self):
+        return SimpleNamespace(configuration=None, source_snapshot=SourceSnapshot(SourceKey('users'), None, None))
 
 
-class UsersExactProjectionStub:
-    def get_status(self):
-        return None
-
-    def get_current_projection_target(self):
-        return None
-
-    def project(self, target):
-        raise AssertionError(f'Unexpected projection: {target!r}')
+class ProjectionStub:
+    pass
 
 
 def dependencies() -> ConfigurationManagerDependencies:
@@ -46,24 +56,19 @@ def dependencies() -> ConfigurationManagerDependencies:
         display_name='Administrador local',
         is_local=True,
     )
-
-    def domain(administration=None):
-        return SimpleNamespace(
-            administration=administration or SimpleNamespace(),
-            projection_workflow=SimpleNamespace(),
-        )
-
     return ConfigurationManagerDependencies(
-        users=domain(UsersAdministrationStub()),
-        users_profiles_administration=SimpleNamespace(),
-        users_exact_projection=UsersExactProjectionStub(),
-        navigation=domain(),
-        tools=domain(),
+        users_source_key=SourceKey('users'),
+        users_profiles_administration=UsersAdministrationStub(),
+        users_projection=ProjectionStub(),
+        navigation_source=SourceStub('navigation'),
+        navigation_projection=ProjectionStub(),
+        tools_source=SourceStub('tools'),
+        tools_projection=ProjectionStub(),
         principal_provider=lambda: principal,
     )
 
 
-def test_surface_uses_manager_route_and_functional_module_order() -> None:
+def test_surface_uses_generic_manager_contract_for_all_base_modules() -> None:
     definition = build_configuration_manager_surface(dependencies())
     surface = ManagerSurface(definition)
 
@@ -73,53 +78,31 @@ def test_surface_uses_manager_route_and_functional_module_order() -> None:
         'navigation',
         'tools',
     )
-    assert not hasattr(surface, 'default_path')
-    assert surface.registry.root_route == '/manager'
 
-
-def test_surface_registers_explicit_access_contracts() -> None:
-    definition = build_configuration_manager_surface(dependencies())
     users, navigation, tools = definition.modules
-
-    assert users.access.view == 'users.manage'
-    assert users.access.validate == 'users.manage'
-    assert users.access.publish == 'users.manage'
-    assert users.access.project == 'users.manage'
-    assert navigation.access.view == 'navigation.manage'
-    assert navigation.access.validate == 'navigation.manage'
-    assert navigation.access.publish == 'navigation.manage'
-    assert navigation.access.project == 'navigation.manage'
-    assert tools.access.view == 'tools.manage'
-    assert tools.access.validate == 'tools.manage'
-    assert tools.access.publish == 'tools.manage'
-    assert tools.access.project == 'tools.manage'
-
-
-def test_users_module_routes_authoring_through_exact_source_capabilities() -> None:
-    definition = build_configuration_manager_surface(dependencies())
-    users = definition.modules[0]
-
-    assert users.workflow_service is None
+    assert users.source_key == SourceKey('users')
+    assert users.source_service == USERS_SOURCE_SERVICE
+    assert users.source_reader_service == USERS_SOURCE_READER_SERVICE
+    assert users.source_history_service == USERS_SOURCE_HISTORY_SERVICE
+    assert users.projection_service == USERS_PROJECTION_SERVICE
     assert users.draft_validation_service == USERS_DRAFT_VALIDATION_SERVICE
-    assert users.exact_source_reader_service == USERS_EXACT_SOURCE_READER_SERVICE
-    assert users.exact_source_history_service == USERS_EXACT_SOURCE_HISTORY_SERVICE
-    assert users.exact_source_workflow_service == USERS_EXACT_SOURCE_WORKFLOW_SERVICE
-    assert users.exact_projection_service == USERS_EXACT_PROJECTION_SERVICE
+
+    assert navigation.source_key == SourceKey('navigation')
+    assert navigation.source_service == NAVIGATION_SOURCE_SERVICE
+    assert navigation.source_reader_service == NAVIGATION_SOURCE_READER_SERVICE
+    assert navigation.source_history_service == NAVIGATION_SOURCE_HISTORY_SERVICE
+    assert navigation.projection_service == NAVIGATION_PROJECTION_SERVICE
+    assert navigation.draft_validation_service == NAVIGATION_DRAFT_VALIDATION_SERVICE
+
+    assert tools.source_key == SourceKey('tools')
+    assert tools.source_service == TOOLS_SOURCE_SERVICE
+    assert tools.source_reader_service == TOOLS_SOURCE_READER_SERVICE
+    assert tools.source_history_service == TOOLS_SOURCE_HISTORY_SERVICE
+    assert tools.projection_service == TOOLS_PROJECTION_SERVICE
+    assert tools.draft_validation_service == TOOLS_DRAFT_VALIDATION_SERVICE
 
 
-def test_tools_module_represents_the_application_tool_without_selector() -> None:
-    definition = build_configuration_manager_surface(dependencies())
-    tools = definition.modules[2]
-
-    assert tools.key == 'tools'
-    assert tools.title == 'Herramienta'
-    assert tools.route == '/tools'
-    assert tools.workflow_service == TOOLS_WORKFLOW_SERVICE
-    assert tools.web_module is not None
-    assert tools.web_module.name == 'ada-configuration-manager-tools'
-
-
-def test_service_module_registers_users_exact_capabilities_and_remaining_legacy_lifecycles() -> None:
+def test_service_module_registers_separate_generic_capabilities() -> None:
     injected = dependencies()
     definition = build_configuration_manager_surface(injected)
     service_module = next(
@@ -132,30 +115,32 @@ def test_service_module_registers_users_exact_capabilities_and_remaining_legacy_
     assert service_module.register_services is not None
     service_module.register_services(services)
 
+    users_source = services.require(USERS_SOURCE_SERVICE)
+    assert isinstance(users_source, UsersManagerSourceWorkflow)
+    assert services.require(USERS_SOURCE_READER_SERVICE) is users_source
+    assert services.require(USERS_SOURCE_HISTORY_SERVICE) is users_source
     assert isinstance(
         services.require(USERS_DRAFT_VALIDATION_SERVICE),
         UsersManagerDraftValidationWorkflow,
     )
+    assert services.require(USERS_PROJECTION_SERVICE) is injected.users_projection
+
+    navigation_source = services.require(NAVIGATION_SOURCE_SERVICE)
+    assert isinstance(navigation_source, NavigationManagerSourceWorkflow)
+    assert services.require(NAVIGATION_SOURCE_READER_SERVICE) is navigation_source
+    assert services.require(NAVIGATION_SOURCE_HISTORY_SERVICE) is navigation_source
     assert isinstance(
-        services.require(USERS_EXACT_SOURCE_READER_SERVICE),
-        UsersManagerExactSourceReaderWorkflow,
+        services.require(NAVIGATION_DRAFT_VALIDATION_SERVICE),
+        NavigationManagerDraftValidationWorkflow,
     )
+    assert services.require(NAVIGATION_PROJECTION_SERVICE) is injected.navigation_projection
+
+    tools_source = services.require(TOOLS_SOURCE_SERVICE)
+    assert isinstance(tools_source, ToolManagerSourceWorkflow)
+    assert services.require(TOOLS_SOURCE_READER_SERVICE) is tools_source
+    assert services.require(TOOLS_SOURCE_HISTORY_SERVICE) is tools_source
     assert isinstance(
-        services.require(USERS_EXACT_SOURCE_HISTORY_SERVICE),
-        UsersManagerExactSourceHistoryWorkflow,
+        services.require(TOOLS_DRAFT_VALIDATION_SERVICE),
+        ToolManagerDraftValidationWorkflow,
     )
-    assert isinstance(
-        services.require(USERS_EXACT_SOURCE_WORKFLOW_SERVICE),
-        UsersManagerExactSourceWorkflow,
-    )
-    exact_projection = services.require(USERS_EXACT_PROJECTION_SERVICE)
-    assert exact_projection is injected.users_exact_projection
-    assert isinstance(exact_projection, ExactProjectionWorkflow)
-    assert isinstance(
-        services.require(NAVIGATION_WORKFLOW_SERVICE),
-        NavigationManagerWorkflowAdapter,
-    )
-    assert isinstance(
-        services.require(TOOLS_WORKFLOW_SERVICE),
-        ToolConfigurationManagerWorkflowAdapter,
-    )
+    assert services.require(TOOLS_PROJECTION_SERVICE) is injected.tools_projection

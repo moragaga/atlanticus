@@ -1,6 +1,6 @@
 def test_tools_namespace_composes_core_and_configuration_at_runtime() -> None:
     import ada.web.tools
-    from ada.web.tools.configuration import ToolConfiguration, ToolLifecycleServices
+    from ada.web.tools.configuration import ToolConfiguration, ToolSourceService
     from ada.web.tools.errors import ToolConfigurationValidationError
     from ada.web.tools.structure import ToolStructure
 
@@ -10,4 +10,4 @@ def test_tools_namespace_composes_core_and_configuration_at_runtime() -> None:
     assert ToolConfigurationValidationError is not None
     assert ToolStructure is not None
     assert ToolConfiguration is not None
-    assert ToolLifecycleServices is not None
+    assert ToolSourceService is not None
