@@ -181,7 +181,6 @@ version = "0.1.3"
 source = { editable = "compositions/users-manager" }
 dependencies = [
     { name = "atlanticus-web-manager" },
-    { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
     { name = "atlanticus-web-users-configuration" },
 ]
@@ -189,7 +188,6 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "atlanticus-web-manager", editable = "capabilities/manager" },
-    { name = "atlanticus-web-projection", editable = "capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "capabilities/source/core" },
     { name = "atlanticus-web-users-configuration", editable = "capabilities/users/configuration" },
 ]
