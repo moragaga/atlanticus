@@ -15,20 +15,19 @@ from atlanticus.connectivity.cosmos import (
 from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.models import SourceKey, SourceReleaseId
-from atlanticus.web.users.configuration.canonical import (
-    UsersProfilesConfiguration,
-    split_legacy_users_configuration_catalog,
-)
+from atlanticus.web.users.configuration.canonical import UsersProfilesConfiguration
 from atlanticus.web.users.configuration.errors import (
     UsersConfigurationProjectionConflictError,
     UsersConfigurationProjectionError,
     UsersConfigurationValidationError,
 )
-from atlanticus.web.users.configuration.models import UsersConfigurationCatalog
+from atlanticus.web.users.configuration.schema_v1 import (
+    decode_users_profiles_schema_v1,
+)
 
 USERS_PROJECTION_DOCUMENT_TYPE = 'atlanticus_users_configuration_projection'
 USERS_PROJECTION_SCHEMA_VERSION = 2
-_LEGACY_USERS_PROJECTION_SCHEMA_VERSION = 1
+_USERS_PROJECTION_SCHEMA_VERSION_V1 = 1
 
 
 class _CosmosProjectionClient(Protocol):
@@ -242,10 +241,8 @@ def _projection_from_document(
             raise TypeError
         if schema_version == USERS_PROJECTION_SCHEMA_VERSION:
             payload = UsersProfilesConfiguration.from_document(dict(payload_document))
-        elif schema_version == _LEGACY_USERS_PROJECTION_SCHEMA_VERSION:
-            payload = split_legacy_users_configuration_catalog(
-                UsersConfigurationCatalog.from_document(dict(payload_document))
-            )
+        elif schema_version == _USERS_PROJECTION_SCHEMA_VERSION_V1:
+            payload = decode_users_profiles_schema_v1(dict(payload_document))
         else:
             raise UsersConfigurationProjectionError(
                 'Users configuration projection schema version is invalid'

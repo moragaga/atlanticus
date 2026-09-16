@@ -234,26 +234,21 @@ def test_users_admin_rehydrates_schema_2_draft_with_exact_source_snapshot() -> N
     assert result[4] is None
 
 
-def test_legacy_browser_draft_is_discarded_without_fabricating_provenance() -> None:
+def test_incompatible_browser_draft_is_discarded_without_fabricating_provenance() -> None:
     context, _source = _context()
     recorder = _registered_callbacks(context)
     load_browser_draft = recorder.callbacks['load_browser_draft'][2]
-    legacy = {
+    incompatible = {
         'schema_version': 1,
         'owner_subject_id': 'tester',
-        'revision': 'legacy',
-        'saved_at': '2026-09-15T00:00:00+00:00',
-        'base_source_revision': 'legacy-source',
-        'payload': {},
     }
 
-    result = load_browser_draft(1, legacy)
+    result = load_browser_draft(1, incompatible)
 
     recovered = UsersProfilesAdminDraft.from_document(result[3])
     assert recovered.owner_subject_id == 'tester'
     assert recovered.source_snapshot == context.administration.get_source_snapshot()
     assert result[4] is not None
-
 
 def test_users_admin_save_draft_is_local_and_does_not_publish(monkeypatch) -> None:
     context, source = _context()

@@ -5,9 +5,9 @@ from typing import Any
 
 from atlanticus.web.profiles.configuration import ProfilesConfiguration
 from atlanticus.web.profiles.errors import ProfilesDefinitionError
-from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
+from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.users.configuration.errors import UsersConfigurationValidationError
-from atlanticus.web.users.configuration.models import UserConfiguration, UsersConfigurationCatalog
+from atlanticus.web.users.configuration.models import UserConfiguration
 
 _ADMINISTRATOR_PROFILE_KEY = 'administrator'
 _NON_FUNCTIONAL_PROFILE_KEYS = frozenset({'guest', 'local'})
@@ -96,23 +96,3 @@ class UsersProfilesConfiguration:
             raise UsersConfigurationValidationError(
                 'Users/profiles configuration contract is invalid'
             ) from error
-
-
-def split_legacy_users_configuration_catalog(
-    catalog: UsersConfigurationCatalog,
-) -> UsersProfilesConfiguration:
-    administrator = ProfileDefinition(
-        key=_ADMINISTRATOR_PROFILE_KEY,
-        label='Administrador',
-        background_color=catalog.administrator_background_color,
-        text_color=catalog.administrator_text_color,
-    )
-    return UsersProfilesConfiguration(
-        users=UsersConfiguration(users=catalog.users),
-        profiles=ProfilesConfiguration(
-            profiles=(
-                administrator,
-                *(profile.to_profile_definition() for profile in catalog.profiles),
-            )
-        ),
-    )

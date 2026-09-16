@@ -74,5 +74,5 @@ def test_success_result_rejects_different_release() -> None:
         payload='payload',
     )
 
-    with pytest.raises(ValueError, match='Projection result source release does not match target'):
+    with pytest.raises(ValueError, match='Projection result target does not match requested target'):
         ProjectionExecutionResult(target=target, projection=record)

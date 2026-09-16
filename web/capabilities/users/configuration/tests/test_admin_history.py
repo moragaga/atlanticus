@@ -52,7 +52,7 @@ class _Source:
         )
 
 
-def test_administration_exposes_exact_source_history_without_private_store_access() -> None:
+def test_administration_exposes_source_history_without_private_store_access() -> None:
     source = _Source()
     administration = UsersProfilesAdministrationService(
         source=source,

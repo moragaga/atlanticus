@@ -194,19 +194,27 @@ def test_admin_draft_rebase_marks_current_content_as_new_local_baseline() -> Non
     assert rebased.has_local_changes is False
 
 
-@pytest.mark.parametrize('schema_version', [1, 2])
-def test_admin_draft_does_not_accept_legacy_browser_schema(schema_version: int) -> None:
+@pytest.mark.parametrize(
+    ('field', 'value'),
+    [
+        ('schema_version', 1),
+        ('document_type', 'unsupported'),
+    ],
+)
+def test_admin_draft_rejects_incompatible_contract(
+    field: str,
+    value: object,
+) -> None:
+    document = UsersProfilesAdminDraft.create(
+        owner_subject_id='subject-admin',
+        configuration=_configuration(),
+        source_snapshot=_snapshot(),
+        saved_at_utc=datetime(2026, 9, 14, 12, 5, tzinfo=UTC),
+    ).to_document()
+    document[field] = value
+
     with pytest.raises(UsersConfigurationValidationError):
-        UsersProfilesAdminDraft.from_document(
-            {
-                'schema_version': schema_version,
-                'owner_subject_id': 'subject-admin',
-                'revision': 'legacy',
-                'saved_at': datetime(2026, 9, 14, 12, 5, tzinfo=UTC).isoformat(),
-                'base_source_revision': 'legacy-source',
-                'payload': {},
-            }
-        )
+        UsersProfilesAdminDraft.from_document(document)
 
 
 def test_administrator_edit_preserves_explicit_identity_and_users() -> None:

@@ -9,7 +9,7 @@ from atlanticus.web.users.configuration.canonical import UsersProfilesConfigurat
 
 
 def build_users_history_preview(payload: dict[str, object]) -> object:
-    # Reconstruye directamente UsersProfilesConfiguration; no revive UsersConfigurationCatalog legacy.
+    # Reconstruye directamente el aggregate canónico Users + Profiles.
     configuration = UsersProfilesConfiguration.from_document(payload)
     profiles = configuration.profiles.profiles
     users = configuration.users.users

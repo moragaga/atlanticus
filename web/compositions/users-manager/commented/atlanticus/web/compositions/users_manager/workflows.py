@@ -2,6 +2,7 @@
 # La composición conserva sólo la traducción propia del dominio Users/Profiles.
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 
 from atlanticus.web.manager import (
@@ -19,7 +20,6 @@ from atlanticus.web.users.configuration.admin_composition import (
     UsersProfilesAdministrationService,
 )
 from atlanticus.web.users.configuration.canonical import UsersProfilesConfiguration
-from atlanticus.web.users.configuration.contracts import UsersAuditActorProvider
 from atlanticus.web.users.configuration.errors import UsersConfigurationValidationError
 
 
@@ -29,7 +29,7 @@ class UsersManagerSourceWorkflow:
         self,
         *,
         administration: UsersProfilesAdministrationService,
-        audit_actor_provider: UsersAuditActorProvider,
+        audit_actor_provider: Callable[[], str],
     ) -> None:
         self._administration = administration
         self._audit_actor_provider = audit_actor_provider
@@ -89,7 +89,7 @@ class UsersManagerSourceWorkflow:
 
 # La validación de draft es una capability distinta de publicar o proyectar.
 class UsersManagerDraftValidationWorkflow:
-    def __init__(self, *, audit_actor_provider: UsersAuditActorProvider) -> None:
+    def __init__(self, *, audit_actor_provider: Callable[[], str]) -> None:
         self._audit_actor_provider = audit_actor_provider
 
     def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult:
@@ -124,7 +124,7 @@ class UsersManagerDraftValidationWorkflow:
 def create_users_manager_source_workflow(
     *,
     administration: UsersProfilesAdministrationService,
-    audit_actor_provider: UsersAuditActorProvider,
+    audit_actor_provider: Callable[[], str],
 ) -> UsersManagerSourceWorkflow:
     return UsersManagerSourceWorkflow(
         administration=administration,
@@ -135,7 +135,7 @@ def create_users_manager_source_workflow(
 # Factory explícita para la validación del editor de Users.
 def create_users_manager_draft_validation_workflow(
     *,
-    audit_actor_provider: UsersAuditActorProvider,
+    audit_actor_provider: Callable[[], str],
 ) -> UsersManagerDraftValidationWorkflow:
     return UsersManagerDraftValidationWorkflow(
         audit_actor_provider=audit_actor_provider,

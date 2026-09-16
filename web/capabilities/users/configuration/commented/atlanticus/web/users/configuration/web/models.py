@@ -1,6 +1,5 @@
 # Contexto Web canónico de Users admin.
-# La UI recibe UsersProfilesAdministrationService directamente y no consume
-# UsersConfigurationServices ni UsersConfigurationCatalog legacy.
+# La UI recibe UsersProfilesAdministrationService directamente.
 
 from collections.abc import Callable
 from dataclasses import dataclass

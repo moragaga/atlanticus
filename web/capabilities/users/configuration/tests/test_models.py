@@ -1,75 +1,12 @@
 import pytest
 
-from atlanticus.web.profiles.errors import ProfilesDefinitionError
 from atlanticus.web.users.configuration import (
     UserConfiguration,
-    UserProfileConfiguration,
-    UsersConfigurationCatalog,
+    UsersConfiguration,
+    build_profile_key,
 )
 from atlanticus.web.users.configuration.errors import UsersConfigurationValidationError
 from atlanticus.web.users.identity import build_user_key
-
-
-def test_catalog_projects_only_functional_profiles_and_preserves_durable_guest_fields() -> None:
-    catalog = UsersConfigurationCatalog(
-        administrator_background_color='#112233',
-        administrator_text_color='#FFFFFF',
-        guest_background_color='#445566',
-        guest_text_color='#000000',
-        profiles=(
-            UserProfileConfiguration(
-                key='operator',
-                label='Operador',
-                background_color='#778899',
-                text_color='#101010',
-            ),
-        ),
-        users=(
-            UserConfiguration.create(
-                display_name='Ada User',
-                email='ada@example.com',
-                profile_key='operator',
-                issuer='entra',
-                subject_id='ada-user',
-            ),
-        ),
-    )
-
-    profiles = catalog.profile_catalog()
-    assert profiles.require('administrator').background_color == '#112233'
-    assert profiles.require('administrator').text_color == '#FFFFFF'
-    assert profiles.require('operator').background_color == '#778899'
-    assert profiles.require('operator').text_color == '#101010'
-    assert [item.key for item in profiles.all()] == ['administrator', 'operator']
-    with pytest.raises(ProfilesDefinitionError, match="Unknown profile 'guest'"):
-        profiles.require('guest')
-
-    document = catalog.to_document()
-    assert document['guest_background_color'] == '#445566'
-    assert document['guest_text_color'] == '#000000'
-
-
-def test_catalog_document_shape_is_preserved_while_guest_is_not_projected() -> None:
-    catalog = UsersConfigurationCatalog()
-
-    assert catalog.to_document() == {
-        'administrator_background_color': '#673AB7',
-        'administrator_text_color': '#FFFFFF',
-        'guest_background_color': '#FF5722',
-        'guest_text_color': '#FFFFFF',
-        'profiles': [],
-        'users': [],
-    }
-    assert tuple(profile.key for profile in catalog.profile_catalog().all()) == ('administrator',)
-
-
-def test_reserved_profile_key_cannot_be_redefined() -> None:
-    with pytest.raises(UsersConfigurationValidationError, match='Reserved profile key'):
-        UserProfileConfiguration(
-            key='guest',
-            label='Otro invitado',
-            background_color='#123456',
-        )
 
 
 @pytest.mark.parametrize('profile_key', ['local', 'guest'])
@@ -127,7 +64,7 @@ def test_managed_user_email_is_optional_and_roundtrips() -> None:
     assert UserConfiguration.from_document(user.to_document()) == user
 
 
-def test_catalog_allows_multiple_managed_users_without_email() -> None:
+def test_users_configuration_allows_multiple_managed_users_without_email() -> None:
     users = tuple(
         UserConfiguration.create(
             display_name=f'User {index}',
@@ -138,9 +75,9 @@ def test_catalog_allows_multiple_managed_users_without_email() -> None:
         for index in (1, 2)
     )
 
-    catalog = UsersConfigurationCatalog(users=users)
+    configuration = UsersConfiguration(users=users)
 
-    assert tuple(user.email for user in catalog.users) == (None, None)
+    assert tuple(user.email for user in configuration.users) == (None, None)
 
 
 def test_managed_user_rejects_invalid_non_empty_email() -> None:
@@ -176,9 +113,9 @@ def test_user_document_without_authenticated_identity_is_rejected(
     with pytest.raises(UsersConfigurationValidationError, match='User contract is invalid'):
         UserConfiguration.from_document(
             {
-                'user_id': 'user:legacy',
-                'display_name': 'Legacy User',
-                'email': 'legacy@example.com',
+                'user_id': 'user:incomplete',
+                'display_name': 'Incomplete User',
+                'email': 'user@example.com',
                 'profile_key': 'administrator',
                 'enabled': True,
                 **identity_fields,
@@ -187,7 +124,5 @@ def test_user_document_without_authenticated_identity_is_rejected(
 
 
 def test_profile_key_is_generated_from_display_label() -> None:
-    from atlanticus.web.users.configuration import build_profile_key
-
     assert build_profile_key('Operador Planta') == 'operador_planta'
     assert build_profile_key('Supervisión Mina') == 'supervision_mina'

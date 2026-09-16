@@ -147,8 +147,7 @@ class UsersProfilesAdminDraft:
         )
 
     def to_document(self) -> dict[str, object]:
-        # El payload durable del borrador usa directamente el contrato de composición
-        # canónico, sin reconstruir UsersConfigurationCatalog.
+        # El payload durable del borrador usa directamente el contrato de composición canónico.
         return {
             'document_type': _ADMIN_DRAFT_DOCUMENT_TYPE,
             'schema_version': _ADMIN_DRAFT_SCHEMA_VERSION,

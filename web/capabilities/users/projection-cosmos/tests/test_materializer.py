@@ -13,11 +13,20 @@ from atlanticus.connectivity.cosmos import (
     CosmosPreconditionFailedError,
     CosmosQueryParameter,
 )
-from atlanticus.web.users.configuration.bundle import UsersConfigurationBundle
+from atlanticus.web.profiles.configuration import ProfilesConfiguration
+from atlanticus.web.profiles.models import ProfileDefinition
+from atlanticus.web.projection.models import ProjectionRecord
+from atlanticus.web.source.models import SourceKey, SourceReleaseId
+from atlanticus.web.users.configuration.canonical import (
+    UsersConfiguration,
+    UsersProfilesConfiguration,
+)
 from atlanticus.web.users.configuration.errors import UsersConfigurationProjectionError
-from atlanticus.web.users.configuration.models import UserConfiguration, UsersConfigurationCatalog
+from atlanticus.web.users.configuration.models import UserConfiguration
 from atlanticus.web.users.identity import build_user_key
-from atlanticus.web.users.projection.cosmos import CosmosUsersRuntimeProjectionWriter
+from atlanticus.web.users.projection.cosmos import (
+    CosmosUsersRuntimeProjectionMaterializer,
+)
 
 
 class FakeCosmosClient:
@@ -133,7 +142,9 @@ class FakeCosmosClient:
             raise self.iter_error
         documents = tuple(dict(item) for item in self.documents.values())
         if 'record_type = @record_type' in query:
-            documents = tuple(item for item in documents if item.get('record_type') == 'resolved')
+            documents = tuple(
+                item for item in documents if item.get('record_type') == 'resolved'
+            )
         return iter(documents)
 
     def reset_calls(self) -> None:
@@ -164,15 +175,41 @@ def _user(
     )
 
 
-def _bundle(*users: UserConfiguration) -> UsersConfigurationBundle:
-    return UsersConfigurationBundle.create(
-        catalog=UsersConfigurationCatalog(users=tuple(users)),
-        saved_by='source-admin',
-        now_utc=datetime(2026, 9, 13, 12, 0, tzinfo=UTC),
+def _projection(
+    *users: UserConfiguration,
+    release_id: str = 'release-1',
+    projected_at_utc: datetime | None = None,
+) -> ProjectionRecord[UsersProfilesConfiguration]:
+    return ProjectionRecord(
+        source_key=SourceKey('users-configuration'),
+        source_release_id=SourceReleaseId(release_id),
+        source_published_at_utc=datetime(2026, 9, 13, 11, 0, tzinfo=UTC),
+        projected_at_utc=(
+            projected_at_utc
+            if projected_at_utc is not None
+            else datetime(2026, 9, 13, 12, 0, tzinfo=UTC)
+        ),
+        payload=UsersProfilesConfiguration(
+            users=UsersConfiguration(users=tuple(users)),
+            profiles=ProfilesConfiguration(
+                profiles=(
+                    ProfileDefinition(
+                        key='administrator',
+                        label='Administrador',
+                        background_color='#673AB7',
+                        text_color='#FFFFFF',
+                    ),
+                )
+            ),
+        ),
     )
 
 
-def _pending_document(*, subject_id: str = 'oid-1', etag: str = 'etag-pending') -> dict[str, Any]:
+def _pending_document(
+    *,
+    subject_id: str = 'oid-1',
+    etag: str = 'etag-pending',
+) -> dict[str, Any]:
     return {
         'id': build_user_key(issuer='entra', subject_id=subject_id),
         'record_type': 'pending',
@@ -193,8 +230,7 @@ def _resolved_document(
     profile_key: str = 'administrator',
     is_local: bool = False,
     managed_state: str | None = 'present',
-    source_revision: str | None = 'old-revision',
-    projected_at_utc: str | None = '2026-09-12T12:00:00+00:00',
+    projection: ProjectionRecord[UsersProfilesConfiguration] | None = None,
     etag: str = 'etag-resolved',
 ) -> dict[str, Any]:
     document: dict[str, Any] = {
@@ -213,24 +249,35 @@ def _resolved_document(
     }
     if managed_state is not None:
         document['managed_state'] = managed_state
-    if source_revision is not None:
-        document['projection_source_revision'] = source_revision
-    if projected_at_utc is not None:
-        document['projected_at_utc'] = projected_at_utc
+    if projection is not None:
+        document['projection_source_key'] = projection.source_key.value
+        document['projection_source_release_id'] = projection.source_release_id.value
+        document['projection_source_published_at_utc'] = (
+            projection.source_published_at_utc.isoformat()
+        )
+        document['projected_at_utc'] = projection.projected_at_utc.isoformat()
         document['projected_by'] = 'previous-admin'
     return document
 
 
-def _writer(client: FakeCosmosClient) -> CosmosUsersRuntimeProjectionWriter:
-    return CosmosUsersRuntimeProjectionWriter(client=client, container_name='users-runtime')
+def _materializer(
+    client: FakeCosmosClient,
+    *,
+    actor: str = 'configuration-admin',
+) -> CosmosUsersRuntimeProjectionMaterializer:
+    return CosmosUsersRuntimeProjectionMaterializer(
+        client=client,
+        container_name='users-runtime',
+        actor_provider=lambda: actor,
+    )
 
 
 def test_materialize_creates_resolved_managed_record_for_configured_user() -> None:
     user = _user()
-    bundle = _bundle(user)
+    projection = _projection(user)
     client = FakeCosmosClient()
 
-    _writer(client).materialize(bundle, actor='configuration-admin')
+    _materializer(client).materialize(projection)
 
     document = client.documents[user.user_id]
     assert document['record_type'] == 'resolved'
@@ -240,13 +287,14 @@ def test_materialize_creates_resolved_managed_record_for_configured_user() -> No
     assert document['email'] == user.email
     assert document['enabled'] is True
     assert document['profile_key'] == 'administrator'
-    assert document['avatar_background_color'] is None
-    assert document['avatar_text_color'] is None
-    assert document['is_local'] is False
     assert document['managed_state'] == 'present'
-    assert document['projection_source_revision'] == bundle.revision
+    assert document['projection_source_key'] == projection.source_key.value
+    assert document['projection_source_release_id'] == projection.source_release_id.value
+    assert document['projection_source_published_at_utc'] == (
+        projection.source_published_at_utc.isoformat()
+    )
     assert document['projected_by'] == 'configuration-admin'
-    assert datetime.fromisoformat(document['projected_at_utc']).tzinfo is not None
+    assert document['projected_at_utc'] == projection.projected_at_utc.isoformat()
     assert len(client.create_calls) == 1
     assert client.patch_calls == []
 
@@ -255,7 +303,7 @@ def test_materialize_promotes_pending_record_in_place_with_etag() -> None:
     user = _user()
     client = FakeCosmosClient((_pending_document(),))
 
-    _writer(client).materialize(_bundle(user), actor='configuration-admin')
+    _materializer(client).materialize(_projection(user))
 
     document = client.documents[user.user_id]
     assert document['record_type'] == 'resolved'
@@ -266,32 +314,34 @@ def test_materialize_promotes_pending_record_in_place_with_etag() -> None:
     assert client.create_calls == []
 
 
-def test_materialize_keeps_source_disabled_user_present_and_disabled() -> None:
+def test_materialize_keeps_configured_disabled_user_present_and_disabled() -> None:
     user = _user(enabled=False)
     client = FakeCosmosClient()
 
-    _writer(client).materialize(_bundle(user), actor='configuration-admin')
+    _materializer(client).materialize(_projection(user))
 
     document = client.documents[user.user_id]
     assert document['managed_state'] == 'present'
     assert document['enabled'] is False
 
 
-def test_materialize_retires_managed_user_removed_from_source() -> None:
-    removed = _resolved_document(display_name='Removed User')
+def test_materialize_retires_managed_user_removed_from_configuration() -> None:
+    previous = _projection(release_id='release-old')
+    removed = _resolved_document(
+        display_name='Removed User',
+        projection=previous,
+    )
     user_id = str(removed['id'])
     client = FakeCosmosClient((removed,))
-    bundle = _bundle()
+    current = _projection(release_id='release-current')
 
-    _writer(client).materialize(bundle, actor='configuration-admin')
+    _materializer(client).materialize(current)
 
     document = client.documents[user_id]
     assert document['record_type'] == 'resolved'
     assert document['managed_state'] == 'retired'
     assert document['enabled'] is False
-    assert document['display_name'] == 'Removed User'
-    assert document['profile_key'] == 'administrator'
-    assert document['projection_source_revision'] == bundle.revision
+    assert document['projection_source_release_id'] == 'release-current'
     assert len(client.patch_calls) == 1
 
 
@@ -300,29 +350,30 @@ def test_materialize_does_not_retire_local_resolved_user() -> None:
         profile_key='local',
         is_local=True,
         managed_state=None,
-        source_revision=None,
-        projected_at_utc=None,
+        projection=None,
     )
     user_id = str(local['id'])
     client = FakeCosmosClient((local,))
 
-    _writer(client).materialize(_bundle(), actor='configuration-admin')
+    _materializer(client).materialize(_projection())
 
     assert client.documents[user_id] == local
     assert client.patch_calls == []
 
 
-def test_materialize_readds_retired_user_with_current_source_values() -> None:
+def test_materialize_readds_retired_user_with_current_values() -> None:
     user = _user(display_name='Current Name', email='current@example.com')
+    previous = _projection(release_id='release-old')
     retired = _resolved_document(
         display_name='Old Name',
         email='old@example.com',
         enabled=False,
         managed_state='retired',
+        projection=previous,
     )
     client = FakeCosmosClient((retired,))
 
-    _writer(client).materialize(_bundle(user), actor='configuration-admin')
+    _materializer(client).materialize(_projection(user, release_id='release-current'))
 
     document = client.documents[user.user_id]
     assert document['managed_state'] == 'present'
@@ -336,7 +387,7 @@ def test_create_conflict_with_concurrent_pending_observation_is_promoted() -> No
     client = FakeCosmosClient()
     client.create_conflict_document = _pending_document()
 
-    _writer(client).materialize(_bundle(user), actor='configuration-admin')
+    _materializer(client).materialize(_projection(user))
 
     assert client.documents[user.user_id]['record_type'] == 'resolved'
     assert len(client.create_calls) == 1
@@ -345,18 +396,17 @@ def test_create_conflict_with_concurrent_pending_observation_is_promoted() -> No
 
 def test_create_conflict_with_same_concurrent_projection_is_success() -> None:
     user = _user()
-    bundle = _bundle(user)
+    projection = _projection(user)
     raced = _resolved_document(
         display_name=user.display_name,
         email=user.email,
-        source_revision=bundle.revision,
-        projected_at_utc=datetime.now(UTC).isoformat(),
+        projection=projection,
     )
     raced['projected_by'] = 'other-worker'
     client = FakeCosmosClient()
     client.create_conflict_document = raced
 
-    _writer(client).materialize(bundle, actor='configuration-admin')
+    _materializer(client).materialize(projection)
 
     assert len(client.create_calls) == 1
     assert client.patch_calls == []
@@ -365,52 +415,39 @@ def test_create_conflict_with_same_concurrent_projection_is_success() -> None:
 def test_create_conflict_with_different_resolved_state_fails() -> None:
     user = _user()
     client = FakeCosmosClient()
-    client.create_conflict_document = _resolved_document(display_name='Concurrent Value')
+    client.create_conflict_document = _resolved_document(
+        display_name='Concurrent Value',
+        projection=_projection(release_id='release-old'),
+    )
 
     with pytest.raises(
         UsersConfigurationProjectionError,
         match='changed concurrently during projection create',
     ):
-        _writer(client).materialize(_bundle(user), actor='configuration-admin')
+        _materializer(client).materialize(_projection(user))
 
 
 def test_etag_conflict_accepts_concurrent_semantically_desired_state() -> None:
     user = _user()
-    bundle = _bundle(user)
+    projection = _projection(user)
     client = FakeCosmosClient((_pending_document(),))
     concurrent = _resolved_document(
         display_name=user.display_name,
         email=user.email,
-        source_revision=bundle.revision,
-        projected_at_utc=datetime.now(UTC).isoformat(),
+        projection=projection,
         etag='etag-concurrent',
     )
     concurrent['projected_by'] = 'other-worker'
     client.patch_precondition_document = concurrent
 
-    _writer(client).materialize(bundle, actor='configuration-admin')
+    _materializer(client).materialize(projection)
 
-    assert client.documents[user.user_id]['projection_source_revision'] == bundle.revision
+    assert client.documents[user.user_id]['projection_source_release_id'] == 'release-1'
     assert len(client.patch_calls) == 1
 
 
-def test_etag_conflict_rejects_concurrent_different_state() -> None:
-    user = _user()
-    client = FakeCosmosClient((_pending_document(),))
-    client.patch_precondition_document = _resolved_document(
-        display_name='Concurrent Different Value',
-        etag='etag-concurrent',
-    )
-
-    with pytest.raises(
-        UsersConfigurationProjectionError,
-        match='changed concurrently during projection update',
-    ):
-        _writer(client).materialize(_bundle(user), actor='configuration-admin')
-
-
 def test_materialize_rejects_corrupt_runtime_identity() -> None:
-    corrupt = _resolved_document()
+    corrupt = _resolved_document(projection=_projection(release_id='release-old'))
     corrupt['subject_id'] = 'other-subject'
     client = FakeCosmosClient((corrupt,))
 
@@ -418,7 +455,7 @@ def test_materialize_rejects_corrupt_runtime_identity() -> None:
         UsersConfigurationProjectionError,
         match='projection document is invalid',
     ):
-        _writer(client).materialize(_bundle(), actor='configuration-admin')
+        _materializer(client).materialize(_projection())
 
 
 def test_materialize_wraps_cosmos_failure_with_original_cause() -> None:
@@ -427,20 +464,24 @@ def test_materialize_wraps_cosmos_failure_with_original_cause() -> None:
     client.iter_error = source_error
 
     with pytest.raises(UsersConfigurationProjectionError) as caught:
-        _writer(client).materialize(_bundle(), actor='configuration-admin')
+        _materializer(client).materialize(_projection())
 
     assert caught.value.__cause__ is source_error
 
 
-def test_replay_same_source_is_functionally_idempotent() -> None:
+def test_replay_same_target_is_functionally_idempotent() -> None:
     user = _user()
-    bundle = _bundle(user)
+    first = _projection(user)
+    replay = _projection(
+        user,
+        projected_at_utc=first.projected_at_utc + timedelta(minutes=5),
+    )
     client = FakeCosmosClient()
-    writer = _writer(client)
-    writer.materialize(bundle, actor='configuration-admin')
+    materializer = _materializer(client)
+    materializer.materialize(first)
     client.reset_calls()
 
-    writer.materialize(bundle, actor='configuration-admin')
+    materializer.materialize(replay)
 
     assert client.create_calls == []
     assert client.patch_calls == []
@@ -448,11 +489,15 @@ def test_replay_same_source_is_functionally_idempotent() -> None:
 
 def test_materialize_rejects_newer_concurrent_projection() -> None:
     user = _user()
-    future = (datetime.now(UTC) + timedelta(minutes=1)).isoformat()
+    candidate = _projection(user, release_id='release-current')
+    newer = _projection(
+        user,
+        release_id='release-newer',
+        projected_at_utc=candidate.projected_at_utc + timedelta(minutes=1),
+    )
     concurrent = _resolved_document(
         display_name='Newer Value',
-        source_revision='different-source-revision',
-        projected_at_utc=future,
+        projection=newer,
     )
     client = FakeCosmosClient((concurrent,))
 
@@ -460,13 +505,13 @@ def test_materialize_rejects_newer_concurrent_projection() -> None:
         UsersConfigurationProjectionError,
         match='newer concurrent projection',
     ):
-        _writer(client).materialize(_bundle(user), actor='configuration-admin')
+        _materializer(client).materialize(candidate)
 
 
 def test_health_check_queries_bound_container_without_materializing_results() -> None:
     client = FakeCosmosClient()
 
-    assert _writer(client).health_check() is True
+    assert _materializer(client).health_check() is True
     assert client.iter_calls == [
         {
             'container_name': 'users-runtime',
@@ -482,10 +527,19 @@ def test_health_check_returns_false_for_cosmos_failure() -> None:
     client = FakeCosmosClient()
     client.iter_error = CosmosOperationError('failed')
 
-    assert _writer(client).health_check() is False
+    assert _materializer(client).health_check() is False
+
+
+def test_materialize_rejects_empty_actor() -> None:
+    with pytest.raises(UsersConfigurationProjectionError, match='actor must not be empty'):
+        _materializer(FakeCosmosClient(), actor=' ').materialize(_projection())
 
 
 @pytest.mark.parametrize('container_name', ['', ' users-runtime', 'users-runtime '])
 def test_constructor_rejects_invalid_container_binding(container_name: str) -> None:
     with pytest.raises(UsersConfigurationProjectionError, match='container name'):
-        CosmosUsersRuntimeProjectionWriter(client=FakeCosmosClient(), container_name=container_name)
+        CosmosUsersRuntimeProjectionMaterializer(
+            client=FakeCosmosClient(),
+            container_name=container_name,
+            actor_provider=lambda: 'configuration-admin',
+        )

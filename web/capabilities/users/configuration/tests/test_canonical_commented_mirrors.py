@@ -2,7 +2,16 @@ import ast
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-FILES = ('__init__.py', 'canonical.py', 'source_projection.py', 'source_release.py')
+FILES = (
+    '__init__.py',
+    'canonical.py',
+    'errors.py',
+    'exchange.py',
+    'models.py',
+    'schema_v1.py',
+    'source_projection.py',
+    'source_release.py',
+)
 
 
 def test_canonical_commented_mirrors_match_production_behavior() -> None:

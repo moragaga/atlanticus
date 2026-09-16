@@ -1,20 +1,19 @@
 from __future__ import annotations
 
-# Este módulo contiene los contratos canónicos separados de Users y la composición Users→Profiles.
 from dataclasses import dataclass
 from typing import Any
 
 from atlanticus.web.profiles.configuration import ProfilesConfiguration
 from atlanticus.web.profiles.errors import ProfilesDefinitionError
-from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
+from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.users.configuration.errors import UsersConfigurationValidationError
-from atlanticus.web.users.configuration.models import UserConfiguration, UsersConfigurationCatalog
+from atlanticus.web.users.configuration.models import UserConfiguration
 
 _ADMINISTRATOR_PROFILE_KEY = 'administrator'
 _NON_FUNCTIONAL_PROFILE_KEYS = frozenset({'guest', 'local'})
 
 
-# Users conserva únicamente Managed Users y sus invariantes propias; no posee el catálogo de Profiles.
+# UsersConfiguration posee únicamente usuarios gestionados; Profiles pertenece a su capability propia.
 @dataclass(frozen=True, slots=True)
 class UsersConfiguration:
     users: tuple[UserConfiguration, ...] = ()
@@ -48,7 +47,7 @@ class UsersConfiguration:
             raise UsersConfigurationValidationError('Users configuration contract is invalid') from error
 
 
-# La composición valida referencias entre contratos sin devolver ownership de Profiles a Users.
+# Este aggregate valida la composición Users + Profiles que consumen Source, Manager y la UI.
 @dataclass(frozen=True, slots=True)
 class UsersProfilesConfiguration:
     users: UsersConfiguration
@@ -69,7 +68,6 @@ class UsersProfilesConfiguration:
         except ProfilesDefinitionError as error:
             raise UsersConfigurationValidationError(str(error)) from error
 
-    # El catálogo funcional se obtiene desde el contrato Profiles-owned ya validado.
     def profile_catalog(self) -> ProfileCatalog:
         return self.profiles.catalog()
 
@@ -100,24 +98,3 @@ class UsersProfilesConfiguration:
             raise UsersConfigurationValidationError(
                 'Users/profiles configuration contract is invalid'
             ) from error
-
-
-# El reader histórico normaliza el schema previo hacia los contratos nuevos; no se usa para escribir releases nuevas.
-def split_legacy_users_configuration_catalog(
-    catalog: UsersConfigurationCatalog,
-) -> UsersProfilesConfiguration:
-    administrator = ProfileDefinition(
-        key=_ADMINISTRATOR_PROFILE_KEY,
-        label='Administrador',
-        background_color=catalog.administrator_background_color,
-        text_color=catalog.administrator_text_color,
-    )
-    return UsersProfilesConfiguration(
-        users=UsersConfiguration(users=catalog.users),
-        profiles=ProfilesConfiguration(
-            profiles=(
-                administrator,
-                *(profile.to_profile_definition() for profile in catalog.profiles),
-            )
-        ),
-    )

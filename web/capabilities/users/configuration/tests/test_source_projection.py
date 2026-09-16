@@ -25,6 +25,7 @@ from atlanticus.web.users.configuration.canonical import (
 )
 from atlanticus.web.users.configuration.source_projection import (
     UsersProjectionBuilder,
+    UsersRuntimeMaterializingProjectionStore,
     create_users_projection_service,
 )
 from atlanticus.web.users.configuration.source_release import UsersSourceCodec
@@ -171,3 +172,47 @@ def test_same_content_distinct_release_remains_distinct_projection_target() -> N
     service.project(ProjectionTarget(source_key, second_ref))
 
     assert [item.source_release for item in projection.writes] == [first_ref, second_ref]
+
+
+
+def test_runtime_materializing_store_materializes_before_marking_active() -> None:
+    events: list[str] = []
+
+    class Runtime:
+        def materialize(
+            self,
+            projection: ProjectionRecord[UsersProfilesConfiguration],
+        ) -> None:
+            events.append('runtime')
+
+    class Projection(_Projection):
+        def replace_active(
+            self,
+            projection: ProjectionRecord[UsersProfilesConfiguration],
+        ):
+            events.append('projection')
+            return super().replace_active(projection)
+
+    source_key = SourceKey('users-configuration')
+    release_ref = SourceReleaseRef(
+        SourceReleaseId('release-1'),
+        datetime(2026, 9, 13, 12, tzinfo=UTC),
+    )
+    candidate = ProjectionRecord(
+        source_key=source_key,
+        source_release_id=release_ref.release_id,
+        source_published_at_utc=release_ref.published_at_utc,
+        projected_at_utc=datetime(2026, 9, 13, 12, 1, tzinfo=UTC),
+        payload=_payload(),
+    )
+    projection = Projection()
+    store = UsersRuntimeMaterializingProjectionStore(
+        projection=projection,
+        runtime=Runtime(),
+    )
+
+    saved = store.replace_active(candidate)
+
+    assert saved == candidate
+    assert projection.get_active(source_key) == candidate
+    assert events == ['runtime', 'projection']

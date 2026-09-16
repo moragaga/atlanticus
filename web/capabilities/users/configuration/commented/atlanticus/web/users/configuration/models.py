@@ -6,24 +6,14 @@ from dataclasses import dataclass
 from typing import Any, Callable, TypeVar
 
 from atlanticus.web.profiles.errors import ProfilesDefinitionError
-from atlanticus.web.profiles.models import (
-    ProfileCatalog,
-    ProfileDefinition,
-    normalize_profile_color,
-    normalize_profile_key,
-)
+from atlanticus.web.profiles.models import normalize_profile_key
 from atlanticus.web.users.configuration.errors import UsersConfigurationValidationError
 from atlanticus.web.users.identity import build_user_key
 
-# Estas claves son restricciones privadas del aggregate de authoring actual; Profiles core no las reserva.
+# Las claves reservadas protegen el dominio Users de perfiles no asignables o del perfil administrador.
 _LOCAL_PROFILE_KEY = 'local'
 _ADMINISTRATOR_PROFILE_KEY = 'administrator'
 _GUEST_PROFILE_KEY = 'guest'
-# Los defaults permanecen aquí porque forman parte del documento durable UsersConfigurationCatalog vigente.
-_DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR = '#673AB7'
-_DEFAULT_ADMINISTRATOR_TEXT_COLOR = '#FFFFFF'
-_DEFAULT_GUEST_BACKGROUND_COLOR = '#FF5722'
-_DEFAULT_GUEST_TEXT_COLOR = '#FFFFFF'
 _RESERVED_PROFILE_KEYS = frozenset(
     {_LOCAL_PROFILE_KEY, _ADMINISTRATOR_PROFILE_KEY, _GUEST_PROFILE_KEY}
 )
@@ -48,6 +38,7 @@ def _required(value: str | None, *, label: str) -> str:
     return normalized
 
 
+# Genera una identidad estable para perfiles funcionales creados desde la administración.
 def build_profile_key(label: str) -> str:
     normalized = unicodedata.normalize('NFKD', label.strip())
     ascii_text = ''.join(
@@ -72,57 +63,7 @@ def normalize_email(value: str | None) -> str | None:
     return normalized
 
 
-@dataclass(frozen=True, slots=True)
-# Esta definición representa perfiles funcionales adicionales creados desde Users Configuration.
-class UserProfileConfiguration:
-    key: str
-    label: str
-    background_color: str
-    text_color: str = '#FFFFFF'
-
-    def __post_init__(self) -> None:
-        key = _profile_value(lambda: normalize_profile_key(self.key))
-        if key in _RESERVED_PROFILE_KEYS:
-            raise UsersConfigurationValidationError('Reserved profile key cannot be redefined')
-        label = _required(self.label, label='Profile label')
-        background_color = _profile_value(lambda: normalize_profile_color(self.background_color))
-        text_color = _profile_value(lambda: normalize_profile_color(self.text_color))
-        object.__setattr__(self, 'key', key)
-        object.__setattr__(self, 'label', label)
-        object.__setattr__(self, 'background_color', background_color)
-        object.__setattr__(self, 'text_color', text_color)
-
-    def to_profile_definition(self) -> ProfileDefinition:
-        return _profile_value(
-            lambda: ProfileDefinition(
-                key=self.key,
-                label=self.label,
-                background_color=self.background_color,
-                text_color=self.text_color,
-            )
-        )
-
-    def to_document(self) -> dict[str, object]:
-        return {
-            'key': self.key,
-            'label': self.label,
-            'background_color': self.background_color,
-            'text_color': self.text_color,
-        }
-
-    @classmethod
-    def from_document(cls, document: dict[str, Any]) -> UserProfileConfiguration:
-        try:
-            return cls(
-                key=str(document['key']),
-                label=str(document['label']),
-                background_color=str(document['background_color']),
-                text_color=str(document['text_color']),
-            )
-        except (KeyError, TypeError, ValueError) as error:
-            raise UsersConfigurationValidationError('Profile contract is invalid') from error
-
-
+# UserConfiguration representa únicamente un usuario gestionado ligado a una identidad autenticada.
 @dataclass(frozen=True, slots=True)
 class UserConfiguration:
     user_id: str
@@ -208,118 +149,7 @@ class UserConfiguration:
             raise UsersConfigurationValidationError('User contract is invalid') from error
 
 
-@dataclass(frozen=True, slots=True)
-# El aggregate durable conserva temporalmente campos Administrator/Guest por contrato histórico de Source.
-class UsersConfigurationCatalog:
-    administrator_background_color: str = _DEFAULT_ADMINISTRATOR_BACKGROUND_COLOR
-    administrator_text_color: str = _DEFAULT_ADMINISTRATOR_TEXT_COLOR
-    guest_background_color: str = _DEFAULT_GUEST_BACKGROUND_COLOR
-    guest_text_color: str = _DEFAULT_GUEST_TEXT_COLOR
-    profiles: tuple[UserProfileConfiguration, ...] = ()
-    users: tuple[UserConfiguration, ...] = ()
-
-    def __post_init__(self) -> None:
-        administrator_background_color = _profile_value(
-            lambda: normalize_profile_color(self.administrator_background_color)
-        )
-        administrator_text_color = _profile_value(
-            lambda: normalize_profile_color(self.administrator_text_color)
-        )
-        guest_background_color = _profile_value(
-            lambda: normalize_profile_color(self.guest_background_color)
-        )
-        guest_text_color = _profile_value(lambda: normalize_profile_color(self.guest_text_color))
-        profiles = tuple(self.profiles)
-        users = tuple(self.users)
-        profile_keys = tuple(profile.key for profile in profiles)
-        if len(profile_keys) != len(set(profile_keys)):
-            raise UsersConfigurationValidationError('Profile keys must be unique')
-        user_ids = tuple(user.user_id for user in users)
-        if len(user_ids) != len(set(user_ids)):
-            raise UsersConfigurationValidationError('User ids must be unique')
-        emails = tuple(user.email for user in users if user.email is not None)
-        if len(emails) != len(set(emails)):
-            raise UsersConfigurationValidationError('User emails must be unique')
-        identities = tuple((user.issuer, user.subject_id) for user in users)
-        if len(identities) != len(set(identities)):
-            raise UsersConfigurationValidationError('User identities must be unique')
-        # La validación runtime usa sólo Profiles funcionales: Administrator explícito + perfiles configurados.
-        catalog = _runtime_profile_catalog(
-            administrator_background_color=administrator_background_color,
-            administrator_text_color=administrator_text_color,
-            profiles=profiles,
-        )
-        for user in users:
-            _profile_value(lambda user=user: catalog.require(user.profile_key))
-        object.__setattr__(self, 'administrator_background_color', administrator_background_color)
-        object.__setattr__(self, 'administrator_text_color', administrator_text_color)
-        object.__setattr__(self, 'guest_background_color', guest_background_color)
-        object.__setattr__(self, 'guest_text_color', guest_text_color)
-        object.__setattr__(self, 'profiles', profiles)
-        object.__setattr__(self, 'users', users)
-
-    def profile_catalog(self) -> ProfileCatalog:
-        return _runtime_profile_catalog(
-            administrator_background_color=self.administrator_background_color,
-            administrator_text_color=self.administrator_text_color,
-            profiles=self.profiles,
-        )
-
-    # El shape durable no cambia en este incremento: Guest sigue round-trip aunque ya no sea Profile runtime.
-    def to_document(self) -> dict[str, object]:
-        return {
-            'administrator_background_color': self.administrator_background_color,
-            'administrator_text_color': self.administrator_text_color,
-            'guest_background_color': self.guest_background_color,
-            'guest_text_color': self.guest_text_color,
-            'profiles': [profile.to_document() for profile in self.profiles],
-            'users': [user.to_document() for user in self.users],
-        }
-
-    @classmethod
-    def from_document(cls, document: dict[str, Any]) -> UsersConfigurationCatalog:
-        try:
-            profiles = document.get('profiles', [])
-            users = document.get('users', [])
-            if not isinstance(profiles, list) or not all(isinstance(item, dict) for item in profiles):
-                raise TypeError
-            if not isinstance(users, list) or not all(isinstance(item, dict) for item in users):
-                raise TypeError
-            return cls(
-                administrator_background_color=str(document['administrator_background_color']),
-                administrator_text_color=str(document['administrator_text_color']),
-                guest_background_color=str(document['guest_background_color']),
-                guest_text_color=str(document['guest_text_color']),
-                profiles=tuple(UserProfileConfiguration.from_document(dict(item)) for item in profiles),
-                users=tuple(UserConfiguration.from_document(dict(item)) for item in users),
-            )
-        except (KeyError, TypeError, ValueError) as error:
-            raise UsersConfigurationValidationError('Users configuration contract is invalid') from error
-
-
-# Esta frontera traduce el aggregate combinado vigente al contrato puro de Profiles sin fabricar Guest/Local.
-def _runtime_profile_catalog(
-    *,
-    administrator_background_color: str,
-    administrator_text_color: str,
-    profiles: tuple[UserProfileConfiguration, ...],
-) -> ProfileCatalog:
-    administrator = ProfileDefinition(
-        key=_ADMINISTRATOR_PROFILE_KEY,
-        label='Administrador',
-        background_color=administrator_background_color,
-        text_color=administrator_text_color,
-    )
-    return _profile_value(
-        lambda: ProfileCatalog(
-            profiles=(
-                administrator,
-                *(profile.to_profile_definition() for profile in profiles),
-            )
-        )
-    )
-
-
+# Los helpers de documento mantienen estricta la frontera de deserialización.
 def _required_document_string(document: dict[str, Any], key: str) -> str:
     value = document[key]
     if not isinstance(value, str):

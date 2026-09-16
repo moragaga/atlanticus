@@ -113,18 +113,22 @@ def test_pending_user_keeps_identity_when_added_to_canonical_draft() -> None:
     assert user.profile_key == 'administrator'
 
 
-def test_legacy_browser_draft_is_rejected_instead_of_migrated() -> None:
-    legacy = {
-        'schema_version': 1,
-        'owner_subject_id': 'tester',
-        'revision': 'legacy',
-        'saved_at': datetime(2026, 9, 15, tzinfo=UTC).isoformat(),
-        'base_source_revision': 'source-legacy',
-        'payload': {},
-    }
+def test_incompatible_browser_draft_is_rejected() -> None:
+    snapshot = SourceSnapshot(
+        source_key=SourceKey('users'),
+        current=None,
+        concurrency_token=None,
+    )
+    document = UsersProfilesAdminDraft.create(
+        owner_subject_id='tester',
+        configuration=default_users_profiles_configuration(),
+        source_snapshot=snapshot,
+        saved_at_utc=datetime(2026, 9, 15, tzinfo=UTC),
+    ).to_document()
+    document['schema_version'] = 1
 
     with pytest.raises(UsersConfigurationValidationError):
-        _draft(legacy, owner_subject_id='tester')
+        _draft(document, owner_subject_id='tester')
 
 
 def test_schema_2_draft_preserves_exact_snapshot_and_owner() -> None:

@@ -1,4 +1,4 @@
-# Errores públicos de Users Configuration; el conflicto CAS de Projection tiene tipo propio.
+# Base común de errores propios de Users Configuration.
 class UsersConfigurationError(Exception):
     pass
 
@@ -7,18 +7,16 @@ class UsersConfigurationValidationError(UsersConfigurationError):
     pass
 
 
+# SourceError pertenece a la frontera vigente con Source genérico.
 class UsersConfigurationSourceError(UsersConfigurationError):
     pass
 
 
-class UsersConfigurationPublisherError(UsersConfigurationError):
-    pass
-
-
+# ProjectionError traduce fallos del payload Users durante la proyección genérica.
 class UsersConfigurationProjectionError(UsersConfigurationError):
     pass
 
 
-# Permite distinguir un conflicto concurrente real de corrupción o fallo de persistencia.
+# ConflictError conserva la semántica CAS del ProjectionStore Cosmos vigente.
 class UsersConfigurationProjectionConflictError(UsersConfigurationProjectionError):
     pass

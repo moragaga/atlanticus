@@ -13,11 +13,10 @@ from atlanticus.web.users.configuration import (
     add_pending_user,
     build_profile_key,
     build_users_profiles_admin_revision,
-    decode_users_configuration_import,
+    decode_users_profiles_configuration_import,
     default_users_profiles_configuration,
     delete_functional_profile,
     save_functional_profile,
-    split_legacy_users_configuration_catalog,
     update_administrator_colors as update_administrator_configuration_colors,
     update_managed_user,
 )
@@ -85,8 +84,8 @@ _TAB_ACTIVE = (
 )
 _DEFAULT_PROFILE_BACKGROUND_COLOR = '#C9A24B'
 _DEFAULT_PROFILE_TEXT_COLOR = '#071522'
-_LEGACY_DRAFT_DISCARDED_MESSAGE = (
-    'El borrador local anterior usa un contrato incompatible y fue descartado. '
+_INCOMPATIBLE_DRAFT_DISCARDED_MESSAGE = (
+    'El borrador local guardado usa un contrato incompatible y fue descartado. '
     'Se cargó una base limpia desde la fuente actual.'
 )
 
@@ -112,7 +111,7 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
                     draft = _draft(draft_data, owner_subject_id=owner)
                 except Exception:
                     draft = context.administration.create_draft(owner_subject_id=owner)
-                    recovery_message = _notice(_LEGACY_DRAFT_DISCARDED_MESSAGE)
+                    recovery_message = _notice(_INCOMPATIBLE_DRAFT_DISCARDED_MESSAGE)
         except Exception as error:
             configuration = default_users_profiles_configuration()
             administrator = _administrator(configuration)
@@ -573,8 +572,7 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
             if ',' not in contents:
                 raise ValueError('Configuration file payload is invalid')
             payload = base64.b64decode(contents.split(',', 1)[1], validate=True)
-            legacy_catalog = decode_users_configuration_import(payload)
-            configuration = split_legacy_users_configuration_catalog(legacy_catalog)
+            configuration = decode_users_profiles_configuration_import(payload)
             basis = _draft(
                 basis_data,
                 owner_subject_id=context.draft_owner_provider(),

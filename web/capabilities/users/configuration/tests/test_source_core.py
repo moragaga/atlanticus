@@ -30,7 +30,6 @@ from atlanticus.web.source.models import (
 from atlanticus.web.source.store import SourceStore
 from atlanticus.web.users.configuration.canonical import UsersConfiguration
 from atlanticus.web.users.configuration.errors import UsersConfigurationSourceError
-from atlanticus.web.users.configuration.models import UsersConfigurationCatalog
 from atlanticus.web.users.configuration.source_release import (
     PROFILES_SOURCE_RESOURCE_PATH,
     USERS_SOURCE_DOCUMENT_TYPE,
@@ -174,30 +173,33 @@ def test_v2_decode_requires_profiles_resource() -> None:
         UsersSourceCodec().decode((resources[0],))
 
 
-def test_legacy_v1_resource_is_normalized_without_guest_profile() -> None:
-    legacy = UsersConfigurationCatalog(
-        administrator_background_color='#123456',
-        guest_background_color='#654321',
-    )
+def test_schema_v1_resource_is_normalized_without_guest_profile() -> None:
     document = {
         'document_type': USERS_SOURCE_DOCUMENT_TYPE,
         'schema_version': 1,
-        'published_by': 'legacy-admin',
-        'catalog': legacy.to_document(),
+        'published_by': 'schema-v1-admin',
+        'catalog': {
+            'administrator_background_color': '#123456',
+            'administrator_text_color': '#FFFFFF',
+            'guest_background_color': '#654321',
+            'guest_text_color': '#FFFFFF',
+            'profiles': [],
+            'users': [],
+        },
     }
     resource = SourceResource(
         logical_path=USERS_SOURCE_RESOURCE_PATH,
         content=gzip.compress(
-            json.dumps(document, sort_keys=True, separators=(',', ':')).encode(), mtime=0
+            json.dumps(document, sort_keys=True, separators=(',', ':')).encode(),
+            mtime=0,
         ),
     )
 
     decoded = UsersSourceCodec().decode((resource,))
 
-    assert decoded.published_by == 'legacy-admin'
-    assert [p.key for p in decoded.profiles.profiles] == ['administrator']
+    assert decoded.published_by == 'schema-v1-admin'
+    assert [profile.key for profile in decoded.profiles.profiles] == ['administrator']
     assert decoded.profiles.catalog().require('administrator').background_color == '#123456'
-
 
 def test_same_content_republish_keeps_distinct_release_identity() -> None:
     store = _MemorySourceStore()

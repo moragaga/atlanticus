@@ -26,7 +26,6 @@ from atlanticus.web.users.configuration.errors import (
     UsersConfigurationProjectionConflictError,
     UsersConfigurationProjectionError,
 )
-from atlanticus.web.users.configuration.models import UsersConfigurationCatalog
 from atlanticus.web.users.projection.cosmos.store import (
     USERS_PROJECTION_DOCUMENT_TYPE,
     USERS_PROJECTION_SCHEMA_VERSION,
@@ -157,17 +156,19 @@ def _v2_document(record: ProjectionRecord[UsersProfilesConfiguration]) -> dict[s
     }
 
 
-def _legacy_document(record: ProjectionRecord[UsersProfilesConfiguration]) -> dict[str, Any]:
+def _v1_document(record: ProjectionRecord[UsersProfilesConfiguration]) -> dict[str, Any]:
     administrator = record.payload.profiles.catalog().require('administrator')
-    legacy = UsersConfigurationCatalog(
-        administrator_background_color=administrator.background_color,
-        administrator_text_color=administrator.text_color,
-    )
     document = _v2_document(record)
     document['schema_version'] = 1
-    document['payload'] = legacy.to_document()
+    document['payload'] = {
+        'administrator_background_color': administrator.background_color,
+        'administrator_text_color': administrator.text_color,
+        'guest_background_color': '#FF5722',
+        'guest_text_color': '#FFFFFF',
+        'profiles': [],
+        'users': [user.to_document() for user in record.payload.users.users],
+    }
     return document
-
 
 def _store(client: _Client):
     return CosmosUsersConfigurationProjectionStore(
@@ -188,8 +189,8 @@ def test_new_projection_writes_schema_2_only() -> None:
 
 def test_schema_1_projection_reads_as_new_semantic_payload() -> None:
     record = _record('release-1', published_offset=0, projected_offset=1, color='#123456')
-    client = _Client(document=_legacy_document(record))
-    client.document['_etag'] = 'etag-legacy'
+    client = _Client(document=_v1_document(record))
+    client.document['_etag'] = 'etag-v1'
 
     loaded = _store(client).get_active(record.source_key)
 
@@ -200,8 +201,8 @@ def test_schema_1_projection_reads_as_new_semantic_payload() -> None:
 def test_schema_1_same_target_is_idempotent_without_rewrite() -> None:
     record = _record('release-1', published_offset=0, projected_offset=1)
     retry = _record('release-1', published_offset=0, projected_offset=10)
-    client = _Client(document=_legacy_document(record))
-    client.document['_etag'] = 'etag-legacy'
+    client = _Client(document=_v1_document(record))
+    client.document['_etag'] = 'etag-v1'
 
     saved = _store(client).replace_active(retry)
 

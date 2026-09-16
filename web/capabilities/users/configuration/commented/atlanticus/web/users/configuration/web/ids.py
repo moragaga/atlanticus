@@ -5,7 +5,6 @@
 CATALOG_STORE_ID = 'atlanticus-users-admin-catalog-store'
 DRAFT_BASIS_STORE_ID = 'atlanticus-users-admin-draft-basis-store'
 DRAFT_RECOVERY_RESULT_ID = 'atlanticus-users-admin-draft-recovery-result'
-SOURCE_REVISION_STORE_ID = 'atlanticus-users-admin-source-revision-store'
 SECTION_STORE_ID = 'atlanticus-users-admin-section-store'
 PROFILE_EDITOR_STORE_ID = 'atlanticus-users-admin-profile-editor-store'
 USER_EDITOR_STORE_ID = 'atlanticus-users-admin-user-editor-store'

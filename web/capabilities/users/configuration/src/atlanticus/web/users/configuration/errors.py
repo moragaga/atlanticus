@@ -10,10 +10,6 @@ class UsersConfigurationSourceError(UsersConfigurationError):
     pass
 
 
-class UsersConfigurationPublisherError(UsersConfigurationError):
-    pass
-
-
 class UsersConfigurationProjectionError(UsersConfigurationError):
     pass
 
