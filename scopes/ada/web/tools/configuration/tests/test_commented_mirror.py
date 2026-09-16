@@ -3,14 +3,11 @@ from pathlib import Path
 
 FILES = (
     '__init__.py',
-    'contracts.py',
     'errors.py',
-    'lifecycle.py',
     'models.py',
     'operational.py',
-    'projection.py',
-    'services.py',
-    'source.py',
+    'source_projection.py',
+    'source_release.py',
 )
 
 

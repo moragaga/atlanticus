@@ -5,12 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ada-web-tools-configuration"
 version = "0.1.0"
-description = "Configuración administrativa, lifecycle y editor Web de Tools ADA"
+description = "Configuración, Source y Projection de Tools ADA"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "ada-web-branding==0.1.0",
     "ada-web-tools==0.1.0",
+    "atlanticus-web-projection==0.1.0",
+    "atlanticus-web-source==0.1.0",
 ]
 
 [project.optional-dependencies]
@@ -23,6 +25,8 @@ web = [
 ada-web-branding = { path = "../../branding", editable = true }
 ada-web-tools = { path = "../core", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
+atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
+atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
 
 [dependency-groups]
 dev = [
@@ -74,5 +78,7 @@ pythonpath = [
     "../core/src",
     "../../branding/src",
     "../../../../../web/framework/core/src",
+    "../../../../../web/capabilities/projection/core/src",
+    "../../../../../web/capabilities/source/core/src",
 ]
 addopts = "-q --import-mode=importlib"

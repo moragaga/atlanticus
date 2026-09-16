@@ -1,6 +1,6 @@
-class ToolLifecycleSourceError(RuntimeError):
+class ToolConfigurationSourceError(RuntimeError):
     pass
 
 
-class ToolLifecycleProjectionError(RuntimeError):
+class ToolConfigurationProjectionError(RuntimeError):
     pass
