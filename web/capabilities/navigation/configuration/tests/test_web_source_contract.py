@@ -4,18 +4,11 @@ import pytest
 
 pytest.importorskip('dash')
 
-from atlanticus.web.manager.projection import ManagerDraft
-from atlanticus.web.navigation.configuration.adapters.memory import (
-    MemoryNavigationConfigurationStore,
-    MemoryNavigationProjectionRepository,
-)
 from atlanticus.web.navigation.configuration.editor import build_initial_catalog
-from atlanticus.web.navigation.configuration.services import (
-    compose_navigation_configuration_services,
-)
+from atlanticus.web.navigation.configuration.exchange import build_navigation_configuration_digest
+from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
 from atlanticus.web.navigation.configuration.web import callbacks as navigation_callbacks
 from atlanticus.web.navigation.configuration.web.callbacks import (
-    _browser_draft_document,
     register_navigation_admin_callbacks,
 )
 from atlanticus.web.navigation.configuration.web.ids import SAVE_BUTTON_ID
@@ -34,31 +27,39 @@ class _CallbackRecorder:
         return register
 
 
-def _context() -> tuple[
-    NavigationAdminWebContext,
-    MemoryNavigationConfigurationStore,
-    MemoryNavigationProjectionRepository,
-]:
-    source = MemoryNavigationConfigurationStore()
-    projection = MemoryNavigationProjectionRepository()
-    services = compose_navigation_configuration_services(
-        source=source,
-        publisher=source,
-        projection=projection,
-        audit_actor_provider=lambda: 'tester',
-    )
-    return (
-        NavigationAdminWebContext(
-            services=services,
-            draft_store_id='draft',
-            saved_draft_store_id='saved-draft',
-            draft_save_action_id='workflow-save-draft',
-            workflow_refresh_signal_id='workflow-refresh',
-            editor_revision_store_id='editor-revision',
-            draft_owner_provider=lambda: 'tester',
-        ),
-        source,
-        projection,
+class _WorkspaceBinding:
+    def __init__(self) -> None:
+        self.saved: list[tuple[dict[str, object] | None, dict[str, object]]] = []
+
+    def read(self, document: dict[str, object] | None) -> dict[str, object] | None:
+        if not isinstance(document, dict):
+            return None
+        payload = document.get('payload')
+        return dict(payload) if isinstance(payload, dict) else None
+
+    def write(
+        self,
+        document: dict[str, object] | None,
+        payload: dict[str, object],
+    ) -> dict[str, object]:
+        self.saved.append((document, dict(payload)))
+        return {
+            'schema_version': 2,
+            'payload': dict(payload),
+            'revision': build_navigation_configuration_digest(
+                NavigationConfigurationCatalog.from_document(dict(payload))
+            ),
+        }
+
+
+def _context(binding: _WorkspaceBinding) -> NavigationAdminWebContext:
+    return NavigationAdminWebContext(
+        workspace_payload_reader=binding.read,
+        workspace_payload_writer=binding.write,
+        draft_store_id='draft',
+        saved_draft_store_id='saved-draft',
+        draft_save_action_id={'type': 'save-draft', 'module': 'navigation'},
+        editor_revision_store_id='editor-revision',
     )
 
 
@@ -68,49 +69,34 @@ def _callbacks(context: NavigationAdminWebContext) -> _CallbackRecorder:
     return recorder
 
 
-def test_navigation_admin_rehydrates_manager_draft_with_source_revision() -> None:
-    context, _source, _projection = _context()
+def test_navigation_admin_rehydrates_workspace_payload() -> None:
+    binding = _WorkspaceBinding()
     catalog = build_initial_catalog()
-    draft = _browser_draft_document(
-        catalog=catalog,
-        owner_subject_id='tester',
-        base_source_revision='source-9',
-    )
-    load_browser_draft = _callbacks(context).callbacks['load_browser_draft'][2]
+    load_browser_draft = _callbacks(_context(binding)).callbacks['load_browser_draft'][2]
 
-    catalog_document, source_revision = load_browser_draft(1, draft)
+    catalog_document = load_browser_draft(1, {'payload': catalog.to_document()})
 
     assert catalog_document == catalog.to_document()
-    assert source_revision == 'source-9'
 
 
 def test_navigation_admin_tracks_editor_revision_from_catalog() -> None:
-    context, _source, _projection = _context()
+    binding = _WorkspaceBinding()
     catalog = build_initial_catalog()
-    track_editor_revision = _callbacks(context).callbacks['track_editor_revision'][2]
+    track_editor_revision = _callbacks(_context(binding)).callbacks['track_editor_revision'][2]
 
     revision = track_editor_revision(catalog.to_document())
 
-    assert isinstance(revision, str)
-    assert revision
-    assert (
-        revision
-        == ManagerDraft.from_document(
-            _browser_draft_document(
-                catalog=catalog,
-                owner_subject_id='tester',
-                base_source_revision=None,
-            )
-        ).revision
-    )
+    assert revision == build_navigation_configuration_digest(catalog)
 
 
-def test_navigation_admin_save_draft_is_local_and_does_not_publish_or_project(
+def test_navigation_admin_save_delegates_workspace_persistence_without_remote_side_effects(
     monkeypatch,
 ) -> None:
-    context, source, projection = _context()
+    binding = _WorkspaceBinding()
+    context = _context(binding)
     catalog = build_initial_catalog()
     save_navigation_draft = _callbacks(context).callbacks['save_navigation_draft'][2]
+    current = {'schema_version': 2, 'payload': catalog.to_document()}
 
     monkeypatch.setattr(
         navigation_callbacks,
@@ -122,16 +108,9 @@ def test_navigation_admin_save_draft_is_local_and_does_not_publish_or_project(
         1,
         None,
         catalog.to_document(),
-        'source-15',
-        None,
+        current,
     )
-
-    draft = ManagerDraft.from_document(draft_document)
 
     assert saved_document == draft_document
     assert result is None
-    assert draft.owner_subject_id == 'tester'
-    assert draft.base_source_revision == 'source-15'
-    assert draft.payload == catalog.to_document()
-    assert source.fetch_bundle() is None
-    assert projection.load() is None
+    assert binding.saved == [(current, catalog.to_document())]

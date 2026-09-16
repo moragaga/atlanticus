@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atlanticus-web-navigation-projection-local"
+version = "0.1.0"
+description = "Persistencia local de la proyección de navegación Atlanticus Web"
+requires-python = "==3.14.2"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "atlanticus-web-navigation-configuration==0.1.9",
+    "atlanticus-web-projection==0.1.0",
+    "atlanticus-web-source==0.1.0",
+]
+
+[tool.uv.sources]
+atlanticus-web-navigation-configuration = { workspace = true }
+atlanticus-web-projection = { workspace = true }
+atlanticus-web-source = { workspace = true }
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+include = ["atlanticus.web.navigation.projection.local*"]
+
+[tool.setuptools.package-data]
+"atlanticus.web.navigation.projection.local" = ["py.typed"]

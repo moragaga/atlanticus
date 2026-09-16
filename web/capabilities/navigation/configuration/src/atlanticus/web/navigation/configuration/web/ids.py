@@ -1,5 +1,4 @@
 CATALOG_STORE_ID = 'atlanticus-navigation-admin-catalog'
-SOURCE_REVISION_STORE_ID = 'atlanticus-navigation-admin-source-revision'
 MOUNT_STORE_ID = 'atlanticus-navigation-admin-mounted'
 LINK_EDITOR_STORE_ID = 'atlanticus-navigation-admin-link-editor'
 GROUP_EDITOR_STORE_ID = 'atlanticus-navigation-admin-group-editor'

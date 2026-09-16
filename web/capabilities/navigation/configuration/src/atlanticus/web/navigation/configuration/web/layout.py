@@ -42,7 +42,6 @@ from atlanticus.web.navigation.configuration.web.ids import (
     SAVE_BUTTON_ID,
     SAVE_RESULT_ID,
     SOURCE_NAME_ID,
-    SOURCE_REVISION_STORE_ID,
     STRUCTURE_ID,
 )
 from atlanticus.web.navigation.configuration.web.models import NavigationAdminWebContext
@@ -56,11 +55,6 @@ def build_navigation_admin_configuration(context: NavigationAdminWebContext) -> 
     return html.Div(
         [
             dcc.Store(id=CATALOG_STORE_ID, data=catalog.to_document(), storage_type='memory'),
-            dcc.Store(
-                id=SOURCE_REVISION_STORE_ID,
-                data=None,
-                storage_type='memory',
-            ),
             dcc.Store(id=LINK_EDITOR_STORE_ID, storage_type='memory'),
             dcc.Store(id=GROUP_EDITOR_STORE_ID, storage_type='memory'),
             dcc.Store(id=MOUNT_STORE_ID, data=1, storage_type='memory'),
@@ -243,13 +237,7 @@ def _link_modal() -> object:
                     [
                         html.Div(
                             [
-                                _field(
-                                    'Nombre',
-                                    dbc.Input(
-                                        id=LINK_NAME_ID,
-                                        type='text',
-                                    ),
-                                ),
+                                _field('Nombre', dbc.Input(id=LINK_NAME_ID, type='text')),
                                 _field(
                                     'Identificador',
                                     dbc.Input(
@@ -259,13 +247,7 @@ def _link_modal() -> object:
                                         placeholder='Se genera al guardar',
                                     ),
                                 ),
-                                _field(
-                                    'Ruta o URL',
-                                    dbc.Input(
-                                        id=LINK_HREF_ID,
-                                        type='text',
-                                    ),
-                                ),
+                                _field('Ruta o URL', dbc.Input(id=LINK_HREF_ID, type='text')),
                                 _field(
                                     'Ícono',
                                     dbc.Input(
@@ -279,9 +261,7 @@ def _link_modal() -> object:
                                     html.Div(
                                         dcc.Dropdown(
                                             id=LINK_SECTION_ID,
-                                            className=(
-                                                'atlanticus-navigation-admin__section-select'
-                                            ),
+                                            className='atlanticus-navigation-admin__section-select',
                                             clearable=False,
                                             searchable=True,
                                             placeholder='Sin sección / raíz',
@@ -291,9 +271,7 @@ def _link_modal() -> object:
                                                 'clear_search': 'Limpiar búsqueda',
                                             },
                                         ),
-                                        className=(
-                                            'atlanticus-navigation-admin__dash-select-shell'
-                                        ),
+                                        className='atlanticus-navigation-admin__dash-select-shell',
                                     ),
                                 ),
                                 _field(
@@ -301,9 +279,7 @@ def _link_modal() -> object:
                                     html.Div(
                                         dcc.Dropdown(
                                             id=LINK_PROFILES_ID,
-                                            className=(
-                                                'atlanticus-navigation-admin__profiles-select'
-                                            ),
+                                            className='atlanticus-navigation-admin__profiles-select',
                                             multi=True,
                                             searchable=True,
                                             placeholder='Seleccionar perfiles',
@@ -313,14 +289,10 @@ def _link_modal() -> object:
                                                 'clear_search': 'Limpiar búsqueda',
                                                 'select_all': 'Seleccionar todo',
                                                 'deselect_all': 'Deseleccionar todo',
-                                                'selected_count': (
-                                                    '{num_selected} seleccionados'
-                                                ),
+                                                'selected_count': '{num_selected} seleccionados',
                                             },
                                         ),
-                                        className=(
-                                            'atlanticus-navigation-admin__dash-select-shell'
-                                        ),
+                                        className='atlanticus-navigation-admin__dash-select-shell',
                                     ),
                                 ),
                             ],
@@ -330,19 +302,13 @@ def _link_modal() -> object:
                             [
                                 _check(LINK_ENABLED_ID, 'Habilitado', 'enabled'),
                                 _check(LINK_NEW_TAB_ID, 'Nueva pestaña', 'new_tab'),
-                                _check(
-                                    LINK_FORCE_RELOAD_ID,
-                                    'Forzar recarga',
-                                    'force_reload',
-                                ),
+                                _check(LINK_FORCE_RELOAD_ID, 'Forzar recarga', 'force_reload'),
                             ],
                             className='atlanticus-navigation-admin__check-row',
                         ),
                         html.Div(id=LINK_RESULT_ID),
                     ],
-                    className=(
-                        'modal-body atlanticus-navigation-admin__modal-body'
-                    ),
+                    className='modal-body atlanticus-navigation-admin__modal-body',
                 ),
                 html.Div(
                     [
@@ -360,9 +326,7 @@ def _link_modal() -> object:
                             color='primary',
                         ),
                     ],
-                    className=(
-                        'modal-footer atlanticus-navigation-admin__modal-actions'
-                    ),
+                    className='modal-footer atlanticus-navigation-admin__modal-actions',
                 ),
             ],
             className='modal-content atlanticus-navigation-admin__modal-card',
@@ -384,13 +348,7 @@ def _group_modal() -> object:
                     [
                         html.Div(
                             [
-                                _field(
-                                    'Nombre',
-                                    dbc.Input(
-                                        id=GROUP_NAME_ID,
-                                        type='text',
-                                    ),
-                                ),
+                                _field('Nombre', dbc.Input(id=GROUP_NAME_ID, type='text')),
                                 _field(
                                     'Identificador',
                                     dbc.Input(
@@ -417,9 +375,7 @@ def _group_modal() -> object:
                         ),
                         html.Div(id=GROUP_RESULT_ID),
                     ],
-                    className=(
-                        'modal-body atlanticus-navigation-admin__modal-body'
-                    ),
+                    className='modal-body atlanticus-navigation-admin__modal-body',
                 ),
                 html.Div(
                     [
@@ -437,9 +393,7 @@ def _group_modal() -> object:
                             color='primary',
                         ),
                     ],
-                    className=(
-                        'modal-footer atlanticus-navigation-admin__modal-actions'
-                    ),
+                    className='modal-footer atlanticus-navigation-admin__modal-actions',
                 ),
             ],
             className='modal-content atlanticus-navigation-admin__modal-card',
@@ -460,12 +414,8 @@ def _modal_header(*, title_id: str, close_id: str) -> object:
                 **{'aria-label': 'Cerrar formulario'},
             ),
         ],
-        className=(
-            'modal-header atlanticus-navigation-admin__modal-header'
-        ),
+        className='modal-header atlanticus-navigation-admin__modal-header',
     )
-
-
 
 
 def _dash_select_style() -> dict[str, str]:

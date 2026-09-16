@@ -1,27 +1,32 @@
-# Declara el store de revisión del editor de Navigation recibido desde la composición del Manager.
-# La señal describe contenido editable y no introduce dependencias de Navigation hacia la máquina de estados.
-
+# Espejo pedagógico del archivo productivo; conserva exactamente su comportamiento.
+# Los comentarios en español describen responsabilidades sin alterar el contrato ejecutable.
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
 
 from atlanticus.web.navigation.configuration.profiles import NavigationProfileOption
-from atlanticus.web.navigation.configuration.services import NavigationConfigurationServices
 
 NavigationProfileOptionsProvider = Callable[[], tuple[NavigationProfileOption, ...]]
+NavigationWorkspacePayloadReader = Callable[
+    [dict[str, object] | None],
+    dict[str, object] | None,
+]
+NavigationWorkspacePayloadWriter = Callable[
+    [dict[str, object] | None, dict[str, object]],
+    dict[str, object],
+]
 
 
 @dataclass(frozen=True, slots=True)
+# Responsabilidad: NavigationAdminWebContext encapsula una frontera explícita del contrato vigente.
 class NavigationAdminWebContext:
-    services: NavigationConfigurationServices
+    workspace_payload_reader: NavigationWorkspacePayloadReader
+    workspace_payload_writer: NavigationWorkspacePayloadWriter
     draft_store_id: object
-    # Store persistente independiente usado únicamente cuando el usuario guarda o recupera un checkpoint.
     saved_draft_store_id: object
     draft_save_action_id: object
-    workflow_refresh_signal_id: object
     editor_revision_store_id: object
-    draft_owner_provider: Callable[[], str]
     can_manage: Callable[[], bool] = lambda: True
     source_name: str = 'Source'
     projection_name: str = 'Projection'

@@ -1,6 +1,5 @@
-# Construye Navigation desde un catálogo local vacío cuando no existe draft y renderiza esa estructura desde el primer montaje.
-# La acción de archivo se etiqueta como importación para no confundirla con cargar Source desde Manager.
-
+# Espejo pedagógico del archivo productivo; conserva exactamente su comportamiento.
+# Los comentarios en español describen responsabilidades sin alterar el contrato ejecutable.
 from __future__ import annotations
 
 import dash_bootstrap_components as dbc
@@ -45,7 +44,6 @@ from atlanticus.web.navigation.configuration.web.ids import (
     SAVE_BUTTON_ID,
     SAVE_RESULT_ID,
     SOURCE_NAME_ID,
-    SOURCE_REVISION_STORE_ID,
     STRUCTURE_ID,
 )
 from atlanticus.web.navigation.configuration.web.models import NavigationAdminWebContext
@@ -54,16 +52,12 @@ from atlanticus.web.navigation.configuration.web.rendering import navigation_str
 _MODAL_CLOSED = 'atlanticus-navigation-admin__modal'
 
 
+# Operación: build_navigation_admin_configuration mantiene la misma semántica que el código productivo.
 def build_navigation_admin_configuration(context: NavigationAdminWebContext) -> object:
     catalog = build_initial_catalog()
     return html.Div(
         [
             dcc.Store(id=CATALOG_STORE_ID, data=catalog.to_document(), storage_type='memory'),
-            dcc.Store(
-                id=SOURCE_REVISION_STORE_ID,
-                data=None,
-                storage_type='memory',
-            ),
             dcc.Store(id=LINK_EDITOR_STORE_ID, storage_type='memory'),
             dcc.Store(id=GROUP_EDITOR_STORE_ID, storage_type='memory'),
             dcc.Store(id=MOUNT_STORE_ID, data=1, storage_type='memory'),
@@ -78,6 +72,7 @@ def build_navigation_admin_configuration(context: NavigationAdminWebContext) -> 
     )
 
 
+# Operación: _runtime_context mantiene la misma semántica que el código productivo.
 def _runtime_context(context: NavigationAdminWebContext) -> object:
     return html.Section(
         [
@@ -119,6 +114,7 @@ def _runtime_context(context: NavigationAdminWebContext) -> object:
     )
 
 
+# Operación: _profiles_context mantiene la misma semántica que el código productivo.
 def _profiles_context(context: NavigationAdminWebContext) -> object:
     provider = context.profile_options_provider
     try:
@@ -147,6 +143,7 @@ def _profiles_context(context: NavigationAdminWebContext) -> object:
     )
 
 
+# Operación: _profile_badge mantiene la misma semántica que el código productivo.
 def _profile_badge(profile) -> object:
     classes = 'atlanticus-navigation-admin__profile'
     if profile.unrestricted:
@@ -159,6 +156,7 @@ def _profile_badge(profile) -> object:
     return html.Span(profile.label, className=classes, style=style)
 
 
+# Operación: _structure_section mantiene la misma semántica que el código productivo.
 def _structure_section(catalog: NavigationConfigurationCatalog) -> object:
     return html.Section(
         [
@@ -202,6 +200,7 @@ def _structure_section(catalog: NavigationConfigurationCatalog) -> object:
     )
 
 
+# Operación: _save_section mantiene la misma semántica que el código productivo.
 def _save_section() -> object:
     return html.Section(
         [
@@ -234,6 +233,7 @@ def _save_section() -> object:
     )
 
 
+# Operación: _link_modal mantiene la misma semántica que el código productivo.
 def _link_modal() -> object:
     return html.Div(
         html.Div(
@@ -246,13 +246,7 @@ def _link_modal() -> object:
                     [
                         html.Div(
                             [
-                                _field(
-                                    'Nombre',
-                                    dbc.Input(
-                                        id=LINK_NAME_ID,
-                                        type='text',
-                                    ),
-                                ),
+                                _field('Nombre', dbc.Input(id=LINK_NAME_ID, type='text')),
                                 _field(
                                     'Identificador',
                                     dbc.Input(
@@ -262,13 +256,7 @@ def _link_modal() -> object:
                                         placeholder='Se genera al guardar',
                                     ),
                                 ),
-                                _field(
-                                    'Ruta o URL',
-                                    dbc.Input(
-                                        id=LINK_HREF_ID,
-                                        type='text',
-                                    ),
-                                ),
+                                _field('Ruta o URL', dbc.Input(id=LINK_HREF_ID, type='text')),
                                 _field(
                                     'Ícono',
                                     dbc.Input(
@@ -282,9 +270,7 @@ def _link_modal() -> object:
                                     html.Div(
                                         dcc.Dropdown(
                                             id=LINK_SECTION_ID,
-                                            className=(
-                                                'atlanticus-navigation-admin__section-select'
-                                            ),
+                                            className='atlanticus-navigation-admin__section-select',
                                             clearable=False,
                                             searchable=True,
                                             placeholder='Sin sección / raíz',
@@ -294,9 +280,7 @@ def _link_modal() -> object:
                                                 'clear_search': 'Limpiar búsqueda',
                                             },
                                         ),
-                                        className=(
-                                            'atlanticus-navigation-admin__dash-select-shell'
-                                        ),
+                                        className='atlanticus-navigation-admin__dash-select-shell',
                                     ),
                                 ),
                                 _field(
@@ -304,9 +288,7 @@ def _link_modal() -> object:
                                     html.Div(
                                         dcc.Dropdown(
                                             id=LINK_PROFILES_ID,
-                                            className=(
-                                                'atlanticus-navigation-admin__profiles-select'
-                                            ),
+                                            className='atlanticus-navigation-admin__profiles-select',
                                             multi=True,
                                             searchable=True,
                                             placeholder='Seleccionar perfiles',
@@ -316,14 +298,10 @@ def _link_modal() -> object:
                                                 'clear_search': 'Limpiar búsqueda',
                                                 'select_all': 'Seleccionar todo',
                                                 'deselect_all': 'Deseleccionar todo',
-                                                'selected_count': (
-                                                    '{num_selected} seleccionados'
-                                                ),
+                                                'selected_count': '{num_selected} seleccionados',
                                             },
                                         ),
-                                        className=(
-                                            'atlanticus-navigation-admin__dash-select-shell'
-                                        ),
+                                        className='atlanticus-navigation-admin__dash-select-shell',
                                     ),
                                 ),
                             ],
@@ -333,19 +311,13 @@ def _link_modal() -> object:
                             [
                                 _check(LINK_ENABLED_ID, 'Habilitado', 'enabled'),
                                 _check(LINK_NEW_TAB_ID, 'Nueva pestaña', 'new_tab'),
-                                _check(
-                                    LINK_FORCE_RELOAD_ID,
-                                    'Forzar recarga',
-                                    'force_reload',
-                                ),
+                                _check(LINK_FORCE_RELOAD_ID, 'Forzar recarga', 'force_reload'),
                             ],
                             className='atlanticus-navigation-admin__check-row',
                         ),
                         html.Div(id=LINK_RESULT_ID),
                     ],
-                    className=(
-                        'modal-body atlanticus-navigation-admin__modal-body'
-                    ),
+                    className='modal-body atlanticus-navigation-admin__modal-body',
                 ),
                 html.Div(
                     [
@@ -363,9 +335,7 @@ def _link_modal() -> object:
                             color='primary',
                         ),
                     ],
-                    className=(
-                        'modal-footer atlanticus-navigation-admin__modal-actions'
-                    ),
+                    className='modal-footer atlanticus-navigation-admin__modal-actions',
                 ),
             ],
             className='modal-content atlanticus-navigation-admin__modal-card',
@@ -375,6 +345,7 @@ def _link_modal() -> object:
     )
 
 
+# Operación: _group_modal mantiene la misma semántica que el código productivo.
 def _group_modal() -> object:
     return html.Div(
         html.Div(
@@ -387,13 +358,7 @@ def _group_modal() -> object:
                     [
                         html.Div(
                             [
-                                _field(
-                                    'Nombre',
-                                    dbc.Input(
-                                        id=GROUP_NAME_ID,
-                                        type='text',
-                                    ),
-                                ),
+                                _field('Nombre', dbc.Input(id=GROUP_NAME_ID, type='text')),
                                 _field(
                                     'Identificador',
                                     dbc.Input(
@@ -420,9 +385,7 @@ def _group_modal() -> object:
                         ),
                         html.Div(id=GROUP_RESULT_ID),
                     ],
-                    className=(
-                        'modal-body atlanticus-navigation-admin__modal-body'
-                    ),
+                    className='modal-body atlanticus-navigation-admin__modal-body',
                 ),
                 html.Div(
                     [
@@ -440,9 +403,7 @@ def _group_modal() -> object:
                             color='primary',
                         ),
                     ],
-                    className=(
-                        'modal-footer atlanticus-navigation-admin__modal-actions'
-                    ),
+                    className='modal-footer atlanticus-navigation-admin__modal-actions',
                 ),
             ],
             className='modal-content atlanticus-navigation-admin__modal-card',
@@ -452,6 +413,7 @@ def _group_modal() -> object:
     )
 
 
+# Operación: _modal_header mantiene la misma semántica que el código productivo.
 def _modal_header(*, title_id: str, close_id: str) -> object:
     return html.Header(
         [
@@ -463,14 +425,11 @@ def _modal_header(*, title_id: str, close_id: str) -> object:
                 **{'aria-label': 'Cerrar formulario'},
             ),
         ],
-        className=(
-            'modal-header atlanticus-navigation-admin__modal-header'
-        ),
+        className='modal-header atlanticus-navigation-admin__modal-header',
     )
 
 
-
-
+# Operación: _dash_select_style mantiene la misma semántica que el código productivo.
 def _dash_select_style() -> dict[str, str]:
     return {
         '--Dash-Spacing': '4px',
@@ -491,6 +450,7 @@ def _dash_select_style() -> dict[str, str]:
     }
 
 
+# Operación: _field mantiene la misma semántica que el código productivo.
 def _field(label: str, control: object) -> object:
     return html.Label(
         [html.Span(label), control],
@@ -498,6 +458,7 @@ def _field(label: str, control: object) -> object:
     )
 
 
+# Operación: _check mantiene la misma semántica que el código productivo.
 def _check(component_id: str, label: str, value: str) -> object:
     del value
     return dbc.Checkbox(

@@ -10,9 +10,5 @@ class NavigationConfigurationSourceError(NavigationConfigurationError):
     pass
 
 
-class NavigationConfigurationPublisherError(NavigationConfigurationError):
-    pass
-
-
 class NavigationConfigurationProjectionError(NavigationConfigurationError):
     pass

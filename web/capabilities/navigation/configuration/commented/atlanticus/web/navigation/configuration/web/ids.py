@@ -1,8 +1,6 @@
-# Centraliza los identificadores Dash de Navigation, incluido el store de la revisión de Source cargada.
-# Los IDs compartidos mantienen callbacks y layout alineados sin literales duplicados.
-
+# Espejo pedagógico del archivo productivo; conserva exactamente su comportamiento.
+# Los comentarios en español describen responsabilidades sin alterar el contrato ejecutable.
 CATALOG_STORE_ID = 'atlanticus-navigation-admin-catalog'
-SOURCE_REVISION_STORE_ID = 'atlanticus-navigation-admin-source-revision'
 MOUNT_STORE_ID = 'atlanticus-navigation-admin-mounted'
 LINK_EDITOR_STORE_ID = 'atlanticus-navigation-admin-link-editor'
 GROUP_EDITOR_STORE_ID = 'atlanticus-navigation-admin-group-editor'
@@ -40,37 +38,46 @@ GROUP_SAVE_ID = 'atlanticus-navigation-admin-group-save'
 GROUP_RESULT_ID = 'atlanticus-navigation-admin-group-result'
 
 
+# Operación: link_edit_id mantiene la misma semántica que el código productivo.
 def link_edit_id(key: str) -> dict[str, str]:
     return {'type': 'atlanticus-navigation-link-edit', 'key': key}
 
 
+# Operación: link_delete_id mantiene la misma semántica que el código productivo.
 def link_delete_id(key: str) -> dict[str, str]:
     return {'type': 'atlanticus-navigation-link-delete', 'key': key}
 
 
+# Operación: link_up_id mantiene la misma semántica que el código productivo.
 def link_up_id(key: str) -> dict[str, str]:
     return {'type': 'atlanticus-navigation-link-up', 'key': key}
 
 
+# Operación: link_down_id mantiene la misma semántica que el código productivo.
 def link_down_id(key: str) -> dict[str, str]:
     return {'type': 'atlanticus-navigation-link-down', 'key': key}
 
 
+# Operación: group_edit_id mantiene la misma semántica que el código productivo.
 def group_edit_id(key: str) -> dict[str, str]:
     return {'type': 'atlanticus-navigation-group-edit', 'key': key}
 
 
+# Operación: group_delete_id mantiene la misma semántica que el código productivo.
 def group_delete_id(key: str) -> dict[str, str]:
     return {'type': 'atlanticus-navigation-group-delete', 'key': key}
 
 
+# Operación: group_up_id mantiene la misma semántica que el código productivo.
 def group_up_id(key: str) -> dict[str, str]:
     return {'type': 'atlanticus-navigation-group-up', 'key': key}
 
 
+# Operación: group_down_id mantiene la misma semántica que el código productivo.
 def group_down_id(key: str) -> dict[str, str]:
     return {'type': 'atlanticus-navigation-group-down', 'key': key}
 
 
+# Operación: group_add_link_id mantiene la misma semántica que el código productivo.
 def group_add_link_id(key: str) -> dict[str, str]:
     return {'type': 'atlanticus-navigation-group-add-link', 'key': key}

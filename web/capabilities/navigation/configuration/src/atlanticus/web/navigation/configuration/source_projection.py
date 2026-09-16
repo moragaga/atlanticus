@@ -1,16 +1,42 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Literal
 
 from atlanticus.web.navigation.configuration.errors import NavigationConfigurationProjectionError
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
-from atlanticus.web.navigation.configuration.projection import NavigationProjectionIssue
 from atlanticus.web.navigation.configuration.source_release import NavigationSourceCodec
 from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.projection.service import ProjectionBuilder, SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.models import SourceReleaseMetadata, SourceResource
 from atlanticus.web.source.store import SourceStore
+
+NavigationProjectionIssueLevel = Literal['error', 'warning']
+
+
+@dataclass(frozen=True, slots=True)
+class NavigationProjectionIssue:
+    code: str
+    message: str
+    level: NavigationProjectionIssueLevel = 'error'
+    path: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.code.strip():
+            raise NavigationConfigurationProjectionError(
+                'Navigation projection issue code must not be empty'
+            )
+        if not self.message.strip():
+            raise NavigationConfigurationProjectionError(
+                'Navigation projection issue message must not be empty'
+            )
+        if self.level not in {'error', 'warning'}:
+            raise NavigationConfigurationProjectionError(
+                'Navigation projection issue level is invalid'
+            )
+
 
 NavigationProjectionValidator = Callable[
     [NavigationConfigurationCatalog],

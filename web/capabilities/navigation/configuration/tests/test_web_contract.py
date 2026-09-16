@@ -5,14 +5,7 @@ from dash import Input, State
 
 pytest.importorskip('dash')
 
-from atlanticus.web.navigation.configuration.adapters.memory import (
-    MemoryNavigationConfigurationStore,
-    MemoryNavigationProjectionRepository,
-)
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
-from atlanticus.web.navigation.configuration.services import (
-    compose_navigation_configuration_services,
-)
 from atlanticus.web.navigation.configuration.web import (
     NavigationAdminWebContext,
     build_navigation_admin_configuration,
@@ -27,7 +20,6 @@ from atlanticus.web.navigation.configuration.web.ids import (
     LINK_SECTION_ID,
     PROJECTION_NAME_ID,
     SOURCE_NAME_ID,
-    SOURCE_REVISION_STORE_ID,
     STRUCTURE_ID,
 )
 
@@ -45,21 +37,20 @@ class _CallbackRecorder:
 
 
 def _context() -> NavigationAdminWebContext:
-    source = MemoryNavigationConfigurationStore()
-    services = compose_navigation_configuration_services(
-        source=source,
-        publisher=source,
-        projection=MemoryNavigationProjectionRepository(),
-        audit_actor_provider=lambda: 'tester',
-    )
     return NavigationAdminWebContext(
-        services=services,
+        workspace_payload_reader=lambda document: (
+            dict(document['payload'])
+            if isinstance(document, dict) and isinstance(document.get('payload'), dict)
+            else None
+        ),
+        workspace_payload_writer=lambda document, payload: {
+            **(document or {}),
+            'payload': dict(payload),
+        },
         draft_store_id='draft',
         saved_draft_store_id='saved-draft',
-        draft_save_action_id='save',
-        workflow_refresh_signal_id='refresh',
+        draft_save_action_id={'type': 'save', 'module': 'navigation'},
         editor_revision_store_id='editor-revision',
-        draft_owner_provider=lambda: 'tester',
         source_name='Navigation Source',
         projection_name='Navigation Projection',
     )
@@ -90,24 +81,14 @@ def _text(component: object) -> str:
     return ''
 
 
-def test_navigation_admin_layout_starts_with_empty_local_workspace(monkeypatch) -> None:
-    context = _context()
-
-    def fail_if_source_is_loaded():
-        raise AssertionError(
-            'Navigation source must not be loaded while building the editor layout'
-        )
-
-    monkeypatch.setattr(context.services.administration, 'load_source', fail_if_source_is_loaded)
-
-    layout = build_navigation_admin_configuration(context)
+def test_navigation_admin_layout_starts_with_empty_editor_payload() -> None:
+    layout = build_navigation_admin_configuration(_context())
     catalog = NavigationConfigurationCatalog.from_document(
         _component(layout, CATALOG_STORE_ID).data
     )
 
     assert catalog.links == ()
     assert catalog.groups == ()
-    assert _component(layout, SOURCE_REVISION_STORE_ID).data is None
     assert _text(_component(layout, SOURCE_NAME_ID)) == 'Navigation Source'
     assert _text(_component(layout, PROJECTION_NAME_ID)) == 'Navigation Projection'
     assert _component(layout, STRUCTURE_ID) is not None

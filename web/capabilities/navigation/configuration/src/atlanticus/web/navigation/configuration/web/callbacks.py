@@ -1,14 +1,9 @@
 from __future__ import annotations
 
 import base64
-from datetime import UTC, datetime
 
 from dash import ALL, Input, Output, State, ctx, html, no_update
 
-from atlanticus.web.navigation.configuration.bundle import (
-    build_navigation_configuration_digest,
-    decode_navigation_configuration_import,
-)
 from atlanticus.web.navigation.configuration.editor import (
     build_initial_catalog,
     create_group,
@@ -19,6 +14,10 @@ from atlanticus.web.navigation.configuration.editor import (
     reorder_root_node,
     update_group,
     upsert_link,
+)
+from atlanticus.web.navigation.configuration.exchange import (
+    build_navigation_configuration_digest,
+    decode_navigation_configuration_import,
 )
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
 from atlanticus.web.navigation.configuration.profiles import selectable_profile_options
@@ -56,7 +55,6 @@ from atlanticus.web.navigation.configuration.web.ids import (
     MOUNT_STORE_ID,
     SAVE_BUTTON_ID,
     SAVE_RESULT_ID,
-    SOURCE_REVISION_STORE_ID,
     STRUCTURE_ID,
 )
 from atlanticus.web.navigation.configuration.web.models import NavigationAdminWebContext
@@ -67,33 +65,23 @@ from atlanticus.web.navigation.configuration.web.rendering import (
 
 _MODAL_CLOSED = 'atlanticus-navigation-admin__modal'
 _MODAL_OPEN = 'atlanticus-navigation-admin__modal atlanticus-navigation-admin__modal--open'
-_BROWSER_DRAFT_SCHEMA_VERSION = 1
 _ROOT_SECTION_VALUE = '__root__'
 
 
 def register_navigation_admin_callbacks(app: object, context: NavigationAdminWebContext) -> None:
     @app.callback(
         Output(CATALOG_STORE_ID, 'data'),
-        Output(SOURCE_REVISION_STORE_ID, 'data'),
         Input(MOUNT_STORE_ID, 'data'),
         Input(context.draft_store_id, 'data'),
     )
     def load_browser_draft(_mounted: object, draft_data: dict[str, object] | None):
-        if draft_data is None:
-            return no_update, no_update
         try:
-            catalog = _catalog_from_browser_draft(
-                draft_data,
-                context.draft_owner_provider(),
-            )
-            base_source_revision = _draft_base_source_revision(
-                draft_data,
-                owner_subject_id=context.draft_owner_provider(),
-                fallback=None,
-            )
+            payload = context.workspace_payload_reader(draft_data)
+            if payload is None:
+                return build_initial_catalog().to_document()
+            return NavigationConfigurationCatalog.from_document(dict(payload)).to_document()
         except Exception:
-            return build_initial_catalog().to_document(), None
-        return catalog.to_document(), base_source_revision
+            return build_initial_catalog().to_document()
 
     @app.callback(
         Output(context.editor_revision_store_id, 'data'),
@@ -405,12 +393,12 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         Output(CATALOG_STORE_ID, 'data', allow_duplicate=True),
         Output(IMPORT_RESULT_ID, 'children'),
         Input(IMPORT_UPLOAD_ID, 'contents'),
-        State(SOURCE_REVISION_STORE_ID, 'data'),
+        State(context.draft_store_id, 'data'),
         prevent_initial_call=True,
     )
     def import_configuration(
         contents: str | None,
-        source_revision: str | None,
+        current_draft: dict[str, object] | None,
     ):
         if contents is None:
             return no_update, no_update, no_update
@@ -420,12 +408,8 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
             if ',' not in contents:
                 raise ValueError('Configuration file payload is invalid')
             payload = base64.b64decode(contents.split(',', 1)[1], validate=True)
-            catalog = decode_navigation_configuration_import(payload).catalog
-            draft = _browser_draft_document(
-                catalog=catalog,
-                owner_subject_id=context.draft_owner_provider(),
-                base_source_revision=source_revision,
-            )
+            catalog = decode_navigation_configuration_import(payload)
+            draft = context.workspace_payload_writer(current_draft, catalog.to_document())
         except Exception as error:
             return no_update, no_update, _error(str(error))
         return draft, catalog.to_document(), None
@@ -437,7 +421,6 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         Input(SAVE_BUTTON_ID, 'n_clicks'),
         Input(context.draft_save_action_id, 'n_clicks'),
         State(CATALOG_STORE_ID, 'data'),
-        State(SOURCE_REVISION_STORE_ID, 'data'),
         State(context.draft_store_id, 'data'),
         prevent_initial_call=True,
     )
@@ -445,7 +428,6 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         content_clicks: int | None,
         workflow_clicks: int | None,
         catalog_data: dict[str, object] | None,
-        source_revision: str | None,
         current_draft: dict[str, object] | None,
     ):
         trigger = ctx.triggered_id
@@ -460,15 +442,7 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
             return no_update, no_update, _error('Management access is denied')
         try:
             catalog = _catalog(catalog_data)
-            draft = _browser_draft_document(
-                catalog=catalog,
-                owner_subject_id=context.draft_owner_provider(),
-                base_source_revision=_draft_base_source_revision(
-                    current_draft,
-                    owner_subject_id=context.draft_owner_provider(),
-                    fallback=source_revision,
-                ),
-            )
+            draft = context.workspace_payload_writer(current_draft, catalog.to_document())
         except Exception as error:
             return no_update, no_update, _error(str(error))
         return draft, draft, None
@@ -576,56 +550,6 @@ def _section_key(value: str | None) -> str | None:
     return normalized
 
 
-def _catalog_from_browser_draft(
-    data: dict[str, object] | None,
-    owner_subject_id: str,
-) -> NavigationConfigurationCatalog:
-    if not isinstance(data, dict) or data.get('schema_version') != 1:
-        raise ValueError('Browser draft does not exist')
-    if str(data.get('owner_subject_id', '')).strip() != owner_subject_id.strip():
-        raise ValueError('Browser draft belongs to another user')
-    payload = data.get('payload')
-    if not isinstance(payload, dict):
-        raise ValueError('Browser draft payload is invalid')
-    catalog = NavigationConfigurationCatalog.from_document(dict(payload))
-    if str(data.get('revision', '')).strip() != build_navigation_configuration_digest(catalog):
-        raise ValueError('Browser draft revision does not match content')
-    return catalog
-
-
-def _browser_draft_document(
-    *,
-    catalog: NavigationConfigurationCatalog,
-    owner_subject_id: str,
-    base_source_revision: str | None,
-) -> dict[str, object]:
-    owner = owner_subject_id.strip()
-    if not owner:
-        raise ValueError('Browser draft owner is required')
-    return {
-        'schema_version': _BROWSER_DRAFT_SCHEMA_VERSION,
-        'owner_subject_id': owner,
-        'revision': build_navigation_configuration_digest(catalog),
-        'saved_at': datetime.now(UTC).isoformat(),
-        'base_source_revision': base_source_revision,
-        'payload': catalog.to_document(),
-    }
-
-
-def _draft_base_source_revision(
-    data: dict[str, object] | None,
-    *,
-    owner_subject_id: str,
-    fallback: str | None,
-) -> str | None:
-    if not isinstance(data, dict):
-        return fallback
-    if str(data.get('owner_subject_id', '')).strip() != owner_subject_id.strip():
-        return fallback
-    value = data.get('base_source_revision')
-    return _optional_text(value)
-
-
 def _optional_text(value: object) -> str | None:
     if value is None:
         return None
@@ -642,9 +566,9 @@ def _save_draft_click_is_real(
 ) -> bool:
     if trigger == SAVE_BUTTON_ID:
         return _click_is_real(content_clicks)
-    if trigger == workflow_id:
-        return _click_is_real(workflow_clicks)
-    return False
+    if isinstance(trigger, dict) and isinstance(workflow_id, dict):
+        return dict(trigger) == dict(workflow_id) and _click_is_real(workflow_clicks)
+    return trigger == workflow_id and _click_is_real(workflow_clicks)
 
 
 def _triggered_click_is_real() -> bool:
@@ -655,7 +579,7 @@ def _triggered_click_is_real() -> bool:
 
 
 def _click_is_real(value: int | None) -> bool:
-    return isinstance(value, int) and value > 0
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
 
 def _error(message: str) -> object:
