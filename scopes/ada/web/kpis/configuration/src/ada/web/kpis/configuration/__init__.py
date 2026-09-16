@@ -1,85 +1,55 @@
 from ada.web.kpis.configuration.catalog import KpiCatalog
-from ada.web.kpis.configuration.contracts import (
-    KpiConfigurationAuditActorProvider,
-    KpiConfigurationProjectionRepository,
-    KpiConfigurationPublisher,
-    KpiConfigurationSource,
-    KpiDestinationCatalogProvider,
-)
 from ada.web.kpis.configuration.destinations import (
     KpiDestination,
     KpiDestinationCatalog,
+    KpiDestinationCatalogProvider,
+    KpiDestinationCatalogSnapshot,
+    validate_kpi_configuration_destinations,
 )
 from ada.web.kpis.configuration.errors import (
     KpiConfigurationProjectionError,
     KpiConfigurationSourceError,
     KpiConfigurationValidationError,
 )
-from ada.web.kpis.configuration.lifecycle import (
-    KpiConfigurationAuditRecord,
-    KpiConfigurationIssue,
-    KpiConfigurationProjectionResult,
-    KpiConfigurationPublicationResult,
-    KpiConfigurationStatus,
-    KpiConfigurationSummaryItem,
-    KpiConfigurationValidationResult,
-)
 from ada.web.kpis.configuration.models import (
     KpiConfiguration,
     KpiConfigurationBinding,
 )
-from ada.web.kpis.configuration.projection import (
-    KPI_CONFIGURATION_PROJECTION_DOCUMENT_TYPE,
-    KPI_CONFIGURATION_PROJECTION_SCHEMA_VERSION,
-    KpiConfigurationProjection,
-    build_kpi_configuration_projection_revision,
+from ada.web.kpis.configuration.source_projection import (
+    KpiProjectionBuilder,
+    create_kpi_projection_service,
 )
-from ada.web.kpis.configuration.services import (
-    KpiConfigurationAdministrationService,
-    KpiConfigurationProjectionWorkflow,
-    KpiConfigurationServices,
-    compose_kpi_configuration_services,
-)
-from ada.web.kpis.configuration.source import (
-    KPI_CONFIGURATION_SOURCE_DOCUMENT_TYPE,
-    KPI_CONFIGURATION_SOURCE_SCHEMA_VERSION,
-    KpiConfigurationSourceDocument,
-    build_kpi_configuration_digest,
+from ada.web.kpis.configuration.source_release import (
+    KPI_SOURCE_DOCUMENT_TYPE,
+    KPI_SOURCE_RESOURCE_PATH,
+    KPI_SOURCE_SCHEMA_VERSION,
+    KpiSourceCodec,
+    KpiSourcePayload,
+    KpiSourceRelease,
+    KpiSourceService,
 )
 
 __version__ = '0.3.6'
 
 __all__ = [
-    'KPI_CONFIGURATION_PROJECTION_DOCUMENT_TYPE',
-    'KPI_CONFIGURATION_PROJECTION_SCHEMA_VERSION',
-    'KPI_CONFIGURATION_SOURCE_DOCUMENT_TYPE',
-    'KPI_CONFIGURATION_SOURCE_SCHEMA_VERSION',
+    'KPI_SOURCE_DOCUMENT_TYPE',
+    'KPI_SOURCE_RESOURCE_PATH',
+    'KPI_SOURCE_SCHEMA_VERSION',
     'KpiCatalog',
     'KpiConfiguration',
-    'KpiConfigurationAdministrationService',
-    'KpiConfigurationAuditActorProvider',
-    'KpiConfigurationAuditRecord',
     'KpiConfigurationBinding',
-    'KpiConfigurationIssue',
-    'KpiConfigurationProjection',
     'KpiConfigurationProjectionError',
-    'KpiConfigurationProjectionRepository',
-    'KpiConfigurationProjectionResult',
-    'KpiConfigurationProjectionWorkflow',
-    'KpiConfigurationPublicationResult',
-    'KpiConfigurationPublisher',
-    'KpiConfigurationServices',
-    'KpiConfigurationSource',
-    'KpiConfigurationSourceDocument',
     'KpiConfigurationSourceError',
-    'KpiConfigurationStatus',
-    'KpiConfigurationSummaryItem',
     'KpiConfigurationValidationError',
-    'KpiConfigurationValidationResult',
     'KpiDestination',
     'KpiDestinationCatalog',
     'KpiDestinationCatalogProvider',
-    'build_kpi_configuration_digest',
-    'build_kpi_configuration_projection_revision',
-    'compose_kpi_configuration_services',
+    'KpiDestinationCatalogSnapshot',
+    'KpiProjectionBuilder',
+    'KpiSourceCodec',
+    'KpiSourcePayload',
+    'KpiSourceRelease',
+    'KpiSourceService',
+    'create_kpi_projection_service',
+    'validate_kpi_configuration_destinations',
 ]

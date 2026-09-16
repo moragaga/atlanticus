@@ -1,3 +1,6 @@
+# El editor Web recibe el snapshot de destinos pero consume solo su catálogo semántico.
+# La identidad de Projection permanece en backend y no se convierte en estado visual privado.
+
 from __future__ import annotations
 
 from dash import dcc, html
@@ -99,9 +102,10 @@ def _load_catalog(
     context: KpiConfigurationEditorContext,
 ) -> KpiDestinationCatalog | None:
     try:
-        return context.destinations.load()
+        snapshot = context.destinations.load()
     except Exception:
         return None
+    return snapshot.catalog if snapshot is not None else None
 
 
 def _resolved_catalog(
@@ -109,7 +113,4 @@ def _resolved_catalog(
 ) -> KpiDestinationCatalog:
     if catalog is not None:
         return catalog
-    return KpiDestinationCatalog(
-        tool_projection_revision='unavailable',
-        destinations=(),
-    )
+    return KpiDestinationCatalog(destinations=())

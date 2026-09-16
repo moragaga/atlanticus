@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 from dash import Dash
@@ -10,6 +11,7 @@ from ada.web.kpis.configuration import (
     KpiConfigurationBinding,
     KpiDestination,
     KpiDestinationCatalog,
+    KpiDestinationCatalogSnapshot,
 )
 from ada.web.kpis.configuration.web import (
     KpiConfigurationEditorContext,
@@ -19,6 +21,8 @@ from ada.web.kpis.configuration.web import (
     save_binding,
 )
 from ada.web.kpis.configuration.web.ids import ADD_BUTTON_ID
+from atlanticus.web.projection.models import ProjectionTarget
+from atlanticus.web.source.models import SourceKey, SourceReleaseId, SourceReleaseRef
 
 
 class Destinations:
@@ -29,13 +33,19 @@ class Destinations:
         ]
         if with_component:
             items.append(KpiDestination(key='plant', display_name='Planta'))
-        self.catalog = KpiDestinationCatalog(
-            tool_projection_revision='tools-r1',
-            destinations=tuple(items),
+        self.snapshot = KpiDestinationCatalogSnapshot(
+            projection_target=ProjectionTarget(
+                source_key=SourceKey('ada-tool-configuration'),
+                source_release=SourceReleaseRef(
+                    release_id=SourceReleaseId('tools-r1'),
+                    published_at_utc=datetime(2026, 9, 16, tzinfo=UTC),
+                ),
+            ),
+            catalog=KpiDestinationCatalog(destinations=tuple(items)),
         )
 
     def load(self):
-        return self.catalog
+        return self.snapshot
 
 
 def _walk(component: object) -> list[Component]:
@@ -53,8 +63,8 @@ def _walk(component: object) -> list[Component]:
 
 def test_creation_requires_a_real_tool_component() -> None:
     assert creation_state(None)[0] is False
-    assert creation_state(Destinations(with_component=False).load())[0] is False
-    assert creation_state(Destinations(with_component=True).load()) == (True, None)
+    assert creation_state(Destinations(with_component=False).load().catalog)[0] is False
+    assert creation_state(Destinations(with_component=True).load().catalog) == (True, None)
 
 
 def test_editor_surface_disables_creation_without_component() -> None:
@@ -80,6 +90,8 @@ def test_editor_module_registers_callbacks() -> None:
     module.register_callbacks(app, SimpleNamespace())
 
     assert len(app.callback_map) >= 5
+
+
 def test_pattern_actions_require_real_clicks() -> None:
     from ada.web.kpis.configuration.web.callbacks import (
         _pattern_action_key,

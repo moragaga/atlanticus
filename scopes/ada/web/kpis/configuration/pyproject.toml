@@ -5,9 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ada-web-kpi-configuration"
 version = "0.3.6"
-description = "Configuración, lifecycle, proyección y editor Web de KPI para ADA"
+description = "Configuración, Source, Projection y editor Web de KPI para ADA"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "atlanticus-web-projection==0.1.0",
+    "atlanticus-web-source==0.1.0",
+]
 
 [project.optional-dependencies]
 web = [
@@ -30,6 +34,8 @@ dev = [
 [tool.uv.sources]
 ada-web-configuration = { path = "../../configuration/core", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
+atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
+atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -72,5 +78,7 @@ pythonpath = [
     "src",
     "../../configuration/core/src",
     "../../../../../web/framework/core/src",
+    "../../../../../web/capabilities/projection/core/src",
+    "../../../../../web/capabilities/source/core/src",
 ]
 addopts = "-q --import-mode=importlib"

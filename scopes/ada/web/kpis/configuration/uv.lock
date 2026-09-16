@@ -27,6 +27,10 @@ dev = [
 name = "ada-web-kpi-configuration"
 version = "0.3.6"
 source = { editable = "." }
+dependencies = [
+    { name = "atlanticus-web-projection" },
+    { name = "atlanticus-web-source" },
+]
 
 [package.optional-dependencies]
 web = [
@@ -50,6 +54,8 @@ dev = [
 requires-dist = [
     { name = "ada-web-configuration", marker = "extra == 'web'", editable = "../../configuration/core" },
     { name = "atlanticus-web", marker = "extra == 'web'", editable = "../../../../../web/framework/core" },
+    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
+    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
     { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
     { name = "dash-bootstrap-components", marker = "extra == 'web'", specifier = "==2.0.4" },
 ]
@@ -118,6 +124,22 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "flask", specifier = "==3.1.3" }]
+
+[[package]]
+name = "atlanticus-web-projection"
+version = "0.1.0"
+source = { editable = "../../../../../web/capabilities/projection/core" }
+dependencies = [
+    { name = "atlanticus-web-source" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" }]
+
+[[package]]
+name = "atlanticus-web-source"
+version = "0.1.0"
+source = { editable = "../../../../../web/capabilities/source/core" }
 
 [[package]]
 name = "blinker"

@@ -1,10 +1,15 @@
+# Esta frontera desacopla KPI Configuration de la implementación concreta de Tools.
+# El snapshot transporta el ProjectionTarget exacto de Tools junto con el catálogo semántico.
+
 from __future__ import annotations
 
-# Modela destinos derivados de la proyección de Tool.
 from dataclasses import dataclass
+from typing import Protocol
 
 from ada.web.kpis.configuration.errors import KpiConfigurationValidationError
 from ada.web.kpis.configuration.identity import require_destination_key
+from ada.web.kpis.configuration.models import KpiConfiguration
+from atlanticus.web.projection.models import ProjectionTarget
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,17 +28,9 @@ class KpiDestination:
 
 @dataclass(frozen=True, slots=True)
 class KpiDestinationCatalog:
-    tool_projection_revision: str
     destinations: tuple[KpiDestination, ...]
 
     def __post_init__(self) -> None:
-        revision = (
-            self.tool_projection_revision.strip()
-            if isinstance(self.tool_projection_revision, str)
-            else ''
-        )
-        if not revision:
-            raise KpiConfigurationValidationError('Tool projection revision must not be empty')
         destinations = tuple(self.destinations)
         if not all(isinstance(item, KpiDestination) for item in destinations):
             raise KpiConfigurationValidationError(
@@ -42,7 +39,6 @@ class KpiDestinationCatalog:
         keys = tuple(destination.key for destination in destinations)
         if len(keys) != len(set(keys)):
             raise KpiConfigurationValidationError('KPI destination keys must be unique')
-        object.__setattr__(self, 'tool_projection_revision', revision)
         object.__setattr__(self, 'destinations', destinations)
 
     @property
@@ -55,3 +51,36 @@ class KpiDestinationCatalog:
             (destination for destination in self.destinations if destination.key == normalized),
             None,
         )
+
+
+@dataclass(frozen=True, slots=True)
+class KpiDestinationCatalogSnapshot:
+    projection_target: ProjectionTarget
+    catalog: KpiDestinationCatalog
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.projection_target, ProjectionTarget):
+            raise KpiConfigurationValidationError('Tool projection target is invalid')
+        if not isinstance(self.catalog, KpiDestinationCatalog):
+            raise KpiConfigurationValidationError('KPI destination catalog is invalid')
+
+
+class KpiDestinationCatalogProvider(Protocol):
+    def load(self) -> KpiDestinationCatalogSnapshot | None: ...
+
+
+def validate_kpi_configuration_destinations(
+    configuration: KpiConfiguration,
+    catalog: KpiDestinationCatalog,
+) -> None:
+    if not isinstance(configuration, KpiConfiguration):
+        raise KpiConfigurationValidationError('KPI configuration is invalid')
+    if not isinstance(catalog, KpiDestinationCatalog):
+        raise KpiConfigurationValidationError('KPI destination catalog is invalid')
+    available = catalog.keys
+    for binding in configuration.bindings:
+        for destination_key in binding.destination_keys:
+            if destination_key not in available:
+                raise KpiConfigurationValidationError(
+                    f'KPI destination {destination_key!r} is not available'
+                )

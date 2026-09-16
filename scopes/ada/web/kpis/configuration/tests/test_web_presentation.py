@@ -40,7 +40,6 @@ def _walk(component: object) -> list[Component]:
 
 def _catalog() -> KpiDestinationCatalog:
     return KpiDestinationCatalog(
-        tool_projection_revision='tool-1',
         destinations=(
             KpiDestination(key='plant', display_name='Plant'),
             KpiDestination(key='crusher', display_name='Crusher'),
@@ -268,6 +267,7 @@ def test_editor_hours_are_disabled_until_timeseries_is_enabled() -> None:
         getattr(node, 'id', None) == 'ada-kpi-configuration--editor-close'
         for node in _walk(modal)
     )
+
 
 def test_modal_uses_latest_row_and_series_hours_row() -> None:
     modal = build_kpi_configuration_editor_modal(destination_catalog=_catalog())

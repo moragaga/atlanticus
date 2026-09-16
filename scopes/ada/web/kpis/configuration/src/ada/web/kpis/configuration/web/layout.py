@@ -99,9 +99,10 @@ def _load_catalog(
     context: KpiConfigurationEditorContext,
 ) -> KpiDestinationCatalog | None:
     try:
-        return context.destinations.load()
+        snapshot = context.destinations.load()
     except Exception:
         return None
+    return snapshot.catalog if snapshot is not None else None
 
 
 def _resolved_catalog(
@@ -109,7 +110,4 @@ def _resolved_catalog(
 ) -> KpiDestinationCatalog:
     if catalog is not None:
         return catalog
-    return KpiDestinationCatalog(
-        tool_projection_revision='unavailable',
-        destinations=(),
-    )
+    return KpiDestinationCatalog(destinations=())
