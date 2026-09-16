@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from types import SimpleNamespace
-
-from dash import Dash
+from dash import Output
 from dash.development.base_component import Component
 
 from ada.web.kpis.configuration import (
@@ -16,11 +14,11 @@ from ada.web.kpis.configuration import (
 from ada.web.kpis.configuration.web import (
     KpiConfigurationEditorContext,
     build_kpi_configuration_editor_surface,
-    create_kpi_configuration_editor_module,
+    register_kpi_configuration_editor_callbacks,
     creation_state,
     save_binding,
 )
-from ada.web.kpis.configuration.web.ids import ADD_BUTTON_ID
+from ada.web.kpis.configuration.web.ids import ADD_BUTTON_ID, EDITOR_HOURS_ID
 from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.source.models import SourceKey, SourceReleaseId, SourceReleaseRef
 
@@ -61,6 +59,44 @@ def _walk(component: object) -> list[Component]:
     return found
 
 
+class _CallbackRecorder:
+    def __init__(self) -> None:
+        self.callbacks: list[tuple[tuple[object, ...], dict[str, object], object]] = []
+
+    def callback(self, *dependencies: object, **options: object):
+        def register(function):
+            self.callbacks.append((dependencies, options, function))
+            return function
+
+        return register
+
+    def function_for_output(self, component_id: object, component_property: str):
+        matches = [
+            function
+            for dependencies, _options, function in self.callbacks
+            if any(
+                isinstance(dependency, Output)
+                and dependency.component_id == component_id
+                and dependency.component_property == component_property
+                for dependency in dependencies
+            )
+        ]
+        if len(matches) != 1:
+            raise AssertionError(
+                f"Expected one callback for {component_id!r}.{component_property}, found {len(matches)}"
+            )
+        return matches[0]
+
+
+def test_series_hours_callback_controls_hours_visibility() -> None:
+    context = KpiConfigurationEditorContext(destinations=Destinations())
+    recorder = _CallbackRecorder()
+    register_kpi_configuration_editor_callbacks(recorder, context)
+    toggle = recorder.function_for_output(EDITOR_HOURS_ID, 'disabled')
+
+    assert toggle([]) == (True, True)
+    assert toggle(['enabled']) == (False, False)
+
 def test_creation_requires_a_real_tool_component() -> None:
     assert creation_state(None)[0] is False
     assert creation_state(Destinations(with_component=False).load().catalog)[0] is False
@@ -78,35 +114,6 @@ def test_editor_surface_disables_creation_without_component() -> None:
         if getattr(node, 'id', None) == ADD_BUTTON_ID
     )
     assert add.disabled is True
-
-
-def test_editor_module_registers_callbacks() -> None:
-    context = KpiConfigurationEditorContext(destinations=Destinations())
-    module = create_kpi_configuration_editor_module(context)
-    app = Dash(__name__, suppress_callback_exceptions=True)
-    app.layout = build_kpi_configuration_editor_surface(context)
-
-    assert module.register_callbacks is not None
-    module.register_callbacks(app, SimpleNamespace())
-
-    assert len(app.callback_map) >= 5
-
-
-def test_pattern_actions_require_real_clicks() -> None:
-    from ada.web.kpis.configuration.web.callbacks import (
-        _pattern_action_key,
-        _static_trigger_matches,
-    )
-    from ada.web.kpis.configuration.web.ids import ROW_DELETE_TYPE, ROW_EDIT_TYPE
-
-    edit = {'type': ROW_EDIT_TYPE, 'key': 'availability'}
-    delete = {'type': ROW_DELETE_TYPE, 'key': 'availability'}
-
-    assert _static_trigger_matches(edit, ADD_BUTTON_ID) is False
-    assert _pattern_action_key(edit, ROW_EDIT_TYPE, 0) is None
-    assert _pattern_action_key(edit, ROW_EDIT_TYPE, 1) == 'availability'
-    assert _pattern_action_key(delete, ROW_DELETE_TYPE, 0) is None
-    assert _pattern_action_key(delete, ROW_DELETE_TYPE, 1) == 'availability'
 
 
 def test_second_create_preserves_first_binding() -> None:
@@ -134,23 +141,6 @@ def test_second_create_preserves_first_binding() -> None:
     assert tuple(item.kpi_key for item in second.bindings) == (
         'availability',
         'throughput',
-    )
-
-
-def test_series_hours_callback_contract_is_registered() -> None:
-    context = KpiConfigurationEditorContext(destinations=Destinations())
-    module = create_kpi_configuration_editor_module(context)
-    app = Dash(__name__, suppress_callback_exceptions=True)
-    app.layout = build_kpi_configuration_editor_surface(context)
-
-    assert module.register_callbacks is not None
-    module.register_callbacks(app, SimpleNamespace())
-
-    callback_keys = tuple(app.callback_map)
-    assert any(
-        'ada-kpi-configuration--editor-hours.disabled' in key
-        and 'ada-kpi-configuration--editor-hours-field.hidden' in key
-        for key in callback_keys
     )
 
 

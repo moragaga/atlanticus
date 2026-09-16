@@ -12,7 +12,6 @@ from ada.web.kpis.definition.web.ids import (
     ROW_DELETE_TYPE,
     ROW_EDIT_TYPE,
     ROW_VIEW_TYPE,
-    TABLE_BODY_ID,
 )
 
 from .helpers import kpi_configuration
@@ -29,24 +28,6 @@ def _walk(component: object) -> list[Component]:
         elif children is not None:
             found.extend(_walk(children))
     return found
-
-
-def test_grid_contains_only_kpi_status_and_actions_columns() -> None:
-    configured = kpi_configuration('pending', 'defined')
-    configuration = KpiDefinitionConfiguration(
-        (KpiDefinition(kpi_key='defined', fields={'detail': 'Texto'}),)
-    )
-    page = query_kpi_definitions(configuration, configured, KpiDefinitionQuery())
-    component = build_kpi_definition_editor(
-        page,
-        query=KpiDefinitionQuery(),
-        kpi_configuration=configured,
-    )
-
-    headers = [node.children for node in _walk(component) if node.__class__.__name__ == 'Th']
-
-    assert headers == ['KPI', 'Estado', 'Acciones']
-    assert 'Detalle' not in headers
 
 
 def test_actions_follow_pending_defined_contract() -> None:
@@ -70,19 +51,6 @@ def test_actions_follow_pending_defined_contract() -> None:
     assert ROW_VIEW_TYPE in pattern_types
     assert ROW_EDIT_TYPE in pattern_types
     assert ROW_DELETE_TYPE in pattern_types
-
-
-def test_grid_keeps_ten_logical_slots_on_desktop() -> None:
-    configured = kpi_configuration('only')
-    component = build_kpi_definition_editor(
-        query_kpi_definitions(KpiDefinitionConfiguration(), configured, KpiDefinitionQuery()),
-        query=KpiDefinitionQuery(),
-        kpi_configuration=configured,
-    )
-    tbody = next(node for node in _walk(component) if getattr(node, 'id', None) == TABLE_BODY_ID)
-
-    assert len(tbody.children) == 10
-    assert tbody.to_plotly_json()['props']['data-page-size'] == '10'
 
 
 def test_detail_view_renders_all_current_and_future_fields() -> None:

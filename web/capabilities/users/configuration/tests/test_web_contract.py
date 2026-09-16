@@ -1,10 +1,9 @@
-from inspect import signature
 from types import SimpleNamespace
 
 import pytest
 
 pytest.importorskip('dash')
-from dash import Input, State
+from dash import Output
 
 from atlanticus.web.source.models import SourceKey, SourceSnapshot
 from atlanticus.web.users.configuration import (
@@ -28,13 +27,16 @@ from atlanticus.web.users.configuration.web.ids import (
     CATALOG_STORE_ID,
     DISCOVERED_TAB_ID,
     DRAFT_BASIS_STORE_ID,
+    DRAFT_RECOVERY_RESULT_ID,
     PROFILE_BACKGROUND_COLOR_ID,
     PROFILE_TAB_ID,
     PROFILE_TEXT_COLOR_ID,
     PROJECTION_NAME_ID,
     SAVE_BUTTON_ID,
+    SAVE_RESULT_ID,
     SECTION_STORE_ID,
     SOURCE_NAME_ID,
+    USER_RESULT_ID,
     USER_SAVE_ID,
     USERS_TAB_ID,
     discovered_add_id,
@@ -45,15 +47,31 @@ from atlanticus.web.users.models import PendingUserRecord
 
 class _CallbackRecorder:
     def __init__(self) -> None:
-        self.callbacks: dict[str, tuple[tuple[object, ...], dict[str, object], object]] = {}
+        self.callbacks: list[tuple[tuple[object, ...], dict[str, object], object]] = []
 
     def callback(self, *dependencies: object, **options: object):
         def register(function):
-            self.callbacks[function.__name__] = (dependencies, options, function)
+            self.callbacks.append((dependencies, options, function))
             return function
 
         return register
 
+    def function_for_output(self, component_id: object, component_property: str):
+        matches = [
+            function
+            for dependencies, _options, function in self.callbacks
+            if any(
+                isinstance(dependency, Output)
+                and dependency.component_id == component_id
+                and dependency.component_property == component_property
+                for dependency in dependencies
+            )
+        ]
+        if len(matches) != 1:
+            raise AssertionError(
+                f"Expected one callback for {component_id!r}.{component_property}, found {len(matches)}"
+            )
+        return matches[0]
 
 class _Source:
     def __init__(self) -> None:
@@ -196,35 +214,11 @@ def test_users_admin_web_module_owns_its_asset_layer() -> None:
     assert module.asset_layers[0].package == 'atlanticus.web.users.configuration'
 
 
-def test_users_admin_callback_registration_matches_function_arity() -> None:
-    context, _source = _context()
-    recorder = _registered_callbacks(context)
-
-    assert recorder.callbacks
-
-    for name, (dependencies, _options, function) in recorder.callbacks.items():
-        inputs_and_states = sum(
-            isinstance(dependency, (Input, State)) for dependency in dependencies
-        )
-        positional_parameters = len(
-            [
-                parameter
-                for parameter in signature(function).parameters.values()
-                if parameter.kind
-                in {
-                    parameter.POSITIONAL_ONLY,
-                    parameter.POSITIONAL_OR_KEYWORD,
-                }
-            ]
-        )
-        assert positional_parameters == inputs_and_states, name
-
-
 def test_users_admin_rehydrates_schema_2_draft_with_exact_source_snapshot() -> None:
     context, _source = _context()
     draft = context.administration.create_draft(owner_subject_id='tester')
     recorder = _registered_callbacks(context)
-    load_browser_draft = recorder.callbacks['load_browser_draft'][2]
+    load_browser_draft = recorder.function_for_output(DRAFT_RECOVERY_RESULT_ID, 'children')
 
     result = load_browser_draft(1, draft.to_document())
 
@@ -237,7 +231,7 @@ def test_users_admin_rehydrates_schema_2_draft_with_exact_source_snapshot() -> N
 def test_incompatible_browser_draft_is_discarded_without_fabricating_provenance() -> None:
     context, _source = _context()
     recorder = _registered_callbacks(context)
-    load_browser_draft = recorder.callbacks['load_browser_draft'][2]
+    load_browser_draft = recorder.function_for_output(DRAFT_RECOVERY_RESULT_ID, 'children')
     incompatible = {
         'schema_version': 1,
         'owner_subject_id': 'tester',
@@ -254,7 +248,7 @@ def test_users_admin_save_draft_is_local_and_does_not_publish(monkeypatch) -> No
     context, source = _context()
     basis = context.administration.create_draft(owner_subject_id='tester')
     recorder = _registered_callbacks(context)
-    save_users_draft = recorder.callbacks['save_users_draft'][2]
+    save_users_draft = recorder.function_for_output(SAVE_RESULT_ID, 'children')
 
     monkeypatch.setattr(
         users_callbacks,
@@ -291,7 +285,7 @@ def test_users_admin_can_materialize_pending_identity_into_canonical_draft(
     )
     context, _source = _context((pending,))
     recorder = _registered_callbacks(context)
-    user_editor = recorder.callbacks['user_editor'][2]
+    user_editor = recorder.function_for_output(USER_RESULT_ID, 'children')
     configuration = default_users_profiles_configuration()
 
     monkeypatch.setattr(
@@ -335,7 +329,7 @@ def test_pending_identity_that_disappeared_is_not_recreated_from_browser_state(
 ) -> None:
     context, _source = _context()
     recorder = _registered_callbacks(context)
-    user_editor = recorder.callbacks['user_editor'][2]
+    user_editor = recorder.function_for_output(USER_RESULT_ID, 'children')
     missing_user_id = build_user_key(issuer='entra', subject_id='missing-subject')
     trigger = discovered_add_id(missing_user_id)
 

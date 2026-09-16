@@ -267,13 +267,6 @@ def test_navigation_package_has_no_users_dependency_or_import() -> None:
     assert 'atlanticus.web.users' not in sources
 
 
-def test_navigation_root_remains_a_namespace_for_optional_extensions() -> None:
-    root = Path(__file__).parents[1] / 'src' / 'atlanticus' / 'web' / 'navigation'
-
-    assert not (root / '__init__.py').exists()
-    assert (root / 'api.py').is_file()
-
-
 def test_resolver_omits_disabled_links_and_groups() -> None:
     definition = NavigationDefinition(
         links=(

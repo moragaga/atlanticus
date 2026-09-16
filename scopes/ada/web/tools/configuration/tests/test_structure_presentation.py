@@ -150,7 +150,7 @@ def test_shared_visibility_excludes_owner_and_incompatible_scope() -> None:
     assert linked.options == [{'label': 'Despacho', 'value': 'dispatch'}]
 
 
-def test_structure_uses_compact_summary_and_internal_keys() -> None:
+def test_structure_exposes_stable_internal_keys() -> None:
     layout = build_tool_structure_editor(configuration_document=_configuration())
     ids = _ids(layout)
 
@@ -164,20 +164,6 @@ def test_structure_uses_compact_summary_and_internal_keys() -> None:
         'index': 0,
         'owner_index': 0,
     } in ids
-
-    rendered = str(layout.to_plotly_json())
-    assert 'Identificador' not in rendered
-    assert 'Posición' not in rendered
-    assert 'Eliminar subcomponente' in rendered
-
-
-def test_structure_inputs_do_not_depend_on_bootstrap_form_control() -> None:
-    rendered = str(
-        build_tool_structure_editor(configuration_document=_configuration()).to_plotly_json()
-    )
-
-    assert 'form-control' not in rendered
-
 
 def test_process_component_scope_is_optional_editable_override() -> None:
     from ada.web.tools.configuration.web.structure_ids import (

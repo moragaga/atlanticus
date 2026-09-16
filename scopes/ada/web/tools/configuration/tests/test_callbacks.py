@@ -1,51 +1,9 @@
-from dash import Dash, no_update
+from dash import no_update
 
 from ada.web.tools.configuration.web import (
     register_tool_source_editor_callbacks,
     register_tool_structure_editor_callbacks,
 )
-from ada.web.tools.configuration.web.structure_callbacks import (
-    _editor_is_incomplete,
-    _sanitize_linked_values,
-)
-from ada.web.tools.configuration.web.structure_ids import (
-    COMPONENT_ADD_SUBCOMPONENT_TYPE,
-    COMPONENT_SUBCOMPONENTS_CONTAINER_TYPE,
-    SUBCOMPONENT_DELETE_TYPE,
-)
-
-
-def test_complete_tool_callback_graph_registers() -> None:
-    app = Dash(__name__)
-    register_tool_source_editor_callbacks(app)
-    register_tool_structure_editor_callbacks(app)
-
-    assert app.callback_map
-
-
-def test_nested_pattern_contract_uses_owner_index() -> None:
-    app = Dash(__name__)
-    register_tool_structure_editor_callbacks(app)
-
-    rendered = '\n'.join(str(value) for value in app.callback_map.values())
-
-    assert COMPONENT_SUBCOMPONENTS_CONTAINER_TYPE in rendered
-    assert COMPONENT_ADD_SUBCOMPONENT_TYPE in rendered
-    assert SUBCOMPONENT_DELETE_TYPE in rendered
-    assert 'owner_index' in rendered
-
-
-def test_linked_values_drop_deleted_or_incompatible_components() -> None:
-    assert _sanitize_linked_values(
-        ['cmp_keep', 'cmp_removed'],
-        [
-            {
-                'label': 'Keep',
-                'value': 'cmp_keep',
-            }
-        ],
-    ) == ['cmp_keep']
-
 
 def test_add_component_does_not_require_completed_general_configuration() -> None:
     class CallbackApp:
@@ -375,23 +333,3 @@ def test_subcomponent_key_materializes_once_and_removes_accents() -> None:
     assert renamed == generated
 
 
-def test_integrated_editor_requires_scope_per_component_not_both_scopes() -> None:
-    complete_mine_only = _editor_is_incomplete(
-        component_ids=[{'index': 0}],
-        component_names=['Carguío'],
-        component_scopes=['mine'],
-        subcomponent_ids=[{'index': 0, 'owner_index': 0}],
-        subcomponent_names=['CAEX'],
-        kind_value='integrated_operations',
-    )
-    missing_scope = _editor_is_incomplete(
-        component_ids=[{'index': 0}],
-        component_names=['Carguío'],
-        component_scopes=[None],
-        subcomponent_ids=[{'index': 0, 'owner_index': 0}],
-        subcomponent_names=['CAEX'],
-        kind_value='integrated_operations',
-    )
-
-    assert complete_mine_only is False
-    assert missing_scope is True

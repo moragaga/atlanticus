@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 pytest.importorskip('dash')
+from dash import Input, Output
 
 from atlanticus.web.navigation.configuration.editor import build_initial_catalog
 from atlanticus.web.navigation.configuration.exchange import build_navigation_configuration_digest
@@ -11,21 +12,53 @@ from atlanticus.web.navigation.configuration.web import callbacks as navigation_
 from atlanticus.web.navigation.configuration.web.callbacks import (
     register_navigation_admin_callbacks,
 )
-from atlanticus.web.navigation.configuration.web.ids import SAVE_BUTTON_ID
+from atlanticus.web.navigation.configuration.web.ids import (
+    CATALOG_STORE_ID,
+    MOUNT_STORE_ID,
+    SAVE_BUTTON_ID,
+    SAVE_RESULT_ID,
+)
 from atlanticus.web.navigation.configuration.web.models import NavigationAdminWebContext
 
 
 class _CallbackRecorder:
     def __init__(self) -> None:
-        self.callbacks: dict[str, tuple[tuple[object, ...], dict[str, object], object]] = {}
+        self.callbacks: list[tuple[tuple[object, ...], dict[str, object], object]] = []
 
     def callback(self, *dependencies: object, **options: object):
         def register(function):
-            self.callbacks[function.__name__] = (dependencies, options, function)
+            self.callbacks.append((dependencies, options, function))
             return function
 
         return register
 
+    def function_for_output(
+        self,
+        component_id: object,
+        component_property: str,
+        *,
+        input_component_id: object | None = None,
+    ):
+        matches = []
+        for dependencies, _options, function in self.callbacks:
+            has_output = any(
+                isinstance(dependency, Output)
+                and dependency.component_id == component_id
+                and dependency.component_property == component_property
+                for dependency in dependencies
+            )
+            has_input = input_component_id is None or any(
+                isinstance(dependency, Input)
+                and dependency.component_id == input_component_id
+                for dependency in dependencies
+            )
+            if has_output and has_input:
+                matches.append(function)
+        if len(matches) != 1:
+            raise AssertionError(
+                f"Expected one callback for {component_id!r}.{component_property}, found {len(matches)}"
+            )
+        return matches[0]
 
 class _WorkspaceBinding:
     def __init__(self) -> None:
@@ -71,23 +104,30 @@ def _callbacks(context: NavigationAdminWebContext) -> _CallbackRecorder:
 
 def test_navigation_admin_rehydrates_workspace_payload() -> None:
     binding = _WorkspaceBinding()
+    context = _context(binding)
     catalog = build_initial_catalog()
-    load_browser_draft = _callbacks(_context(binding)).callbacks['load_browser_draft'][2]
+    load_browser_draft = _callbacks(context).function_for_output(
+        CATALOG_STORE_ID,
+        'data',
+        input_component_id=MOUNT_STORE_ID,
+    )
 
     catalog_document = load_browser_draft(1, {'payload': catalog.to_document()})
 
     assert catalog_document == catalog.to_document()
 
-
 def test_navigation_admin_tracks_editor_revision_from_catalog() -> None:
     binding = _WorkspaceBinding()
+    context = _context(binding)
     catalog = build_initial_catalog()
-    track_editor_revision = _callbacks(_context(binding)).callbacks['track_editor_revision'][2]
+    track_editor_revision = _callbacks(context).function_for_output(
+        context.editor_revision_store_id,
+        'data',
+    )
 
     revision = track_editor_revision(catalog.to_document())
 
     assert revision == build_navigation_configuration_digest(catalog)
-
 
 def test_navigation_admin_save_delegates_workspace_persistence_without_remote_side_effects(
     monkeypatch,
@@ -95,7 +135,7 @@ def test_navigation_admin_save_delegates_workspace_persistence_without_remote_si
     binding = _WorkspaceBinding()
     context = _context(binding)
     catalog = build_initial_catalog()
-    save_navigation_draft = _callbacks(context).callbacks['save_navigation_draft'][2]
+    save_navigation_draft = _callbacks(context).function_for_output(SAVE_RESULT_ID, 'children')
     current = {'schema_version': 2, 'payload': catalog.to_document()}
 
     monkeypatch.setattr(
@@ -114,3 +154,4 @@ def test_navigation_admin_save_delegates_workspace_persistence_without_remote_si
     assert saved_document == draft_document
     assert result is None
     assert binding.saved == [(current, catalog.to_document())]
+

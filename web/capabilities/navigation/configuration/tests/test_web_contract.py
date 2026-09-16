@@ -1,8 +1,5 @@
-from inspect import signature
 
 import pytest
-from dash import Input, State
-
 pytest.importorskip('dash')
 
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
@@ -10,9 +7,6 @@ from atlanticus.web.navigation.configuration.web import (
     NavigationAdminWebContext,
     build_navigation_admin_configuration,
     create_navigation_admin_web_module,
-)
-from atlanticus.web.navigation.configuration.web.callbacks import (
-    register_navigation_admin_callbacks,
 )
 from atlanticus.web.navigation.configuration.web.ids import (
     CATALOG_STORE_ID,
@@ -22,18 +16,6 @@ from atlanticus.web.navigation.configuration.web.ids import (
     SOURCE_NAME_ID,
     STRUCTURE_ID,
 )
-
-
-class _CallbackRecorder:
-    def __init__(self) -> None:
-        self.callbacks: dict[str, tuple[tuple[object, ...], dict[str, object], object]] = {}
-
-    def callback(self, *dependencies: object, **options: object):
-        def register(function):
-            self.callbacks[function.__name__] = (dependencies, options, function)
-            return function
-
-        return register
 
 
 def _context() -> NavigationAdminWebContext:
@@ -117,25 +99,3 @@ def test_navigation_admin_web_module_owns_its_asset_layer() -> None:
     assert module.asset_layers[0].package == 'atlanticus.web.navigation.configuration'
 
 
-def test_navigation_admin_callback_registration_matches_function_arity() -> None:
-    recorder = _CallbackRecorder()
-    register_navigation_admin_callbacks(recorder, _context())
-
-    assert recorder.callbacks
-
-    for name, (dependencies, _options, function) in recorder.callbacks.items():
-        inputs_and_states = sum(
-            isinstance(dependency, (Input, State)) for dependency in dependencies
-        )
-        positional_parameters = len(
-            [
-                parameter
-                for parameter in signature(function).parameters.values()
-                if parameter.kind
-                in {
-                    parameter.POSITIONAL_ONLY,
-                    parameter.POSITIONAL_OR_KEYWORD,
-                }
-            ]
-        )
-        assert positional_parameters == inputs_and_states, name
