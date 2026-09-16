@@ -2,14 +2,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from atlanticus.web.profiles.errors import ProfilesDefinitionError
-from atlanticus.web.profiles.models import ProfileDefinition, normalize_profile_color
+from atlanticus.web.users.authority import (
+    GUEST_AUTHORITY_KEY,
+    GUEST_BACKGROUND_COLOR,
+    GUEST_TEXT_COLOR,
+    LOCAL_AUTHORITY_KEY,
+    has_full_access,
+    normalize_authority_key,
+    normalize_user_color,
+)
 from atlanticus.web.users.errors import UsersDefinitionError
 from atlanticus.web.users.identity import build_user_key
-
-_GUEST_PROFILE_KEY = 'guest'
-_PENDING_USER_BACKGROUND_COLOR = '#FF5722'
-_PENDING_USER_TEXT_COLOR = '#FFFFFF'
 
 
 def _required_text(value: str | None, *, label: str) -> str:
@@ -30,13 +33,6 @@ def _optional_text(value: str | None, *, casefold: bool = False) -> str | None:
     return normalized.casefold() if casefold else normalized
 
 
-def _user_profile_color(value: str) -> str:
-    try:
-        return normalize_profile_color(value)
-    except ProfilesDefinitionError as error:
-        raise UsersDefinitionError(str(error)) from error
-
-
 @dataclass(frozen=True, slots=True)
 class EffectiveUser:
     user_id: str
@@ -46,7 +42,7 @@ class EffectiveUser:
     enabled: bool
     pending: bool
     avatar_text: str
-    profile: ProfileDefinition | None
+    authority_key: str
     avatar_background_color: str | None = None
     avatar_text_color: str | None = None
     is_local: bool = False
@@ -60,26 +56,42 @@ class EffectiveUser:
         if self.email is not None:
             email = self.email.strip().casefold()
             object.__setattr__(self, 'email', email or None)
+        authority_key = normalize_authority_key(self.authority_key)
+        object.__setattr__(self, 'authority_key', authority_key)
         if self.pending:
             if not self.enabled:
                 raise UsersDefinitionError('Pending user must be enabled')
-            if self.profile is not None:
-                raise UsersDefinitionError('Pending user must not have a profile')
+            if authority_key != GUEST_AUTHORITY_KEY:
+                raise UsersDefinitionError('Pending user must use guest authority')
             if self.is_local:
                 raise UsersDefinitionError('Pending user cannot be local')
             if self.avatar_background_color is not None or self.avatar_text_color is not None:
                 raise UsersDefinitionError('Pending user avatar colors are fixed')
-            background = _PENDING_USER_BACKGROUND_COLOR
-            text = _PENDING_USER_TEXT_COLOR
-        else:
-            if self.profile is None:
-                raise UsersDefinitionError('Resolved user must have a profile')
-            if self.profile.key == _GUEST_PROFILE_KEY:
-                raise UsersDefinitionError('Resolved user cannot use guest profile key')
-            background = self.avatar_background_color or self.profile.background_color
-            text = self.avatar_text_color or self.profile.text_color
-        object.__setattr__(self, 'avatar_background_color', _user_profile_color(background))
-        object.__setattr__(self, 'avatar_text_color', _user_profile_color(text))
+            object.__setattr__(self, 'avatar_background_color', GUEST_BACKGROUND_COLOR)
+            object.__setattr__(self, 'avatar_text_color', GUEST_TEXT_COLOR)
+            return
+        if authority_key == GUEST_AUTHORITY_KEY:
+            raise UsersDefinitionError('Resolved user cannot use guest authority')
+        if self.is_local and authority_key != LOCAL_AUTHORITY_KEY:
+            raise UsersDefinitionError('Local user must use local authority')
+        if not self.is_local and authority_key == LOCAL_AUTHORITY_KEY:
+            raise UsersDefinitionError('Managed user cannot use local authority')
+        if self.avatar_background_color is not None:
+            object.__setattr__(
+                self,
+                'avatar_background_color',
+                normalize_user_color(self.avatar_background_color),
+            )
+        if self.avatar_text_color is not None:
+            object.__setattr__(
+                self,
+                'avatar_text_color',
+                normalize_user_color(self.avatar_text_color),
+            )
+
+    @property
+    def has_full_access(self) -> bool:
+        return has_full_access(self.authority_key)
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,7 +125,7 @@ class PendingUserRecord:
             enabled=True,
             pending=True,
             avatar_text=build_avatar_text(display_name),
-            profile=None,
+            authority_key=GUEST_AUTHORITY_KEY,
             avatar_background_color=None,
             avatar_text_color=None,
             is_local=False,
@@ -128,7 +140,7 @@ class ResolvedUserRecord:
     display_name: str
     email: str | None
     enabled: bool
-    profile_key: str
+    authority_key: str
     avatar_background_color: str | None = None
     avatar_text_color: str | None = None
     is_local: bool = False
@@ -143,33 +155,33 @@ class ResolvedUserRecord:
             raise UsersDefinitionError('Resolved user id must match authenticated identity')
         if not isinstance(self.enabled, bool):
             raise UsersDefinitionError('Resolved user enabled flag must be boolean')
-        profile_key = self.profile_key.strip().casefold()
-        if not profile_key:
-            raise UsersDefinitionError('Resolved user profile key must not be empty')
-        if profile_key == _GUEST_PROFILE_KEY:
-            raise UsersDefinitionError('Resolved runtime user cannot use guest profile key')
+        authority_key = normalize_authority_key(self.authority_key)
+        if authority_key == GUEST_AUTHORITY_KEY:
+            raise UsersDefinitionError('Resolved runtime user cannot use guest authority')
+        if self.is_local and authority_key != LOCAL_AUTHORITY_KEY:
+            raise UsersDefinitionError('Local runtime user must use local authority')
+        if not self.is_local and authority_key == LOCAL_AUTHORITY_KEY:
+            raise UsersDefinitionError('Managed runtime user cannot use local authority')
         object.__setattr__(self, 'user_id', user_id)
         object.__setattr__(self, 'issuer', issuer)
         object.__setattr__(self, 'subject_id', subject_id)
         object.__setattr__(self, 'display_name', display_name)
         object.__setattr__(self, 'email', _optional_text(self.email, casefold=True))
-        object.__setattr__(self, 'profile_key', profile_key)
+        object.__setattr__(self, 'authority_key', authority_key)
         if self.avatar_background_color is not None:
             object.__setattr__(
                 self,
                 'avatar_background_color',
-                _user_profile_color(self.avatar_background_color),
+                normalize_user_color(self.avatar_background_color),
             )
         if self.avatar_text_color is not None:
             object.__setattr__(
                 self,
                 'avatar_text_color',
-                _user_profile_color(self.avatar_text_color),
+                normalize_user_color(self.avatar_text_color),
             )
 
-    def to_effective_user(self, *, profile: ProfileDefinition) -> EffectiveUser:
-        if profile.key != self.profile_key:
-            raise UsersDefinitionError('Resolved profile does not match user profile key')
+    def to_effective_user(self) -> EffectiveUser:
         return EffectiveUser(
             user_id=self.user_id,
             subject_id=self.subject_id,
@@ -178,7 +190,7 @@ class ResolvedUserRecord:
             enabled=self.enabled,
             pending=False,
             avatar_text=build_avatar_text(self.display_name),
-            profile=profile,
+            authority_key=self.authority_key,
             avatar_background_color=self.avatar_background_color,
             avatar_text_color=self.avatar_text_color,
             is_local=self.is_local,

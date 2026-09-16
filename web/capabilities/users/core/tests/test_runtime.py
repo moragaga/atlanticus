@@ -2,7 +2,7 @@ from flask import Flask
 
 from atlanticus.web.identity.access import AccessDecision, AccessSnapshot, AccessStatus
 from atlanticus.web.identity.models import AuthenticatedIdentity
-from atlanticus.web.profiles.models import ProfileDefinition
+from atlanticus.web.users.authority import BASIC_AUTHORITY_KEY
 from atlanticus.web.users.identity import build_user_key
 from atlanticus.web.users.models import EffectiveUser, PendingUserRecord
 from atlanticus.web.users.runtime import UsersRuntime, UsersSnapshot
@@ -29,12 +29,9 @@ def _managed_user() -> EffectiveUser:
         enabled=True,
         pending=False,
         avatar_text='JD',
-        profile=ProfileDefinition(
-            key='operator',
-            label='Operador',
-            background_color='#112233',
-            text_color='#FFFFFF',
-        ),
+        authority_key=BASIC_AUTHORITY_KEY,
+        avatar_background_color='#112233',
+        avatar_text_color='#FFFFFF',
     )
 
 
@@ -58,23 +55,25 @@ def test_users_snapshot_is_valid_only_for_matching_page_load() -> None:
         assert runtime.current_or_none(_access('load-2')) is None
 
 
-def test_pending_snapshot_roundtrips_without_profile() -> None:
+def test_pending_snapshot_roundtrips_guest_authority() -> None:
     pending = _pending_user()
     snapshot = UsersSnapshot(load_id='load-pending', user=pending)
 
     restored = UsersSnapshot.from_session(snapshot.to_session())
 
     assert restored.user.pending is True
-    assert restored.user.profile is None
+    assert restored.user.authority_key == 'guest'
     assert restored.user.avatar_background_color == '#FF5722'
     assert restored.user.avatar_text_color == '#FFFFFF'
 
 
-def test_managed_snapshot_roundtrips_profile() -> None:
+def test_managed_snapshot_roundtrips_authority_and_visuals() -> None:
     managed = _managed_user()
     snapshot = UsersSnapshot(load_id='load-managed', user=managed)
 
     restored = UsersSnapshot.from_session(snapshot.to_session())
 
     assert restored.user.pending is False
-    assert restored.user.profile == managed.profile
+    assert restored.user.authority_key == BASIC_AUTHORITY_KEY
+    assert restored.user.avatar_background_color == '#112233'
+    assert restored.user.avatar_text_color == '#FFFFFF'

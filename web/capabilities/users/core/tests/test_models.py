@@ -1,6 +1,11 @@
 import pytest
 
-from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
+from atlanticus.web.users.authority import (
+    BASIC_AUTHORITY_KEY,
+    GUEST_AUTHORITY_KEY,
+    LOCAL_AUTHORITY_KEY,
+    ROOT_AUTHORITY_KEY,
+)
 from atlanticus.web.users.errors import UsersDefinitionError
 from atlanticus.web.users.identity import build_user_key
 from atlanticus.web.users.models import (
@@ -11,17 +16,7 @@ from atlanticus.web.users.models import (
 )
 
 
-def _profile(key: str, label: str | None = None) -> ProfileDefinition:
-    return ProfileDefinition(
-        key=key,
-        label=label or key.title(),
-        background_color='#673AB7',
-        text_color='#FFFFFF',
-    )
-
-
-def test_effective_user_contains_resolved_profile_and_visuals() -> None:
-    profile = _profile('administrator', 'Administrador')
+def test_effective_user_contains_authority_and_optional_visuals() -> None:
     user = EffectiveUser(
         user_id='user-1',
         subject_id='oid-1',
@@ -30,33 +25,34 @@ def test_effective_user_contains_resolved_profile_and_visuals() -> None:
         enabled=True,
         pending=False,
         avatar_text='JD',
-        profile=profile,
+        authority_key=BASIC_AUTHORITY_KEY,
     )
+
     assert user.email == 'jane@example.com'
-    assert user.profile is profile
-    assert user.avatar_background_color == profile.background_color
-    assert user.avatar_text_color == profile.text_color
+    assert user.authority_key == BASIC_AUTHORITY_KEY
+    assert user.avatar_background_color is None
+    assert user.avatar_text_color is None
+    assert user.has_full_access is False
     assert build_avatar_text('John Doe') == 'JD'
 
-    local_profile = _profile('local', 'Local')
-    local_user = EffectiveUser(
-        user_id='local-user',
-        subject_id='local:john-doe',
-        display_name='John Doe',
-        email='john.doe@local.atlanticus',
+    root = EffectiveUser(
+        user_id='user-2',
+        subject_id='oid-2',
+        display_name='Root User',
+        email=None,
         enabled=True,
         pending=False,
-        avatar_text='JD',
-        profile=local_profile,
+        avatar_text='RU',
+        authority_key=ROOT_AUTHORITY_KEY,
         avatar_background_color='#112233',
-        avatar_text_color='#ABCDEF',
-        is_local=True,
+        avatar_text_color='#abcdef',
     )
-    assert local_user.avatar_background_color == '#112233'
-    assert local_user.avatar_text_color == '#ABCDEF'
+    assert root.avatar_background_color == '#112233'
+    assert root.avatar_text_color == '#ABCDEF'
+    assert root.has_full_access is True
 
 
-def test_pending_record_materializes_without_profile_or_managed_state() -> None:
+def test_pending_record_materializes_with_guest_authority() -> None:
     record = PendingUserRecord(
         user_id=build_user_key(issuer='entra', subject_id='subject-1'),
         issuer='entra',
@@ -65,10 +61,11 @@ def test_pending_record_materializes_without_profile_or_managed_state() -> None:
         email='PENDING@EXAMPLE.COM',
     )
     user = record.to_effective_user()
+
     assert user.user_id == record.user_id
     assert user.pending is True
     assert user.enabled is True
-    assert user.profile is None
+    assert user.authority_key == GUEST_AUTHORITY_KEY
     assert user.avatar_background_color == '#FF5722'
     assert user.avatar_text_color == '#FFFFFF'
     assert user.email == 'pending@example.com'
@@ -81,9 +78,10 @@ def test_pending_record_supports_missing_optional_metadata() -> None:
         subject_id='subject-1',
     )
     user = record.to_effective_user()
+
     assert user.display_name == 'Usuario pendiente'
     assert user.email is None
-    assert user.profile is None
+    assert user.authority_key == GUEST_AUTHORITY_KEY
 
 
 def test_pending_record_rejects_identity_key_mismatch() -> None:
@@ -96,7 +94,6 @@ def test_pending_record_rejects_identity_key_mismatch() -> None:
 
 
 def test_resolved_runtime_record_creates_non_pending_effective_user() -> None:
-    profile = _profile('administrator', 'Administrador')
     user = ResolvedUserRecord(
         user_id=build_user_key(issuer='entra', subject_id='subject-1'),
         issuer='entra',
@@ -104,10 +101,25 @@ def test_resolved_runtime_record_creates_non_pending_effective_user() -> None:
         display_name='Managed User',
         email='managed@example.com',
         enabled=True,
-        profile_key='administrator',
-    ).to_effective_user(profile=profile)
+        authority_key=BASIC_AUTHORITY_KEY,
+    ).to_effective_user()
+
     assert user.pending is False
-    assert user.profile is profile
+    assert user.authority_key == BASIC_AUTHORITY_KEY
+
+
+def test_resolved_runtime_record_accepts_functional_authority_without_profiles_core() -> None:
+    user = ResolvedUserRecord(
+        user_id=build_user_key(issuer='entra', subject_id='subject-1'),
+        issuer='entra',
+        subject_id='subject-1',
+        display_name='Operator',
+        email=None,
+        enabled=True,
+        authority_key='operator',
+    ).to_effective_user()
+
+    assert user.authority_key == 'operator'
 
 
 def test_resolved_runtime_record_rejects_identity_key_mismatch() -> None:
@@ -119,12 +131,12 @@ def test_resolved_runtime_record_rejects_identity_key_mismatch() -> None:
             display_name='Managed User',
             email='managed@example.com',
             enabled=True,
-            profile_key='administrator',
+            authority_key=BASIC_AUTHORITY_KEY,
         )
 
 
-def test_pending_user_must_not_have_profile() -> None:
-    with pytest.raises(UsersDefinitionError, match='must not have a profile'):
+def test_pending_user_must_use_guest_authority() -> None:
+    with pytest.raises(UsersDefinitionError, match='must use guest authority'):
         EffectiveUser(
             user_id='user-1',
             subject_id='subject-1',
@@ -133,7 +145,7 @@ def test_pending_user_must_not_have_profile() -> None:
             enabled=True,
             pending=True,
             avatar_text='PU',
-            profile=_profile('administrator'),
+            authority_key=BASIC_AUTHORITY_KEY,
         )
 
 
@@ -147,7 +159,7 @@ def test_pending_user_must_be_enabled() -> None:
             enabled=False,
             pending=True,
             avatar_text='PU',
-            profile=None,
+            authority_key=GUEST_AUTHORITY_KEY,
         )
 
 
@@ -161,41 +173,13 @@ def test_pending_user_rejects_avatar_color_override() -> None:
             enabled=True,
             pending=True,
             avatar_text='PU',
-            profile=None,
+            authority_key=GUEST_AUTHORITY_KEY,
             avatar_background_color='#000000',
         )
 
 
-def test_resolved_user_requires_profile() -> None:
-    with pytest.raises(UsersDefinitionError, match='must have a profile'):
-        EffectiveUser(
-            user_id='user-1',
-            subject_id='subject-1',
-            display_name='Managed User',
-            email='managed@example.com',
-            enabled=True,
-            pending=False,
-            avatar_text='MU',
-            profile=None,
-        )
-
-
-def test_guest_profile_key_is_not_valid_for_resolved_user() -> None:
-    with pytest.raises(UsersDefinitionError, match='cannot use guest profile key'):
-        EffectiveUser(
-            user_id='user-1',
-            subject_id='subject-1',
-            display_name='Managed Guest',
-            email='guest@example.com',
-            enabled=True,
-            pending=False,
-            avatar_text='MG',
-            profile=_profile('guest', 'Guest'),
-        )
-
-
-def test_resolved_runtime_record_cannot_use_guest_profile_key() -> None:
-    with pytest.raises(UsersDefinitionError, match='cannot use guest profile key'):
+def test_resolved_user_cannot_use_guest_authority() -> None:
+    with pytest.raises(UsersDefinitionError, match='cannot use guest authority'):
         ResolvedUserRecord(
             user_id=build_user_key(issuer='entra', subject_id='subject-1'),
             issuer='entra',
@@ -203,11 +187,30 @@ def test_resolved_runtime_record_cannot_use_guest_profile_key() -> None:
             display_name='Managed Guest',
             email='guest@example.com',
             enabled=True,
-            profile_key='guest',
+            authority_key=GUEST_AUTHORITY_KEY,
         )
 
 
-def test_profiles_core_can_still_use_guest_key_outside_users_semantics() -> None:
-    catalog = ProfileCatalog(profiles=(_profile('guest', 'Guest-like functional profile'),))
+def test_local_authority_is_reserved_for_local_runtime() -> None:
+    with pytest.raises(UsersDefinitionError, match='cannot use local authority'):
+        ResolvedUserRecord(
+            user_id=build_user_key(issuer='entra', subject_id='subject-1'),
+            issuer='entra',
+            subject_id='subject-1',
+            display_name='Managed Local',
+            email=None,
+            enabled=True,
+            authority_key=LOCAL_AUTHORITY_KEY,
+        )
 
-    assert catalog.require('guest').label == 'Guest-like functional profile'
+    with pytest.raises(UsersDefinitionError, match='must use local authority'):
+        ResolvedUserRecord(
+            user_id=build_user_key(issuer='atlanticus-local', subject_id='local:john-doe'),
+            issuer='atlanticus-local',
+            subject_id='local:john-doe',
+            display_name='John Doe',
+            email=None,
+            enabled=True,
+            authority_key=BASIC_AUTHORITY_KEY,
+            is_local=True,
+        )

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+# UsersAccessResolver ya no necesita un catálogo Profiles para resolver una identidad.
+# El store entrega pending o resolved y cada registro materializa su EffectiveUser directamente.
+
+
 from atlanticus.web.identity.access import AccessDecision, AccessResolver, AccessStatus
 from atlanticus.web.identity.errors import AccessResolverUnavailableError
 from atlanticus.web.identity.models import AuthenticatedIdentity
-from atlanticus.web.profiles.errors import ProfilesDefinitionError
-from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
 from atlanticus.web.users.errors import (
     UsersDefinitionError,
     UsersIdentityConflictError,
@@ -16,12 +18,10 @@ from atlanticus.web.users.runtime import UsersRuntime
 from atlanticus.web.users.store import UsersRuntimeStore
 
 
-# El resolver compone identidad, store de Users, catálogo funcional de Profiles y snapshot de sesión.
 class UsersAccessResolver(AccessResolver):
-    def __init__(self, *, store: UsersRuntimeStore, runtime: UsersRuntime, profiles: ProfileCatalog) -> None:
+    def __init__(self, *, store: UsersRuntimeStore, runtime: UsersRuntime) -> None:
         self._store = store
         self._runtime = runtime
-        self._profiles = profiles
 
     def resolve(self, identity: AuthenticatedIdentity, *, load_id: str) -> AccessDecision:
         try:
@@ -36,20 +36,14 @@ class UsersAccessResolver(AccessResolver):
         ) as error:
             raise AccessResolverUnavailableError('Users runtime store is unavailable') from error
 
-        # Pending es resoluble sin consultar Profiles; sólo Managed necesita resolver profile_key.
-        if isinstance(record, PendingUserRecord):
-            user = record.to_effective_user()
-        else:
-            if not record.enabled:
-                return AccessDecision(status=AccessStatus.USER_DISABLED, user_id=record.user_id)
-            profile = _require_profile(self._profiles, record.profile_key)
-            user = record.to_effective_user(profile=profile)
+        if not isinstance(record, PendingUserRecord) and not record.enabled:
+            return AccessDecision(status=AccessStatus.USER_DISABLED, user_id=record.user_id)
 
+        user = record.to_effective_user()
         self._runtime.store(load_id=load_id, user=user)
         return AccessDecision(status=AccessStatus.READY, user_id=user.user_id)
 
 
-# Esta verificación impide aceptar un registro durable perteneciente a otra identidad autenticada.
 def _require_runtime_identity(identity: AuthenticatedIdentity, record: RuntimeUserRecord) -> None:
     expected_user_id = build_user_key(issuer=identity.issuer, subject_id=identity.subject_id)
     if (
@@ -58,10 +52,3 @@ def _require_runtime_identity(identity: AuthenticatedIdentity, record: RuntimeUs
         or record.subject_id != identity.subject_id
     ):
         raise UsersIdentityConflictError('Runtime user does not match authenticated identity')
-
-
-def _require_profile(profiles: ProfileCatalog, key: str) -> ProfileDefinition:
-    try:
-        return profiles.require(key)
-    except ProfilesDefinitionError as error:
-        raise UsersDefinitionError(str(error)) from error

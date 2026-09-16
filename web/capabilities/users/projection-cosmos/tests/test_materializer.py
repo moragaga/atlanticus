@@ -227,7 +227,7 @@ def _resolved_document(
     display_name: str = 'Managed User',
     email: str | None = 'managed@example.com',
     enabled: bool = True,
-    profile_key: str = 'administrator',
+    authority_key: str = 'administrator',
     is_local: bool = False,
     managed_state: str | None = 'present',
     projection: ProjectionRecord[UsersProfilesConfiguration] | None = None,
@@ -241,7 +241,7 @@ def _resolved_document(
         'display_name': display_name,
         'email': email,
         'enabled': enabled,
-        'profile_key': profile_key,
+        'authority_key': authority_key,
         'avatar_background_color': None,
         'avatar_text_color': None,
         'is_local': is_local,
@@ -286,7 +286,7 @@ def test_materialize_creates_resolved_managed_record_for_configured_user() -> No
     assert document['display_name'] == user.display_name
     assert document['email'] == user.email
     assert document['enabled'] is True
-    assert document['profile_key'] == 'administrator'
+    assert document['authority_key'] == 'administrator'
     assert document['managed_state'] == 'present'
     assert document['projection_source_key'] == projection.source_key.value
     assert document['projection_source_release_id'] == projection.source_release_id.value
@@ -347,7 +347,7 @@ def test_materialize_retires_managed_user_removed_from_configuration() -> None:
 
 def test_materialize_does_not_retire_local_resolved_user() -> None:
     local = _resolved_document(
-        profile_key='local',
+        authority_key='local',
         is_local=True,
         managed_state=None,
         projection=None,

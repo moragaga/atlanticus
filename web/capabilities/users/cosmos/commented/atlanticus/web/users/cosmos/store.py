@@ -166,7 +166,7 @@ def _record_from_document(document: Mapping[str, Any]) -> RuntimeUserRecord:
             display_name=_required_string(document, 'display_name'),
             email=_optional_string(document, 'email'),
             enabled=_required_bool(document, 'enabled'),
-            profile_key=_required_string(document, 'profile_key'),
+            authority_key=_required_string(document, 'authority_key'),
             avatar_background_color=_optional_string(document, 'avatar_background_color'),
             avatar_text_color=_optional_string(document, 'avatar_text_color'),
             is_local=_optional_bool(document, 'is_local', default=False),

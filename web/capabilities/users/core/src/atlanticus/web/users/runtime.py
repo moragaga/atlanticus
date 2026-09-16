@@ -6,7 +6,6 @@ from typing import Any
 from flask import has_request_context, session
 
 from atlanticus.web.identity.access import AccessSnapshot
-from atlanticus.web.profiles.models import ProfileDefinition
 from atlanticus.web.users.errors import UsersContextError, UsersDefinitionError
 from atlanticus.web.users.models import EffectiveUser
 
@@ -26,7 +25,6 @@ class UsersSnapshot:
         object.__setattr__(self, 'load_id', load_id)
 
     def to_session(self) -> dict[str, Any]:
-        profile = self.user.profile
         return {
             'load_id': self.load_id,
             'user': {
@@ -37,19 +35,10 @@ class UsersSnapshot:
                 'enabled': self.user.enabled,
                 'pending': self.user.pending,
                 'avatar_text': self.user.avatar_text,
+                'authority_key': self.user.authority_key,
                 'avatar_background_color': self.user.avatar_background_color,
                 'avatar_text_color': self.user.avatar_text_color,
                 'is_local': self.user.is_local,
-                'profile': (
-                    None
-                    if profile is None
-                    else {
-                        'key': profile.key,
-                        'label': profile.label,
-                        'background_color': profile.background_color,
-                        'text_color': profile.text_color,
-                    }
-                ),
             },
         }
 
@@ -60,19 +49,7 @@ class UsersSnapshot:
         user_value = value.get('user')
         if not isinstance(user_value, dict):
             raise UsersContextError('Users snapshot user is invalid')
-        profile_value = user_value.get('profile')
         try:
-            if profile_value is None:
-                profile = None
-            elif isinstance(profile_value, dict):
-                profile = ProfileDefinition(
-                    key=str(profile_value['key']),
-                    label=str(profile_value['label']),
-                    background_color=str(profile_value['background_color']),
-                    text_color=str(profile_value['text_color']),
-                )
-            else:
-                raise TypeError
             user = EffectiveUser(
                 user_id=str(user_value['user_id']),
                 subject_id=str(user_value['subject_id']),
@@ -81,7 +58,7 @@ class UsersSnapshot:
                 enabled=bool(user_value['enabled']),
                 pending=bool(user_value['pending']),
                 avatar_text=str(user_value['avatar_text']),
-                profile=profile,
+                authority_key=str(user_value['authority_key']),
                 avatar_background_color=(
                     None
                     if bool(user_value['pending'])

@@ -137,7 +137,7 @@ def _resolved_document(
         'display_name': 'Managed User',
         'email': 'managed@example.com',
         'enabled': enabled,
-        'profile_key': 'administrator',
+        'authority_key': 'root',
         'avatar_background_color': None,
         'avatar_text_color': None,
         'is_local': False,
@@ -179,7 +179,7 @@ def test_resolve_decodes_resolved_user() -> None:
 
     assert isinstance(result, ResolvedUserRecord)
     assert result.enabled is False
-    assert result.profile_key == 'administrator'
+    assert result.authority_key == 'root'
 
 
 def test_resolve_rejects_document_identity_that_does_not_match_id() -> None:
