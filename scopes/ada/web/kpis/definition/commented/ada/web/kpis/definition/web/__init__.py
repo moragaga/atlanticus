@@ -1,4 +1,6 @@
-# Espejo comentado de la superficie Web de KPI Definition.
+# Espejo pedagógico del contrato productivo.
+# La implementación conserva las mismas clases y funciones; estos comentarios explican la intención general.
+# Definition consume directamente la proyección tipada de KPI Configuration y delega identidad/versionado a Atlanticus.
 from ada.web.kpis.definition.web.callbacks import (
     delete_definition,
     parse_configuration,
@@ -8,7 +10,7 @@ from ada.web.kpis.definition.web.callbacks import (
 )
 from ada.web.kpis.definition.web.layout import (
     build_kpi_definition_editor_surface,
-    load_authority,
+    load_kpi_configuration,
 )
 from ada.web.kpis.definition.web.models import KpiDefinitionEditorContext
 from ada.web.kpis.definition.web.module import (
@@ -45,7 +47,7 @@ __all__ = [
     'build_kpi_definition_modal',
     'create_kpi_definition_editor_module',
     'delete_definition',
-    'load_authority',
+    'load_kpi_configuration',
     'parse_configuration',
     'parse_query',
     'query_kpi_definitions',

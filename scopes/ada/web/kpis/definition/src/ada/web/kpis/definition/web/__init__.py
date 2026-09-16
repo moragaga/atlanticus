@@ -7,7 +7,7 @@ from ada.web.kpis.definition.web.callbacks import (
 )
 from ada.web.kpis.definition.web.layout import (
     build_kpi_definition_editor_surface,
-    load_authority,
+    load_kpi_configuration,
 )
 from ada.web.kpis.definition.web.models import KpiDefinitionEditorContext
 from ada.web.kpis.definition.web.module import (
@@ -44,7 +44,7 @@ __all__ = [
     'build_kpi_definition_modal',
     'create_kpi_definition_editor_module',
     'delete_definition',
-    'load_authority',
+    'load_kpi_configuration',
     'parse_configuration',
     'parse_query',
     'query_kpi_definitions',

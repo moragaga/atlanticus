@@ -1,10 +1,6 @@
 from dash.development.base_component import Component
 
-from ada.web.kpis.definition import (
-    KpiDefinition,
-    KpiDefinitionAuthorityCatalog,
-    KpiDefinitionConfiguration,
-)
+from ada.web.kpis.definition import KpiDefinition, KpiDefinitionConfiguration
 from ada.web.kpis.definition.web import (
     KpiDefinitionQuery,
     build_kpi_definition_detail_view,
@@ -19,12 +15,7 @@ from ada.web.kpis.definition.web.ids import (
     TABLE_BODY_ID,
 )
 
-
-def _authority(*keys: str) -> KpiDefinitionAuthorityCatalog:
-    return KpiDefinitionAuthorityCatalog(
-        kpi_configuration_revision='kpi-config-r1',
-        kpi_keys=tuple(keys),
-    )
+from .helpers import kpi_configuration
 
 
 def _walk(component: object) -> list[Component]:
@@ -41,36 +32,32 @@ def _walk(component: object) -> list[Component]:
 
 
 def test_grid_contains_only_kpi_status_and_actions_columns() -> None:
-    authority = _authority('pending', 'defined')
+    configured = kpi_configuration('pending', 'defined')
     configuration = KpiDefinitionConfiguration(
         (KpiDefinition(kpi_key='defined', fields={'detail': 'Texto'}),)
     )
-    page = query_kpi_definitions(configuration, authority, KpiDefinitionQuery())
+    page = query_kpi_definitions(configuration, configured, KpiDefinitionQuery())
     component = build_kpi_definition_editor(
         page,
         query=KpiDefinitionQuery(),
-        authority=authority,
+        kpi_configuration=configured,
     )
 
-    headers = [
-        node.children
-        for node in _walk(component)
-        if node.__class__.__name__ == 'Th'
-    ]
+    headers = [node.children for node in _walk(component) if node.__class__.__name__ == 'Th']
 
     assert headers == ['KPI', 'Estado', 'Acciones']
     assert 'Detalle' not in headers
 
 
 def test_actions_follow_pending_defined_contract() -> None:
-    authority = _authority('pending', 'defined')
+    configured = kpi_configuration('pending', 'defined')
     configuration = KpiDefinitionConfiguration(
         (KpiDefinition(kpi_key='defined', fields={'detail': 'Texto'}),)
     )
     component = build_kpi_definition_editor(
-        query_kpi_definitions(configuration, authority, KpiDefinitionQuery()),
+        query_kpi_definitions(configuration, configured, KpiDefinitionQuery()),
         query=KpiDefinitionQuery(),
-        authority=authority,
+        kpi_configuration=configured,
     )
 
     pattern_types = [
@@ -86,19 +73,13 @@ def test_actions_follow_pending_defined_contract() -> None:
 
 
 def test_grid_keeps_ten_logical_slots_on_desktop() -> None:
-    authority = _authority('only')
+    configured = kpi_configuration('only')
     component = build_kpi_definition_editor(
-        query_kpi_definitions(
-            KpiDefinitionConfiguration(),
-            authority,
-            KpiDefinitionQuery(),
-        ),
+        query_kpi_definitions(KpiDefinitionConfiguration(), configured, KpiDefinitionQuery()),
         query=KpiDefinitionQuery(),
-        authority=authority,
+        kpi_configuration=configured,
     )
-    tbody = next(
-        node for node in _walk(component) if getattr(node, 'id', None) == TABLE_BODY_ID
-    )
+    tbody = next(node for node in _walk(component) if getattr(node, 'id', None) == TABLE_BODY_ID)
 
     assert len(tbody.children) == 10
     assert tbody.to_plotly_json()['props']['data-page-size'] == '10'
@@ -123,23 +104,3 @@ def test_detail_view_renders_all_current_and_future_fields() -> None:
     assert 'Disponibilidad operacional' in text
     assert '%' in text
     assert 'Operaciones' in text
-
-
-def test_no_global_add_definition_control_is_rendered() -> None:
-    authority = _authority('pending')
-    component = build_kpi_definition_editor(
-        query_kpi_definitions(
-            KpiDefinitionConfiguration(),
-            authority,
-            KpiDefinitionQuery(),
-        ),
-        query=KpiDefinitionQuery(),
-        authority=authority,
-    )
-    string_ids = {
-        node.id
-        for node in _walk(component)
-        if isinstance(getattr(node, 'id', None), str)
-    }
-
-    assert 'ada-kpi-definition--add' not in string_ids

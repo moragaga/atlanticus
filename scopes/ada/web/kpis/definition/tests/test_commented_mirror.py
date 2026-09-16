@@ -1,10 +1,15 @@
 import ast
 from pathlib import Path
 
-FILES = ('__init__.py', 'contracts.py', 'errors.py', 'lifecycle.py', 'services.py')
+FILES = (
+    '__init__.py',
+    'coverage.py',
+    'source_projection.py',
+    'source_release.py',
+)
 
 
-def test_commented_mirror_matches_productive_ast() -> None:
+def test_definition_commented_mirror_matches_productive_ast() -> None:
     root = Path(__file__).parents[1]
     productive = root / 'src' / 'ada' / 'web' / 'kpis' / 'definition'
     commented = root / 'commented' / 'ada' / 'web' / 'kpis' / 'definition'

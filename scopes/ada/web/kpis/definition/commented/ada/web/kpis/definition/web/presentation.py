@@ -1,4 +1,6 @@
-# Espejo comentado de la superficie Web de KPI Definition.
+# Espejo pedagógico del contrato productivo.
+# La implementación conserva las mismas clases y funciones; estos comentarios explican la intención general.
+# Definition consume directamente la proyección tipada de KPI Configuration y delega identidad/versionado a Atlanticus.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -12,10 +14,8 @@ from ada.web.configuration import (
     build_configuration_pagination,
     configuration_dash_select_style,
 )
-from ada.web.kpis.definition import (
-    KpiDefinition,
-    KpiDefinitionAuthorityCatalog,
-)
+from ada.web.kpis.configuration import KpiConfiguration
+from ada.web.kpis.definition import KpiDefinition
 from ada.web.kpis.definition.web.ids import (
     DEPENDENCY_ID,
     EDITOR_BACKDROP_ID,
@@ -56,17 +56,17 @@ def build_kpi_definition_editor(
     page: ConfigurationPage[KpiDefinitionEditorItem],
     *,
     query: KpiDefinitionQuery,
-    authority: KpiDefinitionAuthorityCatalog | None,
+    kpi_configuration: KpiConfiguration | None,
     can_manage: bool = True,
 ) -> Component:
     dependency_reason = (
         'La proyección de Configuración KPI no está disponible.'
-        if authority is None
+        if kpi_configuration is None
         else None
     )
     return html.Div(
         [
-            _toolbar(query, authority=authority),
+            _toolbar(query, kpi_configuration=kpi_configuration),
             html.Div(
                 _dependency_content(dependency_reason),
                 id=DEPENDENCY_ID,
@@ -77,7 +77,7 @@ def build_kpi_definition_editor(
                 build_kpi_definition_grid(
                     page,
                     query=query,
-                    authority=authority,
+                    kpi_configuration=kpi_configuration,
                     can_manage=can_manage,
                 ),
                 id=GRID_CONTAINER_ID,
@@ -97,15 +97,14 @@ def build_kpi_definition_grid(
     page: ConfigurationPage[KpiDefinitionEditorItem],
     *,
     query: KpiDefinitionQuery,
-    authority: KpiDefinitionAuthorityCatalog | None,
+    kpi_configuration: KpiConfiguration | None,
     can_manage: bool = True,
 ) -> Component:
     rows = [_row(item, can_manage=can_manage) for item in page.items]
     empty_state: Component | None = None
     empty_reason: str | None = None
-
     if not page.items:
-        if authority is None:
+        if kpi_configuration is None:
             empty_reason = 'dependency'
             empty_state = _empty_state(
                 icon='!',
@@ -121,7 +120,7 @@ def build_kpi_definition_grid(
                 detail='Ajusta o limpia los filtros para volver a mostrar resultados.',
                 reason=empty_reason,
             )
-        elif not authority.kpi_keys:
+        elif not kpi_configuration.kpi_keys:
             empty_reason = 'no-kpis'
             empty_state = _empty_state(
                 icon='+',
@@ -129,17 +128,13 @@ def build_kpi_definition_grid(
                 detail='Crea al menos un KPI en Configuración KPI antes de definir información descriptiva.',
                 reason=empty_reason,
             )
-
         if empty_state is not None:
             rows.append(_empty_row(empty_reason or 'empty'))
-
     placeholder_count = page.request.page_size - len(rows)
     rows.extend(_placeholder_row(index) for index in range(max(0, placeholder_count)))
-
     shell_class = 'ada-kpi-definition__table-shell'
     if empty_state is not None:
         shell_class += ' ada-kpi-definition__table-shell--empty'
-
     return html.Div(
         [
             html.Table(
@@ -149,10 +144,7 @@ def build_kpi_definition_grid(
                             [
                                 html.Th('KPI'),
                                 html.Th('Estado'),
-                                html.Th(
-                                    'Acciones',
-                                    className='ada-kpi-definition__actions-heading',
-                                ),
+                                html.Th('Acciones', className='ada-kpi-definition__actions-heading'),
                             ]
                         )
                     ),
@@ -173,10 +165,7 @@ def build_kpi_definition_grid(
     )
 
 
-def build_kpi_definition_modal(
-    *,
-    is_open: bool = False,
-) -> Component:
+def build_kpi_definition_modal(*, is_open: bool = False) -> Component:
     return html.Div(
         [
             html.Button(
@@ -259,9 +248,7 @@ def build_kpi_definition_modal(
     )
 
 
-def build_kpi_definition_detail_view(
-    definition: KpiDefinition,
-) -> Component:
+def build_kpi_definition_detail_view(definition: KpiDefinition) -> Component:
     fields = _ordered_fields(definition.fields)
     if not fields:
         return html.Div(
@@ -271,7 +258,6 @@ def build_kpi_definition_detail_view(
             ],
             className='ada-kpi-definition__detail-empty',
         )
-
     return html.Div(
         [
             html.Div(
@@ -290,16 +276,14 @@ def build_kpi_definition_detail_view(
 def _toolbar(
     query: KpiDefinitionQuery,
     *,
-    authority: KpiDefinitionAuthorityCatalog | None,
+    kpi_configuration: KpiConfiguration | None,
 ) -> Component:
     return html.Div(
         [
             html.Div(
                 [
                     html.H2('Definiciones KPI'),
-                    html.P(
-                        'Administra la información descriptiva de los KPI autorizados por Configuración KPI.'
-                    ),
+                    html.P('Administra la información descriptiva de los KPI autorizados por Configuración KPI.'),
                 ],
                 className='ada-kpi-definition__heading',
             ),
@@ -316,7 +300,7 @@ def _toolbar(
                     html.Div(
                         dcc.Dropdown(
                             id=STATUS_FILTER_ID,
-                            options=_status_options(authority),
+                            options=_status_options(kpi_configuration),
                             value=query.status.value,
                             clearable=False,
                             searchable=False,
@@ -335,18 +319,11 @@ def _toolbar(
     )
 
 
-def _row(
-    item: KpiDefinitionEditorItem,
-    *,
-    can_manage: bool,
-) -> Component:
+def _row(item: KpiDefinitionEditorItem, *, can_manage: bool) -> Component:
     return html.Tr(
         [
             html.Td(
-                html.Span(
-                    item.kpi_key,
-                    className='ada-kpi-definition__kpi-key',
-                ),
+                html.Span(item.kpi_key, className='ada-kpi-definition__kpi-key'),
                 **{'data-label': 'KPI'},
             ),
             html.Td(
@@ -369,13 +346,8 @@ def _row(
     )
 
 
-def _actions(
-    item: KpiDefinitionEditorItem,
-    *,
-    can_manage: bool,
-) -> Component:
+def _actions(item: KpiDefinitionEditorItem, *, can_manage: bool) -> Component:
     actions: list[Component] = []
-
     if item.status is KpiDefinitionEditorStatus.PENDING:
         actions.append(
             dbc.Button(
@@ -422,16 +394,12 @@ def _actions(
                 size='sm',
             )
         )
-
     return html.Div(actions, className='ada-kpi-definition__row-actions')
 
 
 def _field(label: str, control: Component) -> Component:
     return html.Label(
-        [
-            html.Span(label, className='ada-kpi-definition__field-label'),
-            control,
-        ],
+        [html.Span(label, className='ada-kpi-definition__field-label'), control],
         className='ada-kpi-definition__field',
     )
 
@@ -463,20 +431,10 @@ def _placeholder_row(index: int) -> Component:
     )
 
 
-def _empty_state(
-    *,
-    icon: str,
-    title: str,
-    detail: str,
-    reason: str,
-) -> Component:
+def _empty_state(*, icon: str, title: str, detail: str, reason: str) -> Component:
     return html.Div(
         [
-            html.Span(
-                icon,
-                className='ada-kpi-definition__empty-icon',
-                **{'aria-hidden': 'true'},
-            ),
+            html.Span(icon, className='ada-kpi-definition__empty-icon', **{'aria-hidden': 'true'}),
             html.Strong(title),
             html.Span(detail),
         ],
@@ -490,10 +448,7 @@ def _dependency_content(reason: str | None) -> Component | None:
     if reason is None:
         return None
     return html.Div(
-        [
-            html.Strong('Definiciones KPI no disponibles'),
-            html.Span(reason),
-        ],
+        [html.Strong('Definiciones KPI no disponibles'), html.Span(reason)],
         className='ada-kpi-definition__dependency-copy',
     )
 
@@ -507,9 +462,9 @@ def _status_label(status: KpiDefinitionEditorStatus) -> str:
 
 
 def _status_options(
-    authority: KpiDefinitionAuthorityCatalog | None,
+    kpi_configuration: KpiConfiguration | None,
 ) -> list[dict[str, object]]:
-    disabled = authority is None
+    disabled = kpi_configuration is None
     return [
         {'label': 'Todos', 'value': KpiDefinitionStatusFilter.ALL.value},
         {
@@ -535,11 +490,7 @@ def _ordered_fields(
 ) -> tuple[tuple[str, str | None], ...]:
     detail = [('detail', fields['detail'])] if 'detail' in fields else []
     others = sorted(
-        (
-            (name, value)
-            for name, value in fields.items()
-            if name != 'detail'
-        ),
+        ((name, value) for name, value in fields.items() if name != 'detail'),
         key=lambda item: item[0].casefold(),
     )
     return tuple((*detail, *others))

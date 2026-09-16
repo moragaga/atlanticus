@@ -3,11 +3,7 @@ from types import SimpleNamespace
 import pytest
 from dash import Dash
 
-from ada.web.kpis.definition import (
-    KpiDefinition,
-    KpiDefinitionAuthorityCatalog,
-    KpiDefinitionConfiguration,
-)
+from ada.web.kpis.definition import KpiDefinition, KpiDefinitionConfiguration
 from ada.web.kpis.definition.web import (
     KpiDefinitionEditorContext,
     build_kpi_definition_editor_surface,
@@ -18,23 +14,22 @@ from ada.web.kpis.definition.web import (
 from ada.web.kpis.definition.web.callbacks import _pattern_action_key
 from ada.web.kpis.definition.web.ids import ROW_DELETE_TYPE, ROW_EDIT_TYPE
 
+from .helpers import ProjectionStoreStub, kpi_configuration, kpi_configuration_projection
 
-class Authority:
-    def __init__(self, *keys: str) -> None:
-        self.catalog = KpiDefinitionAuthorityCatalog(
-            kpi_configuration_revision='kpi-config-r1',
-            kpi_keys=tuple(keys),
-        )
 
-    def load(self):
-        return self.catalog
+def context(*keys: str) -> KpiDefinitionEditorContext:
+    projection = kpi_configuration_projection(*keys)
+    return KpiDefinitionEditorContext(
+        kpi_configuration_projection=ProjectionStoreStub(projection),
+        kpi_configuration_source_key=projection.source_key,
+    )
 
 
 def test_web_module_registers_definition_callbacks() -> None:
-    context = KpiDefinitionEditorContext(authority=Authority('availability'))
-    module = create_kpi_definition_editor_module(context)
+    editor_context = context('availability')
+    module = create_kpi_definition_editor_module(editor_context)
     app = Dash(__name__, suppress_callback_exceptions=True)
-    app.layout = build_kpi_definition_editor_surface(context)
+    app.layout = build_kpi_definition_editor_surface(editor_context)
 
     assert module.register_callbacks is not None
     module.register_callbacks(app, SimpleNamespace())
@@ -43,10 +38,10 @@ def test_web_module_registers_definition_callbacks() -> None:
 
 
 def test_create_and_edit_detail_preserve_other_fields() -> None:
-    authority = Authority('availability').load()
+    configured = kpi_configuration('availability')
     created = save_definition_detail(
         KpiDefinitionConfiguration(),
-        authority,
+        configured,
         {'mode': 'create', 'key': 'availability'},
         detail='Disponibilidad',
     )
@@ -61,7 +56,7 @@ def test_create_and_edit_detail_preserve_other_fields() -> None:
 
     edited = save_definition_detail(
         imported_future,
-        authority,
+        configured,
         {'mode': 'edit', 'key': 'availability'},
         detail='Disponibilidad editada',
     )
@@ -73,13 +68,13 @@ def test_create_and_edit_detail_preserve_other_fields() -> None:
     }
 
 
-def test_definition_creation_requires_authoritative_kpi_and_detail() -> None:
-    authority = Authority('availability').load()
+def test_definition_creation_requires_configured_kpi_and_detail() -> None:
+    configured = kpi_configuration('availability')
 
     with pytest.raises(ValueError, match='detalle'):
         save_definition_detail(
             KpiDefinitionConfiguration(),
-            authority,
+            configured,
             {'mode': 'create', 'key': 'availability'},
             detail=' ',
         )
@@ -87,7 +82,7 @@ def test_definition_creation_requires_authoritative_kpi_and_detail() -> None:
     with pytest.raises(ValueError, match='ya no está configurado'):
         save_definition_detail(
             KpiDefinitionConfiguration(),
-            authority,
+            configured,
             {'mode': 'create', 'key': 'orphan'},
             detail='Texto',
         )

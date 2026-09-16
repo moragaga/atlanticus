@@ -1,9 +1,5 @@
 from ada.web.configuration import ConfigurationPageRequest
-from ada.web.kpis.definition import (
-    KpiDefinition,
-    KpiDefinitionAuthorityCatalog,
-    KpiDefinitionConfiguration,
-)
+from ada.web.kpis.definition import KpiDefinition, KpiDefinitionConfiguration
 from ada.web.kpis.definition.web import (
     KpiDefinitionEditorStatus,
     KpiDefinitionQuery,
@@ -12,15 +8,10 @@ from ada.web.kpis.definition.web import (
     query_kpi_definitions,
 )
 
-
-def authority(*keys: str) -> KpiDefinitionAuthorityCatalog:
-    return KpiDefinitionAuthorityCatalog(
-        kpi_configuration_revision='kpi-config-r1',
-        kpi_keys=tuple(keys),
-    )
+from .helpers import kpi_configuration
 
 
-def test_editor_items_combine_authority_coverage_and_orphans() -> None:
+def test_editor_items_combine_configuration_coverage_and_orphans() -> None:
     configuration = KpiDefinitionConfiguration(
         (
             KpiDefinition(kpi_key='defined', fields={'detail': 'Definido'}),
@@ -30,7 +21,7 @@ def test_editor_items_combine_authority_coverage_and_orphans() -> None:
 
     items = build_kpi_definition_editor_items(
         configuration,
-        authority('defined', 'pending'),
+        kpi_configuration('defined', 'pending'),
     )
 
     assert tuple((item.kpi_key, item.status) for item in items) == (
@@ -40,14 +31,12 @@ def test_editor_items_combine_authority_coverage_and_orphans() -> None:
     )
 
 
-def test_query_scales_to_five_hundred_authoritative_kpis() -> None:
+def test_query_scales_to_five_hundred_configured_kpis() -> None:
     keys = tuple(f'kpi_{index:04d}' for index in range(500))
     page = query_kpi_definitions(
         KpiDefinitionConfiguration(),
-        authority(*keys),
-        KpiDefinitionQuery(
-            page=ConfigurationPageRequest(page_number=1, page_size=10)
-        ),
+        kpi_configuration(*keys),
+        KpiDefinitionQuery(page=ConfigurationPageRequest(page_number=1, page_size=10)),
     )
 
     assert page.total_count == 500
@@ -61,10 +50,7 @@ def test_query_search_status_and_pagination_order() -> None:
     keys = tuple(f'crusher_{index:02d}' for index in range(25))
     configuration = KpiDefinitionConfiguration(
         tuple(
-            KpiDefinition(
-                kpi_key=key,
-                fields={'detail': f'Detail {key}'},
-            )
+            KpiDefinition(kpi_key=key, fields={'detail': f'Detail {key}'})
             for key in keys[:12]
         )
     )
@@ -74,7 +60,7 @@ def test_query_search_status_and_pagination_order() -> None:
         page=ConfigurationPageRequest(page_number=2, page_size=10),
     )
 
-    page = query_kpi_definitions(configuration, authority(*keys), query)
+    page = query_kpi_definitions(configuration, kpi_configuration(*keys), query)
 
     assert page.total_count == 13
     assert page.page_count == 2
@@ -85,16 +71,12 @@ def test_query_search_status_and_pagination_order() -> None:
     )
 
 
-def test_query_without_authority_is_empty_dependency_state() -> None:
+def test_query_without_kpi_configuration_is_empty_dependency_state() -> None:
     configuration = KpiDefinitionConfiguration(
         (KpiDefinition(kpi_key='existing', fields={'detail': 'Texto'}),)
     )
 
-    page = query_kpi_definitions(
-        configuration,
-        None,
-        KpiDefinitionQuery(),
-    )
+    page = query_kpi_definitions(configuration, None, KpiDefinitionQuery())
 
     assert page.total_count == 0
     assert page.items == ()

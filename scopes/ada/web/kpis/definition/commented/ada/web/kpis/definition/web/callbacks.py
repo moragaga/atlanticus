@@ -1,17 +1,16 @@
-# Espejo comentado de la superficie Web de KPI Definition.
+# Espejo pedagógico del contrato productivo.
+# La implementación conserva las mismas clases y funciones; estos comentarios explican la intención general.
+# Definition consume directamente la proyección tipada de KPI Configuration y delega identidad/versionado a Atlanticus.
 from __future__ import annotations
 
 from collections.abc import Mapping
 
 from dash import ALL, Input, Output, State, ctx, html, no_update
 
-from ada.web.configuration import (
-    ConfigurationPageRequest,
-    build_configuration_pagination,
-)
+from ada.web.configuration import ConfigurationPageRequest, build_configuration_pagination
+from ada.web.kpis.configuration import KpiConfiguration
 from ada.web.kpis.definition import (
     KpiDefinition,
-    KpiDefinitionAuthorityCatalog,
     KpiDefinitionConfiguration,
     KpiDefinitionValidationError,
 )
@@ -45,10 +44,7 @@ from ada.web.kpis.definition.web.ids import (
     row_edit_id,
     row_view_id,
 )
-from ada.web.kpis.definition.web.layout import (
-    load_authority,
-    query_document,
-)
+from ada.web.kpis.definition.web.layout import load_kpi_configuration, query_document
 from ada.web.kpis.definition.web.models import KpiDefinitionEditorContext
 from ada.web.kpis.definition.web.presentation import (
     build_kpi_definition_detail_view,
@@ -92,7 +88,6 @@ def register_kpi_definition_editor_callbacks(
         size = page_size if page_size in {10, 20} else current.page.page_size
         selected_status = parse_status(status)
         page_number = current.page.page_number
-
         if isinstance(trigger, str) and trigger in {SEARCH_ID, STATUS_FILTER_ID}:
             page_number = 1
         elif trigger == f'{PAGINATION_PREFIX}--pagination-page-size':
@@ -107,7 +102,7 @@ def register_kpi_definition_editor_callbacks(
             )
             page_count = query_kpi_definitions(
                 parse_configuration(configuration_data),
-                load_authority(context),
+                load_kpi_configuration(context),
                 probe,
             ).page_count
             page_number = min(page_count, page_number + 1)
@@ -119,16 +114,13 @@ def register_kpi_definition_editor_callbacks(
                 page_number = max(1, int(trigger.get('index', 1)))
             except (TypeError, ValueError):
                 page_number = current.page.page_number
-
-        updated = KpiDefinitionQuery(
-            search=str(search or ''),
-            status=selected_status,
-            page=ConfigurationPageRequest(
-                page_number=page_number,
-                page_size=size,
-            ),
+        return query_document(
+            KpiDefinitionQuery(
+                search=str(search or ''),
+                status=selected_status,
+                page=ConfigurationPageRequest(page_number=page_number, page_size=size),
+            )
         )
-        return query_document(updated)
 
     @app.callback(
         Output(GRID_CONTAINER_ID, 'children'),
@@ -145,24 +137,24 @@ def register_kpi_definition_editor_callbacks(
     ):
         configuration = parse_configuration(configuration_data)
         query = parse_query(query_data)
-        authority = load_authority(context)
-        page = query_kpi_definitions(configuration, authority, query)
+        kpi_configuration = load_kpi_configuration(context)
+        page = query_kpi_definitions(configuration, kpi_configuration, query)
         reason = (
             'La proyección de Configuración KPI no está disponible.'
-            if authority is None
+            if kpi_configuration is None
             else None
         )
         return (
             build_kpi_definition_grid(
                 page,
                 query=query,
-                authority=authority,
+                kpi_configuration=kpi_configuration,
                 can_manage=context.can_manage(),
             ),
             build_configuration_pagination(page, id_prefix=PAGINATION_PREFIX),
             _dependency_content(reason),
             reason is None,
-            authority is None,
+            kpi_configuration is None,
         )
 
     @app.callback(
@@ -205,8 +197,7 @@ def register_kpi_definition_editor_callbacks(
         trigger = ctx.triggered_id
         triggered_value = _triggered_value()
         configuration = parse_configuration(configuration_data)
-        authority = load_authority(context)
-
+        kpi_configuration = load_kpi_configuration(context)
         if _static_trigger_matches(
             trigger,
             EDITOR_BACKDROP_ID,
@@ -214,23 +205,17 @@ def register_kpi_definition_editor_callbacks(
             EDITOR_CANCEL_ID,
         ):
             return editor_response(closed=True)
-
         add_key = _pattern_action_key(trigger, ROW_ADD_TYPE, triggered_value)
         if add_key is not None:
             if not context.can_manage():
                 return editor_response(error='No tienes permisos para administrar definiciones KPI.')
-            if authority is None:
+            if kpi_configuration is None:
                 return editor_response(error='La Configuración KPI no está disponible.')
-            if add_key not in authority.keys:
+            if add_key not in kpi_configuration.kpi_keys:
                 return editor_response(error='El KPI seleccionado ya no está configurado.')
             if configuration.definition(add_key) is not None:
                 return editor_response(error='El KPI seleccionado ya tiene una definición.')
-            return editor_response(
-                title='Nueva definición',
-                key=add_key,
-                mode='create',
-            )
-
+            return editor_response(title='Nueva definición', key=add_key, mode='create')
         view_key = _pattern_action_key(trigger, ROW_VIEW_TYPE, triggered_value)
         if view_key is not None:
             definition = configuration.definition(view_key)
@@ -246,12 +231,11 @@ def register_kpi_definition_editor_callbacks(
                 cancel_label='Cerrar',
                 mode='view',
             )
-
         edit_key = _pattern_action_key(trigger, ROW_EDIT_TYPE, triggered_value)
         if edit_key is not None:
             if not context.can_manage():
                 return editor_response(error='No tienes permisos para administrar definiciones KPI.')
-            if authority is None or edit_key not in authority.keys:
+            if kpi_configuration is None or edit_key not in kpi_configuration.kpi_keys:
                 return editor_response(
                     error='La definición no puede editarse porque su KPI ya no está configurado.'
                 )
@@ -264,38 +248,27 @@ def register_kpi_definition_editor_callbacks(
                 detail=definition.fields.get('detail') or '',
                 mode='edit',
             )
-
         if (
             not _static_trigger_matches(trigger, EDITOR_SAVE_ID)
             or not click_is_real(save_clicks)
         ):
             return editor_response(no_change=True)
-
         if not context.can_manage():
             return editor_response_from_state(
                 editor_data,
                 detail=detail,
                 error='No tienes permisos para administrar definiciones KPI.',
             )
-
         try:
             updated = save_definition_detail(
                 configuration,
-                authority,
+                kpi_configuration,
                 editor_data,
                 detail=detail,
             )
         except ValueError as error:
-            return editor_response_from_state(
-                editor_data,
-                detail=detail,
-                error=str(error),
-            )
-
-        return editor_response(
-            closed=True,
-            configuration=updated.to_document(),
-        )
+            return editor_response_from_state(editor_data, detail=detail, error=str(error))
+        return editor_response(closed=True, configuration=updated.to_document())
 
     @app.callback(
         Output(CONFIGURATION_STORE_ID, 'data', allow_duplicate=True),
@@ -307,15 +280,10 @@ def register_kpi_definition_editor_callbacks(
         _delete_clicks: list[int | None] | None,
         configuration_data: dict[str, object] | None,
     ):
-        key = _pattern_action_key(
-            ctx.triggered_id,
-            ROW_DELETE_TYPE,
-            _triggered_value(),
-        )
+        key = _pattern_action_key(ctx.triggered_id, ROW_DELETE_TYPE, _triggered_value())
         if key is None or not context.can_manage():
             return no_update
-        authority = load_authority(context)
-        if authority is None:
+        if load_kpi_configuration(context) is None:
             return no_update
         configuration = parse_configuration(configuration_data)
         updated = delete_definition(configuration, key)
@@ -324,9 +292,7 @@ def register_kpi_definition_editor_callbacks(
         return updated.to_document()
 
 
-def parse_configuration(
-    document: dict[str, object] | None,
-) -> KpiDefinitionConfiguration:
+def parse_configuration(document: dict[str, object] | None) -> KpiDefinitionConfiguration:
     if not isinstance(document, dict):
         return KpiDefinitionConfiguration()
     try:
@@ -335,9 +301,7 @@ def parse_configuration(
         return KpiDefinitionConfiguration()
 
 
-def parse_query(
-    document: dict[str, object] | None,
-) -> KpiDefinitionQuery:
+def parse_query(document: dict[str, object] | None) -> KpiDefinitionQuery:
     data = document or {}
     try:
         return KpiDefinitionQuery(
@@ -361,39 +325,33 @@ def parse_status(value: str | None) -> KpiDefinitionStatusFilter:
 
 def save_definition_detail(
     configuration: KpiDefinitionConfiguration,
-    authority: KpiDefinitionAuthorityCatalog | None,
+    kpi_configuration: KpiConfiguration | None,
     editor_data: dict[str, object] | None,
     *,
     detail: str | None,
 ) -> KpiDefinitionConfiguration:
     mode = str((editor_data or {}).get('mode', ''))
     key = str((editor_data or {}).get('key', '')).strip()
-
     if mode not in {'create', 'edit'} or not key:
         raise ValueError('No hay una definición abierta para edición.')
-    if authority is None:
+    if kpi_configuration is None:
         raise ValueError('La Configuración KPI no está disponible.')
-    if key not in authority.keys:
+    if key not in kpi_configuration.kpi_keys:
         raise ValueError('El KPI seleccionado ya no está configurado.')
-
     normalized_detail = detail.strip() if isinstance(detail, str) else ''
     if not normalized_detail:
         raise ValueError('Ingresa el detalle de la definición.')
-
     current = configuration.definition(key)
     if mode == 'create' and current is not None:
         raise ValueError('El KPI seleccionado ya tiene una definición.')
     if mode == 'edit' and current is None:
         raise ValueError('La definición seleccionada ya no existe.')
-
     fields = dict(current.fields) if current is not None else {}
     fields['detail'] = normalized_detail
-
     try:
         replacement = KpiDefinition(kpi_key=key, fields=fields)
     except KpiDefinitionValidationError as error:
         raise ValueError('Revisa la información de la definición KPI.') from error
-
     definitions = []
     replaced = False
     for definition in configuration.definitions:
@@ -402,12 +360,10 @@ def save_definition_detail(
             replaced = True
         else:
             definitions.append(definition)
-
     if mode == 'create':
         definitions.append(replacement)
     elif not replaced:
         raise ValueError('La definición seleccionada ya no existe.')
-
     return KpiDefinitionConfiguration(definitions=tuple(definitions))
 
 

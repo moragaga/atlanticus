@@ -1,4 +1,6 @@
-# Espejo comentado de la superficie Web de KPI Definition.
+# Espejo pedagógico del contrato productivo.
+# La implementación conserva las mismas clases y funciones; estos comentarios explican la intención general.
+# Definition consume directamente la proyección tipada de KPI Configuration y delega identidad/versionado a Atlanticus.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -6,13 +8,9 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from types import MappingProxyType
 
-from ada.web.configuration import (
-    ConfigurationPage,
-    ConfigurationPageRequest,
-    paginate_items,
-)
+from ada.web.configuration import ConfigurationPage, ConfigurationPageRequest, paginate_items
+from ada.web.kpis.configuration import KpiConfiguration
 from ada.web.kpis.definition import (
-    KpiDefinitionAuthorityCatalog,
     KpiDefinitionConfiguration,
     KpiDefinitionCoverageStatus,
     build_kpi_definition_coverage,
@@ -80,16 +78,15 @@ class KpiDefinitionQuery:
 
 def build_kpi_definition_editor_items(
     configuration: KpiDefinitionConfiguration,
-    authority: KpiDefinitionAuthorityCatalog | None,
+    kpi_configuration: KpiConfiguration | None,
 ) -> tuple[KpiDefinitionEditorItem, ...]:
     if not isinstance(configuration, KpiDefinitionConfiguration):
         raise TypeError('KPI definition editor requires KpiDefinitionConfiguration')
-    if authority is None:
+    if kpi_configuration is None:
         return ()
-    if not isinstance(authority, KpiDefinitionAuthorityCatalog):
-        raise TypeError('KPI definition editor authority is invalid')
-
-    coverage = build_kpi_definition_coverage(configuration, authority)
+    if not isinstance(kpi_configuration, KpiConfiguration):
+        raise TypeError('KPI definition editor requires KpiConfiguration')
+    coverage = build_kpi_definition_coverage(configuration, kpi_configuration)
     items = [
         KpiDefinitionEditorItem(
             kpi_key=item.kpi_key,
@@ -102,8 +99,7 @@ def build_kpi_definition_editor_items(
         )
         for item in coverage
     ]
-
-    authority_keys = authority.keys
+    available = kpi_configuration.kpi_keys
     items.extend(
         KpiDefinitionEditorItem(
             kpi_key=definition.kpi_key,
@@ -111,22 +107,21 @@ def build_kpi_definition_editor_items(
             fields=definition.fields,
         )
         for definition in configuration.definitions
-        if definition.kpi_key not in authority_keys
+        if definition.kpi_key not in available
     )
     return tuple(items)
 
 
 def query_kpi_definitions(
     configuration: KpiDefinitionConfiguration,
-    authority: KpiDefinitionAuthorityCatalog | None,
+    kpi_configuration: KpiConfiguration | None,
     query: KpiDefinitionQuery,
 ) -> ConfigurationPage[KpiDefinitionEditorItem]:
     if not isinstance(query, KpiDefinitionQuery):
         raise TypeError('KPI definition query requires KpiDefinitionQuery')
-
     items = tuple(
         item
-        for item in build_kpi_definition_editor_items(configuration, authority)
+        for item in build_kpi_definition_editor_items(configuration, kpi_configuration)
         if _matches_search(item, query.search) and _matches_status(item, query.status)
     )
     ordered = tuple(sorted(items, key=lambda item: item.kpi_key.casefold()))

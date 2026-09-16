@@ -1,9 +1,12 @@
-# Espejo comentado de la superficie Web de KPI Definition.
+# Espejo pedagógico del contrato productivo.
+# La implementación conserva las mismas clases y funciones; estos comentarios explican la intención general.
+# Definition consume directamente la proyección tipada de KPI Configuration y delega identidad/versionado a Atlanticus.
 from __future__ import annotations
 
 from dash import dcc, html
 
-from ada.web.kpis.definition import KpiDefinitionAuthorityCatalog, KpiDefinitionConfiguration
+from ada.web.kpis.configuration import KpiConfiguration
+from ada.web.kpis.definition import KpiDefinitionConfiguration
 from ada.web.kpis.definition.web.ids import (
     CONFIGURATION_STORE_ID,
     EDITOR_STORE_ID,
@@ -11,10 +14,7 @@ from ada.web.kpis.definition.web.ids import (
 )
 from ada.web.kpis.definition.web.models import KpiDefinitionEditorContext
 from ada.web.kpis.definition.web.presentation import build_kpi_definition_editor
-from ada.web.kpis.definition.web.query import (
-    KpiDefinitionQuery,
-    query_kpi_definitions,
-)
+from ada.web.kpis.definition.web.query import KpiDefinitionQuery, query_kpi_definitions
 
 
 def build_kpi_definition_editor_surface(
@@ -22,9 +22,8 @@ def build_kpi_definition_editor_surface(
 ) -> object:
     configuration = KpiDefinitionConfiguration()
     query = KpiDefinitionQuery()
-    authority = load_authority(context)
-    page = query_kpi_definitions(configuration, authority, query)
-
+    kpi_configuration = load_kpi_configuration(context)
+    page = query_kpi_definitions(configuration, kpi_configuration, query)
     return html.Div(
         [
             dcc.Store(
@@ -41,7 +40,7 @@ def build_kpi_definition_editor_surface(
             build_kpi_definition_editor(
                 page,
                 query=query,
-                authority=authority,
+                kpi_configuration=kpi_configuration,
                 can_manage=context.can_manage(),
             ),
         ],
@@ -49,13 +48,18 @@ def build_kpi_definition_editor_surface(
     )
 
 
-def load_authority(
+def load_kpi_configuration(
     context: KpiDefinitionEditorContext,
-) -> KpiDefinitionAuthorityCatalog | None:
+) -> KpiConfiguration | None:
     try:
-        return context.authority.load()
+        projection = context.kpi_configuration_projection.get_active(
+            context.kpi_configuration_source_key
+        )
     except Exception:
         return None
+    if projection is None or not isinstance(projection.payload, KpiConfiguration):
+        return None
+    return projection.payload
 
 
 def query_document(query: KpiDefinitionQuery) -> dict[str, object]:
