@@ -8,7 +8,6 @@ FILES = (
     'errors.py',
     'exchange.py',
     'models.py',
-    'schema_v1.py',
     'source_projection.py',
     'source_release.py',
 )

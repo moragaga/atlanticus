@@ -29,9 +29,6 @@ from atlanticus.web.users.configuration.errors import (
     UsersConfigurationSourceError,
     UsersConfigurationValidationError,
 )
-from atlanticus.web.users.configuration.schema_v1 import (
-    decode_users_profiles_schema_v1,
-)
 
 USERS_SOURCE_DOCUMENT_TYPE = 'atlanticus_users_configuration_release'
 USERS_SOURCE_SCHEMA_VERSION = 2
@@ -39,7 +36,6 @@ USERS_SOURCE_RESOURCE_PATH = 'users/configuration.json.gz'
 PROFILES_SOURCE_DOCUMENT_TYPE = 'atlanticus_profiles_configuration_release'
 PROFILES_SOURCE_SCHEMA_VERSION = 1
 PROFILES_SOURCE_RESOURCE_PATH = 'profiles/configuration.json.gz'
-_USERS_SOURCE_SCHEMA_VERSION_V1 = 1
 DEFAULT_MAX_COMPRESSED_BYTES = 5 * 1024 * 1024
 DEFAULT_MAX_DECOMPRESSED_BYTES = 20 * 1024 * 1024
 
@@ -123,10 +119,7 @@ class UsersSourceCodec:
         users_document = _decode_document(users_resource.content)
         if users_document.get('document_type') != USERS_SOURCE_DOCUMENT_TYPE:
             raise UsersConfigurationSourceError('Users source release document type is invalid')
-        schema_version = users_document.get('schema_version')
-        if schema_version == _USERS_SOURCE_SCHEMA_VERSION_V1:
-            return self._decode_v1(users_document)
-        if schema_version != USERS_SOURCE_SCHEMA_VERSION:
+        if users_document.get('schema_version') != USERS_SOURCE_SCHEMA_VERSION:
             raise UsersConfigurationSourceError('Users source release schema version is invalid')
         profiles_resource = _require_single_resource(resources, PROFILES_SOURCE_RESOURCE_PATH)
         profiles_document = _decode_document(profiles_resource.content)
@@ -155,28 +148,6 @@ class UsersSourceCodec:
         ) as error:
             raise UsersConfigurationSourceError(
                 'Users/profiles source release contract is invalid'
-            ) from error
-
-    @staticmethod
-    def _decode_v1(document: dict[str, Any]) -> UsersSourcePayload:
-        try:
-            raw_catalog = document['catalog']
-            if not isinstance(raw_catalog, dict):
-                raise TypeError
-            configuration = decode_users_profiles_schema_v1(raw_catalog)
-            return UsersSourcePayload(
-                configuration=configuration.users,
-                profiles=configuration.profiles,
-                published_by=str(document['published_by']),
-            )
-        except (
-            KeyError,
-            TypeError,
-            ValueError,
-            UsersConfigurationValidationError,
-        ) as error:
-            raise UsersConfigurationSourceError(
-                'Users source release schema v1 contract is invalid'
             ) from error
 
 

@@ -156,20 +156,6 @@ def _v2_document(record: ProjectionRecord[UsersProfilesConfiguration]) -> dict[s
     }
 
 
-def _v1_document(record: ProjectionRecord[UsersProfilesConfiguration]) -> dict[str, Any]:
-    administrator = record.payload.profiles.catalog().require('administrator')
-    document = _v2_document(record)
-    document['schema_version'] = 1
-    document['payload'] = {
-        'administrator_background_color': administrator.background_color,
-        'administrator_text_color': administrator.text_color,
-        'guest_background_color': '#FF5722',
-        'guest_text_color': '#FFFFFF',
-        'profiles': [],
-        'users': [user.to_document() for user in record.payload.users.users],
-    }
-    return document
-
 def _store(client: _Client):
     return CosmosUsersConfigurationProjectionStore(
         client=client,
@@ -187,28 +173,15 @@ def test_new_projection_writes_schema_2_only() -> None:
     assert set(client.document['payload']) == {'users', 'profiles'}
 
 
-def test_schema_1_projection_reads_as_new_semantic_payload() -> None:
-    record = _record('release-1', published_offset=0, projected_offset=1, color='#123456')
-    client = _Client(document=_v1_document(record))
-    client.document['_etag'] = 'etag-v1'
-
-    loaded = _store(client).get_active(record.source_key)
-
-    assert loaded == record
-    assert loaded.payload.profiles.catalog().require('administrator').background_color == '#123456'
-
-
-def test_schema_1_same_target_is_idempotent_without_rewrite() -> None:
+def test_projection_rejects_non_current_schema_version() -> None:
     record = _record('release-1', published_offset=0, projected_offset=1)
-    retry = _record('release-1', published_offset=0, projected_offset=10)
-    client = _Client(document=_v1_document(record))
-    client.document['_etag'] = 'etag-v1'
+    document = _v2_document(record)
+    document['schema_version'] = 1
+    client = _Client(document=document)
+    client.document['_etag'] = 'etag-1'
 
-    saved = _store(client).replace_active(retry)
-
-    assert saved == record
-    assert client.patch_calls == 0
-    assert client.document['schema_version'] == 1
+    with pytest.raises(UsersConfigurationProjectionError, match='schema version is invalid'):
+        _store(client).get_active(record.source_key)
 
 
 def test_same_exact_release_with_different_payload_is_invariant_error() -> None:

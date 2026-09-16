@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-# El store persiste el payload canónico separado y mantiene lectura del schema histórico para exact-release replay.
+# El store persiste únicamente el schema CURRENT y rechaza documentos de versiones anteriores.
 import hashlib
 from collections.abc import Mapping, Sequence
 from datetime import datetime
@@ -22,13 +22,9 @@ from atlanticus.web.users.configuration.errors import (
     UsersConfigurationProjectionError,
     UsersConfigurationValidationError,
 )
-from atlanticus.web.users.configuration.schema_v1 import (
-    decode_users_profiles_schema_v1,
-)
 
 USERS_PROJECTION_DOCUMENT_TYPE = 'atlanticus_users_configuration_projection'
 USERS_PROJECTION_SCHEMA_VERSION = 2
-_USERS_PROJECTION_SCHEMA_VERSION_V1 = 1
 
 
 class _CosmosProjectionClient(Protocol):
@@ -61,7 +57,7 @@ class _CosmosProjectionClient(Protocol):
     ) -> dict[str, Any]: ...
 
 
-# El contrato físico y la semántica CAS permanecen; sólo cambia el payload durable a schema 2.
+# La semántica CAS e idempotencia opera sobre ProjectionRecord del contrato genérico.
 class CosmosUsersConfigurationProjectionStore(ProjectionStore[UsersProfilesConfiguration]):
     def __init__(self, *, client: _CosmosProjectionClient, container_name: str) -> None:
         normalized_container_name = container_name.strip()
@@ -207,7 +203,7 @@ class CosmosUsersConfigurationProjectionStore(ProjectionStore[UsersProfilesConfi
             ) from error
 
 
-# Toda escritura nueva usa schema 2 con Users y Profiles separados dentro del snapshot proyectado.
+# Toda escritura durable usa el schema CURRENT del payload UsersProfilesConfiguration.
 def _projection_to_document(
     projection: ProjectionRecord[UsersProfilesConfiguration],
     *,
@@ -230,7 +226,7 @@ def _projection_to_document(
     return document
 
 
-# Schema 1 se normaliza al payload semántico nuevo antes de comparar idempotencia o devolverlo al consumidor.
+# La lectura valida primero la versión; no existe normalización ni fallback legacy.
 def _projection_from_document(
     document: Mapping[str, Any],
 ) -> ProjectionRecord[UsersProfilesConfiguration]:
@@ -238,19 +234,15 @@ def _projection_from_document(
         raise UsersConfigurationProjectionError(
             'Users configuration projection document type is invalid'
         )
-    schema_version = document.get('schema_version')
+    if document.get('schema_version') != USERS_PROJECTION_SCHEMA_VERSION:
+        raise UsersConfigurationProjectionError(
+            'Users configuration projection schema version is invalid'
+        )
     try:
         payload_document = document['payload']
         if not isinstance(payload_document, Mapping):
             raise TypeError
-        if schema_version == USERS_PROJECTION_SCHEMA_VERSION:
-            payload = UsersProfilesConfiguration.from_document(dict(payload_document))
-        elif schema_version == _USERS_PROJECTION_SCHEMA_VERSION_V1:
-            payload = decode_users_profiles_schema_v1(dict(payload_document))
-        else:
-            raise UsersConfigurationProjectionError(
-                'Users configuration projection schema version is invalid'
-            )
+        payload = UsersProfilesConfiguration.from_document(dict(payload_document))
         return ProjectionRecord(
             source_key=SourceKey(str(document['source_key'])),
             source_release_id=SourceReleaseId(str(document['source_release_id'])),
@@ -260,15 +252,13 @@ def _projection_from_document(
             projected_at_utc=datetime.fromisoformat(str(document['projected_at_utc'])),
             payload=payload,
         )
-    except UsersConfigurationProjectionError:
-        raise
     except (KeyError, TypeError, ValueError, UsersConfigurationValidationError) as error:
         raise UsersConfigurationProjectionError(
             'Users configuration projection contract is invalid'
         ) from error
 
 
-# La idempotencia sigue definida por exact release + payload semántico, no por content hash.
+# La idempotencia se decide por exact release y payload semántico.
 def _resolve_same_target(
     *,
     existing: ProjectionRecord[UsersProfilesConfiguration],

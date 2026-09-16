@@ -21,13 +21,9 @@ from atlanticus.web.users.configuration.errors import (
     UsersConfigurationProjectionError,
     UsersConfigurationValidationError,
 )
-from atlanticus.web.users.configuration.schema_v1 import (
-    decode_users_profiles_schema_v1,
-)
 
 USERS_PROJECTION_DOCUMENT_TYPE = 'atlanticus_users_configuration_projection'
 USERS_PROJECTION_SCHEMA_VERSION = 2
-_USERS_PROJECTION_SCHEMA_VERSION_V1 = 1
 
 
 class _CosmosProjectionClient(Protocol):
@@ -234,19 +230,15 @@ def _projection_from_document(
         raise UsersConfigurationProjectionError(
             'Users configuration projection document type is invalid'
         )
-    schema_version = document.get('schema_version')
+    if document.get('schema_version') != USERS_PROJECTION_SCHEMA_VERSION:
+        raise UsersConfigurationProjectionError(
+            'Users configuration projection schema version is invalid'
+        )
     try:
         payload_document = document['payload']
         if not isinstance(payload_document, Mapping):
             raise TypeError
-        if schema_version == USERS_PROJECTION_SCHEMA_VERSION:
-            payload = UsersProfilesConfiguration.from_document(dict(payload_document))
-        elif schema_version == _USERS_PROJECTION_SCHEMA_VERSION_V1:
-            payload = decode_users_profiles_schema_v1(dict(payload_document))
-        else:
-            raise UsersConfigurationProjectionError(
-                'Users configuration projection schema version is invalid'
-            )
+        payload = UsersProfilesConfiguration.from_document(dict(payload_document))
         return ProjectionRecord(
             source_key=SourceKey(str(document['source_key'])),
             source_release_id=SourceReleaseId(str(document['source_release_id'])),
@@ -256,8 +248,6 @@ def _projection_from_document(
             projected_at_utc=datetime.fromisoformat(str(document['projected_at_utc'])),
             payload=payload,
         )
-    except UsersConfigurationProjectionError:
-        raise
     except (KeyError, TypeError, ValueError, UsersConfigurationValidationError) as error:
         raise UsersConfigurationProjectionError(
             'Users configuration projection contract is invalid'

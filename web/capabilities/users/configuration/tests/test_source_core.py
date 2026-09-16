@@ -173,19 +173,12 @@ def test_v2_decode_requires_profiles_resource() -> None:
         UsersSourceCodec().decode((resources[0],))
 
 
-def test_schema_v1_resource_is_normalized_without_guest_profile() -> None:
+def test_users_source_codec_rejects_non_current_schema_version() -> None:
     document = {
         'document_type': USERS_SOURCE_DOCUMENT_TYPE,
         'schema_version': 1,
-        'published_by': 'schema-v1-admin',
-        'catalog': {
-            'administrator_background_color': '#123456',
-            'administrator_text_color': '#FFFFFF',
-            'guest_background_color': '#654321',
-            'guest_text_color': '#FFFFFF',
-            'profiles': [],
-            'users': [],
-        },
+        'published_by': 'administrator',
+        'configuration': {'users': []},
     }
     resource = SourceResource(
         logical_path=USERS_SOURCE_RESOURCE_PATH,
@@ -195,11 +188,9 @@ def test_schema_v1_resource_is_normalized_without_guest_profile() -> None:
         ),
     )
 
-    decoded = UsersSourceCodec().decode((resource,))
+    with pytest.raises(UsersConfigurationSourceError, match='schema version is invalid'):
+        UsersSourceCodec().decode((resource,))
 
-    assert decoded.published_by == 'schema-v1-admin'
-    assert [profile.key for profile in decoded.profiles.profiles] == ['administrator']
-    assert decoded.profiles.catalog().require('administrator').background_color == '#123456'
 
 def test_same_content_republish_keeps_distinct_release_identity() -> None:
     store = _MemorySourceStore()
