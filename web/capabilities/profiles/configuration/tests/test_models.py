@@ -16,13 +16,18 @@ def _profile(key: str, color: str = '#123456') -> ProfileDefinition:
     )
 
 
-def test_profiles_configuration_is_explicit_and_round_trips() -> None:
-    configuration = ProfilesConfiguration(profiles=(_profile('administrator'), _profile('operator')))
+def test_profiles_configuration_round_trips_configured_profiles() -> None:
+    configuration = ProfilesConfiguration(
+        profiles=(_profile('administrator'), _profile('operator'))
+    )
 
     restored = ProfilesConfiguration.from_document(configuration.to_document())
 
     assert restored == configuration
-    assert [profile.key for profile in restored.catalog().all()] == ['administrator', 'operator']
+    assert [profile.key for profile in restored.catalog().all()] == [
+        'administrator',
+        'operator',
+    ]
 
 
 def test_profiles_configuration_rejects_duplicate_normalized_keys() -> None:

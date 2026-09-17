@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-# Este módulo define el contrato durable de Profiles sin introducir dependencias hacia Users.
 from dataclasses import dataclass
 from typing import Any
 
@@ -8,22 +7,24 @@ from atlanticus.web.profiles.errors import ProfilesDefinitionError
 from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
 
 
-# La configuración conserva sólo Profiles funcionales explícitos y delega sus invariantes al catálogo semántico.
+# ProfilesConfiguration pertenece a la capa configuration, no al dominio core.
+# Mantiene exactamente el contrato previo durante este corte de ownership.
 @dataclass(frozen=True, slots=True)
 class ProfilesConfiguration:
     profiles: tuple[ProfileDefinition, ...] = ()
 
     def __post_init__(self) -> None:
+        # El catálogo aplica las invariantes de identidad y unicidad del dominio.
         profiles = tuple(self.profiles)
         ProfileCatalog(profiles=profiles)
         object.__setattr__(self, 'profiles', profiles)
 
-    # El catálogo runtime se reconstruye de forma explícita; no existen perfiles implícitos.
     def catalog(self) -> ProfileCatalog:
+        # Se reconstruye un catálogo inmutable a partir del estado configurado.
         return ProfileCatalog(profiles=self.profiles)
 
-    # La forma durable es neutral respecto de Source, Cosmos o cualquier proveedor físico.
     def to_document(self) -> dict[str, object]:
+        # El documento durable conserva el contrato existente sin migración implícita.
         return {
             'profiles': [
                 {
@@ -36,9 +37,9 @@ class ProfilesConfiguration:
             ]
         }
 
-    # La lectura valida forma e invariantes antes de exponer el contrato al resto del sistema.
     @classmethod
     def from_document(cls, document: dict[str, Any]) -> ProfilesConfiguration:
+        # La reconstrucción valida forma documental y luego delega invariantes al dominio.
         try:
             raw_profiles = document['profiles']
             if not isinstance(raw_profiles, list) or not all(

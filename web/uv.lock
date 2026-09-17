@@ -19,6 +19,7 @@ members = [
     "atlanticus-web-navigation-projection-local",
     "atlanticus-web-observability",
     "atlanticus-web-profiles",
+    "atlanticus-web-profiles-configuration",
     "atlanticus-web-projection",
     "atlanticus-web-pwa",
     "atlanticus-web-source",
@@ -350,6 +351,17 @@ version = "0.1.0"
 source = { editable = "capabilities/profiles/core" }
 
 [[package]]
+name = "atlanticus-web-profiles-configuration"
+version = "0.1.0"
+source = { editable = "capabilities/profiles/configuration" }
+dependencies = [
+    { name = "atlanticus-web-profiles" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "atlanticus-web-profiles", editable = "capabilities/profiles/core" }]
+
+[[package]]
 name = "atlanticus-web-projection"
 version = "0.1.0"
 source = { editable = "capabilities/projection/core" }
@@ -468,6 +480,7 @@ version = "0.1.10"
 source = { editable = "capabilities/users/configuration" }
 dependencies = [
     { name = "atlanticus-web-profiles" },
+    { name = "atlanticus-web-profiles-configuration" },
     { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
     { name = "atlanticus-web-users" },
@@ -486,6 +499,7 @@ requires-dist = [
     { name = "atlanticus-web", marker = "extra == 'web'", editable = "framework/core" },
     { name = "atlanticus-web-bootstrap", marker = "extra == 'web'", editable = "framework/bootstrap" },
     { name = "atlanticus-web-profiles", editable = "capabilities/profiles/core" },
+    { name = "atlanticus-web-profiles-configuration", editable = "capabilities/profiles/configuration" },
     { name = "atlanticus-web-projection", editable = "capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "capabilities/source/core" },
     { name = "atlanticus-web-users", editable = "capabilities/users/core" },
@@ -549,6 +563,7 @@ dependencies = [
     { name = "atlanticus-web-navigation-projection-cosmos" },
     { name = "atlanticus-web-navigation-projection-local" },
     { name = "atlanticus-web-profiles" },
+    { name = "atlanticus-web-profiles-configuration" },
     { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-pwa" },
     { name = "atlanticus-web-source" },
@@ -585,6 +600,7 @@ requires-dist = [
     { name = "atlanticus-web-navigation-projection-cosmos", editable = "capabilities/navigation/projection-cosmos" },
     { name = "atlanticus-web-navigation-projection-local", editable = "capabilities/navigation/projection-local" },
     { name = "atlanticus-web-profiles", editable = "capabilities/profiles/core" },
+    { name = "atlanticus-web-profiles-configuration", editable = "capabilities/profiles/configuration" },
     { name = "atlanticus-web-projection", editable = "capabilities/projection/core" },
     { name = "atlanticus-web-pwa", editable = "framework/pwa" },
     { name = "atlanticus-web-source", editable = "capabilities/source/core" },
