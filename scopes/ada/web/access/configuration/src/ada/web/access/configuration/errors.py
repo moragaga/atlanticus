@@ -1,0 +1,2 @@
+class AdaAccessConfigurationSourceError(RuntimeError):
+    pass

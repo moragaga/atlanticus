@@ -1,0 +1,2 @@
+class AdaAccessDefinitionError(ValueError):
+    pass
