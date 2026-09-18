@@ -24,7 +24,7 @@ class UsersAccessResolver(AccessResolver):
             record = self._store.resolve(identity)
             if record is None:
                 return AccessDecision(
-                    status=AccessStatus.USER_NOT_PROMOTED,
+                    status=AccessStatus.READY,
                     user_id=build_user_key(issuer=identity.issuer, subject_id=identity.subject_id),
                 )
             _require_runtime_identity(identity, record)

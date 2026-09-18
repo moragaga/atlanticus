@@ -15,7 +15,7 @@ from atlanticus.web.users.runtime import UsersRuntime
 from atlanticus.web.users.store import UsersRuntimeStore
 
 
-# El login sólo consulta Cosmos: una identidad ausente queda no promovida y nunca se persiste aquí.
+# Una identidad autenticada ausente del store sigue READY; promover sólo crea el User administrado.
 class UsersAccessResolver(AccessResolver):
     def __init__(self, *, store: UsersRuntimeStore, runtime: UsersRuntime) -> None:
         self._store = store
@@ -26,7 +26,7 @@ class UsersAccessResolver(AccessResolver):
             record = self._store.resolve(identity)
             if record is None:
                 return AccessDecision(
-                    status=AccessStatus.USER_NOT_PROMOTED,
+                    status=AccessStatus.READY,
                     user_id=build_user_key(issuer=identity.issuer, subject_id=identity.subject_id),
                 )
             _require_runtime_identity(identity, record)
@@ -37,6 +37,7 @@ class UsersAccessResolver(AccessResolver):
         ) as error:
             raise AccessResolverUnavailableError('Users runtime store is unavailable') from error
 
+        # Sólo un User administrado y deshabilitado bloquea el acceso por estado de Users.
         if not record.enabled:
             return AccessDecision(status=AccessStatus.USER_DISABLED, user_id=record.user_id)
 

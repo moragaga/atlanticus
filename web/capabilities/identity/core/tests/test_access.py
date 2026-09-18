@@ -67,7 +67,7 @@ def test_access_runtime_ignores_previous_snapshot_contract() -> None:
     server = Flask(__name__)
     server.secret_key = 'test-only'
     with server.test_request_context('/'):
-        session['_atlanticus_access_snapshot'] = {'status': 'ready'}
+        session['_atlanticus_access_snapshot_v2'] = {'status': 'user_not_promoted'}
         assert AccessRuntime().current_or_none() is None
 
 

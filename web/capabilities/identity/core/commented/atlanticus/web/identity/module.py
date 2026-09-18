@@ -22,7 +22,6 @@ from atlanticus.web.identity.pages import (
     identity_unavailable_response,
     invalid_identity_response,
     user_disabled_response,
-    user_not_promoted_response,
 )
 from atlanticus.web.identity.provider import IdentityProvider
 from atlanticus.web.identity.session import configure_identity_session
@@ -32,7 +31,7 @@ from atlanticus.web.services import ServiceRegistry
 ACCESS_BOOTSTRAP_SERVICE_KEY = 'atlanticus.web.identity.bootstrap'
 
 
-# El middleware corta el request según el estado de acceso resuelto sin realizar promoción implícita.
+# El middleware sólo rechaza identidad inválida o un usuario administrado explícitamente deshabilitado.
 def create_identity_module(
     provider: IdentityProvider,
     *,
@@ -65,12 +64,10 @@ def create_identity_module(
                 return None
             try:
                 snapshot = _resolve_request_snapshot(bootstrap, runtime)
-            except (IdentityProviderUnavailableError, AccessResolverUnavailableError):
+            except IdentityProviderUnavailableError, AccessResolverUnavailableError:
                 return identity_unavailable_response()
             if snapshot.status is AccessStatus.INVALID_IDENTITY:
                 return invalid_identity_response()
-            if snapshot.status is AccessStatus.USER_NOT_PROMOTED:
-                return user_not_promoted_response()
             if snapshot.status is AccessStatus.USER_DISABLED:
                 return user_disabled_response()
             return None

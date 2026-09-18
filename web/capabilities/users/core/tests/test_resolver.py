@@ -1,7 +1,7 @@
 import pytest
 from flask import Flask
 
-from atlanticus.web.identity.access import AccessStatus
+from atlanticus.web.identity.access import AccessDecision, AccessSnapshot, AccessStatus
 from atlanticus.web.identity.errors import AccessResolverUnavailableError
 from atlanticus.web.identity.models import AuthenticatedIdentity
 from atlanticus.web.users.authority import BASIC_AUTHORITY_KEY
@@ -49,14 +49,26 @@ def _managed(*, enabled: bool = True) -> UserRecord:
     )
 
 
-def test_absent_identity_is_not_promoted_and_login_performs_no_write() -> None:
+def test_absent_identity_is_ready_without_promotion_or_runtime_user() -> None:
     store = MemoryRuntimeStore(resolved=None)
-    resolver = UsersAccessResolver(store=store, runtime=UsersRuntime())
+    runtime = UsersRuntime()
+    resolver = UsersAccessResolver(store=store, runtime=runtime)
+    identity = _identity()
+    server = Flask(__name__)
+    server.secret_key = 'test-only'
 
-    decision = resolver.resolve(_identity(), load_id='load-1')
+    with server.test_request_context('/'):
+        decision = resolver.resolve(identity, load_id='load-1')
+        access = AccessSnapshot.resolved(
+            load_id='load-1',
+            identity=identity,
+            decision=AccessDecision(status=decision.status, user_id=decision.user_id),
+        )
+        runtime_user = runtime.current_or_none(access)
 
-    assert decision.status is AccessStatus.USER_NOT_PROMOTED
+    assert decision.status is AccessStatus.READY
     assert decision.user_id == build_user_key(issuer='entra', subject_id='oid-1')
+    assert runtime_user is None
     assert store.resolve_calls == 1
     assert not hasattr(store, 'observe')
 

@@ -14,14 +14,13 @@ from atlanticus.web.identity.errors import AccessContextError, IdentityDefinitio
 from atlanticus.web.identity.models import AuthenticatedIdentity
 
 ACCESS_RUNTIME_SERVICE_KEY = 'atlanticus.web.identity.access'
-_SESSION_KEY = '_atlanticus_access_snapshot_v2'
+_SESSION_KEY = '_atlanticus_access_snapshot_v3'
 
 
-# USER_NOT_PROMOTED separa autenticación válida de la habilitación administrativa como User.
+# La promoción administrativa no forma parte de los estados de rechazo de Identity Access.
 class AccessStatus(StrEnum):
     READY = 'ready'
     INVALID_IDENTITY = 'invalid_identity'
-    USER_NOT_PROMOTED = 'user_not_promoted'
     USER_DISABLED = 'user_disabled'
 
 
@@ -39,9 +38,8 @@ class AccessDecision:
         if self.user_id is not None:
             normalized = self.user_id.strip()
             object.__setattr__(self, 'user_id', normalized or None)
-        if self.status in {AccessStatus.USER_NOT_PROMOTED, AccessStatus.USER_DISABLED}:
-            if self.user_id is None:
-                raise IdentityDefinitionError('Rejected user access decision requires user_id')
+        if self.status is AccessStatus.USER_DISABLED and self.user_id is None:
+            raise IdentityDefinitionError('Disabled user access decision requires user_id')
         if self.bootstrap_root and self.status is not AccessStatus.READY:
             raise IdentityDefinitionError('Bootstrap root access decision must be ready')
         if self.bootstrap_root and self.user_id is not None:
@@ -80,9 +78,8 @@ class AccessSnapshot:
             raise IdentityDefinitionError('Invalid identity snapshot cannot contain identity')
         if self.status is not AccessStatus.INVALID_IDENTITY and self.identity is None:
             raise IdentityDefinitionError('Resolved access snapshot requires identity')
-        if self.status in {AccessStatus.USER_NOT_PROMOTED, AccessStatus.USER_DISABLED}:
-            if self.user_id is None:
-                raise IdentityDefinitionError('Rejected user access snapshot requires user_id')
+        if self.status is AccessStatus.USER_DISABLED and self.user_id is None:
+            raise IdentityDefinitionError('Disabled user access snapshot requires user_id')
         if self.bootstrap_root and self.status is not AccessStatus.READY:
             raise IdentityDefinitionError('Bootstrap root access snapshot must be ready')
         if self.bootstrap_root and self.user_id is not None:
