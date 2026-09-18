@@ -39,18 +39,9 @@ from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
 from atlanticus.web.source.models import SourceKey
-from atlanticus.web.users.configuration import (
-    UsersProfilesAdministrationService,
-    UsersProfilesConfiguration,
-    UsersSourceService,
-    create_users_projection_service,
-)
-from atlanticus.web.users.models import PendingUserRecord
-from atlanticus.web.users.store import PendingUsersReader
 
 PayloadT = TypeVar('PayloadT')
 
-USERS_SOURCE_KEY = SourceKey('users')
 NAVIGATION_SOURCE_KEY = SourceKey('navigation')
 TOOLS_SOURCE_KEY = SourceKey('tools')
 KPI_SOURCE_KEY = SourceKey('kpis')
@@ -72,11 +63,6 @@ class InProcessProjectionStore(ProjectionStore[PayloadT], Generic[PayloadT]):
         return projection
 
 
-class EmptyPendingUsersReader(PendingUsersReader):
-    def list_pending(self) -> tuple[PendingUserRecord, ...]:
-        return ()
-
-
 def create_local_configuration_manager_dependencies(
     *,
     source_root: Path | None = None,
@@ -84,13 +70,11 @@ def create_local_configuration_manager_dependencies(
     root = source_root or _source_root()
     source_store = LocalSourceStore(LocalSourceSettings(root=root))
 
-    users_projection_store = InProcessProjectionStore[UsersProfilesConfiguration]()
     navigation_projection_store = InProcessProjectionStore[NavigationConfigurationCatalog]()
     tools_projection_store = InProcessProjectionStore[ToolConfiguration]()
     kpi_projection_store = InProcessProjectionStore[KpiConfiguration]()
     kpi_definition_projection_store = InProcessProjectionStore[KpiDefinitionCatalog]()
 
-    users_source = UsersSourceService(source=source_store, source_key=USERS_SOURCE_KEY)
     navigation_source = NavigationSourceService(
         source=source_store,
         source_key=NAVIGATION_SOURCE_KEY,
@@ -102,14 +86,6 @@ def create_local_configuration_manager_dependencies(
         source_key=KPI_DEFINITION_SOURCE_KEY,
     )
 
-    users_administration = UsersProfilesAdministrationService(
-        source=users_source,
-        pending=EmptyPendingUsersReader(),
-    )
-    users_projection = create_users_projection_service(
-        source=source_store,
-        projection=users_projection_store,
-    )
     navigation_projection = create_navigation_projection_service(
         source=source_store,
         projection=navigation_projection_store,
@@ -141,9 +117,6 @@ def create_local_configuration_manager_dependencies(
         is_local=True,
     )
     return ConfigurationManagerDependencies(
-        users_source_key=USERS_SOURCE_KEY,
-        users_profiles_administration=users_administration,
-        users_projection=users_projection,
         navigation_source=navigation_source,
         navigation_projection=navigation_projection,
         tools_source=tools_source,
@@ -155,8 +128,6 @@ def create_local_configuration_manager_dependencies(
         kpi_configuration_projection=kpi_projection_store,
         kpi_definitions_source=kpi_definitions_source,
         kpi_definitions_projection=kpi_definitions_projection,
-        users_source_name='Local Source',
-        users_projection_name='In-process Projection',
         navigation_source_name='Local Source',
         navigation_projection_name='In-process Projection',
         tools_source_name='Local Source',

@@ -1,16 +1,29 @@
-# Errores específicos del dominio Users runtime.
-# Se mantienen separados de Identity para conservar responsabilidades claras.
-
+# Espejo pedagógico: conserva exactamente el contrato productivo y explica su intención.
 class UsersDefinitionError(ValueError):
     pass
 
 
-# Indica que la superficie durable/runtime de Users no pudo resolverse de forma confiable.
-class UsersRuntimeStoreUnavailableError(RuntimeError):
+class UsersStoreUnavailableError(RuntimeError):
+    pass
+
+
+class UsersRegistryUnavailableError(RuntimeError):
+    pass
+
+
+class UsersRegistryConflictError(RuntimeError):
     pass
 
 
 class UsersIdentityConflictError(RuntimeError):
+    pass
+
+
+class UserAlreadyPromotedError(RuntimeError):
+    pass
+
+
+class UserPromotionError(RuntimeError):
     pass
 
 

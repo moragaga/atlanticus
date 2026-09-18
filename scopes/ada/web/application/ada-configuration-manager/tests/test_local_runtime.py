@@ -3,15 +3,13 @@ from ada.web.application.configuration_manager.local_runtime import (
     KPI_SOURCE_KEY,
     NAVIGATION_SOURCE_KEY,
     TOOLS_SOURCE_KEY,
-    USERS_SOURCE_KEY,
     create_local_configuration_manager_dependencies,
 )
 
 
-def test_local_runtime_composes_five_independent_named_sources(tmp_path) -> None:
+def test_local_runtime_composes_configuration_sources(tmp_path) -> None:
     dependencies = create_local_configuration_manager_dependencies(source_root=tmp_path)
 
-    assert dependencies.users_source_key == USERS_SOURCE_KEY
     assert dependencies.navigation_source.source_key == NAVIGATION_SOURCE_KEY
     assert dependencies.tools_source.source_key == TOOLS_SOURCE_KEY
     assert dependencies.kpis_source is not None

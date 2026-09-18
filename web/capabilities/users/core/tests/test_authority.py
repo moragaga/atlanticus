@@ -1,34 +1,32 @@
-from pathlib import Path
-
 import pytest
 
 from atlanticus.web.users.authority import (
     BASIC_AUTHORITY_KEY,
-    GUEST_AUTHORITY_KEY,
     LOCAL_AUTHORITY_KEY,
     ROOT_AUTHORITY_KEY,
     has_full_access,
     is_assignable_authority,
     normalize_authority_key,
+    require_assignable_authority,
 )
 from atlanticus.web.users.errors import UsersDefinitionError
 from atlanticus.web.users.local import LOCAL_JANE, LOCAL_JOHN, select_local_user
 
 
-def test_base_authorities_keep_system_semantics() -> None:
-    assert is_assignable_authority(GUEST_AUTHORITY_KEY) is False
-    assert is_assignable_authority(LOCAL_AUTHORITY_KEY) is False
+def test_global_authorities_keep_users_owned_semantics() -> None:
     assert is_assignable_authority(BASIC_AUTHORITY_KEY) is True
     assert is_assignable_authority(ROOT_AUTHORITY_KEY) is True
-    assert has_full_access(GUEST_AUTHORITY_KEY) is False
+    assert is_assignable_authority(LOCAL_AUTHORITY_KEY) is False
+    assert is_assignable_authority('operator') is False
     assert has_full_access(BASIC_AUTHORITY_KEY) is False
     assert has_full_access(ROOT_AUTHORITY_KEY) is True
     assert has_full_access(LOCAL_AUTHORITY_KEY) is True
 
 
-def test_functional_authority_keys_remain_assignable_without_users_owning_profiles() -> None:
-    assert is_assignable_authority('operator') is True
-    assert normalize_authority_key(' Operator ') == 'operator'
+def test_assignable_authority_rejects_application_profile_keys() -> None:
+    with pytest.raises(UsersDefinitionError, match='basic or root'):
+        require_assignable_authority('operator')
+    assert require_assignable_authority(' Root ') == ROOT_AUTHORITY_KEY
 
 
 def test_authority_key_rejects_empty_or_spaced_values() -> None:
@@ -57,15 +55,3 @@ def test_local_selector_preserves_jane_and_john_contracts() -> None:
     assert john.avatar_text_color == '#FFFFFF'
     assert john.is_local is True
     assert john.has_full_access is True
-
-
-def test_users_core_has_no_profiles_dependency() -> None:
-    package_root = Path(__file__).resolve().parents[1]
-    pyproject = (package_root / 'pyproject.toml').read_text(encoding='utf-8')
-    sources = '\n'.join(
-        path.read_text(encoding='utf-8')
-        for path in sorted((package_root / 'src').rglob('*.py'))
-    )
-
-    assert 'atlanticus-web-profiles' not in pyproject
-    assert 'atlanticus.web.profiles' not in sources

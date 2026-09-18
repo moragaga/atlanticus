@@ -6,10 +6,10 @@ from atlanticus.web.identity.models import AuthenticatedIdentity
 from atlanticus.web.users.errors import (
     UsersDefinitionError,
     UsersIdentityConflictError,
-    UsersRuntimeStoreUnavailableError,
+    UsersStoreUnavailableError,
 )
 from atlanticus.web.users.identity import build_user_key
-from atlanticus.web.users.models import PendingUserRecord, RuntimeUserRecord
+from atlanticus.web.users.models import UserRecord
 from atlanticus.web.users.runtime import UsersRuntime
 from atlanticus.web.users.store import UsersRuntimeStore
 
@@ -23,16 +23,19 @@ class UsersAccessResolver(AccessResolver):
         try:
             record = self._store.resolve(identity)
             if record is None:
-                record = self._store.observe(identity)
+                return AccessDecision(
+                    status=AccessStatus.USER_NOT_PROMOTED,
+                    user_id=build_user_key(issuer=identity.issuer, subject_id=identity.subject_id),
+                )
             _require_runtime_identity(identity, record)
         except (
             UsersDefinitionError,
             UsersIdentityConflictError,
-            UsersRuntimeStoreUnavailableError,
+            UsersStoreUnavailableError,
         ) as error:
             raise AccessResolverUnavailableError('Users runtime store is unavailable') from error
 
-        if not isinstance(record, PendingUserRecord) and not record.enabled:
+        if not record.enabled:
             return AccessDecision(status=AccessStatus.USER_DISABLED, user_id=record.user_id)
 
         user = record.to_effective_user()
@@ -40,7 +43,7 @@ class UsersAccessResolver(AccessResolver):
         return AccessDecision(status=AccessStatus.READY, user_id=user.user_id)
 
 
-def _require_runtime_identity(identity: AuthenticatedIdentity, record: RuntimeUserRecord) -> None:
+def _require_runtime_identity(identity: AuthenticatedIdentity, record: UserRecord) -> None:
     expected_user_id = build_user_key(issuer=identity.issuer, subject_id=identity.subject_id)
     if (
         record.user_id != expected_user_id

@@ -16,18 +16,10 @@ from atlanticus.web.navigation.configuration import (
 )
 from atlanticus.web.projection.service import SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
-from atlanticus.web.source.models import SourceKey
-from atlanticus.web.users.configuration import (
-    UsersProfilesAdministrationService,
-    UsersProfilesConfiguration,
-)
 
 
 @dataclass(frozen=True, slots=True)
 class ConfigurationManagerDependencies:
-    users_source_key: SourceKey
-    users_profiles_administration: UsersProfilesAdministrationService
-    users_projection: SourceProjectionService[UsersProfilesConfiguration]
     navigation_source: NavigationSourceService
     navigation_projection: SourceProjectionService[NavigationConfigurationCatalog]
     tools_source: ToolSourceService
@@ -39,8 +31,6 @@ class ConfigurationManagerDependencies:
     kpi_configuration_projection: ProjectionStore[KpiConfiguration] | None = None
     kpi_definitions_source: KpiDefinitionSourceService | None = None
     kpi_definitions_projection: SourceProjectionService[KpiDefinitionCatalog] | None = None
-    users_source_name: str = 'Source'
-    users_projection_name: str = 'Projection'
     navigation_source_name: str = 'Source'
     navigation_projection_name: str = 'Projection'
     tools_source_name: str = 'Source'

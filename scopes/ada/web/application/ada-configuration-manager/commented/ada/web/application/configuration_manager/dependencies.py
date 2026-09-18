@@ -1,4 +1,4 @@
-# Espejo pedagógico: declara únicamente dependencias finales y explícitas del composition root del Manager.
+# Espejo pedagógico: las dependencias del Configuration Manager ya no incluyen lifecycle de Users, porque Users es un registro global.
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,19 +17,10 @@ from atlanticus.web.navigation.configuration import (
 )
 from atlanticus.web.projection.service import SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
-from atlanticus.web.source.models import SourceKey
-from atlanticus.web.users.configuration import (
-    UsersProfilesAdministrationService,
-    UsersProfilesConfiguration,
-)
 
 
-# El composition root recibe servicios finales ya construidos; no agrupa dominios en bundles especiales.
 @dataclass(frozen=True, slots=True)
 class ConfigurationManagerDependencies:
-    users_source_key: SourceKey
-    users_profiles_administration: UsersProfilesAdministrationService
-    users_projection: SourceProjectionService[UsersProfilesConfiguration]
     navigation_source: NavigationSourceService
     navigation_projection: SourceProjectionService[NavigationConfigurationCatalog]
     tools_source: ToolSourceService
@@ -41,8 +32,6 @@ class ConfigurationManagerDependencies:
     kpi_configuration_projection: ProjectionStore[KpiConfiguration] | None = None
     kpi_definitions_source: KpiDefinitionSourceService | None = None
     kpi_definitions_projection: SourceProjectionService[KpiDefinitionCatalog] | None = None
-    users_source_name: str = 'Source'
-    users_projection_name: str = 'Projection'
     navigation_source_name: str = 'Source'
     navigation_projection_name: str = 'Projection'
     tools_source_name: str = 'Source'
@@ -52,7 +41,6 @@ class ConfigurationManagerDependencies:
     kpi_definitions_source_name: str = 'Source'
     kpi_definitions_projection_name: str = 'Projection'
 
-    # Las capacidades opcionales se habilitan como contratos completos para evitar estados parciales.
     def __post_init__(self) -> None:
         kpi_contract = (
             self.kpis_source,

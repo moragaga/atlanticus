@@ -1,4 +1,5 @@
-# Espejo pedagógico: registra los cinco contratos genéricos por módulo y evita rutas legacy.
+# Espejo pedagógico: el Configuration Manager conserva sólo dominios de configuración; Users deja de simular Source/Projection.
+# Navigation, Tools y KPI siguen usando el contrato genérico de Manager sin excepciones para Users.
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -34,10 +35,6 @@ from ada.web.application.configuration_manager.workflows import (
 )
 from ada.web.application.configuration_manager.workspace import ManagerWorkspaceBridge
 from atlanticus.web.bootstrap import create_bootstrap_web_module
-from atlanticus.web.compositions.users_manager import (
-    create_users_manager_draft_validation_workflow,
-    create_users_manager_source_workflow,
-)
 from atlanticus.web.manager import (
     ManagerModule,
     ManagerModuleAccess,
@@ -49,12 +46,10 @@ from atlanticus.web.manager.web.ids import (
     workflow_action_id,
     workflow_draft_id,
     workflow_editor_revision_id,
-    workflow_refresh_signal_id,
     workflow_result_id,
     workflow_saved_draft_id,
 )
 from atlanticus.web.modules import WebModule
-from atlanticus.web.navigation.configuration import NavigationProfileOption
 from atlanticus.web.navigation.configuration.web import (
     NavigationAdminWebContext,
     build_navigation_admin_configuration,
@@ -62,21 +57,8 @@ from atlanticus.web.navigation.configuration.web import (
     create_navigation_admin_web_module,
 )
 from atlanticus.web.services import ServiceRegistry
-from atlanticus.web.users.configuration.web import (
-    UsersAdminWebContext,
-    build_users_admin_configuration,
-    build_users_history_preview,
-    create_users_admin_web_module,
-)
 
-# Los service keys distinguen las cinco capacidades genéricas que Manager coordina por módulo.
 MANAGER_ROUTE_PREFIX = '/manager'
-
-USERS_SOURCE_SERVICE = 'ada.configuration-manager.users.source'
-USERS_SOURCE_READER_SERVICE = 'ada.configuration-manager.users.source-reader'
-USERS_SOURCE_HISTORY_SERVICE = 'ada.configuration-manager.users.source-history'
-USERS_PROJECTION_SERVICE = 'ada.configuration-manager.users.projection'
-USERS_DRAFT_VALIDATION_SERVICE = 'ada.configuration-manager.users.validation'
 
 NAVIGATION_SOURCE_SERVICE = 'ada.configuration-manager.navigation.source'
 NAVIGATION_SOURCE_READER_SERVICE = 'ada.configuration-manager.navigation.source-reader'
@@ -103,11 +85,11 @@ KPI_DEFINITION_PROJECTION_SERVICE = 'ada.configuration-manager.kpi-definitions.p
 KPI_DEFINITION_DRAFT_VALIDATION_SERVICE = 'ada.configuration-manager.kpi-definitions.validation'
 
 
-# La superficie declara módulos genéricos; las particularidades viven en los servicios y editores de cada dominio.
 def build_configuration_manager_surface(
     dependencies: ConfigurationManagerDependencies,
 ) -> ManagerSurfaceDefinition:
-    actor_provider = lambda: dependencies.principal_provider().subject_id
+    def actor_provider() -> str:
+        return dependencies.principal_provider().subject_id
     navigation_workspace = ManagerWorkspaceBridge(
         owner_subject_id_provider=actor_provider,
         source_snapshot_provider=dependencies.navigation_source.get_current,
@@ -115,18 +97,6 @@ def build_configuration_manager_surface(
     tools_workspace = ManagerWorkspaceBridge(
         owner_subject_id_provider=actor_provider,
         source_snapshot_provider=dependencies.tools_source.get_current,
-    )
-    users_context = UsersAdminWebContext(
-        administration=dependencies.users_profiles_administration,
-        draft_store_id=workflow_draft_id('users'),
-        saved_draft_store_id=workflow_saved_draft_id('users'),
-        draft_save_action_id=workflow_action_id('users', 'save-draft'),
-        workflow_refresh_signal_id=workflow_refresh_signal_id('users'),
-        editor_revision_store_id=workflow_editor_revision_id('users'),
-        draft_owner_provider=actor_provider,
-        can_manage=lambda: _can_manage_users(dependencies.principal_provider()),
-        source_name=dependencies.users_source_name,
-        projection_name=dependencies.users_projection_name,
     )
     navigation_context = NavigationAdminWebContext(
         workspace_payload_reader=navigation_workspace.read_payload,
@@ -138,7 +108,6 @@ def build_configuration_manager_surface(
         can_manage=lambda: _can_manage_navigation(dependencies.principal_provider()),
         source_name=dependencies.navigation_source_name,
         projection_name=dependencies.navigation_projection_name,
-        profile_options_provider=lambda: _navigation_profile_options(dependencies),
     )
     tools_context = ToolManagerWebContext(
         workspace_payload_reader=tools_workspace.read_payload,
@@ -158,31 +127,6 @@ def build_configuration_manager_surface(
         principal_provider=dependencies.principal_provider,
         groups=(ManagerModuleGroup(key='configuration', title='Configuraciones', order=10),),
         modules=(
-            ManagerModule(
-                key='users',
-                group_key='configuration',
-                title='Usuarios',
-                route='/users',
-                order=10,
-                description='Perfiles, usuarios y acceso administrativo de ADA.',
-                layout=lambda _services: build_users_admin_configuration(users_context),
-                history_preview_renderer=build_users_history_preview,
-                source_key=dependencies.users_source_key,
-                source_service=USERS_SOURCE_SERVICE,
-                source_reader_service=USERS_SOURCE_READER_SERVICE,
-                source_history_service=USERS_SOURCE_HISTORY_SERVICE,
-                projection_service=USERS_PROJECTION_SERVICE,
-                draft_validation_service=USERS_DRAFT_VALIDATION_SERVICE,
-                access=ManagerModuleAccess(
-                    view='users.manage',
-                    validate='users.manage',
-                    project='users.manage',
-                    publish='users.manage',
-                ),
-                web_module=create_users_admin_web_module(users_context),
-                source_name=dependencies.users_source_name,
-                projection_name=dependencies.users_projection_name,
-            ),
             ManagerModule(
                 key='navigation',
                 group_key='configuration',
@@ -247,29 +191,12 @@ def build_configuration_manager_surface(
     )
 
 
-# Un mismo SourceWorkflow puede satisfacer lectura, historia y publicación bajo claves explícitas separadas.
 def _register_services(
     services: ServiceRegistry,
     dependencies: ConfigurationManagerDependencies,
 ) -> None:
-    actor_provider = lambda: dependencies.principal_provider().subject_id
-    users_source = create_users_manager_source_workflow(
-        administration=dependencies.users_profiles_administration,
-        audit_actor_provider=actor_provider,
-    )
-    _register_source_workflow(
-        services,
-        workflow=users_source,
-        source_service=USERS_SOURCE_SERVICE,
-        source_reader_service=USERS_SOURCE_READER_SERVICE,
-        source_history_service=USERS_SOURCE_HISTORY_SERVICE,
-    )
-    services.add(
-        USERS_DRAFT_VALIDATION_SERVICE,
-        create_users_manager_draft_validation_workflow(audit_actor_provider=actor_provider),
-    )
-    services.add(USERS_PROJECTION_SERVICE, dependencies.users_projection)
-
+    def actor_provider() -> str:
+        return dependencies.principal_provider().subject_id
     navigation_source = NavigationManagerSourceWorkflow(
         source=dependencies.navigation_source,
         audit_actor_provider=actor_provider,
@@ -368,10 +295,6 @@ def _register_source_workflow(
     services.add(source_service, workflow)
     services.add(source_reader_service, workflow)
     services.add(source_history_service, workflow)
-
-
-def _can_manage_users(principal: ManagerPrincipal) -> bool:
-    return principal.is_local or 'administrator' in principal.profile_keys or 'users.manage' in principal.access_keys
 
 
 def _can_manage_navigation(principal: ManagerPrincipal) -> bool:
@@ -508,23 +431,4 @@ def _kpi_definition_modules(
             source_name=dependencies.kpi_definitions_source_name,
             projection_name=dependencies.kpi_definitions_projection_name,
         ),
-    )
-
-
-# Navigation usa Users como dato proyectado de composición, sin convertir esa relación en ownership de Source.
-def _navigation_profile_options(
-    dependencies: ConfigurationManagerDependencies,
-) -> tuple[NavigationProfileOption, ...]:
-    state = dependencies.users_profiles_administration.load_current()
-    if state.configuration is None:
-        return ()
-    return tuple(
-        NavigationProfileOption(
-            key=profile.key,
-            label=profile.label,
-            unrestricted=profile.key in {'local', 'administrator'},
-            background_color=profile.background_color,
-            text_color=profile.text_color,
-        )
-        for profile in state.configuration.profiles.profiles
     )

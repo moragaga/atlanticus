@@ -24,11 +24,6 @@ from ada.web.application.configuration_manager.composition import (
     TOOLS_SOURCE_HISTORY_SERVICE,
     TOOLS_SOURCE_READER_SERVICE,
     TOOLS_SOURCE_SERVICE,
-    USERS_DRAFT_VALIDATION_SERVICE,
-    USERS_PROJECTION_SERVICE,
-    USERS_SOURCE_HISTORY_SERVICE,
-    USERS_SOURCE_READER_SERVICE,
-    USERS_SOURCE_SERVICE,
     build_configuration_manager_surface,
 )
 from ada.web.application.configuration_manager.dependencies import (
@@ -78,11 +73,6 @@ __all__ = [
     'TOOLS_SOURCE_SERVICE',
     'ToolManagerDraftValidationWorkflow',
     'ToolManagerSourceWorkflow',
-    'USERS_DRAFT_VALIDATION_SERVICE',
-    'USERS_PROJECTION_SERVICE',
-    'USERS_SOURCE_HISTORY_SERVICE',
-    'USERS_SOURCE_READER_SERVICE',
-    'USERS_SOURCE_SERVICE',
     'build_configuration_manager_surface',
     'create_configuration_manager_application',
     'create_configuration_manager_web_definition',

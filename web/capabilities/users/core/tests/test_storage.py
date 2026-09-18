@@ -8,13 +8,16 @@ from atlanticus.web.storage.topology import (
     StorageResourceOverrideField,
     resolve_storage_plan,
 )
-from atlanticus.web.users.storage import USERS_RUNTIME_STORAGE_RESOURCE, USERS_STORAGE_RESOURCES
+from atlanticus.web.users.storage import (
+    USERS_RUNTIME_STORAGE_RESOURCE,
+    USERS_RUNTIME_STORAGE_RESOURCES,
+)
 
 
-def test_users_runtime_storage_contract_is_single_durable_cosmos_resource() -> None:
+def test_users_runtime_storage_contract_declares_cosmos_runtime_resource() -> None:
     contract = USERS_RUNTIME_STORAGE_RESOURCE
 
-    assert USERS_STORAGE_RESOURCES == (contract,)
+    assert USERS_RUNTIME_STORAGE_RESOURCES == (contract,)
     assert contract.logical_id == 'users.runtime'
     assert contract.owner == 'users'
     assert contract.provider == 'cosmos'
@@ -29,12 +32,12 @@ def test_users_runtime_storage_contract_is_single_durable_cosmos_resource() -> N
 
 def test_users_runtime_storage_requires_composition_connection_binding() -> None:
     with pytest.raises(MissingStorageConnectionBindingError):
-        resolve_storage_plan(USERS_STORAGE_RESOURCES)
+        resolve_storage_plan(USERS_RUNTIME_STORAGE_RESOURCES)
 
 
 def test_users_runtime_storage_resolves_connection_without_changing_topology() -> None:
     plan = resolve_storage_plan(
-        USERS_STORAGE_RESOURCES,
+        USERS_RUNTIME_STORAGE_RESOURCES,
         (StorageResourceOverride(logical_id='users.runtime', connection_ref='primary'),),
     )
 
@@ -49,7 +52,7 @@ def test_users_runtime_storage_resolves_connection_without_changing_topology() -
 def test_users_runtime_storage_forbids_physical_name_override() -> None:
     with pytest.raises(ForbiddenStorageResourceOverrideError):
         resolve_storage_plan(
-            USERS_STORAGE_RESOURCES,
+            USERS_RUNTIME_STORAGE_RESOURCES,
             (
                 StorageResourceOverride(
                     logical_id='users.runtime',

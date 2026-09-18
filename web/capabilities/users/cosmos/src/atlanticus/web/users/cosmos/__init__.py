@@ -1,3 +1,3 @@
-from atlanticus.web.users.cosmos.store import CosmosUsersRuntimeStore
+from atlanticus.web.users.cosmos.store import CosmosUsersStore
 
-__all__ = ['CosmosUsersRuntimeStore']
+__all__ = ['CosmosUsersStore']

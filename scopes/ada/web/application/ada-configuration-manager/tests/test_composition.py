@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 from ada.web.application.configuration_manager import (
     MANAGER_ROUTE_PREFIX,
     NAVIGATION_DRAFT_VALIDATION_SERVICE,
@@ -12,21 +10,12 @@ from ada.web.application.configuration_manager import (
     TOOLS_SOURCE_HISTORY_SERVICE,
     TOOLS_SOURCE_READER_SERVICE,
     TOOLS_SOURCE_SERVICE,
-    USERS_DRAFT_VALIDATION_SERVICE,
-    USERS_PROJECTION_SERVICE,
-    USERS_SOURCE_HISTORY_SERVICE,
-    USERS_SOURCE_READER_SERVICE,
-    USERS_SOURCE_SERVICE,
     ConfigurationManagerDependencies,
     NavigationManagerDraftValidationWorkflow,
     NavigationManagerSourceWorkflow,
     ToolManagerDraftValidationWorkflow,
     ToolManagerSourceWorkflow,
     build_configuration_manager_surface,
-)
-from atlanticus.web.compositions.users_manager import (
-    UsersManagerDraftValidationWorkflow,
-    UsersManagerSourceWorkflow,
 )
 from atlanticus.web.manager import ManagerPrincipal, ManagerSurface
 from atlanticus.web.services import ServiceRegistry
@@ -41,11 +30,6 @@ class SourceStub:
         return SourceSnapshot(self.source_key, None, None)
 
 
-class UsersAdministrationStub:
-    def load_current(self):
-        return SimpleNamespace(configuration=None, source_snapshot=SourceSnapshot(SourceKey('users'), None, None))
-
-
 class ProjectionStub:
     pass
 
@@ -57,9 +41,6 @@ def dependencies() -> ConfigurationManagerDependencies:
         is_local=True,
     )
     return ConfigurationManagerDependencies(
-        users_source_key=SourceKey('users'),
-        users_profiles_administration=UsersAdministrationStub(),
-        users_projection=ProjectionStub(),
         navigation_source=SourceStub('navigation'),
         navigation_projection=ProjectionStub(),
         tools_source=SourceStub('tools'),
@@ -68,25 +49,17 @@ def dependencies() -> ConfigurationManagerDependencies:
     )
 
 
-def test_surface_uses_generic_manager_contract_for_all_base_modules() -> None:
+def test_surface_uses_generic_manager_contract_for_configuration_modules() -> None:
     definition = build_configuration_manager_surface(dependencies())
     surface = ManagerSurface(definition)
 
     assert definition.route_prefix == MANAGER_ROUTE_PREFIX == '/manager'
     assert tuple(module.key for module in surface.registry.modules) == (
-        'users',
         'navigation',
         'tools',
     )
 
-    users, navigation, tools = definition.modules
-    assert users.source_key == SourceKey('users')
-    assert users.source_service == USERS_SOURCE_SERVICE
-    assert users.source_reader_service == USERS_SOURCE_READER_SERVICE
-    assert users.source_history_service == USERS_SOURCE_HISTORY_SERVICE
-    assert users.projection_service == USERS_PROJECTION_SERVICE
-    assert users.draft_validation_service == USERS_DRAFT_VALIDATION_SERVICE
-
+    navigation, tools = definition.modules
     assert navigation.source_key == SourceKey('navigation')
     assert navigation.source_service == NAVIGATION_SOURCE_SERVICE
     assert navigation.source_reader_service == NAVIGATION_SOURCE_READER_SERVICE
@@ -102,7 +75,7 @@ def test_surface_uses_generic_manager_contract_for_all_base_modules() -> None:
     assert tools.draft_validation_service == TOOLS_DRAFT_VALIDATION_SERVICE
 
 
-def test_service_module_registers_separate_generic_capabilities() -> None:
+def test_service_module_registers_configuration_capabilities() -> None:
     injected = dependencies()
     definition = build_configuration_manager_surface(injected)
     service_module = next(
@@ -114,16 +87,6 @@ def test_service_module_registers_separate_generic_capabilities() -> None:
 
     assert service_module.register_services is not None
     service_module.register_services(services)
-
-    users_source = services.require(USERS_SOURCE_SERVICE)
-    assert isinstance(users_source, UsersManagerSourceWorkflow)
-    assert services.require(USERS_SOURCE_READER_SERVICE) is users_source
-    assert services.require(USERS_SOURCE_HISTORY_SERVICE) is users_source
-    assert isinstance(
-        services.require(USERS_DRAFT_VALIDATION_SERVICE),
-        UsersManagerDraftValidationWorkflow,
-    )
-    assert services.require(USERS_PROJECTION_SERVICE) is injected.users_projection
 
     navigation_source = services.require(NAVIGATION_SOURCE_SERVICE)
     assert isinstance(navigation_source, NavigationManagerSourceWorkflow)

@@ -1,49 +1,30 @@
 import pytest
+from flask import Flask
 
-from atlanticus.web.identity.access import AccessDecision, AccessSnapshot, AccessStatus
+from atlanticus.web.identity.access import AccessStatus
 from atlanticus.web.identity.errors import AccessResolverUnavailableError
 from atlanticus.web.identity.models import AuthenticatedIdentity
 from atlanticus.web.users.authority import BASIC_AUTHORITY_KEY
-from atlanticus.web.users.errors import (
-    UsersIdentityConflictError,
-    UsersRuntimeStoreUnavailableError,
-)
+from atlanticus.web.users.errors import UsersStoreUnavailableError
 from atlanticus.web.users.identity import build_user_key
-from atlanticus.web.users.models import PendingUserRecord, ResolvedUserRecord, RuntimeUserRecord
+from atlanticus.web.users.models import UserRecord
 from atlanticus.web.users.resolver import UsersAccessResolver
 from atlanticus.web.users.runtime import UsersRuntime
 from atlanticus.web.users.store import UsersRuntimeStore
 
 
 class MemoryRuntimeStore(UsersRuntimeStore):
-    def __init__(
-        self,
-        *,
-        resolved: RuntimeUserRecord | None,
-        observed: RuntimeUserRecord | Exception | None = None,
-        resolve_error: Exception | None = None,
-    ) -> None:
+    def __init__(self, *, resolved: UserRecord | None, error: Exception | None = None) -> None:
         self.resolved = resolved
-        self.observed = observed
-        self.resolve_error = resolve_error
+        self.error = error
         self.resolve_calls = 0
-        self.observe_calls = 0
 
-    def resolve(self, identity: AuthenticatedIdentity) -> RuntimeUserRecord | None:
+    def resolve(self, identity: AuthenticatedIdentity) -> UserRecord | None:
         del identity
         self.resolve_calls += 1
-        if self.resolve_error is not None:
-            raise self.resolve_error
+        if self.error is not None:
+            raise self.error
         return self.resolved
-
-    def observe(self, identity: AuthenticatedIdentity) -> RuntimeUserRecord:
-        del identity
-        self.observe_calls += 1
-        if isinstance(self.observed, Exception):
-            raise self.observed
-        if self.observed is None:
-            raise AssertionError('observe result was not configured')
-        return self.observed
 
 
 def _identity() -> AuthenticatedIdentity:
@@ -56,214 +37,62 @@ def _identity() -> AuthenticatedIdentity:
     )
 
 
-def _pending(*, issuer: str = 'entra', subject_id: str = 'oid-1') -> PendingUserRecord:
-    return PendingUserRecord(
-        user_id=build_user_key(issuer=issuer, subject_id=subject_id),
-        issuer=issuer,
-        subject_id=subject_id,
-        display_name='Unknown User',
-        email='unknown@example.com',
-    )
-
-
-def _managed(
-    *,
-    issuer: str = 'entra',
-    subject_id: str = 'oid-1',
-    enabled: bool = True,
-    authority_key: str = BASIC_AUTHORITY_KEY,
-) -> ResolvedUserRecord:
-    return ResolvedUserRecord(
-        user_id=build_user_key(issuer=issuer, subject_id=subject_id),
-        issuer=issuer,
-        subject_id=subject_id,
+def _managed(*, enabled: bool = True) -> UserRecord:
+    return UserRecord(
+        user_id=build_user_key(issuer='entra', subject_id='oid-1'),
+        issuer='entra',
+        subject_id='oid-1',
         display_name='Managed User',
         email='managed@example.com',
         enabled=enabled,
-        authority_key=authority_key,
+        authority_key=BASIC_AUTHORITY_KEY,
     )
 
 
-def _resolved_runtime_user(
-    *,
-    resolver: UsersAccessResolver,
-    runtime: UsersRuntime,
-    identity: AuthenticatedIdentity,
-):
-    from flask import Flask
-
-    server = Flask(__name__)
-    server.secret_key = 'test-only'
-    with server.test_request_context('/'):
-        decision = resolver.resolve(identity, load_id='load-1')
-        access = AccessSnapshot.resolved(
-            load_id='load-1',
-            identity=identity,
-            decision=AccessDecision(status=decision.status, user_id=decision.user_id),
-        )
-        user = runtime.current_or_none(access)
-    return decision, user
-
-
-def test_existing_pending_identity_resolves_as_guest() -> None:
-    store = MemoryRuntimeStore(resolved=_pending())
-    runtime = UsersRuntime()
-    resolver = UsersAccessResolver(store=store, runtime=runtime)
-
-    decision, user = _resolved_runtime_user(
-        resolver=resolver, runtime=runtime, identity=_identity()
-    )
-
-    assert decision.status is AccessStatus.READY
-    assert decision.user_id == build_user_key(issuer='entra', subject_id='oid-1')
-    assert user is not None
-    assert user.pending is True
-    assert user.authority_key == 'guest'
-    assert store.resolve_calls == 1
-    assert store.observe_calls == 0
-
-
-def test_absent_identity_is_observed_as_guest() -> None:
-    store = MemoryRuntimeStore(resolved=None, observed=_pending())
-    runtime = UsersRuntime()
-    resolver = UsersAccessResolver(store=store, runtime=runtime)
-
-    decision, user = _resolved_runtime_user(
-        resolver=resolver, runtime=runtime, identity=_identity()
-    )
-
-    assert decision.status is AccessStatus.READY
-    assert user is not None
-    assert user.pending is True
-    assert user.authority_key == 'guest'
-    assert store.resolve_calls == 1
-    assert store.observe_calls == 1
-
-
-def test_concurrent_promotion_during_observation_returns_active_user() -> None:
-    store = MemoryRuntimeStore(resolved=None, observed=_managed(enabled=True))
-    runtime = UsersRuntime()
-    resolver = UsersAccessResolver(store=store, runtime=runtime)
-
-    decision, user = _resolved_runtime_user(
-        resolver=resolver, runtime=runtime, identity=_identity()
-    )
-
-    assert decision.status is AccessStatus.READY
-    assert user is not None
-    assert user.pending is False
-    assert user.authority_key == BASIC_AUTHORITY_KEY
-    assert store.observe_calls == 1
-
-
-def test_concurrent_disable_during_observation_returns_disabled_decision() -> None:
-    store = MemoryRuntimeStore(resolved=None, observed=_managed(enabled=False))
+def test_absent_identity_is_not_promoted_and_login_performs_no_write() -> None:
+    store = MemoryRuntimeStore(resolved=None)
     resolver = UsersAccessResolver(store=store, runtime=UsersRuntime())
 
-    from flask import Flask
+    decision = resolver.resolve(_identity(), load_id='load-1')
+
+    assert decision.status is AccessStatus.USER_NOT_PROMOTED
+    assert decision.user_id == build_user_key(issuer='entra', subject_id='oid-1')
+    assert store.resolve_calls == 1
+    assert not hasattr(store, 'observe')
+
+
+def test_promoted_identity_resolves_ready() -> None:
+    store = MemoryRuntimeStore(resolved=_managed())
+    resolver = UsersAccessResolver(store=store, runtime=UsersRuntime())
 
     server = Flask(__name__)
     server.secret_key = 'test-only'
     with server.test_request_context('/'):
         decision = resolver.resolve(_identity(), load_id='load-1')
 
-    assert decision.status is AccessStatus.USER_DISABLED
-    assert decision.user_id == build_user_key(issuer='entra', subject_id='oid-1')
-    assert store.observe_calls == 1
+    assert decision.status is AccessStatus.READY
+    assert decision.user_id == _managed().user_id
 
 
-def test_disabled_managed_user_does_not_require_external_authority_catalog() -> None:
-    store = MemoryRuntimeStore(
-        resolved=_managed(enabled=False, authority_key='retired-custom-authority')
+def test_disabled_promoted_user_is_rejected() -> None:
+    resolver = UsersAccessResolver(
+        store=MemoryRuntimeStore(resolved=_managed(enabled=False)),
+        runtime=UsersRuntime(),
     )
-    runtime = UsersRuntime()
-    resolver = UsersAccessResolver(store=store, runtime=runtime)
 
-    from flask import Flask
-
-    server = Flask(__name__)
-    server.secret_key = 'test-only'
-    with server.test_request_context('/'):
-        decision = resolver.resolve(_identity(), load_id='load-1')
-        access = AccessSnapshot.resolved(
-            load_id='load-1', identity=_identity(), decision=decision
-        )
-        user = runtime.current_or_none(access)
+    decision = resolver.resolve(_identity(), load_id='load-1')
 
     assert decision.status is AccessStatus.USER_DISABLED
-    assert decision.user_id == build_user_key(issuer='entra', subject_id='oid-1')
-    assert user is None
 
 
-def test_runtime_store_resolve_failure_never_becomes_pending() -> None:
-    store = MemoryRuntimeStore(
-        resolved=None,
-        resolve_error=UsersRuntimeStoreUnavailableError('unavailable'),
+def test_runtime_store_failure_is_reported_as_unavailable() -> None:
+    resolver = UsersAccessResolver(
+        store=MemoryRuntimeStore(
+            resolved=None,
+            error=UsersStoreUnavailableError('unavailable'),
+        ),
+        runtime=UsersRuntime(),
     )
-    resolver = UsersAccessResolver(store=store, runtime=UsersRuntime())
 
-    from flask import Flask
-
-    server = Flask(__name__)
-    server.secret_key = 'test-only'
-    with server.test_request_context('/'):
-        with pytest.raises(
-            AccessResolverUnavailableError,
-            match='Users runtime store is unavailable',
-        ):
-            resolver.resolve(_identity(), load_id='load-1')
-    assert store.observe_calls == 0
-
-
-def test_runtime_store_observe_failure_never_becomes_pending() -> None:
-    store = MemoryRuntimeStore(
-        resolved=None,
-        observed=UsersRuntimeStoreUnavailableError('unavailable'),
-    )
-    resolver = UsersAccessResolver(store=store, runtime=UsersRuntime())
-
-    from flask import Flask
-
-    server = Flask(__name__)
-    server.secret_key = 'test-only'
-    with server.test_request_context('/'):
-        with pytest.raises(
-            AccessResolverUnavailableError,
-            match='Users runtime store is unavailable',
-        ):
-            resolver.resolve(_identity(), load_id='load-1')
-
-
-def test_runtime_record_for_another_identity_is_rejected() -> None:
-    store = MemoryRuntimeStore(resolved=_managed(subject_id='oid-2'))
-    resolver = UsersAccessResolver(store=store, runtime=UsersRuntime())
-
-    from flask import Flask
-
-    server = Flask(__name__)
-    server.secret_key = 'test-only'
-    with server.test_request_context('/'):
-        with pytest.raises(
-            AccessResolverUnavailableError,
-            match='Users runtime store is unavailable',
-        ):
-            resolver.resolve(_identity(), load_id='load-1')
-
-
-def test_identity_conflict_from_runtime_store_is_reported_as_unavailable() -> None:
-    store = MemoryRuntimeStore(
-        resolved=None,
-        resolve_error=UsersIdentityConflictError('conflict'),
-    )
-    resolver = UsersAccessResolver(store=store, runtime=UsersRuntime())
-
-    from flask import Flask
-
-    server = Flask(__name__)
-    server.secret_key = 'test-only'
-    with server.test_request_context('/'):
-        with pytest.raises(
-            AccessResolverUnavailableError,
-            match='Users runtime store is unavailable',
-        ):
-            resolver.resolve(_identity(), load_id='load-1')
+    with pytest.raises(AccessResolverUnavailableError, match='Users runtime store is unavailable'):
+        resolver.resolve(_identity(), load_id='load-1')

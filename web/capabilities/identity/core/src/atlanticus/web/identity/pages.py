@@ -14,6 +14,14 @@ def invalid_identity_response() -> Response:
     )
 
 
+def user_not_promoted_response() -> Response:
+    return status_page_response(
+        status_code=403,
+        title='Usuario no habilitado',
+        message='Tu identidad todavía no ha sido promovida como usuario de la plataforma.',
+    )
+
+
 def user_disabled_response() -> Response:
     return status_page_response(
         status_code=403,

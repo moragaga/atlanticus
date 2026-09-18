@@ -1,3 +1,4 @@
+# Espejo pedagógico: conserva exactamente el contrato productivo y explica su intención.
 from __future__ import annotations
 
 from flask import Response
@@ -5,7 +6,6 @@ from flask import Response
 from atlanticus.web.status_pages import StatusPageAction, status_page_response
 
 
-# Falla de autenticación: conserva 401 y ofrece volver a intentar la carga.
 def invalid_identity_response() -> Response:
     return status_page_response(
         status_code=401,
@@ -15,7 +15,15 @@ def invalid_identity_response() -> Response:
     )
 
 
-# Un usuario desactivado queda bloqueado completamente para la aplicación.
+# La respuesta distingue una identidad válida aún no promovida de una cuenta deshabilitada.
+def user_not_promoted_response() -> Response:
+    return status_page_response(
+        status_code=403,
+        title='Usuario no habilitado',
+        message='Tu identidad todavía no ha sido promovida como usuario de la plataforma.',
+    )
+
+
 def user_disabled_response() -> Response:
     return status_page_response(
         status_code=403,
@@ -24,7 +32,6 @@ def user_disabled_response() -> Response:
     )
 
 
-# Indisponibilidad de identidad: conserva 503 y no se presenta como credencial inválida.
 def identity_unavailable_response() -> Response:
     return status_page_response(
         status_code=503,

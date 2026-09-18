@@ -1,4 +1,4 @@
-# Espejo pedagógico: expone sólo la superficie pública final del Configuration Manager.
+# Espejo pedagógico: la superficie pública elimina los service keys de Users que pertenecían al lifecycle Source anterior.
 from ada.web.application.configuration_manager.application import (
     create_configuration_manager_application,
     create_configuration_manager_web_definition,
@@ -25,11 +25,6 @@ from ada.web.application.configuration_manager.composition import (
     TOOLS_SOURCE_HISTORY_SERVICE,
     TOOLS_SOURCE_READER_SERVICE,
     TOOLS_SOURCE_SERVICE,
-    USERS_DRAFT_VALIDATION_SERVICE,
-    USERS_PROJECTION_SERVICE,
-    USERS_SOURCE_HISTORY_SERVICE,
-    USERS_SOURCE_READER_SERVICE,
-    USERS_SOURCE_SERVICE,
     build_configuration_manager_surface,
 )
 from ada.web.application.configuration_manager.dependencies import (
@@ -47,7 +42,6 @@ from ada.web.application.configuration_manager.workflows import (
 )
 from ada.web.application.configuration_manager.workspace import ManagerWorkspaceBridge
 
-# La superficie pública evita aliases legacy: sólo expone contratos y workflows finales.
 __all__ = [
     'ConfigurationManagerDependencies',
     'KPI_DEFINITION_DRAFT_VALIDATION_SERVICE',
@@ -80,11 +74,6 @@ __all__ = [
     'TOOLS_SOURCE_SERVICE',
     'ToolManagerDraftValidationWorkflow',
     'ToolManagerSourceWorkflow',
-    'USERS_DRAFT_VALIDATION_SERVICE',
-    'USERS_PROJECTION_SERVICE',
-    'USERS_SOURCE_HISTORY_SERVICE',
-    'USERS_SOURCE_READER_SERVICE',
-    'USERS_SOURCE_SERVICE',
     'build_configuration_manager_surface',
     'create_configuration_manager_application',
     'create_configuration_manager_web_definition',

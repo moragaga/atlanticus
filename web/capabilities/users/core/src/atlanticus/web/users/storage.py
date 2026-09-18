@@ -19,6 +19,6 @@ USERS_RUNTIME_STORAGE_RESOURCE: StorageResourceContract[CosmosContainerTopology]
     )
 )
 
-USERS_STORAGE_RESOURCES: tuple[StorageResourceContract[CosmosContainerTopology], ...] = (
-    USERS_RUNTIME_STORAGE_RESOURCE,
-)
+USERS_RUNTIME_STORAGE_RESOURCES: tuple[
+    StorageResourceContract[CosmosContainerTopology], ...
+] = (USERS_RUNTIME_STORAGE_RESOURCE,)

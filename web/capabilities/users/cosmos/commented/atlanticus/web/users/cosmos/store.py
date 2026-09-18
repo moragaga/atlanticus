@@ -1,3 +1,4 @@
+# Espejo pedagógico: conserva exactamente el contrato productivo y explica su intención.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -6,32 +7,35 @@ from typing import Any, Protocol
 from atlanticus.connectivity.cosmos import (
     CosmosConflictError,
     CosmosError,
+    CosmosItemNotFoundError,
+    CosmosPatchOperation,
+    CosmosPreconditionFailedError,
     CosmosQueryParameter,
 )
 from atlanticus.web.identity.models import AuthenticatedIdentity
 from atlanticus.web.users.errors import (
+    UserAlreadyPromotedError,
     UsersDefinitionError,
     UsersIdentityConflictError,
-    UsersRuntimeStoreUnavailableError,
+    UsersStoreUnavailableError,
 )
 from atlanticus.web.users.identity import build_user_key
-from atlanticus.web.users.models import PendingUserRecord, ResolvedUserRecord, RuntimeUserRecord
-from atlanticus.web.users.store import PendingUsersReader, UsersRuntimeStore
+from atlanticus.web.users.models import UserRecord
+from atlanticus.web.users.store import UsersAdministrationStore, UsersRuntimeStore
 
-# El adapter conserva en un único container los dos estados durables del runtime de Users.
-_PENDING_RECORD_TYPE = 'pending'
-_RESOLVED_RECORD_TYPE = 'resolved'
-_PENDING_QUERY = 'SELECT * FROM c WHERE c.record_type = @record_type'
+_USER_DOCUMENT_TYPE = 'atlanticus_user'
+_USER_SCHEMA_VERSION = 1
+_USERS_QUERY = 'SELECT * FROM c WHERE c.document_type = @document_type'
 
 
 class _CosmosClient(Protocol):
-    # El adapter depende sólo de las operaciones documentales neutrales que realmente necesita.
     def find_item(
         self,
         *,
         container_name: str,
         item_id: str,
         partition_key: object,
+        include_metadata: bool = False,
     ) -> dict[str, Any] | None: ...
 
     def create_item(
@@ -39,6 +43,18 @@ class _CosmosClient(Protocol):
         *,
         container_name: str,
         item: Mapping[str, Any],
+        include_metadata: bool = False,
+    ) -> dict[str, Any]: ...
+
+    def patch_item(
+        self,
+        *,
+        container_name: str,
+        item_id: str,
+        partition_key: object,
+        operations: Sequence[CosmosPatchOperation],
+        if_match_etag: str | None = None,
+        include_metadata: bool = False,
     ) -> dict[str, Any]: ...
 
     def query_items(
@@ -51,86 +67,113 @@ class _CosmosClient(Protocol):
     ) -> tuple[dict[str, Any], ...]: ...
 
 
-class CosmosUsersRuntimeStore(UsersRuntimeStore, PendingUsersReader):
+# Cosmos contiene exclusivamente usuarios promovidos y sirve la resolución rápida de runtime.
+class CosmosUsersStore(UsersRuntimeStore, UsersAdministrationStore):
     def __init__(self, *, client: _CosmosClient, container_name: str) -> None:
-        # La composición entrega el nombre físico resuelto; el adapter no duplica users-runtime.
         normalized_container_name = container_name.strip()
         if not normalized_container_name or normalized_container_name != container_name:
             raise UsersDefinitionError('Users Cosmos container name has an invalid format')
         self._client = client
         self._container_name = normalized_container_name
 
-    def resolve(self, identity: AuthenticatedIdentity) -> RuntimeUserRecord | None:
-        # /id usa la misma clave determinista del dominio como id y partition key.
+    def resolve(self, identity: AuthenticatedIdentity) -> UserRecord | None:
         user_id = _user_id(identity)
+        user = self.get(user_id)
+        if user is None:
+            return None
+        _require_identity_match(identity=identity, user=user)
+        return user
+
+    def get(self, user_id: str) -> UserRecord | None:
+        normalized_user_id = _required_user_id(user_id)
         try:
             document = self._client.find_item(
                 container_name=self._container_name,
-                item_id=user_id,
-                partition_key=user_id,
+                item_id=normalized_user_id,
+                partition_key=normalized_user_id,
             )
         except CosmosError as error:
-            # El core de Users no necesita conocer errores específicos del provider.
-            raise UsersRuntimeStoreUnavailableError('Could not read users runtime store') from error
+            raise UsersStoreUnavailableError('Could not read users store') from error
         if document is None:
             return None
-        record = _record_from_document(document)
-        _require_identity_match(identity=identity, record=record)
-        return record
+        return _user_from_document(document)
 
-    def observe(self, identity: AuthenticatedIdentity) -> RuntimeUserRecord:
-        user_id = _user_id(identity)
-        document = {
-            'id': user_id,
-            'record_type': _PENDING_RECORD_TYPE,
-            'issuer': identity.issuer,
-            'subject_id': identity.subject_id,
-            'display_name': identity.display_name,
-            'email': identity.email,
-        }
+    def list_users(self) -> tuple[UserRecord, ...]:
         try:
-            # Create-only es la garantía que impide sobrescribir una promoción concurrente.
-            created = self._client.create_item(
-                container_name=self._container_name,
-                item=document,
-            )
-        except CosmosConflictError as error:
-            # Si otro actor ganó la carrera, se devuelve exactamente el estado durable vigente.
-            current = self.resolve(identity)
-            if current is None:
-                raise UsersRuntimeStoreUnavailableError(
-                    'Users runtime record disappeared after observation conflict'
-                ) from error
-            return current
-        except CosmosError as error:
-            raise UsersRuntimeStoreUnavailableError(
-                'Could not observe users runtime identity'
-            ) from error
-        record = _record_from_document(created)
-        _require_identity_match(identity=identity, record=record)
-        return record
-
-    def list_pending(self) -> tuple[PendingUserRecord, ...]:
-        try:
-            # Pending es una enumeración administrativa y requiere query cross-partition.
             documents = self._client.query_items(
                 container_name=self._container_name,
-                query=_PENDING_QUERY,
+                query=_USERS_QUERY,
                 parameters=(
-                    CosmosQueryParameter(name='@record_type', value=_PENDING_RECORD_TYPE),
+                    CosmosQueryParameter(name='@document_type', value=_USER_DOCUMENT_TYPE),
                 ),
                 cross_partition=True,
             )
         except CosmosError as error:
-            raise UsersRuntimeStoreUnavailableError('Could not list pending users') from error
-        records: list[PendingUserRecord] = []
-        for document in documents:
-            record = _record_from_document(document)
-            if not isinstance(record, PendingUserRecord):
-                raise UsersDefinitionError('Pending users query returned a non-pending record')
-            records.append(record)
-        # El orden no depende del orden de resultados del provider.
-        return tuple(sorted(records, key=lambda record: record.user_id))
+            raise UsersStoreUnavailableError('Could not list promoted users') from error
+        users = tuple(_user_from_document(document) for document in documents)
+        return tuple(sorted(users, key=lambda user: user.user_id))
+
+    def create(self, user: UserRecord) -> UserRecord:
+        if not isinstance(user, UserRecord):
+            raise TypeError('user must be UserRecord')
+        try:
+            saved = self._client.create_item(
+                container_name=self._container_name,
+                item=_user_to_document(user),
+            )
+        except CosmosConflictError as error:
+            raise UserAlreadyPromotedError('User is already promoted') from error
+        except CosmosError as error:
+            raise UsersStoreUnavailableError('Could not create promoted user') from error
+        persisted = _user_from_document(saved)
+        if persisted != user:
+            raise UsersStoreUnavailableError('Cosmos persisted a different user')
+        return persisted
+
+    def replace(self, user: UserRecord) -> UserRecord:
+        if not isinstance(user, UserRecord):
+            raise TypeError('user must be UserRecord')
+        try:
+            current = self._client.find_item(
+                container_name=self._container_name,
+                item_id=user.user_id,
+                partition_key=user.user_id,
+                include_metadata=True,
+            )
+            if current is None:
+                raise UsersStoreUnavailableError('Promoted user does not exist')
+            current_user = _user_from_document(current)
+            if (current_user.issuer, current_user.subject_id) != (
+                user.issuer,
+                user.subject_id,
+            ):
+                raise UsersIdentityConflictError('Promoted user identity cannot be changed')
+            etag = _required_etag(current)
+            desired = _user_to_document(user)
+            operations = tuple(
+                CosmosPatchOperation(operation='set', path=f'/{field}', value=value)
+                for field, value in desired.items()
+                if field != 'id'
+            )
+            saved = self._client.patch_item(
+                container_name=self._container_name,
+                item_id=user.user_id,
+                partition_key=user.user_id,
+                operations=operations,
+                if_match_etag=etag,
+            )
+        except (UsersIdentityConflictError, UsersStoreUnavailableError):
+            raise
+        except CosmosItemNotFoundError as error:
+            raise UsersStoreUnavailableError('Promoted user disappeared during update') from error
+        except CosmosPreconditionFailedError as error:
+            raise UsersStoreUnavailableError('Promoted user changed concurrently') from error
+        except CosmosError as error:
+            raise UsersStoreUnavailableError('Could not update promoted user') from error
+        persisted = _user_from_document(saved)
+        if persisted != user:
+            raise UsersStoreUnavailableError('Cosmos persisted a different user')
+        return persisted
 
 
 def _user_id(identity: AuthenticatedIdentity) -> str:
@@ -139,56 +182,65 @@ def _user_id(identity: AuthenticatedIdentity) -> str:
     return build_user_key(issuer=identity.issuer, subject_id=identity.subject_id)
 
 
-def _record_from_document(document: Mapping[str, Any]) -> RuntimeUserRecord:
-    # La persistencia no hace coerciones silenciosas; un documento inválido es error contractual.
+def _required_user_id(value: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError('user_id must be text')
+    normalized = value.strip()
+    if not normalized or normalized != value:
+        raise UsersDefinitionError('User id has an invalid format')
+    return normalized
+
+
+def _user_to_document(user: UserRecord) -> dict[str, object]:
+    return {
+        'id': user.user_id,
+        'document_type': _USER_DOCUMENT_TYPE,
+        'schema_version': _USER_SCHEMA_VERSION,
+        'issuer': user.issuer,
+        'subject_id': user.subject_id,
+        'display_name': user.display_name,
+        'email': user.email,
+        'enabled': user.enabled,
+        'authority_key': user.authority_key,
+        'avatar_background_color': user.avatar_background_color,
+        'avatar_text_color': user.avatar_text_color,
+    }
+
+
+def _user_from_document(document: Mapping[str, Any]) -> UserRecord:
     if not isinstance(document, Mapping):
         raise UsersDefinitionError('Users Cosmos document must be a mapping')
-    record_type = _required_string(document, 'record_type')
-    user_id = _required_string(document, 'id')
-    issuer = _required_string(document, 'issuer')
-    subject_id = _required_string(document, 'subject_id')
-    expected_user_id = build_user_key(issuer=issuer, subject_id=subject_id)
-    if user_id != expected_user_id:
-        raise UsersIdentityConflictError('Users Cosmos document identity does not match its id')
-    if record_type == _PENDING_RECORD_TYPE:
-        return PendingUserRecord(
-            user_id=user_id,
-            issuer=issuer,
-            subject_id=subject_id,
-            display_name=_optional_string(document, 'display_name'),
-            email=_optional_string(document, 'email'),
-        )
-    if record_type == _RESOLVED_RECORD_TYPE:
-        return ResolvedUserRecord(
-            user_id=user_id,
-            issuer=issuer,
-            subject_id=subject_id,
+    if document.get('document_type') != _USER_DOCUMENT_TYPE:
+        raise UsersDefinitionError('Users Cosmos document type is invalid')
+    if document.get('schema_version') != _USER_SCHEMA_VERSION:
+        raise UsersDefinitionError('Users Cosmos schema version is invalid')
+    try:
+        user = UserRecord(
+            user_id=_required_string(document, 'id'),
+            issuer=_required_string(document, 'issuer'),
+            subject_id=_required_string(document, 'subject_id'),
             display_name=_required_string(document, 'display_name'),
             email=_optional_string(document, 'email'),
             enabled=_required_bool(document, 'enabled'),
             authority_key=_required_string(document, 'authority_key'),
             avatar_background_color=_optional_string(document, 'avatar_background_color'),
             avatar_text_color=_optional_string(document, 'avatar_text_color'),
-            is_local=_optional_bool(document, 'is_local', default=False),
         )
-    raise UsersDefinitionError(f'Unsupported users Cosmos record type: {record_type!r}')
+    except UsersDefinitionError:
+        raise
+    if user.user_id != _required_string(document, 'id'):
+        raise UsersIdentityConflictError('Users Cosmos document identity does not match its id')
+    return user
 
 
-def _require_identity_match(
-    *,
-    identity: AuthenticatedIdentity,
-    record: RuntimeUserRecord,
-) -> None:
-    # Una colisión o documento dirigido a otra identidad nunca puede convertirse en Guest.
+def _require_identity_match(*, identity: AuthenticatedIdentity, user: UserRecord) -> None:
     expected_user_id = build_user_key(issuer=identity.issuer, subject_id=identity.subject_id)
     if (
-        record.user_id != expected_user_id
-        or record.issuer != identity.issuer
-        or record.subject_id != identity.subject_id
+        user.user_id != expected_user_id
+        or user.issuer != identity.issuer
+        or user.subject_id != identity.subject_id
     ):
-        raise UsersIdentityConflictError(
-            'Users Cosmos record does not match authenticated identity'
-        )
+        raise UsersIdentityConflictError('Users Cosmos user does not match authenticated identity')
 
 
 def _required_string(document: Mapping[str, Any], field_name: str) -> str:
@@ -214,12 +266,8 @@ def _required_bool(document: Mapping[str, Any], field_name: str) -> bool:
     return value
 
 
-def _optional_bool(
-    document: Mapping[str, Any],
-    field_name: str,
-    *,
-    default: bool,
-) -> bool:
-    if field_name not in document:
-        return default
-    return _required_bool(document, field_name)
+def _required_etag(document: Mapping[str, Any]) -> str:
+    value = document.get('_etag')
+    if not isinstance(value, str) or not value.strip():
+        raise UsersStoreUnavailableError('Users Cosmos document is missing ETag')
+    return value

@@ -1,7 +1,4 @@
-# Mantiene el snapshot de acceso firmado en la sesión Flask.
-# El contrato distingue acceso normal de la autoridad bootstrap Root sin convertir Root en User o Profile.
-# La clave de sesión v2 invalida limpiamente snapshots previos que no contienen bootstrap_root.
-
+# Espejo pedagógico: conserva exactamente el contrato productivo y explica su intención.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -20,13 +17,14 @@ ACCESS_RUNTIME_SERVICE_KEY = 'atlanticus.web.identity.access'
 _SESSION_KEY = '_atlanticus_access_snapshot_v2'
 
 
+# USER_NOT_PROMOTED separa autenticación válida de la habilitación administrativa como User.
 class AccessStatus(StrEnum):
     READY = 'ready'
     INVALID_IDENTITY = 'invalid_identity'
+    USER_NOT_PROMOTED = 'user_not_promoted'
     USER_DISABLED = 'user_disabled'
 
 
-# bootstrap_root es una propiedad excepcional de acceso, no un nuevo estado ni una identidad de usuario.
 @dataclass(frozen=True, slots=True)
 class AccessDecision:
     status: AccessStatus
@@ -41,8 +39,9 @@ class AccessDecision:
         if self.user_id is not None:
             normalized = self.user_id.strip()
             object.__setattr__(self, 'user_id', normalized or None)
-        if self.status is AccessStatus.USER_DISABLED and self.user_id is None:
-            raise IdentityDefinitionError('Disabled access decision requires user_id')
+        if self.status in {AccessStatus.USER_NOT_PROMOTED, AccessStatus.USER_DISABLED}:
+            if self.user_id is None:
+                raise IdentityDefinitionError('Rejected user access decision requires user_id')
         if self.bootstrap_root and self.status is not AccessStatus.READY:
             raise IdentityDefinitionError('Bootstrap root access decision must be ready')
         if self.bootstrap_root and self.user_id is not None:
@@ -61,7 +60,6 @@ class AuthenticatedAccessResolver(AccessResolver):
         return AccessDecision(status=AccessStatus.READY)
 
 
-# El snapshot persiste la misma distinción durante toda la carga de página.
 @dataclass(frozen=True, slots=True)
 class AccessSnapshot:
     load_id: str
@@ -82,8 +80,9 @@ class AccessSnapshot:
             raise IdentityDefinitionError('Invalid identity snapshot cannot contain identity')
         if self.status is not AccessStatus.INVALID_IDENTITY and self.identity is None:
             raise IdentityDefinitionError('Resolved access snapshot requires identity')
-        if self.status is AccessStatus.USER_DISABLED and self.user_id is None:
-            raise IdentityDefinitionError('Disabled access snapshot requires user_id')
+        if self.status in {AccessStatus.USER_NOT_PROMOTED, AccessStatus.USER_DISABLED}:
+            if self.user_id is None:
+                raise IdentityDefinitionError('Rejected user access snapshot requires user_id')
         if self.bootstrap_root and self.status is not AccessStatus.READY:
             raise IdentityDefinitionError('Bootstrap root access snapshot must be ready')
         if self.bootstrap_root and self.user_id is not None:

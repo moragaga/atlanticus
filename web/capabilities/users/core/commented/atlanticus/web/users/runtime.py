@@ -1,8 +1,5 @@
+# Espejo pedagógico: conserva exactamente el contrato productivo y explica su intención.
 from __future__ import annotations
-
-# La sesión persiste la autoridad efectiva de Users y no serializa definiciones de Profiles.
-# Los colores siguen siendo parte de la presentación efectiva del usuario cuando están disponibles.
-
 
 from dataclasses import dataclass
 from typing import Any
@@ -14,7 +11,7 @@ from atlanticus.web.users.errors import UsersContextError, UsersDefinitionError
 from atlanticus.web.users.models import EffectiveUser
 
 USERS_RUNTIME_SERVICE_KEY = 'atlanticus.web.users.runtime'
-_SESSION_KEY = '_atlanticus_users_snapshot_v2'
+_SESSION_KEY = '_atlanticus_users_snapshot_v3'
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,7 +34,6 @@ class UsersSnapshot:
                 'display_name': self.user.display_name,
                 'email': self.user.email,
                 'enabled': self.user.enabled,
-                'pending': self.user.pending,
                 'avatar_text': self.user.avatar_text,
                 'authority_key': self.user.authority_key,
                 'avatar_background_color': self.user.avatar_background_color,
@@ -59,21 +55,14 @@ class UsersSnapshot:
                 subject_id=str(user_value['subject_id']),
                 display_name=str(user_value['display_name']),
                 email=_optional_string(user_value.get('email')),
-                enabled=bool(user_value['enabled']),
-                pending=bool(user_value['pending']),
+                enabled=_required_bool(user_value, 'enabled'),
                 avatar_text=str(user_value['avatar_text']),
                 authority_key=str(user_value['authority_key']),
-                avatar_background_color=(
-                    None
-                    if bool(user_value['pending'])
-                    else _optional_string(user_value.get('avatar_background_color'))
+                avatar_background_color=_optional_string(
+                    user_value.get('avatar_background_color')
                 ),
-                avatar_text_color=(
-                    None
-                    if bool(user_value['pending'])
-                    else _optional_string(user_value.get('avatar_text_color'))
-                ),
-                is_local=bool(user_value.get('is_local', False)),
+                avatar_text_color=_optional_string(user_value.get('avatar_text_color')),
+                is_local=_required_bool(user_value, 'is_local'),
             )
             return cls(load_id=str(value['load_id']), user=user)
         except (KeyError, TypeError, ValueError, UsersDefinitionError) as error:
@@ -107,6 +96,13 @@ def _optional_string(value: object) -> str | None:
         return None
     normalized = str(value).strip()
     return normalized or None
+
+
+def _required_bool(document: dict[str, Any], key: str) -> bool:
+    value = document[key]
+    if not isinstance(value, bool):
+        raise TypeError
+    return value
 
 
 def _require_request_context() -> None:

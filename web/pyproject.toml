@@ -27,12 +27,10 @@ dependencies = [
     "atlanticus-web-pwa==0.1.0",
     "atlanticus-web-users==0.1.0",
     "atlanticus-web-users-cosmos==0.1.0",
-    "atlanticus-web-users-configuration==0.1.10",
-    "atlanticus-web-users-projection-cosmos==0.1.2",
+    "atlanticus-web-users-blob==0.1.0",
     "atlanticus-web-users-activity==0.1.0",
     "atlanticus-web-composition-navigation-activity==0.1.0",
     "atlanticus-web-composition-navigation-manager==0.1.0",
-    "atlanticus-web-composition-users-manager==0.1.3",
 ]
 
 [dependency-groups]
@@ -72,12 +70,10 @@ atlanticus-web-configuration = { workspace = true }
 atlanticus-web-pwa = { workspace = true }
 atlanticus-web-users = { workspace = true }
 atlanticus-web-users-cosmos = { workspace = true }
-atlanticus-web-users-configuration = { workspace = true }
-atlanticus-web-users-projection-cosmos = { workspace = true }
+atlanticus-web-users-blob = { workspace = true }
 atlanticus-web-users-activity = { workspace = true }
 atlanticus-web-composition-navigation-activity = { workspace = true }
 atlanticus-web-composition-navigation-manager = { workspace = true }
-atlanticus-web-composition-users-manager = { workspace = true }
 
 [tool.uv.workspace]
 members = [
@@ -103,12 +99,10 @@ members = [
     "framework/pwa",
     "capabilities/users/core",
     "capabilities/users/cosmos",
-    "capabilities/users/configuration",
-    "capabilities/users/projection-cosmos",
+    "capabilities/users/blob",
     "capabilities/users/activity",
     "compositions/navigation-activity",
     "compositions/navigation-manager",
-    "compositions/users-manager",
 ]
 
 [tool.ruff]
@@ -158,11 +152,9 @@ testpaths = [
     "framework/pwa/tests",
     "capabilities/users/core/tests",
     "capabilities/users/cosmos/tests",
-    "capabilities/users/configuration/tests",
-    "capabilities/users/projection-cosmos/tests",
+    "capabilities/users/blob/tests",
     "capabilities/users/activity/tests",
     "compositions/navigation-activity/tests",
     "compositions/navigation-manager/tests",
-    "compositions/users-manager/tests",
 ]
 addopts = "-q --import-mode=importlib"

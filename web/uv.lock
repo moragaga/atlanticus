@@ -8,7 +8,6 @@ members = [
     "atlanticus-web-bootstrap",
     "atlanticus-web-composition-navigation-activity",
     "atlanticus-web-composition-navigation-manager",
-    "atlanticus-web-composition-users-manager",
     "atlanticus-web-configuration",
     "atlanticus-web-identity",
     "atlanticus-web-identity-local",
@@ -29,9 +28,8 @@ members = [
     "atlanticus-web-storage-topology",
     "atlanticus-web-users",
     "atlanticus-web-users-activity",
-    "atlanticus-web-users-configuration",
+    "atlanticus-web-users-blob",
     "atlanticus-web-users-cosmos",
-    "atlanticus-web-users-projection-cosmos",
     "atlanticus-web-workspace",
 ]
 
@@ -174,23 +172,6 @@ requires-dist = [
     { name = "atlanticus-web-source", editable = "capabilities/source/core" },
     { name = "atlanticus-web-source-blob", editable = "capabilities/source/blob" },
     { name = "atlanticus-web-source-local", editable = "capabilities/source/local" },
-]
-
-[[package]]
-name = "atlanticus-web-composition-users-manager"
-version = "0.1.3"
-source = { editable = "compositions/users-manager" }
-dependencies = [
-    { name = "atlanticus-web-manager" },
-    { name = "atlanticus-web-source" },
-    { name = "atlanticus-web-users-configuration" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-web-manager", editable = "capabilities/manager" },
-    { name = "atlanticus-web-source", editable = "capabilities/source/core" },
-    { name = "atlanticus-web-users-configuration", editable = "capabilities/users/configuration" },
 ]
 
 [[package]]
@@ -475,38 +456,19 @@ requires-dist = [
 ]
 
 [[package]]
-name = "atlanticus-web-users-configuration"
-version = "0.1.10"
-source = { editable = "capabilities/users/configuration" }
+name = "atlanticus-web-users-blob"
+version = "0.1.0"
+source = { editable = "capabilities/users/blob" }
 dependencies = [
-    { name = "atlanticus-web-profiles" },
-    { name = "atlanticus-web-profiles-configuration" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
+    { name = "atlanticus-storage" },
     { name = "atlanticus-web-users" },
-]
-
-[package.optional-dependencies]
-web = [
-    { name = "atlanticus-web" },
-    { name = "atlanticus-web-bootstrap" },
-    { name = "dash" },
-    { name = "dash-bootstrap-components" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-web", marker = "extra == 'web'", editable = "framework/core" },
-    { name = "atlanticus-web-bootstrap", marker = "extra == 'web'", editable = "framework/bootstrap" },
-    { name = "atlanticus-web-profiles", editable = "capabilities/profiles/core" },
-    { name = "atlanticus-web-profiles-configuration", editable = "capabilities/profiles/configuration" },
-    { name = "atlanticus-web-projection", editable = "capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "capabilities/source/core" },
+    { name = "atlanticus-storage", directory = "../connectivity/storage" },
     { name = "atlanticus-web-users", editable = "capabilities/users/core" },
-    { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
-    { name = "dash-bootstrap-components", marker = "extra == 'web'", specifier = "==2.0.4" },
 ]
-provides-extras = ["web"]
 
 [[package]]
 name = "atlanticus-web-users-cosmos"
@@ -524,27 +486,6 @@ requires-dist = [
 ]
 
 [[package]]
-name = "atlanticus-web-users-projection-cosmos"
-version = "0.1.2"
-source = { editable = "capabilities/users/projection-cosmos" }
-dependencies = [
-    { name = "atlanticus-cosmos" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-    { name = "atlanticus-web-users" },
-    { name = "atlanticus-web-users-configuration" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-cosmos", directory = "../connectivity/cosmos" },
-    { name = "atlanticus-web-projection", editable = "capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "capabilities/source/core" },
-    { name = "atlanticus-web-users", editable = "capabilities/users/core" },
-    { name = "atlanticus-web-users-configuration", editable = "capabilities/users/configuration" },
-]
-
-[[package]]
 name = "atlanticus-web-workspace"
 version = "0.1.0"
 source = { virtual = "." }
@@ -553,7 +494,6 @@ dependencies = [
     { name = "atlanticus-web-bootstrap" },
     { name = "atlanticus-web-composition-navigation-activity" },
     { name = "atlanticus-web-composition-navigation-manager" },
-    { name = "atlanticus-web-composition-users-manager" },
     { name = "atlanticus-web-configuration" },
     { name = "atlanticus-web-identity" },
     { name = "atlanticus-web-identity-local" },
@@ -573,9 +513,8 @@ dependencies = [
     { name = "atlanticus-web-storage-topology" },
     { name = "atlanticus-web-users" },
     { name = "atlanticus-web-users-activity" },
-    { name = "atlanticus-web-users-configuration" },
+    { name = "atlanticus-web-users-blob" },
     { name = "atlanticus-web-users-cosmos" },
-    { name = "atlanticus-web-users-projection-cosmos" },
 ]
 
 [package.dev-dependencies]
@@ -590,7 +529,6 @@ requires-dist = [
     { name = "atlanticus-web-bootstrap", editable = "framework/bootstrap" },
     { name = "atlanticus-web-composition-navigation-activity", editable = "compositions/navigation-activity" },
     { name = "atlanticus-web-composition-navigation-manager", editable = "compositions/navigation-manager" },
-    { name = "atlanticus-web-composition-users-manager", editable = "compositions/users-manager" },
     { name = "atlanticus-web-configuration", editable = "framework/configuration" },
     { name = "atlanticus-web-identity", editable = "capabilities/identity/core" },
     { name = "atlanticus-web-identity-local", editable = "capabilities/identity/local" },
@@ -610,9 +548,8 @@ requires-dist = [
     { name = "atlanticus-web-storage-topology", editable = "capabilities/storage/topology" },
     { name = "atlanticus-web-users", editable = "capabilities/users/core" },
     { name = "atlanticus-web-users-activity", editable = "capabilities/users/activity" },
-    { name = "atlanticus-web-users-configuration", editable = "capabilities/users/configuration" },
+    { name = "atlanticus-web-users-blob", editable = "capabilities/users/blob" },
     { name = "atlanticus-web-users-cosmos", editable = "capabilities/users/cosmos" },
-    { name = "atlanticus-web-users-projection-cosmos", editable = "capabilities/users/projection-cosmos" },
 ]
 
 [package.metadata.requires-dev]

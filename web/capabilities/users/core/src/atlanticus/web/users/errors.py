@@ -2,11 +2,27 @@ class UsersDefinitionError(ValueError):
     pass
 
 
-class UsersRuntimeStoreUnavailableError(RuntimeError):
+class UsersStoreUnavailableError(RuntimeError):
+    pass
+
+
+class UsersRegistryUnavailableError(RuntimeError):
+    pass
+
+
+class UsersRegistryConflictError(RuntimeError):
     pass
 
 
 class UsersIdentityConflictError(RuntimeError):
+    pass
+
+
+class UserAlreadyPromotedError(RuntimeError):
+    pass
+
+
+class UserPromotionError(RuntimeError):
     pass
 
 

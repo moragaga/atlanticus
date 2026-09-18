@@ -19,6 +19,7 @@ _SESSION_KEY = '_atlanticus_access_snapshot_v2'
 class AccessStatus(StrEnum):
     READY = 'ready'
     INVALID_IDENTITY = 'invalid_identity'
+    USER_NOT_PROMOTED = 'user_not_promoted'
     USER_DISABLED = 'user_disabled'
 
 
@@ -36,8 +37,9 @@ class AccessDecision:
         if self.user_id is not None:
             normalized = self.user_id.strip()
             object.__setattr__(self, 'user_id', normalized or None)
-        if self.status is AccessStatus.USER_DISABLED and self.user_id is None:
-            raise IdentityDefinitionError('Disabled access decision requires user_id')
+        if self.status in {AccessStatus.USER_NOT_PROMOTED, AccessStatus.USER_DISABLED}:
+            if self.user_id is None:
+                raise IdentityDefinitionError('Rejected user access decision requires user_id')
         if self.bootstrap_root and self.status is not AccessStatus.READY:
             raise IdentityDefinitionError('Bootstrap root access decision must be ready')
         if self.bootstrap_root and self.user_id is not None:
@@ -76,8 +78,9 @@ class AccessSnapshot:
             raise IdentityDefinitionError('Invalid identity snapshot cannot contain identity')
         if self.status is not AccessStatus.INVALID_IDENTITY and self.identity is None:
             raise IdentityDefinitionError('Resolved access snapshot requires identity')
-        if self.status is AccessStatus.USER_DISABLED and self.user_id is None:
-            raise IdentityDefinitionError('Disabled access snapshot requires user_id')
+        if self.status in {AccessStatus.USER_NOT_PROMOTED, AccessStatus.USER_DISABLED}:
+            if self.user_id is None:
+                raise IdentityDefinitionError('Rejected user access snapshot requires user_id')
         if self.bootstrap_root and self.status is not AccessStatus.READY:
             raise IdentityDefinitionError('Bootstrap root access snapshot must be ready')
         if self.bootstrap_root and self.user_id is not None:

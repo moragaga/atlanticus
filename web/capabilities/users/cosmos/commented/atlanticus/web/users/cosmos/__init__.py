@@ -1,4 +1,4 @@
-# El API público expone únicamente el adapter durable; detalles de serialización quedan internos.
-from atlanticus.web.users.cosmos.store import CosmosUsersRuntimeStore
+# Espejo pedagógico: conserva exactamente el contrato productivo y explica su intención.
+from atlanticus.web.users.cosmos.store import CosmosUsersStore
 
-__all__ = ['CosmosUsersRuntimeStore']
+__all__ = ['CosmosUsersStore']

@@ -53,7 +53,6 @@ class LocalUserDefinition:
             display_name=self.display_name,
             email=None,
             enabled=True,
-            pending=False,
             avatar_text=build_avatar_text(self.display_name),
             authority_key=LOCAL_AUTHORITY_KEY,
             avatar_background_color=self.avatar_background_color,

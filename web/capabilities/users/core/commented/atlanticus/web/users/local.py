@@ -1,9 +1,5 @@
+# Espejo pedagógico: conserva exactamente el contrato productivo y explica su intención.
 from __future__ import annotations
-
-# El runtime local conserva dos identidades base y selecciona una de ellas aleatoriamente.
-# El selector es inyectable para que los tests validen ambas identidades sin depender del azar.
-# Jane y John comparten autoridad local pero mantienen colores de avatar independientes.
-
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -58,7 +54,6 @@ class LocalUserDefinition:
             display_name=self.display_name,
             email=None,
             enabled=True,
-            pending=False,
             avatar_text=build_avatar_text(self.display_name),
             authority_key=LOCAL_AUTHORITY_KEY,
             avatar_background_color=self.avatar_background_color,
