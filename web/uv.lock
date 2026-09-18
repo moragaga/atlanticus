@@ -337,10 +337,14 @@ version = "0.1.0"
 source = { editable = "capabilities/profiles/configuration" }
 dependencies = [
     { name = "atlanticus-web-profiles" },
+    { name = "atlanticus-web-source" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "atlanticus-web-profiles", editable = "capabilities/profiles/core" }]
+requires-dist = [
+    { name = "atlanticus-web-profiles", editable = "capabilities/profiles/core" },
+    { name = "atlanticus-web-source", editable = "capabilities/source/core" },
+]
 
 [[package]]
 name = "atlanticus-web-projection"

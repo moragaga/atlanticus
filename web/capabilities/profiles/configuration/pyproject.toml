@@ -10,10 +10,12 @@ requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "atlanticus-web-profiles==0.1.0",
+    "atlanticus-web-source==0.1.0",
 ]
 
 [tool.uv.sources]
 atlanticus-web-profiles = { workspace = true }
+atlanticus-web-source = { workspace = true }
 
 [tool.setuptools]
 package-dir = {"" = "src"}

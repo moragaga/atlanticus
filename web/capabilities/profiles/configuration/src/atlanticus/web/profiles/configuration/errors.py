@@ -1,0 +1,2 @@
+class ProfilesConfigurationSourceError(RuntimeError):
+    pass
