@@ -1,5 +1,5 @@
-# Espejo pedagógico: este contrato declara exclusivamente el recurso Cosmos usado para resolución runtime.
-# El registro durable Blob pertenece al provider de registry y no se disfraza como otro recurso Cosmos.
+# Los recursos físicos de Users se declaran aquí sin transferir ownership de los documentos que alojan.
+# Runtime conserva su contenedor propio y Support agrupa documentos auxiliares con contratos independientes.
 from atlanticus.web.storage.topology import (
     CosmosContainerTopology,
     StorageResourceContract,
@@ -24,3 +24,23 @@ USERS_RUNTIME_STORAGE_RESOURCE: StorageResourceContract[CosmosContainerTopology]
 USERS_RUNTIME_STORAGE_RESOURCES: tuple[
     StorageResourceContract[CosmosContainerTopology], ...
 ] = (USERS_RUNTIME_STORAGE_RESOURCE,)
+
+# Support es solo un contenedor físico compartido; cada capability mantiene su serializer y document_type.
+USERS_SUPPORT_STORAGE_RESOURCE: StorageResourceContract[CosmosContainerTopology] = (
+    StorageResourceContract(
+        logical_id='users.support',
+        owner='users',
+        provider='cosmos',
+        default_connection_ref=None,
+        default_physical_name='users-support',
+        topology=CosmosContainerTopology(
+            partition_key_path='/partition_key',
+            default_ttl_seconds=None,
+        ),
+        allowed_overrides=frozenset({StorageResourceOverrideField.CONNECTION_REF}),
+    )
+)
+
+USERS_SUPPORT_STORAGE_RESOURCES: tuple[
+    StorageResourceContract[CosmosContainerTopology], ...
+] = (USERS_SUPPORT_STORAGE_RESOURCE,)
