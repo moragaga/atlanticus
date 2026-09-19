@@ -17,7 +17,6 @@ from atlanticus.web.profiles.projection.local import (
     LocalProfilesProjectionStore,
     LocalProfilesProjectionStoreSettings,
 )
-from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.source.blob import BlobSourceSettings, BlobSourceStore
 from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
 
@@ -25,7 +24,6 @@ from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
 # Provider local: filesystem durable para Source y archivo local para Projection.
 def compose_local_profiles_manager(
     *,
-    services: ServiceRegistry,
     source_settings: LocalSourceSettings,
     projection_settings: LocalProfilesProjectionStoreSettings,
     principal_provider: ProfilesPrincipalProvider,
@@ -38,7 +36,6 @@ def compose_local_profiles_manager(
     audit_actor_provider: ProfilesAuditActorProvider | None = None,
 ) -> ProfilesManagerComposition:
     return compose_profiles_manager(
-        services=services,
         source_store=LocalSourceStore(source_settings),
         projection_store=LocalProfilesProjectionStore(projection_settings),
         principal_provider=principal_provider,
@@ -55,7 +52,6 @@ def compose_local_profiles_manager(
 # Provider Azure: Blob sigue siendo Source durable y Cosmos sirve la Projection activa.
 def compose_azure_profiles_manager(
     *,
-    services: ServiceRegistry,
     storage: StorageClient,
     source_settings: BlobSourceSettings,
     cosmos: CosmosClient,
@@ -70,7 +66,6 @@ def compose_azure_profiles_manager(
     audit_actor_provider: ProfilesAuditActorProvider | None = None,
 ) -> ProfilesManagerComposition:
     return compose_profiles_manager(
-        services=services,
         source_store=BlobSourceStore(source_settings, storage=storage),
         projection_store=CosmosProfilesProjectionStore(
             client=cosmos,

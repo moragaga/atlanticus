@@ -21,7 +21,7 @@ from ada.web.application.configuration_manager.composition import (
     NAVIGATION_MANAGER_ACCESS_KEY,
     TOOLS_MANAGER_ACCESS_KEY,
 )
-from atlanticus.web.manager import ManagerPrincipal, ManagerSurface
+from atlanticus.web.manager import ManagerModule, ManagerPrincipal, ManagerSurface
 from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.source.models import SourceKey, SourceSnapshot
 
@@ -38,6 +38,24 @@ class ProjectionStub:
     pass
 
 
+def profiles_module() -> ManagerModule:
+    return ManagerModule(
+        key='profiles',
+        group_key='configuration',
+        title='Profiles',
+        route='/profiles',
+        order=10,
+        layout=lambda _services: None,
+        source_key=SourceKey('profiles-configuration'),
+        source_service='profiles.source',
+        source_reader_service='profiles.source',
+        source_history_service='profiles.source',
+        projection_service='profiles.projection',
+        draft_validation_service='profiles.validation',
+        access_key='profiles.manage',
+    )
+
+
 def dependencies() -> ConfigurationManagerDependencies:
     principal = ManagerPrincipal(
         subject_id='local',
@@ -51,6 +69,7 @@ def dependencies() -> ConfigurationManagerDependencies:
         tools_source=SourceStub('tools'),
         tools_projection=ProjectionStub(),
         principal_provider=lambda: principal,
+        profiles_module=profiles_module(),
     )
 
 
@@ -60,11 +79,13 @@ def test_surface_uses_generic_manager_contract_for_configuration_modules() -> No
 
     assert definition.route_prefix == MANAGER_ROUTE_PREFIX == '/manager'
     assert tuple(module.key for module in surface.registry.modules) == (
+        'profiles',
         'navigation',
         'tools',
     )
 
-    navigation, tools = definition.modules
+    profiles, navigation, tools = definition.modules
+    assert profiles.key == 'profiles'
     assert navigation.source_key == SourceKey('navigation')
     assert navigation.source_service == NAVIGATION_SOURCE_SERVICE
     assert navigation.source_reader_service == NAVIGATION_SOURCE_READER_SERVICE

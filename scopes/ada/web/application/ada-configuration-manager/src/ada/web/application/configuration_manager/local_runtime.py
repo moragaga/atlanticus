@@ -10,6 +10,7 @@ from ada.web.application.configuration_manager.application import (
 from ada.web.application.configuration_manager.composition import (
     KPI_MANAGER_ACCESS_KEY,
     NAVIGATION_MANAGER_ACCESS_KEY,
+    PROFILES_MANAGER_ACCESS_KEY,
     TOOLS_MANAGER_ACCESS_KEY,
 )
 from ada.web.application.configuration_manager.dependencies import (
@@ -33,6 +34,7 @@ from ada.web.tools.configuration import (
     ToolSourceService,
     create_tool_projection_service,
 )
+from atlanticus.web.compositions.profiles_manager import compose_profiles_manager
 from atlanticus.web.manager import ManagerPrincipal
 from atlanticus.web.models import WebApplicationRuntime
 from atlanticus.web.navigation.configuration import (
@@ -79,6 +81,7 @@ def create_local_configuration_manager_dependencies(
     tools_projection_store = InProcessProjectionStore[ToolConfiguration]()
     kpi_projection_store = InProcessProjectionStore[KpiConfiguration]()
     kpi_definition_projection_store = InProcessProjectionStore[KpiDefinitionCatalog]()
+    profiles_projection_store = InProcessProjectionStore()
 
     navigation_source = NavigationSourceService(
         source=source_store,
@@ -119,11 +122,19 @@ def create_local_configuration_manager_dependencies(
         subject_id='local',
         display_name='Administrador local',
         access_keys=(
+            PROFILES_MANAGER_ACCESS_KEY,
             NAVIGATION_MANAGER_ACCESS_KEY,
             TOOLS_MANAGER_ACCESS_KEY,
             KPI_MANAGER_ACCESS_KEY,
         ),
         is_local=True,
+    )
+    profiles_manager = compose_profiles_manager(
+        source_store=source_store,
+        projection_store=profiles_projection_store,
+        principal_provider=lambda: principal,
+        group_key='configuration',
+        access_key=PROFILES_MANAGER_ACCESS_KEY,
     )
     return ConfigurationManagerDependencies(
         navigation_source=navigation_source,
@@ -131,6 +142,7 @@ def create_local_configuration_manager_dependencies(
         tools_source=tools_source,
         tools_projection=tools_projection,
         principal_provider=lambda: principal,
+        profiles_module=profiles_manager.module,
         kpis_source=kpis_source,
         kpis_projection=kpis_projection,
         kpi_destinations=kpi_destinations,

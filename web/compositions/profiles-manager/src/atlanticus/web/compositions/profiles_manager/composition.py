@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from atlanticus.web.compositions.profiles_manager.workflows import (
     ProfilesAuditActorProvider,
@@ -48,7 +48,6 @@ class ProfilesManagerComposition:
 
 def compose_profiles_manager(
     *,
-    services: ServiceRegistry,
     source_store: SourceStore,
     projection_store: ProjectionStore[ProfileCatalog],
     principal_provider: ProfilesPrincipalProvider,
@@ -117,6 +116,13 @@ def compose_profiles_manager(
     def layout(_services: ServiceRegistry) -> object:
         return build_profiles_admin_configuration(context)
 
+    web_module = create_profiles_admin_web_module(context)
+
+    def register_services(services: ServiceRegistry) -> None:
+        services.add(PROFILES_MANAGER_SOURCE_SERVICE, source_workflow)
+        services.add(PROFILES_MANAGER_PROJECTION_SERVICE, projection_service)
+        services.add(PROFILES_MANAGER_VALIDATION_SERVICE, validation_workflow)
+
     module = ManagerModule(
         key=module_key,
         group_key=group_key,
@@ -131,13 +137,13 @@ def compose_profiles_manager(
         projection_service=PROFILES_MANAGER_PROJECTION_SERVICE,
         draft_validation_service=PROFILES_MANAGER_VALIDATION_SERVICE,
         access_key=access_key,
-        web_module=create_profiles_admin_web_module(context),
+        web_module=replace(
+            web_module,
+            register_services=register_services,
+        ),
         source_name='Profiles Source',
         projection_name='Profiles Projection',
     )
-    services.add(PROFILES_MANAGER_SOURCE_SERVICE, source_workflow)
-    services.add(PROFILES_MANAGER_PROJECTION_SERVICE, projection_service)
-    services.add(PROFILES_MANAGER_VALIDATION_SERVICE, validation_workflow)
     return ProfilesManagerComposition(
         module=module,
         source_workflow=source_workflow,

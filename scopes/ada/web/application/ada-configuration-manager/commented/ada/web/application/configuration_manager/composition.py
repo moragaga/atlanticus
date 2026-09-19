@@ -61,6 +61,7 @@ from atlanticus.web.services import ServiceRegistry
 
 MANAGER_ROUTE_PREFIX = '/manager'
 
+PROFILES_MANAGER_ACCESS_KEY = 'profiles.manage'
 NAVIGATION_MANAGER_ACCESS_KEY = 'navigation.manage'
 TOOLS_MANAGER_ACCESS_KEY = 'tools.manage'
 KPI_MANAGER_ACCESS_KEY = 'kpis.manage'
@@ -139,6 +140,8 @@ def build_configuration_manager_surface(
         principal_provider=dependencies.principal_provider,
         groups=(ManagerModuleGroup(key='configuration', title='Configuraciones', order=10),),
         modules=(
+            # Profiles ya llega compuesto por su composition reusable y conserva ownership de su lifecycle.
+            dependencies.profiles_module,
             ManagerModule(
                 key='navigation',
                 group_key='configuration',

@@ -28,14 +28,12 @@ def _principal() -> ManagerPrincipal:
 
 
 def test_profiles_manager_registers_generic_source_projection_contract(tmp_path) -> None:
-    services = ServiceRegistry()
     source = LocalSourceStore(LocalSourceSettings(root=tmp_path / 'source'))
     projection = LocalProfilesProjectionStore(
         LocalProfilesProjectionStoreSettings(root=tmp_path / 'projection')
     )
 
     composition = compose_profiles_manager(
-        services=services,
         source_store=source,
         projection_store=projection,
         principal_provider=_principal,
@@ -44,6 +42,11 @@ def test_profiles_manager_registers_generic_source_projection_contract(tmp_path)
     )
 
     module = composition.module
+    services = ServiceRegistry()
+    assert module.web_module is not None
+    assert module.web_module.register_services is not None
+    module.web_module.register_services(services)
+
     assert module.key == 'profiles'
     assert module.route == '/profiles'
     assert module.source_service == PROFILES_MANAGER_SOURCE_SERVICE
@@ -60,14 +63,12 @@ def test_profiles_manager_registers_generic_source_projection_contract(tmp_path)
 
 
 def test_profiles_manager_web_context_uses_users_local_identity_definitions(tmp_path) -> None:
-    services = ServiceRegistry()
     source = LocalSourceStore(LocalSourceSettings(root=tmp_path / 'source'))
     projection = LocalProfilesProjectionStore(
         LocalProfilesProjectionStoreSettings(root=tmp_path / 'projection')
     )
 
     composition = compose_profiles_manager(
-        services=services,
         source_store=source,
         projection_store=projection,
         principal_provider=_principal,
@@ -75,6 +76,7 @@ def test_profiles_manager_web_context_uses_users_local_identity_definitions(tmp_
         access_key='profiles.manage',
     )
 
+    services = ServiceRegistry()
     rendered = composition.module.layout(services)
     text = str(rendered)
 

@@ -19,6 +19,7 @@ dependencies = [
     "atlanticus-web-bootstrap==0.1.0",
     "atlanticus-web-identity==0.1.0",
     "atlanticus-web-manager==0.3.18",
+    "atlanticus-web-composition-profiles-manager==0.1.0",
     "atlanticus-web-navigation==0.1.0",
     "atlanticus-web-navigation-configuration[web]==0.1.9",
     "atlanticus-web-projection==0.1.0",
@@ -33,6 +34,7 @@ atlanticus-web-bootstrap = { path = "../../../../../web/framework/bootstrap", ed
 atlanticus-web-identity = { path = "../../../../../web/capabilities/identity/core", editable = true }
 atlanticus-web-manager = { path = "../../../../../web/capabilities/manager", editable = true }
 atlanticus-web-profiles = { path = "../../../../../web/capabilities/profiles/core", editable = true }
+atlanticus-web-composition-profiles-manager = { path = "../../../../../web/compositions/profiles-manager", editable = true }
 atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
 atlanticus-web-source-local = { path = "../../../../../web/capabilities/source/local", editable = true }
@@ -99,6 +101,7 @@ pythonpath = [
     "../../../../../web/capabilities/identity/core/src",
     "../../../../../web/capabilities/manager/src",
     "../../../../../web/capabilities/profiles/core/src",
+    "../../../../../web/compositions/profiles-manager/src",
     "../../../../../web/capabilities/projection/core/src",
     "../../../../../web/capabilities/source/core/src",
     "../../../../../web/capabilities/source/local/src",

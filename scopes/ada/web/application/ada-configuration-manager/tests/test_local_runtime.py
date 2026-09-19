@@ -1,6 +1,7 @@
 from ada.web.application.configuration_manager.composition import (
     KPI_MANAGER_ACCESS_KEY,
     NAVIGATION_MANAGER_ACCESS_KEY,
+    PROFILES_MANAGER_ACCESS_KEY,
     TOOLS_MANAGER_ACCESS_KEY,
 )
 from ada.web.application.configuration_manager.local_runtime import (
@@ -10,6 +11,12 @@ from ada.web.application.configuration_manager.local_runtime import (
     TOOLS_SOURCE_KEY,
     create_local_configuration_manager_dependencies,
 )
+from atlanticus.web.compositions.profiles_manager import (
+    PROFILES_MANAGER_PROJECTION_SERVICE,
+    PROFILES_MANAGER_SOURCE_SERVICE,
+    PROFILES_MANAGER_VALIDATION_SERVICE,
+)
+from atlanticus.web.services import ServiceRegistry
 
 
 def test_local_runtime_composes_configuration_sources(tmp_path) -> None:
@@ -22,6 +29,16 @@ def test_local_runtime_composes_configuration_sources(tmp_path) -> None:
     assert dependencies.kpi_definitions_source is not None
     assert dependencies.kpi_definitions_source.source_key == KPI_DEFINITION_SOURCE_KEY
     assert dependencies.kpi_configuration_projection is not None
+    assert dependencies.profiles_module.key == 'profiles'
+    assert dependencies.profiles_module.source_key.value == 'profiles-configuration'
+
+    services = ServiceRegistry()
+    assert dependencies.profiles_module.web_module is not None
+    assert dependencies.profiles_module.web_module.register_services is not None
+    dependencies.profiles_module.web_module.register_services(services)
+    assert services.contains(PROFILES_MANAGER_SOURCE_SERVICE)
+    assert services.contains(PROFILES_MANAGER_PROJECTION_SERVICE)
+    assert services.contains(PROFILES_MANAGER_VALIDATION_SERVICE)
 
 
 def test_local_runtime_grants_explicit_configuration_capabilities(tmp_path) -> None:
@@ -31,6 +48,7 @@ def test_local_runtime_grants_explicit_configuration_capabilities(tmp_path) -> N
     assert principal.is_local is True
     assert principal.profile_keys == ()
     assert principal.access_keys == (
+        PROFILES_MANAGER_ACCESS_KEY,
         NAVIGATION_MANAGER_ACCESS_KEY,
         TOOLS_MANAGER_ACCESS_KEY,
         KPI_MANAGER_ACCESS_KEY,
