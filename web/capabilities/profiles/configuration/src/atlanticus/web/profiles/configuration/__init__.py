@@ -1,3 +1,8 @@
+from atlanticus.web.profiles.configuration.editor import (
+    build_initial_configuration,
+    create_profile,
+    update_profile,
+)
 from atlanticus.web.profiles.configuration.errors import ProfilesConfigurationSourceError
 from atlanticus.web.profiles.configuration.models import ProfilesConfiguration
 from atlanticus.web.profiles.configuration.source_release import (
@@ -20,4 +25,7 @@ __all__ = [
     'ProfilesSourcePayload',
     'ProfilesSourceRelease',
     'ProfilesSourceService',
+    'build_initial_configuration',
+    'create_profile',
+    'update_profile',
 ]
