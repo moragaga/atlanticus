@@ -4,7 +4,7 @@ from flask import Flask
 from atlanticus.web.identity.access import AccessDecision, AccessSnapshot, AccessStatus
 from atlanticus.web.identity.errors import AccessResolverUnavailableError
 from atlanticus.web.identity.models import AuthenticatedIdentity
-from atlanticus.web.users.authority import BASIC_AUTHORITY_KEY
+from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
 from atlanticus.web.users.errors import UsersStoreUnavailableError
 from atlanticus.web.users.identity import build_user_key
 from atlanticus.web.users.models import UserRecord
@@ -27,6 +27,18 @@ class MemoryRuntimeStore(UsersRuntimeStore):
         return self.resolved
 
 
+def _profiles() -> ProfileCatalog:
+    return ProfileCatalog(
+        profiles=(
+            ProfileDefinition(
+                key='11111111-1111-4111-8111-111111111111',
+                label='Analista',
+                background_color='#112233',
+            ),
+        )
+    )
+
+
 def _identity() -> AuthenticatedIdentity:
     return AuthenticatedIdentity(
         provider_key='entra',
@@ -37,7 +49,7 @@ def _identity() -> AuthenticatedIdentity:
     )
 
 
-def _managed(*, enabled: bool = True) -> UserRecord:
+def _managed(*, enabled: bool = True, profile_key: str = 'basic') -> UserRecord:
     return UserRecord(
         user_id=build_user_key(issuer='entra', subject_id='oid-1'),
         issuer='entra',
@@ -45,14 +57,18 @@ def _managed(*, enabled: bool = True) -> UserRecord:
         display_name='Managed User',
         email='managed@example.com',
         enabled=enabled,
-        authority_key=BASIC_AUTHORITY_KEY,
+        profile_key=profile_key,
     )
+
+
+def _resolver(store: UsersRuntimeStore) -> UsersAccessResolver:
+    return UsersAccessResolver(store=store, runtime=UsersRuntime(), profiles=_profiles)
 
 
 def test_absent_identity_is_ready_without_promotion_or_runtime_user() -> None:
     store = MemoryRuntimeStore(resolved=None)
     runtime = UsersRuntime()
-    resolver = UsersAccessResolver(store=store, runtime=runtime)
+    resolver = UsersAccessResolver(store=store, runtime=runtime, profiles=_profiles)
     identity = _identity()
     server = Flask(__name__)
     server.secret_key = 'test-only'
@@ -70,12 +86,11 @@ def test_absent_identity_is_ready_without_promotion_or_runtime_user() -> None:
     assert decision.user_id == build_user_key(issuer='entra', subject_id='oid-1')
     assert runtime_user is None
     assert store.resolve_calls == 1
-    assert not hasattr(store, 'observe')
 
 
-def test_promoted_identity_resolves_ready() -> None:
-    store = MemoryRuntimeStore(resolved=_managed())
-    resolver = UsersAccessResolver(store=store, runtime=UsersRuntime())
+def test_promoted_identity_resolves_configured_profile_ready() -> None:
+    managed = _managed(profile_key='11111111-1111-4111-8111-111111111111')
+    resolver = _resolver(MemoryRuntimeStore(resolved=managed))
 
     server = Flask(__name__)
     server.secret_key = 'test-only'
@@ -83,14 +98,18 @@ def test_promoted_identity_resolves_ready() -> None:
         decision = resolver.resolve(_identity(), load_id='load-1')
 
     assert decision.status is AccessStatus.READY
-    assert decision.user_id == _managed().user_id
+    assert decision.user_id == managed.user_id
+
+
+def test_runtime_rejects_profile_missing_from_catalog() -> None:
+    resolver = _resolver(MemoryRuntimeStore(resolved=_managed(profile_key='missing')))
+
+    with pytest.raises(AccessResolverUnavailableError, match='Users runtime store is unavailable'):
+        resolver.resolve(_identity(), load_id='load-1')
 
 
 def test_disabled_promoted_user_is_rejected() -> None:
-    resolver = UsersAccessResolver(
-        store=MemoryRuntimeStore(resolved=_managed(enabled=False)),
-        runtime=UsersRuntime(),
-    )
+    resolver = _resolver(MemoryRuntimeStore(resolved=_managed(enabled=False)))
 
     decision = resolver.resolve(_identity(), load_id='load-1')
 
@@ -98,12 +117,11 @@ def test_disabled_promoted_user_is_rejected() -> None:
 
 
 def test_runtime_store_failure_is_reported_as_unavailable() -> None:
-    resolver = UsersAccessResolver(
-        store=MemoryRuntimeStore(
+    resolver = _resolver(
+        MemoryRuntimeStore(
             resolved=None,
             error=UsersStoreUnavailableError('unavailable'),
-        ),
-        runtime=UsersRuntime(),
+        )
     )
 
     with pytest.raises(AccessResolverUnavailableError, match='Users runtime store is unavailable'):

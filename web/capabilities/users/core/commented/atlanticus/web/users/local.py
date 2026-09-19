@@ -1,23 +1,20 @@
-# Espejo pedagógico: conserva exactamente el contrato productivo y explica su intención.
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
 from secrets import choice
 
-from atlanticus.web.users.authority import (
-    LOCAL_AUTHORITY_KEY,
-    LOCAL_JANE_BACKGROUND_COLOR,
-    LOCAL_JANE_TEXT_COLOR,
-    LOCAL_JOHN_BACKGROUND_COLOR,
-    LOCAL_JOHN_TEXT_COLOR,
-    normalize_user_color,
-)
+from atlanticus.web.profiles.models import LOCAL_PROFILE_KEY
 from atlanticus.web.users.errors import UsersDefinitionError
 from atlanticus.web.users.identity import build_user_key
-from atlanticus.web.users.models import EffectiveUser, build_avatar_text
+from atlanticus.web.users.models import EffectiveUser, build_avatar_text, normalize_user_color
 
+# Las identidades y colores locales son propiedad de Users; sólo la key local pertenece a Profiles.
 LOCAL_ISSUER = 'atlanticus-local'
+LOCAL_JANE_BACKGROUND_COLOR = '#C85D91'
+LOCAL_JANE_TEXT_COLOR = '#FFFFFF'
+LOCAL_JOHN_BACKGROUND_COLOR = '#3778C2'
+LOCAL_JOHN_TEXT_COLOR = '#FFFFFF'
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,7 +52,7 @@ class LocalUserDefinition:
             email=None,
             enabled=True,
             avatar_text=build_avatar_text(self.display_name),
-            authority_key=LOCAL_AUTHORITY_KEY,
+            profile_key=LOCAL_PROFILE_KEY,
             avatar_background_color=self.avatar_background_color,
             avatar_text_color=self.avatar_text_color,
             is_local=True,

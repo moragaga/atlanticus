@@ -1,4 +1,3 @@
-# Espejo pedagógico: conserva exactamente el contrato productivo y explica su intención.
 from __future__ import annotations
 
 import gzip
@@ -21,7 +20,8 @@ from atlanticus.web.users.models import UserRecord, UsersRegistrySnapshot
 from atlanticus.web.users.store import UsersRegistryStore
 
 _USERS_REGISTRY_DOCUMENT_TYPE = 'atlanticus_users_registry'
-_USERS_REGISTRY_SCHEMA_VERSION = 1
+# v2 persiste profile_key y rechaza el contrato authority_key anterior.
+_USERS_REGISTRY_SCHEMA_VERSION = 2
 _DEFAULT_BLOB_NAME = 'users/users.json.gz'
 
 
@@ -58,7 +58,6 @@ class _StorageClient(Protocol):
     ) -> StorageBlobProperties: ...
 
 
-# Blob conserva el registro durable compacto y usa ETag para evitar escrituras perdidas.
 class BlobUsersRegistryStore(UsersRegistryStore):
     def __init__(
         self,

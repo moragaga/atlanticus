@@ -23,7 +23,7 @@ from atlanticus.web.users.models import UserRecord
 from atlanticus.web.users.store import UsersAdministrationStore, UsersRuntimeStore
 
 _USER_DOCUMENT_TYPE = 'atlanticus_user'
-_USER_SCHEMA_VERSION = 1
+_USER_SCHEMA_VERSION = 2
 _USERS_QUERY = 'SELECT * FROM c WHERE c.document_type = @document_type'
 
 
@@ -199,7 +199,7 @@ def _user_to_document(user: UserRecord) -> dict[str, object]:
         'display_name': user.display_name,
         'email': user.email,
         'enabled': user.enabled,
-        'authority_key': user.authority_key,
+        'profile_key': user.profile_key,
         'avatar_background_color': user.avatar_background_color,
         'avatar_text_color': user.avatar_text_color,
     }
@@ -220,7 +220,7 @@ def _user_from_document(document: Mapping[str, Any]) -> UserRecord:
             display_name=_required_string(document, 'display_name'),
             email=_optional_string(document, 'email'),
             enabled=_required_bool(document, 'enabled'),
-            authority_key=_required_string(document, 'authority_key'),
+            profile_key=_required_string(document, 'profile_key'),
             avatar_background_color=_optional_string(document, 'avatar_background_color'),
             avatar_text_color=_optional_string(document, 'avatar_text_color'),
         )

@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from enum import StrEnum
 
+from atlanticus.web.profiles.models import ProfileDefinition
 from atlanticus.web.users.errors import (
     UserAlreadyPromotedError,
     UserPromotionError,
@@ -10,6 +11,12 @@ from atlanticus.web.users.errors import (
     UsersRegistryConflictError,
 )
 from atlanticus.web.users.models import DiscoveredUser, UserRecord, UsersRegistrySnapshot
+from atlanticus.web.users.profiles import (
+    UsersProfileCatalogProvider,
+    available_managed_profiles,
+    require_managed_profile,
+    resolve_profile_catalog,
+)
 from atlanticus.web.users.store import (
     UsersAdministrationStore,
     UsersDirectoryReader,
@@ -44,6 +51,7 @@ class UserCandidate:
 class UsersAdministrationSnapshot:
     registry: UsersRegistrySnapshot
     candidates: tuple[UserCandidate, ...]
+    profiles: tuple[ProfileDefinition, ...]
 
 
 class UsersAdministrationService:
@@ -52,11 +60,16 @@ class UsersAdministrationService:
         *,
         registry: UsersRegistryStore,
         promoted: UsersAdministrationStore,
+        profiles: UsersProfileCatalogProvider,
         directory: UsersDirectoryReader | None = None,
     ) -> None:
         self._registry = registry
         self._promoted = promoted
+        self._profiles = profiles
         self._directory = directory
+
+    def available_profiles(self) -> tuple[ProfileDefinition, ...]:
+        return available_managed_profiles(resolve_profile_catalog(self._profiles))
 
     def discover(self) -> UsersAdministrationSnapshot:
         registry = self._registry.load()
@@ -69,6 +82,7 @@ class UsersAdministrationService:
                 promoted_users=promoted_users,
                 directory_users=directory_users,
             ),
+            profiles=self.available_profiles(),
         )
 
     def promote(
@@ -79,6 +93,7 @@ class UsersAdministrationService:
     ) -> UserRecord:
         if not isinstance(user, UserRecord):
             raise TypeError('user must be UserRecord')
+        self._require_profile(user)
         if self._promoted.get(user.user_id) is not None:
             raise UserAlreadyPromotedError('User is already promoted')
         _require_no_cross_identity_email_conflict(user, self.discover().candidates)
@@ -118,6 +133,7 @@ class UsersAdministrationService:
     ) -> UserRecord:
         if not isinstance(user, UserRecord):
             raise TypeError('user must be UserRecord')
+        self._require_profile(user)
         current = self._promoted.get(user.user_id)
         if current is None:
             raise UserPromotionError('Promoted user does not exist')
@@ -136,6 +152,12 @@ class UsersAdministrationService:
         if updated_registry.get(user.user_id) != user:
             raise UserPromotionError('Users registry persisted a different user')
         return self._promoted.replace(user)
+
+    def _require_profile(self, user: UserRecord) -> None:
+        require_managed_profile(
+            user.profile_key,
+            profiles=resolve_profile_catalog(self._profiles),
+        )
 
     def _find_directory_user(self, user_id: str) -> DiscoveredUser | None:
         if self._directory is None:

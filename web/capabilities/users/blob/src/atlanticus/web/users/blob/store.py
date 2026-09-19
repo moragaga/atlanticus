@@ -20,7 +20,7 @@ from atlanticus.web.users.models import UserRecord, UsersRegistrySnapshot
 from atlanticus.web.users.store import UsersRegistryStore
 
 _USERS_REGISTRY_DOCUMENT_TYPE = 'atlanticus_users_registry'
-_USERS_REGISTRY_SCHEMA_VERSION = 1
+_USERS_REGISTRY_SCHEMA_VERSION = 2
 _DEFAULT_BLOB_NAME = 'users/users.json.gz'
 
 

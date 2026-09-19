@@ -3,14 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from atlanticus.web.users.authority import (
-    LOCAL_AUTHORITY_KEY,
-    has_full_access,
-    normalize_user_color,
-    require_assignable_authority,
-)
+from atlanticus.web.profiles.errors import ProfilesDefinitionError
+from atlanticus.web.profiles.models import LOCAL_PROFILE_KEY, normalize_profile_key
 from atlanticus.web.users.errors import UsersDefinitionError
 from atlanticus.web.users.identity import build_user_key
+from atlanticus.web.users.profiles import (
+    has_full_access_profile,
+    normalize_managed_profile_key,
+)
 
 
 def _required_text(value: str | None, *, label: str) -> str:
@@ -39,7 +39,7 @@ class UserRecord:
     display_name: str
     email: str | None
     enabled: bool
-    authority_key: str
+    profile_key: str
     avatar_background_color: str | None = None
     avatar_text_color: str | None = None
 
@@ -58,7 +58,7 @@ class UserRecord:
         object.__setattr__(self, 'subject_id', subject_id)
         object.__setattr__(self, 'display_name', display_name)
         object.__setattr__(self, 'email', _optional_text(self.email, casefold=True))
-        object.__setattr__(self, 'authority_key', require_assignable_authority(self.authority_key))
+        object.__setattr__(self, 'profile_key', normalize_managed_profile_key(self.profile_key))
         if self.avatar_background_color is not None:
             object.__setattr__(
                 self,
@@ -80,7 +80,7 @@ class UserRecord:
             email=self.email,
             enabled=self.enabled,
             avatar_text=build_avatar_text(self.display_name),
-            authority_key=self.authority_key,
+            profile_key=self.profile_key,
             avatar_background_color=self.avatar_background_color,
             avatar_text_color=self.avatar_text_color,
             is_local=False,
@@ -94,7 +94,7 @@ class UserRecord:
             'display_name': self.display_name,
             'email': self.email,
             'enabled': self.enabled,
-            'authority_key': self.authority_key,
+            'profile_key': self.profile_key,
             'avatar_background_color': self.avatar_background_color,
             'avatar_text_color': self.avatar_text_color,
         }
@@ -112,7 +112,7 @@ class UserRecord:
                 display_name=_document_text(document, 'display_name'),
                 email=_document_optional_text(document, 'email'),
                 enabled=enabled,
-                authority_key=_document_text(document, 'authority_key'),
+                profile_key=_document_text(document, 'profile_key'),
                 avatar_background_color=_document_optional_text(
                     document,
                     'avatar_background_color',
@@ -147,7 +147,7 @@ class DiscoveredUser:
     def promote_as(
         self,
         *,
-        authority_key: str,
+        profile_key: str,
         display_name: str | None = None,
         email: str | None = None,
         enabled: bool = True,
@@ -162,7 +162,7 @@ class DiscoveredUser:
             display_name=resolved_display_name,
             email=self.email if email is None else email,
             enabled=enabled,
-            authority_key=authority_key,
+            profile_key=profile_key,
         )
 
 
@@ -200,7 +200,7 @@ class EffectiveUser:
     email: str | None
     enabled: bool
     avatar_text: str
-    authority_key: str
+    profile_key: str
     avatar_background_color: str | None = None
     avatar_text_color: str | None = None
     is_local: bool = False
@@ -216,13 +216,16 @@ class EffectiveUser:
             raise UsersDefinitionError('Effective user enabled flag must be boolean')
         if not isinstance(self.is_local, bool):
             raise UsersDefinitionError('Effective user local flag must be boolean')
-        authority_key = self.authority_key.strip().casefold()
         if self.is_local:
-            if authority_key != LOCAL_AUTHORITY_KEY:
-                raise UsersDefinitionError('Local user must use local authority')
+            try:
+                profile_key = normalize_profile_key(self.profile_key)
+            except ProfilesDefinitionError as error:
+                raise UsersDefinitionError('Local user profile key is invalid') from error
+            if profile_key != LOCAL_PROFILE_KEY:
+                raise UsersDefinitionError('Local user must use local profile')
         else:
-            authority_key = require_assignable_authority(authority_key)
-        object.__setattr__(self, 'authority_key', authority_key)
+            profile_key = normalize_managed_profile_key(self.profile_key)
+        object.__setattr__(self, 'profile_key', profile_key)
         if self.avatar_background_color is not None:
             object.__setattr__(
                 self,
@@ -238,7 +241,16 @@ class EffectiveUser:
 
     @property
     def has_full_access(self) -> bool:
-        return has_full_access(self.authority_key)
+        return has_full_access_profile(self.profile_key)
+
+
+def normalize_user_color(value: str) -> str:
+    normalized = value.strip().upper()
+    if len(normalized) != 7 or normalized[0] != '#':
+        raise UsersDefinitionError('User color must use #RRGGBB format')
+    if any(character not in '0123456789ABCDEF' for character in normalized[1:]):
+        raise UsersDefinitionError('User color must use #RRGGBB format')
+    return normalized
 
 
 def build_avatar_text(display_name: str) -> str:

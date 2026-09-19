@@ -4,8 +4,8 @@ from dataclasses import replace
 
 import pytest
 
+from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
 from atlanticus.web.users.administration import UserCandidateState, UsersAdministrationService
-from atlanticus.web.users.authority import BASIC_AUTHORITY_KEY, ROOT_AUTHORITY_KEY
 from atlanticus.web.users.errors import (
     UserAlreadyPromotedError,
     UsersDefinitionError,
@@ -20,7 +20,25 @@ from atlanticus.web.users.store import (
 )
 
 
-def user(subject: str, *, email: str | None = None, name: str | None = None) -> UserRecord:
+def profiles() -> ProfileCatalog:
+    return ProfileCatalog(
+        profiles=(
+            ProfileDefinition(
+                key='11111111-1111-4111-8111-111111111111',
+                label='Analista',
+                background_color='#112233',
+            ),
+        )
+    )
+
+
+def user(
+    subject: str,
+    *,
+    email: str | None = None,
+    name: str | None = None,
+    profile_key: str = 'basic',
+) -> UserRecord:
     return UserRecord(
         user_id=build_user_key(issuer='entra', subject_id=subject),
         issuer='entra',
@@ -28,7 +46,7 @@ def user(subject: str, *, email: str | None = None, name: str | None = None) -> 
         display_name=name or f'User {subject}',
         email=email,
         enabled=True,
-        authority_key=BASIC_AUTHORITY_KEY,
+        profile_key=profile_key,
     )
 
 
@@ -90,54 +108,84 @@ class MemoryDirectory(UsersDirectoryReader):
         return self.users
 
 
-def test_managed_users_only_accept_global_assignable_authority():
-    with pytest.raises(UsersDefinitionError, match='basic or root'):
-        replace(user('1'), authority_key='operator')
-    assert replace(user('1'), authority_key=ROOT_AUTHORITY_KEY).authority_key == 'root'
+def service(*, registry=None, promoted=None, directory=None) -> UsersAdministrationService:
+    return UsersAdministrationService(
+        registry=registry or MemoryRegistry(),
+        promoted=promoted or MemoryPromoted(),
+        profiles=profiles,
+        directory=directory,
+    )
+
+
+def test_administration_exposes_assignable_profile_catalog_without_local() -> None:
+    snapshot = service().discover()
+
+    assert tuple(profile.key for profile in snapshot.profiles) == (
+        'basic',
+        'root',
+        'guest',
+        '11111111-1111-4111-8111-111111111111',
+    )
+
+
+def test_administration_accepts_configured_profile_and_rejects_unknown_profile() -> None:
+    configured = user('1', profile_key='11111111-1111-4111-8111-111111111111')
+    promoted = MemoryPromoted()
+    registry = MemoryRegistry([configured])
+    assert service(registry=registry, promoted=promoted).promote(
+        configured,
+        expected_registry_version='v1',
+    ) == configured
+
+    unknown = user('2', profile_key='missing')
+    with pytest.raises(UsersDefinitionError, match='Unknown managed user profile'):
+        service(registry=MemoryRegistry([unknown])).promote(
+            unknown,
+            expected_registry_version='v1',
+        )
 
 
 def test_discovery_marks_cosmos_presence_as_promoted_even_when_storage_differs():
     storage_user = user('1', email='old@example.com')
     promoted_user = user('1', email='new@example.com')
-    service = UsersAdministrationService(
+    candidate = service(
         registry=MemoryRegistry([storage_user]),
         promoted=MemoryPromoted([promoted_user]),
         directory=MemoryDirectory([discovered('1', email='entra@example.com')]),
-    )
-    candidate = service.discover().candidates[0]
+    ).discover().candidates[0]
     assert candidate.state is UserCandidateState.PROMOTED
     assert 'Promoted user differs from durable registry' in candidate.issues
     assert 'Directory data differs from promoted user' in candidate.issues
 
 
 def test_discovery_marks_storage_directory_difference_as_conflict():
-    service = UsersAdministrationService(
+    candidate = service(
         registry=MemoryRegistry([user('1', email='storage@example.com')]),
-        promoted=MemoryPromoted(),
         directory=MemoryDirectory([discovered('1', email='entra@example.com')]),
-    )
-    candidate = service.discover().candidates[0]
+    ).discover().candidates[0]
     assert candidate.state is UserCandidateState.CONFLICT
 
 
 def test_email_match_on_different_strong_identity_is_conflict_not_merge():
-    service = UsersAdministrationService(
+    candidates = service(
         registry=MemoryRegistry([user('storage', email='same@example.com')]),
-        promoted=MemoryPromoted(),
         directory=MemoryDirectory([discovered('entra', email='same@example.com')]),
-    )
-    candidates = service.discover().candidates
+    ).discover().candidates
     assert len(candidates) == 2
     assert {candidate.state for candidate in candidates} == {UserCandidateState.CONFLICT}
-    assert all('Email matches a different user identity' in candidate.issues for candidate in candidates)
+    assert all(
+        'Email matches a different user identity' in candidate.issues for candidate in candidates
+    )
 
 
 def test_promote_from_storage_does_not_rewrite_registry():
-    durable = user('1')
+    durable = user('1', profile_key='guest')
     registry = MemoryRegistry([durable])
     promoted = MemoryPromoted()
-    service = UsersAdministrationService(registry=registry, promoted=promoted)
-    result = service.promote(durable, expected_registry_version='v1')
+    result = service(registry=registry, promoted=promoted).promote(
+        durable,
+        expected_registry_version='v1',
+    )
     assert result == durable
     assert registry.replaces == 0
     assert promoted.creates == 1
@@ -145,15 +193,14 @@ def test_promote_from_storage_does_not_rewrite_registry():
 
 def test_promote_from_directory_persists_storage_before_cosmos():
     candidate = discovered('1', email='user@example.com')
-    durable = candidate.promote_as(authority_key=BASIC_AUTHORITY_KEY)
+    durable = candidate.promote_as(profile_key='guest')
     registry = MemoryRegistry([], version='v1')
     promoted = MemoryPromoted()
-    service = UsersAdministrationService(
+    result = service(
         registry=registry,
         promoted=promoted,
         directory=MemoryDirectory([candidate]),
-    )
-    result = service.promote(durable, expected_registry_version='v1')
+    ).promote(durable, expected_registry_version='v1')
     assert result == durable
     assert registry.snapshot.get(durable.user_id) == durable
     assert promoted.get(durable.user_id) == durable
@@ -161,25 +208,36 @@ def test_promote_from_directory_persists_storage_before_cosmos():
 
 def test_promote_is_forbidden_when_cosmos_already_contains_user():
     durable = user('1')
-    service = UsersAdministrationService(
-        registry=MemoryRegistry([durable]),
-        promoted=MemoryPromoted([durable]),
-    )
     with pytest.raises(UserAlreadyPromotedError):
-        service.promote(durable, expected_registry_version='v1')
+        service(
+            registry=MemoryRegistry([durable]),
+            promoted=MemoryPromoted([durable]),
+        ).promote(durable, expected_registry_version='v1')
 
 
 def test_promote_blocks_same_email_on_different_strong_identity():
     storage = user('storage', email='same@example.com')
     directory = discovered('entra', email='same@example.com')
-    service = UsersAdministrationService(
-        registry=MemoryRegistry([storage]),
-        promoted=MemoryPromoted(),
-        directory=MemoryDirectory([directory]),
-    )
-    proposed = directory.promote_as(authority_key=BASIC_AUTHORITY_KEY)
+    proposed = directory.promote_as(profile_key='basic')
 
     from atlanticus.web.users.errors import UserPromotionError
 
     with pytest.raises(UserPromotionError, match='different identity'):
-        service.promote(proposed, expected_registry_version='v1')
+        service(
+            registry=MemoryRegistry([storage]),
+            directory=MemoryDirectory([directory]),
+        ).promote(proposed, expected_registry_version='v1')
+
+
+def test_update_can_change_profile_to_another_catalog_profile() -> None:
+    original = user('1', profile_key='basic')
+    updated = replace(original, profile_key='11111111-1111-4111-8111-111111111111')
+    registry = MemoryRegistry([original])
+    promoted = MemoryPromoted([original])
+
+    result = service(registry=registry, promoted=promoted).update(
+        updated,
+        expected_registry_version='v1',
+    )
+
+    assert result.profile_key == '11111111-1111-4111-8111-111111111111'

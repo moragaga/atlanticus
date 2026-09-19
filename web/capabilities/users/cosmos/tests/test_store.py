@@ -6,7 +6,6 @@ import pytest
 
 from atlanticus.connectivity.cosmos import CosmosConflictError, CosmosPatchOperation
 from atlanticus.web.identity.models import AuthenticatedIdentity
-from atlanticus.web.users.authority import BASIC_AUTHORITY_KEY, ROOT_AUTHORITY_KEY
 from atlanticus.web.users.cosmos import CosmosUsersStore
 from atlanticus.web.users.errors import UsersDefinitionError
 from atlanticus.web.users.identity import build_user_key
@@ -16,8 +15,12 @@ from atlanticus.web.users.models import UserRecord
 def user(subject: str) -> UserRecord:
     return UserRecord(
         user_id=build_user_key(issuer='entra', subject_id=subject),
-        issuer='entra', subject_id=subject, display_name=f'User {subject}',
-        email=None, enabled=True, authority_key=BASIC_AUTHORITY_KEY,
+        issuer='entra',
+        subject_id=subject,
+        display_name=f'User {subject}',
+        email=None,
+        enabled=True,
+        profile_key='basic',
     )
 
 
@@ -50,7 +53,16 @@ class FakeCosmos:
             result.pop('_etag', None)
         return result
 
-    def patch_item(self, *, container_name, item_id, partition_key, operations, if_match_etag=None, include_metadata=False):
+    def patch_item(
+        self,
+        *,
+        container_name,
+        item_id,
+        partition_key,
+        operations,
+        if_match_etag=None,
+        include_metadata=False,
+    ):
         current = self.items[item_id]
         if current['_etag'] != if_match_etag:
             raise AssertionError('unexpected etag')
@@ -65,7 +77,10 @@ class FakeCosmos:
         return result
 
     def query_items(self, *, container_name, query, parameters=None, cross_partition=False):
-        return tuple({k: v for k, v in value.items() if k != '_etag'} for value in self.items.values())
+        return tuple(
+            {key: value for key, value in item.items() if key != '_etag'}
+            for item in self.items.values()
+        )
 
 
 def test_cosmos_store_contains_only_promoted_user_contract():
@@ -77,17 +92,22 @@ def test_cosmos_store_contains_only_promoted_user_contract():
     identity = AuthenticatedIdentity(provider_key='entra', issuer='entra', subject_id='1')
     assert store.resolve(identity) == managed
     assert store.list_users() == (managed,)
-    updated = replace(managed, enabled=False, authority_key=ROOT_AUTHORITY_KEY)
+    updated = replace(managed, enabled=False, profile_key='root')
     assert store.replace(updated) == updated
     assert store.resolve(identity) == updated
+    persisted = client.items[managed.user_id]
+    assert persisted['schema_version'] == 2
+    assert persisted['profile_key'] == 'root'
+    assert 'authority_key' not in persisted
 
 
-def test_cosmos_store_rejects_old_pending_or_resolved_document_schema():
+def test_cosmos_store_rejects_previous_authority_schema():
     client = FakeCosmos()
     managed = user('1')
     client.items[managed.user_id] = {
         'id': managed.user_id,
-        'record_type': 'resolved',
+        'document_type': 'atlanticus_user',
+        'schema_version': 1,
         'issuer': managed.issuer,
         'subject_id': managed.subject_id,
         'display_name': managed.display_name,
@@ -97,5 +117,5 @@ def test_cosmos_store_rejects_old_pending_or_resolved_document_schema():
         '_etag': 'e1',
     }
     store = CosmosUsersStore(client=client, container_name='users-runtime')
-    with pytest.raises(UsersDefinitionError, match='document type'):
+    with pytest.raises(UsersDefinitionError, match='schema version'):
         store.get(managed.user_id)

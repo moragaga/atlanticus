@@ -13,6 +13,7 @@ classifiers = [
 dependencies = [
     "atlanticus-web==0.1.0",
     "atlanticus-web-identity==0.1.0",
+    "atlanticus-web-profiles==0.1.0",
     "atlanticus-web-storage-topology==0.1.0",
     "Flask==3.1.3",
 ]
@@ -20,6 +21,7 @@ dependencies = [
 [tool.uv.sources]
 atlanticus-web = { workspace = true }
 atlanticus-web-identity = { workspace = true }
+atlanticus-web-profiles = { workspace = true }
 atlanticus-web-storage-topology = { workspace = true }
 
 [tool.setuptools]

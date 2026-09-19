@@ -10,14 +10,26 @@ from atlanticus.web.users.errors import (
 )
 from atlanticus.web.users.identity import build_user_key
 from atlanticus.web.users.models import UserRecord
+from atlanticus.web.users.profiles import (
+    UsersProfileCatalogProvider,
+    require_managed_profile,
+    resolve_profile_catalog,
+)
 from atlanticus.web.users.runtime import UsersRuntime
 from atlanticus.web.users.store import UsersRuntimeStore
 
 
 class UsersAccessResolver(AccessResolver):
-    def __init__(self, *, store: UsersRuntimeStore, runtime: UsersRuntime) -> None:
+    def __init__(
+        self,
+        *,
+        store: UsersRuntimeStore,
+        runtime: UsersRuntime,
+        profiles: UsersProfileCatalogProvider,
+    ) -> None:
         self._store = store
         self._runtime = runtime
+        self._profiles = profiles
 
     def resolve(self, identity: AuthenticatedIdentity, *, load_id: str) -> AccessDecision:
         try:
@@ -28,6 +40,10 @@ class UsersAccessResolver(AccessResolver):
                     user_id=build_user_key(issuer=identity.issuer, subject_id=identity.subject_id),
                 )
             _require_runtime_identity(identity, record)
+            require_managed_profile(
+                record.profile_key,
+                profiles=resolve_profile_catalog(self._profiles),
+            )
         except (
             UsersDefinitionError,
             UsersIdentityConflictError,

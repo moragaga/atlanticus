@@ -10,7 +10,7 @@ from atlanticus.web.users.errors import UsersContextError, UsersDefinitionError
 from atlanticus.web.users.models import EffectiveUser
 
 USERS_RUNTIME_SERVICE_KEY = 'atlanticus.web.users.runtime'
-_SESSION_KEY = '_atlanticus_users_snapshot_v3'
+_SESSION_KEY = '_atlanticus_users_snapshot_v4'
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,7 +34,7 @@ class UsersSnapshot:
                 'email': self.user.email,
                 'enabled': self.user.enabled,
                 'avatar_text': self.user.avatar_text,
-                'authority_key': self.user.authority_key,
+                'profile_key': self.user.profile_key,
                 'avatar_background_color': self.user.avatar_background_color,
                 'avatar_text_color': self.user.avatar_text_color,
                 'is_local': self.user.is_local,
@@ -56,7 +56,7 @@ class UsersSnapshot:
                 email=_optional_string(user_value.get('email')),
                 enabled=_required_bool(user_value, 'enabled'),
                 avatar_text=str(user_value['avatar_text']),
-                authority_key=str(user_value['authority_key']),
+                profile_key=str(user_value['profile_key']),
                 avatar_background_color=_optional_string(
                     user_value.get('avatar_background_color')
                 ),
