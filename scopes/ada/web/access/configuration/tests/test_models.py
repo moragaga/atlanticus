@@ -77,6 +77,35 @@ def test_configuration_resolves_effective_access_from_assigned_profiles() -> Non
     assert effective.access_keys == ('navigation.view', 'kpis.manage')
 
 
+def test_configuration_accepts_configured_administrator_profile() -> None:
+    profiles = ProfileCatalog(
+        profiles=(
+            ProfileDefinition(
+                key='administrator',
+                label='Administrator',
+                background_color='#112233',
+            ),
+        )
+    )
+    configuration = AdaAccessConfiguration(
+        user_profiles=(
+            UserProfileAssignment(user_id='user-1', profile_keys=('administrator',)),
+        ),
+        profile_access=(
+            ProfileAccessGrant(
+                profile_key='administrator',
+                access_keys=('kpis.manage',),
+            ),
+        ),
+    )
+
+    configuration.validate_profiles(profiles)
+    effective = configuration.resolve('user-1', profiles=profiles)
+
+    assert effective.profile_keys == ('administrator',)
+    assert effective.access_keys == ('kpis.manage',)
+
+
 def test_configuration_resolves_unassigned_user_without_profiles_or_access() -> None:
     effective = _configuration().resolve('user-2', profiles=_profiles())
 

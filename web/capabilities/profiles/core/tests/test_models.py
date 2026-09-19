@@ -3,48 +3,76 @@ from pathlib import Path
 import pytest
 
 from atlanticus.web.profiles.errors import ProfilesDefinitionError
-from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
+from atlanticus.web.profiles.models import (
+    SYSTEM_PROFILE_DEFINITIONS,
+    SYSTEM_PROFILE_KEYS,
+    ProfileCatalog,
+    ProfileDefinition,
+)
 
 
-def test_profile_catalog_is_empty_by_default() -> None:
+def test_profile_catalog_contains_system_profiles_by_default() -> None:
     catalog = ProfileCatalog()
 
-    assert catalog.all() == ()
+    assert catalog.all() == SYSTEM_PROFILE_DEFINITIONS
+    assert tuple(profile.key for profile in catalog.all()) == ('basic', 'root', 'guest', 'local')
+    assert catalog.require('basic').background_color == '#EC407A'
+    assert catalog.require('root').background_color == '#673AB7'
+    assert catalog.require('guest').background_color == '#FF5722'
+    assert catalog.require('local').background_color == '#3778C2'
 
 
-def test_profile_catalog_preserves_explicit_profiles_and_order() -> None:
+def test_profile_catalog_appends_configured_profiles_and_preserves_order() -> None:
     administrator = ProfileDefinition(
         key='administrator',
         label='Administrador',
-        background_color='#673AB7',
+        background_color='#112233',
     )
     operator = ProfileDefinition(
         key='operator',
         label='Operador',
-        background_color='#112233',
+        background_color='#445566',
         text_color='#AABBCC',
     )
 
     catalog = ProfileCatalog(profiles=(administrator, operator))
 
-    assert catalog.all() == (administrator, operator)
-    assert catalog.require('ADMINISTRATOR') is administrator
+    assert tuple(profile.key for profile in catalog.all()) == (
+        'basic',
+        'root',
+        'guest',
+        'local',
+        'administrator',
+        'operator',
+    )
+    assert catalog.require(' ADMINISTRATOR ') is administrator
     assert catalog.require(' operator ') is operator
 
 
-def test_profile_catalog_accepts_identity_and_users_terms_as_ordinary_keys() -> None:
-    profiles = tuple(
-        ProfileDefinition(
-            key=key,
-            label=key.title(),
-            background_color='#112233',
+@pytest.mark.parametrize('key', tuple(sorted(SYSTEM_PROFILE_KEYS)))
+def test_profile_catalog_rejects_system_profile_redefinition(key: str) -> None:
+    with pytest.raises(ProfilesDefinitionError, match='System profile'):
+        ProfileCatalog(
+            profiles=(
+                ProfileDefinition(
+                    key=key,
+                    label='Replacement',
+                    background_color='#112233',
+                ),
+            )
         )
-        for key in ('local', 'guest', 'root')
+
+
+def test_profile_catalog_allows_administrator_as_configured_profile() -> None:
+    administrator = ProfileDefinition(
+        key='administrator',
+        label='Administrador',
+        background_color='#112233',
     )
 
-    catalog = ProfileCatalog(profiles=profiles)
+    catalog = ProfileCatalog(profiles=(administrator,))
 
-    assert tuple(profile.key for profile in catalog.all()) == ('local', 'guest', 'root')
+    assert catalog.require('administrator') is administrator
 
 
 def test_profile_catalog_rejects_duplicate_normalized_keys() -> None:

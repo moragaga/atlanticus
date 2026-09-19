@@ -5,19 +5,11 @@ from atlanticus.web.navigation.configuration import (
     NavigationLinkConfiguration,
     create_navigation_profile_catalog_validator,
 )
-from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
+from atlanticus.web.profiles.models import ProfileCatalog
 
 
 def _profile_catalog() -> ProfileCatalog:
-    return ProfileCatalog(
-        profiles=(
-            ProfileDefinition(
-                key='guest',
-                label='Guest',
-                background_color='#111111',
-            ),
-        )
-    )
+    return ProfileCatalog()
 
 
 def _catalog(profile_key: str) -> NavigationConfigurationCatalog:
@@ -33,10 +25,11 @@ def _catalog(profile_key: str) -> NavigationConfigurationCatalog:
     )
 
 
-def test_profile_catalog_validator_accepts_known_profile() -> None:
+@pytest.mark.parametrize('profile_key', ('basic', 'root', 'guest', 'local'))
+def test_profile_catalog_validator_accepts_system_profile(profile_key: str) -> None:
     validator = create_navigation_profile_catalog_validator(_profile_catalog)
 
-    assert validator(_catalog('guest')) == ()
+    assert validator(_catalog(profile_key)) == ()
 
 
 def test_profile_catalog_validator_reports_unknown_profile() -> None:

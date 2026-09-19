@@ -7,24 +7,25 @@ from atlanticus.web.profiles.errors import ProfilesDefinitionError
 from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
 
 
-# ProfilesConfiguration pertenece a la capa configuration, no al dominio core.
-# Mantiene exactamente el contrato previo durante este corte de ownership.
+# ProfilesConfiguration persiste exclusivamente perfiles configurados por el usuario.
+# Los system profiles se incorporan al construir el catálogo efectivo y no se serializan aquí.
 @dataclass(frozen=True, slots=True)
 class ProfilesConfiguration:
     profiles: tuple[ProfileDefinition, ...] = ()
 
     def __post_init__(self) -> None:
-        # El catálogo aplica las invariantes de identidad y unicidad del dominio.
+        # Construir el catálogo efectivo valida duplicados y evita redefinir
+        # basic/root/guest/local.
         profiles = tuple(self.profiles)
         ProfileCatalog(profiles=profiles)
         object.__setattr__(self, 'profiles', profiles)
 
     def catalog(self) -> ProfileCatalog:
-        # Se reconstruye un catálogo inmutable a partir del estado configurado.
+        # El consumer recibe system profiles más los configurados, sin duplicar datos durables.
         return ProfileCatalog(profiles=self.profiles)
 
     def to_document(self) -> dict[str, object]:
-        # El documento durable conserva el contrato existente sin migración implícita.
+        # Sólo los perfiles configurables forman parte del documento Source.
         return {
             'profiles': [
                 {
@@ -39,7 +40,8 @@ class ProfilesConfiguration:
 
     @classmethod
     def from_document(cls, document: dict[str, Any]) -> ProfilesConfiguration:
-        # La reconstrucción valida forma documental y luego delega invariantes al dominio.
+        # La reconstrucción delega las invariantes del catálogo al mismo contrato
+        # usado en runtime.
         try:
             raw_profiles = document['profiles']
             if not isinstance(raw_profiles, list) or not all(
