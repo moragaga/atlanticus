@@ -1,5 +1,5 @@
 # Espejo pedagógico del archivo productivo equivalente.
-# Expone únicamente el contrato público vigente de Manager. Los tipos Source y Projection publicados aquí son los genéricos del corte final.
+# Expone únicamente el contrato público vigente de Manager. El acceso es por capacidad funcional de módulo, sin permisos técnicos por etapa.
 # Los comentarios no alteran la estructura ejecutable ni el comportamiento del archivo productivo.
 
 from atlanticus.web.manager.authorization import (
@@ -19,7 +19,6 @@ from atlanticus.web.manager.models import (
     ManagerHistoryPreviewRenderer,
     ManagerLayoutFactory,
     ManagerModule,
-    ManagerModuleAccess,
     ManagerModuleGroup,
     ManagerPrincipal,
     ManagerPrincipalProvider,
@@ -73,7 +72,6 @@ __all__ = [
     'ManagerLayoutFactory',
     'ManagerLifecycleState',
     'ManagerModule',
-    'ManagerModuleAccess',
     'ManagerModuleGroup',
     'ManagerModuleRegistry',
     'ManagerPrincipal',

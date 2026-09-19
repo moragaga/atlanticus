@@ -40,6 +40,7 @@ def _module() -> ManagerModule:
         source_history_service='tools.history',
         projection_service='tools.projection',
         draft_validation_service='tools.validation',
+        access_key='tools.manage',
         source_name='Source',
         projection_name='Projection',
     )
@@ -65,7 +66,12 @@ def test_manager_surface_keeps_browser_workspace_persistence_explicit() -> None:
     module = _module()
     group = ManagerModuleGroup('configuration', 'Configuraciones', 10)
     definition = ManagerSurfaceDefinition(
-        principal_provider=lambda: ManagerPrincipal('local', 'Administrador local', is_local=True),
+        principal_provider=lambda: ManagerPrincipal(
+            'local',
+            'Administrador local',
+            access_keys=('tools.manage',),
+            is_local=True,
+        ),
         groups=(group,),
         modules=(module,),
     )

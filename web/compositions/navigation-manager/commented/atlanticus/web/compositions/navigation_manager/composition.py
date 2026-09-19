@@ -1,5 +1,6 @@
-# La composición construye una sola lista de validators y la comparte entre draft y projection.
-# Si existe ProfileCatalog, su validación referencial se agrega a esa misma lista.
+# Espejo pedagógico de la composición Navigation para Manager.
+# La composición declara una única capacidad funcional de acceso al módulo; validar, publicar y proyectar son pasos internos del workflow.
+# Los perfiles participan únicamente en la validación referencial de Navigation cuando se provee un catálogo.
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -17,11 +18,7 @@ from atlanticus.web.manager.authorization import (
     DefaultManagerAuthorizationPolicy,
     ManagerAuthorizationPolicy,
 )
-from atlanticus.web.manager.models import (
-    ManagerModule,
-    ManagerModuleAccess,
-    ManagerPrincipal,
-)
+from atlanticus.web.manager.models import ManagerModule, ManagerPrincipal
 from atlanticus.web.manager.web.ids import (
     workflow_action_id,
     workflow_draft_id,
@@ -69,17 +66,14 @@ def compose_navigation_manager(
     order: int = 20,
     title: str = 'Navigation',
     source_key: SourceKey = NAVIGATION_CONFIGURATION_SOURCE_KEY,
-    access: ManagerModuleAccess | None = None,
+    access_key: str | None = None,
     authorization: ManagerAuthorizationPolicy | None = None,
     audit_actor_provider: NavigationAuditActorProvider | None = None,
     profile_catalog_provider: NavigationProfileCatalogProvider | None = None,
     validators: tuple[NavigationProjectionValidator, ...] = (),
 ) -> NavigationManagerComposition:
-    resolved_access = access or ManagerModuleAccess()
     resolved_authorization = authorization or DefaultManagerAuthorizationPolicy()
-    resolved_actor_provider = audit_actor_provider or (
-        lambda: principal_provider().subject_id
-    )
+    resolved_actor_provider = audit_actor_provider or (lambda: principal_provider().subject_id)
     resolved_validators = (
         (create_navigation_profile_catalog_validator(profile_catalog_provider), *validators)
         if profile_catalog_provider is not None
@@ -118,7 +112,7 @@ def compose_navigation_manager(
         saved_draft_store_id=workflow_saved_draft_id(module_key),
         draft_save_action_id=workflow_action_id(module_key, 'save-draft'),
         editor_revision_store_id=workflow_editor_revision_id(module_key),
-        can_manage=lambda: resolved_authorization.can_publish(
+        can_manage=lambda: resolved_authorization.can_access(
             principal_provider(),
             module,
         ),
@@ -143,7 +137,7 @@ def compose_navigation_manager(
         source_history_service=NAVIGATION_MANAGER_SOURCE_SERVICE,
         projection_service=NAVIGATION_MANAGER_PROJECTION_SERVICE,
         draft_validation_service=NAVIGATION_MANAGER_VALIDATION_SERVICE,
-        access=resolved_access,
+        access_key=access_key,
         web_module=create_navigation_admin_web_module(context),
         history_preview_renderer=build_navigation_history_preview,
         source_name='Navigation Source',

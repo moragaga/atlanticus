@@ -1,10 +1,10 @@
 # Espejo pedagógico del archivo productivo equivalente.
-# Define la composición declarativa de módulos Manager. Cada módulo nombra sus servicios Source, Projection y validación de forma explícita.
+# Define la composición declarativa de módulos Manager. Cada módulo declara una sola capacidad funcional de acceso; validar, publicar y proyectar son pasos internos del workflow.
 # Los comentarios no alteran la estructura ejecutable ni el comportamiento del archivo productivo.
 
 import re
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from atlanticus.web.manager.errors import ManagerDefinitionError
 from atlanticus.web.modules import WebModule
@@ -38,14 +38,6 @@ class ManagerPrincipal:
 
 
 @dataclass(frozen=True, slots=True)
-class ManagerModuleAccess:
-    view: str | None = None
-    validate: str | None = None
-    project: str | None = None
-    publish: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
 class ManagerModuleGroup:
     key: str
     title: str
@@ -67,7 +59,7 @@ class ManagerModule:
     draft_validation_service: str
     source_history_service: str | None = None
     description: str = ''
-    access: ManagerModuleAccess = field(default_factory=ManagerModuleAccess)
+    access_key: str | None = None
     web_module: WebModule | None = None
     source_signal_id: str | None = None
     preamble: ManagerLayoutFactory | None = None

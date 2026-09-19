@@ -26,6 +26,7 @@ def _principal() -> ManagerPrincipal:
     return ManagerPrincipal(
         subject_id='tester',
         display_name='Tester',
+        access_keys=('navigation.manage',),
         is_local=True,
     )
 
@@ -43,6 +44,7 @@ def test_navigation_manager_registers_one_generic_source_route(tmp_path) -> None
         projection_store=projection,
         principal_provider=_principal,
         group_key='configuration',
+        access_key='navigation.manage',
     )
 
     module = composition.module
@@ -51,6 +53,7 @@ def test_navigation_manager_registers_one_generic_source_route(tmp_path) -> None
     assert module.source_history_service == NAVIGATION_MANAGER_SOURCE_SERVICE
     assert module.projection_service == NAVIGATION_MANAGER_PROJECTION_SERVICE
     assert module.draft_validation_service == NAVIGATION_MANAGER_VALIDATION_SERVICE
+    assert module.access_key == 'navigation.manage'
     assert services.require(NAVIGATION_MANAGER_SOURCE_SERVICE) is composition.source_workflow
     assert services.require(NAVIGATION_MANAGER_PROJECTION_SERVICE) is composition.projection_service
     assert (
@@ -79,6 +82,7 @@ def test_navigation_manager_uses_profile_catalog_for_draft_validation(tmp_path) 
         projection_store=projection,
         principal_provider=_principal,
         group_key='configuration',
+        access_key='navigation.manage',
         profile_catalog_provider=lambda: profiles,
     )
     payload = NavigationConfigurationCatalog(

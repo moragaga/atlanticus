@@ -1,5 +1,7 @@
-# Espejo pedagógico: el Configuration Manager conserva sólo dominios de configuración; Users deja de simular Source/Projection.
-# Navigation, Tools y KPI siguen usando el contrato genérico de Manager sin excepciones para Users.
+# Espejo pedagógico del archivo productivo equivalente.
+# Compone el Configuration Manager de ADA con una capacidad funcional por módulo. Los callbacks específicos reutilizan esa misma capacidad y no interpretan Profiles ni is_local como privilegios.
+# Los comentarios no alteran la estructura ejecutable ni el comportamiento del archivo productivo.
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -37,7 +39,6 @@ from ada.web.application.configuration_manager.workspace import ManagerWorkspace
 from atlanticus.web.bootstrap import create_bootstrap_web_module
 from atlanticus.web.manager import (
     ManagerModule,
-    ManagerModuleAccess,
     ManagerModuleGroup,
     ManagerPrincipal,
     ManagerSurfaceDefinition,
@@ -59,6 +60,10 @@ from atlanticus.web.navigation.configuration.web import (
 from atlanticus.web.services import ServiceRegistry
 
 MANAGER_ROUTE_PREFIX = '/manager'
+
+NAVIGATION_MANAGER_ACCESS_KEY = 'navigation.manage'
+TOOLS_MANAGER_ACCESS_KEY = 'tools.manage'
+KPI_MANAGER_ACCESS_KEY = 'kpis.manage'
 
 NAVIGATION_SOURCE_SERVICE = 'ada.configuration-manager.navigation.source'
 NAVIGATION_SOURCE_READER_SERVICE = 'ada.configuration-manager.navigation.source-reader'
@@ -90,6 +95,7 @@ def build_configuration_manager_surface(
 ) -> ManagerSurfaceDefinition:
     def actor_provider() -> str:
         return dependencies.principal_provider().subject_id
+
     navigation_workspace = ManagerWorkspaceBridge(
         owner_subject_id_provider=actor_provider,
         source_snapshot_provider=dependencies.navigation_source.get_current,
@@ -105,7 +111,10 @@ def build_configuration_manager_surface(
         saved_draft_store_id=workflow_saved_draft_id('navigation'),
         draft_save_action_id=workflow_action_id('navigation', 'save-draft'),
         editor_revision_store_id=workflow_editor_revision_id('navigation'),
-        can_manage=lambda: _can_manage_navigation(dependencies.principal_provider()),
+        can_manage=lambda: _has_access(
+            dependencies.principal_provider(),
+            NAVIGATION_MANAGER_ACCESS_KEY,
+        ),
         source_name=dependencies.navigation_source_name,
         projection_name=dependencies.navigation_projection_name,
     )
@@ -117,7 +126,10 @@ def build_configuration_manager_surface(
         draft_save_action_id=workflow_action_id('tools', 'save-draft'),
         editor_revision_store_id=workflow_editor_revision_id('tools'),
         result_id=workflow_result_id('tools'),
-        can_manage=lambda: _can_manage_tools(dependencies.principal_provider()),
+        can_manage=lambda: _has_access(
+            dependencies.principal_provider(),
+            TOOLS_MANAGER_ACCESS_KEY,
+        ),
         source_name=dependencies.tools_source_name,
         projection_name=dependencies.tools_projection_name,
     )
@@ -142,12 +154,7 @@ def build_configuration_manager_surface(
                 source_history_service=NAVIGATION_SOURCE_HISTORY_SERVICE,
                 projection_service=NAVIGATION_PROJECTION_SERVICE,
                 draft_validation_service=NAVIGATION_DRAFT_VALIDATION_SERVICE,
-                access=ManagerModuleAccess(
-                    view='navigation.manage',
-                    validate='navigation.manage',
-                    project='navigation.manage',
-                    publish='navigation.manage',
-                ),
+                access_key=NAVIGATION_MANAGER_ACCESS_KEY,
                 web_module=create_navigation_admin_web_module(navigation_context),
                 source_name=dependencies.navigation_source_name,
                 projection_name=dependencies.navigation_projection_name,
@@ -167,12 +174,7 @@ def build_configuration_manager_surface(
                 source_history_service=TOOLS_SOURCE_HISTORY_SERVICE,
                 projection_service=TOOLS_PROJECTION_SERVICE,
                 draft_validation_service=TOOLS_DRAFT_VALIDATION_SERVICE,
-                access=ManagerModuleAccess(
-                    view='tools.manage',
-                    validate='tools.manage',
-                    project='tools.manage',
-                    publish='tools.manage',
-                ),
+                access_key=TOOLS_MANAGER_ACCESS_KEY,
                 web_module=create_tool_manager_web_module(tools_context),
                 source_name=dependencies.tools_source_name,
                 projection_name=dependencies.tools_projection_name,
@@ -197,6 +199,7 @@ def _register_services(
 ) -> None:
     def actor_provider() -> str:
         return dependencies.principal_provider().subject_id
+
     navigation_source = NavigationManagerSourceWorkflow(
         source=dependencies.navigation_source,
         audit_actor_provider=actor_provider,
@@ -297,16 +300,8 @@ def _register_source_workflow(
     services.add(source_history_service, workflow)
 
 
-def _can_manage_navigation(principal: ManagerPrincipal) -> bool:
-    return principal.is_local or 'administrator' in principal.profile_keys or 'navigation.manage' in principal.access_keys
-
-
-def _can_manage_tools(principal: ManagerPrincipal) -> bool:
-    return principal.is_local or 'administrator' in principal.profile_keys or 'tools.manage' in principal.access_keys
-
-
-def _can_manage_kpis(principal: ManagerPrincipal) -> bool:
-    return principal.is_local or 'administrator' in principal.profile_keys or 'kpis.manage' in principal.access_keys
+def _has_access(principal: ManagerPrincipal, access_key: str) -> bool:
+    return access_key in principal.access_keys
 
 
 def _kpi_context(
@@ -328,7 +323,10 @@ def _kpi_context(
         draft_save_action_id=workflow_action_id('kpis', 'save-draft'),
         editor_revision_store_id=workflow_editor_revision_id('kpis'),
         result_id=workflow_result_id('kpis'),
-        can_manage=lambda: _can_manage_kpis(dependencies.principal_provider()),
+        can_manage=lambda: _has_access(
+            dependencies.principal_provider(),
+            KPI_MANAGER_ACCESS_KEY,
+        ),
         source_name=dependencies.kpis_source_name,
         projection_name=dependencies.kpis_projection_name,
     )
@@ -356,12 +354,7 @@ def _kpi_modules(
             source_history_service=KPI_SOURCE_HISTORY_SERVICE,
             projection_service=KPI_PROJECTION_SERVICE,
             draft_validation_service=KPI_DRAFT_VALIDATION_SERVICE,
-            access=ManagerModuleAccess(
-                view='kpis.manage',
-                validate='kpis.manage',
-                project='kpis.manage',
-                publish='kpis.manage',
-            ),
+            access_key=KPI_MANAGER_ACCESS_KEY,
             web_module=create_kpi_manager_web_module(context),
             source_name=dependencies.kpis_source_name,
             projection_name=dependencies.kpis_projection_name,
@@ -393,7 +386,10 @@ def _kpi_definition_context(
         draft_save_action_id=workflow_action_id('kpi-definitions', 'save-draft'),
         editor_revision_store_id=workflow_editor_revision_id('kpi-definitions'),
         result_id=workflow_result_id('kpi-definitions'),
-        can_manage=lambda: _can_manage_kpis(dependencies.principal_provider()),
+        can_manage=lambda: _has_access(
+            dependencies.principal_provider(),
+            KPI_MANAGER_ACCESS_KEY,
+        ),
         source_name=dependencies.kpi_definitions_source_name,
         projection_name=dependencies.kpi_definitions_projection_name,
     )
@@ -421,12 +417,7 @@ def _kpi_definition_modules(
             source_history_service=KPI_DEFINITION_SOURCE_HISTORY_SERVICE,
             projection_service=KPI_DEFINITION_PROJECTION_SERVICE,
             draft_validation_service=KPI_DEFINITION_DRAFT_VALIDATION_SERVICE,
-            access=ManagerModuleAccess(
-                view='kpis.manage',
-                validate='kpis.manage',
-                project='kpis.manage',
-                publish='kpis.manage',
-            ),
+            access_key=KPI_MANAGER_ACCESS_KEY,
             web_module=create_kpi_definition_manager_web_module(context),
             source_name=dependencies.kpi_definitions_source_name,
             projection_name=dependencies.kpi_definitions_projection_name,

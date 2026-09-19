@@ -161,11 +161,6 @@ class ManagerModuleRegistry:
         )
 
     def _validate_access(self, module: ManagerModule) -> None:
-        for access_key in (
-            module.access.view,
-            module.access.validate,
-            module.access.project,
-            module.access.publish,
-        ):
-            if access_key is not None and not _ACCESS_KEY_PATTERN.fullmatch(access_key):
-                raise ManagerDefinitionError('Manager access key has an invalid format')
+        access_key = module.access_key
+        if access_key is not None and not _ACCESS_KEY_PATTERN.fullmatch(access_key):
+            raise ManagerDefinitionError('Manager access key has an invalid format')

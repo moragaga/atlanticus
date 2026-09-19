@@ -1,5 +1,5 @@
 # Espejo pedagógico del archivo productivo equivalente.
-# Valida y ordena la composición de módulos Manager. No adapta contratos antiguos ni resuelve aliases de servicios.
+# Valida y ordena módulos Manager. Cada módulo declara como máximo una capacidad funcional de acceso; no existen permisos técnicos por etapa.
 # Los comentarios no alteran la estructura ejecutable ni el comportamiento del archivo productivo.
 
 import re
@@ -165,11 +165,6 @@ class ManagerModuleRegistry:
         )
 
     def _validate_access(self, module: ManagerModule) -> None:
-        for access_key in (
-            module.access.view,
-            module.access.validate,
-            module.access.project,
-            module.access.publish,
-        ):
-            if access_key is not None and not _ACCESS_KEY_PATTERN.fullmatch(access_key):
-                raise ManagerDefinitionError('Manager access key has an invalid format')
+        access_key = module.access_key
+        if access_key is not None and not _ACCESS_KEY_PATTERN.fullmatch(access_key):
+            raise ManagerDefinitionError('Manager access key has an invalid format')

@@ -1,4 +1,6 @@
-# Espejo pedagógico: el runtime local compone únicamente Sources de configuración; Users ya no tiene Source local.
+# Espejo pedagógico: el runtime local compone Sources de configuración y concede explícitamente las capacidades funcionales de los módulos disponibles.
+# is_local se conserva como contexto del runtime, pero no concede autoridad implícita.
+
 from __future__ import annotations
 
 import os
@@ -7,6 +9,11 @@ from typing import Generic, TypeVar
 
 from ada.web.application.configuration_manager.application import (
     create_configuration_manager_application,
+)
+from ada.web.application.configuration_manager.composition import (
+    KPI_MANAGER_ACCESS_KEY,
+    NAVIGATION_MANAGER_ACCESS_KEY,
+    TOOLS_MANAGER_ACCESS_KEY,
 )
 from ada.web.application.configuration_manager.dependencies import (
     ConfigurationManagerDependencies,
@@ -114,7 +121,11 @@ def create_local_configuration_manager_dependencies(
     principal = ManagerPrincipal(
         subject_id='local',
         display_name='Administrador local',
-        profile_keys=('administrator',),
+        access_keys=(
+            NAVIGATION_MANAGER_ACCESS_KEY,
+            TOOLS_MANAGER_ACCESS_KEY,
+            KPI_MANAGER_ACCESS_KEY,
+        ),
         is_local=True,
     )
     return ConfigurationManagerDependencies(

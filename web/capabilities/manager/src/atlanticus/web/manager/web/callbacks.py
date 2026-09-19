@@ -3,12 +3,21 @@ from __future__ import annotations
 from datetime import datetime
 
 from dash import ALL, MATCH, Input, Output, State, ctx, html, no_update
+from dash.exceptions import PreventUpdate
 
 from atlanticus.web.manager.authorization import ManagerAuthorizationPolicy
 from atlanticus.web.manager.coordinator import ManagerProjectionCoordinator
-from atlanticus.web.manager.errors import ManagerError, ManagerProjectionError, ManagerSourceConflictError
-from atlanticus.web.manager.models import ManagerPrincipal, ManagerSurfaceDefinition
-from atlanticus.web.manager.projection import ProjectionIssue, ProjectionState, resolve_projection_state
+from atlanticus.web.manager.errors import (
+    ManagerError,
+    ManagerProjectionError,
+    ManagerSourceConflictError,
+)
+from atlanticus.web.manager.models import ManagerSurfaceDefinition
+from atlanticus.web.manager.projection import (
+    ProjectionIssue,
+    ProjectionState,
+    resolve_projection_state,
+)
 from atlanticus.web.manager.registry import ManagerModuleRegistry
 from atlanticus.web.manager.web.home import build_home_page_content, build_manager_home_return
 from atlanticus.web.manager.web.ids import (
@@ -73,7 +82,7 @@ from atlanticus.web.manager.web.workspace import (
     build_source_conflict_content,
     build_workspace_content,
 )
-from atlanticus.web.manager.workspace import ManagerWorkspace, ManagerWorkspaceController
+from atlanticus.web.manager.workspace import ManagerWorkspaceController
 from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.source.models import SourceReleaseId, SourceReleaseRef
 
@@ -86,9 +95,15 @@ def register_manager_callbacks(
     services: ServiceRegistry,
     authorization: ManagerAuthorizationPolicy,
 ) -> None:
-    coordinator = ManagerProjectionCoordinator(registry=registry, services=services, authorization=authorization)
+    coordinator = ManagerProjectionCoordinator(
+        registry=registry, services=services, authorization=authorization
+    )
     workspace_controller = ManagerWorkspaceController(coordinator)
-    source_inputs = [Input(module.source_signal_id, 'data') for module in registry.modules if module.source_signal_id is not None]
+    source_inputs = [
+        Input(module.source_signal_id, 'data')
+        for module in registry.modules
+        if module.source_signal_id is not None
+    ]
 
     @app.callback(
         Output(SIDEBAR_ID, 'className'),
@@ -101,7 +116,10 @@ def register_manager_callbacks(
     )
     def toggle_sidebar(_open: int, _close: int, _backdrop: int, _pathname: str):
         if ctx.triggered_id == SIDEBAR_TOGGLE_ID:
-            return 'atlanticus-manager__sidebar atlanticus-manager__sidebar--open', 'atlanticus-manager__sidebar-backdrop atlanticus-manager__sidebar-backdrop--open'
+            return (
+                'atlanticus-manager__sidebar atlanticus-manager__sidebar--open',
+                'atlanticus-manager__sidebar-backdrop atlanticus-manager__sidebar-backdrop--open',
+            )
         return 'atlanticus-manager__sidebar', 'atlanticus-manager__sidebar-backdrop'
 
     @app.callback(
@@ -122,7 +140,12 @@ def register_manager_callbacks(
             states[module.key] = state.value
         return states, build_summary({key: ProjectionState(value) for key, value in states.items()})
 
-    @app.callback(Output(SUMMARY_ID, 'hidden'), Output(HOME_ID, 'hidden'), Output(CONTENT_ID, 'hidden'), Input(LOCATION_ID, 'pathname'))
+    @app.callback(
+        Output(SUMMARY_ID, 'hidden'),
+        Output(HOME_ID, 'hidden'),
+        Output(CONTENT_ID, 'hidden'),
+        Input(LOCATION_ID, 'pathname'),
+    )
     def render_surface_visibility(pathname: str | None):
         home_active = (pathname or registry.root_route) == registry.root_route
         return not home_active, not home_active, home_active
@@ -140,11 +163,20 @@ def register_manager_callbacks(
         cleared = [None for _ in registry.visible_modules(principal, authorization)]
         return cleared, cleared
 
-    @app.callback(Output(SIDEBAR_MODULES_ID, 'children'), Input(STATUS_STORE_ID, 'data'), Input(LOCATION_ID, 'pathname'))
+    @app.callback(
+        Output(SIDEBAR_MODULES_ID, 'children'),
+        Input(STATUS_STORE_ID, 'data'),
+        Input(LOCATION_ID, 'pathname'),
+    )
     def render_sidebar(states_data: dict[str, str] | None, pathname: str | None):
         principal = definition.principal_provider()
         states = {key: _safe_state(value) for key, value in (states_data or {}).items()}
-        return build_sidebar_modules(registry=registry, modules=registry.visible_modules(principal, authorization), current_path=pathname or registry.root_route, states=states)
+        return build_sidebar_modules(
+            registry=registry,
+            modules=registry.visible_modules(principal, authorization),
+            current_path=pathname or registry.root_route,
+            states=states,
+        )
 
     @app.callback(
         Output(HOME_CARDS_ID, 'children'),
@@ -165,7 +197,12 @@ def register_manager_callbacks(
             page += 1
         principal = definition.principal_provider()
         states = {key: _safe_state(value) for key, value in (states_data or {}).items()}
-        return build_home_page_content(registry=registry, modules=registry.visible_modules(principal, authorization), states=states, page=page)
+        return build_home_page_content(
+            registry=registry,
+            modules=registry.visible_modules(principal, authorization),
+            states=states,
+            page=page,
+        )
 
     @app.callback(Output(CONTENT_ID, 'children'), Input(LOCATION_ID, 'pathname'))
     def render_content(pathname: str | None):
@@ -176,7 +213,15 @@ def register_manager_callbacks(
         module = registry.find_by_route(current_path)
         if module is None or not authorization.can_view(principal, module):
             return _error_message('Configuration module was not found')
-        return html.Div([build_manager_home_return(registry.root_route), build_module_content(module=module, services=services, coordinator=coordinator, principal=principal)], className='atlanticus-manager__module-page')
+        return html.Div(
+            [
+                build_manager_home_return(registry.root_route),
+                build_module_content(
+                    module=module, services=services, coordinator=coordinator, principal=principal
+                ),
+            ],
+            className='atlanticus-manager__module-page',
+        )
 
     @app.callback(
         Output(module_section_panel_id(MATCH, 'content'), 'children'),
@@ -197,18 +242,35 @@ def register_manager_callbacks(
             return no_update
         return module.layout(services)
 
-    @app.callback(Output(module_section_store_id(MATCH), 'data'), Input(module_section_button_id(MATCH, ALL), 'n_clicks'), State(module_section_button_id(MATCH, ALL), 'id'), State(module_section_store_id(MATCH), 'data'), prevent_initial_call=True)
+    @app.callback(
+        Output(module_section_store_id(MATCH), 'data'),
+        Input(module_section_button_id(MATCH, ALL), 'n_clicks'),
+        State(module_section_button_id(MATCH, ALL), 'id'),
+        State(module_section_store_id(MATCH), 'data'),
+        prevent_initial_call=True,
+    )
     def select_section(clicks, button_ids, current):
         trigger = ctx.triggered_id
         if not _pattern_click_is_real(trigger, clicks, button_ids):
             return current
         return str(trigger.get('section', current))
 
-    @app.callback(Output(module_section_panel_id(MATCH, 'content'), 'className'), Output(module_section_panel_id(MATCH, 'workflow'), 'className'), Output(module_section_button_id(MATCH, 'content'), 'className'), Output(module_section_button_id(MATCH, 'workflow'), 'className'), Input(module_section_store_id(MATCH), 'data'))
+    @app.callback(
+        Output(module_section_panel_id(MATCH, 'content'), 'className'),
+        Output(module_section_panel_id(MATCH, 'workflow'), 'className'),
+        Output(module_section_button_id(MATCH, 'content'), 'className'),
+        Output(module_section_button_id(MATCH, 'workflow'), 'className'),
+        Input(module_section_store_id(MATCH), 'data'),
+    )
     def render_section(section: str):
         content_active = section == 'content'
         workflow_active = section == 'workflow'
-        return _panel_class(content_active), _panel_class(workflow_active), _tab_class(content_active), _tab_class(workflow_active)
+        return (
+            _panel_class(content_active),
+            _panel_class(workflow_active),
+            _tab_class(content_active),
+            _tab_class(workflow_active),
+        )
 
     @app.callback(
         Output(workflow_status_id(ALL), 'children'),
@@ -224,10 +286,14 @@ def register_manager_callbacks(
         principal = definition.principal_provider()
         module = registry.find_by_route(pathname or '')
         if module is None or not authorization.can_view(principal, module):
-            return [], [], [], [], []
+            raise PreventUpdate
         try:
             status = coordinator.get_status(module.key, principal)
-            history = coordinator.list_history(module.key, principal, limit=20) if coordinator.can_load_history(module.key, principal) else None
+            history = (
+                coordinator.list_history(module.key, principal, limit=20)
+                if coordinator.can_load_history(module.key, principal)
+                else None
+            )
             target = coordinator.get_current_projection_target(module.key, principal)
             error = None
             state = resolve_projection_state(status)
@@ -237,7 +303,17 @@ def register_manager_callbacks(
             target = None
             error = 'Configuration status could not be loaded'
             state = ProjectionState.UNAVAILABLE
-        return [build_workflow_status_content(module=module, status=status, error=error)], [build_workflow_history_content(module=module, status=status, history=history, error=error)], [target is None], [_state_label(state)], [_state_class(state)]
+        return (
+            [build_workflow_status_content(module=module, status=status, error=error)],
+            [
+                build_workflow_history_content(
+                    module=module, status=status, history=history, error=error
+                )
+            ],
+            [target is None],
+            [_state_label(state)],
+            [_state_class(state)],
+        )
 
     @app.callback(
         Output(workflow_draft_status_id(MATCH), 'children'),
@@ -254,19 +330,50 @@ def register_manager_callbacks(
         Input(workflow_editor_revision_id(MATCH), 'data'),
         State(workflow_draft_id(MATCH), 'id'),
     )
-    def refresh_workspace(draft_data, validation_data, verification_data, editor_revision, draft_id):
+    def refresh_workspace(
+        draft_data, validation_data, verification_data, editor_revision, draft_id
+    ):
         principal = definition.principal_provider()
         module_key = str(draft_id.get('module', ''))
         try:
-            state = workspace_controller.load_state(module_key=module_key, principal=principal, workspace_document=draft_data, validation_document=validation_data, verification_document=verification_data, editor_revision=editor_revision)
+            state = workspace_controller.load_state(
+                module_key=module_key,
+                principal=principal,
+                workspace_document=draft_data,
+                validation_document=validation_data,
+                verification_document=verification_data,
+                editor_revision=editor_revision,
+            )
             if isinstance(draft_data, dict) and state.workspace is None:
                 raise ManagerProjectionError('Browser workspace is invalid')
         except ManagerError as error:
             return _error_message(str(error)), True, True, True, True, True, True, None
         conflict = None
-        if state.lifecycle.source_conflict and state.workspace is not None and state.verification is not None:
-            conflict = build_source_conflict_content(workspace=state.workspace, verification=state.verification)
-        return build_workspace_content(workspace=state.workspace, source=state.source, validation=None if state.lifecycle.dirty else validation_data, verification=None if state.lifecycle.dirty else state.verification, lifecycle=state.lifecycle, principal=principal), not state.lifecycle.can_save_draft, not state.lifecycle.can_validate, not state.lifecycle.can_verify_source, not state.lifecycle.can_publish, not state.lifecycle.can_discard_local, not state.lifecycle.source_conflict, conflict
+        if (
+            state.lifecycle.source_conflict
+            and state.workspace is not None
+            and state.verification is not None
+        ):
+            conflict = build_source_conflict_content(
+                workspace=state.workspace, verification=state.verification
+            )
+        return (
+            build_workspace_content(
+                workspace=state.workspace,
+                source=state.source,
+                validation=None if state.lifecycle.dirty else validation_data,
+                verification=None if state.lifecycle.dirty else state.verification,
+                lifecycle=state.lifecycle,
+                principal=principal,
+            ),
+            not state.lifecycle.can_save_draft,
+            not state.lifecycle.can_validate,
+            not state.lifecycle.can_verify_source,
+            not state.lifecycle.can_publish,
+            not state.lifecycle.can_discard_local,
+            not state.lifecycle.source_conflict,
+            conflict,
+        )
 
     @app.callback(
         Output(workflow_saved_draft_status_id(MATCH), 'children'),
@@ -282,7 +389,11 @@ def register_manager_callbacks(
             return build_saved_workspace_content(workspace=None, source=None), True, True
         workspace = workspace_controller.safe_workspace(saved_data, principal)
         if workspace is None:
-            return build_saved_workspace_content(workspace=None, source=None, incompatible=True), True, False
+            return (
+                build_saved_workspace_content(workspace=None, source=None, incompatible=True),
+                True,
+                False,
+            )
         try:
             source = coordinator.load_current_source(module_key, principal)
         except Exception:
@@ -305,10 +416,19 @@ def register_manager_callbacks(
         trigger = ctx.triggered_id
         action = trigger.get('action') if isinstance(trigger, dict) else None
         clicks = recover_clicks if action == 'recover-saved-draft' else discard_clicks
-        if action not in {'recover-saved-draft', 'discard-saved-draft'} or not _click_is_real(clicks):
+        if action not in {'recover-saved-draft', 'discard-saved-draft'} or not _click_is_real(
+            clicks
+        ):
             return (no_update,) * 6
         if action == 'discard-saved-draft':
-            return _notice_message('El borrador guardado fue descartado de este navegador.'), no_update, None, no_update, no_update, no_update
+            return (
+                _notice_message('El borrador guardado fue descartado de este navegador.'),
+                no_update,
+                None,
+                no_update,
+                no_update,
+                no_update,
+            )
         principal = definition.principal_provider()
         module_key = str(trigger.get('module', ''))
         try:
@@ -338,12 +458,23 @@ def register_manager_callbacks(
         if not isinstance(trigger, dict) or not _click_is_real(clicks):
             return no_update, no_update, no_update
         try:
-            result = workspace_controller.validate(module_key=str(trigger.get('module', '')), principal=definition.principal_provider(), workspace_document=draft_data, editor_revision=editor_revision)
+            result = workspace_controller.validate(
+                module_key=str(trigger.get('module', '')),
+                principal=definition.principal_provider(),
+                workspace_document=draft_data,
+                editor_revision=editor_revision,
+            )
         except ManagerError as error:
             return _error_message(str(error)), no_update, no_update
         except Exception:
             return _error_message('Validation could not be completed'), no_update, no_update
-        validation = {'draft_revision': result.draft_revision, 'valid': result.valid, 'validated_by': result.audit.actor, 'validated_at': result.audit.occurred_at.isoformat(), 'issues': [_issue_document(issue) for issue in result.issues]}
+        validation = {
+            'draft_revision': result.draft_revision,
+            'valid': result.valid,
+            'validated_by': result.audit.actor,
+            'validated_at': result.audit.occurred_at.isoformat(),
+            'issues': [_issue_document(issue) for issue in result.issues],
+        }
         return None, validation, None
 
     @app.callback(
@@ -357,16 +488,28 @@ def register_manager_callbacks(
         State(workflow_refresh_signal_id(MATCH), 'data'),
         prevent_initial_call=True,
     )
-    def verify_source_configuration(clicks, draft_data, validation_data, editor_revision, refresh_signal):
+    def verify_source_configuration(
+        clicks, draft_data, validation_data, editor_revision, refresh_signal
+    ):
         trigger = ctx.triggered_id
         if not isinstance(trigger, dict) or not _click_is_real(clicks):
             return no_update, no_update, no_update
         try:
-            result = workspace_controller.verify(module_key=str(trigger.get('module', '')), principal=definition.principal_provider(), workspace_document=draft_data, validation_document=validation_data, editor_revision=editor_revision)
+            result = workspace_controller.verify(
+                module_key=str(trigger.get('module', '')),
+                principal=definition.principal_provider(),
+                workspace_document=draft_data,
+                validation_document=validation_data,
+                editor_revision=editor_revision,
+            )
         except ManagerError as error:
             return _error_message(str(error)), no_update, no_update
         except Exception:
-            return _error_message('Source verification could not be completed'), no_update, no_update
+            return (
+                _error_message('Source verification could not be completed'),
+                no_update,
+                no_update,
+            )
         return None, result.to_document(), int(refresh_signal or 0) + 1
 
     @app.callback(
@@ -383,21 +526,46 @@ def register_manager_callbacks(
         State(workflow_refresh_signal_id(MATCH), 'data'),
         prevent_initial_call=True,
     )
-    def publish_configuration(clicks, draft_data, validation_data, verification_data, editor_revision, refresh_signal):
+    def publish_configuration(
+        clicks, draft_data, validation_data, verification_data, editor_revision, refresh_signal
+    ):
         trigger = ctx.triggered_id
         if not isinstance(trigger, dict) or not _click_is_real(clicks):
             return (no_update,) * 5
         module_key = str(trigger.get('module', ''))
         principal = definition.principal_provider()
         try:
-            _result, updated = workspace_controller.publish(module_key=module_key, principal=principal, workspace_document=draft_data, validation_document=validation_data, verification_document=verification_data, editor_revision=editor_revision)
+            _result, updated = workspace_controller.publish(
+                module_key=module_key,
+                principal=principal,
+                workspace_document=draft_data,
+                validation_document=validation_data,
+                verification_document=verification_data,
+                editor_revision=editor_revision,
+            )
         except ManagerSourceConflictError:
-            refreshed = workspace_controller.refresh_verification(module_key=module_key, principal=principal, workspace_document=draft_data)
-            return _notice_message('La fuente cambió antes de completar la publicación. Revisa el detalle antes de continuar.'), int(refresh_signal or 0) + 1, no_update, no_update, refreshed
+            refreshed = workspace_controller.refresh_verification(
+                module_key=module_key, principal=principal, workspace_document=draft_data
+            )
+            return (
+                _notice_message(
+                    'La fuente cambió antes de completar la publicación. Revisa el detalle antes de continuar.'
+                ),
+                int(refresh_signal or 0) + 1,
+                no_update,
+                no_update,
+                refreshed,
+            )
         except ManagerError as error:
             return _error_message(str(error)), no_update, no_update, no_update, no_update
         except Exception:
-            return _error_message('Configuration could not be published'), no_update, no_update, no_update, no_update
+            return (
+                _error_message('Configuration could not be published'),
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+            )
         return None, int(refresh_signal or 0) + 1, updated, None, None
 
     @app.callback(
@@ -445,7 +613,9 @@ def register_manager_callbacks(
         State(workflow_refresh_signal_id(MATCH), 'data'),
         prevent_initial_call=True,
     )
-    def update_from_source(update_clicks, keep_clicks, draft_data, verification_data, refresh_signal):
+    def update_from_source(
+        update_clicks, keep_clicks, draft_data, verification_data, refresh_signal
+    ):
         trigger = ctx.triggered_id
         if not isinstance(trigger, dict):
             return (no_update,) * 5
@@ -457,14 +627,34 @@ def register_manager_callbacks(
         module_key = str(trigger.get('module', ''))
         try:
             if action == 'keep-draft':
-                updated = workspace_controller.keep_draft(principal=principal, workspace_document=draft_data, verification_document=verification_data)
-                return _notice_message('Tu workspace se conservó. Vuelve a verificar Source antes de publicar.'), updated, no_update, None, no_update
-            updated = workspace_controller.replace_from_source(module_key=module_key, principal=principal, workspace_document=draft_data)
+                updated = workspace_controller.keep_draft(
+                    principal=principal,
+                    workspace_document=draft_data,
+                    verification_document=verification_data,
+                )
+                return (
+                    _notice_message(
+                        'Tu workspace se conservó. Vuelve a verificar Source antes de publicar.'
+                    ),
+                    updated,
+                    no_update,
+                    None,
+                    no_update,
+                )
+            updated = workspace_controller.replace_from_source(
+                module_key=module_key, principal=principal, workspace_document=draft_data
+            )
             return None, updated, None, None, int(refresh_signal or 0) + 1
         except ManagerError as error:
             return _error_message(str(error)), no_update, no_update, no_update, no_update
         except Exception:
-            return _error_message('Current source could not be loaded'), no_update, no_update, no_update, no_update
+            return (
+                _error_message('Current source could not be loaded'),
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+            )
 
     @app.callback(
         Output(workflow_workspace_confirmation_id(MATCH), 'hidden'),
@@ -490,8 +680,15 @@ def register_manager_callbacks(
         prevent_initial_call=True,
     )
     def manage_local_workspace(
-        discard_clicks, reload_clicks, confirm_clicks, cancel_clicks,
-        draft_data, editor_revision, command, refresh_signal, reset_signal,
+        discard_clicks,
+        reload_clicks,
+        confirm_clicks,
+        cancel_clicks,
+        draft_data,
+        editor_revision,
+        command,
+        refresh_signal,
+        reset_signal,
     ):
         trigger = ctx.triggered_id
         action = trigger.get('action') if isinstance(trigger, dict) else None
@@ -504,7 +701,19 @@ def register_manager_callbacks(
         if not _click_is_real(clicks):
             return (no_update,) * 11
         if action == 'workspace-cancel':
-            return True, None, None, None, no_update, no_update, no_update, no_update, no_update, no_update, no_update
+            return (
+                True,
+                None,
+                None,
+                None,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+            )
         principal = definition.principal_provider()
         module_key = str(trigger.get('module', '')) if isinstance(trigger, dict) else ''
         try:
@@ -516,13 +725,61 @@ def register_manager_callbacks(
                 editor_revision=editor_revision,
             )
         except ManagerError as error:
-            return True, None, None, None, _error_message(str(error)), no_update, no_update, no_update, no_update, no_update, no_update
+            return (
+                True,
+                None,
+                None,
+                None,
+                _error_message(str(error)),
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+            )
         if action == 'discard-local':
             if not has_local_work:
-                return True, None, None, None, _notice_message('No hay cambios locales para descartar.'), no_update, no_update, no_update, no_update, no_update, no_update
-            return False, 'Descartar cambios locales', f'Se descartarán los cambios locales y se restaurará la versión actual de {module.source_name}. La fuente de verdad y la proyección runtime no se modificarán.', 'discard', no_update, no_update, no_update, no_update, no_update, no_update, no_update
+                return (
+                    True,
+                    None,
+                    None,
+                    None,
+                    _notice_message('No hay cambios locales para descartar.'),
+                    no_update,
+                    no_update,
+                    no_update,
+                    no_update,
+                    no_update,
+                    no_update,
+                )
+            return (
+                False,
+                'Descartar cambios locales',
+                f'Se descartarán los cambios locales y se restaurará la versión actual de {module.source_name}. La fuente de verdad y la proyección runtime no se modificarán.',
+                'discard',
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+            )
         if action == 'reload' and has_local_work:
-            return False, 'Descartar cambios y recargar', f'Se descartarán los cambios locales, se restaurará la versión actual de {module.source_name} y se volverán a consultar la fuente, el historial y la proyección. No se publicará ni proyectará nada.', 'reload', no_update, no_update, no_update, no_update, no_update, no_update, no_update
+            return (
+                False,
+                'Descartar cambios y recargar',
+                f'Se descartarán los cambios locales, se restaurará la versión actual de {module.source_name} y se volverán a consultar la fuente, el historial y la proyección. No se publicará ni proyectará nada.',
+                'reload',
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+            )
         resolved_command = command if action == 'workspace-confirm' else 'reload'
         if resolved_command not in {'discard', 'reload'}:
             return (no_update,) * 11
@@ -538,11 +795,49 @@ def register_manager_callbacks(
                 else None
             )
         except ManagerSourceConflictError:
-            return True, None, None, None, _notice_message(f'{module.source_name} cambió mientras se restauraba el workspace. Vuelve a intentarlo.'), no_update, no_update, no_update, no_update, int(refresh_signal or 0) + 1, no_update
+            return (
+                True,
+                None,
+                None,
+                None,
+                _notice_message(
+                    f'{module.source_name} cambió mientras se restauraba el workspace. Vuelve a intentarlo.'
+                ),
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                int(refresh_signal or 0) + 1,
+                no_update,
+            )
         except ManagerError as error:
-            return True, None, None, None, _error_message(str(error)), no_update, no_update, no_update, no_update, no_update, no_update
+            return (
+                True,
+                None,
+                None,
+                None,
+                _error_message(str(error)),
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+            )
         except Exception:
-            return True, None, None, None, _error_message('Current source could not be restored'), no_update, no_update, no_update, no_update, no_update, no_update
+            return (
+                True,
+                None,
+                None,
+                None,
+                _error_message('Current source could not be restored'),
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+            )
         next_refresh = int(refresh_signal or 0) + 1
         if source_workspace is None:
             message = f'{module.source_name} no tiene una configuración publicada. El workspace local quedó vacío.'
@@ -558,7 +853,19 @@ def register_manager_callbacks(
             draft_output = source_document
             editor_output = source_workspace.revision
             reset_output = no_update
-        return True, None, None, None, _notice_message(message), draft_output, None, None, editor_output, next_refresh, reset_output
+        return (
+            True,
+            None,
+            None,
+            None,
+            _notice_message(message),
+            draft_output,
+            None,
+            None,
+            editor_output,
+            next_refresh,
+            reset_output,
+        )
 
     @app.callback(
         Output(workflow_history_preview_id(MATCH), 'hidden'),
@@ -574,8 +881,15 @@ def register_manager_callbacks(
     )
     def manage_history_preview(clicks, close_clicks, preview_ids):
         trigger = ctx.triggered_id
-        if isinstance(trigger, dict) and trigger.get('type') == 'atlanticus-manager-history-preview-close':
-            return (True, None, None, None, None, no_update) if _click_is_real(close_clicks) else (no_update,) * 6
+        if (
+            isinstance(trigger, dict)
+            and trigger.get('type') == 'atlanticus-manager-history-preview-close'
+        ):
+            return (
+                (True, None, None, None, None, no_update)
+                if _click_is_real(close_clicks)
+                else (no_update,) * 6
+            )
         if not _pattern_click_is_real(trigger, clicks, preview_ids):
             return (no_update,) * 6
         module_key = str(trigger.get('module', ''))
@@ -583,15 +897,35 @@ def register_manager_callbacks(
             module = registry.require(module_key)
             if module.history_preview_renderer is None:
                 raise ManagerProjectionError('Manager module does not support history preview')
-            release_ref = SourceReleaseRef(release_id=SourceReleaseId(str(trigger.get('release_id', ''))), published_at_utc=datetime.fromisoformat(str(trigger.get('published_at_utc', ''))))
-            history_result = coordinator.load_history_release(module_key, definition.principal_provider(), release_ref)
+            release_ref = SourceReleaseRef(
+                release_id=SourceReleaseId(str(trigger.get('release_id', ''))),
+                published_at_utc=datetime.fromisoformat(str(trigger.get('published_at_utc', ''))),
+            )
+            history_result = coordinator.load_history_release(
+                module_key, definition.principal_provider(), release_ref
+            )
             preview = module.history_preview_renderer(history_result.payload)
         except ManagerError as error:
             return True, None, None, None, None, _error_message(str(error))
         except Exception:
-            return True, None, None, None, None, _error_message('History release preview could not be loaded')
+            return (
+                True,
+                None,
+                None,
+                None,
+                None,
+                _error_message('History release preview could not be loaded'),
+            )
         release_id = history_result.release_ref.release_id.value
-        state = {'schema_version': 2, 'module_key': module_key, 'source_release': {'release_id': release_id, 'published_at_utc': history_result.release_ref.published_at_utc.isoformat()}, 'payload': history_result.payload}
+        state = {
+            'schema_version': 2,
+            'module_key': module_key,
+            'source_release': {
+                'release_id': release_id,
+                'published_at_utc': history_result.release_ref.published_at_utc.isoformat(),
+            },
+            'payload': history_result.payload,
+        }
         return False, f'Release {release_id[:12]}', None, preview, state, None
 
     @app.callback(
@@ -614,10 +948,27 @@ def register_manager_callbacks(
         try:
             payload = _history_preview_payload(preview_data, module_key)
             principal = definition.principal_provider()
-            updated = workspace_controller.replace_with_payload(principal=principal, workspace_document=workspace_data, payload=payload) if isinstance(workspace_data, dict) else workspace_controller.create_with_payload_on_current_base(module_key=module_key, principal=principal, payload=payload)
+            updated = (
+                workspace_controller.replace_with_payload(
+                    principal=principal, workspace_document=workspace_data, payload=payload
+                )
+                if isinstance(workspace_data, dict)
+                else workspace_controller.create_with_payload_on_current_base(
+                    module_key=module_key, principal=principal, payload=payload
+                )
+            )
         except ManagerError as error:
             return _error_message(str(error)), no_update, no_update, no_update, no_update, no_update
-        return _notice_message('Release histórica cargada como cambios locales. Valida y verifica Source antes de publicar.'), updated, None, None, True, None
+        return (
+            _notice_message(
+                'Release histórica cargada como cambios locales. Valida y verifica Source antes de publicar.'
+            ),
+            updated,
+            None,
+            None,
+            True,
+            None,
+        )
 
     @app.callback(
         Output(workflow_result_id(MATCH), 'children', allow_duplicate=True),
@@ -642,12 +993,21 @@ def register_manager_callbacks(
             return _error_message(str(error)), no_update, no_update
         except Exception:
             return _error_message('Configuration could not be projected'), no_update, no_update
-        signal = {'source_key': result.target.source_key.value, 'source_release_id': result.target.source_release_id.value, 'source_published_at_utc': result.target.source_release.published_at_utc.isoformat(), 'projected_at_utc': result.projection.projected_at_utc.isoformat()}
+        signal = {
+            'source_key': result.target.source_key.value,
+            'source_release_id': result.target.source_release_id.value,
+            'source_published_at_utc': result.target.source_release.published_at_utc.isoformat(),
+            'projected_at_utc': result.projection.projected_at_utc.isoformat(),
+        }
         return None, int(refresh_signal or 0) + 1, signal
 
 
 def _history_preview_payload(data: dict[str, object] | None, module_key: str) -> dict[str, object]:
-    if not isinstance(data, dict) or data.get('schema_version') != 2 or str(data.get('module_key', '')) != module_key:
+    if (
+        not isinstance(data, dict)
+        or data.get('schema_version') != 2
+        or str(data.get('module_key', '')) != module_key
+    ):
         raise ManagerProjectionError('History preview is not available')
     payload = data.get('payload')
     if not isinstance(payload, dict):
@@ -660,11 +1020,15 @@ def _issue_document(issue: ProjectionIssue) -> dict[str, object]:
 
 
 def _notice_message(message: str):
-    return html.Div(message, className='atlanticus-manager__message atlanticus-manager__message--notice')
+    return html.Div(
+        message, className='atlanticus-manager__message atlanticus-manager__message--notice'
+    )
 
 
 def _error_message(message: str):
-    return html.Div(message, className='atlanticus-manager__message atlanticus-manager__message--error')
+    return html.Div(
+        message, className='atlanticus-manager__message atlanticus-manager__message--error'
+    )
 
 
 def _click_is_real(clicks: int | None) -> bool:
@@ -674,7 +1038,10 @@ def _click_is_real(clicks: int | None) -> bool:
 def _pattern_click_is_real(trigger, clicks, ids) -> bool:
     if not isinstance(trigger, dict):
         return False
-    return any(dict(item_id) == dict(trigger) and _click_is_real(click_count) for item_id, click_count in zip(ids or [], clicks or [], strict=False))
+    return any(
+        dict(item_id) == dict(trigger) and _click_is_real(click_count)
+        for item_id, click_count in zip(ids or [], clicks or [], strict=False)
+    )
 
 
 def _safe_state(value: str) -> ProjectionState:
@@ -685,7 +1052,12 @@ def _safe_state(value: str) -> ProjectionState:
 
 
 def _state_label(state: ProjectionState) -> str:
-    return {ProjectionState.NO_SOURCE: 'Sin fuente', ProjectionState.SYNCHRONIZED: 'Actualizada', ProjectionState.READY: 'Lista', ProjectionState.UNAVAILABLE: 'No disponible'}[state]
+    return {
+        ProjectionState.NO_SOURCE: 'Sin fuente',
+        ProjectionState.SYNCHRONIZED: 'Actualizada',
+        ProjectionState.READY: 'Lista',
+        ProjectionState.UNAVAILABLE: 'No disponible',
+    }[state]
 
 
 def _state_class(state: ProjectionState) -> str:

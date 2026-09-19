@@ -1,3 +1,6 @@
+import pytest
+from dash.exceptions import PreventUpdate
+
 from atlanticus.web.manager import (
     DefaultManagerAuthorizationPolicy,
     ManagerModule,
@@ -19,16 +22,24 @@ class RecorderApp:
         def register(function):
             self.callbacks.append((dependencies, options, function))
             return function
+
         return register
 
 
 def test_manager_callbacks_register_for_generic_module_without_resolving_services_eagerly() -> None:
     principal = ManagerPrincipal('local', 'Local', is_local=True)
     module = ManagerModule(
-        key='tools', group_key='configuration', title='Tools', route='/tools', order=10,
-        layout=lambda _services: None, source_key=SourceKey('tools'),
-        source_service='tools.source', source_reader_service='tools.reader',
-        source_history_service='tools.history', projection_service='tools.projection',
+        key='tools',
+        group_key='configuration',
+        title='Tools',
+        route='/tools',
+        order=10,
+        layout=lambda _services: None,
+        source_key=SourceKey('tools'),
+        source_service='tools.source',
+        source_reader_service='tools.reader',
+        source_history_service='tools.history',
+        projection_service='tools.projection',
         draft_validation_service='tools.validation',
     )
     definition = ManagerSurfaceDefinition(
@@ -48,3 +59,46 @@ def test_manager_callbacks_register_for_generic_module_without_resolving_service
     )
 
     assert app.callbacks
+
+
+def test_active_workflow_route_transition_does_not_emit_pattern_outputs() -> None:
+    principal = ManagerPrincipal('local', 'Local')
+    module = ManagerModule(
+        key='tools',
+        group_key='configuration',
+        title='Tools',
+        route='/tools',
+        order=10,
+        layout=lambda _services: None,
+        source_key=SourceKey('tools'),
+        source_service='tools.source',
+        source_reader_service='tools.reader',
+        source_history_service='tools.history',
+        projection_service='tools.projection',
+        draft_validation_service='tools.validation',
+        access_key='tools.manage',
+    )
+    definition = ManagerSurfaceDefinition(
+        principal_provider=lambda: principal,
+        groups=(ManagerModuleGroup('configuration', 'Configuraciones', 10),),
+        modules=(module,),
+    )
+    registry = ManagerModuleRegistry(definition.groups, definition.modules)
+    app = RecorderApp()
+
+    register_manager_callbacks(
+        app,
+        definition=definition,
+        registry=registry,
+        services=ServiceRegistry(),
+        authorization=DefaultManagerAuthorizationPolicy(),
+    )
+
+    callback = next(
+        function
+        for _dependencies, _options, function in app.callbacks
+        if function.__name__ == 'refresh_active_workflow'
+    )
+
+    with pytest.raises(PreventUpdate):
+        callback({}, '/manager/navigation', [])

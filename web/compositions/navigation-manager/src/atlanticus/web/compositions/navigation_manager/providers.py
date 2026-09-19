@@ -11,7 +11,6 @@ from atlanticus.web.compositions.navigation_manager.workflows import (
     NavigationAuditActorProvider,
 )
 from atlanticus.web.manager.authorization import ManagerAuthorizationPolicy
-from atlanticus.web.manager.models import ManagerModuleAccess
 from atlanticus.web.navigation.configuration.profiles import NavigationProfileCatalogProvider
 from atlanticus.web.navigation.configuration.source_projection import NavigationProjectionValidator
 from atlanticus.web.navigation.projection.cosmos import (
@@ -37,7 +36,7 @@ def compose_local_navigation_manager(
     module_key: str = 'navigation',
     route: str = '/navigation',
     order: int = 20,
-    access: ManagerModuleAccess | None = None,
+    access_key: str | None = None,
     authorization: ManagerAuthorizationPolicy | None = None,
     audit_actor_provider: NavigationAuditActorProvider | None = None,
     profile_catalog_provider: NavigationProfileCatalogProvider | None = None,
@@ -52,7 +51,7 @@ def compose_local_navigation_manager(
         module_key=module_key,
         route=route,
         order=order,
-        access=access,
+        access_key=access_key,
         authorization=authorization,
         audit_actor_provider=audit_actor_provider,
         profile_catalog_provider=profile_catalog_provider,
@@ -72,7 +71,7 @@ def compose_azure_navigation_manager(
     module_key: str = 'navigation',
     route: str = '/navigation',
     order: int = 20,
-    access: ManagerModuleAccess | None = None,
+    access_key: str | None = None,
     authorization: ManagerAuthorizationPolicy | None = None,
     audit_actor_provider: NavigationAuditActorProvider | None = None,
     profile_catalog_provider: NavigationProfileCatalogProvider | None = None,
@@ -90,7 +89,7 @@ def compose_azure_navigation_manager(
         module_key=module_key,
         route=route,
         order=order,
-        access=access,
+        access_key=access_key,
         authorization=authorization,
         audit_actor_provider=audit_actor_provider,
         profile_catalog_provider=profile_catalog_provider,

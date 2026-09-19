@@ -17,6 +17,10 @@ from ada.web.application.configuration_manager import (
     ToolManagerSourceWorkflow,
     build_configuration_manager_surface,
 )
+from ada.web.application.configuration_manager.composition import (
+    NAVIGATION_MANAGER_ACCESS_KEY,
+    TOOLS_MANAGER_ACCESS_KEY,
+)
 from atlanticus.web.manager import ManagerPrincipal, ManagerSurface
 from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.source.models import SourceKey, SourceSnapshot
@@ -38,6 +42,7 @@ def dependencies() -> ConfigurationManagerDependencies:
     principal = ManagerPrincipal(
         subject_id='local',
         display_name='Administrador local',
+        access_keys=(NAVIGATION_MANAGER_ACCESS_KEY, TOOLS_MANAGER_ACCESS_KEY),
         is_local=True,
     )
     return ConfigurationManagerDependencies(
@@ -66,6 +71,7 @@ def test_surface_uses_generic_manager_contract_for_configuration_modules() -> No
     assert navigation.source_history_service == NAVIGATION_SOURCE_HISTORY_SERVICE
     assert navigation.projection_service == NAVIGATION_PROJECTION_SERVICE
     assert navigation.draft_validation_service == NAVIGATION_DRAFT_VALIDATION_SERVICE
+    assert navigation.access_key == NAVIGATION_MANAGER_ACCESS_KEY
 
     assert tools.source_key == SourceKey('tools')
     assert tools.source_service == TOOLS_SOURCE_SERVICE
@@ -73,6 +79,7 @@ def test_surface_uses_generic_manager_contract_for_configuration_modules() -> No
     assert tools.source_history_service == TOOLS_SOURCE_HISTORY_SERVICE
     assert tools.projection_service == TOOLS_PROJECTION_SERVICE
     assert tools.draft_validation_service == TOOLS_DRAFT_VALIDATION_SERVICE
+    assert tools.access_key == TOOLS_MANAGER_ACCESS_KEY
 
 
 def test_service_module_registers_configuration_capabilities() -> None:

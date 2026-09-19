@@ -20,7 +20,7 @@ dependencies = [
     "atlanticus-web-identity==0.1.0",
     "atlanticus-web-manager==0.3.18",
     "atlanticus-web-navigation==0.1.0",
-    "atlanticus-web-navigation-configuration[web]==0.1.8",
+    "atlanticus-web-navigation-configuration[web]==0.1.9",
     "atlanticus-web-projection==0.1.0",
     "atlanticus-web-source==0.1.0",
 ]

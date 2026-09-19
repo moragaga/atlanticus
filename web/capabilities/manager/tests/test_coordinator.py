@@ -26,9 +26,9 @@ from atlanticus.web.source.models import (
     ConcurrencyToken,
     Digest,
     PublishResult,
-    SourceReleaseMetadata,
     SourceKey,
     SourceReleaseId,
+    SourceReleaseMetadata,
     SourceReleaseRef,
     SourceReleaseSummary,
     SourceSnapshot,
@@ -54,7 +54,9 @@ class SourceWorkflow:
 
     def publish_draft(self, payload, expected_source_snapshot):
         self.expected_snapshots.append(expected_source_snapshot)
-        ref = SourceReleaseRef(SourceReleaseId('release-2'), datetime(2026, 9, 15, 18, 1, tzinfo=UTC))
+        ref = SourceReleaseRef(
+            SourceReleaseId('release-2'), datetime(2026, 9, 15, 18, 1, tzinfo=UTC)
+        )
         next_snapshot = SourceSnapshot(
             source_key=SourceKey('tools'),
             current=SourceReleaseSummary(ref, Digest('sha256', 'b' * 64)),
@@ -89,7 +91,9 @@ class Projection:
 
     def get_status(self, source_key):
         assert source_key == SourceKey('tools')
-        return ProjectionStatus(ProjectionAlignment.NEVER_PROJECTED, self.snapshot.current.release_ref, None)
+        return ProjectionStatus(
+            ProjectionAlignment.NEVER_PROJECTED, self.snapshot.current.release_ref, None
+        )
 
     def select_current_target(self, source_key):
         return ProjectionTarget(source_key, self.snapshot.current.release_ref)
@@ -114,28 +118,43 @@ class Validation:
 
 def _coordinator(snapshot):
     module = ManagerModule(
-        key='tools', group_key='configuration', title='Tools', route='/tools', order=10,
-        layout=lambda _services: None, source_key=SourceKey('tools'),
-        source_service='tools.source', source_reader_service='tools.reader',
-        projection_service='tools.projection', draft_validation_service='tools.validation',
+        key='tools',
+        group_key='configuration',
+        title='Tools',
+        route='/tools',
+        order=10,
+        layout=lambda _services: None,
+        source_key=SourceKey('tools'),
+        source_service='tools.source',
+        source_reader_service='tools.reader',
+        projection_service='tools.projection',
+        draft_validation_service='tools.validation',
+        access_key='tools.manage',
     )
-    registry = ManagerModuleRegistry((ManagerModuleGroup('configuration', 'Configuraciones', 10),), (module,))
+    registry = ManagerModuleRegistry(
+        (ManagerModuleGroup('configuration', 'Configuraciones', 10),), (module,)
+    )
     services = ServiceRegistry()
     source = SourceWorkflow(snapshot)
     services.add('tools.source', source)
     services.add('tools.reader', Reader(snapshot))
     services.add('tools.projection', Projection(snapshot))
     services.add('tools.validation', Validation())
-    coordinator = ManagerProjectionCoordinator(registry=registry, services=services, authorization=DefaultManagerAuthorizationPolicy())
+    coordinator = ManagerProjectionCoordinator(
+        registry=registry, services=services, authorization=DefaultManagerAuthorizationPolicy()
+    )
     return coordinator, source
+
+
+def _principal() -> ManagerPrincipal:
+    return ManagerPrincipal('local', 'Local', access_keys=('tools.manage',), is_local=True)
 
 
 def test_coordinator_routes_projection_with_projection_target() -> None:
     coordinator, _source = _coordinator(_snapshot('release-1', 'token-1'))
-    principal = ManagerPrincipal('local', 'Local', is_local=True)
 
-    target = coordinator.get_current_projection_target('tools', principal)
-    result = coordinator.project('tools', principal, target)
+    target = coordinator.get_current_projection_target('tools', _principal())
+    result = coordinator.project('tools', _principal(), target)
 
     assert result.target == target
     assert result.projection.source_release_id == SourceReleaseId('release-1')
@@ -146,9 +165,8 @@ def test_publication_uses_current_token_when_release_is_unchanged() -> None:
     coordinator, source = _coordinator(original)
     current = _snapshot('release-1', 'token-current')
     source.snapshot = current
-    principal = ManagerPrincipal('local', 'Local', is_local=True)
 
-    coordinator.publish_draft('tools', principal, {'enabled': False}, original)
+    coordinator.publish_draft('tools', _principal(), {'enabled': False}, original)
 
     assert source.expected_snapshots == [current]
 
@@ -157,7 +175,6 @@ def test_publication_rejects_changed_source_release() -> None:
     original = _snapshot('release-1', 'token-1')
     coordinator, source = _coordinator(original)
     source.snapshot = _snapshot('release-other', 'token-other')
-    principal = ManagerPrincipal('local', 'Local', is_local=True)
 
     with pytest.raises(ManagerSourceConflictError, match='source changed'):
-        coordinator.publish_draft('tools', principal, {'enabled': False}, original)
+        coordinator.publish_draft('tools', _principal(), {'enabled': False}, original)

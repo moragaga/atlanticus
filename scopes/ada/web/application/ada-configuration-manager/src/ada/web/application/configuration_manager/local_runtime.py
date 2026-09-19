@@ -7,6 +7,11 @@ from typing import Generic, TypeVar
 from ada.web.application.configuration_manager.application import (
     create_configuration_manager_application,
 )
+from ada.web.application.configuration_manager.composition import (
+    KPI_MANAGER_ACCESS_KEY,
+    NAVIGATION_MANAGER_ACCESS_KEY,
+    TOOLS_MANAGER_ACCESS_KEY,
+)
 from ada.web.application.configuration_manager.dependencies import (
     ConfigurationManagerDependencies,
 )
@@ -113,7 +118,11 @@ def create_local_configuration_manager_dependencies(
     principal = ManagerPrincipal(
         subject_id='local',
         display_name='Administrador local',
-        profile_keys=('administrator',),
+        access_keys=(
+            NAVIGATION_MANAGER_ACCESS_KEY,
+            TOOLS_MANAGER_ACCESS_KEY,
+            KPI_MANAGER_ACCESS_KEY,
+        ),
         is_local=True,
     )
     return ConfigurationManagerDependencies(

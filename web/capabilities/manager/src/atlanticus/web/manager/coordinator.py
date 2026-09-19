@@ -16,7 +16,11 @@ from atlanticus.web.manager.source import (
     SourceReadResult,
 )
 from atlanticus.web.manager.validation import DraftValidationWorkflow
-from atlanticus.web.projection.models import ProjectionExecutionResult, ProjectionStatus, ProjectionTarget
+from atlanticus.web.projection.models import (
+    ProjectionExecutionResult,
+    ProjectionStatus,
+    ProjectionTarget,
+)
 from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.source.models import HistoryPage, SourceReleaseRef, SourceSnapshot
 
@@ -35,7 +39,7 @@ class ManagerProjectionCoordinator:
 
     def get_status(self, module_key: str, principal: ManagerPrincipal) -> ProjectionStatus:
         module, service = self._resolve_projection(module_key)
-        self._require_view(principal, module)
+        self._require_module_access(principal, module)
         return service.get_status(module.source_key)
 
     def get_current_projection_target(
@@ -44,7 +48,7 @@ class ManagerProjectionCoordinator:
         principal: ManagerPrincipal,
     ) -> ProjectionTarget | None:
         module, service = self._resolve_projection(module_key)
-        self._require_view(principal, module)
+        self._require_module_access(principal, module)
         return service.select_current_target(module.source_key)
 
     def validate_draft(
@@ -54,8 +58,7 @@ class ManagerProjectionCoordinator:
         payload: dict[str, object],
     ) -> DraftValidationResult:
         module, workflow = self._resolve_validation(module_key)
-        if not self._authorization.can_validate(principal, module):
-            raise ManagerAuthorizationError('Manager validation access is denied')
+        self._require_module_access(principal, module)
         return workflow.validate_draft(payload)
 
     def get_source_snapshot(
@@ -64,7 +67,7 @@ class ManagerProjectionCoordinator:
         principal: ManagerPrincipal,
     ) -> SourceSnapshot:
         module, workflow = self._resolve_source_publication(module_key)
-        self._require_view(principal, module)
+        self._require_module_access(principal, module)
         snapshot = workflow.get_source_snapshot()
         self._validate_source_key(module, snapshot)
         return snapshot
@@ -75,7 +78,7 @@ class ManagerProjectionCoordinator:
         principal: ManagerPrincipal,
     ) -> SourceReadResult:
         module, workflow = self._resolve_source_reader(module_key)
-        self._require_view(principal, module)
+        self._require_module_access(principal, module)
         result = workflow.load_current_source()
         self._validate_source_key(module, result.snapshot)
         return result
@@ -88,13 +91,14 @@ class ManagerProjectionCoordinator:
         expected_source_snapshot: SourceSnapshot,
     ) -> SourcePublicationResult:
         module, workflow = self._resolve_source_publication(module_key)
-        if not self._authorization.can_publish(principal, module):
-            raise ManagerAuthorizationError('Manager source publication access is denied')
+        self._require_module_access(principal, module)
         self._validate_source_key(module, expected_source_snapshot)
         current = workflow.get_source_snapshot()
         self._validate_source_key(module, current)
         if current.current != expected_source_snapshot.current:
-            raise ManagerSourceConflictError('Manager source changed while the draft was being edited')
+            raise ManagerSourceConflictError(
+                'Manager source changed while the draft was being edited'
+            )
         try:
             result = workflow.publish_draft(payload, current)
         except Exception as error:
@@ -115,8 +119,7 @@ class ManagerProjectionCoordinator:
         target: ProjectionTarget,
     ) -> ProjectionExecutionResult[object]:
         module, service = self._resolve_projection(module_key)
-        if not self._authorization.can_project(principal, module):
-            raise ManagerAuthorizationError('Manager projection access is denied')
+        self._require_module_access(principal, module)
         if target.source_key != module.source_key:
             raise ManagerProjectionError('Projection target belongs to another source')
         return service.project(target)
@@ -135,7 +138,7 @@ class ManagerProjectionCoordinator:
         release_ref: SourceReleaseRef,
     ) -> SourceHistoryReadResult:
         module, workflow = self._resolve_source_history(module_key)
-        self._require_view(principal, module)
+        self._require_module_access(principal, module)
         result = workflow.load_history_release(release_ref)
         if result.release_ref != release_ref:
             raise ManagerProjectionError('Manager history returned a different source release')
@@ -149,7 +152,7 @@ class ManagerProjectionCoordinator:
         limit: int = 20,
     ) -> HistoryPage:
         module, workflow = self._resolve_source_history(module_key)
-        self._require_view(principal, module)
+        self._require_module_access(principal, module)
         return workflow.list_history(limit=limit)
 
     def _resolve_validation(
@@ -159,7 +162,9 @@ class ManagerProjectionCoordinator:
         module = self._registry.require(module_key)
         workflow = self._services.require(module.draft_validation_service)
         if not isinstance(workflow, DraftValidationWorkflow):
-            raise ManagerProjectionError('Manager draft validation workflow has an invalid contract')
+            raise ManagerProjectionError(
+                'Manager draft validation workflow has an invalid contract'
+            )
         return module, workflow
 
     def _resolve_source_reader(
@@ -203,7 +208,11 @@ class ManagerProjectionCoordinator:
             raise ManagerProjectionError('Manager projection service has an invalid contract')
         return module, service
 
-    def _require_view(self, principal: ManagerPrincipal, module: ManagerModule) -> None:
+    def _require_module_access(
+        self,
+        principal: ManagerPrincipal,
+        module: ManagerModule,
+    ) -> None:
         if not self._authorization.can_view(principal, module):
             raise ManagerAuthorizationError('Manager module access is denied')
 
