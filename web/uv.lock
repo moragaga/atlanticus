@@ -19,6 +19,8 @@ members = [
     "atlanticus-web-observability",
     "atlanticus-web-profiles",
     "atlanticus-web-profiles-configuration",
+    "atlanticus-web-profiles-projection-cosmos",
+    "atlanticus-web-profiles-projection-local",
     "atlanticus-web-projection",
     "atlanticus-web-pwa",
     "atlanticus-web-source",
@@ -339,6 +341,7 @@ version = "0.1.0"
 source = { editable = "capabilities/profiles/configuration" }
 dependencies = [
     { name = "atlanticus-web-profiles" },
+    { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
 ]
 
@@ -355,11 +358,54 @@ requires-dist = [
     { name = "atlanticus-web", marker = "extra == 'web'", editable = "framework/core" },
     { name = "atlanticus-web-bootstrap", marker = "extra == 'web'", editable = "framework/bootstrap" },
     { name = "atlanticus-web-profiles", editable = "capabilities/profiles/core" },
+    { name = "atlanticus-web-projection", editable = "capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "capabilities/source/core" },
     { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
     { name = "dash-bootstrap-components", marker = "extra == 'web'", specifier = "==2.0.4" },
 ]
 provides-extras = ["web"]
+
+[[package]]
+name = "atlanticus-web-profiles-projection-cosmos"
+version = "0.1.0"
+source = { editable = "capabilities/profiles/projection-cosmos" }
+dependencies = [
+    { name = "atlanticus-cosmos" },
+    { name = "atlanticus-web-profiles" },
+    { name = "atlanticus-web-profiles-configuration" },
+    { name = "atlanticus-web-projection" },
+    { name = "atlanticus-web-source" },
+    { name = "atlanticus-web-storage-topology" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-cosmos", directory = "../connectivity/cosmos" },
+    { name = "atlanticus-web-profiles", editable = "capabilities/profiles/core" },
+    { name = "atlanticus-web-profiles-configuration", editable = "capabilities/profiles/configuration" },
+    { name = "atlanticus-web-projection", editable = "capabilities/projection/core" },
+    { name = "atlanticus-web-source", editable = "capabilities/source/core" },
+    { name = "atlanticus-web-storage-topology", editable = "capabilities/storage/topology" },
+]
+
+[[package]]
+name = "atlanticus-web-profiles-projection-local"
+version = "0.1.0"
+source = { editable = "capabilities/profiles/projection-local" }
+dependencies = [
+    { name = "atlanticus-web-profiles" },
+    { name = "atlanticus-web-profiles-configuration" },
+    { name = "atlanticus-web-projection" },
+    { name = "atlanticus-web-source" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-web-profiles", editable = "capabilities/profiles/core" },
+    { name = "atlanticus-web-profiles-configuration", editable = "capabilities/profiles/configuration" },
+    { name = "atlanticus-web-projection", editable = "capabilities/projection/core" },
+    { name = "atlanticus-web-source", editable = "capabilities/source/core" },
+]
 
 [[package]]
 name = "atlanticus-web-projection"
@@ -523,6 +569,8 @@ dependencies = [
     { name = "atlanticus-web-navigation-projection-local" },
     { name = "atlanticus-web-profiles" },
     { name = "atlanticus-web-profiles-configuration" },
+    { name = "atlanticus-web-profiles-projection-cosmos" },
+    { name = "atlanticus-web-profiles-projection-local" },
     { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-pwa" },
     { name = "atlanticus-web-source" },
@@ -558,6 +606,8 @@ requires-dist = [
     { name = "atlanticus-web-navigation-projection-local", editable = "capabilities/navigation/projection-local" },
     { name = "atlanticus-web-profiles", editable = "capabilities/profiles/core" },
     { name = "atlanticus-web-profiles-configuration", editable = "capabilities/profiles/configuration" },
+    { name = "atlanticus-web-profiles-projection-cosmos", editable = "capabilities/profiles/projection-cosmos" },
+    { name = "atlanticus-web-profiles-projection-local", editable = "capabilities/profiles/projection-local" },
     { name = "atlanticus-web-projection", editable = "capabilities/projection/core" },
     { name = "atlanticus-web-pwa", editable = "framework/pwa" },
     { name = "atlanticus-web-source", editable = "capabilities/source/core" },
