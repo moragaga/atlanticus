@@ -342,11 +342,24 @@ dependencies = [
     { name = "atlanticus-web-source" },
 ]
 
+[package.optional-dependencies]
+web = [
+    { name = "atlanticus-web" },
+    { name = "atlanticus-web-bootstrap" },
+    { name = "dash" },
+    { name = "dash-bootstrap-components" },
+]
+
 [package.metadata]
 requires-dist = [
+    { name = "atlanticus-web", marker = "extra == 'web'", editable = "framework/core" },
+    { name = "atlanticus-web-bootstrap", marker = "extra == 'web'", editable = "framework/bootstrap" },
     { name = "atlanticus-web-profiles", editable = "capabilities/profiles/core" },
     { name = "atlanticus-web-source", editable = "capabilities/source/core" },
+    { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
+    { name = "dash-bootstrap-components", marker = "extra == 'web'", specifier = "==2.0.4" },
 ]
+provides-extras = ["web"]
 
 [[package]]
 name = "atlanticus-web-projection"

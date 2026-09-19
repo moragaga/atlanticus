@@ -13,9 +13,19 @@ dependencies = [
     "atlanticus-web-source==0.1.0",
 ]
 
+[project.optional-dependencies]
+web = [
+    "atlanticus-web==0.1.0",
+    "atlanticus-web-bootstrap==0.1.0",
+    "dash-bootstrap-components==2.0.4",
+    "dash==4.4.1",
+]
+
 [tool.uv.sources]
 atlanticus-web-profiles = { workspace = true }
 atlanticus-web-source = { workspace = true }
+atlanticus-web = { workspace = true }
+atlanticus-web-bootstrap = { workspace = true }
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -26,4 +36,8 @@ namespaces = true
 include = ["atlanticus.web.profiles.configuration*"]
 
 [tool.setuptools.package-data]
-"atlanticus.web.profiles.configuration" = ["py.typed"]
+"atlanticus.web.profiles.configuration" = [
+    "py.typed",
+    "resources/css/*.css",
+    "resources/css/css.list",
+]

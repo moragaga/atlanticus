@@ -1,0 +1,221 @@
+.atlanticus-profiles-admin {
+    display: grid;
+    min-width: 0;
+    gap: .9rem;
+    padding: 0 1rem 1rem;
+}
+
+.atlanticus-profiles-admin__runtime-context,
+.atlanticus-profiles-admin__section {
+    min-width: 0;
+    padding: 1rem;
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .85rem;
+    box-shadow: 0 4px 16px rgb(25 30 38 / 3.5%);
+}
+
+.atlanticus-profiles-admin__runtime-context {
+    display: flex;
+    align-items: baseline;
+    gap: .42rem;
+    padding-block: .72rem;
+    color: var(--atlanticus-ui-primary-hover);
+    background: var(--atlanticus-ui-surface-muted);
+    font-size: .7rem;
+}
+
+.atlanticus-profiles-admin__section-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: .8rem;
+}
+
+.atlanticus-profiles-admin__section-copy {
+    display: grid;
+    min-width: 0;
+    gap: .2rem;
+}
+
+.atlanticus-profiles-admin__section-copy h3,
+.atlanticus-profiles-admin__section-copy p {
+    margin: 0;
+}
+
+.atlanticus-profiles-admin__section-copy h3 {
+    color: var(--atlanticus-ui-text);
+    font-size: .9rem;
+    font-weight: 780;
+}
+
+.atlanticus-profiles-admin__section-copy p,
+.atlanticus-profiles-admin__empty,
+.atlanticus-profiles-admin__pagination {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .72rem;
+}
+
+.atlanticus-profiles-admin__system-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .65rem;
+    margin-top: .75rem;
+}
+
+.atlanticus-profiles-admin__system-card {
+    display: grid;
+    min-width: 0;
+    gap: .55rem;
+    padding: .75rem;
+    background: var(--atlanticus-ui-surface-muted);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .72rem;
+}
+
+.atlanticus-profiles-admin__profile-badge {
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
+    align-items: center;
+    padding: .34rem .62rem;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 750;
+}
+
+.atlanticus-profiles-admin__local-identities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+}
+
+.atlanticus-profiles-admin__configured-list {
+    display: grid;
+    gap: .45rem;
+}
+
+.atlanticus-profiles-admin__profile-row {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: .8rem;
+    padding: .68rem .75rem;
+    background: var(--atlanticus-ui-surface-muted);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .68rem;
+}
+
+.atlanticus-profiles-admin__row-copy {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .55rem 1rem;
+}
+
+.atlanticus-profiles-admin__row-copy strong {
+    font-size: .82rem;
+}
+
+.atlanticus-profiles-admin__row-colors {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .3rem;
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .68rem;
+}
+
+.atlanticus-profiles-admin__swatch {
+    width: .9rem;
+    height: .9rem;
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: 50%;
+}
+
+.atlanticus-profiles-admin__pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-top: .75rem;
+}
+
+.atlanticus-profiles-admin__page-size-control,
+.atlanticus-profiles-admin__page-actions {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+
+.atlanticus-profiles-admin__page-size {
+    width: 5rem;
+}
+
+.atlanticus-profiles-admin__section--footer {
+    border-top: .2rem solid var(--atlanticus-ui-accent);
+}
+
+.atlanticus-profiles-admin__modal-body {
+    display: grid;
+    gap: .8rem;
+}
+
+.atlanticus-profiles-admin__field {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: .35rem;
+    font-size: .76rem;
+    font-weight: 700;
+}
+
+.atlanticus-profiles-admin__color-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .75rem;
+}
+
+.atlanticus-profiles-admin__error {
+    padding: .55rem .7rem;
+    color: var(--atlanticus-ui-danger);
+    background: var(--atlanticus-ui-danger-soft);
+    border-radius: .45rem;
+    font-size: .78rem;
+}
+
+.atlanticus-profiles-admin__empty {
+    margin: .55rem 0;
+}
+
+@media (max-width: 64rem) {
+    .atlanticus-profiles-admin__system-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 48rem) {
+    .atlanticus-profiles-admin {
+        padding-inline: .75rem;
+    }
+
+    .atlanticus-profiles-admin__section-heading,
+    .atlanticus-profiles-admin__profile-row,
+    .atlanticus-profiles-admin__pagination {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .atlanticus-profiles-admin__system-grid,
+    .atlanticus-profiles-admin__color-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .atlanticus-profiles-admin__page-size-control,
+    .atlanticus-profiles-admin__page-actions {
+        justify-content: space-between;
+    }
+}

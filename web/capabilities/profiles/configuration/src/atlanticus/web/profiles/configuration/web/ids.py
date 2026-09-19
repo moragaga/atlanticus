@@ -1,0 +1,25 @@
+CONFIGURATION_STORE_ID = 'atlanticus-profiles-admin-configuration'
+EDITOR_STORE_ID = 'atlanticus-profiles-admin-editor'
+PAGE_STORE_ID = 'atlanticus-profiles-admin-page'
+MOUNT_STORE_ID = 'atlanticus-profiles-admin-mounted'
+CONFIGURED_PROFILES_ID = 'atlanticus-profiles-admin-configured'
+PAGE_SIZE_ID = 'atlanticus-profiles-admin-page-size'
+PAGE_STATUS_ID = 'atlanticus-profiles-admin-page-status'
+PREVIOUS_PAGE_ID = 'atlanticus-profiles-admin-page-previous'
+NEXT_PAGE_ID = 'atlanticus-profiles-admin-page-next'
+ADD_PROFILE_ID = 'atlanticus-profiles-admin-add-profile'
+SAVE_BUTTON_ID = 'atlanticus-profiles-admin-save'
+SAVE_RESULT_ID = 'atlanticus-profiles-admin-save-result'
+SOURCE_NAME_ID = 'atlanticus-profiles-admin-source-name'
+PROFILE_MODAL_ID = 'atlanticus-profiles-admin-profile-modal'
+PROFILE_MODAL_TITLE_ID = 'atlanticus-profiles-admin-profile-modal-title'
+PROFILE_NAME_ID = 'atlanticus-profiles-admin-profile-name'
+PROFILE_BACKGROUND_COLOR_ID = 'atlanticus-profiles-admin-profile-background-color'
+PROFILE_TEXT_COLOR_ID = 'atlanticus-profiles-admin-profile-text-color'
+PROFILE_CANCEL_ID = 'atlanticus-profiles-admin-profile-cancel'
+PROFILE_SAVE_ID = 'atlanticus-profiles-admin-profile-save'
+PROFILE_RESULT_ID = 'atlanticus-profiles-admin-profile-result'
+
+
+def profile_edit_id(key: str) -> dict[str, str]:
+    return {'type': 'atlanticus-profiles-profile-edit', 'key': key}
