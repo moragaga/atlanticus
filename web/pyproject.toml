@@ -33,6 +33,7 @@ dependencies = [
     "atlanticus-web-users-activity==0.1.0",
     "atlanticus-web-composition-navigation-activity==0.1.0",
     "atlanticus-web-composition-navigation-manager==0.1.0",
+    "atlanticus-web-composition-profiles-manager==0.1.0",
 ]
 
 [dependency-groups]
@@ -78,6 +79,7 @@ atlanticus-web-users-blob = { workspace = true }
 atlanticus-web-users-activity = { workspace = true }
 atlanticus-web-composition-navigation-activity = { workspace = true }
 atlanticus-web-composition-navigation-manager = { workspace = true }
+atlanticus-web-composition-profiles-manager = { workspace = true }
 
 [tool.uv.workspace]
 members = [
@@ -109,6 +111,7 @@ members = [
     "capabilities/users/activity",
     "compositions/navigation-activity",
     "compositions/navigation-manager",
+    "compositions/profiles-manager",
 ]
 
 [tool.ruff]
@@ -164,5 +167,6 @@ testpaths = [
     "capabilities/users/activity/tests",
     "compositions/navigation-activity/tests",
     "compositions/navigation-manager/tests",
+    "compositions/profiles-manager/tests",
 ]
 addopts = "-q --import-mode=importlib"
