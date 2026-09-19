@@ -11,12 +11,14 @@ classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "ada-web-access==0.1.0",
     "atlanticus-web-profiles==0.1.0",
+    "atlanticus-web-projection==0.1.0",
     "atlanticus-web-source==0.1.0",
 ]
 
 [tool.uv.sources]
 ada-web-access = { path = "../core", editable = true }
 atlanticus-web-profiles = { path = "../../../../../web/capabilities/profiles/core", editable = true }
+atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
 
 [dependency-groups]
@@ -61,6 +63,7 @@ pythonpath = [
     "src",
     "../core/src",
     "../../../../../web/capabilities/profiles/core/src",
+    "../../../../../web/capabilities/projection/core/src",
     "../../../../../web/capabilities/source/core/src",
 ]
 addopts = "-q --import-mode=importlib"
