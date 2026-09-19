@@ -1,4 +1,3 @@
-# El lifecycle Source de Access usa el contrato genérico exact-release de Atlanticus.
 from __future__ import annotations
 
 import gzip
@@ -24,7 +23,8 @@ from atlanticus.web.source.models import (
 from atlanticus.web.source.store import SourceStore
 
 ADA_ACCESS_SOURCE_DOCUMENT_TYPE = 'ada_access_configuration_release'
-ADA_ACCESS_SOURCE_SCHEMA_VERSION = 1
+# v2 elimina user_id -> profile_keys y conserva sólo grants por profile_key.
+ADA_ACCESS_SOURCE_SCHEMA_VERSION = 2
 ADA_ACCESS_SOURCE_RESOURCE_PATH = 'access/configuration.json.gz'
 DEFAULT_MAX_COMPRESSED_BYTES = 5 * 1024 * 1024
 DEFAULT_MAX_DECOMPRESSED_BYTES = 20 * 1024 * 1024

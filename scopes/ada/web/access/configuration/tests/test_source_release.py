@@ -1,18 +1,20 @@
 from __future__ import annotations
 
 import gzip
+import json
 from datetime import UTC, datetime
 
 import pytest
 
 from ada.web.access.configuration import (
     ADA_ACCESS_SOURCE_RESOURCE_PATH,
+    ADA_ACCESS_SOURCE_SCHEMA_VERSION,
     AdaAccessConfiguration,
     AdaAccessConfigurationSourceError,
     AdaAccessSourceCodec,
     AdaAccessSourceService,
 )
-from ada.web.access.models import ProfileAccessGrant, UserProfileAssignment
+from ada.web.access.models import ProfileAccessGrant
 from atlanticus.web.source.models import (
     ConcurrencyToken,
     Digest,
@@ -30,7 +32,6 @@ from atlanticus.web.source.models import (
 
 def _configuration() -> AdaAccessConfiguration:
     return AdaAccessConfiguration(
-        user_profiles=(UserProfileAssignment(user_id='user-1', profile_keys=('operator',)),),
         profile_access=(
             ProfileAccessGrant(
                 profile_key='operator',
@@ -55,13 +56,43 @@ def test_source_codec_round_trips_deterministic_compact_resource() -> None:
     second = codec.encode(configuration=configuration, published_by='manager-user')
     decoded = codec.decode((first,))
     raw = gzip.decompress(first.content)
+    document = json.loads(raw.decode('utf-8'))
 
+    assert ADA_ACCESS_SOURCE_SCHEMA_VERSION == 2
     assert first.logical_path == ADA_ACCESS_SOURCE_RESOURCE_PATH
     assert first.content == second.content
     assert b'\n' not in raw
     assert b': ' not in raw
+    assert set(document['configuration']) == {'profile_access'}
     assert decoded.configuration == configuration
     assert decoded.published_by == 'manager-user'
+
+
+def test_source_codec_rejects_previous_user_assignment_schema() -> None:
+    legacy = {
+        'document_type': 'ada_access_configuration_release',
+        'schema_version': 1,
+        'published_by': 'manager-user',
+        'configuration': {
+            'user_profiles': [
+                {
+                    'user_id': 'user-1',
+                    'profile_keys': ['operator'],
+                }
+            ],
+            'profile_access': [],
+        },
+    }
+    resource = SourceResource(
+        logical_path=ADA_ACCESS_SOURCE_RESOURCE_PATH,
+        content=gzip.compress(
+            json.dumps(legacy, separators=(',', ':')).encode('utf-8'),
+            mtime=0,
+        ),
+    )
+
+    with pytest.raises(AdaAccessConfigurationSourceError, match='schema version'):
+        AdaAccessSourceCodec().decode((resource,))
 
 
 def test_source_codec_rejects_missing_configuration_resource() -> None:

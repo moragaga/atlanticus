@@ -2,7 +2,7 @@ import pytest
 
 from ada.web.access.configuration.models import AdaAccessConfiguration
 from ada.web.access.errors import AdaAccessDefinitionError
-from ada.web.access.models import ProfileAccessGrant, UserProfileAssignment
+from ada.web.access.models import ProfileAccessGrant
 from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
 
 
@@ -25,12 +25,6 @@ def _profiles() -> ProfileCatalog:
 
 def _configuration() -> AdaAccessConfiguration:
     return AdaAccessConfiguration(
-        user_profiles=(
-            UserProfileAssignment(
-                user_id='user-1',
-                profile_keys=('operator', 'viewer'),
-            ),
-        ),
         profile_access=(
             ProfileAccessGrant(
                 profile_key='operator',
@@ -44,37 +38,55 @@ def _configuration() -> AdaAccessConfiguration:
     )
 
 
-def test_configuration_round_trips_document() -> None:
+def test_configuration_round_trips_profile_access_document() -> None:
     configuration = _configuration()
+    document = configuration.to_document()
 
-    assert AdaAccessConfiguration.from_document(configuration.to_document()) == configuration
+    assert set(document) == {'profile_access'}
+    assert AdaAccessConfiguration.from_document(document) == configuration
 
 
-def test_configuration_rejects_duplicate_user_assignments() -> None:
-    with pytest.raises(AdaAccessDefinitionError, match='assignments must be unique'):
+def test_configuration_rejects_duplicate_profile_grants() -> None:
+    with pytest.raises(AdaAccessDefinitionError, match='profile grants must be unique'):
         AdaAccessConfiguration(
-            user_profiles=(
-                UserProfileAssignment(user_id='user-1'),
-                UserProfileAssignment(user_id='user-1'),
+            profile_access=(
+                ProfileAccessGrant(profile_key='operator'),
+                ProfileAccessGrant(profile_key='OPERATOR'),
             )
         )
 
 
 def test_configuration_validates_profile_references() -> None:
     configuration = AdaAccessConfiguration(
-        user_profiles=(UserProfileAssignment(user_id='user-1', profile_keys=('missing',)),)
+        profile_access=(
+            ProfileAccessGrant(
+                profile_key='missing',
+                access_keys=('navigation.view',),
+            ),
+        )
     )
 
     with pytest.raises(ValueError, match='Unknown profile'):
         configuration.validate_profiles(_profiles())
 
 
-def test_configuration_resolves_effective_access_from_assigned_profiles() -> None:
-    effective = _configuration().resolve('user-1', profiles=_profiles())
+def test_configuration_resolves_access_from_profile_owned_by_users() -> None:
+    effective = _configuration().resolve('operator', profiles=_profiles())
 
-    assert effective.user_id == 'user-1'
-    assert effective.profile_keys == ('operator', 'viewer')
+    assert effective.profile_key == 'operator'
     assert effective.access_keys == ('navigation.view', 'kpis.manage')
+
+
+def test_configuration_resolves_profile_without_grant_as_no_guaranteed_access() -> None:
+    effective = AdaAccessConfiguration().resolve('viewer', profiles=_profiles())
+
+    assert effective.profile_key == 'viewer'
+    assert effective.access_keys == ()
+
+
+def test_configuration_rejects_unknown_runtime_profile() -> None:
+    with pytest.raises(ValueError, match='Unknown profile'):
+        _configuration().resolve('missing', profiles=_profiles())
 
 
 def test_configuration_accepts_configured_administrator_profile() -> None:
@@ -88,9 +100,6 @@ def test_configuration_accepts_configured_administrator_profile() -> None:
         )
     )
     configuration = AdaAccessConfiguration(
-        user_profiles=(
-            UserProfileAssignment(user_id='user-1', profile_keys=('administrator',)),
-        ),
         profile_access=(
             ProfileAccessGrant(
                 profile_key='administrator',
@@ -100,15 +109,22 @@ def test_configuration_accepts_configured_administrator_profile() -> None:
     )
 
     configuration.validate_profiles(profiles)
-    effective = configuration.resolve('user-1', profiles=profiles)
+    effective = configuration.resolve('administrator', profiles=profiles)
 
-    assert effective.profile_keys == ('administrator',)
+    assert effective.profile_key == 'administrator'
     assert effective.access_keys == ('kpis.manage',)
 
 
-def test_configuration_resolves_unassigned_user_without_profiles_or_access() -> None:
-    effective = _configuration().resolve('user-2', profiles=_profiles())
-
-    assert effective.user_id == 'user-2'
-    assert effective.profile_keys == ()
-    assert effective.access_keys == ()
+def test_configuration_rejects_legacy_user_profile_assignment_document() -> None:
+    with pytest.raises(AdaAccessDefinitionError, match='contract is invalid'):
+        AdaAccessConfiguration.from_document(
+            {
+                'user_profiles': [
+                    {
+                        'user_id': 'user-1',
+                        'profile_keys': ['operator'],
+                    }
+                ],
+                'profile_access': [],
+            }
+        )

@@ -23,7 +23,7 @@ from atlanticus.web.source.models import (
 from atlanticus.web.source.store import SourceStore
 
 ADA_ACCESS_SOURCE_DOCUMENT_TYPE = 'ada_access_configuration_release'
-ADA_ACCESS_SOURCE_SCHEMA_VERSION = 1
+ADA_ACCESS_SOURCE_SCHEMA_VERSION = 2
 ADA_ACCESS_SOURCE_RESOURCE_PATH = 'access/configuration.json.gz'
 DEFAULT_MAX_COMPRESSED_BYTES = 5 * 1024 * 1024
 DEFAULT_MAX_DECOMPRESSED_BYTES = 20 * 1024 * 1024
