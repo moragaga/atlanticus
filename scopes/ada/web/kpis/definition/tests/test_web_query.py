@@ -1,4 +1,3 @@
-from ada.web.configuration import ConfigurationPageRequest
 from ada.web.kpis.definition import KpiDefinition, KpiDefinitionConfiguration
 from ada.web.kpis.definition.web import (
     KpiDefinitionEditorStatus,
@@ -7,6 +6,7 @@ from ada.web.kpis.definition.web import (
     build_kpi_definition_editor_items,
     query_kpi_definitions,
 )
+from atlanticus.web.pagination import PageRequest
 
 from .helpers import kpi_configuration
 
@@ -36,7 +36,7 @@ def test_query_scales_to_five_hundred_configured_kpis() -> None:
     page = query_kpi_definitions(
         KpiDefinitionConfiguration(),
         kpi_configuration(*keys),
-        KpiDefinitionQuery(page=ConfigurationPageRequest(page_number=1, page_size=10)),
+        KpiDefinitionQuery(page=PageRequest(page_number=1, page_size=10)),
     )
 
     assert page.total_count == 500
@@ -57,7 +57,7 @@ def test_query_search_status_and_pagination_order() -> None:
     query = KpiDefinitionQuery(
         search='crusher',
         status=KpiDefinitionStatusFilter.PENDING,
-        page=ConfigurationPageRequest(page_number=2, page_size=10),
+        page=PageRequest(page_number=2, page_size=10),
     )
 
     page = query_kpi_definitions(configuration, kpi_configuration(*keys), query)

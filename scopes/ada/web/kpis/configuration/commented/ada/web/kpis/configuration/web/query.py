@@ -3,13 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from ada.web.configuration import (
-    ConfigurationPage,
-    ConfigurationPageRequest,
-    SortDirection,
-    paginate_items,
-)
 from ada.web.kpis.configuration import KpiConfiguration, KpiConfigurationBinding
+from atlanticus.web.pagination import Page, PageRequest, paginate_items
+
+
+class SortDirection(StrEnum):
+    ASC = 'asc'
+    DESC = 'desc'
 
 
 class KpiConfigurationDataMode(StrEnum):
@@ -33,7 +33,7 @@ class KpiConfigurationQuery:
     data_mode: KpiConfigurationDataMode = KpiConfigurationDataMode.ALL
     sort_field: KpiConfigurationSortField = KpiConfigurationSortField.KPI_KEY
     sort_direction: SortDirection = SortDirection.ASC
-    page: ConfigurationPageRequest = field(default_factory=ConfigurationPageRequest)
+    page: PageRequest = field(default_factory=PageRequest)
 
     def __post_init__(self) -> None:
         if not isinstance(self.search, str):
@@ -51,7 +51,7 @@ class KpiConfigurationQuery:
             raise ValueError('KPI configuration sort field is invalid')
         if not isinstance(self.sort_direction, SortDirection):
             raise ValueError('KPI configuration sort direction is invalid')
-        if not isinstance(self.page, ConfigurationPageRequest):
+        if not isinstance(self.page, PageRequest):
             raise ValueError('KPI configuration page request is invalid')
         object.__setattr__(self, 'search', self.search.strip())
         object.__setattr__(self, 'destination_keys', destinations)
@@ -60,7 +60,7 @@ class KpiConfigurationQuery:
 def query_kpi_configuration(
     configuration: KpiConfiguration,
     query: KpiConfigurationQuery,
-) -> ConfigurationPage[KpiConfigurationBinding]:
+) -> Page[KpiConfigurationBinding]:
     if not isinstance(configuration, KpiConfiguration):
         raise TypeError('KPI configuration query requires KpiConfiguration')
     if not isinstance(query, KpiConfigurationQuery):

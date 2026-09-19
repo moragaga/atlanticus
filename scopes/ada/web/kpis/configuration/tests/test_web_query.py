@@ -1,4 +1,3 @@
-from ada.web.configuration import ConfigurationPageRequest, SortDirection
 from ada.web.kpis.configuration import KpiConfiguration, KpiConfigurationBinding
 from ada.web.kpis.configuration.web import (
     KpiConfigurationDataMode,
@@ -6,6 +5,8 @@ from ada.web.kpis.configuration.web import (
     KpiConfigurationSortField,
     query_kpi_configuration,
 )
+from ada.web.kpis.configuration.web.query import SortDirection
+from atlanticus.web.pagination import PageRequest
 
 
 def _configuration(count: int) -> KpiConfiguration:
@@ -37,7 +38,7 @@ def test_management_query_filters_and_paginates() -> None:
         KpiConfigurationQuery(
             destination_keys=('plant',),
             data_mode=KpiConfigurationDataMode.LATEST,
-            page=ConfigurationPageRequest(page_size=20),
+            page=PageRequest(page_size=20),
         ),
     )
 

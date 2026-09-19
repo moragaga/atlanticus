@@ -9,7 +9,6 @@ from dash.development.base_component import Component
 from ada.web.configuration import (
     ConfigurationMutationState,
     ConfigurationMutationStatus,
-    ConfigurationPage,
     build_configuration_pagination,
     configuration_dash_select_style,
 )
@@ -49,6 +48,7 @@ from ada.web.kpis.configuration.web.query import (
     KpiConfigurationDataMode,
     KpiConfigurationQuery,
 )
+from atlanticus.web.pagination import Page
 
 _SYSTEM_DESTINATION_LABELS = {
     'global_indicators': 'Indicadores globales',
@@ -60,7 +60,7 @@ _MODAL_OPEN = 'ada-kpi-configuration__modal ada-kpi-configuration__modal--open'
 
 
 def build_kpi_configuration_editor(
-    page: ConfigurationPage[KpiConfigurationBinding],
+    page: Page[KpiConfigurationBinding],
     *,
     destination_catalog: KpiDestinationCatalog,
     query: KpiConfigurationQuery | None = None,
@@ -69,8 +69,8 @@ def build_kpi_configuration_editor(
     creation_disabled_reason: str | None = None,
     can_manage: bool = True,
 ) -> Component:
-    if not isinstance(page, ConfigurationPage):
-        raise TypeError('KPI configuration editor requires a ConfigurationPage')
+    if not isinstance(page, Page):
+        raise TypeError('KPI configuration editor requires a Page')
     if not isinstance(destination_catalog, KpiDestinationCatalog):
         raise TypeError('KPI configuration editor requires a KpiDestinationCatalog')
 
@@ -144,7 +144,7 @@ def build_kpi_configuration_active_filters(
 
 
 def build_kpi_configuration_grid(
-    page: ConfigurationPage[KpiConfigurationBinding],
+    page: Page[KpiConfigurationBinding],
     *,
     destination_catalog: KpiDestinationCatalog,
     mutation: ConfigurationMutationState | None = None,

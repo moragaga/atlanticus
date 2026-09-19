@@ -4,11 +4,7 @@ from collections.abc import Mapping
 
 from dash import ALL, Input, Output, State, ctx, html, no_update
 
-from ada.web.configuration import (
-    ConfigurationPageRequest,
-    SortDirection,
-    build_configuration_pagination,
-)
+from ada.web.configuration import build_configuration_pagination
 from ada.web.kpis.configuration import (
     KpiConfiguration,
     KpiConfigurationBinding,
@@ -60,8 +56,10 @@ from ada.web.kpis.configuration.web.query import (
     KpiConfigurationDataMode,
     KpiConfigurationQuery,
     KpiConfigurationSortField,
+    SortDirection,
     query_kpi_configuration,
 )
+from atlanticus.web.pagination import PageRequest
 
 
 def register_kpi_configuration_editor_callbacks(
@@ -115,7 +113,7 @@ def register_kpi_configuration_editor_callbacks(
                 data_mode=mode,
                 sort_field=current.sort_field,
                 sort_direction=current.sort_direction,
-                page=ConfigurationPageRequest(page_number=1, page_size=size),
+                page=PageRequest(page_number=1, page_size=size),
             )
             page_count = query_kpi_configuration(
                 parse_configuration(configuration_data),
@@ -137,7 +135,7 @@ def register_kpi_configuration_editor_callbacks(
             data_mode=mode,
             sort_field=current.sort_field,
             sort_direction=current.sort_direction,
-            page=ConfigurationPageRequest(
+            page=PageRequest(
                 page_number=page_number,
                 page_size=size,
             ),
@@ -411,7 +409,7 @@ def parse_query(
             data_mode=KpiConfigurationDataMode(str(data.get('data_mode', 'all'))),
             sort_field=KpiConfigurationSortField(str(data.get('sort_field', 'kpi_key'))),
             sort_direction=SortDirection(str(data.get('sort_direction', 'asc'))),
-            page=ConfigurationPageRequest(
+            page=PageRequest(
                 page_number=int(data.get('page_number', 1)),
                 page_size=int(data.get('page_size', 10)),
             ),

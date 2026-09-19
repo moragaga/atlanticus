@@ -4,7 +4,7 @@ from collections.abc import Mapping
 
 from dash import ALL, Input, Output, State, ctx, html, no_update
 
-from ada.web.configuration import ConfigurationPageRequest, build_configuration_pagination
+from ada.web.configuration import build_configuration_pagination
 from ada.web.kpis.configuration import KpiConfiguration
 from ada.web.kpis.definition import (
     KpiDefinition,
@@ -52,6 +52,7 @@ from ada.web.kpis.definition.web.query import (
     KpiDefinitionStatusFilter,
     query_kpi_definitions,
 )
+from atlanticus.web.pagination import PageRequest
 
 
 def register_kpi_definition_editor_callbacks(
@@ -95,7 +96,7 @@ def register_kpi_definition_editor_callbacks(
             probe = KpiDefinitionQuery(
                 search=str(search or ''),
                 status=selected_status,
-                page=ConfigurationPageRequest(page_number=1, page_size=size),
+                page=PageRequest(page_number=1, page_size=size),
             )
             page_count = query_kpi_definitions(
                 parse_configuration(configuration_data),
@@ -115,7 +116,7 @@ def register_kpi_definition_editor_callbacks(
             KpiDefinitionQuery(
                 search=str(search or ''),
                 status=selected_status,
-                page=ConfigurationPageRequest(page_number=page_number, page_size=size),
+                page=PageRequest(page_number=page_number, page_size=size),
             )
         )
 
@@ -304,7 +305,7 @@ def parse_query(document: dict[str, object] | None) -> KpiDefinitionQuery:
         return KpiDefinitionQuery(
             search=str(data.get('search', '')),
             status=KpiDefinitionStatusFilter(str(data.get('status', 'all'))),
-            page=ConfigurationPageRequest(
+            page=PageRequest(
                 page_number=int(data.get('page_number', 1)),
                 page_size=int(data.get('page_size', 10)),
             ),

@@ -9,11 +9,7 @@ import dash_bootstrap_components as dbc
 from dash import dcc, html
 from dash.development.base_component import Component
 
-from ada.web.configuration import (
-    ConfigurationPage,
-    build_configuration_pagination,
-    configuration_dash_select_style,
-)
+from ada.web.configuration import build_configuration_pagination, configuration_dash_select_style
 from ada.web.kpis.configuration import KpiConfiguration
 from ada.web.kpis.definition import KpiDefinition
 from ada.web.kpis.definition.web.ids import (
@@ -47,13 +43,14 @@ from ada.web.kpis.definition.web.query import (
     KpiDefinitionQuery,
     KpiDefinitionStatusFilter,
 )
+from atlanticus.web.pagination import Page
 
 _MODAL_CLOSED = 'ada-kpi-definition__modal'
 _MODAL_OPEN = 'ada-kpi-definition__modal ada-kpi-definition__modal--open'
 
 
 def build_kpi_definition_editor(
-    page: ConfigurationPage[KpiDefinitionEditorItem],
+    page: Page[KpiDefinitionEditorItem],
     *,
     query: KpiDefinitionQuery,
     kpi_configuration: KpiConfiguration | None,
@@ -94,7 +91,7 @@ def build_kpi_definition_editor(
 
 
 def build_kpi_definition_grid(
-    page: ConfigurationPage[KpiDefinitionEditorItem],
+    page: Page[KpiDefinitionEditorItem],
     *,
     query: KpiDefinitionQuery,
     kpi_configuration: KpiConfiguration | None,

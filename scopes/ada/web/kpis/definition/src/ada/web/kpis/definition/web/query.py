@@ -5,13 +5,13 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from types import MappingProxyType
 
-from ada.web.configuration import ConfigurationPage, ConfigurationPageRequest, paginate_items
 from ada.web.kpis.configuration import KpiConfiguration
 from ada.web.kpis.definition import (
     KpiDefinitionConfiguration,
     KpiDefinitionCoverageStatus,
     build_kpi_definition_coverage,
 )
+from atlanticus.web.pagination import Page, PageRequest, paginate_items
 
 
 class KpiDefinitionEditorStatus(StrEnum):
@@ -61,14 +61,14 @@ class KpiDefinitionEditorItem:
 class KpiDefinitionQuery:
     search: str = ''
     status: KpiDefinitionStatusFilter = KpiDefinitionStatusFilter.ALL
-    page: ConfigurationPageRequest = field(default_factory=ConfigurationPageRequest)
+    page: PageRequest = field(default_factory=PageRequest)
 
     def __post_init__(self) -> None:
         if not isinstance(self.search, str):
             raise ValueError('KPI definition search must be text')
         if not isinstance(self.status, KpiDefinitionStatusFilter):
             raise ValueError('KPI definition status filter is invalid')
-        if not isinstance(self.page, ConfigurationPageRequest):
+        if not isinstance(self.page, PageRequest):
             raise ValueError('KPI definition page request is invalid')
         object.__setattr__(self, 'search', self.search.strip())
 
@@ -113,7 +113,7 @@ def query_kpi_definitions(
     configuration: KpiDefinitionConfiguration,
     kpi_configuration: KpiConfiguration | None,
     query: KpiDefinitionQuery,
-) -> ConfigurationPage[KpiDefinitionEditorItem]:
+) -> Page[KpiDefinitionEditorItem]:
     if not isinstance(query, KpiDefinitionQuery):
         raise TypeError('KPI definition query requires KpiDefinitionQuery')
     items = tuple(

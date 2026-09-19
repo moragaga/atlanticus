@@ -3,19 +3,16 @@ from __future__ import annotations
 from dash import dcc, html
 from dash.development.base_component import Component
 
-from ada.web.configuration.pagination import (
-    ALLOWED_CONFIGURATION_PAGE_SIZES,
-    ConfigurationPage,
-)
+from atlanticus.web.pagination import ALLOWED_PAGE_SIZES, Page
 
 
 def build_configuration_pagination(
-    page: ConfigurationPage[object],
+    page: Page[object],
     *,
     id_prefix: str,
 ) -> Component:
-    if not isinstance(page, ConfigurationPage):
-        raise TypeError('Configuration pagination requires a ConfigurationPage')
+    if not isinstance(page, Page):
+        raise TypeError('Configuration pagination requires a Page')
     prefix = id_prefix.strip() if isinstance(id_prefix, str) else ''
     if not prefix:
         raise ValueError('Configuration pagination id prefix must not be empty')
@@ -60,7 +57,7 @@ def build_configuration_pagination(
                             id=f'{prefix}--pagination-page-size',
                             options=[
                                 {'label': str(value), 'value': value}
-                                for value in ALLOWED_CONFIGURATION_PAGE_SIZES
+                                for value in ALLOWED_PAGE_SIZES
                             ],
                             value=page.request.page_size,
                             clearable=False,
@@ -104,14 +101,14 @@ def configuration_dash_select_style() -> dict[str, str]:
     }
 
 
-def _summary(page: ConfigurationPage[object]) -> str:
+def _summary(page: Page[object]) -> str:
     if page.total_count == 0:
         return 'Mostrando 0 de 0'
     return f'Mostrando {page.start_index}–{page.end_index} de {page.total_count}'
 
 
 def _page_buttons(
-    page: ConfigurationPage[object],
+    page: Page[object],
     *,
     id_prefix: str,
 ) -> list[Component]:
