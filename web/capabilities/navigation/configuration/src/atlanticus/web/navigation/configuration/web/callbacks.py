@@ -20,7 +20,7 @@ from atlanticus.web.navigation.configuration.exchange import (
     decode_navigation_configuration_import,
 )
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
-from atlanticus.web.navigation.configuration.profiles import selectable_profile_options
+from atlanticus.web.navigation.configuration.profiles import profile_definitions
 from atlanticus.web.navigation.configuration.web.ids import (
     ADD_GROUP_ID,
     ADD_ROOT_LINK_ID,
@@ -499,14 +499,9 @@ def _profile_options(
     *,
     extra_keys: tuple[str, ...] = (),
 ) -> list[dict[str, str]]:
-    provider = context.profile_options_provider
-    try:
-        external = provider() if provider is not None else ()
-    except Exception:
-        external = ()
     options = [
         {'label': profile.label, 'value': profile.key}
-        for profile in selectable_profile_options(external)
+        for profile in profile_definitions(context.profile_catalog_provider)
     ]
     known = {option['value'] for option in options}
     options.extend({'label': key, 'value': key} for key in extra_keys if key not in known)
@@ -536,8 +531,6 @@ def _profile_keys(selected: list[str] | None) -> tuple[str, ...]:
         key = str(raw).strip().casefold()
         if not key or any(character.isspace() for character in key):
             raise ValueError('Navigation profile key is invalid')
-        if key in {'local', 'administrator'}:
-            continue
         if key not in result:
             result.append(key)
     return tuple(result)

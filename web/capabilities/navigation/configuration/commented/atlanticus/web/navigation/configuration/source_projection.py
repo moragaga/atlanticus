@@ -1,5 +1,5 @@
-# Espejo pedagógico del archivo productivo; conserva exactamente su comportamiento.
-# Los comentarios en español describen responsabilidades sin alterar el contrato ejecutable.
+# Los validators pertenecen al contrato de configuración de Navigation y pueden reutilizarse
+# tanto antes de publicar un draft como al construir la proyección durable.
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -8,7 +8,9 @@ from typing import Literal
 
 from atlanticus.web.navigation.configuration.errors import NavigationConfigurationProjectionError
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
+from atlanticus.web.navigation.configuration.profiles import NavigationProfileCatalogProvider
 from atlanticus.web.navigation.configuration.source_release import NavigationSourceCodec
+from atlanticus.web.profiles.errors import ProfilesDefinitionError
 from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.projection.service import ProjectionBuilder, SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
@@ -19,14 +21,12 @@ NavigationProjectionIssueLevel = Literal['error', 'warning']
 
 
 @dataclass(frozen=True, slots=True)
-# Responsabilidad: NavigationProjectionIssue encapsula una frontera explícita del contrato vigente.
 class NavigationProjectionIssue:
     code: str
     message: str
     level: NavigationProjectionIssueLevel = 'error'
     path: str | None = None
 
-    # Operación: __post_init__ mantiene la misma semántica que el código productivo.
     def __post_init__(self) -> None:
         if not self.code.strip():
             raise NavigationConfigurationProjectionError(
@@ -48,9 +48,30 @@ NavigationProjectionValidator = Callable[
 ]
 
 
-# Responsabilidad: NavigationProjectionBuilder encapsula una frontera explícita del contrato vigente.
+def create_navigation_profile_catalog_validator(
+    profile_catalog_provider: NavigationProfileCatalogProvider,
+) -> NavigationProjectionValidator:
+    def validate(
+        catalog: NavigationConfigurationCatalog,
+    ) -> tuple[NavigationProjectionIssue, ...]:
+        profile_catalog = profile_catalog_provider()
+        issues: list[NavigationProjectionIssue] = []
+        for profile_key in catalog.configured_profiles():
+            try:
+                profile_catalog.require(profile_key)
+            except ProfilesDefinitionError:
+                issues.append(
+                    NavigationProjectionIssue(
+                        code='navigation.profile.unknown',
+                        message=f'Unknown navigation profile {profile_key!r}',
+                    )
+                )
+        return tuple(issues)
+
+    return validate
+
+
 class NavigationProjectionBuilder(ProjectionBuilder[NavigationConfigurationCatalog]):
-    # Operación: __init__ mantiene la misma semántica que el código productivo.
     def __init__(
         self,
         *,
@@ -60,7 +81,6 @@ class NavigationProjectionBuilder(ProjectionBuilder[NavigationConfigurationCatal
         self._codec = codec or NavigationSourceCodec()
         self._validators = validators
 
-    # Operación: build mantiene la misma semántica que el código productivo.
     def build(
         self,
         *,
@@ -79,7 +99,6 @@ class NavigationProjectionBuilder(ProjectionBuilder[NavigationConfigurationCatal
         return catalog
 
 
-# Operación: create_navigation_projection_service mantiene la misma semántica que el código productivo.
 def create_navigation_projection_service(
     *,
     source: SourceStore,

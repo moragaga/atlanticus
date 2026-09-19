@@ -1,5 +1,5 @@
-# Espejo pedagógico del archivo productivo; conserva exactamente su comportamiento.
-# Los comentarios en español describen responsabilidades sin alterar el contrato ejecutable.
+# Los callbacks traducen el ProfileCatalog a opciones de UI sin introducir perfiles base.
+# Las claves ya persistidas se conservan visualmente para evitar pérdida accidental al editar.
 from __future__ import annotations
 
 import base64
@@ -22,7 +22,7 @@ from atlanticus.web.navigation.configuration.exchange import (
     decode_navigation_configuration_import,
 )
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
-from atlanticus.web.navigation.configuration.profiles import selectable_profile_options
+from atlanticus.web.navigation.configuration.profiles import profile_definitions
 from atlanticus.web.navigation.configuration.web.ids import (
     ADD_GROUP_ID,
     ADD_ROOT_LINK_ID,
@@ -70,14 +70,12 @@ _MODAL_OPEN = 'atlanticus-navigation-admin__modal atlanticus-navigation-admin__m
 _ROOT_SECTION_VALUE = '__root__'
 
 
-# Operación: register_navigation_admin_callbacks mantiene la misma semántica que el código productivo.
 def register_navigation_admin_callbacks(app: object, context: NavigationAdminWebContext) -> None:
     @app.callback(
         Output(CATALOG_STORE_ID, 'data'),
         Input(MOUNT_STORE_ID, 'data'),
         Input(context.draft_store_id, 'data'),
     )
-    # Operación: load_browser_draft mantiene la misma semántica que el código productivo.
     def load_browser_draft(_mounted: object, draft_data: dict[str, object] | None):
         try:
             payload = context.workspace_payload_reader(draft_data)
@@ -92,7 +90,6 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         Input(CATALOG_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
-    # Operación: track_editor_revision mantiene la misma semántica que el código productivo.
     def track_editor_revision(catalog_data: dict[str, object] | None):
         try:
             return build_navigation_configuration_digest(_catalog(catalog_data))
@@ -103,7 +100,6 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         Output(STRUCTURE_ID, 'children'),
         Input(CATALOG_STORE_ID, 'data'),
     )
-    # Operación: render_catalog mantiene la misma semántica que el código productivo.
     def render_catalog(catalog_data: dict[str, object] | None):
         return navigation_structure(_catalog(catalog_data))
 
@@ -129,7 +125,6 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         State(CATALOG_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
-    # Operación: open_link_editor mantiene la misma semántica que el código productivo.
     def open_link_editor(
         root_clicks: int | None,
         _group_clicks: list[int | None],
@@ -174,7 +169,6 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         Input(LINK_CANCEL_ID + '-header', 'n_clicks'),
         prevent_initial_call=True,
     )
-    # Operación: close_link_editor mantiene la misma semántica que el código productivo.
     def close_link_editor(clicks: int | None, header_clicks: int | None):
         if _click_is_real(clicks) or _click_is_real(header_clicks):
             return _MODAL_CLOSED
@@ -197,7 +191,6 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         State(CATALOG_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
-    # Operación: save_link mantiene la misma semántica que el código productivo.
     def save_link(
         clicks: int | None,
         editor: dict[str, object] | None,
@@ -240,7 +233,6 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         State(CATALOG_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
-    # Operación: link_action mantiene la misma semántica que el código productivo.
     def link_action(
         _delete_clicks: list[int | None],
         _up_clicks: list[int | None],
@@ -284,7 +276,6 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         State(CATALOG_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
-    # Operación: open_group_editor mantiene la misma semántica que el código productivo.
     def open_group_editor(
         add_clicks: int | None,
         _edit_clicks: list[int | None],
@@ -311,7 +302,6 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         Input(GROUP_CANCEL_ID + '-header', 'n_clicks'),
         prevent_initial_call=True,
     )
-    # Operación: close_group_editor mantiene la misma semántica que el código productivo.
     def close_group_editor(clicks: int | None, header_clicks: int | None):
         if _click_is_real(clicks) or _click_is_real(header_clicks):
             return _MODAL_CLOSED
@@ -329,7 +319,6 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         State(CATALOG_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
-    # Operación: save_group mantiene la misma semántica que el código productivo.
     def save_group(
         clicks: int | None,
         editor: dict[str, object] | None,
@@ -372,7 +361,6 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         State(CATALOG_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
-    # Operación: group_action mantiene la misma semántica que el código productivo.
     def group_action(
         _delete_clicks: list[int | None],
         _up_clicks: list[int | None],
@@ -410,7 +398,6 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         State(context.draft_store_id, 'data'),
         prevent_initial_call=True,
     )
-    # Operación: import_configuration mantiene la misma semántica que el código productivo.
     def import_configuration(
         contents: str | None,
         current_draft: dict[str, object] | None,
@@ -439,7 +426,6 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         State(context.draft_store_id, 'data'),
         prevent_initial_call=True,
     )
-    # Operación: save_navigation_draft mantiene la misma semántica que el código productivo.
     def save_navigation_draft(
         content_clicks: int | None,
         workflow_clicks: int | None,
@@ -464,7 +450,6 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         return draft, draft, None
 
 
-# Operación: _link_editor_response mantiene la misma semántica que el código productivo.
 def _link_editor_response(
     *,
     context: NavigationAdminWebContext,
@@ -498,7 +483,6 @@ def _link_editor_response(
     )
 
 
-# Operación: _group_editor_response mantiene la misma semántica que el código productivo.
 def _group_editor_response(*, group=None):
     return (
         {'key': group.key if group else None},
@@ -512,34 +496,26 @@ def _group_editor_response(*, group=None):
     )
 
 
-# Operación: _profile_options mantiene la misma semántica que el código productivo.
 def _profile_options(
     context: NavigationAdminWebContext,
     *,
     extra_keys: tuple[str, ...] = (),
 ) -> list[dict[str, str]]:
-    provider = context.profile_options_provider
-    try:
-        external = provider() if provider is not None else ()
-    except Exception:
-        external = ()
     options = [
         {'label': profile.label, 'value': profile.key}
-        for profile in selectable_profile_options(external)
+        for profile in profile_definitions(context.profile_catalog_provider)
     ]
     known = {option['value'] for option in options}
     options.extend({'label': key, 'value': key} for key in extra_keys if key not in known)
     return options
 
 
-# Operación: _catalog mantiene la misma semántica que el código productivo.
 def _catalog(data: dict[str, object] | None) -> NavigationConfigurationCatalog:
     if not isinstance(data, dict):
         raise ValueError('Navigation catalog is not available')
     return NavigationConfigurationCatalog.from_document(data)
 
 
-# Operación: _find_link mantiene la misma semántica que el código productivo.
 def _find_link(catalog: NavigationConfigurationCatalog, key: str):
     for link in catalog.links:
         if link.key == key:
@@ -551,21 +527,17 @@ def _find_link(catalog: NavigationConfigurationCatalog, key: str):
     return None
 
 
-# Operación: _profile_keys mantiene la misma semántica que el código productivo.
 def _profile_keys(selected: list[str] | None) -> tuple[str, ...]:
     result: list[str] = []
     for raw in selected or []:
         key = str(raw).strip().casefold()
         if not key or any(character.isspace() for character in key):
             raise ValueError('Navigation profile key is invalid')
-        if key in {'local', 'administrator'}:
-            continue
         if key not in result:
             result.append(key)
     return tuple(result)
 
 
-# Operación: _section_key mantiene la misma semántica que el código productivo.
 def _section_key(value: str | None) -> str | None:
     normalized = _optional_text(value)
     if normalized in {None, _ROOT_SECTION_VALUE}:
@@ -573,7 +545,6 @@ def _section_key(value: str | None) -> str | None:
     return normalized
 
 
-# Operación: _optional_text mantiene la misma semántica que el código productivo.
 def _optional_text(value: object) -> str | None:
     if value is None:
         return None
@@ -581,7 +552,6 @@ def _optional_text(value: object) -> str | None:
     return normalized or None
 
 
-# Operación: _save_draft_click_is_real mantiene la misma semántica que el código productivo.
 def _save_draft_click_is_real(
     trigger: object,
     *,
@@ -596,7 +566,6 @@ def _save_draft_click_is_real(
     return trigger == workflow_id and _click_is_real(workflow_clicks)
 
 
-# Operación: _triggered_click_is_real mantiene la misma semántica que el código productivo.
 def _triggered_click_is_real() -> bool:
     triggered = ctx.triggered
     if not triggered:
@@ -604,11 +573,9 @@ def _triggered_click_is_real() -> bool:
     return _click_is_real(triggered[0].get('value'))
 
 
-# Operación: _click_is_real mantiene la misma semántica que el código productivo.
 def _click_is_real(value: int | None) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
 
-# Operación: _error mantiene la misma semántica que el código productivo.
 def _error(message: str) -> object:
     return html.Div(message, className='atlanticus-navigation-admin__error')

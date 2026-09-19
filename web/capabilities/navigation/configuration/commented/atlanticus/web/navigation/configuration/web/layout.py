@@ -1,5 +1,5 @@
-# Espejo pedagógico del archivo productivo; conserva exactamente su comportamiento.
-# Los comentarios en español describen responsabilidades sin alterar el contrato ejecutable.
+# La vista describe únicamente el catálogo realmente inyectado por la composición.
+# Un provider ausente produce una vista sin perfiles; un fallo del provider se propaga.
 from __future__ import annotations
 
 import dash_bootstrap_components as dbc
@@ -7,7 +7,7 @@ from dash import dcc, html
 
 from atlanticus.web.navigation.configuration.editor import build_initial_catalog
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
-from atlanticus.web.navigation.configuration.profiles import resolve_profile_options
+from atlanticus.web.navigation.configuration.profiles import profile_definitions
 from atlanticus.web.navigation.configuration.web.ids import (
     ADD_GROUP_ID,
     ADD_ROOT_LINK_ID,
@@ -52,7 +52,6 @@ from atlanticus.web.navigation.configuration.web.rendering import navigation_str
 _MODAL_CLOSED = 'atlanticus-navigation-admin__modal'
 
 
-# Operación: build_navigation_admin_configuration mantiene la misma semántica que el código productivo.
 def build_navigation_admin_configuration(context: NavigationAdminWebContext) -> object:
     catalog = build_initial_catalog()
     return html.Div(
@@ -72,7 +71,6 @@ def build_navigation_admin_configuration(context: NavigationAdminWebContext) -> 
     )
 
 
-# Operación: _runtime_context mantiene la misma semántica que el código productivo.
 def _runtime_context(context: NavigationAdminWebContext) -> object:
     return html.Section(
         [
@@ -114,28 +112,30 @@ def _runtime_context(context: NavigationAdminWebContext) -> object:
     )
 
 
-# Operación: _profiles_context mantiene la misma semántica que el código productivo.
 def _profiles_context(context: NavigationAdminWebContext) -> object:
-    provider = context.profile_options_provider
-    try:
-        external = provider() if provider is not None else ()
-    except Exception:
-        external = ()
-    profiles = resolve_profile_options(external)
+    profiles = profile_definitions(context.profile_catalog_provider)
+    profile_content: object
+    if profiles:
+        profile_content = [_profile_badge(profile) for profile in profiles]
+    else:
+        profile_content = html.P(
+            'No hay un catálogo de perfiles configurado para esta composición.',
+            className='atlanticus-navigation-admin__empty',
+        )
     return html.Section(
         [
             html.Div(
                 [
                     html.H3('Perfiles de acceso'),
                     html.P(
-                        'Local y Administrador tienen acceso total. Guest y los perfiles '
-                        'adicionales se asignan directamente a cada enlace.'
+                        'Los perfiles disponibles provienen del catálogo de perfiles configurado '
+                        'por la composición.'
                     ),
                 ],
                 className='atlanticus-navigation-admin__section-copy',
             ),
             html.Div(
-                [_profile_badge(profile) for profile in profiles],
+                profile_content,
                 className='atlanticus-navigation-admin__profiles',
             ),
         ],
@@ -143,20 +143,17 @@ def _profiles_context(context: NavigationAdminWebContext) -> object:
     )
 
 
-# Operación: _profile_badge mantiene la misma semántica que el código productivo.
 def _profile_badge(profile) -> object:
-    classes = 'atlanticus-navigation-admin__profile'
-    if profile.unrestricted:
-        classes += ' atlanticus-navigation-admin__profile--unrestricted'
-    style = {}
-    if profile.background_color:
-        style['backgroundColor'] = profile.background_color
-    if profile.text_color:
-        style['color'] = profile.text_color
-    return html.Span(profile.label, className=classes, style=style)
+    return html.Span(
+        profile.label,
+        className='atlanticus-navigation-admin__profile',
+        style={
+            'backgroundColor': profile.background_color,
+            'color': profile.text_color,
+        },
+    )
 
 
-# Operación: _structure_section mantiene la misma semántica que el código productivo.
 def _structure_section(catalog: NavigationConfigurationCatalog) -> object:
     return html.Section(
         [
@@ -200,7 +197,6 @@ def _structure_section(catalog: NavigationConfigurationCatalog) -> object:
     )
 
 
-# Operación: _save_section mantiene la misma semántica que el código productivo.
 def _save_section() -> object:
     return html.Section(
         [
@@ -233,7 +229,6 @@ def _save_section() -> object:
     )
 
 
-# Operación: _link_modal mantiene la misma semántica que el código productivo.
 def _link_modal() -> object:
     return html.Div(
         html.Div(
@@ -345,7 +340,6 @@ def _link_modal() -> object:
     )
 
 
-# Operación: _group_modal mantiene la misma semántica que el código productivo.
 def _group_modal() -> object:
     return html.Div(
         html.Div(
@@ -413,7 +407,6 @@ def _group_modal() -> object:
     )
 
 
-# Operación: _modal_header mantiene la misma semántica que el código productivo.
 def _modal_header(*, title_id: str, close_id: str) -> object:
     return html.Header(
         [
@@ -429,7 +422,6 @@ def _modal_header(*, title_id: str, close_id: str) -> object:
     )
 
 
-# Operación: _dash_select_style mantiene la misma semántica que el código productivo.
 def _dash_select_style() -> dict[str, str]:
     return {
         '--Dash-Spacing': '4px',
@@ -450,7 +442,6 @@ def _dash_select_style() -> dict[str, str]:
     }
 
 
-# Operación: _field mantiene la misma semántica que el código productivo.
 def _field(label: str, control: object) -> object:
     return html.Label(
         [html.Span(label), control],
@@ -458,7 +449,6 @@ def _field(label: str, control: object) -> object:
     )
 
 
-# Operación: _check mantiene la misma semántica que el código productivo.
 def _check(component_id: str, label: str, value: str) -> object:
     del value
     return dbc.Checkbox(

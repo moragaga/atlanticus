@@ -1,3 +1,5 @@
+import pytest
+
 from atlanticus.web.navigation.configuration.editor import (
     build_initial_catalog,
     create_group,
@@ -6,48 +8,42 @@ from atlanticus.web.navigation.configuration.editor import (
     reorder_root_node,
     upsert_link,
 )
-from atlanticus.web.navigation.configuration.profiles import (
-    NavigationProfileOption,
-    resolve_profile_options,
-    selectable_profile_options,
-)
+from atlanticus.web.navigation.configuration.profiles import profile_definitions
+from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
 
 
-def test_standalone_profile_catalog_contains_atlanticus_base_profiles() -> None:
-    profiles = resolve_profile_options()
-
-    assert [profile.key for profile in profiles] == ['local', 'administrator', 'guest']
-    assert [profile.key for profile in selectable_profile_options()] == ['guest']
-    assert profiles[0].unrestricted
-    assert profiles[1].unrestricted
-    assert not profiles[2].unrestricted
+def _profile(key: str, label: str, color: str) -> ProfileDefinition:
+    return ProfileDefinition(
+        key=key,
+        label=label,
+        background_color=color,
+    )
 
 
-def test_external_profiles_enrich_without_replacing_base_semantics() -> None:
-    profiles = resolve_profile_options(
-        (
-            NavigationProfileOption(
-                key='administrator',
-                label='Administrador ADA',
-                background_color='#111111',
-                text_color='#FFFFFF',
-            ),
-            NavigationProfileOption(key='operador', label='Operador'),
+def test_navigation_profiles_are_empty_without_catalog_provider() -> None:
+    assert profile_definitions() == ()
+
+
+def test_navigation_profiles_come_directly_from_profile_catalog() -> None:
+    catalog = ProfileCatalog(
+        profiles=(
+            _profile('guest', 'Guest', '#111111'),
+            _profile('operator', 'Operator', '#222222'),
         )
     )
 
-    assert [profile.key for profile in profiles] == [
-        'local',
-        'administrator',
-        'guest',
-        'operador',
-    ]
-    assert profiles[1].label == 'Administrador ADA'
-    assert profiles[1].unrestricted
-    assert [profile.key for profile in selectable_profile_options(tuple(profiles))] == [
-        'guest',
-        'operador',
-    ]
+    profiles = profile_definitions(lambda: catalog)
+
+    assert profiles == catalog.all()
+    assert [profile.key for profile in profiles] == ['guest', 'operator']
+
+
+def test_navigation_profile_catalog_provider_errors_propagate() -> None:
+    def provider() -> ProfileCatalog:
+        raise RuntimeError('catalog unavailable')
+
+    with pytest.raises(RuntimeError, match='catalog unavailable'):
+        profile_definitions(provider)
 
 
 def test_editor_starts_empty_and_allows_empty_sections() -> None:

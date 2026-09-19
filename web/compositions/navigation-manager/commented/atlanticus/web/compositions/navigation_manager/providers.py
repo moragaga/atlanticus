@@ -1,5 +1,5 @@
-# Espejo pedagógico del archivo productivo; conserva exactamente su comportamiento.
-# Los comentarios en español describen responsabilidades sin alterar el contrato ejecutable.
+# Los providers Local y Azure exponen exactamente el mismo contrato de composición.
+# No existen aliases ni parámetros legacy para perfiles o validators.
 from __future__ import annotations
 
 from atlanticus.connectivity.cosmos import CosmosClient
@@ -7,7 +7,6 @@ from atlanticus.connectivity.storage import StorageClient
 from atlanticus.web.compositions.navigation_manager.composition import (
     NavigationManagerComposition,
     NavigationPrincipalProvider,
-    NavigationProfileOptionsProvider,
     compose_navigation_manager,
 )
 from atlanticus.web.compositions.navigation_manager.workflows import (
@@ -15,6 +14,7 @@ from atlanticus.web.compositions.navigation_manager.workflows import (
 )
 from atlanticus.web.manager.authorization import ManagerAuthorizationPolicy
 from atlanticus.web.manager.models import ManagerModuleAccess
+from atlanticus.web.navigation.configuration.profiles import NavigationProfileCatalogProvider
 from atlanticus.web.navigation.configuration.source_projection import NavigationProjectionValidator
 from atlanticus.web.navigation.projection.cosmos import (
     CosmosNavigationProjectionStore,
@@ -29,7 +29,6 @@ from atlanticus.web.source.blob import BlobSourceSettings, BlobSourceStore
 from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
 
 
-# Operación: compose_local_navigation_manager mantiene la misma semántica que el código productivo.
 def compose_local_navigation_manager(
     *,
     services: ServiceRegistry,
@@ -43,8 +42,8 @@ def compose_local_navigation_manager(
     access: ManagerModuleAccess | None = None,
     authorization: ManagerAuthorizationPolicy | None = None,
     audit_actor_provider: NavigationAuditActorProvider | None = None,
-    profile_options_provider: NavigationProfileOptionsProvider | None = None,
-    projection_validators: tuple[NavigationProjectionValidator, ...] = (),
+    profile_catalog_provider: NavigationProfileCatalogProvider | None = None,
+    validators: tuple[NavigationProjectionValidator, ...] = (),
 ) -> NavigationManagerComposition:
     return compose_navigation_manager(
         services=services,
@@ -58,12 +57,11 @@ def compose_local_navigation_manager(
         access=access,
         authorization=authorization,
         audit_actor_provider=audit_actor_provider,
-        profile_options_provider=profile_options_provider,
-        projection_validators=projection_validators,
+        profile_catalog_provider=profile_catalog_provider,
+        validators=validators,
     )
 
 
-# Operación: compose_azure_navigation_manager mantiene la misma semántica que el código productivo.
 def compose_azure_navigation_manager(
     *,
     services: ServiceRegistry,
@@ -79,8 +77,8 @@ def compose_azure_navigation_manager(
     access: ManagerModuleAccess | None = None,
     authorization: ManagerAuthorizationPolicy | None = None,
     audit_actor_provider: NavigationAuditActorProvider | None = None,
-    profile_options_provider: NavigationProfileOptionsProvider | None = None,
-    projection_validators: tuple[NavigationProjectionValidator, ...] = (),
+    profile_catalog_provider: NavigationProfileCatalogProvider | None = None,
+    validators: tuple[NavigationProjectionValidator, ...] = (),
 ) -> NavigationManagerComposition:
     return compose_navigation_manager(
         services=services,
@@ -97,6 +95,6 @@ def compose_azure_navigation_manager(
         access=access,
         authorization=authorization,
         audit_actor_provider=audit_actor_provider,
-        profile_options_provider=profile_options_provider,
-        projection_validators=projection_validators,
+        profile_catalog_provider=profile_catalog_provider,
+        validators=validators,
     )

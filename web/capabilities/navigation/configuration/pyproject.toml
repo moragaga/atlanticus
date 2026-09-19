@@ -10,6 +10,7 @@ requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "atlanticus-web-navigation==0.1.0",
+    "atlanticus-web-profiles==0.1.0",
     "atlanticus-web-projection==0.1.0",
     "atlanticus-web-source==0.1.0",
 ]
@@ -24,6 +25,7 @@ web = [
 
 [tool.uv.sources]
 atlanticus-web-navigation = { workspace = true }
+atlanticus-web-profiles = { workspace = true }
 atlanticus-web-projection = { workspace = true }
 atlanticus-web-source = { workspace = true }
 atlanticus-web = { workspace = true }

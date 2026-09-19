@@ -20,6 +20,7 @@ from atlanticus.web.navigation.configuration.errors import (
     NavigationConfigurationValidationError,
 )
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
+from atlanticus.web.navigation.configuration.source_projection import NavigationProjectionValidator
 from atlanticus.web.navigation.configuration.source_release import NavigationSourceService
 from atlanticus.web.source.models import HistoryPage, SourceKey, SourceReleaseRef, SourceSnapshot
 
@@ -82,9 +83,7 @@ class NavigationManagerSourceWorkflow:
             )
         current = self._source.get_current()
         if current.current != expected_source_snapshot.current:
-            raise NavigationConfigurationSourceError(
-                'Navigation source changed before publication'
-            )
+            raise NavigationConfigurationSourceError('Navigation source changed before publication')
         actor = self._audit_actor_provider().strip()
         if not actor:
             raise NavigationConfigurationSourceError(
@@ -109,8 +108,14 @@ class NavigationManagerSourceWorkflow:
 
 
 class NavigationManagerDraftValidationWorkflow:
-    def __init__(self, *, audit_actor_provider: NavigationAuditActorProvider) -> None:
+    def __init__(
+        self,
+        *,
+        audit_actor_provider: NavigationAuditActorProvider,
+        validators: tuple[NavigationProjectionValidator, ...] = (),
+    ) -> None:
         self._audit_actor_provider = audit_actor_provider
+        self._validators = validators
 
     def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult:
         audit = ProjectionAuditRecord(
@@ -133,10 +138,21 @@ class NavigationManagerDraftValidationWorkflow:
                     ),
                 ),
             )
+        issues = tuple(
+            ProjectionIssue(
+                code=issue.code,
+                message=issue.message,
+                level=issue.level,
+                path=issue.path,
+            )
+            for validator in self._validators
+            for issue in validator(catalog)
+        )
         return DraftValidationResult(
             draft_revision=revision,
-            valid=True,
+            valid=not any(issue.level == 'error' for issue in issues),
             audit=audit,
+            issues=issues,
             summary=_summary(catalog),
         )
 

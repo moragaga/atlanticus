@@ -114,10 +114,6 @@
     font-weight: 700;
 }
 
-.atlanticus-navigation-admin__profile--unrestricted {
-    border-color: rgb(201 162 75 / 55%);
-}
-
 .atlanticus-navigation-admin__link-card,
 .atlanticus-navigation-admin__group-card {
     min-width: 0;

@@ -5,7 +5,7 @@ from dash import dcc, html
 
 from atlanticus.web.navigation.configuration.editor import build_initial_catalog
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
-from atlanticus.web.navigation.configuration.profiles import resolve_profile_options
+from atlanticus.web.navigation.configuration.profiles import profile_definitions
 from atlanticus.web.navigation.configuration.web.ids import (
     ADD_GROUP_ID,
     ADD_ROOT_LINK_ID,
@@ -111,26 +111,29 @@ def _runtime_context(context: NavigationAdminWebContext) -> object:
 
 
 def _profiles_context(context: NavigationAdminWebContext) -> object:
-    provider = context.profile_options_provider
-    try:
-        external = provider() if provider is not None else ()
-    except Exception:
-        external = ()
-    profiles = resolve_profile_options(external)
+    profiles = profile_definitions(context.profile_catalog_provider)
+    profile_content: object
+    if profiles:
+        profile_content = [_profile_badge(profile) for profile in profiles]
+    else:
+        profile_content = html.P(
+            'No hay un catálogo de perfiles configurado para esta composición.',
+            className='atlanticus-navigation-admin__empty',
+        )
     return html.Section(
         [
             html.Div(
                 [
                     html.H3('Perfiles de acceso'),
                     html.P(
-                        'Local y Administrador tienen acceso total. Guest y los perfiles '
-                        'adicionales se asignan directamente a cada enlace.'
+                        'Los perfiles disponibles provienen del catálogo de perfiles configurado '
+                        'por la composición.'
                     ),
                 ],
                 className='atlanticus-navigation-admin__section-copy',
             ),
             html.Div(
-                [_profile_badge(profile) for profile in profiles],
+                profile_content,
                 className='atlanticus-navigation-admin__profiles',
             ),
         ],
@@ -139,15 +142,14 @@ def _profiles_context(context: NavigationAdminWebContext) -> object:
 
 
 def _profile_badge(profile) -> object:
-    classes = 'atlanticus-navigation-admin__profile'
-    if profile.unrestricted:
-        classes += ' atlanticus-navigation-admin__profile--unrestricted'
-    style = {}
-    if profile.background_color:
-        style['backgroundColor'] = profile.background_color
-    if profile.text_color:
-        style['color'] = profile.text_color
-    return html.Span(profile.label, className=classes, style=style)
+    return html.Span(
+        profile.label,
+        className='atlanticus-navigation-admin__profile',
+        style={
+            'backgroundColor': profile.background_color,
+            'color': profile.text_color,
+        },
+    )
 
 
 def _structure_section(catalog: NavigationConfigurationCatalog) -> object:

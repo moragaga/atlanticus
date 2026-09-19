@@ -10,6 +10,7 @@ from atlanticus.web.navigation.configuration.models import (
     NavigationConfigurationCatalog,
     NavigationLinkConfiguration,
 )
+from atlanticus.web.navigation.configuration.source_projection import NavigationProjectionIssue
 from atlanticus.web.source.models import (
     ConcurrencyToken,
     Digest,
@@ -128,9 +129,7 @@ def test_source_workflow_publishes_with_fresh_token_when_release_identity_is_unc
 
 def test_validation_workflow_uses_manager_workspace_revision() -> None:
     payload = _catalog().to_document()
-    workflow = NavigationManagerDraftValidationWorkflow(
-        audit_actor_provider=lambda: 'tester'
-    )
+    workflow = NavigationManagerDraftValidationWorkflow(audit_actor_provider=lambda: 'tester')
 
     result = workflow.validate_draft(payload)
 
@@ -141,11 +140,49 @@ def test_validation_workflow_uses_manager_workspace_revision() -> None:
 
 def test_validation_workflow_reports_invalid_navigation_payload() -> None:
     payload = {'links': 'invalid', 'groups': []}
-    workflow = NavigationManagerDraftValidationWorkflow(
-        audit_actor_provider=lambda: 'tester'
-    )
+    workflow = NavigationManagerDraftValidationWorkflow(audit_actor_provider=lambda: 'tester')
 
     result = workflow.validate_draft(payload)
 
     assert not result.valid
     assert result.issues[0].code == 'navigation.configuration.invalid'
+
+
+def test_validation_workflow_applies_configured_navigation_validators() -> None:
+    workflow = NavigationManagerDraftValidationWorkflow(
+        audit_actor_provider=lambda: 'tester',
+        validators=(
+            lambda _catalog: (
+                NavigationProjectionIssue(
+                    code='navigation.profile.unknown',
+                    message="Unknown navigation profile 'operator'",
+                ),
+            ),
+        ),
+    )
+
+    result = workflow.validate_draft(_catalog().to_document())
+
+    assert not result.valid
+    assert result.issues[0].code == 'navigation.profile.unknown'
+
+
+def test_validation_workflow_preserves_warning_without_rejecting_draft() -> None:
+    workflow = NavigationManagerDraftValidationWorkflow(
+        audit_actor_provider=lambda: 'tester',
+        validators=(
+            lambda _catalog: (
+                NavigationProjectionIssue(
+                    code='navigation.warning',
+                    message='Navigation warning',
+                    level='warning',
+                ),
+            ),
+        ),
+    )
+
+    result = workflow.validate_draft(_catalog().to_document())
+
+    assert result.valid
+    assert result.issues[0].level == 'warning'
+    assert result.summary

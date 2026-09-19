@@ -1,5 +1,5 @@
-# Espejo pedagógico del archivo productivo; conserva exactamente su comportamiento.
-# Los comentarios en español describen responsabilidades sin alterar el contrato ejecutable.
+# El workflow de validación ejecuta los mismos validators que usa la proyección.
+# Los errores invalidan el draft y los warnings se preservan sin bloquearlo.
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -22,15 +22,14 @@ from atlanticus.web.navigation.configuration.errors import (
     NavigationConfigurationValidationError,
 )
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
+from atlanticus.web.navigation.configuration.source_projection import NavigationProjectionValidator
 from atlanticus.web.navigation.configuration.source_release import NavigationSourceService
 from atlanticus.web.source.models import HistoryPage, SourceKey, SourceReleaseRef, SourceSnapshot
 
 NavigationAuditActorProvider = Callable[[], str]
 
 
-# Responsabilidad: NavigationManagerSourceWorkflow encapsula una frontera explícita del contrato vigente.
 class NavigationManagerSourceWorkflow:
-    # Operación: __init__ mantiene la misma semántica que el código productivo.
     def __init__(
         self,
         *,
@@ -41,15 +40,12 @@ class NavigationManagerSourceWorkflow:
         self._audit_actor_provider = audit_actor_provider
 
     @property
-    # Operación: source_key mantiene la misma semántica que el código productivo.
     def source_key(self) -> SourceKey:
         return self._source.source_key
 
-    # Operación: get_source_snapshot mantiene la misma semántica que el código productivo.
     def get_source_snapshot(self) -> SourceSnapshot:
         return self._source.get_current()
 
-    # Operación: load_current_source mantiene la misma semántica que el código productivo.
     def load_current_source(self) -> SourceReadResult:
         snapshot = self._source.get_current()
         if snapshot.current is None:
@@ -65,11 +61,9 @@ class NavigationManagerSourceWorkflow:
             payload=release.catalog.to_document(),
         )
 
-    # Operación: list_history mantiene la misma semántica que el código productivo.
     def list_history(self, *, limit: int = 20) -> HistoryPage:
         return self._source.query_history(page_size=limit)
 
-    # Operación: load_history_release mantiene la misma semántica que el código productivo.
     def load_history_release(
         self,
         release_ref: SourceReleaseRef,
@@ -80,7 +74,6 @@ class NavigationManagerSourceWorkflow:
             payload=release.catalog.to_document(),
         )
 
-    # Operación: publish_draft mantiene la misma semántica que el código productivo.
     def publish_draft(
         self,
         payload: dict[str, object],
@@ -118,13 +111,16 @@ class NavigationManagerSourceWorkflow:
         )
 
 
-# Responsabilidad: NavigationManagerDraftValidationWorkflow encapsula una frontera explícita del contrato vigente.
 class NavigationManagerDraftValidationWorkflow:
-    # Operación: __init__ mantiene la misma semántica que el código productivo.
-    def __init__(self, *, audit_actor_provider: NavigationAuditActorProvider) -> None:
+    def __init__(
+        self,
+        *,
+        audit_actor_provider: NavigationAuditActorProvider,
+        validators: tuple[NavigationProjectionValidator, ...] = (),
+    ) -> None:
         self._audit_actor_provider = audit_actor_provider
+        self._validators = validators
 
-    # Operación: validate_draft mantiene la misma semántica que el código productivo.
     def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult:
         audit = ProjectionAuditRecord(
             actor=self._audit_actor_provider().strip(),
@@ -146,15 +142,25 @@ class NavigationManagerDraftValidationWorkflow:
                     ),
                 ),
             )
+        issues = tuple(
+            ProjectionIssue(
+                code=issue.code,
+                message=issue.message,
+                level=issue.level,
+                path=issue.path,
+            )
+            for validator in self._validators
+            for issue in validator(catalog)
+        )
         return DraftValidationResult(
             draft_revision=revision,
-            valid=True,
+            valid=not any(issue.level == 'error' for issue in issues),
             audit=audit,
+            issues=issues,
             summary=_summary(catalog),
         )
 
 
-# Operación: _summary mantiene la misma semántica que el código productivo.
 def _summary(
     catalog: NavigationConfigurationCatalog,
 ) -> tuple[ProjectionSummaryItem, ...]:

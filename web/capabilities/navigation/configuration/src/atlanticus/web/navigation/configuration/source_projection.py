@@ -6,7 +6,9 @@ from typing import Literal
 
 from atlanticus.web.navigation.configuration.errors import NavigationConfigurationProjectionError
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
+from atlanticus.web.navigation.configuration.profiles import NavigationProfileCatalogProvider
 from atlanticus.web.navigation.configuration.source_release import NavigationSourceCodec
+from atlanticus.web.profiles.errors import ProfilesDefinitionError
 from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.projection.service import ProjectionBuilder, SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
@@ -42,6 +44,29 @@ NavigationProjectionValidator = Callable[
     [NavigationConfigurationCatalog],
     tuple[NavigationProjectionIssue, ...],
 ]
+
+
+def create_navigation_profile_catalog_validator(
+    profile_catalog_provider: NavigationProfileCatalogProvider,
+) -> NavigationProjectionValidator:
+    def validate(
+        catalog: NavigationConfigurationCatalog,
+    ) -> tuple[NavigationProjectionIssue, ...]:
+        profile_catalog = profile_catalog_provider()
+        issues: list[NavigationProjectionIssue] = []
+        for profile_key in catalog.configured_profiles():
+            try:
+                profile_catalog.require(profile_key)
+            except ProfilesDefinitionError:
+                issues.append(
+                    NavigationProjectionIssue(
+                        code='navigation.profile.unknown',
+                        message=f'Unknown navigation profile {profile_key!r}',
+                    )
+                )
+        return tuple(issues)
+
+    return validate
 
 
 class NavigationProjectionBuilder(ProjectionBuilder[NavigationConfigurationCatalog]):

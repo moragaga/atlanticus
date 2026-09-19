@@ -1,5 +1,4 @@
-# Espejo pedagógico del archivo productivo; conserva exactamente su comportamiento.
-# Los comentarios en español describen responsabilidades sin alterar el contrato ejecutable.
+# Superficie pública alineada con el contrato vigente, sin exports legacy.
 from atlanticus.web.navigation.configuration.exchange import (
     build_navigation_configuration_digest,
     decode_navigation_configuration_import,
@@ -9,7 +8,7 @@ from atlanticus.web.navigation.configuration.models import (
     NavigationGroupConfiguration,
     NavigationLinkConfiguration,
 )
-from atlanticus.web.navigation.configuration.profiles import NavigationProfileOption
+from atlanticus.web.navigation.configuration.profiles import NavigationProfileCatalogProvider
 from atlanticus.web.navigation.configuration.projection_record import (
     NAVIGATION_PROJECTION_DOCUMENT_TYPE,
     NAVIGATION_PROJECTION_SCHEMA_VERSION,
@@ -25,6 +24,7 @@ from atlanticus.web.navigation.configuration.source_projection import (
     NavigationProjectionIssue,
     NavigationProjectionIssueLevel,
     NavigationProjectionValidator,
+    create_navigation_profile_catalog_validator,
     create_navigation_projection_service,
 )
 from atlanticus.web.navigation.configuration.source_release import (
@@ -46,7 +46,7 @@ __all__ = [
     'NavigationConfigurationCatalog',
     'NavigationGroupConfiguration',
     'NavigationLinkConfiguration',
-    'NavigationProfileOption',
+    'NavigationProfileCatalogProvider',
     'NavigationProjectionBuilder',
     'NavigationProjectionIssue',
     'NavigationProjectionIssueLevel',
@@ -56,6 +56,7 @@ __all__ = [
     'NavigationSourceRelease',
     'NavigationSourceService',
     'build_navigation_configuration_digest',
+    'create_navigation_profile_catalog_validator',
     'create_navigation_projection_service',
     'create_projected_navigation_definition_provider',
     'create_projected_navigation_module',

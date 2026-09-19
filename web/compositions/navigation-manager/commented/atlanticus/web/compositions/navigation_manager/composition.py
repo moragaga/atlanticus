@@ -1,5 +1,5 @@
-# Espejo pedagógico del archivo productivo; conserva exactamente su comportamiento.
-# Los comentarios en español describen responsabilidades sin alterar el contrato ejecutable.
+# La composición construye una sola lista de validators y la comparte entre draft y projection.
+# Si existe ProfileCatalog, su validación referencial se agrega a esa misma lista.
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -29,9 +29,10 @@ from atlanticus.web.manager.web.ids import (
     workflow_saved_draft_id,
 )
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
-from atlanticus.web.navigation.configuration.profiles import NavigationProfileOption
+from atlanticus.web.navigation.configuration.profiles import NavigationProfileCatalogProvider
 from atlanticus.web.navigation.configuration.source_projection import (
     NavigationProjectionValidator,
+    create_navigation_profile_catalog_validator,
     create_navigation_projection_service,
 )
 from atlanticus.web.navigation.configuration.source_release import NavigationSourceService
@@ -45,12 +46,10 @@ NAVIGATION_MANAGER_SOURCE_SERVICE = 'navigation.configuration.source'
 NAVIGATION_MANAGER_PROJECTION_SERVICE = 'navigation.configuration.projection'
 NAVIGATION_MANAGER_VALIDATION_SERVICE = 'navigation.configuration.validation'
 
-NavigationProfileOptionsProvider = Callable[[], tuple[NavigationProfileOption, ...]]
 NavigationPrincipalProvider = Callable[[], ManagerPrincipal]
 
 
 @dataclass(frozen=True, slots=True)
-# Responsabilidad: NavigationManagerComposition encapsula una frontera explícita del contrato vigente.
 class NavigationManagerComposition:
     module: ManagerModule
     source_workflow: NavigationManagerSourceWorkflow
@@ -58,7 +57,6 @@ class NavigationManagerComposition:
     validation_workflow: NavigationManagerDraftValidationWorkflow
 
 
-# Operación: compose_navigation_manager mantiene la misma semántica que el código productivo.
 def compose_navigation_manager(
     *,
     services: ServiceRegistry,
@@ -74,13 +72,18 @@ def compose_navigation_manager(
     access: ManagerModuleAccess | None = None,
     authorization: ManagerAuthorizationPolicy | None = None,
     audit_actor_provider: NavigationAuditActorProvider | None = None,
-    profile_options_provider: NavigationProfileOptionsProvider | None = None,
-    projection_validators: tuple[NavigationProjectionValidator, ...] = (),
+    profile_catalog_provider: NavigationProfileCatalogProvider | None = None,
+    validators: tuple[NavigationProjectionValidator, ...] = (),
 ) -> NavigationManagerComposition:
     resolved_access = access or ManagerModuleAccess()
     resolved_authorization = authorization or DefaultManagerAuthorizationPolicy()
     resolved_actor_provider = audit_actor_provider or (
         lambda: principal_provider().subject_id
+    )
+    resolved_validators = (
+        (create_navigation_profile_catalog_validator(profile_catalog_provider), *validators)
+        if profile_catalog_provider is not None
+        else validators
     )
     source_service = NavigationSourceService(source=source_store, source_key=source_key)
     source_workflow = NavigationManagerSourceWorkflow(
@@ -89,11 +92,12 @@ def compose_navigation_manager(
     )
     validation_workflow = NavigationManagerDraftValidationWorkflow(
         audit_actor_provider=resolved_actor_provider,
+        validators=resolved_validators,
     )
     projection_service = create_navigation_projection_service(
         source=source_store,
         projection=projection_store,
-        validators=projection_validators,
+        validators=resolved_validators,
     )
     workspace = NavigationManagerWorkspaceBinding(
         source=source_workflow,
@@ -120,10 +124,9 @@ def compose_navigation_manager(
         ),
         source_name='Navigation Source',
         projection_name='Navigation Projection',
-        profile_options_provider=profile_options_provider,
+        profile_catalog_provider=profile_catalog_provider,
     )
 
-    # Operación: layout mantiene la misma semántica que el código productivo.
     def layout(_services: ServiceRegistry) -> object:
         return build_navigation_admin_configuration(context)
 
