@@ -52,6 +52,18 @@ def test_set_profile_access_rejects_undefined_access_key() -> None:
         )
 
 
+@pytest.mark.parametrize('profile_key', ['root', 'local'])
+def test_set_profile_access_rejects_unrestricted_profile(profile_key: str) -> None:
+    configuration = AdaAccessConfiguration(access_keys=('alarms.view',))
+
+    with pytest.raises(AdaAccessDefinitionError, match='does not accept explicit access grants'):
+        set_profile_access(
+            configuration,
+            profile_key=profile_key,
+            access_keys=('alarms.view',),
+        )
+
+
 def test_set_profile_access_with_empty_access_removes_sparse_grant() -> None:
     configured = set_profile_access(
         AdaAccessConfiguration(access_keys=('alarms.view',)),

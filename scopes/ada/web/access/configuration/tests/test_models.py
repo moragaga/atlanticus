@@ -83,6 +83,22 @@ def test_configuration_rejects_duplicate_profile_grants() -> None:
         )
 
 
+@pytest.mark.parametrize('profile_key', ['root', 'local'])
+def test_configuration_rejects_explicit_grants_for_unrestricted_profiles(
+    profile_key: str,
+) -> None:
+    with pytest.raises(AdaAccessDefinitionError, match='must not define explicit access grants'):
+        AdaAccessConfiguration(
+            access_keys=('navigation.view',),
+            profile_access=(
+                ProfileAccessGrant(
+                    profile_key=profile_key,
+                    access_keys=('navigation.view',),
+                ),
+            ),
+        )
+
+
 def test_configuration_validates_profile_references() -> None:
     configuration = AdaAccessConfiguration(
         access_keys=('navigation.view',),
@@ -110,6 +126,20 @@ def test_configuration_resolves_profile_without_grant_as_no_guaranteed_access() 
 
     assert effective.profile_key == 'viewer'
     assert effective.access_keys == ()
+
+
+@pytest.mark.parametrize('profile_key', ['root', 'local'])
+def test_configuration_resolves_unrestricted_profile_with_all_defined_access(
+    profile_key: str,
+) -> None:
+    configuration = AdaAccessConfiguration(
+        access_keys=('navigation.view', 'kpis.manage'),
+    )
+
+    effective = configuration.resolve(profile_key, profiles=_profiles())
+
+    assert effective.profile_key == profile_key
+    assert effective.access_keys == ('kpis.manage', 'navigation.view')
 
 
 def test_configuration_rejects_unknown_runtime_profile() -> None:

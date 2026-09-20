@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from ada.web.access.configuration.models import AdaAccessConfiguration
+from ada.web.access.configuration.models import (
+    UNRESTRICTED_ACCESS_PROFILE_KEYS,
+    AdaAccessConfiguration,
+)
 from ada.web.access.errors import AdaAccessDefinitionError
 from ada.web.access.models import ProfileAccessGrant, normalize_access_key
 from atlanticus.web.profiles.models import normalize_profile_key
@@ -49,6 +52,11 @@ def set_profile_access(
     access_keys: tuple[str, ...],
 ) -> AdaAccessConfiguration:
     normalized_profile_key = normalize_profile_key(profile_key)
+    if normalized_profile_key in UNRESTRICTED_ACCESS_PROFILE_KEYS:
+        raise AdaAccessDefinitionError(
+            f'ADA unrestricted profile {normalized_profile_key!r} '
+            'does not accept explicit access grants'
+        )
     grant = ProfileAccessGrant(
         profile_key=normalized_profile_key,
         access_keys=access_keys,

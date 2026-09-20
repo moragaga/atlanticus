@@ -211,6 +211,7 @@ def create_local_configuration_manager_dependencies(
         projection_store=profiles_projection_store,
         principal_provider=lambda: principal,
         group_key='configuration',
+        title='Perfiles',
         access_key=PROFILES_MANAGER_ACCESS_KEY,
     )
 

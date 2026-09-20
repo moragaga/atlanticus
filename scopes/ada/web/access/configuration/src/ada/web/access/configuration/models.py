@@ -10,7 +10,19 @@ from ada.web.access.models import (
     normalize_access_key,
     validate_profile_references,
 )
-from atlanticus.web.profiles.models import ProfileCatalog, normalize_profile_key
+from atlanticus.web.profiles.models import (
+    LOCAL_PROFILE_KEY,
+    ROOT_PROFILE_KEY,
+    ProfileCatalog,
+    normalize_profile_key,
+)
+
+UNRESTRICTED_ACCESS_PROFILE_KEYS = frozenset(
+    {
+        ROOT_PROFILE_KEY,
+        LOCAL_PROFILE_KEY,
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +40,13 @@ class AdaAccessConfiguration:
         profile_keys = tuple(grant.profile_key for grant in profile_access)
         if len(profile_keys) != len(set(profile_keys)):
             raise AdaAccessDefinitionError('ADA access profile grants must be unique')
+
+        for grant in profile_access:
+            if grant.profile_key in UNRESTRICTED_ACCESS_PROFILE_KEYS:
+                raise AdaAccessDefinitionError(
+                    f'ADA unrestricted profile {grant.profile_key!r} '
+                    'must not define explicit access grants'
+                )
 
         defined = set(access_keys)
         for grant in profile_access:
@@ -58,6 +77,11 @@ class AdaAccessConfiguration:
     ) -> EffectiveAdaAccess:
         normalized_profile_key = normalize_profile_key(profile_key)
         profiles.require(normalized_profile_key)
+        if normalized_profile_key in UNRESTRICTED_ACCESS_PROFILE_KEYS:
+            return EffectiveAdaAccess(
+                profile_key=normalized_profile_key,
+                access_keys=self.access_keys,
+            )
         grant = next(
             (item for item in self.profile_access if item.profile_key == normalized_profile_key),
             None,

@@ -1,6 +1,6 @@
 # Integración application-specific de ADA Access con el Manager genérico de Atlanticus.
-# Este módulo adapta Source/Projection existentes al contrato ManagerModule sin inventar otro lifecycle.
-# La validación del draft usa la Projection vigente de Profiles.
+# La presentación visible usa terminología española sin alterar nombres internos de contratos.
+# La validación del draft sigue dependiendo de la Projection vigente de Profiles.
 
 from __future__ import annotations
 
@@ -233,7 +233,7 @@ def create_access_manager_module(
         title='Accesos',
         route='/access',
         order=15,
-        description='Definición de accesos y asignación de accesos a Profiles de ADA.',
+        description='Definición de accesos y asignación de accesos a perfiles de ADA.',
         layout=lambda _services: build_ada_access_admin_configuration(context),
         source_key=source.source_key,
         source_service=ACCESS_SOURCE_SERVICE,
@@ -252,7 +252,7 @@ def _summary(configuration: AdaAccessConfiguration) -> tuple[ProjectionSummaryIt
     assignments = sum(len(grant.access_keys) for grant in configuration.profile_access)
     return (
         ProjectionSummaryItem('Accesos definidos', str(len(configuration.access_keys))),
-        ProjectionSummaryItem('Profiles con accesos', str(len(configuration.profile_access))),
+        ProjectionSummaryItem('Perfiles con accesos', str(len(configuration.profile_access))),
         ProjectionSummaryItem('Asignaciones', str(assignments)),
     )
 

@@ -1,12 +1,16 @@
 # Estas funciones son las operaciones puras usadas por la UI administrativa.
 # No persisten ni publican: sólo producen una nueva configuración inmutable validada.
-# Eliminar una clave exige retirar antes todas sus asignaciones.
+# Root y Local no reciben grants explícitos porque su acceso efectivo deriva de todo el catálogo.
+# Eliminar una clave exige retirar antes todas sus asignaciones configurables.
 
 from __future__ import annotations
 
 from dataclasses import replace
 
-from ada.web.access.configuration.models import AdaAccessConfiguration
+from ada.web.access.configuration.models import (
+    UNRESTRICTED_ACCESS_PROFILE_KEYS,
+    AdaAccessConfiguration,
+)
 from ada.web.access.errors import AdaAccessDefinitionError
 from ada.web.access.models import ProfileAccessGrant, normalize_access_key
 from atlanticus.web.profiles.models import normalize_profile_key
@@ -53,6 +57,12 @@ def set_profile_access(
     access_keys: tuple[str, ...],
 ) -> AdaAccessConfiguration:
     normalized_profile_key = normalize_profile_key(profile_key)
+    # Evita representar con estado persistido algo que el contrato ya resuelve como irrestricto.
+    if normalized_profile_key in UNRESTRICTED_ACCESS_PROFILE_KEYS:
+        raise AdaAccessDefinitionError(
+            f'ADA unrestricted profile {normalized_profile_key!r} '
+            'does not accept explicit access grants'
+        )
     grant = ProfileAccessGrant(
         profile_key=normalized_profile_key,
         access_keys=access_keys,

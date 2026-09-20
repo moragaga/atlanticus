@@ -1,3 +1,7 @@
+/* Mantiene la reserva vertical compartida con las demás pantallas paginadas. */
+/* El modal se centra contra el viewport y usa dbc.Checkbox para evitar estilos internos de Dash. */
+/* En mobile las acciones de perfil ocupan una fila estable con contador y botón alineados. */
+
 .ada-access-admin {
     display: grid;
     width: 100%;
