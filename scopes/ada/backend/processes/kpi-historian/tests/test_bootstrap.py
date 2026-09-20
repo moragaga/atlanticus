@@ -3,7 +3,7 @@ from __future__ import annotations
 from ada.processes.kpi_historian.bootstrap import load_configuration
 
 
-def test_local_bootstrap_uses_process_root_dotenv(tmp_path) -> None:
+def test_local_bootstrap_uses_process_root_dotenv_and_default_reprocess_current(tmp_path) -> None:
     (tmp_path / '.env').write_text(
         '\n'.join(
             (
@@ -24,3 +24,4 @@ def test_local_bootstrap_uses_process_root_dotenv(tmp_path) -> None:
 
     assert configuration.require('APPLICATION') == 'ada-kpi-historian-local'
     assert configuration.require('KPI_RUNTIME_APPLICATION') == 'ada-kpi-runtime-local'
+    assert configuration.require('REPROCESS_CURRENT') == 'false'

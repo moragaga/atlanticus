@@ -19,7 +19,15 @@ from tests.support import (
 )
 
 
-def _job(*, committed=None, authority=None, batches=(), materializer=None, events=None):
+def _job(
+    *,
+    committed=None,
+    authority=None,
+    batches=(),
+    materializer=None,
+    events=None,
+    reprocess_current=False,
+):
     events = [] if events is None else events
     committed = watermark() if committed is None else committed
     materializer = (
@@ -34,6 +42,7 @@ def _job(*, committed=None, authority=None, batches=(), materializer=None, event
             evaluations=EvaluationReader(tuple(batches)),
             authority=authority_store,
             history=materializer,
+            reprocess_current=reprocess_current,
         ),
         authority_store,
         materializer,
@@ -74,10 +83,90 @@ def test_current_authority_skips_without_reading_evaluations() -> None:
     assert reader.calls == 0
 
 
+def test_current_authority_reprocesses_from_beginning_when_enabled() -> None:
+    first = watermark(1)
+    current = watermark(2)
+    batches = (
+        batch(evaluation('a', watermark_value=first)),
+        batch(evaluation('a', watermark_value=current)),
+    )
+    reader = EvaluationReader(batches)
+    materializer = HistoryMaterializer(
+        write_result(
+            current,
+            batches_processed=2,
+            evaluations_processed=2,
+            history_rows=2,
+        )
+    )
+    authority = AuthorityStore(KpiHistorianAuthority(current.timestamp_utc))
+    job = KpiHistorianJob(
+        kpi_state=CommitStateReader(current),
+        evaluations=reader,
+        authority=authority,
+        history=materializer,
+        reprocess_current=True,
+    )
+    context = RuntimeContextStub()
+
+    result = job.run_iteration(context)
+
+    assert result.status is KpiHistorianIterationStatus.PROCESSED
+    assert reader.after is None
+    assert reader.through == current
+    assert materializer.batches == batches
+    assert authority.commit_calls == 1
+    assert authority.value == KpiHistorianAuthority(current.timestamp_utc)
+    assert context.lease_checks == 2
+    assert context.fences == 1
+    assert context.work is True
+
+
+def test_current_reprocess_requires_persisted_batches() -> None:
+    current = watermark(2)
+    job, _, _, _ = _job(
+        committed=current,
+        authority=KpiHistorianAuthority(current.timestamp_utc),
+        reprocess_current=True,
+    )
+
+    with pytest.raises(KpiHistorianRepositoryError, match='no persisted evaluation batch'):
+        job.run_iteration(RuntimeContextStub())
+
+
+def test_reprocess_current_does_not_change_incremental_catch_up() -> None:
+    before = watermark(1)
+    committed = watermark(2)
+    reader = EvaluationReader((batch(evaluation('a', watermark_value=committed)),))
+    job = KpiHistorianJob(
+        kpi_state=CommitStateReader(committed),
+        evaluations=reader,
+        authority=AuthorityStore(KpiHistorianAuthority(before.timestamp_utc)),
+        history=HistoryMaterializer(write_result(committed)),
+        reprocess_current=True,
+    )
+
+    job.run_iteration(RuntimeContextStub())
+
+    assert reader.after == before
+    assert reader.through == committed
+
+
 def test_authority_ahead_of_kpi_is_rejected() -> None:
     job, _, _, _ = _job(
         committed=watermark(1),
         authority=KpiHistorianAuthority(watermark(2).timestamp_utc),
+    )
+
+    with pytest.raises(KpiHistorianRepositoryError, match='must not regress'):
+        job.run_iteration(RuntimeContextStub())
+
+
+def test_authority_ahead_of_kpi_is_rejected_when_reprocess_is_enabled() -> None:
+    job, _, _, _ = _job(
+        committed=watermark(1),
+        authority=KpiHistorianAuthority(watermark(2).timestamp_utc),
+        reprocess_current=True,
     )
 
     with pytest.raises(KpiHistorianRepositoryError, match='must not regress'):
@@ -159,3 +248,14 @@ def test_existing_authority_is_passed_as_read_after_boundary() -> None:
 
     assert reader.after == before
     assert reader.through == committed
+
+
+def test_constructor_rejects_non_boolean_reprocess_current() -> None:
+    with pytest.raises(TypeError, match='reprocess_current must be bool'):
+        KpiHistorianJob(
+            kpi_state=CommitStateReader(watermark()),
+            evaluations=EvaluationReader(()),
+            authority=AuthorityStore(),
+            history=HistoryMaterializer(write_result(watermark())),
+            reprocess_current='true',
+        )

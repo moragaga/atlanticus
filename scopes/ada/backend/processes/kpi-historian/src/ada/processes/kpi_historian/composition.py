@@ -72,6 +72,7 @@ def build_composition(*, configuration: ResolvedConfiguration) -> KpiHistorianCo
         evaluations=evaluations,
         authority=authority,
         history=history,
+        reprocess_current=settings.reprocess_current,
     )
     definition = _job_definition(poll_interval_seconds=settings.poll_interval_seconds)
     return KpiHistorianComposition(

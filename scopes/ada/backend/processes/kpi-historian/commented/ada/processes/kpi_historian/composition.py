@@ -1,4 +1,5 @@
-# Composición explícita de repositorios, state, DatasetRuntime y Job Runtime.
+# Espejo pedagógico del módulo productivo.
+# Los comentarios explican intención sin alterar comportamiento ni contratos.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -68,11 +69,13 @@ def build_composition(*, configuration: ResolvedConfiguration) -> KpiHistorianCo
     kpi_state = KpiCommitStateRepository(upstream_store)
     authority = KpiHistorianAuthorityStore(store=own_store)
     history = KpiHistorianMaterializer(runtime=dataset_runtime)
+    # La composición resuelve configuración una vez y la entrega explícitamente al job.
     job = KpiHistorianJob(
         kpi_state=kpi_state,
         evaluations=evaluations,
         authority=authority,
         history=history,
+        reprocess_current=settings.reprocess_current,
     )
     definition = _job_definition(poll_interval_seconds=settings.poll_interval_seconds)
     return KpiHistorianComposition(

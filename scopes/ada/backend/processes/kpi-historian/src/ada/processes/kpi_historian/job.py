@@ -47,6 +47,7 @@ class KpiHistorianJob:
         evaluations: _EvaluationReader,
         authority: _AuthorityStore,
         history: _HistoryMaterializer,
+        reprocess_current: bool = False,
     ) -> None:
         for value, method_name, field_name in (
             (kpi_state, 'read', 'kpi_state'),
@@ -57,10 +58,13 @@ class KpiHistorianJob:
         ):
             if not callable(getattr(value, method_name, None)):
                 raise TypeError(f'{field_name} must provide a callable {method_name} method')
+        if not isinstance(reprocess_current, bool):
+            raise TypeError('reprocess_current must be bool')
         self._kpi_state = kpi_state
         self._evaluations = evaluations
         self._authority_store = authority
         self._history = history
+        self._reprocess_current = reprocess_current
         self._authority: KpiHistorianAuthority | None | object = _UNSET
 
     def run_iteration(self, context: JobRuntimeContext) -> KpiHistorianIterationResult:
@@ -77,10 +81,11 @@ class KpiHistorianJob:
                 ),
             )
 
-        if (
+        is_current = (
             historian_before is not None
             and historian_before.watermark_utc == committed.timestamp_utc
-        ):
+        )
+        if is_current and not self._reprocess_current:
             return _record_result(
                 context,
                 KpiHistorianIterationResult(
@@ -92,7 +97,12 @@ class KpiHistorianJob:
                 ),
             )
 
-        after = None if historian_before is None else KpiWatermark(historian_before.watermark_utc)
+        forced_current = is_current and self._reprocess_current
+        after = (
+            None
+            if historian_before is None or forced_current
+            else KpiWatermark(historian_before.watermark_utc)
+        )
         batches = self._evaluations.read_after(after=after, through=committed)
         if not batches:
             raise KpiHistorianRepositoryError(

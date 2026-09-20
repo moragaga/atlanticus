@@ -5,13 +5,14 @@ from atlanticus.configuration import ConfigurationSource, ResolvedConfiguration
 from atlanticus.kernel import Environment
 
 
-def _configuration(tmp_path) -> ResolvedConfiguration:
+def _configuration(tmp_path, *, reprocess_current: str = 'false') -> ResolvedConfiguration:
     values = {
         'ENVIRONMENT': 'local',
         'APPLICATION': 'ada-kpi-historian-local',
         'VOLUMEN_PATH': str(tmp_path),
         'KPI_RUNTIME_APPLICATION': 'ada-kpi-runtime-local',
         'KPI_HISTORIAN_POLL_INTERVAL_SECONDS': '1',
+        'REPROCESS_CURRENT': reprocess_current,
         'ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED': 'true',
         'ATLANTICUS_AZURE_OBSERVABILITY_MODE': 'off',
     }
@@ -31,3 +32,12 @@ def test_composition_separates_historian_from_kpi_runtime_authority(tmp_path) ->
     assert composition.definition.sleep_seconds == 1
     assert composition.evaluations.paths.application_root == tmp_path / 'ada-kpi-runtime-local'
     assert composition.runtime_configuration.application == 'ada-kpi-historian-local'
+    assert composition.settings.reprocess_current is False
+
+
+def test_composition_propagates_reprocess_current(tmp_path) -> None:
+    composition = build_composition(
+        configuration=_configuration(tmp_path, reprocess_current='true')
+    )
+
+    assert composition.settings.reprocess_current is True

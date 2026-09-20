@@ -1,4 +1,5 @@
-# Orquesta autoridad upstream, materialización y commit final sin acoplarse a otro proceso.
+# Espejo pedagógico del módulo productivo.
+# Los comentarios explican intención sin alterar comportamiento ni contratos.
 from __future__ import annotations
 
 from typing import Protocol
@@ -48,6 +49,7 @@ class KpiHistorianJob:
         evaluations: _EvaluationReader,
         authority: _AuthorityStore,
         history: _HistoryMaterializer,
+        reprocess_current: bool = False,
     ) -> None:
         for value, method_name, field_name in (
             (kpi_state, 'read', 'kpi_state'),
@@ -58,10 +60,13 @@ class KpiHistorianJob:
         ):
             if not callable(getattr(value, method_name, None)):
                 raise TypeError(f'{field_name} must provide a callable {method_name} method')
+        if not isinstance(reprocess_current, bool):
+            raise TypeError('reprocess_current must be bool')
         self._kpi_state = kpi_state
         self._evaluations = evaluations
         self._authority_store = authority
         self._history = history
+        self._reprocess_current = reprocess_current
         self._authority: KpiHistorianAuthority | None | object = _UNSET
 
     def run_iteration(self, context: JobRuntimeContext) -> KpiHistorianIterationResult:
@@ -78,7 +83,12 @@ class KpiHistorianJob:
                 ),
             )
 
-        if historian_before is not None and historian_before.watermark_utc == committed.timestamp_utc:
+        # Un authority igual al watermark KPI significa que el flujo normal ya está al día.
+        is_current = (
+            historian_before is not None
+            and historian_before.watermark_utc == committed.timestamp_utc
+        )
+        if is_current and not self._reprocess_current:
             return _record_result(
                 context,
                 KpiHistorianIterationResult(
@@ -90,9 +100,12 @@ class KpiHistorianJob:
                 ),
             )
 
+        # El modo forzado sólo se activa cuando ya estamos CURRENT; nunca cambia un catch-up normal.
+        forced_current = is_current and self._reprocess_current
+        # Para reconstruir CURRENT se releen todos los batches durables hasta la authority KPI.
         after = (
             None
-            if historian_before is None
+            if historian_before is None or forced_current
             else KpiWatermark(historian_before.watermark_utc)
         )
         batches = self._evaluations.read_after(after=after, through=committed)
