@@ -336,10 +336,18 @@ def register_manager_callbacks(
         Input(workflow_validation_id(MATCH), 'data'),
         Input(workflow_source_verification_id(MATCH), 'data'),
         Input(workflow_editor_revision_id(MATCH), 'data'),
+        # El store de sección sólo existe para el módulo montado. Su MATCH impide que
+        # stores globales creen una instancia de este callback para módulos fuera del DOM.
+        Input(module_section_store_id(MATCH), 'data'),
         State(workflow_draft_id(MATCH), 'id'),
     )
     def refresh_workspace(
-        draft_data, validation_data, verification_data, editor_revision, draft_id
+        draft_data,
+        validation_data,
+        verification_data,
+        editor_revision,
+        _section,
+        draft_id,
     ):
         principal = definition.principal_provider()
         module_key = str(draft_id.get('module', ''))
@@ -388,9 +396,11 @@ def register_manager_callbacks(
         Output(workflow_action_id(MATCH, 'recover-saved-draft'), 'disabled'),
         Output(workflow_action_id(MATCH, 'discard-saved-draft'), 'disabled'),
         Input(workflow_saved_draft_id(MATCH), 'data'),
+        # Esta entrada page-local limita el MATCH al módulo que está realmente montado.
+        Input(module_section_store_id(MATCH), 'data'),
         State(workflow_saved_draft_id(MATCH), 'id'),
     )
-    def refresh_saved_workspace(saved_data, saved_id):
+    def refresh_saved_workspace(saved_data, _section, saved_id):
         principal = definition.principal_provider()
         module_key = str(saved_id.get('module', ''))
         if saved_data is None:
@@ -577,18 +587,25 @@ def register_manager_callbacks(
         return None, int(refresh_signal or 0) + 1, updated, None, None
 
     @app.callback(
-        Output(workflow_result_id(MATCH), 'children'),
         Output(workflow_draft_id(MATCH), 'data'),
         Output(workflow_validation_id(MATCH), 'data'),
         Output(workflow_source_verification_id(MATCH), 'data'),
         Input(workflow_refresh_signal_id(MATCH), 'data'),
+        Input(LOCATION_ID, 'pathname'),
         State(workflow_refresh_signal_id(MATCH), 'id'),
         State(workflow_draft_id(MATCH), 'data'),
         State(workflow_editor_revision_id(MATCH), 'data'),
     )
-    def hydrate_source_workspace(_refresh_signal, refresh_id, draft_data, editor_revision):
-        principal = definition.principal_provider()
+    def hydrate_source_workspace(
+        _refresh_signal, pathname, refresh_id, draft_data, editor_revision
+    ):
+        # Los stores del workspace existen para todos los módulos para conservar el estado
+        # al navegar, pero la hidratación debe ejecutarse únicamente para la ruta activa.
         module_key = str(refresh_id.get('module', ''))
+        active_item = registry.find_by_route(pathname or '')
+        if not isinstance(active_item, ManagerModule) or active_item.key != module_key:
+            raise PreventUpdate
+        principal = definition.principal_provider()
         try:
             if workspace_controller.has_local_work(
                 module_key=module_key,
@@ -596,17 +613,17 @@ def register_manager_callbacks(
                 workspace_document=draft_data,
                 editor_revision=editor_revision,
             ):
-                return no_update, no_update, no_update, no_update
+                return no_update, no_update, no_update
             updated = workspace_controller.replace_from_source(
                 module_key=module_key,
                 principal=principal,
                 workspace_document=draft_data,
             )
         except Exception:
-            return no_update, no_update, no_update, no_update
+            return no_update, no_update, no_update
         if updated is None:
-            return None, None, None, None
-        return None, updated, None, None
+            return None, None, None
+        return updated, None, None
 
     @app.callback(
         Output(workflow_result_id(MATCH), 'children', allow_duplicate=True),
