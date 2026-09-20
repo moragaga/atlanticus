@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+# Los callbacks mantienen el borrador editable y sincronizan únicamente estado de presentación.
+# La vista previa del perfil reacciona al nombre y colores sin modificar el contrato durable.
+# La paginación y el modal conservan sus contratos funcionales previos.
+
 import hashlib
 import json
 
 from dash import ALL, Input, Output, State, ctx, html, no_update
 
-from atlanticus.web.pagination import DEFAULT_PAGE_SIZE, PageRequest
+from atlanticus.web.pagination import ALLOWED_PAGE_SIZES, DEFAULT_PAGE_SIZE, PageRequest
 from atlanticus.web.profiles.configuration.editor import create_profile, update_profile
 from atlanticus.web.profiles.configuration.models import ProfilesConfiguration
 from atlanticus.web.profiles.configuration.web.ids import (
@@ -16,30 +20,42 @@ from atlanticus.web.profiles.configuration.web.ids import (
     MOUNT_STORE_ID,
     NEXT_PAGE_ID,
     PAGE_SIZE_ID,
-    PAGE_STATUS_ID,
     PAGE_STORE_ID,
     PREVIOUS_PAGE_ID,
     PROFILE_BACKGROUND_COLOR_ID,
+    PROFILE_BACKGROUND_COLOR_VALUE_ID,
     PROFILE_CANCEL_ID,
+    PROFILE_MODAL_BACKDROP_ID,
+    PROFILE_MODAL_CLOSE_ID,
     PROFILE_MODAL_ID,
     PROFILE_MODAL_TITLE_ID,
     PROFILE_NAME_ID,
+    PROFILE_PREVIEW_AVATAR_ID,
+    PROFILE_PREVIEW_LABEL_ID,
     PROFILE_RESULT_ID,
     PROFILE_SAVE_ID,
     PROFILE_TEXT_COLOR_ID,
+    PROFILE_TEXT_COLOR_VALUE_ID,
     SAVE_BUTTON_ID,
     SAVE_RESULT_ID,
+    profile_page_id,
 )
 from atlanticus.web.profiles.configuration.web.layout import (
     configured_profiles_page,
-    page_status,
     render_configured_profiles,
 )
-from atlanticus.web.profiles.configuration.web.models import ProfilesAdminWebContext
+from atlanticus.web.profiles.configuration.web.models import (
+    ProfilesAdminWebContext,
+    build_profile_avatar_text,
+)
+
+_PROFILE_MODAL_CLOSED = 'atlanticus-profiles-admin__modal'
+_PROFILE_MODAL_OPEN = (
+    'atlanticus-profiles-admin__modal atlanticus-profiles-admin__modal--open'
+)
 
 
 def register_profiles_admin_callbacks(app: object, context: ProfilesAdminWebContext) -> None:
-    # Al montar, se lee únicamente el payload del workspace; ausencia o corrupción cae a draft vacío.
     @app.callback(
         Output(CONFIGURATION_STORE_ID, 'data'),
         Input(MOUNT_STORE_ID, 'data'),
@@ -54,7 +70,6 @@ def register_profiles_admin_callbacks(app: object, context: ProfilesAdminWebCont
         except Exception:
             return ProfilesConfiguration().to_document()
 
-    # La revisión usa el mismo documento canónico que se persiste para que Manager detecte dirty state.
     @app.callback(
         Output(context.editor_revision_store_id, 'data'),
         Input(CONFIGURATION_STORE_ID, 'data'),
@@ -66,70 +81,55 @@ def register_profiles_admin_callbacks(app: object, context: ProfilesAdminWebCont
         except Exception:
             return None
 
-    # Cada render usa la paginación generic; no se fabrican placeholders ni filas visuales falsas.
     @app.callback(
         Output(CONFIGURED_PROFILES_ID, 'children'),
-        Output(PAGE_STATUS_ID, 'children'),
-        Output(PREVIOUS_PAGE_ID, 'disabled'),
-        Output(NEXT_PAGE_ID, 'disabled'),
+        Output(PAGE_STORE_ID, 'data'),
         Input(CONFIGURATION_STORE_ID, 'data'),
-        Input(PAGE_STORE_ID, 'data'),
+        Input(PREVIOUS_PAGE_ID, 'n_clicks'),
+        Input(NEXT_PAGE_ID, 'n_clicks'),
+        Input(profile_page_id(ALL), 'n_clicks'),
+        Input(PAGE_SIZE_ID, 'value'),
+        State(PAGE_STORE_ID, 'data'),
     )
     def render_profiles(
         configuration_data: dict[str, object] | None,
+        previous_clicks: int | None,
+        next_clicks: int | None,
+        _page_clicks: list[int | None],
+        page_size: int | None,
         page_data: dict[str, object] | None,
     ):
+        current = _page_request(page_data)
+        page_number = current.page_number
+        resolved_size = _page_size(page_size)
+        trigger = ctx.triggered_id
+        if trigger == PREVIOUS_PAGE_ID and _click_is_real(previous_clicks):
+            page_number = max(1, page_number - 1)
+        elif trigger == NEXT_PAGE_ID and _click_is_real(next_clicks):
+            page_number += 1
+        elif trigger == PAGE_SIZE_ID:
+            page_number = 1
+        elif (
+            isinstance(trigger, dict)
+            and trigger.get('type') == 'atlanticus-profiles-page-number'
+            and _triggered_click_is_real()
+        ):
+            page_number = max(1, int(trigger.get('index', 1)))
         page = configured_profiles_page(
             _configuration(configuration_data),
-            _page_request(page_data),
+            PageRequest(page_number=page_number, page_size=resolved_size),
         )
         return (
             render_configured_profiles(page),
-            page_status(page),
-            not page.has_previous,
-            not page.has_next,
+            {
+                'page_number': page.request.page_number,
+                'page_size': page.request.page_size,
+            },
         )
 
-    # Cambiar tamaño vuelve a página uno; anterior/siguiente respetan los límites calculados.
-    @app.callback(
-        Output(PAGE_STORE_ID, 'data'),
-        Input(PREVIOUS_PAGE_ID, 'n_clicks'),
-        Input(NEXT_PAGE_ID, 'n_clicks'),
-        Input(PAGE_SIZE_ID, 'value'),
-        State(PAGE_STORE_ID, 'data'),
-        State(CONFIGURATION_STORE_ID, 'data'),
-        prevent_initial_call=True,
-    )
-    def update_page(
-        previous_clicks: int | None,
-        next_clicks: int | None,
-        page_size: int | None,
-        page_data: dict[str, object] | None,
-        configuration_data: dict[str, object] | None,
-    ):
-        current = _page_request(page_data)
-        resolved_size = int(page_size or DEFAULT_PAGE_SIZE)
-        trigger = ctx.triggered_id
-        if trigger == PAGE_SIZE_ID:
-            return {'page_number': 1, 'page_size': resolved_size}
-
-        page = configured_profiles_page(
-            _configuration(configuration_data),
-            PageRequest(page_number=current.page_number, page_size=resolved_size),
-        )
-        page_number = page.request.page_number
-        if trigger == PREVIOUS_PAGE_ID and _click_is_real(previous_clicks) and page.has_previous:
-            page_number -= 1
-        elif trigger == NEXT_PAGE_ID and _click_is_real(next_clicks) and page.has_next:
-            page_number += 1
-        else:
-            return no_update
-        return {'page_number': page_number, 'page_size': resolved_size}
-
-    # Create no expone key; Edit recupera la UUID interna desde el ID de la fila seleccionada.
     @app.callback(
         Output(EDITOR_STORE_ID, 'data'),
-        Output(PROFILE_MODAL_ID, 'is_open'),
+        Output(PROFILE_MODAL_ID, 'className'),
         Output(PROFILE_MODAL_TITLE_ID, 'children'),
         Output(PROFILE_NAME_ID, 'value'),
         Output(PROFILE_BACKGROUND_COLOR_ID, 'value'),
@@ -147,7 +147,7 @@ def register_profiles_admin_callbacks(app: object, context: ProfilesAdminWebCont
     ):
         trigger = ctx.triggered_id
         if trigger == ADD_PROFILE_ID and _click_is_real(add_clicks):
-            return None, True, 'Nuevo perfil', '', '#123456', '#FFFFFF', None
+            return None, _PROFILE_MODAL_OPEN, 'Nuevo perfil', '', '#123456', '#FFFFFF', None
         if (
             isinstance(trigger, dict)
             and trigger.get('type') == 'atlanticus-profiles-profile-edit'
@@ -161,7 +161,7 @@ def register_profiles_admin_callbacks(app: object, context: ProfilesAdminWebCont
                 return (no_update,) * 7
             return (
                 {'key': profile.key},
-                True,
+                _PROFILE_MODAL_OPEN,
                 'Editar perfil',
                 profile.label,
                 profile.background_color,
@@ -171,19 +171,54 @@ def register_profiles_admin_callbacks(app: object, context: ProfilesAdminWebCont
         return (no_update,) * 7
 
     @app.callback(
-        Output(PROFILE_MODAL_ID, 'is_open', allow_duplicate=True),
+        Output(PROFILE_PREVIEW_AVATAR_ID, 'children'),
+        Output(PROFILE_PREVIEW_AVATAR_ID, 'style'),
+        Output(PROFILE_PREVIEW_LABEL_ID, 'children'),
+        Output(PROFILE_BACKGROUND_COLOR_VALUE_ID, 'children'),
+        Output(PROFILE_TEXT_COLOR_VALUE_ID, 'children'),
+        Input(PROFILE_NAME_ID, 'value'),
+        Input(PROFILE_BACKGROUND_COLOR_ID, 'value'),
+        Input(PROFILE_TEXT_COLOR_ID, 'value'),
+    )
+    def render_profile_preview(
+        label: str | None,
+        background_color: str | None,
+        text_color: str | None,
+    ):
+        preview_label = str(label or '').strip() or 'Nuevo perfil'
+        background = _preview_color(background_color, '#123456')
+        text = _preview_color(text_color, '#FFFFFF')
+        return (
+            build_profile_avatar_text(preview_label),
+            {'backgroundColor': background, 'color': text},
+            preview_label,
+            background,
+            text,
+        )
+
+    @app.callback(
+        Output(PROFILE_MODAL_ID, 'className', allow_duplicate=True),
         Input(PROFILE_CANCEL_ID, 'n_clicks'),
+        Input(PROFILE_MODAL_CLOSE_ID, 'n_clicks'),
+        Input(PROFILE_MODAL_BACKDROP_ID, 'n_clicks'),
         prevent_initial_call=True,
     )
-    def close_profile_editor(clicks: int | None):
-        if _click_is_real(clicks):
-            return False
+    def close_profile_editor(
+        cancel_clicks: int | None,
+        close_clicks: int | None,
+        backdrop_clicks: int | None,
+    ):
+        if (
+            _click_is_real(cancel_clicks)
+            or _click_is_real(close_clicks)
+            or _click_is_real(backdrop_clicks)
+        ):
+            return _PROFILE_MODAL_CLOSED
         return no_update
 
-    # La UI delega creación/edición al editor de dominio ya cerrado.
     @app.callback(
         Output(CONFIGURATION_STORE_ID, 'data', allow_duplicate=True),
-        Output(PROFILE_MODAL_ID, 'is_open', allow_duplicate=True),
+        Output(PROFILE_MODAL_ID, 'className', allow_duplicate=True),
         Output(PROFILE_RESULT_ID, 'children', allow_duplicate=True),
         Input(PROFILE_SAVE_ID, 'n_clicks'),
         State(EDITOR_STORE_ID, 'data'),
@@ -225,9 +260,8 @@ def register_profiles_admin_callbacks(app: object, context: ProfilesAdminWebCont
                 )
         except Exception as error:
             return no_update, no_update, _error(str(error))
-        return updated.to_document(), False, None
+        return updated.to_document(), _PROFILE_MODAL_CLOSED, None
 
-    # Guardar draft sólo transforma payload <-> workspace mediante las funciones inyectadas.
     @app.callback(
         Output(context.draft_store_id, 'data', allow_duplicate=True),
         Output(context.saved_draft_store_id, 'data', allow_duplicate=True),
@@ -288,6 +322,19 @@ def _page_request(data: dict[str, object] | None) -> PageRequest:
         )
     except (TypeError, ValueError):
         return PageRequest()
+
+
+def _preview_color(value: str | None, fallback: str) -> str:
+    candidate = str(value or '').strip().upper()
+    if len(candidate) == 7 and candidate.startswith('#'):
+        return candidate
+    return fallback
+
+
+def _page_size(value: int | None) -> int:
+    if isinstance(value, int) and not isinstance(value, bool) and value in ALLOWED_PAGE_SIZES:
+        return value
+    return DEFAULT_PAGE_SIZE
 
 
 def _find_profile(configuration: ProfilesConfiguration, key: str):

@@ -1,8 +1,7 @@
-# Runtime local de composición para desarrollo y pruebas.
-# Las access_keys del principal local son explícitas; is_local no concede permisos por sí mismo.
-# El título visible de la capability Profiles se localiza en la composición ADA sin cambiar el default genérico.
-
 from __future__ import annotations
+
+# El runtime local compone dependencias reales del entorno de desarrollo.
+# La descripción visible de Perfiles pertenece a la composición ADA y no cambia el default genérico.
 
 import os
 from pathlib import Path
@@ -216,6 +215,11 @@ def create_local_configuration_manager_dependencies(
         principal_provider=lambda: principal,
         group_key='configuration',
         title='Perfiles',
+        description=(
+            'Define los perfiles disponibles y su presentación visual dentro del sistema.'
+        ),
+        source_name='Local Source',
+        projection_name='In-process Projection',
         access_key=PROFILES_MANAGER_ACCESS_KEY,
     )
 

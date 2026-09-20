@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+# La composición conecta Profiles con Manager sin mover presentación específica a Manager.
+# Título, descripción y nombres de Source/Projection son metadatos visibles inyectables por la aplicación.
+
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 
@@ -46,7 +49,6 @@ class ProfilesManagerComposition:
     validation_workflow: ProfilesManagerDraftValidationWorkflow
 
 
-# Compone Profiles con Manager sin introducir dependencias de ADA ni lógica de consumo runtime.
 def compose_profiles_manager(
     *,
     source_store: SourceStore,
@@ -57,7 +59,10 @@ def compose_profiles_manager(
     route: str = '/profiles',
     order: int = 10,
     title: str = 'Profiles',
+    description: str = '',
     source_key: SourceKey = PROFILES_CONFIGURATION_SOURCE_KEY,
+    source_name: str = 'Profiles Source',
+    projection_name: str = 'Profiles Projection',
     access_key: str | None = None,
     authorization: ManagerAuthorizationPolicy | None = None,
     audit_actor_provider: ProfilesAuditActorProvider | None = None,
@@ -81,7 +86,6 @@ def compose_profiles_manager(
         principal_provider=principal_provider,
     )
 
-    # La dependencia Web se carga sólo al componer la superficie administrativa.
     from atlanticus.web.profiles.configuration.web import (
         LocalIdentityBadge,
         ProfilesAdminWebContext,
@@ -90,7 +94,6 @@ def compose_profiles_manager(
     )
     from atlanticus.web.users.local import LOCAL_USERS
 
-    # Users conserva ownership de Jane/John; composición sólo traduce su presentación al contrato Profiles.
     def local_identity_badges():
         return tuple(
             LocalIdentityBadge(
@@ -109,19 +112,17 @@ def compose_profiles_manager(
         saved_draft_store_id=workflow_saved_draft_id(module_key),
         draft_save_action_id=workflow_action_id(module_key, 'save-draft'),
         editor_revision_store_id=workflow_editor_revision_id(module_key),
-        # ManagerAuthorizationPolicy expone can_view; Profiles no replica el desvío can_access de Navigation.
         can_manage=lambda: resolved_authorization.can_view(
             principal_provider(),
             module,
         ),
-        source_name='Profiles Source',
+        source_name=source_name,
+        projection_name=projection_name,
     )
 
     def layout(_services: ServiceRegistry) -> object:
         return build_profiles_admin_configuration(context)
 
-    # El mismo WebModule que ya monta la UI registra los workflows en el ServiceRegistry real
-    # cuando Atlanticus compone la aplicación. No existe registry temporal ni bridge adicional.
     web_module = create_profiles_admin_web_module(context)
 
     def register_services(services: ServiceRegistry) -> None:
@@ -135,6 +136,7 @@ def compose_profiles_manager(
         title=title,
         route=route,
         order=order,
+        description=description,
         layout=layout,
         source_key=source_key,
         source_service=PROFILES_MANAGER_SOURCE_SERVICE,
@@ -147,8 +149,8 @@ def compose_profiles_manager(
             web_module,
             register_services=register_services,
         ),
-        source_name='Profiles Source',
-        projection_name='Profiles Projection',
+        source_name=source_name,
+        projection_name=projection_name,
     )
     return ProfilesManagerComposition(
         module=module,

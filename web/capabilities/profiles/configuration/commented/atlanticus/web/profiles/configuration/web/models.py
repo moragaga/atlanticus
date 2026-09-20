@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+# Estos modelos describen exclusivamente datos requeridos por la presentación administrativa.
+# LocalIdentityBadge deriva las iniciales visibles desde el nombre sin alterar la identidad del usuario.
+
 from collections.abc import Callable
 from dataclasses import dataclass
 
 from atlanticus.web.profiles.models import normalize_profile_color
 
-# La Web Surface sólo conoce readers/writers de payload; el lifecycle Source permanece en Manager.
 ProfilesWorkspacePayloadReader = Callable[
     [dict[str, object] | None],
     dict[str, object] | None,
@@ -16,8 +18,6 @@ ProfilesWorkspacePayloadWriter = Callable[
 ]
 
 
-# Jane/John son identidades de Users, pero Profiles puede representar sus colores sin importar Users.
-# La composición entrega estas badges con los valores reales del runtime local.
 @dataclass(frozen=True, slots=True)
 class LocalIdentityBadge:
     display_name: str
@@ -40,11 +40,24 @@ class LocalIdentityBadge:
             normalize_profile_color(self.text_color),
         )
 
+    @property
+    def avatar_text(self) -> str:
+        words = tuple(part for part in self.display_name.split() if part)
+        if len(words) == 1:
+            return words[0][:2].upper()
+        return f'{words[0][0]}{words[-1][0]}'.upper()
+
+
+def build_profile_avatar_text(label: str) -> str:
+    normalized = label.strip()
+    if not normalized:
+        raise ValueError('Profile label must not be empty')
+    return normalized[0].upper()
+
 
 LocalIdentityBadgeProvider = Callable[[], tuple[LocalIdentityBadge, ...]]
 
 
-# El contexto inyecta sólo composición y autorización; no conoce SourceStore ni Users directamente.
 @dataclass(frozen=True, slots=True)
 class ProfilesAdminWebContext:
     workspace_payload_reader: ProfilesWorkspacePayloadReader
@@ -56,3 +69,4 @@ class ProfilesAdminWebContext:
     editor_revision_store_id: object
     can_manage: Callable[[], bool] = lambda: True
     source_name: str = 'Profiles Source'
+    projection_name: str = 'Profiles Projection'

@@ -27,11 +27,16 @@ def _principal() -> ManagerPrincipal:
     )
 
 
-def test_profiles_manager_registers_generic_source_projection_contract(tmp_path) -> None:
+def _stores(tmp_path):
     source = LocalSourceStore(LocalSourceSettings(root=tmp_path / 'source'))
     projection = LocalProfilesProjectionStore(
         LocalProfilesProjectionStoreSettings(root=tmp_path / 'projection')
     )
+    return source, projection
+
+
+def test_profiles_manager_registers_generic_source_projection_contract(tmp_path) -> None:
+    source, projection = _stores(tmp_path)
 
     composition = compose_profiles_manager(
         source_store=source,
@@ -49,6 +54,7 @@ def test_profiles_manager_registers_generic_source_projection_contract(tmp_path)
 
     assert module.key == 'profiles'
     assert module.route == '/profiles'
+    assert module.description == ''
     assert module.source_service == PROFILES_MANAGER_SOURCE_SERVICE
     assert module.source_reader_service == PROFILES_MANAGER_SOURCE_SERVICE
     assert module.source_history_service == PROFILES_MANAGER_SOURCE_SERVICE
@@ -62,11 +68,33 @@ def test_profiles_manager_registers_generic_source_projection_contract(tmp_path)
     assert services.require(PROFILES_MANAGER_VALIDATION_SERVICE) is composition.validation_workflow
 
 
-def test_profiles_manager_web_context_uses_users_local_identity_definitions(tmp_path) -> None:
-    source = LocalSourceStore(LocalSourceSettings(root=tmp_path / 'source'))
-    projection = LocalProfilesProjectionStore(
-        LocalProfilesProjectionStoreSettings(root=tmp_path / 'projection')
+def test_profiles_manager_propagates_runtime_source_projection_names(tmp_path) -> None:
+    source, projection = _stores(tmp_path)
+
+    composition = compose_profiles_manager(
+        source_store=source,
+        projection_store=projection,
+        principal_provider=_principal,
+        group_key='configuration',
+        description='Profile administration',
+        source_name='Blob Storage',
+        projection_name='Cosmos DB',
+        access_key='profiles.manage',
     )
+
+    module = composition.module
+    rendered = module.layout(ServiceRegistry())
+    text = str(rendered)
+
+    assert module.description == 'Profile administration'
+    assert module.source_name == 'Blob Storage'
+    assert module.projection_name == 'Cosmos DB'
+    assert 'Blob Storage' in text
+    assert 'Cosmos DB' in text
+
+
+def test_profiles_manager_web_context_uses_users_local_identity_definitions(tmp_path) -> None:
+    source, projection = _stores(tmp_path)
 
     composition = compose_profiles_manager(
         source_store=source,

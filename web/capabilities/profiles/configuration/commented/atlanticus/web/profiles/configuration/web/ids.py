@@ -1,27 +1,38 @@
-# Los IDs son propiedad de la presentación Profiles y no forman un contrato transversal.
+# Los identificadores pertenecen exclusivamente a la surface administrativa de Profiles.
+# Los nuevos ids de preview representan estado visual y no crean estado durable adicional.
+
 CONFIGURATION_STORE_ID = 'atlanticus-profiles-admin-configuration'
 EDITOR_STORE_ID = 'atlanticus-profiles-admin-editor'
 PAGE_STORE_ID = 'atlanticus-profiles-admin-page'
 MOUNT_STORE_ID = 'atlanticus-profiles-admin-mounted'
 CONFIGURED_PROFILES_ID = 'atlanticus-profiles-admin-configured'
 PAGE_SIZE_ID = 'atlanticus-profiles-admin-page-size'
-PAGE_STATUS_ID = 'atlanticus-profiles-admin-page-status'
 PREVIOUS_PAGE_ID = 'atlanticus-profiles-admin-page-previous'
 NEXT_PAGE_ID = 'atlanticus-profiles-admin-page-next'
 ADD_PROFILE_ID = 'atlanticus-profiles-admin-add-profile'
 SAVE_BUTTON_ID = 'atlanticus-profiles-admin-save'
 SAVE_RESULT_ID = 'atlanticus-profiles-admin-save-result'
 SOURCE_NAME_ID = 'atlanticus-profiles-admin-source-name'
+PROJECTION_NAME_ID = 'atlanticus-profiles-admin-projection-name'
 PROFILE_MODAL_ID = 'atlanticus-profiles-admin-profile-modal'
 PROFILE_MODAL_TITLE_ID = 'atlanticus-profiles-admin-profile-modal-title'
+PROFILE_MODAL_BACKDROP_ID = 'atlanticus-profiles-admin-profile-modal-backdrop'
+PROFILE_MODAL_CLOSE_ID = 'atlanticus-profiles-admin-profile-modal-close'
 PROFILE_NAME_ID = 'atlanticus-profiles-admin-profile-name'
 PROFILE_BACKGROUND_COLOR_ID = 'atlanticus-profiles-admin-profile-background-color'
 PROFILE_TEXT_COLOR_ID = 'atlanticus-profiles-admin-profile-text-color'
+PROFILE_PREVIEW_AVATAR_ID = 'atlanticus-profiles-admin-profile-preview-avatar'
+PROFILE_PREVIEW_LABEL_ID = 'atlanticus-profiles-admin-profile-preview-label'
+PROFILE_BACKGROUND_COLOR_VALUE_ID = 'atlanticus-profiles-admin-profile-background-color-value'
+PROFILE_TEXT_COLOR_VALUE_ID = 'atlanticus-profiles-admin-profile-text-color-value'
 PROFILE_CANCEL_ID = 'atlanticus-profiles-admin-profile-cancel'
 PROFILE_SAVE_ID = 'atlanticus-profiles-admin-profile-save'
 PROFILE_RESULT_ID = 'atlanticus-profiles-admin-profile-result'
 
 
-# Las acciones por fila transportan la key técnica internamente sin mostrarla al usuario.
 def profile_edit_id(key: str) -> dict[str, str]:
     return {'type': 'atlanticus-profiles-profile-edit', 'key': key}
+
+
+def profile_page_id(page_number: int) -> dict[str, int | str]:
+    return {'type': 'atlanticus-profiles-page-number', 'index': page_number}

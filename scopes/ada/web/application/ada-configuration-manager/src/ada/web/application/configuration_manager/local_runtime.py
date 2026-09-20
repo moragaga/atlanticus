@@ -212,6 +212,11 @@ def create_local_configuration_manager_dependencies(
         principal_provider=lambda: principal,
         group_key='configuration',
         title='Perfiles',
+        description=(
+            'Define los perfiles disponibles y su presentación visual dentro del sistema.'
+        ),
+        source_name='Local Source',
+        projection_name='In-process Projection',
         access_key=PROFILES_MANAGER_ACCESS_KEY,
     )
 

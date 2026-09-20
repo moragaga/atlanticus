@@ -1,3 +1,7 @@
+# Estos providers materializan topologías concretas sin alterar el contrato genérico
+# de Profiles Manager.
+# Los nombres visibles describen el backend realmente compuesto: local o Blob Storage + Cosmos DB.
+
 from __future__ import annotations
 
 from atlanticus.connectivity.cosmos import CosmosClient
@@ -21,7 +25,6 @@ from atlanticus.web.source.blob import BlobSourceSettings, BlobSourceStore
 from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
 
 
-# Provider local: filesystem durable para Source y archivo local para Projection.
 def compose_local_profiles_manager(
     *,
     source_settings: LocalSourceSettings,
@@ -43,13 +46,14 @@ def compose_local_profiles_manager(
         module_key=module_key,
         route=route,
         order=order,
+        source_name='Local Source',
+        projection_name='Local Projection',
         access_key=access_key,
         authorization=authorization,
         audit_actor_provider=audit_actor_provider,
     )
 
 
-# Provider Azure: Blob sigue siendo Source durable y Cosmos sirve la Projection activa.
 def compose_azure_profiles_manager(
     *,
     storage: StorageClient,
@@ -76,6 +80,8 @@ def compose_azure_profiles_manager(
         module_key=module_key,
         route=route,
         order=order,
+        source_name='Blob Storage',
+        projection_name='Cosmos DB',
         access_key=access_key,
         authorization=authorization,
         audit_actor_provider=audit_actor_provider,

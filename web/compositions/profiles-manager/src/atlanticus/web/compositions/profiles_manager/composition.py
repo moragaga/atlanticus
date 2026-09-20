@@ -56,7 +56,10 @@ def compose_profiles_manager(
     route: str = '/profiles',
     order: int = 10,
     title: str = 'Profiles',
+    description: str = '',
     source_key: SourceKey = PROFILES_CONFIGURATION_SOURCE_KEY,
+    source_name: str = 'Profiles Source',
+    projection_name: str = 'Profiles Projection',
     access_key: str | None = None,
     authorization: ManagerAuthorizationPolicy | None = None,
     audit_actor_provider: ProfilesAuditActorProvider | None = None,
@@ -110,7 +113,8 @@ def compose_profiles_manager(
             principal_provider(),
             module,
         ),
-        source_name='Profiles Source',
+        source_name=source_name,
+        projection_name=projection_name,
     )
 
     def layout(_services: ServiceRegistry) -> object:
@@ -129,6 +133,7 @@ def compose_profiles_manager(
         title=title,
         route=route,
         order=order,
+        description=description,
         layout=layout,
         source_key=source_key,
         source_service=PROFILES_MANAGER_SOURCE_SERVICE,
@@ -141,8 +146,8 @@ def compose_profiles_manager(
             web_module,
             register_services=register_services,
         ),
-        source_name='Profiles Source',
-        projection_name='Profiles Projection',
+        source_name=source_name,
+        projection_name=projection_name,
     )
     return ProfilesManagerComposition(
         module=module,

@@ -36,7 +36,12 @@ def test_local_runtime_composes_configuration_sources(tmp_path) -> None:
     assert dependencies.kpi_configuration_projection is not None
     assert dependencies.profiles_module.key == 'profiles'
     assert dependencies.profiles_module.title == 'Perfiles'
+    assert dependencies.profiles_module.description == (
+        'Define los perfiles disponibles y su presentación visual dentro del sistema.'
+    )
     assert dependencies.profiles_module.source_key.value == 'profiles-configuration'
+    assert dependencies.profiles_module.source_name == 'Local Source'
+    assert dependencies.profiles_module.projection_name == 'In-process Projection'
     assert dependencies.users_entry.key == 'users'
     assert dependencies.users_entry.route == '/users'
 

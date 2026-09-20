@@ -37,6 +37,20 @@ class LocalIdentityBadge:
             normalize_profile_color(self.text_color),
         )
 
+    @property
+    def avatar_text(self) -> str:
+        words = tuple(part for part in self.display_name.split() if part)
+        if len(words) == 1:
+            return words[0][:2].upper()
+        return f'{words[0][0]}{words[-1][0]}'.upper()
+
+
+def build_profile_avatar_text(label: str) -> str:
+    normalized = label.strip()
+    if not normalized:
+        raise ValueError('Profile label must not be empty')
+    return normalized[0].upper()
+
 
 LocalIdentityBadgeProvider = Callable[[], tuple[LocalIdentityBadge, ...]]
 
@@ -52,3 +66,4 @@ class ProfilesAdminWebContext:
     editor_revision_store_id: object
     can_manage: Callable[[], bool] = lambda: True
     source_name: str = 'Profiles Source'
+    projection_name: str = 'Profiles Projection'
