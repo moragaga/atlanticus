@@ -1,0 +1,269 @@
+.atlanticus-users-admin {
+    display: grid;
+    min-width: 0;
+    gap: .9rem;
+    padding: 0 1rem 1rem;
+}
+
+.atlanticus-users-admin__section {
+    min-width: 0;
+    padding: 1rem;
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .85rem;
+    box-shadow: 0 4px 16px rgb(25 30 38 / 3.5%);
+}
+
+.atlanticus-users-admin__intro {
+    border-top: .2rem solid var(--atlanticus-ui-accent);
+}
+
+.atlanticus-users-admin__section-heading,
+.atlanticus-users-admin__row,
+.atlanticus-users-admin__row-actions,
+.atlanticus-users-admin__pagination,
+.atlanticus-users-admin__page-size-control,
+.atlanticus-users-admin__page-actions {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+}
+
+.atlanticus-users-admin__section-heading,
+.atlanticus-users-admin__row,
+.atlanticus-users-admin__pagination {
+    justify-content: space-between;
+}
+
+.atlanticus-users-admin__section-copy {
+    display: grid;
+    min-width: 0;
+    gap: .2rem;
+    margin-bottom: .8rem;
+}
+
+.atlanticus-users-admin__section-heading .atlanticus-users-admin__section-copy {
+    margin-bottom: 0;
+}
+
+.atlanticus-users-admin__section-copy h3,
+.atlanticus-users-admin__section-copy p {
+    margin: 0;
+}
+
+.atlanticus-users-admin__section-copy h3 {
+    color: var(--atlanticus-ui-text);
+    font-size: .9rem;
+    font-weight: 780;
+}
+
+.atlanticus-users-admin__section-copy p,
+.atlanticus-users-admin__pagination,
+.atlanticus-users-admin__empty {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .72rem;
+}
+
+.atlanticus-users-admin__filters {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(10rem, 1fr);
+    gap: .65rem;
+    margin-bottom: .75rem;
+}
+
+.atlanticus-users-admin__filters--managed {
+    grid-template-columns: minmax(0, 2fr) minmax(10rem, 1fr) minmax(9rem, 1fr);
+}
+
+.atlanticus-users-admin__rows {
+    display: grid;
+    gap: .45rem;
+}
+
+.atlanticus-users-admin__row {
+    min-width: 0;
+    padding: .72rem .78rem;
+    background: var(--atlanticus-ui-surface-muted);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .72rem;
+}
+
+.atlanticus-users-admin__row-copy {
+    display: grid;
+    min-width: 0;
+    gap: .16rem;
+}
+
+.atlanticus-users-admin__row-copy strong {
+    color: var(--atlanticus-ui-text);
+    font-size: .82rem;
+}
+
+.atlanticus-users-admin__row-copy > span,
+.atlanticus-users-admin__row-copy code,
+.atlanticus-users-admin__issue {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .68rem;
+}
+
+.atlanticus-users-admin__issues {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3rem;
+    margin-top: .2rem;
+}
+
+.atlanticus-users-admin__issue {
+    padding: .2rem .42rem;
+    color: var(--atlanticus-ui-warning);
+    background: var(--atlanticus-ui-warning-soft);
+    border-radius: 999px;
+}
+
+.atlanticus-users-admin__row-actions {
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.atlanticus-users-admin__profile-select {
+    width: min(16rem, 32vw);
+    min-width: 10rem;
+}
+
+.atlanticus-users-admin__badge,
+.atlanticus-users-admin__profile-key {
+    display: inline-flex;
+    align-items: center;
+    padding: .28rem .5rem;
+    border-radius: 999px;
+    font-size: .68rem;
+    font-weight: 750;
+}
+
+.atlanticus-users-admin__badge--ready {
+    color: var(--atlanticus-ui-success);
+    background: var(--atlanticus-ui-success-soft);
+}
+
+.atlanticus-users-admin__badge--warning {
+    color: var(--atlanticus-ui-warning);
+    background: var(--atlanticus-ui-warning-soft);
+}
+
+.atlanticus-users-admin__badge--disabled,
+.atlanticus-users-admin__profile-key {
+    color: var(--atlanticus-ui-text-muted);
+    background: var(--atlanticus-ui-background);
+}
+
+.atlanticus-users-admin__pagination {
+    margin-top: .75rem;
+}
+
+.atlanticus-users-admin__page-size {
+    width: 5rem;
+}
+
+.atlanticus-users-admin__modal-body,
+.atlanticus-users-admin__field {
+    display: grid;
+    gap: .65rem;
+}
+
+.atlanticus-users-admin__field {
+    gap: .35rem;
+    font-size: .76rem;
+    font-weight: 700;
+}
+
+.atlanticus-users-admin__identity-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .55rem;
+    padding: .7rem;
+    background: var(--atlanticus-ui-surface-muted);
+    border-radius: .68rem;
+}
+
+.atlanticus-users-admin__identity-item {
+    display: grid;
+    min-width: 0;
+    gap: .15rem;
+}
+
+.atlanticus-users-admin__identity-item span {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .66rem;
+}
+
+.atlanticus-users-admin__identity-item strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: .76rem;
+}
+
+.atlanticus-users-admin__notice,
+.atlanticus-users-admin__error {
+    margin-top: .55rem;
+    padding: .55rem .7rem;
+    border-radius: .45rem;
+    font-size: .76rem;
+}
+
+.atlanticus-users-admin__notice {
+    color: var(--atlanticus-ui-success);
+    background: var(--atlanticus-ui-success-soft);
+}
+
+.atlanticus-users-admin__error {
+    color: var(--atlanticus-ui-danger);
+    background: var(--atlanticus-ui-danger-soft);
+}
+
+@media (max-width: 64rem) {
+    .atlanticus-users-admin__filters,
+    .atlanticus-users-admin__filters--managed {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .atlanticus-users-admin__filters--managed > :first-child {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 48rem) {
+    .atlanticus-users-admin {
+        padding-inline: .75rem;
+    }
+
+    .atlanticus-users-admin__section-heading,
+    .atlanticus-users-admin__row,
+    .atlanticus-users-admin__pagination {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .atlanticus-users-admin__filters,
+    .atlanticus-users-admin__filters--managed,
+    .atlanticus-users-admin__identity-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .atlanticus-users-admin__filters--managed > :first-child {
+        grid-column: auto;
+    }
+
+    .atlanticus-users-admin__row-actions {
+        justify-content: flex-start;
+    }
+
+    .atlanticus-users-admin__profile-select {
+        width: 100%;
+    }
+
+    .atlanticus-users-admin__page-size-control,
+    .atlanticus-users-admin__page-actions {
+        justify-content: space-between;
+    }
+}

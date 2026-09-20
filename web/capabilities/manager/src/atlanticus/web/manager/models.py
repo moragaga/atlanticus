@@ -41,6 +41,19 @@ class ManagerModuleGroup:
 
 
 @dataclass(frozen=True, slots=True)
+class ManagerEntry:
+    key: str
+    group_key: str
+    title: str
+    route: str
+    order: int
+    layout: ManagerLayoutFactory
+    description: str = ''
+    access_key: str | None = None
+    web_module: WebModule | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class ManagerModule:
     key: str
     group_key: str
@@ -86,6 +99,7 @@ class ManagerSurfaceDefinition:
     modules: tuple[ManagerModule, ...]
     route_prefix: str = ''
     web_modules: tuple[WebModule, ...] = ()
+    entries: tuple[ManagerEntry, ...] = ()
 
     def __post_init__(self) -> None:
         prefix = self.route_prefix

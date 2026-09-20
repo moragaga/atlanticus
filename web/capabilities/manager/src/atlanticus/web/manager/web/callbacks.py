@@ -12,7 +12,7 @@ from atlanticus.web.manager.errors import (
     ManagerProjectionError,
     ManagerSourceConflictError,
 )
-from atlanticus.web.manager.models import ManagerSurfaceDefinition
+from atlanticus.web.manager.models import ManagerModule, ManagerSurfaceDefinition
 from atlanticus.web.manager.projection import (
     ProjectionIssue,
     ProjectionState,
@@ -71,6 +71,7 @@ from atlanticus.web.manager.web.ids import (
     workflow_workspace_reset_signal_id,
 )
 from atlanticus.web.manager.web.layout import (
+    build_entry_content,
     build_module_content,
     build_sidebar_modules,
     build_summary,
@@ -173,7 +174,7 @@ def register_manager_callbacks(
         states = {key: _safe_state(value) for key, value in (states_data or {}).items()}
         return build_sidebar_modules(
             registry=registry,
-            modules=registry.visible_modules(principal, authorization),
+            modules=registry.visible_items(principal, authorization),
             current_path=pathname or registry.root_route,
             states=states,
         )
@@ -199,7 +200,7 @@ def register_manager_callbacks(
         states = {key: _safe_state(value) for key, value in (states_data or {}).items()}
         return build_home_page_content(
             registry=registry,
-            modules=registry.visible_modules(principal, authorization),
+            modules=registry.visible_items(principal, authorization),
             states=states,
             page=page,
         )
@@ -210,16 +211,21 @@ def register_manager_callbacks(
         if current_path == registry.root_route:
             return None
         principal = definition.principal_provider()
-        module = registry.find_by_route(current_path)
-        if module is None or not authorization.can_view(principal, module):
-            return _error_message('Configuration module was not found')
+        item = registry.find_by_route(current_path)
+        if item is None or not authorization.can_view(principal, item):
+            return _error_message('Manager entry was not found')
+        content = (
+            build_module_content(
+                module=item,
+                services=services,
+                coordinator=coordinator,
+                principal=principal,
+            )
+            if isinstance(item, ManagerModule)
+            else build_entry_content(entry=item, services=services)
+        )
         return html.Div(
-            [
-                build_manager_home_return(registry.root_route),
-                build_module_content(
-                    module=module, services=services, coordinator=coordinator, principal=principal
-                ),
-            ],
+            [build_manager_home_return(registry.root_route), content],
             className='atlanticus-manager__module-page',
         )
 
@@ -284,9 +290,10 @@ def register_manager_callbacks(
     )
     def refresh_active_workflow(_status_data, pathname, _signals):
         principal = definition.principal_provider()
-        module = registry.find_by_route(pathname or '')
-        if module is None or not authorization.can_view(principal, module):
+        item = registry.find_by_route(pathname or '')
+        if not isinstance(item, ManagerModule) or not authorization.can_view(principal, item):
             raise PreventUpdate
+        module = item
         try:
             status = coordinator.get_status(module.key, principal)
             history = (

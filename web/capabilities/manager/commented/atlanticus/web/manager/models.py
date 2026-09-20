@@ -1,7 +1,4 @@
-# Espejo pedagógico del archivo productivo equivalente.
-# Define la composición declarativa de módulos Manager. Cada módulo declara una sola capacidad funcional de acceso; validar, publicar y proyectar son pasos internos del workflow.
-# Los comentarios no alteran la estructura ejecutable ni el comportamiento del archivo productivo.
-
+# Espejo pedagógico: mantiene el mismo AST que producción y documenta el contrato Manager en español.
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -42,6 +39,19 @@ class ManagerModuleGroup:
     key: str
     title: str
     order: int
+
+
+@dataclass(frozen=True, slots=True)
+class ManagerEntry:
+    key: str
+    group_key: str
+    title: str
+    route: str
+    order: int
+    layout: ManagerLayoutFactory
+    description: str = ''
+    access_key: str | None = None
+    web_module: WebModule | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,6 +100,7 @@ class ManagerSurfaceDefinition:
     modules: tuple[ManagerModule, ...]
     route_prefix: str = ''
     web_modules: tuple[WebModule, ...] = ()
+    entries: tuple[ManagerEntry, ...] = ()
 
     def __post_init__(self) -> None:
         prefix = self.route_prefix

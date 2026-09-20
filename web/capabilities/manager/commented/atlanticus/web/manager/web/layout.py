@@ -1,7 +1,4 @@
-# Espejo pedagógico del archivo productivo equivalente.
-# Construye la superficie visual a partir de ProjectionStatus e HistoryPage genéricos. La UI no reconstruye targets desde revisiones antiguas.
-# Los comentarios no alteran la estructura ejecutable ni el comportamiento del archivo productivo.
-
+# Espejo pedagógico: mantiene el mismo AST que producción y documenta el contrato Manager en español.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -12,9 +9,14 @@ from dash import dcc, html
 from atlanticus.web.manager.authorization import ManagerAuthorizationPolicy
 from atlanticus.web.manager.coordinator import ManagerProjectionCoordinator
 from atlanticus.web.manager.errors import ManagerError
-from atlanticus.web.manager.models import ManagerModule, ManagerPrincipal, ManagerSurfaceDefinition
+from atlanticus.web.manager.models import (
+    ManagerEntry,
+    ManagerModule,
+    ManagerPrincipal,
+    ManagerSurfaceDefinition,
+)
 from atlanticus.web.manager.projection import ProjectionState, resolve_projection_state
-from atlanticus.web.manager.registry import ManagerModuleRegistry
+from atlanticus.web.manager.registry import ManagerModuleRegistry, ManagerRegisteredItem
 from atlanticus.web.manager.web.home import build_manager_home
 from atlanticus.web.manager.web.ids import (
     CONTENT_ID,
@@ -82,6 +84,7 @@ def build_manager_surface(
     authorization: ManagerAuthorizationPolicy,
 ) -> object:
     visible_modules = registry.visible_modules(principal, authorization)
+    visible_items = registry.visible_items(principal, authorization)
     return html.Div(
         [
             dcc.Location(id=LOCATION_ID, refresh=False),
@@ -96,18 +99,32 @@ def build_manager_surface(
             html.Section(id=SUMMARY_ID, className='atlanticus-manager__summary', hidden=True),
             html.Div(
                 id=HOME_ID,
-                children=build_manager_home(registry=registry, modules=visible_modules, states={}),
+                children=build_manager_home(registry=registry, modules=visible_items, states={}),
                 className='atlanticus-manager__home-surface',
                 hidden=True,
             ),
-            html.Button('⚙', id=SIDEBAR_TOGGLE_ID, className='atlanticus-manager__sidebar-trigger', **{'aria-label': 'Abrir configuraciones'}),
+            html.Button(
+                '⚙',
+                id=SIDEBAR_TOGGLE_ID,
+                className='atlanticus-manager__sidebar-trigger',
+                **{'aria-label': 'Abrir administración'},
+            ),
             html.Main(id=CONTENT_ID, className='atlanticus-manager__content', hidden=True),
             html.Aside(
                 [
                     html.Header(
                         [
-                            html.Div([html.Strong('Configuraciones'), html.Span('Selecciona el módulo que quieres administrar.')]),
-                            html.Button('×', id=SIDEBAR_CLOSE_ID, className='atlanticus-ui-icon-button'),
+                            html.Div(
+                                [
+                                    html.Strong('Administración'),
+                                    html.Span('Selecciona lo que quieres administrar.'),
+                                ]
+                            ),
+                            html.Button(
+                                '×',
+                                id=SIDEBAR_CLOSE_ID,
+                                className='atlanticus-ui-icon-button',
+                            ),
                         ],
                         className='atlanticus-manager__sidebar-header',
                     ),
@@ -115,7 +132,7 @@ def build_manager_surface(
                         id=SIDEBAR_MODULES_ID,
                         children=build_sidebar_modules(
                             registry=registry,
-                            modules=visible_modules,
+                            modules=visible_items,
                             current_path=registry.root_route,
                             states={},
                         ),
@@ -125,7 +142,11 @@ def build_manager_surface(
                 id=SIDEBAR_ID,
                 className='atlanticus-manager__sidebar',
             ),
-            html.Button(id=SIDEBAR_BACKDROP_ID, className='atlanticus-manager__sidebar-backdrop', **{'aria-label': 'Cerrar configuraciones'}),
+            html.Button(
+                id=SIDEBAR_BACKDROP_ID,
+                className='atlanticus-manager__sidebar-backdrop',
+                **{'aria-label': 'Cerrar administración'},
+            ),
         ],
         className='atlanticus-manager atlanticus-manager--surface',
     )
@@ -141,7 +162,11 @@ def _module_stores(module: ManagerModule) -> object:
             dcc.Store(id=workflow_validation_id(module.key), storage_type='memory'),
             dcc.Store(id=workflow_source_verification_id(module.key), storage_type='memory'),
             dcc.Store(id=workflow_editor_revision_id(module.key), storage_type='memory'),
-            dcc.Store(id=workflow_workspace_reset_signal_id(module.key), data=0, storage_type='memory'),
+            dcc.Store(
+                id=workflow_workspace_reset_signal_id(module.key),
+                data=0,
+                storage_type='memory',
+            ),
             dcc.Store(id=workflow_workspace_command_id(module.key), storage_type='memory'),
         ],
         style={'display': 'contents'},
@@ -157,7 +182,7 @@ def build_summary(states: Mapping[str, ProjectionState]) -> object:
     pending = total - synchronized - ready - errors
     return html.Div(
         [
-            _summary_item('Total', str(total), 'Módulos disponibles'),
+            _summary_item('Total', str(total), 'Configuraciones disponibles'),
             _summary_item('Actualizadas', str(synchronized), 'Source y Projection sincronizadas'),
             _summary_item('Pendientes', str(pending), 'Configuración sin Source publicada'),
             _summary_item('Listas', str(ready), 'Source publicada pendiente de Projection'),
@@ -170,7 +195,7 @@ def build_summary(states: Mapping[str, ProjectionState]) -> object:
 def build_sidebar_modules(
     *,
     registry: ManagerModuleRegistry,
-    modules: tuple[ManagerModule, ...],
+    modules: tuple[ManagerRegisteredItem, ...],
     current_path: str,
     states: Mapping[str, ProjectionState],
 ) -> tuple[object, ...]:
@@ -178,29 +203,59 @@ def build_sidebar_modules(
     home_class = 'atlanticus-manager__sidebar-link atlanticus-manager__sidebar-link--home'
     if current_path == registry.root_route:
         home_class += ' atlanticus-manager__sidebar-link--active'
-    result.append(dcc.Link(html.Strong('Manager Home'), href=registry.root_route, className=home_class))
+    result.append(
+        dcc.Link(html.Strong('Manager Home'), href=registry.root_route, className=home_class)
+    )
     for group in registry.groups:
-        group_modules = tuple(module for module in modules if module.group_key == group.key)
-        if not group_modules:
+        group_items = tuple(item for item in modules if item.group_key == group.key)
+        if not group_items:
             continue
         result.append(html.Div(group.title, className='atlanticus-manager__sidebar-group'))
-        for module in group_modules:
-            state = states.get(module.key, ProjectionState.UNAVAILABLE)
+        for item in group_items:
             class_name = 'atlanticus-manager__sidebar-link'
-            module_route = registry.route_for(module)
-            if module_route == current_path:
+            item_route = registry.route_for(item)
+            if item_route == current_path:
                 class_name += ' atlanticus-manager__sidebar-link--active'
+            status = None
+            if isinstance(item, ManagerModule):
+                state = states.get(item.key, ProjectionState.UNAVAILABLE)
+                status = html.Span(
+                    _STATE_LABELS[state],
+                    className=f'atlanticus-manager__state atlanticus-manager__state--{state.value}',
+                )
             result.append(
                 dcc.Link(
                     [
-                        html.Div([html.Strong(module.title), html.Span(module.description)]),
-                        html.Span(_STATE_LABELS[state], className=f'atlanticus-manager__state atlanticus-manager__state--{state.value}'),
+                        html.Div([html.Strong(item.title), html.Span(item.description)]),
+                        status,
                     ],
-                    href=module_route,
+                    href=item_route,
                     className=class_name,
                 )
             )
     return tuple(result)
+
+
+def build_entry_content(*, entry: ManagerEntry, services: ServiceRegistry) -> object:
+    return html.Section(
+        [
+            html.Header(
+                [
+                    html.Div(
+                        [
+                            html.P('Administración', className='atlanticus-manager__eyebrow'),
+                            html.H2(entry.title),
+                            html.P(entry.description),
+                        ],
+                        className='atlanticus-manager__module-heading',
+                    )
+                ],
+                className='atlanticus-manager__module-header',
+            ),
+            entry.layout(services),
+        ],
+        className='atlanticus-manager__module',
+    )
 
 
 def build_module_content(
@@ -212,7 +267,11 @@ def build_module_content(
 ) -> object:
     try:
         status = coordinator.get_status(module.key, principal)
-        history = coordinator.list_history(module.key, principal, limit=20) if coordinator.can_load_history(module.key, principal) else None
+        history = (
+            coordinator.list_history(module.key, principal, limit=20)
+            if coordinator.can_load_history(module.key, principal)
+            else None
+        )
         error = None
     except Exception:
         status = None
@@ -225,21 +284,46 @@ def build_module_content(
         [
             html.Header(
                 [
-                    html.Div([html.P('Configuración', className='atlanticus-manager__eyebrow'), html.H2(module.title), html.P(module.description)], className='atlanticus-manager__module-heading'),
+                    html.Div(
+                        [
+                            html.P('Configuración', className='atlanticus-manager__eyebrow'),
+                            html.H2(module.title),
+                            html.P(module.description),
+                        ],
+                        className='atlanticus-manager__module-heading',
+                    ),
                     _build_module_status(module.key, status),
                 ],
                 className='atlanticus-manager__module-header',
             ),
             preamble,
-            dcc.Store(id=module_section_store_id(module.key), data=default_section, storage_type='memory'),
+            dcc.Store(
+                id=module_section_store_id(module.key),
+                data=default_section,
+                storage_type='memory',
+            ),
             html.Nav(
                 [
-                    html.Button(module.content_section_title, id=module_section_button_id(module.key, 'content'), n_clicks=0, className=_section_button_class(default_section == 'content')),
-                    html.Button(module.workflow_section_title, id=module_section_button_id(module.key, 'workflow'), n_clicks=0, className=_section_button_class(default_section == 'workflow')),
+                    html.Button(
+                        module.content_section_title,
+                        id=module_section_button_id(module.key, 'content'),
+                        n_clicks=0,
+                        className=_section_button_class(default_section == 'content'),
+                    ),
+                    html.Button(
+                        module.workflow_section_title,
+                        id=module_section_button_id(module.key, 'workflow'),
+                        n_clicks=0,
+                        className=_section_button_class(default_section == 'workflow'),
+                    ),
                 ],
                 className='atlanticus-manager__module-tabs',
             ),
-            html.Div(content, id=module_section_panel_id(module.key, 'content'), className=_section_panel_class(default_section == 'content')),
+            html.Div(
+                content,
+                id=module_section_panel_id(module.key, 'content'),
+                className=_section_panel_class(default_section == 'content'),
+            ),
             html.Div(
                 build_workflow_panel(module=module, status=status, history=history, error=error),
                 id=module_section_panel_id(module.key, 'workflow'),
@@ -259,11 +343,27 @@ def build_workflow_panel(
 ) -> object:
     return html.Div(
         [
-            html.Div(id=workflow_draft_status_id(module.key), className='atlanticus-manager__workflow-status atlanticus-manager__workflow-status--draft'),
-            html.Div(build_workflow_status_content(module=module, status=status, error=error), id=workflow_status_id(module.key), className='atlanticus-manager__workflow-status atlanticus-manager__workflow-status--published'),
+            html.Div(
+                id=workflow_draft_status_id(module.key),
+                className='atlanticus-manager__workflow-status atlanticus-manager__workflow-status--draft',
+            ),
+            html.Div(
+                build_workflow_status_content(module=module, status=status, error=error),
+                id=workflow_status_id(module.key),
+                className='atlanticus-manager__workflow-status atlanticus-manager__workflow-status--published',
+            ),
             _build_workflow_actions(module, status),
             html.Div(id=workflow_result_id(module.key), className='atlanticus-manager__workflow-result'),
-            html.Div(build_workflow_history_content(module=module, status=status, history=history, error=error), id=workflow_history_id(module.key), className='atlanticus-manager__workflow-history-slot'),
+            html.Div(
+                build_workflow_history_content(
+                    module=module,
+                    status=status,
+                    history=history,
+                    error=error,
+                ),
+                id=workflow_history_id(module.key),
+                className='atlanticus-manager__workflow-history-slot',
+            ),
             _build_history_preview_shell(module),
         ],
         className='atlanticus-manager__workflow',
@@ -277,19 +377,53 @@ def build_workflow_status_content(
     error: str | None,
 ) -> object:
     if error is not None:
-        return html.Div('No fue posible consultar el estado publicado en este momento.', className='atlanticus-manager__message atlanticus-manager__message--notice')
+        return html.Div(
+            'No fue posible consultar el estado publicado en este momento.',
+            className='atlanticus-manager__message atlanticus-manager__message--notice',
+        )
     if status is None or status.source_current_release is None:
-        return html.Div('Aún no existe una configuración publicada.', className='atlanticus-manager__workflow-empty')
+        return html.Div(
+            'Aún no existe una configuración publicada.',
+            className='atlanticus-manager__workflow-empty',
+        )
     state = resolve_projection_state(status)
     source = status.source_current_release
     projected = status.projected_source_release
     return html.Section(
         [
-            _workflow_group_header('Estado publicado', 'Identidad de Source y release actualmente proyectada.', state=state),
+            _workflow_group_header(
+                'Estado publicado',
+                'Identidad de Source y release actualmente proyectada.',
+                state=state,
+            ),
             html.Div(
                 [
-                    _stage('4', 'Fuente de verdad', module.source_name, (('Release actual', _short(source.release_id.value)), ('Publicada', _format_datetime(source.published_at_utc)))),
-                    _stage('5', 'Proyección activa', module.projection_name, (('Release proyectada', _short(projected.release_id.value if projected else None)), ('Publicación de Source', _format_datetime(projected.published_at_utc) if projected else 'Sin registro'))),
+                    _stage(
+                        '4',
+                        'Fuente de verdad',
+                        module.source_name,
+                        (
+                            ('Release actual', _short(source.release_id.value)),
+                            ('Publicada', _format_datetime(source.published_at_utc)),
+                        ),
+                    ),
+                    _stage(
+                        '5',
+                        'Proyección activa',
+                        module.projection_name,
+                        (
+                            (
+                                'Release proyectada',
+                                _short(projected.release_id.value if projected else None),
+                            ),
+                            (
+                                'Publicación de Source',
+                                _format_datetime(projected.published_at_utc)
+                                if projected
+                                else 'Sin registro',
+                            ),
+                        ),
+                    ),
                 ],
                 className='atlanticus-manager__workflow-stage-grid',
             ),
@@ -312,24 +446,65 @@ def build_workflow_history_content(
         release = entry.release_ref
         current = release == status.source_current_release
         active = release == status.projected_source_release
-        state = ' · '.join(label for label, enabled in (('Fuente actual', current), ('Proyección activa', active)) if enabled) or 'Histórica'
+        state = (
+            ' · '.join(
+                label
+                for label, enabled in (
+                    ('Fuente actual', current),
+                    ('Proyección activa', active),
+                )
+                if enabled
+            )
+            or 'Histórica'
+        )
         action = None
         if module.history_preview_renderer is not None:
             action = html.Button(
                 'Ver release',
-                id=history_preview_open_id(module.key, release.release_id.value, release.published_at_utc.isoformat(), f'{index}-{release.published_at_utc.isoformat()}', current=current, active=active),
+                id=history_preview_open_id(
+                    module.key,
+                    release.release_id.value,
+                    release.published_at_utc.isoformat(),
+                    f'{index}-{release.published_at_utc.isoformat()}',
+                    current=current,
+                    active=active,
+                ),
                 n_clicks=0,
                 className='atlanticus-ui-button atlanticus-ui-button--secondary atlanticus-manager__history-preview-open',
             )
-        rows.append(html.Div([_history_cell('Release', html.Code(_short(release.release_id.value))), _history_cell('Fecha', html.Time(_format_datetime(release.published_at_utc))), _history_cell('Estado', html.Span(state)), _history_cell('Acción', action)], className='atlanticus-manager__history-row'))
-    return html.Section([html.H3('Historial publicado'), html.P('Cada entrada es una publicación Source inmutable.'), html.Div(rows) if rows else html.Div('Aún no hay publicaciones.', className='atlanticus-manager__history-empty')], className='atlanticus-manager__history')
+        rows.append(
+            html.Div(
+                [
+                    _history_cell('Release', html.Code(_short(release.release_id.value))),
+                    _history_cell('Fecha', html.Time(_format_datetime(release.published_at_utc))),
+                    _history_cell('Estado', html.Span(state)),
+                    _history_cell('Acción', action),
+                ],
+                className='atlanticus-manager__history-row',
+            )
+        )
+    return html.Section(
+        [
+            html.H3('Historial publicado'),
+            html.P('Cada entrada es una publicación Source inmutable.'),
+            html.Div(rows)
+            if rows
+            else html.Div('Aún no hay publicaciones.', className='atlanticus-manager__history-empty'),
+        ],
+        className='atlanticus-manager__history',
+    )
 
 
 def _build_workflow_actions(module: ManagerModule, status: ProjectionStatus | None) -> object:
     actions = [
         ('1', 'Guardar borrador', 'Guarda el trabajo en este navegador.', 'save-draft'),
         ('2', 'Validar', 'Valida sin modificar Source.', 'validate'),
-        ('3', 'Verificar fuente', f'Comprueba que {module.source_name} siga en la base esperada.', 'verify-source'),
+        (
+            '3',
+            'Verificar fuente',
+            f'Comprueba que {module.source_name} siga en la base esperada.',
+            'verify-source',
+        ),
         ('4', 'Publicar', f'Publica en {module.source_name}.', 'publish'),
         ('5', 'Proyectar', f'Actualiza {module.projection_name}.', 'project'),
     ]
@@ -337,33 +512,105 @@ def _build_workflow_actions(module: ManagerModule, status: ProjectionStatus | No
         [
             html.Section(
                 [
-                    _workflow_group_header('Workspace local', 'Controla el trabajo local sin modificar Source ni Projection.'),
-                    html.Div([
-                        html.Button('Descartar cambios locales', id=workflow_action_id(module.key, 'discard-local'), n_clicks=0, className='atlanticus-ui-button atlanticus-ui-button--secondary', disabled=True),
-                        html.Button('Recargar', id=workflow_action_id(module.key, 'reload'), n_clicks=0, className='atlanticus-ui-button atlanticus-ui-button--secondary'),
-                    ], className='atlanticus-manager__workspace-actions'),
-                    html.Div(id=workflow_saved_draft_status_id(module.key), className='atlanticus-manager__saved-draft-slot'),
-                    html.Div([
-                        html.Button('Recuperar borrador', id=workflow_action_id(module.key, 'recover-saved-draft'), n_clicks=0, className='atlanticus-ui-button atlanticus-ui-button--secondary', disabled=True),
-                        html.Button('Descartar borrador guardado', id=workflow_action_id(module.key, 'discard-saved-draft'), n_clicks=0, className='atlanticus-ui-button atlanticus-ui-button--secondary', disabled=True),
-                    ], className='atlanticus-manager__workspace-actions'),
+                    _workflow_group_header(
+                        'Workspace local',
+                        'Controla el trabajo local sin modificar Source ni Projection.',
+                    ),
+                    html.Div(
+                        [
+                            html.Button(
+                                'Descartar cambios locales',
+                                id=workflow_action_id(module.key, 'discard-local'),
+                                n_clicks=0,
+                                className='atlanticus-ui-button atlanticus-ui-button--secondary',
+                                disabled=True,
+                            ),
+                            html.Button(
+                                'Recargar',
+                                id=workflow_action_id(module.key, 'reload'),
+                                n_clicks=0,
+                                className='atlanticus-ui-button atlanticus-ui-button--secondary',
+                            ),
+                        ],
+                        className='atlanticus-manager__workspace-actions',
+                    ),
+                    html.Div(
+                        id=workflow_saved_draft_status_id(module.key),
+                        className='atlanticus-manager__saved-draft-slot',
+                    ),
+                    html.Div(
+                        [
+                            html.Button(
+                                'Recuperar borrador',
+                                id=workflow_action_id(module.key, 'recover-saved-draft'),
+                                n_clicks=0,
+                                className='atlanticus-ui-button atlanticus-ui-button--secondary',
+                                disabled=True,
+                            ),
+                            html.Button(
+                                'Descartar borrador guardado',
+                                id=workflow_action_id(module.key, 'discard-saved-draft'),
+                                n_clicks=0,
+                                className='atlanticus-ui-button atlanticus-ui-button--secondary',
+                                disabled=True,
+                            ),
+                        ],
+                        className='atlanticus-manager__workspace-actions',
+                    ),
                 ],
                 className='atlanticus-manager__workflow-group',
             ),
             html.Section(
                 [
-                    _workflow_group_header('Flujo de publicación', 'Avanza en orden: guardar, validar, verificar Source y publicar.'),
-                    html.Section([
-                        html.Div(id=workflow_conflict_details_id(module.key)),
-                        html.Div([
-                            html.Button(f'Usar versión de {module.source_name}', id=workflow_action_id(module.key, 'update-source'), n_clicks=0, className='atlanticus-ui-button atlanticus-ui-button--secondary'),
-                            html.Button('Mantener mi borrador', id=workflow_action_id(module.key, 'keep-draft'), n_clicks=0, className='atlanticus-ui-button atlanticus-ui-button--secondary'),
-                        ], className='atlanticus-manager__conflict-actions'),
-                    ], id=workflow_conflict_id(module.key), className='atlanticus-manager__conflict', hidden=True),
-                    html.Div([
-                        _action_step(step, title, description, html.Button(title if action != 'verify-source' else 'Verificar', id=workflow_action_id(module.key, action), n_clicks=0, className='atlanticus-ui-button', disabled=(action != 'project' or not _can_project(status))))
-                        for step, title, description, action in actions
-                    ], className='atlanticus-manager__workflow-action-grid'),
+                    _workflow_group_header(
+                        'Flujo de publicación',
+                        'Avanza en orden: guardar, validar, verificar Source y publicar.',
+                    ),
+                    html.Section(
+                        [
+                            html.Div(id=workflow_conflict_details_id(module.key)),
+                            html.Div(
+                                [
+                                    html.Button(
+                                        f'Usar versión de {module.source_name}',
+                                        id=workflow_action_id(module.key, 'update-source'),
+                                        n_clicks=0,
+                                        className='atlanticus-ui-button atlanticus-ui-button--secondary',
+                                    ),
+                                    html.Button(
+                                        'Mantener mi borrador',
+                                        id=workflow_action_id(module.key, 'keep-draft'),
+                                        n_clicks=0,
+                                        className='atlanticus-ui-button atlanticus-ui-button--secondary',
+                                    ),
+                                ],
+                                className='atlanticus-manager__conflict-actions',
+                            ),
+                        ],
+                        id=workflow_conflict_id(module.key),
+                        className='atlanticus-manager__conflict',
+                        hidden=True,
+                    ),
+                    html.Div(
+                        [
+                            _action_step(
+                                step,
+                                title,
+                                description,
+                                html.Button(
+                                    title if action != 'verify-source' else 'Verificar',
+                                    id=workflow_action_id(module.key, action),
+                                    n_clicks=0,
+                                    className='atlanticus-ui-button',
+                                    disabled=(
+                                        action != 'project' or not _can_project(status)
+                                    ),
+                                ),
+                            )
+                            for step, title, description, action in actions
+                        ],
+                        className='atlanticus-manager__workflow-action-grid',
+                    ),
                 ],
                 className='atlanticus-manager__workflow-group',
             ),
@@ -374,43 +621,136 @@ def _build_workflow_actions(module: ManagerModule, status: ProjectionStatus | No
 
 
 def _can_project(status: ProjectionStatus | None) -> bool:
-    return bool(status is not None and status.source_current_release is not None and status.alignment is not ProjectionAlignment.CURRENT)
+    return bool(
+        status is not None
+        and status.source_current_release is not None
+        and status.alignment is not ProjectionAlignment.CURRENT
+    )
 
 
 def _build_module_status(module_key: str, status: ProjectionStatus | None) -> object:
     state = resolve_projection_state(status) if status is not None else ProjectionState.UNAVAILABLE
-    return html.Span(_STATE_LABELS[state], id=module_status_id(module_key), className=f'atlanticus-manager__state atlanticus-manager__state--{state.value}')
+    return html.Span(
+        _STATE_LABELS[state],
+        id=module_status_id(module_key),
+        className=f'atlanticus-manager__state atlanticus-manager__state--{state.value}',
+    )
 
 
 def _summary_item(label: str, value: str, detail: str) -> object:
-    return html.Article([html.Span(label), html.Strong(value), html.Small(detail)], className='atlanticus-manager__summary-item')
+    return html.Article(
+        [html.Span(label), html.Strong(value), html.Small(detail)],
+        className='atlanticus-manager__summary-item',
+    )
 
 
-def _workflow_group_header(title: str, description: str, *, state: ProjectionState | None = None) -> object:
-    return html.Header([html.Div([html.H3(title), html.P(description)]), html.Span(_STATE_LABELS[state], className=f'atlanticus-manager__state atlanticus-manager__state--{state.value}') if state is not None else None], className='atlanticus-manager__workflow-group-header')
+def _workflow_group_header(
+    title: str,
+    description: str,
+    *,
+    state: ProjectionState | None = None,
+) -> object:
+    return html.Header(
+        [
+            html.Div([html.H3(title), html.P(description)]),
+            html.Span(
+                _STATE_LABELS[state],
+                className=f'atlanticus-manager__state atlanticus-manager__state--{state.value}',
+            )
+            if state is not None
+            else None,
+        ],
+        className='atlanticus-manager__workflow-group-header',
+    )
 
 
 def _stage(step: str, title: str, subtitle: str, items: tuple[tuple[str, str], ...]) -> object:
-    return html.Article([html.Header([html.Span(step), html.Div([html.H4(title), html.P(subtitle)])]), html.Div([html.Div([html.Span(label), html.Strong(value)]) for label, value in items])], className='atlanticus-manager__workflow-stage-card')
+    return html.Article(
+        [
+            html.Header([html.Span(step), html.Div([html.H4(title), html.P(subtitle)])]),
+            html.Div(
+                [html.Div([html.Span(label), html.Strong(value)]) for label, value in items]
+            ),
+        ],
+        className='atlanticus-manager__workflow-stage-card',
+    )
 
 
 def _history_cell(label: str, value: object | None) -> object:
-    return html.Div([html.Small(label), value if value is not None else html.Span('—')], className='atlanticus-manager__history-cell')
+    return html.Div(
+        [html.Small(label), value if value is not None else html.Span('—')],
+        className='atlanticus-manager__history-cell',
+    )
 
 
 def _action_step(step: str, title: str, description: str, action: object) -> object:
-    return html.Article([html.Div([html.Span(step), html.Div([html.Strong(title), html.P(description)])]), action], className='atlanticus-manager__workflow-action-step')
+    return html.Article(
+        [
+            html.Div([html.Span(step), html.Div([html.Strong(title), html.P(description)])]),
+            action,
+        ],
+        className='atlanticus-manager__workflow-action-step',
+    )
 
 
 def _workspace_confirmation(module: ManagerModule) -> object:
-    return html.Div(html.Div([html.H3(id=workflow_workspace_confirmation_title_id(module.key)), html.P(id=workflow_workspace_confirmation_message_id(module.key)), html.Div([html.Button('Cancelar', id=workflow_action_id(module.key, 'workspace-cancel'), n_clicks=0), html.Button('Confirmar', id=workflow_action_id(module.key, 'workspace-confirm'), n_clicks=0)])]), id=workflow_workspace_confirmation_id(module.key), hidden=True)
+    return html.Div(
+        html.Div(
+            [
+                html.H3(id=workflow_workspace_confirmation_title_id(module.key)),
+                html.P(id=workflow_workspace_confirmation_message_id(module.key)),
+                html.Div(
+                    [
+                        html.Button(
+                            'Cancelar',
+                            id=workflow_action_id(module.key, 'workspace-cancel'),
+                            n_clicks=0,
+                        ),
+                        html.Button(
+                            'Confirmar',
+                            id=workflow_action_id(module.key, 'workspace-confirm'),
+                            n_clicks=0,
+                        ),
+                    ]
+                ),
+            ]
+        ),
+        id=workflow_workspace_confirmation_id(module.key),
+        hidden=True,
+    )
 
 
 def _build_history_preview_shell(module: ManagerModule) -> object:
-    return html.Div([
-        dcc.Store(id=workflow_history_preview_store_id(module.key), storage_type='memory'),
-        html.Div(html.Section([html.H3(id=workflow_history_preview_heading_id(module.key)), html.Div(id=workflow_history_preview_meta_id(module.key)), html.Div(id=workflow_history_preview_body_id(module.key)), html.Div([html.Button('Cerrar', id=workflow_history_preview_close_id(module.key), n_clicks=0), html.Button('Cargar como borrador', id=workflow_history_preview_load_id(module.key), n_clicks=0)])]), id=workflow_history_preview_id(module.key), hidden=True),
-    ])
+    return html.Div(
+        [
+            dcc.Store(id=workflow_history_preview_store_id(module.key), storage_type='memory'),
+            html.Div(
+                html.Section(
+                    [
+                        html.H3(id=workflow_history_preview_heading_id(module.key)),
+                        html.Div(id=workflow_history_preview_meta_id(module.key)),
+                        html.Div(id=workflow_history_preview_body_id(module.key)),
+                        html.Div(
+                            [
+                                html.Button(
+                                    'Cerrar',
+                                    id=workflow_history_preview_close_id(module.key),
+                                    n_clicks=0,
+                                ),
+                                html.Button(
+                                    'Cargar como borrador',
+                                    id=workflow_history_preview_load_id(module.key),
+                                    n_clicks=0,
+                                ),
+                            ]
+                        ),
+                    ]
+                ),
+                id=workflow_history_preview_id(module.key),
+                hidden=True,
+            ),
+        ]
+    )
 
 
 def _short(value: str | None) -> str:

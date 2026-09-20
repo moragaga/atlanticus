@@ -87,28 +87,57 @@ class UsersAdministrationService:
 
     def promote(
         self,
-        user: UserRecord,
+        user_id: str,
         *,
+        profile_key: str,
+        enabled: bool = True,
         expected_registry_version: str | None,
     ) -> UserRecord:
-        if not isinstance(user, UserRecord):
-            raise TypeError('user must be UserRecord')
-        self._require_profile(user)
-        if self._promoted.get(user.user_id) is not None:
-            raise UserAlreadyPromotedError('User is already promoted')
-        _require_no_cross_identity_email_conflict(user, self.discover().candidates)
-
-        registry = self._registry.load()
-        registry_user = registry.get(user.user_id)
-        directory_user = self._find_directory_user(user.user_id)
-        if registry_user is None and directory_user is None:
-            raise UserPromotionError('User is not available from storage or directory discovery')
-        _require_promotion_identity(
-            user=user,
-            registry_user=registry_user,
-            directory_user=directory_user,
+        normalized_user_id = _required_user_id(user_id)
+        profile = require_managed_profile(
+            profile_key,
+            profiles=resolve_profile_catalog(self._profiles),
         )
+        if not isinstance(enabled, bool):
+            raise TypeError('enabled must be boolean')
+        if self._promoted.get(normalized_user_id) is not None:
+            raise UserAlreadyPromotedError('User is already promoted')
 
+        snapshot = self.discover()
+        candidate = next(
+            (item for item in snapshot.candidates if item.user_id == normalized_user_id),
+            None,
+        )
+        if candidate is None:
+            raise UserPromotionError('User is not available from storage or directory discovery')
+        if candidate.state is UserCandidateState.CONFLICT:
+            raise UserPromotionError('User candidate has unresolved conflicts')
+
+        registry_user = candidate.registry_user
+        directory_user = candidate.directory_user
+        if registry_user is not None:
+            user = replace(
+                registry_user,
+                profile_key=profile.key,
+                enabled=enabled,
+            )
+        elif directory_user is not None:
+            user = directory_user.promote_as(
+                profile_key=profile.key,
+                enabled=enabled,
+            )
+        else:
+            raise UserPromotionError('User is not available from storage or directory discovery')
+
+        _require_no_cross_identity_email_conflict(user, snapshot.candidates)
+        if registry_user is not None:
+            _require_promotion_identity(
+                user=user,
+                registry_user=registry_user,
+                directory_user=directory_user,
+            )
+
+        registry = snapshot.registry
         if registry_user != user:
             if registry.version != expected_registry_version:
                 raise UsersRegistryConflictError('Users registry changed before promotion')
@@ -127,45 +156,52 @@ class UsersAdministrationService:
 
     def update(
         self,
-        user: UserRecord,
+        user_id: str,
         *,
+        profile_key: str,
+        enabled: bool,
         expected_registry_version: str,
     ) -> UserRecord:
-        if not isinstance(user, UserRecord):
-            raise TypeError('user must be UserRecord')
-        self._require_profile(user)
-        current = self._promoted.get(user.user_id)
-        if current is None:
-            raise UserPromotionError('Promoted user does not exist')
-        if (current.issuer, current.subject_id) != (user.issuer, user.subject_id):
-            raise UsersIdentityConflictError('Promoted user identity cannot be changed')
-        registry = self._registry.load()
-        registry_user = registry.get(user.user_id)
-        if registry_user is None:
-            raise UserPromotionError('Promoted user is missing from users registry')
-        if registry.version != expected_registry_version:
-            raise UsersRegistryConflictError('Users registry changed before user update')
-        updated_registry = self._registry.replace(
-            _replace_registry_user(registry.users, user),
-            expected_version=expected_registry_version,
-        )
-        if updated_registry.get(user.user_id) != user:
-            raise UserPromotionError('Users registry persisted a different user')
-        return self._promoted.replace(user)
-
-    def _require_profile(self, user: UserRecord) -> None:
-        require_managed_profile(
-            user.profile_key,
+        normalized_user_id = _required_user_id(user_id)
+        profile = require_managed_profile(
+            profile_key,
             profiles=resolve_profile_catalog(self._profiles),
         )
+        if not isinstance(enabled, bool):
+            raise TypeError('enabled must be boolean')
 
-    def _find_directory_user(self, user_id: str) -> DiscoveredUser | None:
-        if self._directory is None:
-            return None
-        return next(
-            (user for user in self._directory.list_discovered() if user.user_id == user_id),
-            None,
+        current = self._promoted.get(normalized_user_id)
+        if current is None:
+            raise UserPromotionError('Promoted user does not exist')
+        registry = self._registry.load()
+        registry_user = registry.get(normalized_user_id)
+        if registry_user is None:
+            raise UserPromotionError('Promoted user is missing from users registry')
+        if (current.issuer, current.subject_id) != (
+            registry_user.issuer,
+            registry_user.subject_id,
+        ):
+            raise UsersIdentityConflictError('Promoted user identity conflicts with users registry')
+        if registry.version != expected_registry_version:
+            raise UsersRegistryConflictError('Users registry changed before user update')
+
+        registry_update = replace(
+            registry_user,
+            profile_key=profile.key,
+            enabled=enabled,
         )
+        promoted_update = replace(
+            current,
+            profile_key=profile.key,
+            enabled=enabled,
+        )
+        updated_registry = self._registry.replace(
+            _replace_registry_user(registry.users, registry_update),
+            expected_version=expected_registry_version,
+        )
+        if updated_registry.get(normalized_user_id) != registry_update:
+            raise UserPromotionError('Users registry persisted a different user')
+        return self._promoted.replace(promoted_update)
 
 
 def _resolve_candidates(
@@ -297,3 +333,12 @@ def _require_no_cross_identity_email_conflict(
             continue
         if user.email in _candidate_emails(candidate):
             raise UserPromotionError('User email conflicts with a different identity')
+
+
+def _required_user_id(value: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError('user_id must be text')
+    normalized = value.strip()
+    if not normalized or normalized != value:
+        raise UserPromotionError('User id has an invalid format')
+    return normalized

@@ -1,6 +1,4 @@
-# Espejo pedagógico: el runtime local compone Sources de configuración y concede explícitamente las capacidades funcionales de los módulos disponibles.
-# is_local se conserva como contexto del runtime, pero no concede autoridad implícita.
-
+# Espejo pedagógico: ADA compone la capability Users ya construida y no adopta ownership de su lifecycle.
 from __future__ import annotations
 
 import os
@@ -15,6 +13,7 @@ from ada.web.application.configuration_manager.composition import (
     NAVIGATION_MANAGER_ACCESS_KEY,
     PROFILES_MANAGER_ACCESS_KEY,
     TOOLS_MANAGER_ACCESS_KEY,
+    USERS_MANAGER_ACCESS_KEY,
 )
 from ada.web.application.configuration_manager.dependencies import (
     ConfigurationManagerDependencies,
@@ -37,7 +36,11 @@ from ada.web.tools.configuration import (
     ToolSourceService,
     create_tool_projection_service,
 )
-from atlanticus.web.compositions.profiles_manager import compose_profiles_manager
+from atlanticus.web.compositions.profiles_manager import (
+    PROFILES_CONFIGURATION_SOURCE_KEY,
+    compose_profiles_manager,
+)
+from atlanticus.web.compositions.users_manager import compose_users_manager
 from atlanticus.web.manager import ManagerPrincipal
 from atlanticus.web.models import WebApplicationRuntime
 from atlanticus.web.navigation.configuration import (
@@ -45,10 +48,15 @@ from atlanticus.web.navigation.configuration import (
     NavigationSourceService,
     create_navigation_projection_service,
 )
+from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
 from atlanticus.web.source.models import SourceKey
+from atlanticus.web.users.administration import UsersAdministrationService
+from atlanticus.web.users.errors import UserAlreadyPromotedError, UsersRegistryConflictError
+from atlanticus.web.users.models import UserRecord, UsersRegistrySnapshot
+from atlanticus.web.users.store import UsersAdministrationStore, UsersRegistryStore
 
 PayloadT = TypeVar('PayloadT')
 
@@ -73,6 +81,53 @@ class InProcessProjectionStore(ProjectionStore[PayloadT], Generic[PayloadT]):
         return projection
 
 
+class InProcessUsersRegistryStore(UsersRegistryStore):
+    def __init__(self) -> None:
+        self._snapshot = UsersRegistrySnapshot()
+        self._revision = 0
+
+    def load(self) -> UsersRegistrySnapshot:
+        return self._snapshot
+
+    def replace(
+        self,
+        users: tuple[UserRecord, ...],
+        *,
+        expected_version: str | None,
+    ) -> UsersRegistrySnapshot:
+        if self._snapshot.version != expected_version:
+            raise UsersRegistryConflictError('Users registry changed concurrently')
+        self._revision += 1
+        self._snapshot = UsersRegistrySnapshot(
+            users=users,
+            version=f'local-{self._revision}',
+        )
+        return self._snapshot
+
+
+class InProcessUsersAdministrationStore(UsersAdministrationStore):
+    def __init__(self) -> None:
+        self._users: dict[str, UserRecord] = {}
+
+    def get(self, user_id: str) -> UserRecord | None:
+        return self._users.get(user_id)
+
+    def list_users(self) -> tuple[UserRecord, ...]:
+        return tuple(sorted(self._users.values(), key=lambda user: user.user_id))
+
+    def create(self, user: UserRecord) -> UserRecord:
+        if user.user_id in self._users:
+            raise UserAlreadyPromotedError('User is already promoted')
+        self._users[user.user_id] = user
+        return user
+
+    def replace(self, user: UserRecord) -> UserRecord:
+        if user.user_id not in self._users:
+            raise ValueError('Promoted user does not exist')
+        self._users[user.user_id] = user
+        return user
+
+
 def create_local_configuration_manager_dependencies(
     *,
     source_root: Path | None = None,
@@ -84,8 +139,7 @@ def create_local_configuration_manager_dependencies(
     tools_projection_store = InProcessProjectionStore[ToolConfiguration]()
     kpi_projection_store = InProcessProjectionStore[KpiConfiguration]()
     kpi_definition_projection_store = InProcessProjectionStore[KpiDefinitionCatalog]()
-    # Local mantiene el mismo patrón in-process que el resto del Configuration Manager.
-    profiles_projection_store = InProcessProjectionStore()
+    profiles_projection_store = InProcessProjectionStore[ProfileCatalog]()
 
     navigation_source = NavigationSourceService(
         source=source_store,
@@ -122,11 +176,11 @@ def create_local_configuration_manager_dependencies(
         kpi_configuration_source_key=KPI_SOURCE_KEY,
     )
 
-    # is_local sigue siendo contexto, no autoridad. Profiles recibe su capability explícita.
     principal = ManagerPrincipal(
         subject_id='local',
         display_name='Administrador local',
         access_keys=(
+            USERS_MANAGER_ACCESS_KEY,
             PROFILES_MANAGER_ACCESS_KEY,
             NAVIGATION_MANAGER_ACCESS_KEY,
             TOOLS_MANAGER_ACCESS_KEY,
@@ -134,13 +188,28 @@ def create_local_configuration_manager_dependencies(
         ),
         is_local=True,
     )
-    # Reutiliza la composition Profiles existente; ADA sólo decide incluirla en su Manager.
     profiles_manager = compose_profiles_manager(
         source_store=source_store,
         projection_store=profiles_projection_store,
         principal_provider=lambda: principal,
         group_key='configuration',
         access_key=PROFILES_MANAGER_ACCESS_KEY,
+    )
+
+    def profiles_provider() -> ProfileCatalog:
+        active = profiles_projection_store.get_active(PROFILES_CONFIGURATION_SOURCE_KEY)
+        return active.payload if active is not None else ProfileCatalog()
+
+    users_administration = UsersAdministrationService(
+        registry=InProcessUsersRegistryStore(),
+        promoted=InProcessUsersAdministrationStore(),
+        profiles=profiles_provider,
+    )
+    users_manager = compose_users_manager(
+        administration=users_administration,
+        principal_provider=lambda: principal,
+        group_key='administration',
+        access_key=USERS_MANAGER_ACCESS_KEY,
     )
     return ConfigurationManagerDependencies(
         navigation_source=navigation_source,
@@ -149,6 +218,7 @@ def create_local_configuration_manager_dependencies(
         tools_projection=tools_projection,
         principal_provider=lambda: principal,
         profiles_module=profiles_manager.module,
+        users_entry=users_manager.entry,
         kpis_source=kpis_source,
         kpis_projection=kpis_projection,
         kpi_destinations=kpi_destinations,

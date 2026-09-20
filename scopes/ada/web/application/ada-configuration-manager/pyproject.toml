@@ -20,10 +20,12 @@ dependencies = [
     "atlanticus-web-identity==0.1.0",
     "atlanticus-web-manager==0.3.18",
     "atlanticus-web-composition-profiles-manager==0.1.0",
+    "atlanticus-web-composition-users-manager==0.1.0",
     "atlanticus-web-navigation==0.1.0",
     "atlanticus-web-navigation-configuration[web]==0.1.9",
     "atlanticus-web-projection==0.1.0",
     "atlanticus-web-source==0.1.0",
+    "atlanticus-web-users[web]==0.1.0",
 ]
 
 [tool.uv.sources]
@@ -35,9 +37,11 @@ atlanticus-web-identity = { path = "../../../../../web/capabilities/identity/cor
 atlanticus-web-manager = { path = "../../../../../web/capabilities/manager", editable = true }
 atlanticus-web-profiles = { path = "../../../../../web/capabilities/profiles/core", editable = true }
 atlanticus-web-composition-profiles-manager = { path = "../../../../../web/compositions/profiles-manager", editable = true }
+atlanticus-web-composition-users-manager = { path = "../../../../../web/compositions/users-manager", editable = true }
 atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
 atlanticus-web-source-local = { path = "../../../../../web/capabilities/source/local", editable = true }
+atlanticus-web-users = { path = "../../../../../web/capabilities/users/core", editable = true }
 atlanticus-web-navigation = { path = "../../../../../web/capabilities/navigation/core", editable = true }
 atlanticus-web-navigation-configuration = { path = "../../../../../web/capabilities/navigation/configuration", editable = true }
 ada-web-tools = { path = "../../tools/core", editable = true }
@@ -102,9 +106,11 @@ pythonpath = [
     "../../../../../web/capabilities/manager/src",
     "../../../../../web/capabilities/profiles/core/src",
     "../../../../../web/compositions/profiles-manager/src",
+    "../../../../../web/compositions/users-manager/src",
     "../../../../../web/capabilities/projection/core/src",
     "../../../../../web/capabilities/source/core/src",
     "../../../../../web/capabilities/source/local/src",
+    "../../../../../web/capabilities/users/core/src",
     "../../../../../web/capabilities/navigation/core/src",
     "../../../../../web/capabilities/navigation/configuration/src",
 ]

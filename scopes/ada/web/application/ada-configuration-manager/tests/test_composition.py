@@ -20,8 +20,10 @@ from ada.web.application.configuration_manager import (
 from ada.web.application.configuration_manager.composition import (
     NAVIGATION_MANAGER_ACCESS_KEY,
     TOOLS_MANAGER_ACCESS_KEY,
+    USERS_MANAGER_ACCESS_KEY,
 )
-from atlanticus.web.manager import ManagerModule, ManagerPrincipal, ManagerSurface
+from atlanticus.web.manager import ManagerEntry, ManagerModule, ManagerPrincipal, ManagerSurface
+from atlanticus.web.modules import WebModule
 from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.source.models import SourceKey, SourceSnapshot
 
@@ -56,11 +58,24 @@ def profiles_module() -> ManagerModule:
     )
 
 
+def users_entry() -> ManagerEntry:
+    return ManagerEntry(
+        key='users',
+        group_key='administration',
+        title='Users',
+        route='/users',
+        order=10,
+        layout=lambda _services: None,
+        access_key=USERS_MANAGER_ACCESS_KEY,
+        web_module=WebModule(name='atlanticus-users-administration'),
+    )
+
+
 def dependencies() -> ConfigurationManagerDependencies:
     principal = ManagerPrincipal(
         subject_id='local',
         display_name='Administrador local',
-        access_keys=(NAVIGATION_MANAGER_ACCESS_KEY, TOOLS_MANAGER_ACCESS_KEY),
+        access_keys=(USERS_MANAGER_ACCESS_KEY, NAVIGATION_MANAGER_ACCESS_KEY, TOOLS_MANAGER_ACCESS_KEY),
         is_local=True,
     )
     return ConfigurationManagerDependencies(
@@ -70,6 +85,7 @@ def dependencies() -> ConfigurationManagerDependencies:
         tools_projection=ProjectionStub(),
         principal_provider=lambda: principal,
         profiles_module=profiles_module(),
+        users_entry=users_entry(),
     )
 
 
@@ -78,11 +94,13 @@ def test_surface_uses_generic_manager_contract_for_configuration_modules() -> No
     surface = ManagerSurface(definition)
 
     assert definition.route_prefix == MANAGER_ROUTE_PREFIX == '/manager'
+    assert tuple(entry.key for entry in surface.registry.entries) == ('users',)
     assert tuple(module.key for module in surface.registry.modules) == (
         'profiles',
         'navigation',
         'tools',
     )
+    assert surface.registry.route_for(surface.registry.require_entry('users')) == '/manager/users'
 
     profiles, navigation, tools = definition.modules
     assert profiles.key == 'profiles'

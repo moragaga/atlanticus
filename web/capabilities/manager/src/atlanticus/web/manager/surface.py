@@ -25,6 +25,7 @@ class ManagerSurface:
         self._registry = ManagerModuleRegistry(
             definition.groups,
             definition.modules,
+            entries=definition.entries,
             route_prefix=definition.route_prefix,
         )
         self._web_modules = self._build_web_modules()
@@ -69,7 +70,7 @@ class ManagerSurface:
             asset_layers=(manager_asset_layer(),),
             register_callbacks=register_callbacks,
         )
-        module_web_modules = tuple(
-            module.web_module for module in self._registry.modules if module.web_module is not None
+        item_web_modules = tuple(
+            item.web_module for item in self._registry.items if item.web_module is not None
         )
-        return self._definition.web_modules + module_web_modules + (manager_module,)
+        return self._definition.web_modules + item_web_modules + (manager_module,)

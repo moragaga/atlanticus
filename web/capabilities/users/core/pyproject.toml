@@ -18,8 +18,16 @@ dependencies = [
     "Flask==3.1.3",
 ]
 
+[project.optional-dependencies]
+web = [
+    "atlanticus-web-bootstrap==0.1.0",
+    "dash==4.4.1",
+    "dash-bootstrap-components==2.0.4",
+]
+
 [tool.uv.sources]
 atlanticus-web = { workspace = true }
+atlanticus-web-bootstrap = { workspace = true }
 atlanticus-web-identity = { workspace = true }
 atlanticus-web-profiles = { workspace = true }
 atlanticus-web-storage-topology = { workspace = true }
@@ -33,4 +41,8 @@ namespaces = true
 include = ["atlanticus.web.users*"]
 
 [tool.setuptools.package-data]
-"atlanticus.web.users" = ["py.typed"]
+"atlanticus.web.users" = [
+    "py.typed",
+    "resources/css/*.css",
+    "resources/css/css.list",
+]

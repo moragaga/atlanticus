@@ -1,4 +1,4 @@
-# ManagerSurface compone registry, autorización, assets, servicios y callbacks sin crear Flask ni Dash.
+# Espejo pedagógico: mantiene el mismo AST que producción y documenta el contrato Manager en español.
 from atlanticus.web.manager.authorization import (
     DefaultManagerAuthorizationPolicy,
     ManagerAuthorizationPolicy,
@@ -14,7 +14,6 @@ from atlanticus.web.modules import WebModule
 from atlanticus.web.services import ServiceRegistry
 
 
-# Esta clase es la unidad que puede montar ADA o un host de preview sobre un runtime Web existente.
 class ManagerSurface:
     def __init__(
         self,
@@ -27,6 +26,7 @@ class ManagerSurface:
         self._registry = ManagerModuleRegistry(
             definition.groups,
             definition.modules,
+            entries=definition.entries,
             route_prefix=definition.route_prefix,
         )
         self._web_modules = self._build_web_modules()
@@ -56,7 +56,6 @@ class ManagerSurface:
             authorization=self._authorization,
         )
 
-# Los WebModule devueltos se registran en el host consumidor; ninguno registra páginas globales por sí mismo.
     def _build_web_modules(self) -> tuple[WebModule, ...]:
         def register_callbacks(app: object, services: ServiceRegistry) -> None:
             register_manager_callbacks(
@@ -72,9 +71,7 @@ class ManagerSurface:
             asset_layers=(manager_asset_layer(),),
             register_callbacks=register_callbacks,
         )
-        module_web_modules = tuple(
-            module.web_module
-            for module in self._registry.modules
-            if module.web_module is not None
+        item_web_modules = tuple(
+            item.web_module for item in self._registry.items if item.web_module is not None
         )
-        return self._definition.web_modules + module_web_modules + (manager_module,)
+        return self._definition.web_modules + item_web_modules + (manager_module,)

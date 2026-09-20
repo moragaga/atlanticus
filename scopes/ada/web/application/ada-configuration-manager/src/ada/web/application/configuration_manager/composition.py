@@ -57,6 +57,7 @@ from atlanticus.web.services import ServiceRegistry
 
 MANAGER_ROUTE_PREFIX = '/manager'
 
+USERS_MANAGER_ACCESS_KEY = 'users.manage'
 PROFILES_MANAGER_ACCESS_KEY = 'profiles.manage'
 NAVIGATION_MANAGER_ACCESS_KEY = 'navigation.manage'
 TOOLS_MANAGER_ACCESS_KEY = 'tools.manage'
@@ -134,7 +135,10 @@ def build_configuration_manager_surface(
     kpi_definition_context = _kpi_definition_context(dependencies, actor_provider)
     return ManagerSurfaceDefinition(
         principal_provider=dependencies.principal_provider,
-        groups=(ManagerModuleGroup(key='configuration', title='Configuraciones', order=10),),
+        groups=(
+            ManagerModuleGroup(key='administration', title='Administración', order=5),
+            ManagerModuleGroup(key='configuration', title='Configuraciones', order=10),
+        ),
         modules=(
             dependencies.profiles_module,
             ManagerModule(
@@ -180,6 +184,7 @@ def build_configuration_manager_surface(
             *_kpi_modules(kpi_context, dependencies),
             *_kpi_definition_modules(kpi_definition_context, dependencies),
         ),
+        entries=(dependencies.users_entry,),
         route_prefix=MANAGER_ROUTE_PREFIX,
         web_modules=(
             create_bootstrap_web_module(),

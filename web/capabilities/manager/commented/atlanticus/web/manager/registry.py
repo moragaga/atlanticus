@@ -1,12 +1,16 @@
-# Espejo pedagógico del archivo productivo equivalente.
-# Valida y ordena módulos Manager. Cada módulo declara como máximo una capacidad funcional de acceso; no existen permisos técnicos por etapa.
-# Los comentarios no alteran la estructura ejecutable ni el comportamiento del archivo productivo.
-
+# Espejo pedagógico: mantiene el mismo AST que producción y documenta el contrato Manager en español.
 import re
 
 from atlanticus.web.manager.authorization import ManagerAuthorizationPolicy
 from atlanticus.web.manager.errors import ManagerDefinitionError
-from atlanticus.web.manager.models import ManagerModule, ManagerModuleGroup, ManagerPrincipal
+from atlanticus.web.manager.models import (
+    ManagerEntry,
+    ManagerModule,
+    ManagerModuleGroup,
+    ManagerPrincipal,
+)
+
+ManagerRegisteredItem = ManagerModule | ManagerEntry
 
 _MODULE_KEY_PATTERN = re.compile(r'^[a-z0-9][a-z0-9._-]*$')
 _ROUTE_PATTERN = re.compile(r'^/[a-z0-9][a-z0-9/_-]*$')
@@ -20,6 +24,7 @@ class ManagerModuleRegistry:
         groups: tuple[ManagerModuleGroup, ...],
         modules: tuple[ManagerModule, ...],
         *,
+        entries: tuple[ManagerEntry, ...] = (),
         route_prefix: str = '',
     ) -> None:
         if route_prefix and (
@@ -30,8 +35,10 @@ class ManagerModuleRegistry:
         self._groups = self._validate_groups(groups)
         self._group_by_key = {group.key: group for group in self._groups}
         self._modules = self._validate_modules(modules)
-        self._by_key = {module.key: module for module in self._modules}
-        self._by_route = {module.route: module for module in self._modules}
+        self._entries = self._validate_entries(entries)
+        self._items = self._validate_combined_contract(self._modules, self._entries)
+        self._by_key = {item.key: item for item in self._items}
+        self._by_route = {item.route: item for item in self._items}
 
     @property
     def groups(self) -> tuple[ManagerModuleGroup, ...]:
@@ -41,11 +48,27 @@ class ManagerModuleRegistry:
     def modules(self) -> tuple[ManagerModule, ...]:
         return self._modules
 
+    @property
+    def entries(self) -> tuple[ManagerEntry, ...]:
+        return self._entries
+
+    @property
+    def items(self) -> tuple[ManagerRegisteredItem, ...]:
+        return self._items
+
     def require(self, key: str) -> ManagerModule:
         normalized = key.strip()
-        if normalized not in self._by_key:
+        item = self._by_key.get(normalized)
+        if not isinstance(item, ManagerModule):
             raise ManagerDefinitionError(f'Manager module is not registered: {normalized}')
-        return self._by_key[normalized]
+        return item
+
+    def require_entry(self, key: str) -> ManagerEntry:
+        normalized = key.strip()
+        item = self._by_key.get(normalized)
+        if not isinstance(item, ManagerEntry):
+            raise ManagerDefinitionError(f'Manager entry is not registered: {normalized}')
+        return item
 
     @property
     def route_prefix(self) -> str:
@@ -55,12 +78,12 @@ class ManagerModuleRegistry:
     def root_route(self) -> str:
         return self._route_prefix or '/'
 
-    def route_for(self, module: ManagerModule) -> str:
+    def route_for(self, item: ManagerRegisteredItem) -> str:
         if self._route_prefix:
-            return f'{self._route_prefix}{module.route}'
-        return module.route
+            return f'{self._route_prefix}{item.route}'
+        return item.route
 
-    def find_by_route(self, route: str) -> ManagerModule | None:
+    def find_by_route(self, route: str) -> ManagerRegisteredItem | None:
         normalized = route
         if self._route_prefix:
             prefix = f'{self._route_prefix}/'
@@ -75,6 +98,20 @@ class ManagerModuleRegistry:
         policy: ManagerAuthorizationPolicy,
     ) -> tuple[ManagerModule, ...]:
         return tuple(module for module in self._modules if policy.can_view(principal, module))
+
+    def visible_entries(
+        self,
+        principal: ManagerPrincipal,
+        policy: ManagerAuthorizationPolicy,
+    ) -> tuple[ManagerEntry, ...]:
+        return tuple(entry for entry in self._entries if policy.can_view(principal, entry))
+
+    def visible_items(
+        self,
+        principal: ManagerPrincipal,
+        policy: ManagerAuthorizationPolicy,
+    ) -> tuple[ManagerRegisteredItem, ...]:
+        return tuple(item for item in self._items if policy.can_view(principal, item))
 
     def _validate_groups(
         self,
@@ -94,30 +131,9 @@ class ManagerModuleRegistry:
         return tuple(sorted(groups, key=lambda group: (group.order, group.key)))
 
     def _validate_modules(self, modules: tuple[ManagerModule, ...]) -> tuple[ManagerModule, ...]:
-        if not modules:
-            raise ManagerDefinitionError('Manager must register at least one module')
-        keys: set[str] = set()
-        routes: set[str] = set()
         source_signal_ids: set[str] = set()
         for module in modules:
-            if not _MODULE_KEY_PATTERN.fullmatch(module.key):
-                raise ManagerDefinitionError('Manager module key has an invalid format')
-            if module.key in keys:
-                raise ManagerDefinitionError(f'Manager module key is duplicated: {module.key}')
-            keys.add(module.key)
-            if module.group_key not in self._group_by_key:
-                raise ManagerDefinitionError(
-                    f'Manager module group is not registered: {module.group_key}'
-                )
-            if not _ROUTE_PATTERN.fullmatch(module.route) or module.route.endswith('/'):
-                raise ManagerDefinitionError('Manager module route has an invalid format')
-            if module.route in routes:
-                raise ManagerDefinitionError(f'Manager module route is duplicated: {module.route}')
-            routes.add(module.route)
-            if not module.title.strip():
-                raise ManagerDefinitionError('Manager module title must not be empty')
-            if not callable(module.layout):
-                raise ManagerDefinitionError('Manager module layout must be callable')
+            self._validate_common_item(module)
             if module.preamble is not None and not callable(module.preamble):
                 raise ManagerDefinitionError('Manager module preamble must be callable')
             if module.history_preview_renderer is not None and not callable(
@@ -152,7 +168,6 @@ class ManagerModuleRegistry:
                         f'Manager source signal id is duplicated: {source_signal_id}'
                     )
                 source_signal_ids.add(source_signal_id)
-            self._validate_access(module)
         return tuple(
             sorted(
                 modules,
@@ -164,7 +179,62 @@ class ManagerModuleRegistry:
             )
         )
 
-    def _validate_access(self, module: ManagerModule) -> None:
-        access_key = module.access_key
+    def _validate_entries(self, entries: tuple[ManagerEntry, ...]) -> tuple[ManagerEntry, ...]:
+        for entry in entries:
+            self._validate_common_item(entry)
+        return tuple(
+            sorted(
+                entries,
+                key=lambda entry: (
+                    self._group_by_key[entry.group_key].order,
+                    entry.order,
+                    entry.key,
+                ),
+            )
+        )
+
+    def _validate_common_item(self, item: ManagerRegisteredItem) -> None:
+        if not _MODULE_KEY_PATTERN.fullmatch(item.key):
+            raise ManagerDefinitionError('Manager item key has an invalid format')
+        if item.group_key not in self._group_by_key:
+            raise ManagerDefinitionError(f'Manager item group is not registered: {item.group_key}')
+        if not _ROUTE_PATTERN.fullmatch(item.route) or item.route.endswith('/'):
+            raise ManagerDefinitionError('Manager item route has an invalid format')
+        if not item.title.strip():
+            raise ManagerDefinitionError('Manager item title must not be empty')
+        if not callable(item.layout):
+            raise ManagerDefinitionError('Manager item layout must be callable')
+        self._validate_access(item)
+
+    def _validate_combined_contract(
+        self,
+        modules: tuple[ManagerModule, ...],
+        entries: tuple[ManagerEntry, ...],
+    ) -> tuple[ManagerRegisteredItem, ...]:
+        items: tuple[ManagerRegisteredItem, ...] = (*modules, *entries)
+        if not items:
+            raise ManagerDefinitionError('Manager must register at least one administrative item')
+        keys: set[str] = set()
+        routes: set[str] = set()
+        for item in items:
+            if item.key in keys:
+                raise ManagerDefinitionError(f'Manager item key is duplicated: {item.key}')
+            if item.route in routes:
+                raise ManagerDefinitionError(f'Manager item route is duplicated: {item.route}')
+            keys.add(item.key)
+            routes.add(item.route)
+        return tuple(
+            sorted(
+                items,
+                key=lambda item: (
+                    self._group_by_key[item.group_key].order,
+                    item.order,
+                    item.key,
+                ),
+            )
+        )
+
+    def _validate_access(self, item: ManagerRegisteredItem) -> None:
+        access_key = item.access_key
         if access_key is not None and not _ACCESS_KEY_PATTERN.fullmatch(access_key):
             raise ManagerDefinitionError('Manager access key has an invalid format')

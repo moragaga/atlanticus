@@ -9,7 +9,7 @@ from ada.web.kpis.configuration import (
 )
 from ada.web.kpis.definition import KpiDefinitionCatalog, KpiDefinitionSourceService
 from ada.web.tools.configuration import ToolConfiguration, ToolSourceService
-from atlanticus.web.manager import ManagerModule, ManagerPrincipalProvider
+from atlanticus.web.manager import ManagerEntry, ManagerModule, ManagerPrincipalProvider
 from atlanticus.web.navigation.configuration import (
     NavigationConfigurationCatalog,
     NavigationSourceService,
@@ -26,6 +26,7 @@ class ConfigurationManagerDependencies:
     tools_projection: SourceProjectionService[ToolConfiguration]
     principal_provider: ManagerPrincipalProvider
     profiles_module: ManagerModule
+    users_entry: ManagerEntry
     kpis_source: KpiSourceService | None = None
     kpis_projection: SourceProjectionService[KpiConfiguration] | None = None
     kpi_destinations: KpiDestinationCatalogProvider | None = None

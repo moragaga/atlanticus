@@ -1,18 +1,18 @@
-# Espejo pedagógico: conserva la misma lógica del archivo productivo.
-# Manager decide únicamente si el principal puede usar el módulo completo; los pasos técnicos del workflow no tienen permisos separados.
-# Profiles e is_local no conceden privilegios implícitos en Manager.
+# Espejo pedagógico: mantiene el mismo AST que producción y documenta el contrato Manager en español.
 from typing import Protocol
 
-from atlanticus.web.manager.models import ManagerModule, ManagerPrincipal
+from atlanticus.web.manager.models import ManagerEntry, ManagerModule, ManagerPrincipal
+
+ManagerAuthorizable = ManagerModule | ManagerEntry
 
 
 class ManagerAuthorizationPolicy(Protocol):
-    def can_view(self, principal: ManagerPrincipal, module: ManagerModule) -> bool: ...
+    def can_view(self, principal: ManagerPrincipal, item: ManagerAuthorizable) -> bool: ...
 
 
 class DefaultManagerAuthorizationPolicy:
-    def can_view(self, principal: ManagerPrincipal, module: ManagerModule) -> bool:
-        required = module.access_key
+    def can_view(self, principal: ManagerPrincipal, item: ManagerAuthorizable) -> bool:
+        required = item.access_key
         if required is None:
             return False
         return required in principal.access_keys

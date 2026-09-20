@@ -14,12 +14,14 @@ dependencies = [
     { name = "atlanticus-web" },
     { name = "atlanticus-web-bootstrap" },
     { name = "atlanticus-web-composition-profiles-manager" },
+    { name = "atlanticus-web-composition-users-manager" },
     { name = "atlanticus-web-identity" },
     { name = "atlanticus-web-manager" },
     { name = "atlanticus-web-navigation" },
     { name = "atlanticus-web-navigation-configuration", extra = ["web"] },
     { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
+    { name = "atlanticus-web-users", extra = ["web"] },
 ]
 
 [package.dev-dependencies]
@@ -38,12 +40,14 @@ requires-dist = [
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "atlanticus-web-bootstrap", editable = "../../../../../web/framework/bootstrap" },
     { name = "atlanticus-web-composition-profiles-manager", editable = "../../../../../web/compositions/profiles-manager" },
+    { name = "atlanticus-web-composition-users-manager", editable = "../../../../../web/compositions/users-manager" },
     { name = "atlanticus-web-identity", editable = "../../../../../web/capabilities/identity/core" },
     { name = "atlanticus-web-manager", editable = "../../../../../web/capabilities/manager" },
     { name = "atlanticus-web-navigation", editable = "../../../../../web/capabilities/navigation/core" },
     { name = "atlanticus-web-navigation-configuration", extras = ["web"], editable = "../../../../../web/capabilities/navigation/configuration" },
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
+    { name = "atlanticus-web-users", extras = ["web"], editable = "../../../../../web/capabilities/users/core" },
 ]
 
 [package.metadata.requires-dev]
@@ -354,6 +358,23 @@ requires-dist = [
 ]
 
 [[package]]
+name = "atlanticus-web-composition-users-manager"
+version = "0.1.0"
+source = { editable = "../../../../../web/compositions/users-manager" }
+dependencies = [
+    { name = "atlanticus-web" },
+    { name = "atlanticus-web-manager" },
+    { name = "atlanticus-web-users", extra = ["web"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
+    { name = "atlanticus-web-manager", editable = "../../../../../web/capabilities/manager" },
+    { name = "atlanticus-web-users", extras = ["web"], editable = "../../../../../web/capabilities/users/core" },
+]
+
+[[package]]
 name = "atlanticus-web-configuration"
 version = "0.1.0"
 source = { editable = "../../../../../web/framework/configuration" }
@@ -590,14 +611,25 @@ dependencies = [
     { name = "flask" },
 ]
 
+[package.optional-dependencies]
+web = [
+    { name = "atlanticus-web-bootstrap" },
+    { name = "dash" },
+    { name = "dash-bootstrap-components" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
+    { name = "atlanticus-web-bootstrap", marker = "extra == 'web'", editable = "../../../../../web/framework/bootstrap" },
     { name = "atlanticus-web-identity", editable = "../../../../../web/capabilities/identity/core" },
     { name = "atlanticus-web-profiles", editable = "../../../../../web/capabilities/profiles/core" },
     { name = "atlanticus-web-storage-topology", editable = "../../../../../web/capabilities/storage/topology" },
+    { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
+    { name = "dash-bootstrap-components", marker = "extra == 'web'", specifier = "==2.0.4" },
     { name = "flask", specifier = "==3.1.3" },
 ]
+provides-extras = ["web"]
 
 [[package]]
 name = "azure-core"

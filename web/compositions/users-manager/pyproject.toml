@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atlanticus-web-composition-users-manager"
+version = "0.1.0"
+description = "Composición Users para Atlanticus Web Manager"
+requires-python = "==3.14.2"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "atlanticus-web==0.1.0",
+    "atlanticus-web-manager==0.3.18",
+    "atlanticus-web-users[web]==0.1.0",
+]
+
+[tool.uv.sources]
+atlanticus-web = { workspace = true }
+atlanticus-web-manager = { workspace = true }
+atlanticus-web-users = { workspace = true }
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+include = ["atlanticus.web.compositions.users_manager*"]
+
+[tool.setuptools.package-data]
+"atlanticus.web.compositions.users_manager" = ["py.typed"]

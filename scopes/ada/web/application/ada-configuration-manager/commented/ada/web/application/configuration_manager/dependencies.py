@@ -1,4 +1,4 @@
-# Espejo pedagógico: las dependencias del Configuration Manager ya no incluyen lifecycle de Users, porque Users es un registro global.
+# Espejo pedagógico: ADA compone la capability Users ya construida y no adopta ownership de su lifecycle.
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,7 +10,7 @@ from ada.web.kpis.configuration import (
 )
 from ada.web.kpis.definition import KpiDefinitionCatalog, KpiDefinitionSourceService
 from ada.web.tools.configuration import ToolConfiguration, ToolSourceService
-from atlanticus.web.manager import ManagerModule, ManagerPrincipalProvider
+from atlanticus.web.manager import ManagerEntry, ManagerModule, ManagerPrincipalProvider
 from atlanticus.web.navigation.configuration import (
     NavigationConfigurationCatalog,
     NavigationSourceService,
@@ -26,8 +26,8 @@ class ConfigurationManagerDependencies:
     tools_source: ToolSourceService
     tools_projection: SourceProjectionService[ToolConfiguration]
     principal_provider: ManagerPrincipalProvider
-    # Profiles llega ya compuesto como ManagerModule; ADA no reconstruye su lifecycle.
     profiles_module: ManagerModule
+    users_entry: ManagerEntry
     kpis_source: KpiSourceService | None = None
     kpis_projection: SourceProjectionService[KpiConfiguration] | None = None
     kpi_destinations: KpiDestinationCatalogProvider | None = None

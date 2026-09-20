@@ -1,7 +1,4 @@
-# Espejo pedagógico del archivo productivo equivalente.
-# Expone únicamente el contrato público vigente de Manager. El acceso es por capacidad funcional de módulo, sin permisos técnicos por etapa.
-# Los comentarios no alteran la estructura ejecutable ni el comportamiento del archivo productivo.
-
+# Espejo pedagógico: mantiene el mismo AST que producción y documenta el contrato Manager en español.
 from atlanticus.web.manager.authorization import (
     DefaultManagerAuthorizationPolicy,
     ManagerAuthorizationPolicy,
@@ -16,6 +13,7 @@ from atlanticus.web.manager.errors import (
 )
 from atlanticus.web.manager.lifecycle import ManagerLifecycleState, resolve_manager_lifecycle
 from atlanticus.web.manager.models import (
+    ManagerEntry,
     ManagerHistoryPreviewRenderer,
     ManagerLayoutFactory,
     ManagerModule,
@@ -67,6 +65,7 @@ __all__ = [
     'ManagerAuthorizationError',
     'ManagerAuthorizationPolicy',
     'ManagerDefinitionError',
+    'ManagerEntry',
     'ManagerError',
     'ManagerHistoryPreviewRenderer',
     'ManagerLayoutFactory',
