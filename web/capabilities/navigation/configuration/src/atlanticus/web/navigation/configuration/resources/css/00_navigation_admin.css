@@ -1,13 +1,19 @@
 .atlanticus-navigation-admin {
     display: grid;
+    width: 100%;
+    max-width: 100%;
     min-width: 0;
+    box-sizing: border-box;
     gap: .9rem;
     padding: 0 1rem 1rem;
 }
 
 .atlanticus-navigation-admin__runtime-context,
 .atlanticus-navigation-admin__section {
+    width: 100%;
+    max-width: 100%;
     min-width: 0;
+    box-sizing: border-box;
     padding: 1rem;
     background: var(--atlanticus-ui-surface);
     border: 1px solid var(--atlanticus-ui-border);
@@ -258,10 +264,57 @@
     }
 }
 
+.atlanticus-navigation-admin__structure,
+.atlanticus-navigation-admin__structure-results,
+.atlanticus-navigation-admin__pagination {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
 .atlanticus-navigation-admin__structure-results {
     display: grid;
     align-content: start;
     gap: .55rem;
+}
+
+.atlanticus-navigation-admin__structure-results--empty {
+    align-content: center;
+    justify-items: center;
+}
+
+.atlanticus-navigation-admin__empty-state {
+    display: grid;
+    justify-items: center;
+    gap: .35rem;
+    padding: 1.5rem;
+    color: var(--atlanticus-ui-text-muted);
+    text-align: center;
+}
+
+.atlanticus-navigation-admin__empty-state strong {
+    color: var(--atlanticus-ui-text);
+    font-size: .82rem;
+}
+
+.atlanticus-navigation-admin__empty-state > span:last-child {
+    max-width: 34rem;
+    font-size: .7rem;
+    line-height: 1.4;
+}
+
+.atlanticus-navigation-admin__empty-icon {
+    display: grid;
+    width: 2.6rem;
+    height: 2.6rem;
+    place-items: center;
+    color: var(--atlanticus-ui-secondary);
+    background: var(--atlanticus-ui-background);
+    border: 1px solid rgb(201 162 75 / 45%);
+    border-radius: 50%;
+    font-size: 1.25rem;
+    font-weight: 700;
 }
 
 .atlanticus-navigation-admin__structure-results > .atlanticus-navigation-admin__link-card,

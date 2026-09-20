@@ -59,14 +59,26 @@ def render_navigation_structure(
         ]
     else:
         content = [
-            html.P(
-                'No hay enlaces ni secciones configuradas.',
-                className='atlanticus-navigation-admin__empty',
+            html.Div(
+                [
+                    html.Span(
+                        '+',
+                        className='atlanticus-navigation-admin__empty-icon',
+                        **{'aria-hidden': 'true'},
+                    ),
+                    html.Strong('Todavía no hay navegación configurada.'),
+                    html.Span('Agrega el primer enlace o sección para comenzar.'),
+                ],
+                className='atlanticus-navigation-admin__empty-state',
+                role='status',
             )
         ]
+    results_class = 'atlanticus-navigation-admin__structure-results'
+    if not page.items:
+        results_class += ' atlanticus-navigation-admin__structure-results--empty'
     return html.Div(
         [
-            html.Div(content, className='atlanticus-navigation-admin__structure-results'),
+            html.Div(content, className=results_class),
             _pagination(page),
         ],
         className='atlanticus-navigation-admin__structure',

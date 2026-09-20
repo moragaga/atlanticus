@@ -101,3 +101,10 @@ on its internal .dash-dropdown-wrapper, which also owns the popover portal.
     accent-color: var(--atlanticus-ui-secondary);
     outline-color: var(--atlanticus-ui-secondary);
 }
+
+.atlanticus-navigation-admin__dash-select-shell .dash-dropdown-focus-target {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
