@@ -347,7 +347,7 @@
 
 .atlanticus-manager__history-empty {
     display: grid;
-    min-height: 8rem;
+    min-height: 5rem;
     align-content: center;
     justify-items: center;
     gap: .35rem;
@@ -385,7 +385,7 @@
 
 .atlanticus-manager__history-row {
     display: grid;
-    grid-template-columns: minmax(7rem, .8fr) 1fr 1fr minmax(7rem, .8fr) auto;
+    grid-template-columns: minmax(7rem, .8fr) 1fr 1fr auto;
     gap: .7rem;
     align-items: center;
     padding: .7rem .2rem;

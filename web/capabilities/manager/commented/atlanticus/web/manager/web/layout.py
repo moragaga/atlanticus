@@ -377,14 +377,41 @@ def build_workflow_status_content(
     error: str | None,
 ) -> object:
     if error is not None:
-        return html.Div(
-            'No fue posible consultar el estado publicado en este momento.',
-            className='atlanticus-manager__message atlanticus-manager__message--notice',
+        # El estado publicado conserva siempre su panel. Un error cambia el contenido,
+        # no elimina la frontera visual entre trabajo local y estado durable.
+        return html.Section(
+            [
+                _workflow_group_header(
+                    'Estado publicado',
+                    'Fuente de verdad y Projection activa de esta configuración.',
+                ),
+                html.Div(
+                    'No fue posible consultar el estado publicado en este momento.',
+                    className='atlanticus-manager__message atlanticus-manager__message--notice',
+                ),
+            ],
+            className=(
+                'atlanticus-manager__workflow-group '
+                'atlanticus-manager__workflow-group--published-empty'
+            ),
         )
     if status is None or status.source_current_release is None:
-        return html.Div(
-            'Aún no existe una configuración publicada.',
-            className='atlanticus-manager__workflow-empty',
+        # La ausencia de Source es un estado del panel publicado, no un mensaje suelto.
+        return html.Section(
+            [
+                _workflow_group_header(
+                    'Estado publicado',
+                    'Fuente de verdad y Projection activa de esta configuración.',
+                ),
+                html.Div(
+                    'Aún no existe una configuración publicada.',
+                    className='atlanticus-manager__workflow-empty',
+                ),
+            ],
+            className=(
+                'atlanticus-manager__workflow-group '
+                'atlanticus-manager__workflow-group--published-empty'
+            ),
         )
     state = resolve_projection_state(status)
     source = status.source_current_release
@@ -478,18 +505,26 @@ def build_workflow_history_content(
                     _history_cell('Release', html.Code(_short(release.release_id.value))),
                     _history_cell('Fecha', html.Time(_format_datetime(release.published_at_utc))),
                     _history_cell('Estado', html.Span(state)),
-                    _history_cell('Acción', action),
+                    _history_cell('Acción', action, action=True),
                 ],
                 className='atlanticus-manager__history-row',
             )
         )
+    header = html.Div(
+        [
+            html.Span('Release'),
+            html.Span('Fecha'),
+            html.Span('Estado'),
+            html.Span('Acción'),
+        ],
+        className='atlanticus-manager__history-row atlanticus-manager__history-row--header',
+    )
     return html.Section(
         [
             html.H3('Historial publicado'),
             html.P('Cada entrada es una publicación Source inmutable.'),
-            html.Div(rows)
-            if rows
-            else html.Div('Aún no hay publicaciones.', className='atlanticus-manager__history-empty'),
+            header if rows else None,
+            html.Div(rows) if rows else _history_empty_state(module.source_name),
         ],
         className='atlanticus-manager__history',
     )
@@ -665,28 +700,81 @@ def _workflow_group_header(
 
 
 def _stage(step: str, title: str, subtitle: str, items: tuple[tuple[str, str], ...]) -> object:
+    # Estas clases son el contrato de presentación consumido por 30_workflow.css.
     return html.Article(
         [
-            html.Header([html.Span(step), html.Div([html.H4(title), html.P(subtitle)])]),
+            html.Header(
+                [
+                    html.Span(step, className='atlanticus-manager__workflow-step-number'),
+                    html.Div([html.H4(title), html.P(subtitle)]),
+                ],
+                className='atlanticus-manager__workflow-stage-header',
+            ),
             html.Div(
-                [html.Div([html.Span(label), html.Strong(value)]) for label, value in items]
+                [
+                    html.Div(
+                        [html.Span(label), html.Strong(value)],
+                        className='atlanticus-manager__workflow-stage-item',
+                    )
+                    for label, value in items
+                ],
+                className='atlanticus-manager__workflow-stage-items',
             ),
         ],
         className='atlanticus-manager__workflow-stage-card',
     )
 
 
-def _history_cell(label: str, value: object | None) -> object:
+def _history_empty_state(source_name: str) -> object:
+    # El empty-state usa el shell que el CSS ya define en lugar de dejar texto flotando.
     return html.Div(
-        [html.Small(label), value if value is not None else html.Span('—')],
-        className='atlanticus-manager__history-cell',
+        [
+            html.Span(
+                '↺',
+                className='atlanticus-manager__history-empty-icon',
+                **{'aria-hidden': 'true'},
+            ),
+            html.Strong('Aún no hay publicaciones.'),
+            html.Span(
+                f'Las publicaciones aparecerán aquí después de la primera publicación en '
+                f'{source_name}.'
+            ),
+        ],
+        className='atlanticus-manager__history-empty',
+        role='status',
+    )
+
+
+def _history_cell(
+    label: str,
+    value: object | None,
+    *,
+    action: bool = False,
+) -> object:
+    return html.Div(
+        [
+            html.Small(label, className='atlanticus-manager__history-cell-label'),
+            value if value is not None else html.Span('—'),
+        ],
+        className=(
+            'atlanticus-manager__history-cell atlanticus-manager__history-cell--action'
+            if action
+            else 'atlanticus-manager__history-cell'
+        ),
     )
 
 
 def _action_step(step: str, title: str, description: str, action: object) -> object:
+    # El número y el copy del paso recuperan las clases que controlan escala y spacing.
     return html.Article(
         [
-            html.Div([html.Span(step), html.Div([html.Strong(title), html.P(description)])]),
+            html.Div(
+                [
+                    html.Span(step, className='atlanticus-manager__workflow-step-number'),
+                    html.Div([html.Strong(title), html.P(description)]),
+                ],
+                className='atlanticus-manager__workflow-step-heading',
+            ),
             action,
         ],
         className='atlanticus-manager__workflow-action-step',

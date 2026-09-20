@@ -19,7 +19,16 @@ def build_workspace_content(
 ) -> object:
     if workspace is None:
         return html.Section(
-            [html.Strong('Trabajo local'), html.P('Todavía no hay un workspace guardado en este navegador.')],
+            [
+                _group_header(
+                    'Trabajo local',
+                    'Estado del trabajo local guardado en este navegador.',
+                ),
+                html.Div(
+                    'Todavía no hay un workspace guardado en este navegador.',
+                    className='atlanticus-manager__workflow-empty',
+                ),
+            ],
             className='atlanticus-manager__workflow-group',
         )
     if workspace.owner_subject_id != principal.subject_id:
@@ -33,15 +42,36 @@ def build_workspace_content(
         verification_label = 'Verificada' if verification.publishable else 'Conflicto'
     return html.Section(
         [
-            html.Strong('Trabajo local'),
+            _group_header(
+                'Trabajo local',
+                'Estado del trabajo local antes de publicar en Source.',
+            ),
             html.Div(
                 [
-                    _item('Estado', state),
-                    _item('Revisión local', workspace.revision[:12]),
-                    _item('Base Source', _release_label(workspace.base)),
-                    _item('Source actual', _release_label(source.snapshot)),
-                    _item('Validación', validation_label),
-                    _item('Verificación', verification_label),
+                    _stage(
+                        '1',
+                        'Workspace del navegador',
+                        state,
+                        (('Revisión local', workspace.revision[:12]),),
+                    ),
+                    _stage(
+                        '2',
+                        'Source',
+                        'Trazabilidad de publicación',
+                        (
+                            ('Base Source', _release_label(workspace.base)),
+                            ('Source actual', _release_label(source.snapshot)),
+                        ),
+                    ),
+                    _stage(
+                        '3',
+                        'Control previo',
+                        'Antes de publicar',
+                        (
+                            ('Validación', validation_label),
+                            ('Verificación', verification_label),
+                        ),
+                    ),
                 ],
                 className='atlanticus-manager__workflow-stage-grid',
             ),
@@ -107,6 +137,43 @@ def _issues(validation: dict[str, object] | None) -> object | None:
         return None
     messages = [str(item.get('message', '')).strip() for item in raw if isinstance(item, dict) and str(item.get('message', '')).strip()]
     return html.Ul([html.Li(message) for message in messages]) if messages else None
+
+
+def _group_header(title: str, description: str) -> object:
+    return html.Header(
+        [html.Div([html.H3(title), html.P(description)])],
+        className='atlanticus-manager__workflow-group-header',
+    )
+
+
+def _stage(
+    step: str,
+    title: str,
+    subtitle: str,
+    items: tuple[tuple[str, str], ...],
+) -> object:
+    return html.Article(
+        [
+            html.Header(
+                [
+                    html.Span(step, className='atlanticus-manager__workflow-step-number'),
+                    html.Div([html.H4(title), html.P(subtitle)]),
+                ],
+                className='atlanticus-manager__workflow-stage-header',
+            ),
+            html.Div(
+                [
+                    html.Div(
+                        [html.Span(label), html.Strong(value)],
+                        className='atlanticus-manager__workflow-stage-item',
+                    )
+                    for label, value in items
+                ],
+                className='atlanticus-manager__workflow-stage-items',
+            ),
+        ],
+        className='atlanticus-manager__workflow-stage-card',
+    )
 
 
 def _item(label: str, value: str) -> object:
