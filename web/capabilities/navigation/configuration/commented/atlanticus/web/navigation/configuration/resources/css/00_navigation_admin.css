@@ -98,22 +98,6 @@
     gap: .45rem;
 }
 
-.atlanticus-navigation-admin__profiles {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .45rem;
-    margin-top: .65rem;
-}
-
-.atlanticus-navigation-admin__profile {
-    padding: .32rem .62rem;
-    color: var(--atlanticus-ui-text);
-    background: var(--atlanticus-ui-surface-muted);
-    border: 1px solid var(--atlanticus-ui-border);
-    border-radius: 999px;
-    font-size: .7rem;
-    font-weight: 700;
-}
 
 .atlanticus-navigation-admin__link-card,
 .atlanticus-navigation-admin__group-card {
@@ -272,5 +256,136 @@
 
     .atlanticus-navigation-admin__form-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+.atlanticus-navigation-admin__structure-results {
+    display: grid;
+    align-content: start;
+    gap: .55rem;
+}
+
+.atlanticus-navigation-admin__structure-results > .atlanticus-navigation-admin__link-card,
+.atlanticus-navigation-admin__structure-results > .atlanticus-navigation-admin__group-card {
+    margin-top: 0;
+}
+
+.atlanticus-navigation-admin__structure[data-page-size="10"]
+.atlanticus-navigation-admin__structure-results {
+    min-height: 35rem;
+}
+
+.atlanticus-navigation-admin__structure[data-page-size="20"]
+.atlanticus-navigation-admin__structure-results {
+    min-height: 70rem;
+}
+
+.atlanticus-navigation-admin__group-card--expanded {
+    background: var(--atlanticus-ui-surface-muted);
+}
+
+.atlanticus-navigation-admin__pagination {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: .75rem;
+    padding: .85rem 0 0;
+}
+
+.atlanticus-navigation-admin__pagination-summary {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .82rem;
+    font-weight: 500;
+}
+
+.atlanticus-navigation-admin__pagination-navigation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .3rem;
+}
+
+.atlanticus-navigation-admin__pagination-button {
+    display: inline-flex;
+    min-width: 2rem;
+    height: 2rem;
+    align-items: center;
+    justify-content: center;
+    color: var(--atlanticus-ui-text);
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .55rem;
+    cursor: pointer;
+    font: inherit;
+    font-size: .82rem;
+    font-weight: 600;
+    transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.atlanticus-navigation-admin__pagination-button:not(:disabled):hover {
+    border-color: var(--atlanticus-ui-accent);
+    box-shadow: 0 3px 10px rgb(7 21 34 / 7%);
+    transform: translateY(-1px);
+}
+
+.atlanticus-navigation-admin__pagination-button:disabled {
+    cursor: default;
+    opacity: .45;
+}
+
+.atlanticus-navigation-admin__pagination-button--active {
+    color: #fff;
+    background: var(--atlanticus-ui-primary-hover);
+    border-color: var(--atlanticus-ui-primary-hover);
+    opacity: 1 !important;
+}
+
+.atlanticus-navigation-admin__pagination-ellipsis {
+    padding: 0 .2rem;
+    color: var(--atlanticus-ui-text-muted);
+}
+
+.atlanticus-navigation-admin__pagination-page-size-control {
+    display: flex;
+    align-items: center;
+    justify-self: end;
+    gap: .45rem;
+}
+
+.atlanticus-navigation-admin__pagination-page-size-label {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .78rem;
+    font-weight: 600;
+}
+
+.atlanticus-navigation-admin__pagination-page-size {
+    min-width: 4.4rem;
+}
+
+.atlanticus-navigation-admin__section--footer .atlanticus-navigation-admin__section-heading {
+    align-items: center;
+    margin-bottom: 0;
+}
+
+.atlanticus-navigation-admin__section--footer
+.atlanticus-navigation-admin__section-heading + div:not(:empty) {
+    margin-top: .8rem;
+}
+
+@media (max-width: 720px) {
+    .atlanticus-navigation-admin__pagination {
+        grid-template-columns: 1fr;
+    }
+
+    .atlanticus-navigation-admin__pagination-summary,
+    .atlanticus-navigation-admin__pagination-page-size-control {
+        justify-self: center;
+    }
+
+    .atlanticus-navigation-admin__structure[data-page-size="10"]
+    .atlanticus-navigation-admin__structure-results,
+    .atlanticus-navigation-admin__structure[data-page-size="20"]
+    .atlanticus-navigation-admin__structure-results {
+        min-height: 0;
     }
 }

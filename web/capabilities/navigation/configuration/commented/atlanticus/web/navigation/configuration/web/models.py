@@ -1,10 +1,10 @@
-# El contexto web recibe dependencias explícitas; no crea ni resuelve catálogos globales.
+# El contexto web recibe dependencias explícitas y nunca resuelve otra capability por sí mismo.
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from atlanticus.web.navigation.configuration.profiles import NavigationProfileCatalogProvider
+from atlanticus.web.navigation.configuration.profiles import NavigationProfileOptionsProvider
 
 NavigationWorkspacePayloadReader = Callable[
     [dict[str, object] | None],
@@ -27,4 +27,5 @@ class NavigationAdminWebContext:
     can_manage: Callable[[], bool] = lambda: True
     source_name: str = 'Source'
     projection_name: str = 'Projection'
-    profile_catalog_provider: NavigationProfileCatalogProvider | None = None
+    # La composición puede ofrecer opciones de perfiles; Navigation no exige ese provider.
+    profile_options_provider: NavigationProfileOptionsProvider | None = None

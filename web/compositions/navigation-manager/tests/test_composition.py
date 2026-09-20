@@ -9,15 +9,15 @@ from atlanticus.web.compositions.navigation_manager import (
     compose_navigation_manager,
 )
 from atlanticus.web.manager.models import ManagerPrincipal
-from atlanticus.web.navigation.configuration.models import (
+from atlanticus.web.navigation.configuration import (
     NavigationConfigurationCatalog,
     NavigationLinkConfiguration,
+    NavigationProfileOption,
 )
 from atlanticus.web.navigation.projection.local import (
     LocalNavigationProjectionStore,
     LocalNavigationProjectionStoreSettings,
 )
-from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
 from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
 
@@ -61,21 +61,13 @@ def test_navigation_manager_registers_one_generic_source_route(tmp_path) -> None
     )
 
 
-def test_navigation_manager_uses_profile_catalog_for_draft_validation(tmp_path) -> None:
+def test_navigation_manager_uses_profile_options_for_draft_validation(tmp_path) -> None:
     services = ServiceRegistry()
     source = LocalSourceStore(LocalSourceSettings(root=tmp_path / 'source'))
     projection = LocalNavigationProjectionStore(
         LocalNavigationProjectionStoreSettings(root=tmp_path / 'projection')
     )
-    profiles = ProfileCatalog(
-        profiles=(
-            ProfileDefinition(
-                key='guest',
-                label='Guest',
-                background_color='#111111',
-            ),
-        )
-    )
+    options = (NavigationProfileOption('guest', 'Guest'),)
     composition = compose_navigation_manager(
         services=services,
         source_store=source,
@@ -83,7 +75,7 @@ def test_navigation_manager_uses_profile_catalog_for_draft_validation(tmp_path) 
         principal_provider=_principal,
         group_key='configuration',
         access_key='navigation.manage',
-        profile_catalog_provider=lambda: profiles,
+        profile_options_provider=lambda: options,
     )
     payload = NavigationConfigurationCatalog(
         links=(

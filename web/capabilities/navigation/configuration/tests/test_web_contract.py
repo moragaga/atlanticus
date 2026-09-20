@@ -1,5 +1,6 @@
 
 import pytest
+
 pytest.importorskip('dash')
 
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
@@ -15,6 +16,8 @@ from atlanticus.web.navigation.configuration.web.ids import (
     PROJECTION_NAME_ID,
     SOURCE_NAME_ID,
     STRUCTURE_ID,
+    STRUCTURE_PAGE_SIZE_ID,
+    STRUCTURE_PAGE_STORE_ID,
 )
 
 
@@ -74,6 +77,10 @@ def test_navigation_admin_layout_starts_with_empty_editor_payload() -> None:
     assert _text(_component(layout, SOURCE_NAME_ID)) == 'Navigation Source'
     assert _text(_component(layout, PROJECTION_NAME_ID)) == 'Navigation Projection'
     assert _component(layout, STRUCTURE_ID) is not None
+    assert _component(layout, STRUCTURE_PAGE_STORE_ID).data == 1
+    page_size = _component(layout, STRUCTURE_PAGE_SIZE_ID)
+    assert page_size.value == 10
+    assert [option['value'] for option in page_size.options] == [10, 20]
 
 
 def test_navigation_admin_exposes_functional_section_and_profile_selectors() -> None:
@@ -87,7 +94,7 @@ def test_navigation_admin_exposes_functional_section_and_profile_selectors() -> 
     assert section.placeholder == 'Sin sección / raíz'
     assert profiles.searchable is True
     assert profiles.multi is True
-    assert profiles.placeholder == 'Seleccionar perfiles'
+    assert profiles.placeholder == 'Público · sin perfiles'
 
 
 def test_navigation_admin_web_module_owns_its_asset_layer() -> None:

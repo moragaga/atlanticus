@@ -68,7 +68,8 @@ def _can_open(
     allowed_profiles: tuple[str, ...],
     principal: NavigationPrincipal,
 ) -> bool:
-    if principal.unrestricted:
+    # Sin perfiles configurados, el enlace es público dentro de Navigation.
+    if principal.unrestricted or not allowed_profiles:
         return True
     return principal.access_key in allowed_profiles
 

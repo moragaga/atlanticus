@@ -495,7 +495,6 @@ version = "0.1.9"
 source = { editable = "../../../../../web/capabilities/navigation/configuration" }
 dependencies = [
     { name = "atlanticus-web-navigation" },
-    { name = "atlanticus-web-profiles" },
     { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
 ]
@@ -513,7 +512,6 @@ requires-dist = [
     { name = "atlanticus-web", marker = "extra == 'web'", editable = "../../../../../web/framework/core" },
     { name = "atlanticus-web-bootstrap", marker = "extra == 'web'", editable = "../../../../../web/framework/bootstrap" },
     { name = "atlanticus-web-navigation", editable = "../../../../../web/capabilities/navigation/core" },
-    { name = "atlanticus-web-profiles", editable = "../../../../../web/capabilities/profiles/core" },
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
     { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },

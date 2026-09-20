@@ -13,7 +13,7 @@ from atlanticus.web.compositions.navigation_manager.workflows import (
     NavigationAuditActorProvider,
 )
 from atlanticus.web.manager.authorization import ManagerAuthorizationPolicy
-from atlanticus.web.navigation.configuration.profiles import NavigationProfileCatalogProvider
+from atlanticus.web.navigation.configuration.profiles import NavigationProfileOptionsProvider
 from atlanticus.web.navigation.configuration.source_projection import NavigationProjectionValidator
 from atlanticus.web.navigation.projection.cosmos import (
     CosmosNavigationProjectionStore,
@@ -41,7 +41,7 @@ def compose_local_navigation_manager(
     access_key: str | None = None,
     authorization: ManagerAuthorizationPolicy | None = None,
     audit_actor_provider: NavigationAuditActorProvider | None = None,
-    profile_catalog_provider: NavigationProfileCatalogProvider | None = None,
+    profile_options_provider: NavigationProfileOptionsProvider | None = None,
     validators: tuple[NavigationProjectionValidator, ...] = (),
 ) -> NavigationManagerComposition:
     return compose_navigation_manager(
@@ -56,7 +56,7 @@ def compose_local_navigation_manager(
         access_key=access_key,
         authorization=authorization,
         audit_actor_provider=audit_actor_provider,
-        profile_catalog_provider=profile_catalog_provider,
+        profile_options_provider=profile_options_provider,
         validators=validators,
     )
 
@@ -76,7 +76,7 @@ def compose_azure_navigation_manager(
     access_key: str | None = None,
     authorization: ManagerAuthorizationPolicy | None = None,
     audit_actor_provider: NavigationAuditActorProvider | None = None,
-    profile_catalog_provider: NavigationProfileCatalogProvider | None = None,
+    profile_options_provider: NavigationProfileOptionsProvider | None = None,
     validators: tuple[NavigationProjectionValidator, ...] = (),
 ) -> NavigationManagerComposition:
     return compose_navigation_manager(
@@ -94,6 +94,6 @@ def compose_azure_navigation_manager(
         access_key=access_key,
         authorization=authorization,
         audit_actor_provider=audit_actor_provider,
-        profile_catalog_provider=profile_catalog_provider,
+        profile_options_provider=profile_options_provider,
         validators=validators,
     )

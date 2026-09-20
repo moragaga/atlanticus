@@ -51,12 +51,14 @@ from atlanticus.web.manager.web.ids import (
     workflow_saved_draft_id,
 )
 from atlanticus.web.modules import WebModule
+from atlanticus.web.navigation.configuration import NavigationProfileOption
 from atlanticus.web.navigation.configuration.web import (
     NavigationAdminWebContext,
     build_navigation_admin_configuration,
     build_navigation_history_preview,
     create_navigation_admin_web_module,
 )
+from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.services import ServiceRegistry
 
 MANAGER_ROUTE_PREFIX = '/manager'
@@ -106,6 +108,22 @@ def build_configuration_manager_surface(
         owner_subject_id_provider=actor_provider,
         source_snapshot_provider=dependencies.tools_source.get_current,
     )
+
+    # Esta adaptación pertenece a la composición ADA: Navigation sólo recibe key + label.
+    # Si Profiles aún no tiene Projection, ProfileCatalog aporta sus perfiles de sistema.
+    def navigation_profile_options() -> tuple[NavigationProfileOption, ...]:
+        active = dependencies.profiles_projection.get_active(
+            dependencies.profiles_module.source_key
+        )
+        catalog = active.payload if active is not None else ProfileCatalog()
+        if not isinstance(catalog, ProfileCatalog):
+            raise TypeError('Profiles projection payload must be a ProfileCatalog')
+        return tuple(
+            NavigationProfileOption(profile.key, profile.label)
+            for profile in catalog.all()
+            if profile.key not in {'root', 'local'}
+        )
+
     navigation_context = NavigationAdminWebContext(
         workspace_payload_reader=navigation_workspace.read_payload,
         workspace_payload_writer=navigation_workspace.write_payload,
@@ -119,6 +137,7 @@ def build_configuration_manager_surface(
         ),
         source_name=dependencies.navigation_source_name,
         projection_name=dependencies.navigation_projection_name,
+        profile_options_provider=navigation_profile_options,
     )
     tools_context = ToolManagerWebContext(
         workspace_payload_reader=tools_workspace.read_payload,

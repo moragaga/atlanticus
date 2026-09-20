@@ -6,9 +6,11 @@ from typing import Literal
 
 from atlanticus.web.navigation.configuration.errors import NavigationConfigurationProjectionError
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
-from atlanticus.web.navigation.configuration.profiles import NavigationProfileCatalogProvider
+from atlanticus.web.navigation.configuration.profiles import (
+    NavigationProfileOptionsProvider,
+    profile_options,
+)
 from atlanticus.web.navigation.configuration.source_release import NavigationSourceCodec
-from atlanticus.web.profiles.errors import ProfilesDefinitionError
 from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.projection.service import ProjectionBuilder, SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
@@ -46,25 +48,21 @@ NavigationProjectionValidator = Callable[
 ]
 
 
-def create_navigation_profile_catalog_validator(
-    profile_catalog_provider: NavigationProfileCatalogProvider,
+def create_navigation_profile_options_validator(
+    profile_options_provider: NavigationProfileOptionsProvider,
 ) -> NavigationProjectionValidator:
     def validate(
         catalog: NavigationConfigurationCatalog,
     ) -> tuple[NavigationProjectionIssue, ...]:
-        profile_catalog = profile_catalog_provider()
-        issues: list[NavigationProjectionIssue] = []
-        for profile_key in catalog.configured_profiles():
-            try:
-                profile_catalog.require(profile_key)
-            except ProfilesDefinitionError:
-                issues.append(
-                    NavigationProjectionIssue(
-                        code='navigation.profile.unknown',
-                        message=f'Unknown navigation profile {profile_key!r}',
-                    )
-                )
-        return tuple(issues)
+        known = {option.key for option in profile_options(profile_options_provider)}
+        return tuple(
+            NavigationProjectionIssue(
+                code='navigation.profile.unknown',
+                message=f'Unknown navigation profile {profile_key!r}',
+            )
+            for profile_key in catalog.configured_profiles()
+            if profile_key not in known
+        )
 
     return validate
 

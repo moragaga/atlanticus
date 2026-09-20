@@ -2,7 +2,12 @@ CATALOG_STORE_ID = 'atlanticus-navigation-admin-catalog'
 MOUNT_STORE_ID = 'atlanticus-navigation-admin-mounted'
 LINK_EDITOR_STORE_ID = 'atlanticus-navigation-admin-link-editor'
 GROUP_EDITOR_STORE_ID = 'atlanticus-navigation-admin-group-editor'
+STRUCTURE_PAGE_STORE_ID = 'atlanticus-navigation-admin-structure-page'
+STRUCTURE_EXPANDED_GROUPS_STORE_ID = 'atlanticus-navigation-admin-structure-expanded-groups'
 STRUCTURE_ID = 'atlanticus-navigation-admin-structure'
+STRUCTURE_PREVIOUS_ID = 'atlanticus-navigation-admin-structure-previous'
+STRUCTURE_NEXT_ID = 'atlanticus-navigation-admin-structure-next'
+STRUCTURE_PAGE_SIZE_ID = 'atlanticus-navigation-admin-structure-page-size'
 ADD_ROOT_LINK_ID = 'atlanticus-navigation-admin-add-root-link'
 ADD_GROUP_ID = 'atlanticus-navigation-admin-add-group'
 SAVE_BUTTON_ID = 'atlanticus-navigation-admin-save'
@@ -70,3 +75,11 @@ def group_down_id(key: str) -> dict[str, str]:
 
 def group_add_link_id(key: str) -> dict[str, str]:
     return {'type': 'atlanticus-navigation-group-add-link', 'key': key}
+
+
+def group_toggle_id(key: object) -> dict[str, object]:
+    return {'type': 'atlanticus-navigation-group-toggle', 'key': key}
+
+
+def structure_page_id(index: object) -> dict[str, object]:
+    return {'type': 'atlanticus-navigation-structure-page', 'index': index}

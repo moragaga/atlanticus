@@ -1,6 +1,6 @@
 # Espejo pedagógico de la composición Navigation para Manager.
 # La composición declara una única capacidad funcional de acceso al módulo; validar, publicar y proyectar son pasos internos del workflow.
-# Los perfiles participan únicamente en la validación referencial de Navigation cuando se provee un catálogo.
+# La composición puede inyectar opciones neutrales de perfil sin crear una dependencia Navigation -> Profiles.
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -26,10 +26,10 @@ from atlanticus.web.manager.web.ids import (
     workflow_saved_draft_id,
 )
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
-from atlanticus.web.navigation.configuration.profiles import NavigationProfileCatalogProvider
+from atlanticus.web.navigation.configuration.profiles import NavigationProfileOptionsProvider
 from atlanticus.web.navigation.configuration.source_projection import (
     NavigationProjectionValidator,
-    create_navigation_profile_catalog_validator,
+    create_navigation_profile_options_validator,
     create_navigation_projection_service,
 )
 from atlanticus.web.navigation.configuration.source_release import NavigationSourceService
@@ -69,14 +69,14 @@ def compose_navigation_manager(
     access_key: str | None = None,
     authorization: ManagerAuthorizationPolicy | None = None,
     audit_actor_provider: NavigationAuditActorProvider | None = None,
-    profile_catalog_provider: NavigationProfileCatalogProvider | None = None,
+    profile_options_provider: NavigationProfileOptionsProvider | None = None,
     validators: tuple[NavigationProjectionValidator, ...] = (),
 ) -> NavigationManagerComposition:
     resolved_authorization = authorization or DefaultManagerAuthorizationPolicy()
     resolved_actor_provider = audit_actor_provider or (lambda: principal_provider().subject_id)
     resolved_validators = (
-        (create_navigation_profile_catalog_validator(profile_catalog_provider), *validators)
-        if profile_catalog_provider is not None
+        (create_navigation_profile_options_validator(profile_options_provider), *validators)
+        if profile_options_provider is not None
         else validators
     )
     source_service = NavigationSourceService(source=source_store, source_key=source_key)
@@ -118,7 +118,7 @@ def compose_navigation_manager(
         ),
         source_name='Navigation Source',
         projection_name='Navigation Projection',
-        profile_catalog_provider=profile_catalog_provider,
+        profile_options_provider=profile_options_provider,
     )
 
     def layout(_services: ServiceRegistry) -> object:

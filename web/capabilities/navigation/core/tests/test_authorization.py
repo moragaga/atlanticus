@@ -45,6 +45,12 @@ def _definition() -> NavigationDefinition:
                 key='admin-only',
                 label='Admin only',
                 href='/admin',
+                allowed_profiles=('administrator',),
+            ),
+            NavigationLinkDefinition(
+                key='public',
+                label='Public',
+                href='/public',
             ),
             NavigationLinkDefinition(
                 key='disabled',
@@ -94,6 +100,11 @@ def test_restricted_principal_requires_explicit_route_permission() -> None:
         definition,
         principal=_principal('guest'),
         pathname='/admin',
+    )
+    assert can_access_navigation_path(
+        definition,
+        principal=_principal('guest'),
+        pathname='/public',
     )
     assert not can_access_navigation_path(
         definition,
@@ -170,10 +181,15 @@ def test_authorization_middleware_returns_access_denied_with_home_action() -> No
     def admin():
         return 'admin'
 
+    @server.get('/public')
+    def public():
+        return 'public'
+
     client = server.test_client()
 
     assert client.get('/', headers={'Accept': 'text/html'}).status_code == 200
     assert client.get('/guest', headers={'Accept': 'text/html'}).status_code == 200
+    assert client.get('/public', headers={'Accept': 'text/html'}).status_code == 200
     denied = client.get('/admin', headers={'Accept': 'text/html'})
     assert denied.status_code == 403
     body = denied.get_data(as_text=True)

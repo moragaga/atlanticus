@@ -92,9 +92,9 @@ def test_restricted_principal_filters_links_and_child_can_override_group_profile
     viewer = resolve_navigation(_definition(), principal=_principal('viewer'))
     analyst = resolve_navigation(_definition(), principal=_principal('analyst'))
 
-    assert tuple(link.key for link in viewer.links) == ('viewer-home',)
+    assert tuple(link.key for link in viewer.links) == ('private', 'viewer-home')
     assert tuple(link.key for link in viewer.groups[0].links) == ('inherited',)
-    assert analyst.links == ()
+    assert tuple(link.key for link in analyst.links) == ('private',)
     assert tuple(link.key for link in analyst.groups[0].links) == ('override',)
 
 
@@ -232,7 +232,7 @@ def test_navigation_resolves_from_manual_provider_without_users() -> None:
     module.register_services(services)
     menu = resolve_navigation_from_services(services)
 
-    assert tuple(link.key for link in menu.links) == ('viewer-home',)
+    assert tuple(link.key for link in menu.links) == ('private', 'viewer-home')
     assert tuple(link.key for link in menu.groups[0].links) == ('inherited',)
 
 

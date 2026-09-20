@@ -3,13 +3,16 @@ import pytest
 from atlanticus.web.navigation.configuration import (
     NavigationConfigurationCatalog,
     NavigationLinkConfiguration,
-    create_navigation_profile_catalog_validator,
+    NavigationProfileOption,
+    create_navigation_profile_options_validator,
 )
-from atlanticus.web.profiles.models import ProfileCatalog
 
 
-def _profile_catalog() -> ProfileCatalog:
-    return ProfileCatalog()
+def _profile_options() -> tuple[NavigationProfileOption, ...]:
+    return tuple(
+        NavigationProfileOption(key=key, label=key.title())
+        for key in ('basic', 'root', 'guest', 'local')
+    )
 
 
 def _catalog(profile_key: str) -> NavigationConfigurationCatalog:
@@ -26,14 +29,14 @@ def _catalog(profile_key: str) -> NavigationConfigurationCatalog:
 
 
 @pytest.mark.parametrize('profile_key', ('basic', 'root', 'guest', 'local'))
-def test_profile_catalog_validator_accepts_system_profile(profile_key: str) -> None:
-    validator = create_navigation_profile_catalog_validator(_profile_catalog)
+def test_profile_options_validator_accepts_declared_profile(profile_key: str) -> None:
+    validator = create_navigation_profile_options_validator(_profile_options)
 
     assert validator(_catalog(profile_key)) == ()
 
 
-def test_profile_catalog_validator_reports_unknown_profile() -> None:
-    validator = create_navigation_profile_catalog_validator(_profile_catalog)
+def test_profile_options_validator_reports_unknown_profile() -> None:
+    validator = create_navigation_profile_options_validator(_profile_options)
 
     issues = validator(_catalog('operator'))
 
@@ -42,11 +45,11 @@ def test_profile_catalog_validator_reports_unknown_profile() -> None:
     assert issues[0].message == "Unknown navigation profile 'operator'"
 
 
-def test_profile_catalog_validator_does_not_hide_provider_failures() -> None:
-    def provider() -> ProfileCatalog:
-        raise RuntimeError('profile catalog unavailable')
+def test_profile_options_validator_does_not_hide_provider_failures() -> None:
+    def provider() -> tuple[NavigationProfileOption, ...]:
+        raise RuntimeError('profile options unavailable')
 
-    validator = create_navigation_profile_catalog_validator(provider)
+    validator = create_navigation_profile_options_validator(provider)
 
-    with pytest.raises(RuntimeError, match='profile catalog unavailable'):
+    with pytest.raises(RuntimeError, match='profile options unavailable'):
         validator(_catalog('guest'))

@@ -75,6 +75,9 @@ def can_access_navigation_path(
         return True
     if match is None:
         return False
+    # Una ruta configurada sin perfiles no añade una restricción de perfil.
+    if not match.allowed_profiles:
+        return True
     return principal.access_key in match.allowed_profiles
 
 

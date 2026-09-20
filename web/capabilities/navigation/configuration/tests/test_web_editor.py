@@ -8,43 +8,31 @@ from atlanticus.web.navigation.configuration.editor import (
     reorder_root_node,
     upsert_link,
 )
-from atlanticus.web.navigation.configuration.profiles import profile_definitions
-from atlanticus.web.profiles.models import ProfileCatalog, ProfileDefinition
+from atlanticus.web.navigation.configuration.profiles import (
+    NavigationProfileOption,
+    profile_options,
+)
 
 
-def _profile(key: str, label: str, color: str) -> ProfileDefinition:
-    return ProfileDefinition(
-        key=key,
-        label=label,
-        background_color=color,
+def test_navigation_profile_options_are_empty_without_provider() -> None:
+    assert profile_options() == ()
+
+
+def test_navigation_profile_options_come_from_composition_provider() -> None:
+    options = (
+        NavigationProfileOption('guest', 'Guest'),
+        NavigationProfileOption('operator', 'Operator'),
     )
 
-
-def test_navigation_profiles_are_empty_without_catalog_provider() -> None:
-    assert profile_definitions() == ()
+    assert profile_options(lambda: options) == options
 
 
-def test_navigation_profiles_come_directly_from_profile_catalog() -> None:
-    catalog = ProfileCatalog(
-        profiles=(
-            _profile('guest', 'Guest', '#111111'),
-            _profile('operator', 'Operator', '#222222'),
-        )
-    )
+def test_navigation_profile_options_provider_errors_propagate() -> None:
+    def provider() -> tuple[NavigationProfileOption, ...]:
+        raise RuntimeError('profile options unavailable')
 
-    profiles = profile_definitions(lambda: catalog)
-
-    assert profiles == catalog.all()
-    assert [profile.key for profile in profiles] == ['guest', 'operator']
-
-
-def test_navigation_profile_catalog_provider_errors_propagate() -> None:
-    def provider() -> ProfileCatalog:
-        raise RuntimeError('catalog unavailable')
-
-    with pytest.raises(RuntimeError, match='catalog unavailable'):
-        profile_definitions(provider)
-
+    with pytest.raises(RuntimeError, match='profile options unavailable'):
+        profile_options(provider)
 
 def test_editor_starts_empty_and_allows_empty_sections() -> None:
     catalog = build_initial_catalog()

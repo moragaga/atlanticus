@@ -22,7 +22,7 @@ from atlanticus.web.navigation.configuration.exchange import (
     decode_navigation_configuration_import,
 )
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
-from atlanticus.web.navigation.configuration.profiles import profile_definitions
+from atlanticus.web.navigation.configuration.profiles import profile_options
 from atlanticus.web.navigation.configuration.web.ids import (
     ADD_GROUP_ID,
     ADD_ROOT_LINK_ID,
@@ -57,13 +57,22 @@ from atlanticus.web.navigation.configuration.web.ids import (
     MOUNT_STORE_ID,
     SAVE_BUTTON_ID,
     SAVE_RESULT_ID,
+    STRUCTURE_EXPANDED_GROUPS_STORE_ID,
     STRUCTURE_ID,
+    STRUCTURE_NEXT_ID,
+    STRUCTURE_PAGE_SIZE_ID,
+    STRUCTURE_PAGE_STORE_ID,
+    STRUCTURE_PREVIOUS_ID,
+    group_toggle_id,
+    structure_page_id,
 )
 from atlanticus.web.navigation.configuration.web.models import NavigationAdminWebContext
 from atlanticus.web.navigation.configuration.web.rendering import (
     navigation_section_options,
-    navigation_structure,
+    navigation_structure_page,
+    render_navigation_structure,
 )
+from atlanticus.web.pagination import ALLOWED_PAGE_SIZES, DEFAULT_PAGE_SIZE, PageRequest
 
 _MODAL_CLOSED = 'atlanticus-navigation-admin__modal'
 _MODAL_OPEN = 'atlanticus-navigation-admin__modal atlanticus-navigation-admin__modal--open'
@@ -98,10 +107,79 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
 
     @app.callback(
         Output(STRUCTURE_ID, 'children'),
+        Output(STRUCTURE_PAGE_STORE_ID, 'data'),
+        Output(STRUCTURE_EXPANDED_GROUPS_STORE_ID, 'data'),
         Input(CATALOG_STORE_ID, 'data'),
+        Input(STRUCTURE_PREVIOUS_ID, 'n_clicks'),
+        Input(STRUCTURE_NEXT_ID, 'n_clicks'),
+        Input(structure_page_id(ALL), 'n_clicks'),
+        Input(STRUCTURE_PAGE_SIZE_ID, 'value'),
+        Input(group_toggle_id(ALL), 'n_clicks'),
+        State(STRUCTURE_PAGE_STORE_ID, 'data'),
+        State(STRUCTURE_EXPANDED_GROUPS_STORE_ID, 'data'),
     )
-    def render_catalog(catalog_data: dict[str, object] | None):
-        return navigation_structure(_catalog(catalog_data))
+    def render_catalog(
+        catalog_data: dict[str, object] | None,
+        previous_clicks: int | None,
+        next_clicks: int | None,
+        _page_clicks: list[int | None],
+        page_size: int | None,
+        _toggle_clicks: list[int | None],
+        current_page: int | None,
+        expanded_group_keys: list[str] | None,
+    ):
+        # La página sólo controla la ventana de nodos raíz/sección.
+        # El estado expandido es efímero y nunca entra al documento Source.
+        catalog = _catalog(catalog_data)
+        resolved_page_size = (
+            page_size
+            if isinstance(page_size, int)
+            and not isinstance(page_size, bool)
+            and page_size in ALLOWED_PAGE_SIZES
+            else DEFAULT_PAGE_SIZE
+        )
+        page_number = (
+            current_page
+            if isinstance(current_page, int)
+            and not isinstance(current_page, bool)
+            and current_page > 0
+            else 1
+        )
+        expanded = [str(key) for key in expanded_group_keys or []]
+        trigger = ctx.triggered_id
+        if trigger == STRUCTURE_PREVIOUS_ID and _click_is_real(previous_clicks):
+            page_number = max(1, page_number - 1)
+        elif trigger == STRUCTURE_NEXT_ID and _click_is_real(next_clicks):
+            page_number += 1
+        elif trigger == STRUCTURE_PAGE_SIZE_ID:
+            page_number = 1
+        elif (
+            isinstance(trigger, dict)
+            and trigger.get('type') == 'atlanticus-navigation-structure-page'
+            and _triggered_click_is_real()
+        ):
+            page_number = max(1, int(trigger.get('index', 1)))
+        elif (
+            isinstance(trigger, dict)
+            and trigger.get('type') == 'atlanticus-navigation-group-toggle'
+            and _triggered_click_is_real()
+        ):
+            key = str(trigger.get('key', ''))
+            if key in expanded:
+                expanded.remove(key)
+            elif key:
+                expanded.append(key)
+        valid_groups = {group.key for group in catalog.groups}
+        expanded = [key for key in expanded if key in valid_groups]
+        page = navigation_structure_page(
+            catalog,
+            PageRequest(page_number=page_number, page_size=resolved_page_size),
+        )
+        return (
+            render_navigation_structure(page, expanded_group_keys=tuple(expanded)),
+            page.request.page_number,
+            expanded,
+        )
 
     @app.callback(
         Output(LINK_EDITOR_STORE_ID, 'data'),
@@ -461,8 +539,6 @@ def _link_editor_response(
     selected_profiles = list(link.allowed_profiles) if link is not None else []
     profile_options = _profile_options(context, extra_keys=tuple(selected_profiles))
     section_options = navigation_section_options(catalog)
-    if link is None and any(option['value'] == 'guest' for option in profile_options):
-        selected_profiles = ['guest']
     section_value = parent_group_key or _ROOT_SECTION_VALUE
     return (
         {'key': editor_key},
@@ -503,7 +579,7 @@ def _profile_options(
 ) -> list[dict[str, str]]:
     options = [
         {'label': profile.label, 'value': profile.key}
-        for profile in profile_definitions(context.profile_catalog_provider)
+        for profile in profile_options(context.profile_options_provider)
     ]
     known = {option['value'] for option in options}
     options.extend({'label': key, 'value': key} for key in extra_keys if key not in known)

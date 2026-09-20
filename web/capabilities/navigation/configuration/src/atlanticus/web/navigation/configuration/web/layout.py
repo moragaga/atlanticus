@@ -5,7 +5,6 @@ from dash import dcc, html
 
 from atlanticus.web.navigation.configuration.editor import build_initial_catalog
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
-from atlanticus.web.navigation.configuration.profiles import profile_definitions
 from atlanticus.web.navigation.configuration.web.ids import (
     ADD_GROUP_ID,
     ADD_ROOT_LINK_ID,
@@ -42,10 +41,16 @@ from atlanticus.web.navigation.configuration.web.ids import (
     SAVE_BUTTON_ID,
     SAVE_RESULT_ID,
     SOURCE_NAME_ID,
+    STRUCTURE_EXPANDED_GROUPS_STORE_ID,
     STRUCTURE_ID,
+    STRUCTURE_PAGE_STORE_ID,
 )
 from atlanticus.web.navigation.configuration.web.models import NavigationAdminWebContext
-from atlanticus.web.navigation.configuration.web.rendering import navigation_structure
+from atlanticus.web.navigation.configuration.web.rendering import (
+    navigation_structure_page,
+    render_navigation_structure,
+)
+from atlanticus.web.pagination import PageRequest
 
 _MODAL_CLOSED = 'atlanticus-navigation-admin__modal'
 
@@ -57,9 +62,10 @@ def build_navigation_admin_configuration(context: NavigationAdminWebContext) -> 
             dcc.Store(id=CATALOG_STORE_ID, data=catalog.to_document(), storage_type='memory'),
             dcc.Store(id=LINK_EDITOR_STORE_ID, storage_type='memory'),
             dcc.Store(id=GROUP_EDITOR_STORE_ID, storage_type='memory'),
+            dcc.Store(id=STRUCTURE_PAGE_STORE_ID, data=1, storage_type='memory'),
+            dcc.Store(id=STRUCTURE_EXPANDED_GROUPS_STORE_ID, data=[], storage_type='memory'),
             dcc.Store(id=MOUNT_STORE_ID, data=1, storage_type='memory'),
             _runtime_context(context),
-            _profiles_context(context),
             _structure_section(catalog),
             _save_section(),
             _link_modal(),
@@ -110,49 +116,9 @@ def _runtime_context(context: NavigationAdminWebContext) -> object:
     )
 
 
-def _profiles_context(context: NavigationAdminWebContext) -> object:
-    profiles = profile_definitions(context.profile_catalog_provider)
-    profile_content: object
-    if profiles:
-        profile_content = [_profile_badge(profile) for profile in profiles]
-    else:
-        profile_content = html.P(
-            'No hay un catálogo de perfiles configurado para esta composición.',
-            className='atlanticus-navigation-admin__empty',
-        )
-    return html.Section(
-        [
-            html.Div(
-                [
-                    html.H3('Perfiles de acceso'),
-                    html.P(
-                        'Los perfiles disponibles provienen del catálogo de perfiles configurado '
-                        'por la composición.'
-                    ),
-                ],
-                className='atlanticus-navigation-admin__section-copy',
-            ),
-            html.Div(
-                profile_content,
-                className='atlanticus-navigation-admin__profiles',
-            ),
-        ],
-        className='atlanticus-navigation-admin__section',
-    )
-
-
-def _profile_badge(profile) -> object:
-    return html.Span(
-        profile.label,
-        className='atlanticus-navigation-admin__profile',
-        style={
-            'backgroundColor': profile.background_color,
-            'color': profile.text_color,
-        },
-    )
-
 
 def _structure_section(catalog: NavigationConfigurationCatalog) -> object:
+    page = navigation_structure_page(catalog, PageRequest())
     return html.Section(
         [
             html.Div(
@@ -189,7 +155,7 @@ def _structure_section(catalog: NavigationConfigurationCatalog) -> object:
                 ],
                 className='atlanticus-navigation-admin__section-heading',
             ),
-            html.Div(navigation_structure(catalog), id=STRUCTURE_ID),
+            html.Div(render_navigation_structure(page), id=STRUCTURE_ID),
         ],
         className='atlanticus-navigation-admin__section',
     )
@@ -277,14 +243,14 @@ def _link_modal() -> object:
                                     ),
                                 ),
                                 _field(
-                                    'Perfiles con acceso',
+                                    'Perfiles con acceso · opcional',
                                     html.Div(
                                         dcc.Dropdown(
                                             id=LINK_PROFILES_ID,
                                             className='atlanticus-navigation-admin__profiles-select',
                                             multi=True,
                                             searchable=True,
-                                            placeholder='Seleccionar perfiles',
+                                            placeholder='Público · sin perfiles',
                                             style=_dash_select_style(),
                                             labels={
                                                 'search': 'Buscar perfil',
