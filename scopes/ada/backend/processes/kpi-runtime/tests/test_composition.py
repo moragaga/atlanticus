@@ -6,7 +6,7 @@ from atlanticus.configuration import ConfigurationSource, ResolvedConfiguration
 from atlanticus.kernel import Environment
 
 
-def _configuration(tmp_path) -> ResolvedConfiguration:
+def _configuration(tmp_path, *, reprocess_current='false') -> ResolvedConfiguration:
     values = {
         'ENVIRONMENT': 'local',
         'APPLICATION': 'ada-kpi-runtime-local',
@@ -14,6 +14,7 @@ def _configuration(tmp_path) -> ResolvedConfiguration:
         'PI_SOURCE': 'NOTPII',
         'PI_APPLICATION': 'operational-data-notpii-local',
         'KPI_POLL_INTERVAL_SECONDS': '1',
+        'REPROCESS_CURRENT': reprocess_current,
         'ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED': 'true',
         'ATLANTICUS_AZURE_OBSERVABILITY_MODE': 'off',
     }
@@ -36,4 +37,14 @@ def test_composition_uses_job_runtime_and_empty_catalog(tmp_path) -> None:
     assert composition.definition.sleep_seconds == 1
     assert composition.definition.iteration_timeout_seconds == 240
     assert composition.definition.execution_timeout_seconds == 600
+    assert composition.settings.reprocess_current is False
     assert len(composition.catalog) == 0
+
+
+def test_composition_accepts_reprocess_current_enabled(tmp_path) -> None:
+    composition = build_composition(
+        configuration=_configuration(tmp_path, reprocess_current='true'),
+        catalog=KpiCatalog(()),
+    )
+
+    assert composition.settings.reprocess_current is True

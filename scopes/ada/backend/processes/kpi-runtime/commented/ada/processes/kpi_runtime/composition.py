@@ -1,4 +1,5 @@
-# Composición del runtime: el plan de Operational Data sólo contiene KPI base; Over no agrega cargas de fuentes.
+# La composición resuelve REPROCESS_CURRENT desde configuración y lo inyecta explícitamente en KpiRuntimeJob.
+# El job no consulta variables de entorno directamente; recibe una decisión ya tipada y testeable.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -94,6 +95,7 @@ def build_composition(
         loader=loader,
         persistence=persistence,
         source_watermarks=source_watermarks,
+        reprocess_current=settings.reprocess_current,
     )
     definition = JobDefinition(
         module_name='ada.processes.kpi_runtime',

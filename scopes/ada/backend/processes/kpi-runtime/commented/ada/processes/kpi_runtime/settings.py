@@ -1,6 +1,7 @@
+# Configuración operacional del runtime KPI. REPROCESS_CURRENT sólo controla si se omite el atajo current == committed.
+# El default false conserva el comportamiento normal; true no altera autoridad, regresiones ni persistencia durable.
 from __future__ import annotations
 
-# Espejo pedagógico: conserva el comportamiento productivo y documenta la responsabilidad de este módulo.
 import math
 from dataclasses import dataclass
 
@@ -15,6 +16,7 @@ BLOCKGRADE_APPLICATION_VARIABLE = 'BLOCKGRADE_APPLICATION'
 REMANENTES_APPLICATION_VARIABLE = 'REMANENTES_APPLICATION'
 FABRICA_APPLICATION_VARIABLE = 'FABRICA_APPLICATION'
 POLL_INTERVAL_VARIABLE = 'KPI_POLL_INTERVAL_SECONDS'
+REPROCESS_CURRENT_VARIABLE = 'REPROCESS_CURRENT'
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,6 +28,7 @@ class KpiRuntimeSettings:
     remanentes_application: str | None
     fabrica_application: str | None
     poll_interval_seconds: float
+    reprocess_current: bool
 
     @classmethod
     def from_configuration(cls, configuration: ResolvedConfiguration) -> KpiRuntimeSettings:
@@ -51,6 +54,9 @@ class KpiRuntimeSettings:
             poll_interval_seconds=_positive_float(
                 configuration.require(POLL_INTERVAL_VARIABLE), POLL_INTERVAL_VARIABLE
             ),
+            reprocess_current=_boolean(
+                configuration.require(REPROCESS_CURRENT_VARIABLE), REPROCESS_CURRENT_VARIABLE
+            ),
         )
 
 
@@ -65,6 +71,7 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(key=REMANENTES_APPLICATION_VARIABLE, required=False),
         ConfigurationVariableSpec(key=FABRICA_APPLICATION_VARIABLE, required=False),
         ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='1'),
+        ConfigurationVariableSpec(key=REPROCESS_CURRENT_VARIABLE, default='false'),
         ConfigurationVariableSpec(key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED', default='true'),
         ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_MODE', default='off'),
         ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_PROFILE', required=False),
@@ -117,3 +124,14 @@ def _positive_float(value: str, field: str) -> float:
     if not math.isfinite(resolved) or resolved <= 0:
         raise KpiRuntimeConfigurationError(f'{field} must contain a positive number')
     return resolved
+
+
+def _boolean(value: str, field: str) -> bool:
+    if value != value.strip():
+        raise KpiRuntimeConfigurationError(f'{field} must not contain surrounding whitespace')
+    normalized = value.lower()
+    if normalized == 'true':
+        return True
+    if normalized == 'false':
+        return False
+    raise KpiRuntimeConfigurationError(f'{field} must be true or false')

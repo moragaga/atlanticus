@@ -25,3 +25,4 @@ def test_local_bootstrap_uses_process_root_dotenv(tmp_path) -> None:
 
     assert configuration.require('APPLICATION') == 'ada-kpi-runtime-local'
     assert configuration.require('PI_SOURCE') == 'NOTPII'
+    assert configuration.require('REPROCESS_CURRENT') == 'false'

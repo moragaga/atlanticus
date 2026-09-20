@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from ada.kpis.core import KpiCatalog, KpiEvaluation, KpiWatermark
 from ada.kpis.evaluation import evaluate_kpi, evaluate_over_kpi
 from ada.kpis.persistence import KpiEvaluationBatch, KpiPersistence
-from ada.processes.kpi_runtime.errors import KpiRuntimeWatermarkError
+from ada.processes.kpi_runtime.errors import KpiRuntimeDataError, KpiRuntimeWatermarkError
 from ada.processes.kpi_runtime.models import KpiRuntimeIterationResult, KpiRuntimeOutcome
 from ada.processes.kpi_runtime.source_state import PiOperationalWatermarkReader
 from atlanticus.operational_data.core import DataSource
@@ -21,6 +23,7 @@ class KpiRuntimeJob:
         loader: DataSourceLoader,
         persistence: KpiPersistence,
         source_watermarks: PiOperationalWatermarkReader,
+        reprocess_current: bool = False,
     ) -> None:
         if not isinstance(catalog, KpiCatalog):
             raise TypeError('catalog must be a KpiCatalog')
@@ -32,11 +35,14 @@ class KpiRuntimeJob:
             raise TypeError('persistence must be a KpiPersistence')
         if not callable(getattr(source_watermarks, 'current', None)):
             raise TypeError('source_watermarks must provide a callable current method')
+        if not isinstance(reprocess_current, bool):
+            raise TypeError('reprocess_current must be bool')
         self._catalog = catalog
         self._plan = plan
         self._loader = loader
         self._persistence = persistence
         self._source_watermarks = source_watermarks
+        self._reprocess_current = reprocess_current
 
     def run_iteration(self, context: JobRuntimeContext) -> KpiRuntimeIterationResult:
         context.raise_if_cancelled()
@@ -54,7 +60,7 @@ class KpiRuntimeJob:
             raise KpiRuntimeWatermarkError(
                 'source watermark must not be older than the KPI committed watermark'
             )
-        if observed == committed:
+        if observed == committed and not self._reprocess_current:
             return _empty(
                 context,
                 reason='up_to_date',
@@ -69,6 +75,11 @@ class KpiRuntimeJob:
                 committed=committed,
             )
 
+        reprocess_evaluated_at = (
+            _reprocess_evaluated_at(self._persistence, observed)
+            if self._reprocess_current and observed == committed
+            else {}
+        )
         loaded = self._loader.load(plan=self._plan, as_of=observed.timestamp_utc)
         source_traces = {
             DataSource.PI_INTERPOLATED: observed,
@@ -83,6 +94,7 @@ class KpiRuntimeJob:
                 context=loaded.context_for(spec.key),
                 watermark=observed,
                 source_watermarks=source_traces,
+                evaluated_at_utc=reprocess_evaluated_at.get(spec.key),
             )
             evaluations.append(evaluation)
             resolved[spec.key] = evaluation
@@ -92,6 +104,7 @@ class KpiRuntimeJob:
                 spec=spec,
                 dependencies={key: resolved[key] for key in spec.dependencies},
                 watermark=observed,
+                evaluated_at_utc=reprocess_evaluated_at.get(spec.key),
             )
             evaluations.append(evaluation)
             resolved[spec.key] = evaluation
@@ -120,6 +133,16 @@ class KpiRuntimeJob:
             evaluation_write_status=commit.write_status,
             evaluation_count=len(evaluations),
         )
+
+
+def _reprocess_evaluated_at(
+    persistence: KpiPersistence,
+    watermark: KpiWatermark,
+) -> dict[str, datetime]:
+    batches = persistence.read_committed_after()
+    if not batches or batches[-1].watermark != watermark:
+        raise KpiRuntimeDataError('KPI committed watermark must have a durable evaluation batch')
+    return {evaluation.key: evaluation.evaluated_at_utc for evaluation in batches[-1].evaluations}
 
 
 def _empty(

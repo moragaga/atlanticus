@@ -93,6 +93,7 @@ def build_composition(
         loader=loader,
         persistence=persistence,
         source_watermarks=source_watermarks,
+        reprocess_current=settings.reprocess_current,
     )
     definition = JobDefinition(
         module_name='ada.processes.kpi_runtime',

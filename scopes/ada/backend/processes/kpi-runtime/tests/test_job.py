@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from ada.kpis.core import KpiCatalog
+from ada.kpis.persistence import KpiEvaluationWriteStatus, KpiPersistenceError
 from ada.processes.kpi_runtime.errors import KpiRuntimeWatermarkError
 from ada.processes.kpi_runtime.job import KpiRuntimeJob
 from ada.processes.kpi_runtime.models import KpiRuntimeOutcome
@@ -12,7 +13,7 @@ from atlanticus.state import AtomicStateStore, StateKey
 from tests.support import RuntimeContextStub, StaticWatermarkReader, runtime_parts, watermark
 
 
-def _job(tmp_path, source, *, catalog=None):
+def _job(tmp_path, source, *, catalog=None, reprocess_current=False):
     resolved, plan, loader, persistence, reader = runtime_parts(tmp_path, catalog=catalog)
     return (
         KpiRuntimeJob(
@@ -21,6 +22,7 @@ def _job(tmp_path, source, *, catalog=None):
             loader=loader,
             persistence=persistence,
             source_watermarks=source,
+            reprocess_current=reprocess_current,
         ),
         persistence,
         reader,
@@ -73,6 +75,21 @@ def test_new_source_watermark_evaluates_and_commits_without_nullable_before_fact
     assert 'kpi_committed_before_utc' not in context.iteration_facts
     assert context.iteration_facts['kpi_committed_after_utc'] == watermark(10).to_text()
     assert context.execution_facts['kpi_committed_watermark_utc'] == watermark(10).to_text()
+
+
+def test_reprocess_current_true_does_not_change_new_watermark_behavior(tmp_path) -> None:
+    source = StaticWatermarkReader(watermark(10))
+    job, persistence, reader = _job(tmp_path, source, reprocess_current=True)
+    context = RuntimeContextStub()
+
+    result = job.run_iteration(context)
+
+    assert result.reason == 'evaluated'
+    assert result.evaluation_write_status is KpiEvaluationWriteStatus.CREATED
+    assert persistence.committed_watermark() == watermark(10)
+    assert reader.calls == 1
+    assert context.lease_checks == 1
+    assert context.fences == 1
 
 
 def test_notpii_recorded_advance_does_not_move_kpi_runtime(tmp_path) -> None:
@@ -143,6 +160,38 @@ def test_same_source_watermark_skips_without_loading(tmp_path) -> None:
     assert reader.calls == 0
 
 
+def test_same_source_watermark_reprocesses_when_enabled(tmp_path) -> None:
+    source = StaticWatermarkReader(watermark(10))
+    job, persistence, reader = _job(tmp_path, source, reprocess_current=True)
+    job.run_iteration(RuntimeContextStub())
+    reader.calls = 0
+    context = RuntimeContextStub()
+
+    result = job.run_iteration(context)
+
+    assert result.reason == 'evaluated'
+    assert result.committed_before == watermark(10)
+    assert result.committed_after == watermark(10)
+    assert result.evaluation_write_status is KpiEvaluationWriteStatus.UNCHANGED
+    assert persistence.committed_watermark() == watermark(10)
+    assert reader.calls == 1
+    assert context.work is True
+    assert context.lease_checks == 1
+    assert context.fences == 1
+
+
+def test_reprocess_current_conflicting_result_fails_without_moving_watermark(tmp_path) -> None:
+    source = StaticWatermarkReader(watermark(10))
+    job, persistence, reader = _job(tmp_path, source, reprocess_current=True)
+    job.run_iteration(RuntimeContextStub())
+    reader.value = 99.0
+
+    with pytest.raises(KpiPersistenceError, match='conflicts with durable content'):
+        job.run_iteration(RuntimeContextStub())
+
+    assert persistence.committed_watermark() == watermark(10)
+
+
 def test_source_watermark_behind_committed_fails_closed(tmp_path) -> None:
     source = StaticWatermarkReader(watermark(10))
     job, persistence, _reader = _job(tmp_path, source)
@@ -150,6 +199,18 @@ def test_source_watermark_behind_committed_fails_closed(tmp_path) -> None:
     source.value = watermark(8)
     with pytest.raises(KpiRuntimeWatermarkError, match='must not be older'):
         job.run_iteration(RuntimeContextStub())
+    assert persistence.committed_watermark() == watermark(10)
+
+
+def test_reprocess_current_does_not_bypass_watermark_regression(tmp_path) -> None:
+    source = StaticWatermarkReader(watermark(10))
+    job, persistence, _reader = _job(tmp_path, source, reprocess_current=True)
+    job.run_iteration(RuntimeContextStub())
+    source.value = watermark(8)
+
+    with pytest.raises(KpiRuntimeWatermarkError, match='must not be older'):
+        job.run_iteration(RuntimeContextStub())
+
     assert persistence.committed_watermark() == watermark(10)
 
 
@@ -183,6 +244,7 @@ def test_resolver_error_is_committed_as_kpi_error(tmp_path) -> None:
         loader=loader,
         persistence=persistence,
         source_watermarks=StaticWatermarkReader(watermark(10)),
+        reprocess_current=False,
     )
     result = job.run_iteration(RuntimeContextStub())
     batch = persistence.read_committed_after()[0]
