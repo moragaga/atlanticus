@@ -11,7 +11,8 @@ from ada.web.kpis.registry.configuration import (
     KpiDestinationCatalogProvider,
     KpiRegistrySourceService,
 )
-from ada.web.kpis.definition import KpiDefinitionCatalog, KpiDefinitionSourceService
+from ada.web.kpis.definition.coverage import KpiDefinitionCatalog
+from ada.web.kpis.definition.configuration import KpiDefinitionSourceService
 from ada.web.tools.configuration import ToolConfiguration, ToolSourceService
 from atlanticus.web.manager import ManagerEntry, ManagerModule, ManagerPrincipalProvider
 from atlanticus.web.navigation.configuration import (

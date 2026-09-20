@@ -1,0 +1,2 @@
+class KpiDefinitionValidationError(ValueError):
+    pass

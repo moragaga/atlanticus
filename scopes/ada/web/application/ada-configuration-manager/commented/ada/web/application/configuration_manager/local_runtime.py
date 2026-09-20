@@ -38,10 +38,14 @@ from ada.web.kpis.registry.projection.local import (
     LocalKpiRegistryProjectionStore,
     LocalKpiRegistryProjectionStoreSettings,
 )
-from ada.web.kpis.definition import (
-    KpiDefinitionCatalog,
+from ada.web.kpis.definition.coverage import KpiDefinitionCatalog
+from ada.web.kpis.definition.configuration import (
     KpiDefinitionSourceService,
     create_kpi_definition_projection_service,
+)
+from ada.web.kpis.definition.projection.local import (
+    LocalKpiDefinitionProjectionStore,
+    LocalKpiDefinitionProjectionStoreSettings,
 )
 from ada.web.tools.configuration import (
     ToolConfiguration,
@@ -155,7 +159,11 @@ def create_local_configuration_manager_dependencies(
             root=root.parent / f'{root.name}-projection'
         )
     )
-    kpi_definition_projection_store = InProcessProjectionStore[KpiDefinitionCatalog]()
+    kpi_definition_projection_store = LocalKpiDefinitionProjectionStore(
+        LocalKpiDefinitionProjectionStoreSettings(
+            root=root.parent / f'{root.name}-projection'
+        )
+    )
     profiles_projection_store = InProcessProjectionStore[ProfileCatalog]()
     access_projection_store = InProcessProjectionStore[AdaAccessConfiguration]()
 
@@ -272,7 +280,7 @@ def create_local_configuration_manager_dependencies(
         kpi_registry_source_name='Local Source',
         kpi_registry_projection_name='Local Projection',
         kpi_definitions_source_name='Local Source',
-        kpi_definitions_projection_name='In-process Projection',
+        kpi_definitions_projection_name='Local Projection',
     )
 
 

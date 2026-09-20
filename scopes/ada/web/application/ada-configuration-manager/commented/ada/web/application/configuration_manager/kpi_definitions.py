@@ -14,16 +14,14 @@ from ada.web.application.configuration_manager.workspace import (
     WorkspacePayloadWriter,
 )
 from ada.web.kpis.registry.configuration import KpiRegistry
-from ada.web.kpis.definition import (
-    KpiDefinitionConfiguration,
-    KpiDefinitionValidationError,
-)
-from ada.web.kpis.definition.web import (
+from ada.web.kpis.definition.errors import KpiDefinitionValidationError
+from ada.web.kpis.definition.models import KpiDefinitionConfiguration
+from ada.web.kpis.definition.configuration.web import (
     KpiDefinitionEditorContext,
     build_kpi_definition_editor_surface,
     create_kpi_definition_editor_module,
 )
-from ada.web.kpis.definition.web.ids import CONFIGURATION_STORE_ID
+from ada.web.kpis.definition.configuration.web.ids import CONFIGURATION_STORE_ID
 from atlanticus.web.manager import ManagerProjectionError, ManagerWorkspace, build_workspace_revision
 from atlanticus.web.modules import WebModule
 from atlanticus.web.projection.store import ProjectionStore

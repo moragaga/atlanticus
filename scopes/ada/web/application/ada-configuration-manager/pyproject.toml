@@ -15,7 +15,9 @@ dependencies = [
     "ada-web-kpi-registry==0.1.0",
     "ada-web-kpi-registry-configuration[web]==0.1.0",
     "ada-web-kpi-registry-projection-local==0.1.0",
-    "ada-web-kpi-definition[web]==0.6.0",
+    "ada-web-kpi-definition==0.6.0",
+    "ada-web-kpi-definition-configuration[web]==0.1.0",
+    "ada-web-kpi-definition-projection-local==0.1.0",
     "ada-web-tools==0.1.0",
     "ada-web-tools-configuration[web]==0.1.0",
     "atlanticus-web==0.1.0",
@@ -37,7 +39,9 @@ ada-web-access-configuration = { path = "../../access/configuration", editable =
 ada-web-kpi-registry = { path = "../../kpis/registry/core", editable = true }
 ada-web-kpi-registry-configuration = { path = "../../kpis/registry/configuration", editable = true }
 ada-web-kpi-registry-projection-local = { path = "../../kpis/registry/projection-local", editable = true }
-ada-web-kpi-definition = { path = "../../kpis/definition", editable = true }
+ada-web-kpi-definition = { path = "../../kpis/definition/core", editable = true }
+ada-web-kpi-definition-configuration = { path = "../../kpis/definition/configuration", editable = true }
+ada-web-kpi-definition-projection-local = { path = "../../kpis/definition/projection-local", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
 atlanticus-web-bootstrap = { path = "../../../../../web/framework/bootstrap", editable = true }
 atlanticus-web-identity = { path = "../../../../../web/capabilities/identity/core", editable = true }
@@ -108,7 +112,9 @@ pythonpath = [
     "../../kpis/registry/core/src",
     "../../kpis/registry/configuration/src",
     "../../kpis/registry/projection-local/src",
-    "../../kpis/definition/src",
+    "../../kpis/definition/core/src",
+    "../../kpis/definition/configuration/src",
+    "../../kpis/definition/projection-local/src",
     "../../tools/core/src",
     "../../tools/configuration/src",
     "../../../../../web/framework/core/src",

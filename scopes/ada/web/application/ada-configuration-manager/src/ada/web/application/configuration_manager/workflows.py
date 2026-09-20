@@ -11,12 +11,12 @@ from ada.web.kpis.registry.configuration import (
     KpiRegistrySourceService,
     validate_kpi_registry_destinations,
 )
-from ada.web.kpis.definition import (
-    KpiDefinitionConfiguration,
+from ada.web.kpis.definition.coverage import validate_kpi_definition_configuration
+from ada.web.kpis.definition.errors import KpiDefinitionValidationError
+from ada.web.kpis.definition.models import KpiDefinitionConfiguration
+from ada.web.kpis.definition.configuration import (
     KpiDefinitionSourceError,
     KpiDefinitionSourceService,
-    KpiDefinitionValidationError,
-    validate_kpi_definition_configuration,
 )
 from ada.web.tools.configuration import (
     ToolConfiguration,
