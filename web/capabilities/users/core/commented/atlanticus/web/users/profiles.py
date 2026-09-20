@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 from atlanticus.web.profiles.errors import ProfilesDefinitionError
 from atlanticus.web.profiles.models import (
+    GUEST_PROFILE_KEY,
     LOCAL_PROFILE_KEY,
     ROOT_PROFILE_KEY,
     ProfileCatalog,
@@ -40,6 +41,9 @@ def require_managed_profile(
     profiles: ProfileCatalog,
 ) -> ProfileDefinition:
     normalized = normalize_managed_profile_key(profile_key)
+    # guest puede existir como estado transitorio, pero no puede seleccionarse como perfil administrativo.
+    if normalized == GUEST_PROFILE_KEY:
+        raise UsersDefinitionError('Managed user profile must not be guest')
     try:
         return profiles.require(normalized)
     except ProfilesDefinitionError as error:
@@ -47,8 +51,9 @@ def require_managed_profile(
 
 
 def available_managed_profiles(profiles: ProfileCatalog) -> tuple[ProfileDefinition, ...]:
-    # El catálogo administrativo incluye system + configured, excepto local.
-    return tuple(profile for profile in profiles.all() if profile.key != LOCAL_PROFILE_KEY)
+    # La administración solo expone perfiles persistibles: excluye los perfiles runtime local y guest transitorio.
+    excluded = {LOCAL_PROFILE_KEY, GUEST_PROFILE_KEY}
+    return tuple(profile for profile in profiles.all() if profile.key not in excluded)
 
 
 def has_full_access_profile(profile_key: str) -> bool:

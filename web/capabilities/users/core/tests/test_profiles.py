@@ -22,25 +22,25 @@ def _profiles() -> ProfileCatalog:
     )
 
 
-def test_managed_profiles_include_system_and_configured_profiles_except_local() -> None:
+def test_managed_profiles_include_assignable_system_and_configured_profiles() -> None:
     profiles = _profiles()
 
     assert tuple(profile.key for profile in available_managed_profiles(profiles)) == (
         'basic',
         'root',
-        'guest',
         '11111111-1111-4111-8111-111111111111',
     )
-    assert require_managed_profile('guest', profiles=profiles).key == 'guest'
     assert require_managed_profile(
         '11111111-1111-4111-8111-111111111111',
         profiles=profiles,
     ).label == 'Analista'
 
 
-def test_managed_profile_rejects_local_and_unknown_profile() -> None:
+def test_managed_profile_rejects_guest_local_and_unknown_profile() -> None:
     profiles = _profiles()
 
+    with pytest.raises(UsersDefinitionError, match='must not be guest'):
+        require_managed_profile('guest', profiles=profiles)
     with pytest.raises(UsersDefinitionError, match='must not be local'):
         require_managed_profile('local', profiles=profiles)
     with pytest.raises(UsersDefinitionError, match='Unknown managed user profile'):

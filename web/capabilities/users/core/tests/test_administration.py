@@ -119,13 +119,12 @@ def service(*, registry=None, promoted=None, directory=None) -> UsersAdministrat
     )
 
 
-def test_administration_exposes_assignable_profile_catalog_without_local() -> None:
+def test_administration_exposes_only_assignable_profile_catalog() -> None:
     snapshot = service().discover()
 
     assert tuple(profile.key for profile in snapshot.profiles) == (
         'basic',
         'root',
-        'guest',
         '11111111-1111-4111-8111-111111111111',
     )
 
@@ -145,6 +144,28 @@ def test_administration_accepts_configured_profile_and_rejects_unknown_profile()
         service(registry=MemoryRegistry([unknown])).promote(
             unknown.user_id,
             profile_key='missing',
+            expected_registry_version='v1',
+        )
+
+
+def test_administration_rejects_guest_for_promotion_and_update() -> None:
+    pending = user('pending', profile_key='guest')
+    with pytest.raises(UsersDefinitionError, match='must not be guest'):
+        service(registry=MemoryRegistry([pending])).promote(
+            pending.user_id,
+            profile_key='guest',
+            expected_registry_version='v1',
+        )
+
+    promoted_user = user('managed', profile_key='basic')
+    with pytest.raises(UsersDefinitionError, match='must not be guest'):
+        service(
+            registry=MemoryRegistry([promoted_user]),
+            promoted=MemoryPromoted([promoted_user]),
+        ).update(
+            promoted_user.user_id,
+            profile_key='guest',
+            enabled=True,
             expected_registry_version='v1',
         )
 
@@ -207,10 +228,10 @@ def test_promote_from_directory_persists_storage_before_cosmos():
         directory=MemoryDirectory([candidate]),
     ).promote(
         candidate.user_id,
-        profile_key='guest',
+        profile_key='basic',
         expected_registry_version='v1',
     )
-    expected = candidate.promote_as(profile_key='guest')
+    expected = candidate.promote_as(profile_key='basic')
     assert result == expected
     assert registry.snapshot.get(expected.user_id) == expected
     assert promoted.get(expected.user_id) == expected

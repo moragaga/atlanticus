@@ -1,11 +1,21 @@
 from __future__ import annotations
 
-from dash import dcc, html
-import dash_bootstrap_components as dbc
+from collections.abc import Callable
 
-from atlanticus.web.pagination import ALLOWED_PAGE_SIZES, DEFAULT_PAGE_SIZE, PageRequest, paginate_items
+import dash_bootstrap_components as dbc
+from dash import dcc, html
+
+from atlanticus.web.pagination import (
+    ALLOWED_PAGE_SIZES,
+    DEFAULT_PAGE_SIZE,
+    Page,
+    PageRequest,
+    paginate_items,
+)
 from atlanticus.web.users.web.ids import (
+    EDIT_BACKDROP_ID,
     EDIT_CANCEL_ID,
+    EDIT_CLOSE_ID,
     EDIT_ENABLED_ID,
     EDIT_IDENTITY_ID,
     EDIT_MODAL_ID,
@@ -15,29 +25,38 @@ from atlanticus.web.users.web.ids import (
     EDIT_SELECTED_ID,
     EDIT_TITLE_ID,
     MANAGED_ENABLED_ID,
+    MANAGED_LIST_ID,
     MANAGED_NEXT_ID,
     MANAGED_PAGE_ID,
     MANAGED_PAGE_SIZE_ID,
+    MANAGED_PANEL_ID,
     MANAGED_PREVIOUS_ID,
     MANAGED_PROFILE_ID,
     MANAGED_ROWS_ID,
     MANAGED_SEARCH_ID,
     MANAGED_STATUS_ID,
+    MANAGED_TAB_ID,
+    PROMOTION_LIST_ID,
     PROMOTION_NEXT_ID,
     PROMOTION_PAGE_ID,
     PROMOTION_PAGE_SIZE_ID,
+    PROMOTION_PANEL_ID,
     PROMOTION_PREVIOUS_ID,
     PROMOTION_RESULT_ID,
     PROMOTION_ROWS_ID,
     PROMOTION_SEARCH_ID,
     PROMOTION_STATE_ID,
     PROMOTION_STATUS_ID,
+    PROMOTION_TAB_ID,
     REFRESH_ID,
     REFRESH_RESULT_ID,
     SNAPSHOT_ID,
+    VIEW_ID,
     candidate_profile_id,
     candidate_promote_id,
     managed_edit_id,
+    managed_page_number_id,
+    promotion_page_number_id,
 )
 from atlanticus.web.users.web.models import UsersAdminWebContext
 from atlanticus.web.users.web.serialization import snapshot_to_document
@@ -49,10 +68,11 @@ def build_users_admin_configuration(context: UsersAdminWebContext) -> object:
         error = None
     except Exception:
         snapshot = {'registry_version': None, 'profiles': [], 'candidates': []}
-        error = 'No fue posible cargar Users Administration.'
+        error = 'Could not load Users Administration.'
     return html.Div(
         [
             dcc.Store(id=SNAPSHOT_ID, data=snapshot, storage_type='memory'),
+            dcc.Store(id=VIEW_ID, data='managed', storage_type='memory'),
             dcc.Store(id=PROMOTION_PAGE_ID, data=1, storage_type='memory'),
             dcc.Store(id=MANAGED_PAGE_ID, data=1, storage_type='memory'),
             dcc.Store(id=EDIT_SELECTED_ID, storage_type='memory'),
@@ -64,7 +84,8 @@ def build_users_admin_configuration(context: UsersAdminWebContext) -> object:
                                 [
                                     html.H3('Control de usuarios'),
                                     html.P(
-                                        'Verifica identidades, promueve usuarios y controla perfil y estado.'
+                                        'Administra usuarios del runtime. Las promociones y los '
+                                        'cambios guardados se aplican directamente.'
                                     ),
                                 ],
                                 className='atlanticus-users-admin__section-copy',
@@ -84,11 +105,39 @@ def build_users_admin_configuration(context: UsersAdminWebContext) -> object:
                 ],
                 className='atlanticus-users-admin__section atlanticus-users-admin__intro',
             ),
-            _promotion_section(snapshot, can_manage=context.can_manage()),
-            _managed_section(snapshot, can_manage=context.can_manage()),
+            html.Nav(
+                [
+                    html.Button(
+                        'Usuarios',
+                        id=MANAGED_TAB_ID,
+                        n_clicks=0,
+                        type='button',
+                        className=view_tab_class(True),
+                    ),
+                    html.Button(
+                        'Por promover',
+                        id=PROMOTION_TAB_ID,
+                        n_clicks=0,
+                        type='button',
+                        className=view_tab_class(False),
+                    ),
+                ],
+                className='atlanticus-users-admin__tabs',
+                **{'aria-label': 'Administración de usuarios'},
+            ),
+            html.Div(
+                _managed_section(snapshot, can_manage=context.can_manage()),
+                id=MANAGED_PANEL_ID,
+                className=view_panel_class(True),
+            ),
+            html.Div(
+                _promotion_section(snapshot, can_manage=context.can_manage()),
+                id=PROMOTION_PANEL_ID,
+                className=view_panel_class(False),
+            ),
             _edit_modal(snapshot, can_manage=context.can_manage()),
         ],
-        className='atlanticus-users-admin',
+        className='atlanticus-users-admin atlanticus-bootstrap',
     )
 
 
@@ -111,7 +160,12 @@ def render_promotion_rows(
     )
     page = paginate_items(candidates, PageRequest(page_number=page_number, page_size=page_size))
     rows = tuple(_promotion_row(candidate, profiles, can_manage=can_manage) for candidate in page.items)
-    return rows or (_empty('No hay usuarios pendientes para los filtros seleccionados.'),), page
+    return rows or (
+        _empty_state(
+            title='No hay usuarios por promover.',
+            copy='Los candidatos disponibles aparecerán aquí cuando sean descubiertos.',
+        ),
+    ), page
 
 
 def render_managed_rows(
@@ -134,18 +188,96 @@ def render_managed_rows(
     )
     page = paginate_items(candidates, PageRequest(page_number=page_number, page_size=page_size))
     rows = tuple(_managed_row(candidate, can_manage=can_manage) for candidate in page.items)
-    return rows or (_empty('No hay usuarios administrados para los filtros seleccionados.'),), page
+    return rows or (
+        _empty_state(
+            title='No hay usuarios administrados.',
+            copy='Los usuarios promovidos aparecerán aquí cuando estén disponibles.',
+        ),
+    ), page
 
 
-def page_status(page) -> str:
+def render_promotion_list(
+    document: dict[str, object] | None,
+    *,
+    query: str | None,
+    state_filter: str | None,
+    page_number: int,
+    page_size: int,
+    can_manage: bool,
+) -> tuple[object, Page[dict[str, object]]]:
+    rows, page = render_promotion_rows(
+        document,
+        query=query,
+        state_filter=state_filter,
+        page_number=page_number,
+        page_size=page_size,
+        can_manage=can_manage,
+    )
+    return _paged_list(
+        rows=rows,
+        page=page,
+        rows_id=PROMOTION_ROWS_ID,
+        status_id=PROMOTION_STATUS_ID,
+        previous_id=PROMOTION_PREVIOUS_ID,
+        next_id=PROMOTION_NEXT_ID,
+        page_size_id=PROMOTION_PAGE_SIZE_ID,
+        page_id_factory=promotion_page_number_id,
+    ), page
+
+
+def render_managed_list(
+    document: dict[str, object] | None,
+    *,
+    query: str | None,
+    profile_filter: str | None,
+    enabled_filter: str | None,
+    page_number: int,
+    page_size: int,
+    can_manage: bool,
+) -> tuple[object, Page[dict[str, object]]]:
+    rows, page = render_managed_rows(
+        document,
+        query=query,
+        profile_filter=profile_filter,
+        enabled_filter=enabled_filter,
+        page_number=page_number,
+        page_size=page_size,
+        can_manage=can_manage,
+    )
+    return _paged_list(
+        rows=rows,
+        page=page,
+        rows_id=MANAGED_ROWS_ID,
+        status_id=MANAGED_STATUS_ID,
+        previous_id=MANAGED_PREVIOUS_ID,
+        next_id=MANAGED_NEXT_ID,
+        page_size_id=MANAGED_PAGE_SIZE_ID,
+        page_id_factory=managed_page_number_id,
+    ), page
+
+
+def page_status(page: Page[object]) -> str:
     if page.total_count == 0:
         return '0 de 0'
     return f'{page.start_index}–{page.end_index} de {page.total_count}'
 
 
+def view_tab_class(active: bool) -> str:
+    base = 'atlanticus-users-admin__tab'
+    return f'{base} {base}--active' if active else base
+
+
+def view_panel_class(active: bool) -> str:
+    base = 'atlanticus-users-admin__tab-panel'
+    return f'{base} {base}--active' if active else base
+
+
 def identity_details(user: dict[str, object] | None) -> object:
     if not isinstance(user, dict):
-        return html.Div('Identidad no disponible.', className='atlanticus-users-admin__empty')
+        return _empty_state(
+            title='Identidad no disponible.',
+            copy='Actualiza la vista e intenta nuevamente.',
+        )
     return html.Div(
         [
             _identity_item('Nombre', user.get('display_name')),
@@ -159,7 +291,7 @@ def identity_details(user: dict[str, object] | None) -> object:
 
 
 def _promotion_section(document: dict[str, object], *, can_manage: bool) -> object:
-    rows, page = render_promotion_rows(
+    paged_list, _page = render_promotion_list(
         document,
         query=None,
         state_filter='all',
@@ -175,41 +307,40 @@ def _promotion_section(document: dict[str, object], *, can_manage: bool) -> obje
             ),
             html.Div(
                 [
-                    dbc.Input(
-                        id=PROMOTION_SEARCH_ID,
-                        type='search',
-                        placeholder='Buscar nombre, email o identidad',
+                    _filter_field(
+                        'Buscar candidatos',
+                        dbc.Input(
+                            id=PROMOTION_SEARCH_ID,
+                            type='search',
+                            placeholder='Nombre, email o identidad',
+                        ),
                     ),
-                    dcc.Dropdown(
-                        id=PROMOTION_STATE_ID,
-                        options=[
-                            {'label': 'Todos', 'value': 'all'},
-                            {'label': 'Promovibles', 'value': 'promotable'},
-                            {'label': 'Conflictos', 'value': 'conflict'},
-                        ],
-                        value='all',
-                        clearable=False,
-                        searchable=False,
+                    _filter_field(
+                        'Estado',
+                        dcc.Dropdown(
+                            id=PROMOTION_STATE_ID,
+                            options=[
+                                {'label': 'Todos', 'value': 'all'},
+                                {'label': 'Promovibles', 'value': 'promotable'},
+                                {'label': 'Conflictos', 'value': 'conflict'},
+                            ],
+                            value='all',
+                            clearable=False,
+                            searchable=False,
+                        ),
                     ),
                 ],
                 className='atlanticus-users-admin__filters',
             ),
-            html.Div(rows, id=PROMOTION_ROWS_ID, className='atlanticus-users-admin__rows'),
-            _pagination(
-                page=page,
-                page_size_id=PROMOTION_PAGE_SIZE_ID,
-                status_id=PROMOTION_STATUS_ID,
-                previous_id=PROMOTION_PREVIOUS_ID,
-                next_id=PROMOTION_NEXT_ID,
-            ),
+            html.Div(paged_list, id=PROMOTION_LIST_ID),
             html.Div(id=PROMOTION_RESULT_ID),
         ],
-        className='atlanticus-users-admin__section',
+        className='atlanticus-users-admin__section atlanticus-users-admin__view-section',
     )
 
 
 def _managed_section(document: dict[str, object], *, can_manage: bool) -> object:
-    rows, page = render_managed_rows(
+    paged_list, _page = render_managed_list(
         document,
         query=None,
         profile_filter='all',
@@ -226,45 +357,47 @@ def _managed_section(document: dict[str, object], *, can_manage: bool) -> object
         [
             _section_header(
                 'Usuarios administrados',
-                'Usuarios promovidos. La identidad es informativa; solo profile y estado son editables.',
+                'Usuarios promovidos. La identidad es informativa; solo el perfil y el estado son editables.',
             ),
             html.Div(
                 [
-                    dbc.Input(
-                        id=MANAGED_SEARCH_ID,
-                        type='search',
-                        placeholder='Buscar nombre, email o identidad',
+                    _filter_field(
+                        'Buscar usuarios',
+                        dbc.Input(
+                            id=MANAGED_SEARCH_ID,
+                            type='search',
+                            placeholder='Nombre, email o identidad',
+                        ),
                     ),
-                    dcc.Dropdown(
-                        id=MANAGED_PROFILE_ID,
-                        options=profile_options,
-                        value='all',
-                        clearable=False,
+                    _filter_field(
+                        'Perfil',
+                        dcc.Dropdown(
+                            id=MANAGED_PROFILE_ID,
+                            options=profile_options,
+                            value='all',
+                            clearable=False,
+                        ),
                     ),
-                    dcc.Dropdown(
-                        id=MANAGED_ENABLED_ID,
-                        options=[
-                            {'label': 'Todos', 'value': 'all'},
-                            {'label': 'Activos', 'value': 'enabled'},
-                            {'label': 'Desactivados', 'value': 'disabled'},
-                        ],
-                        value='all',
-                        clearable=False,
-                        searchable=False,
+                    _filter_field(
+                        'Estado',
+                        dcc.Dropdown(
+                            id=MANAGED_ENABLED_ID,
+                            options=[
+                                {'label': 'Todos', 'value': 'all'},
+                                {'label': 'Activos', 'value': 'enabled'},
+                                {'label': 'Desactivados', 'value': 'disabled'},
+                            ],
+                            value='all',
+                            clearable=False,
+                            searchable=False,
+                        ),
                     ),
                 ],
                 className='atlanticus-users-admin__filters atlanticus-users-admin__filters--managed',
             ),
-            html.Div(rows, id=MANAGED_ROWS_ID, className='atlanticus-users-admin__rows'),
-            _pagination(
-                page=page,
-                page_size_id=MANAGED_PAGE_SIZE_ID,
-                status_id=MANAGED_STATUS_ID,
-                previous_id=MANAGED_PREVIOUS_ID,
-                next_id=MANAGED_NEXT_ID,
-            ),
+            html.Div(paged_list, id=MANAGED_LIST_ID),
         ],
-        className='atlanticus-users-admin__section',
+        className='atlanticus-users-admin__section atlanticus-users-admin__view-section',
     )
 
 
@@ -287,19 +420,32 @@ def _promotion_row(
                         'Conflicto' if conflict else 'Promovible',
                         className=(
                             'atlanticus-users-admin__badge '
-                            + ('atlanticus-users-admin__badge--warning' if conflict else 'atlanticus-users-admin__badge--ready')
+                            + (
+                                'atlanticus-users-admin__badge--warning'
+                                if conflict
+                                else 'atlanticus-users-admin__badge--ready'
+                            )
                         ),
                     ),
-                    dcc.Dropdown(
-                        id=candidate_profile_id(str(candidate.get('user_id'))),
-                        options=[
-                            {'label': str(profile.get('label') or profile.get('key')), 'value': profile.get('key')}
-                            for profile in profiles
+                    html.Label(
+                        [
+                            html.Span('Perfil a asignar'),
+                            dcc.Dropdown(
+                                id=candidate_profile_id(str(candidate.get('user_id'))),
+                                options=[
+                                    {
+                                        'label': str(profile.get('label') or profile.get('key')),
+                                        'value': profile.get('key'),
+                                    }
+                                    for profile in profiles
+                                ],
+                                value=default_profile,
+                                clearable=False,
+                                disabled=conflict or not can_manage,
+                                className='atlanticus-users-admin__profile-select',
+                            ),
                         ],
-                        value=default_profile,
-                        clearable=False,
-                        disabled=conflict or not can_manage,
-                        className='atlanticus-users-admin__profile-select',
+                        className='atlanticus-users-admin__candidate-profile-field',
                     ),
                     dbc.Button(
                         'Promover',
@@ -330,7 +476,11 @@ def _managed_row(candidate: dict[str, object], *, can_manage: bool) -> object:
                         'Activo' if enabled else 'Desactivado',
                         className=(
                             'atlanticus-users-admin__badge '
-                            + ('atlanticus-users-admin__badge--ready' if enabled else 'atlanticus-users-admin__badge--disabled')
+                            + (
+                                'atlanticus-users-admin__badge--ready'
+                                if enabled
+                                else 'atlanticus-users-admin__badge--disabled'
+                            )
                         ),
                     ),
                     html.Span(
@@ -375,50 +525,151 @@ def _user_copy(user: dict[str, object], candidate: dict[str, object]) -> object:
     )
 
 
-def _pagination(*, page, page_size_id, status_id, previous_id, next_id) -> object:
+def _paged_list(
+    *,
+    rows: tuple[object, ...],
+    page: Page[object],
+    rows_id: str,
+    status_id: str,
+    previous_id: str,
+    next_id: str,
+    page_size_id: str,
+    page_id_factory: Callable[[int | str], object],
+) -> object:
+    rows_class = 'atlanticus-users-admin__rows'
+    if page.total_count == 0:
+        rows_class += ' atlanticus-users-admin__rows--empty'
+    return html.Div(
+        [
+            html.Div(rows, id=rows_id, className=rows_class),
+            _pagination(
+                page=page,
+                page_size_id=page_size_id,
+                status_id=status_id,
+                previous_id=previous_id,
+                next_id=next_id,
+                page_id_factory=page_id_factory,
+            ),
+        ],
+        className='atlanticus-users-admin__paged-list',
+        **{
+            'data-page-size': str(page.request.page_size),
+            'data-total-count': str(page.total_count),
+        },
+    )
+
+
+def _pagination(
+    *,
+    page: Page[object],
+    page_size_id: str,
+    status_id: str,
+    previous_id: str,
+    next_id: str,
+    page_id_factory: Callable[[int | str], object],
+) -> object:
     return html.Div(
         [
             html.Div(
-                [
-                    html.Span('Filas'),
-                    dcc.Dropdown(
-                        id=page_size_id,
-                        options=[{'label': str(size), 'value': size} for size in ALLOWED_PAGE_SIZES],
-                        value=page.request.page_size,
-                        clearable=False,
-                        searchable=False,
-                        className='atlanticus-users-admin__page-size',
-                    ),
-                ],
-                className='atlanticus-users-admin__page-size-control',
+                page_status(page),
+                id=status_id,
+                className='atlanticus-users-admin__pagination-summary',
+                **{'aria-live': 'polite'},
             ),
-            html.Span(page_status(page), id=status_id),
             html.Div(
                 [
-                    dbc.Button(
-                        'Anterior',
+                    html.Button(
+                        '‹',
                         id=previous_id,
-                        n_clicks=0,
-                        color='secondary',
-                        outline=True,
-                        size='sm',
+                        type='button',
                         disabled=not page.has_previous,
+                        className='atlanticus-users-admin__pagination-button',
+                        **{'aria-label': 'Página anterior'},
                     ),
-                    dbc.Button(
-                        'Siguiente',
+                    *_page_buttons(page, page_id_factory),
+                    html.Button(
+                        '›',
                         id=next_id,
-                        n_clicks=0,
-                        color='secondary',
-                        outline=True,
-                        size='sm',
+                        type='button',
                         disabled=not page.has_next,
+                        className='atlanticus-users-admin__pagination-button',
+                        **{'aria-label': 'Página siguiente'},
                     ),
                 ],
-                className='atlanticus-users-admin__page-actions',
+                className='atlanticus-users-admin__pagination-navigation',
+            ),
+            html.Label(
+                [
+                    html.Span('Filas', className='atlanticus-users-admin__pagination-page-size-label'),
+                    html.Div(
+                        dcc.Dropdown(
+                            id=page_size_id,
+                            options=[
+                                {'label': str(size), 'value': size}
+                                for size in ALLOWED_PAGE_SIZES
+                            ],
+                            value=page.request.page_size,
+                            clearable=False,
+                            searchable=False,
+                        ),
+                        className='atlanticus-users-admin__pagination-page-size',
+                    ),
+                ],
+                className='atlanticus-users-admin__pagination-page-size-control',
             ),
         ],
         className='atlanticus-users-admin__pagination',
     )
+
+
+def _page_buttons(
+    page: Page[object],
+    page_id_factory: Callable[[int | str], object],
+) -> list[object]:
+    buttons: list[object] = []
+    for token in _pagination_tokens(page.request.page_number, page.page_count):
+        if token is None:
+            buttons.append(html.Span(
+                    '…',
+                    className='atlanticus-users-admin__pagination-ellipsis',
+                    **{'aria-hidden': 'true'},
+                ))
+            continue
+        active = token == page.request.page_number
+        button_class = 'atlanticus-users-admin__pagination-button'
+        if active:
+            button_class += ' atlanticus-users-admin__pagination-button--active'
+        buttons.append(
+            html.Button(
+                str(token),
+                id=page_id_factory(token),
+                type='button',
+                n_clicks=0,
+                disabled=active,
+                className=button_class,
+                **{'aria-label': f'Página {token}', 'aria-current': 'page' if active else 'false'},
+            )
+        )
+    return buttons
+
+
+def _pagination_tokens(current: int, page_count: int) -> tuple[int | None, ...]:
+    if page_count <= 7:
+        return tuple(range(1, page_count + 1))
+    selected = {1, page_count, current}
+    if current > 1:
+        selected.add(current - 1)
+    if current < page_count:
+        selected.add(current + 1)
+    ordered = sorted(selected)
+    tokens: list[int | None] = []
+    previous: int | None = None
+    for value in ordered:
+        if previous is not None and value - previous > 1:
+            tokens.append(None)
+        tokens.append(value)
+        previous = value
+    return tuple(tokens)
 
 
 def _edit_modal(document: dict[str, object], *, can_manage: bool) -> object:
@@ -426,58 +677,92 @@ def _edit_modal(document: dict[str, object], *, can_manage: bool) -> object:
         {'label': str(profile.get('label') or profile.get('key')), 'value': profile.get('key')}
         for profile in _profiles(document)
     ]
-    return dbc.Modal(
+    return html.Div(
         [
-            dbc.ModalHeader(dbc.ModalTitle(id=EDIT_TITLE_ID), close_button=False),
-            dbc.ModalBody(
-                [
-                    html.Div(id=EDIT_IDENTITY_ID),
-                    _field(
-                        'Profile',
-                        dcc.Dropdown(
-                            id=EDIT_PROFILE_ID,
-                            options=profile_options,
-                            clearable=False,
-                            disabled=not can_manage,
-                        ),
-                    ),
-                    dbc.Checklist(
-                        id=EDIT_ENABLED_ID,
-                        options=[
-                            {
-                                'label': 'Usuario activo',
-                                'value': 'enabled',
-                                'disabled': not can_manage,
-                            }
-                        ],
-                        value=[],
-                        switch=True,
-                    ),
-                    html.Div(id=EDIT_RESULT_ID),
-                ],
-                className='atlanticus-users-admin__modal-body',
+            html.Button(
+                id=EDIT_BACKDROP_ID,
+                n_clicks=0,
+                type='button',
+                className='atlanticus-users-admin__modal-backdrop',
+                **{'aria-label': 'Cerrar editor de usuario'},
             ),
-            dbc.ModalFooter(
+            html.Section(
                 [
-                    dbc.Button(
-                        'Cancelar',
-                        id=EDIT_CANCEL_ID,
-                        n_clicks=0,
-                        color='secondary',
-                        outline=True,
+                    html.Header(
+                        [
+                            html.Div(
+                                [
+                                    html.H2(id=EDIT_TITLE_ID),
+                                    html.P(
+                                        'La identidad es informativa. Solo el perfil y el estado '
+                                        'pueden modificarse.',
+                                    ),
+                                ],
+                                className='atlanticus-users-admin__modal-heading',
+                            ),
+                            html.Button(
+                                id=EDIT_CLOSE_ID,
+                                n_clicks=0,
+                                type='button',
+                                className='btn-close',
+                                **{'aria-label': 'Cerrar editor de usuario'},
+                            ),
+                        ],
+                        className='modal-header atlanticus-users-admin__modal-header',
                     ),
-                    dbc.Button(
-                        'Guardar',
-                        id=EDIT_SAVE_ID,
-                        n_clicks=0,
-                        color='primary',
-                        disabled=not can_manage,
+                    html.Div(
+                        [
+                            html.Div(id=EDIT_IDENTITY_ID),
+                            _field(
+                                'Perfil',
+                                dcc.Dropdown(
+                                    id=EDIT_PROFILE_ID,
+                                    options=profile_options,
+                                    clearable=False,
+                                    disabled=not can_manage,
+                                ),
+                            ),
+                            dbc.Checklist(
+                                id=EDIT_ENABLED_ID,
+                                options=[
+                                    {
+                                        'label': 'Usuario activo',
+                                        'value': 'enabled',
+                                        'disabled': not can_manage,
+                                    }
+                                ],
+                                value=[],
+                                switch=True,
+                            ),
+                            html.Div(id=EDIT_RESULT_ID),
+                        ],
+                        className='modal-body atlanticus-users-admin__modal-body',
                     ),
-                ]
+                    html.Footer(
+                        [
+                            dbc.Button(
+                                'Cancelar',
+                                id=EDIT_CANCEL_ID,
+                                n_clicks=0,
+                                color='secondary',
+                                outline=True,
+                            ),
+                            dbc.Button(
+                                'Guardar',
+                                id=EDIT_SAVE_ID,
+                                n_clicks=0,
+                                color='primary',
+                                disabled=not can_manage,
+                            ),
+                        ],
+                        className='modal-footer atlanticus-users-admin__modal-actions',
+                    ),
+                ],
+                className='modal-content atlanticus-users-admin__modal-card',
             ),
         ],
         id=EDIT_MODAL_ID,
-        is_open=False,
+        className='atlanticus-users-admin__modal',
     )
 
 
@@ -485,6 +770,13 @@ def _section_header(title: str, description: str) -> object:
     return html.Div(
         [html.H3(title), html.P(description)],
         className='atlanticus-users-admin__section-copy',
+    )
+
+
+def _filter_field(label: str, control: object) -> object:
+    return html.Label(
+        [html.Span(label), control],
+        className='atlanticus-users-admin__filter-field',
     )
 
 
@@ -499,8 +791,16 @@ def _identity_item(label: str, value: object) -> object:
     )
 
 
-def _empty(message: str) -> object:
-    return html.Div(message, className='atlanticus-users-admin__empty')
+def _empty_state(*, title: str, copy: str) -> object:
+    return html.Div(
+        [
+            html.Span('•', className='atlanticus-users-admin__empty-icon', **{'aria-hidden': 'true'}),
+            html.Strong(title),
+            html.Span(copy),
+        ],
+        className='atlanticus-users-admin__empty-state',
+        role='status',
+    )
 
 
 def _profiles(document: dict[str, object] | None) -> tuple[dict[str, object], ...]:

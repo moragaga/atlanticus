@@ -20,18 +20,14 @@
 
 .atlanticus-users-admin__section-heading,
 .atlanticus-users-admin__row,
-.atlanticus-users-admin__row-actions,
-.atlanticus-users-admin__pagination,
-.atlanticus-users-admin__page-size-control,
-.atlanticus-users-admin__page-actions {
+.atlanticus-users-admin__row-actions {
     display: flex;
     align-items: center;
     gap: .55rem;
 }
 
 .atlanticus-users-admin__section-heading,
-.atlanticus-users-admin__row,
-.atlanticus-users-admin__pagination {
+.atlanticus-users-admin__row {
     justify-content: space-between;
 }
 
@@ -47,7 +43,8 @@
 }
 
 .atlanticus-users-admin__section-copy h3,
-.atlanticus-users-admin__section-copy p {
+.atlanticus-users-admin__section-copy p,
+.atlanticus-users-admin__modal-copy {
     margin: 0;
 }
 
@@ -58,10 +55,49 @@
 }
 
 .atlanticus-users-admin__section-copy p,
-.atlanticus-users-admin__pagination,
-.atlanticus-users-admin__empty {
+.atlanticus-users-admin__modal-copy {
     color: var(--atlanticus-ui-text-muted);
     font-size: .72rem;
+    line-height: 1.4;
+}
+
+.atlanticus-users-admin__tabs {
+    display: flex;
+    min-width: 0;
+    gap: .65rem;
+    margin-inline: .35rem;
+    padding-inline: .15rem;
+    border-bottom: 1px solid var(--atlanticus-ui-border);
+}
+
+.atlanticus-users-admin__tab {
+    padding: .48rem .2rem;
+    color: var(--atlanticus-ui-text-muted);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    cursor: pointer;
+    font: inherit;
+    font-size: .76rem;
+    font-weight: 700;
+}
+
+.atlanticus-users-admin__tab:hover,
+.atlanticus-users-admin__tab:focus-visible,
+.atlanticus-users-admin__tab--active {
+    color: var(--atlanticus-ui-primary-hover);
+    border-bottom-color: var(--atlanticus-ui-accent);
+    outline: 0;
+}
+
+.atlanticus-users-admin__tab-panel {
+    display: none;
+    min-width: 0;
+}
+
+.atlanticus-users-admin__tab-panel--active {
+    display: block;
 }
 
 .atlanticus-users-admin__filters {
@@ -75,9 +111,57 @@
     grid-template-columns: minmax(0, 2fr) minmax(10rem, 1fr) minmax(9rem, 1fr);
 }
 
+.atlanticus-users-admin__filter-field,
+.atlanticus-users-admin__field,
+.atlanticus-users-admin__candidate-profile-field {
+    display: grid;
+    min-width: 0;
+    gap: .3rem;
+}
+
+.atlanticus-users-admin__filter-field > span,
+.atlanticus-users-admin__field > span,
+.atlanticus-users-admin__candidate-profile-field > span {
+    color: var(--atlanticus-ui-text);
+    font-size: .68rem;
+    font-weight: 700;
+}
+
+.atlanticus-users-admin__filter-field > .form-control {
+    width: 100%;
+}
+
+.atlanticus-users-admin__paged-list,
+.atlanticus-users-admin__rows,
+.atlanticus-users-admin__pagination {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.atlanticus-users-admin__paged-list {
+    display: grid;
+    gap: .7rem;
+}
+
 .atlanticus-users-admin__rows {
     display: grid;
+    align-content: start;
     gap: .45rem;
+}
+
+.atlanticus-users-admin__rows--empty {
+    align-content: center;
+    justify-items: center;
+}
+
+.atlanticus-users-admin__paged-list[data-page-size="10"] .atlanticus-users-admin__rows {
+    min-height: 40rem;
+}
+
+.atlanticus-users-admin__paged-list[data-page-size="20"] .atlanticus-users-admin__rows {
+    min-height: 80rem;
 }
 
 .atlanticus-users-admin__row {
@@ -126,9 +210,13 @@
     justify-content: flex-end;
 }
 
+.atlanticus-users-admin__candidate-profile-field {
+    width: 12rem;
+}
+
 .atlanticus-users-admin__profile-select {
-    width: min(16rem, 32vw);
-    min-width: 10rem;
+    width: 100%;
+    min-width: 0;
 }
 
 .atlanticus-users-admin__badge,
@@ -157,12 +245,307 @@
     background: var(--atlanticus-ui-background);
 }
 
-.atlanticus-users-admin__pagination {
-    margin-top: .75rem;
+.atlanticus-users-admin__empty-state {
+    display: grid;
+    justify-items: center;
+    gap: .35rem;
+    padding: 1.5rem;
+    color: var(--atlanticus-ui-text-muted);
+    text-align: center;
 }
 
-.atlanticus-users-admin__page-size {
-    width: 5rem;
+.atlanticus-users-admin__empty-state strong {
+    color: var(--atlanticus-ui-text);
+    font-size: .82rem;
+}
+
+.atlanticus-users-admin__empty-state > span:last-child {
+    max-width: 34rem;
+    font-size: .7rem;
+    line-height: 1.4;
+}
+
+.atlanticus-users-admin__empty-icon {
+    display: grid;
+    width: 2.6rem;
+    height: 2.6rem;
+    place-items: center;
+    color: var(--atlanticus-ui-secondary);
+    background: var(--atlanticus-ui-background);
+    border: 1px solid rgb(201 162 75 / 45%);
+    border-radius: 50%;
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.atlanticus-users-admin__pagination {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: .75rem;
+    padding-top: .15rem;
+}
+
+.atlanticus-users-admin__pagination-summary {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .82rem;
+    font-weight: 500;
+}
+
+.atlanticus-users-admin__pagination-navigation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .3rem;
+}
+
+.atlanticus-users-admin__pagination-button {
+    display: inline-flex;
+    min-width: 2rem;
+    height: 2rem;
+    align-items: center;
+    justify-content: center;
+    color: var(--atlanticus-ui-text);
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .55rem;
+    cursor: pointer;
+    font: inherit;
+    font-size: .82rem;
+    font-weight: 600;
+    transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.atlanticus-users-admin__pagination-button:not(:disabled):hover,
+.atlanticus-users-admin__pagination-button:not(:disabled):focus-visible {
+    border-color: var(--atlanticus-ui-accent);
+    box-shadow: var(--atlanticus-ui-control-focus-ring);
+    outline: 0;
+    transform: translateY(-1px);
+}
+
+.atlanticus-users-admin__pagination-button:disabled {
+    cursor: default;
+    opacity: .45;
+}
+
+.atlanticus-users-admin__pagination-button--active {
+    color: #fff;
+    background: var(--atlanticus-ui-primary-hover);
+    border-color: var(--atlanticus-ui-primary-hover);
+    opacity: 1 !important;
+}
+
+.atlanticus-users-admin__pagination-ellipsis {
+    padding: 0 .2rem;
+    color: var(--atlanticus-ui-text-muted);
+}
+
+.atlanticus-users-admin__pagination-page-size-control {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-self: end;
+    gap: .45rem;
+}
+
+.atlanticus-users-admin__pagination-page-size-label {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .78rem;
+    font-weight: 600;
+}
+
+.atlanticus-users-admin__pagination-page-size,
+.atlanticus-users-admin__pagination-page-size .dash-dropdown-wrapper {
+    width: 4.4rem;
+    max-width: 4.4rem;
+    min-width: 0;
+}
+
+.atlanticus-users-admin__pagination-page-size .dash-dropdown-focus-target {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.atlanticus-users-admin .dash-dropdown,
+.atlanticus-users-admin .Select-control {
+    color: var(--atlanticus-ui-text) !important;
+    background: var(--atlanticus-ui-surface) !important;
+    border: 1px solid var(--atlanticus-ui-border) !important;
+    border-radius: var(--atlanticus-ui-control-radius) !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+}
+
+.atlanticus-users-admin .dash-dropdown:hover:not(:disabled),
+.atlanticus-users-admin .Select-control:hover {
+    border-color: rgb(201 162 75 / 55%) !important;
+}
+
+.atlanticus-users-admin .dash-dropdown:focus,
+.atlanticus-users-admin .dash-dropdown:focus-visible,
+.atlanticus-users-admin .dash-dropdown-wrapper:focus-within .dash-dropdown,
+.atlanticus-users-admin .is-focused > .Select-control,
+.atlanticus-users-admin .is-open > .Select-control {
+    border-color: var(--atlanticus-ui-secondary) !important;
+    outline: 0 !important;
+    box-shadow: var(--atlanticus-ui-control-focus-ring) !important;
+}
+
+.atlanticus-users-admin .dash-dropdown:disabled,
+.atlanticus-users-admin .Select.is-disabled > .Select-control {
+    color: var(--atlanticus-ui-text-muted) !important;
+    background: var(--atlanticus-ui-control-disabled) !important;
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+.atlanticus-users-admin .dash-dropdown-value,
+.atlanticus-users-admin .Select-value,
+.atlanticus-users-admin .Select-value-label,
+.atlanticus-users-admin .Select-input > input {
+    color: var(--atlanticus-ui-text) !important;
+}
+
+.atlanticus-users-admin .dash-dropdown-placeholder,
+.atlanticus-users-admin .Select-placeholder {
+    color: var(--atlanticus-ui-text-muted) !important;
+}
+
+.atlanticus-users-admin .dash-dropdown-trigger-icon,
+.atlanticus-users-admin .dash-dropdown-value-count {
+    color: var(--atlanticus-ui-text-muted) !important;
+    fill: var(--atlanticus-ui-text-muted) !important;
+}
+
+.atlanticus-users-admin .dash-dropdown-content,
+.atlanticus-users-admin .Select-menu-outer {
+    color: var(--atlanticus-ui-text) !important;
+    background: var(--atlanticus-ui-surface) !important;
+    border-color: var(--atlanticus-ui-border) !important;
+    border-radius: var(--atlanticus-ui-control-radius) !important;
+    box-shadow: 0 .7rem 1.5rem rgb(7 21 34 / 12%) !important;
+}
+
+.atlanticus-users-admin .dash-dropdown-option,
+.atlanticus-users-admin .Select-option {
+    color: var(--atlanticus-ui-text) !important;
+    background: var(--atlanticus-ui-surface) !important;
+}
+
+.atlanticus-users-admin .dash-dropdown-option:not(:has(input[disabled])):hover,
+.atlanticus-users-admin .dash-dropdown-option:not(:has(input[disabled])):focus-within,
+.atlanticus-users-admin .Select-option.is-focused {
+    color: var(--atlanticus-ui-primary) !important;
+    background: var(--atlanticus-ui-selection-soft) !important;
+}
+
+.atlanticus-users-admin .dash-dropdown-option.selected,
+.atlanticus-users-admin .Select-option.is-selected {
+    color: var(--atlanticus-ui-primary) !important;
+    background: var(--atlanticus-ui-selection-soft) !important;
+    font-weight: 700;
+}
+
+.atlanticus-users-admin .dash-options-list-option-checkbox {
+    accent-color: var(--atlanticus-ui-secondary) !important;
+    outline-color: var(--atlanticus-ui-secondary) !important;
+}
+
+.atlanticus-users-admin__modal {
+    position: fixed;
+    z-index: 1350;
+    inset: 0;
+    display: none;
+}
+
+.atlanticus-users-admin__modal--open {
+    display: block;
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+html:has(.atlanticus-users-admin__modal--open),
+body:has(.atlanticus-users-admin__modal--open) {
+    overflow: hidden;
+}
+
+.atlanticus-users-admin__modal-backdrop {
+    position: fixed;
+    z-index: 0;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    background: var(--atlanticus-ui-overlay);
+    border: 0;
+}
+
+.atlanticus-users-admin__modal-card {
+    position: fixed;
+    z-index: 1;
+    top: 50%;
+    left: 50%;
+    display: grid;
+    width: min(calc(100vw - 2rem), 44rem);
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100dvh - 2rem);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    overflow: hidden;
+    color: var(--atlanticus-ui-text);
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .9rem;
+    box-shadow: 0 1rem 3rem rgb(7 21 34 / 18%);
+    transform: translate(-50%, -50%);
+}
+
+.atlanticus-users-admin__modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    border-bottom: 1px solid var(--atlanticus-ui-border);
+}
+
+.atlanticus-users-admin__modal-heading {
+    display: grid;
+    min-width: 0;
+    gap: .2rem;
+}
+
+.atlanticus-users-admin__modal-heading h2,
+.atlanticus-users-admin__modal-heading p {
+    margin: 0;
+}
+
+.atlanticus-users-admin__modal-heading h2 {
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.atlanticus-users-admin__modal-heading p {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .7rem;
+    line-height: 1.4;
+}
+
+.atlanticus-users-admin__modal-body {
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    padding: 1rem 1.1rem;
+    background: var(--atlanticus-ui-background);
+}
+
+.atlanticus-users-admin__modal-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .55rem;
 }
 
 .atlanticus-users-admin__modal-body,
@@ -237,9 +620,14 @@
         padding-inline: .75rem;
     }
 
+    .atlanticus-users-admin__modal-card {
+        width: calc(100vw - 1rem);
+        max-width: calc(100vw - 1rem);
+        max-height: calc(100dvh - 1rem);
+    }
+
     .atlanticus-users-admin__section-heading,
-    .atlanticus-users-admin__row,
-    .atlanticus-users-admin__pagination {
+    .atlanticus-users-admin__row {
         align-items: stretch;
         flex-direction: column;
     }
@@ -258,12 +646,25 @@
         justify-content: flex-start;
     }
 
+    .atlanticus-users-admin__candidate-profile-field {
+        width: 100%;
+    }
+
     .atlanticus-users-admin__profile-select {
         width: 100%;
     }
 
-    .atlanticus-users-admin__page-size-control,
-    .atlanticus-users-admin__page-actions {
-        justify-content: space-between;
+    .atlanticus-users-admin__pagination {
+        grid-template-columns: 1fr;
+    }
+
+    .atlanticus-users-admin__pagination-summary,
+    .atlanticus-users-admin__pagination-page-size-control {
+        justify-self: center;
+    }
+
+    .atlanticus-users-admin__paged-list[data-page-size="10"] .atlanticus-users-admin__rows,
+    .atlanticus-users-admin__paged-list[data-page-size="20"] .atlanticus-users-admin__rows {
+        min-height: 0;
     }
 }

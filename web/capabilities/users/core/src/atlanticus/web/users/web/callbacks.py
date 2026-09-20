@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from dash import ALL, Input, Output, State, ctx, html, no_update
 
-from atlanticus.web.pagination import DEFAULT_PAGE_SIZE
+from atlanticus.web.pagination import ALLOWED_PAGE_SIZES, DEFAULT_PAGE_SIZE
 from atlanticus.web.users.web.ids import (
+    EDIT_BACKDROP_ID,
     EDIT_CANCEL_ID,
+    EDIT_CLOSE_ID,
     EDIT_ENABLED_ID,
     EDIT_IDENTITY_ID,
     EDIT_MODAL_ID,
@@ -14,38 +16,47 @@ from atlanticus.web.users.web.ids import (
     EDIT_SELECTED_ID,
     EDIT_TITLE_ID,
     MANAGED_ENABLED_ID,
+    MANAGED_LIST_ID,
     MANAGED_NEXT_ID,
     MANAGED_PAGE_ID,
     MANAGED_PAGE_SIZE_ID,
+    MANAGED_PANEL_ID,
     MANAGED_PREVIOUS_ID,
     MANAGED_PROFILE_ID,
-    MANAGED_ROWS_ID,
     MANAGED_SEARCH_ID,
-    MANAGED_STATUS_ID,
+    MANAGED_TAB_ID,
+    PROMOTION_LIST_ID,
     PROMOTION_NEXT_ID,
     PROMOTION_PAGE_ID,
     PROMOTION_PAGE_SIZE_ID,
+    PROMOTION_PANEL_ID,
     PROMOTION_PREVIOUS_ID,
     PROMOTION_RESULT_ID,
-    PROMOTION_ROWS_ID,
     PROMOTION_SEARCH_ID,
     PROMOTION_STATE_ID,
-    PROMOTION_STATUS_ID,
+    PROMOTION_TAB_ID,
     REFRESH_ID,
     REFRESH_RESULT_ID,
     SNAPSHOT_ID,
+    VIEW_ID,
     candidate_profile_id,
     candidate_promote_id,
     managed_edit_id,
+    managed_page_number_id,
+    promotion_page_number_id,
 )
 from atlanticus.web.users.web.layout import (
     identity_details,
-    page_status,
-    render_managed_rows,
-    render_promotion_rows,
+    render_managed_list,
+    render_promotion_list,
+    view_panel_class,
+    view_tab_class,
 )
 from atlanticus.web.users.web.models import UsersAdminWebContext
 from atlanticus.web.users.web.serialization import preserve_profiles, snapshot_to_document
+
+_EDIT_MODAL_CLOSED = 'atlanticus-users-admin__modal'
+_EDIT_MODAL_OPEN = 'atlanticus-users-admin__modal atlanticus-users-admin__modal--open'
 
 
 def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -> None:
@@ -61,7 +72,32 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
         try:
             return snapshot_to_document(context.administration.discover()), _notice('Estado actualizado.')
         except Exception:
-            return no_update, _error('No fue posible actualizar Users Administration.')
+            return no_update, _error('Could not refresh Users Administration.')
+
+    @app.callback(
+        Output(VIEW_ID, 'data'),
+        Output(MANAGED_PANEL_ID, 'className'),
+        Output(PROMOTION_PANEL_ID, 'className'),
+        Output(MANAGED_TAB_ID, 'className'),
+        Output(PROMOTION_TAB_ID, 'className'),
+        Input(MANAGED_TAB_ID, 'n_clicks'),
+        Input(PROMOTION_TAB_ID, 'n_clicks'),
+        State(VIEW_ID, 'data'),
+    )
+    def switch_users_view(_managed_clicks, _promotion_clicks, current_view):
+        selected = current_view if current_view in {'managed', 'promotion'} else 'managed'
+        if ctx.triggered_id == MANAGED_TAB_ID:
+            selected = 'managed'
+        elif ctx.triggered_id == PROMOTION_TAB_ID:
+            selected = 'promotion'
+        managed_active = selected == 'managed'
+        return (
+            selected,
+            view_panel_class(managed_active),
+            view_panel_class(not managed_active),
+            view_tab_class(managed_active),
+            view_tab_class(not managed_active),
+        )
 
     @app.callback(
         Output(MANAGED_PROFILE_ID, 'options'),
@@ -73,59 +109,62 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
         return ([{'label': 'Todos los perfiles', 'value': 'all'}, *options], options)
 
     @app.callback(
-        Output(PROMOTION_ROWS_ID, 'children'),
-        Output(PROMOTION_STATUS_ID, 'children'),
-        Output(PROMOTION_PREVIOUS_ID, 'disabled'),
-        Output(PROMOTION_NEXT_ID, 'disabled'),
+        Output(PROMOTION_LIST_ID, 'children'),
         Output(PROMOTION_PAGE_ID, 'data'),
         Input(SNAPSHOT_ID, 'data'),
         Input(PROMOTION_SEARCH_ID, 'value'),
         Input(PROMOTION_STATE_ID, 'value'),
-        Input(PROMOTION_PAGE_SIZE_ID, 'value'),
         Input(PROMOTION_PREVIOUS_ID, 'n_clicks'),
         Input(PROMOTION_NEXT_ID, 'n_clicks'),
+        Input(promotion_page_number_id(ALL), 'n_clicks'),
+        Input(PROMOTION_PAGE_SIZE_ID, 'value'),
         State(PROMOTION_PAGE_ID, 'data'),
     )
     def render_promotion_page(
         document,
         query,
         state_filter,
-        page_size,
         previous_clicks,
         next_clicks,
+        _page_clicks,
+        page_size,
         current_page,
     ):
-        page_number = current_page if isinstance(current_page, int) else 1
-        if ctx.triggered_id == PROMOTION_PREVIOUS_ID and _click_is_real(previous_clicks):
-            page_number -= 1
-        elif ctx.triggered_id == PROMOTION_NEXT_ID and _click_is_real(next_clicks):
+        page_number = _page_number(current_page)
+        trigger = ctx.triggered_id
+        if trigger == PROMOTION_PREVIOUS_ID and _click_is_real(previous_clicks):
+            page_number = max(1, page_number - 1)
+        elif trigger == PROMOTION_NEXT_ID and _click_is_real(next_clicks):
             page_number += 1
-        elif ctx.triggered_id in {PROMOTION_SEARCH_ID, PROMOTION_STATE_ID, PROMOTION_PAGE_SIZE_ID}:
+        elif (
+            isinstance(trigger, dict)
+            and trigger.get('type') == 'atlanticus-users-admin-promotion-page-number'
+            and _triggered_click_is_real()
+        ):
+            page_number = max(1, int(trigger.get('index', 1)))
+        elif trigger in {PROMOTION_SEARCH_ID, PROMOTION_STATE_ID, PROMOTION_PAGE_SIZE_ID}:
             page_number = 1
-        size = page_size if page_size in (10, 20) else DEFAULT_PAGE_SIZE
-        rows, page = render_promotion_rows(
+        rendered, page = render_promotion_list(
             document,
             query=query,
             state_filter=state_filter,
-            page_number=max(1, page_number),
-            page_size=size,
+            page_number=page_number,
+            page_size=_page_size(page_size),
             can_manage=context.can_manage(),
         )
-        return rows, page_status(page), not page.has_previous, not page.has_next, page.request.page_number
+        return rendered, page.request.page_number
 
     @app.callback(
-        Output(MANAGED_ROWS_ID, 'children'),
-        Output(MANAGED_STATUS_ID, 'children'),
-        Output(MANAGED_PREVIOUS_ID, 'disabled'),
-        Output(MANAGED_NEXT_ID, 'disabled'),
+        Output(MANAGED_LIST_ID, 'children'),
         Output(MANAGED_PAGE_ID, 'data'),
         Input(SNAPSHOT_ID, 'data'),
         Input(MANAGED_SEARCH_ID, 'value'),
         Input(MANAGED_PROFILE_ID, 'value'),
         Input(MANAGED_ENABLED_ID, 'value'),
-        Input(MANAGED_PAGE_SIZE_ID, 'value'),
         Input(MANAGED_PREVIOUS_ID, 'n_clicks'),
         Input(MANAGED_NEXT_ID, 'n_clicks'),
+        Input(managed_page_number_id(ALL), 'n_clicks'),
+        Input(MANAGED_PAGE_SIZE_ID, 'value'),
         State(MANAGED_PAGE_ID, 'data'),
     )
     def render_managed_page(
@@ -133,34 +172,41 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
         query,
         profile_filter,
         enabled_filter,
-        page_size,
         previous_clicks,
         next_clicks,
+        _page_clicks,
+        page_size,
         current_page,
     ):
-        page_number = current_page if isinstance(current_page, int) else 1
-        if ctx.triggered_id == MANAGED_PREVIOUS_ID and _click_is_real(previous_clicks):
-            page_number -= 1
-        elif ctx.triggered_id == MANAGED_NEXT_ID and _click_is_real(next_clicks):
+        page_number = _page_number(current_page)
+        trigger = ctx.triggered_id
+        if trigger == MANAGED_PREVIOUS_ID and _click_is_real(previous_clicks):
+            page_number = max(1, page_number - 1)
+        elif trigger == MANAGED_NEXT_ID and _click_is_real(next_clicks):
             page_number += 1
-        elif ctx.triggered_id in {
+        elif (
+            isinstance(trigger, dict)
+            and trigger.get('type') == 'atlanticus-users-admin-managed-page-number'
+            and _triggered_click_is_real()
+        ):
+            page_number = max(1, int(trigger.get('index', 1)))
+        elif trigger in {
             MANAGED_SEARCH_ID,
             MANAGED_PROFILE_ID,
             MANAGED_ENABLED_ID,
             MANAGED_PAGE_SIZE_ID,
         }:
             page_number = 1
-        size = page_size if page_size in (10, 20) else DEFAULT_PAGE_SIZE
-        rows, page = render_managed_rows(
+        rendered, page = render_managed_list(
             document,
             query=query,
             profile_filter=profile_filter,
             enabled_filter=enabled_filter,
-            page_number=max(1, page_number),
-            page_size=size,
+            page_number=page_number,
+            page_size=_page_size(page_size),
             can_manage=context.can_manage(),
         )
-        return rows, page_status(page), not page.has_previous, not page.has_next, page.request.page_number
+        return rendered, page.request.page_number
 
     @app.callback(
         Output(SNAPSHOT_ID, 'data', allow_duplicate=True),
@@ -179,7 +225,7 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
         user_id = str(trigger.get('user_id', ''))
         profile_key = _value_for_user(user_id, profile_values, profile_ids)
         if profile_key is None:
-            return no_update, _error('Selecciona un profile antes de promover.')
+            return no_update, _error('Select a profile before promoting.')
         version = document.get('registry_version') if isinstance(document, dict) else None
         try:
             context.administration.promote(
@@ -194,7 +240,7 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
             return no_update, _error(str(error))
 
     @app.callback(
-        Output(EDIT_MODAL_ID, 'is_open'),
+        Output(EDIT_MODAL_ID, 'className'),
         Output(EDIT_SELECTED_ID, 'data'),
         Output(EDIT_TITLE_ID, 'children'),
         Output(EDIT_IDENTITY_ID, 'children'),
@@ -203,23 +249,44 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
         Output(EDIT_RESULT_ID, 'children'),
         Input(managed_edit_id(ALL), 'n_clicks'),
         Input(EDIT_CANCEL_ID, 'n_clicks'),
+        Input(EDIT_CLOSE_ID, 'n_clicks'),
+        Input(EDIT_BACKDROP_ID, 'n_clicks'),
         State(managed_edit_id(ALL), 'id'),
         State(SNAPSHOT_ID, 'data'),
         prevent_initial_call=True,
     )
-    def manage_edit_modal(edit_clicks, cancel_clicks, edit_ids, document):
-        if ctx.triggered_id == EDIT_CANCEL_ID and _click_is_real(cancel_clicks):
-            return False, None, None, None, None, [], None
+    def manage_edit_modal(
+        edit_clicks,
+        cancel_clicks,
+        close_clicks,
+        backdrop_clicks,
+        edit_ids,
+        document,
+    ):
         trigger = ctx.triggered_id
+        if (
+            (trigger == EDIT_CANCEL_ID and _click_is_real(cancel_clicks))
+            or (trigger == EDIT_CLOSE_ID and _click_is_real(close_clicks))
+            or (trigger == EDIT_BACKDROP_ID and _click_is_real(backdrop_clicks))
+        ):
+            return _EDIT_MODAL_CLOSED, None, None, None, None, [], None
         if not _pattern_click_is_real(trigger, edit_clicks, edit_ids):
             return (no_update,) * 7
         user_id = str(trigger.get('user_id', ''))
         candidate = _candidate(document, user_id)
         user = candidate.get('promoted_user') if candidate is not None else None
         if not isinstance(user, dict):
-            return False, None, None, None, None, [], _error('Usuario administrado no disponible.')
+            return (
+                _EDIT_MODAL_CLOSED,
+                None,
+                None,
+                None,
+                None,
+                [],
+                _error('Managed user is not available.'),
+            )
         return (
-            True,
+            _EDIT_MODAL_OPEN,
             user_id,
             f'Editar {user.get("display_name") or user.get("email") or user_id}',
             identity_details(user),
@@ -230,7 +297,7 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
 
     @app.callback(
         Output(SNAPSHOT_ID, 'data', allow_duplicate=True),
-        Output(EDIT_MODAL_ID, 'is_open', allow_duplicate=True),
+        Output(EDIT_MODAL_ID, 'className', allow_duplicate=True),
         Output(EDIT_RESULT_ID, 'children', allow_duplicate=True),
         Input(EDIT_SAVE_ID, 'n_clicks'),
         State(EDIT_SELECTED_ID, 'data'),
@@ -243,10 +310,14 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
         if not _click_is_real(clicks) or not context.can_manage():
             return no_update, no_update, no_update
         if not isinstance(user_id, str) or not isinstance(profile_key, str):
-            return no_update, True, _error('Usuario o profile no disponible.')
+            return no_update, _EDIT_MODAL_OPEN, _error('User or profile is not available.')
         version = document.get('registry_version') if isinstance(document, dict) else None
         if not isinstance(version, str):
-            return no_update, True, _error('La versión del registry no está disponible. Actualiza antes de guardar.')
+            return (
+                no_update,
+                _EDIT_MODAL_OPEN,
+                _error('Users registry version is not available. Refresh before saving.'),
+            )
         try:
             context.administration.update(
                 user_id,
@@ -255,9 +326,10 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
                 expected_registry_version=version,
             )
             fresh = snapshot_to_document(context.administration.discover())
-            return preserve_profiles(fresh, document), False, None
+            return preserve_profiles(fresh, document), _EDIT_MODAL_CLOSED, None
         except Exception as error:
-            return no_update, True, _error(str(error))
+            return no_update, _EDIT_MODAL_OPEN, _error(str(error))
+
 
 
 def _profile_options(document: dict[str, object] | None) -> list[dict[str, object]]:
@@ -297,6 +369,25 @@ def _value_for_user(user_id: str, values, ids):
         if isinstance(item_id, dict) and str(item_id.get('user_id', '')) == user_id:
             return value
     return None
+
+
+def _page_size(value) -> int:
+    if isinstance(value, int) and not isinstance(value, bool) and value in ALLOWED_PAGE_SIZES:
+        return value
+    return DEFAULT_PAGE_SIZE
+
+
+def _page_number(value) -> int:
+    if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+        return value
+    return 1
+
+
+def _triggered_click_is_real() -> bool:
+    triggered = ctx.triggered
+    if not triggered:
+        return False
+    return _click_is_real(triggered[0].get('value'))
 
 
 def _click_is_real(value) -> bool:

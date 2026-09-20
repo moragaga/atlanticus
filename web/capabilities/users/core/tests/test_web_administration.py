@@ -99,6 +99,63 @@ def test_managed_filters_use_profile_and_enabled_state() -> None:
     assert page.total_count == 1
 
 
+def test_promotion_page_clamps_when_a_promotion_removes_the_last_page() -> None:
+    users = tuple(_user(index) for index in range(1, 12))
+    promoted = Promoted((users[-1],))
+    document = snapshot_to_document(
+        UsersAdministrationService(
+            registry=Registry(users),
+            promoted=promoted,
+            profiles=ProfileCatalog,
+        ).discover()
+    )
+
+    _rows, page = render_promotion_rows(
+        document,
+        query=None,
+        state_filter='all',
+        page_number=2,
+        page_size=10,
+        can_manage=True,
+    )
+
+    assert page.total_count == 10
+    assert page.request.page_number == 1
+
+
+def test_promoted_users_are_visible_only_in_managed_view() -> None:
+    promoted_user = _user(1)
+    pending_user = _user(2)
+    document = snapshot_to_document(
+        UsersAdministrationService(
+            registry=Registry((promoted_user, pending_user)),
+            promoted=Promoted((promoted_user,)),
+            profiles=ProfileCatalog,
+        ).discover()
+    )
+
+    _promotion_rows, promotion_page = render_promotion_rows(
+        document,
+        query=None,
+        state_filter='all',
+        page_number=1,
+        page_size=10,
+        can_manage=True,
+    )
+    _managed_rows, managed_page = render_managed_rows(
+        document,
+        query=None,
+        profile_filter='all',
+        enabled_filter='all',
+        page_number=1,
+        page_size=10,
+        can_manage=True,
+    )
+
+    assert promotion_page.total_count == 1
+    assert managed_page.total_count == 1
+
+
 def test_mutation_refresh_preserves_loaded_profiles_snapshot() -> None:
     previous = {'profiles': [{'key': 'basic', 'label': 'Basic'}], 'candidates': []}
     fresh = {'profiles': [{'key': 'new', 'label': 'New'}], 'candidates': [{'user_id': '1'}]}
