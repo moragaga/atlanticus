@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from ada.processes.kpi_timeseries_delivery.configuration import (
-    KpiTimeseriesConfigurationRepository,
+    KpiTimeseriesRegistryRepository,
 )
 from ada.processes.kpi_timeseries_delivery.history import KpiTimeseriesHistoryRepository
 from ada.processes.kpi_timeseries_delivery.job import KpiTimeseriesDeliveryJob
@@ -18,8 +18,12 @@ from ada.processes.kpi_timeseries_delivery.state import (
     KpiHistorianAuthorityReader,
     KpiTimeseriesDeliveryCheckpointStore,
 )
+from ada.processes.kpi_timeseries_delivery.storage import (
+    KPI_REGISTRY_CONTAINER_SPEC,
+    KPI_TIMESERIES_DELIVERY_CONTAINER_SPEC,
+)
 from atlanticus.configuration import ResolvedConfiguration
-from atlanticus.connectivity.cosmos import CosmosClient
+from atlanticus.connectivity.cosmos import CosmosClient, CosmosProvisioner
 from atlanticus.datasets.parquet import ParquetDatasetStore
 from atlanticus.datasets.runtime import DatasetRuntime
 from atlanticus.runtime import (
@@ -36,17 +40,20 @@ class KpiTimeseriesDeliveryComposition:
     configuration: ResolvedConfiguration
     runtime_configuration: RuntimeConfiguration
     settings: KpiTimeseriesDeliveryProcessSettings
-    configuration_repository: KpiTimeseriesConfigurationRepository
+    registry_repository: KpiTimeseriesRegistryRepository
     historian: KpiHistorianAuthorityReader
     history: KpiTimeseriesHistoryRepository
     checkpoint: KpiTimeseriesDeliveryCheckpointStore
     snapshots: KpiTimeseriesSnapshotRepository
     definition: JobDefinition
     cosmos_client: CosmosClient
+    cosmos_provisioner: CosmosProvisioner
 
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
         with self.cosmos_client:
-            frozen_configuration = self.configuration_repository.read()
+            self.cosmos_provisioner.validate_containers((KPI_REGISTRY_CONTAINER_SPEC,))
+            self.cosmos_provisioner.ensure_containers((KPI_TIMESERIES_DELIVERY_CONTAINER_SPEC,))
+            frozen_configuration = self.registry_repository.read()
             job = KpiTimeseriesDeliveryJob(
                 configuration=frozen_configuration,
                 historian=self.historian,
@@ -82,26 +89,23 @@ def build_composition(
         store=ParquetDatasetStore(root=historian_store.application_root / 'datasets')
     )
     cosmos_client = CosmosClient(settings=settings.cosmos)
+    cosmos_provisioner = CosmosProvisioner(client=cosmos_client)
     definition = _job_definition(poll_interval_seconds=settings.poll_interval_seconds)
     return KpiTimeseriesDeliveryComposition(
         configuration=configuration,
         runtime_configuration=runtime_configuration,
         settings=settings,
-        configuration_repository=KpiTimeseriesConfigurationRepository(
-            client=cosmos_client,
-            container_name=settings.configuration_container,
-            item_id=settings.configuration_item_id,
-            partition_key=settings.configuration_partition_key,
-        ),
+        registry_repository=KpiTimeseriesRegistryRepository(client=cosmos_client),
         historian=KpiHistorianAuthorityReader(store=historian_store),
         history=KpiTimeseriesHistoryRepository(runtime=history_runtime),
         checkpoint=KpiTimeseriesDeliveryCheckpointStore(store=own_store),
         snapshots=KpiTimeseriesSnapshotRepository(
             client=cosmos_client,
-            container_name=settings.timeseries_container,
+            container_name=KPI_TIMESERIES_DELIVERY_CONTAINER_SPEC.name,
         ),
         definition=definition,
         cosmos_client=cosmos_client,
+        cosmos_provisioner=cosmos_provisioner,
     )
 
 

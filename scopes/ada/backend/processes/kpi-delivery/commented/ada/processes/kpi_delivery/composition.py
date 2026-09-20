@@ -1,4 +1,7 @@
-# Compone estado, persistencia KPI, Cosmos y Job Runtime.
+# Espejo pedagógico del módulo productivo.
+# Los comentarios explican la responsabilidad de la frontera sin alterar su semántica.
+# Composition coordina infraestructura una vez al arranque y luego entrega un job funcional puro.
+# El Registry se valida/lee y el contenedor de salida propio se asegura antes de execute_job.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -9,13 +12,17 @@ from ada.kpis.persistence import (
     KpiEvaluationRepository,
     KpiPersistencePaths,
 )
-from ada.processes.kpi_delivery.configuration import KpiDeliveryConfigurationRepository
+from ada.processes.kpi_delivery.configuration import KpiDeliveryRegistryRepository
 from ada.processes.kpi_delivery.job import KpiLatestDeliveryJob
 from ada.processes.kpi_delivery.repository import KpiLatestSnapshotRepository
 from ada.processes.kpi_delivery.settings import KpiDeliveryProcessSettings
 from ada.processes.kpi_delivery.state import KpiLatestDeliveryCheckpointStore
+from ada.processes.kpi_delivery.storage import (
+    KPI_LATEST_DELIVERY_CONTAINER_SPEC,
+    KPI_REGISTRY_CONTAINER_SPEC,
+)
 from atlanticus.configuration import ResolvedConfiguration
-from atlanticus.connectivity.cosmos import CosmosClient
+from atlanticus.connectivity.cosmos import CosmosClient, CosmosProvisioner
 from atlanticus.runtime import (
     JobDefinition,
     RuntimeConfiguration,
@@ -25,23 +32,25 @@ from atlanticus.runtime import (
 from atlanticus.state import AtomicStateStore
 
 
-# Carga KPI Configuration una sola vez antes de iniciar Job Runtime.
 @dataclass(slots=True)
 class KpiDeliveryComposition:
     configuration: ResolvedConfiguration
     runtime_configuration: RuntimeConfiguration
     settings: KpiDeliveryProcessSettings
-    configuration_repository: KpiDeliveryConfigurationRepository
+    registry_repository: KpiDeliveryRegistryRepository
     kpi_state: KpiCommitStateRepository
     evaluations: KpiEvaluationRepository
     checkpoint: KpiLatestDeliveryCheckpointStore
     snapshots: KpiLatestSnapshotRepository
     definition: JobDefinition
     cosmos_client: CosmosClient
+    cosmos_provisioner: CosmosProvisioner
 
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
         with self.cosmos_client:
-            frozen_configuration = self.configuration_repository.read()
+            self.cosmos_provisioner.validate_containers((KPI_REGISTRY_CONTAINER_SPEC,))
+            self.cosmos_provisioner.ensure_containers((KPI_LATEST_DELIVERY_CONTAINER_SPEC,))
+            frozen_configuration = self.registry_repository.read()
             job = KpiLatestDeliveryJob(
                 configuration=frozen_configuration,
                 kpi_state=self.kpi_state,
@@ -57,7 +66,6 @@ class KpiDeliveryComposition:
             )
 
 
-# Separa la aplicación productora KPI Runtime de la aplicación Delivery.
 def build_composition(*, configuration: ResolvedConfiguration) -> KpiDeliveryComposition:
     if not isinstance(configuration, ResolvedConfiguration):
         raise TypeError('configuration must be a ResolvedConfiguration')
@@ -75,32 +83,28 @@ def build_composition(*, configuration: ResolvedConfiguration) -> KpiDeliveryCom
         paths=KpiPersistencePaths(upstream_store.application_root),
     )
     cosmos_client = CosmosClient(settings=settings.cosmos)
-    configuration_repository = KpiDeliveryConfigurationRepository(
-        client=cosmos_client,
-        container_name=settings.configuration_container,
-        item_id=settings.configuration_item_id,
-        partition_key=settings.configuration_partition_key,
-    )
+    cosmos_provisioner = CosmosProvisioner(client=cosmos_client)
+    registry_repository = KpiDeliveryRegistryRepository(client=cosmos_client)
     snapshots = KpiLatestSnapshotRepository(
         client=cosmos_client,
-        container_name=settings.latest_container,
+        container_name=KPI_LATEST_DELIVERY_CONTAINER_SPEC.name,
     )
     definition = _job_definition(poll_interval_seconds=settings.poll_interval_seconds)
     return KpiDeliveryComposition(
         configuration=configuration,
         runtime_configuration=runtime_configuration,
         settings=settings,
-        configuration_repository=configuration_repository,
+        registry_repository=registry_repository,
         kpi_state=KpiCommitStateRepository(upstream_store),
         evaluations=evaluations,
         checkpoint=KpiLatestDeliveryCheckpointStore(store=own_store),
         snapshots=snapshots,
         definition=definition,
         cosmos_client=cosmos_client,
+        cosmos_provisioner=cosmos_provisioner,
     )
 
 
-# Mantiene aislada la responsabilidad de _job_definition.
 def _job_definition(*, poll_interval_seconds: float) -> JobDefinition:
     return JobDefinition(
         module_name='ada.processes.kpi_delivery',

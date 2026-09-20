@@ -1,11 +1,7 @@
-# Expone la API pública estable del proceso KPI Latest Delivery.
+# Espejo pedagógico del módulo productivo.
+# El cutover elimina de la API pública el repositorio y constantes del projection legacy.
 from ada.processes.kpi_delivery.adapter import delivery_values_from_batch
 from ada.processes.kpi_delivery.composition import KpiDeliveryComposition, build_composition
-from ada.processes.kpi_delivery.configuration import (
-    KPI_CONFIGURATION_DOCUMENT_TYPE,
-    KPI_CONFIGURATION_SCHEMA_VERSION,
-    KpiDeliveryConfigurationRepository,
-)
 from ada.processes.kpi_delivery.errors import (
     KpiDeliveryConfigurationError,
     KpiDeliveryProcessError,
@@ -26,12 +22,9 @@ from ada.processes.kpi_delivery.state import KpiLatestDeliveryCheckpointStore
 __version__ = '1.0.0'
 
 __all__ = [
-    'KPI_CONFIGURATION_DOCUMENT_TYPE',
-    'KPI_CONFIGURATION_SCHEMA_VERSION',
     'KpiDeliveryCheckpoint',
     'KpiDeliveryComposition',
     'KpiDeliveryConfigurationError',
-    'KpiDeliveryConfigurationRepository',
     'KpiDeliveryProcessError',
     'KpiDeliveryProcessSettings',
     'KpiDeliveryRepositoryError',

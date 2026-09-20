@@ -1,4 +1,7 @@
-# Espejo comentado de la implementación productiva.
+# Espejo pedagógico del módulo productivo.
+# Los comentarios explican la responsabilidad de la frontera sin alterar su semántica.
+# Sólo conexión, credenciales, base de datos y parámetros operacionales vienen del entorno.
+# Los contenedores pertenecen al contrato interno del proceso.
 from __future__ import annotations
 
 import math
@@ -11,10 +14,6 @@ from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfigur
 from atlanticus.connectivity.cosmos import CosmosConfigurationError, CosmosSettings
 
 HISTORIAN_APPLICATION_VARIABLE = 'KPI_HISTORIAN_APPLICATION'
-KPI_CONFIGURATION_CONTAINER_VARIABLE = 'KPI_DELIVERY_CONFIGURATION_CONTAINER'
-KPI_CONFIGURATION_ITEM_ID_VARIABLE = 'KPI_DELIVERY_CONFIGURATION_ITEM_ID'
-KPI_CONFIGURATION_PARTITION_KEY_VARIABLE = 'KPI_DELIVERY_CONFIGURATION_PARTITION_KEY'
-KPI_TIMESERIES_CONTAINER_VARIABLE = 'KPI_TIMESERIES_DELIVERY_CONTAINER'
 POLL_INTERVAL_VARIABLE = 'KPI_TIMESERIES_DELIVERY_POLL_INTERVAL_SECONDS'
 
 
@@ -22,10 +21,6 @@ POLL_INTERVAL_VARIABLE = 'KPI_TIMESERIES_DELIVERY_POLL_INTERVAL_SECONDS'
 class KpiTimeseriesDeliveryProcessSettings:
     cosmos: CosmosSettings
     historian_application: str
-    configuration_container: str
-    configuration_item_id: str
-    configuration_partition_key: str
-    timeseries_container: str
     poll_interval_seconds: float
 
     @classmethod
@@ -50,22 +45,6 @@ class KpiTimeseriesDeliveryProcessSettings:
                 configuration.require(HISTORIAN_APPLICATION_VARIABLE),
                 HISTORIAN_APPLICATION_VARIABLE,
             ),
-            configuration_container=_required_text(
-                configuration.require(KPI_CONFIGURATION_CONTAINER_VARIABLE),
-                KPI_CONFIGURATION_CONTAINER_VARIABLE,
-            ),
-            configuration_item_id=_required_text(
-                configuration.require(KPI_CONFIGURATION_ITEM_ID_VARIABLE),
-                KPI_CONFIGURATION_ITEM_ID_VARIABLE,
-            ),
-            configuration_partition_key=_required_text(
-                configuration.require(KPI_CONFIGURATION_PARTITION_KEY_VARIABLE),
-                KPI_CONFIGURATION_PARTITION_KEY_VARIABLE,
-            ),
-            timeseries_container=_required_text(
-                configuration.require(KPI_TIMESERIES_CONTAINER_VARIABLE),
-                KPI_TIMESERIES_CONTAINER_VARIABLE,
-            ),
             poll_interval_seconds=_positive_float(
                 configuration.require(POLL_INTERVAL_VARIABLE),
                 POLL_INTERVAL_VARIABLE,
@@ -81,10 +60,6 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(key='COSMOS_CONSUMPTION_KEY', sensitive=True),
         ConfigurationVariableSpec(key='COSMOS_CONSUMPTION_DATABASE_NAME'),
         ConfigurationVariableSpec(key=HISTORIAN_APPLICATION_VARIABLE),
-        ConfigurationVariableSpec(key=KPI_CONFIGURATION_CONTAINER_VARIABLE),
-        ConfigurationVariableSpec(key=KPI_CONFIGURATION_ITEM_ID_VARIABLE),
-        ConfigurationVariableSpec(key=KPI_CONFIGURATION_PARTITION_KEY_VARIABLE),
-        ConfigurationVariableSpec(key=KPI_TIMESERIES_CONTAINER_VARIABLE),
         ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='1'),
         ConfigurationVariableSpec(
             key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED',
@@ -105,9 +80,7 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
 
 def _required_text(value: str, field_name: str) -> str:
     if not isinstance(value, str) or not value:
-        raise KpiTimeseriesDeliveryConfigurationError(
-            f'{field_name} must be non-empty text'
-        )
+        raise KpiTimeseriesDeliveryConfigurationError(f'{field_name} must be non-empty text')
     if value != value.strip():
         raise KpiTimeseriesDeliveryConfigurationError(
             f'{field_name} must not contain surrounding whitespace'
