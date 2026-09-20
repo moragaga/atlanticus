@@ -15,11 +15,21 @@ dependencies = [
     "atlanticus-web-source==0.1.0",
 ]
 
+[project.optional-dependencies]
+web = [
+    "atlanticus-web==0.1.0",
+    "atlanticus-web-bootstrap==0.1.0",
+    "dash-bootstrap-components==2.0.4",
+    "dash==4.4.1",
+]
+
 [tool.uv.sources]
 ada-web-access = { path = "../core", editable = true }
 atlanticus-web-profiles = { path = "../../../../../web/capabilities/profiles/core", editable = true }
 atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
+atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
+atlanticus-web-bootstrap = { path = "../../../../../web/framework/bootstrap", editable = true }
 
 [dependency-groups]
 dev = [
@@ -36,7 +46,11 @@ namespaces = true
 include = ["ada.web.access.configuration*"]
 
 [tool.setuptools.package-data]
-"ada.web.access.configuration" = ["py.typed"]
+"ada.web.access.configuration" = [
+    "py.typed",
+    "resources/css/*.css",
+    "resources/css/css.list",
+]
 
 [tool.ruff]
 line-length = 100
@@ -62,6 +76,8 @@ testpaths = ["tests"]
 pythonpath = [
     "src",
     "../core/src",
+    "../../../../../web/framework/core/src",
+    "../../../../../web/framework/bootstrap/src",
     "../../../../../web/capabilities/profiles/core/src",
     "../../../../../web/capabilities/projection/core/src",
     "../../../../../web/capabilities/source/core/src",

@@ -444,10 +444,17 @@ def _edit_modal(document: dict[str, object], *, can_manage: bool) -> object:
                     ),
                     dbc.Checklist(
                         id=EDIT_ENABLED_ID,
-                        options=[{'label': 'Usuario activo', 'value': 'enabled'}],
+                        # dbc.Checklist no expone disabled a nivel del componente;
+                        # cada opción controla su disponibilidad.
+                        options=[
+                            {
+                                'label': 'Usuario activo',
+                                'value': 'enabled',
+                                'disabled': not can_manage,
+                            }
+                        ],
                         value=[],
                         switch=True,
-                        disabled=not can_manage,
                     ),
                     html.Div(id=EDIT_RESULT_ID),
                 ],

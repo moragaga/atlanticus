@@ -25,6 +25,7 @@ def _profiles() -> ProfileCatalog:
 
 def _configuration() -> AdaAccessConfiguration:
     return AdaAccessConfiguration(
+        access_keys=('navigation.view', 'kpis.manage'),
         profile_access=(
             ProfileAccessGrant(
                 profile_key='operator',
@@ -38,32 +39,59 @@ def _configuration() -> AdaAccessConfiguration:
     )
 
 
-def test_configuration_round_trips_profile_access_document() -> None:
+def test_configuration_round_trips_access_catalog_and_profile_assignments() -> None:
     configuration = _configuration()
     document = configuration.to_document()
 
-    assert set(document) == {'profile_access'}
+    assert set(document) == {'access_keys', 'profile_access'}
+    assert document['access_keys'] == ['kpis.manage', 'navigation.view']
     assert AdaAccessConfiguration.from_document(document) == configuration
+
+
+def test_configuration_normalizes_and_sorts_access_definitions() -> None:
+    configuration = AdaAccessConfiguration(access_keys=(' Navigation.View ', 'ALARMS.MANAGE'))
+
+    assert configuration.access_keys == ('alarms.manage', 'navigation.view')
+
+
+def test_configuration_rejects_duplicate_access_definitions() -> None:
+    with pytest.raises(AdaAccessDefinitionError, match='definitions must be unique'):
+        AdaAccessConfiguration(access_keys=('navigation.view', 'NAVIGATION.VIEW'))
+
+
+def test_configuration_rejects_profile_assignment_to_undefined_access() -> None:
+    with pytest.raises(AdaAccessDefinitionError, match='undefined access key'):
+        AdaAccessConfiguration(
+            access_keys=('navigation.view',),
+            profile_access=(
+                ProfileAccessGrant(
+                    profile_key='operator',
+                    access_keys=('kpis.manage',),
+                ),
+            ),
+        )
 
 
 def test_configuration_rejects_duplicate_profile_grants() -> None:
     with pytest.raises(AdaAccessDefinitionError, match='profile grants must be unique'):
         AdaAccessConfiguration(
+            access_keys=('navigation.view',),
             profile_access=(
                 ProfileAccessGrant(profile_key='operator'),
                 ProfileAccessGrant(profile_key='OPERATOR'),
-            )
+            ),
         )
 
 
 def test_configuration_validates_profile_references() -> None:
     configuration = AdaAccessConfiguration(
+        access_keys=('navigation.view',),
         profile_access=(
             ProfileAccessGrant(
                 profile_key='missing',
                 access_keys=('navigation.view',),
             ),
-        )
+        ),
     )
 
     with pytest.raises(ValueError, match='Unknown profile'):
@@ -100,6 +128,7 @@ def test_configuration_accepts_configured_administrator_profile() -> None:
         )
     )
     configuration = AdaAccessConfiguration(
+        access_keys=('kpis.manage',),
         profile_access=(
             ProfileAccessGrant(
                 profile_key='administrator',
@@ -115,16 +144,15 @@ def test_configuration_accepts_configured_administrator_profile() -> None:
     assert effective.access_keys == ('kpis.manage',)
 
 
-def test_configuration_rejects_legacy_user_profile_assignment_document() -> None:
+def test_configuration_requires_explicit_access_catalog() -> None:
     with pytest.raises(AdaAccessDefinitionError, match='contract is invalid'):
         AdaAccessConfiguration.from_document(
             {
-                'user_profiles': [
+                'profile_access': [
                     {
-                        'user_id': 'user-1',
-                        'profile_keys': ['operator'],
+                        'profile_key': 'operator',
+                        'access_keys': ['navigation.view'],
                     }
-                ],
-                'profile_access': [],
+                ]
             }
         )

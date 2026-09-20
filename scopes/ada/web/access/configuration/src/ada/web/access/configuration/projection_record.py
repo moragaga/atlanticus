@@ -9,7 +9,7 @@ from atlanticus.web.projection.models import ProjectionRecord, ProjectionTarget
 from atlanticus.web.source.models import SourceKey, SourceReleaseId, SourceReleaseRef
 
 ADA_ACCESS_PROJECTION_DOCUMENT_TYPE = 'ada_access_projection_record'
-ADA_ACCESS_PROJECTION_SCHEMA_VERSION = 1
+ADA_ACCESS_PROJECTION_SCHEMA_VERSION = 2
 
 
 def ada_access_projection_to_document(
@@ -30,8 +30,7 @@ def ada_access_projection_to_document(
         'source_published_at_utc': projection.source_published_at_utc.isoformat(),
         'projected_at_utc': projection.projected_at_utc.isoformat(),
         'dependencies': [
-            _projection_target_to_document(dependency)
-            for dependency in projection.dependencies
+            _projection_target_to_document(dependency) for dependency in projection.dependencies
         ],
         'payload': projection.payload.to_document(),
     }
@@ -70,9 +69,7 @@ def ada_access_projection_from_document(
             ),
             projected_at_utc=datetime.fromisoformat(str(document['projected_at_utc'])),
             payload=AdaAccessConfiguration.from_document(dict(payload)),
-            dependencies=tuple(
-                _projection_target_from_document(item) for item in dependencies
-            ),
+            dependencies=tuple(_projection_target_from_document(item) for item in dependencies),
         )
     except (KeyError, TypeError, ValueError) as error:
         raise AdaAccessConfigurationProjectionError(
@@ -86,8 +83,7 @@ def _projection_target_to_document(target: ProjectionTarget) -> dict[str, object
         'source_release_id': target.source_release_id.value,
         'source_published_at_utc': target.source_release.published_at_utc.isoformat(),
         'dependencies': [
-            _projection_target_to_document(dependency)
-            for dependency in target.dependencies
+            _projection_target_to_document(dependency) for dependency in target.dependencies
         ],
     }
 
@@ -102,11 +98,7 @@ def _projection_target_from_document(document: dict[str, Any]) -> ProjectionTarg
         source_key=SourceKey(str(document['source_key'])),
         source_release=SourceReleaseRef(
             release_id=SourceReleaseId(str(document['source_release_id'])),
-            published_at_utc=datetime.fromisoformat(
-                str(document['source_published_at_utc'])
-            ),
+            published_at_utc=datetime.fromisoformat(str(document['source_published_at_utc'])),
         ),
-        dependencies=tuple(
-            _projection_target_from_document(item) for item in dependencies
-        ),
+        dependencies=tuple(_projection_target_from_document(item) for item in dependencies),
     )

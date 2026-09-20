@@ -46,12 +46,13 @@ def _record() -> ProjectionRecord[AdaAccessConfiguration]:
         source_published_at_utc=datetime(2026, 9, 19, 11, tzinfo=UTC),
         projected_at_utc=datetime(2026, 9, 19, 11, 1, tzinfo=UTC),
         payload=AdaAccessConfiguration(
+            access_keys=('alarms.manage', 'alarms.view'),
             profile_access=(
                 ProfileAccessGrant(
                     profile_key='11111111-1111-4111-8111-111111111111',
                     access_keys=('alarms.view', 'alarms.manage'),
                 ),
-            )
+            ),
         ),
         dependencies=(profiles,),
     )
@@ -76,7 +77,7 @@ def test_projection_record_document_supports_provider_identity_fields() -> None:
     )
 
     assert document['document_type'] == ADA_ACCESS_PROJECTION_DOCUMENT_TYPE
-    assert document['schema_version'] == ADA_ACCESS_PROJECTION_SCHEMA_VERSION
+    assert document['schema_version'] == ADA_ACCESS_PROJECTION_SCHEMA_VERSION == 2
     assert document['id'] == 'projection-id'
     assert document['partition_key'] == 'ada-access'
 
@@ -89,9 +90,9 @@ def test_projection_record_rejects_wrong_document_type() -> None:
         ada_access_projection_from_document(document)
 
 
-def test_projection_record_rejects_wrong_schema_version() -> None:
+def test_projection_record_rejects_previous_schema_without_compatibility() -> None:
     document = ada_access_projection_to_document(_record())
-    document['schema_version'] = 2
+    document['schema_version'] = 1
 
     with pytest.raises(AdaAccessConfigurationProjectionError):
         ada_access_projection_from_document(document)

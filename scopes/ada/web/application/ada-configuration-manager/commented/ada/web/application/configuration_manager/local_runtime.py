@@ -1,10 +1,18 @@
-# Espejo pedagógico: ADA compone la capability Users ya construida y no adopta ownership de su lifecycle.
+# Runtime local de composición para desarrollo y pruebas.
+# Las access_keys del principal local son explícitas; is_local no concede permisos por sí mismo.
+
 from __future__ import annotations
 
 import os
 from pathlib import Path
 from typing import Generic, TypeVar
 
+from ada.web.access.configuration import (
+    AdaAccessConfiguration,
+    AdaAccessSourceService,
+    create_ada_access_projection_service,
+)
+from ada.web.application.configuration_manager.access import ACCESS_MANAGER_ACCESS_KEY
 from ada.web.application.configuration_manager.application import (
     create_configuration_manager_application,
 )
@@ -64,6 +72,7 @@ NAVIGATION_SOURCE_KEY = SourceKey('navigation')
 TOOLS_SOURCE_KEY = SourceKey('tools')
 KPI_SOURCE_KEY = SourceKey('kpis')
 KPI_DEFINITION_SOURCE_KEY = SourceKey('kpi-definitions')
+ADA_ACCESS_SOURCE_KEY = SourceKey('ada-access')
 
 
 class InProcessProjectionStore(ProjectionStore[PayloadT], Generic[PayloadT]):
@@ -140,6 +149,7 @@ def create_local_configuration_manager_dependencies(
     kpi_projection_store = InProcessProjectionStore[KpiConfiguration]()
     kpi_definition_projection_store = InProcessProjectionStore[KpiDefinitionCatalog]()
     profiles_projection_store = InProcessProjectionStore[ProfileCatalog]()
+    access_projection_store = InProcessProjectionStore[AdaAccessConfiguration]()
 
     navigation_source = NavigationSourceService(
         source=source_store,
@@ -150,6 +160,10 @@ def create_local_configuration_manager_dependencies(
     kpi_definitions_source = KpiDefinitionSourceService(
         source=source_store,
         source_key=KPI_DEFINITION_SOURCE_KEY,
+    )
+    access_source = AdaAccessSourceService(
+        source=source_store,
+        source_key=ADA_ACCESS_SOURCE_KEY,
     )
 
     navigation_projection = create_navigation_projection_service(
@@ -175,6 +189,12 @@ def create_local_configuration_manager_dependencies(
         kpi_configuration_projection=kpi_projection_store,
         kpi_configuration_source_key=KPI_SOURCE_KEY,
     )
+    access_projection = create_ada_access_projection_service(
+        source=source_store,
+        projection=access_projection_store,
+        profiles_projection=profiles_projection_store,
+        profiles_source_key=PROFILES_CONFIGURATION_SOURCE_KEY,
+    )
 
     principal = ManagerPrincipal(
         subject_id='local',
@@ -182,6 +202,7 @@ def create_local_configuration_manager_dependencies(
         access_keys=(
             USERS_MANAGER_ACCESS_KEY,
             PROFILES_MANAGER_ACCESS_KEY,
+            ACCESS_MANAGER_ACCESS_KEY,
             NAVIGATION_MANAGER_ACCESS_KEY,
             TOOLS_MANAGER_ACCESS_KEY,
             KPI_MANAGER_ACCESS_KEY,
@@ -216,6 +237,9 @@ def create_local_configuration_manager_dependencies(
         navigation_projection=navigation_projection,
         tools_source=tools_source,
         tools_projection=tools_projection,
+        access_source=access_source,
+        access_projection=access_projection,
+        profiles_projection=profiles_projection_store,
         principal_provider=lambda: principal,
         profiles_module=profiles_manager.module,
         users_entry=users_manager.entry,
@@ -229,6 +253,8 @@ def create_local_configuration_manager_dependencies(
         navigation_projection_name='In-process Projection',
         tools_source_name='Local Source',
         tools_projection_name='In-process Projection',
+        access_source_name='Local Source',
+        access_projection_name='In-process Projection',
         kpis_source_name='Local Source',
         kpis_projection_name='In-process Projection',
         kpi_definitions_source_name='Local Source',

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from ada.web.application.configuration_manager.access import create_access_manager_module
 from ada.web.application.configuration_manager.dependencies import ConfigurationManagerDependencies
 from ada.web.application.configuration_manager.kpi_definitions import (
     KpiDefinitionManagerWebContext,
@@ -131,6 +132,16 @@ def build_configuration_manager_surface(
         source_name=dependencies.tools_source_name,
         projection_name=dependencies.tools_projection_name,
     )
+    access_module = create_access_manager_module(
+        source=dependencies.access_source,
+        projection=dependencies.access_projection,
+        profiles_projection=dependencies.profiles_projection,
+        profiles_source_key=dependencies.profiles_module.source_key,
+        principal_provider=dependencies.principal_provider,
+        audit_actor_provider=actor_provider,
+        source_name=dependencies.access_source_name,
+        projection_name=dependencies.access_projection_name,
+    )
     kpi_context = _kpi_context(dependencies, actor_provider)
     kpi_definition_context = _kpi_definition_context(dependencies, actor_provider)
     return ManagerSurfaceDefinition(
@@ -141,6 +152,7 @@ def build_configuration_manager_surface(
         ),
         modules=(
             dependencies.profiles_module,
+            access_module,
             ManagerModule(
                 key='navigation',
                 group_key='configuration',

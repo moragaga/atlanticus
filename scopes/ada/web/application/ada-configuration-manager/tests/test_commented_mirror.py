@@ -4,6 +4,7 @@ from pathlib import Path
 FILES = (
     '__init__.py',
     '__main__.py',
+    'access.py',
     'application.py',
     'composition.py',
     'dependencies.py',

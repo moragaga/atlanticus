@@ -1,3 +1,14 @@
+from ada.web.application.configuration_manager.access import (
+    ACCESS_DRAFT_VALIDATION_SERVICE,
+    ACCESS_MANAGER_ACCESS_KEY,
+    ACCESS_PROJECTION_SERVICE,
+    ACCESS_SOURCE_HISTORY_SERVICE,
+    ACCESS_SOURCE_READER_SERVICE,
+    ACCESS_SOURCE_SERVICE,
+    AdaAccessManagerDraftValidationWorkflow,
+    AdaAccessManagerSourceWorkflow,
+    create_access_manager_module,
+)
 from ada.web.application.configuration_manager.application import (
     create_configuration_manager_application,
     create_configuration_manager_web_definition,
@@ -47,6 +58,14 @@ from ada.web.application.configuration_manager.workflows import (
 from ada.web.application.configuration_manager.workspace import ManagerWorkspaceBridge
 
 __all__ = [
+    'ACCESS_DRAFT_VALIDATION_SERVICE',
+    'ACCESS_MANAGER_ACCESS_KEY',
+    'ACCESS_PROJECTION_SERVICE',
+    'ACCESS_SOURCE_HISTORY_SERVICE',
+    'ACCESS_SOURCE_READER_SERVICE',
+    'ACCESS_SOURCE_SERVICE',
+    'AdaAccessManagerDraftValidationWorkflow',
+    'AdaAccessManagerSourceWorkflow',
     'ConfigurationManagerDependencies',
     'KPI_DEFINITION_DRAFT_VALIDATION_SERVICE',
     'KPI_DEFINITION_PROJECTION_SERVICE',
@@ -84,6 +103,7 @@ __all__ = [
     'ToolManagerSourceWorkflow',
     'USERS_MANAGER_ACCESS_KEY',
     'build_configuration_manager_surface',
+    'create_access_manager_module',
     'create_configuration_manager_application',
     'create_configuration_manager_web_definition',
 ]

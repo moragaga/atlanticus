@@ -7,6 +7,7 @@ from ada.web.access.errors import AdaAccessDefinitionError
 from ada.web.access.models import (
     EffectiveAdaAccess,
     ProfileAccessGrant,
+    normalize_access_key,
     validate_profile_references,
 )
 from atlanticus.web.profiles.models import ProfileCatalog, normalize_profile_key
@@ -14,13 +15,29 @@ from atlanticus.web.profiles.models import ProfileCatalog, normalize_profile_key
 
 @dataclass(frozen=True, slots=True)
 class AdaAccessConfiguration:
+    access_keys: tuple[str, ...] = ()
     profile_access: tuple[ProfileAccessGrant, ...] = ()
 
     def __post_init__(self) -> None:
+        access_keys = tuple(normalize_access_key(value) for value in self.access_keys)
+        if len(access_keys) != len(set(access_keys)):
+            raise AdaAccessDefinitionError('ADA access definitions must be unique')
+        access_keys = tuple(sorted(access_keys))
+
         profile_access = tuple(self.profile_access)
         profile_keys = tuple(grant.profile_key for grant in profile_access)
         if len(profile_keys) != len(set(profile_keys)):
             raise AdaAccessDefinitionError('ADA access profile grants must be unique')
+
+        defined = set(access_keys)
+        for grant in profile_access:
+            unknown = tuple(key for key in grant.access_keys if key not in defined)
+            if unknown:
+                raise AdaAccessDefinitionError(
+                    f'ADA access profile grant references undefined access key {unknown[0]!r}'
+                )
+
+        object.__setattr__(self, 'access_keys', access_keys)
         object.__setattr__(
             self,
             'profile_access',
@@ -52,6 +69,7 @@ class AdaAccessConfiguration:
 
     def to_document(self) -> dict[str, object]:
         return {
+            'access_keys': list(self.access_keys),
             'profile_access': [
                 {
                     'profile_key': grant.profile_key,
@@ -64,14 +82,18 @@ class AdaAccessConfiguration:
     @classmethod
     def from_document(cls, document: dict[str, Any]) -> AdaAccessConfiguration:
         try:
-            if 'user_profiles' in document:
-                raise TypeError
+            raw_access_keys = document['access_keys']
             raw_profile_access = document['profile_access']
+            if not isinstance(raw_access_keys, list) or not all(
+                isinstance(item, str) for item in raw_access_keys
+            ):
+                raise TypeError
             if not isinstance(raw_profile_access, list) or not all(
                 isinstance(item, dict) for item in raw_profile_access
             ):
                 raise TypeError
             return cls(
+                access_keys=tuple(raw_access_keys),
                 profile_access=tuple(
                     ProfileAccessGrant(
                         profile_key=_text(item, 'profile_key'),

@@ -7,6 +7,7 @@ name = "ada-configuration-manager"
 version = "0.5.1"
 source = { editable = "." }
 dependencies = [
+    { name = "ada-web-access-configuration", extra = ["web"] },
     { name = "ada-web-kpi-configuration", extra = ["web"] },
     { name = "ada-web-kpi-definition", extra = ["web"] },
     { name = "ada-web-tools" },
@@ -33,6 +34,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "ada-web-access-configuration", extras = ["web"], editable = "../../access/configuration" },
     { name = "ada-web-kpi-configuration", extras = ["web"], editable = "../../kpis/configuration" },
     { name = "ada-web-kpi-definition", extras = ["web"], editable = "../../kpis/definition" },
     { name = "ada-web-tools", editable = "../../tools/core" },
@@ -53,6 +55,61 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "atlanticus-web-source-local", editable = "../../../../../web/capabilities/source/local" },
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-access"
+version = "0.1.0"
+source = { editable = "../../access/core" }
+dependencies = [
+    { name = "atlanticus-web-profiles" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "atlanticus-web-profiles", editable = "../../../../../web/capabilities/profiles/core" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-access-configuration"
+version = "0.1.0"
+source = { editable = "../../access/configuration" }
+dependencies = [
+    { name = "ada-web-access" },
+    { name = "atlanticus-web-profiles" },
+    { name = "atlanticus-web-projection" },
+    { name = "atlanticus-web-source" },
+]
+
+[package.optional-dependencies]
+web = [
+    { name = "atlanticus-web" },
+    { name = "atlanticus-web-bootstrap" },
+    { name = "dash" },
+    { name = "dash-bootstrap-components" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-web-access", editable = "../../access/core" },
+    { name = "atlanticus-web", marker = "extra == 'web'", editable = "../../../../../web/framework/core" },
+    { name = "atlanticus-web-bootstrap", marker = "extra == 'web'", editable = "../../../../../web/framework/bootstrap" },
+    { name = "atlanticus-web-profiles", editable = "../../../../../web/capabilities/profiles/core" },
+    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
+    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
+    { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
+    { name = "dash-bootstrap-components", marker = "extra == 'web'", specifier = "==2.0.4" },
+]
+provides-extras = ["web"]
+
+[package.metadata.requires-dev]
+dev = [
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]

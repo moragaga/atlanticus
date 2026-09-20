@@ -36,13 +36,14 @@ def test_kpi_and_definition_are_optional_direct_generic_modules() -> None:
 
     assert tuple(module.key for module in definition.modules) == (
         'profiles',
+        'access',
         'navigation',
         'tools',
         'kpis',
         'kpi-definitions',
     )
-    kpis = definition.modules[3]
-    definitions = definition.modules[4]
+    kpis = definition.modules[4]
+    definitions = definition.modules[5]
     assert kpis.source_key == SourceKey('kpis')
     assert definitions.source_key == SourceKey('kpi-definitions')
     assert kpis.source_service.endswith('.kpis.source')

@@ -41,9 +41,7 @@ class AdaAccessProjectionBuilder(ProjectionBuilder[AdaAccessConfiguration]):
                 'Profiles projection changed before ADA Access projection'
             )
         if not isinstance(profiles.payload, ProfileCatalog):
-            raise AdaAccessConfigurationProjectionError(
-                'Profiles projection payload is invalid'
-            )
+            raise AdaAccessConfigurationProjectionError('Profiles projection payload is invalid')
         configuration = self._codec.decode(resources).configuration
         try:
             configuration.validate_profiles(profiles.payload)
@@ -64,13 +62,9 @@ def create_ada_access_projection_service(
     def select_dependencies(_source_key: SourceKey) -> tuple[ProjectionTarget, ...]:
         dependency = profiles_projection.get_active(profiles_source_key)
         if dependency is None:
-            raise AdaAccessConfigurationProjectionError(
-                'Profiles projection is not available'
-            )
+            raise AdaAccessConfigurationProjectionError('Profiles projection is not available')
         if not isinstance(dependency.payload, ProfileCatalog):
-            raise AdaAccessConfigurationProjectionError(
-                'Profiles projection payload is invalid'
-            )
+            raise AdaAccessConfigurationProjectionError('Profiles projection payload is invalid')
         return (dependency.target,)
 
     return SourceProjectionService(

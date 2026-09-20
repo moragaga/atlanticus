@@ -60,12 +60,13 @@ def _record(
         source_published_at_utc=published_at,
         projected_at_utc=published_at + timedelta(seconds=1),
         payload=AdaAccessConfiguration(
+            access_keys=(access_key,),
             profile_access=(
                 ProfileAccessGrant(
                     profile_key='11111111-1111-4111-8111-111111111111',
                     access_keys=(access_key,),
                 ),
-            )
+            ),
         ),
         dependencies=(_dependency(dependency_release),),
     )

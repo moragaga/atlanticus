@@ -1,8 +1,11 @@
-# Espejo pedagógico: ADA compone la capability Users ya construida y no adopta ownership de su lifecycle.
+# Dependencias explícitas de la aplicación administrativa.
+# ADA Access recibe Source, Projection y la Projection de Profiles requerida para validar assignments.
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ada.web.access.configuration import AdaAccessConfiguration, AdaAccessSourceService
 from ada.web.kpis.configuration import (
     KpiConfiguration,
     KpiDestinationCatalogProvider,
@@ -15,6 +18,7 @@ from atlanticus.web.navigation.configuration import (
     NavigationConfigurationCatalog,
     NavigationSourceService,
 )
+from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.projection.service import SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
 
@@ -25,6 +29,9 @@ class ConfigurationManagerDependencies:
     navigation_projection: SourceProjectionService[NavigationConfigurationCatalog]
     tools_source: ToolSourceService
     tools_projection: SourceProjectionService[ToolConfiguration]
+    access_source: AdaAccessSourceService
+    access_projection: SourceProjectionService[AdaAccessConfiguration]
+    profiles_projection: ProjectionStore[ProfileCatalog]
     principal_provider: ManagerPrincipalProvider
     profiles_module: ManagerModule
     users_entry: ManagerEntry
@@ -38,6 +45,8 @@ class ConfigurationManagerDependencies:
     navigation_projection_name: str = 'Projection'
     tools_source_name: str = 'Source'
     tools_projection_name: str = 'Projection'
+    access_source_name: str = 'Source'
+    access_projection_name: str = 'Projection'
     kpis_source_name: str = 'Source'
     kpis_projection_name: str = 'Projection'
     kpi_definitions_source_name: str = 'Source'

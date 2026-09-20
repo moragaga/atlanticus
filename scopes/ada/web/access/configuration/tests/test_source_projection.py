@@ -49,12 +49,13 @@ def _profiles_projection(
 
 def _configuration(profile_key: str = 'basic') -> AdaAccessConfiguration:
     return AdaAccessConfiguration(
+        access_keys=('alarms.view',),
         profile_access=(
             ProfileAccessGrant(
                 profile_key=profile_key,
                 access_keys=('alarms.view',),
             ),
-        )
+        ),
     )
 
 

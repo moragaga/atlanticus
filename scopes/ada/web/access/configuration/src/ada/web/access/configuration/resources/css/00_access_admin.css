@@ -1,0 +1,152 @@
+.ada-access-admin {
+    display: grid;
+    min-width: 0;
+    gap: .9rem;
+    padding: 0 1rem 1rem;
+}
+
+.ada-access-admin__runtime-context,
+.ada-access-admin__section {
+    min-width: 0;
+    padding: 1rem;
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .85rem;
+    box-shadow: 0 4px 16px rgb(25 30 38 / 3.5%);
+}
+
+.ada-access-admin__runtime-context {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .55rem 1.2rem;
+    padding-block: .72rem;
+    color: var(--atlanticus-ui-primary-hover);
+    background: var(--atlanticus-ui-surface-muted);
+    font-size: .7rem;
+}
+
+.ada-access-admin__runtime-source {
+    display: flex;
+    align-items: baseline;
+    gap: .42rem;
+}
+
+.ada-access-admin__section-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: .8rem;
+}
+
+.ada-access-admin__section-copy {
+    display: grid;
+    min-width: 0;
+    gap: .2rem;
+}
+
+.ada-access-admin__section-copy h3,
+.ada-access-admin__section-copy p {
+    margin: 0;
+}
+
+.ada-access-admin__section-copy h3 {
+    color: var(--atlanticus-ui-text);
+    font-size: .9rem;
+    font-weight: 780;
+}
+
+.ada-access-admin__section-copy p,
+.ada-access-admin__empty {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .72rem;
+}
+
+.ada-access-admin__access-create {
+    display: flex;
+    min-width: min(100%, 24rem);
+    gap: .5rem;
+}
+
+.ada-access-admin__access-list,
+.ada-access-admin__profile-list {
+    display: grid;
+    gap: .45rem;
+}
+
+.ada-access-admin__access-row,
+.ada-access-admin__profile-row {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: .8rem;
+    padding: .68rem .75rem;
+    background: var(--atlanticus-ui-surface-muted);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .68rem;
+}
+
+.ada-access-admin__profile-copy {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+.ada-access-admin__profile-copy code,
+.ada-access-admin__access-row code {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .7rem;
+}
+
+.ada-access-admin__profile-badge {
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
+    align-items: center;
+    padding: .34rem .62rem;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 750;
+}
+
+.ada-access-admin__profile-select {
+    width: min(100%, 34rem);
+}
+
+.ada-access-admin__section--footer {
+    border-top: .2rem solid var(--atlanticus-ui-accent);
+}
+
+.ada-access-admin__error {
+    margin-bottom: .6rem;
+    padding: .55rem .7rem;
+    color: var(--atlanticus-ui-danger);
+    background: var(--atlanticus-ui-danger-soft);
+    border-radius: .45rem;
+    font-size: .78rem;
+}
+
+.ada-access-admin__empty {
+    margin: .55rem 0;
+}
+
+@media (max-width: 48rem) {
+    .ada-access-admin {
+        padding-inline: .75rem;
+    }
+
+    .ada-access-admin__section-heading,
+    .ada-access-admin__access-row,
+    .ada-access-admin__profile-row,
+    .ada-access-admin__access-create {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .ada-access-admin__profile-select {
+        width: 100%;
+    }
+}

@@ -1,3 +1,4 @@
+from ada.web.application.configuration_manager.access import ACCESS_MANAGER_ACCESS_KEY
 from ada.web.application.configuration_manager.composition import (
     KPI_MANAGER_ACCESS_KEY,
     NAVIGATION_MANAGER_ACCESS_KEY,
@@ -6,6 +7,7 @@ from ada.web.application.configuration_manager.composition import (
     USERS_MANAGER_ACCESS_KEY,
 )
 from ada.web.application.configuration_manager.local_runtime import (
+    ADA_ACCESS_SOURCE_KEY,
     KPI_DEFINITION_SOURCE_KEY,
     KPI_SOURCE_KEY,
     NAVIGATION_SOURCE_KEY,
@@ -26,6 +28,7 @@ def test_local_runtime_composes_configuration_sources(tmp_path) -> None:
 
     assert dependencies.navigation_source.source_key == NAVIGATION_SOURCE_KEY
     assert dependencies.tools_source.source_key == TOOLS_SOURCE_KEY
+    assert dependencies.access_source.source_key == ADA_ACCESS_SOURCE_KEY
     assert dependencies.kpis_source is not None
     assert dependencies.kpis_source.source_key == KPI_SOURCE_KEY
     assert dependencies.kpi_definitions_source is not None
@@ -59,6 +62,7 @@ def test_local_runtime_grants_explicit_configuration_capabilities(tmp_path) -> N
     assert principal.access_keys == (
         USERS_MANAGER_ACCESS_KEY,
         PROFILES_MANAGER_ACCESS_KEY,
+        ACCESS_MANAGER_ACCESS_KEY,
         NAVIGATION_MANAGER_ACCESS_KEY,
         TOOLS_MANAGER_ACCESS_KEY,
         KPI_MANAGER_ACCESS_KEY,

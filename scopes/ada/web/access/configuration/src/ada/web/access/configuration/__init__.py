@@ -1,3 +1,9 @@
+from ada.web.access.configuration.editor import (
+    build_initial_configuration,
+    create_access_key,
+    remove_access_key,
+    set_profile_access,
+)
 from ada.web.access.configuration.errors import (
     AdaAccessConfigurationProjectionError,
     AdaAccessConfigurationSourceError,
@@ -29,5 +35,9 @@ __all__ = [
     'AdaAccessSourcePayload',
     'AdaAccessSourceRelease',
     'AdaAccessSourceService',
+    'build_initial_configuration',
+    'create_access_key',
     'create_ada_access_projection_service',
+    'remove_access_key',
+    'set_profile_access',
 ]

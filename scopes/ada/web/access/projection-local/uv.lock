@@ -33,10 +33,15 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "ada-web-access", editable = "../core" },
+    { name = "atlanticus-web", marker = "extra == 'web'", editable = "../../../../../web/framework/core" },
+    { name = "atlanticus-web-bootstrap", marker = "extra == 'web'", editable = "../../../../../web/framework/bootstrap" },
     { name = "atlanticus-web-profiles", editable = "../../../../../web/capabilities/profiles/core" },
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
+    { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
+    { name = "dash-bootstrap-components", marker = "extra == 'web'", specifier = "==2.0.4" },
 ]
+provides-extras = ["web"]
 
 [package.metadata.requires-dev]
 dev = [

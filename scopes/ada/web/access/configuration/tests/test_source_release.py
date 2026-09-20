@@ -32,6 +32,7 @@ from atlanticus.web.source.models import (
 
 def _configuration() -> AdaAccessConfiguration:
     return AdaAccessConfiguration(
+        access_keys=('navigation.view',),
         profile_access=(
             ProfileAccessGrant(
                 profile_key='operator',
@@ -58,35 +59,29 @@ def test_source_codec_round_trips_deterministic_compact_resource() -> None:
     raw = gzip.decompress(first.content)
     document = json.loads(raw.decode('utf-8'))
 
-    assert ADA_ACCESS_SOURCE_SCHEMA_VERSION == 2
+    assert ADA_ACCESS_SOURCE_SCHEMA_VERSION == 3
     assert first.logical_path == ADA_ACCESS_SOURCE_RESOURCE_PATH
     assert first.content == second.content
     assert b'\n' not in raw
     assert b': ' not in raw
-    assert set(document['configuration']) == {'profile_access'}
+    assert set(document['configuration']) == {'access_keys', 'profile_access'}
     assert decoded.configuration == configuration
     assert decoded.published_by == 'manager-user'
 
 
-def test_source_codec_rejects_previous_user_assignment_schema() -> None:
-    legacy = {
+def test_source_codec_rejects_previous_schema_without_compatibility() -> None:
+    previous = {
         'document_type': 'ada_access_configuration_release',
-        'schema_version': 1,
+        'schema_version': 2,
         'published_by': 'manager-user',
         'configuration': {
-            'user_profiles': [
-                {
-                    'user_id': 'user-1',
-                    'profile_keys': ['operator'],
-                }
-            ],
             'profile_access': [],
         },
     }
     resource = SourceResource(
         logical_path=ADA_ACCESS_SOURCE_RESOURCE_PATH,
         content=gzip.compress(
-            json.dumps(legacy, separators=(',', ':')).encode('utf-8'),
+            json.dumps(previous, separators=(',', ':')).encode('utf-8'),
             mtime=0,
         ),
     )
