@@ -15,21 +15,21 @@ from .helpers import (
     ProjectionStoreStub,
     SourceStoreStub,
     definition_configuration,
-    kpi_configuration_projection,
+    kpi_registry_projection,
     release_ref,
 )
 
 
-def test_service_selects_current_target_with_exact_kpi_configuration_dependency() -> None:
+def test_service_selects_current_target_with_exact_kpi_registry_dependency() -> None:
     source_key = SourceKey('ada-kpi-definition')
     source_ref = release_ref('definition-1')
-    dependency = kpi_configuration_projection('throughput')
+    dependency = kpi_registry_projection('throughput')
     source = SourceStoreStub(source_key=source_key, release_ref_value=source_ref)
     service = create_kpi_definition_projection_service(
         source=source,
         projection=ProjectionStoreStub(),
-        kpi_configuration_projection=ProjectionStoreStub(dependency),
-        kpi_configuration_source_key=dependency.source_key,
+        kpi_registry_projection=ProjectionStoreStub(dependency),
+        kpi_registry_source_key=dependency.source_key,
     )
 
     target = service.select_current_target(source_key)
@@ -46,7 +46,7 @@ def test_definition_target_keeps_configuration_dependencies_transitive_not_flatt
         source_key=SourceKey('ada-tool-configuration'),
         source_release=release_ref('tool-1', hour=10),
     )
-    dependency = kpi_configuration_projection(
+    dependency = kpi_registry_projection(
         'throughput',
         dependencies=(tool_target,),
     )
@@ -54,8 +54,8 @@ def test_definition_target_keeps_configuration_dependencies_transitive_not_flatt
     service = create_kpi_definition_projection_service(
         source=source,
         projection=ProjectionStoreStub(),
-        kpi_configuration_projection=ProjectionStoreStub(dependency),
-        kpi_configuration_source_key=dependency.source_key,
+        kpi_registry_projection=ProjectionStoreStub(dependency),
+        kpi_registry_source_key=dependency.source_key,
     )
 
     target = service.select_current_target(source_key)
@@ -69,7 +69,7 @@ def test_definition_target_keeps_configuration_dependencies_transitive_not_flatt
 def test_projection_materializes_defined_and_missing_coverage() -> None:
     source_key = SourceKey('ada-kpi-definition')
     source_ref = release_ref('definition-1')
-    dependency = kpi_configuration_projection('defined', 'missing')
+    dependency = kpi_registry_projection('defined', 'missing')
     resource = KpiDefinitionSourceCodec().encode(
         configuration=definition_configuration('defined'),
         published_by='manager-user',
@@ -83,8 +83,8 @@ def test_projection_materializes_defined_and_missing_coverage() -> None:
     service = create_kpi_definition_projection_service(
         source=source,
         projection=projection,
-        kpi_configuration_projection=ProjectionStoreStub(dependency),
-        kpi_configuration_source_key=dependency.source_key,
+        kpi_registry_projection=ProjectionStoreStub(dependency),
+        kpi_registry_source_key=dependency.source_key,
     )
     target = service.select_current_target(source_key)
     assert target is not None
@@ -103,7 +103,7 @@ def test_projection_materializes_defined_and_missing_coverage() -> None:
 def test_projection_rejects_orphan_definition() -> None:
     source_key = SourceKey('ada-kpi-definition')
     source_ref = release_ref('definition-1')
-    dependency = kpi_configuration_projection('defined')
+    dependency = kpi_registry_projection('defined')
     target = ProjectionTarget(
         source_key=source_key,
         source_release=source_ref,
@@ -128,15 +128,15 @@ def test_projection_rejects_orphan_definition() -> None:
         match='Published KPI Definition is not valid for projection',
     ):
         KpiDefinitionProjectionBuilder(
-            kpi_configuration_projection=ProjectionStoreStub(dependency),
-            kpi_configuration_source_key=dependency.source_key,
+            kpi_registry_projection=ProjectionStoreStub(dependency),
+            kpi_registry_source_key=dependency.source_key,
         ).build(target=target, release=release, resources=resources)
 
 
-def test_projection_fails_if_kpi_configuration_changes_after_target_selection() -> None:
+def test_projection_fails_if_kpi_registry_changes_after_target_selection() -> None:
     source_key = SourceKey('ada-kpi-definition')
     source_ref = release_ref('definition-1')
-    dependency_store = ProjectionStoreStub(kpi_configuration_projection('throughput', release='config-1'))
+    dependency_store = ProjectionStoreStub(kpi_registry_projection('throughput', release='config-1'))
     resource = KpiDefinitionSourceCodec().encode(
         configuration=definition_configuration('throughput'),
         published_by='manager-user',
@@ -150,36 +150,36 @@ def test_projection_fails_if_kpi_configuration_changes_after_target_selection() 
     service = create_kpi_definition_projection_service(
         source=source,
         projection=projection,
-        kpi_configuration_projection=dependency_store,
-        kpi_configuration_source_key=dependency_store.value.source_key,
+        kpi_registry_projection=dependency_store,
+        kpi_registry_source_key=dependency_store.value.source_key,
     )
     target = service.select_current_target(source_key)
     assert target is not None
-    dependency_store.value = kpi_configuration_projection('throughput', release='config-2')
+    dependency_store.value = kpi_registry_projection('throughput', release='config-2')
 
     with pytest.raises(ProjectionExecutionError) as error:
         service.project(target)
 
     assert isinstance(error.value.__cause__, KpiDefinitionProjectionError)
     assert str(error.value.__cause__) == (
-        'KPI Configuration projection changed before KPI Definition projection'
+        'KPI Registry projection changed before KPI Definition projection'
     )
     assert projection.calls == 0
 
 
-def test_target_selection_requires_kpi_configuration_projection() -> None:
+def test_target_selection_requires_kpi_registry_projection() -> None:
     source_key = SourceKey('ada-kpi-definition')
     config_key = SourceKey('ada-kpi-configuration')
     source = SourceStoreStub(source_key=source_key, release_ref_value=release_ref('definition-1'))
     service = create_kpi_definition_projection_service(
         source=source,
         projection=ProjectionStoreStub(),
-        kpi_configuration_projection=ProjectionStoreStub(),
-        kpi_configuration_source_key=config_key,
+        kpi_registry_projection=ProjectionStoreStub(),
+        kpi_registry_source_key=config_key,
     )
 
     with pytest.raises(
         KpiDefinitionProjectionError,
-        match='KPI Configuration projection is not available',
+        match='KPI Registry projection is not available',
     ):
         service.select_current_target(source_key)

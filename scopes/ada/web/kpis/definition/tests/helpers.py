@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from ada.web.kpis.configuration import KpiConfiguration, KpiConfigurationBinding
+from ada.web.kpis.registry.models import KpiRegistry, KpiRegistryBinding
 from ada.web.kpis.definition import KpiDefinition, KpiDefinitionConfiguration
 from atlanticus.web.projection.models import ProjectionRecord, ProjectionTarget
 from atlanticus.web.source.models import (
@@ -22,10 +22,10 @@ def release_ref(value: str, *, hour: int = 12) -> SourceReleaseRef:
     )
 
 
-def kpi_configuration(*keys: str) -> KpiConfiguration:
-    return KpiConfiguration(
+def kpi_registry(*keys: str) -> KpiRegistry:
+    return KpiRegistry(
         tuple(
-            KpiConfigurationBinding(
+            KpiRegistryBinding(
                 kpi_key=key,
                 destination_keys=('crusher',),
             )
@@ -43,11 +43,11 @@ def definition_configuration(*keys: str) -> KpiDefinitionConfiguration:
     )
 
 
-def kpi_configuration_projection(
+def kpi_registry_projection(
     *keys: str,
     release: str = 'kpi-config-1',
     dependencies: tuple[ProjectionTarget, ...] = (),
-) -> ProjectionRecord[KpiConfiguration]:
+) -> ProjectionRecord[KpiRegistry]:
     source_key = SourceKey('ada-kpi-configuration')
     ref = release_ref(release, hour=11)
     return ProjectionRecord(
@@ -55,7 +55,7 @@ def kpi_configuration_projection(
         source_release_id=ref.release_id,
         source_published_at_utc=ref.published_at_utc,
         projected_at_utc=datetime(2026, 9, 16, 11, 30, tzinfo=UTC),
-        payload=kpi_configuration(*keys),
+        payload=kpi_registry(*keys),
         dependencies=dependencies,
     )
 

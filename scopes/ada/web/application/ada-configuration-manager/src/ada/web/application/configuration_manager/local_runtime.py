@@ -23,13 +23,17 @@ from ada.web.application.configuration_manager.composition import (
 from ada.web.application.configuration_manager.dependencies import (
     ConfigurationManagerDependencies,
 )
-from ada.web.application.configuration_manager.tool_kpi_destinations import (
+from ada.web.application.configuration_manager.tool_kpi_registry_destinations import (
     ToolConfigurationKpiDestinationCatalogProvider,
 )
-from ada.web.kpis.configuration import (
-    KpiConfiguration,
-    KpiSourceService,
-    create_kpi_projection_service,
+from ada.web.kpis.registry.models import KpiRegistry
+from ada.web.kpis.registry.configuration import (
+    KpiRegistrySourceService,
+    create_kpi_registry_projection_service,
+)
+from ada.web.kpis.registry.projection.local import (
+    LocalKpiRegistryProjectionStore,
+    LocalKpiRegistryProjectionStoreSettings,
 )
 from ada.web.kpis.definition import (
     KpiDefinitionCatalog,
@@ -67,7 +71,7 @@ PayloadT = TypeVar('PayloadT')
 
 NAVIGATION_SOURCE_KEY = SourceKey('navigation')
 TOOLS_SOURCE_KEY = SourceKey('tools')
-KPI_SOURCE_KEY = SourceKey('kpis')
+KPI_REGISTRY_SOURCE_KEY = SourceKey('kpis')
 KPI_DEFINITION_SOURCE_KEY = SourceKey('kpi-definitions')
 ADA_ACCESS_SOURCE_KEY = SourceKey('ada-access')
 
@@ -143,7 +147,11 @@ def create_local_configuration_manager_dependencies(
 
     navigation_projection_store = InProcessProjectionStore[NavigationConfigurationCatalog]()
     tools_projection_store = InProcessProjectionStore[ToolConfiguration]()
-    kpi_projection_store = InProcessProjectionStore[KpiConfiguration]()
+    kpi_registry_projection_store = LocalKpiRegistryProjectionStore(
+        LocalKpiRegistryProjectionStoreSettings(
+            root=root.parent / f'{root.name}-projection'
+        )
+    )
     kpi_definition_projection_store = InProcessProjectionStore[KpiDefinitionCatalog]()
     profiles_projection_store = InProcessProjectionStore[ProfileCatalog]()
     access_projection_store = InProcessProjectionStore[AdaAccessConfiguration]()
@@ -153,7 +161,7 @@ def create_local_configuration_manager_dependencies(
         source_key=NAVIGATION_SOURCE_KEY,
     )
     tools_source = ToolSourceService(source=source_store, source_key=TOOLS_SOURCE_KEY)
-    kpis_source = KpiSourceService(source=source_store, source_key=KPI_SOURCE_KEY)
+    kpi_registry_source = KpiRegistrySourceService(source=source_store, source_key=KPI_REGISTRY_SOURCE_KEY)
     kpi_definitions_source = KpiDefinitionSourceService(
         source=source_store,
         source_key=KPI_DEFINITION_SOURCE_KEY,
@@ -171,20 +179,20 @@ def create_local_configuration_manager_dependencies(
         source=source_store,
         projection=tools_projection_store,
     )
-    kpi_destinations = ToolConfigurationKpiDestinationCatalogProvider(
+    kpi_registry_destinations = ToolConfigurationKpiDestinationCatalogProvider(
         projection=tools_projection_store,
         source_key=TOOLS_SOURCE_KEY,
     )
-    kpis_projection = create_kpi_projection_service(
+    kpi_registry_projection = create_kpi_registry_projection_service(
         source=source_store,
-        projection=kpi_projection_store,
-        destinations=kpi_destinations,
+        projection=kpi_registry_projection_store,
+        destinations=kpi_registry_destinations,
     )
     kpi_definitions_projection = create_kpi_definition_projection_service(
         source=source_store,
         projection=kpi_definition_projection_store,
-        kpi_configuration_projection=kpi_projection_store,
-        kpi_configuration_source_key=KPI_SOURCE_KEY,
+        kpi_registry_projection=kpi_registry_projection_store,
+        kpi_registry_source_key=KPI_REGISTRY_SOURCE_KEY,
     )
     access_projection = create_ada_access_projection_service(
         source=source_store,
@@ -246,10 +254,10 @@ def create_local_configuration_manager_dependencies(
         principal_provider=lambda: principal,
         profiles_module=profiles_manager.module,
         users_entry=users_manager.entry,
-        kpis_source=kpis_source,
-        kpis_projection=kpis_projection,
-        kpi_destinations=kpi_destinations,
-        kpi_configuration_projection=kpi_projection_store,
+        kpi_registry_source=kpi_registry_source,
+        kpi_registry_projection=kpi_registry_projection,
+        kpi_registry_destinations=kpi_registry_destinations,
+        kpi_registry_projection_store=kpi_registry_projection_store,
         kpi_definitions_source=kpi_definitions_source,
         kpi_definitions_projection=kpi_definitions_projection,
         navigation_source_name='Local Source',
@@ -258,8 +266,8 @@ def create_local_configuration_manager_dependencies(
         tools_projection_name='In-process Projection',
         access_source_name='Local Source',
         access_projection_name='In-process Projection',
-        kpis_source_name='Local Source',
-        kpis_projection_name='In-process Projection',
+        kpi_registry_source_name='Local Source',
+        kpi_registry_projection_name='Local Projection',
         kpi_definitions_source_name='Local Source',
         kpi_definitions_projection_name='In-process Projection',
     )

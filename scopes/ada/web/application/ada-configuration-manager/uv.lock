@@ -8,8 +8,10 @@ version = "0.5.1"
 source = { editable = "." }
 dependencies = [
     { name = "ada-web-access-configuration", extra = ["web"] },
-    { name = "ada-web-kpi-configuration", extra = ["web"] },
     { name = "ada-web-kpi-definition", extra = ["web"] },
+    { name = "ada-web-kpi-registry" },
+    { name = "ada-web-kpi-registry-configuration", extra = ["web"] },
+    { name = "ada-web-kpi-registry-projection-local" },
     { name = "ada-web-tools" },
     { name = "ada-web-tools-configuration", extra = ["web"] },
     { name = "atlanticus-web" },
@@ -35,8 +37,10 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "ada-web-access-configuration", extras = ["web"], editable = "../../access/configuration" },
-    { name = "ada-web-kpi-configuration", extras = ["web"], editable = "../../kpis/configuration" },
     { name = "ada-web-kpi-definition", extras = ["web"], editable = "../../kpis/definition" },
+    { name = "ada-web-kpi-registry", editable = "../../kpis/registry/core" },
+    { name = "ada-web-kpi-registry-configuration", extras = ["web"], editable = "../../kpis/registry/configuration" },
+    { name = "ada-web-kpi-registry-projection-local", editable = "../../kpis/registry/projection-local" },
     { name = "ada-web-tools", editable = "../../tools/core" },
     { name = "ada-web-tools-configuration", extras = ["web"], editable = "../../tools/configuration" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
@@ -158,10 +162,11 @@ dev = [
 ]
 
 [[package]]
-name = "ada-web-kpi-configuration"
-version = "0.3.6"
-source = { editable = "../../kpis/configuration" }
+name = "ada-web-kpi-definition"
+version = "0.6.0"
+source = { editable = "../../kpis/definition" }
 dependencies = [
+    { name = "ada-web-kpi-registry" },
     { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
 ]
@@ -177,6 +182,7 @@ web = [
 [package.metadata]
 requires-dist = [
     { name = "ada-web-configuration", marker = "extra == 'web'", editable = "../../configuration/core" },
+    { name = "ada-web-kpi-registry", editable = "../../kpis/registry/core" },
     { name = "atlanticus-web", marker = "extra == 'web'", editable = "../../../../../web/framework/core" },
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
@@ -196,11 +202,24 @@ dev = [
 ]
 
 [[package]]
-name = "ada-web-kpi-definition"
-version = "0.6.0"
-source = { editable = "../../kpis/definition" }
+name = "ada-web-kpi-registry"
+version = "0.1.0"
+source = { editable = "../../kpis/registry/core" }
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-kpi-registry-configuration"
+version = "0.1.0"
+source = { editable = "../../kpis/registry/configuration" }
 dependencies = [
-    { name = "ada-web-kpi-configuration" },
+    { name = "ada-web-kpi-registry" },
     { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
 ]
@@ -216,7 +235,7 @@ web = [
 [package.metadata]
 requires-dist = [
     { name = "ada-web-configuration", marker = "extra == 'web'", editable = "../../configuration/core" },
-    { name = "ada-web-kpi-configuration", editable = "../../kpis/configuration" },
+    { name = "ada-web-kpi-registry", editable = "../../kpis/registry/core" },
     { name = "atlanticus-web", marker = "extra == 'web'", editable = "../../../../../web/framework/core" },
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
@@ -231,6 +250,31 @@ dev = [
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "dash", specifier = "==4.4.1" },
     { name = "dash-bootstrap-components", specifier = "==2.0.4" },
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-kpi-registry-projection-local"
+version = "0.1.0"
+source = { editable = "../../kpis/registry/projection-local" }
+dependencies = [
+    { name = "ada-web-kpi-registry" },
+    { name = "ada-web-kpi-registry-configuration" },
+    { name = "atlanticus-web-projection" },
+    { name = "atlanticus-web-source" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-web-kpi-registry", editable = "../../kpis/registry/core" },
+    { name = "ada-web-kpi-registry-configuration", editable = "../../kpis/registry/configuration" },
+    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
+    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
+]
+
+[package.metadata.requires-dev]
+dev = [
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]
@@ -973,11 +1017,11 @@ wheels = [
 
 [[package]]
 name = "idna"
-version = "3.19"
+version = "3.20"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/5f/f7/abb373e5757eaec4b922b92f97ec8d6d7e057cf06778247604fbc4e7c3f3/idna-3.19.tar.gz", hash = "sha256:5e0811a4383b21dc5838069f801c4fb62113b7447663d2530d2bd6e77b49bf15", size = 215237, upload-time = "2026-08-18T05:14:24.27Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f5/08/8eea9d4b8302028f3abb2c0813953f7aec26d33b7a8960ed760e65ff29fa/idna-3.20.tar.gz", hash = "sha256:a7db850025b95ded1eae8a46181a1a6c56c92c96f0e2b005d9ff8dc0210cab44", size = 216463, upload-time = "2026-09-17T14:11:04.752Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/57/b0/0e52c878c53f245edd3a11020f20979b3f490f245af532c7cae3027754b5/idna-3.19-py3-none-any.whl", hash = "sha256:815e7be7a7806d54abb586dc943addc79e8b2ee16915059658cbeff4b1b43bf4", size = 68550, upload-time = "2026-08-18T05:14:22.343Z" },
+    { url = "https://files.pythonhosted.org/packages/58/a2/bb081bab032533a855d44de1d56f8e8426114ff1ba5d1f07a438a0a654f8/idna-3.20-py3-none-any.whl", hash = "sha256:ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c", size = 69583, upload-time = "2026-09-17T14:11:03.168Z" },
 ]
 
 [[package]]
@@ -1072,11 +1116,11 @@ wheels = [
 
 [[package]]
 name = "narwhals"
-version = "2.25.0"
+version = "2.26.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/6f/7b/6248dada39781db1ab3ebf08943080df0796098515a87f6f8696d14ec744/narwhals-2.25.0.tar.gz", hash = "sha256:62c036c810662bf7820b7737077176313bc59350eeeefb808510f388c743e4b2", size = 677076, upload-time = "2026-08-20T18:10:15.454Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/35/68/5351e34623d253423240ea7de3f8fc74fa8ab14b1ab3c0ec4ac8997413c9/narwhals-2.26.0.tar.gz", hash = "sha256:6b9cadca82f375c7e4cf584fdc86ca25da54827307a9c58f94547ee6104b82dd", size = 686970, upload-time = "2026-09-08T13:32:08.964Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/eb/dc/55481808fd70ef1567cf13540ffd4702af3f74b112e35427564b03f79c2d/narwhals-2.25.0-py3-none-any.whl", hash = "sha256:1f0f403e8c7e4463cde9bfe78b12fdd809e3ae3dda6d9b2f802934fb9c7a6a8f", size = 467373, upload-time = "2026-08-20T18:10:13.834Z" },
+    { url = "https://files.pythonhosted.org/packages/40/b5/1b84b2c784db76d69442334bc8b8748c840f13ca53be086f4f250ad4a0bc/narwhals-2.26.0-py3-none-any.whl", hash = "sha256:29326d74f107c347fd1009bd58e38d9f7c7c5b51e6de97bc93dbc325d9038b54", size = 474034, upload-time = "2026-09-08T13:32:07.159Z" },
 ]
 
 [[package]]
@@ -1099,15 +1143,15 @@ wheels = [
 
 [[package]]
 name = "plotly"
-version = "7.0.0"
+version = "7.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "narwhals" },
     { name = "packaging" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ec/9e/8894e8eae20a5b2a44aa568b1d2d80291e8eea6ce7bc75cdc7a152aef0ac/plotly-7.0.0.tar.gz", hash = "sha256:08b21f1244a97e7a1a699833c4bb2678475aa108b3f1989886ed0b038ebfd849", size = 6218668, upload-time = "2026-08-25T17:47:29.088Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/49/c3/72b369f5ed7701b04ab0ea3dcf83e9bbce71c0b3bc6f07f87568550d09ea/plotly-7.1.0.tar.gz", hash = "sha256:f860166a4a3d78c69cb1f4a15f28a5c8283eade98a282a698f3bb853a449ace5", size = 6689315, upload-time = "2026-09-15T19:21:21.75Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e0/2f/6f492108d9955bac97979d9949c1b35eab30fc630b1f22bbdd2c7cacbab4/plotly-7.0.0-py3-none-any.whl", hash = "sha256:78cbf7bd06d1b05bb3b8ec1b709864695229b55151b6f7530fbf55517ead6fdd", size = 9052859, upload-time = "2026-08-25T17:47:24.689Z" },
+    { url = "https://files.pythonhosted.org/packages/e5/7d/905a3a3d51087515719058c94cfbda2ff0fc14417c20d557ae3e82d8b250/plotly-7.1.0-py3-none-any.whl", hash = "sha256:dbb7fa18afce40d0a8e80d1bf162eceb3faa0ce5a77fe741ad09a74cf78f53f3", size = 9692368, upload-time = "2026-09-15T19:21:18.331Z" },
 ]
 
 [[package]]
@@ -1353,11 +1397,11 @@ wheels = [
 
 [[package]]
 name = "urllib3"
-version = "2.7.0"
+version = "2.8.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/53/0c/06f8b233b8fd13b9e5ee11424ef85419ba0d8ba0b3138bf360be2ff56953/urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c", size = 433602, upload-time = "2026-05-07T16:13:18.596Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e3/05/b17359e1cefb4f909b5e40b1b90a496d987258916dbbf88e842c729f510e/urllib3-2.8.0.tar.gz", hash = "sha256:63bf2ead4c879426ebf22ef2a781eeb4aa3b4ae798a0435506f8687fd5bb9b63", size = 458972, upload-time = "2026-09-15T19:29:36.253Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7f/3e/5db95bcf282c52709639744ca2a8b149baccf648e39c8cc87553df9eae0c/urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897", size = 131087, upload-time = "2026-05-07T16:13:17.151Z" },
+    { url = "https://files.pythonhosted.org/packages/92/9d/c4e665119135114480843e7ab388fa94d8480650450e6f8e26b70d323a4c/urllib3-2.8.0-py3-none-any.whl", hash = "sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3", size = 135717, upload-time = "2026-09-15T19:29:34.577Z" },
 ]
 
 [[package]]

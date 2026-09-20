@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from types import MappingProxyType
 
-from ada.web.kpis.configuration import KpiConfiguration
+from ada.web.kpis.registry.models import KpiRegistry
 from ada.web.kpis.definition import (
     KpiDefinitionConfiguration,
     KpiDefinitionCoverageStatus,
@@ -78,15 +78,15 @@ class KpiDefinitionQuery:
 
 def build_kpi_definition_editor_items(
     configuration: KpiDefinitionConfiguration,
-    kpi_configuration: KpiConfiguration | None,
+    kpi_registry: KpiRegistry | None,
 ) -> tuple[KpiDefinitionEditorItem, ...]:
     if not isinstance(configuration, KpiDefinitionConfiguration):
         raise TypeError('KPI definition editor requires KpiDefinitionConfiguration')
-    if kpi_configuration is None:
+    if kpi_registry is None:
         return ()
-    if not isinstance(kpi_configuration, KpiConfiguration):
-        raise TypeError('KPI definition editor requires KpiConfiguration')
-    coverage = build_kpi_definition_coverage(configuration, kpi_configuration)
+    if not isinstance(kpi_registry, KpiRegistry):
+        raise TypeError('KPI definition editor requires KpiRegistry')
+    coverage = build_kpi_definition_coverage(configuration, kpi_registry)
     items = [
         KpiDefinitionEditorItem(
             kpi_key=item.kpi_key,
@@ -99,7 +99,7 @@ def build_kpi_definition_editor_items(
         )
         for item in coverage
     ]
-    available = kpi_configuration.kpi_keys
+    available = kpi_registry.kpi_keys
     items.extend(
         KpiDefinitionEditorItem(
             kpi_key=definition.kpi_key,
@@ -114,14 +114,14 @@ def build_kpi_definition_editor_items(
 
 def query_kpi_definitions(
     configuration: KpiDefinitionConfiguration,
-    kpi_configuration: KpiConfiguration | None,
+    kpi_registry: KpiRegistry | None,
     query: KpiDefinitionQuery,
 ) -> Page[KpiDefinitionEditorItem]:
     if not isinstance(query, KpiDefinitionQuery):
         raise TypeError('KPI definition query requires KpiDefinitionQuery')
     items = tuple(
         item
-        for item in build_kpi_definition_editor_items(configuration, kpi_configuration)
+        for item in build_kpi_definition_editor_items(configuration, kpi_registry)
         if _matches_search(item, query.search) and _matches_status(item, query.status)
     )
     ordered = tuple(sorted(items, key=lambda item: item.kpi_key.casefold()))

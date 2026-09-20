@@ -4,11 +4,11 @@ from ada.web.kpis.definition.web import (
     delete_definition,
     save_definition_detail,
 )
-from .helpers import kpi_configuration
+from .helpers import kpi_registry
 
 
 def test_create_and_edit_detail_preserve_other_fields() -> None:
-    configured = kpi_configuration('availability')
+    configured = kpi_registry('availability')
     created = save_definition_detail(
         KpiDefinitionConfiguration(),
         configured,
@@ -39,7 +39,7 @@ def test_create_and_edit_detail_preserve_other_fields() -> None:
 
 
 def test_definition_creation_requires_configured_kpi_and_detail() -> None:
-    configured = kpi_configuration('availability')
+    configured = kpi_registry('availability')
 
     with pytest.raises(ValueError, match='detalle'):
         save_definition_detail(

@@ -24,10 +24,10 @@ def test_kpi_and_definition_are_optional_direct_generic_modules() -> None:
     kpi_store = EmptyProjectionStore()
     injected = replace(
         dependencies(),
-        kpis_source=SourceStub('kpis'),
-        kpis_projection=ProjectionStub(),
-        kpi_destinations=DestinationProviderStub(),
-        kpi_configuration_projection=kpi_store,
+        kpi_registry_source=SourceStub('kpis'),
+        kpi_registry_projection=ProjectionStub(),
+        kpi_registry_destinations=DestinationProviderStub(),
+        kpi_registry_projection_store=kpi_store,
         kpi_definitions_source=SourceStub('kpi-definitions'),
         kpi_definitions_projection=ProjectionStub(),
     )

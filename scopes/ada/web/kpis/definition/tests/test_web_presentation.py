@@ -14,7 +14,7 @@ from ada.web.kpis.definition.web.ids import (
     ROW_VIEW_TYPE,
 )
 
-from .helpers import kpi_configuration
+from .helpers import kpi_registry
 
 
 def _walk(component: object) -> list[Component]:
@@ -31,14 +31,14 @@ def _walk(component: object) -> list[Component]:
 
 
 def test_actions_follow_pending_defined_contract() -> None:
-    configured = kpi_configuration('pending', 'defined')
+    configured = kpi_registry('pending', 'defined')
     configuration = KpiDefinitionConfiguration(
         (KpiDefinition(kpi_key='defined', fields={'detail': 'Texto'}),)
     )
     component = build_kpi_definition_editor(
         query_kpi_definitions(configuration, configured, KpiDefinitionQuery()),
         query=KpiDefinitionQuery(),
-        kpi_configuration=configured,
+        kpi_registry=configured,
     )
 
     pattern_types = [

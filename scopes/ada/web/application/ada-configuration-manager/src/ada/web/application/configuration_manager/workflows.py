@@ -3,13 +3,13 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from ada.web.kpis.configuration import (
-    KpiConfiguration,
-    KpiConfigurationSourceError,
-    KpiConfigurationValidationError,
+from ada.web.kpis.registry.errors import KpiRegistryValidationError
+from ada.web.kpis.registry.models import KpiRegistry
+from ada.web.kpis.registry.configuration import (
     KpiDestinationCatalogProvider,
-    KpiSourceService,
-    validate_kpi_configuration_destinations,
+    KpiRegistrySourceError,
+    KpiRegistrySourceService,
+    validate_kpi_registry_destinations,
 )
 from ada.web.kpis.definition import (
     KpiDefinitionConfiguration,
@@ -223,11 +223,11 @@ class ToolManagerDraftValidationWorkflow:
         )
 
 
-class KpiConfigurationManagerSourceWorkflow:
+class KpiRegistryManagerSourceWorkflow:
     def __init__(
         self,
         *,
-        source: KpiSourceService,
+        source: KpiRegistrySourceService,
         audit_actor_provider: Callable[[], str],
     ) -> None:
         self._source = source
@@ -242,10 +242,10 @@ class KpiConfigurationManagerSourceWorkflow:
             return SourceReadResult(snapshot=snapshot, payload=None)
         release = self._source.load_release(snapshot.current.release_ref)
         if self._source.get_current() != snapshot:
-            raise KpiConfigurationSourceError('KPI source changed while it was being loaded')
+            raise KpiRegistrySourceError('KPI source changed while it was being loaded')
         return SourceReadResult(
             snapshot=snapshot,
-            payload=release.configuration.to_document(),
+            payload=release.registry.to_document(),
         )
 
     def list_history(self, *, limit: int = 20) -> HistoryPage:
@@ -258,7 +258,7 @@ class KpiConfigurationManagerSourceWorkflow:
         release = self._source.load_release(release_ref)
         return SourceHistoryReadResult(
             release_ref=release_ref,
-            payload=release.configuration.to_document(),
+            payload=release.registry.to_document(),
         )
 
     def publish_draft(
@@ -267,10 +267,10 @@ class KpiConfigurationManagerSourceWorkflow:
         expected_source_snapshot: SourceSnapshot,
     ) -> SourcePublicationResult:
         _require_source_key(expected_source_snapshot, self._source.source_key)
-        configuration = KpiConfiguration.from_document(dict(payload))
+        registry = KpiRegistry.from_document(dict(payload))
         actor = _audit_actor(self._audit_actor_provider)
-        published = self._source.publish_configuration(
-            configuration,
+        published = self._source.publish_registry(
+            registry,
             published_by=actor,
             expected_concurrency_token=expected_source_snapshot.concurrency_token,
             basis_release=_basis_release(expected_source_snapshot),
@@ -278,7 +278,7 @@ class KpiConfigurationManagerSourceWorkflow:
         return _publication_result(published, actor)
 
 
-class KpiConfigurationManagerDraftValidationWorkflow:
+class KpiRegistryManagerDraftValidationWorkflow:
     def __init__(
         self,
         *,
@@ -292,7 +292,7 @@ class KpiConfigurationManagerDraftValidationWorkflow:
         revision = build_workspace_revision(payload)
         audit = _audit(self._audit_actor_provider)
         try:
-            configuration = KpiConfiguration.from_document(dict(payload))
+            configuration = KpiRegistry.from_document(dict(payload))
             destinations = self._destinations.load()
             if destinations is None:
                 return _invalid(
@@ -301,15 +301,15 @@ class KpiConfigurationManagerDraftValidationWorkflow:
                     code='kpis.tools-projection.unavailable',
                     message='Tool projection is not available',
                 )
-            validate_kpi_configuration_destinations(
+            validate_kpi_registry_destinations(
                 configuration,
                 destinations.catalog,
             )
-        except KpiConfigurationValidationError as error:
+        except KpiRegistryValidationError as error:
             return _invalid(
                 revision,
                 audit,
-                code='kpis.configuration.invalid',
+                code='kpis.registry.invalid',
                 message=str(error),
             )
         destination_keys = {
@@ -389,12 +389,12 @@ class KpiDefinitionManagerDraftValidationWorkflow:
     def __init__(
         self,
         *,
-        kpi_configuration_projection: ProjectionStore[KpiConfiguration],
-        kpi_configuration_source_key: SourceKey,
+        kpi_registry_projection_store: ProjectionStore[KpiRegistry],
+        kpi_registry_source_key: SourceKey,
         audit_actor_provider: Callable[[], str],
     ) -> None:
-        self._kpi_configuration_projection = kpi_configuration_projection
-        self._kpi_configuration_source_key = kpi_configuration_source_key
+        self._kpi_registry_projection_store = kpi_registry_projection_store
+        self._kpi_registry_source_key = kpi_registry_source_key
         self._audit_actor_provider = audit_actor_provider
 
     def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult:
@@ -402,22 +402,22 @@ class KpiDefinitionManagerDraftValidationWorkflow:
         audit = _audit(self._audit_actor_provider)
         try:
             configuration = KpiDefinitionConfiguration.from_document(dict(payload))
-            kpi_projection = self._kpi_configuration_projection.get_active(
-                self._kpi_configuration_source_key
+            kpi_projection = self._kpi_registry_projection_store.get_active(
+                self._kpi_registry_source_key
             )
             if kpi_projection is None:
                 return _invalid(
                     revision,
                     audit,
                     code='kpi-definitions.kpi-projection.unavailable',
-                    message='KPI Configuration projection is not available',
+                    message='KPI Registry projection is not available',
                 )
-            if not isinstance(kpi_projection.payload, KpiConfiguration):
+            if not isinstance(kpi_projection.payload, KpiRegistry):
                 return _invalid(
                     revision,
                     audit,
                     code='kpi-definitions.kpi-projection.invalid',
-                    message='KPI Configuration projection payload is invalid',
+                    message='KPI Registry projection payload is invalid',
                 )
             validate_kpi_definition_configuration(
                 configuration,

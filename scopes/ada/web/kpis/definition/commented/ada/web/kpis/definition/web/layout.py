@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from dash import dcc, html
 
-from ada.web.kpis.configuration import KpiConfiguration
+from ada.web.kpis.registry.models import KpiRegistry
 from ada.web.kpis.definition import KpiDefinitionConfiguration
 from ada.web.kpis.definition.web.ids import (
     CONFIGURATION_STORE_ID,
@@ -22,8 +22,8 @@ def build_kpi_definition_editor_surface(
 ) -> object:
     configuration = KpiDefinitionConfiguration()
     query = KpiDefinitionQuery()
-    kpi_configuration = load_kpi_configuration(context)
-    page = query_kpi_definitions(configuration, kpi_configuration, query)
+    kpi_registry = load_kpi_registry(context)
+    page = query_kpi_definitions(configuration, kpi_registry, query)
     return html.Div(
         [
             dcc.Store(
@@ -40,7 +40,7 @@ def build_kpi_definition_editor_surface(
             build_kpi_definition_editor(
                 page,
                 query=query,
-                kpi_configuration=kpi_configuration,
+                kpi_registry=kpi_registry,
                 can_manage=context.can_manage(),
             ),
         ],
@@ -48,16 +48,16 @@ def build_kpi_definition_editor_surface(
     )
 
 
-def load_kpi_configuration(
+def load_kpi_registry(
     context: KpiDefinitionEditorContext,
-) -> KpiConfiguration | None:
+) -> KpiRegistry | None:
     try:
-        projection = context.kpi_configuration_projection.get_active(
-            context.kpi_configuration_source_key
+        projection = context.kpi_registry_projection.get_active(
+            context.kpi_registry_source_key
         )
     except Exception:
         return None
-    if projection is None or not isinstance(projection.payload, KpiConfiguration):
+    if projection is None or not isinstance(projection.payload, KpiRegistry):
         return None
     return projection.payload
 

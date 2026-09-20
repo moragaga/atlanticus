@@ -3,10 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ada.web.access.configuration import AdaAccessConfiguration, AdaAccessSourceService
-from ada.web.kpis.configuration import (
-    KpiConfiguration,
+from ada.web.kpis.registry.models import KpiRegistry
+from ada.web.kpis.registry.configuration import (
     KpiDestinationCatalogProvider,
-    KpiSourceService,
+    KpiRegistrySourceService,
 )
 from ada.web.kpis.definition import KpiDefinitionCatalog, KpiDefinitionSourceService
 from ada.web.tools.configuration import ToolConfiguration, ToolSourceService
@@ -32,10 +32,10 @@ class ConfigurationManagerDependencies:
     principal_provider: ManagerPrincipalProvider
     profiles_module: ManagerModule
     users_entry: ManagerEntry
-    kpis_source: KpiSourceService | None = None
-    kpis_projection: SourceProjectionService[KpiConfiguration] | None = None
-    kpi_destinations: KpiDestinationCatalogProvider | None = None
-    kpi_configuration_projection: ProjectionStore[KpiConfiguration] | None = None
+    kpi_registry_source: KpiRegistrySourceService | None = None
+    kpi_registry_projection: SourceProjectionService[KpiRegistry] | None = None
+    kpi_registry_destinations: KpiDestinationCatalogProvider | None = None
+    kpi_registry_projection_store: ProjectionStore[KpiRegistry] | None = None
     kpi_definitions_source: KpiDefinitionSourceService | None = None
     kpi_definitions_projection: SourceProjectionService[KpiDefinitionCatalog] | None = None
     navigation_source_name: str = 'Source'
@@ -44,16 +44,16 @@ class ConfigurationManagerDependencies:
     tools_projection_name: str = 'Projection'
     access_source_name: str = 'Source'
     access_projection_name: str = 'Projection'
-    kpis_source_name: str = 'Source'
-    kpis_projection_name: str = 'Projection'
+    kpi_registry_source_name: str = 'Source'
+    kpi_registry_projection_name: str = 'Projection'
     kpi_definitions_source_name: str = 'Source'
     kpi_definitions_projection_name: str = 'Projection'
 
     def __post_init__(self) -> None:
         kpi_contract = (
-            self.kpis_source,
-            self.kpis_projection,
-            self.kpi_destinations,
+            self.kpi_registry_source,
+            self.kpi_registry_projection,
+            self.kpi_registry_destinations,
         )
         if any(value is not None for value in kpi_contract) and not all(
             value is not None for value in kpi_contract
@@ -69,7 +69,7 @@ class ConfigurationManagerDependencies:
             value is not None for value in definition_contract
         ):
             raise ValueError('KPI Definition source and projection must be injected together')
-        if self.kpi_definitions_source is not None and self.kpis_source is None:
-            raise ValueError('KPI Definition requires KPI Configuration')
-        if self.kpi_definitions_source is not None and self.kpi_configuration_projection is None:
-            raise ValueError('KPI Definition requires the KPI Configuration projection store')
+        if self.kpi_definitions_source is not None and self.kpi_registry_source is None:
+            raise ValueError('KPI Definition requires KPI Registry')
+        if self.kpi_definitions_source is not None and self.kpi_registry_projection_store is None:
+            raise ValueError('KPI Definition requires the KPI Registry projection store')

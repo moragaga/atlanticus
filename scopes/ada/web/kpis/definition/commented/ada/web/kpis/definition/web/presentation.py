@@ -10,7 +10,7 @@ from dash import dcc, html
 from dash.development.base_component import Component
 
 from ada.web.configuration import build_configuration_pagination, configuration_dash_select_style
-from ada.web.kpis.configuration import KpiConfiguration
+from ada.web.kpis.registry.models import KpiRegistry
 from ada.web.kpis.definition import KpiDefinition
 from ada.web.kpis.definition.web.ids import (
     DEPENDENCY_ID,
@@ -53,17 +53,17 @@ def build_kpi_definition_editor(
     page: Page[KpiDefinitionEditorItem],
     *,
     query: KpiDefinitionQuery,
-    kpi_configuration: KpiConfiguration | None,
+    kpi_registry: KpiRegistry | None,
     can_manage: bool = True,
 ) -> Component:
     dependency_reason = (
         'La proyección de Configuración KPI no está disponible.'
-        if kpi_configuration is None
+        if kpi_registry is None
         else None
     )
     return html.Div(
         [
-            _toolbar(query, kpi_configuration=kpi_configuration),
+            _toolbar(query, kpi_registry=kpi_registry),
             html.Div(
                 _dependency_content(dependency_reason),
                 id=DEPENDENCY_ID,
@@ -74,7 +74,7 @@ def build_kpi_definition_editor(
                 build_kpi_definition_grid(
                     page,
                     query=query,
-                    kpi_configuration=kpi_configuration,
+                    kpi_registry=kpi_registry,
                     can_manage=can_manage,
                 ),
                 id=GRID_CONTAINER_ID,
@@ -94,14 +94,14 @@ def build_kpi_definition_grid(
     page: Page[KpiDefinitionEditorItem],
     *,
     query: KpiDefinitionQuery,
-    kpi_configuration: KpiConfiguration | None,
+    kpi_registry: KpiRegistry | None,
     can_manage: bool = True,
 ) -> Component:
     rows = [_row(item, can_manage=can_manage) for item in page.items]
     empty_state: Component | None = None
     empty_reason: str | None = None
     if not page.items:
-        if kpi_configuration is None:
+        if kpi_registry is None:
             empty_reason = 'dependency'
             empty_state = _empty_state(
                 icon='!',
@@ -117,7 +117,7 @@ def build_kpi_definition_grid(
                 detail='Ajusta o limpia los filtros para volver a mostrar resultados.',
                 reason=empty_reason,
             )
-        elif not kpi_configuration.kpi_keys:
+        elif not kpi_registry.kpi_keys:
             empty_reason = 'no-kpis'
             empty_state = _empty_state(
                 icon='+',
@@ -273,7 +273,7 @@ def build_kpi_definition_detail_view(definition: KpiDefinition) -> Component:
 def _toolbar(
     query: KpiDefinitionQuery,
     *,
-    kpi_configuration: KpiConfiguration | None,
+    kpi_registry: KpiRegistry | None,
 ) -> Component:
     return html.Div(
         [
@@ -297,7 +297,7 @@ def _toolbar(
                     html.Div(
                         dcc.Dropdown(
                             id=STATUS_FILTER_ID,
-                            options=_status_options(kpi_configuration),
+                            options=_status_options(kpi_registry),
                             value=query.status.value,
                             clearable=False,
                             searchable=False,
@@ -459,9 +459,9 @@ def _status_label(status: KpiDefinitionEditorStatus) -> str:
 
 
 def _status_options(
-    kpi_configuration: KpiConfiguration | None,
+    kpi_registry: KpiRegistry | None,
 ) -> list[dict[str, object]]:
-    disabled = kpi_configuration is None
+    disabled = kpi_registry is None
     return [
         {'label': 'Todos', 'value': KpiDefinitionStatusFilter.ALL.value},
         {

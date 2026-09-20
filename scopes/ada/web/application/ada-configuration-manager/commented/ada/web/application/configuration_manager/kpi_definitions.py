@@ -13,7 +13,7 @@ from ada.web.application.configuration_manager.workspace import (
     WorkspacePayloadReader,
     WorkspacePayloadWriter,
 )
-from ada.web.kpis.configuration import KpiConfiguration
+from ada.web.kpis.registry.configuration import KpiRegistry
 from ada.web.kpis.definition import (
     KpiDefinitionConfiguration,
     KpiDefinitionValidationError,
@@ -41,8 +41,8 @@ KPI_DEFINITION_SAVE_RESULT_ID = 'ada-configuration-manager-kpi-definitions-save-
 @dataclass(frozen=True, slots=True)
 # El editor consume directamente la proyección KPI y su SourceKey, que son la autoridad funcional vigente.
 class KpiDefinitionManagerWebContext:
-    kpi_configuration_projection: ProjectionStore[KpiConfiguration]
-    kpi_configuration_source_key: SourceKey
+    kpi_registry_projection_store: ProjectionStore[KpiRegistry]
+    kpi_registry_source_key: SourceKey
     workspace_payload_reader: WorkspacePayloadReader
     workspace_payload_writer: WorkspacePayloadWriter
     draft_store_id: object
@@ -56,8 +56,8 @@ class KpiDefinitionManagerWebContext:
 
     def editor_context(self) -> KpiDefinitionEditorContext:
         return KpiDefinitionEditorContext(
-            kpi_configuration_projection=self.kpi_configuration_projection,
-            kpi_configuration_source_key=self.kpi_configuration_source_key,
+            kpi_registry_projection=self.kpi_registry_projection_store,
+            kpi_registry_source_key=self.kpi_registry_source_key,
             can_manage=self.can_manage,
         )
 

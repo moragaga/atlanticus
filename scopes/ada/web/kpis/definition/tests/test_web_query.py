@@ -8,7 +8,7 @@ from ada.web.kpis.definition.web import (
 )
 from atlanticus.web.pagination import PageRequest
 
-from .helpers import kpi_configuration
+from .helpers import kpi_registry
 
 
 def test_editor_items_combine_configuration_coverage_and_orphans() -> None:
@@ -21,7 +21,7 @@ def test_editor_items_combine_configuration_coverage_and_orphans() -> None:
 
     items = build_kpi_definition_editor_items(
         configuration,
-        kpi_configuration('defined', 'pending'),
+        kpi_registry('defined', 'pending'),
     )
 
     assert tuple((item.kpi_key, item.status) for item in items) == (
@@ -35,7 +35,7 @@ def test_query_scales_to_five_hundred_configured_kpis() -> None:
     keys = tuple(f'kpi_{index:04d}' for index in range(500))
     page = query_kpi_definitions(
         KpiDefinitionConfiguration(),
-        kpi_configuration(*keys),
+        kpi_registry(*keys),
         KpiDefinitionQuery(page=PageRequest(page_number=1, page_size=10)),
     )
 
@@ -60,7 +60,7 @@ def test_query_search_status_and_pagination_order() -> None:
         page=PageRequest(page_number=2, page_size=10),
     )
 
-    page = query_kpi_definitions(configuration, kpi_configuration(*keys), query)
+    page = query_kpi_definitions(configuration, kpi_registry(*keys), query)
 
     assert page.total_count == 13
     assert page.page_count == 2
@@ -71,7 +71,7 @@ def test_query_search_status_and_pagination_order() -> None:
     )
 
 
-def test_query_without_kpi_configuration_is_empty_dependency_state() -> None:
+def test_query_without_kpi_registry_is_empty_dependency_state() -> None:
     configuration = KpiDefinitionConfiguration(
         (KpiDefinition(kpi_key='existing', fields={'detail': 'Texto'}),)
     )

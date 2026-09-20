@@ -13,17 +13,15 @@ from ada.web.application.configuration_manager.workspace import (
     WorkspacePayloadReader,
     WorkspacePayloadWriter,
 )
-from ada.web.kpis.configuration import (
-    KpiConfiguration,
-    KpiConfigurationValidationError,
-    KpiDestinationCatalogProvider,
-)
-from ada.web.kpis.configuration.web import (
-    KpiConfigurationEditorContext,
+from ada.web.kpis.registry.errors import KpiRegistryValidationError
+from ada.web.kpis.registry.models import KpiRegistry
+from ada.web.kpis.registry.configuration import KpiDestinationCatalogProvider
+from ada.web.kpis.registry.configuration.web import (
+    KpiRegistryEditorContext,
     build_kpi_configuration_editor_surface,
     create_kpi_configuration_editor_module,
 )
-from ada.web.kpis.configuration.web.ids import CONFIGURATION_STORE_ID
+from ada.web.kpis.registry.configuration.web.ids import CONFIGURATION_STORE_ID
 from atlanticus.web.assets import AssetLayer
 from atlanticus.web.manager import ManagerProjectionError, ManagerWorkspace, build_workspace_revision
 from atlanticus.web.modules import WebModule
@@ -58,8 +56,8 @@ class KpiManagerWebContext:
     source_name: str = 'Source'
     projection_name: str = 'Projection'
 
-    def editor_context(self) -> KpiConfigurationEditorContext:
-        return KpiConfigurationEditorContext(
+    def editor_context(self) -> KpiRegistryEditorContext:
+        return KpiRegistryEditorContext(
             destinations=self.destinations,
             can_manage=self.can_manage,
         )
@@ -78,7 +76,7 @@ def build_kpi_manager_configuration(context: KpiManagerWebContext) -> object:
 
 
 def build_kpi_history_preview(payload: dict[str, object]) -> object:
-    configuration = KpiConfiguration.from_document(payload)
+    configuration = KpiRegistry.from_document(payload)
     destinations = {
         destination
         for binding in configuration.bindings
@@ -131,8 +129,8 @@ def register_kpi_manager_callbacks(app: object, context: KpiManagerWebContext) -
             payload = context.workspace_payload_reader(draft_data)
             if payload is None:
                 return no_update
-            return KpiConfiguration.from_document(payload).to_document()
-        except (ManagerProjectionError, KpiConfigurationValidationError, ValueError):
+            return KpiRegistry.from_document(payload).to_document()
+        except (ManagerProjectionError, KpiRegistryValidationError, ValueError):
             return no_update
 
     @app.callback(
@@ -272,7 +270,7 @@ def _save_section() -> object:
     )
 
 
-def _decode_kpi_configuration_import(contents: str) -> KpiConfiguration:
+def _decode_kpi_configuration_import(contents: str) -> KpiRegistry:
     if ',' not in contents:
         raise ValueError('El archivo de configuración no es válido.')
     try:
@@ -283,17 +281,17 @@ def _decode_kpi_configuration_import(contents: str) -> KpiConfiguration:
     if not isinstance(document, dict):
         raise ValueError('El contrato de configuración KPI no es válido.')
     try:
-        return KpiConfiguration.from_document(document)
-    except KpiConfigurationValidationError as error:
+        return KpiRegistry.from_document(document)
+    except KpiRegistryValidationError as error:
         raise ValueError('El contrato de configuración KPI no es válido.') from error
 
 
-def _configuration(document: dict[str, object] | None) -> KpiConfiguration:
+def _configuration(document: dict[str, object] | None) -> KpiRegistry:
     if not isinstance(document, dict):
         raise ValueError('La configuración KPI del editor no es válida.')
     try:
-        return KpiConfiguration.from_document(document)
-    except KpiConfigurationValidationError as error:
+        return KpiRegistry.from_document(document)
+    except KpiRegistryValidationError as error:
         raise ValueError('La configuración KPI del editor no es válida.') from error
 
 

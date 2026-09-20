@@ -46,8 +46,8 @@ from ada.web.application.configuration_manager.dependencies import (
     ConfigurationManagerDependencies,
 )
 from ada.web.application.configuration_manager.workflows import (
-    KpiConfigurationManagerDraftValidationWorkflow,
-    KpiConfigurationManagerSourceWorkflow,
+    KpiRegistryManagerDraftValidationWorkflow,
+    KpiRegistryManagerSourceWorkflow,
     KpiDefinitionManagerDraftValidationWorkflow,
     KpiDefinitionManagerSourceWorkflow,
     NavigationManagerDraftValidationWorkflow,
@@ -78,8 +78,8 @@ __all__ = [
     'KPI_SOURCE_HISTORY_SERVICE',
     'KPI_SOURCE_READER_SERVICE',
     'KPI_SOURCE_SERVICE',
-    'KpiConfigurationManagerDraftValidationWorkflow',
-    'KpiConfigurationManagerSourceWorkflow',
+    'KpiRegistryManagerDraftValidationWorkflow',
+    'KpiRegistryManagerSourceWorkflow',
     'KpiDefinitionManagerDraftValidationWorkflow',
     'KpiDefinitionManagerSourceWorkflow',
     'MANAGER_ROUTE_PREFIX',

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from ada.web.kpis.configuration import KpiConfiguration
+from ada.web.kpis.registry.models import KpiRegistry
 from ada.web.kpis.definition.errors import KpiDefinitionValidationError
 from ada.web.kpis.definition.identity import require_kpi_key
 from ada.web.kpis.definition.models import KpiDefinitionConfiguration
@@ -61,13 +61,13 @@ class KpiDefinitionCatalog:
 
 def validate_kpi_definition_configuration(
     configuration: KpiDefinitionConfiguration,
-    kpi_configuration: KpiConfiguration,
+    kpi_registry: KpiRegistry,
 ) -> None:
     if not isinstance(configuration, KpiDefinitionConfiguration):
         raise KpiDefinitionValidationError('KPI definition configuration is invalid')
-    if not isinstance(kpi_configuration, KpiConfiguration):
-        raise KpiDefinitionValidationError('KPI Configuration projection is invalid')
-    available = kpi_configuration.kpi_keys
+    if not isinstance(kpi_registry, KpiRegistry):
+        raise KpiDefinitionValidationError('KPI Registry projection is invalid')
+    available = kpi_registry.kpi_keys
     for definition in configuration.definitions:
         if definition.kpi_key not in available:
             raise KpiDefinitionValidationError(
@@ -77,14 +77,14 @@ def validate_kpi_definition_configuration(
 
 def build_kpi_definition_coverage(
     configuration: KpiDefinitionConfiguration,
-    kpi_configuration: KpiConfiguration,
+    kpi_registry: KpiRegistry,
 ) -> tuple[KpiDefinitionCoverageItem, ...]:
     if not isinstance(configuration, KpiDefinitionConfiguration):
         raise KpiDefinitionValidationError('KPI definition configuration is invalid')
-    if not isinstance(kpi_configuration, KpiConfiguration):
-        raise KpiDefinitionValidationError('KPI Configuration projection is invalid')
+    if not isinstance(kpi_registry, KpiRegistry):
+        raise KpiDefinitionValidationError('KPI Registry projection is invalid')
     items = []
-    for binding in kpi_configuration.bindings:
+    for binding in kpi_registry.bindings:
         definition = configuration.definition(binding.kpi_key)
         items.append(
             KpiDefinitionCoverageItem(

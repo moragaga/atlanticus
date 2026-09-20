@@ -12,7 +12,9 @@ classifiers = [
 ]
 dependencies = [
     "ada-web-access-configuration[web]==0.1.0",
-    "ada-web-kpi-configuration[web]==0.3.6",
+    "ada-web-kpi-registry==0.1.0",
+    "ada-web-kpi-registry-configuration[web]==0.1.0",
+    "ada-web-kpi-registry-projection-local==0.1.0",
     "ada-web-kpi-definition[web]==0.6.0",
     "ada-web-tools==0.1.0",
     "ada-web-tools-configuration[web]==0.1.0",
@@ -32,7 +34,9 @@ dependencies = [
 [tool.uv.sources]
 ada-web-access = { path = "../../access/core", editable = true }
 ada-web-access-configuration = { path = "../../access/configuration", editable = true }
-ada-web-kpi-configuration = { path = "../../kpis/configuration", editable = true }
+ada-web-kpi-registry = { path = "../../kpis/registry/core", editable = true }
+ada-web-kpi-registry-configuration = { path = "../../kpis/registry/configuration", editable = true }
+ada-web-kpi-registry-projection-local = { path = "../../kpis/registry/projection-local", editable = true }
 ada-web-kpi-definition = { path = "../../kpis/definition", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
 atlanticus-web-bootstrap = { path = "../../../../../web/framework/bootstrap", editable = true }
@@ -101,7 +105,9 @@ pythonpath = [
     "src",
     "../../access/core/src",
     "../../access/configuration/src",
-    "../../kpis/configuration/src",
+    "../../kpis/registry/core/src",
+    "../../kpis/registry/configuration/src",
+    "../../kpis/registry/projection-local/src",
     "../../kpis/definition/src",
     "../../tools/core/src",
     "../../tools/configuration/src",

@@ -11,7 +11,7 @@ classifiers = [
     "Private :: Do Not Upload",
 ]
 dependencies = [
-    "ada-web-kpi-configuration==0.3.6",
+    "ada-web-kpi-registry==0.1.0",
     "atlanticus-web-projection==0.1.0",
     "atlanticus-web-source==0.1.0",
 ]
@@ -36,7 +36,7 @@ dev = [
 
 [tool.uv.sources]
 ada-web-configuration = { path = "../../configuration/core", editable = true }
-ada-web-kpi-configuration = { path = "../configuration", editable = true }
+ada-web-kpi-registry = { path = "../registry/core", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
 atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
@@ -84,7 +84,7 @@ combine-as-imports = true
 testpaths = ["tests"]
 pythonpath = [
     "src",
-    "../configuration/src",
+    "../registry/core/src",
     "../../configuration/core/src",
     "../../../../../web/framework/core/src",
     "../../../../../web/capabilities/projection/core/src",

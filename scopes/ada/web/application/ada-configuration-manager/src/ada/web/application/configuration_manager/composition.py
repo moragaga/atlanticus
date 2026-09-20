@@ -23,8 +23,8 @@ from ada.web.application.configuration_manager.tools import (
     create_tool_manager_web_module,
 )
 from ada.web.application.configuration_manager.workflows import (
-    KpiConfigurationManagerDraftValidationWorkflow,
-    KpiConfigurationManagerSourceWorkflow,
+    KpiRegistryManagerDraftValidationWorkflow,
+    KpiRegistryManagerSourceWorkflow,
     KpiDefinitionManagerDraftValidationWorkflow,
     KpiDefinitionManagerSourceWorkflow,
     NavigationManagerDraftValidationWorkflow,
@@ -267,12 +267,12 @@ def _register_services(
     services.add(TOOLS_PROJECTION_SERVICE, dependencies.tools_projection)
 
     if (
-        dependencies.kpis_source is not None
-        and dependencies.kpis_projection is not None
-        and dependencies.kpi_destinations is not None
+        dependencies.kpi_registry_source is not None
+        and dependencies.kpi_registry_projection is not None
+        and dependencies.kpi_registry_destinations is not None
     ):
-        kpi_source = KpiConfigurationManagerSourceWorkflow(
-            source=dependencies.kpis_source,
+        kpi_source = KpiRegistryManagerSourceWorkflow(
+            source=dependencies.kpi_registry_source,
             audit_actor_provider=actor_provider,
         )
         _register_source_workflow(
@@ -284,18 +284,18 @@ def _register_services(
         )
         services.add(
             KPI_DRAFT_VALIDATION_SERVICE,
-            KpiConfigurationManagerDraftValidationWorkflow(
-                destinations=dependencies.kpi_destinations,
+            KpiRegistryManagerDraftValidationWorkflow(
+                destinations=dependencies.kpi_registry_destinations,
                 audit_actor_provider=actor_provider,
             ),
         )
-        services.add(KPI_PROJECTION_SERVICE, dependencies.kpis_projection)
+        services.add(KPI_PROJECTION_SERVICE, dependencies.kpi_registry_projection)
 
     if (
         dependencies.kpi_definitions_source is not None
         and dependencies.kpi_definitions_projection is not None
-        and dependencies.kpi_configuration_projection is not None
-        and dependencies.kpis_source is not None
+        and dependencies.kpi_registry_projection_store is not None
+        and dependencies.kpi_registry_source is not None
     ):
         definition_source = KpiDefinitionManagerSourceWorkflow(
             source=dependencies.kpi_definitions_source,
@@ -311,8 +311,8 @@ def _register_services(
         services.add(
             KPI_DEFINITION_DRAFT_VALIDATION_SERVICE,
             KpiDefinitionManagerDraftValidationWorkflow(
-                kpi_configuration_projection=dependencies.kpi_configuration_projection,
-                kpi_configuration_source_key=dependencies.kpis_source.source_key,
+                kpi_registry_projection_store=dependencies.kpi_registry_projection_store,
+                kpi_registry_source_key=dependencies.kpi_registry_source.source_key,
                 audit_actor_provider=actor_provider,
             ),
         )
@@ -340,14 +340,14 @@ def _kpi_context(
     dependencies: ConfigurationManagerDependencies,
     actor_provider: Callable[[], str],
 ) -> KpiManagerWebContext | None:
-    if dependencies.kpis_source is None or dependencies.kpi_destinations is None:
+    if dependencies.kpi_registry_source is None or dependencies.kpi_registry_destinations is None:
         return None
     workspace = ManagerWorkspaceBridge(
         owner_subject_id_provider=actor_provider,
-        source_snapshot_provider=dependencies.kpis_source.get_current,
+        source_snapshot_provider=dependencies.kpi_registry_source.get_current,
     )
     return KpiManagerWebContext(
-        destinations=dependencies.kpi_destinations,
+        destinations=dependencies.kpi_registry_destinations,
         workspace_payload_reader=workspace.read_payload,
         workspace_payload_writer=workspace.write_payload,
         draft_store_id=workflow_draft_id('kpis'),
@@ -359,8 +359,8 @@ def _kpi_context(
             dependencies.principal_provider(),
             KPI_MANAGER_ACCESS_KEY,
         ),
-        source_name=dependencies.kpis_source_name,
-        projection_name=dependencies.kpis_projection_name,
+        source_name=dependencies.kpi_registry_source_name,
+        projection_name=dependencies.kpi_registry_projection_name,
     )
 
 
@@ -368,7 +368,7 @@ def _kpi_modules(
     context: KpiManagerWebContext | None,
     dependencies: ConfigurationManagerDependencies,
 ) -> tuple[ManagerModule, ...]:
-    if context is None or dependencies.kpis_source is None:
+    if context is None or dependencies.kpi_registry_source is None:
         return ()
     return (
         ManagerModule(
@@ -380,7 +380,7 @@ def _kpi_modules(
             description='Configuración de KPI y sus destinos de consumo en ADA.',
             layout=lambda _services: build_kpi_manager_configuration(context),
             history_preview_renderer=build_kpi_history_preview,
-            source_key=dependencies.kpis_source.source_key,
+            source_key=dependencies.kpi_registry_source.source_key,
             source_service=KPI_SOURCE_SERVICE,
             source_reader_service=KPI_SOURCE_READER_SERVICE,
             source_history_service=KPI_SOURCE_HISTORY_SERVICE,
@@ -388,8 +388,8 @@ def _kpi_modules(
             draft_validation_service=KPI_DRAFT_VALIDATION_SERVICE,
             access_key=KPI_MANAGER_ACCESS_KEY,
             web_module=create_kpi_manager_web_module(context),
-            source_name=dependencies.kpis_source_name,
-            projection_name=dependencies.kpis_projection_name,
+            source_name=dependencies.kpi_registry_source_name,
+            projection_name=dependencies.kpi_registry_projection_name,
         ),
     )
 
@@ -400,8 +400,8 @@ def _kpi_definition_context(
 ) -> KpiDefinitionManagerWebContext | None:
     if (
         dependencies.kpi_definitions_source is None
-        or dependencies.kpi_configuration_projection is None
-        or dependencies.kpis_source is None
+        or dependencies.kpi_registry_projection_store is None
+        or dependencies.kpi_registry_source is None
     ):
         return None
     workspace = ManagerWorkspaceBridge(
@@ -409,8 +409,8 @@ def _kpi_definition_context(
         source_snapshot_provider=dependencies.kpi_definitions_source.get_current,
     )
     return KpiDefinitionManagerWebContext(
-        kpi_configuration_projection=dependencies.kpi_configuration_projection,
-        kpi_configuration_source_key=dependencies.kpis_source.source_key,
+        kpi_registry_projection_store=dependencies.kpi_registry_projection_store,
+        kpi_registry_source_key=dependencies.kpi_registry_source.source_key,
         workspace_payload_reader=workspace.read_payload,
         workspace_payload_writer=workspace.write_payload,
         draft_store_id=workflow_draft_id('kpi-definitions'),

@@ -1,0 +1,2 @@
+class KpiRegistryValidationError(ValueError):
+    pass

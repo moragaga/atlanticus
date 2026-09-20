@@ -46,7 +46,6 @@ def test_tools_manager_combines_sources_and_structure_without_kpi_configuration(
     assert 'DRAFT_STORE_ID' in tools
     assert 'STRUCTURE_DOCUMENT_STORE_ID' in tools
     assert 'build_configuration_from_structure_editor' in tools
-    assert 'KpiConfiguration' not in tools
 
 
 def test_legacy_manager_tools_package_is_physically_absent() -> None:

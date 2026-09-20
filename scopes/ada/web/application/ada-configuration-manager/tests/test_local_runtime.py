@@ -9,7 +9,7 @@ from ada.web.application.configuration_manager.composition import (
 from ada.web.application.configuration_manager.local_runtime import (
     ADA_ACCESS_SOURCE_KEY,
     KPI_DEFINITION_SOURCE_KEY,
-    KPI_SOURCE_KEY,
+    KPI_REGISTRY_SOURCE_KEY,
     NAVIGATION_SOURCE_KEY,
     TOOLS_SOURCE_KEY,
     create_local_configuration_manager_dependencies,
@@ -29,11 +29,11 @@ def test_local_runtime_composes_configuration_sources(tmp_path) -> None:
     assert dependencies.navigation_source.source_key == NAVIGATION_SOURCE_KEY
     assert dependencies.tools_source.source_key == TOOLS_SOURCE_KEY
     assert dependencies.access_source.source_key == ADA_ACCESS_SOURCE_KEY
-    assert dependencies.kpis_source is not None
-    assert dependencies.kpis_source.source_key == KPI_SOURCE_KEY
+    assert dependencies.kpi_registry_source is not None
+    assert dependencies.kpi_registry_source.source_key == KPI_REGISTRY_SOURCE_KEY
     assert dependencies.kpi_definitions_source is not None
     assert dependencies.kpi_definitions_source.source_key == KPI_DEFINITION_SOURCE_KEY
-    assert dependencies.kpi_configuration_projection is not None
+    assert dependencies.kpi_registry_projection_store is not None
     assert dependencies.profiles_module.key == 'profiles'
     assert dependencies.profiles_module.title == 'Perfiles'
     assert dependencies.profiles_module.description == (
