@@ -25,7 +25,6 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "ada-web-components" },
-    { name = "ada-web-operational-render-binding" },
     { name = "ada-web-tools" },
     { name = "atlanticus-cosmos" },
     { name = "atlanticus-web" },
@@ -42,33 +41,11 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "ada-web-components", editable = "../../components/core" },
-    { name = "ada-web-operational-render-binding", editable = "../../operational-render-binding" },
     { name = "ada-web-tools", editable = "../../tools/core" },
     { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "atlanticus-web-observability", editable = "../../../../../web/framework/observability" },
     { name = "dash", specifier = "==4.4.1" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-operational-render-binding"
-version = "0.1.0"
-source = { editable = "../../operational-render-binding" }
-dependencies = [
-    { name = "ada-web-components" },
-    { name = "ada-web-tools" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-web-components", editable = "../../components/core" },
-    { name = "ada-web-tools", editable = "../../tools/core" },
 ]
 
 [package.metadata.requires-dev]

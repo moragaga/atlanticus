@@ -200,7 +200,6 @@ version = "0.1.0"
 source = { editable = "../../kpis/collector" }
 dependencies = [
     { name = "ada-web-components" },
-    { name = "ada-web-operational-render-binding" },
     { name = "ada-web-tools" },
     { name = "atlanticus-cosmos" },
     { name = "atlanticus-web" },
@@ -211,7 +210,6 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "ada-web-components", editable = "../../components/core" },
-    { name = "ada-web-operational-render-binding", editable = "../../operational-render-binding" },
     { name = "ada-web-tools", editable = "../../tools/core" },
     { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
@@ -230,15 +228,11 @@ name = "ada-web-operational-render-binding"
 version = "0.1.0"
 source = { editable = "../../operational-render-binding" }
 dependencies = [
-    { name = "ada-web-components" },
     { name = "ada-web-tools" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "ada-web-components", editable = "../../components/core" },
-    { name = "ada-web-tools", editable = "../../tools/core" },
-]
+requires-dist = [{ name = "ada-web-tools", editable = "../../tools/core" }]
 
 [package.metadata.requires-dev]
 dev = [

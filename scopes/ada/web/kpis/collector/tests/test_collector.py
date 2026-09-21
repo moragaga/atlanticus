@@ -369,20 +369,6 @@ def test_published_component_payload_is_deeply_read_only() -> None:
     assert isinstance(payload.timeseries.series['mine_rate']['values'], tuple)
 
 
-def test_collector_exposes_render_binding_over_current_component_stores() -> None:
-    client = CosmosClientStub()
-    _put_latest(client, _latest())
-    collector = _collector(client)
-    collector.refresh_latest()
-
-    binding = collector.operational_render_binding
-
-    assert binding.structure is collector.structure
-    assert binding.component_keys == ('mine', 'plant')
-    assert binding.components[0].store is collector.stores[0]
-    assert binding.components[1].store is collector.stores[1]
-
-
 def test_latest_can_advance_while_compatible_timeseries_remains_cached() -> None:
     client = CosmosClientStub()
     _put_latest(client, _latest())

@@ -1,7 +1,8 @@
 import pytest
 
-from ada.web.components import ComponentStoreSnapshot, ComponentStoreState
 from ada.web.operational_render_binding import (
+    OperationalComponentBinding,
+    OperationalRenderBinding,
     OperationalRenderBindingError,
     bind_operational_render,
 )
@@ -58,115 +59,55 @@ def _process_structure() -> ToolStructure:
     )
 
 
-def test_binding_mounts_all_structural_components_with_empty_stores() -> None:
+def test_binding_is_derived_exclusively_from_tool_structure() -> None:
     structure = _integrated_structure()
-    binding = bind_operational_render(
-        structure,
-        (
-            ComponentStoreSnapshot(tool_key='integrated_ops', component_key='carguio'),
-            ComponentStoreSnapshot(tool_key='integrated_ops', component_key='transporte'),
-        ),
-    )
+
+    binding = bind_operational_render(structure)
 
     assert binding.structure is structure
     assert binding.component_keys == ('carguio', 'transporte')
-    assert all(item.store.state is ComponentStoreState.EMPTY for item in binding.components)
+    assert tuple(item.component for item in binding.components) == structure.components
 
 
-def test_binding_order_is_always_driven_by_tool_structure() -> None:
+def test_binding_rejects_non_tool_structure() -> None:
+    with pytest.raises(
+        OperationalRenderBindingError,
+        match='Operational render requires ToolStructure',
+    ):
+        bind_operational_render(object())
+
+
+def test_render_binding_requires_exact_structure_order() -> None:
     structure = _integrated_structure()
-    binding = bind_operational_render(
-        structure,
-        (
-            ComponentStoreSnapshot(tool_key='integrated_ops', component_key='transporte'),
-            ComponentStoreSnapshot(tool_key='integrated_ops', component_key='carguio'),
-        ),
-    )
 
-    assert binding.component_keys == ('carguio', 'transporte')
+    with pytest.raises(
+        OperationalRenderBindingError,
+        match='Operational render component order must follow Tool Structure',
+    ):
+        OperationalRenderBinding(
+            structure=structure,
+            components=(
+                OperationalComponentBinding(component=structure.components[1]),
+                OperationalComponentBinding(component=structure.components[0]),
+            ),
+        )
 
 
-def test_binding_preserves_hydrated_payload_without_interpreting_it() -> None:
+def test_render_binding_requires_one_binding_per_component() -> None:
     structure = _integrated_structure()
-    payload = {'latest': {'tonnes': 42}, 'series': (1, 2, 3)}
-    binding = bind_operational_render(
-        structure,
-        (
-            ComponentStoreSnapshot(
-                tool_key='integrated_ops',
-                component_key='carguio',
-                payload=payload,
-            ),
-            ComponentStoreSnapshot(tool_key='integrated_ops', component_key='transporte'),
-        ),
-    )
 
-    assert binding.components[0].store.payload is payload
-    assert binding.components[0].store.state is ComponentStoreState.POPULATED
-    assert binding.components[1].store.state is ComponentStoreState.EMPTY
-
-
-def test_binding_rejects_missing_store_for_structural_component() -> None:
     with pytest.raises(
         OperationalRenderBindingError,
-        match="Missing Operational Render Component Store: 'transporte'",
+        match='must contain one binding per Tool component',
     ):
-        bind_operational_render(
-            _integrated_structure(),
-            (ComponentStoreSnapshot(tool_key='integrated_ops', component_key='carguio'),),
-        )
-
-
-def test_binding_rejects_store_not_declared_by_tool_structure() -> None:
-    with pytest.raises(
-        OperationalRenderBindingError,
-        match="Unknown Operational Render Component Store: 'chancado'",
-    ):
-        bind_operational_render(
-            _integrated_structure(),
-            (
-                ComponentStoreSnapshot(tool_key='integrated_ops', component_key='carguio'),
-                ComponentStoreSnapshot(tool_key='integrated_ops', component_key='transporte'),
-                ComponentStoreSnapshot(tool_key='integrated_ops', component_key='chancado'),
-            ),
-        )
-
-
-def test_binding_rejects_store_from_another_tool() -> None:
-    with pytest.raises(
-        OperationalRenderBindingError,
-        match='Operational render Component Store tool key must match Tool Structure',
-    ):
-        bind_operational_render(
-            _integrated_structure(),
-            (
-                ComponentStoreSnapshot(tool_key='another_tool', component_key='carguio'),
-                ComponentStoreSnapshot(tool_key='integrated_ops', component_key='transporte'),
-            ),
-        )
-
-
-def test_binding_rejects_duplicate_store_for_component() -> None:
-    with pytest.raises(
-        OperationalRenderBindingError,
-        match="Duplicate Operational Render Component Store: 'carguio'",
-    ):
-        bind_operational_render(
-            _integrated_structure(),
-            (
-                ComponentStoreSnapshot(tool_key='integrated_ops', component_key='carguio'),
-                ComponentStoreSnapshot(tool_key='integrated_ops', component_key='carguio'),
-                ComponentStoreSnapshot(tool_key='integrated_ops', component_key='transporte'),
-            ),
+        OperationalRenderBinding(
+            structure=structure,
+            components=(OperationalComponentBinding(component=structure.components[0]),),
         )
 
 
 def test_process_center_remains_one_component_binding_with_many_subcomponents() -> None:
-    structure = _process_structure()
-    binding = bind_operational_render(
-        structure,
-        (ComponentStoreSnapshot(tool_key='process_tool', component_key='flotacion'),),
-    )
+    binding = bind_operational_render(_process_structure())
 
     assert len(binding.components) == 1
     assert tuple(item.key for item in binding.components[0].component.subcomponents) == (
@@ -201,13 +142,8 @@ def test_linked_subcomponent_does_not_create_an_extra_component_binding() -> Non
             ),
         ),
     )
-    binding = bind_operational_render(
-        structure,
-        (
-            ComponentStoreSnapshot(tool_key='shared_ops', component_key='carguio'),
-            ComponentStoreSnapshot(tool_key='shared_ops', component_key='transporte'),
-        ),
-    )
+
+    binding = bind_operational_render(structure)
 
     assert binding.component_keys == ('carguio', 'transporte')
     assert len(binding.components) == 2
@@ -220,10 +156,8 @@ def test_strategic_uses_same_binding_contract_without_kind_specific_render_logic
         kind=ToolConfigurationKind.STRATEGIC,
         components=(ToolComponent(key='overview', display_name='Overview'),),
     )
-    binding = bind_operational_render(
-        structure,
-        (ComponentStoreSnapshot(tool_key='strategic_tool', component_key='overview'),),
-    )
+
+    binding = bind_operational_render(structure)
 
     assert binding.structure.kind is ToolConfigurationKind.STRATEGIC
     assert binding.component_keys == ('overview',)

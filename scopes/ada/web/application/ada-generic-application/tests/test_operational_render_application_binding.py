@@ -9,7 +9,6 @@ from ada.web.application.generic.composition import AdaApplicationComposition
 from ada.web.application.generic.layout import build_body_application_layout
 from ada.web.application.generic.operational_render import build_operational_body
 from ada.web.application.generic.runtime import create_application_runtime
-from ada.web.components import ComponentStoreState, build_empty_component_stores
 from ada.web.operational_render_binding import bind_operational_render
 from ada.web.tools.enums import (
     ToolConfigurationKind,
@@ -42,18 +41,15 @@ def _operational_binding():
             ),
         ),
     )
-    return bind_operational_render(structure, build_empty_component_stores(structure))
+    return bind_operational_render(structure)
 
 
 def test_composition_factory_receives_complete_binding_in_structure_order() -> None:
     binding = _operational_binding()
-    observed: list[tuple[tuple[str, str], ...]] = []
+    observed: list[tuple[str, ...]] = []
 
     def render_body(runtime_binding):
-        component_state = tuple(
-            (item.component.key, item.store.state.value) for item in runtime_binding.components
-        )
-        observed.append(component_state)
+        observed.append(tuple(item.component.key for item in runtime_binding.components))
         return html.Div(
             [
                 html.Section(
@@ -80,12 +76,7 @@ def test_composition_factory_receives_complete_binding_in_structure_order() -> N
     main = application_layout.children
     body = main.children
 
-    assert observed == [
-        (
-            ('mine', ComponentStoreState.EMPTY.value),
-            ('plant', ComponentStoreState.EMPTY.value),
-        )
-    ]
+    assert observed == [('mine', 'plant')]
     assert body.id == 'ada-operational-body'
     assert tuple(section.id for section in body.children) == (
         'ada-component-mine',

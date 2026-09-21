@@ -2,31 +2,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ada.web.components import ComponentStoreSnapshot
 from ada.web.operational_render_binding.errors import OperationalRenderBindingError
-from ada.web.tools.structure import (
-    ToolComponent,
-    ToolStructure,
-)
+from ada.web.tools.structure import ToolComponent, ToolStructure
 
 
 @dataclass(frozen=True, slots=True)
 class OperationalComponentBinding:
     component: ToolComponent
-    store: ComponentStoreSnapshot
 
     def __post_init__(self) -> None:
         if not isinstance(self.component, ToolComponent):
             raise OperationalRenderBindingError(
                 'Operational component binding requires ToolComponent'
-            )
-        if not isinstance(self.store, ComponentStoreSnapshot):
-            raise OperationalRenderBindingError(
-                'Operational component binding requires ComponentStoreSnapshot'
-            )
-        if self.component.key != self.store.component_key:
-            raise OperationalRenderBindingError(
-                'Operational component binding component key must match Component Store key'
             )
 
 
@@ -52,10 +39,6 @@ class OperationalRenderBinding:
             if binding.component != expected:
                 raise OperationalRenderBindingError(
                     'Operational render component order must follow Tool Structure'
-                )
-            if binding.store.tool_key != self.structure.tool_key:
-                raise OperationalRenderBindingError(
-                    'Operational render Component Store tool key must match Tool Structure'
                 )
         object.__setattr__(self, 'components', components)
 

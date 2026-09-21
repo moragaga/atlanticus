@@ -33,7 +33,6 @@ from ada.web.kpis.collector.models import (
     KpiCollectorSnapshot,
     KpiDeliveryReader,
 )
-from ada.web.operational_render_binding import OperationalRenderBinding, bind_operational_render
 from ada.web.tools.structure import ToolStructure
 
 _LATEST_DOCUMENT_FIELDS = frozenset(
@@ -167,12 +166,6 @@ class AdaKpiCollector:
                     None if self._timeseries is None else self._timeseries.configuration_revision
                 ),
             )
-
-    @property
-    def operational_render_binding(self) -> OperationalRenderBinding:
-        with self._lock:
-            stores = self._stores
-        return bind_operational_render(self._structure, stores)
 
     def refresh_latest(self) -> KpiCollectorRefreshResult:
         document = self._reader.read_latest()

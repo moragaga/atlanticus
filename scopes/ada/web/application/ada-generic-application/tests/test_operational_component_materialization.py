@@ -3,7 +3,6 @@ from __future__ import annotations
 from dash import html
 
 from ada.web.application.generic.operational_render import materialize_operational_components
-from ada.web.components import ComponentStoreSnapshot, ComponentStoreState
 from ada.web.operational_render_binding import bind_operational_render
 from ada.web.tools.enums import (
     ToolConfigurationKind,
@@ -52,29 +51,12 @@ def _structure() -> ToolStructure:
     )
 
 
-def _binding(*, populated_mine: bool = False):
-    structure = _structure()
-    mine_payload = {'value': 42} if populated_mine else None
-    stores = (
-        ComponentStoreSnapshot(
-            tool_key=structure.tool_key,
-            component_key='mine',
-            payload=mine_payload,
-        ),
-        ComponentStoreSnapshot(
-            tool_key=structure.tool_key,
-            component_key='haulage',
-        ),
-        ComponentStoreSnapshot(
-            tool_key=structure.tool_key,
-            component_key='plant',
-        ),
-    )
-    return bind_operational_render(structure, stores), mine_payload
+def _binding():
+    return bind_operational_render(_structure())
 
 
 def test_materialization_uses_structure_order_and_preserves_original_bindings() -> None:
-    binding, _payload = _binding()
+    binding = _binding()
     observed = []
 
     def render_component(render_binding, component_binding):
@@ -100,16 +82,11 @@ def test_materialization_uses_structure_order_and_preserves_original_bindings() 
         'rendered-plant',
     )
     assert tuple(observed) == binding.components
-    assert tuple(item.store.state for item in observed) == (
-        ComponentStoreState.EMPTY,
-        ComponentStoreState.EMPTY,
-        ComponentStoreState.EMPTY,
-    )
 
 
-def test_renderer_can_resolve_linked_subcomponent_to_single_owner_store() -> None:
-    binding, payload = _binding(populated_mine=True)
-    observed_owner_stores = []
+def test_renderer_resolves_linked_subcomponent_to_single_structural_owner() -> None:
+    binding = _binding()
+    observed_owner_components = []
 
     def render_component(render_binding, component_binding):
         if component_binding.component.key == 'haulage':
@@ -123,7 +100,7 @@ def test_renderer_can_resolve_linked_subcomponent_to_single_owner_store() -> Non
                 for item in render_binding.components
                 if item.component.key == address.owner_component_key
             )
-            observed_owner_stores.append(owner_binding.store)
+            observed_owner_components.append(owner_binding.component)
         return html.Div(id=f'rendered-{component_binding.component.key}')
 
     materialize_operational_components(
@@ -135,36 +112,11 @@ def test_renderer_can_resolve_linked_subcomponent_to_single_owner_store() -> Non
         },
     )
 
-    assert len(observed_owner_stores) == 1
-    assert observed_owner_stores[0] is binding.components[0].store
-    assert observed_owner_stores[0].payload is payload
-    assert binding.components[1].store.payload is None
-
-
-def test_materialization_preserves_populated_payload_without_normalization() -> None:
-    binding, payload = _binding(populated_mine=True)
-    observed_payloads = []
-
-    def render_component(_render_binding, component_binding):
-        observed_payloads.append(component_binding.store.payload)
-        return html.Div(id=f'rendered-{component_binding.component.key}')
-
-    materialize_operational_components(
-        binding,
-        renderers={
-            'mine': render_component,
-            'haulage': render_component,
-            'plant': render_component,
-        },
-    )
-
-    assert binding.components[0].store.state is ComponentStoreState.POPULATED
-    assert observed_payloads[0] is payload
-    assert observed_payloads[1:] == [None, None]
+    assert observed_owner_components == [binding.components[0].component]
 
 
 def test_materialization_requires_renderer_for_every_configured_component() -> None:
-    binding, _payload = _binding()
+    binding = _binding()
 
     try:
         materialize_operational_components(
@@ -181,7 +133,7 @@ def test_materialization_requires_renderer_for_every_configured_component() -> N
 
 
 def test_materialization_rejects_renderer_for_unknown_component() -> None:
-    binding, _payload = _binding()
+    binding = _binding()
 
     try:
         materialize_operational_components(
@@ -200,7 +152,7 @@ def test_materialization_rejects_renderer_for_unknown_component() -> None:
 
 
 def test_materialization_rejects_non_callable_renderer() -> None:
-    binding, _payload = _binding()
+    binding = _binding()
 
     try:
         materialize_operational_components(
@@ -218,7 +170,7 @@ def test_materialization_rejects_non_callable_renderer() -> None:
 
 
 def test_materialization_requires_dash_component_result() -> None:
-    binding, _payload = _binding()
+    binding = _binding()
 
     try:
         materialize_operational_components(

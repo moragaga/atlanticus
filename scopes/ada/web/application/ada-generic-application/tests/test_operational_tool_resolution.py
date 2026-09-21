@@ -270,10 +270,6 @@ def test_collector_factory_preserves_tool_revision_and_reader_containers() -> No
 
     assert collector.tool_projection_revision == 'tool-release-current'
     assert collector.structure is projection.payload.structure
-    assert collector.operational_render_binding.structure is projection.payload.structure
-    assert tuple(
-        binding.component.key for binding in collector.operational_render_binding.components
-    ) == ('mine', 'plant')
     assert latest_result.status.value == 'missing'
     assert timeseries_result.status.value == 'missing'
     assert client.calls[0][0] == 'latest-custom'
