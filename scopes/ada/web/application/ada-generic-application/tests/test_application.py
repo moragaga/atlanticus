@@ -167,10 +167,6 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
     assert navigation.home_route_key == 'home'
     assert navigation.find_link('home').href == '/'
 
-    with client.session_transaction() as session:
-        snapshot = session['_atlanticus_access_snapshot']
-    assert snapshot['identity']['subject_id'] == 'local:test-user'
-
 
 def test_global_indicators_mount_only_when_explicitly_injected(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)

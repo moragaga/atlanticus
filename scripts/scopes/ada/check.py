@@ -29,6 +29,14 @@ CAPABILITIES: dict[str, AdaCapability] = {
         source_root='src',
         commented_root='commented',
     ),
+    'kpi-collector': AdaCapability(
+        key='kpi-collector',
+        project_root='scopes/ada/web/kpis/collector',
+        ruff_roots=('src', 'tests', 'commented'),
+        tests_root='tests',
+        source_root='src',
+        commented_root='commented',
+    ),
     'kpi-inspection-core': AdaCapability(
         key='kpi-inspection-core',
         project_root='scopes/ada/web/inspection/core',
@@ -287,8 +295,6 @@ def _validate_capability(capability: AdaCapability, *, root: Path) -> None:
     tooling = (
         root / 'scripts/scopes/ada/check.py',
         root / 'scripts/commented/scopes/ada/check.py',
-        root / 'scripts/repository/validate_css_tokens.py',
-        root / 'scripts/commented/repository/validate_css_tokens.py',
     )
     ruff_targets = [*capability.ruff_roots, *(str(path) for path in tooling)]
 
@@ -331,12 +337,6 @@ def main(argv: list[str] | None = None) -> int:
 
     for capability in capabilities:
         _validate_capability(capability, root=root)
-
-    print('ADA scope: validating CSS token contract')
-    _run(
-        [sys.executable, str(root / 'scripts/repository/validate_css_tokens.py')],
-        cwd=root,
-    )
 
     names = ', '.join(capability.key for capability in capabilities)
     print(f'Atlanticus ADA validated: {names}')

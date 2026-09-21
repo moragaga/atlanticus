@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ada-web-kpi-collector"
+version = "0.1.0"
+description = "Collector y cache runtime de KPI Delivery para ADA Web"
+requires-python = "==3.14.2"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "ada-web-components==0.1.0",
+    "ada-web-operational-render-binding==0.1.0",
+    "ada-web-tools==0.1.0",
+    "atlanticus-cosmos==1.0.0",
+    "atlanticus-web==0.1.0",
+    "dash==4.4.1",
+]
+
+[tool.uv.sources]
+ada-web-components = { path = "../../components/core", editable = true }
+ada-web-operational-render-binding = { path = "../../operational-render-binding", editable = true }
+ada-web-tools = { path = "../../tools/core", editable = true }
+atlanticus-cosmos = { path = "../../../../../connectivity/cosmos", editable = true }
+atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.15.22",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+include = ["ada.web.kpis.collector*"]
+
+[tool.setuptools.package-data]
+"ada.web.kpis.collector" = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+target-version = "py314"
+extend-exclude = ["build", "dist", "commented"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ada", "atlanticus"]
+combine-as-imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [
+    "src",
+    "../../components/core/src",
+    "../../operational-render-binding/src",
+    "../../tools/core/src",
+    "../../../../../connectivity/cosmos/src",
+    "../../../../../backend/observability/src",
+    "../../../../../backend/kernel/src",
+    "../../../../../web/framework/core/src",
+    "../../../../../web/framework/observability/src",
+    "../../../../../web/framework/configuration/src",
+]
+addopts = "-q --import-mode=importlib"
