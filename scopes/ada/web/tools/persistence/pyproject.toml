@@ -1,0 +1,89 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ada-web-tools-persistence"
+version = "0.1.0"
+description = "Resilient Source and Projection provider composition for ADA Tools"
+requires-python = "==3.14.2"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "ada-web-storage-namespace==0.1.0",
+    "ada-web-tools-configuration==0.1.0",
+    "ada-web-tools-projection-cosmos==0.1.0",
+    "ada-web-tools-projection-local==0.1.0",
+    "atlanticus-cosmos==1.0.0",
+    "atlanticus-storage==1.0.0",
+    "atlanticus-web-projection==0.1.0",
+    "atlanticus-web-source==0.1.0",
+    "atlanticus-web-source-blob==0.1.0",
+    "atlanticus-web-source-local==0.1.0",
+]
+
+[tool.uv.sources]
+ada-web-storage-namespace = { path = "../../storage/namespace", editable = true }
+ada-web-tools-configuration = { path = "../configuration", editable = true }
+ada-web-tools-projection-cosmos = { path = "../projection-cosmos", editable = true }
+ada-web-tools-projection-local = { path = "../projection-local", editable = true }
+atlanticus-cosmos = { path = "../../../../../connectivity/cosmos", editable = true }
+atlanticus-storage = { path = "../../../../../connectivity/storage" }
+atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
+atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
+atlanticus-web-source-blob = { path = "../../../../../web/capabilities/source/blob", editable = true }
+atlanticus-web-source-local = { path = "../../../../../web/capabilities/source/local", editable = true }
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.15.22",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+include = ["ada.web.tools.persistence*"]
+
+[tool.setuptools.package-data]
+"ada.web.tools.persistence" = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+target-version = "py314"
+extend-exclude = ["build", "dist", "commented"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ada", "atlanticus"]
+combine-as-imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [
+    "src",
+    "../configuration/src",
+    "../projection-cosmos/src",
+    "../projection-local/src",
+    "../../storage/namespace/src",
+    "../../../../../connectivity/cosmos/src",
+    "../../../../../connectivity/storage/src",
+    "../../../../../backend/observability/src",
+    "../../../../../web/capabilities/projection/core/src",
+    "../../../../../web/capabilities/source/core/src",
+    "../../../../../web/capabilities/source/blob/src",
+    "../../../../../web/capabilities/source/local/src",
+    "../../../../../web/capabilities/storage/topology/src",
+]
+addopts = "-q --import-mode=importlib"
