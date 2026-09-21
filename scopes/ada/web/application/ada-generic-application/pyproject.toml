@@ -13,7 +13,10 @@ classifiers = [
 dependencies = [
     "ada-web-operational-state==0.1.0",
     "ada-web-operational-render-binding==0.1.0",
+    "ada-web-storage-namespace==0.1.0",
     "ada-web-tools==0.1.0",
+    "ada-web-tools-configuration==0.1.0",
+    "ada-web-tools-persistence==0.1.0",
     "ada-web-time-status-store-adapter==0.1.0",
     "ada-web-content-state==0.1.0",
     "ada-web-alarm-management-summary==0.1.5",
@@ -27,8 +30,11 @@ dependencies = [
     "ada-web-shell-header==0.1.8",
     "ada-web-shell-navigation==0.1.7",
     "ada-web-runtime-experience==0.1.0",
+    "atlanticus-cosmos==1.0.0",
+    "atlanticus-storage==1.0.0",
     "atlanticus-web==0.1.0",
     "atlanticus-web-bootstrap==0.1.0",
+    "atlanticus-web-configuration==0.1.0",
     "atlanticus-web-identity==0.1.0",
     "atlanticus-web-identity-local==0.1.0",
     "atlanticus-web-navigation==0.1.0",
@@ -38,17 +44,13 @@ dependencies = [
 [project.optional-dependencies]
 kpi-collector = [
     "ada-web-kpi-collector==0.1.0",
-    "ada-web-tools-configuration==0.1.0",
     "atlanticus-web-projection==0.1.0",
-    "atlanticus-web-source==0.1.0",
 ]
 
 [dependency-groups]
 dev = [
     "ada-web-kpi-collector==0.1.0",
-    "ada-web-tools-configuration==0.1.0",
     "atlanticus-web-projection==0.1.0",
-    "atlanticus-web-source==0.1.0",
     "pytest==9.1.1",
     "ruff==0.15.22",
 ]
@@ -74,18 +76,27 @@ ada-web-shell-navigation = { path = "../../shell/navigation", editable = true }
 ada-web-runtime-experience = { path = "../../runtime-experience", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
 atlanticus-web-bootstrap = { path = "../../../../../web/framework/bootstrap", editable = true }
+atlanticus-web-configuration = { path = "../../../../../web/framework/configuration", editable = true }
 atlanticus-web-observability = { path = "../../../../../web/framework/observability", editable = true }
 atlanticus-web-identity = { path = "../../../../../web/capabilities/identity/core", editable = true }
 atlanticus-web-identity-local = { path = "../../../../../web/capabilities/identity/local", editable = true }
 atlanticus-web-navigation = { path = "../../../../../web/capabilities/navigation/core", editable = true }
 ada-web-ui-page-readiness = { path = "../../ui/page-readiness", editable = true }
+ada-web-storage-namespace = { path = "../../storage/namespace", editable = true }
 ada-web-tools = { path = "../../tools/core", editable = true }
+ada-web-tools-configuration = { path = "../../tools/configuration", editable = true }
+ada-web-tools-persistence = { path = "../../tools/persistence", editable = true }
+ada-web-tools-projection-cosmos = { path = "../../tools/projection-cosmos", editable = true }
+ada-web-tools-projection-local = { path = "../../tools/projection-local", editable = true }
 ada-web-components = { path = "../../components/core", editable = true }
 ada-web-kpi-collector = { path = "../../kpis/collector", editable = true }
-ada-web-tools-configuration = { path = "../../tools/configuration", editable = true }
 atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
+atlanticus-web-source-blob = { path = "../../../../../web/capabilities/source/blob", editable = true }
+atlanticus-web-source-local = { path = "../../../../../web/capabilities/source/local", editable = true }
+atlanticus-web-storage-topology = { path = "../../../../../web/capabilities/storage/topology", editable = true }
 atlanticus-cosmos = { path = "../../../../../connectivity/cosmos", editable = true }
+atlanticus-storage = { path = "../../../../../connectivity/storage" }
 atlanticus-observability = { path = "../../../../../backend/observability", editable = true }
 atlanticus-kernel = { path = "../../../../../backend/kernel", editable = true }
 

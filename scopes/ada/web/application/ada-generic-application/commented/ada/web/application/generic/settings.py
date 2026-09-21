@@ -1,0 +1,201 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Self
+
+from pydantic import Field, SecretStr, model_validator
+from pydantic_settings import SettingsConfigDict
+
+from ada.web.storage.namespace import AdaStorageNamespace
+from ada.web.tools.persistence import (
+    ToolPersistenceSettings,
+    ToolProjectionProvider,
+    ToolSourceProvider,
+)
+from atlanticus.connectivity.cosmos import CosmosSettings
+from atlanticus.connectivity.storage import (
+    StorageConnectionStringCredential,
+    StorageSasCredential,
+    StorageSettings,
+)
+from atlanticus.web.configuration import WebSettings
+
+# Cada constante fija un nombre de variable de entorno del bootstrap operacional.
+APPLICATION_NAMESPACE_VARIABLE = 'ADA_APPLICATION_NAMESPACE'
+TOOL_NAMESPACE_VARIABLE = 'ADA_TOOL_NAMESPACE'
+TOOL_SOURCE_PROVIDER_VARIABLE = 'ADA_TOOL_SOURCE_PROVIDER'
+TOOL_PROJECTION_PROVIDER_VARIABLE = 'ADA_TOOL_PROJECTION_PROVIDER'
+TOOL_LOCAL_BASE_ROOT_VARIABLE = 'ADA_TOOL_LOCAL_BASE_ROOT'
+TOOL_SOURCE_BLOB_CONTAINER_VARIABLE = 'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME'
+TOOL_SOURCE_BLOB_CONNECTION_STRING_VARIABLE = 'ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING'
+TOOL_SOURCE_BLOB_ACCOUNT_URL_VARIABLE = 'ADA_TOOL_SOURCE_BLOB_ACCOUNT_URL'
+TOOL_SOURCE_BLOB_SAS_TOKEN_VARIABLE = 'ADA_TOOL_SOURCE_BLOB_SAS_TOKEN'
+TOOL_PROJECTION_COSMOS_ENDPOINT_VARIABLE = 'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT'
+TOOL_PROJECTION_COSMOS_KEY_VARIABLE = 'ADA_TOOL_PROJECTION_COSMOS_KEY'
+TOOL_PROJECTION_COSMOS_DATABASE_VARIABLE = 'ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME'
+TOOL_PROJECTION_COSMOS_CONTAINER_VARIABLE = 'ADA_TOOL_PROJECTION_COSMOS_CONTAINER_NAME'
+
+
+# Extiende el contrato Web existente en lugar de introducir un segundo sistema de settings.
+class AdaGenericSettings(WebSettings):
+    # .env es una entrada local explícita y las variables del proceso conservan precedencia.
+    model_config = SettingsConfigDict(
+        case_sensitive=True,
+        env_file='.env',
+        env_file_encoding='utf-8',
+        env_prefix='',
+        extra='ignore',
+        frozen=True,
+        validate_default=True,
+    )
+
+    # El namespace de aplicación tiene el valor ADA congelado, pero puede configurarse.
+    application_namespace: str = Field(
+        default='conciencia_situacional',
+        validation_alias=APPLICATION_NAMESPACE_VARIABLE,
+    )
+    # Tool y providers son explícitos porque determinan qué infraestructura se compone.
+    tool_namespace: str = Field(validation_alias=TOOL_NAMESPACE_VARIABLE)
+    tool_source_provider: ToolSourceProvider = Field(
+        validation_alias=TOOL_SOURCE_PROVIDER_VARIABLE
+    )
+    tool_projection_provider: ToolProjectionProvider = Field(
+        validation_alias=TOOL_PROJECTION_PROVIDER_VARIABLE
+    )
+    tool_local_base_root: Path | None = Field(
+        default=None,
+        validation_alias=TOOL_LOCAL_BASE_ROOT_VARIABLE,
+    )
+    tool_source_blob_container_name: str | None = Field(
+        default=None,
+        validation_alias=TOOL_SOURCE_BLOB_CONTAINER_VARIABLE,
+    )
+    tool_source_blob_connection_string: SecretStr | None = Field(
+        default=None,
+        validation_alias=TOOL_SOURCE_BLOB_CONNECTION_STRING_VARIABLE,
+    )
+    tool_source_blob_account_url: str | None = Field(
+        default=None,
+        validation_alias=TOOL_SOURCE_BLOB_ACCOUNT_URL_VARIABLE,
+    )
+    tool_source_blob_sas_token: SecretStr | None = Field(
+        default=None,
+        validation_alias=TOOL_SOURCE_BLOB_SAS_TOKEN_VARIABLE,
+    )
+    tool_projection_cosmos_endpoint: str | None = Field(
+        default=None,
+        validation_alias=TOOL_PROJECTION_COSMOS_ENDPOINT_VARIABLE,
+    )
+    tool_projection_cosmos_key: SecretStr | None = Field(
+        default=None,
+        validation_alias=TOOL_PROJECTION_COSMOS_KEY_VARIABLE,
+    )
+    tool_projection_cosmos_database_name: str | None = Field(
+        default=None,
+        validation_alias=TOOL_PROJECTION_COSMOS_DATABASE_VARIABLE,
+    )
+    tool_projection_cosmos_container_name: str | None = Field(
+        default=None,
+        validation_alias=TOOL_PROJECTION_COSMOS_CONTAINER_VARIABLE,
+    )
+
+    @model_validator(mode='after')
+    def validate_provider_requirements(self) -> Self:
+        # Cualquier provider local necesita un root absoluto compartido por la topología Tool.
+        if (
+            self.tool_source_provider is ToolSourceProvider.LOCAL
+            or self.tool_projection_provider is ToolProjectionProvider.LOCAL
+        ):
+            if self.tool_local_base_root is None:
+                raise ValueError(f'{TOOL_LOCAL_BASE_ROOT_VARIABLE} is required by a local provider')
+            if not self.tool_local_base_root.expanduser().is_absolute():
+                raise ValueError(f'{TOOL_LOCAL_BASE_ROOT_VARIABLE} must be an absolute path')
+
+        # Blob admite exactamente uno de los dos contratos ya soportados por Storage.
+        if self.tool_source_provider is ToolSourceProvider.BLOB:
+            if self.tool_source_blob_container_name is None:
+                raise ValueError(f'{TOOL_SOURCE_BLOB_CONTAINER_VARIABLE} is required')
+            has_connection_string = self.tool_source_blob_connection_string is not None
+            has_account_url = self.tool_source_blob_account_url is not None
+            has_sas_token = self.tool_source_blob_sas_token is not None
+            if has_connection_string and (has_account_url or has_sas_token):
+                raise ValueError(
+                    'Blob Source must use connection string or SAS credentials, not both'
+                )
+            if not has_connection_string and not (has_account_url and has_sas_token):
+                raise ValueError(
+                    'Blob Source requires connection string or account URL plus SAS token'
+                )
+
+        # Cosmos sólo exige sus valores cuando fue seleccionado como Projection provider.
+        if self.tool_projection_provider is ToolProjectionProvider.COSMOS:
+            required = (
+                (TOOL_PROJECTION_COSMOS_ENDPOINT_VARIABLE, self.tool_projection_cosmos_endpoint),
+                (TOOL_PROJECTION_COSMOS_KEY_VARIABLE, self.tool_projection_cosmos_key),
+                (
+                    TOOL_PROJECTION_COSMOS_DATABASE_VARIABLE,
+                    self.tool_projection_cosmos_database_name,
+                ),
+                (
+                    TOOL_PROJECTION_COSMOS_CONTAINER_VARIABLE,
+                    self.tool_projection_cosmos_container_name,
+                ),
+            )
+            missing = next((name for name, value in required if value is None), None)
+            if missing is not None:
+                raise ValueError(f'{missing} is required')
+
+        return self
+
+    def tool_persistence_settings(self) -> ToolPersistenceSettings:
+        # Traduce settings Web al contrato ya cerrado por la capability Tool persistence.
+        return ToolPersistenceSettings(
+            namespace=AdaStorageNamespace(
+                application_namespace=self.application_namespace,
+                tool_namespace=self.tool_namespace,
+            ),
+            source_provider=self.tool_source_provider,
+            projection_provider=self.tool_projection_provider,
+            local_base_root=(
+                self.tool_local_base_root.expanduser()
+                if self.tool_local_base_root is not None
+                else None
+            ),
+            blob_container_name=self.tool_source_blob_container_name,
+            cosmos_container_name=self.tool_projection_cosmos_container_name,
+        )
+
+    def storage_settings(self) -> StorageSettings | None:
+        # No se construye Storage cuando Source no usa Blob.
+        if self.tool_source_provider is not ToolSourceProvider.BLOB:
+            return None
+        connection_string = self.tool_source_blob_connection_string
+        if connection_string is not None:
+            credential = StorageConnectionStringCredential(connection_string.get_secret_value())
+        else:
+            account_url = self.tool_source_blob_account_url
+            sas_token = self.tool_source_blob_sas_token
+            if account_url is None or sas_token is None:
+                raise RuntimeError('Blob Source credentials were not resolved')
+            credential = StorageSasCredential(
+                account_url=account_url,
+                sas_token=sas_token.get_secret_value(),
+                allow_insecure_http=self.environment.is_local,
+            )
+        return StorageSettings(credential=credential)
+
+    def cosmos_settings(self) -> CosmosSettings | None:
+        # No se construye Cosmos cuando Projection no usa Cosmos.
+        if self.tool_projection_provider is not ToolProjectionProvider.COSMOS:
+            return None
+        endpoint = self.tool_projection_cosmos_endpoint
+        key = self.tool_projection_cosmos_key
+        database_name = self.tool_projection_cosmos_database_name
+        if endpoint is None or key is None or database_name is None:
+            raise RuntimeError('Cosmos Projection settings were not resolved')
+        return CosmosSettings(
+            endpoint=endpoint,
+            key=key.get_secret_value(),
+            database_name=database_name,
+            allow_insecure_http=self.environment.is_local,
+        )

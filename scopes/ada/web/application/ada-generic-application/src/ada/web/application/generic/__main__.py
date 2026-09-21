@@ -1,9 +1,9 @@
-from ada.web.application.generic.runtime import create_application_runtime
+from ada.web.application.generic.bootstrap import create_operational_application_runtime
 from atlanticus.web.application import run_web_application
 
 
 def main() -> None:
-    runtime = create_application_runtime()
+    runtime = create_operational_application_runtime()
     run_web_application(runtime)
 
 
