@@ -36,6 +36,7 @@ kpi-collector = [
     { name = "ada-web-kpi-collector" },
     { name = "ada-web-tools-configuration" },
     { name = "atlanticus-web-projection" },
+    { name = "atlanticus-web-source" },
 ]
 
 [package.dev-dependencies]
@@ -43,6 +44,7 @@ dev = [
     { name = "ada-web-kpi-collector" },
     { name = "ada-web-tools-configuration" },
     { name = "atlanticus-web-projection" },
+    { name = "atlanticus-web-source" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -74,6 +76,7 @@ requires-dist = [
     { name = "atlanticus-web-identity-local", editable = "../../../../../web/capabilities/identity/local" },
     { name = "atlanticus-web-navigation", editable = "../../../../../web/capabilities/navigation/core" },
     { name = "atlanticus-web-projection", marker = "extra == 'kpi-collector'", editable = "../../../../../web/capabilities/projection/core" },
+    { name = "atlanticus-web-source", marker = "extra == 'kpi-collector'", editable = "../../../../../web/capabilities/source/core" },
 ]
 provides-extras = ["kpi-collector"]
 
@@ -82,6 +85,7 @@ dev = [
     { name = "ada-web-kpi-collector", editable = "../../kpis/collector" },
     { name = "ada-web-tools-configuration", editable = "../../tools/configuration" },
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
+    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]

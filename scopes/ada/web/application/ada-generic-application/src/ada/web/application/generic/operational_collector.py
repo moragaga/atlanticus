@@ -15,6 +15,27 @@ from atlanticus.web.models import WebApplicationDefinition
 from atlanticus.web.projection.models import ProjectionRecord
 
 
+def create_operational_kpi_collector(
+    *,
+    tool_projection: ProjectionRecord[ToolConfiguration],
+    cosmos_client: object,
+) -> AdaKpiCollector:
+    if not isinstance(tool_projection, ProjectionRecord):
+        raise TypeError('tool_projection must be a ProjectionRecord')
+    configuration = tool_projection.payload
+    if not isinstance(configuration, ToolConfiguration):
+        raise TypeError('tool_projection payload must be ToolConfiguration')
+    validate_ada_operational_tool_configuration(configuration)
+    structure = configuration.structure
+    if structure is None:
+        raise ValueError('Operational Tool projection requires Tool Structure')
+    return AdaKpiCollector(
+        structure=structure,
+        tool_projection_revision=tool_projection.source_release_id.value,
+        reader=CosmosKpiDeliveryReader(client=cosmos_client),
+    )
+
+
 def attach_operational_kpi_collector(
     definition: WebApplicationDefinition,
     *,
@@ -25,19 +46,9 @@ def attach_operational_kpi_collector(
 ) -> WebApplicationDefinition:
     if not isinstance(definition, WebApplicationDefinition):
         raise TypeError('definition must be WebApplicationDefinition')
-    if not isinstance(tool_projection, ProjectionRecord):
-        raise TypeError('tool_projection must be a ProjectionRecord')
-    configuration = tool_projection.payload
-    if not isinstance(configuration, ToolConfiguration):
-        raise TypeError('tool_projection payload must be ToolConfiguration')
-    validate_ada_operational_tool_configuration(configuration)
-    structure = configuration.structure
-    if structure is None:
-        raise ValueError('Operational Tool projection requires Tool Structure')
-    collector = AdaKpiCollector(
-        structure=structure,
-        tool_projection_revision=tool_projection.source_release_id.value,
-        reader=CosmosKpiDeliveryReader(client=cosmos_client),
+    collector = create_operational_kpi_collector(
+        tool_projection=tool_projection,
+        cosmos_client=cosmos_client,
     )
     return attach_ada_kpi_collector(
         definition,

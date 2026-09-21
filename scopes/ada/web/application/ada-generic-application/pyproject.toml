@@ -40,6 +40,7 @@ kpi-collector = [
     "ada-web-kpi-collector==0.1.0",
     "ada-web-tools-configuration==0.1.0",
     "atlanticus-web-projection==0.1.0",
+    "atlanticus-web-source==0.1.0",
 ]
 
 [dependency-groups]
@@ -47,6 +48,7 @@ dev = [
     "ada-web-kpi-collector==0.1.0",
     "ada-web-tools-configuration==0.1.0",
     "atlanticus-web-projection==0.1.0",
+    "atlanticus-web-source==0.1.0",
     "pytest==9.1.1",
     "ruff==0.15.22",
 ]

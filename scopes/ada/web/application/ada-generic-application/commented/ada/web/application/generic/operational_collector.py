@@ -1,5 +1,5 @@
-# Compone el Collector operacional sin mover Tool/Cosmos al core de Generic Application.
-# El caller debe resolver externamente el ProjectionRecord CURRENT y el cliente Cosmos.
+# Construye el Collector desde la Tool Projection exacta sin decidir cómo se renderizan las cards.
+# El desarrollador puede usar el Collector antes del attachment para componer su superficie propia.
 
 from __future__ import annotations
 
@@ -18,6 +18,30 @@ from atlanticus.web.models import WebApplicationDefinition
 from atlanticus.web.projection.models import ProjectionRecord
 
 
+def create_operational_kpi_collector(
+    *,
+    tool_projection: ProjectionRecord[ToolConfiguration],
+    cosmos_client: object,
+) -> AdaKpiCollector:
+    # La identidad compatible del delivery proviene de la release exacta de Tool Projection.
+    if not isinstance(tool_projection, ProjectionRecord):
+        raise TypeError('tool_projection must be a ProjectionRecord')
+    configuration = tool_projection.payload
+    if not isinstance(configuration, ToolConfiguration):
+        raise TypeError('tool_projection payload must be ToolConfiguration')
+    validate_ada_operational_tool_configuration(configuration)
+    structure = configuration.structure
+    if structure is None:
+        raise ValueError('Operational Tool projection requires Tool Structure')
+
+    # La factory sólo crea Collector/cache. No crea cards ni callbacks de presentación propios.
+    return AdaKpiCollector(
+        structure=structure,
+        tool_projection_revision=tool_projection.source_release_id.value,
+        reader=CosmosKpiDeliveryReader(client=cosmos_client),
+    )
+
+
 def attach_operational_kpi_collector(
     definition: WebApplicationDefinition,
     *,
@@ -26,29 +50,13 @@ def attach_operational_kpi_collector(
     polling_settings: KpiCollectorPollingSettings | None = None,
     presentation_settings: KpiCollectorPresentationSettings | None = None,
 ) -> WebApplicationDefinition:
-    # Exige los contratos reales de composición y evita reconstruir identidad desde configuración.
+    # El attachment conserva el lifecycle ya cerrado del Collector.
     if not isinstance(definition, WebApplicationDefinition):
         raise TypeError('definition must be WebApplicationDefinition')
-    if not isinstance(tool_projection, ProjectionRecord):
-        raise TypeError('tool_projection must be a ProjectionRecord')
-    configuration = tool_projection.payload
-    if not isinstance(configuration, ToolConfiguration):
-        raise TypeError('tool_projection payload must be ToolConfiguration')
-
-    # Sólo una Tool operacional completa puede originar los Component Stores del Collector.
-    validate_ada_operational_tool_configuration(configuration)
-    structure = configuration.structure
-    if structure is None:
-        raise ValueError('Operational Tool projection requires Tool Structure')
-
-    # La compatibilidad del delivery usa exactamente el SourceReleaseId de la Tool Projection.
-    collector = AdaKpiCollector(
-        structure=structure,
-        tool_projection_revision=tool_projection.source_release_id.value,
-        reader=CosmosKpiDeliveryReader(client=cosmos_client),
+    collector = create_operational_kpi_collector(
+        tool_projection=tool_projection,
+        cosmos_client=cosmos_client,
     )
-
-    # El attachment existente conserva lifecycle, polling, observability y browser stores.
     return attach_ada_kpi_collector(
         definition,
         collector,
