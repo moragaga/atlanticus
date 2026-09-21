@@ -548,13 +548,28 @@ def resolve_manager_projection_state(status: ProjectionStatus) -> ManagerProject
 
 
 def build_workspace_revision(payload: dict[str, object]) -> str:
+    # La identidad del workspace debe sobrevivir el round-trip por JSON/JavaScript.
+    # JavaScript representa 1200.0 y 1200 como el mismo Number y puede devolver 1200.
+    # Normalizamos sólo esa equivalencia numérica antes de calcular el hash.
     canonical = json.dumps(
-        payload,
+        _normalize_json_transport_numbers(payload),
         ensure_ascii=False,
         sort_keys=True,
         separators=(',', ':'),
     ).encode('utf-8')
     return hashlib.sha256(canonical).hexdigest()
+
+
+def _normalize_json_transport_numbers(value: object) -> object:
+    # La normalización es recursiva porque los parámetros de configuración pueden estar
+    # anidados en objetos y listas. Bool no entra aquí porque no es float.
+    if isinstance(value, dict):
+        return {key: _normalize_json_transport_numbers(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_normalize_json_transport_numbers(item) for item in value]
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return value
 
 
 def _publication_context(

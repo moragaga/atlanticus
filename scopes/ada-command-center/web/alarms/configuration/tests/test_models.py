@@ -18,6 +18,17 @@ def test_alarm_configuration_document_round_trips_core_contracts() -> None:
     assert decoded.rules[0].parameters == value.rules[0].parameters
 
 
+def test_alarm_configuration_normalizes_browser_integral_parameter_to_float() -> None:
+    document = configuration().to_document()
+    document['rules'][0]['parameters']['threshold'] = 10
+
+    decoded = AlarmConfiguration.from_document(document)
+
+    threshold = decoded.rules[0].parameters['threshold']
+    assert threshold == 10.0
+    assert isinstance(threshold, float)
+
+
 def test_alarm_configuration_requires_unique_alarm_identity() -> None:
     first = rule('alarm-1', rule_name='first')
     duplicate = rule('alarm-1', rule_name='second', priority_order=2)

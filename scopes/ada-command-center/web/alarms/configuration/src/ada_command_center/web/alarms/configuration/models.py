@@ -462,4 +462,6 @@ def _require_int(value: object) -> int:
 def _require_parameter_value(value: object) -> str | float | bool:
     if isinstance(value, (bool, str, float)):
         return value
+    if isinstance(value, int):
+        return float(value)
     raise TypeError

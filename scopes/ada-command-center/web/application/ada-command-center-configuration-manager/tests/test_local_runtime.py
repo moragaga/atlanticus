@@ -1,3 +1,4 @@
+from ada_command_center.web.alarms.configuration import AlarmConfiguration
 from ada_command_center.web.alarms.configuration.source_release import (
     AlarmConfigurationSourceService,
 )
@@ -10,6 +11,7 @@ from ada_command_center.web.application.configuration_manager.local_runtime impo
     create_local_tool_catalog_snapshot,
     create_sample_alarm_configuration,
 )
+from atlanticus.web.manager import ManagerWorkspace
 
 
 def test_local_runtime_seeds_source_projection_and_tool_references(tmp_path) -> None:
@@ -115,3 +117,30 @@ def test_local_tool_catalog_contains_integrated_and_process_topology() -> None:
         'mine_secondary',
     )
     assert process.structure.alarm_baseline_component_keys == ('plant_process',)
+
+
+def test_sample_configuration_survives_browser_integral_number_workspace_round_trip(
+    tmp_path,
+) -> None:
+    dependencies = create_local_configuration_manager_dependencies(source_root=tmp_path)
+    source = AlarmConfigurationSourceService(
+        source=dependencies.source_store,
+        source_key=ALARM_CONFIGURATION_SOURCE_KEY,
+    )
+    release = source.load_current()
+
+    assert release is not None
+    workspace = ManagerWorkspace.create(
+        owner_subject_id='local',
+        payload=release.configuration.to_document(),
+        base=source.get_current(),
+    )
+    document = workspace.to_document()
+    document['payload']['rules'][1]['parameters']['threshold_tph'] = 1200
+
+    restored = ManagerWorkspace.from_document(document)
+    configuration = AlarmConfiguration.from_document(restored.payload)
+
+    threshold = configuration.rules[1].parameters['threshold_tph']
+    assert threshold == 1200.0
+    assert isinstance(threshold, float)

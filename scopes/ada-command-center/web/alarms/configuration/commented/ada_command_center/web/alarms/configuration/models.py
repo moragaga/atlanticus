@@ -467,6 +467,10 @@ def _require_int(value: object) -> int:
 
 
 def _require_parameter_value(value: object) -> str | float | bool:
+    # El contrato de dominio conserva FLOAT, pero un JSON Number integral puede volver
+    # desde el navegador como int. Se normaliza aquí antes de construir AlarmDefinition.
     if isinstance(value, (bool, str, float)):
         return value
+    if isinstance(value, int):
+        return float(value)
     raise TypeError

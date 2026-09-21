@@ -76,22 +76,21 @@ def register_alarm_configuration_admin_callbacks(
     app: object,
     context: AlarmConfigurationAdminWebContext,
 ) -> None:
+    # El Manager genérico es dueño de hidratar el workspace desde Source.
+    # Este callback espera un cambio real del draft para no convertir el documento vacío
+    # inicial del editor en trabajo local antes de que exista un ManagerWorkspace.
     @app.callback(
         Output(AUTHORING_STORE_ID, 'data'),
-        Input(MOUNT_STORE_ID, 'data'),
         Input(context.draft_store_id, 'data'),
+        prevent_initial_call=True,
     )
-    def load_browser_draft(_mounted: object, draft_data: dict[str, object] | None):
-        try:
-            payload = context.workspace_payload_reader(draft_data)
-            configuration = (
-                AlarmConfiguration(rules=(), messages=())
-                if payload is None
-                else AlarmConfiguration.from_document(dict(payload))
-            )
-            return configuration.to_document()
-        except Exception:
+    def load_browser_draft(draft_data: dict[str, object] | None):
+        if draft_data is None:
             return empty_authoring_document()
+        payload = context.workspace_payload_reader(draft_data)
+        if payload is None:
+            return empty_authoring_document()
+        return AlarmConfiguration.from_document(dict(payload)).to_document()
 
     @app.callback(
         Output(TOOL_REFERENCE_STORE_ID, 'data'),
@@ -125,12 +124,20 @@ def register_alarm_configuration_admin_callbacks(
     ):
         return build_structured_editors(authoring_document, reference_document)
 
+    # La revisión del editor sólo tiene significado cuando existe un workspace del Manager.
+    # Sin esa base, una revisión del documento vacío bloquearía la hidratación automática.
     @app.callback(
         Output(context.editor_revision_store_id, 'data'),
         Input(AUTHORING_STORE_ID, 'data'),
+        State(context.draft_store_id, 'data'),
         prevent_initial_call=True,
     )
-    def track_editor_revision(authoring_document: dict[str, object] | None):
+    def track_editor_revision(
+        authoring_document: dict[str, object] | None,
+        draft_data: dict[str, object] | None,
+    ):
+        if draft_data is None:
+            return None
         try:
             configuration = _configuration(authoring_document)
             return build_workspace_revision(configuration.to_document())

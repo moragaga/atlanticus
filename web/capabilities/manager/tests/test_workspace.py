@@ -184,6 +184,49 @@ def test_workspace_revision_is_local_content_identity_not_source_release_identit
     assert first.base.current != second.base.current
 
 
+def test_workspace_revision_is_stable_when_browser_collapses_integral_float() -> None:
+    original = {
+        'parameters': {
+            'threshold_tph': 1200.0,
+            'ratio': 0.5,
+        }
+    }
+    browser_round_trip = {
+        'parameters': {
+            'threshold_tph': 1200,
+            'ratio': 0.5,
+        }
+    }
+
+    first = ManagerWorkspace.create(
+        owner_subject_id='user-1',
+        payload=original,
+        base=_snapshot('release-1'),
+    )
+    second = ManagerWorkspace.create(
+        owner_subject_id='user-1',
+        payload=browser_round_trip,
+        base=_snapshot('release-1'),
+    )
+
+    assert first.revision == second.revision
+
+
+def test_workspace_document_accepts_browser_collapsed_integral_float() -> None:
+    workspace = ManagerWorkspace.create(
+        owner_subject_id='user-1',
+        payload={'parameters': {'threshold_tph': 1200.0}},
+        base=_snapshot('release-1'),
+        saved_at_utc=datetime(2026, 9, 12, 13, 0, tzinfo=UTC),
+    )
+    document = workspace.to_document()
+    document['payload']['parameters']['threshold_tph'] = 1200
+
+    restored = ManagerWorkspace.from_document(document)
+
+    assert restored.revision == workspace.revision
+
+
 def test_same_content_republication_is_still_a_source_conflict() -> None:
     workspace = _workspace(_snapshot('release-1', content_hash='same'))
     current = _snapshot('release-2', content_hash='same', minute=1)
