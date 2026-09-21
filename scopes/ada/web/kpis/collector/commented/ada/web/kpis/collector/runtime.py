@@ -1,10 +1,8 @@
+# Mantiene un poller por worker. El runtime sólo reporta incidencias relevantes y deduplica
+# mientras el mismo fallo continúe activo; un refresh válido permite reportar una recaída futura.
+
 from __future__ import annotations
 
-# El runtime mantiene un thread de polling por proceso worker y nunca ejecuta lecturas Cosmos
-# dentro de la request del usuario.
-# Cuando ambas cadencias vencen juntas se ejecuta Latest primero; un fallo de una fuente no
-# impide intentar la otra.
-import logging
 import math
 import os
 from collections.abc import Callable
@@ -13,9 +11,12 @@ from threading import Event, Lock, Thread
 from time import monotonic
 from typing import Protocol
 
-from ada.web.kpis.collector.models import KpiCollectorRefreshResult
-
-_LOGGER = logging.getLogger(__name__)
+from ada.web.kpis.collector.models import (
+    KpiCollectorContractError,
+    KpiCollectorRefreshResult,
+    KpiDeliveryReadError,
+)
+from atlanticus.web.observability import WebObservability
 
 DEFAULT_KPI_LATEST_INTERVAL_SECONDS = 10.0
 DEFAULT_KPI_TIMESERIES_INTERVAL_SECONDS = 120.0
@@ -60,6 +61,7 @@ class AdaKpiCollectorPollingRuntime:
         self,
         collector: _Collector,
         *,
+        observability: WebObservability,
         settings: KpiCollectorPollingSettings | None = None,
         clock: Callable[[], float] = monotonic,
         pid_provider: Callable[[], int] = os.getpid,
@@ -68,6 +70,8 @@ class AdaKpiCollectorPollingRuntime:
             raise TypeError('collector must provide a callable refresh_latest method')
         if not callable(getattr(collector, 'refresh_timeseries', None)):
             raise TypeError('collector must provide a callable refresh_timeseries method')
+        if not isinstance(observability, WebObservability):
+            raise TypeError('observability must be WebObservability')
         resolved_settings = settings or KpiCollectorPollingSettings()
         if not isinstance(resolved_settings, KpiCollectorPollingSettings):
             raise TypeError('settings must be KpiCollectorPollingSettings')
@@ -76,6 +80,7 @@ class AdaKpiCollectorPollingRuntime:
         if not callable(pid_provider):
             raise TypeError('pid_provider must be callable')
         self._collector = collector
+        self._observability = observability
         self._settings = resolved_settings
         self._clock = clock
         self._pid_provider = pid_provider
@@ -86,6 +91,7 @@ class AdaKpiCollectorPollingRuntime:
         self._pid: int | None = None
         self._next_latest_due: float | None = None
         self._next_timeseries_due: float | None = None
+        self._incident_signatures: dict[str, tuple[str, str]] = {}
 
     @property
     def settings(self) -> KpiCollectorPollingSettings:
@@ -170,13 +176,17 @@ class AdaKpiCollectorPollingRuntime:
                     latest_result = self._collector.refresh_latest()
                 except Exception as error:
                     latest_error = error
-                    _LOGGER.exception('KPI Latest collector refresh failed')
+                    self._report_refresh_failure('latest', error)
+                else:
+                    self._clear_refresh_failure('latest')
             if timeseries_due:
                 try:
                     timeseries_result = self._collector.refresh_timeseries()
                 except Exception as error:
                     timeseries_error = error
-                    _LOGGER.exception('KPI Timeseries collector refresh failed')
+                    self._report_refresh_failure('timeseries', error)
+                else:
+                    self._clear_refresh_failure('timeseries')
             return KpiCollectorPollCycle(
                 latest=latest_result,
                 timeseries=timeseries_result,
@@ -185,11 +195,18 @@ class AdaKpiCollectorPollingRuntime:
             )
 
     def _run(self, pid: int, stop_event: Event) -> None:
-        while not stop_event.is_set():
-            if self._pid_provider() != pid:
-                return
-            self.poll_due()
-            stop_event.wait(self._seconds_until_next_poll())
+        try:
+            while not stop_event.is_set():
+                if self._pid_provider() != pid:
+                    return
+                self.poll_due()
+                stop_event.wait(self._seconds_until_next_poll())
+        except Exception as error:
+            self._observability.critical(
+                'web.kpi_collector.runtime_failed',
+                'KPI collector polling runtime failed',
+                exception=error,
+            )
 
     def _seconds_until_next_poll(self) -> float:
         now = self._clock()
@@ -202,6 +219,36 @@ class AdaKpiCollectorPollingRuntime:
         if not deadlines:
             return 0.0
         return max(0.0, min(deadlines) - now)
+
+    def _report_refresh_failure(self, source: str, error: Exception) -> None:
+        signature = (type(error).__name__, str(error))
+        if self._incident_signatures.get(source) == signature:
+            return
+        self._incident_signatures[source] = signature
+        if isinstance(error, KpiDeliveryReadError):
+            cause = error.__cause__
+            self._observability.warning(
+                'web.kpi_collector.delivery_unavailable',
+                'KPI delivery source is unavailable',
+                source=source,
+                error_type=type(error).__name__,
+                cause_type=(type(cause).__name__ if cause is not None else None),
+            )
+            return
+        event_name = (
+            'web.kpi_collector.contract_failed'
+            if isinstance(error, KpiCollectorContractError)
+            else 'web.kpi_collector.refresh_failed'
+        )
+        self._observability.error(
+            event_name,
+            'KPI collector refresh failed',
+            exception=error,
+            source=source,
+        )
+
+    def _clear_refresh_failure(self, source: str) -> None:
+        self._incident_signatures.pop(source, None)
 
     def _is_running_locked(self, pid: int) -> bool:
         return self._pid == pid and self._thread is not None and self._thread.is_alive()

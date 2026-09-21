@@ -29,6 +29,7 @@ dependencies = [
     { name = "ada-web-tools" },
     { name = "atlanticus-cosmos" },
     { name = "atlanticus-web" },
+    { name = "atlanticus-web-observability" },
     { name = "dash" },
 ]
 
@@ -45,6 +46,7 @@ requires-dist = [
     { name = "ada-web-tools", editable = "../../tools/core" },
     { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
+    { name = "atlanticus-web-observability", editable = "../../../../../web/framework/observability" },
     { name = "dash", specifier = "==4.4.1" },
 ]
 

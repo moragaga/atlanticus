@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from dash import html, no_update
 
 from ada.web.components import ComponentStoreSnapshot, build_empty_component_stores
@@ -19,6 +21,8 @@ from ada.web.kpis.collector import (
 )
 from ada.web.tools.enums import ToolConfigurationKind, ToolScope
 from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
+from atlanticus.web.observability import WEB_OBSERVABILITY_SERVICE_KEY, WebObservability
+from atlanticus.web.services import ServiceRegistry
 
 
 class PresentationCollectorStub:
@@ -33,17 +37,6 @@ class PresentationCollectorStub:
 
     def refresh_timeseries(self):
         self.refresh_timeseries_calls += 1
-
-
-class ServiceRegistryStub:
-    def __init__(self) -> None:
-        self.values: dict[str, object] = {}
-
-    def add(self, name: str, service: object) -> None:
-        self.values[name] = service
-
-    def require(self, name: str) -> object:
-        return self.values[name]
 
 
 class DashStub:
@@ -386,7 +379,15 @@ def test_callback_registers_one_output_per_tool_component_and_uses_cache_only() 
         mine_payload=ComponentKpiData(latest=_latest(7, 'latest-r1')),
     )
     integration = create_ada_kpi_collector_web_integration(collector)
-    services = ServiceRegistryStub()
+    services = ServiceRegistry()
+    services.add(
+        WEB_OBSERVABILITY_SERVICE_KEY,
+        WebObservability(
+            application='test-kpi-collector',
+            logger=logging.getLogger('test.kpi.collector'),
+            json_output=False,
+        ),
+    )
     dash_app = DashStub()
     integration.module.register_services(services)
     integration.module.register_callbacks(dash_app, services)

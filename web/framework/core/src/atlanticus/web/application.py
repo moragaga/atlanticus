@@ -14,7 +14,11 @@ from atlanticus.web.health import HealthRegistry, register_health_routes
 from atlanticus.web.index import render_index_string
 from atlanticus.web.models import WebApplicationDefinition, WebApplicationRuntime
 from atlanticus.web.modules import WebModule
-from atlanticus.web.observability import WebObservability, configure_web_observability
+from atlanticus.web.observability import (
+    WEB_OBSERVABILITY_SERVICE_KEY,
+    WebObservability,
+    configure_web_observability,
+)
 from atlanticus.web.pages import import_page_packages, validate_page_packages
 from atlanticus.web.services import ServiceRegistry
 
@@ -83,6 +87,7 @@ def _compose_web_application(
 ) -> WebApplicationRuntime:
     services = ServiceRegistry()
     health = HealthRegistry()
+    services.add(WEB_OBSERVABILITY_SERVICE_KEY, observability)
 
     for module in definition.modules:
         if module.register_services is not None:

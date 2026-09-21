@@ -14,7 +14,11 @@ from atlanticus.web.health import HealthRegistry, register_health_routes
 from atlanticus.web.index import render_index_string
 from atlanticus.web.models import WebApplicationDefinition, WebApplicationRuntime
 from atlanticus.web.modules import WebModule
-from atlanticus.web.observability import WebObservability, configure_web_observability
+from atlanticus.web.observability import (
+    WEB_OBSERVABILITY_SERVICE_KEY,
+    WebObservability,
+    configure_web_observability,
+)
 from atlanticus.web.pages import import_page_packages, validate_page_packages
 from atlanticus.web.services import ServiceRegistry
 
@@ -84,6 +88,9 @@ def _compose_web_application(
 ) -> WebApplicationRuntime:
     services = ServiceRegistry()
     health = HealthRegistry()
+
+    # La observabilidad Web nace en el framework y se publica como servicio antes de los módulos.
+    services.add(WEB_OBSERVABILITY_SERVICE_KEY, observability)
 
     # Primero cada pieza registra sus servicios. Después se validan dependencias declaradas.
     # El orden de módulos no define la arquitectura.
@@ -237,7 +244,6 @@ def _collect_page_packages(definition: WebApplicationDefinition) -> tuple[str, .
     return packages
 
 
-# Valida dependencias después de que todas las piezas registraron sus servicios.
 def _validate_module_service_requirements(
     modules: tuple[WebModule, ...],
     services: ServiceRegistry,
@@ -274,7 +280,6 @@ def _validate_definition(definition: WebApplicationDefinition) -> None:
         _validate_required_service_names(module)
 
 
-# Mantiene el contrato de dependencias explícito, estable y sin duplicados dentro de cada módulo.
 def _validate_required_service_names(module: WebModule) -> None:
     seen: set[str] = set()
     for service_name in module.requires_services:

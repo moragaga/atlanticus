@@ -1,5 +1,6 @@
-
 # La API pública conserva la misma semántica; el sink remoto se inyecta por worker.
+# La clave de servicio permite que módulos Web consuman la instancia creada por Atlanticus Web.
+
 from atlanticus.web.observability.binding import (
     WebExternalSinkBinding,
     bind_web_external_sink,
@@ -10,13 +11,16 @@ from atlanticus.web.observability.observability import WebObservability, configu
 from atlanticus.web.observability.ports import WebEventSink
 from atlanticus.web.observability.sanitization import sanitize
 
+WEB_OBSERVABILITY_SERVICE_KEY = 'atlanticus.web.observability'
+
 __all__ = [
+    'WEB_OBSERVABILITY_SERVICE_KEY',
     'WebErrorInfo',
     'WebExternalSinkBinding',
     'WebEvent',
+    'WebEventSink',
     'WebObservability',
     'WebSeverity',
-    'WebEventSink',
     'bind_web_external_sink',
     'configure_web_observability',
     'get_bound_web_external_sink',

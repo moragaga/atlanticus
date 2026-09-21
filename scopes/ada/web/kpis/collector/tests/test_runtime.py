@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import logging
+import os
 from threading import Event, get_ident
+from time import monotonic
 
 import pytest
 from flask import Flask
@@ -11,11 +14,14 @@ from ada.web.kpis.collector import (
     DEFAULT_KPI_LATEST_INTERVAL_SECONDS,
     DEFAULT_KPI_TIMESERIES_INTERVAL_SECONDS,
     AdaKpiCollectorPollingRuntime,
+    KpiCollectorContractError,
     KpiCollectorPollingSettings,
     KpiCollectorRefreshResult,
     KpiCollectorRefreshStatus,
+    KpiDeliveryReadError,
     create_ada_kpi_collector_module,
 )
+from atlanticus.web.observability import WEB_OBSERVABILITY_SERVICE_KEY, WebObservability
 
 
 class CollectorStub:
@@ -43,12 +49,76 @@ class CollectorStub:
         return KpiCollectorRefreshResult(KpiCollectorRefreshStatus.UNCHANGED, 'timeseries-r1')
 
 
+class RecordingWebObservability(WebObservability):
+    def __init__(self) -> None:
+        logger = logging.getLogger(f'test.kpi.collector.{id(self)}')
+        logger.handlers.clear()
+        logger.addHandler(logging.NullHandler())
+        logger.propagate = False
+        self.warning_events: list[tuple[str, str, dict[str, object]]] = []
+        self.error_events: list[tuple[str, str, BaseException | None, dict[str, object]]] = []
+        self.critical_events: list[tuple[str, str, BaseException | None, dict[str, object]]] = []
+        self.critical_observed = Event()
+        super().__init__(application='test', logger=logger, json_output=False)
+
+    def warning(self, name: str, message: str, **context: object) -> None:
+        self.warning_events.append((name, message, context))
+
+    def error(
+        self,
+        name: str,
+        message: str,
+        *,
+        exception: BaseException | None = None,
+        **context: object,
+    ) -> None:
+        self.error_events.append((name, message, exception, context))
+
+    def critical(
+        self,
+        name: str,
+        message: str,
+        *,
+        exception: BaseException | None = None,
+        **context: object,
+    ) -> None:
+        self.critical_events.append((name, message, exception, context))
+        self.critical_observed.set()
+
+
 class ServiceRegistryStub:
     def __init__(self) -> None:
         self.values: dict[str, object] = {}
 
     def add(self, name: str, service: object) -> None:
         self.values[name] = service
+
+    def require(self, name: str, expected_type: type | None = None) -> object:
+        value = self.values[name]
+        if expected_type is not None and not isinstance(value, expected_type):
+            raise TypeError
+        return value
+
+
+def _runtime(
+    collector: CollectorStub,
+    *,
+    observability: RecordingWebObservability | None = None,
+    settings: KpiCollectorPollingSettings | None = None,
+    clock=monotonic,
+    pid_provider=os.getpid,
+) -> tuple[AdaKpiCollectorPollingRuntime, RecordingWebObservability]:
+    resolved_observability = observability or RecordingWebObservability()
+    return (
+        AdaKpiCollectorPollingRuntime(
+            collector,
+            observability=resolved_observability,
+            settings=settings,
+            clock=clock,
+            pid_provider=pid_provider,
+        ),
+        resolved_observability,
+    )
 
 
 def _module_server(collector: CollectorStub) -> tuple[Flask, ServiceRegistryStub]:
@@ -60,6 +130,7 @@ def _module_server(collector: CollectorStub) -> tuple[Flask, ServiceRegistryStub
         ),
     )
     services = ServiceRegistryStub()
+    services.add(WEB_OBSERVABILITY_SERVICE_KEY, RecordingWebObservability())
     server = Flask(__name__)
     module.register_services(services)
     module.register_middlewares(server, services)
@@ -118,7 +189,7 @@ def test_polling_intervals_must_be_positive(field: str, value: float) -> None:
 
 def test_latest_and_timeseries_keep_independent_schedules_with_latest_priority() -> None:
     collector = CollectorStub()
-    runtime = AdaKpiCollectorPollingRuntime(collector)
+    runtime, _ = _runtime(collector)
 
     for second in range(0, 121, 10):
         runtime.poll_due(now=float(second))
@@ -132,7 +203,7 @@ def test_latest_and_timeseries_keep_independent_schedules_with_latest_priority()
 def test_latest_failure_does_not_block_due_timeseries_refresh() -> None:
     collector = CollectorStub()
     collector.latest_error = RuntimeError('latest failed')
-    runtime = AdaKpiCollectorPollingRuntime(collector)
+    runtime, _ = _runtime(collector)
 
     cycle = runtime.poll_due(now=0.0)
 
@@ -144,7 +215,7 @@ def test_latest_failure_does_not_block_due_timeseries_refresh() -> None:
 def test_polling_runtime_recovers_after_transient_source_failure() -> None:
     collector = CollectorStub()
     collector.latest_error = RuntimeError('container missing')
-    runtime = AdaKpiCollectorPollingRuntime(
+    runtime, _ = _runtime(
         collector,
         settings=KpiCollectorPollingSettings(
             latest_interval_seconds=10,
@@ -159,6 +230,84 @@ def test_polling_runtime_recovers_after_transient_source_failure() -> None:
     assert isinstance(failed_cycle.latest_error, RuntimeError)
     assert recovered_cycle.latest is not None
     assert recovered_cycle.latest_error is None
+
+
+def test_delivery_read_failure_emits_one_warning_until_recovery() -> None:
+    collector = CollectorStub()
+    collector.latest_error = KpiDeliveryReadError('Could not read KPI delivery from Cosmos')
+    runtime, observability = _runtime(collector)
+
+    runtime.poll_due(now=0.0)
+    runtime.poll_due(now=10.0)
+
+    assert len(observability.warning_events) == 1
+    name, _, context = observability.warning_events[0]
+    assert name == 'web.kpi_collector.delivery_unavailable'
+    assert context['source'] == 'latest'
+    assert observability.error_events == []
+
+
+def test_recovered_delivery_failure_can_be_reported_again() -> None:
+    collector = CollectorStub()
+    collector.latest_error = KpiDeliveryReadError('Could not read KPI delivery from Cosmos')
+    runtime, observability = _runtime(collector)
+
+    runtime.poll_due(now=0.0)
+    collector.latest_error = None
+    runtime.poll_due(now=10.0)
+    collector.latest_error = KpiDeliveryReadError('Could not read KPI delivery from Cosmos')
+    runtime.poll_due(now=20.0)
+
+    assert len(observability.warning_events) == 2
+
+
+def test_contract_failure_emits_deduplicated_error() -> None:
+    collector = CollectorStub()
+    collector.latest_error = KpiCollectorContractError('Latest contract is invalid')
+    runtime, observability = _runtime(collector)
+
+    runtime.poll_due(now=0.0)
+    runtime.poll_due(now=10.0)
+
+    assert len(observability.error_events) == 1
+    name, _, exception, context = observability.error_events[0]
+    assert name == 'web.kpi_collector.contract_failed'
+    assert isinstance(exception, KpiCollectorContractError)
+    assert context['source'] == 'latest'
+
+
+def test_unexpected_refresh_failure_emits_deduplicated_error() -> None:
+    collector = CollectorStub()
+    collector.latest_error = RuntimeError('unexpected')
+    runtime, observability = _runtime(collector)
+
+    runtime.poll_due(now=0.0)
+    runtime.poll_due(now=10.0)
+
+    assert len(observability.error_events) == 1
+    assert observability.error_events[0][0] == 'web.kpi_collector.refresh_failed'
+
+
+def test_unexpected_runtime_failure_emits_critical_event() -> None:
+    collector = CollectorStub()
+    observability = RecordingWebObservability()
+    clock_calls = 0
+
+    def failing_clock() -> float:
+        nonlocal clock_calls
+        clock_calls += 1
+        if clock_calls > 1:
+            raise RuntimeError('clock failed')
+        return 0.0
+
+    runtime, _ = _runtime(collector, observability=observability, clock=failing_clock)
+
+    runtime.ensure_started()
+
+    assert observability.critical_observed.wait(1.0)
+    runtime.stop()
+    assert len(observability.critical_events) == 1
+    assert observability.critical_events[0][0] == 'web.kpi_collector.runtime_failed'
 
 
 def test_web_module_registers_application_scoped_cache_and_poller() -> None:

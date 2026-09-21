@@ -12,6 +12,7 @@ from ada.web.kpis.collector.integration import (
     ADA_KPI_COLLECTOR_RUNTIME_SERVICE_KEY,
     ADA_KPI_COLLECTOR_SERVICE_KEY,
     AdaKpiCollectorWebIntegration,
+    attach_ada_kpi_collector,
     create_ada_kpi_collector_module,
     create_ada_kpi_collector_web_integration,
 )
@@ -55,6 +56,7 @@ __all__ = [
     'AdaKpiCollector',
     'AdaKpiCollectorPollingRuntime',
     'AdaKpiCollectorWebIntegration',
+    'attach_ada_kpi_collector',
     'ComponentKpiData',
     'ComponentLatestKpiData',
     'ComponentTimeseriesKpiData',

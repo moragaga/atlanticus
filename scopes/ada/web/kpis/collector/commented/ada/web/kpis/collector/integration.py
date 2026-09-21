@@ -1,10 +1,11 @@
 # Integra el collector con Atlanticus Web: registra servicios, arranca el poller sólo con tráfico
 # real de aplicación y conecta el cache de proceso con los stores de navegador.
+# La función attach decora una definición ya resuelta sin introducir dependencia en Generic App.
 
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 from dash import Input, Output, State, dcc
@@ -23,7 +24,9 @@ from ada.web.kpis.collector.runtime import (
     KpiCollectorPollingSettings,
 )
 from ada.web.tools.structure import ToolStructure
+from atlanticus.web.models import WebApplicationDefinition
 from atlanticus.web.modules import CallbackRegistrar, WebModule
+from atlanticus.web.observability import WEB_OBSERVABILITY_SERVICE_KEY, WebObservability
 from atlanticus.web.services import ServiceRegistry
 
 if TYPE_CHECKING:
@@ -63,18 +66,37 @@ class AdaKpiCollectorWebIntegration:
         return wrapped_layout
 
 
+def attach_ada_kpi_collector(
+    definition: WebApplicationDefinition,
+    collector: KpiCollectorPresentationSource,
+    *,
+    polling_settings: KpiCollectorPollingSettings | None = None,
+    presentation_settings: KpiCollectorPresentationSettings | None = None,
+) -> WebApplicationDefinition:
+    if not isinstance(definition, WebApplicationDefinition):
+        raise TypeError('definition must be WebApplicationDefinition')
+    if any(module.name == 'ada-kpi-collector' for module in definition.modules):
+        raise ValueError('KPI collector is already attached to the application definition')
+    integration = create_ada_kpi_collector_web_integration(
+        collector,
+        polling_settings=polling_settings,
+        presentation_settings=presentation_settings,
+    )
+    return replace(
+        definition,
+        modules=(*definition.modules, integration.module),
+        layout=integration.wrap_layout(definition.layout),
+    )
+
+
 def create_ada_kpi_collector_module(
     collector: object,
     *,
     polling_settings: KpiCollectorPollingSettings | None = None,
 ) -> WebModule:
-    polling_runtime = AdaKpiCollectorPollingRuntime(
-        collector,
-        settings=polling_settings,
-    )
     return _create_module(
         collector=collector,
-        polling_runtime=polling_runtime,
+        polling_settings=polling_settings,
         register_callbacks=None,
     )
 
@@ -90,10 +112,6 @@ def create_ada_kpi_collector_web_integration(
     resolved_presentation_settings = presentation_settings or KpiCollectorPresentationSettings()
     if not isinstance(resolved_presentation_settings, KpiCollectorPresentationSettings):
         raise TypeError('presentation_settings must be KpiCollectorPresentationSettings')
-    polling_runtime = AdaKpiCollectorPollingRuntime(
-        collector,
-        settings=polling_settings,
-    )
     register_callbacks = _create_callback_registrar(
         structure=collector.structure,
         settings=resolved_presentation_settings,
@@ -101,7 +119,7 @@ def create_ada_kpi_collector_web_integration(
     return AdaKpiCollectorWebIntegration(
         module=_create_module(
             collector=collector,
-            polling_runtime=polling_runtime,
+            polling_settings=polling_settings,
             register_callbacks=register_callbacks,
         ),
         collector=collector,
@@ -112,14 +130,25 @@ def create_ada_kpi_collector_web_integration(
 def _create_module(
     *,
     collector: object,
-    polling_runtime: AdaKpiCollectorPollingRuntime,
+    polling_settings: KpiCollectorPollingSettings | None,
     register_callbacks: CallbackRegistrar | None,
 ) -> WebModule:
     def register_services(services: ServiceRegistry) -> None:
+        observability = services.require(WEB_OBSERVABILITY_SERVICE_KEY, WebObservability)
+        polling_runtime = AdaKpiCollectorPollingRuntime(
+            collector,
+            observability=observability,
+            settings=polling_settings,
+        )
         services.add(ADA_KPI_COLLECTOR_SERVICE_KEY, collector)
         services.add(ADA_KPI_COLLECTOR_RUNTIME_SERVICE_KEY, polling_runtime)
 
-    def register_middlewares(server: Flask, _services: ServiceRegistry) -> None:
+    def register_middlewares(server: Flask, services: ServiceRegistry) -> None:
+        polling_runtime = services.require(
+            ADA_KPI_COLLECTOR_RUNTIME_SERVICE_KEY,
+            AdaKpiCollectorPollingRuntime,
+        )
+
         def ensure_collector_started() -> None:
             if request.path.startswith(_START_EXCLUDED_PATH_PREFIXES):
                 return None
@@ -133,6 +162,7 @@ def _create_module(
         register_services=register_services,
         register_middlewares=register_middlewares,
         register_callbacks=register_callbacks,
+        requires_services=(WEB_OBSERVABILITY_SERVICE_KEY,),
     )
 
 

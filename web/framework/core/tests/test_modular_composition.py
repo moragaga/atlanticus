@@ -70,7 +70,6 @@ def test_minimal_application_runs_without_optional_capabilities(
     )
 
     assert runtime.dash.server is runtime.server
-    assert len(runtime.services) == 0
     assert runtime.page_modules == ('minimal_pages.home',)
 
 
