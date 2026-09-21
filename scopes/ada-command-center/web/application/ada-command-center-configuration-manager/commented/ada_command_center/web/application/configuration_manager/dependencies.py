@@ -1,0 +1,21 @@
+# Este contrato declara sólo dependencias externas del host; la lógica de alarmas permanece en su módulo.
+# El reader de Tool es opcional para mantener válido el authoring manual cuando no existe catálogo.
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from ada_command_center.web.alarms.configuration.models import AlarmConfiguration
+from ada_command_center.web.alarms.configuration.tool_references import AlarmToolReferenceReader
+from atlanticus.web.manager import ManagerPrincipalProvider
+from atlanticus.web.projection.store import ProjectionStore
+from atlanticus.web.source.store import SourceStore
+
+
+@dataclass(frozen=True, slots=True)
+class ConfigurationManagerDependencies:
+    source_store: SourceStore
+    projection_store: ProjectionStore[AlarmConfiguration]
+    principal_provider: ManagerPrincipalProvider
+    tool_reference_reader: AlarmToolReferenceReader | None = None
+    source_name: str = 'Source'
+    projection_name: str = 'Projection'

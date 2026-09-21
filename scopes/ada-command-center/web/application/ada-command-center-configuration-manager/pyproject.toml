@@ -1,0 +1,85 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ada-command-center-configuration-manager"
+version = "0.1.0"
+description = "Temporary local Manager host for ADA Command Center configuration"
+requires-python = "==3.14.2"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "ada-command-center-web-alarm-configuration[web]==0.1.0",
+    "ada-command-center-tools-catalog==0.1.0",
+    "ada-web-tools==0.1.0",
+    "atlanticus-web==0.1.0",
+    "atlanticus-web-bootstrap==0.1.0",
+    "atlanticus-web-manager==0.3.18",
+    "atlanticus-web-projection==0.1.0",
+    "atlanticus-web-source==0.1.0",
+    "atlanticus-web-source-local==0.1.0",
+]
+
+[tool.uv.sources]
+ada-command-center-web-alarm-configuration = { path = "../../alarms/configuration", editable = true }
+ada-command-center-tools-catalog = { path = "../../../backend/tools/catalog", editable = true }
+ada-web-tools = { path = "../../../../ada/web/tools/core", editable = true }
+atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
+atlanticus-web-bootstrap = { path = "../../../../../web/framework/bootstrap", editable = true }
+atlanticus-web-manager = { path = "../../../../../web/capabilities/manager", editable = true }
+atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
+atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
+atlanticus-web-source-local = { path = "../../../../../web/capabilities/source/local", editable = true }
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.15.22",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+include = ["ada_command_center.web.application.configuration_manager*"]
+
+[tool.setuptools.package-data]
+"ada_command_center.web.application.configuration_manager" = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+target-version = "py314"
+extend-exclude = ["build", "dist", "commented"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ada", "ada_command_center", "atlanticus"]
+combine-as-imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [
+    "src",
+    "../../alarms/configuration/src",
+    "../../../backend/alarms/core/src",
+    "../../../backend/tools/catalog/src",
+    "../../../../ada/web/tools/core/src",
+    "../../../../../web/framework/core/src",
+    "../../../../../web/framework/bootstrap/src",
+    "../../../../../web/capabilities/manager/src",
+    "../../../../../web/capabilities/projection/core/src",
+    "../../../../../web/capabilities/source/core/src",
+    "../../../../../web/capabilities/source/local/src",
+]
+addopts = "-q --import-mode=importlib"
