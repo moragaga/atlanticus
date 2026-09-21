@@ -11,6 +11,7 @@ dependencies = [
     { name = "ada-web-alarm-status" },
     { name = "ada-web-branding", extra = ["web"] },
     { name = "ada-web-content-state" },
+    { name = "ada-web-kpi-collector" },
     { name = "ada-web-operational-render-binding" },
     { name = "ada-web-operational-state" },
     { name = "ada-web-runtime-experience" },
@@ -35,20 +36,13 @@ dependencies = [
     { name = "atlanticus-web-identity" },
     { name = "atlanticus-web-identity-local" },
     { name = "atlanticus-web-navigation" },
+    { name = "atlanticus-web-projection" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
 
-[package.optional-dependencies]
-kpi-collector = [
-    { name = "ada-web-kpi-collector" },
-    { name = "atlanticus-web-projection" },
-]
-
 [package.dev-dependencies]
 dev = [
-    { name = "ada-web-kpi-collector" },
-    { name = "atlanticus-web-projection" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -59,7 +53,7 @@ requires-dist = [
     { name = "ada-web-alarm-status", editable = "../../alarms/status" },
     { name = "ada-web-branding", extras = ["web"], editable = "../../branding" },
     { name = "ada-web-content-state", editable = "../../content-state/core" },
-    { name = "ada-web-kpi-collector", marker = "extra == 'kpi-collector'", editable = "../../kpis/collector" },
+    { name = "ada-web-kpi-collector", editable = "../../kpis/collector" },
     { name = "ada-web-operational-render-binding", editable = "../../operational-render-binding" },
     { name = "ada-web-operational-state", editable = "../../operational-state" },
     { name = "ada-web-runtime-experience", editable = "../../runtime-experience" },
@@ -84,16 +78,13 @@ requires-dist = [
     { name = "atlanticus-web-identity", editable = "../../../../../web/capabilities/identity/core" },
     { name = "atlanticus-web-identity-local", editable = "../../../../../web/capabilities/identity/local" },
     { name = "atlanticus-web-navigation", editable = "../../../../../web/capabilities/navigation/core" },
-    { name = "atlanticus-web-projection", marker = "extra == 'kpi-collector'", editable = "../../../../../web/capabilities/projection/core" },
+    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
     { name = "pydantic", specifier = "==2.13.5" },
     { name = "pydantic-settings", specifier = "==2.14.1" },
 ]
-provides-extras = ["kpi-collector"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "ada-web-kpi-collector", editable = "../../kpis/collector" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]

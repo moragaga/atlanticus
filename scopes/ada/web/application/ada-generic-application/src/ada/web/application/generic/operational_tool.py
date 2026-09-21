@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from ada.web.application.generic.runtime import create_application_runtime
+from ada.web.application.generic.application import create_application_definition
 from ada.web.tools.configuration import validate_ada_operational_tool_configuration
 from ada.web.tools.errors import ToolConfigurationValidationError
 from ada.web.tools.persistence import (
@@ -11,7 +11,7 @@ from ada.web.tools.persistence import (
     ToolProjectionResolutionState,
     resolve_active_tool_projection,
 )
-from atlanticus.web.models import WebApplicationRuntime
+from atlanticus.web.models import WebApplicationDefinition
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,9 +40,9 @@ def resolve_operational_tool_projection(
     return resolution
 
 
-def create_runtime_from_tool_resolution(
+def create_definition_from_tool_resolution(
     resolution: ToolProjectionResolution,
-) -> WebApplicationRuntime:
+) -> WebApplicationDefinition:
     if not isinstance(resolution, ToolProjectionResolution):
         raise TypeError('resolution must be ToolProjectionResolution')
     if resolution.state is ToolProjectionResolutionState.READY:
@@ -50,14 +50,14 @@ def create_runtime_from_tool_resolution(
         if projection is None:
             raise RuntimeError('READY Tool Projection resolution has no projection')
         configuration = projection.payload
-        return create_application_runtime(
+        return create_application_definition(
             tool_display_name=configuration.display_name,
             branding_configuration=configuration.branding,
             source_consumption=configuration.source_consumption,
             source_operational_participation=configuration.source_operational_participation,
         )
     _log_degraded_resolution(resolution)
-    return create_application_runtime()
+    return create_application_definition()
 
 
 def _log_degraded_resolution(resolution: ToolProjectionResolution) -> None:

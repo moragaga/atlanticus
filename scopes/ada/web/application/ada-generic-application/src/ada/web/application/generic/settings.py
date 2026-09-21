@@ -6,6 +6,11 @@ from typing import Self
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import SettingsConfigDict
 
+from ada.web.kpis.collector import (
+    DEFAULT_KPI_LATEST_DELIVERY_CONTAINER,
+    DEFAULT_KPI_TIMESERIES_DELIVERY_CONTAINER,
+    CosmosKpiDeliveryReaderSettings,
+)
 from ada.web.storage.namespace import AdaStorageNamespace
 from ada.web.tools.persistence import (
     ToolPersistenceSettings,
@@ -33,6 +38,11 @@ TOOL_PROJECTION_COSMOS_ENDPOINT_VARIABLE = 'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT'
 TOOL_PROJECTION_COSMOS_KEY_VARIABLE = 'ADA_TOOL_PROJECTION_COSMOS_KEY'
 TOOL_PROJECTION_COSMOS_DATABASE_VARIABLE = 'ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME'
 TOOL_PROJECTION_COSMOS_CONTAINER_VARIABLE = 'ADA_TOOL_PROJECTION_COSMOS_CONTAINER_NAME'
+KPI_DELIVERY_COSMOS_ENDPOINT_VARIABLE = 'COSMOS_CONSUMPTION_ENDPOINT'
+KPI_DELIVERY_COSMOS_KEY_VARIABLE = 'COSMOS_CONSUMPTION_KEY'
+KPI_DELIVERY_COSMOS_DATABASE_VARIABLE = 'COSMOS_CONSUMPTION_DATABASE_NAME'
+KPI_LATEST_DELIVERY_CONTAINER_VARIABLE = 'KPI_LATEST_DELIVERY_CONTAINER'
+KPI_TIMESERIES_DELIVERY_CONTAINER_VARIABLE = 'KPI_TIMESERIES_DELIVERY_CONTAINER'
 
 
 class AdaGenericSettings(WebSettings):
@@ -91,6 +101,26 @@ class AdaGenericSettings(WebSettings):
         default=None,
         validation_alias=TOOL_PROJECTION_COSMOS_CONTAINER_VARIABLE,
     )
+    kpi_delivery_cosmos_endpoint: str | None = Field(
+        default=None,
+        validation_alias=KPI_DELIVERY_COSMOS_ENDPOINT_VARIABLE,
+    )
+    kpi_delivery_cosmos_key: SecretStr | None = Field(
+        default=None,
+        validation_alias=KPI_DELIVERY_COSMOS_KEY_VARIABLE,
+    )
+    kpi_delivery_cosmos_database_name: str | None = Field(
+        default=None,
+        validation_alias=KPI_DELIVERY_COSMOS_DATABASE_VARIABLE,
+    )
+    kpi_latest_delivery_container_name: str = Field(
+        default=DEFAULT_KPI_LATEST_DELIVERY_CONTAINER,
+        validation_alias=KPI_LATEST_DELIVERY_CONTAINER_VARIABLE,
+    )
+    kpi_timeseries_delivery_container_name: str = Field(
+        default=DEFAULT_KPI_TIMESERIES_DELIVERY_CONTAINER,
+        validation_alias=KPI_TIMESERIES_DELIVERY_CONTAINER_VARIABLE,
+    )
 
     @model_validator(mode='after')
     def validate_provider_requirements(self) -> Self:
@@ -135,6 +165,16 @@ class AdaGenericSettings(WebSettings):
             if missing is not None:
                 raise ValueError(f'{missing} is required')
 
+        kpi_connection = (
+            (KPI_DELIVERY_COSMOS_ENDPOINT_VARIABLE, self.kpi_delivery_cosmos_endpoint),
+            (KPI_DELIVERY_COSMOS_KEY_VARIABLE, self.kpi_delivery_cosmos_key),
+            (KPI_DELIVERY_COSMOS_DATABASE_VARIABLE, self.kpi_delivery_cosmos_database_name),
+        )
+        if any(value is not None for _, value in kpi_connection):
+            missing = next((name for name, value in kpi_connection if value is None), None)
+            if missing is not None:
+                raise ValueError(f'{missing} is required when KPI delivery Cosmos is configured')
+
         return self
 
     def tool_persistence_settings(self) -> ToolPersistenceSettings:
@@ -172,7 +212,7 @@ class AdaGenericSettings(WebSettings):
             )
         return StorageSettings(credential=credential)
 
-    def cosmos_settings(self) -> CosmosSettings | None:
+    def tool_projection_cosmos_settings(self) -> CosmosSettings | None:
         if self.tool_projection_provider is not ToolProjectionProvider.COSMOS:
             return None
         endpoint = self.tool_projection_cosmos_endpoint
@@ -185,4 +225,25 @@ class AdaGenericSettings(WebSettings):
             key=key.get_secret_value(),
             database_name=database_name,
             allow_insecure_http=self.environment.is_local,
+        )
+
+    def kpi_delivery_cosmos_settings(self) -> CosmosSettings | None:
+        endpoint = self.kpi_delivery_cosmos_endpoint
+        key = self.kpi_delivery_cosmos_key
+        database_name = self.kpi_delivery_cosmos_database_name
+        if endpoint is None and key is None and database_name is None:
+            return None
+        if endpoint is None or key is None or database_name is None:
+            raise RuntimeError('KPI Delivery Cosmos settings were not resolved')
+        return CosmosSettings(
+            endpoint=endpoint,
+            key=key.get_secret_value(),
+            database_name=database_name,
+            allow_insecure_http=self.environment.is_local,
+        )
+
+    def kpi_delivery_reader_settings(self) -> CosmosKpiDeliveryReaderSettings:
+        return CosmosKpiDeliveryReaderSettings(
+            latest_container_name=self.kpi_latest_delivery_container_name,
+            timeseries_container_name=self.kpi_timeseries_delivery_container_name,
         )

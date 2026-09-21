@@ -3,6 +3,7 @@ from __future__ import annotations
 from ada.web.kpis.collector import (
     AdaKpiCollector,
     CosmosKpiDeliveryReader,
+    CosmosKpiDeliveryReaderSettings,
     KpiCollectorPollingSettings,
     KpiCollectorPresentationSettings,
     attach_ada_kpi_collector,
@@ -19,6 +20,7 @@ def create_operational_kpi_collector(
     *,
     tool_projection: ProjectionRecord[ToolConfiguration],
     cosmos_client: object,
+    reader_settings: CosmosKpiDeliveryReaderSettings | None = None,
 ) -> AdaKpiCollector:
     if not isinstance(tool_projection, ProjectionRecord):
         raise TypeError('tool_projection must be a ProjectionRecord')
@@ -29,10 +31,16 @@ def create_operational_kpi_collector(
     structure = configuration.structure
     if structure is None:
         raise ValueError('Operational Tool projection requires Tool Structure')
+    resolved_reader_settings = reader_settings or CosmosKpiDeliveryReaderSettings()
+    if not isinstance(resolved_reader_settings, CosmosKpiDeliveryReaderSettings):
+        raise TypeError('reader_settings must be CosmosKpiDeliveryReaderSettings')
     return AdaKpiCollector(
         structure=structure,
         tool_projection_revision=tool_projection.source_release_id.value,
-        reader=CosmosKpiDeliveryReader(client=cosmos_client),
+        reader=CosmosKpiDeliveryReader(
+            client=cosmos_client,
+            settings=resolved_reader_settings,
+        ),
     )
 
 
@@ -41,6 +49,7 @@ def attach_operational_kpi_collector(
     *,
     tool_projection: ProjectionRecord[ToolConfiguration],
     cosmos_client: object,
+    reader_settings: CosmosKpiDeliveryReaderSettings | None = None,
     polling_settings: KpiCollectorPollingSettings | None = None,
     presentation_settings: KpiCollectorPresentationSettings | None = None,
 ) -> WebApplicationDefinition:
@@ -49,6 +58,7 @@ def attach_operational_kpi_collector(
     collector = create_operational_kpi_collector(
         tool_projection=tool_projection,
         cosmos_client=cosmos_client,
+        reader_settings=reader_settings,
     )
     return attach_ada_kpi_collector(
         definition,

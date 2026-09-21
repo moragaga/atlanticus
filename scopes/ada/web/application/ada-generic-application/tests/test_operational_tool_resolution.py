@@ -6,9 +6,10 @@ from pathlib import Path
 from ada.web.application.generic import operational_tool
 from ada.web.application.generic.operational_collector import create_operational_kpi_collector
 from ada.web.application.generic.operational_tool import (
-    create_runtime_from_tool_resolution,
+    create_definition_from_tool_resolution,
     resolve_operational_tool_projection,
 )
+from ada.web.kpis.collector import CosmosKpiDeliveryReaderSettings
 from ada.web.storage.namespace import AdaStorageNamespace
 from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.persistence import (
@@ -24,6 +25,9 @@ from atlanticus.web.source.models import SourceKey, SourceReleaseId
 
 
 class CosmosClientStub:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str, object]] = []
+
     def find_item(
         self,
         *,
@@ -32,7 +36,8 @@ class CosmosClientStub:
         partition_key: object,
         include_metadata: bool = False,
     ) -> dict[str, object] | None:
-        del container_name, item_id, partition_key, include_metadata
+        del include_metadata
+        self.calls.append((container_name, item_id, partition_key))
         return None
 
 
@@ -153,17 +158,17 @@ def test_ada_operational_validation_turns_generic_ready_projection_into_invalid(
     )
 
 
-def test_ready_resolution_threads_projection_into_existing_runtime(monkeypatch) -> None:
+def test_ready_resolution_threads_projection_into_application_definition(monkeypatch) -> None:
     captured: dict[str, object] = {}
-    expected_runtime = object()
+    expected_definition = object()
 
-    def create_runtime(**kwargs):
+    def create_definition(**kwargs):
         captured.update(kwargs)
-        return expected_runtime
+        return expected_definition
 
-    monkeypatch.setattr(operational_tool, 'create_application_runtime', create_runtime)
+    monkeypatch.setattr(operational_tool, 'create_application_definition', create_definition)
 
-    runtime = create_runtime_from_tool_resolution(
+    definition = create_definition_from_tool_resolution(
         ToolProjectionResolution(
             state=ToolProjectionResolutionState.READY,
             projection=_projection(),
@@ -171,7 +176,7 @@ def test_ready_resolution_threads_projection_into_existing_runtime(monkeypatch) 
     )
 
     configuration = _configuration()
-    assert runtime is expected_runtime
+    assert definition is expected_definition
     assert captured == {
         'tool_display_name': configuration.display_name,
         'branding_configuration': configuration.branding,
@@ -180,37 +185,37 @@ def test_ready_resolution_threads_projection_into_existing_runtime(monkeypatch) 
     }
 
 
-def test_unconfigured_resolution_keeps_base_runtime(monkeypatch) -> None:
+def test_unconfigured_resolution_keeps_base_definition(monkeypatch) -> None:
     calls: list[dict[str, object]] = []
-    expected_runtime = object()
+    expected_definition = object()
 
-    def create_runtime(**kwargs):
+    def create_definition(**kwargs):
         calls.append(kwargs)
-        return expected_runtime
+        return expected_definition
 
-    monkeypatch.setattr(operational_tool, 'create_application_runtime', create_runtime)
+    monkeypatch.setattr(operational_tool, 'create_application_definition', create_definition)
 
-    runtime = create_runtime_from_tool_resolution(
+    definition = create_definition_from_tool_resolution(
         ToolProjectionResolution(state=ToolProjectionResolutionState.UNCONFIGURED)
     )
 
-    assert runtime is expected_runtime
+    assert definition is expected_definition
     assert calls == [{}]
 
 
-def test_unavailable_resolution_keeps_base_runtime_and_logs_diagnostic(
+def test_unavailable_resolution_keeps_base_definition_and_logs_diagnostic(
     monkeypatch,
     caplog,
 ) -> None:
-    expected_runtime = object()
+    expected_definition = object()
     monkeypatch.setattr(
         operational_tool,
-        'create_application_runtime',
-        lambda **kwargs: expected_runtime,
+        'create_application_definition',
+        lambda **kwargs: expected_definition,
     )
     caplog.set_level('WARNING', logger='ada.web.application.generic.operational_tool')
 
-    runtime = create_runtime_from_tool_resolution(
+    definition = create_definition_from_tool_resolution(
         ToolProjectionResolution(
             state=ToolProjectionResolutionState.UNAVAILABLE,
             error_type='CosmosOperationError',
@@ -218,24 +223,24 @@ def test_unavailable_resolution_keeps_base_runtime_and_logs_diagnostic(
         )
     )
 
-    assert runtime is expected_runtime
+    assert definition is expected_definition
     assert 'Operational Tool is unavailable' in caplog.text
     assert 'CosmosOperationError' in caplog.text
 
 
-def test_invalid_resolution_keeps_base_runtime_and_logs_diagnostic(
+def test_invalid_resolution_keeps_base_definition_and_logs_diagnostic(
     monkeypatch,
     caplog,
 ) -> None:
-    expected_runtime = object()
+    expected_definition = object()
     monkeypatch.setattr(
         operational_tool,
-        'create_application_runtime',
-        lambda **kwargs: expected_runtime,
+        'create_application_definition',
+        lambda **kwargs: expected_definition,
     )
     caplog.set_level('ERROR', logger='ada.web.application.generic.operational_tool')
 
-    runtime = create_runtime_from_tool_resolution(
+    definition = create_definition_from_tool_resolution(
         ToolProjectionResolution(
             state=ToolProjectionResolutionState.INVALID,
             error_type='ToolConfigurationProjectionError',
@@ -243,18 +248,25 @@ def test_invalid_resolution_keeps_base_runtime_and_logs_diagnostic(
         )
     )
 
-    assert runtime is expected_runtime
+    assert definition is expected_definition
     assert 'Operational Tool configuration is invalid' in caplog.text
     assert 'ToolConfigurationProjectionError' in caplog.text
 
 
-def test_collector_factory_preserves_developer_owned_render_boundary() -> None:
+def test_collector_factory_preserves_tool_revision_and_reader_containers() -> None:
     projection = _projection()
+    client = CosmosClientStub()
 
     collector = create_operational_kpi_collector(
         tool_projection=projection,
-        cosmos_client=CosmosClientStub(),
+        cosmos_client=client,
+        reader_settings=CosmosKpiDeliveryReaderSettings(
+            latest_container_name='latest-custom',
+            timeseries_container_name='timeseries-custom',
+        ),
     )
+    latest_result = collector.refresh_latest()
+    timeseries_result = collector.refresh_timeseries()
 
     assert collector.tool_projection_revision == 'tool-release-current'
     assert collector.structure is projection.payload.structure
@@ -262,3 +274,7 @@ def test_collector_factory_preserves_developer_owned_render_boundary() -> None:
     assert tuple(
         binding.component.key for binding in collector.operational_render_binding.components
     ) == ('mine', 'plant')
+    assert latest_result.status.value == 'missing'
+    assert timeseries_result.status.value == 'missing'
+    assert client.calls[0][0] == 'latest-custom'
+    assert client.calls[1][0] == 'timeseries-custom'

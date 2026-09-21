@@ -5,6 +5,12 @@ from pathlib import Path
 
 from ada.web.application.generic.bootstrap import create_operational_application_runtime
 from ada.web.application.generic.settings import AdaGenericSettings
+from ada.web.kpis.collector import (
+    ADA_KPI_COLLECTOR_RUNTIME_SERVICE_KEY,
+    ADA_KPI_COLLECTOR_SERVICE_KEY,
+    AdaKpiCollector,
+    AdaKpiCollectorPollingRuntime,
+)
 from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.persistence import compose_tool_persistence
 from atlanticus.connectivity.storage import StorageClient
@@ -13,15 +19,22 @@ from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.source.models import SourceKey, SourceReleaseId
 
 
-def _local_settings(tmp_path: Path) -> AdaGenericSettings:
-    return AdaGenericSettings.from_mapping(
-        {
-            'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
-            'ADA_TOOL_SOURCE_PROVIDER': 'local',
-            'ADA_TOOL_PROJECTION_PROVIDER': 'local',
-            'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path),
-        }
-    )
+def _local_settings(tmp_path: Path, *, with_kpi_delivery: bool = False) -> AdaGenericSettings:
+    values = {
+        'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
+        'ADA_TOOL_SOURCE_PROVIDER': 'local',
+        'ADA_TOOL_PROJECTION_PROVIDER': 'local',
+        'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path),
+    }
+    if with_kpi_delivery:
+        values.update(
+            {
+                'COSMOS_CONSUMPTION_ENDPOINT': 'https://consumption.example.test',
+                'COSMOS_CONSUMPTION_KEY': 'consumption-key',
+                'COSMOS_CONSUMPTION_DATABASE_NAME': 'consumption',
+            }
+        )
+    return AdaGenericSettings.from_mapping(values)
 
 
 def _blob_local_settings(tmp_path: Path) -> AdaGenericSettings:
@@ -126,15 +139,39 @@ def test_empty_local_persistence_keeps_base_web_runtime_available(tmp_path: Path
     runtime = create_operational_application_runtime(settings=_local_settings(tmp_path))
 
     assert isinstance(runtime, WebApplicationRuntime)
+    assert not runtime.services.contains(ADA_KPI_COLLECTOR_SERVICE_KEY)
 
 
-def test_active_projection_builds_operational_web_runtime(tmp_path: Path) -> None:
+def test_active_projection_without_kpi_connection_keeps_web_available(
+    tmp_path: Path,
+    caplog,
+) -> None:
     settings = _local_settings(tmp_path)
     _persist_projection(settings)
+    caplog.set_level('INFO', logger='ada.web.application.generic.bootstrap')
 
     runtime = create_operational_application_runtime(settings=settings)
 
     assert isinstance(runtime, WebApplicationRuntime)
+    assert not runtime.services.contains(ADA_KPI_COLLECTOR_SERVICE_KEY)
+    assert 'KPI Collector is not configured' in caplog.text
+
+
+def test_ready_projection_with_kpi_connection_attaches_lazy_collector(tmp_path: Path) -> None:
+    settings = _local_settings(tmp_path, with_kpi_delivery=True)
+    _persist_projection(settings)
+
+    runtime = create_operational_application_runtime(settings=settings)
+
+    collector = runtime.services.require(ADA_KPI_COLLECTOR_SERVICE_KEY, AdaKpiCollector)
+    polling_runtime = runtime.services.require(
+        ADA_KPI_COLLECTOR_RUNTIME_SERVICE_KEY,
+        AdaKpiCollectorPollingRuntime,
+    )
+    assert isinstance(runtime, WebApplicationRuntime)
+    assert collector.tool_projection_revision == 'tool-release-current'
+    assert tuple(component.key for component in collector.structure.components) == ('mine', 'plant')
+    assert polling_runtime.is_running is False
 
 
 def test_blob_source_is_not_read_when_local_active_projection_exists(tmp_path: Path) -> None:
@@ -163,4 +200,5 @@ def test_corrupt_projection_keeps_base_web_runtime_available_and_logs_invalid(
     runtime = create_operational_application_runtime(settings=settings)
 
     assert isinstance(runtime, WebApplicationRuntime)
+    assert not runtime.services.contains(ADA_KPI_COLLECTOR_SERVICE_KEY)
     assert 'Operational Tool configuration is invalid' in caplog.text

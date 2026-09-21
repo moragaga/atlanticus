@@ -1,11 +1,9 @@
-# Construye el Collector desde la Tool Projection exacta sin decidir cómo se renderizan las cards.
-# El desarrollador puede usar el Collector antes del attachment para componer su superficie propia.
-
 from __future__ import annotations
 
 from ada.web.kpis.collector import (
     AdaKpiCollector,
     CosmosKpiDeliveryReader,
+    CosmosKpiDeliveryReaderSettings,
     KpiCollectorPollingSettings,
     KpiCollectorPresentationSettings,
     attach_ada_kpi_collector,
@@ -18,12 +16,13 @@ from atlanticus.web.models import WebApplicationDefinition
 from atlanticus.web.projection.models import ProjectionRecord
 
 
+# El Collector se deriva de la Projection READY exacta y queda ligado a su source_release_id.
 def create_operational_kpi_collector(
     *,
     tool_projection: ProjectionRecord[ToolConfiguration],
     cosmos_client: object,
+    reader_settings: CosmosKpiDeliveryReaderSettings | None = None,
 ) -> AdaKpiCollector:
-    # La identidad compatible del delivery proviene de la release exacta de Tool Projection.
     if not isinstance(tool_projection, ProjectionRecord):
         raise TypeError('tool_projection must be a ProjectionRecord')
     configuration = tool_projection.payload
@@ -33,29 +32,35 @@ def create_operational_kpi_collector(
     structure = configuration.structure
     if structure is None:
         raise ValueError('Operational Tool projection requires Tool Structure')
-
-    # La factory sólo crea Collector/cache. No crea cards ni callbacks de presentación propios.
+    resolved_reader_settings = reader_settings or CosmosKpiDeliveryReaderSettings()
+    if not isinstance(resolved_reader_settings, CosmosKpiDeliveryReaderSettings):
+        raise TypeError('reader_settings must be CosmosKpiDeliveryReaderSettings')
     return AdaKpiCollector(
         structure=structure,
         tool_projection_revision=tool_projection.source_release_id.value,
-        reader=CosmosKpiDeliveryReader(client=cosmos_client),
+        reader=CosmosKpiDeliveryReader(
+            client=cosmos_client,
+            settings=resolved_reader_settings,
+        ),
     )
 
 
+# La integración se hace sobre Definition para que servicios, middleware, callbacks y stores nazcan juntos.
 def attach_operational_kpi_collector(
     definition: WebApplicationDefinition,
     *,
     tool_projection: ProjectionRecord[ToolConfiguration],
     cosmos_client: object,
+    reader_settings: CosmosKpiDeliveryReaderSettings | None = None,
     polling_settings: KpiCollectorPollingSettings | None = None,
     presentation_settings: KpiCollectorPresentationSettings | None = None,
 ) -> WebApplicationDefinition:
-    # El attachment conserva el lifecycle ya cerrado del Collector.
     if not isinstance(definition, WebApplicationDefinition):
         raise TypeError('definition must be WebApplicationDefinition')
     collector = create_operational_kpi_collector(
         tool_projection=tool_projection,
         cosmos_client=cosmos_client,
+        reader_settings=reader_settings,
     )
     return attach_ada_kpi_collector(
         definition,

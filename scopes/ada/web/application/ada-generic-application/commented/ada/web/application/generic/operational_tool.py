@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from ada.web.application.generic.runtime import create_application_runtime
+from ada.web.application.generic.application import create_application_definition
 from ada.web.tools.configuration import validate_ada_operational_tool_configuration
 from ada.web.tools.errors import ToolConfigurationValidationError
 from ada.web.tools.persistence import (
@@ -11,12 +11,12 @@ from ada.web.tools.persistence import (
     ToolProjectionResolutionState,
     resolve_active_tool_projection,
 )
-from atlanticus.web.models import WebApplicationRuntime
+from atlanticus.web.models import WebApplicationDefinition
 
 _LOGGER = logging.getLogger(__name__)
 
 
-# Runtime sólo lee la Projection durable activa; no reconstruye nada desde Source.
+# Runtime lee exclusivamente la Projection durable activa y después aplica los invariantes operacionales de ADA.
 def resolve_operational_tool_projection(
     composition: ToolPersistenceComposition,
 ) -> ToolProjectionResolution:
@@ -30,7 +30,6 @@ def resolve_operational_tool_projection(
             error_type='ProjectionInvariantError',
             message='READY Tool Projection resolution has no projection',
         )
-    # El store valida el contrato Tool genérico; ADA agrega aquí sus invariantes operacionales.
     try:
         validate_ada_operational_tool_configuration(projection.payload)
     except ToolConfigurationValidationError as error:
@@ -42,10 +41,10 @@ def resolve_operational_tool_projection(
     return resolution
 
 
-# La Projection READY se traduce a inputs ya existentes del runtime; los demás estados usan Web base.
-def create_runtime_from_tool_resolution(
+# Se construye Definition, no Runtime, para permitir que otras capabilities se adjunten antes de crear la Web.
+def create_definition_from_tool_resolution(
     resolution: ToolProjectionResolution,
-) -> WebApplicationRuntime:
+) -> WebApplicationDefinition:
     if not isinstance(resolution, ToolProjectionResolution):
         raise TypeError('resolution must be ToolProjectionResolution')
     if resolution.state is ToolProjectionResolutionState.READY:
@@ -53,17 +52,17 @@ def create_runtime_from_tool_resolution(
         if projection is None:
             raise RuntimeError('READY Tool Projection resolution has no projection')
         configuration = projection.payload
-        return create_application_runtime(
+        return create_application_definition(
             tool_display_name=configuration.display_name,
             branding_configuration=configuration.branding,
             source_consumption=configuration.source_consumption,
             source_operational_participation=configuration.source_operational_participation,
         )
     _log_degraded_resolution(resolution)
-    return create_application_runtime()
+    return create_application_definition()
 
 
-# UNAVAILABLE e INVALID quedan diagnosticables sin convertirse en startup failure global.
+# Los estados degradados conservan Web base y dejan diagnóstico explícito sin fallback de provider.
 def _log_degraded_resolution(resolution: ToolProjectionResolution) -> None:
     if resolution.state is ToolProjectionResolutionState.UNCONFIGURED:
         _LOGGER.info('Operational Tool is not configured')

@@ -6,6 +6,10 @@ import pytest
 from pydantic import ValidationError
 
 from ada.web.application.generic.settings import AdaGenericSettings
+from ada.web.kpis.collector import (
+    DEFAULT_KPI_LATEST_DELIVERY_CONTAINER,
+    DEFAULT_KPI_TIMESERIES_DELIVERY_CONTAINER,
+)
 from ada.web.tools.persistence import ToolProjectionProvider, ToolSourceProvider
 from atlanticus.connectivity.storage import (
     StorageConnectionStringCredential,
@@ -32,7 +36,8 @@ def test_local_settings_build_tool_persistence_contract(tmp_path: Path) -> None:
     assert persistence.projection_provider is ToolProjectionProvider.LOCAL
     assert persistence.local_base_root == tmp_path
     assert settings.storage_settings() is None
-    assert settings.cosmos_settings() is None
+    assert settings.tool_projection_cosmos_settings() is None
+    assert settings.kpi_delivery_cosmos_settings() is None
 
 
 def test_blob_connection_string_and_cosmos_settings_are_provider_scoped() -> None:
@@ -52,13 +57,72 @@ def test_blob_connection_string_and_cosmos_settings_are_provider_scoped() -> Non
     )
 
     storage = settings.storage_settings()
-    cosmos = settings.cosmos_settings()
+    cosmos = settings.tool_projection_cosmos_settings()
 
     assert storage is not None
     assert isinstance(storage.credential, StorageConnectionStringCredential)
     assert cosmos is not None
     assert cosmos.endpoint == 'https://cosmos.example.test'
     assert cosmos.database_name == 'configuration'
+
+
+def test_kpi_delivery_cosmos_connection_is_named_and_independent(tmp_path: Path) -> None:
+    settings = AdaGenericSettings.from_mapping(
+        {
+            'ATLANTICUS_ENVIRONMENT': 'production',
+            'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
+            'ADA_TOOL_SOURCE_PROVIDER': 'local',
+            'ADA_TOOL_PROJECTION_PROVIDER': 'local',
+            'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path),
+            'COSMOS_CONSUMPTION_ENDPOINT': 'https://consumption.example.test',
+            'COSMOS_CONSUMPTION_KEY': 'consumption-key',
+            'COSMOS_CONSUMPTION_DATABASE_NAME': 'consumption',
+            'KPI_LATEST_DELIVERY_CONTAINER': 'latest-custom',
+            'KPI_TIMESERIES_DELIVERY_CONTAINER': 'timeseries-custom',
+        }
+    )
+
+    cosmos = settings.kpi_delivery_cosmos_settings()
+    reader = settings.kpi_delivery_reader_settings()
+
+    assert settings.tool_projection_cosmos_settings() is None
+    assert cosmos is not None
+    assert cosmos.endpoint == 'https://consumption.example.test'
+    assert cosmos.database_name == 'consumption'
+    assert reader.latest_container_name == 'latest-custom'
+    assert reader.timeseries_container_name == 'timeseries-custom'
+
+
+def test_kpi_delivery_reader_uses_collector_container_defaults(tmp_path: Path) -> None:
+    settings = AdaGenericSettings.from_mapping(
+        {
+            'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
+            'ADA_TOOL_SOURCE_PROVIDER': 'local',
+            'ADA_TOOL_PROJECTION_PROVIDER': 'local',
+            'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path),
+        }
+    )
+
+    reader = settings.kpi_delivery_reader_settings()
+
+    assert reader.latest_container_name == DEFAULT_KPI_LATEST_DELIVERY_CONTAINER
+    assert reader.timeseries_container_name == DEFAULT_KPI_TIMESERIES_DELIVERY_CONTAINER
+
+
+def test_partial_kpi_delivery_cosmos_connection_is_rejected(tmp_path: Path) -> None:
+    with pytest.raises(
+        ValidationError,
+        match='COSMOS_CONSUMPTION_KEY is required when KPI delivery Cosmos is configured',
+    ):
+        AdaGenericSettings.from_mapping(
+            {
+                'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
+                'ADA_TOOL_SOURCE_PROVIDER': 'local',
+                'ADA_TOOL_PROJECTION_PROVIDER': 'local',
+                'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path),
+                'COSMOS_CONSUMPTION_ENDPOINT': 'https://consumption.example.test',
+            }
+        )
 
 
 def test_blob_sas_settings_preserve_supported_storage_contract() -> None:

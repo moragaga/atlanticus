@@ -30,6 +30,7 @@ dependencies = [
     "ada-web-shell-header==0.1.8",
     "ada-web-shell-navigation==0.1.7",
     "ada-web-runtime-experience==0.1.0",
+    "ada-web-kpi-collector==0.1.0",
     "atlanticus-cosmos==1.0.0",
     "atlanticus-storage==1.0.0",
     "atlanticus-web==0.1.0",
@@ -38,21 +39,14 @@ dependencies = [
     "atlanticus-web-identity==0.1.0",
     "atlanticus-web-identity-local==0.1.0",
     "atlanticus-web-navigation==0.1.0",
+    "atlanticus-web-projection==0.1.0",
     "ada-web-ui-page-readiness==0.1.0",
     "pydantic==2.13.5",
     "pydantic-settings==2.14.1",
 ]
 
-[project.optional-dependencies]
-kpi-collector = [
-    "ada-web-kpi-collector==0.1.0",
-    "atlanticus-web-projection==0.1.0",
-]
-
 [dependency-groups]
 dev = [
-    "ada-web-kpi-collector==0.1.0",
-    "atlanticus-web-projection==0.1.0",
     "pytest==9.1.1",
     "ruff==0.15.22",
 ]
