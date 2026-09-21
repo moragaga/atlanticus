@@ -31,8 +31,18 @@ dependencies = [
     { name = "atlanticus-web-navigation" },
 ]
 
+[package.optional-dependencies]
+kpi-collector = [
+    { name = "ada-web-kpi-collector" },
+    { name = "ada-web-tools-configuration" },
+    { name = "atlanticus-web-projection" },
+]
+
 [package.dev-dependencies]
 dev = [
+    { name = "ada-web-kpi-collector" },
+    { name = "ada-web-tools-configuration" },
+    { name = "atlanticus-web-projection" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -43,6 +53,7 @@ requires-dist = [
     { name = "ada-web-alarm-status", editable = "../../alarms/status" },
     { name = "ada-web-branding", extras = ["web"], editable = "../../branding" },
     { name = "ada-web-content-state", editable = "../../content-state/core" },
+    { name = "ada-web-kpi-collector", marker = "extra == 'kpi-collector'", editable = "../../kpis/collector" },
     { name = "ada-web-operational-render-binding", editable = "../../operational-render-binding" },
     { name = "ada-web-operational-state", editable = "../../operational-state" },
     { name = "ada-web-runtime-experience", editable = "../../runtime-experience" },
@@ -50,6 +61,7 @@ requires-dist = [
     { name = "ada-web-shell-navigation", editable = "../../shell/navigation" },
     { name = "ada-web-time-status-store-adapter", editable = "../../time-status/store-adapter" },
     { name = "ada-web-tools", editable = "../../tools/core" },
+    { name = "ada-web-tools-configuration", marker = "extra == 'kpi-collector'", editable = "../../tools/configuration" },
     { name = "ada-web-ui-content-state", editable = "../../ui/content-state" },
     { name = "ada-web-ui-core", editable = "../../ui/core" },
     { name = "ada-web-ui-display-status", editable = "../../ui/display-status" },
@@ -61,10 +73,15 @@ requires-dist = [
     { name = "atlanticus-web-identity", editable = "../../../../../web/capabilities/identity/core" },
     { name = "atlanticus-web-identity-local", editable = "../../../../../web/capabilities/identity/local" },
     { name = "atlanticus-web-navigation", editable = "../../../../../web/capabilities/navigation/core" },
+    { name = "atlanticus-web-projection", marker = "extra == 'kpi-collector'", editable = "../../../../../web/capabilities/projection/core" },
 ]
+provides-extras = ["kpi-collector"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "ada-web-kpi-collector", editable = "../../kpis/collector" },
+    { name = "ada-web-tools-configuration", editable = "../../tools/configuration" },
+    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]
@@ -167,6 +184,37 @@ version = "0.1.0"
 source = { editable = "../../content-state/core" }
 
 [package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-kpi-collector"
+version = "0.1.0"
+source = { editable = "../../kpis/collector" }
+dependencies = [
+    { name = "ada-web-components" },
+    { name = "ada-web-operational-render-binding" },
+    { name = "ada-web-tools" },
+    { name = "atlanticus-cosmos" },
+    { name = "atlanticus-web" },
+    { name = "atlanticus-web-observability" },
+    { name = "dash" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-web-components", editable = "../../components/core" },
+    { name = "ada-web-operational-render-binding", editable = "../../operational-render-binding" },
+    { name = "ada-web-tools", editable = "../../tools/core" },
+    { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
+    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
+    { name = "atlanticus-web-observability", editable = "../../../../../web/framework/observability" },
+    { name = "dash", specifier = "==4.4.1" },
+]
 
 [package.metadata.requires-dev]
 dev = [
@@ -309,6 +357,36 @@ source = { editable = "../../tools/core" }
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-tools-configuration"
+version = "0.1.0"
+source = { editable = "../../tools/configuration" }
+dependencies = [
+    { name = "ada-web-branding" },
+    { name = "ada-web-tools" },
+    { name = "atlanticus-web-projection" },
+    { name = "atlanticus-web-source" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-web-branding", editable = "../../branding" },
+    { name = "ada-web-tools", editable = "../../tools/core" },
+    { name = "atlanticus-web", marker = "extra == 'web'", editable = "../../../../../web/framework/core" },
+    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
+    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
+    { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
+]
+provides-extras = ["web"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
+    { name = "dash", specifier = "==4.4.1" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]
@@ -457,6 +535,37 @@ wheels = [
 ]
 
 [[package]]
+name = "atlanticus-cosmos"
+version = "1.0.0"
+source = { editable = "../../../../../connectivity/cosmos" }
+dependencies = [
+    { name = "atlanticus-observability" },
+    { name = "azure-cosmos" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-observability", editable = "../../../../../backend/observability" },
+    { name = "azure-cosmos", specifier = "==4.16.3" },
+]
+
+[[package]]
+name = "atlanticus-kernel"
+version = "1.0.0"
+source = { editable = "../../../../../backend/kernel" }
+
+[[package]]
+name = "atlanticus-observability"
+version = "1.0.0"
+source = { editable = "../../../../../backend/observability" }
+dependencies = [
+    { name = "atlanticus-kernel" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "atlanticus-kernel", editable = "../../../../../backend/kernel" }]
+
+[[package]]
 name = "atlanticus-web"
 version = "0.1.0"
 source = { editable = "../../../../../web/framework/core" }
@@ -558,6 +667,48 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "flask", specifier = "==3.1.3" }]
+
+[[package]]
+name = "atlanticus-web-projection"
+version = "0.1.0"
+source = { editable = "../../../../../web/capabilities/projection/core" }
+dependencies = [
+    { name = "atlanticus-web-source" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" }]
+
+[[package]]
+name = "atlanticus-web-source"
+version = "0.1.0"
+source = { editable = "../../../../../web/capabilities/source/core" }
+
+[[package]]
+name = "azure-core"
+version = "1.41.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a6/f3/b416179e408990df5db0d516283022dde0f5d0111d98c1a848e41853e81c/azure_core-1.41.0.tar.gz", hash = "sha256:f46ff5dfcd230f25cf1c19e8a34b8dc08a337b2503e268bb600a16c00db8ad5a", size = 381042, upload-time = "2026-05-07T23:30:54.302Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5b/db/325c6d7312d2200251c52323878281045aaffcb5586612296484e4280eaa/azure_core-1.41.0-py3-none-any.whl", hash = "sha256:522b4011e8180b1a3dcd2024396a4e7fe9ac37fb8597db47163d230b5efe892d", size = 220920, upload-time = "2026-05-07T23:30:56.357Z" },
+]
+
+[[package]]
+name = "azure-cosmos"
+version = "4.16.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "azure-core" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/35/21/59863ec67ff0284e6783fef67e2a03e17c3504a3ce0561d525ffb0caccec/azure_cosmos-4.16.3.tar.gz", hash = "sha256:da0a4d9957de7b3f018b2ebb728b7e0494623d4db58639eb92ccd140eddc12d3", size = 2459773, upload-time = "2026-07-29T22:39:46.757Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/17/f6/bf580f67645dcf4d2b4e9a6f7d5e1e3809bbe0c882519aedad647efcb8db/azure_cosmos-4.16.3-py3-none-any.whl", hash = "sha256:666fa5d40227bc233d0e49d8e6342998603a8ef57780d1986af1b23b6d08e987", size = 501516, upload-time = "2026-07-29T22:39:49.435Z" },
+]
 
 [[package]]
 name = "blinker"
