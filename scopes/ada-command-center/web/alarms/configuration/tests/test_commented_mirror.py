@@ -4,9 +4,19 @@ from pathlib import Path
 FILES = (
     '__init__.py',
     'errors.py',
+    'manager.py',
     'models.py',
     'source_projection.py',
     'source_release.py',
+    'workflows.py',
+    'workspace.py',
+    'web/__init__.py',
+    'web/callbacks.py',
+    'web/ids.py',
+    'web/layout.py',
+    'web/models.py',
+    'web/module.py',
+    'web/preview.py',
 )
 
 

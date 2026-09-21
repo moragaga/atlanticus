@@ -14,13 +14,25 @@ dependencies = [
     "atlanticus-web-source==0.1.0",
 ]
 
+[project.optional-dependencies]
+web = [
+    "atlanticus-web==0.1.0",
+    "atlanticus-web-manager==0.3.18",
+    "dash==4.4.1",
+]
+
 [tool.uv.sources]
 ada-command-center-alarms-core = { path = "../../../backend/alarms/core", editable = true }
+atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
+atlanticus-web-manager = { path = "../../../../../web/capabilities/manager", editable = true }
 atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
 
 [dependency-groups]
 dev = [
+    "atlanticus-web==0.1.0",
+    "atlanticus-web-manager==0.3.18",
+    "dash==4.4.1",
     "pytest==9.1.1",
     "ruff==0.15.22",
 ]
@@ -60,6 +72,8 @@ testpaths = ["tests"]
 pythonpath = [
     "src",
     "../../../backend/alarms/core/src",
+    "../../../../../web/framework/core/src",
+    "../../../../../web/capabilities/manager/src",
     "../../../../../web/capabilities/projection/core/src",
     "../../../../../web/capabilities/source/core/src",
 ]

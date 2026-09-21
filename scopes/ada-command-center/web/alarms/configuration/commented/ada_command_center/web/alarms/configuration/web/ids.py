@@ -1,0 +1,11 @@
+# Identificadores Dash privados de la superficie Alarm Configuration.
+# Se mantienen namespaced para evitar colisiones al montar múltiples módulos Manager.
+MOUNT_STORE_ID = 'ada-command-center-alarm-configuration-mounted'
+DOCUMENT_EDITOR_ID = 'ada-command-center-alarm-configuration-document-editor'
+DOCUMENT_STATUS_ID = 'ada-command-center-alarm-configuration-document-status'
+IMPORT_UPLOAD_ID = 'ada-command-center-alarm-configuration-import'
+IMPORT_RESULT_ID = 'ada-command-center-alarm-configuration-import-result'
+SAVE_BUTTON_ID = 'ada-command-center-alarm-configuration-save'
+SAVE_RESULT_ID = 'ada-command-center-alarm-configuration-save-result'
+SOURCE_NAME_ID = 'ada-command-center-alarm-configuration-source-name'
+PROJECTION_NAME_ID = 'ada-command-center-alarm-configuration-projection-name'
