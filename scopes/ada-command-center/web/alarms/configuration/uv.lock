@@ -21,6 +21,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "ada-command-center-alarms-core" },
+    { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
 ]
 
@@ -33,6 +34,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "ada-command-center-alarms-core", editable = "../../../backend/alarms/core" },
+    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
 ]
 
@@ -41,6 +43,17 @@ dev = [
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]
+
+[[package]]
+name = "atlanticus-web-projection"
+version = "0.1.0"
+source = { editable = "../../../../../web/capabilities/projection/core" }
+dependencies = [
+    { name = "atlanticus-web-source" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" }]
 
 [[package]]
 name = "atlanticus-web-source"

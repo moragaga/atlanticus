@@ -10,11 +10,13 @@ requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "ada-command-center-alarms-core==1.0.0",
+    "atlanticus-web-projection==0.1.0",
     "atlanticus-web-source==0.1.0",
 ]
 
 [tool.uv.sources]
 ada-command-center-alarms-core = { path = "../../../backend/alarms/core", editable = true }
+atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
 
 [dependency-groups]
@@ -58,6 +60,7 @@ testpaths = ["tests"]
 pythonpath = [
     "src",
     "../../../backend/alarms/core/src",
+    "../../../../../web/capabilities/projection/core/src",
     "../../../../../web/capabilities/source/core/src",
 ]
 addopts = "-q --import-mode=importlib"
