@@ -10,6 +10,7 @@ from ada_command_center.web.alarms.configuration.source_projection import (
 from ada_command_center.web.alarms.configuration.source_release import (
     AlarmConfigurationSourceService,
 )
+from ada_command_center.web.alarms.configuration.tool_references import AlarmToolReferenceReader
 from ada_command_center.web.alarms.configuration.web import (
     AlarmConfigurationAdminWebContext,
     build_alarm_configuration_admin,
@@ -68,6 +69,7 @@ def compose_alarm_configuration_manager(
     source_key: SourceKey,
     group_key: str,
     access_key: str,
+    tool_reference_reader: AlarmToolReferenceReader | None = None,
     module_key: str = 'alarm-configuration',
     route: str = '/alarm-configuration',
     order: int = 10,
@@ -107,6 +109,9 @@ def compose_alarm_configuration_manager(
         saved_draft_store_id=workflow_saved_draft_id(module_key),
         draft_save_action_id=workflow_action_id(module_key, 'save-draft'),
         editor_revision_store_id=workflow_editor_revision_id(module_key),
+        tool_reference_provider=(
+            None if tool_reference_reader is None else tool_reference_reader.load
+        ),
         can_manage=lambda: resolved_authorization.can_view(principal_provider(), module),
         source_name=source_name,
         projection_name=projection_name,

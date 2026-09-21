@@ -12,6 +12,7 @@ FILES = (
     'workflows.py',
     'workspace.py',
     'web/__init__.py',
+    'web/authoring.py',
     'web/callbacks.py',
     'web/ids.py',
     'web/layout.py',
