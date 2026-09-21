@@ -8,6 +8,7 @@ FILES = (
     'models.py',
     'source_projection.py',
     'source_release.py',
+    'tool_references.py',
     'workflows.py',
     'workspace.py',
     'web/__init__.py',
