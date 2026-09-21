@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ada-command-center-tools-catalog"
+version = "0.1.0"
+description = "Durable consolidated Tool Catalog for ADA Command Center"
+requires-python = "==3.14.2"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "ada-web-tools==0.1.0",
+    "ada-web-tools-configuration==0.1.0",
+    "atlanticus-storage==1.0.0",
+    "atlanticus-web-projection==0.1.0",
+    "atlanticus-web-source==0.1.0",
+]
+
+[tool.uv.sources]
+ada-web-tools = { path = "../../../../ada/web/tools/core", editable = true }
+ada-web-tools-configuration = { path = "../../../../ada/web/tools/configuration", editable = true }
+atlanticus-storage = { path = "../../../../../connectivity/storage", editable = true }
+atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
+atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.15.22",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+include = ["ada_command_center.tools.catalog*"]
+
+[tool.setuptools.package-data]
+"ada_command_center.tools.catalog" = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+target-version = "py314"
+extend-exclude = ["build", "dist", "commented"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ada", "ada_command_center", "atlanticus"]
+combine-as-imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [
+    "src",
+    "../../../../ada/web/tools/core/src",
+    "../../../../ada/web/tools/configuration/src",
+    "../../../../../connectivity/storage/src",
+    "../../../../../backend/observability/src",
+    "../../../../../web/capabilities/projection/core/src",
+    "../../../../../web/capabilities/source/core/src",
+]
+addopts = "-q --import-mode=importlib"
