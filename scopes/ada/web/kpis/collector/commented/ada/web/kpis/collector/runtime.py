@@ -1,5 +1,5 @@
-# Mantiene un poller por worker. El runtime sólo reporta incidencias relevantes y deduplica
-# mientras el mismo fallo continúe activo; un refresh válido permite reportar una recaída futura.
+# Mantiene un poller por worker. El runtime deduplica incidencias, descarta intentos concurrentes
+# y avanza los plazos perdidos para que una lectura lenta nunca genere cola ni catch-up inmediato.
 
 from __future__ import annotations
 
@@ -30,6 +30,20 @@ def _validate_interval(value: object, field_name: str) -> None:
         or value <= 0
     ):
         raise ValueError(f'{field_name} must be greater than zero and finite')
+
+
+# Conserva la fase periódica original y salta todos los vencimientos que ocurrieron mientras
+# el Collector estaba ocupado. El siguiente plazo siempre queda estrictamente en el futuro.
+def _advance_missed_deadline(
+    deadline: float | None,
+    *,
+    interval_seconds: float,
+    completed_at: float,
+) -> float | None:
+    if deadline is None or deadline > completed_at:
+        return deadline
+    missed_intervals = math.floor((completed_at - deadline) / interval_seconds) + 1
+    return deadline + missed_intervals * interval_seconds
 
 
 class _Collector(Protocol):
@@ -107,6 +121,8 @@ class AdaKpiCollectorPollingRuntime:
         with self._state_lock:
             return self._is_running_locked(self._pid_provider())
 
+    # Cada PID inicia como máximo un thread background. Requests posteriores sólo verifican que
+    # ese worker siga activo y no crean un segundo poller.
     def ensure_started(self) -> bool:
         pid = self._pid_provider()
         with self._state_lock:
@@ -157,7 +173,12 @@ class AdaKpiCollectorPollingRuntime:
             or not math.isfinite(current)
         ):
             raise TypeError('now must be a finite numeric value')
-        with self._poll_lock:
+
+        # La admisión es no bloqueante: si otro ciclo ya está ejecutándose, este intento se pierde.
+        # No espera el lock y por lo tanto no puede transformarse en trabajo encolado.
+        if not self._poll_lock.acquire(blocking=False):
+            return KpiCollectorPollCycle()
+        try:
             latest_due = self._next_latest_due is None or current >= self._next_latest_due
             timeseries_due = (
                 self._next_timeseries_due is None or current >= self._next_timeseries_due
@@ -171,6 +192,9 @@ class AdaKpiCollectorPollingRuntime:
             latest_error = None
             timeseries_result = None
             timeseries_error = None
+
+            # Ambos vencimientos se resuelven como un único ciclo admitido y Latest conserva la
+            # prioridad. Si ambos estaban due al entrar, Timeseries se ejecuta después de Latest.
             if latest_due:
                 try:
                     latest_result = self._collector.refresh_latest()
@@ -193,6 +217,16 @@ class AdaKpiCollectorPollingRuntime:
                 latest_error=latest_error,
                 timeseries_error=timeseries_error,
             )
+        finally:
+            # En el runtime real se observa la hora de término. Cualquier slot que venció durante
+            # el trabajo se descarta y se avanza hasta el próximo slot futuro. El parámetro `now`
+            # queda reservado para simulaciones deterministas de tests y no mide duración real.
+            try:
+                if now is None:
+                    self._discard_missed_deadlines(self._clock())
+            finally:
+                # El lock se libera incluso si falla el reloj al cerrar el ciclo.
+                self._poll_lock.release()
 
     def _run(self, pid: int, stop_event: Event) -> None:
         try:
@@ -209,8 +243,8 @@ class AdaKpiCollectorPollingRuntime:
             )
 
     def _seconds_until_next_poll(self) -> float:
-        now = self._clock()
         with self._poll_lock:
+            now = self._clock()
             deadlines = tuple(
                 deadline
                 for deadline in (self._next_latest_due, self._next_timeseries_due)
@@ -219,6 +253,18 @@ class AdaKpiCollectorPollingRuntime:
         if not deadlines:
             return 0.0
         return max(0.0, min(deadlines) - now)
+
+    def _discard_missed_deadlines(self, completed_at: float) -> None:
+        self._next_latest_due = _advance_missed_deadline(
+            self._next_latest_due,
+            interval_seconds=self._settings.latest_interval_seconds,
+            completed_at=completed_at,
+        )
+        self._next_timeseries_due = _advance_missed_deadline(
+            self._next_timeseries_due,
+            interval_seconds=self._settings.timeseries_interval_seconds,
+            completed_at=completed_at,
+        )
 
     def _report_refresh_failure(self, source: str, error: Exception) -> None:
         signature = (type(error).__name__, str(error))

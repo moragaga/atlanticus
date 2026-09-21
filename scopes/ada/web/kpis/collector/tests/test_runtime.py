@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from threading import Event, get_ident
+from threading import Event, Thread, get_ident
 from time import monotonic
 
 import pytest
@@ -15,6 +15,7 @@ from ada.web.kpis.collector import (
     DEFAULT_KPI_TIMESERIES_INTERVAL_SECONDS,
     AdaKpiCollectorPollingRuntime,
     KpiCollectorContractError,
+    KpiCollectorPollCycle,
     KpiCollectorPollingSettings,
     KpiCollectorRefreshResult,
     KpiCollectorRefreshStatus,
@@ -31,11 +32,14 @@ class CollectorStub:
         self.refreshed = Event()
         self.latest_error: Exception | None = None
         self.timeseries_error: Exception | None = None
+        self.latest_hook = None
 
     def refresh_latest(self) -> KpiCollectorRefreshResult:
         self.calls.append('latest')
         self.thread_ids.append(get_ident())
         self.refreshed.set()
+        if self.latest_hook is not None:
+            self.latest_hook()
         if self.latest_error is not None:
             raise self.latest_error
         return KpiCollectorRefreshResult(KpiCollectorRefreshStatus.UNCHANGED, 'latest-r1')
@@ -47,6 +51,32 @@ class CollectorStub:
         if self.timeseries_error is not None:
             raise self.timeseries_error
         return KpiCollectorRefreshResult(KpiCollectorRefreshStatus.UNCHANGED, 'timeseries-r1')
+
+
+class BlockingCollectorStub(CollectorStub):
+    def __init__(self) -> None:
+        super().__init__()
+        self.latest_started = Event()
+        self.latest_release = Event()
+
+    def refresh_latest(self) -> KpiCollectorRefreshResult:
+        self.calls.append('latest')
+        self.thread_ids.append(get_ident())
+        self.refreshed.set()
+        self.latest_started.set()
+        self.latest_release.wait(2.0)
+        return KpiCollectorRefreshResult(KpiCollectorRefreshStatus.UNCHANGED, 'latest-r1')
+
+
+class FakeClock:
+    def __init__(self, value: float = 0.0) -> None:
+        self.value = value
+
+    def __call__(self) -> float:
+        return self.value
+
+    def advance(self, seconds: float) -> None:
+        self.value += seconds
 
 
 class RecordingWebObservability(WebObservability):
@@ -200,6 +230,88 @@ def test_latest_and_timeseries_keep_independent_schedules_with_latest_priority()
     assert collector.calls[-2:] == ['latest', 'timeseries']
 
 
+def test_concurrent_poll_is_dropped_without_waiting_for_active_cycle() -> None:
+    collector = BlockingCollectorStub()
+    runtime, _ = _runtime(collector)
+    first_poll = Thread(target=runtime.poll_due)
+    first_poll.start()
+
+    assert collector.latest_started.wait(1.0)
+
+    second_result: list[KpiCollectorPollCycle] = []
+    second_completed = Event()
+
+    def run_second_poll() -> None:
+        second_result.append(runtime.poll_due())
+        second_completed.set()
+
+    second_poll = Thread(target=run_second_poll)
+    second_poll.start()
+
+    assert second_completed.wait(1.0)
+    assert second_result == [KpiCollectorPollCycle()]
+    assert collector.calls == ['latest']
+
+    collector.latest_release.set()
+    first_poll.join(1.0)
+    second_poll.join(1.0)
+
+    assert not first_poll.is_alive()
+    assert not second_poll.is_alive()
+    assert collector.calls == ['latest', 'timeseries']
+
+
+def test_slow_refresh_drops_missed_latest_slot_without_immediate_catch_up() -> None:
+    clock = FakeClock()
+    collector = CollectorStub()
+    collector.latest_hook = lambda: clock.advance(12.0)
+    runtime, _ = _runtime(collector, clock=clock)
+
+    runtime.poll_due()
+
+    assert clock() == 12.0
+    assert collector.calls == ['latest', 'timeseries']
+
+    runtime.poll_due()
+
+    assert collector.calls == ['latest', 'timeseries']
+
+    clock.advance(8.0)
+    runtime.poll_due()
+
+    assert collector.calls == ['latest', 'timeseries', 'latest']
+
+
+def test_source_due_while_other_refresh_is_running_is_dropped_until_next_source_slot() -> None:
+    clock = FakeClock()
+    collector = CollectorStub()
+    runtime, _ = _runtime(collector, clock=clock)
+
+    runtime.poll_due(now=0.0)
+    for second in range(10, 110, 10):
+        runtime.poll_due(now=float(second))
+
+    clock.value = 110.0
+    collector.latest_hook = lambda: clock.advance(15.0)
+    runtime.poll_due()
+
+    assert clock() == 125.0
+    assert collector.calls.count('timeseries') == 1
+
+    collector.latest_hook = None
+    clock.value = 130.0
+    runtime.poll_due()
+
+    assert collector.calls.count('latest') == 13
+    assert collector.calls.count('timeseries') == 1
+
+    clock.value = 240.0
+    runtime.poll_due()
+
+    assert collector.calls[-2:] == ['latest', 'timeseries']
+    assert collector.calls.count('timeseries') == 2
+
+
 def test_latest_failure_does_not_block_due_timeseries_refresh() -> None:
     collector = CollectorStub()
     collector.latest_error = RuntimeError('latest failed')
@@ -286,6 +398,27 @@ def test_unexpected_refresh_failure_emits_deduplicated_error() -> None:
 
     assert len(observability.error_events) == 1
     assert observability.error_events[0][0] == 'web.kpi_collector.refresh_failed'
+
+
+def test_poll_lock_is_released_when_completion_clock_fails() -> None:
+    collector = CollectorStub()
+    clock_calls = 0
+
+    def failing_completion_clock() -> float:
+        nonlocal clock_calls
+        clock_calls += 1
+        if clock_calls == 2:
+            raise RuntimeError('completion clock failed')
+        return 0.0
+
+    runtime, _ = _runtime(collector, clock=failing_completion_clock)
+
+    with pytest.raises(RuntimeError, match='completion clock failed'):
+        runtime.poll_due()
+
+    recovered_cycle = runtime.poll_due(now=10.0)
+
+    assert recovered_cycle.latest is not None
 
 
 def test_unexpected_runtime_failure_emits_critical_event() -> None:

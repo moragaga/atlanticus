@@ -29,6 +29,18 @@ def _validate_interval(value: object, field_name: str) -> None:
         raise ValueError(f'{field_name} must be greater than zero and finite')
 
 
+def _advance_missed_deadline(
+    deadline: float | None,
+    *,
+    interval_seconds: float,
+    completed_at: float,
+) -> float | None:
+    if deadline is None or deadline > completed_at:
+        return deadline
+    missed_intervals = math.floor((completed_at - deadline) / interval_seconds) + 1
+    return deadline + missed_intervals * interval_seconds
+
+
 class _Collector(Protocol):
     def refresh_latest(self) -> KpiCollectorRefreshResult: ...
 
@@ -154,7 +166,9 @@ class AdaKpiCollectorPollingRuntime:
             or not math.isfinite(current)
         ):
             raise TypeError('now must be a finite numeric value')
-        with self._poll_lock:
+        if not self._poll_lock.acquire(blocking=False):
+            return KpiCollectorPollCycle()
+        try:
             latest_due = self._next_latest_due is None or current >= self._next_latest_due
             timeseries_due = (
                 self._next_timeseries_due is None or current >= self._next_timeseries_due
@@ -190,6 +204,12 @@ class AdaKpiCollectorPollingRuntime:
                 latest_error=latest_error,
                 timeseries_error=timeseries_error,
             )
+        finally:
+            try:
+                if now is None:
+                    self._discard_missed_deadlines(self._clock())
+            finally:
+                self._poll_lock.release()
 
     def _run(self, pid: int, stop_event: Event) -> None:
         try:
@@ -206,8 +226,8 @@ class AdaKpiCollectorPollingRuntime:
             )
 
     def _seconds_until_next_poll(self) -> float:
-        now = self._clock()
         with self._poll_lock:
+            now = self._clock()
             deadlines = tuple(
                 deadline
                 for deadline in (self._next_latest_due, self._next_timeseries_due)
@@ -216,6 +236,18 @@ class AdaKpiCollectorPollingRuntime:
         if not deadlines:
             return 0.0
         return max(0.0, min(deadlines) - now)
+
+    def _discard_missed_deadlines(self, completed_at: float) -> None:
+        self._next_latest_due = _advance_missed_deadline(
+            self._next_latest_due,
+            interval_seconds=self._settings.latest_interval_seconds,
+            completed_at=completed_at,
+        )
+        self._next_timeseries_due = _advance_missed_deadline(
+            self._next_timeseries_due,
+            interval_seconds=self._settings.timeseries_interval_seconds,
+            completed_at=completed_at,
+        )
 
     def _report_refresh_failure(self, source: str, error: Exception) -> None:
         signature = (type(error).__name__, str(error))
