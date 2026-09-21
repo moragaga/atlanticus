@@ -39,6 +39,8 @@ dependencies = [
     "atlanticus-web-identity-local==0.1.0",
     "atlanticus-web-navigation==0.1.0",
     "ada-web-ui-page-readiness==0.1.0",
+    "pydantic==2.13.5",
+    "pydantic-settings==2.14.1",
 ]
 
 [project.optional-dependencies]
