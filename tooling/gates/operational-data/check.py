@@ -397,16 +397,6 @@ RETIRED_PROCESS_PATHS = (
     'scopes/ada/processes/fabrica',
     'scopes/ada/processes/remanentes',
 )
-RETIRED_GATE_FILES = (
-    'scripts/scopes/operational-data/check.py',
-    'scripts/scopes/operational-data/check.sh',
-    'scripts/scopes/operational-data/check.bat',
-    'scripts/commented/scopes/operational-data/check.py',
-    'scripts/commented/scopes/operational-data/check.sh',
-    'scripts/commented/scopes/operational-data/check.bat',
-)
-
-
 def _repository_root() -> Path:
     for candidate in Path(__file__).resolve().parents:
         if (candidate / 'scopes/operational-data/pyproject.toml').is_file():
@@ -678,9 +668,7 @@ def _validate_dependency_correlation(scope: Path, repository: Path) -> None:
 
 def _validate_retired_paths(repository: Path) -> None:
     remaining = [
-        relative
-        for relative in (*RETIRED_PROCESS_PATHS, *RETIRED_GATE_FILES)
-        if (repository / relative).exists()
+        relative for relative in RETIRED_PROCESS_PATHS if (repository / relative).exists()
     ]
     if remaining:
         raise SystemExit(
@@ -746,7 +734,7 @@ def _validate_process_contracts(scope: Path) -> None:
                 f'{capability.distribution} .python-version must be '
                 f'{EXPECTED_PYTHON_VERSION}, found {python_version}'
             )
-        for retired in ('.env', 'uv.lock', 'scripts', 'FIRST_STEP.txt'):
+        for retired in ('.env', 'uv.lock', 'FIRST_STEP.txt'):
             if (root / retired).exists():
                 raise SystemExit(
                     f'{capability.distribution} source process contains retired local state: {retired}'

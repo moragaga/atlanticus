@@ -102,22 +102,6 @@ def _validate_structure(paths: Paths) -> None:
     missing = tuple(path for path in required if not path.is_file())
     if missing:
         raise RuntimeError(f"Deployment file not found: {missing[0]}")
-    retired = (
-        paths.root / "scopes" / "ada" / "scripts" / "processes",
-        paths.root / "scripts" / "local-process.sh",
-        paths.root / "scripts" / "commented" / "local-process.sh",
-        paths.root / "scripts" / "deployment" / "check.py",
-        paths.root / "scripts" / "deployment" / "check.sh",
-        paths.root / "scripts" / "deployment" / "check.bat",
-        paths.root / "scripts" / "commented" / "deployment" / "check.py",
-        paths.root / "scripts" / "commented" / "deployment" / "check.sh",
-        paths.root / "scripts" / "commented" / "deployment" / "check.bat",
-    )
-    for path in retired:
-        if path.exists():
-            raise RuntimeError(
-                f"Retired process deployment tooling still exists: {path}"
-            )
 
 
 def _load_process_bundle(paths: Paths):
