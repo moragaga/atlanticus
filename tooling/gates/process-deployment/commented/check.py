@@ -1,55 +1,94 @@
-# Gate de la capa de deployment de procesos.
-# Valida de forma genérica todos los composition roots exportables descubiertos por el bundler,
-# sin mantener un inventario central de procesos de Operational Data, ADA u otros scopes.
 from __future__ import annotations
 
 import ast
 import importlib.util
+import os
+import platform
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-PYTHON_VERSION = (3, 14, 2)
-PROCESS_BUNDLE_MODULE = "atlanticus_deployment_process_bundle_check"
+# Mantiene el baseline de ejecución vigente para el tooling de deployment.
+EXPECTED_PYTHON_VERSION = "3.14.2"
+RUFF_VERSION = "0.15.22"
+PYTEST_VERSION = "9.1.1"
+BOOTSTRAP_ENVIRONMENT_VARIABLE = "ATLANTICUS_PROCESS_DEPLOYMENT_GATE_BOOTSTRAPPED"
+PROCESS_BUNDLE_MODULE = "atlanticus_process_deployment_gate_bundle"
 
 
+# Agrupa las fronteras físicas que este gate valida sin convertirlas en autoridad funcional.
 @dataclass(frozen=True, slots=True)
 class Paths:
     root: Path
     deployment: Path
-    scripts: Path
     tooling: Path
+    gate: Path
 
 
+# Resuelve la raíz desde las capacidades de deployment y tooling que conforman este flujo.
 def _paths() -> Paths:
     for root in Path(__file__).resolve().parents:
         if (
-            (root / "deployment").is_dir()
-            and (root / "scripts").is_dir()
-            and (root / "tooling").is_dir()
+            (root / "deployment/processes/bundle.py").is_file()
+            and (root / "deployment/local/generate_compose.py").is_file()
+            and (root / "tooling/local/processes/process.py").is_file()
         ):
             return Paths(
                 root=root,
                 deployment=root / "deployment",
-                scripts=root / "scripts",
                 tooling=root / "tooling",
+                gate=root / "tooling/gates/process-deployment",
             )
     raise RuntimeError("Atlanticus repository root could not be resolved")
 
 
+# Ejecuta validaciones externas con cwd explícito y propagación inmediata de fallos.
 def _run(command: list[str], *, cwd: Path) -> None:
     print("> " + " ".join(command), flush=True)
     subprocess.run(command, cwd=cwd, check=True)
 
 
+# Reejecuta el gate bajo Python, Ruff y Pytest exactos; los launchers no poseen estas reglas.
+def _bootstrap(argv: list[str]) -> None:
+    if os.environ.get(BOOTSTRAP_ENVIRONMENT_VARIABLE) == "1":
+        return
+    paths = _paths()
+    environment = os.environ.copy()
+    environment[BOOTSTRAP_ENVIRONMENT_VARIABLE] = "1"
+    command = [
+        "uv",
+        "run",
+        "--python",
+        EXPECTED_PYTHON_VERSION,
+        "--no-python-downloads",
+        "--no-project",
+        "--with",
+        f"ruff=={RUFF_VERSION}",
+        "--with",
+        f"pytest=={PYTEST_VERSION}",
+        "python",
+        str(Path(__file__).resolve()),
+        *argv,
+    ]
+    completed = subprocess.run(
+        command,
+        cwd=paths.root,
+        env=environment,
+        check=False,
+    )
+    raise SystemExit(completed.returncode)
+
+
+# Confirma que la ejecución efectiva usa el baseline que el propio gate controla.
 def _validate_python() -> None:
-    if sys.version_info[:3] != PYTHON_VERSION:
-        actual = ".".join(str(item) for item in sys.version_info[:3])
-        expected = ".".join(str(item) for item in PYTHON_VERSION)
-        raise RuntimeError(f"Python {expected} is required, found {actual}")
+    if platform.python_version() != EXPECTED_PYTHON_VERSION:
+        raise RuntimeError(
+            f"Python {EXPECTED_PYTHON_VERSION} is required, found {platform.python_version()}"
+        )
 
 
+# Congela la nueva ownership: deployment aporta capacidades y tooling aporta gates/orquestación.
 def _validate_structure(paths: Paths) -> None:
     required = (
         paths.deployment / "processes" / "Dockerfile",
@@ -62,20 +101,33 @@ def _validate_structure(paths: Paths) -> None:
         paths.tooling / "local" / "processes" / "process.sh",
         paths.tooling / "local" / "processes" / "process.cmd",
         paths.tooling / "local" / "processes" / "commented" / "process.py",
+        paths.gate / "check.py",
+        paths.gate / "check.sh",
+        paths.gate / "check.cmd",
+        paths.gate / "commented" / "check.py",
     )
     missing = tuple(path for path in required if not path.is_file())
     if missing:
         raise RuntimeError(f"Deployment file not found: {missing[0]}")
     retired = (
         paths.root / "scopes" / "ada" / "scripts" / "processes",
-        paths.scripts / "local-process.sh",
-        paths.scripts / "commented" / "local-process.sh",
+        paths.root / "scripts" / "local-process.sh",
+        paths.root / "scripts" / "commented" / "local-process.sh",
+        paths.root / "scripts" / "deployment" / "check.py",
+        paths.root / "scripts" / "deployment" / "check.sh",
+        paths.root / "scripts" / "deployment" / "check.bat",
+        paths.root / "scripts" / "commented" / "deployment" / "check.py",
+        paths.root / "scripts" / "commented" / "deployment" / "check.sh",
+        paths.root / "scripts" / "commented" / "deployment" / "check.bat",
     )
     for path in retired:
         if path.exists():
-            raise RuntimeError(f"Retired process tooling still exists: {path}")
+            raise RuntimeError(
+                f"Retired process deployment tooling still exists: {path}"
+            )
 
 
+# Carga el bundler como capacidad Python para validar sus contratos sin shell intermediario.
 def _load_process_bundle(paths: Paths):
     module_path = paths.deployment / "processes" / "bundle.py"
     spec = importlib.util.spec_from_file_location(PROCESS_BUNDLE_MODULE, module_path)
@@ -87,16 +139,17 @@ def _load_process_bundle(paths: Paths):
     return module
 
 
+# Valida genéricamente todos los procesos exportables y su contrato de Python.
 def _validate_process_contracts(paths: Paths) -> None:
     bundle = _load_process_bundle(paths)
-    expected_python = f"=={'.'.join(str(item) for item in PYTHON_VERSION)}"
+    expected_python = f"=={EXPECTED_PYTHON_VERSION}"
     try:
         process_roots = bundle.discover_processes(paths.root)
         for process_root in process_roots:
             project = bundle.load_project(process_root)
             if project.requires_python != expected_python:
                 raise RuntimeError(
-                    f"Process must require Python {expected_python.removeprefix('==')}: "
+                    f"Process must require Python {EXPECTED_PYTHON_VERSION}: "
                     f"{process_root / 'pyproject.toml'}"
                 )
     except bundle.ProcessBundleError as error:
@@ -105,6 +158,7 @@ def _validate_process_contracts(paths: Paths) -> None:
         ) from error
 
 
+# Protege la frontera de transporte para impedir configuración activa dentro de la imagen.
 def _validate_docker_contract(paths: Paths) -> None:
     dockerfile = (paths.deployment / "processes" / "Dockerfile").read_text(
         encoding="utf-8"
@@ -141,17 +195,21 @@ def _validate_docker_contract(paths: Paths) -> None:
             raise RuntimeError(f"Docker context allowlist is missing: {value}")
 
 
+# Compara semántica AST y permite diferencias exclusivamente pedagógicas.
 def _validate_python_mirror(production: Path, commented: Path) -> None:
     production_ast = ast.dump(
-        ast.parse(production.read_text(encoding="utf-8")), include_attributes=False
+        ast.parse(production.read_text(encoding="utf-8")),
+        include_attributes=False,
     )
     commented_ast = ast.dump(
-        ast.parse(commented.read_text(encoding="utf-8")), include_attributes=False
+        ast.parse(commented.read_text(encoding="utf-8")),
+        include_attributes=False,
     )
     if production_ast != commented_ast:
         raise RuntimeError(f"Commented mirror differs semantically: {commented}")
 
 
+# Verifica los mirrors de todas las capacidades Python que componen process deployment.
 def _validate_mirrors(paths: Paths) -> None:
     _validate_python_mirror(
         paths.deployment / "processes" / "bundle.py",
@@ -166,12 +224,15 @@ def _validate_mirrors(paths: Paths) -> None:
         paths.tooling / "local" / "processes" / "commented" / "process.py",
     )
     _validate_python_mirror(
-        paths.scripts / "deployment" / "check.py",
-        paths.scripts / "commented" / "deployment" / "check.py",
+        paths.gate / "check.py",
+        paths.gate / "commented" / "check.py",
     )
 
 
-def main() -> None:
+# Ejecuta el gate transversal completo sin generar artifacts ni levantar Docker.
+def main(argv: list[str] | None = None) -> int:
+    raw_argv = list(sys.argv[1:] if argv is None else argv)
+    _bootstrap(raw_argv)
     paths = _paths()
     print("[1/8] Validating Python runtime")
     _validate_python()
@@ -192,16 +253,25 @@ def main() -> None:
         "tooling/local/processes/process.py",
         "tooling/local/processes/commented/process.py",
         "tooling/tests/local/processes",
-        "scripts/deployment/check.py",
-        "scripts/commented/deployment/check.py",
+        "tooling/gates/process-deployment/check.py",
+        "tooling/gates/process-deployment/commented/check.py",
     ]
-    _run(["ruff", "check", "--fix", *targets], cwd=paths.root)
-    _run(["ruff", "format", *targets], cwd=paths.root)
-    _run(["ruff", "check", *targets], cwd=paths.root)
-    _run(["ruff", "format", "--check", *targets], cwd=paths.root)
+    _run([sys.executable, "-m", "ruff", "check", "--fix", *targets], cwd=paths.root)
+    _run([sys.executable, "-m", "ruff", "format", *targets], cwd=paths.root)
+    _run([sys.executable, "-m", "ruff", "check", *targets], cwd=paths.root)
+    _run(
+        [sys.executable, "-m", "ruff", "format", "--check", *targets],
+        cwd=paths.root,
+    )
     print("[6/8] Running deployment tooling tests")
-    _run([sys.executable, "-m", "pytest", "deployment/processes/tests"], cwd=paths.root)
-    _run([sys.executable, "-m", "pytest", "deployment/local/tests"], cwd=paths.root)
+    _run(
+        [sys.executable, "-m", "pytest", "deployment/processes/tests"],
+        cwd=paths.root,
+    )
+    _run(
+        [sys.executable, "-m", "pytest", "deployment/local/tests"],
+        cwd=paths.root,
+    )
     _run(
         [sys.executable, "-m", "pytest", "tooling/tests/local/processes"],
         cwd=paths.root,
@@ -211,8 +281,13 @@ def main() -> None:
     print("[8/8] Validating process launchers")
     if sys.platform != "win32":
         _run(["sh", "-n", "tooling/local/processes/process.sh"], cwd=paths.root)
+        _run(
+            ["sh", "-n", "tooling/gates/process-deployment/check.sh"],
+            cwd=paths.root,
+        )
     print("Atlanticus process deployment flow validated")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
