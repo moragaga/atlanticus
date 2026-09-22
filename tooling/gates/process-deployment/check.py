@@ -94,6 +94,19 @@ def _validate_structure(paths: Paths) -> None:
         paths.tooling / "local" / "processes" / "process.sh",
         paths.tooling / "local" / "processes" / "process.cmd",
         paths.tooling / "local" / "processes" / "commented" / "process.py",
+        paths.tooling / "distribution" / "processes" / "distribute.py",
+        paths.tooling / "distribution" / "processes" / "distribute.sh",
+        paths.tooling / "distribution" / "processes" / "distribute.cmd",
+        paths.tooling / "distribution" / "processes" / "commented" / "distribute.py",
+        paths.tooling / "distribution" / "processes" / "consumer" / "process.py",
+        paths.tooling / "distribution" / "processes" / "consumer" / "process.sh",
+        paths.tooling / "distribution" / "processes" / "consumer" / "process.cmd",
+        paths.tooling
+        / "distribution"
+        / "processes"
+        / "consumer"
+        / "commented"
+        / "process.py",
         paths.gate / "check.py",
         paths.gate / "check.sh",
         paths.gate / "check.cmd",
@@ -224,6 +237,11 @@ def main(argv: list[str] | None = None) -> int:
         "tooling/local/processes/process.py",
         "tooling/local/processes/commented/process.py",
         "tooling/tests/local/processes",
+        "tooling/distribution/processes/distribute.py",
+        "tooling/distribution/processes/commented/distribute.py",
+        "tooling/distribution/processes/consumer/process.py",
+        "tooling/distribution/processes/consumer/commented/process.py",
+        "tooling/tests/distribution/processes",
         "tooling/gates/process-deployment/check.py",
         "tooling/gates/process-deployment/commented/check.py",
     ]
@@ -247,11 +265,23 @@ def main(argv: list[str] | None = None) -> int:
         [sys.executable, "-m", "pytest", "tooling/tests/local/processes"],
         cwd=paths.root,
     )
+    _run(
+        [sys.executable, "-m", "pytest", "tooling/tests/distribution/processes"],
+        cwd=paths.root,
+    )
     print("[7/8] Validating productive/commented semantic mirrors")
     _validate_mirrors(paths)
     print("[8/8] Validating process launchers")
     if sys.platform != "win32":
         _run(["sh", "-n", "tooling/local/processes/process.sh"], cwd=paths.root)
+        _run(
+            ["sh", "-n", "tooling/distribution/processes/distribute.sh"],
+            cwd=paths.root,
+        )
+        _run(
+            ["sh", "-n", "tooling/distribution/processes/consumer/process.sh"],
+            cwd=paths.root,
+        )
         _run(
             ["sh", "-n", "tooling/gates/process-deployment/check.sh"],
             cwd=paths.root,
