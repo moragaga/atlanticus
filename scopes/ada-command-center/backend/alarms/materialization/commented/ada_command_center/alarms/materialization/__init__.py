@@ -1,4 +1,5 @@
-# Expone únicamente la API contractual pública de Materialization; no contiene resolver, I/O ni orchestration.
+# Expone la API contractual pública de Materialization y el resolver puro B.2.
+# El resolver no adquiere datos ni persiste artifacts: sólo transforma inputs ya cargados.
 from ada_command_center.alarms.materialization.delivery import (
     DeliveryAlarmConfiguration,
     ResolvedDeactivationPolicy,
@@ -18,6 +19,7 @@ from ada_command_center.alarms.materialization.resolution import (
     AlarmResolutionFindingSeverity,
     AlarmResolutionStatus,
 )
+from ada_command_center.alarms.materialization.resolver import resolve_alarm_configuration
 from ada_command_center.alarms.materialization.runtime import RuntimeAlarmConfiguration
 
 __version__ = '1.0.0'
@@ -38,4 +40,5 @@ __all__ = [
     'ResolvedVisualTarget',
     'RuntimeAlarmConfiguration',
     '__version__',
+    'resolve_alarm_configuration',
 ]
