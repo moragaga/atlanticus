@@ -205,6 +205,8 @@ class PlannedAlarm:
     tool_registry_revision: str
     routing: AlarmRouting
     deactivation_policy: DeactivationPolicy | None = None
+    # Runtime usa segundos; B.2 será responsable de materializar after_minutes del Domain a esta unidad.
+    reappearance_after_seconds: int | None = None
     reappearance_special_conditions: tuple[AlarmIdentity, ...] = ()
 
     def __post_init__(self) -> None:
@@ -231,6 +233,14 @@ class PlannedAlarm:
             self.deactivation_policy, DeactivationPolicy
         ):
             raise TypeError('deactivation_policy must be a DeactivationPolicy')
+        # El contrato Runtime ya debe llegar normalizado; Core sólo protege tipo y rango.
+        if self.reappearance_after_seconds is not None:
+            if isinstance(self.reappearance_after_seconds, bool) or not isinstance(
+                self.reappearance_after_seconds, int
+            ):
+                raise TypeError('reappearance_after_seconds must be an int')
+            if self.reappearance_after_seconds <= 0:
+                raise ValueError('reappearance_after_seconds must be greater than zero')
         if not isinstance(self.reappearance_special_conditions, tuple):
             raise TypeError('reappearance_special_conditions must be a tuple')
         seen_special_conditions: set[AlarmIdentity] = set()

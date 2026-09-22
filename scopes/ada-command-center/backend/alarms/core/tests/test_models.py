@@ -64,6 +64,17 @@ def test_planned_alarm_keeps_domain_dimensions_separate() -> None:
     assert value.priority_order == 1
 
 
+def test_planned_alarm_validates_reappearance_after_seconds() -> None:
+    assert plan().reappearance_after_seconds is None
+    assert plan(reappearance_after_seconds=480).reappearance_after_seconds == 480
+    with pytest.raises(TypeError, match='reappearance_after_seconds'):
+        plan(reappearance_after_seconds=True)
+    with pytest.raises(ValueError, match='reappearance_after_seconds'):
+        plan(reappearance_after_seconds=0)
+    with pytest.raises(ValueError, match='reappearance_after_seconds'):
+        plan(reappearance_after_seconds=-1)
+
+
 def test_planned_alarm_validates_reappearance_special_conditions() -> None:
     special = identity('special')
     value = plan(reappearance_special_conditions=(special,))
