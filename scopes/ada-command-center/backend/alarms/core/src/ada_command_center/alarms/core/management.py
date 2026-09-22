@@ -12,6 +12,7 @@ from ada_command_center.alarms.core.deactivation import (
     _expire_deactivation_effects,
     _index_pending_requests,
     _validate_decisions,
+    is_deactivated,
 )
 from ada_command_center.alarms.core.errors import AlarmContractError, AlarmLifecycleError
 from ada_command_center.alarms.core.models import (
@@ -93,11 +94,20 @@ def resolve_management_cascades(
         ((alarm.alarm_identity, alarm) for alarm in state.alarms),
         key=lambda item: item[0],
     ):
-        effect = source_state.management_effect
         source_plan = plans.get(source_identity)
-        if effect is None or source_plan is None:
+        if source_plan is None:
             continue
-        if not _effect_is_active(effect, at=at):
+        deactivation_effect = source_state.deactivation_effect
+        management_effect = source_state.management_effect
+        if deactivation_effect is not None and is_deactivated(source_state, at=at):
+            source_occurrence_id = deactivation_effect.source_occurrence_id
+            management_effect_id = None
+            deactivation_effect_id = deactivation_effect.effect_id
+        elif management_effect is not None and _effect_is_active(management_effect, at=at):
+            source_occurrence_id = management_effect.source_occurrence_id
+            management_effect_id = management_effect.effect_id
+            deactivation_effect_id = None
+        else:
             continue
         for target_identity in _cascade_target_identities(
             source_plan=source_plan,
@@ -107,9 +117,10 @@ def resolve_management_cascades(
             suppressions.append(
                 CascadeSuppression(
                     source_alarm_identity=source_identity,
-                    source_occurrence_id=effect.source_occurrence_id,
-                    management_effect_id=effect.effect_id,
+                    source_occurrence_id=source_occurrence_id,
+                    management_effect_id=management_effect_id,
                     target_alarm_identity=target_identity,
+                    deactivation_effect_id=deactivation_effect_id,
                 )
             )
     return tuple(
@@ -118,7 +129,7 @@ def resolve_management_cascades(
             key=lambda item: (
                 item.target_alarm_identity,
                 item.source_alarm_identity,
-                item.management_effect_id,
+                item.deactivation_effect_id or item.management_effect_id or '',
             ),
         )
     )

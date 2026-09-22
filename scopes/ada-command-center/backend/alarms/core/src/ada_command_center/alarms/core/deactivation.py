@@ -341,6 +341,7 @@ def _create_effect(
     effect_id = _require_generated_id(effect_id_factory(request), 'deactivation_effect_id')
     return DeactivationEffect(
         effect_id=effect_id,
+        source_occurrence_id=request.source_occurrence_id,
         effective_from=effective_from,
         effective_until=request.effective_until,
     )

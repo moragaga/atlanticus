@@ -614,14 +614,16 @@ class DeactivationDecision:
 
 
 @dataclass(frozen=True, slots=True)
-# Clase DeactivationEffect: contrato tipado con invariantes explícitas para evitar estados ambiguos.
+# DeactivationEffect conserva la occurrence origen para mantener trazabilidad aunque esa occurrence ya haya cerrado.
 class DeactivationEffect:
     effect_id: str
+    source_occurrence_id: str
     effective_from: datetime
     effective_until: datetime
 
     def __post_init__(self) -> None:
         _require_non_empty_string(self.effect_id, 'effect_id')
+        _require_non_empty_string(self.source_occurrence_id, 'source_occurrence_id')
         _require_utc_datetime(self.effective_from, 'effective_from')
         _require_utc_datetime(self.effective_until, 'effective_until')
         if self.effective_until <= self.effective_from:
@@ -1025,18 +1027,26 @@ class ReappearanceChange:
 
 
 @dataclass(frozen=True, slots=True)
-# Clase CascadeSuppression: contrato tipado con invariantes explícitas para evitar estados ambiguos.
+# CascadeSuppression identifica una única causa durable: Management o Deactivation, nunca ambas a la vez.
 class CascadeSuppression:
     source_alarm_identity: AlarmIdentity
     source_occurrence_id: str
-    management_effect_id: str
+    management_effect_id: str | None
     target_alarm_identity: AlarmIdentity
+    deactivation_effect_id: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.source_alarm_identity, AlarmIdentity):
             raise TypeError('source_alarm_identity must be an AlarmIdentity')
         _require_non_empty_string(self.source_occurrence_id, 'source_occurrence_id')
-        _require_non_empty_string(self.management_effect_id, 'management_effect_id')
+        if self.management_effect_id is not None:
+            _require_non_empty_string(self.management_effect_id, 'management_effect_id')
+        if self.deactivation_effect_id is not None:
+            _require_non_empty_string(self.deactivation_effect_id, 'deactivation_effect_id')
+        if (self.management_effect_id is None) == (self.deactivation_effect_id is None):
+            raise ValueError(
+                'cascade suppression requires exactly one management or deactivation effect'
+            )
         if not isinstance(self.target_alarm_identity, AlarmIdentity):
             raise TypeError('target_alarm_identity must be an AlarmIdentity')
         if self.source_alarm_identity == self.target_alarm_identity:
