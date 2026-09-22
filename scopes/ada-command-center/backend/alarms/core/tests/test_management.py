@@ -316,7 +316,7 @@ def test_managed_impact_cascades_to_lower_active_risk() -> None:
     assert suppression.target_alarm_identity == identity('risk')
 
 
-def test_direct_risk_management_does_not_create_cascade() -> None:
+def test_lower_rank_risk_management_does_not_suppress_higher_rank_impact() -> None:
     started, ids, plans = _start_impact_and_risk()
     at = NOW + timedelta(minutes=1)
     decision = _reduce(
