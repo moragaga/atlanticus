@@ -25,17 +25,6 @@ members = [
 name = "ada-backend-workspace"
 version = "1.0.0"
 source = { virtual = "." }
-dependencies = [
-    { name = "ada-kpi-delivery-process" },
-    { name = "ada-kpi-historian-process" },
-    { name = "ada-kpi-runtime-process" },
-    { name = "ada-kpi-timeseries-delivery-process" },
-    { name = "ada-kpis-core" },
-    { name = "ada-kpis-delivery" },
-    { name = "ada-kpis-evaluation" },
-    { name = "ada-kpis-history" },
-    { name = "ada-kpis-persistence" },
-]
 
 [package.dev-dependencies]
 dev = [
@@ -44,17 +33,6 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "ada-kpi-delivery-process", editable = "processes/kpi-delivery" },
-    { name = "ada-kpi-historian-process", editable = "processes/kpi-historian" },
-    { name = "ada-kpi-runtime-process", editable = "processes/kpi-runtime" },
-    { name = "ada-kpi-timeseries-delivery-process", editable = "processes/kpi-timeseries-delivery" },
-    { name = "ada-kpis-core", editable = "kpis/core" },
-    { name = "ada-kpis-delivery", editable = "kpis/delivery" },
-    { name = "ada-kpis-evaluation", editable = "kpis/evaluation" },
-    { name = "ada-kpis-history", editable = "kpis/history" },
-    { name = "ada-kpis-persistence", editable = "kpis/persistence" },
-]
 
 [package.metadata.requires-dev]
 dev = [
@@ -154,7 +132,7 @@ dev = [
 
 [[package]]
 name = "ada-kpi-runtime-process"
-version = "1.0.1"
+version = "1.0.0"
 source = { editable = "processes/kpi-runtime" }
 dependencies = [
     { name = "ada-kpis-core" },
