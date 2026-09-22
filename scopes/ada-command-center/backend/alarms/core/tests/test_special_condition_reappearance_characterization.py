@@ -4,6 +4,8 @@ from ada_command_center.alarms.core import (
     AlarmKind,
     AlarmStatus,
     GroupLifecycleState,
+    ManagementActionOutcome,
+    ManagementEffectChangeKind,
     ReappearanceChange,
     reduce_group_cycle,
 )
@@ -444,3 +446,69 @@ def test_any_referenced_special_condition_can_trigger_reappearance() -> None:
     assert runtime is not None
     assert runtime.management_effect is None
     assert len(decision.reappearance_changes) == 1
+
+
+def test_active_referenced_special_condition_prevents_management_from_remaining_effective() -> None:
+    plans = (
+        plan(
+            'alarm',
+            kind=AlarmKind.IMPACT,
+            priority_order=1,
+            reappearance_special_conditions=(identity('special'),),
+        ),
+        plan('special', kind=AlarmKind.IMPACT, priority_order=2),
+    )
+    ids = Ids()
+    started = _reduce(
+        GroupLifecycleState(priority_group='mill-feed'),
+        plans,
+        (
+            physical('alarm', AlarmStatus.ACTIVE),
+            physical('special', AlarmStatus.ACTIVE),
+        ),
+        ids=ids,
+    )
+    occurrence_id = _occurrence_id(started, 'alarm')
+    managed_at = NOW + timedelta(minutes=1)
+
+    decision = _reduce(
+        started.state,
+        plans,
+        (
+            physical('alarm', AlarmStatus.ACTIVE, at=managed_at),
+            physical('special', AlarmStatus.ACTIVE, at=managed_at),
+        ),
+        at=managed_at,
+        actions=(
+            management_action(
+                'alarm',
+                occurrence_id=occurrence_id,
+                at=managed_at,
+            ),
+        ),
+        ids=ids,
+    )
+
+    assert decision.management_action_results[0].outcome is ManagementActionOutcome.EFFECTIVE
+    assert {
+        change.kind
+        for change in decision.management_effect_changes
+        if change.alarm_identity == identity('alarm') and change.effective_at == managed_at
+    } == {
+        ManagementEffectChangeKind.STARTED,
+        ManagementEffectChangeKind.CLEARED,
+    }
+    runtime = decision.state.get(identity('alarm'))
+    assert runtime is not None
+    assert runtime.occurrence is not None
+    assert runtime.occurrence.occurrence_id == occurrence_id
+    assert runtime.management_effect is None
+    assert runtime.management_cycle == 2
+    assert decision.reappearance_changes == (
+        ReappearanceChange(
+            alarm_identity=identity('alarm'),
+            occurrence_id=occurrence_id,
+            effective_at=managed_at,
+            management_cycle=2,
+        ),
+    )
