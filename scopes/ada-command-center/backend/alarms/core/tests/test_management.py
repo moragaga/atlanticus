@@ -63,14 +63,13 @@ def _start_risk(ids: Ids | None = None):
     return decision, generated
 
 
-def _start_impact_and_risk(ids: Ids | None = None, *, impact_delivery=True):
+def _start_impact_and_risk(ids: Ids | None = None):
     generated = ids or Ids()
     plans = [
         plan(
             'impact',
             kind=AlarmKind.IMPACT,
             priority_order=1,
-            delivery_enabled=impact_delivery,
         ),
         plan('risk', kind=AlarmKind.RISK, priority_order=2),
     ]
@@ -331,25 +330,6 @@ def test_lower_rank_risk_management_does_not_suppress_higher_rank_impact() -> No
         ids=ids,
     )
     assert decision.management_action_results[0].outcome is ManagementActionOutcome.EFFECTIVE
-    assert decision.cascade_suppressions == ()
-
-
-def test_shadow_impact_management_has_no_operational_effect() -> None:
-    started, ids, plans = _start_impact_and_risk(impact_delivery=False)
-    at = NOW + timedelta(minutes=1)
-    decision = _reduce(
-        started.state,
-        plans,
-        [
-            physical('impact', AlarmStatus.ACTIVE, at=at),
-            physical('risk', AlarmStatus.ACTIVE, at=at),
-        ],
-        at=at,
-        actions=(management_action('impact', occurrence_id='O1', at=at),),
-        ids=ids,
-    )
-    assert decision.management_action_results[0].outcome is ManagementActionOutcome.LATE
-    assert decision.management_effect_changes == ()
     assert decision.cascade_suppressions == ()
 
 

@@ -9,7 +9,6 @@ from ada_command_center.alarms.core import (
     DeactivationDecisionOutcome,
     DeactivationRequestOutcome,
     GroupLifecycleState,
-    ManagementActionOutcome,
     PriorityDisposition,
     RoutingDestination,
     ToolAssignment,
@@ -293,32 +292,6 @@ def test_deactivation_unavailable_when_alarm_has_no_policy() -> None:
     assert (
         decision.deactivation_request_results[0].outcome is DeactivationRequestOutcome.UNAVAILABLE
     )
-
-
-def test_shadow_alarm_cannot_request_operational_deactivation() -> None:
-    alarm = plan(
-        'risk',
-        delivery_enabled=False,
-        deactivation_approval_required=False,
-    )
-    started, ids, _ = _start(planned=alarm)
-    at = NOW + timedelta(minutes=1)
-    decision = _reduce(
-        started.state,
-        (alarm,),
-        (physical('risk', AlarmStatus.ACTIVE, at=at),),
-        at=at,
-        actions=(
-            management_action(
-                'risk',
-                at=at,
-                deactivation_until=at + timedelta(minutes=30),
-            ),
-        ),
-        ids=ids,
-    )
-    assert decision.management_action_results[0].outcome is ManagementActionOutcome.LATE
-    assert decision.deactivation_request_results[0].outcome is DeactivationRequestOutcome.LATE
 
 
 def test_deactivation_survives_episode_close_and_governs_next_occurrence() -> None:

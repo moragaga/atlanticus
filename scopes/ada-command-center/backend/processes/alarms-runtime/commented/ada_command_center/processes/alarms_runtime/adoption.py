@@ -317,7 +317,6 @@ def _runtime_semantics_equal(
         and source_plan.criticality is target_plan.criticality
         and source_plan.priority_group == target_plan.priority_group
         and source_plan.priority_order == target_plan.priority_order
-        and source_plan.delivery_enabled is target_plan.delivery_enabled
         and source_plan.evaluator_key == target_plan.evaluator_key
         and source_plan.routing == target_plan.routing
         and source_plan.deactivation_policy == target_plan.deactivation_policy

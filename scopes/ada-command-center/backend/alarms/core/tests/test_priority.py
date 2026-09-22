@@ -60,25 +60,6 @@ def test_priority_order_resolves_multiple_impacts_before_risks() -> None:
     assert resolution.predominant_alarm_identity == identity('impact-a')
 
 
-def test_shadow_alarm_never_predominates_or_blocks_operational_alarm() -> None:
-    plans = (
-        plan(
-            'impact',
-            kind=AlarmKind.IMPACT,
-            priority_order=1,
-            delivery_enabled=False,
-        ),
-        plan('risk', kind=AlarmKind.RISK, priority_order=2),
-    )
-    decision = _start(plans)
-    resolution = decision.priority_resolution
-    assert resolution is not None
-    assert resolution.predominant_alarm_identity == identity('risk')
-    dispositions = _dispositions(resolution)
-    assert dispositions[identity('impact')].disposition is PriorityDisposition.SHADOW
-    assert dispositions[identity('risk')].disposition is PriorityDisposition.PREDOMINANT
-
-
 def test_cascade_suppressed_risk_can_leave_group_without_predominant_alarm() -> None:
     plans = (plan('risk'),)
     decision = _start(plans)

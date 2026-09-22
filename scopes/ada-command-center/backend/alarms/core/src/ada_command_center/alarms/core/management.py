@@ -99,8 +99,6 @@ def resolve_management_cascades(
             continue
         if not _effect_is_active(effect, at=at):
             continue
-        if not source_plan.delivery_enabled:
-            continue
         for target_identity in _cascade_target_identities(
             source_plan=source_plan,
             state=state,
@@ -398,12 +396,6 @@ def _apply_action(
 ]:
     plan = plans.get(action.alarm_identity)
     if plan is None:
-        return (
-            working,
-            ManagementActionResult(action=action, outcome=ManagementActionOutcome.LATE),
-            (),
-        )
-    if not plan.delivery_enabled:
         return (
             working,
             ManagementActionResult(action=action, outcome=ManagementActionOutcome.LATE),
@@ -717,8 +709,6 @@ def _late_action_has_cascade_scope(
 ) -> bool:
     if state.episode is None:
         return False
-    if not plan.delivery_enabled:
-        return False
     if action.source_occurrence_id is None:
         return False
     if action.source_created_at < state.episode.started_at:
@@ -760,8 +750,6 @@ def _effect_has_scope(
     source_plan = plans.get(identity)
     if source_plan is None:
         return False
-    if not source_plan.delivery_enabled:
-        return False
     return bool(
         _cascade_target_identities(
             source_plan=source_plan,
@@ -783,8 +771,6 @@ def _cascade_target_identities(
             continue
         target_plan = plans.get(target_state.alarm_identity)
         if target_plan is None:
-            continue
-        if not target_plan.delivery_enabled:
             continue
         if target_plan.priority_order <= source_plan.priority_order:
             continue

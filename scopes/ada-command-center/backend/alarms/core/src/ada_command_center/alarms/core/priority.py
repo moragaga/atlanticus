@@ -31,10 +31,7 @@ def resolve_group_priority(
     candidates = [
         plans[identity]
         for identity, current in active.items()
-        if identity in plans
-        and plans[identity].delivery_enabled
-        and identity not in cascades
-        and current.deactivation_effect is None
+        if identity in plans and identity not in cascades and current.deactivation_effect is None
     ]
     predominant = min(candidates, key=lambda plan: plan.priority_order) if candidates else None
     decisions: list[AlarmPriorityDecision] = []
@@ -44,14 +41,6 @@ def resolve_group_priority(
             raise AlarmContractError(
                 'open occurrence requires a planned alarm for priority resolution'
             )
-        if not plan.delivery_enabled:
-            decisions.append(
-                AlarmPriorityDecision(
-                    alarm_identity=identity,
-                    disposition=PriorityDisposition.SHADOW,
-                )
-            )
-            continue
         if active[identity].deactivation_effect is not None:
             decisions.append(
                 AlarmPriorityDecision(

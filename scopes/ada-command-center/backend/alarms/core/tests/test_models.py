@@ -62,7 +62,6 @@ def test_planned_alarm_rejects_boolean_priority_order() -> None:
             criticality=Criticality.C2,
             priority_group='mill-feed',
             priority_order=True,
-            delivery_enabled=True,
             evaluator_key='threshold',
             alarm_configuration_revision='R1',
             tool_registry_revision='T1',

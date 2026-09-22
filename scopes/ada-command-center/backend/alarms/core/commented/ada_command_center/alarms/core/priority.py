@@ -1,7 +1,7 @@
 # Espejo pedagógico de Priority Resolution.
 # La prioridad continúa siendo derivada y no se persiste como winner/suppressed/eligible.
 # Una alarma con DeactivationEffect vigente queda fuera de candidatos operacionales y se clasifica DEACTIVATED.
-# Shadow se mantiene separado: una alarma no entregable sigue siendo SHADOW y no adquiere efectos accionables.
+# La visibilidad de Delivery no filtra candidatos ni altera la prioridad Runtime.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -35,10 +35,7 @@ def resolve_group_priority(
     candidates = [
         plans[identity]
         for identity, current in active.items()
-        if identity in plans
-        and plans[identity].delivery_enabled
-        and identity not in cascades
-        and current.deactivation_effect is None
+        if identity in plans and identity not in cascades and current.deactivation_effect is None
     ]
     predominant = min(candidates, key=lambda plan: plan.priority_order) if candidates else None
     decisions: list[AlarmPriorityDecision] = []
@@ -48,14 +45,6 @@ def resolve_group_priority(
             raise AlarmContractError(
                 'open occurrence requires a planned alarm for priority resolution'
             )
-        if not plan.delivery_enabled:
-            decisions.append(
-                AlarmPriorityDecision(
-                    alarm_identity=identity,
-                    disposition=PriorityDisposition.SHADOW,
-                )
-            )
-            continue
         if active[identity].deactivation_effect is not None:
             decisions.append(
                 AlarmPriorityDecision(

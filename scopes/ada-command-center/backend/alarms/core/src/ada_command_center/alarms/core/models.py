@@ -24,7 +24,6 @@ class PriorityDisposition(StrEnum):
     ECLIPSED = 'ECLIPSED'
     CASCADE_SUPPRESSED = 'CASCADE_SUPPRESSED'
     DEACTIVATED = 'DEACTIVATED'
-    SHADOW = 'SHADOW'
 
 
 class AssignmentChangeKind(StrEnum):
@@ -162,7 +161,6 @@ class PlannedAlarm:
     criticality: Criticality
     priority_group: str
     priority_order: int
-    delivery_enabled: bool
     evaluator_key: str
     alarm_configuration_revision: str
     tool_registry_revision: str
@@ -182,8 +180,6 @@ class PlannedAlarm:
             raise TypeError('priority_order must be an int')
         if self.priority_order <= 0:
             raise ValueError('priority_order must be greater than zero')
-        if not isinstance(self.delivery_enabled, bool):
-            raise TypeError('delivery_enabled must be a bool')
         _require_non_empty_string(self.evaluator_key, 'evaluator_key')
         _require_non_empty_string(
             self.alarm_configuration_revision,
@@ -1030,7 +1026,6 @@ class AlarmPriorityDecision:
         if self.disposition in {
             PriorityDisposition.PREDOMINANT,
             PriorityDisposition.DEACTIVATED,
-            PriorityDisposition.SHADOW,
         }:
             if self.blocking_alarm_identities:
                 raise ValueError('unblocked priority decisions must not contain blockers')
