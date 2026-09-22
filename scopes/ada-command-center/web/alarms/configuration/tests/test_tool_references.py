@@ -2,16 +2,14 @@ from datetime import UTC, datetime
 
 from ada.web.tools.enums import ToolConfigurationKind, ToolScope
 from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
+from ada_command_center.domain.alarms import AlarmConfiguration
 from ada_command_center.tools.catalog import (
     ToolCatalogEntry,
     ToolCatalogSnapshot,
     ToolCatalogStore,
     create_tool_catalog_snapshot,
 )
-from ada_command_center.web.alarms.configuration import (
-    AlarmConfiguration,
-    AlarmToolReferenceReader,
-)
+from ada_command_center.web.alarms.configuration import AlarmToolReferenceReader
 from atlanticus.web.source.models import SourceReleaseId
 
 from .helpers import message, rule

@@ -1,5 +1,3 @@
-# Espejo pedagógico de los contratos fuente editables de una Rule de alarma.
-# Este módulo no resuelve referencias externas ni modifica contratos de runtime.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -7,7 +5,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from types import MappingProxyType
 
-from ada_command_center.alarms.core.models import AlarmIdentity, AlarmKind, Criticality
+from ada_command_center.domain.alarms.models import AlarmIdentity, AlarmKind, Criticality
 
 
 class BusinessCategory(StrEnum):
@@ -167,9 +165,7 @@ class AlarmVisualTarget:
         seen_subcomponents: set[tuple[str, str]] = set()
         for subcomponent in self.subcomponents:
             if not isinstance(subcomponent, AlarmVisualSubcomponentTarget):
-                raise TypeError(
-                    'subcomponents must contain AlarmVisualSubcomponentTarget values'
-                )
+                raise TypeError('subcomponents must contain AlarmVisualSubcomponentTarget values')
             identity = (
                 subcomponent.owner_component_key,
                 subcomponent.subcomponent_key,
@@ -181,9 +177,7 @@ class AlarmVisualTarget:
             self.process_projection_mode,
             ProcessAlarmProjectionMode,
         ):
-            raise TypeError(
-                'process_projection_mode must be a ProcessAlarmProjectionMode'
-            )
+            raise TypeError('process_projection_mode must be a ProcessAlarmProjectionMode')
 
 
 @dataclass(frozen=True, slots=True)
@@ -210,9 +204,7 @@ class MessageDefinition:
             self.deactivation_override,
             MessageDeactivationDefinition,
         ):
-            raise TypeError(
-                'deactivation_override must be a MessageDeactivationDefinition'
-            )
+            raise TypeError('deactivation_override must be a MessageDeactivationDefinition')
 
 
 @dataclass(frozen=True, slots=True)
@@ -270,9 +262,7 @@ class AlarmDefinition:
         if not isinstance(self.reappearance, ReappearanceDefinition):
             raise TypeError('reappearance must be a ReappearanceDefinition')
         if not isinstance(self.default_deactivation, AlarmDeactivationDefinition):
-            raise TypeError(
-                'default_deactivation must be an AlarmDeactivationDefinition'
-            )
+            raise TypeError('default_deactivation must be an AlarmDeactivationDefinition')
         if not isinstance(self.escalation, AlarmEscalationDefinition):
             raise TypeError('escalation must be an AlarmEscalationDefinition')
         self._validate_visual_targets()

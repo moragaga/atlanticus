@@ -5,17 +5,19 @@ import pytest
 
 from ada_command_center.alarms.core import (
     AlarmContractError,
-    AlarmKind,
     AlarmStatus,
     AssignmentChangeKind,
     ConfigurationClosure,
-    Criticality,
     EpisodeClosureReason,
     GroupLifecycleState,
     OccurrenceClosureReason,
     RoutingDestination,
     reconcile_group_configuration,
     reduce_group_cycle,
+)
+from ada_command_center.domain.alarms import (
+    AlarmKind,
+    Criticality,
 )
 
 from .support import NOW, Ids, management_action, physical, plan

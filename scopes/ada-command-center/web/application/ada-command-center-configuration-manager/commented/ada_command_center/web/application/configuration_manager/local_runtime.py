@@ -11,8 +11,9 @@ from typing import Generic, TypeVar
 
 from ada.web.tools.enums import ToolConfigurationKind, ToolScope
 from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
-from ada_command_center.alarms.core import (
+from ada_command_center.domain.alarms import (
     AlarmColor,
+    AlarmConfiguration,
     AlarmDeactivationDefinition,
     AlarmDefinition,
     AlarmEscalationDefinition,
@@ -36,7 +37,6 @@ from ada_command_center.tools.catalog import (
     ToolCatalogStore,
     create_tool_catalog_snapshot,
 )
-from ada_command_center.web.alarms.configuration import AlarmConfiguration
 from ada_command_center.web.alarms.configuration.source_projection import (
     create_alarm_configuration_projection_service,
 )

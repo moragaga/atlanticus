@@ -11,6 +11,7 @@ def test_project_contract_pins_only_a3_dependencies() -> None:
     assert project['version'] == '1.0.0'
     assert project['requires-python'] == '==3.14.2'
     assert project['dependencies'] == [
+        'ada-command-center-alarms-domain==1.0.0',
         'ada-command-center-alarms-core==1.0.0',
         'ada-command-center-alarms-persistence==1.0.0',
         'atlanticus-job-runtime==1.0.0',

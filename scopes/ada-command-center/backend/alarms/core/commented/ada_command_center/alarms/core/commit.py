@@ -1,6 +1,5 @@
 # Espejo pedagógico: convierte una GroupLifecycleDecision en un EngineCommit lógico y records inmutables.
 # Este módulo no escribe WAL ni snapshots; esa frontera física pertenece a Alarm Persistence.
-
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -20,7 +19,6 @@ from ada_command_center.alarms.core.evidence import (
 from ada_command_center.alarms.core.journey import JourneyEvent, materialize_journey
 from ada_command_center.alarms.core.models import (
     AlarmEvaluation,
-    AlarmIdentity,
     AssignmentChange,
     AssignmentChangeKind,
     DeactivationDecisionOutcome,
@@ -34,6 +32,7 @@ from ada_command_center.alarms.core.models import (
     OccurrenceChange,
     OccurrenceChangeKind,
 )
+from ada_command_center.domain.alarms import AlarmIdentity
 
 
 # Clase InputKind: contrato tipado con invariantes explícitas para evitar estados ambiguos.

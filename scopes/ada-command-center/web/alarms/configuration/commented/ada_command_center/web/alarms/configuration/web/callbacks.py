@@ -1,16 +1,19 @@
-from __future__ import annotations
-
 # Orquestación de callbacks del editor estructurado.
 # El AUTHORING_STORE representa el documento en edición y puede quedar inválido temporalmente.
 # Las referencias Tool son ayuda visual; una falla del catálogo no invalida el draft.
+
+from __future__ import annotations
+
 import base64
 import json
 from binascii import Error as BinasciiError
 
 from dash import ALL, Input, Output, State, ctx, html, no_update
 
-from ada_command_center.web.alarms.configuration.errors import AlarmConfigurationValidationError
-from ada_command_center.web.alarms.configuration.models import AlarmConfiguration
+from ada_command_center.domain.alarms import (
+    AlarmConfiguration,
+    AlarmConfigurationValidationError,
+)
 from ada_command_center.web.alarms.configuration.web.authoring import (
     add_component_key,
     add_escalation_step,

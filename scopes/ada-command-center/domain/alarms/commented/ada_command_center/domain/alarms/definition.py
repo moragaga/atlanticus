@@ -5,9 +5,11 @@ from dataclasses import dataclass
 from enum import StrEnum
 from types import MappingProxyType
 
-from ada_command_center.alarms.core.models import AlarmIdentity, AlarmKind, Criticality
+# El modelo editable consume únicamente fundamentos del mismo dominio.
+from ada_command_center.domain.alarms.models import AlarmIdentity, AlarmKind, Criticality
 
 
+# Dimensiones de clasificación y presentación configurables.
 class BusinessCategory(StrEnum):
     ECOLOGY = 'ECOLOGY'
     PRODUCTIVITY = 'PRODUCTIVITY'
@@ -40,6 +42,7 @@ class ProcessAlarmProjectionMode(StrEnum):
     DISTRIBUTED = 'DISTRIBUTED'
 
 
+# La policy authoring no contiene effective_until; ese valor es operacional.
 @dataclass(frozen=True, slots=True)
 class AlarmDeactivationDefinition:
     enabled: bool
@@ -68,6 +71,7 @@ class MessageDeactivationDefinition:
         )
 
 
+# Reappearance conserva timer y referencias SC como intención authored.
 @dataclass(frozen=True, slots=True)
 class ReappearanceDefinition:
     after_minutes: int | None = None
@@ -89,6 +93,7 @@ class ReappearanceDefinition:
             seen.add(identity)
 
 
+# Escalation describe la intención editable; B.2 resuelve AlarmRouting.
 @dataclass(frozen=True, slots=True)
 class AlarmEscalationStepDefinition:
     step_order: int
@@ -143,6 +148,7 @@ class AlarmVisualSubcomponentTarget:
         _require_non_empty_string(self.subcomponent_key, 'subcomponent_key')
 
 
+# Los visual targets almacenan referencias, no duplican ToolStructure.
 @dataclass(frozen=True, slots=True)
 class AlarmVisualTarget:
     tool_key: str
@@ -184,6 +190,7 @@ class AlarmVisualTarget:
             )
 
 
+# MessageDefinition es reusable y conserva su scope authored.
 @dataclass(frozen=True, slots=True)
 class MessageDefinition:
     message_key: str
@@ -213,6 +220,7 @@ class MessageDefinition:
             )
 
 
+# AlarmDefinition es la Rule editable completa; no es PlannedAlarm runtime.
 @dataclass(frozen=True, slots=True)
 class AlarmDefinition:
     identity: AlarmIdentity

@@ -3,7 +3,7 @@
 # B.2 consumirá esta Projection junto con sus dependencias externas en un incremento posterior.
 from __future__ import annotations
 
-from ada_command_center.web.alarms.configuration.models import AlarmConfiguration
+from ada_command_center.domain.alarms import AlarmConfiguration
 from ada_command_center.web.alarms.configuration.source_release import AlarmConfigurationSourceCodec
 from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.projection.service import ProjectionBuilder, SourceProjectionService

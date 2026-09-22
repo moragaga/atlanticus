@@ -1,6 +1,5 @@
 # Espejo pedagógico: materializa únicamente transiciones reales del lifecycle en eventos Journey estables.
 # No registra una fila por loop; cada ID depende de identidad, transición y tiempo funcional.
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -8,7 +7,6 @@ from datetime import UTC, datetime, timedelta
 
 from ada_command_center.alarms.core.errors import AlarmContractError
 from ada_command_center.alarms.core.models import (
-    AlarmIdentity,
     AlarmPriorityDecision,
     AssignmentChangeKind,
     DeactivationEffectChangeKind,
@@ -22,6 +20,7 @@ from ada_command_center.alarms.core.models import (
     PriorityDisposition,
     TechnicalHoldChangeKind,
 )
+from ada_command_center.domain.alarms import AlarmIdentity
 
 
 @dataclass(frozen=True, slots=True)

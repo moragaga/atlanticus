@@ -6,14 +6,11 @@ from ada_command_center.alarms.core import (
     AffectedInputIssue,
     AlarmEpisode,
     AlarmEvaluation,
-    AlarmIdentity,
-    AlarmKind,
     AlarmOccurrence,
     AlarmRouting,
     AlarmRuntimeState,
     AlarmStatus,
     ConfigurationClosure,
-    Criticality,
     EpisodeClosureReason,
     EvaluationContext,
     EvaluationError,
@@ -31,18 +28,12 @@ from ada_command_center.alarms.core import (
     TechnicalHoldChangeKind,
     ToolAssignment,
 )
+from ada_command_center.domain.alarms import (
+    AlarmKind,
+    Criticality,
+)
 
 from .support import NOW, identity, physical, plan
-
-
-def test_identity_is_stable_pair() -> None:
-    value = AlarmIdentity(family_key='ph', alarm_key='high')
-    assert value.canonical_key == 'ph/high'
-
-
-def test_identity_rejects_empty_keys() -> None:
-    with pytest.raises(ValueError, match='family_key'):
-        AlarmIdentity(family_key='', alarm_key='high')
 
 
 def test_planned_alarm_keeps_domain_dimensions_separate() -> None:

@@ -6,7 +6,6 @@ from typing import Any
 
 from ada_command_center.alarms.core import (
     AlarmEpisode,
-    AlarmIdentity,
     AlarmOccurrence,
     AlarmRuntimeState,
     AlarmStatus,
@@ -24,6 +23,7 @@ from ada_command_center.alarms.persistence import (
     GROUP_RUNTIME_SNAPSHOT_SCHEMA_VERSION,
     GroupRuntimeSnapshot,
 )
+from ada_command_center.domain.alarms import AlarmIdentity
 
 
 class AlarmRuntimeCompositionError(ValueError):

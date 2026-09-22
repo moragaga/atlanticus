@@ -11,24 +11,12 @@ from types import MappingProxyType
 from typing import Any
 
 from ada_command_center.alarms.core.errors import AlarmContractError
+from ada_command_center.domain.alarms import AlarmIdentity, AlarmKind, Criticality
 
 TECHNICAL_HOLD_GRACE_SECONDS = 300
 
 
 # Clase AlarmKind: contrato tipado con invariantes explícitas para evitar estados ambiguos.
-class AlarmKind(StrEnum):
-    RISK = 'RISK'
-    IMPACT = 'IMPACT'
-
-
-# Clase Criticality: contrato tipado con invariantes explícitas para evitar estados ambiguos.
-class Criticality(StrEnum):
-    C1 = 'C1'
-    C2 = 'C2'
-    C3 = 'C3'
-
-
-# Clase AlarmStatus: contrato tipado con invariantes explícitas para evitar estados ambiguos.
 class AlarmStatus(StrEnum):
     ACTIVE = 'ACTIVE'
     INACTIVE = 'INACTIVE'
@@ -176,21 +164,6 @@ class AlarmRouting:
             seen.add(destination.tool_key)
             normalized.append(destination)
         object.__setattr__(self, 'destinations', tuple(sorted(normalized)))
-
-
-@dataclass(frozen=True, slots=True, order=True)
-# Clase AlarmIdentity: contrato tipado con invariantes explícitas para evitar estados ambiguos.
-class AlarmIdentity:
-    family_key: str
-    alarm_key: str
-
-    def __post_init__(self) -> None:
-        _require_non_empty_string(self.family_key, 'family_key')
-        _require_non_empty_string(self.alarm_key, 'alarm_key')
-
-    @property
-    def canonical_key(self) -> str:
-        return f'{self.family_key}/{self.alarm_key}'
 
 
 @dataclass(frozen=True, slots=True)

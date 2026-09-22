@@ -2,21 +2,22 @@
 # La prioridad continúa siendo derivada y no se persiste como winner/suppressed/eligible.
 # Una alarma con DeactivationEffect vigente queda fuera de candidatos operacionales y se clasifica DEACTIVATED.
 # Shadow se mantiene separado: una alarma no entregable sigue siendo SHADOW y no adquiere efectos accionables.
-
 from __future__ import annotations
 
 from collections.abc import Sequence
 
 from ada_command_center.alarms.core.errors import AlarmContractError
 from ada_command_center.alarms.core.models import (
-    AlarmIdentity,
-    AlarmKind,
     AlarmPriorityDecision,
     CascadeSuppression,
     GroupLifecycleState,
     GroupPriorityResolution,
     PlannedAlarm,
     PriorityDisposition,
+)
+from ada_command_center.domain.alarms import (
+    AlarmIdentity,
+    AlarmKind,
 )
 
 

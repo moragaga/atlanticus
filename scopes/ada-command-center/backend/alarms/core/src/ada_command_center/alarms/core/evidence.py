@@ -8,7 +8,6 @@ from typing import Any
 from ada_command_center.alarms.core.errors import AlarmContractError
 from ada_command_center.alarms.core.models import (
     AlarmEvaluation,
-    AlarmIdentity,
     AlarmStatus,
     GroupLifecycleDecision,
     GroupLifecycleState,
@@ -16,6 +15,7 @@ from ada_command_center.alarms.core.models import (
     RuntimeEvaluationState,
     TechnicalHoldChangeKind,
 )
+from ada_command_center.domain.alarms import AlarmIdentity
 
 DEFAULT_EVIDENCE_SAMPLING_INTERVAL_SECONDS = 300
 

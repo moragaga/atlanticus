@@ -8,19 +8,9 @@ from types import MappingProxyType
 from typing import Any
 
 from ada_command_center.alarms.core.errors import AlarmContractError
+from ada_command_center.domain.alarms import AlarmIdentity, AlarmKind, Criticality
 
 TECHNICAL_HOLD_GRACE_SECONDS = 300
-
-
-class AlarmKind(StrEnum):
-    RISK = 'RISK'
-    IMPACT = 'IMPACT'
-
-
-class Criticality(StrEnum):
-    C1 = 'C1'
-    C2 = 'C2'
-    C3 = 'C3'
 
 
 class AlarmStatus(StrEnum):
@@ -154,20 +144,6 @@ class AlarmRouting:
             seen.add(destination.tool_key)
             normalized.append(destination)
         object.__setattr__(self, 'destinations', tuple(sorted(normalized)))
-
-
-@dataclass(frozen=True, slots=True, order=True)
-class AlarmIdentity:
-    family_key: str
-    alarm_key: str
-
-    def __post_init__(self) -> None:
-        _require_non_empty_string(self.family_key, 'family_key')
-        _require_non_empty_string(self.alarm_key, 'alarm_key')
-
-    @property
-    def canonical_key(self) -> str:
-        return f'{self.family_key}/{self.alarm_key}'
 
 
 @dataclass(frozen=True, slots=True)

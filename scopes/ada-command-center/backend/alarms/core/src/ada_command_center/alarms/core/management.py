@@ -15,8 +15,6 @@ from ada_command_center.alarms.core.deactivation import (
 )
 from ada_command_center.alarms.core.errors import AlarmContractError, AlarmLifecycleError
 from ada_command_center.alarms.core.models import (
-    AlarmIdentity,
-    AlarmKind,
     AlarmRuntimeState,
     CascadeSuppression,
     DeactivationDecision,
@@ -37,6 +35,10 @@ from ada_command_center.alarms.core.models import (
     OccurrenceChangeKind,
     PlannedAlarm,
     ReappearanceChange,
+)
+from ada_command_center.domain.alarms import (
+    AlarmIdentity,
+    AlarmKind,
 )
 
 ManagementEffectIdFactory = Callable[[ManagementAction], str]

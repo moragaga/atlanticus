@@ -1,7 +1,6 @@
 # Espejo pedagógico de Routing/Assignments.
 # C1 es inmediato; C2 conserva deadlines absolutos desde occurrence.started_at; C3 sólo usa origen.
 # Reached no retrocede por aumentar timer y pending sí puede recalcularse ante cambio compatible.
-
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -10,15 +9,17 @@ from datetime import datetime, timedelta
 
 from ada_command_center.alarms.core.errors import AlarmContractError
 from ada_command_center.alarms.core.models import (
-    AlarmIdentity,
     AlarmRuntimeState,
     AssignmentChange,
     AssignmentChangeKind,
-    Criticality,
     GroupLifecycleState,
     PendingToolAssignment,
     PlannedAlarm,
     ToolAssignment,
+)
+from ada_command_center.domain.alarms import (
+    AlarmIdentity,
+    Criticality,
 )
 
 

@@ -4,14 +4,16 @@ from collections.abc import Sequence
 
 from ada_command_center.alarms.core.errors import AlarmContractError
 from ada_command_center.alarms.core.models import (
-    AlarmIdentity,
-    AlarmKind,
     AlarmPriorityDecision,
     CascadeSuppression,
     GroupLifecycleState,
     GroupPriorityResolution,
     PlannedAlarm,
     PriorityDisposition,
+)
+from ada_command_center.domain.alarms import (
+    AlarmIdentity,
+    AlarmKind,
 )
 
 

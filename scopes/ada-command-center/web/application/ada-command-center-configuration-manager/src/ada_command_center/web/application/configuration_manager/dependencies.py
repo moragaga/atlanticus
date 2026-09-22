@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ada_command_center.web.alarms.configuration.models import AlarmConfiguration
+from ada_command_center.domain.alarms import AlarmConfiguration
 from ada_command_center.web.alarms.configuration.tool_references import AlarmToolReferenceReader
 from atlanticus.web.manager import ManagerPrincipalProvider
 from atlanticus.web.projection.store import ProjectionStore

@@ -1,9 +1,11 @@
 import pytest
 
-from ada_command_center.alarms.core import AlarmIdentity, AlarmKind, MessageScope
-from ada_command_center.web.alarms.configuration import (
+from ada_command_center.domain.alarms import (
     AlarmConfiguration,
     AlarmConfigurationValidationError,
+    AlarmIdentity,
+    AlarmKind,
+    MessageScope,
 )
 
 from .helpers import configuration, message, rule
@@ -131,9 +133,9 @@ def test_alarm_configuration_keeps_inactive_message_reference_intrinsically_vali
     value = rule(message_keys=('inactive-message',))
     inactive = message('inactive-message', is_active=False)
 
-    configuration = AlarmConfiguration(rules=(value,), messages=(inactive,))
+    value = AlarmConfiguration(rules=(value,), messages=(inactive,))
 
-    assert configuration.messages[0].is_active is False
+    assert value.messages[0].is_active is False
 
 
 def test_alarm_configuration_requires_special_condition_to_exist() -> None:

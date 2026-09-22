@@ -6,11 +6,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from ada_command_center.web.alarms.configuration.errors import (
-    AlarmConfigurationSourceError,
+from ada_command_center.domain.alarms import (
+    AlarmConfiguration,
     AlarmConfigurationValidationError,
 )
-from ada_command_center.web.alarms.configuration.models import AlarmConfiguration
+from ada_command_center.web.alarms.configuration.errors import AlarmConfigurationSourceError
 from ada_command_center.web.alarms.configuration.source_release import (
     AlarmConfigurationSourceService,
 )

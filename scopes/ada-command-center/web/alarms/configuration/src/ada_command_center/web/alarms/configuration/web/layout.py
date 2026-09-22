@@ -5,7 +5,7 @@ from collections.abc import Mapping
 
 from dash import dcc, html
 
-from ada_command_center.alarms.core import (
+from ada_command_center.domain.alarms import (
     AlarmColor,
     AlarmKind,
     BusinessCategory,

@@ -4,6 +4,7 @@ from pathlib import Path
 _ROOT = Path(__file__).parents[1]
 _SOURCE_ROOT = _ROOT / 'src' / 'ada_command_center' / 'processes' / 'alarms_runtime'
 
+
 def test_production_source_contains_no_comments() -> None:
     for path in sorted(_SOURCE_ROOT.glob('*.py')):
         source = path.read_text(encoding='utf-8')
@@ -64,5 +65,10 @@ def test_job_composition_delegates_to_job_runtime_without_internal_loop() -> Non
 
 
 def test_deferred_stage_modules_are_not_landed() -> None:
-    for name in ('consumer.py', 'revision_file.py', 'revision_resolution.py', 'revision_resolver.py'):
+    for name in (
+        'consumer.py',
+        'revision_file.py',
+        'revision_resolution.py',
+        'revision_resolver.py',
+    ):
         assert not (_SOURCE_ROOT / name).exists()

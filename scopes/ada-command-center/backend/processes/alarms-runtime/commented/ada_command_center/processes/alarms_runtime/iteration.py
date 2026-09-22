@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
-from ada_command_center.alarms.core import AlarmIdentity
+from ada_command_center.domain.alarms import AlarmIdentity
 from ada_command_center.processes.alarms_runtime.session import AlarmExecutionSession
 from atlanticus.operational_data.core import DataRuntimeContext, normalize_utc_second
 from atlanticus.operational_data.planner import DataLoadPlan

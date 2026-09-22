@@ -1,9 +1,8 @@
-from __future__ import annotations
-
 # Transformaciones puras del documento transitorio usado por el editor estructurado.
 # Cada operación devuelve una copia para evitar mutar accidentalmente el estado que Dash conserva.
 # Estas funciones no deciden validez de dominio: Save/Publish siguen delegando en AlarmConfiguration.
 
+from __future__ import annotations
 
 import json
 from copy import deepcopy

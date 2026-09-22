@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
-from ada_command_center.alarms.core import AlarmIdentity
+from ada_command_center.domain.alarms import AlarmIdentity
 from ada_command_center.processes.alarms_runtime.session import AlarmExecutionSession
 from atlanticus.operational_data.core import DataRuntimeContext, normalize_utc_second
 from atlanticus.operational_data.planner import DataLoadPlan
@@ -67,7 +67,9 @@ class AlarmExecutionIteration:
             )
         normalized_as_of = normalize_utc_second(self.data.as_of, field_name='as_of')
         if normalized_as_of != self.data.as_of:
-            raise AlarmExecutionIterationError('iteration data as_of must be normalized to UTC second')
+            raise AlarmExecutionIterationError(
+                'iteration data as_of must be normalized to UTC second'
+            )
 
     @property
     def as_of(self) -> datetime:

@@ -22,7 +22,6 @@ def test_public_api_contains_lifecycle_foundation() -> None:
         'materialize_group_commit',
         'cycle_id_for',
         'commit_id_for',
-        'AlarmIdentity',
         'AlarmOccurrence',
         'AlarmEpisode',
         'AlarmRuntimeState',
@@ -49,26 +48,5 @@ def test_public_api_contains_lifecycle_foundation() -> None:
         'execute_evaluator',
         'reduce_group_cycle',
         'reset_group_for_reconfiguration',
-    }
-    assert expected <= set(core.__all__)
-
-
-def test_public_api_contains_canonical_alarm_definition_contract() -> None:
-    expected = {
-        'AlarmColor',
-        'AlarmDeactivationDefinition',
-        'AlarmDefinition',
-        'AlarmEscalationDefinition',
-        'AlarmEscalationStepDefinition',
-        'AlarmVisualSubcomponentTarget',
-        'AlarmVisualTarget',
-        'BusinessCategory',
-        'MessageDeactivationDefinition',
-        'MessageDefinition',
-        'MessageScope',
-        'OperationalArea',
-        'ProcessAlarmProjectionMode',
-        'ReappearanceDefinition',
-        'VisibilityMode',
     }
     assert expected <= set(core.__all__)

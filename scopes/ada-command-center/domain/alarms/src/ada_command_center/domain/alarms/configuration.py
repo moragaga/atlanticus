@@ -4,18 +4,15 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from ada_command_center.alarms.core import (
+from ada_command_center.domain.alarms.definition import (
     AlarmColor,
     AlarmDeactivationDefinition,
     AlarmDefinition,
     AlarmEscalationDefinition,
     AlarmEscalationStepDefinition,
-    AlarmIdentity,
-    AlarmKind,
     AlarmVisualSubcomponentTarget,
     AlarmVisualTarget,
     BusinessCategory,
-    Criticality,
     MessageDeactivationDefinition,
     MessageDefinition,
     MessageScope,
@@ -24,9 +21,8 @@ from ada_command_center.alarms.core import (
     ReappearanceDefinition,
     VisibilityMode,
 )
-from ada_command_center.web.alarms.configuration.errors import (
-    AlarmConfigurationValidationError,
-)
+from ada_command_center.domain.alarms.errors import AlarmConfigurationValidationError
+from ada_command_center.domain.alarms.models import AlarmIdentity, AlarmKind, Criticality
 
 
 @dataclass(frozen=True, slots=True)

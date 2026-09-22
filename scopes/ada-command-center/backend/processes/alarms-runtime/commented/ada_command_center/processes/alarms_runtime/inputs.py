@@ -5,7 +5,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ada_command_center.alarms.core import DeactivationDecision, DeactivationRequest, ManagementAction
+from ada_command_center.alarms.core import (
+    DeactivationDecision,
+    DeactivationRequest,
+    ManagementAction,
+)
 
 
 @dataclass(frozen=True, slots=True)

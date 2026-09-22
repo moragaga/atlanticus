@@ -17,7 +17,6 @@ from ada_command_center.alarms.core.evidence import (
 from ada_command_center.alarms.core.journey import JourneyEvent, materialize_journey
 from ada_command_center.alarms.core.models import (
     AlarmEvaluation,
-    AlarmIdentity,
     AssignmentChange,
     AssignmentChangeKind,
     DeactivationDecisionOutcome,
@@ -31,6 +30,7 @@ from ada_command_center.alarms.core.models import (
     OccurrenceChange,
     OccurrenceChangeKind,
 )
+from ada_command_center.domain.alarms import AlarmIdentity
 
 
 class InputKind(StrEnum):

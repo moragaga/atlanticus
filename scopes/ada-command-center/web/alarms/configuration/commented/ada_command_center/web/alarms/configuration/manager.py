@@ -1,14 +1,13 @@
-from __future__ import annotations
-
 # Composición del módulo Manager de Alarm Configuration.
 # Esta frontera conecta Source/Projection, workspace, autorización y la UI.
 # El Tool Reference Reader se inyecta opcionalmente y sólo alimenta sugerencias de authoring.
 
+from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 
-from ada_command_center.web.alarms.configuration.models import AlarmConfiguration
+from ada_command_center.domain.alarms import AlarmConfiguration
 from ada_command_center.web.alarms.configuration.source_projection import (
     create_alarm_configuration_projection_service,
 )

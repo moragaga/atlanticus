@@ -1,28 +1,19 @@
-# AlarmConfiguration representa una revisión completa editable y publicable: Rules + Messages.
-# Reutiliza AlarmDefinition y MessageDefinition del core como contratos de dominio ya congelados.
-# Aquí viven las invariantes que sólo pueden verificarse observando la revisión completa.
-# No se consulta Tool Catalog ni Evaluator Registry: esas dependencias pertenecen a B.2 Resolution.
-# Un message_key es único globalmente porque las Rules lo referencian sólo por su clave textual.
-# Un Message inactivo puede seguir referenciado en una revisión válida; su readiness se decide después.
-# La serialización convierte el documento durable en los contratos del core sin introducir otro modelo paralelo.
 from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from ada_command_center.alarms.core import (
+# El aggregate combina Rules y Messages ya tipados por el dominio.
+from ada_command_center.domain.alarms.definition import (
     AlarmColor,
     AlarmDeactivationDefinition,
     AlarmDefinition,
     AlarmEscalationDefinition,
     AlarmEscalationStepDefinition,
-    AlarmIdentity,
-    AlarmKind,
     AlarmVisualSubcomponentTarget,
     AlarmVisualTarget,
     BusinessCategory,
-    Criticality,
     MessageDeactivationDefinition,
     MessageDefinition,
     MessageScope,
@@ -31,11 +22,11 @@ from ada_command_center.alarms.core import (
     ReappearanceDefinition,
     VisibilityMode,
 )
-from ada_command_center.web.alarms.configuration.errors import (
-    AlarmConfigurationValidationError,
-)
+from ada_command_center.domain.alarms.errors import AlarmConfigurationValidationError
+from ada_command_center.domain.alarms.models import AlarmIdentity, AlarmKind, Criticality
 
 
+# Aggregate durable editable/publicable de Alarm Configuration.
 @dataclass(frozen=True, slots=True)
 class AlarmConfiguration:
     rules: tuple[AlarmDefinition, ...]
@@ -64,6 +55,7 @@ class AlarmConfiguration:
         self._validate_message_references(messages_by_key)
         self._validate_special_condition_references(rules_by_identity)
 
+    # El documento es contrato durable del dominio, no de la UI.
     def to_document(self) -> dict[str, object]:
         return {
             'rules': [_alarm_definition_to_document(rule) for rule in self.rules],
@@ -106,6 +98,7 @@ class AlarmConfiguration:
                 )
             seen.add(key)
 
+    # Se preserva exactamente la validación CURRENT durante esta migración.
     def _validate_priority_groups(self) -> None:
         groups: dict[str, list[AlarmDefinition]] = {}
         for rule in self.rules:
@@ -158,6 +151,7 @@ class AlarmConfiguration:
                         'Alarm rule may reference only GLOBAL messages or messages from its family'
                     )
 
+    # Esta capa valida referencias authored sin incorporar todavía qualification B.2.
     def _validate_special_condition_references(
         self,
         rules_by_identity: Mapping[AlarmIdentity, AlarmDefinition],
@@ -467,8 +461,6 @@ def _require_int(value: object) -> int:
 
 
 def _require_parameter_value(value: object) -> str | float | bool:
-    # El contrato de dominio conserva FLOAT, pero un JSON Number integral puede volver
-    # desde el navegador como int. Se normaliza aquí antes de construir AlarmDefinition.
     if isinstance(value, (bool, str, float)):
         return value
     if isinstance(value, int):

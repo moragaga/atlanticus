@@ -14,12 +14,29 @@ members = [
 name = "ada-command-center-alarms-core"
 version = "1.0.0"
 source = { editable = "alarms/core" }
+dependencies = [
+    { name = "ada-command-center-alarms-domain" },
+]
 
 [package.dev-dependencies]
 dev = [
     { name = "pytest" },
     { name = "ruff" },
 ]
+
+[package.metadata]
+requires-dist = [{ name = "ada-command-center-alarms-domain", editable = "../domain/alarms" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-command-center-alarms-domain"
+version = "1.0.0"
+source = { editable = "../domain/alarms" }
 
 [package.metadata]
 
@@ -62,6 +79,7 @@ version = "1.0.0"
 source = { editable = "processes/alarms-runtime" }
 dependencies = [
     { name = "ada-command-center-alarms-core" },
+    { name = "ada-command-center-alarms-domain" },
     { name = "ada-command-center-alarms-persistence" },
     { name = "atlanticus-job-runtime" },
     { name = "atlanticus-operational-data-core" },
@@ -77,6 +95,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "ada-command-center-alarms-core", editable = "alarms/core" },
+    { name = "ada-command-center-alarms-domain", editable = "../domain/alarms" },
     { name = "ada-command-center-alarms-persistence", editable = "alarms/persistence" },
     { name = "atlanticus-job-runtime", editable = "../../../backend/runtime" },
     { name = "atlanticus-operational-data-core", editable = "../../operational-data/core" },
@@ -95,6 +114,7 @@ version = "1.0.0"
 source = { virtual = "." }
 dependencies = [
     { name = "ada-command-center-alarms-core" },
+    { name = "ada-command-center-alarms-domain" },
     { name = "ada-command-center-alarms-persistence" },
     { name = "ada-command-center-alarms-runtime-process" },
 ]
@@ -108,6 +128,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "ada-command-center-alarms-core", editable = "alarms/core" },
+    { name = "ada-command-center-alarms-domain", editable = "../domain/alarms" },
     { name = "ada-command-center-alarms-persistence", editable = "alarms/persistence" },
     { name = "ada-command-center-alarms-runtime-process", editable = "processes/alarms-runtime" },
 ]

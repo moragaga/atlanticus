@@ -9,9 +9,7 @@ _COMMENTED_ROOT = _PACKAGE_ROOT / 'commented/ada_command_center/alarms/core'
 
 def _python_tokens(path: Path) -> list[tuple[int, str]]:
     tokens: list[tuple[int, str]] = []
-    for token in tokenize.generate_tokens(
-        io.StringIO(path.read_text(encoding='utf-8')).readline
-    ):
+    for token in tokenize.generate_tokens(io.StringIO(path.read_text(encoding='utf-8')).readline):
         if token.type in {
             tokenize.COMMENT,
             tokenize.ENCODING,

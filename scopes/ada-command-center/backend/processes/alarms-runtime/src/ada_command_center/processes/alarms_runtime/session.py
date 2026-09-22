@@ -4,7 +4,11 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from ada_command_center.alarms.core import AlarmIdentity, Evaluator, PlannedAlarm
+from ada_command_center.alarms.core import (
+    Evaluator,
+    PlannedAlarm,
+)
+from ada_command_center.domain.alarms import AlarmIdentity
 from atlanticus.operational_data.core import DataRequirement
 from atlanticus.operational_data.planner import DataLoadPlan, DataRequirementPlanner
 

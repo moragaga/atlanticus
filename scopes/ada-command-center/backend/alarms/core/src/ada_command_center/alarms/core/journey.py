@@ -5,7 +5,6 @@ from datetime import UTC, datetime, timedelta
 
 from ada_command_center.alarms.core.errors import AlarmContractError
 from ada_command_center.alarms.core.models import (
-    AlarmIdentity,
     AlarmPriorityDecision,
     AssignmentChangeKind,
     DeactivationEffectChangeKind,
@@ -19,6 +18,7 @@ from ada_command_center.alarms.core.models import (
     PriorityDisposition,
     TechnicalHoldChangeKind,
 )
+from ada_command_center.domain.alarms import AlarmIdentity
 
 
 @dataclass(frozen=True, slots=True)

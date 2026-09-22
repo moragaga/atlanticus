@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 
-from ada_command_center.web.alarms.configuration.models import AlarmConfiguration
+from ada_command_center.domain.alarms import AlarmConfiguration
 from ada_command_center.web.alarms.configuration.source_projection import (
     create_alarm_configuration_projection_service,
 )

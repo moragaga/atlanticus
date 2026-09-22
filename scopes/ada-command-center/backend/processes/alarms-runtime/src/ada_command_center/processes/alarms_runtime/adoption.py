@@ -3,7 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from ada_command_center.alarms.core import AlarmIdentity, Criticality, PlannedAlarm
+from ada_command_center.alarms.core import PlannedAlarm
+from ada_command_center.domain.alarms import (
+    AlarmIdentity,
+    Criticality,
+)
 from ada_command_center.processes.alarms_runtime.session import AlarmExecutionSession
 
 

@@ -9,6 +9,7 @@ description = "Temporary local Manager host for ADA Command Center configuration
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
+    "ada-command-center-alarms-domain==1.0.0",
     "ada-command-center-web-alarm-configuration[web]==0.1.0",
     "ada-command-center-tools-catalog==0.1.0",
     "ada-web-tools==0.1.0",
@@ -21,6 +22,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
+ada-command-center-alarms-domain = { path = "../../../domain/alarms", editable = true }
 ada-command-center-web-alarm-configuration = { path = "../../alarms/configuration", editable = true }
 ada-command-center-tools-catalog = { path = "../../../backend/tools/catalog", editable = true }
 ada-web-tools = { path = "../../../../ada/web/tools/core", editable = true }
@@ -72,7 +74,7 @@ testpaths = ["tests"]
 pythonpath = [
     "src",
     "../../alarms/configuration/src",
-    "../../../backend/alarms/core/src",
+    "../../../domain/alarms/src",
     "../../../backend/tools/catalog/src",
     "../../../../ada/web/tools/core/src",
     "../../../../../web/framework/core/src",

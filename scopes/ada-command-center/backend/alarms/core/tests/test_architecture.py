@@ -7,7 +7,6 @@ _EXPECTED_PRODUCTION_FILES = {
     '__init__.py',
     'commit.py',
     'deactivation.py',
-    'definition.py',
     'errors.py',
     'evaluation.py',
     'evidence.py',

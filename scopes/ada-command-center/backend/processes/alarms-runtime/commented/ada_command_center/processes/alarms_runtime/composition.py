@@ -6,7 +6,11 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from ada_command_center.alarms.core import GroupCommitMaterialization, GroupLifecycleState, PlannedAlarm
+from ada_command_center.alarms.core import (
+    GroupCommitMaterialization,
+    GroupLifecycleState,
+    PlannedAlarm,
+)
 from ada_command_center.alarms.persistence import (
     AlarmPersistence,
     CommitBatchResult,

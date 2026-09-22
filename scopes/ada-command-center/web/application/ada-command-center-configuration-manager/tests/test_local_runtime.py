@@ -1,4 +1,4 @@
-from ada_command_center.web.alarms.configuration import AlarmConfiguration
+from ada_command_center.domain.alarms import AlarmConfiguration
 from ada_command_center.web.alarms.configuration.source_release import (
     AlarmConfigurationSourceService,
 )

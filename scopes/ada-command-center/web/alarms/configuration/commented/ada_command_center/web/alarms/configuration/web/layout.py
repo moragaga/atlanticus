@@ -1,14 +1,15 @@
-from __future__ import annotations
-
 # Construcción declarativa de la UI estructurada de Alarm Configuration.
 # Rules y Messages siguen siendo el mismo contrato durable, sin un segundo modelo de dominio.
 # Las datalist sugieren keys conocidas sin impedir conservar o escribir keys manuales.
+
+from __future__ import annotations
+
 import json
 from collections.abc import Mapping
 
 from dash import dcc, html
 
-from ada_command_center.alarms.core import (
+from ada_command_center.domain.alarms import (
     AlarmColor,
     AlarmKind,
     BusinessCategory,

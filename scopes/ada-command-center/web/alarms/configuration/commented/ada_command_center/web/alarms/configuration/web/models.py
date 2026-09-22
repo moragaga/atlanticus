@@ -1,8 +1,7 @@
-from __future__ import annotations
-
 # Dependencias que la composición entrega a la UI.
 # El provider de Tool References evita que Dash conozca Storage, Cosmos o el catálogo físico.
 
+from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass

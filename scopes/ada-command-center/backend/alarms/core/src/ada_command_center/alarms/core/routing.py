@@ -6,15 +6,17 @@ from datetime import datetime, timedelta
 
 from ada_command_center.alarms.core.errors import AlarmContractError
 from ada_command_center.alarms.core.models import (
-    AlarmIdentity,
     AlarmRuntimeState,
     AssignmentChange,
     AssignmentChangeKind,
-    Criticality,
     GroupLifecycleState,
     PendingToolAssignment,
     PlannedAlarm,
     ToolAssignment,
+)
+from ada_command_center.domain.alarms import (
+    AlarmIdentity,
+    Criticality,
 )
 
 
