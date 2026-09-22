@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import json
 import os
 import platform
 import re
@@ -323,6 +324,46 @@ def _validate_project(path: Path, distribution: str) -> str:
     return actual_version
 
 
+def _validate_secret_manifest(root: Path, label: str) -> None:
+    path = root / 'secrets.detail.json'
+    try:
+        document = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, json.JSONDecodeError) as error:
+        raise SystemExit(f'{label} secrets manifest is invalid: {path}') from error
+    if not isinstance(document, list):
+        raise SystemExit(f'{label} secrets manifest must contain a list')
+    for item in document:
+        if not isinstance(item, dict):
+            raise SystemExit(f'{label} secrets manifest entries must be objects')
+        var_name = item.get('var_name')
+        if not isinstance(var_name, str) or not var_name.strip():
+            raise SystemExit(f'{label} secrets manifest contains an invalid var_name')
+        exists_in_key_vault = item.get('exists_in_key_vault')
+        if not isinstance(exists_in_key_vault, bool):
+            raise SystemExit(
+                f'{label} secrets manifest has invalid exists_in_key_vault for {var_name}'
+            )
+        if not exists_in_key_vault:
+            continue
+        secret_name = item.get('secret_name')
+        if not isinstance(secret_name, str) or not secret_name.strip():
+            raise SystemExit(f'{label} Key Vault secret is missing secret_name: {var_name}')
+        if item.get('value') is not None:
+            raise SystemExit(f'{label} Key Vault secret must not contain a value: {var_name}')
+
+
+def _validate_process_contract_files(root: Path, label: str) -> None:
+    for name in ('.python-version', '.env.detail', 'config.detail.json', 'secrets.detail.json'):
+        if not (root / name).is_file():
+            raise SystemExit(f'{label} process contract file is missing: {name}')
+    python_version = (root / '.python-version').read_text(encoding='utf-8').strip()
+    if python_version != EXPECTED_PYTHON_VERSION:
+        raise SystemExit(
+            f'{label} .python-version must be {EXPECTED_PYTHON_VERSION}, found {python_version}'
+        )
+    _validate_secret_manifest(root, label)
+
+
 def _validate_workspace(repository: Path, scope: Path) -> None:
     document = _read(scope / 'pyproject.toml')
     project = document.get('project')
@@ -380,9 +421,7 @@ def _validate_runtime_process_contract(scope: Path) -> None:
     container = atlanticus.get('container') if isinstance(atlanticus, dict) else None
     if container != {'command': 'ada-kpi-runtime', 'system-profile': 'base'}:
         raise SystemExit('KPI Runtime container contract is not canonical')
-    for name in ('.python-version', '.env.detail', 'config.detail.json', 'secrets.detail.json'):
-        if not (root / name).is_file():
-            raise SystemExit(f'KPI Runtime process contract file is missing: {name}')
+    _validate_process_contract_files(root, 'KPI Runtime')
 
 
 def _validate_delivery_process_contract(scope: Path) -> None:
@@ -399,9 +438,7 @@ def _validate_delivery_process_contract(scope: Path) -> None:
     container = atlanticus.get('container') if isinstance(atlanticus, dict) else None
     if container != {'command': 'ada-kpi-delivery', 'system-profile': 'base'}:
         raise SystemExit('KPI Delivery container contract is not canonical')
-    for name in ('.python-version', '.env.detail', 'config.detail.json', 'secrets.detail.json'):
-        if not (root / name).is_file():
-            raise SystemExit(f'KPI Delivery process contract file is missing: {name}')
+    _validate_process_contract_files(root, 'KPI Delivery')
 
 
 def _validate_historian_process_contract(scope: Path) -> None:
@@ -418,9 +455,7 @@ def _validate_historian_process_contract(scope: Path) -> None:
     container = atlanticus.get('container') if isinstance(atlanticus, dict) else None
     if container != {'command': 'ada-kpi-historian', 'system-profile': 'base'}:
         raise SystemExit('KPI Historian container contract is not canonical')
-    for name in ('.python-version', '.env.detail', 'config.detail.json', 'secrets.detail.json'):
-        if not (root / name).is_file():
-            raise SystemExit(f'KPI Historian process contract file is missing: {name}')
+    _validate_process_contract_files(root, 'KPI Historian')
 
 
 def _validate_timeseries_delivery_process_contract(scope: Path) -> None:
@@ -442,9 +477,7 @@ def _validate_timeseries_delivery_process_contract(scope: Path) -> None:
         'system-profile': 'base',
     }:
         raise SystemExit('KPI Timeseries Delivery container contract is not canonical')
-    for name in ('.python-version', '.env.detail', 'config.detail.json', 'secrets.detail.json'):
-        if not (root / name).is_file():
-            raise SystemExit(f'KPI Timeseries Delivery process contract file is missing: {name}')
+    _validate_process_contract_files(root, 'KPI Timeseries Delivery')
 
 
 def _validate_ownership(repository: Path, scope: Path) -> None:
