@@ -192,6 +192,7 @@ class PlannedAlarm:
     tool_registry_revision: str
     routing: AlarmRouting
     deactivation_policy: DeactivationPolicy | None = None
+    reappearance_special_conditions: tuple[AlarmIdentity, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.identity, AlarmIdentity):
@@ -219,6 +220,15 @@ class PlannedAlarm:
             self.deactivation_policy, DeactivationPolicy
         ):
             raise TypeError('deactivation_policy must be a DeactivationPolicy')
+        if not isinstance(self.reappearance_special_conditions, tuple):
+            raise TypeError('reappearance_special_conditions must be a tuple')
+        seen_special_conditions: set[AlarmIdentity] = set()
+        for identity in self.reappearance_special_conditions:
+            if not isinstance(identity, AlarmIdentity):
+                raise TypeError('reappearance_special_conditions must contain AlarmIdentity values')
+            if identity in seen_special_conditions:
+                raise ValueError('reappearance_special_conditions must not contain duplicates')
+            seen_special_conditions.add(identity)
         if self.criticality is Criticality.C1 and any(
             destination.delay_seconds is not None for destination in self.routing.destinations
         ):

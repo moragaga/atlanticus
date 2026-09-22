@@ -303,6 +303,7 @@ def _finalize_management_state(
     *,
     cycle_at: datetime,
     plans: Mapping[AlarmIdentity, PlannedAlarm],
+    active_alarm_identities: frozenset[AlarmIdentity] = frozenset(),
     occurrence_changes: Sequence[OccurrenceChange],
     episode_changes: Sequence[EpisodeChange],
 ) -> _ManagementFinalization:
@@ -312,6 +313,16 @@ def _finalize_management_state(
         cutoff=cycle_at,
         include_equal=True,
         exclude_equal_identities=set(),
+    )
+    (
+        working,
+        special_effect_changes,
+        special_reappearance_changes,
+    ) = _resolve_special_condition_reappearances(
+        working,
+        at=cycle_at,
+        plans=plans,
+        active_alarm_identities=active_alarm_identities,
     )
     state_after_due = GroupLifecycleState(
         priority_group=state.priority_group,
@@ -358,11 +369,14 @@ def _finalize_management_state(
     return _ManagementFinalization(
         state=final_state,
         effect_changes=tuple(
-            sorted((*effect_changes, *cleanup_changes), key=_effect_change_sort_key)
+            sorted(
+                (*effect_changes, *special_effect_changes, *cleanup_changes),
+                key=_effect_change_sort_key,
+            )
         ),
         reappearance_changes=tuple(
             sorted(
-                reappearance_changes,
+                (*reappearance_changes, *special_reappearance_changes),
                 key=lambda item: (item.effective_at, item.alarm_identity, item.occurrence_id),
             )
         ),
@@ -643,6 +657,63 @@ def _resolve_due_effects(
             and next_state.deactivation_effect is None
         ):
             del working[identity]
+    return working, tuple(changes), tuple(reappearances)
+
+
+# Auxiliar _resolve_special_condition_reappearances: libera Management por triggers activos.
+def _resolve_special_condition_reappearances(
+    working: dict[AlarmIdentity, AlarmRuntimeState],
+    *,
+    at: datetime,
+    plans: Mapping[AlarmIdentity, PlannedAlarm],
+    active_alarm_identities: frozenset[AlarmIdentity],
+) -> tuple[
+    dict[AlarmIdentity, AlarmRuntimeState],
+    tuple[ManagementEffectChange, ...],
+    tuple[ReappearanceChange, ...],
+]:
+    changes: list[ManagementEffectChange] = []
+    reappearances: list[ReappearanceChange] = []
+    for identity in sorted(tuple(working)):
+        current = working[identity]
+        effect = current.management_effect
+        occurrence = current.occurrence
+        plan = plans.get(identity)
+        if effect is None or occurrence is None or current.management_cycle is None or plan is None:
+            continue
+        if effect.source_occurrence_id != occurrence.occurrence_id:
+            continue
+        if identity not in active_alarm_identities:
+            continue
+        if not any(
+            trigger in active_alarm_identities for trigger in plan.reappearance_special_conditions
+        ):
+            continue
+        changes.append(
+            ManagementEffectChange(
+                kind=ManagementEffectChangeKind.CLEARED,
+                alarm_identity=identity,
+                effective_at=at,
+            )
+        )
+        next_state = replace(current, management_effect=None)
+        deactivation = current.deactivation_effect
+        deactivation_blocks_reappearance = bool(
+            deactivation is not None
+            and deactivation.effective_from <= at < deactivation.effective_until
+        )
+        if not deactivation_blocks_reappearance:
+            cycle = current.management_cycle + 1
+            next_state = replace(next_state, management_cycle=cycle)
+            reappearances.append(
+                ReappearanceChange(
+                    alarm_identity=identity,
+                    occurrence_id=occurrence.occurrence_id,
+                    effective_at=at,
+                    management_cycle=cycle,
+                )
+            )
+        working[identity] = next_state
     return working, tuple(changes), tuple(reappearances)
 
 

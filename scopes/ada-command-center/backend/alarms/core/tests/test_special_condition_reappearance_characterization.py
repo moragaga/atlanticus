@@ -1,7 +1,5 @@
 from datetime import timedelta
 
-import pytest
-
 from ada_command_center.alarms.core import (
     AlarmKind,
     AlarmStatus,
@@ -57,9 +55,15 @@ def _start_managed_alarm_with_inactive_special(
     ids: Ids,
     *,
     reappearance_seconds: int = 3600,
+    reappearance_special_conditions=(),
 ):
     plans = (
-        plan('alarm', kind=AlarmKind.IMPACT, priority_order=1),
+        plan(
+            'alarm',
+            kind=AlarmKind.IMPACT,
+            priority_order=1,
+            reappearance_special_conditions=reappearance_special_conditions,
+        ),
         plan('special', kind=AlarmKind.IMPACT, priority_order=2),
     )
     started = _reduce(
@@ -117,7 +121,10 @@ def test_unreferenced_active_lower_rank_alarm_does_not_release_management_effect
 
 def test_inactive_lower_rank_alarm_does_not_release_management_effect() -> None:
     ids = Ids()
-    plans, managed, managed_at = _start_managed_alarm_with_inactive_special(ids)
+    plans, managed, managed_at = _start_managed_alarm_with_inactive_special(
+        ids,
+        reappearance_special_conditions=(identity('special'),),
+    )
     at = managed_at + timedelta(minutes=1)
 
     decision = _reduce(
@@ -139,7 +146,10 @@ def test_inactive_lower_rank_alarm_does_not_release_management_effect() -> None:
 
 def test_error_lower_rank_alarm_does_not_release_management_effect() -> None:
     ids = Ids()
-    plans, managed, managed_at = _start_managed_alarm_with_inactive_special(ids)
+    plans, managed, managed_at = _start_managed_alarm_with_inactive_special(
+        ids,
+        reappearance_special_conditions=(identity('special'),),
+    )
     at = managed_at + timedelta(minutes=1)
 
     decision = _reduce(
@@ -164,6 +174,7 @@ def test_timer_due_reappears_once_even_if_another_alarm_activates_same_cycle() -
     plans, managed, managed_at = _start_managed_alarm_with_inactive_special(
         ids,
         reappearance_seconds=300,
+        reappearance_special_conditions=(identity('special'),),
     )
     due = managed_at + timedelta(minutes=5)
 
@@ -195,7 +206,12 @@ def test_timer_due_reappears_once_even_if_another_alarm_activates_same_cycle() -
 
 def test_closed_managed_occurrence_is_not_resurrected_by_later_alarm_activation() -> None:
     plans = (
-        plan('alarm', kind=AlarmKind.IMPACT, priority_order=1),
+        plan(
+            'alarm',
+            kind=AlarmKind.IMPACT,
+            priority_order=1,
+            reappearance_special_conditions=(identity('special'),),
+        ),
         plan('blocker', kind=AlarmKind.IMPACT, priority_order=2),
         plan('special', kind=AlarmKind.IMPACT, priority_order=3),
     )
@@ -269,15 +285,12 @@ def test_closed_managed_occurrence_is_not_resurrected_by_later_alarm_activation(
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason='Runtime does not yet consume referenced Special Condition reappearance triggers',
-)
-def test_target_referenced_special_activation_reappears_managed_alarm_before_timer() -> None:
+def test_referenced_special_activation_reappears_managed_alarm_before_timer() -> None:
     ids = Ids()
-    plans, managed, managed_at = _start_managed_alarm_with_inactive_special(ids)
-    target_references = {identity('alarm'): (identity('special'),)}
-    assert identity('special') in target_references[identity('alarm')]
+    plans, managed, managed_at = _start_managed_alarm_with_inactive_special(
+        ids,
+        reappearance_special_conditions=(identity('special'),),
+    )
 
     active_at = managed_at + timedelta(minutes=1)
     decision = _reduce(
@@ -306,20 +319,16 @@ def test_target_referenced_special_activation_reappears_managed_alarm_before_tim
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        'Runtime does not yet trigger reappearance from a referenced Special Condition '
-        'that is itself priority-suppressed'
-    ),
-)
-def test_target_referenced_special_triggers_even_when_priority_suppressed() -> None:
+def test_referenced_special_triggers_even_when_priority_suppressed() -> None:
     plans = (
-        plan('alarm', kind=AlarmKind.IMPACT, priority_order=1),
+        plan(
+            'alarm',
+            kind=AlarmKind.IMPACT,
+            priority_order=1,
+            reappearance_special_conditions=(identity('special'),),
+        ),
         plan('special', kind=AlarmKind.IMPACT, priority_order=2),
     )
-    target_references = {identity('alarm'): (identity('special'),)}
-    assert identity('special') in target_references[identity('alarm')]
 
     ids = Ids()
     started = _reduce(
@@ -372,25 +381,19 @@ def test_target_referenced_special_triggers_even_when_priority_suppressed() -> N
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason='Runtime does not yet implement OR semantics across referenced Special Conditions',
-)
-def test_target_any_referenced_special_condition_can_trigger_reappearance() -> None:
+def test_any_referenced_special_condition_can_trigger_reappearance() -> None:
     plans = (
-        plan('alarm', kind=AlarmKind.IMPACT, priority_order=1),
+        plan(
+            'alarm',
+            kind=AlarmKind.IMPACT,
+            priority_order=1,
+            reappearance_special_conditions=(
+                identity('special-a'),
+                identity('special-b'),
+            ),
+        ),
         plan('special-a', kind=AlarmKind.IMPACT, priority_order=2),
         plan('special-b', kind=AlarmKind.IMPACT, priority_order=3),
-    )
-    target_references = {
-        identity('alarm'): (
-            identity('special-a'),
-            identity('special-b'),
-        )
-    }
-    assert target_references[identity('alarm')] == (
-        identity('special-a'),
-        identity('special-b'),
     )
 
     ids = Ids()

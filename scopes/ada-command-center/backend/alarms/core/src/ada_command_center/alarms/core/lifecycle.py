@@ -270,6 +270,11 @@ def reduce_group_cycle(
         next_state,
         cycle_at=cycle_at,
         plans=plans,
+        active_alarm_identities=frozenset(
+            identity
+            for identity, evaluation in evaluation_map.items()
+            if evaluation.status is AlarmStatus.ACTIVE
+        ),
         occurrence_changes=sorted_occurrence_changes,
         episode_changes=sorted_episode_changes,
     )
