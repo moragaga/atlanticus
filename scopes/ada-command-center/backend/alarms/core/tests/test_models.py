@@ -7,6 +7,7 @@ from ada_command_center.alarms.core import (
     AlarmEpisode,
     AlarmEvaluation,
     AlarmOccurrence,
+    AlarmResolutionKey,
     AlarmRouting,
     AlarmRuntimeState,
     AlarmStatus,
@@ -34,6 +35,25 @@ from ada_command_center.domain.alarms import (
 )
 
 from .support import NOW, identity, physical, plan
+
+
+def test_alarm_resolution_key_requires_both_non_empty_revisions() -> None:
+    value = AlarmResolutionKey(
+        alarm_configuration_revision='R42',
+        confirmed_tool_catalog_revision='T18',
+    )
+    assert value.alarm_configuration_revision == 'R42'
+    assert value.confirmed_tool_catalog_revision == 'T18'
+    with pytest.raises(ValueError, match='alarm_configuration_revision'):
+        AlarmResolutionKey(
+            alarm_configuration_revision='',
+            confirmed_tool_catalog_revision='T18',
+        )
+    with pytest.raises(ValueError, match='confirmed_tool_catalog_revision'):
+        AlarmResolutionKey(
+            alarm_configuration_revision='R42',
+            confirmed_tool_catalog_revision='',
+        )
 
 
 def test_planned_alarm_keeps_domain_dimensions_separate() -> None:

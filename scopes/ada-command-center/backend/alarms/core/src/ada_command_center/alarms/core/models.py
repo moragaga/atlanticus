@@ -19,6 +19,22 @@ class AlarmStatus(StrEnum):
     ERROR = 'ERROR'
 
 
+@dataclass(frozen=True, slots=True, order=True)
+class AlarmResolutionKey:
+    alarm_configuration_revision: str
+    confirmed_tool_catalog_revision: str
+
+    def __post_init__(self) -> None:
+        _require_non_empty_string(
+            self.alarm_configuration_revision,
+            'alarm_configuration_revision',
+        )
+        _require_non_empty_string(
+            self.confirmed_tool_catalog_revision,
+            'confirmed_tool_catalog_revision',
+        )
+
+
 class PriorityDisposition(StrEnum):
     PREDOMINANT = 'PREDOMINANT'
     ECLIPSED = 'ECLIPSED'

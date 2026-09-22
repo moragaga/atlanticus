@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ada-command-center-alarms-materialization"
+version = "1.0.0"
+description = "Pure Alarm Configuration materialization contracts for ADA Command Center."
+requires-python = "==3.14.2"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "ada-command-center-alarms-core==1.0.0",
+    "ada-command-center-alarms-domain==1.0.0",
+    "ada-web-tools==0.1.0",
+]
+
+[tool.uv.sources]
+ada-command-center-alarms-core = { path = "../core", editable = true }
+ada-command-center-alarms-domain = { path = "../../../domain/alarms", editable = true }
+ada-web-tools = { path = "../../../../ada/web/tools/core", editable = true }
+
+[dependency-groups]
+dev = ["pytest==9.1.1", "ruff==0.15.22"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["ada_command_center.alarms.materialization*"]
+namespaces = true
+
+[tool.setuptools.package-data]
+"ada_command_center.alarms.materialization" = ["py.typed"]
+
+[tool.pytest.ini_options]
+addopts = "-q --import-mode=importlib"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ada", "ada_command_center"]
+combine-as-imports = true
