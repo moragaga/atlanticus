@@ -154,7 +154,7 @@ def test_legacy_workspace_contract_is_rejected_with_rebuild_instruction(
 
     with pytest.raises(
         LocalDeploymentError,
-        match=r"workspace contract is stale.*legacy volume path /app/volume.*local-process\.sh build",
+        match=r"workspace contract is stale.*legacy volume path /app/volume.*local process tool.*build",
     ):
         validate_workspace_contract(workspace)
 

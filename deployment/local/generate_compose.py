@@ -74,7 +74,7 @@ def discover_processes(repository_root: Path) -> tuple[ProcessDefinition, ...]:
     if not artifacts_root.is_dir():
         raise LocalDeploymentError(
             f"process artifacts directory not found: {artifacts_root}. "
-            "Run: scripts/local-process.sh prepare"
+            "Run the local process tool with: prepare <target> --all"
         )
     definitions: list[ProcessDefinition] = []
     for pyproject_path in sorted(artifacts_root.glob("*/pyproject.toml")):
@@ -152,7 +152,7 @@ def validate_source_contracts(
         if source is None:
             raise LocalDeploymentError(
                 f"source process contract not found for artifact {definition.name}. "
-                f"Run: scripts/local-process.sh prepare {definition.name}"
+                f"Run the local process tool with: prepare {definition.name}"
             )
         source_contract, source_path = source
         if source_contract != definition.contract:
@@ -160,7 +160,7 @@ def validate_source_contracts(
                 f"process artifact contract is stale for {definition.name}: "
                 f"source {_contract_summary(source_contract)} at {source_path.parent}; "
                 f"artifact {_contract_summary(definition.contract)} at {definition.artifact_root}. "
-                f"Run: scripts/local-process.sh prepare {definition.name}"
+                f"Run the local process tool with: prepare {definition.name}"
             )
 
 
@@ -168,7 +168,7 @@ def validate_workspace_contract(workspace_root: Path) -> None:
     compose_path = workspace_root / "compose.yaml"
     if not compose_path.is_file():
         raise LocalDeploymentError(
-            "local Compose workspace not found. Run: scripts/local-process.sh build"
+            "local Compose workspace not found. Run the local process tool with: build"
         )
     try:
         compose = compose_path.read_text(encoding="utf-8")
@@ -182,11 +182,11 @@ def validate_workspace_contract(workspace_root: Path) -> None:
     if LEGACY_VOLUME_PATH in compose:
         raise LocalDeploymentError(
             f"local deployment workspace contract is stale: legacy volume path "
-            f"{LEGACY_VOLUME_PATH} was detected. Run: scripts/local-process.sh build"
+            f"{LEGACY_VOLUME_PATH} was detected. Run the local process tool with: build"
         )
     raise LocalDeploymentError(
         "local deployment workspace contract is stale or unsupported. "
-        "Run: scripts/local-process.sh build"
+        "Run the local process tool with: build"
     )
 
 

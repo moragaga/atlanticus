@@ -16,13 +16,21 @@ class Paths:
     root: Path
     deployment: Path
     scripts: Path
+    tooling: Path
 
 
 def _paths() -> Paths:
     for root in Path(__file__).resolve().parents:
-        if (root / "deployment").is_dir() and (root / "scripts").is_dir():
+        if (
+            (root / "deployment").is_dir()
+            and (root / "scripts").is_dir()
+            and (root / "tooling").is_dir()
+        ):
             return Paths(
-                root=root, deployment=root / "deployment", scripts=root / "scripts"
+                root=root,
+                deployment=root / "deployment",
+                scripts=root / "scripts",
+                tooling=root / "tooling",
             )
     raise RuntimeError("Atlanticus repository root could not be resolved")
 
@@ -47,15 +55,22 @@ def _validate_structure(paths: Paths) -> None:
         paths.deployment / "processes" / "commented" / "bundle.py",
         paths.deployment / "local" / "generate_compose.py",
         paths.deployment / "local" / "commented" / "generate_compose.py",
-        paths.scripts / "local-process.sh",
-        paths.scripts / "commented" / "local-process.sh",
+        paths.tooling / "local" / "processes" / "process.py",
+        paths.tooling / "local" / "processes" / "process.sh",
+        paths.tooling / "local" / "processes" / "process.cmd",
+        paths.tooling / "local" / "processes" / "commented" / "process.py",
     )
     missing = tuple(path for path in required if not path.is_file())
     if missing:
         raise RuntimeError(f"Deployment file not found: {missing[0]}")
-    retired = paths.root / "scopes" / "ada" / "scripts" / "processes"
-    if retired.exists():
-        raise RuntimeError(f"Retired ADA process tooling still exists: {retired}")
+    retired = (
+        paths.root / "scopes" / "ada" / "scripts" / "processes",
+        paths.scripts / "local-process.sh",
+        paths.scripts / "commented" / "local-process.sh",
+    )
+    for path in retired:
+        if path.exists():
+            raise RuntimeError(f"Retired process tooling still exists: {path}")
 
 
 def _load_process_bundle(paths: Paths):
@@ -144,6 +159,10 @@ def _validate_mirrors(paths: Paths) -> None:
         paths.deployment / "local" / "commented" / "generate_compose.py",
     )
     _validate_python_mirror(
+        paths.tooling / "local" / "processes" / "process.py",
+        paths.tooling / "local" / "processes" / "commented" / "process.py",
+    )
+    _validate_python_mirror(
         paths.scripts / "deployment" / "check.py",
         paths.scripts / "commented" / "deployment" / "check.py",
     )
@@ -167,6 +186,9 @@ def main() -> None:
         "deployment/local/generate_compose.py",
         "deployment/local/commented/generate_compose.py",
         "deployment/local/tests",
+        "tooling/local/processes/process.py",
+        "tooling/local/processes/commented/process.py",
+        "tooling/tests/local/processes",
         "scripts/deployment/check.py",
         "scripts/commented/deployment/check.py",
     ]
@@ -177,11 +199,15 @@ def main() -> None:
     print("[6/8] Running deployment tooling tests")
     _run([sys.executable, "-m", "pytest", "deployment/processes/tests"], cwd=paths.root)
     _run([sys.executable, "-m", "pytest", "deployment/local/tests"], cwd=paths.root)
+    _run(
+        [sys.executable, "-m", "pytest", "tooling/tests/local/processes"],
+        cwd=paths.root,
+    )
     print("[7/8] Validating productive/commented semantic mirrors")
     _validate_mirrors(paths)
-    print("[8/8] Validating shell wrappers")
-    _run(["bash", "-n", "scripts/local-process.sh"], cwd=paths.root)
-    _run(["bash", "-n", "scripts/commented/local-process.sh"], cwd=paths.root)
+    print("[8/8] Validating process launchers")
+    if sys.platform != "win32":
+        _run(["sh", "-n", "tooling/local/processes/process.sh"], cwd=paths.root)
     print("Atlanticus process deployment flow validated")
 
 
