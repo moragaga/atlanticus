@@ -82,6 +82,9 @@ def compose_alarm_configuration_manager(
 ) -> AlarmConfigurationManagerComposition:
     resolved_authorization = authorization or DefaultManagerAuthorizationPolicy()
     resolved_actor_provider = audit_actor_provider or (lambda: principal_provider().subject_id)
+    tool_reference_provider = (
+        (lambda: None) if tool_reference_reader is None else tool_reference_reader.load
+    )
     source_service = AlarmConfigurationSourceService(
         source=source_store,
         source_key=source_key,
@@ -89,12 +92,11 @@ def compose_alarm_configuration_manager(
     source_workflow = AlarmConfigurationManagerSourceWorkflow(
         source=source_service,
         audit_actor_provider=resolved_actor_provider,
-        tool_reference_provider=(
-            (lambda: None) if tool_reference_reader is None else tool_reference_reader.load
-        ),
+        tool_reference_provider=tool_reference_provider,
     )
     validation_workflow = AlarmConfigurationManagerDraftValidationWorkflow(
         audit_actor_provider=resolved_actor_provider,
+        tool_reference_provider=tool_reference_provider,
     )
     projection_service = create_alarm_configuration_projection_service(
         source=source_store,
@@ -103,6 +105,7 @@ def compose_alarm_configuration_manager(
     workspace = AlarmConfigurationManagerWorkspaceBinding(
         source=source_workflow,
         principal_provider=principal_provider,
+        tool_reference_provider=tool_reference_provider,
     )
 
     context = AlarmConfigurationAdminWebContext(

@@ -1,4 +1,8 @@
-# Los errores separan fallas de validez intrínseca de la revisión y fallas del transporte Source.
-# La validación describe contratos inválidos; Source describe problemas al leer o publicar releases.
+# Error operacional del Source de Alarm Configuration.
 class AlarmConfigurationSourceError(RuntimeError):
+    pass
+
+
+# Error de correlación entre un draft de alarmas y su catálogo Tools confirmado.
+class AlarmConfigurationToolDependencyError(ValueError):
     pass

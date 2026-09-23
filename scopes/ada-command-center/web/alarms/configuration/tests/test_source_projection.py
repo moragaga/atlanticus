@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
 from ada_command_center.domain.alarms import AlarmConfigurationSnapshot
+from ada_command_center.domain.tools import ToolDependencyManifest
 from ada_command_center.web.alarms.configuration import (
     AlarmConfigurationProjectionBuilder,
     AlarmConfigurationSourceCodec,
@@ -30,7 +31,10 @@ from .helpers import configuration
 def _alarm_snapshot() -> AlarmConfigurationSnapshot:
     return AlarmConfigurationSnapshot(
         configuration=configuration(),
-        confirmed_tool_catalog_revision='tools-r2',
+        tool_dependencies=ToolDependencyManifest(
+            confirmed_tool_catalog_revision='tools-r2',
+            tools=(),
+        ),
     )
 
 
@@ -144,6 +148,7 @@ def test_alarm_configuration_projection_preserves_alarm_and_tool_revisions() -> 
     assert isinstance(result.projection, ProjectionRecord)
     assert result.projection.source_release_id.value == 'release-1'
     assert result.projection.payload.confirmed_tool_catalog_revision == 'tools-r2'
+    assert result.projection.payload.tool_dependencies.revision == 'tools-r2'
     assert result.projection.payload.configuration == configuration()
     assert result.projection.target == target
     assert status.alignment is ProjectionAlignment.CURRENT

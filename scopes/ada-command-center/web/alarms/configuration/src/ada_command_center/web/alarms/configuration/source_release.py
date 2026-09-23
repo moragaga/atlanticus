@@ -23,7 +23,7 @@ from atlanticus.web.source.models import (
 from atlanticus.web.source.store import SourceStore
 
 ALARM_CONFIGURATION_SOURCE_DOCUMENT_TYPE = 'ada_command_center_alarm_configuration_release'
-ALARM_CONFIGURATION_SOURCE_SCHEMA_VERSION = 2
+ALARM_CONFIGURATION_SOURCE_SCHEMA_VERSION = 3
 ALARM_CONFIGURATION_SOURCE_RESOURCE_PATH = 'alarms/configuration.json.gz'
 DEFAULT_MAX_COMPRESSED_BYTES = 5 * 1024 * 1024
 DEFAULT_MAX_DECOMPRESSED_BYTES = 20 * 1024 * 1024

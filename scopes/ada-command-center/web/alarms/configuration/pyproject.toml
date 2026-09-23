@@ -11,6 +11,7 @@ classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "ada-command-center-alarms-domain==1.0.0",
     "ada-command-center-tools-catalog==0.1.0",
+    "ada-command-center-tools-domain==1.0.0",
     "ada-web-tools==0.1.0",
     "atlanticus-web-projection==0.1.0",
     "atlanticus-web-source==0.1.0",
@@ -26,6 +27,7 @@ web = [
 [tool.uv.sources]
 ada-command-center-alarms-domain = { path = "../../../domain/alarms", editable = true }
 ada-command-center-tools-catalog = { path = "../../../backend/tools/catalog", editable = true }
+ada-command-center-tools-domain = { path = "../../../domain/tools", editable = true }
 ada-web-tools = { path = "../../../../ada/web/tools/core", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
 atlanticus-web-manager = { path = "../../../../../web/capabilities/manager", editable = true }
@@ -76,6 +78,7 @@ testpaths = ["tests"]
 pythonpath = [
     "src",
     "../../../domain/alarms/src",
+    "../../../domain/tools/src",
     "../../../backend/tools/catalog/src",
     "../../../../ada/web/tools/core/src",
     "../../../../../web/framework/core/src",

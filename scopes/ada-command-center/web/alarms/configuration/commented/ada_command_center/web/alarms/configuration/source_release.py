@@ -1,7 +1,3 @@
-# Este adaptador aplica el patrón Source/Release genérico de Atlanticus al Alarm Configuration.
-# El payload durable contiene exactamente una revisión completa comprimida en gzip y serializada como JSON.
-# El servicio delega concurrencia, historial y almacenamiento al SourceStore inyectado; no conoce Blob directamente.
-# De esta forma el módulo mantiene la semántica durable sin acoplarse a una implementación concreta de storage.
 from __future__ import annotations
 
 import gzip
@@ -27,9 +23,8 @@ from atlanticus.web.source.models import (
 from atlanticus.web.source.store import SourceStore
 
 ALARM_CONFIGURATION_SOURCE_DOCUMENT_TYPE = 'ada_command_center_alarm_configuration_release'
-# El schema cambia porque una release nueva ya no contiene sólo AlarmConfiguration: ahora
-# preserva también la revisión exacta del Confirmed Tool Catalog contra la que fue publicada.
-ALARM_CONFIGURATION_SOURCE_SCHEMA_VERSION = 2
+# Schema v3 reemplaza v2: el snapshot ahora incluye el Tool Dependency Manifest durable.
+ALARM_CONFIGURATION_SOURCE_SCHEMA_VERSION = 3
 ALARM_CONFIGURATION_SOURCE_RESOURCE_PATH = 'alarms/configuration.json.gz'
 DEFAULT_MAX_COMPRESSED_BYTES = 5 * 1024 * 1024
 DEFAULT_MAX_DECOMPRESSED_BYTES = 20 * 1024 * 1024
@@ -41,7 +36,6 @@ class AlarmConfigurationSourcePayload:
     published_by: str
 
     def __post_init__(self) -> None:
-        # Source sólo acepta el contrato transversal ya versionado contra Tools.
         if not isinstance(self.snapshot, AlarmConfigurationSnapshot):
             raise AlarmConfigurationSourceError('Alarm Configuration source snapshot is invalid')
         actor = self.published_by.strip() if isinstance(self.published_by, str) else ''
@@ -63,8 +57,6 @@ class AlarmConfigurationSourceRelease:
 
     @property
     def snapshot(self) -> AlarmConfigurationSnapshot:
-        # La release conserva el snapshot completo; los consumidores que sólo editan reglas
-        # pueden acceder a snapshot.configuration sin perder la genealogía Tools.
         return self.payload.snapshot
 
     @property
@@ -83,6 +75,7 @@ class AlarmConfigurationSourceCodec:
             snapshot=snapshot,
             published_by=published_by,
         )
+        # Source publica una única realidad autocontenida: Alarm Configuration + evidencia Tools.
         document = {
             'document_type': ALARM_CONFIGURATION_SOURCE_DOCUMENT_TYPE,
             'schema_version': ALARM_CONFIGURATION_SOURCE_SCHEMA_VERSION,
@@ -101,8 +94,6 @@ class AlarmConfigurationSourceCodec:
         )
 
     def decode(self, resources: tuple[SourceResource, ...]) -> AlarmConfigurationSourcePayload:
-        # La lectura exige exactamente el schema nuevo; no se conserva decoder legacy porque
-        # este incremento reemplaza limpiamente el contrato anterior antes de distribución.
         matches = tuple(
             resource
             for resource in resources
@@ -183,8 +174,6 @@ class AlarmConfigurationSourceService:
         expected_concurrency_token: ConcurrencyToken | None,
         basis_release: SourceReleaseRef | None,
     ) -> PublishResult:
-        # La revisión Tools ya viene congelada dentro del snapshot; Source no la descubre ni
-        # la reemplaza durante la publicación.
         resource = self._codec.encode(
             snapshot=snapshot,
             published_by=published_by,

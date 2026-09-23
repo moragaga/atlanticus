@@ -6,40 +6,42 @@ from typing import Any
 
 from ada_command_center.domain.alarms.configuration import AlarmConfiguration
 from ada_command_center.domain.alarms.errors import AlarmConfigurationValidationError
+from ada_command_center.domain.tools import ToolDependencyManifest
 
 
 @dataclass(frozen=True, slots=True)
 class AlarmConfigurationSnapshot:
     configuration: AlarmConfiguration
-    confirmed_tool_catalog_revision: str
+    tool_dependencies: ToolDependencyManifest
 
     def __post_init__(self) -> None:
         if not isinstance(self.configuration, AlarmConfiguration):
             raise TypeError('configuration must be an AlarmConfiguration')
-        revision = _require_clean_text(
-            self.confirmed_tool_catalog_revision,
-            'confirmed_tool_catalog_revision',
-        )
-        object.__setattr__(self, 'confirmed_tool_catalog_revision', revision)
+        if not isinstance(self.tool_dependencies, ToolDependencyManifest):
+            raise TypeError('tool_dependencies must be a ToolDependencyManifest')
+
+    @property
+    def confirmed_tool_catalog_revision(self) -> str:
+        return self.tool_dependencies.revision
 
     def to_document(self) -> dict[str, object]:
         return {
             'configuration': self.configuration.to_document(),
-            'confirmed_tool_catalog_revision': self.confirmed_tool_catalog_revision,
+            'tool_dependencies': self.tool_dependencies.to_document(),
         }
 
     @classmethod
     def from_document(cls, document: Mapping[str, Any]) -> AlarmConfigurationSnapshot:
         try:
             configuration = document['configuration']
+            tool_dependencies = document['tool_dependencies']
             if not isinstance(configuration, Mapping):
+                raise TypeError
+            if not isinstance(tool_dependencies, Mapping):
                 raise TypeError
             return cls(
                 configuration=AlarmConfiguration.from_document(configuration),
-                confirmed_tool_catalog_revision=_require_clean_text(
-                    document['confirmed_tool_catalog_revision'],
-                    'confirmed_tool_catalog_revision',
-                ),
+                tool_dependencies=ToolDependencyManifest.from_document(tool_dependencies),
             )
         except AlarmConfigurationValidationError:
             raise
@@ -47,12 +49,3 @@ class AlarmConfigurationSnapshot:
             raise AlarmConfigurationValidationError(
                 'Alarm Configuration snapshot document contract is invalid'
             ) from error
-
-
-def _require_clean_text(value: object, field_name: str) -> str:
-    if not isinstance(value, str):
-        raise TypeError(f'{field_name} must be text')
-    normalized = value.strip()
-    if not normalized or normalized != value:
-        raise ValueError(f'{field_name} has an invalid format')
-    return normalized

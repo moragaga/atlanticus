@@ -3,6 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ada.web.tools.enums import ToolConfigurationKind
+from ada_command_center.domain.tools import (
+    ToolDependencyEntry,
+    ToolDependencyManifest,
+)
 from ada_command_center.tools.catalog import ToolCatalogEntry, ToolCatalogStore
 from atlanticus.web.source.models import SourceReleaseId
 
@@ -34,6 +38,11 @@ class AlarmToolReference:
 class AlarmToolReferenceCatalog:
     catalog_revision: str
     tools: tuple[AlarmToolReference, ...]
+    dependencies: ToolDependencyManifest
+
+    def __post_init__(self) -> None:
+        if self.catalog_revision != self.dependencies.revision:
+            raise ValueError('Alarm Tool reference catalog revision does not match dependencies')
 
     def get_tool(self, tool_key: str) -> AlarmToolReference | None:
         for tool in self.tools:
@@ -66,6 +75,10 @@ class AlarmToolReferenceReader:
         snapshot = self._store.get_current()
         if snapshot is None:
             return None
+        dependencies = ToolDependencyManifest(
+            confirmed_tool_catalog_revision=snapshot.revision,
+            tools=tuple(_dependency_from_entry(entry) for entry in snapshot.tools),
+        )
         return AlarmToolReferenceCatalog(
             catalog_revision=snapshot.revision,
             tools=tuple(
@@ -73,7 +86,18 @@ class AlarmToolReferenceReader:
                 for entry in snapshot.tools
                 if entry.kind is not ToolConfigurationKind.STRATEGIC
             ),
+            dependencies=dependencies,
         )
+
+
+def _dependency_from_entry(entry: ToolCatalogEntry) -> ToolDependencyEntry:
+    return ToolDependencyEntry(
+        tool_key=entry.tool_key,
+        display_name=entry.display_name,
+        source_release_id=entry.source_release_id.value,
+        kind=entry.kind,
+        structure=entry.structure,
+    )
 
 
 def _reference_from_entry(entry: ToolCatalogEntry) -> AlarmToolReference:

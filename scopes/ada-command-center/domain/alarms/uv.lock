@@ -6,12 +6,46 @@ requires-python = "==3.14.2"
 name = "ada-command-center-alarms-domain"
 version = "1.0.0"
 source = { editable = "." }
+dependencies = [
+    { name = "ada-command-center-tools-domain" },
+]
 
 [package.dev-dependencies]
 dev = [
     { name = "pytest" },
     { name = "ruff" },
 ]
+
+[package.metadata]
+requires-dist = [{ name = "ada-command-center-tools-domain", editable = "../tools" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-command-center-tools-domain"
+version = "1.0.0"
+source = { editable = "../tools" }
+dependencies = [
+    { name = "ada-web-tools" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "ada-web-tools", editable = "../../../ada/web/tools/core" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-tools"
+version = "0.1.0"
+source = { editable = "../../../ada/web/tools/core" }
 
 [package.metadata]
 

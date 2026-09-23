@@ -40,7 +40,13 @@ from ada_command_center.web.alarms.configuration.source_projection import (
 from ada_command_center.web.alarms.configuration.source_release import (
     AlarmConfigurationSourceService,
 )
-from ada_command_center.web.alarms.configuration.tool_references import AlarmToolReferenceReader
+from ada_command_center.web.alarms.configuration.tool_dependencies import (
+    select_alarm_tool_dependencies,
+)
+from ada_command_center.web.alarms.configuration.tool_references import (
+    AlarmToolReferenceCatalog,
+    AlarmToolReferenceReader,
+)
 from ada_command_center.web.application.configuration_manager.application import (
     create_configuration_manager_application,
 )
@@ -99,6 +105,9 @@ def create_local_configuration_manager_dependencies(
     tool_catalog_snapshot = create_local_tool_catalog_snapshot()
     tool_catalog_store = InProcessToolCatalogStore(tool_catalog_snapshot)
     tool_reference_reader = AlarmToolReferenceReader(store=tool_catalog_store)
+    tool_references = tool_reference_reader.load()
+    if tool_references is None:
+        raise RuntimeError('Local Confirmed Tool Catalog could not be created')
     principal = ManagerPrincipal(
         subject_id='local',
         display_name='Administrador local',
@@ -109,7 +118,7 @@ def create_local_configuration_manager_dependencies(
         _seed_alarm_configuration(
             source_store,
             projection_store,
-            confirmed_tool_catalog_revision=tool_catalog_snapshot.revision,
+            tool_references=tool_references,
         )
     return ConfigurationManagerDependencies(
         source_store=source_store,
@@ -351,7 +360,7 @@ def _seed_alarm_configuration(
     source_store: LocalSourceStore,
     projection_store: InProcessProjectionStore[AlarmConfigurationSnapshot],
     *,
-    confirmed_tool_catalog_revision: str,
+    tool_references: AlarmToolReferenceCatalog,
 ) -> None:
     source = AlarmConfigurationSourceService(
         source=source_store,
@@ -359,10 +368,14 @@ def _seed_alarm_configuration(
     )
     snapshot = source.get_current()
     if snapshot.current is None:
+        configuration = create_sample_alarm_configuration()
         source.publish_snapshot(
             AlarmConfigurationSnapshot(
-                configuration=create_sample_alarm_configuration(),
-                confirmed_tool_catalog_revision=confirmed_tool_catalog_revision,
+                configuration=configuration,
+                tool_dependencies=select_alarm_tool_dependencies(
+                    configuration,
+                    tool_references.dependencies,
+                ),
             ),
             published_by='local-bootstrap',
             expected_concurrency_token=snapshot.concurrency_token,

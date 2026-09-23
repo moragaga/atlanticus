@@ -132,7 +132,7 @@ def register_alarm_configuration_admin_callbacks(
     @app.callback(
         Output(context.editor_revision_store_id, 'data'),
         Input(AUTHORING_STORE_ID, 'data'),
-        State(context.draft_store_id, 'data'),
+        Input(context.draft_store_id, 'data'),
         prevent_initial_call=True,
     )
     def track_editor_revision(
@@ -143,7 +143,7 @@ def register_alarm_configuration_admin_callbacks(
             return None
         try:
             configuration = _configuration(authoring_document)
-            return build_workspace_revision(configuration.to_document())
+            return _editor_revision(configuration, draft_data)
         except Exception:
             return None
 
@@ -408,18 +408,33 @@ def register_alarm_configuration_admin_callbacks(
             return no_update, no_update, _error('Management access is denied')
         try:
             configuration = _configuration(authoring_document)
+            if current_draft is not None:
+                expected_editor_revision = _editor_revision(configuration, current_draft)
+                if editor_revision != expected_editor_revision:
+                    raise ManagerProjectionError(
+                        'Alarm Configuration editor revision changed before saving the draft'
+                    )
             document = context.workspace_payload_writer(
                 current_draft,
                 configuration.to_document(),
             )
-            workspace = ManagerWorkspace.from_document(document)
-            if editor_revision != workspace.revision:
-                raise ManagerProjectionError(
-                    'Alarm Configuration editor revision changed before saving the draft'
-                )
         except (AlarmConfigurationValidationError, ManagerProjectionError, ValueError) as error:
             return no_update, no_update, _error(str(error))
         return document, document, _success('Draft saved in this browser.')
+
+
+# El sidecar Tools forma parte de ManagerWorkspace.revision, pero no del documento authored.
+# Si rules/messages no cambiaron usamos la revisión completa del workspace. Si el usuario editó
+# contenido, una revisión sólo del documento authored basta para detectar esa suciedad antes del Save.
+def _editor_revision(
+    configuration: AlarmConfiguration,
+    draft_data: dict[str, object],
+) -> str:
+    workspace = ManagerWorkspace.from_document(draft_data)
+    saved_configuration = AlarmConfiguration.from_document(dict(workspace.payload))
+    if configuration == saved_configuration:
+        return workspace.revision
+    return build_workspace_revision(configuration.to_document())
 
 
 def _configuration(authoring_document: dict[str, object] | None) -> AlarmConfiguration:

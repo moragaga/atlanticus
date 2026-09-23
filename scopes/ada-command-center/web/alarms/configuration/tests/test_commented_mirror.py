@@ -7,6 +7,7 @@ FILES = (
     'manager.py',
     'source_projection.py',
     'source_release.py',
+    'tool_dependencies.py',
     'tool_references.py',
     'workflows.py',
     'workspace.py',

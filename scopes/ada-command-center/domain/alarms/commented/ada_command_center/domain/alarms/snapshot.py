@@ -6,48 +6,46 @@ from typing import Any
 
 from ada_command_center.domain.alarms.configuration import AlarmConfiguration
 from ada_command_center.domain.alarms.errors import AlarmConfigurationValidationError
+from ada_command_center.domain.tools import ToolDependencyManifest
 
 
-# Representa una configuración de alarmas ya confirmada contra una revisión concreta
-# del catálogo de Tools. La configuración sigue siendo el contenido authored puro;
-# este snapshot agrega únicamente la genealogía transversal necesaria para publicación,
-# proyección y posterior materialización.
+# Congela una configuración junto al subconjunto exacto de Tools que respaldó su publicación.
+# La revisión del catálogo se deriva del manifest para evitar dos identidades duplicadas.
 @dataclass(frozen=True, slots=True)
 class AlarmConfigurationSnapshot:
     configuration: AlarmConfiguration
-    confirmed_tool_catalog_revision: str
+    tool_dependencies: ToolDependencyManifest
 
     def __post_init__(self) -> None:
-        # El snapshot nunca acepta payloads parcialmente tipados: debe envolver exactamente
-        # el contrato transversal AlarmConfiguration.
         if not isinstance(self.configuration, AlarmConfiguration):
             raise TypeError('configuration must be an AlarmConfiguration')
-        revision = _require_clean_text(
-            self.confirmed_tool_catalog_revision,
-            'confirmed_tool_catalog_revision',
-        )
-        object.__setattr__(self, 'confirmed_tool_catalog_revision', revision)
+        if not isinstance(self.tool_dependencies, ToolDependencyManifest):
+            raise TypeError('tool_dependencies must be a ToolDependencyManifest')
 
+    # Compatibilidad semántica para consumidores: la identidad Tools vive en el manifest.
+    @property
+    def confirmed_tool_catalog_revision(self) -> str:
+        return self.tool_dependencies.revision
+
+    # El documento durable contiene configuración authored y evidencia Tools autocontenida.
     def to_document(self) -> dict[str, object]:
-        # La revisión Tools viaja junto al contenido sin modificar el shape interno de
-        # AlarmConfiguration. Así un draft puede seguir siendo sólo rules/messages.
         return {
             'configuration': self.configuration.to_document(),
-            'confirmed_tool_catalog_revision': self.confirmed_tool_catalog_revision,
+            'tool_dependencies': self.tool_dependencies.to_document(),
         }
 
     @classmethod
     def from_document(cls, document: Mapping[str, Any]) -> AlarmConfigurationSnapshot:
         try:
             configuration = document['configuration']
+            tool_dependencies = document['tool_dependencies']
             if not isinstance(configuration, Mapping):
+                raise TypeError
+            if not isinstance(tool_dependencies, Mapping):
                 raise TypeError
             return cls(
                 configuration=AlarmConfiguration.from_document(configuration),
-                confirmed_tool_catalog_revision=_require_clean_text(
-                    document['confirmed_tool_catalog_revision'],
-                    'confirmed_tool_catalog_revision',
-                ),
+                tool_dependencies=ToolDependencyManifest.from_document(tool_dependencies),
             )
         except AlarmConfigurationValidationError:
             raise
@@ -55,14 +53,3 @@ class AlarmConfigurationSnapshot:
             raise AlarmConfigurationValidationError(
                 'Alarm Configuration snapshot document contract is invalid'
             ) from error
-
-
-def _require_clean_text(value: object, field_name: str) -> str:
-    # Las revisiones son identidades; no se normalizan silenciosamente porque eso podría
-    # ocultar una correlación distinta a la que fue publicada.
-    if not isinstance(value, str):
-        raise TypeError(f'{field_name} must be text')
-    normalized = value.strip()
-    if not normalized or normalized != value:
-        raise ValueError(f'{field_name} has an invalid format')
-    return normalized

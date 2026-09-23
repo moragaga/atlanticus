@@ -1,5 +1,9 @@
 import pytest
 
+from ada_command_center.domain.tools import ToolDependencyManifest
+from ada_command_center.web.alarms.configuration.tool_references import (
+    AlarmToolReferenceCatalog,
+)
 from ada_command_center.web.alarms.configuration.web.authoring import (
     empty_authoring_document,
 )
@@ -53,6 +57,17 @@ def _principal() -> ManagerPrincipal:
     )
 
 
+def _tool_references() -> AlarmToolReferenceCatalog:
+    return AlarmToolReferenceCatalog(
+        catalog_revision='tools-r2',
+        tools=(),
+        dependencies=ToolDependencyManifest(
+            confirmed_tool_catalog_revision='tools-r2',
+            tools=(),
+        ),
+    )
+
+
 def _context() -> tuple[
     AlarmConfigurationAdminWebContext,
     AlarmConfigurationManagerWorkspaceBinding,
@@ -60,6 +75,7 @@ def _context() -> tuple[
     binding = AlarmConfigurationManagerWorkspaceBinding(
         source=SourceWorkflowStub(),
         principal_provider=_principal,
+        tool_reference_provider=_tool_references,
     )
     return (
         AlarmConfigurationAdminWebContext(

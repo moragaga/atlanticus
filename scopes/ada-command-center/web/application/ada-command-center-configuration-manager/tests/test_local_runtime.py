@@ -29,6 +29,14 @@ def test_local_runtime_seeds_source_projection_and_tool_references(tmp_path) -> 
     assert catalog is not None
     assert release.snapshot.configuration == create_sample_alarm_configuration()
     assert release.snapshot.confirmed_tool_catalog_revision == catalog.catalog_revision
+    assert tuple(tool.tool_key for tool in release.snapshot.tool_dependencies.tools) == (
+        'integrated_operations',
+        'process_control',
+    )
+    integrated = release.snapshot.tool_dependencies.get('integrated_operations')
+    assert integrated is not None
+    assert integrated.display_name == 'Integrated Operations'
+    assert integrated.structure.component('mine_primary').display_name == 'Mine Primary'
     assert release.published_by == 'local-bootstrap'
     assert projection is not None
     assert projection.payload == release.snapshot
