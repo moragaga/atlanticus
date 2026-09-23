@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfiguration
@@ -75,3 +76,19 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
             sensitive=True,
         ),
     )
+
+
+def _non_negative_float(
+    configuration: ResolvedConfiguration,
+    key: str,
+) -> float:
+    raw = configuration.require(key)
+    try:
+        value = float(raw)
+    except ValueError:
+        raise BlockgradeProcessConfigurationError(
+            f'{key} must contain a non-negative number'
+        ) from None
+    if not math.isfinite(value) or value < 0:
+        raise BlockgradeProcessConfigurationError(f'{key} must contain a non-negative number')
+    return value

@@ -397,6 +397,8 @@ RETIRED_PROCESS_PATHS = (
     'scopes/ada/processes/fabrica',
     'scopes/ada/processes/remanentes',
 )
+
+
 def _repository_root() -> Path:
     for candidate in Path(__file__).resolve().parents:
         if (candidate / 'scopes/operational-data/pyproject.toml').is_file():
@@ -667,9 +669,7 @@ def _validate_dependency_correlation(scope: Path, repository: Path) -> None:
 
 
 def _validate_retired_paths(repository: Path) -> None:
-    remaining = [
-        relative for relative in RETIRED_PROCESS_PATHS if (repository / relative).exists()
-    ]
+    remaining = [relative for relative in RETIRED_PROCESS_PATHS if (repository / relative).exists()]
     if remaining:
         raise SystemExit(
             'Retired Operational Data authority is still present: ' + ', '.join(remaining)

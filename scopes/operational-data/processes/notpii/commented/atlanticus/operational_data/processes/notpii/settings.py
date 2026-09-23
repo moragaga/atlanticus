@@ -146,13 +146,9 @@ def _non_negative_float(configuration: ResolvedConfiguration, key: str) -> float
     try:
         value = float(raw)
     except ValueError:
-        raise NotPiiProcessConfigurationError(
-            f'{key} must contain a non-negative number'
-        ) from None
+        raise NotPiiProcessConfigurationError(f'{key} must contain a non-negative number') from None
     if not math.isfinite(value) or value < 0:
-        raise NotPiiProcessConfigurationError(
-            f'{key} must contain a non-negative number'
-        )
+        raise NotPiiProcessConfigurationError(f'{key} must contain a non-negative number')
     return value
 
 

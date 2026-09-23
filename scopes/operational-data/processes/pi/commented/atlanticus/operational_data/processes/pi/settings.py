@@ -182,9 +182,7 @@ def _non_negative_float(configuration: ResolvedConfiguration, key: str) -> float
             f'{key} must contain a non-negative number'
         ) from None
     if not math.isfinite(value) or value < 0:
-        raise PiWebApiProcessConfigurationError(
-            f'{key} must contain a non-negative number'
-        )
+        raise PiWebApiProcessConfigurationError(f'{key} must contain a non-negative number')
     return value
 
 

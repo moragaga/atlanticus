@@ -407,6 +407,8 @@ RETIRED_PROCESS_PATHS = (
     'scopes/ada/processes/fabrica',
     'scopes/ada/processes/remanentes',
 )
+
+
 # Resuelve la raíz sin depender de una profundidad fija del archivo.
 def _repository_root() -> Path:
     for candidate in Path(__file__).resolve().parents:
@@ -687,9 +689,7 @@ def _validate_dependency_correlation(scope: Path, repository: Path) -> None:
 
 # Impide coexistencia de authorities antiguas y nuevas.
 def _validate_retired_paths(repository: Path) -> None:
-    remaining = [
-        relative for relative in RETIRED_PROCESS_PATHS if (repository / relative).exists()
-    ]
+    remaining = [relative for relative in RETIRED_PROCESS_PATHS if (repository / relative).exists()]
     if remaining:
         raise SystemExit(
             'Retired Operational Data authority is still present: ' + ', '.join(remaining)

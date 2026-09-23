@@ -121,7 +121,14 @@ def test_execute_keeps_pi_client_open_while_runtime_invokes_job(
     monkeypatch.setattr(composition_module, 'PiWebApiClient', FakeClient)
 
     def fake_execute_job(*, definition, iteration, argv, environ):
-        assert definition is PI_WEB_API_JOB_DEFINITION
+        assert definition.sleep_seconds == 2.5
+        assert definition.execution_timeout_seconds == 600
+        assert definition.iteration_timeout_seconds == 580
+        assert definition.shutdown_grace_seconds == 10
+        assert definition.lease_timeout_seconds == 30
+        assert definition.lease_renew_seconds == 10
+        assert definition.lease_wait_seconds is None
+        assert definition.lease_poll_seconds == 1
         assert argv == ('--run-once',)
         runtime_configuration = RuntimeConfiguration.from_sources(environ=environ)
         context = JobRuntimeContext.create(
