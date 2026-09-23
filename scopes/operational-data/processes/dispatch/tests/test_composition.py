@@ -10,6 +10,7 @@ def _configuration(tmp_path):
         'ENVIRONMENT': 'local',
         'APPLICATION': 'operational-data-dispatch',
         'VOLUMEN_PATH': str(tmp_path),
+        'POLL_INTERVAL_SECONDS': '4.5',
         'SQL_CONNECTION_STRING_DISPATCH': 'Server=localhost;Database=test',
     }
     return ResolvedConfiguration(
@@ -32,6 +33,7 @@ def test_composition_passes_process_identity_to_sql_producer(monkeypatch, tmp_pa
     monkeypatch.setattr(module, 'build_sql_data_producer', fake_builder)
     composition = build_composition(configuration=_configuration(tmp_path))
 
+    assert composition.definition.sleep_seconds == 4.5
     assert composition.producer is sentinel
     assert captured['producer_key'] == 'dispatch'
     assert captured['dataset_namespace'] == ('dispatch',)

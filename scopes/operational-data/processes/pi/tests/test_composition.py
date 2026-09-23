@@ -99,6 +99,7 @@ def test_composition_defers_webid_preparation_until_runtime(
     monkeypatch.setattr(composition_module, 'PiWebApiClient', FakeClient)
     composition = build_composition(configuration=configuration, catalog=catalog)
 
+    assert composition.definition.sleep_seconds == 2.5
     assert composition.producer.job.preparation is None
     assert composition.client.open_count == 0
     assert composition.client.close_count == 0

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from atlanticus.configuration import ResolvedConfiguration
 from atlanticus.data_producers.sql import (
@@ -42,11 +42,12 @@ class BlockgradeComposition:
     runtime_configuration: RuntimeConfiguration
     settings: BlockgradeSettings
     catalog: tuple[SqlSourceDefinition, ...]
+    definition: JobDefinition
     producer: SqlDataProducerComponents
 
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
         return execute_job(
-            definition=BLOCKGRADE_JOB_DEFINITION,
+            definition=self.definition,
             iteration=self.producer.job.run_iteration,
             argv=argv,
             environ=self.configuration.values,
@@ -83,5 +84,9 @@ def build_composition(
         runtime_configuration=runtime_configuration,
         settings=settings,
         catalog=resolved_catalog,
+        definition=replace(
+            BLOCKGRADE_JOB_DEFINITION,
+            sleep_seconds=settings.poll_interval_seconds,
+        ),
         producer=producer,
     )

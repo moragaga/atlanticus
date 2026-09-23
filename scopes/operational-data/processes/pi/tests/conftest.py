@@ -56,6 +56,7 @@ def configuration(tmp_path: Path) -> ResolvedConfiguration:
         'ENVIRONMENT': 'local',
         'APPLICATION': 'operational-data-pi',
         'VOLUMEN_PATH': str(tmp_path),
+        'POLL_INTERVAL_SECONDS': '2.5',
         'PI_WEB_API_BASE_URL': 'https://pi.example.local/piwebapi/',
         'PI_WEB_API_SERVER': 'PISERVER',
         'PI_WEB_API_USERNAME': 'domain\\user',
