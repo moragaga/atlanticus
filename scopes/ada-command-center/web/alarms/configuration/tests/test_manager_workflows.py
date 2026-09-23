@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
+from ada_command_center.domain.alarms import AlarmConfigurationSnapshot
+from ada_command_center.web.alarms.configuration.tool_references import AlarmToolReferenceCatalog
 from ada_command_center.web.alarms.configuration.workflows import (
     AlarmConfigurationManagerDraftValidationWorkflow,
     AlarmConfigurationManagerSourceWorkflow,
@@ -28,6 +30,10 @@ def _release_ref(value: str) -> SourceReleaseRef:
     )
 
 
+def _tool_references() -> AlarmToolReferenceCatalog:
+    return AlarmToolReferenceCatalog(catalog_revision='tools-r2', tools=())
+
+
 class AlarmSourceServiceStub:
     def __init__(self) -> None:
         self.source_key = SourceKey('alarm-configuration')
@@ -49,7 +55,10 @@ class AlarmSourceServiceStub:
         assert release_ref == self.release_ref
         return SimpleNamespace(
             release_ref=self.release_ref,
-            configuration=configuration(),
+            snapshot=AlarmConfigurationSnapshot(
+                configuration=configuration(),
+                confirmed_tool_catalog_revision='tools-r1',
+            ),
         )
 
     def query_history(self, *, page_size, cursor=None):
@@ -57,7 +66,7 @@ class AlarmSourceServiceStub:
         assert cursor is None
         return HistoryPage(items=())
 
-    def publish_configuration(
+    def publish_snapshot(
         self,
         value,
         *,
@@ -109,11 +118,12 @@ def test_alarm_configuration_manager_validation_uses_intrinsic_contract() -> Non
     assert invalid.issues[0].code == 'alarm.configuration.invalid'
 
 
-def test_alarm_configuration_manager_source_loads_exact_current_payload() -> None:
+def test_alarm_configuration_manager_source_loads_only_editable_configuration_payload() -> None:
     source = AlarmSourceServiceStub()
     workflow = AlarmConfigurationManagerSourceWorkflow(
         source=source,
         audit_actor_provider=lambda: 'manager-user',
+        tool_reference_provider=_tool_references,
     )
 
     result = workflow.load_current_source()
@@ -122,11 +132,12 @@ def test_alarm_configuration_manager_source_loads_exact_current_payload() -> Non
     assert result.payload == configuration().to_document()
 
 
-def test_alarm_configuration_manager_source_publishes_with_current_snapshot() -> None:
+def test_alarm_configuration_manager_source_binds_current_tool_revision_on_publish() -> None:
     source = AlarmSourceServiceStub()
     workflow = AlarmConfigurationManagerSourceWorkflow(
         source=source,
         audit_actor_provider=lambda: 'manager-user',
+        tool_reference_provider=_tool_references,
     )
 
     result = workflow.publish_draft(
@@ -136,7 +147,8 @@ def test_alarm_configuration_manager_source_publishes_with_current_snapshot() ->
 
     assert source.publish_args is not None
     value, actor, token, basis = source.publish_args
-    assert value == configuration()
+    assert value.configuration == configuration()
+    assert value.confirmed_tool_catalog_revision == 'tools-r2'
     assert actor == 'manager-user'
     assert token == source.snapshot.concurrency_token
     assert basis == source.release_ref
@@ -150,6 +162,7 @@ def test_alarm_configuration_manager_source_delegates_history() -> None:
     workflow = AlarmConfigurationManagerSourceWorkflow(
         source=source,
         audit_actor_provider=lambda: 'manager-user',
+        tool_reference_provider=_tool_references,
     )
 
     page = workflow.list_history(limit=10)

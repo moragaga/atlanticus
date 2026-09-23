@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 
-from ada_command_center.domain.alarms import AlarmConfiguration
+from ada_command_center.domain.alarms import AlarmConfigurationSnapshot
 from ada_command_center.web.alarms.configuration.source_projection import (
     create_alarm_configuration_projection_service,
 )
@@ -57,14 +57,14 @@ AlarmConfigurationPrincipalProvider = Callable[[], ManagerPrincipal]
 class AlarmConfigurationManagerComposition:
     module: ManagerModule
     source_workflow: AlarmConfigurationManagerSourceWorkflow
-    projection_service: SourceProjectionService[AlarmConfiguration]
+    projection_service: SourceProjectionService[AlarmConfigurationSnapshot]
     validation_workflow: AlarmConfigurationManagerDraftValidationWorkflow
 
 
 def compose_alarm_configuration_manager(
     *,
     source_store: SourceStore,
-    projection_store: ProjectionStore[AlarmConfiguration],
+    projection_store: ProjectionStore[AlarmConfigurationSnapshot],
     principal_provider: AlarmConfigurationPrincipalProvider,
     source_key: SourceKey,
     group_key: str,
@@ -89,6 +89,9 @@ def compose_alarm_configuration_manager(
     source_workflow = AlarmConfigurationManagerSourceWorkflow(
         source=source_service,
         audit_actor_provider=resolved_actor_provider,
+        tool_reference_provider=(
+            (lambda: None) if tool_reference_reader is None else tool_reference_reader.load
+        ),
     )
     validation_workflow = AlarmConfigurationManagerDraftValidationWorkflow(
         audit_actor_provider=resolved_actor_provider,

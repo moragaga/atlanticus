@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from io import BytesIO
 from typing import Any
 
-from ada_command_center.domain.alarms import AlarmConfiguration
+from ada_command_center.domain.alarms import AlarmConfigurationSnapshot
 from ada_command_center.web.alarms.configuration.errors import AlarmConfigurationSourceError
 from atlanticus.web.source.models import (
     ConcurrencyToken,
@@ -27,7 +27,9 @@ from atlanticus.web.source.models import (
 from atlanticus.web.source.store import SourceStore
 
 ALARM_CONFIGURATION_SOURCE_DOCUMENT_TYPE = 'ada_command_center_alarm_configuration_release'
-ALARM_CONFIGURATION_SOURCE_SCHEMA_VERSION = 1
+# El schema cambia porque una release nueva ya no contiene sólo AlarmConfiguration: ahora
+# preserva también la revisión exacta del Confirmed Tool Catalog contra la que fue publicada.
+ALARM_CONFIGURATION_SOURCE_SCHEMA_VERSION = 2
 ALARM_CONFIGURATION_SOURCE_RESOURCE_PATH = 'alarms/configuration.json.gz'
 DEFAULT_MAX_COMPRESSED_BYTES = 5 * 1024 * 1024
 DEFAULT_MAX_DECOMPRESSED_BYTES = 20 * 1024 * 1024
@@ -35,12 +37,13 @@ DEFAULT_MAX_DECOMPRESSED_BYTES = 20 * 1024 * 1024
 
 @dataclass(frozen=True, slots=True)
 class AlarmConfigurationSourcePayload:
-    configuration: AlarmConfiguration
+    snapshot: AlarmConfigurationSnapshot
     published_by: str
 
     def __post_init__(self) -> None:
-        if not isinstance(self.configuration, AlarmConfiguration):
-            raise AlarmConfigurationSourceError('Alarm Configuration source payload is invalid')
+        # Source sólo acepta el contrato transversal ya versionado contra Tools.
+        if not isinstance(self.snapshot, AlarmConfigurationSnapshot):
+            raise AlarmConfigurationSourceError('Alarm Configuration source snapshot is invalid')
         actor = self.published_by.strip() if isinstance(self.published_by, str) else ''
         if not actor:
             raise AlarmConfigurationSourceError(
@@ -59,8 +62,10 @@ class AlarmConfigurationSourceRelease:
         return self.metadata.release_ref
 
     @property
-    def configuration(self) -> AlarmConfiguration:
-        return self.payload.configuration
+    def snapshot(self) -> AlarmConfigurationSnapshot:
+        # La release conserva el snapshot completo; los consumidores que sólo editan reglas
+        # pueden acceder a snapshot.configuration sin perder la genealogía Tools.
+        return self.payload.snapshot
 
     @property
     def published_by(self) -> str:
@@ -71,18 +76,18 @@ class AlarmConfigurationSourceCodec:
     def encode(
         self,
         *,
-        configuration: AlarmConfiguration,
+        snapshot: AlarmConfigurationSnapshot,
         published_by: str,
     ) -> SourceResource:
         payload = AlarmConfigurationSourcePayload(
-            configuration=configuration,
+            snapshot=snapshot,
             published_by=published_by,
         )
         document = {
             'document_type': ALARM_CONFIGURATION_SOURCE_DOCUMENT_TYPE,
             'schema_version': ALARM_CONFIGURATION_SOURCE_SCHEMA_VERSION,
             'published_by': payload.published_by,
-            'configuration': payload.configuration.to_document(),
+            'snapshot': payload.snapshot.to_document(),
         }
         raw = json.dumps(
             document,
@@ -96,6 +101,8 @@ class AlarmConfigurationSourceCodec:
         )
 
     def decode(self, resources: tuple[SourceResource, ...]) -> AlarmConfigurationSourcePayload:
+        # La lectura exige exactamente el schema nuevo; no se conserva decoder legacy porque
+        # este incremento reemplaza limpiamente el contrato anterior antes de distribución.
         matches = tuple(
             resource
             for resource in resources
@@ -115,11 +122,11 @@ class AlarmConfigurationSourceCodec:
                 'Alarm Configuration source schema version is invalid'
             )
         try:
-            configuration = document['configuration']
-            if not isinstance(configuration, dict):
+            snapshot = document['snapshot']
+            if not isinstance(snapshot, dict):
                 raise TypeError
             return AlarmConfigurationSourcePayload(
-                configuration=AlarmConfiguration.from_document(configuration),
+                snapshot=AlarmConfigurationSnapshot.from_document(snapshot),
                 published_by=str(document['published_by']),
             )
         except (KeyError, TypeError, ValueError) as error:
@@ -168,16 +175,18 @@ class AlarmConfigurationSourceService:
             payload=self._codec.decode(resources),
         )
 
-    def publish_configuration(
+    def publish_snapshot(
         self,
-        configuration: AlarmConfiguration,
+        snapshot: AlarmConfigurationSnapshot,
         *,
         published_by: str,
         expected_concurrency_token: ConcurrencyToken | None,
         basis_release: SourceReleaseRef | None,
     ) -> PublishResult:
+        # La revisión Tools ya viene congelada dentro del snapshot; Source no la descubre ni
+        # la reemplaza durante la publicación.
         resource = self._codec.encode(
-            configuration=configuration,
+            snapshot=snapshot,
             published_by=published_by,
         )
         return self._source.publish(

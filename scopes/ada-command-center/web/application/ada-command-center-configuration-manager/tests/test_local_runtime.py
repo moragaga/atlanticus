@@ -26,11 +26,12 @@ def test_local_runtime_seeds_source_projection_and_tool_references(tmp_path) -> 
     catalog = dependencies.tool_reference_reader.load()
 
     assert release is not None
-    assert release.configuration == create_sample_alarm_configuration()
+    assert catalog is not None
+    assert release.snapshot.configuration == create_sample_alarm_configuration()
+    assert release.snapshot.confirmed_tool_catalog_revision == catalog.catalog_revision
     assert release.published_by == 'local-bootstrap'
     assert projection is not None
-    assert projection.payload == release.configuration
-    assert catalog is not None
+    assert projection.payload == release.snapshot
     assert tuple(tool.tool_key for tool in catalog.tools) == (
         'integrated_operations',
         'process_control',
@@ -132,7 +133,7 @@ def test_sample_configuration_survives_browser_integral_number_workspace_round_t
     assert release is not None
     workspace = ManagerWorkspace.create(
         owner_subject_id='local',
-        payload=release.configuration.to_document(),
+        payload=release.snapshot.configuration.to_document(),
         base=source.get_current(),
     )
     document = workspace.to_document()

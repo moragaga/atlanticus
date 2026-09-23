@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 
+from ada_command_center.domain.alarms import AlarmConfigurationSnapshot
 from ada_command_center.web.alarms.configuration import (
     AlarmConfigurationProjectionBuilder,
     AlarmConfigurationSourceCodec,
@@ -26,6 +27,13 @@ from atlanticus.web.source.store import SourceStore
 from .helpers import configuration
 
 
+def _alarm_snapshot() -> AlarmConfigurationSnapshot:
+    return AlarmConfigurationSnapshot(
+        configuration=configuration(),
+        confirmed_tool_catalog_revision='tools-r2',
+    )
+
+
 class SourceStoreStub(SourceStore):
     def __init__(self) -> None:
         self.source_key = SourceKey('ada-command-center-alarms')
@@ -34,7 +42,7 @@ class SourceStoreStub(SourceStore):
             published_at_utc=datetime(2026, 9, 21, 12, 0, tzinfo=UTC),
         )
         self.resource = AlarmConfigurationSourceCodec().encode(
-            configuration=configuration(),
+            snapshot=_alarm_snapshot(),
             published_by='manager-user',
         )
         self.metadata = SourceReleaseMetadata(
@@ -87,7 +95,7 @@ class ProjectionStoreStub(ProjectionStore):
         return projection
 
 
-def test_alarm_configuration_projection_builder_preserves_source_contract() -> None:
+def test_alarm_configuration_projection_builder_preserves_versioned_snapshot() -> None:
     source = SourceStoreStub()
     builder = AlarmConfigurationProjectionBuilder()
 
@@ -102,7 +110,7 @@ def test_alarm_configuration_projection_builder_preserves_source_contract() -> N
         resources=(source.resource,),
     )
 
-    assert projected == configuration()
+    assert projected == _alarm_snapshot()
 
 
 def test_alarm_configuration_projection_selects_exact_source_target_without_dependencies() -> None:
@@ -120,7 +128,7 @@ def test_alarm_configuration_projection_selects_exact_source_target_without_depe
     assert target.dependencies == ()
 
 
-def test_alarm_configuration_projection_materializes_and_reports_current() -> None:
+def test_alarm_configuration_projection_preserves_alarm_and_tool_revisions() -> None:
     source = SourceStoreStub()
     projection = ProjectionStoreStub()
     service = create_alarm_configuration_projection_service(
@@ -134,8 +142,8 @@ def test_alarm_configuration_projection_materializes_and_reports_current() -> No
     status = service.get_status(source.source_key)
 
     assert isinstance(result.projection, ProjectionRecord)
-    assert result.projection.payload == configuration()
+    assert result.projection.source_release_id.value == 'release-1'
+    assert result.projection.payload.confirmed_tool_catalog_revision == 'tools-r2'
+    assert result.projection.payload.configuration == configuration()
     assert result.projection.target == target
     assert status.alignment is ProjectionAlignment.CURRENT
-    assert status.source_current_release == source.release_ref
-    assert status.projected_source_release == source.release_ref

@@ -5,12 +5,14 @@ from datetime import UTC, datetime
 
 from ada_command_center.domain.alarms import (
     AlarmConfiguration,
+    AlarmConfigurationSnapshot,
     AlarmConfigurationValidationError,
 )
 from ada_command_center.web.alarms.configuration.errors import AlarmConfigurationSourceError
 from ada_command_center.web.alarms.configuration.source_release import (
     AlarmConfigurationSourceService,
 )
+from ada_command_center.web.alarms.configuration.tool_references import AlarmToolReferenceCatalog
 from atlanticus.web.manager.projection import (
     DraftValidationResult,
     ProjectionAuditRecord,
@@ -26,6 +28,7 @@ from atlanticus.web.manager.workspace import build_workspace_revision
 from atlanticus.web.source.models import HistoryPage, SourceKey, SourceReleaseRef, SourceSnapshot
 
 AlarmConfigurationAuditActorProvider = Callable[[], str]
+AlarmToolReferenceProvider = Callable[[], AlarmToolReferenceCatalog | None]
 
 
 class AlarmConfigurationManagerSourceWorkflow:
@@ -34,9 +37,11 @@ class AlarmConfigurationManagerSourceWorkflow:
         *,
         source: AlarmConfigurationSourceService,
         audit_actor_provider: AlarmConfigurationAuditActorProvider,
+        tool_reference_provider: AlarmToolReferenceProvider,
     ) -> None:
         self._source = source
         self._audit_actor_provider = audit_actor_provider
+        self._tool_reference_provider = tool_reference_provider
 
     @property
     def source_key(self) -> SourceKey:
@@ -57,7 +62,7 @@ class AlarmConfigurationManagerSourceWorkflow:
             )
         return SourceReadResult(
             snapshot=refreshed,
-            payload=release.configuration.to_document(),
+            payload=release.snapshot.configuration.to_document(),
         )
 
     def list_history(self, *, limit: int = 20) -> HistoryPage:
@@ -70,7 +75,7 @@ class AlarmConfigurationManagerSourceWorkflow:
         release = self._source.load_release(release_ref)
         return SourceHistoryReadResult(
             release_ref=release.release_ref,
-            payload=release.configuration.to_document(),
+            payload=release.snapshot.configuration.to_document(),
         )
 
     def publish_draft(
@@ -92,10 +97,19 @@ class AlarmConfigurationManagerSourceWorkflow:
             raise AlarmConfigurationSourceError(
                 'Alarm Configuration publication actor must not be empty'
             )
+        tool_references = self._tool_reference_provider()
+        if tool_references is None:
+            raise AlarmConfigurationSourceError(
+                'Confirmed Tool Catalog is required for Alarm Configuration publication'
+            )
         configuration = AlarmConfiguration.from_document(dict(payload))
+        alarm_snapshot = AlarmConfigurationSnapshot(
+            configuration=configuration,
+            confirmed_tool_catalog_revision=tool_references.catalog_revision,
+        )
         basis_release = current.current.release_ref if current.current is not None else None
-        published = self._source.publish_configuration(
-            configuration,
+        published = self._source.publish_snapshot(
+            alarm_snapshot,
             published_by=actor,
             expected_concurrency_token=current.concurrency_token,
             basis_release=basis_release,

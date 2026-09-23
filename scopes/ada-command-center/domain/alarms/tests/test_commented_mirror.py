@@ -7,6 +7,7 @@ FILES = (
     'definition.py',
     'errors.py',
     'models.py',
+    'snapshot.py',
 )
 
 
