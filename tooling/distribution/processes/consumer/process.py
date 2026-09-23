@@ -21,6 +21,7 @@ def _distribution_root() -> Path:
     for candidate in Path(__file__).resolve().parents:
         if (
             (candidate / "distribution.json").is_file()
+            and (candidate / "services.json").is_file()
             and (candidate / "Dockerfile").is_file()
             and (candidate / "processes").is_dir()
         ):
@@ -52,37 +53,77 @@ def _run(
         raise ConsumerProcessError(f"Command failed: {' '.join(command)}") from error
 
 
+def _read_json(path: Path) -> object:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ConsumerProcessError(f"JSON file is invalid: {path}") from error
+
+
 def _manifest(root: Path) -> dict[str, object]:
     path = root / "distribution.json"
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
-        raise ConsumerProcessError(
-            f"Distribution manifest is invalid: {path}"
-        ) from error
+    value = _read_json(path)
     if (
         not isinstance(value, dict)
         or value.get("schema_version") != 1
         or not isinstance(value.get("name"), str)
+        or not isinstance(value.get("generated_at"), str)
+        or not isinstance(value.get("source"), dict)
         or not isinstance(value.get("processes"), list)
     ):
         raise ConsumerProcessError(f"Distribution manifest contract is invalid: {path}")
+    source = value["source"]
+    if source.get("repository") != "atlanticus" or not isinstance(
+        source.get("revision"), str
+    ):
+        raise ConsumerProcessError(f"Distribution source contract is invalid: {path}")
     return value
 
 
-def _process_names(root: Path) -> tuple[str, ...]:
+def _deployment_entries(root: Path) -> tuple[tuple[str, str], ...]:
     manifest = _manifest(root)
-    names: list[str] = []
+    entries: list[tuple[str, str]] = []
     for item in manifest["processes"]:
         if not isinstance(item, dict):
             raise ConsumerProcessError("Distribution process manifest entry is invalid")
-        name = item.get("name")
-        if not isinstance(name, str) or not PROCESS_NAME_PATTERN.fullmatch(name):
-            raise ConsumerProcessError("Distribution process name is invalid")
-        names.append(name)
-    if len(names) != len(set(names)):
-        raise ConsumerProcessError("Distribution process manifest contains duplicates")
-    return tuple(names)
+        process = item.get("process")
+        deployment = item.get("deployment")
+        if (
+            not isinstance(process, str)
+            or not PROCESS_NAME_PATTERN.fullmatch(process)
+            or not isinstance(deployment, dict)
+        ):
+            raise ConsumerProcessError("Distribution process manifest entry is invalid")
+        alias = deployment.get("excecution_file")
+        container_name = deployment.get("container_name")
+        if (
+            not isinstance(alias, str)
+            or not PROCESS_NAME_PATTERN.fullmatch(alias)
+            or not isinstance(container_name, str)
+            or not container_name.startswith("job")
+        ):
+            raise ConsumerProcessError("Distribution deployment metadata is invalid")
+        entries.append((alias, container_name))
+    aliases = tuple(alias for alias, _ in entries)
+    if len(aliases) != len(set(aliases)):
+        raise ConsumerProcessError("Distribution deployment aliases contain duplicates")
+    return tuple(entries)
+
+
+def _expected_services(root: Path) -> list[dict[str, object]]:
+    return [
+        {
+            "repository": alias,
+            "excecution_file": alias,
+            "container_name": container_name,
+            "config_file": f"processes/{alias}/config.json",
+            "to_deploy": True,
+            "to_stop": False,
+            "to_working_hours_dev": True,
+            "to_working_hours_uat": True,
+        }
+        for alias, container_name in _deployment_entries(root)
+    ]
 
 
 def _compose_file(root: Path, *, bind: bool) -> Path:
@@ -90,26 +131,34 @@ def _compose_file(root: Path, *, bind: bool) -> Path:
 
 
 def _validate_distribution(root: Path, *, require_environment: bool) -> tuple[str, ...]:
-    names = _process_names(root)
+    entries = _deployment_entries(root)
+    aliases = tuple(alias for alias, _ in entries)
     process_root = root / "processes"
     actual = tuple(
         sorted(path.name for path in process_root.iterdir() if path.is_dir())
     )
-    if actual != tuple(sorted(names)):
+    if actual != tuple(sorted(aliases)):
         raise ConsumerProcessError(
             "Distribution process directories do not match distribution.json"
         )
-    for name in names:
-        root_for_process = process_root / name
+    for alias in aliases:
+        root_for_process = process_root / alias
         for relative in REQUIRED_ARTIFACT_ENTRIES:
             if not (root_for_process / relative).exists():
                 raise ConsumerProcessError(
-                    f"Process transport artifact is incomplete ({relative}): {root_for_process}"
+                    f"Process transport artifact is incomplete ({relative}): "
+                    f"{root_for_process}"
                 )
         if require_environment and not (root_for_process / ".env").is_file():
             raise ConsumerProcessError(
                 f"Local process .env file not found: {root_for_process / '.env'}"
             )
+    services_path = root / "services.json"
+    services = _read_json(services_path)
+    if services != _expected_services(root):
+        raise ConsumerProcessError(
+            f"Pipeline services manifest does not match distribution.json: {services_path}"
+        )
     marker = f'{DISTRIBUTION_CONTRACT_KEY}: "{DISTRIBUTION_CONTRACT_VERSION}"'
     for compose_path in (root / "compose.yaml", root / "compose.bind.yaml"):
         if not compose_path.is_file():
@@ -121,12 +170,13 @@ def _validate_distribution(root: Path, *, require_environment: bool) -> tuple[st
             raise ConsumerProcessError(
                 f"Distribution Compose contract is unsupported: {compose_path}"
             )
-        for name in names:
-            if f"  {name}:" not in compose:
+        for alias in aliases:
+            if f"  {alias}:" not in compose or f"FILENAME: {alias}" not in compose:
                 raise ConsumerProcessError(
-                    f"Distribution Compose is missing process {name}: {compose_path}"
+                    f"Distribution Compose is missing deployment alias {alias}: "
+                    f"{compose_path}"
                 )
-    return names
+    return aliases
 
 
 def _validate_docker(root: Path) -> None:
@@ -202,8 +252,8 @@ def _logs(root: Path, *, bind: bool, process: str | None) -> None:
 
 
 def _run_process(root: Path, *, bind: bool, process: str) -> None:
-    names = _validate_distribution(root, require_environment=True)
-    if process not in names:
+    aliases = _validate_distribution(root, require_environment=True)
+    if process not in aliases:
         raise ConsumerProcessError(f"Distribution process not found: {process}")
     _validate_docker(root)
     if bind:

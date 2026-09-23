@@ -12,6 +12,7 @@ import tempfile
 import tomllib
 import uuid
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,7 @@ BOOTSTRAP_ENVIRONMENT_VARIABLE = "ATLANTICUS_DISTRIBUTION_TOOL_BOOTSTRAPPED"
 PROCESS_NAME_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 DISTRIBUTION_NAME_PATTERN = PROCESS_NAME_PATTERN
 MEMORY_PATTERN = re.compile(r"^[1-9][0-9]*(?:\.[0-9]+)?[bkmg]?$", re.IGNORECASE)
+REVISION_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 ALLOWED_SYSTEM_PROFILES = frozenset({"base", "sqlserver"})
 DEFAULT_CPUS = 0.5
 DEFAULT_MEMORY = "1g"
@@ -54,15 +56,57 @@ class DistributionError(RuntimeError):
 
 
 @dataclass(frozen=True, slots=True)
+class ProcessDeployment:
+    number: str
+    process: str
+    excecution_file: str
+
+    @property
+    def container_name(self) -> str:
+        return f"job{self.number}"
+
+    @property
+    def config_file(self) -> str:
+        return f"processes/{self.excecution_file}/config.json"
+
+
+@dataclass(frozen=True, slots=True)
 class ProcessArtifact:
     name: str
     root: Path
     project_name: str
     project_version: str
+    description: str
+    runtime_version: str
     command: str
     system_profile: str
     cpus: float
     memory: str
+
+
+@dataclass(frozen=True, slots=True)
+class SelectedProcess:
+    artifact: ProcessArtifact
+    deployment: ProcessDeployment
+
+
+DEPLOYMENT_CATALOG = (
+    ProcessDeployment("01", "operational-data-pi", "pi-web-api"),
+    ProcessDeployment("02", "operational-data-notpii", "notpii"),
+    ProcessDeployment("03", "operational-data-dispatch", "dispatch"),
+    ProcessDeployment("04", "operational-data-blockgrade", "blockgrade"),
+    ProcessDeployment("05", "operational-data-fabrica", "fabrica"),
+    ProcessDeployment("06", "operational-data-remanentes", "remanentes"),
+    ProcessDeployment("21", "ada-kpi-runtime", "kpis"),
+    ProcessDeployment("22", "ada-kpi-historian", "kpis-historian"),
+    ProcessDeployment("41", "ada-kpi-delivery", "kpis-delivery"),
+    ProcessDeployment(
+        "42",
+        "ada-kpi-timeseries-delivery",
+        "kpis-timeseries-delivery",
+    ),
+)
+DEPLOYMENT_BY_PROCESS = {item.process: item for item in DEPLOYMENT_CATALOG}
 
 
 def _repository_root() -> Path:
@@ -150,7 +194,11 @@ def _container_metadata(
     return command, system_profile, float(cpus), memory.lower()
 
 
-def _load_artifact(root: Path) -> ProcessArtifact:
+def _load_artifact(
+    root: Path,
+    *,
+    require_directory_match: bool = True,
+) -> ProcessArtifact:
     for relative in REQUIRED_ARTIFACT_ENTRIES:
         if not (root / relative).exists():
             raise DistributionError(
@@ -168,6 +216,7 @@ def _load_artifact(root: Path) -> ProcessArtifact:
         )
     project_name = project.get("name")
     project_version = project.get("version")
+    description = project.get("description")
     requires_python = project.get("requires-python")
     if not isinstance(project_name, str) or not project_name:
         raise DistributionError(f"Project name is invalid: {root / 'pyproject.toml'}")
@@ -175,15 +224,21 @@ def _load_artifact(root: Path) -> ProcessArtifact:
         raise DistributionError(
             f"Project version is invalid: {root / 'pyproject.toml'}"
         )
-    if requires_python != f"=={PYTHON_VERSION}":
+    if not isinstance(description, str) or not description.strip():
         raise DistributionError(
-            f"Process artifact must require Python {PYTHON_VERSION}: {root / 'pyproject.toml'}"
+            f"Project description is invalid: {root / 'pyproject.toml'}"
+        )
+    expected_python = f"=={PYTHON_VERSION}"
+    if requires_python != expected_python:
+        raise DistributionError(
+            f"Process artifact must require Python {PYTHON_VERSION}: "
+            f"{root / 'pyproject.toml'}"
         )
     command, system_profile, cpus, memory = _container_metadata(
         metadata,
         root / "pyproject.toml",
     )
-    if root.name != command:
+    if require_directory_match and root.name != command:
         raise DistributionError(
             f"Process artifact directory must match container command: {root}"
         )
@@ -192,6 +247,8 @@ def _load_artifact(root: Path) -> ProcessArtifact:
         root=root,
         project_name=project_name,
         project_version=project_version,
+        description=description.strip(),
+        runtime_version=requires_python.removeprefix("=="),
         command=command,
         system_profile=system_profile,
         cpus=cpus,
@@ -260,7 +317,7 @@ def _resolve_selection(
     artifacts: dict[str, ProcessArtifact],
     selections: tuple[str, ...],
     targets: tuple[str, ...],
-) -> tuple[ProcessArtifact, ...]:
+) -> tuple[SelectedProcess, ...]:
     requested: list[str] = list(selections)
     for target in targets:
         requested.extend(_target_commands(repository_root, target))
@@ -268,12 +325,29 @@ def _resolve_selection(
         raise DistributionError(
             "Select at least one process or provide one or more --target values"
         )
-    unknown = tuple(name for name in dict.fromkeys(requested) if name not in artifacts)
-    if unknown:
+    requested_names = frozenset(requested)
+    unknown_artifacts = tuple(name for name in requested_names if name not in artifacts)
+    if unknown_artifacts:
         raise DistributionError(
-            "Prepared process artifact not found: " + ", ".join(unknown)
+            "Prepared process artifact not found: "
+            + ", ".join(sorted(unknown_artifacts))
         )
-    return tuple(artifacts[name] for name in dict.fromkeys(requested))
+    unknown_deployments = tuple(
+        name for name in requested_names if name not in DEPLOYMENT_BY_PROCESS
+    )
+    if unknown_deployments:
+        raise DistributionError(
+            "Process deployment slot is not registered: "
+            + ", ".join(sorted(unknown_deployments))
+        )
+    return tuple(
+        SelectedProcess(
+            artifact=artifacts[item.process],
+            deployment=item,
+        )
+        for item in DEPLOYMENT_CATALOG
+        if item.process in requested_names
+    )
 
 
 def _artifact_ignore(directory: str, names: list[str]) -> set[str]:
@@ -289,9 +363,9 @@ def _artifact_ignore(directory: str, names: list[str]) -> set[str]:
 def _preserve_consumer_configuration(
     current_root: Path,
     staged_process: Path,
-    process_name: str,
+    excecution_file: str,
 ) -> None:
-    current_process = current_root / "processes" / process_name
+    current_process = current_root / "processes" / excecution_file
     for name in CONSUMER_CONFIGURATION_FILES:
         current = current_process / name
         if current.is_file():
@@ -300,24 +374,26 @@ def _preserve_consumer_configuration(
 
 def _render_service(
     distribution_name: str,
-    artifact: ProcessArtifact,
+    selected: SelectedProcess,
     *,
     volume_mode: str,
 ) -> str:
+    alias = selected.deployment.excecution_file
+    artifact = selected.artifact
     volume_source = "runtime" if volume_mode == "named" else "./.runtime/volumen"
     return "\n".join(
         (
-            f"  {artifact.name}:",
-            f"    image: atlanticus-{distribution_name}-{artifact.name}:local",
+            f"  {alias}:",
+            f"    image: atlanticus-{distribution_name}-{alias}:local",
             "    build:",
             "      context: .",
             "      dockerfile: Dockerfile",
             "      args:",
-            f"        FILENAME: {artifact.name}",
+            f"        FILENAME: {alias}",
             '    command: ["--run-once"]',
             '    restart: "no"',
             "    env_file:",
-            f"      - ./processes/{artifact.name}/.env",
+            f"      - ./processes/{alias}/.env",
             "    environment:",
             f"      VOLUMEN_PATH: {DEFAULT_VOLUME_PATH}",
             "    volumes:",
@@ -330,15 +406,15 @@ def _render_service(
 
 def _render_compose(
     distribution_name: str,
-    artifacts: tuple[ProcessArtifact, ...],
+    selected: tuple[SelectedProcess, ...],
     *,
     volume_mode: str,
 ) -> str:
     if volume_mode not in {"named", "bind"}:
         raise DistributionError(f"Unsupported volume mode: {volume_mode}")
     services = "\n".join(
-        _render_service(distribution_name, artifact, volume_mode=volume_mode)
-        for artifact in artifacts
+        _render_service(distribution_name, item, volume_mode=volume_mode)
+        for item in selected
     )
     volumes = "\nvolumes:\n  runtime:\n" if volume_mode == "named" else ""
     return (
@@ -348,23 +424,80 @@ def _render_compose(
     )
 
 
+def _generated_at() -> str:
+    return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _source_revision(repository_root: Path) -> str:
+    try:
+        completed = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repository_root,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise DistributionError(
+            f"Could not resolve source revision: {repository_root}"
+        ) from error
+    revision = completed.stdout.strip()
+    if REVISION_PATTERN.fullmatch(revision) is None:
+        raise DistributionError(f"Source revision is invalid: {revision}")
+    return revision
+
+
 def _manifest(
     distribution_name: str,
-    artifacts: tuple[ProcessArtifact, ...],
+    selected: tuple[SelectedProcess, ...],
+    *,
+    generated_at: str,
+    source_revision: str,
 ) -> dict[str, object]:
     return {
         "schema_version": 1,
         "name": distribution_name,
+        "generated_at": generated_at,
+        "source": {
+            "repository": "atlanticus",
+            "revision": source_revision,
+        },
         "processes": [
             {
-                "name": artifact.name,
-                "project": artifact.project_name,
-                "version": artifact.project_version,
-                "system_profile": artifact.system_profile,
+                "process": item.artifact.command,
+                "project": item.artifact.project_name,
+                "version": item.artifact.project_version,
+                "description": item.artifact.description,
+                "runtime": {
+                    "language": "python",
+                    "version": item.artifact.runtime_version,
+                },
+                "deployment": {
+                    "excecution_file": item.deployment.excecution_file,
+                    "container_name": item.deployment.container_name,
+                },
             }
-            for artifact in artifacts
+            for item in selected
         ],
     }
+
+
+def _service(item: SelectedProcess) -> dict[str, object]:
+    deployment = item.deployment
+    return {
+        "repository": deployment.excecution_file,
+        "excecution_file": deployment.excecution_file,
+        "container_name": deployment.container_name,
+        "config_file": deployment.config_file,
+        "to_deploy": True,
+        "to_stop": False,
+        "to_working_hours_dev": True,
+        "to_working_hours_uat": True,
+    }
+
+
+def _services(selected: tuple[SelectedProcess, ...]) -> list[dict[str, object]]:
+    return [_service(item) for item in selected]
 
 
 def _consumer_template_root() -> Path:
@@ -388,32 +521,51 @@ def _validate_staging(
     *,
     staging_root: Path,
     distribution_name: str,
-    artifacts: tuple[ProcessArtifact, ...],
+    selected: tuple[SelectedProcess, ...],
+    generated_at: str,
+    source_revision: str,
 ) -> None:
-    expected_names = tuple(artifact.name for artifact in artifacts)
-    actual_names = tuple(
+    expected_aliases = tuple(item.deployment.excecution_file for item in selected)
+    actual_aliases = tuple(
         sorted(
             path.name
             for path in (staging_root / "processes").iterdir()
             if path.is_dir()
         )
     )
-    if actual_names != tuple(sorted(expected_names)):
+    if actual_aliases != tuple(sorted(expected_aliases)):
         raise DistributionError(
             "Staged process set does not match the declared composition"
         )
-    for artifact in artifacts:
-        _load_artifact(staging_root / "processes" / artifact.name)
+    for item in selected:
+        staged = _load_artifact(
+            staging_root / "processes" / item.deployment.excecution_file,
+            require_directory_match=False,
+        )
+        if staged.command != item.artifact.command:
+            raise DistributionError(
+                f"Staged process command is invalid: {item.deployment.excecution_file}"
+            )
     manifest_path = staging_root / "distribution.json"
+    services_path = staging_root / "services.json"
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        services = json.loads(services_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
-        raise DistributionError(
-            f"Generated distribution manifest is invalid: {manifest_path}"
-        ) from error
-    if manifest != _manifest(distribution_name, artifacts):
+        raise DistributionError("Generated distribution JSON is invalid") from error
+    expected_manifest = _manifest(
+        distribution_name,
+        selected,
+        generated_at=generated_at,
+        source_revision=source_revision,
+    )
+    if manifest != expected_manifest:
         raise DistributionError(
             "Generated distribution manifest does not match the selection"
+        )
+    if services != _services(selected):
+        raise DistributionError(
+            "Generated services manifest does not match the deployment catalog"
         )
     for compose_name in ("compose.yaml", "compose.bind.yaml"):
         compose = (staging_root / compose_name).read_text(encoding="utf-8")
@@ -422,10 +574,10 @@ def _validate_staging(
             raise DistributionError(
                 f"Generated Compose contract is invalid: {compose_name}"
             )
-        for process_name in expected_names:
-            if f"  {process_name}:" not in compose:
+        for alias in expected_aliases:
+            if f"  {alias}:" not in compose or f"FILENAME: {alias}" not in compose:
                 raise DistributionError(
-                    f"Generated Compose is missing process {process_name}: {compose_name}"
+                    f"Generated Compose is missing deployment alias {alias}: {compose_name}"
                 )
     if (staging_root / ".runtime").exists():
         raise DistributionError("Generated distribution must not contain .runtime")
@@ -473,6 +625,8 @@ def distribute(
         selections=selections,
         targets=targets,
     )
+    generated_at = _generated_at()
+    source_revision = _source_revision(repository_root)
     output_root = output_root.resolve()
     output_root.mkdir(parents=True, exist_ok=True)
     target_root = output_root / distribution_name
@@ -492,20 +646,34 @@ def distribute(
         )
         processes_root = staging_root / "processes"
         processes_root.mkdir()
-        for artifact in selected:
-            staged_process = processes_root / artifact.name
+        for item in selected:
+            alias = item.deployment.excecution_file
+            staged_process = processes_root / alias
             shutil.copytree(
-                artifact.root,
+                item.artifact.root,
                 staged_process,
                 ignore=_artifact_ignore,
             )
             _preserve_consumer_configuration(
                 target_root,
                 staged_process,
-                artifact.name,
+                alias,
             )
         (staging_root / "distribution.json").write_text(
-            json.dumps(_manifest(distribution_name, selected), indent=2) + "\n",
+            json.dumps(
+                _manifest(
+                    distribution_name,
+                    selected,
+                    generated_at=generated_at,
+                    source_revision=source_revision,
+                ),
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        (staging_root / "services.json").write_text(
+            json.dumps(_services(selected), indent=2) + "\n",
             encoding="utf-8",
         )
         (staging_root / "compose.yaml").write_text(
@@ -520,7 +688,9 @@ def distribute(
         _validate_staging(
             staging_root=staging_root,
             distribution_name=distribution_name,
-            artifacts=selected,
+            selected=selected,
+            generated_at=generated_at,
+            source_revision=source_revision,
         )
         _replace_directory(staging_root, target_root)
     finally:
@@ -543,7 +713,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-root",
         type=Path,
-        help="Output root. Defaults to distributed at the Atlanticus repository root.",
+        help="Output root. Defaults to distribution at the Atlanticus repository root.",
     )
     return parser
 
@@ -556,7 +726,7 @@ def main(argv: list[str] | None = None) -> int:
     output_root = (
         arguments.output_root
         if arguments.output_root is not None
-        else repository_root / "distributed"
+        else repository_root / "distribution"
     )
     try:
         target = distribute(
@@ -569,7 +739,8 @@ def main(argv: list[str] | None = None) -> int:
     except DistributionError as error:
         raise SystemExit(str(error)) from error
     print(f"Distribution package: {target}")
-    print(f"Configure process .env files under: {target / 'processes'}")
+    print(f"Configure process files under: {target / 'processes'}")
+    print(f"Pipeline manifest: {target / 'services.json'}")
     print(f"Local validation: {target / 'tooling/local/processes/process.sh'} validate")
     return 0
 

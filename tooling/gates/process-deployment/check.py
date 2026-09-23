@@ -209,6 +209,19 @@ def _validate_mirrors(paths: Paths) -> None:
         paths.tooling / "local" / "processes" / "commented" / "process.py",
     )
     _validate_python_mirror(
+        paths.tooling / "distribution" / "processes" / "distribute.py",
+        paths.tooling / "distribution" / "processes" / "commented" / "distribute.py",
+    )
+    _validate_python_mirror(
+        paths.tooling / "distribution" / "processes" / "consumer" / "process.py",
+        paths.tooling
+        / "distribution"
+        / "processes"
+        / "consumer"
+        / "commented"
+        / "process.py",
+    )
+    _validate_python_mirror(
         paths.gate / "check.py",
         paths.gate / "commented" / "check.py",
     )

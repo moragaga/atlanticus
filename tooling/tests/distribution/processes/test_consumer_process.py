@@ -18,12 +18,13 @@ SPEC.loader.exec_module(consumer)
 
 
 def _distribution(root: Path, *, with_env: bool) -> None:
-    (root / "processes/sample/wheels").mkdir(parents=True)
-    (root / "processes/sample/src").mkdir()
-    (root / "processes/sample/pyproject.toml").write_text("", encoding="utf-8")
-    (root / "processes/sample/uv.lock").write_text("", encoding="utf-8")
+    alias = "kpis"
+    (root / f"processes/{alias}/wheels").mkdir(parents=True)
+    (root / f"processes/{alias}/src").mkdir()
+    (root / f"processes/{alias}/pyproject.toml").write_text("", encoding="utf-8")
+    (root / f"processes/{alias}/uv.lock").write_text("", encoding="utf-8")
     if with_env:
-        (root / "processes/sample/.env").write_text(
+        (root / f"processes/{alias}/.env").write_text(
             "ENVIRONMENT=local\n", encoding="utf-8"
         )
     (root / "distribution.json").write_text(
@@ -31,19 +32,52 @@ def _distribution(root: Path, *, with_env: bool) -> None:
             {
                 "schema_version": 1,
                 "name": "sample",
+                "generated_at": "2026-09-22T23:30:00Z",
+                "source": {
+                    "repository": "atlanticus",
+                    "revision": "b93bfdc1b691daff72796c86d91e2890d94a8079",
+                },
                 "processes": [
                     {
-                        "name": "sample",
-                        "project": "sample-package",
+                        "process": "ada-kpi-runtime",
+                        "project": "ada-kpi-runtime-process",
                         "version": "1.0.0",
-                        "system_profile": "base",
+                        "description": "KPI runtime process composition.",
+                        "runtime": {
+                            "language": "python",
+                            "version": "3.14.2",
+                        },
+                        "deployment": {
+                            "excecution_file": alias,
+                            "container_name": "job21",
+                        },
                     }
                 ],
             }
         ),
         encoding="utf-8",
     )
-    marker = 'x-atlanticus-distribution-contract: "1"\nservices:\n  sample:\n'
+    (root / "services.json").write_text(
+        json.dumps(
+            [
+                {
+                    "repository": alias,
+                    "excecution_file": alias,
+                    "container_name": "job21",
+                    "config_file": f"processes/{alias}/config.json",
+                    "to_deploy": True,
+                    "to_stop": False,
+                    "to_working_hours_dev": True,
+                    "to_working_hours_uat": True,
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    marker = (
+        'x-atlanticus-distribution-contract: "1"\n'
+        f"services:\n  {alias}:\n    build:\n      args:\n        FILENAME: {alias}\n"
+    )
     (root / "compose.yaml").write_text(marker, encoding="utf-8")
     (root / "compose.bind.yaml").write_text(marker, encoding="utf-8")
     (root / "Dockerfile").write_text("FROM scratch\n", encoding="utf-8")
@@ -64,5 +98,20 @@ def test_validate_accepts_complete_distribution(tmp_path: Path) -> None:
     _distribution(tmp_path, with_env=True)
 
     assert consumer._validate_distribution(tmp_path, require_environment=True) == (
-        "sample",
+        "kpis",
     )
+
+
+def test_validate_rejects_services_drift(tmp_path: Path) -> None:
+    _distribution(tmp_path, with_env=True)
+    services_path = tmp_path / "services.json"
+    services = json.loads(services_path.read_text(encoding="utf-8"))
+    services[0]["container_name"] = "job99"
+    services_path.write_text(json.dumps(services), encoding="utf-8")
+
+    try:
+        consumer._validate_distribution(tmp_path, require_environment=True)
+    except consumer.ConsumerProcessError as error:
+        assert "Pipeline services manifest does not match" in str(error)
+    else:
+        raise AssertionError("Expected services.json drift to fail validation")
