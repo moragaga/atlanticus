@@ -97,6 +97,11 @@ def _validate_structure(paths: Paths) -> None:
         paths.deployment / "processes" / "commented" / "bundle.py",
         paths.deployment / "local" / "generate_compose.py",
         paths.deployment / "local" / "commented" / "generate_compose.py",
+        paths.deployment / "local" / "simulation.py",
+        paths.deployment / "local" / "commented" / "simulation.py",
+        paths.deployment / "local" / "scheduler" / "Dockerfile",
+        paths.deployment / "local" / "scheduler" / "scheduler.py",
+        paths.deployment / "local" / "scheduler" / "commented" / "scheduler.py",
         paths.tooling / "local" / "processes" / "process.py",
         paths.tooling / "local" / "processes" / "process.sh",
         paths.tooling / "local" / "processes" / "process.cmd",
@@ -217,6 +222,14 @@ def _validate_mirrors(paths: Paths) -> None:
         paths.deployment / "local" / "commented" / "generate_compose.py",
     )
     _validate_python_mirror(
+        paths.deployment / "local" / "simulation.py",
+        paths.deployment / "local" / "commented" / "simulation.py",
+    )
+    _validate_python_mirror(
+        paths.deployment / "local" / "scheduler" / "scheduler.py",
+        paths.deployment / "local" / "scheduler" / "commented" / "scheduler.py",
+    )
+    _validate_python_mirror(
         paths.tooling / "local" / "processes" / "process.py",
         paths.tooling / "local" / "processes" / "commented" / "process.py",
     )
@@ -259,6 +272,10 @@ def main(argv: list[str] | None = None) -> int:
         "deployment/processes/tests",
         "deployment/local/generate_compose.py",
         "deployment/local/commented/generate_compose.py",
+        "deployment/local/simulation.py",
+        "deployment/local/commented/simulation.py",
+        "deployment/local/scheduler/scheduler.py",
+        "deployment/local/scheduler/commented/scheduler.py",
         "deployment/local/tests",
         "tooling/local/processes/process.py",
         "tooling/local/processes/commented/process.py",

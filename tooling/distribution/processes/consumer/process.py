@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
+import os
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 DISTRIBUTION_CONTRACT_KEY = "x-atlanticus-distribution-contract"
 DISTRIBUTION_CONTRACT_VERSION = "1"
+SIMULATION_MODULE_NAME = "atlanticus_distribution_local_simulation"
 PROCESS_NAME_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 REQUIRED_ARTIFACT_ENTRIES = ("pyproject.toml", "uv.lock", "wheels", "src")
 
@@ -39,6 +43,7 @@ def _run(
     *,
     cwd: Path,
     capture_output: bool = False,
+    environment: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     print("> " + " ".join(command), flush=True)
     try:
@@ -48,6 +53,7 @@ def _run(
             check=True,
             capture_output=capture_output,
             text=True,
+            env=environment,
         )
     except (OSError, subprocess.CalledProcessError) as error:
         raise ConsumerProcessError(f"Command failed: {' '.join(command)}") from error
@@ -127,7 +133,7 @@ def _expected_services(root: Path) -> list[dict[str, object]]:
 
 
 def _compose_file(root: Path, *, bind: bool) -> Path:
-    return root / ("compose.bind.yaml" if bind else "compose.yaml")
+    return root / "deployment/local" / ("compose.bind.yaml" if bind else "compose.yaml")
 
 
 def _validate_distribution(root: Path, *, require_environment: bool) -> tuple[str, ...]:
@@ -160,7 +166,10 @@ def _validate_distribution(root: Path, *, require_environment: bool) -> tuple[st
             f"Pipeline services manifest does not match distribution.json: {services_path}"
         )
     marker = f'{DISTRIBUTION_CONTRACT_KEY}: "{DISTRIBUTION_CONTRACT_VERSION}"'
-    for compose_path in (root / "compose.yaml", root / "compose.bind.yaml"):
+    for compose_path in (
+        root / "deployment/local/compose.yaml",
+        root / "deployment/local/compose.bind.yaml",
+    ):
         if not compose_path.is_file():
             raise ConsumerProcessError(
                 f"Distribution Compose file not found: {compose_path}"
@@ -176,6 +185,15 @@ def _validate_distribution(root: Path, *, require_environment: bool) -> tuple[st
                     f"Distribution Compose is missing deployment alias {alias}: "
                     f"{compose_path}"
                 )
+    for required in (
+        root / "deployment/local/simulation.py",
+        root / "deployment/local/scheduler/Dockerfile",
+        root / "deployment/local/scheduler/scheduler.py",
+    ):
+        if not required.is_file():
+            raise ConsumerProcessError(
+                f"Distribution local deployment capability is missing: {required}"
+            )
     return aliases
 
 
@@ -190,17 +208,23 @@ def _compose(
     bind: bool,
     arguments: list[str],
     capture_output: bool = False,
+    compose_file: Path | None = None,
+    environment: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
+    selected_compose = (
+        _compose_file(root, bind=bind) if compose_file is None else compose_file
+    )
     return _run(
         [
             "docker",
             "compose",
             "-f",
-            str(_compose_file(root, bind=bind)),
+            str(selected_compose),
             *arguments,
         ],
         cwd=root,
         capture_output=capture_output,
+        environment=environment,
     )
 
 
@@ -273,6 +297,179 @@ def _run_process(root: Path, *, bind: bool, process: str) -> None:
     )
 
 
+def _load_simulation(root: Path):
+    path = root / "deployment/local/simulation.py"
+    spec = importlib.util.spec_from_file_location(SIMULATION_MODULE_NAME, path)
+    if spec is None or spec.loader is None:
+        raise ConsumerProcessError(
+            f"Local simulation module could not be loaded: {path}"
+        )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _docker_value(root: Path, *arguments: str) -> str:
+    return _run(
+        ["docker", *arguments],
+        cwd=root,
+        capture_output=True,
+    ).stdout.strip()
+
+
+def _simulation_environment(root: Path, simulation) -> dict[str, str]:
+    endpoint = _docker_value(
+        root,
+        "context",
+        "inspect",
+        "--format",
+        "{{.Endpoints.docker.Host}}",
+    )
+    operating_system = _docker_value(
+        root,
+        "info",
+        "--format",
+        "{{.OperatingSystem}}",
+    )
+    engine_type = _docker_value(
+        root,
+        "info",
+        "--format",
+        "{{.OSType}}",
+    )
+    environment = os.environ.copy()
+    environment["ATLANTICUS_DOCKER_SOCKET_SOURCE"] = (
+        simulation.resolve_docker_socket_source(
+            endpoint=endpoint,
+            operating_system=operating_system,
+            engine_type=engine_type,
+        )
+    )
+    return environment
+
+
+def _simulation_compose_files(root: Path) -> tuple[Path, ...]:
+    local_root = root / "deployment/local"
+    return (
+        local_root / "compose.simulate.yaml",
+        local_root / "compose.simulate.bind.yaml",
+    )
+
+
+def _simulation_processes(root: Path, simulation) -> tuple[object, ...]:
+    manifest = _manifest(root)
+    distribution_name = manifest["name"]
+    return tuple(
+        simulation.load_simulation_process(
+            process_root=root / "processes" / alias,
+            name=alias,
+            image=f"atlanticus-{distribution_name}-{alias}:local",
+        )
+        for alias, _ in _deployment_entries(root)
+    )
+
+
+def _prepare_simulation(root: Path, simulation, *, bind: bool) -> Path:
+    manifest = _manifest(root)
+    distribution_name = manifest["name"]
+    local_root = root / "deployment/local"
+    if bind:
+        _ensure_bind_runtime(root)
+    return simulation.prepare_simulation(
+        workspace_root=root,
+        local_root=local_root,
+        scheduler_source=local_root / "scheduler",
+        project_name=f"atlanticus-{distribution_name}-local",
+        simulation_name=distribution_name,
+        processes=_simulation_processes(root, simulation),
+        volume_mode="bind" if bind else "named",
+        bind_runtime=root / ".runtime/volumen",
+    )
+
+
+def _cleanup_simulation_containers(root: Path, simulation_name: str) -> None:
+    for role in ("scheduler", "execution"):
+        completed = _run(
+            [
+                "docker",
+                "ps",
+                "-aq",
+                "--filter",
+                f"label=atlanticus.simulation={simulation_name}",
+                "--filter",
+                f"label=atlanticus.role={role}",
+            ],
+            cwd=root,
+            capture_output=True,
+        )
+        ids = tuple(line for line in completed.stdout.splitlines() if line)
+        if ids:
+            _run(["docker", "rm", "-f", *ids], cwd=root)
+
+
+def _simulate(root: Path, simulation, *, bind: bool) -> None:
+    _validate_distribution(root, require_environment=True)
+    _validate_docker(root)
+    compose_path = _prepare_simulation(root, simulation, bind=bind)
+    _compose(root, bind=bind, arguments=["build", "--no-cache"])
+    environment = _simulation_environment(root, simulation)
+    distribution_name = _manifest(root)["name"]
+    _cleanup_simulation_containers(root, distribution_name)
+    _compose(
+        root,
+        bind=bind,
+        arguments=["build", "--no-cache", "scheduler"],
+        compose_file=compose_path,
+        environment=environment,
+    )
+    _compose(
+        root,
+        bind=bind,
+        arguments=[
+            "run",
+            "--rm",
+            "--entrypoint",
+            "docker",
+            "scheduler",
+            "version",
+        ],
+        compose_file=compose_path,
+        environment=environment,
+    )
+    _compose(
+        root,
+        bind=bind,
+        arguments=["up", "-d", "scheduler"],
+        compose_file=compose_path,
+        environment=environment,
+    )
+    _compose(
+        root,
+        bind=bind,
+        arguments=["ps", "-a"],
+        compose_file=compose_path,
+        environment=environment,
+    )
+
+
+def _simulate_stop(root: Path, simulation) -> None:
+    _validate_docker(root)
+    environment = _simulation_environment(root, simulation)
+    distribution_name = _manifest(root)["name"]
+    _cleanup_simulation_containers(root, distribution_name)
+    for compose_path in _simulation_compose_files(root):
+        if not compose_path.is_file():
+            continue
+        _compose(
+            root,
+            bind=compose_path.name.endswith(".bind.yaml"),
+            arguments=["down", "--remove-orphans"],
+            compose_file=compose_path,
+            environment=environment,
+        )
+
+
 def _add_bind_argument(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--bind", action="store_true")
 
@@ -290,6 +487,11 @@ def _parser() -> argparse.ArgumentParser:
 
     up = subparsers.add_parser("up")
     _add_bind_argument(up)
+
+    simulate = subparsers.add_parser("simulate")
+    _add_bind_argument(simulate)
+
+    subparsers.add_parser("simulate-stop")
 
     down = subparsers.add_parser("down")
     _add_bind_argument(down)
@@ -311,6 +513,7 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     arguments = _parser().parse_args(argv)
     root = _distribution_root()
+    simulation = _load_simulation(root)
     try:
         if arguments.action == "validate":
             _validate(root)
@@ -318,6 +521,10 @@ def main(argv: list[str] | None = None) -> int:
             _build(root, bind=arguments.bind)
         elif arguments.action == "up":
             _up(root, bind=arguments.bind)
+        elif arguments.action == "simulate":
+            _simulate(root, simulation, bind=arguments.bind)
+        elif arguments.action == "simulate-stop":
+            _simulate_stop(root, simulation)
         elif arguments.action == "down":
             _down(root, bind=arguments.bind)
         elif arguments.action == "ps":
@@ -336,7 +543,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         else:
             raise ConsumerProcessError(f"Unsupported action: {arguments.action}")
-    except ConsumerProcessError as error:
+    except (ConsumerProcessError, simulation.LocalSimulationError) as error:
         raise SystemExit(str(error)) from error
     return 0
 

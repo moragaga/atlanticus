@@ -100,7 +100,7 @@ def build_composition(
         service_name='kpi-runtime',
         job_key='kpi-runtime',
         sleep_seconds=settings.poll_interval_seconds,
-        iteration_timeout_seconds=240,
+        iteration_timeout_seconds=580,
         execution_timeout_seconds=600,
         shutdown_grace_seconds=10,
         lease_timeout_seconds=30,

@@ -78,8 +78,14 @@ def _distribution(root: Path, *, with_env: bool) -> None:
         'x-atlanticus-distribution-contract: "1"\n'
         f"services:\n  {alias}:\n    build:\n      args:\n        FILENAME: {alias}\n"
     )
-    (root / "compose.yaml").write_text(marker, encoding="utf-8")
-    (root / "compose.bind.yaml").write_text(marker, encoding="utf-8")
+    local = root / "deployment/local"
+    scheduler = local / "scheduler"
+    scheduler.mkdir(parents=True)
+    (local / "compose.yaml").write_text(marker, encoding="utf-8")
+    (local / "compose.bind.yaml").write_text(marker, encoding="utf-8")
+    (local / "simulation.py").write_text("VALUE = 1\n", encoding="utf-8")
+    (scheduler / "Dockerfile").write_text("FROM scratch\n", encoding="utf-8")
+    (scheduler / "scheduler.py").write_text("VALUE = 1\n", encoding="utf-8")
     (root / "Dockerfile").write_text("FROM scratch\n", encoding="utf-8")
 
 

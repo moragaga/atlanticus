@@ -386,20 +386,20 @@ def _render_service(
 ) -> str:
     alias = selected.deployment.excecution_file
     artifact = selected.artifact
-    volume_source = "runtime" if volume_mode == "named" else "./.runtime/volumen"
+    volume_source = "runtime" if volume_mode == "named" else "../../.runtime/volumen"
     return "\n".join(
         (
             f"  {alias}:",
             f"    image: atlanticus-{distribution_name}-{alias}:local",
             "    build:",
-            "      context: .",
+            "      context: ../..",
             "      dockerfile: Dockerfile",
             "      args:",
             f"        FILENAME: {alias}",
             '    command: ["--run-once"]',
             '    restart: "no"',
             "    env_file:",
-            f"      - ./processes/{alias}/.env",
+            f"      - ../../processes/{alias}/.env",
             "    environment:",
             f"      VOLUMEN_PATH: {DEFAULT_VOLUME_PATH}",
             "    volumes:",
@@ -528,6 +528,37 @@ def _copy_consumer_tooling(staging_root: Path) -> None:
 
 
 # Antes del reemplazo se validan manifest, services, aliases, Compose y artifacts.
+# Empaqueta capacidad local; no la ejecuta durante distribute.
+def _copy_local_deployment_capability(
+    repository_root: Path,
+    staging_root: Path,
+) -> Path:
+    source = repository_root / "deployment/local"
+    target = staging_root / "deployment/local"
+    target.mkdir(parents=True, exist_ok=True)
+    simulation_source = source / "simulation.py"
+    scheduler_source = source / "scheduler"
+    if not simulation_source.is_file():
+        raise DistributionError(
+            f"Local simulation capability not found: {simulation_source}"
+        )
+    if (
+        not (scheduler_source / "Dockerfile").is_file()
+        or not (scheduler_source / "scheduler.py").is_file()
+    ):
+        raise DistributionError(
+            f"Local scheduler capability is incomplete: {scheduler_source}"
+        )
+    shutil.copy2(simulation_source, target / "simulation.py")
+    shutil.copytree(
+        scheduler_source,
+        target / "scheduler",
+        ignore=shutil.ignore_patterns("commented", "tests", "__pycache__"),
+    )
+    return target
+
+
+# La raíz conserva sólo contratos/payload y la compatibilidad externa del Dockerfile.
 def _validate_staging(
     *,
     staging_root: Path,
@@ -578,8 +609,9 @@ def _validate_staging(
         raise DistributionError(
             "Generated services manifest does not match the deployment catalog"
         )
+    local_root = staging_root / "deployment/local"
     for compose_name in ("compose.yaml", "compose.bind.yaml"):
-        compose = (staging_root / compose_name).read_text(encoding="utf-8")
+        compose = (local_root / compose_name).read_text(encoding="utf-8")
         marker = f'{DISTRIBUTION_CONTRACT_KEY}: "{DISTRIBUTION_CONTRACT_VERSION}"'
         if marker not in compose:
             raise DistributionError(
@@ -590,6 +622,21 @@ def _validate_staging(
                 raise DistributionError(
                     f"Generated Compose is missing deployment alias {alias}: {compose_name}"
                 )
+    if (staging_root / "compose.yaml").exists() or (
+        staging_root / "compose.bind.yaml"
+    ).exists():
+        raise DistributionError(
+            "Local Compose files must not live at distribution root"
+        )
+    for required in (
+        local_root / "simulation.py",
+        local_root / "scheduler/Dockerfile",
+        local_root / "scheduler/scheduler.py",
+    ):
+        if not required.is_file():
+            raise DistributionError(
+                f"Generated local deployment capability is missing: {required}"
+            )
     if (staging_root / ".runtime").exists():
         raise DistributionError("Generated distribution must not contain .runtime")
     for name in ("process.py", "process.sh", "process.cmd"):
@@ -599,7 +646,6 @@ def _validate_staging(
             )
 
 
-# El reemplazo transaccional evita dejar una distribución parcial.
 def _replace_directory(source: Path, target: Path) -> None:
     replacement = target.with_name(f".{target.name}.atlanticus-{uuid.uuid4().hex}.new")
     backup = target.with_name(f".{target.name}.atlanticus-{uuid.uuid4().hex}.backup")
@@ -732,7 +778,11 @@ def distribute(
             json.dumps(_services(selected_processes), indent=2) + "\n",
             encoding="utf-8",
         )
-        (staging_root / "compose.yaml").write_text(
+        local_root = _copy_local_deployment_capability(
+            repository_root,
+            staging_root,
+        )
+        (local_root / "compose.yaml").write_text(
             _render_compose(
                 distribution_name,
                 selected_processes,
@@ -740,7 +790,7 @@ def distribute(
             ),
             encoding="utf-8",
         )
-        (staging_root / "compose.bind.yaml").write_text(
+        (local_root / "compose.bind.yaml").write_text(
             _render_compose(
                 distribution_name,
                 selected_processes,

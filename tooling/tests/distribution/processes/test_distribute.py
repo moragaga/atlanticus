@@ -103,6 +103,12 @@ def _write_transport(root: Path) -> None:
     deployment.mkdir(parents=True)
     (deployment / "Dockerfile").write_text("FROM scratch\n", encoding="utf-8")
     (deployment / ".dockerignore").write_text("*\n", encoding="utf-8")
+    local = root / "deployment/local"
+    scheduler = local / "scheduler"
+    scheduler.mkdir(parents=True)
+    (local / "simulation.py").write_text("VALUE = 1\n", encoding="utf-8")
+    (scheduler / "Dockerfile").write_text("FROM scratch\n", encoding="utf-8")
+    (scheduler / "scheduler.py").write_text("VALUE = 1\n", encoding="utf-8")
 
 
 def _patch_generation_context(monkeypatch, tmp_path: Path) -> None:
@@ -303,3 +309,35 @@ def test_regeneration_preserves_retained_consumer_configuration(
     for name in distribution.CONSUMER_CONFIGURATION_FILES:
         assert (target / "processes/kpis" / name).read_text() == f"{name}\n"
     assert not (target / "processes/pi-web-api").exists()
+
+
+def test_distribution_keeps_local_deployment_assets_out_of_root(
+    tmp_path: Path, monkeypatch
+) -> None:
+    _write_transport(tmp_path)
+    runtime = _write_source(
+        tmp_path,
+        "scopes/ada/backend/processes/kpi-runtime",
+        "ada-kpi-runtime",
+    )
+    _patch_generation_context(monkeypatch, tmp_path)
+    bundle = BundleStub({"ada-kpi-runtime": runtime})
+
+    target = distribution.distribute(
+        repository_root=tmp_path,
+        output_root=tmp_path / "distribution",
+        distribution_name="ada-generic",
+        selections=("ada-kpi-runtime",),
+        targets=(),
+        bundle=bundle,
+    )
+
+    assert (target / "Dockerfile").is_file()
+    assert (target / ".dockerignore").is_file()
+    assert not (target / "compose.yaml").exists()
+    assert not (target / "compose.bind.yaml").exists()
+    assert (target / "deployment/local/compose.yaml").is_file()
+    assert (target / "deployment/local/compose.bind.yaml").is_file()
+    assert (target / "deployment/local/simulation.py").is_file()
+    assert (target / "deployment/local/scheduler/Dockerfile").is_file()
+    assert (target / "deployment/local/scheduler/scheduler.py").is_file()
