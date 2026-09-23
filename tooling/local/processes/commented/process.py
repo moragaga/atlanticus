@@ -195,12 +195,35 @@ def _prepare(
     )
     output_root = repository_root / "artifacts/processes"
     for process_root in process_roots:
+        # Captura el estado antes de construir para impedir receipts sobre source cambiante.
+        fingerprint_before = bundle.process_build_inputs_fingerprint(
+            repository_root,
+            process_root,
+        )
         output_path = bundle.build_process_bundle(
             repository_root=repository_root,
             process_root=process_root,
             output_root=output_root,
         )
+        fingerprint_after = bundle.process_build_inputs_fingerprint(
+            repository_root,
+            process_root,
+        )
+        if fingerprint_before != fingerprint_after:
+            # Un bundle potencialmente inconsistente no queda disponible como proyección QA.
+            shutil.rmtree(output_path, ignore_errors=True)
+            raise ProcessToolError(
+                "Process build inputs changed while prepare was running. "
+                "Run prepare again."
+            )
+        # El receipt demuestra prepare exitoso; no implica QA aprobado ni uso de Docker.
+        receipt_path = bundle.write_prepare_receipt(
+            repository_root,
+            process_root,
+            fingerprint_after,
+        )
         print(output_path)
+        print(f"Prepare receipt: {receipt_path}")
     print(f"Process artifacts prepared in: {output_root}")
     print("Create one .env beside each artifact pyproject.toml before local execution.")
 

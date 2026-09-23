@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import platform
@@ -14,10 +15,12 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 PYTHON_VERSION = "3.14.2"
 BOOTSTRAP_ENVIRONMENT_VARIABLE = "ATLANTICUS_DISTRIBUTION_TOOL_BOOTSTRAPPED"
+BUNDLE_MODULE_NAME = "atlanticus_distribution_process_bundle"
 PROCESS_NAME_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 DISTRIBUTION_NAME_PATTERN = PROCESS_NAME_PATTERN
 MEMORY_PATTERN = re.compile(r"^[1-9][0-9]*(?:\.[0-9]+)?[bkmg]?$", re.IGNORECASE)
@@ -85,6 +88,12 @@ class ProcessArtifact:
 
 
 @dataclass(frozen=True, slots=True)
+class SelectedSource:
+    process_root: Path
+    deployment: ProcessDeployment
+
+
+@dataclass(frozen=True, slots=True)
 class SelectedProcess:
     artifact: ProcessArtifact
     deployment: ProcessDeployment
@@ -116,6 +125,17 @@ def _repository_root() -> Path:
         ).is_file():
             return candidate
     raise DistributionError("Atlanticus repository root could not be resolved")
+
+
+def _load_bundle(repository_root: Path) -> ModuleType:
+    path = repository_root / "deployment/processes/bundle.py"
+    spec = importlib.util.spec_from_file_location(BUNDLE_MODULE_NAME, path)
+    if spec is None or spec.loader is None:
+        raise DistributionError(f"Process bundle module could not be loaded: {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def _bootstrap(raw_argv: list[str]) -> None:
@@ -256,24 +276,6 @@ def _load_artifact(
     )
 
 
-def _discover_artifacts(repository_root: Path) -> dict[str, ProcessArtifact]:
-    artifacts_root = repository_root / "artifacts/processes"
-    if not artifacts_root.is_dir():
-        raise DistributionError(
-            f"Process artifacts directory not found: {artifacts_root}. "
-            "Prepare the required process artifacts before distributing them."
-        )
-    artifacts: dict[str, ProcessArtifact] = {}
-    for pyproject_path in sorted(artifacts_root.glob("*/pyproject.toml")):
-        artifact = _load_artifact(pyproject_path.parent)
-        if artifact.name in artifacts:
-            raise DistributionError(f"Duplicate process artifact: {artifact.name}")
-        artifacts[artifact.name] = artifact
-    if not artifacts:
-        raise DistributionError(f"No process artifacts found: {artifacts_root}")
-    return artifacts
-
-
 def _target_candidates(repository_root: Path, target: str) -> tuple[Path, ...]:
     candidates = [repository_root / "scopes" / target / "processes"]
     if target.endswith("-backend"):
@@ -314,10 +316,10 @@ def _target_commands(repository_root: Path, target: str) -> tuple[str, ...]:
 def _resolve_selection(
     *,
     repository_root: Path,
-    artifacts: dict[str, ProcessArtifact],
+    bundle: ModuleType,
     selections: tuple[str, ...],
     targets: tuple[str, ...],
-) -> tuple[SelectedProcess, ...]:
+) -> tuple[SelectedSource, ...]:
     requested: list[str] = list(selections)
     for target in targets:
         requested.extend(_target_commands(repository_root, target))
@@ -326,12 +328,6 @@ def _resolve_selection(
             "Select at least one process or provide one or more --target values"
         )
     requested_names = frozenset(requested)
-    unknown_artifacts = tuple(name for name in requested_names if name not in artifacts)
-    if unknown_artifacts:
-        raise DistributionError(
-            "Prepared process artifact not found: "
-            + ", ".join(sorted(unknown_artifacts))
-        )
     unknown_deployments = tuple(
         name for name in requested_names if name not in DEPLOYMENT_BY_PROCESS
     )
@@ -341,8 +337,8 @@ def _resolve_selection(
             + ", ".join(sorted(unknown_deployments))
         )
     return tuple(
-        SelectedProcess(
-            artifact=artifacts[item.process],
+        SelectedSource(
+            process_root=bundle.resolve_process_root(repository_root, item.process),
             deployment=item,
         )
         for item in DEPLOYMENT_CATALOG
@@ -614,26 +610,63 @@ def distribute(
     distribution_name: str,
     selections: tuple[str, ...],
     targets: tuple[str, ...],
+    bundle: ModuleType | None = None,
 ) -> Path:
     if not DISTRIBUTION_NAME_PATTERN.fullmatch(distribution_name):
         raise DistributionError(f"Invalid distribution name: {distribution_name}")
     repository_root = repository_root.resolve()
-    artifacts = _discover_artifacts(repository_root)
-    selected = _resolve_selection(
-        repository_root=repository_root,
-        artifacts=artifacts,
-        selections=selections,
-        targets=targets,
-    )
+    bundle = _load_bundle(repository_root) if bundle is None else bundle
+    try:
+        selected_sources = _resolve_selection(
+            repository_root=repository_root,
+            bundle=bundle,
+            selections=selections,
+            targets=targets,
+        )
+        for item in selected_sources:
+            bundle.require_prepared_build_inputs(
+                repository_root,
+                item.process_root,
+            )
+    except bundle.ProcessBundleError as error:
+        raise DistributionError(str(error)) from error
     generated_at = _generated_at()
     source_revision = _source_revision(repository_root)
     output_root = output_root.resolve()
     output_root.mkdir(parents=True, exist_ok=True)
     target_root = output_root / distribution_name
     temporary = Path(
-        tempfile.mkdtemp(prefix=f".{distribution_name}.atlanticus-", dir=output_root)
+        tempfile.mkdtemp(prefix=f"atlanticus-{distribution_name}-distribution-")
     )
     try:
+        bundle_root = temporary / "bundles"
+        selected: list[SelectedProcess] = []
+        try:
+            for item in selected_sources:
+                rebuilt = bundle.build_process_bundle(
+                    repository_root=repository_root,
+                    process_root=item.process_root,
+                    output_root=bundle_root,
+                )
+                bundle.require_prepared_build_inputs(
+                    repository_root,
+                    item.process_root,
+                )
+                artifact = _load_artifact(rebuilt)
+                if artifact.command != item.deployment.process:
+                    raise DistributionError(
+                        "Rebuilt process command does not match deployment catalog: "
+                        f"{artifact.command}"
+                    )
+                selected.append(
+                    SelectedProcess(
+                        artifact=artifact,
+                        deployment=item.deployment,
+                    )
+                )
+        except bundle.ProcessBundleError as error:
+            raise DistributionError(str(error)) from error
+        selected_processes = tuple(selected)
         staging_root = temporary / distribution_name
         staging_root.mkdir()
         shutil.copy2(
@@ -646,7 +679,7 @@ def distribute(
         )
         processes_root = staging_root / "processes"
         processes_root.mkdir()
-        for item in selected:
+        for item in selected_processes:
             alias = item.deployment.excecution_file
             staged_process = processes_root / alias
             shutil.copytree(
@@ -663,7 +696,7 @@ def distribute(
             json.dumps(
                 _manifest(
                     distribution_name,
-                    selected,
+                    selected_processes,
                     generated_at=generated_at,
                     source_revision=source_revision,
                 ),
@@ -673,22 +706,30 @@ def distribute(
             encoding="utf-8",
         )
         (staging_root / "services.json").write_text(
-            json.dumps(_services(selected), indent=2) + "\n",
+            json.dumps(_services(selected_processes), indent=2) + "\n",
             encoding="utf-8",
         )
         (staging_root / "compose.yaml").write_text(
-            _render_compose(distribution_name, selected, volume_mode="named"),
+            _render_compose(
+                distribution_name,
+                selected_processes,
+                volume_mode="named",
+            ),
             encoding="utf-8",
         )
         (staging_root / "compose.bind.yaml").write_text(
-            _render_compose(distribution_name, selected, volume_mode="bind"),
+            _render_compose(
+                distribution_name,
+                selected_processes,
+                volume_mode="bind",
+            ),
             encoding="utf-8",
         )
         _copy_consumer_tooling(staging_root)
         _validate_staging(
             staging_root=staging_root,
             distribution_name=distribution_name,
-            selected=selected,
+            selected=selected_processes,
             generated_at=generated_at,
             source_revision=source_revision,
         )
@@ -700,7 +741,7 @@ def distribute(
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Build a declarative consumer distribution from prepared process artifacts."
+        description="Build a declarative consumer distribution from prepared process source."
     )
     parser.add_argument("distribution")
     parser.add_argument("processes", nargs="*")
@@ -708,7 +749,7 @@ def _parser() -> argparse.ArgumentParser:
         "--target",
         action="append",
         default=[],
-        help="Include every prepared process belonging to one logical source target.",
+        help="Include every process belonging to one logical source target.",
     )
     parser.add_argument(
         "--output-root",

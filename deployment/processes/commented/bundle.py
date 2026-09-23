@@ -5,6 +5,9 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
+import hashlib
+import json
 import os
 import re
 import shutil
@@ -18,6 +21,9 @@ from typing import Any
 
 PYTHON_VERSION = "3.14.2"
 BUNDLE_DEPENDENCY_GROUP = "bundle-internal"
+BUILD_INPUTS_FINGERPRINT_VERSION = 1
+PREPARE_RECEIPT_SCHEMA_VERSION = 1
+PREPARE_RECEIPT_ROOT = Path("artifacts/receipts/processes")
 TRANSPORT_EXCLUDED_ROOT_NAMES = frozenset({"commented", "docs", "scripts", "tests"})
 ALLOWED_SYSTEM_PROFILES = frozenset({"base", "sqlserver"})
 IGNORED_DIRECTORY_NAMES = frozenset(
@@ -293,6 +299,163 @@ def resolve_process_root(
         rendered = ", ".join(str(path.relative_to(repository_root)) for path in matches)
         raise ProcessBundleError(f"ambiguous process selection {value}: {rendered}")
     return matches[0]
+
+
+# Serializa cada componente con su longitud para mantener un hash canónico sin ambigüedad.
+def _fingerprint_component(hasher: Any, value: bytes) -> None:
+    hasher.update(len(value).to_bytes(8, "big"))
+    hasher.update(value)
+
+
+# Enumera la misma entrada que el bundler puede copiar, ignorando estado local y regenerable.
+def _project_input_files(
+    project: ProjectDefinition,
+    *,
+    process_project: bool,
+) -> tuple[Path, ...]:
+    files: list[Path] = []
+    for path in sorted(project.root.rglob("*")):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(project.root)
+        if any(
+            fnmatch.fnmatchcase(part, pattern)
+            for part in relative.parts
+            for pattern in PROJECT_COPY_IGNORE_PATTERNS
+        ):
+            continue
+        # El proceso descarta lock y wheels previos antes de reconstruirlos.
+        if process_project and (
+            relative == Path("uv.lock") or relative.parts[0] == "wheels"
+        ):
+            continue
+        files.append(path)
+    return tuple(files)
+
+
+# Identifica proceso, dependencias internas y la semántica productiva del bundler.
+def process_build_inputs_fingerprint(
+    repository_root: Path,
+    process_root: Path,
+) -> str:
+    process = load_project(process_root)
+    _validate_python_contract(process)
+    load_container_definition(process)
+    projects = discover_projects(repository_root)
+    dependencies = resolve_internal_dependencies(process, projects)
+    for dependency in dependencies:
+        _validate_python_contract(dependency)
+    hasher = hashlib.sha256()
+    _fingerprint_component(
+        hasher,
+        f"atlanticus-process-build-inputs-v{BUILD_INPUTS_FINGERPRINT_VERSION}".encode(),
+    )
+    try:
+        # Un cambio en el bundler invalida receipts previos porque puede cambiar la salida.
+        _fingerprint_component(hasher, Path(__file__).read_bytes())
+        ordered = (
+            ("process", process),
+            *(
+                ("dependency", dependency)
+                for dependency in sorted(
+                    dependencies,
+                    key=lambda item: canonicalize_package_name(item.name),
+                )
+            ),
+        )
+        for role, project in ordered:
+            _fingerprint_component(hasher, role.encode())
+            _fingerprint_component(
+                hasher,
+                canonicalize_package_name(project.name).encode(),
+            )
+            for path in _project_input_files(
+                project,
+                process_project=role == "process",
+            ):
+                relative = path.relative_to(project.root).as_posix()
+                _fingerprint_component(hasher, relative.encode())
+                _fingerprint_component(hasher, path.read_bytes())
+    except OSError as error:
+        raise ProcessBundleError(
+            f"could not fingerprint process build inputs: {process_root}"
+        ) from error
+    return f"sha256:{hasher.hexdigest()}"
+
+
+# Separa el receipt de la proyección QA para que editar artifacts no altere provenance.
+def prepare_receipt_path(repository_root: Path, process_root: Path) -> Path:
+    process = load_project(process_root)
+    command = load_container_definition(process).command
+    return repository_root / PREPARE_RECEIPT_ROOT / f"{command}.json"
+
+
+# Persiste evidencia de prepare exitoso sin afirmar aprobación QA ni ejecución Docker.
+def write_prepare_receipt(
+    repository_root: Path,
+    process_root: Path,
+    fingerprint: str,
+) -> Path:
+    if re.fullmatch(r"sha256:[0-9a-f]{64}", fingerprint) is None:
+        raise ProcessBundleError(f"invalid build inputs fingerprint: {fingerprint}")
+    process = load_project(process_root)
+    command = load_container_definition(process).command
+    path = prepare_receipt_path(repository_root, process_root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema_version": PREPARE_RECEIPT_SCHEMA_VERSION,
+        "process": command,
+        "project": process.name,
+        "version": process.version,
+        "build_inputs_fingerprint": fingerprint,
+    }
+    temporary = path.with_suffix(".json.tmp")
+    try:
+        temporary.write_text(
+            json.dumps(payload, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        os.replace(temporary, path)
+    except OSError as error:
+        if temporary.exists():
+            temporary.unlink()
+        raise ProcessBundleError(f"could not write prepare receipt: {path}") from error
+    return path
+
+
+# Exige que el source vigente continúe correspondiendo al último prepare exitoso.
+def require_prepared_build_inputs(
+    repository_root: Path,
+    process_root: Path,
+) -> Path:
+    process = load_project(process_root)
+    command = load_container_definition(process).command
+    path = prepare_receipt_path(repository_root, process_root)
+    if not path.is_file():
+        raise ProcessBundleError(
+            f"prepare receipt not found for {command}. "
+            f"Run the local process tool with: prepare {command}"
+        )
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ProcessBundleError(f"prepare receipt is invalid: {path}") from error
+    if (
+        not isinstance(payload, dict)
+        or payload.get("schema_version") != PREPARE_RECEIPT_SCHEMA_VERSION
+        or payload.get("process") != command
+        or payload.get("project") != process.name
+        or payload.get("version") != process.version
+        or not isinstance(payload.get("build_inputs_fingerprint"), str)
+    ):
+        raise ProcessBundleError(f"prepare receipt contract is invalid: {path}")
+    current = process_build_inputs_fingerprint(repository_root, process_root)
+    if payload["build_inputs_fingerprint"] != current:
+        raise ProcessBundleError(
+            f"prepared build inputs are stale for {command}. "
+            f"Run the local process tool with: prepare {command}"
+        )
+    return path
 
 
 def build_process_bundle(

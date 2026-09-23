@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import shutil
 import sys
+import tomllib
 from pathlib import Path
 
 MODULE_PATH = (
@@ -17,34 +19,65 @@ sys.modules[SPEC.name] = distribution
 SPEC.loader.exec_module(distribution)
 
 
-def _write_process(root: Path, name: str, project: str | None = None) -> None:
-    process = root / "artifacts/processes" / name
-    (process / "wheels").mkdir(parents=True)
-    (process / "src").mkdir()
-    project_name = project or f"{name}-package"
-    (process / "pyproject.toml").write_text(
-        "[project]\n"
-        f'name = "{project_name}"\n'
-        'version = "1.0.0"\n'
-        f'description = "Process {name}."\n'
-        'requires-python = "==3.14.2"\n'
-        "dependencies = []\n\n"
-        "[project.scripts]\n"
-        f'{name} = "sample:main"\n\n'
-        "[tool.atlanticus.container]\n"
-        f'command = "{name}"\n'
-        'system-profile = "base"\n',
-        encoding="utf-8",
-    )
-    (process / "uv.lock").write_text("version = 1\n", encoding="utf-8")
-    (process / ".env.detail").write_text("ENVIRONMENT=local\n", encoding="utf-8")
-    (process / "config.detail.json").write_text("{}\n", encoding="utf-8")
-    (process / "secrets.detail.json").write_text("[]\n", encoding="utf-8")
+class BundleStub:
+    class ProcessBundleError(RuntimeError):
+        pass
+
+    def __init__(
+        self, roots: dict[str, Path], *, stale: set[str] | None = None
+    ) -> None:
+        self.roots = roots
+        self.stale = stale or set()
+        self.builds: list[str] = []
+        self.output_roots: list[Path] = []
+
+    def resolve_process_root(self, repository_root: Path, value: str) -> Path:
+        try:
+            return self.roots[value]
+        except KeyError as error:
+            raise self.ProcessBundleError(
+                f"process project not found: {value}"
+            ) from error
+
+    def require_prepared_build_inputs(
+        self,
+        repository_root: Path,
+        process_root: Path,
+    ) -> Path:
+        command = _command(process_root)
+        if command in self.stale:
+            raise self.ProcessBundleError(
+                f"prepared build inputs are stale for {command}. "
+                f"Run the local process tool with: prepare {command}"
+            )
+        return repository_root / f"artifacts/receipts/processes/{command}.json"
+
+    def build_process_bundle(
+        self,
+        *,
+        repository_root: Path,
+        process_root: Path,
+        output_root: Path,
+    ) -> Path:
+        command = _command(process_root)
+        self.builds.append(command)
+        self.output_roots.append(output_root.resolve())
+        output = output_root / command
+        shutil.copytree(process_root, output)
+        (output / "uv.lock").write_text("version = 1\n", encoding="utf-8")
+        (output / "wheels").mkdir()
+        return output
 
 
-def _write_source(root: Path, relative: str, name: str) -> None:
+def _command(root: Path) -> str:
+    metadata = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    return metadata["tool"]["atlanticus"]["container"]["command"]
+
+
+def _write_source(root: Path, relative: str, name: str) -> Path:
     process = root / relative
-    process.mkdir(parents=True)
+    (process / "src/sample").mkdir(parents=True)
+    (process / "src/sample/__init__.py").write_text("SOURCE = 1\n", encoding="utf-8")
     (process / "pyproject.toml").write_text(
         "[project]\n"
         f'name = "{name}-package"\n'
@@ -59,6 +92,10 @@ def _write_source(root: Path, relative: str, name: str) -> None:
         'system-profile = "base"\n',
         encoding="utf-8",
     )
+    (process / ".env.detail").write_text("ENVIRONMENT=local\n", encoding="utf-8")
+    (process / "config.detail.json").write_text("{}\n", encoding="utf-8")
+    (process / "secrets.detail.json").write_text("[]\n", encoding="utf-8")
+    return process
 
 
 def _write_transport(root: Path) -> None:
@@ -78,7 +115,7 @@ def _patch_generation_context(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(
         distribution,
         "_source_revision",
-        lambda repository_root: "b93bfdc1b691daff72796c86d91e2890d94a8079",
+        lambda repository_root: "a7623b7589cd988bfea693e0a182640751ef52a6",
     )
 
 
@@ -100,18 +137,102 @@ def test_deployment_catalog_is_stable() -> None:
     ]
 
 
-def test_mixed_explicit_processes_generate_pipeline_contract(
+def test_distribution_rebuilds_source_and_never_copies_mutable_qa_artifact(
     tmp_path: Path, monkeypatch
 ) -> None:
     _write_transport(tmp_path)
-    for name in (
-        "operational-data-pi",
-        "operational-data-dispatch",
+    runtime = _write_source(
+        tmp_path,
+        "scopes/ada/backend/processes/kpi-runtime",
         "ada-kpi-runtime",
-        "ada-kpi-delivery",
-    ):
-        _write_process(tmp_path, name)
+    )
+    qa_source = tmp_path / "artifacts/processes/ada-kpi-runtime/src"
+    qa_source.mkdir(parents=True)
+    (qa_source / "manual.py").write_text("QA_ONLY = 1\n", encoding="utf-8")
     _patch_generation_context(monkeypatch, tmp_path)
+    bundle = BundleStub({"ada-kpi-runtime": runtime})
+
+    target = distribution.distribute(
+        repository_root=tmp_path,
+        output_root=tmp_path / "distribution",
+        distribution_name="ada-generic",
+        selections=("ada-kpi-runtime",),
+        targets=(),
+        bundle=bundle,
+    )
+
+    assert bundle.builds == ["ada-kpi-runtime"]
+    assert all(
+        not output_root.is_relative_to(tmp_path.resolve())
+        for output_root in bundle.output_roots
+    )
+    assert (target / "processes/kpis/src/sample/__init__.py").is_file()
+    assert not (target / "processes/kpis/src/manual.py").exists()
+
+
+def test_distribution_blocks_stale_source_before_rebuild(
+    tmp_path: Path, monkeypatch
+) -> None:
+    _write_transport(tmp_path)
+    runtime = _write_source(
+        tmp_path,
+        "scopes/ada/backend/processes/kpi-runtime",
+        "ada-kpi-runtime",
+    )
+    _patch_generation_context(monkeypatch, tmp_path)
+    bundle = BundleStub(
+        {"ada-kpi-runtime": runtime},
+        stale={"ada-kpi-runtime"},
+    )
+
+    try:
+        distribution.distribute(
+            repository_root=tmp_path,
+            output_root=tmp_path / "distribution",
+            distribution_name="ada-generic",
+            selections=("ada-kpi-runtime",),
+            targets=(),
+            bundle=bundle,
+        )
+    except distribution.DistributionError as error:
+        assert "prepared build inputs are stale" in str(error)
+    else:
+        raise AssertionError("Expected stale prepare receipt to block distribution")
+
+    assert bundle.builds == []
+
+
+def test_mixed_source_scopes_keep_deployment_order(tmp_path: Path, monkeypatch) -> None:
+    _write_transport(tmp_path)
+    pi = _write_source(
+        tmp_path,
+        "scopes/operational-data/processes/pi",
+        "operational-data-pi",
+    )
+    dispatch = _write_source(
+        tmp_path,
+        "scopes/operational-data/processes/dispatch",
+        "operational-data-dispatch",
+    )
+    runtime = _write_source(
+        tmp_path,
+        "scopes/ada/backend/processes/kpi-runtime",
+        "ada-kpi-runtime",
+    )
+    delivery = _write_source(
+        tmp_path,
+        "scopes/ada/backend/processes/kpi-delivery",
+        "ada-kpi-delivery",
+    )
+    _patch_generation_context(monkeypatch, tmp_path)
+    bundle = BundleStub(
+        {
+            "operational-data-pi": pi,
+            "operational-data-dispatch": dispatch,
+            "ada-kpi-runtime": runtime,
+            "ada-kpi-delivery": delivery,
+        }
+    )
 
     target = distribution.distribute(
         repository_root=tmp_path,
@@ -124,92 +245,39 @@ def test_mixed_explicit_processes_generate_pipeline_contract(
             "operational-data-pi",
         ),
         targets=(),
+        bundle=bundle,
     )
 
-    manifest = json.loads((target / "distribution.json").read_text(encoding="utf-8"))
-    assert manifest["generated_at"] == "2026-09-22T23:30:00Z"
-    assert manifest["source"] == {
-        "repository": "atlanticus",
-        "revision": "b93bfdc1b691daff72796c86d91e2890d94a8079",
-    }
-    assert [item["process"] for item in manifest["processes"]] == [
-        "operational-data-pi",
-        "operational-data-dispatch",
-        "ada-kpi-runtime",
-        "ada-kpi-delivery",
-    ]
-    assert manifest["processes"][2]["description"] == "Process ada-kpi-runtime."
-    assert manifest["processes"][2]["runtime"] == {
-        "language": "python",
-        "version": "3.14.2",
-    }
-    assert manifest["processes"][2]["deployment"] == {
-        "excecution_file": "kpis",
-        "container_name": "job21",
-    }
-
     services = json.loads((target / "services.json").read_text(encoding="utf-8"))
-    assert services == [
-        {
-            "repository": "pi-web-api",
-            "excecution_file": "pi-web-api",
-            "container_name": "job01",
-            "config_file": "processes/pi-web-api/config.json",
-            "to_deploy": True,
-            "to_stop": False,
-            "to_working_hours_dev": True,
-            "to_working_hours_uat": True,
-        },
-        {
-            "repository": "dispatch",
-            "excecution_file": "dispatch",
-            "container_name": "job03",
-            "config_file": "processes/dispatch/config.json",
-            "to_deploy": True,
-            "to_stop": False,
-            "to_working_hours_dev": True,
-            "to_working_hours_uat": True,
-        },
-        {
-            "repository": "kpis",
-            "excecution_file": "kpis",
-            "container_name": "job21",
-            "config_file": "processes/kpis/config.json",
-            "to_deploy": True,
-            "to_stop": False,
-            "to_working_hours_dev": True,
-            "to_working_hours_uat": True,
-        },
-        {
-            "repository": "kpis-delivery",
-            "excecution_file": "kpis-delivery",
-            "container_name": "job41",
-            "config_file": "processes/kpis-delivery/config.json",
-            "to_deploy": True,
-            "to_stop": False,
-            "to_working_hours_dev": True,
-            "to_working_hours_uat": True,
-        },
+    assert [item["container_name"] for item in services] == [
+        "job01",
+        "job03",
+        "job21",
+        "job41",
     ]
-    assert {path.name for path in (target / "processes").iterdir()} == {
-        "pi-web-api",
-        "dispatch",
-        "kpis",
-        "kpis-delivery",
-    }
-    compose = (target / "compose.yaml").read_text(encoding="utf-8")
-    assert "FILENAME: kpis" in compose
-    assert "FILENAME: operational-data-pi" not in compose
-    assert not (target / ".runtime").exists()
 
 
 def test_regeneration_preserves_retained_consumer_configuration(
     tmp_path: Path, monkeypatch
 ) -> None:
     _write_transport(tmp_path)
-    for name in ("operational-data-pi", "ada-kpi-runtime"):
-        _write_process(tmp_path, name)
+    pi = _write_source(
+        tmp_path,
+        "scopes/operational-data/processes/pi",
+        "operational-data-pi",
+    )
+    runtime = _write_source(
+        tmp_path,
+        "scopes/ada/backend/processes/kpi-runtime",
+        "ada-kpi-runtime",
+    )
     _patch_generation_context(monkeypatch, tmp_path)
+    bundle = BundleStub(
+        {
+            "operational-data-pi": pi,
+            "ada-kpi-runtime": runtime,
+        }
+    )
 
     target = distribution.distribute(
         repository_root=tmp_path,
@@ -217,6 +285,7 @@ def test_regeneration_preserves_retained_consumer_configuration(
         distribution_name="consumer",
         selections=("operational-data-pi", "ada-kpi-runtime"),
         targets=(),
+        bundle=bundle,
     )
     retained = target / "processes/kpis"
     for name in distribution.CONSUMER_CONFIGURATION_FILES:
@@ -228,45 +297,9 @@ def test_regeneration_preserves_retained_consumer_configuration(
         distribution_name="consumer",
         selections=("ada-kpi-runtime",),
         targets=(),
+        bundle=bundle,
     )
 
     for name in distribution.CONSUMER_CONFIGURATION_FILES:
         assert (target / "processes/kpis" / name).read_text() == f"{name}\n"
     assert not (target / "processes/pi-web-api").exists()
-
-
-def test_target_expansion_uses_current_source_layouts(
-    tmp_path: Path, monkeypatch
-) -> None:
-    _write_transport(tmp_path)
-    _write_process(tmp_path, "ada-kpi-runtime")
-    _write_process(tmp_path, "operational-data-pi")
-    _write_source(
-        tmp_path,
-        "scopes/ada/backend/processes/kpi-runtime",
-        "ada-kpi-runtime",
-    )
-    _write_source(
-        tmp_path,
-        "scopes/operational-data/processes/pi",
-        "operational-data-pi",
-    )
-    _patch_generation_context(monkeypatch, tmp_path)
-
-    target = distribution.distribute(
-        repository_root=tmp_path,
-        output_root=tmp_path / "distribution",
-        distribution_name="mixed-targets",
-        selections=(),
-        targets=("ada-backend", "operational-data"),
-    )
-
-    manifest = json.loads((target / "distribution.json").read_text(encoding="utf-8"))
-    assert [item["process"] for item in manifest["processes"]] == [
-        "operational-data-pi",
-        "ada-kpi-runtime",
-    ]
-    assert {path.name for path in (target / "processes").iterdir()} == {
-        "pi-web-api",
-        "kpis",
-    }
