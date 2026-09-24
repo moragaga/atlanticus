@@ -20,22 +20,45 @@ from ada.web.tools.persistence import (
     ToolProjectionResolutionState,
     compose_tool_persistence,
 )
-from atlanticus.connectivity.cosmos import CosmosClient, CosmosError
-from atlanticus.connectivity.storage import StorageClient, StorageError
+from atlanticus.connectivity.cosmos import CosmosClient, CosmosError, CosmosOperationError
+from atlanticus.connectivity.storage import (
+    StorageAuthenticationError,
+    StorageAuthorizationError,
+    StorageClient,
+    StorageConnectionError,
+    StorageContainerNotFoundError,
+    StorageError,
+    StorageOperationError,
+)
 from atlanticus.web.application import create_web_application
 from atlanticus.web.manager import ManagerSurface
 from atlanticus.web.manager.web.ids import LOCATION_ID
 from atlanticus.web.models import WebApplicationDefinition, WebApplicationRuntime
+from atlanticus.web.projection.errors import ProjectionStoreError
+from atlanticus.web.source.errors import SourceUnavailableError
+from atlanticus.web.users.errors import UsersStoreUnavailableError
 
 _LOGGER = logging.getLogger(__name__)
+# Excepciones de infraestructura que degradan solamente la vista administrativa.
+_MANAGER_UNAVAILABLE_ERRORS = (
+    CosmosOperationError,
+    StorageAuthenticationError,
+    StorageAuthorizationError,
+    StorageConnectionError,
+    StorageContainerNotFoundError,
+    StorageOperationError,
+    ProjectionStoreError,
+    SourceUnavailableError,
+    UsersStoreUnavailableError,
+)
 
 
+# El arranque de ADA y del Collector conserva su ciclo de vida actual.
 def create_operational_application_runtime(
     *,
     settings: AdaGenericSettings | None = None,
     manager_dependencies: ConfigurationManagerDependencies | None = None,
 ) -> WebApplicationRuntime:
-    # La composición recibe dependencias administrativas explícitas: nunca infiere privilegios.
     if settings is not None and not isinstance(settings, AdaGenericSettings):
         raise TypeError('settings must be AdaGenericSettings')
     if manager_dependencies is not None and not isinstance(
@@ -43,14 +66,12 @@ def create_operational_application_runtime(
     ):
         raise TypeError('manager_dependencies must be ConfigurationManagerDependencies')
 
-    # La aplicación operacional se resuelve sin exigir configuración de Tool existente.
     resolved_settings = settings or AdaGenericSettings()
     resolution = _resolve_tool_projection(resolved_settings)
     definition = create_definition_from_tool_resolution(resolution)
     kpi_cosmos_client = None
 
     try:
-        # El Collector sólo se incorpora con Tool READY y conexión de consumo configurada.
         if resolution.state is ToolProjectionResolutionState.READY:
             projection = resolution.projection
             if projection is None:
@@ -67,23 +88,20 @@ def create_operational_application_runtime(
                     reader_settings=resolved_settings.kpi_delivery_reader_settings(),
                 )
 
-        # Unificar definición y módulos antes de crear exactamente un servidor Flask/Dash.
-        # Las dependencias de Manager deben venir del composition root, no del runtime local ficticio.
         if manager_dependencies is not None:
             definition = _integrate_manager(definition, manager_dependencies)
 
         return create_web_application(definition)
     except Exception:
-        # Si falla la composición, liberar el cliente de consumo que acabamos de crear.
         _close_client(kpi_cosmos_client, 'KPI Delivery Cosmos')
         raise
 
 
+# El composition root decide qué fallas son recuperables; el núcleo Web es neutral.
 def _integrate_manager(
     definition: WebApplicationDefinition,
     dependencies: ConfigurationManagerDependencies,
 ) -> WebApplicationDefinition:
-    # Reutilizar el contrato real del Manager sin construir su aplicación independiente.
     surface = ManagerSurface(build_configuration_manager_surface(dependencies))
     return integrate_manager_surface(
         definition,
@@ -91,11 +109,13 @@ def _integrate_manager(
         page_packages=(_manager_pages_package,),
         route_prefix=MANAGER_ROUTE_PREFIX,
         location_id=LOCATION_ID,
+        # Errores de validación/programación no se incluyen para evitar ocultarlos.
+        unavailable_errors=_MANAGER_UNAVAILABLE_ERRORS,
     )
 
 
+# Las conexiones transitorias de Tool se cierran al terminar la resolución.
 def _resolve_tool_projection(settings: AdaGenericSettings) -> ToolProjectionResolution:
-    # Los clientes transitorios del bootstrap Tool se cierran incluso ante fallos.
     storage_client = _create_storage_client(settings)
     cosmos_client = _create_tool_projection_cosmos_client(settings)
     try:
@@ -126,6 +146,7 @@ def _create_tool_projection_cosmos_client(
     return CosmosClient(settings=cosmos_settings)
 
 
+# Se intenta cerrar siempre el cliente antes de devolver o propagar.
 def _close_client(client: StorageClient | CosmosClient | None, provider_name: str) -> None:
     if client is None:
         return

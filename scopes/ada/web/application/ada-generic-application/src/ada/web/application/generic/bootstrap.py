@@ -20,14 +20,36 @@ from ada.web.tools.persistence import (
     ToolProjectionResolutionState,
     compose_tool_persistence,
 )
-from atlanticus.connectivity.cosmos import CosmosClient, CosmosError
-from atlanticus.connectivity.storage import StorageClient, StorageError
+from atlanticus.connectivity.cosmos import CosmosClient, CosmosError, CosmosOperationError
+from atlanticus.connectivity.storage import (
+    StorageAuthenticationError,
+    StorageAuthorizationError,
+    StorageClient,
+    StorageConnectionError,
+    StorageContainerNotFoundError,
+    StorageError,
+    StorageOperationError,
+)
 from atlanticus.web.application import create_web_application
 from atlanticus.web.manager import ManagerSurface
 from atlanticus.web.manager.web.ids import LOCATION_ID
 from atlanticus.web.models import WebApplicationDefinition, WebApplicationRuntime
+from atlanticus.web.projection.errors import ProjectionStoreError
+from atlanticus.web.source.errors import SourceUnavailableError
+from atlanticus.web.users.errors import UsersStoreUnavailableError
 
 _LOGGER = logging.getLogger(__name__)
+_MANAGER_UNAVAILABLE_ERRORS = (
+    CosmosOperationError,
+    StorageAuthenticationError,
+    StorageAuthorizationError,
+    StorageConnectionError,
+    StorageContainerNotFoundError,
+    StorageOperationError,
+    ProjectionStoreError,
+    SourceUnavailableError,
+    UsersStoreUnavailableError,
+)
 
 
 def create_operational_application_runtime(
@@ -84,6 +106,7 @@ def _integrate_manager(
         page_packages=(_manager_pages_package,),
         route_prefix=MANAGER_ROUTE_PREFIX,
         location_id=LOCATION_ID,
+        unavailable_errors=_MANAGER_UNAVAILABLE_ERRORS,
     )
 
 
