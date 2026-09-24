@@ -37,7 +37,9 @@ def integrate_manager_surface(
         raise ValueError('route_prefix must not end in a slash')
     if not isinstance(location_id, str) or not location_id.strip():
         raise ValueError('Manager location_id must not be empty')
-    if not page_packages or any(not isinstance(name, str) or not name.strip() for name in page_packages):
+    if not page_packages or any(
+        not isinstance(name, str) or not name.strip() for name in page_packages
+    ):
         raise ValueError('Manager page packages must not be empty')
 
     router = _create_surface_router(route_prefix, location_id)
@@ -46,7 +48,9 @@ def integrate_manager_surface(
     added_names = [module.name for module in added_modules]
     if existing_names.intersection(added_names) or len(added_names) != len(set(added_names)):
         raise ValueError('Integrated Web modules must have unique names')
-    if len(page_packages) != len(set(page_packages)) or set(definition.page_packages).intersection(page_packages):
+    if len(page_packages) != len(set(page_packages)) or set(definition.page_packages).intersection(
+        page_packages
+    ):
         raise ValueError('Manager page packages are already registered')
 
     operational_layout = definition.layout

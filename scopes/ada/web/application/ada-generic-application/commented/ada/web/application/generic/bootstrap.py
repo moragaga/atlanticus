@@ -2,6 +2,13 @@ from __future__ import annotations
 
 import logging
 
+from ada.web.application.configuration_manager.composition import (
+    MANAGER_ROUTE_PREFIX,
+    build_configuration_manager_surface,
+)
+from ada.web.application.configuration_manager.dependencies import ConfigurationManagerDependencies
+from ada.web.application.configuration_manager.pages import __name__ as _manager_pages_package
+from ada.web.application.generic.manager_integration import integrate_manager_surface
 from ada.web.application.generic.operational_collector import attach_operational_kpi_collector
 from ada.web.application.generic.operational_tool import (
     create_definition_from_tool_resolution,
@@ -16,53 +23,79 @@ from ada.web.tools.persistence import (
 from atlanticus.connectivity.cosmos import CosmosClient, CosmosError
 from atlanticus.connectivity.storage import StorageClient, StorageError
 from atlanticus.web.application import create_web_application
-from atlanticus.web.models import WebApplicationRuntime
+from atlanticus.web.manager import ManagerSurface
+from atlanticus.web.manager.web.ids import LOCATION_ID
+from atlanticus.web.models import WebApplicationDefinition, WebApplicationRuntime
 
 _LOGGER = logging.getLogger(__name__)
 
 
-# El composition root resuelve Tool primero y sólo después decide si existe una capability Collector.
 def create_operational_application_runtime(
     *,
     settings: AdaGenericSettings | None = None,
+    manager_dependencies: ConfigurationManagerDependencies | None = None,
 ) -> WebApplicationRuntime:
+    # La composición recibe dependencias administrativas explícitas: nunca infiere privilegios.
     if settings is not None and not isinstance(settings, AdaGenericSettings):
         raise TypeError('settings must be AdaGenericSettings')
+    if manager_dependencies is not None and not isinstance(
+        manager_dependencies, ConfigurationManagerDependencies
+    ):
+        raise TypeError('manager_dependencies must be ConfigurationManagerDependencies')
+
+    # La aplicación operacional se resuelve sin exigir configuración de Tool existente.
     resolved_settings = settings or AdaGenericSettings()
     resolution = _resolve_tool_projection(resolved_settings)
     definition = create_definition_from_tool_resolution(resolution)
+    kpi_cosmos_client = None
 
-    # Sin Tool READY no existe estructura contra la cual construir stores KPI.
-    if resolution.state is not ToolProjectionResolutionState.READY:
-        return create_web_application(definition)
-    projection = resolution.projection
-    if projection is None:
-        raise RuntimeError('READY Tool Projection resolution has no projection')
-
-    # La ausencia completa de configuración KPI degrada la capability, no la aplicación.
-    kpi_cosmos_settings = resolved_settings.kpi_delivery_cosmos_settings()
-    if kpi_cosmos_settings is None:
-        _LOGGER.info('KPI Collector is not configured')
-        return create_web_application(definition)
-
-    # Este cliente pasa a ser parte del grafo de vida del Collector; no se cierra tras composición.
-    kpi_cosmos_client = CosmosClient(settings=kpi_cosmos_settings)
     try:
-        definition = attach_operational_kpi_collector(
-            definition,
-            tool_projection=projection,
-            cosmos_client=kpi_cosmos_client,
-            reader_settings=resolved_settings.kpi_delivery_reader_settings(),
-        )
+        # El Collector sólo se incorpora con Tool READY y conexión de consumo configurada.
+        if resolution.state is ToolProjectionResolutionState.READY:
+            projection = resolution.projection
+            if projection is None:
+                raise RuntimeError('READY Tool Projection resolution has no projection')
+            kpi_cosmos_settings = resolved_settings.kpi_delivery_cosmos_settings()
+            if kpi_cosmos_settings is None:
+                _LOGGER.info('KPI Collector is not configured')
+            else:
+                kpi_cosmos_client = CosmosClient(settings=kpi_cosmos_settings)
+                definition = attach_operational_kpi_collector(
+                    definition,
+                    tool_projection=projection,
+                    cosmos_client=kpi_cosmos_client,
+                    reader_settings=resolved_settings.kpi_delivery_reader_settings(),
+                )
+
+        # Unificar definición y módulos antes de crear exactamente un servidor Flask/Dash.
+        # Las dependencias de Manager deben venir del composition root, no del runtime local ficticio.
+        if manager_dependencies is not None:
+            definition = _integrate_manager(definition, manager_dependencies)
+
         return create_web_application(definition)
     except Exception:
-        # Si la Web no alcanza a construirse, no queda ningún runtime que posea el cliente.
+        # Si falla la composición, liberar el cliente de consumo que acabamos de crear.
         _close_client(kpi_cosmos_client, 'KPI Delivery Cosmos')
         raise
 
 
-# Los clientes usados sólo para resolver Tool conservan lifecycle corto y se cierran tras la lectura.
+def _integrate_manager(
+    definition: WebApplicationDefinition,
+    dependencies: ConfigurationManagerDependencies,
+) -> WebApplicationDefinition:
+    # Reutilizar el contrato real del Manager sin construir su aplicación independiente.
+    surface = ManagerSurface(build_configuration_manager_surface(dependencies))
+    return integrate_manager_surface(
+        definition,
+        manager=surface,
+        page_packages=(_manager_pages_package,),
+        route_prefix=MANAGER_ROUTE_PREFIX,
+        location_id=LOCATION_ID,
+    )
+
+
 def _resolve_tool_projection(settings: AdaGenericSettings) -> ToolProjectionResolution:
+    # Los clientes transitorios del bootstrap Tool se cierran incluso ante fallos.
     storage_client = _create_storage_client(settings)
     cosmos_client = _create_tool_projection_cosmos_client(settings)
     try:
@@ -93,7 +126,6 @@ def _create_tool_projection_cosmos_client(
     return CosmosClient(settings=cosmos_settings)
 
 
-# El cierre degradado de un cliente de bootstrap no debe ocultar el resultado ya resuelto.
 def _close_client(client: StorageClient | CosmosClient | None, provider_name: str) -> None:
     if client is None:
         return

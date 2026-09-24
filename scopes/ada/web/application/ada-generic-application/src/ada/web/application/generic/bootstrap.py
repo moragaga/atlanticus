@@ -2,6 +2,13 @@ from __future__ import annotations
 
 import logging
 
+from ada.web.application.configuration_manager.composition import (
+    MANAGER_ROUTE_PREFIX,
+    build_configuration_manager_surface,
+)
+from ada.web.application.configuration_manager.dependencies import ConfigurationManagerDependencies
+from ada.web.application.configuration_manager.pages import __name__ as _manager_pages_package
+from ada.web.application.generic.manager_integration import integrate_manager_surface
 from ada.web.application.generic.operational_collector import attach_operational_kpi_collector
 from ada.web.application.generic.operational_tool import (
     create_definition_from_tool_resolution,
@@ -16,7 +23,9 @@ from ada.web.tools.persistence import (
 from atlanticus.connectivity.cosmos import CosmosClient, CosmosError
 from atlanticus.connectivity.storage import StorageClient, StorageError
 from atlanticus.web.application import create_web_application
-from atlanticus.web.models import WebApplicationRuntime
+from atlanticus.web.manager import ManagerSurface
+from atlanticus.web.manager.web.ids import LOCATION_ID
+from atlanticus.web.models import WebApplicationDefinition, WebApplicationRuntime
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,33 +33,58 @@ _LOGGER = logging.getLogger(__name__)
 def create_operational_application_runtime(
     *,
     settings: AdaGenericSettings | None = None,
+    manager_dependencies: ConfigurationManagerDependencies | None = None,
 ) -> WebApplicationRuntime:
     if settings is not None and not isinstance(settings, AdaGenericSettings):
         raise TypeError('settings must be AdaGenericSettings')
+    if manager_dependencies is not None and not isinstance(
+        manager_dependencies, ConfigurationManagerDependencies
+    ):
+        raise TypeError('manager_dependencies must be ConfigurationManagerDependencies')
+
     resolved_settings = settings or AdaGenericSettings()
     resolution = _resolve_tool_projection(resolved_settings)
     definition = create_definition_from_tool_resolution(resolution)
-    if resolution.state is not ToolProjectionResolutionState.READY:
-        return create_web_application(definition)
-    projection = resolution.projection
-    if projection is None:
-        raise RuntimeError('READY Tool Projection resolution has no projection')
-    kpi_cosmos_settings = resolved_settings.kpi_delivery_cosmos_settings()
-    if kpi_cosmos_settings is None:
-        _LOGGER.info('KPI Collector is not configured')
-        return create_web_application(definition)
-    kpi_cosmos_client = CosmosClient(settings=kpi_cosmos_settings)
+    kpi_cosmos_client = None
+
     try:
-        definition = attach_operational_kpi_collector(
-            definition,
-            tool_projection=projection,
-            cosmos_client=kpi_cosmos_client,
-            reader_settings=resolved_settings.kpi_delivery_reader_settings(),
-        )
+        if resolution.state is ToolProjectionResolutionState.READY:
+            projection = resolution.projection
+            if projection is None:
+                raise RuntimeError('READY Tool Projection resolution has no projection')
+            kpi_cosmos_settings = resolved_settings.kpi_delivery_cosmos_settings()
+            if kpi_cosmos_settings is None:
+                _LOGGER.info('KPI Collector is not configured')
+            else:
+                kpi_cosmos_client = CosmosClient(settings=kpi_cosmos_settings)
+                definition = attach_operational_kpi_collector(
+                    definition,
+                    tool_projection=projection,
+                    cosmos_client=kpi_cosmos_client,
+                    reader_settings=resolved_settings.kpi_delivery_reader_settings(),
+                )
+
+        if manager_dependencies is not None:
+            definition = _integrate_manager(definition, manager_dependencies)
+
         return create_web_application(definition)
     except Exception:
         _close_client(kpi_cosmos_client, 'KPI Delivery Cosmos')
         raise
+
+
+def _integrate_manager(
+    definition: WebApplicationDefinition,
+    dependencies: ConfigurationManagerDependencies,
+) -> WebApplicationDefinition:
+    surface = ManagerSurface(build_configuration_manager_surface(dependencies))
+    return integrate_manager_surface(
+        definition,
+        manager=surface,
+        page_packages=(_manager_pages_package,),
+        route_prefix=MANAGER_ROUTE_PREFIX,
+        location_id=LOCATION_ID,
+    )
 
 
 def _resolve_tool_projection(settings: AdaGenericSettings) -> ToolProjectionResolution:

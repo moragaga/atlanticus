@@ -18,7 +18,9 @@ class ManagerSurfaceStub:
         return (WebModule(name='test-manager-module'),)
 
     def layout(self, _services: ServiceRegistry):
-        return html.Div([dcc.Location(id=_MANAGER_LOCATION_ID), html.Div(id='test-manager-content')])
+        return html.Div(
+            [dcc.Location(id=_MANAGER_LOCATION_ID), html.Div(id='test-manager-content')]
+        )
 
 
 def _base_definition(tmp_path):
@@ -56,9 +58,7 @@ def test_integration_reuses_one_definition_and_registers_both_surfaces(tmp_path)
     )
     layout = definition.layout(ServiceRegistry())
     assert layout.id == 'ada-integrated-application'
-    assert [child.id for child in layout.children] == (
-        [OPERATIONAL_SURFACE_ID, MANAGER_SURFACE_ID]
-    )
+    assert [child.id for child in layout.children] == ([OPERATIONAL_SURFACE_ID, MANAGER_SURFACE_ID])
     assert all(child.hidden is True for child in layout.children)
 
 

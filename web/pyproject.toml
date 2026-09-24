@@ -67,7 +67,7 @@ atlanticus-web-source-local = { workspace = true }
 atlanticus-web-source-blob = { workspace = true }
 atlanticus-web-storage-topology = { workspace = true }
 atlanticus-web-storage-cosmos = { workspace = true }
-atlanticus-cosmos = { path = "../connectivity/cosmos" }
+atlanticus-cosmos = { path = "../connectivity/cosmos", editable = true }
 atlanticus-storage = { path = "../connectivity/storage" }
 atlanticus-observability = { path = "../backend/observability" }
 atlanticus-kernel = { path = "../backend/kernel" }
