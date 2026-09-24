@@ -67,11 +67,14 @@ source = { editable = "." }
 dependencies = [
     { name = "ada-configuration-manager" },
     { name = "ada-web-access-configuration" },
+    { name = "ada-web-access-projection-cosmos" },
     { name = "ada-web-alarm-management-summary" },
     { name = "ada-web-alarm-status" },
     { name = "ada-web-branding", extra = ["web"] },
     { name = "ada-web-content-state" },
     { name = "ada-web-kpi-collector" },
+    { name = "ada-web-kpi-definition-projection-cosmos" },
+    { name = "ada-web-kpi-registry-projection-cosmos" },
     { name = "ada-web-operational-render-binding" },
     { name = "ada-web-operational-state" },
     { name = "ada-web-runtime-experience" },
@@ -82,6 +85,7 @@ dependencies = [
     { name = "ada-web-tools" },
     { name = "ada-web-tools-configuration" },
     { name = "ada-web-tools-persistence" },
+    { name = "ada-web-tools-projection-cosmos" },
     { name = "ada-web-ui-content-state" },
     { name = "ada-web-ui-core" },
     { name = "ada-web-ui-display-status" },
@@ -97,9 +101,15 @@ dependencies = [
     { name = "atlanticus-web-identity-local" },
     { name = "atlanticus-web-manager" },
     { name = "atlanticus-web-navigation" },
+    { name = "atlanticus-web-navigation-projection-cosmos" },
     { name = "atlanticus-web-profiles" },
+    { name = "atlanticus-web-profiles-projection-cosmos" },
     { name = "atlanticus-web-projection" },
+    { name = "atlanticus-web-source-blob" },
+    { name = "atlanticus-web-storage-topology" },
     { name = "atlanticus-web-users" },
+    { name = "atlanticus-web-users-blob" },
+    { name = "atlanticus-web-users-cosmos" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
@@ -114,11 +124,14 @@ dev = [
 requires-dist = [
     { name = "ada-configuration-manager", editable = "../ada-configuration-manager" },
     { name = "ada-web-access-configuration", editable = "../../access/configuration" },
+    { name = "ada-web-access-projection-cosmos", editable = "../../access/projection-cosmos" },
     { name = "ada-web-alarm-management-summary", editable = "../../alarms/management-summary" },
     { name = "ada-web-alarm-status", editable = "../../alarms/status" },
     { name = "ada-web-branding", extras = ["web"], editable = "../../branding" },
     { name = "ada-web-content-state", editable = "../../content-state/core" },
     { name = "ada-web-kpi-collector", editable = "../../kpis/collector" },
+    { name = "ada-web-kpi-definition-projection-cosmos", editable = "../../kpis/definition/projection-cosmos" },
+    { name = "ada-web-kpi-registry-projection-cosmos", editable = "../../kpis/registry/projection-cosmos" },
     { name = "ada-web-operational-render-binding", editable = "../../operational-render-binding" },
     { name = "ada-web-operational-state", editable = "../../operational-state" },
     { name = "ada-web-runtime-experience", editable = "../../runtime-experience" },
@@ -129,6 +142,7 @@ requires-dist = [
     { name = "ada-web-tools", editable = "../../tools/core" },
     { name = "ada-web-tools-configuration", editable = "../../tools/configuration" },
     { name = "ada-web-tools-persistence", editable = "../../tools/persistence" },
+    { name = "ada-web-tools-projection-cosmos", editable = "../../tools/projection-cosmos" },
     { name = "ada-web-ui-content-state", editable = "../../ui/content-state" },
     { name = "ada-web-ui-core", editable = "../../ui/core" },
     { name = "ada-web-ui-display-status", editable = "../../ui/display-status" },
@@ -144,9 +158,15 @@ requires-dist = [
     { name = "atlanticus-web-identity-local", editable = "../../../../../web/capabilities/identity/local" },
     { name = "atlanticus-web-manager", editable = "../../../../../web/capabilities/manager" },
     { name = "atlanticus-web-navigation", editable = "../../../../../web/capabilities/navigation/core" },
+    { name = "atlanticus-web-navigation-projection-cosmos", editable = "../../../../../web/capabilities/navigation/projection-cosmos" },
     { name = "atlanticus-web-profiles", editable = "../../../../../web/capabilities/profiles/core" },
+    { name = "atlanticus-web-profiles-projection-cosmos", editable = "../../../../../web/capabilities/profiles/projection-cosmos" },
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
+    { name = "atlanticus-web-source-blob", editable = "../../../../../web/capabilities/source/blob" },
+    { name = "atlanticus-web-storage-topology", editable = "../../../../../web/capabilities/storage/topology" },
     { name = "atlanticus-web-users", editable = "../../../../../web/capabilities/users/core" },
+    { name = "atlanticus-web-users-blob", editable = "../../../../../web/capabilities/users/blob" },
+    { name = "atlanticus-web-users-cosmos", editable = "../../../../../web/capabilities/users/cosmos" },
     { name = "pydantic", specifier = "==2.13.5" },
     { name = "pydantic-settings", specifier = "==2.14.1" },
 ]
@@ -210,6 +230,29 @@ provides-extras = ["web"]
 dev = [
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-access-projection-cosmos"
+version = "0.1.0"
+source = { editable = "../../access/projection-cosmos" }
+dependencies = [
+    { name = "ada-web-access" },
+    { name = "ada-web-access-configuration" },
+    { name = "atlanticus-cosmos" },
+    { name = "atlanticus-web-projection" },
+    { name = "atlanticus-web-source" },
+    { name = "atlanticus-web-storage-topology" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-web-access", editable = "../../access/core" },
+    { name = "ada-web-access-configuration", editable = "../../access/configuration" },
+    { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
+    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
+    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
+    { name = "atlanticus-web-storage-topology", editable = "../../../../../web/capabilities/storage/topology" },
 ]
 
 [[package]]
@@ -427,6 +470,35 @@ dev = [
 ]
 
 [[package]]
+name = "ada-web-kpi-definition-projection-cosmos"
+version = "0.1.0"
+source = { editable = "../../kpis/definition/projection-cosmos" }
+dependencies = [
+    { name = "ada-web-kpi-definition" },
+    { name = "ada-web-kpi-definition-configuration" },
+    { name = "atlanticus-cosmos" },
+    { name = "atlanticus-web-projection" },
+    { name = "atlanticus-web-source" },
+    { name = "atlanticus-web-storage-topology" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-web-kpi-definition", editable = "../../kpis/definition/core" },
+    { name = "ada-web-kpi-definition-configuration", editable = "../../kpis/definition/configuration" },
+    { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
+    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
+    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
+    { name = "atlanticus-web-storage-topology", editable = "../../../../../web/capabilities/storage/topology" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
 name = "ada-web-kpi-definition-projection-local"
 version = "0.1.0"
 source = { editable = "../../kpis/definition/projection-local" }
@@ -500,6 +572,35 @@ dev = [
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "dash", specifier = "==4.4.1" },
     { name = "dash-bootstrap-components", specifier = "==2.0.4" },
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-kpi-registry-projection-cosmos"
+version = "0.1.0"
+source = { editable = "../../kpis/registry/projection-cosmos" }
+dependencies = [
+    { name = "ada-web-kpi-registry" },
+    { name = "ada-web-kpi-registry-configuration" },
+    { name = "atlanticus-cosmos" },
+    { name = "atlanticus-web-projection" },
+    { name = "atlanticus-web-source" },
+    { name = "atlanticus-web-storage-topology" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-web-kpi-registry", editable = "../../kpis/registry/core" },
+    { name = "ada-web-kpi-registry-configuration", editable = "../../kpis/registry/configuration" },
+    { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
+    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
+    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
+    { name = "atlanticus-web-storage-topology", editable = "../../../../../web/capabilities/storage/topology" },
+]
+
+[package.metadata.requires-dev]
+dev = [
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]
@@ -1189,6 +1290,27 @@ requires-dist = [
 provides-extras = ["web"]
 
 [[package]]
+name = "atlanticus-web-navigation-projection-cosmos"
+version = "0.1.0"
+source = { editable = "../../../../../web/capabilities/navigation/projection-cosmos" }
+dependencies = [
+    { name = "atlanticus-cosmos" },
+    { name = "atlanticus-web-navigation-configuration" },
+    { name = "atlanticus-web-projection" },
+    { name = "atlanticus-web-source" },
+    { name = "atlanticus-web-storage-topology" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
+    { name = "atlanticus-web-navigation-configuration", editable = "../../../../../web/capabilities/navigation/configuration" },
+    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
+    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
+    { name = "atlanticus-web-storage-topology", editable = "../../../../../web/capabilities/storage/topology" },
+]
+
+[[package]]
 name = "atlanticus-web-observability"
 version = "0.3.0"
 source = { editable = "../../../../../web/framework/observability" }
@@ -1354,6 +1476,36 @@ requires-dist = [
     { name = "flask", specifier = "==3.1.3" },
 ]
 provides-extras = ["web"]
+
+[[package]]
+name = "atlanticus-web-users-blob"
+version = "0.1.0"
+source = { editable = "../../../../../web/capabilities/users/blob" }
+dependencies = [
+    { name = "atlanticus-storage" },
+    { name = "atlanticus-web-users" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-storage", directory = "../../../../../connectivity/storage" },
+    { name = "atlanticus-web-users", editable = "../../../../../web/capabilities/users/core" },
+]
+
+[[package]]
+name = "atlanticus-web-users-cosmos"
+version = "0.1.0"
+source = { editable = "../../../../../web/capabilities/users/cosmos" }
+dependencies = [
+    { name = "atlanticus-cosmos" },
+    { name = "atlanticus-web-users" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
+    { name = "atlanticus-web-users", editable = "../../../../../web/capabilities/users/core" },
+]
 
 [[package]]
 name = "azure-core"
