@@ -1,14 +1,16 @@
 from atlanticus.integrations.pi.contracts import (
-    NotPiiSource,
     PiExtractionMode,
     PiMaterialization,
     PiTagDefinition,
     PiValueKind,
+    NotPiiSource,
 )
 
 SOURCE = NotPiiSource()
 
 DEFINITIONS: tuple[PiTagDefinition, ...] = (
+    # REAL EXAMPLE
+    # FAKE EXAMPLES
     PiTagDefinition(
         tag_name='TAG_I_01',
         alias='i_latest',
