@@ -1,9 +1,6 @@
 from atlanticus.integrations.pi.contracts import (
-    PiExtractionMode,
-    PiMaterialization,
-    PiTagDefinition,
-    PiValueKind,
     NotPiiSource,
+    PiTagDefinition,
 )
 
 SOURCE = NotPiiSource()
