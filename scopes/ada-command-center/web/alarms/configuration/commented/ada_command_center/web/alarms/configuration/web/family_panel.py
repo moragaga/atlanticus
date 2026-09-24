@@ -16,6 +16,7 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     MESSAGE_SELECT_TYPE,
     RULE_SELECT_TYPE,
 )
+from ada_command_center.web.alarms.configuration.web.labels import value_label
 
 
 # La UI recibe editores del contrato existente sin replicar campos del dominio.
@@ -167,7 +168,10 @@ def _rule_list(
         for index in indexes
     ]
     details = (
-        rule_editor(current, all_rules[current], all_rules, all_messages, references)
+        rule_editor(
+            current, all_rules[current], all_rules, all_messages, references,
+            navigation.get('section', 'general'),
+        )
         if current is not None
         else html.P('Selecciona una regla para editar su configuración.')
     )
@@ -230,7 +234,7 @@ def _rule_title(rule: dict[str, object]) -> str:
 
 
 def _rule_subtitle(rule: dict[str, object]) -> str:
-    kind = str(rule.get('kind') or 'Sin clasificación')
+    kind = value_label(str(rule.get('kind'))) if rule.get('kind') else 'Sin clasificación'
     criticality = str(rule.get('criticality') or 'Sin criticidad')
     status = _active_label(rule.get('is_active'), feminine=True)
     return f'{kind} · {criticality} · {status}'

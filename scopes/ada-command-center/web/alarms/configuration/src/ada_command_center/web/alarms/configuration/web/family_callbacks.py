@@ -13,6 +13,7 @@ from ada_command_center.web.alarms.configuration.web.families import (
     require_new_family_key,
     selected_family,
 )
+from ada_command_center.web.alarms.configuration.web.guided_rule import RULE_SECTIONS
 from ada_command_center.web.alarms.configuration.web.ids import (
     ADD_MESSAGE_BUTTON_ID,
     ADD_RULE_BUTTON_ID,
@@ -20,11 +21,13 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     CREATE_FAMILY_MESSAGE_ID,
     CREATE_FAMILY_RULE_ID,
     FAMILY_ACTION_RESULT_ID,
+    FAMILY_CREATE_PANEL_ID,
     FAMILY_NAV_STORE_ID,
     FAMILY_NEW_KEY_ID,
     FAMILY_SELECT_TYPE,
     FAMILY_TAB_TYPE,
     MESSAGE_SELECT_TYPE,
+    RULE_SECTION_TYPE,
     RULE_SELECT_TYPE,
     SHOW_FAMILIES_ID,
     SHOW_GLOBAL_MESSAGES_ID,
@@ -88,7 +91,7 @@ def register_family_callbacks(app: object) -> None:
             index = trigger.get('index')
             if group is None or type(index) is not int or index not in group.rule_indexes:
                 return no_update
-            return {**current, 'tab': 'rules', 'rule_index': index}
+            return {**current, 'tab': 'rules', 'rule_index': index, 'section': 'general'}
         if kind == MESSAGE_SELECT_TYPE:
             if current.get('page') == 'global':
                 indexes = catalog.global_message_indexes
@@ -125,6 +128,7 @@ def register_family_callbacks(app: object) -> None:
                 'tab': 'rules',
                 'rule_index': index,
                 'message_index': None,
+                'section': 'general',
             }
         if trigger == ADD_MESSAGE_BUTTON_ID:
             if current.get('page') != 'global' and not family:
@@ -164,7 +168,7 @@ def register_family_callbacks(app: object) -> None:
                 rules = current.get('rules')
                 index = len(rules) if isinstance(rules, list) else 0
                 updated = add_rule_in_family(current, key)
-                navigation.update(rule_index=index)
+                navigation.update(rule_index=index, section='general')
             else:
                 messages = current.get('messages')
                 index = len(messages) if isinstance(messages, list) else 0
@@ -184,6 +188,33 @@ def register_family_callbacks(app: object) -> None:
             navigation,
             html.Span('Completa el primer elemento para guardar la familia.'),
         )
+
+    @app.callback(
+        Output(FAMILY_NAV_STORE_ID, 'data', allow_duplicate=True),
+        Input({'type': RULE_SECTION_TYPE, 'section': ALL}, 'n_clicks'),
+        State(FAMILY_NAV_STORE_ID, 'data'),
+        State(AUTHORING_STORE_ID, 'data'),
+        prevent_initial_call=True,
+    )
+    def select_rule_section(_clicks, navigation, document):
+        trigger = ctx.triggered_id
+        if not _real_click() or not isinstance(trigger, dict):
+            return no_update
+        section = trigger.get('section')
+        if section not in {entry[0] for entry in RULE_SECTIONS}:
+            return no_update
+        family = selected_family(navigation, document)
+        group = family_catalog(document).get(family) if family else None
+        if group is None or navigation.get('rule_index') not in group.rule_indexes:
+            return no_update
+        return {**navigation, 'section': section}
+
+    @app.callback(
+        Output(FAMILY_CREATE_PANEL_ID, 'hidden'),
+        Input(FAMILY_NAV_STORE_ID, 'data'),
+    )
+    def show_family_creation(navigation):
+        return not isinstance(navigation, dict) or navigation.get('page') != 'families'
 
     @app.callback(
         Output(ADD_RULE_BUTTON_ID, 'disabled'),
