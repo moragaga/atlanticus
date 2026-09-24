@@ -64,6 +64,7 @@ from ada_command_center.web.alarms.configuration.web.models import (
 
 
 def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) -> object:
+    # Los bloques mantienen los IDs existentes: Manager sigue siendo dueño de guardar/publicar.
     return html.Div(
         [
             dcc.Store(id=MOUNT_STORE_ID, data=1, storage_type='memory'),
@@ -83,7 +84,8 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                     ),
                     html.Div(id=TOOL_REFERENCE_STATUS_ID),
                     html.Div(id=DOCUMENT_STATUS_ID),
-                ]
+                ],
+                className='ada-command-center-alarm-editor__overview',
             ),
             html.Section(
                 [
@@ -99,7 +101,8 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                         ]
                     ),
                     html.Div(id=RULES_EDITOR_ID),
-                ]
+                ],
+                className='ada-command-center-alarm-editor__rules',
             ),
             html.Section(
                 [
@@ -115,7 +118,8 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                         ]
                     ),
                     html.Div(id=MESSAGES_EDITOR_ID),
-                ]
+                ],
+                className='ada-command-center-alarm-editor__messages',
             ),
             html.Section(
                 [
@@ -126,9 +130,11 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                         type='button',
                     ),
                     html.Div(id=SAVE_RESULT_ID),
-                ]
+                ],
+                className='ada-command-center-alarm-editor__save',
             ),
-        ]
+        ],
+        className='ada-command-center-alarm-editor',
     )
 
 
@@ -146,22 +152,110 @@ def build_structured_editors(
         id=TOOL_DATALIST_ID,
         children=[html.Option(value=item['value'], label=item['label']) for item in tools],
     )
-    rule_children = [tool_datalist]
-    rule_children.extend(
-        _rule_editor(index, rule, raw_rules, raw_messages, reference_document)
+    # Se conservan todos los editores montados para preservar los callbacks pattern-matching.
+    rule_cards = [
+        (
+            index,
+            rule,
+            _rule_editor(index, rule, raw_rules, raw_messages, reference_document),
+        )
         for index, rule in enumerate(raw_rules)
         if isinstance(rule, dict)
-    )
-    if len(rule_children) == 1:
-        rule_children.append(html.P('No rules in this draft.'))
-    message_children = [
-        _message_editor(index, message)
+    ]
+    message_cards = [
+        (index, message, _message_editor(index, message))
         for index, message in enumerate(raw_messages)
         if isinstance(message, dict)
     ]
-    if not message_children:
-        message_children.append(html.P('No messages in this draft.'))
-    return html.Div(rule_children), html.Div(message_children)
+    return (
+        _collection_editor(rule_cards, kind='rule', datalist=tool_datalist),
+        _collection_editor(message_cards, kind='message'),
+    )
+
+
+def _collection_editor(
+    cards: list[tuple[int, dict[str, object], object]],
+    *,
+    kind: str,
+    datalist: object | None = None,
+) -> object:
+    # La navegación por anclas evita agregar un segundo estado funcional de selección.
+    if not cards:
+        return html.Div(
+            [
+                datalist,
+                html.P(
+                    f'No {kind}s in this draft.',
+                    className='ada-command-center-alarm-editor__empty',
+                ),
+            ],
+            className='ada-command-center-alarm-editor__collection',
+        )
+
+    navigation = []
+    details = []
+    for index, record, editor in cards:
+        anchor = f'alarm-configuration-{kind}-detail-{index}'
+        legend = editor.children[0]
+        title = (
+            legend.children if isinstance(legend.children, str) else f'{kind.title()} {index + 1}'
+        )
+        navigation.append(
+            html.A(
+                [
+                    html.Span(
+                        f'{index + 1:02d}',
+                        className='ada-command-center-alarm-editor__item-number',
+                    ),
+                    html.Span(
+                        [
+                            html.Strong(title),
+                            html.Small(_record_subtitle(record, kind)),
+                        ],
+                        className='ada-command-center-alarm-editor__item-copy',
+                    ),
+                ],
+                href=f'#{anchor}',
+                className='ada-command-center-alarm-editor__item',
+            )
+        )
+        details.append(
+            html.Section(
+                editor,
+                id=anchor,
+                className='ada-command-center-alarm-editor__detail',
+            )
+        )
+
+    return html.Div(
+        [
+            datalist,
+            html.Div(
+                [
+                    html.Nav(
+                        [html.H5(f'{kind.title()}s ({len(navigation)})'), *navigation],
+                        className='ada-command-center-alarm-editor__index',
+                        **{'aria-label': f'{kind.title()} navigation'},
+                    ),
+                    html.Div(details, className='ada-command-center-alarm-editor__details'),
+                ],
+                className='ada-command-center-alarm-editor__split',
+            ),
+        ],
+        className='ada-command-center-alarm-editor__collection',
+    )
+
+
+def _record_subtitle(record: dict[str, object], kind: str) -> str:
+    # Son etiquetas de resumen, nunca una evaluación de readiness del dominio.
+    active = record.get('is_active')
+    status = 'Active' if active is True else 'Inactive' if active is False else 'Not set'
+    if kind == 'message':
+        scope = record.get('scope') or 'Unclassified'
+        return f'{scope} · {status}'
+    category = record.get('kind') or 'Unclassified'
+    criticality = record.get('criticality') or 'No criticality'
+    return f'{category} · {criticality} · {status}'
 
 
 def _runtime_context(context: AlarmConfigurationAdminWebContext) -> object:
@@ -193,7 +287,8 @@ def _runtime_context(context: AlarmConfigurationAdminWebContext) -> object:
                     html.Div(id=IMPORT_RESULT_ID),
                 ]
             ),
-        ]
+        ],
+        className='ada-command-center-alarm-editor__context',
     )
 
 

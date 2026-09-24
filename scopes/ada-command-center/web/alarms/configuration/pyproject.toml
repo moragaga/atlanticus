@@ -53,6 +53,10 @@ include = ["ada_command_center.web.alarms.configuration*"]
 
 [tool.setuptools.package-data]
 "ada_command_center.web.alarms.configuration" = ["py.typed"]
+"ada_command_center.web.alarms.configuration.web" = [
+    "resources/css/*.css",
+    "resources/css/css.list",
+]
 
 [tool.ruff]
 line-length = 100

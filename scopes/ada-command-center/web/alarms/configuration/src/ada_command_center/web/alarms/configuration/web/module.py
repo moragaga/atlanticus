@@ -4,7 +4,14 @@ from ada_command_center.web.alarms.configuration.web.callbacks import (
 from ada_command_center.web.alarms.configuration.web.models import (
     AlarmConfigurationAdminWebContext,
 )
+from atlanticus.web.assets import AssetLayer
 from atlanticus.web.modules import WebModule
+
+ALARM_CONFIGURATION_EDITOR_ASSET_LAYER = AssetLayer(
+    name='ada_command_center_alarm_configuration_editor',
+    load_order=350,
+    package='ada_command_center.web.alarms.configuration.web',
+)
 
 
 def create_alarm_configuration_admin_web_module(
@@ -15,5 +22,6 @@ def create_alarm_configuration_admin_web_module(
 
     return WebModule(
         name='ada-command-center-alarm-configuration',
+        asset_layers=(ALARM_CONFIGURATION_EDITOR_ASSET_LAYER,),
         register_callbacks=register_callbacks,
     )

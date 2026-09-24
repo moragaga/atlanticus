@@ -1,0 +1,386 @@
+.ada-command-center-alarm-editor {
+    --alarm-editor-border: var(--atlanticus-manager-border, #dce3ed);
+    --alarm-editor-surface: var(--atlanticus-manager-surface, #fff);
+    --alarm-editor-muted: var(--atlanticus-manager-surface-muted, #f6f8fb);
+    --alarm-editor-ink: var(--atlanticus-manager-text, #253143);
+    --alarm-editor-subtle: var(--atlanticus-manager-text-muted, #66758a);
+    --alarm-editor-accent: var(--atlanticus-manager-color-primary, #ac8742);
+    display: grid;
+    gap: 1rem;
+    min-width: 0;
+    color: var(--alarm-editor-ink);
+}
+
+.ada-command-center-alarm-editor,
+.ada-command-center-alarm-editor * {
+    box-sizing: border-box;
+}
+
+.ada-command-center-alarm-editor > section {
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid var(--alarm-editor-border);
+    border-radius: .85rem;
+    background: var(--alarm-editor-surface);
+}
+
+.ada-command-center-alarm-editor :is(h3, h4, h5, h6, p) {
+    margin: 0;
+}
+
+.ada-command-center-alarm-editor__context {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .65rem;
+}
+
+.ada-command-center-alarm-editor__context > div {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    min-width: 0;
+    font-size: .8rem;
+}
+
+.ada-command-center-alarm-editor__context > div:not(:last-child) {
+    padding: .45rem .65rem;
+    border: 1px solid var(--alarm-editor-border);
+    border-radius: .55rem;
+    background: var(--alarm-editor-muted);
+}
+
+.ada-command-center-alarm-editor__context > div > span,
+.ada-command-center-alarm-editor__overview > p {
+    color: var(--alarm-editor-subtle);
+}
+
+.ada-command-center-alarm-editor__context > div:last-child {
+    margin-left: auto;
+    flex-wrap: wrap;
+}
+
+.ada-command-center-alarm-editor__overview {
+    display: grid;
+    gap: .65rem;
+}
+
+.ada-command-center-alarm-editor__overview > h3,
+.ada-command-center-alarm-editor__rules h4,
+.ada-command-center-alarm-editor__messages h4 {
+    font-size: 1rem;
+    font-weight: 750;
+}
+
+.ada-command-center-alarm-editor__overview > p {
+    font-size: .8rem;
+    line-height: 1.55;
+}
+
+.ada-command-center-alarm-editor__overview > div:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .7rem;
+    font-size: .83rem;
+}
+
+.ada-command-center-alarm-editor__overview > div:last-child :is(strong, span) {
+    padding: .3rem .55rem;
+    border-radius: .5rem;
+    background: var(--alarm-editor-muted);
+}
+
+.ada-command-center-alarm-editor__rules,
+.ada-command-center-alarm-editor__messages {
+    display: grid;
+    gap: .85rem;
+}
+
+.ada-command-center-alarm-editor__rules > div:first-child,
+.ada-command-center-alarm-editor__messages > div:first-child {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .7rem;
+}
+
+.ada-command-center-alarm-editor button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.2rem;
+    padding: .45rem .85rem;
+    border: 1px solid var(--alarm-editor-border);
+    border-radius: .5rem;
+    background: var(--alarm-editor-surface);
+    color: var(--alarm-editor-ink);
+    font: inherit;
+    font-size: .77rem;
+    font-weight: 620;
+    cursor: pointer;
+    transition: background .12s ease, border-color .12s ease;
+}
+
+.ada-command-center-alarm-editor button:hover:not(:disabled) {
+    border-color: var(--alarm-editor-accent);
+    background: var(--alarm-editor-muted);
+}
+
+.ada-command-center-alarm-editor button:focus-visible,
+.ada-command-center-alarm-editor a:focus-visible {
+    outline: 2px solid var(--alarm-editor-accent);
+    outline-offset: 2px;
+}
+
+.ada-command-center-alarm-editor button:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.ada-command-center-alarm-editor__rules > div:first-child button,
+.ada-command-center-alarm-editor__messages > div:first-child button,
+.ada-command-center-alarm-editor__save > button {
+    border-color: var(--alarm-editor-accent);
+    background: var(--alarm-editor-accent);
+    color: white;
+}
+
+.ada-command-center-alarm-editor__collection,
+.ada-command-center-alarm-editor__split,
+.ada-command-center-alarm-editor__index,
+.ada-command-center-alarm-editor__details {
+    min-width: 0;
+}
+
+.ada-command-center-alarm-editor__split {
+    display: grid;
+    grid-template-columns: minmax(11.5rem, 15.5rem) minmax(0, 1fr);
+    align-items: start;
+    gap: 1rem;
+}
+
+.ada-command-center-alarm-editor__index {
+    display: grid;
+    align-content: start;
+    gap: .45rem;
+    padding: .75rem;
+    border: 1px solid var(--alarm-editor-border);
+    border-radius: .7rem;
+    background: var(--alarm-editor-muted);
+}
+
+.ada-command-center-alarm-editor__index h5 {
+    padding: .1rem .35rem .45rem;
+    font-size: .8rem;
+}
+
+.ada-command-center-alarm-editor__item {
+    display: flex;
+    align-items: flex-start;
+    gap: .65rem;
+    min-width: 0;
+    padding: .65rem;
+    border: 1px solid transparent;
+    border-radius: .55rem;
+    color: inherit;
+    background: var(--alarm-editor-surface);
+    text-decoration: none;
+}
+
+.ada-command-center-alarm-editor__item:hover,
+.ada-command-center-alarm-editor__item:focus-visible {
+    border-color: var(--alarm-editor-accent);
+}
+
+.ada-command-center-alarm-editor__item-number {
+    flex: 0 0 auto;
+    color: var(--alarm-editor-accent);
+    font-size: .73rem;
+    font-weight: 750;
+}
+
+.ada-command-center-alarm-editor__item-copy {
+    display: grid;
+    min-width: 0;
+    gap: .22rem;
+}
+
+.ada-command-center-alarm-editor__item-copy strong {
+    overflow-wrap: anywhere;
+    font-size: .77rem;
+}
+
+.ada-command-center-alarm-editor__item-copy small {
+    color: var(--alarm-editor-subtle);
+    font-size: .68rem;
+    line-height: 1.35;
+}
+
+.ada-command-center-alarm-editor__details > .ada-command-center-alarm-editor__detail {
+    display: none;
+}
+
+.ada-command-center-alarm-editor__details:not(:has(> .ada-command-center-alarm-editor__detail:target))
+    > .ada-command-center-alarm-editor__detail:first-child,
+.ada-command-center-alarm-editor__details > .ada-command-center-alarm-editor__detail:target {
+    display: block;
+}
+
+.ada-command-center-alarm-editor__detail {
+    min-width: 0;
+    scroll-margin-top: 1rem;
+}
+
+.ada-command-center-alarm-editor__detail > fieldset {
+    display: grid;
+    min-width: 0;
+    gap: .9rem;
+    margin: 0;
+    padding: 1rem;
+    border: 1px solid var(--alarm-editor-border);
+    border-radius: .7rem;
+}
+
+.ada-command-center-alarm-editor__detail > fieldset > legend {
+    padding: 0 .4rem;
+    font-size: .9rem;
+    font-weight: 750;
+}
+
+.ada-command-center-alarm-editor__detail > fieldset > button {
+    justify-self: end;
+}
+
+.ada-command-center-alarm-editor__detail fieldset fieldset,
+.ada-command-center-alarm-editor__detail fieldset > section {
+    display: grid;
+    align-content: start;
+    min-width: 0;
+    gap: .75rem;
+    margin: 0;
+    padding: .85rem;
+    border: 1px solid var(--alarm-editor-border);
+    border-radius: .6rem;
+    background: var(--alarm-editor-muted);
+}
+
+.ada-command-center-alarm-editor__detail fieldset fieldset > legend {
+    padding: 0 .3rem;
+    color: var(--alarm-editor-ink);
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+.ada-command-center-alarm-editor__detail fieldset > section h5,
+.ada-command-center-alarm-editor__detail fieldset > section h6 {
+    font-size: .8rem;
+    font-weight: 720;
+}
+
+.ada-command-center-alarm-editor__detail label {
+    display: grid;
+    min-width: 0;
+    gap: .35rem;
+    color: var(--alarm-editor-ink);
+    font-size: .75rem;
+    font-weight: 630;
+}
+
+.ada-command-center-alarm-editor__detail label > :is(input, textarea),
+.ada-command-center-alarm-editor__detail label > .dash-dropdown {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    font-weight: 450;
+}
+
+.ada-command-center-alarm-editor__detail :is(input, textarea) {
+    min-height: 2.2rem;
+    padding: .45rem .6rem;
+    border: 1px solid var(--alarm-editor-border);
+    border-radius: .5rem;
+    background: var(--alarm-editor-surface);
+    color: var(--alarm-editor-ink);
+    font: inherit;
+    font-size: .78rem;
+}
+
+.ada-command-center-alarm-editor__detail input:focus-visible {
+    outline: 2px solid var(--alarm-editor-accent);
+    outline-offset: 1px;
+}
+
+.ada-command-center-alarm-editor__detail fieldset > div,
+.ada-command-center-alarm-editor__detail fieldset > section > div {
+    min-width: 0;
+}
+
+.ada-command-center-alarm-editor__detail fieldset > section > fieldset {
+    margin-top: .3rem;
+    background: var(--alarm-editor-surface);
+}
+
+.ada-command-center-alarm-editor__detail fieldset > section > fieldset > div {
+    display: grid;
+    gap: .35rem;
+    min-width: 0;
+}
+
+.ada-command-center-alarm-editor__detail fieldset > section > fieldset > div > input {
+    width: 100%;
+}
+
+.ada-command-center-alarm-editor__detail fieldset > section > fieldset > div > button {
+    justify-self: start;
+}
+
+.ada-command-center-alarm-editor__save {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.ada-command-center-alarm-editor__empty {
+    padding: 1.25rem;
+    border: 1px dashed var(--alarm-editor-border);
+    border-radius: .65rem;
+    color: var(--alarm-editor-subtle);
+    background: var(--alarm-editor-muted);
+    font-size: .8rem;
+}
+
+@media (max-width: 850px) {
+    .ada-command-center-alarm-editor__split {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ada-command-center-alarm-editor__index {
+        display: flex;
+        align-items: stretch;
+        overflow-x: auto;
+        gap: .5rem;
+    }
+
+    .ada-command-center-alarm-editor__index h5 {
+        flex: 0 0 auto;
+        align-self: center;
+    }
+
+    .ada-command-center-alarm-editor__item {
+        flex: 0 0 min(75vw, 13rem);
+    }
+}
+
+@media (max-width: 560px) {
+    .ada-command-center-alarm-editor > section,
+    .ada-command-center-alarm-editor__detail > fieldset {
+        padding: .75rem;
+    }
+
+    .ada-command-center-alarm-editor__context > div:last-child {
+        margin-left: 0;
+        width: 100%;
+    }
+}
