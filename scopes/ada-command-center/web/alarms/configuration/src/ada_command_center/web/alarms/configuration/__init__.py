@@ -1,4 +1,13 @@
-from ada_command_center.web.alarms.configuration.errors import AlarmConfigurationSourceError
+from ada_command_center.web.alarms.configuration.errors import (
+    AlarmConfigurationProjectionError,
+    AlarmConfigurationSourceError,
+)
+from ada_command_center.web.alarms.configuration.projection_record import (
+    ALARM_CONFIGURATION_PROJECTION_DOCUMENT_TYPE,
+    ALARM_CONFIGURATION_PROJECTION_SCHEMA_VERSION,
+    alarm_configuration_projection_from_document,
+    alarm_configuration_projection_to_document,
+)
 from ada_command_center.web.alarms.configuration.source_projection import (
     AlarmConfigurationProjectionBuilder,
     create_alarm_configuration_projection_service,
@@ -23,10 +32,13 @@ from ada_command_center.web.alarms.configuration.tool_references import (
 __version__ = '0.1.0'
 
 __all__ = [
+    'ALARM_CONFIGURATION_PROJECTION_DOCUMENT_TYPE',
+    'ALARM_CONFIGURATION_PROJECTION_SCHEMA_VERSION',
     'ALARM_CONFIGURATION_SOURCE_DOCUMENT_TYPE',
     'ALARM_CONFIGURATION_SOURCE_RESOURCE_PATH',
     'ALARM_CONFIGURATION_SOURCE_SCHEMA_VERSION',
     'AlarmConfigurationProjectionBuilder',
+    'AlarmConfigurationProjectionError',
     'AlarmConfigurationSourceCodec',
     'AlarmConfigurationSourceError',
     'AlarmConfigurationSourcePayload',
@@ -37,6 +49,8 @@ __all__ = [
     'AlarmToolReferenceCatalog',
     'AlarmToolReferenceReader',
     'AlarmToolSubcomponentReference',
+    'alarm_configuration_projection_from_document',
+    'alarm_configuration_projection_to_document',
     'create_alarm_configuration_projection_service',
     '__version__',
 ]

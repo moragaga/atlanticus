@@ -4,3 +4,7 @@ class AlarmConfigurationSourceError(RuntimeError):
 
 class AlarmConfigurationToolDependencyError(ValueError):
     pass
+
+
+class AlarmConfigurationProjectionError(RuntimeError):
+    pass

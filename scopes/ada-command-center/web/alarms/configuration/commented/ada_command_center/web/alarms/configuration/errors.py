@@ -1,8 +1,12 @@
-# Error operacional del Source de Alarm Configuration.
+# Espejo pedagógico en español; el comportamiento equivale al archivo de src.
 class AlarmConfigurationSourceError(RuntimeError):
     pass
 
 
-# Error de correlación entre un draft de alarmas y su catálogo Tools confirmado.
 class AlarmConfigurationToolDependencyError(ValueError):
+    pass
+
+
+# Los adaptadores local y Cosmos devuelven el mismo error específico sin modificar el Manager.
+class AlarmConfigurationProjectionError(RuntimeError):
     pass
