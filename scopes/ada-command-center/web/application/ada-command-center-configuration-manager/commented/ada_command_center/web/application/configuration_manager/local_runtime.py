@@ -123,8 +123,8 @@ def create_local_configuration_manager_dependencies(
         projection_store=projection_store,
         principal_provider=lambda: principal,
         tool_reference_reader=tool_reference_reader,
-        source_name='Local Source',
-        projection_name='Local Projection',
+        source_name='Fuente local',
+        projection_name='Proyección local',
     )
 
 

@@ -34,8 +34,7 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     COMPONENT_ADD_TYPE,
     COMPONENT_FIELD_TYPE,
     COMPONENT_REMOVE_TYPE,
-    CREATE_FAMILY_MESSAGE_ID,
-    CREATE_FAMILY_RULE_ID,
+    CREATE_FAMILY_ID,
     DOCUMENT_STATUS_ID,
     FAMILY_ACTION_RESULT_ID,
     FAMILY_CREATE_PANEL_ID,
@@ -77,10 +76,10 @@ from ada_command_center.web.alarms.configuration.web.labels import (
 from ada_command_center.web.alarms.configuration.web.models import (
     AlarmConfigurationAdminWebContext,
 )
+from ada_command_center.web.alarms.configuration.web.select_style import dash_select_style
 
 
 def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) -> object:
-    # Se preservan los IDs y el draft original del Manager; sólo cambia la navegación.
     return html.Div(
         [
             dcc.Store(id=MOUNT_STORE_ID, data=1, storage_type='memory'),
@@ -94,106 +93,124 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
             _runtime_context(context),
             html.Section(
                 [
-                    html.H3('Configuración de alarmas'),
-                    html.P('Administra las reglas y mensajes por familia.'),
                     html.Div(id=TOOL_REFERENCE_STATUS_ID),
                     html.Div(id=DOCUMENT_STATUS_ID),
                 ],
-                className='ada-command-center-alarm-editor__overview',
+                className='alarm-admin__status',
             ),
             html.Section(
                 [
                     html.Div(
                         [
-                            html.H4('Familias, reglas y mensajes'),
+                            html.Div(
+                                [
+                                    html.H3('Familias, reglas y mensajes'),
+                                    html.P(
+                                        'Administra los elementos de cada familia por separado.'
+                                    ),
+                                ],
+                                className='alarm-admin__heading-copy',
+                            ),
                             html.Div(
                                 [
                                     html.Button(
-                                        'Nueva regla',
+                                        '+ Nueva regla',
                                         id=ADD_RULE_BUTTON_ID,
                                         n_clicks=0,
                                         disabled=True,
                                         type='button',
+                                        className='btn btn-outline-secondary btn-sm',
                                     ),
                                     html.Button(
-                                        'Nuevo mensaje',
+                                        '+ Nuevo mensaje',
                                         id=ADD_MESSAGE_BUTTON_ID,
                                         n_clicks=0,
                                         disabled=True,
                                         type='button',
+                                        className='btn btn-outline-secondary btn-sm',
                                     ),
                                 ],
-                                className='ada-command-center-alarm-editor__heading-actions',
+                                className='alarm-admin__heading-actions',
                             ),
                         ],
-                        className='ada-command-center-alarm-editor__section-header',
+                        className='alarm-admin__heading',
                     ),
-                    html.Div(
+                    html.Nav(
                         [
                             html.Button(
                                 'Todas las familias',
                                 id=SHOW_FAMILIES_ID,
                                 n_clicks=0,
                                 type='button',
+                                className='btn btn-outline-secondary btn-sm',
                             ),
                             html.Button(
                                 'Mensajes globales',
                                 id=SHOW_GLOBAL_MESSAGES_ID,
                                 n_clicks=0,
                                 type='button',
+                                className='btn btn-outline-secondary btn-sm',
                             ),
                         ],
-                        className='alarm-family__navigation',
+                        className='alarm-admin__navigation',
                     ),
                     html.Div(
                         [
                             html.Label(
                                 [
-                                    'Clave de nueva familia',
+                                    html.Span('Nueva familia'),
                                     dcc.Input(
                                         id=FAMILY_NEW_KEY_ID,
                                         type='text',
                                         value='',
-                                        placeholder='Ej.: mine-crushing',
+                                        placeholder='Nombre o clave de la familia',
+                                        debounce=False,
+                                        className='form-control form-control-sm',
                                     ),
-                                ]
+                                ],
+                                className='alarm-admin__new-family-field',
                             ),
                             html.Button(
-                                'Crear con primera regla',
-                                id=CREATE_FAMILY_RULE_ID,
+                                'Crear familia',
+                                id=CREATE_FAMILY_ID,
                                 n_clicks=0,
                                 type='button',
+                                className='btn btn-primary btn-sm',
                             ),
-                            html.Button(
-                                'Crear con primer mensaje',
-                                id=CREATE_FAMILY_MESSAGE_ID,
-                                n_clicks=0,
-                                type='button',
+                            html.Div(
+                                id=FAMILY_ACTION_RESULT_ID, className='alarm-admin__family-result'
                             ),
-                            html.Div(id=FAMILY_ACTION_RESULT_ID),
                         ],
                         id=FAMILY_CREATE_PANEL_ID,
-                        className='alarm-family__new',
+                        className='alarm-admin__new-family',
                     ),
                     html.Div(id=RULES_EDITOR_ID),
                     html.Div(id=MESSAGES_EDITOR_ID, hidden=True),
                 ],
-                className='ada-command-center-alarm-editor__rules',
+                className='alarm-admin__section',
             ),
             html.Section(
                 [
+                    html.Div(
+                        [
+                            html.H3('Borrador local · alarmas'),
+                            html.P('Guarda los cambios cuando completes los campos obligatorios.'),
+                        ],
+                        className='alarm-admin__heading-copy',
+                    ),
                     html.Button(
-                        'Guardar borrador local',
+                        'Guardar borrador',
                         id=SAVE_BUTTON_ID,
                         n_clicks=0,
                         type='button',
+                        className='btn btn-primary btn-sm',
                     ),
-                    html.Div(id=SAVE_RESULT_ID),
+                    html.Div(id=SAVE_RESULT_ID, className='alarm-admin__save-result'),
                 ],
-                className='ada-command-center-alarm-editor__save',
+                className='alarm-admin__section alarm-admin__footer',
             ),
         ],
-        className='ada-command-center-alarm-editor',
+        className='ada-command-center-alarm-editor atlanticus-bootstrap alarm-admin',
     )
 
 
@@ -248,7 +265,7 @@ def _runtime_context(context: AlarmConfigurationAdminWebContext) -> object:
                 ]
             ),
         ],
-        className='ada-command-center-alarm-editor__context',
+        className='alarm-admin__runtime',
     )
 
 
@@ -289,17 +306,16 @@ def _rule_editor(
             _group(
                 'Identity and presentation',
                 [
-                    _text_field(
-                        rule_index,
-                        'identity.family_key',
-                        'Family key',
-                        identity.get('family_key'),
+                    html.Div(
+                        [html.Span('Familia'), html.Strong(family_key)],
+                        className='alarm-admin__read-only',
                     ),
-                    _text_field(
-                        rule_index,
-                        'identity.alarm_key',
-                        'Alarm key',
-                        identity.get('alarm_key'),
+                    html.Div(
+                        [
+                            html.Span('Identificador automático'),
+                            html.Code(identity.get('alarm_key') or 'Sin asignar'),
+                        ],
+                        className='alarm-admin__read-only',
                     ),
                     _text_field(rule_index, 'rule_name', 'Rule name', rule.get('rule_name')),
                     _text_field(
@@ -824,16 +840,14 @@ def _number_field(rule_index: int, field: str, label: str, value: object) -> obj
 
 
 def _bool_field(rule_index: int, field: str, label: str, value: object) -> object:
-    return _dropdown_field(
-        rule_index,
-        field,
+    return _labeled(
         label,
-        value,
-        [
-            {'label': 'Sí', 'value': True},
-            {'label': 'No', 'value': False},
-        ],
-        clearable=True,
+        dcc.RadioItems(
+            id={'type': RULE_FIELD_TYPE, 'rule': rule_index, 'field': field},
+            options=[{'label': 'Sí', 'value': True}, {'label': 'No', 'value': False}],
+            value=value,
+            className='alarm-admin__choices',
+        ),
     )
 
 
@@ -879,6 +893,8 @@ def _dropdown_field(
     return _labeled(
         label,
         dcc.Dropdown(
+            className='alarm-admin__dropdown',
+            style=dash_select_style(),
             id={'type': RULE_FIELD_TYPE, 'rule': rule_index, 'field': field},
             options=options,
             value=value,
@@ -922,19 +938,11 @@ def _step_bool_field(
 ) -> object:
     return _labeled(
         label,
-        dcc.Dropdown(
-            id={
-                'type': STEP_FIELD_TYPE,
-                'rule': rule_index,
-                'step': step_index,
-                'field': field,
-            },
-            options=[
-                {'label': 'Sí', 'value': True},
-                {'label': 'No', 'value': False},
-            ],
+        dcc.RadioItems(
+            id={'type': STEP_FIELD_TYPE, 'rule': rule_index, 'step': step_index, 'field': field},
+            options=[{'label': 'Sí', 'value': True}, {'label': 'No', 'value': False}],
             value=value,
-            clearable=True,
+            className='alarm-admin__choices',
         ),
     )
 
@@ -952,6 +960,8 @@ def _target_enum_field(
     return _labeled(
         label,
         dcc.Dropdown(
+            className='alarm-admin__dropdown',
+            style=dash_select_style(),
             id={
                 'type': TARGET_FIELD_TYPE,
                 'rule': rule_index,
@@ -995,22 +1005,14 @@ def _message_number_field(
     )
 
 
-def _message_bool_field(
-    message_index: int,
-    field: str,
-    label: str,
-    value: object,
-) -> object:
+def _message_bool_field(message_index: int, field: str, label: str, value: object) -> object:
     return _labeled(
         label,
-        dcc.Dropdown(
+        dcc.RadioItems(
             id={'type': MESSAGE_FIELD_TYPE, 'message': message_index, 'field': field},
-            options=[
-                {'label': 'Sí', 'value': True},
-                {'label': 'No', 'value': False},
-            ],
+            options=[{'label': 'Sí', 'value': True}, {'label': 'No', 'value': False}],
             value=value,
-            clearable=True,
+            className='alarm-admin__choices',
         ),
     )
 
@@ -1025,6 +1027,8 @@ def _message_enum_field(
     return _labeled(
         label,
         dcc.Dropdown(
+            className='alarm-admin__dropdown',
+            style=dash_select_style(),
             id={'type': MESSAGE_FIELD_TYPE, 'message': message_index, 'field': field},
             options=[{'label': value_label(item), 'value': item} for item in values],
             value=value,
@@ -1035,7 +1039,12 @@ def _message_enum_field(
 
 def _labeled(label: str, control: object) -> object:
     hint = field_help(label)
-    children = [html.Span(field_label(label)), control]
+    shown = (
+        html.Div(control, className='alarm-admin__dropdown-shell')
+        if isinstance(control, dcc.Dropdown)
+        else control
+    )
+    children = [html.Span(field_label(label)), shown]
     if hint is not None:
         children.append(html.Small(hint, className='alarm-guided__field-help'))
     return html.Label(children, className='alarm-guided__field')

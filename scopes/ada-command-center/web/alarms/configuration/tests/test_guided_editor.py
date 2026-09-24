@@ -118,6 +118,7 @@ def test_section_navigation_keeps_current_rule_and_draft(monkeypatch) -> None:
     app = Callbacks()
     family_callbacks.register_family_callbacks(app)
     document = add_rule_in_family(empty_authoring_document(), 'mina')
+    original_key = document['rules'][0]['identity']['alarm_key']
     navigation = {
         **initial_navigation(),
         'page': 'family',
@@ -136,4 +137,4 @@ def test_section_navigation_keeps_current_rule_and_draft(monkeypatch) -> None:
     updated = app.callbacks['select_rule_section']([1], navigation, document)
     assert updated['section'] == 'visual'
     assert updated['rule_index'] == 0
-    assert document == add_rule_in_family(empty_authoring_document(), 'mina')
+    assert document['rules'][0]['identity']['alarm_key'] == original_key

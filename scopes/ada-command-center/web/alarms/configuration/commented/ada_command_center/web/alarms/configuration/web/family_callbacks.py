@@ -11,6 +11,7 @@ from ada_command_center.web.alarms.configuration.web.families import (
     add_rule_in_family,
     family_catalog,
     initial_navigation,
+    merged_family_catalog,
     require_new_family_key,
     selected_family,
 )
@@ -19,8 +20,8 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     ADD_MESSAGE_BUTTON_ID,
     ADD_RULE_BUTTON_ID,
     AUTHORING_STORE_ID,
-    CREATE_FAMILY_MESSAGE_ID,
-    CREATE_FAMILY_RULE_ID,
+    CLOSE_EDITOR_ID,
+    CREATE_FAMILY_ID,
     FAMILY_ACTION_RESULT_ID,
     FAMILY_CREATE_PANEL_ID,
     FAMILY_NAV_STORE_ID,
@@ -37,6 +38,7 @@ from ada_command_center.web.alarms.configuration.web.ids import (
 
 # La navegación efímera no modifica los workflows de Manager ni su persistencia.
 def register_family_callbacks(app: object) -> None:
+    # Cada flujo actualiza únicamente navegación o datos de autoría según su contrato.
     @app.callback(
         Output(FAMILY_NAV_STORE_ID, 'data'),
         Input(SHOW_FAMILIES_ID, 'n_clicks'),
@@ -49,7 +51,6 @@ def register_family_callbacks(app: object) -> None:
         State(AUTHORING_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
-    # Sólo cambia qué elemento se presenta; los datos viven en AUTHORING_STORE.
     def navigate(
         _families_clicks,
         _global_clicks,
@@ -60,15 +61,15 @@ def register_family_callbacks(app: object) -> None:
         current_nav,
         document,
     ):
-        trigger = ctx.triggered_id
         if not _real_click():
             return no_update
         current = current_nav if isinstance(current_nav, dict) else initial_navigation()
-        catalog = family_catalog(document)
+        trigger = ctx.triggered_id
+        catalog = merged_family_catalog(document, current)
         if trigger == SHOW_FAMILIES_ID:
-            return initial_navigation()
+            return _base_navigation(current)
         if trigger == SHOW_GLOBAL_MESSAGES_ID:
-            return {**initial_navigation(), 'page': 'global', 'tab': 'messages'}
+            return {**_base_navigation(current), 'page': 'global', 'tab': 'messages'}
         if not isinstance(trigger, dict):
             return no_update
         kind = trigger.get('type')
@@ -77,7 +78,7 @@ def register_family_callbacks(app: object) -> None:
             if type(index) is not int or not 0 <= index < len(catalog.families):
                 return no_update
             return {
-                **initial_navigation(),
+                **_base_navigation(current),
                 'page': 'family',
                 'family_key': catalog.families[index].key,
             }
@@ -87,10 +88,10 @@ def register_family_callbacks(app: object) -> None:
             tab = trigger.get('tab')
             if tab not in {'rules', 'messages'}:
                 return no_update
-            return {**current, 'tab': tab}
+            return {**current, 'tab': tab, 'rule_index': None, 'message_index': None}
         if kind == RULE_SELECT_TYPE:
-            key = selected_family(current, document)
-            group = catalog.get(key) if key is not None else None
+            family = selected_family(current, document)
+            group = catalog.get(family) if family is not None else None
             index = trigger.get('index')
             if group is None or type(index) is not int or index not in group.rule_indexes:
                 return no_update
@@ -99,8 +100,8 @@ def register_family_callbacks(app: object) -> None:
             if current.get('page') == 'global':
                 indexes = catalog.global_message_indexes
             else:
-                key = selected_family(current, document)
-                group = catalog.get(key) if key is not None else None
+                family = selected_family(current, document)
+                group = catalog.get(family) if family is not None else None
                 indexes = group.message_indexes if group is not None else ()
             index = trigger.get('index')
             if type(index) is not int or index not in indexes:
@@ -108,6 +109,7 @@ def register_family_callbacks(app: object) -> None:
             return {**current, 'tab': 'messages', 'message_index': index}
         return no_update
 
+    # Cada flujo actualiza únicamente navegación o datos de autoría según su contrato.
     @app.callback(
         Output(AUTHORING_STORE_ID, 'data', allow_duplicate=True),
         Output(FAMILY_NAV_STORE_ID, 'data', allow_duplicate=True),
@@ -117,18 +119,19 @@ def register_family_callbacks(app: object) -> None:
         State(AUTHORING_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
-    # Autoría y selección se actualizan juntos para evitar pérdida de contexto.
     def add_family_item(_rule_clicks, _message_clicks, current_nav, document):
         if not _real_click() or not isinstance(document, dict):
             return no_update, no_update
         current = current_nav if isinstance(current_nav, dict) else initial_navigation()
-        trigger = ctx.triggered_id
         family = selected_family(current, document)
+        trigger = ctx.triggered_id
+        pending = _pending_families(current)
         if trigger == ADD_RULE_BUTTON_ID and family:
             rules = document.get('rules')
             index = len(rules) if isinstance(rules, list) else 0
             return add_rule_in_family(document, family), {
                 **current,
+                'pending_families': [key for key in pending if key != family],
                 'tab': 'rules',
                 'rule_index': index,
                 'message_index': None,
@@ -142,58 +145,56 @@ def register_family_callbacks(app: object) -> None:
             key = None if current.get('page') == 'global' else family
             return add_message_in_family(document, key), {
                 **current,
+                'pending_families': [item for item in pending if item != key],
                 'tab': 'messages',
                 'message_index': index,
                 'rule_index': None,
             }
         return no_update, no_update
 
+    # Cada flujo actualiza únicamente navegación o datos de autoría según su contrato.
     @app.callback(
-        Output(AUTHORING_STORE_ID, 'data', allow_duplicate=True),
         Output(FAMILY_NAV_STORE_ID, 'data', allow_duplicate=True),
         Output(FAMILY_ACTION_RESULT_ID, 'children'),
-        Input(CREATE_FAMILY_RULE_ID, 'n_clicks'),
-        Input(CREATE_FAMILY_MESSAGE_ID, 'n_clicks'),
+        Output(FAMILY_NEW_KEY_ID, 'value'),
+        Input(CREATE_FAMILY_ID, 'n_clicks'),
         State(FAMILY_NEW_KEY_ID, 'value'),
         State(AUTHORING_STORE_ID, 'data'),
+        State(FAMILY_NAV_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
-    # Una nueva agrupación nace cuando se crea el primer elemento del agregado.
-    def create_family(_rule_clicks, _message_clicks, raw_key, document):
-        if not _real_click() or ctx.triggered_id not in {
-            CREATE_FAMILY_RULE_ID,
-            CREATE_FAMILY_MESSAGE_ID,
-        }:
+    def create_family(_clicks, raw_key, document, current_nav):
+        if not _real_click() or ctx.triggered_id != CREATE_FAMILY_ID:
             return no_update, no_update, no_update
-        current = document if isinstance(document, dict) else empty_authoring_document()
+        current = current_nav if isinstance(current_nav, dict) else initial_navigation()
+        payload = document if isinstance(document, dict) else empty_authoring_document()
+        pending = _pending_families(current)
         try:
-            key = require_new_family_key(current, raw_key)
-            navigation = {**initial_navigation(), 'page': 'family', 'family_key': key}
-            if ctx.triggered_id == CREATE_FAMILY_RULE_ID:
-                rules = current.get('rules')
-                index = len(rules) if isinstance(rules, list) else 0
-                updated = add_rule_in_family(current, key)
-                navigation.update(rule_index=index, section='general')
-            else:
-                messages = current.get('messages')
-                index = len(messages) if isinstance(messages, list) else 0
-                updated = add_message_in_family(current, key)
-                navigation.update(tab='messages', message_index=index)
+            key = require_new_family_key(payload, raw_key, pending=pending)
         except ValueError as error:
             message = {
-                'Family key must not be empty': 'Ingresa una clave para la familia.',
+                'Family key must not be empty': 'Indica un nombre para la familia.',
                 'Family key must not have leading or trailing whitespace': (
-                    'La clave no debe tener espacios al principio ni al final.'
+                    'Elimina los espacios al principio o al final.'
                 ),
-                'Family key already exists': 'La familia ya existe; selecciónala para continuar.',
-            }.get(str(error), 'No fue posible crear la familia.')
-            return no_update, no_update, html.Span(message)
+                'Family key already exists': 'Esta familia ya existe. Selecciónala en la lista.',
+            }.get(str(error), 'No se pudo crear la familia.')
+            return no_update, html.Span(message, role='alert'), no_update
         return (
-            updated,
-            navigation,
-            html.Span('Completa el primer elemento para guardar la familia.'),
+            {
+                **_base_navigation(current),
+                'pending_families': [*pending, key],
+                'page': 'family',
+                'family_key': key,
+            },
+            html.Span(
+                'Familia preparada. Agrega una regla o un mensaje para incorporarla al borrador.',
+                role='status',
+            ),
+            '',
         )
 
+    # Cada flujo actualiza únicamente navegación o datos de autoría según su contrato.
     @app.callback(
         Output(FAMILY_NAV_STORE_ID, 'data', allow_duplicate=True),
         Input({'type': RULE_SECTION_TYPE, 'section': ALL}, 'n_clicks'),
@@ -214,6 +215,19 @@ def register_family_callbacks(app: object) -> None:
             return no_update
         return {**navigation, 'section': section}
 
+    # Cada flujo actualiza únicamente navegación o datos de autoría según su contrato.
+    @app.callback(
+        Output(FAMILY_NAV_STORE_ID, 'data', allow_duplicate=True),
+        Input(CLOSE_EDITOR_ID, 'n_clicks'),
+        State(FAMILY_NAV_STORE_ID, 'data'),
+        prevent_initial_call=True,
+    )
+    def close_editor(_clicks, navigation):
+        if not _real_click() or not isinstance(navigation, dict):
+            return no_update
+        return {**navigation, 'rule_index': None, 'message_index': None}
+
+    # Cada flujo actualiza únicamente navegación o datos de autoría según su contrato.
     @app.callback(
         Output(FAMILY_CREATE_PANEL_ID, 'hidden'),
         Input(FAMILY_NAV_STORE_ID, 'data'),
@@ -221,13 +235,13 @@ def register_family_callbacks(app: object) -> None:
     def show_family_creation(navigation):
         return not isinstance(navigation, dict) or navigation.get('page') != 'families'
 
+    # Cada flujo actualiza únicamente navegación o datos de autoría según su contrato.
     @app.callback(
         Output(ADD_RULE_BUTTON_ID, 'disabled'),
         Output(ADD_MESSAGE_BUTTON_ID, 'disabled'),
         Input(FAMILY_NAV_STORE_ID, 'data'),
         Input(AUTHORING_STORE_ID, 'data'),
     )
-    # Sólo habilita altas dentro de una familia válida o en GLOBAL.
     def update_add_controls(navigation, document):
         family = selected_family(navigation, document)
         global_messages = isinstance(navigation, dict) and navigation.get('page') == 'global'
@@ -235,6 +249,15 @@ def register_family_callbacks(app: object) -> None:
 
 
 # Descarta disparos espurios durante el montaje de controles dinámicos.
+def _pending_families(navigation: dict[str, object]) -> list[str]:
+    raw = navigation.get('pending_families')
+    return [key for key in raw if isinstance(key, str)] if isinstance(raw, list) else []
+
+
+def _base_navigation(current: dict[str, object]) -> dict[str, object]:
+    return {**initial_navigation(), 'pending_families': _pending_families(current)}
+
+
 def _real_click() -> bool:
     if not ctx.triggered:
         return False

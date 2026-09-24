@@ -77,7 +77,7 @@ VALUES = {
     'C1': 'C1 · Inmediata',
     'C2': 'C2 · Con escalamiento diferido',
     'C3': 'C3 · Sólo herramienta de origen',
-    'ECOLOGY': 'Ecología',
+    'ECOLOGY': 'Medio ambiente',
     'PRODUCTIVITY': 'Productividad',
     'SAFETY_HEALTH': 'Seguridad y salud',
     'COSTS': 'Costos',

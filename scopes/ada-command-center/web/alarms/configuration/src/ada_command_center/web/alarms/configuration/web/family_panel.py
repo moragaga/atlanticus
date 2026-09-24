@@ -6,10 +6,11 @@ from dash import html
 
 from ada_command_center.web.alarms.configuration.web.families import (
     FamilySummary,
-    family_catalog,
+    merged_family_catalog,
     selected_family,
 )
 from ada_command_center.web.alarms.configuration.web.ids import (
+    CLOSE_EDITOR_ID,
     FAMILY_SELECT_TYPE,
     FAMILY_TAB_TYPE,
     MESSAGE_SELECT_TYPE,
@@ -26,28 +27,36 @@ def build_family_panel(
     rule_editor: Callable[..., object],
     message_editor: Callable[..., object],
 ) -> object:
-    catalog = family_catalog(document)
     current = navigation if isinstance(navigation, dict) else {}
+    catalog = merged_family_catalog(document, current)
+    pending = current.get('pending_families')
+    pending_keys = pending if isinstance(pending, list) else []
     if current.get('page') == 'global':
         return _global_messages(catalog.global_message_indexes, document, current, message_editor)
     key = selected_family(current, document)
     if key is None:
-        return _family_listing(catalog.families, len(catalog.global_message_indexes))
+        return _family_listing(catalog.families, len(catalog.global_message_indexes), pending_keys)
     family = catalog.get(key)
     if family is None:
-        return _family_listing(catalog.families, len(catalog.global_message_indexes))
+        return _family_listing(catalog.families, len(catalog.global_message_indexes), pending_keys)
     return _family_content(family, document, references, current, rule_editor, message_editor)
 
 
-def _family_listing(families: tuple[FamilySummary, ...], global_count: int) -> object:
+def _family_listing(
+    families: tuple[FamilySummary, ...], global_count: int, pending: list[str]
+) -> object:
     cards = [
         html.Button(
             [
-                html.Strong(family.key or 'Sin familia'),
+                html.Strong(family.key),
                 html.Small(
-                    f'{len(family.rule_indexes)} reglas · {len(family.message_indexes)} mensajes'
+                    'Pendiente · agrega una regla o mensaje'
+                    if family.key in pending
+                    and not family.rule_indexes
+                    and not family.message_indexes
+                    else f'{len(family.rule_indexes)} reglas · {len(family.message_indexes)} mensajes'
                 ),
-                html.Span('Abrir familia', className='alarm-family__card-action'),
+                html.Span('Administrar', className='alarm-family__card-action'),
             ],
             id={'type': FAMILY_SELECT_TYPE, 'index': index},
             n_clicks=0,
@@ -60,14 +69,14 @@ def _family_listing(families: tuple[FamilySummary, ...], global_count: int) -> o
         [
             html.Div(
                 [
-                    html.H4('Familias configuradas'),
+                    html.H4('Familias'),
                     html.P('Selecciona una familia para administrar sus reglas y mensajes.'),
                 ],
                 className='alarm-family__heading',
             ),
             html.Div(cards, className='alarm-family__cards')
             if cards
-            else html.P('Todavía no existen familias configuradas.'),
+            else html.P('Todavía no existen familias. Crea una para comenzar.'),
             html.P(f'Mensajes globales: {global_count}', className='alarm-family__note'),
         ],
         className='alarm-family__section',
@@ -103,17 +112,34 @@ def _family_content(
         ],
         className='alarm-family__tabs',
     )
-    if current_tab == 'rules':
-        content = _rule_list(family.rule_indexes, document, references, navigation, rule_editor)
-    else:
-        content = _message_list(family.message_indexes, document, navigation, message_editor)
+    content = (
+        _rule_list(family.rule_indexes, document, references, navigation, rule_editor)
+        if current_tab == 'rules'
+        else _message_list(family.message_indexes, document, navigation, message_editor)
+    )
     return html.Section(
         [
             html.Div(
-                [html.H4(family.key or 'Sin familia'), tabs],
+                [
+                    html.Div(
+                        [
+                            html.H4(family.key),
+                            html.Small('La familia no se edita desde las reglas.'),
+                        ],
+                        className='alarm-family__title',
+                    ),
+                    tabs,
+                ],
                 className='alarm-family__heading',
             ),
             content,
+            html.P(
+                'Esta familia está pendiente: se incorpora al documento cuando agregues '
+                'su primera regla o mensaje.',
+                className='alarm-family__notice',
+            )
+            if not family.rule_indexes and not family.message_indexes
+            else None,
         ],
         className='alarm-family__section',
     )
@@ -171,7 +197,7 @@ def _rule_list(
             navigation.get('section', 'general'),
         )
         if current is not None
-        else html.P('Selecciona una regla para editar su configuración.')
+        else None
     )
     return _split_editor(items, details, empty='Esta familia todavía no tiene reglas.')
 
@@ -199,21 +225,48 @@ def _message_list(
         )
         for index in indexes
     ]
-    details = (
-        message_editor(current, all_messages[current])
-        if current is not None
-        else html.P('Selecciona un mensaje para editarlo.')
-    )
+    details = message_editor(current, all_messages[current]) if current is not None else None
     return _split_editor(items, details, empty='No hay mensajes en esta sección.')
 
 
-def _split_editor(items: list[object], details: object, *, empty: str) -> object:
+def _split_editor(items: list[object], details: object | None, *, empty: str) -> object:
+    is_open = details is not None
     return html.Div(
         [
-            html.Div(items if items else html.P(empty), className='alarm-family__items'),
-            html.Div(details, className='alarm-family__detail'),
+            html.Div(
+                items if items else html.P(empty, className='alarm-family__empty'),
+                className='alarm-family__items',
+            ),
+            html.Div(
+                [
+                    html.Div(className='alarm-family__modal-backdrop'),
+                    html.Div(
+                        [
+                            html.Div(
+                                [
+                                    html.Strong('Editor de configuración'),
+                                    html.Button(
+                                        'Cerrar',
+                                        id=CLOSE_EDITOR_ID,
+                                        n_clicks=0,
+                                        type='button',
+                                        className='btn btn-outline-secondary btn-sm',
+                                    ),
+                                ],
+                                className='alarm-family__modal-header',
+                            ),
+                            html.Div(details, className='alarm-family__detail'),
+                        ],
+                        className='alarm-family__modal-dialog',
+                        role='dialog',
+                        **{'aria-modal': 'true' if is_open else 'false'},
+                    ),
+                ],
+                className='alarm-family__modal',
+                hidden=not is_open,
+            ),
         ],
-        className='alarm-family__split',
+        className='alarm-family__workspace',
     )
 
 

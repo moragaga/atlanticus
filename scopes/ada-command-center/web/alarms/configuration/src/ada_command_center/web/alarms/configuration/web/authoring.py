@@ -172,9 +172,7 @@ def set_rule_field(
         rule[field] = _parameters_value(field_value)
         return value
     if field in {'identity.family_key', 'identity.alarm_key'}:
-        identity = _mapping(rule, 'identity')
-        identity[field.removeprefix('identity.')] = field_value
-        return value
+        raise ValueError('Alarm identity is generated and cannot be edited')
     if field == 'reappearance.after_minutes':
         _mapping(rule, 'reappearance')['after_minutes'] = field_value
         return value

@@ -28,8 +28,8 @@ def build_configuration_manager_surface(
         group_key='configuration',
         access_key=ALARM_CONFIGURATION_MANAGER_ACCESS_KEY,
         tool_reference_reader=dependencies.tool_reference_reader,
-        title='Alarm Configuration',
-        description='Rules and Messages for the ADA Command Center alarm domain.',
+        title='Configuración de alarmas',
+        description='Administra las reglas y mensajes del Centro de Control.',
         source_name=dependencies.source_name,
         projection_name=dependencies.projection_name,
     )

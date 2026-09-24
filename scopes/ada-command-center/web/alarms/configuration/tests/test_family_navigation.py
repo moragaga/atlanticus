@@ -14,8 +14,7 @@ from ada_command_center.web.alarms.configuration.web.families import (
 )
 from ada_command_center.web.alarms.configuration.web.ids import (
     ADD_RULE_BUTTON_ID,
-    CREATE_FAMILY_MESSAGE_ID,
-    CREATE_FAMILY_RULE_ID,
+    CREATE_FAMILY_ID,
     FAMILY_SELECT_TYPE,
     SHOW_GLOBAL_MESSAGES_ID,
 )
@@ -98,7 +97,7 @@ def test_new_rule_and_message_receive_family_before_becoming_valid() -> None:
     document = add_message_in_family(document, 'mine')
 
     assert document['rules'][0]['identity']['family_key'] == 'mine'
-    assert document['rules'][0]['identity']['alarm_key'] == ''
+    assert document['rules'][0]['identity']['alarm_key'].startswith('alarm-')
     assert document['messages'][0]['scope'] == 'FAMILY'
     assert document['messages'][0]['family_key'] == 'mine'
 
@@ -123,18 +122,25 @@ def test_navigation_uses_exact_document_indexes_not_filtered_display_indexes(mon
 def test_create_family_first_rule_or_message_updates_document_and_selection(monkeypatch):
     callbacks = _callbacks()
     original = empty_authoring_document()
-    _trigger(monkeypatch, CREATE_FAMILY_RULE_ID)
-    rules_doc, rules_nav, _result = callbacks['create_family'](1, None, 'mine', original)
-    assert rules_doc['rules'][0]['identity']['family_key'] == 'mine'
-    assert rules_nav['page'] == 'family'
-    assert rules_nav['rule_index'] == 0
+    _trigger(monkeypatch, CREATE_FAMILY_ID)
+    navigation, _result, cleared = callbacks['create_family'](
+        1, 'mine', original, initial_navigation()
+    )
+    assert cleared == ''
+    assert navigation['page'] == 'family'
+    assert navigation['family_key'] == 'mine'
+    assert family_catalog(original).families == ()
+    _trigger(monkeypatch, ADD_RULE_BUTTON_ID)
+    doc, selected = callbacks['add_family_item'](1, None, navigation, original)
+    assert doc['rules'][0]['identity']['family_key'] == 'mine'
+    assert selected['rule_index'] == 0
+    assert selected['pending_families'] == []
 
-    _trigger(monkeypatch, CREATE_FAMILY_MESSAGE_ID)
-    messages_doc, message_nav, _result = callbacks['create_family'](None, 1, 'plant', rules_doc)
-    assert messages_doc['messages'][0]['scope'] == 'FAMILY'
-    assert messages_doc['messages'][0]['family_key'] == 'plant'
-    assert message_nav['tab'] == 'messages'
-    assert message_nav['message_index'] == 0
+    _trigger(monkeypatch, CREATE_FAMILY_ID)
+    next_nav, _result, cleared = callbacks['create_family'](1, 'plant', doc, selected)
+    assert cleared == ''
+    assert next_nav['family_key'] == 'plant'
+    assert family_catalog(doc).get('plant') is None
 
 
 def test_global_navigation_keeps_rules_separate(monkeypatch):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from uuid import uuid4
 
 from ada_command_center.web.alarms.configuration.web.authoring import (
     add_message,
@@ -59,12 +60,17 @@ def family_catalog(document: dict[str, object] | None) -> FamilyCatalog:
     )
 
 
-def require_new_family_key(document: dict[str, object] | None, raw_key: object) -> str:
+def require_new_family_key(
+    document: dict[str, object] | None,
+    raw_key: object,
+    *,
+    pending: tuple[str, ...] | list[str] = (),
+) -> str:
     if not isinstance(raw_key, str) or not raw_key.strip():
         raise ValueError('Family key must not be empty')
     if raw_key != raw_key.strip():
         raise ValueError('Family key must not have leading or trailing whitespace')
-    if family_catalog(document).get(raw_key) is not None:
+    if family_catalog(document).get(raw_key) is not None or raw_key in pending:
         raise ValueError('Family key already exists')
     return raw_key
 
@@ -73,8 +79,20 @@ def add_rule_in_family(document: dict[str, object], key: str) -> dict[str, objec
     if not isinstance(key, str) or not key.strip():
         raise ValueError('A valid family is required to create a rule')
     updated = add_rule(document)
+    existing = {
+        identity['alarm_key']
+        for entry in updated['rules'][:-1]
+        if isinstance(entry, dict)
+        for identity in (entry.get('identity'),)
+        if isinstance(identity, dict) and identity.get('family_key') == key
+    }
+    while True:
+        alarm_key = f'alarm-{uuid4().hex[:12]}'
+        if alarm_key not in existing:
+            break
     rule = updated['rules'][-1]
     rule['identity']['family_key'] = key
+    rule['identity']['alarm_key'] = alarm_key
     return updated
 
 
@@ -95,6 +113,8 @@ def initial_navigation() -> dict[str, object]:
         'tab': 'rules',
         'rule_index': None,
         'message_index': None,
+        'section': 'general',
+        'pending_families': [],
     }
 
 
@@ -102,6 +122,27 @@ def selected_family(navigation: object, document: dict[str, object] | None) -> s
     if not isinstance(navigation, dict) or navigation.get('page') != 'family':
         return None
     key = navigation.get('family_key')
-    if not isinstance(key, str) or family_catalog(document).get(key) is None:
+    if not isinstance(key, str):
         return None
-    return key
+    pending = navigation.get('pending_families')
+    if family_catalog(document).get(key) is not None:
+        return key
+    return key if isinstance(pending, list) and key in pending else None
+
+
+def merged_family_catalog(
+    document: dict[str, object] | None, navigation: dict[str, object] | None
+) -> FamilyCatalog:
+    catalog = family_catalog(document)
+    raw = navigation.get('pending_families') if isinstance(navigation, dict) else None
+    pending = raw if isinstance(raw, list) else []
+    groups = list(catalog.families)
+    known = {item.key for item in groups}
+    for key in pending:
+        if isinstance(key, str) and key.strip() and key not in known:
+            groups.append(FamilySummary(key=key, rule_indexes=(), message_indexes=()))
+            known.add(key)
+    groups.sort(key=lambda item: (item.key.casefold(), item.key))
+    return FamilyCatalog(
+        families=tuple(groups), global_message_indexes=catalog.global_message_indexes
+    )

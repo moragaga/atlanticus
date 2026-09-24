@@ -23,6 +23,6 @@ def test_editor_css_is_included_in_asset_publication(tmp_path) -> None:
         publications_root=tmp_path,
     )
 
-    assert len(publication.css_entries) == 1
+    assert len(publication.css_entries) == 3
     published_css = publication.assets_root / publication.css_entries[0]
-    assert '.ada-command-center-alarm-editor' in published_css.read_text(encoding='utf-8')
+    assert '.alarm-admin' in published_css.read_text(encoding='utf-8')
