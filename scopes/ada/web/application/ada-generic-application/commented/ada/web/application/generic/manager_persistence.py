@@ -125,6 +125,18 @@ def resolve_manager_cosmos_plan(
 
 
 # Composición lazy que no consulta ni aprovisiona infraestructura al construirla.
+
+# Reutiliza las mismas declaraciones de recursos para un único account/base Cosmos.
+def resolve_manager_cosmos_plan_for_connection(connection_ref: str) -> ResolvedStoragePlan:
+    _require_name(connection_ref, 'Cosmos connection reference')
+    return resolve_manager_cosmos_plan(
+        tuple(
+            StorageResourceOverride(contract.logical_id, connection_ref=connection_ref)
+            for contract in _COSMOS_CONTRACTS.values()
+        )
+    )
+
+
 def compose_durable_manager_stores(
     *,
     namespace: AdaStorageNamespace,
@@ -177,7 +189,9 @@ def compose_durable_manager_stores(
         kpi_definitions_source=tool_source,
         navigation=CosmosNavigationProjectionStore(
             client=cosmos['navigation'],
-            settings=CosmosNavigationProjectionStoreSettings(physical['navigation'].physical_name),
+            settings=CosmosNavigationProjectionStoreSettings(
+                physical['navigation'].physical_name
+            ),
         ),
         profiles=CosmosProfilesProjectionStore(
             client=cosmos['users_support'],

@@ -106,6 +106,7 @@ dependencies = [
     { name = "atlanticus-web-profiles-projection-cosmos" },
     { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source-blob" },
+    { name = "atlanticus-web-storage-cosmos" },
     { name = "atlanticus-web-storage-topology" },
     { name = "atlanticus-web-users" },
     { name = "atlanticus-web-users-blob" },
@@ -163,6 +164,7 @@ requires-dist = [
     { name = "atlanticus-web-profiles-projection-cosmos", editable = "../../../../../web/capabilities/profiles/projection-cosmos" },
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source-blob", editable = "../../../../../web/capabilities/source/blob" },
+    { name = "atlanticus-web-storage-cosmos", editable = "../../../../../web/capabilities/storage/cosmos" },
     { name = "atlanticus-web-storage-topology", editable = "../../../../../web/capabilities/storage/topology" },
     { name = "atlanticus-web-users", editable = "../../../../../web/capabilities/users/core" },
     { name = "atlanticus-web-users-blob", editable = "../../../../../web/capabilities/users/blob" },
@@ -1439,6 +1441,21 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" }]
+
+[[package]]
+name = "atlanticus-web-storage-cosmos"
+version = "0.1.0"
+source = { editable = "../../../../../web/capabilities/storage/cosmos" }
+dependencies = [
+    { name = "atlanticus-cosmos" },
+    { name = "atlanticus-web-storage-topology" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
+    { name = "atlanticus-web-storage-topology", editable = "../../../../../web/capabilities/storage/topology" },
+]
 
 [[package]]
 name = "atlanticus-web-storage-topology"

@@ -16,6 +16,7 @@ dependencies = [
     "atlanticus-web-users-blob==0.1.0",
     "atlanticus-web-source-blob==0.1.0",
     "atlanticus-web-storage-topology==0.1.0",
+    "atlanticus-web-storage-cosmos==0.1.0",
     "atlanticus-web-profiles-projection-cosmos==0.1.0",
     "atlanticus-web-navigation-projection-cosmos==0.1.0",
     "ada-web-tools-projection-cosmos==0.1.0",
@@ -67,9 +68,11 @@ dev = [
 ]
 
 [project.scripts]
+ada-generic-manager-resources = "ada.web.application.generic.manager_deployment:manager_resources_main"
 ada-generic-application = "ada.web.application.generic.__main__:main"
 
 [tool.uv.sources]
+atlanticus-web-storage-cosmos = { path = "../../../../../web/capabilities/storage/cosmos", editable = true }
 atlanticus-web-users-cosmos = { path = "../../../../../web/capabilities/users/cosmos", editable = true }
 atlanticus-web-users-blob = { path = "../../../../../web/capabilities/users/blob", editable = true }
 atlanticus-web-navigation-projection-cosmos = { path = "../../../../../web/capabilities/navigation/projection-cosmos", editable = true }

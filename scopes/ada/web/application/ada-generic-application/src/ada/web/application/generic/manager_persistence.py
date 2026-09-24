@@ -115,6 +115,16 @@ def resolve_manager_cosmos_plan(
     return resolve_storage_plan(tuple(_COSMOS_CONTRACTS.values()), overrides)
 
 
+def resolve_manager_cosmos_plan_for_connection(connection_ref: str) -> ResolvedStoragePlan:
+    _require_name(connection_ref, 'Cosmos connection reference')
+    return resolve_manager_cosmos_plan(
+        tuple(
+            StorageResourceOverride(contract.logical_id, connection_ref=connection_ref)
+            for contract in _COSMOS_CONTRACTS.values()
+        )
+    )
+
+
 def compose_durable_manager_stores(
     *,
     namespace: AdaStorageNamespace,
