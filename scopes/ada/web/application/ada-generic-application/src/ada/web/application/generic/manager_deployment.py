@@ -19,7 +19,6 @@ from ada.web.application.generic.manager_persistence import (
 from ada.web.application.generic.settings import AdaGenericSettings
 from ada.web.storage.namespace import AdaStorageNamespace
 from ada.web.tools.persistence import ToolProjectionProvider, ToolSourceProvider
-from ada.web.tools.projection.cosmos import TOOL_PROJECTION_STORAGE_RESOURCE
 from atlanticus.connectivity.cosmos import CosmosClient, CosmosProvisioner, CosmosSettings
 from atlanticus.connectivity.storage import StorageClient, StorageSettings
 from atlanticus.web.configuration import WebEnvironment
@@ -72,12 +71,6 @@ def resolve_durable_manager_configuration(
         raise ValueError('Durable Manager requires the existing Tool Blob Source connection')
     if settings.tool_projection_provider is not ToolProjectionProvider.COSMOS:
         raise ValueError('Durable Manager requires the existing Tool Cosmos connection')
-    if (
-        settings.tool_projection_cosmos_container_name
-        != TOOL_PROJECTION_STORAGE_RESOURCE.default_physical_name
-    ):
-        raise ValueError('Tool Cosmos container conflicts with the canonical resource contract')
-
     storage_settings = settings.storage_settings()
     cosmos_settings = settings.tool_projection_cosmos_settings()
     container_name = settings.tool_source_blob_container_name

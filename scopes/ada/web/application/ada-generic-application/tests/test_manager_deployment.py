@@ -18,9 +18,7 @@ from ada.web.application.generic.settings import AdaGenericSettings
 from atlanticus.web.configuration import WebEnvironment
 
 
-def _settings(
-    tmp_path, *, tool_provider='blob', cosmos_provider='cosmos', container='ada-tool-projection'
-):
+def _settings(tmp_path, *, tool_provider='blob', cosmos_provider='cosmos'):
     values = {
         'ATLANTICUS_ENVIRONMENT': 'local',
         'ADA_APPLICATION_NAMESPACE': 'ada-site',
@@ -33,7 +31,6 @@ def _settings(
         'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT': 'http://localhost:8081',
         'ADA_TOOL_PROJECTION_COSMOS_KEY': 'test-only',
         'ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME': 'ada',
-        'ADA_TOOL_PROJECTION_COSMOS_CONTAINER_NAME': container,
     }
     return AdaGenericSettings.from_mapping(values)
 
@@ -62,21 +59,16 @@ def test_durable_manager_reuses_tool_connections_and_namespaces(tmp_path):
 
 
 @pytest.mark.parametrize(
-    ('source', 'projection', 'container', 'expected'),
+    ('source', 'projection', 'expected'),
     [
-        ('local', 'cosmos', 'ada-tool-projection', 'Tool Blob Source'),
-        ('blob', 'local', 'ada-tool-projection', 'Tool Cosmos'),
-        ('blob', 'cosmos', 'other-projection', 'canonical resource contract'),
+        ('local', 'cosmos', 'Tool Blob Source'),
+        ('blob', 'local', 'Tool Cosmos'),
     ],
 )
-def test_invalid_durable_bindings_fail_before_network(
-    tmp_path, source, projection, container, expected
-):
+def test_invalid_durable_bindings_fail_before_network(tmp_path, source, projection, expected):
     with pytest.raises(ValueError, match=expected):
         resolve_durable_manager_configuration(
-            _settings(
-                tmp_path, tool_provider=source, cosmos_provider=projection, container=container
-            )
+            _settings(tmp_path, tool_provider=source, cosmos_provider=projection)
         )
 
 
@@ -94,7 +86,6 @@ def test_kpi_consumption_cannot_silently_point_to_another_cosmos(tmp_path):
             'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT': 'http://localhost:8081',
             'ADA_TOOL_PROJECTION_COSMOS_KEY': 'test-only',
             'ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME': 'ada',
-            'ADA_TOOL_PROJECTION_COSMOS_CONTAINER_NAME': 'ada-tool-projection',
             'COSMOS_CONSUMPTION_ENDPOINT': 'http://localhost:8081',
             'COSMOS_CONSUMPTION_KEY': 'test-only',
             'COSMOS_CONSUMPTION_DATABASE_NAME': 'another',

@@ -19,7 +19,6 @@ from ada.web.application.generic.manager_persistence import (
 from ada.web.application.generic.settings import AdaGenericSettings
 from ada.web.storage.namespace import AdaStorageNamespace
 from ada.web.tools.persistence import ToolProjectionProvider, ToolSourceProvider
-from ada.web.tools.projection.cosmos import TOOL_PROJECTION_STORAGE_RESOURCE
 from atlanticus.connectivity.cosmos import CosmosClient, CosmosProvisioner, CosmosSettings
 from atlanticus.connectivity.storage import StorageClient, StorageSettings
 from atlanticus.web.configuration import WebEnvironment
@@ -75,12 +74,6 @@ def resolve_durable_manager_configuration(
         raise ValueError('Durable Manager requires the existing Tool Blob Source connection')
     if settings.tool_projection_provider is not ToolProjectionProvider.COSMOS:
         raise ValueError('Durable Manager requires the existing Tool Cosmos connection')
-    if (
-        settings.tool_projection_cosmos_container_name
-        != TOOL_PROJECTION_STORAGE_RESOURCE.default_physical_name
-    ):
-        raise ValueError('Tool Cosmos container conflicts with the canonical resource contract')
-
     storage_settings = settings.storage_settings()
     cosmos_settings = settings.tool_projection_cosmos_settings()
     container_name = settings.tool_source_blob_container_name
@@ -168,9 +161,7 @@ def prepare_durable_manager_resources(
         )
     }
     for connection_ref, container_name in sorted(blobs):
-        deployment.connections.storage[connection_ref].health_check(
-            container_name=container_name
-        )
+        deployment.connections.storage[connection_ref].health_check(container_name=container_name)
 
     cosmos_ref = deployment.resources.cosmos_plan.resources[0].connection_ref
     cosmos = deployment.connections.cosmos[cosmos_ref]
@@ -187,9 +178,7 @@ def prepare_durable_manager_resources(
             deployment.resources.cosmos_plan,
             provisioners=provisioners,
         )
-    return tuple(
-        resource.physical_name for resource in deployment.resources.cosmos_plan.resources
-    )
+    return tuple(resource.physical_name for resource in deployment.resources.cosmos_plan.resources)
 
 
 # Comando operativo separado: no aprovisiona recursos mientras arranca Gunicorn.
