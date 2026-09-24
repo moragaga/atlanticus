@@ -1,5 +1,4 @@
-# La composición resuelve REPROCESS_CURRENT desde configuración y lo inyecta explícitamente en KpiRuntimeJob.
-# El job no consulta variables de entorno directamente; recibe una decisión ya tipada y testeable.
+# Espejo pedagógico: misma ejecución y contratos que el archivo productivo.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -15,20 +14,14 @@ from ada.processes.kpi_runtime.source_state import PiOperationalWatermarkReader
 from atlanticus.configuration import ResolvedConfiguration
 from atlanticus.operational_data.planner import DataRequirementPlanner
 from atlanticus.operational_data.sources import (
-    DataSourceApplications,
-    DataSourceLoader,
-    build_current_source_registry,
+    DataSourceApplications, DataSourceLoader, build_current_source_registry,
 )
-from atlanticus.runtime import (
-    JobDefinition,
-    RuntimeConfiguration,
-    RuntimeExecutionResult,
-    execute_job,
-)
+from atlanticus.runtime import JobDefinition, RuntimeConfiguration, RuntimeExecutionResult, execute_job
 from atlanticus.state import AtomicStateStore
 
 
 @dataclass(slots=True)
+# Contrato de KpiRuntimeComposition.
 class KpiRuntimeComposition:
     configuration: ResolvedConfiguration
     runtime_configuration: RuntimeConfiguration
@@ -46,10 +39,9 @@ class KpiRuntimeComposition:
         )
 
 
+# Construye una ejecución independiente y su estado propio.
 def build_composition(
-    *,
-    configuration: ResolvedConfiguration,
-    catalog: KpiCatalog | None = None,
+    *, configuration: ResolvedConfiguration, catalog: KpiCatalog | None = None,
 ) -> KpiRuntimeComposition:
     if not isinstance(configuration, ResolvedConfiguration):
         raise TypeError('configuration must be a ResolvedConfiguration')
@@ -59,15 +51,14 @@ def build_composition(
     settings = KpiRuntimeSettings.from_configuration(configuration)
     runtime_configuration = RuntimeConfiguration.from_sources(environ=configuration.values)
     registry = build_current_source_registry(pi_source=settings.pi_source)
-    plan = DataRequirementPlanner().plan(
-        {spec.key: spec.requirements for spec in resolved_catalog.specs}
-    )
+    plan = DataRequirementPlanner().plan({spec.key: spec.requirements for spec in resolved_catalog.specs})
     applications = DataSourceApplications(
         pi=settings.pi_application,
         dispatch=settings.dispatch_application,
         blockgrade=settings.blockgrade_application,
         remanentes=settings.remanentes_application,
-        fabrica=settings.fabrica_application,
+        fabrica_planes=settings.fabrica_planes_application,
+        fabrica_kpis=settings.fabrica_kpis_application,
     )
     applications.validate_sources(plan.sources)
     reader = RoutedDatasetSourceReader(
@@ -85,10 +76,7 @@ def build_composition(
         volume_path=runtime_configuration.volume_path,
         application=settings.pi_application,
     )
-    source_watermarks = PiOperationalWatermarkReader(
-        store=source_store,
-        provider=settings.pi_source,
-    )
+    source_watermarks = PiOperationalWatermarkReader(store=source_store, provider=settings.pi_source)
     job = KpiRuntimeJob(
         catalog=resolved_catalog,
         plan=plan,
@@ -102,7 +90,7 @@ def build_composition(
         service_name='kpi-runtime',
         job_key='kpi-runtime',
         sleep_seconds=settings.poll_interval_seconds,
-        iteration_timeout_seconds=240,
+        iteration_timeout_seconds=580,
         execution_timeout_seconds=600,
         shutdown_grace_seconds=10,
         lease_timeout_seconds=30,

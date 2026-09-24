@@ -1,15 +1,15 @@
-# Espejo comentado del Data Producer Fábrica. La lógica ejecutable es idéntica al source productivo; este archivo existe para revisión en español.
+# Espejo pedagógico: misma ejecución y contratos que el archivo productivo.
 from __future__ import annotations
 
 from time import monotonic
 
 from atlanticus.data_producers.fabrica.materialization import FabricaMaterializer
-from atlanticus.data_producers.fabrica.models import FabricaPlanStreamDefinition
 from atlanticus.data_producers.fabrica.producer_state import FabricaProducerState
 from atlanticus.observability import trace_span
 from atlanticus.runtime import JobRuntimeContext
 
 
+# Orquesta la lectura de la última fuente y evita reprocesarla si su identidad no cambia.
 class FabricaJob:
     def __init__(
         self,
@@ -18,9 +18,7 @@ class FabricaJob:
         producer_state: FabricaProducerState,
         idle_seconds: int,
     ) -> None:
-        if not materializers or not all(
-            isinstance(item, FabricaMaterializer) for item in materializers
-        ):
+        if not all(isinstance(item, FabricaMaterializer) for item in materializers):
             raise TypeError('materializers must contain FabricaMaterializer values')
         if not isinstance(producer_state, FabricaProducerState):
             raise TypeError('producer_state must be a FabricaProducerState')
@@ -128,7 +126,7 @@ class FabricaJob:
                 changed += 1
                 context.increment_execution_counter('streams_changed')
                 context.set_execution_fact('new_data', True)
-            if result.unknown_source_values and isinstance(definition, FabricaPlanStreamDefinition):
+            if result.unknown_source_values and definition.report_unknown_source_values:
                 context.logger.warning(
                     'Unknown source partition value ignored',
                     event_name='fabrica.stream.unknown_partition',
@@ -213,18 +211,21 @@ class FabricaJob:
             context.set_execution_fact('data_revision', self._producer_state.current().revision)
 
 
+# Responsabilidad de _format_missing_by_output.
 def _format_missing_by_output(
     values: tuple[tuple[str, tuple[str, ...]], ...],
 ) -> str:
     return ';'.join(f'{output}:{",".join(metrics)}' for output, metrics in values if metrics)
 
 
+# Responsabilidad de _utc_now.
 def _utc_now():
     from datetime import UTC, datetime
 
     return datetime.now(UTC)
 
 
+# Responsabilidad de _minimum_utc.
 def _minimum_utc():
     from datetime import UTC, datetime
 

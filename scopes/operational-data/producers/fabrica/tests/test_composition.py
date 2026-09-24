@@ -2,76 +2,51 @@ import re
 
 from atlanticus.connectivity.storage import StorageSasCredential, StorageSettings
 from atlanticus.data_producers.fabrica import (
-    FabricaKpiStreamDefinition,
-    FabricaPlanPartition,
-    FabricaPlanStreamDefinition,
+    FabricaDatasetDefinition,
+    FabricaMetricDefinition,
     FabricaStorageConnection,
+    FabricaStreamDefinition,
     FabricaValueKind,
-    PlanMetricDefinition,
-    PlanPartitionDefinition,
     build_fabrica_data_producer,
 )
 from atlanticus.kernel import Environment
 from atlanticus.runtime import RuntimeConfiguration
 
 
-def _connection(account_url: str, container_name: str) -> FabricaStorageConnection:
+def _connection(container):
     return FabricaStorageConnection(
-        settings=StorageSettings(
-            credential=StorageSasCredential(
-                account_url=account_url,
-                sas_token='sv=1',
-            )
-        ),
-        container_name=container_name,
+        settings=StorageSettings(credential=StorageSasCredential(
+            account_url='https://example.blob.core.windows.net', sas_token='sv=1',
+        )), container_name=container,
     )
 
 
-def test_empty_kpi_catalog_does_not_build_storage_or_materializer(tmp_path) -> None:
-    planes = FabricaPlanStreamDefinition(
-        source_prefix='planes_fabrica',
-        source_filename_pattern=re.compile(
-            r'(^|.*/)planes_fabrica_(?P<file_timestamp>\d{14})\.parquet$'
-        ),
-        output_route_segment='planes',
-        partitions=(
-            PlanPartitionDefinition(
-                key=FabricaPlanPartition.DAY,
-                source_value='DAY',
-                route_segment='daily',
-            ),
-        ),
-        metrics=(
-            PlanMetricDefinition(
-                id_kpi='PLAN_A',
-                metric_key='plan_a',
-                value_kind=FabricaValueKind.NUMBER,
-                partitions=(FabricaPlanPartition.DAY,),
-            ),
-        ),
-    )
-    kpis = FabricaKpiStreamDefinition(
-        source_prefix='MLP/kpi_fabrica/kpi_fabrica',
-        source_filename_pattern=re.compile(
-            r'(^|.*/)kpi_fabrica_(?P<file_timestamp>\d{14})\.parquet$'
-        ),
-        output_route_segment='kpis',
-        datasets=(),
+def _definition(name, metrics):
+    return FabricaStreamDefinition(
+        stream_key=name, source_prefix=name,
+        source_filename_pattern=re.compile(r'input_(?P<file_timestamp>\d{14})\.parquet$'),
+        output_route_segment=name,
+        datasets=(FabricaDatasetDefinition(name='daily', source_value='DAY', route_segment='daily', metrics=metrics),),
     )
 
+
+def test_single_stream_does_not_require_other_fabrica_storage(tmp_path) -> None:
+    definitions = (_definition('planes', (
+        FabricaMetricDefinition(id_kpi='A', metric_key='a', value_kind=FabricaValueKind.FLOAT),
+    )),)
     components = build_fabrica_data_producer(
-        runtime_configuration=RuntimeConfiguration(
-            environment=Environment.from_value('local'),
-            application='ada',
-            volume_path=tmp_path,
-        ),
-        definitions=(planes, kpis),
-        connections={
-            'planes': _connection('https://planes.example.test', 'planes'),
-            'kpis': _connection('https://kpis.example.test', 'kpis'),
-        },
-        idle_seconds=5,
+        runtime_configuration=RuntimeConfiguration(environment=Environment.from_value('local'), application='planes-app', volume_path=tmp_path),
+        definitions=definitions, connections={'planes': _connection('plans')}, idle_seconds=5,
+        producer_key='fabrica-planes',
     )
-
     assert set(components.storages) == {'planes'}
     assert tuple(item.definition.stream_key for item in components.materializers) == ('planes',)
+
+
+def test_disabled_metrics_do_not_trigger_storage_or_materialization(tmp_path) -> None:
+    components = build_fabrica_data_producer(
+        runtime_configuration=RuntimeConfiguration(environment=Environment.from_value('local'), application='kpis-app', volume_path=tmp_path),
+        definitions=(_definition('kpis', ()),), connections={'kpis': _connection('kpis')}, idle_seconds=5,
+    )
+    assert components.storages == {}
+    assert components.materializers == ()

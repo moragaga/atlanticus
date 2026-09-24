@@ -3,7 +3,6 @@ from __future__ import annotations
 from time import monotonic
 
 from atlanticus.data_producers.fabrica.materialization import FabricaMaterializer
-from atlanticus.data_producers.fabrica.models import FabricaPlanStreamDefinition
 from atlanticus.data_producers.fabrica.producer_state import FabricaProducerState
 from atlanticus.observability import trace_span
 from atlanticus.runtime import JobRuntimeContext
@@ -17,9 +16,7 @@ class FabricaJob:
         producer_state: FabricaProducerState,
         idle_seconds: int,
     ) -> None:
-        if not materializers or not all(
-            isinstance(item, FabricaMaterializer) for item in materializers
-        ):
+        if not all(isinstance(item, FabricaMaterializer) for item in materializers):
             raise TypeError('materializers must contain FabricaMaterializer values')
         if not isinstance(producer_state, FabricaProducerState):
             raise TypeError('producer_state must be a FabricaProducerState')
@@ -127,7 +124,7 @@ class FabricaJob:
                 changed += 1
                 context.increment_execution_counter('streams_changed')
                 context.set_execution_fact('new_data', True)
-            if result.unknown_source_values and isinstance(definition, FabricaPlanStreamDefinition):
+            if result.unknown_source_values and definition.report_unknown_source_values:
                 context.logger.warning(
                     'Unknown source partition value ignored',
                     event_name='fabrica.stream.unknown_partition',
