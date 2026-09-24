@@ -13,8 +13,6 @@ from ada_command_center.domain.alarms import (
 from ada_command_center.web.alarms.configuration.web.authoring import (
     add_component_key,
     add_escalation_step,
-    add_message,
-    add_rule,
     add_subcomponent,
     add_visual_target,
     empty_authoring_document,
@@ -33,13 +31,12 @@ from ada_command_center.web.alarms.configuration.web.authoring import (
     tool_reference_catalog_to_document,
 )
 from ada_command_center.web.alarms.configuration.web.ids import (
-    ADD_MESSAGE_BUTTON_ID,
-    ADD_RULE_BUTTON_ID,
     AUTHORING_STORE_ID,
     COMPONENT_ADD_TYPE,
     COMPONENT_FIELD_TYPE,
     COMPONENT_REMOVE_TYPE,
     DOCUMENT_STATUS_ID,
+    FAMILY_NAV_STORE_ID,
     IMPORT_RESULT_ID,
     IMPORT_UPLOAD_ID,
     MESSAGE_FIELD_TYPE,
@@ -113,12 +110,14 @@ def register_alarm_configuration_admin_callbacks(
         Output(MESSAGES_EDITOR_ID, 'children'),
         Input(AUTHORING_STORE_ID, 'data'),
         Input(TOOL_REFERENCE_STORE_ID, 'data'),
+        Input(FAMILY_NAV_STORE_ID, 'data'),
     )
     def render_editors(
         authoring_document: dict[str, object] | None,
         reference_document: dict[str, object] | None,
+        navigation: dict[str, object] | None,
     ):
-        return build_structured_editors(authoring_document, reference_document)
+        return build_structured_editors(authoring_document, reference_document, navigation)
 
     @app.callback(
         Output(context.editor_revision_store_id, 'data'),
@@ -242,8 +241,6 @@ def register_alarm_configuration_admin_callbacks(
 
     @app.callback(
         Output(AUTHORING_STORE_ID, 'data', allow_duplicate=True),
-        Input(ADD_RULE_BUTTON_ID, 'n_clicks'),
-        Input(ADD_MESSAGE_BUTTON_ID, 'n_clicks'),
         Input({'type': RULE_REMOVE_TYPE, 'rule': ALL}, 'n_clicks'),
         Input({'type': MESSAGE_REMOVE_TYPE, 'message': ALL}, 'n_clicks'),
         Input({'type': STEP_ADD_TYPE, 'rule': ALL}, 'n_clicks'),
@@ -269,8 +266,6 @@ def register_alarm_configuration_admin_callbacks(
         prevent_initial_call=True,
     )
     def update_authoring_structure(
-        _add_rule_clicks: int | None,
-        _add_message_clicks: int | None,
         _remove_rule_clicks: list[int | None],
         _remove_message_clicks: list[int | None],
         _add_step_clicks: list[int | None],
@@ -287,10 +282,6 @@ def register_alarm_configuration_admin_callbacks(
         if current_document is None or not _click_is_real(_triggered_value()):
             return no_update
         try:
-            if component_id == ADD_RULE_BUTTON_ID:
-                return add_rule(current_document)
-            if component_id == ADD_MESSAGE_BUTTON_ID:
-                return add_message(current_document)
             if not isinstance(component_id, dict):
                 return no_update
             component_type = component_id.get('type')

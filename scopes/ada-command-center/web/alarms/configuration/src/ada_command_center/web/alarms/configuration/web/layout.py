@@ -20,6 +20,8 @@ from ada_command_center.web.alarms.configuration.web.authoring import (
     subcomponent_suggestions,
     tool_suggestions,
 )
+from ada_command_center.web.alarms.configuration.web.families import initial_navigation
+from ada_command_center.web.alarms.configuration.web.family_panel import build_family_panel
 from ada_command_center.web.alarms.configuration.web.ids import (
     ADD_MESSAGE_BUTTON_ID,
     ADD_RULE_BUTTON_ID,
@@ -27,7 +29,12 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     COMPONENT_ADD_TYPE,
     COMPONENT_FIELD_TYPE,
     COMPONENT_REMOVE_TYPE,
+    CREATE_FAMILY_MESSAGE_ID,
+    CREATE_FAMILY_RULE_ID,
     DOCUMENT_STATUS_ID,
+    FAMILY_ACTION_RESULT_ID,
+    FAMILY_NAV_STORE_ID,
+    FAMILY_NEW_KEY_ID,
     IMPORT_RESULT_ID,
     IMPORT_UPLOAD_ID,
     MESSAGE_FIELD_TYPE,
@@ -40,6 +47,8 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     RULES_EDITOR_ID,
     SAVE_BUTTON_ID,
     SAVE_RESULT_ID,
+    SHOW_FAMILIES_ID,
+    SHOW_GLOBAL_MESSAGES_ID,
     SOURCE_NAME_ID,
     STEP_ADD_TYPE,
     STEP_FIELD_TYPE,
@@ -69,14 +78,12 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                 storage_type='memory',
             ),
             dcc.Store(id=TOOL_REFERENCE_STORE_ID, data=None, storage_type='memory'),
+            dcc.Store(id=FAMILY_NAV_STORE_ID, data=initial_navigation(), storage_type='memory'),
             _runtime_context(context),
             html.Section(
                 [
-                    html.H3('Alarm Configuration'),
-                    html.P(
-                        'Structured authoring edits the same durable Rules + Messages contract. '
-                        'Tool references are suggestions and do not determine intrinsic validity.'
-                    ),
+                    html.H3('Configuración de alarmas'),
+                    html.P('Administra las reglas y mensajes por familia.'),
                     html.Div(id=TOOL_REFERENCE_STATUS_ID),
                     html.Div(id=DOCUMENT_STATUS_ID),
                 ],
@@ -86,40 +93,84 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                 [
                     html.Div(
                         [
-                            html.H4('Rules'),
+                            html.H4('Familias, reglas y mensajes'),
+                            html.Div(
+                                [
+                                    html.Button(
+                                        'Nueva regla',
+                                        id=ADD_RULE_BUTTON_ID,
+                                        n_clicks=0,
+                                        disabled=True,
+                                        type='button',
+                                    ),
+                                    html.Button(
+                                        'Nuevo mensaje',
+                                        id=ADD_MESSAGE_BUTTON_ID,
+                                        n_clicks=0,
+                                        disabled=True,
+                                        type='button',
+                                    ),
+                                ],
+                                className='ada-command-center-alarm-editor__heading-actions',
+                            ),
+                        ],
+                        className='ada-command-center-alarm-editor__section-header',
+                    ),
+                    html.Div(
+                        [
                             html.Button(
-                                'Add rule',
-                                id=ADD_RULE_BUTTON_ID,
+                                'Todas las familias',
+                                id=SHOW_FAMILIES_ID,
                                 n_clicks=0,
                                 type='button',
                             ),
-                        ]
+                            html.Button(
+                                'Mensajes globales',
+                                id=SHOW_GLOBAL_MESSAGES_ID,
+                                n_clicks=0,
+                                type='button',
+                            ),
+                        ],
+                        className='alarm-family__navigation',
+                    ),
+                    html.Div(
+                        [
+                            html.Label(
+                                [
+                                    'Clave de nueva familia',
+                                    dcc.Input(
+                                        id=FAMILY_NEW_KEY_ID,
+                                        type='text',
+                                        value='',
+                                        placeholder='Ej.: mine-crushing',
+                                    ),
+                                ]
+                            ),
+                            html.Button(
+                                'Crear con primera regla',
+                                id=CREATE_FAMILY_RULE_ID,
+                                n_clicks=0,
+                                type='button',
+                            ),
+                            html.Button(
+                                'Crear con primer mensaje',
+                                id=CREATE_FAMILY_MESSAGE_ID,
+                                n_clicks=0,
+                                type='button',
+                            ),
+                            html.Div(id=FAMILY_ACTION_RESULT_ID),
+                        ],
+                        className='alarm-family__new',
                     ),
                     html.Div(id=RULES_EDITOR_ID),
+                    html.Div(id=MESSAGES_EDITOR_ID, hidden=True),
                 ],
                 className='ada-command-center-alarm-editor__rules',
             ),
             html.Section(
                 [
-                    html.Div(
-                        [
-                            html.H4('Messages'),
-                            html.Button(
-                                'Add message',
-                                id=ADD_MESSAGE_BUTTON_ID,
-                                n_clicks=0,
-                                type='button',
-                            ),
-                        ]
-                    ),
-                    html.Div(id=MESSAGES_EDITOR_ID),
-                ],
-                className='ada-command-center-alarm-editor__messages',
-            ),
-            html.Section(
-                [
                     html.Button(
-                        'Save local draft',
+                        'Guardar borrador local',
                         id=SAVE_BUTTON_ID,
                         n_clicks=0,
                         type='button',
@@ -136,118 +187,22 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
 def build_structured_editors(
     authoring_document: dict[str, object] | None,
     reference_document: dict[str, object] | None,
+    navigation: dict[str, object] | None = None,
 ) -> tuple[object, object]:
     document = authoring_document or empty_authoring_document()
-    rules = document.get('rules')
-    messages = document.get('messages')
-    raw_rules = rules if isinstance(rules, list) else []
-    raw_messages = messages if isinstance(messages, list) else []
     tools = tool_suggestions(reference_document)
-    tool_datalist = html.Datalist(
+    datalist = html.Datalist(
         id=TOOL_DATALIST_ID,
         children=[html.Option(value=item['value'], label=item['label']) for item in tools],
     )
-    rule_cards = [
-        (
-            index,
-            rule,
-            _rule_editor(index, rule, raw_rules, raw_messages, reference_document),
-        )
-        for index, rule in enumerate(raw_rules)
-        if isinstance(rule, dict)
-    ]
-    message_cards = [
-        (index, message, _message_editor(index, message))
-        for index, message in enumerate(raw_messages)
-        if isinstance(message, dict)
-    ]
-    return (
-        _collection_editor(rule_cards, kind='rule', datalist=tool_datalist),
-        _collection_editor(message_cards, kind='message'),
+    panel = build_family_panel(
+        document,
+        reference_document,
+        navigation,
+        rule_editor=_rule_editor,
+        message_editor=_message_editor,
     )
-
-
-def _collection_editor(
-    cards: list[tuple[int, dict[str, object], object]],
-    *,
-    kind: str,
-    datalist: object | None = None,
-) -> object:
-    if not cards:
-        return html.Div(
-            [
-                datalist,
-                html.P(
-                    f'No {kind}s in this draft.',
-                    className='ada-command-center-alarm-editor__empty',
-                ),
-            ],
-            className='ada-command-center-alarm-editor__collection',
-        )
-
-    navigation = []
-    details = []
-    for index, record, editor in cards:
-        anchor = f'alarm-configuration-{kind}-detail-{index}'
-        legend = editor.children[0]
-        title = (
-            legend.children if isinstance(legend.children, str) else f'{kind.title()} {index + 1}'
-        )
-        navigation.append(
-            html.A(
-                [
-                    html.Span(
-                        f'{index + 1:02d}',
-                        className='ada-command-center-alarm-editor__item-number',
-                    ),
-                    html.Span(
-                        [
-                            html.Strong(title),
-                            html.Small(_record_subtitle(record, kind)),
-                        ],
-                        className='ada-command-center-alarm-editor__item-copy',
-                    ),
-                ],
-                href=f'#{anchor}',
-                className='ada-command-center-alarm-editor__item',
-            )
-        )
-        details.append(
-            html.Section(
-                editor,
-                id=anchor,
-                className='ada-command-center-alarm-editor__detail',
-            )
-        )
-
-    return html.Div(
-        [
-            datalist,
-            html.Div(
-                [
-                    html.Nav(
-                        [html.H5(f'{kind.title()}s ({len(navigation)})'), *navigation],
-                        className='ada-command-center-alarm-editor__index',
-                        **{'aria-label': f'{kind.title()} navigation'},
-                    ),
-                    html.Div(details, className='ada-command-center-alarm-editor__details'),
-                ],
-                className='ada-command-center-alarm-editor__split',
-            ),
-        ],
-        className='ada-command-center-alarm-editor__collection',
-    )
-
-
-def _record_subtitle(record: dict[str, object], kind: str) -> str:
-    active = record.get('is_active')
-    status = 'Active' if active is True else 'Inactive' if active is False else 'Not set'
-    if kind == 'message':
-        scope = record.get('scope') or 'Unclassified'
-        return f'{scope} · {status}'
-    category = record.get('kind') or 'Unclassified'
-    criticality = record.get('criticality') or 'No criticality'
-    return f'{category} · {criticality} · {status}'
+    return html.Div([datalist, panel], className='alarm-family'), html.Div()
 
 
 def _runtime_context(context: AlarmConfigurationAdminWebContext) -> object:
@@ -255,13 +210,13 @@ def _runtime_context(context: AlarmConfigurationAdminWebContext) -> object:
         [
             html.Div(
                 [
-                    html.Span('Source'),
+                    html.Span('Fuente'),
                     html.Strong(context.source_name, id=SOURCE_NAME_ID),
                 ]
             ),
             html.Div(
                 [
-                    html.Span('Projection'),
+                    html.Span('Proyección'),
                     html.Strong(context.projection_name, id=PROJECTION_NAME_ID),
                 ]
             ),
@@ -269,13 +224,11 @@ def _runtime_context(context: AlarmConfigurationAdminWebContext) -> object:
                 [
                     dcc.Upload(
                         id=IMPORT_UPLOAD_ID,
-                        children=html.Button('Import JSON', type='button'),
+                        children=html.Button('Importar JSON', type='button'),
                         accept='.json,application/json',
                         multiple=False,
                     ),
-                    html.Span(
-                        'Import replaces the browser draft only after the contract is valid.'
-                    ),
+                    html.Span('La importación sustituye el borrador sólo si es válido.'),
                     html.Div(id=IMPORT_RESULT_ID),
                 ]
             ),

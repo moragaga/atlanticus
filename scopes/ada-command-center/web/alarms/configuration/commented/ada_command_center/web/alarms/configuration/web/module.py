@@ -3,6 +3,9 @@
 from ada_command_center.web.alarms.configuration.web.callbacks import (
     register_alarm_configuration_admin_callbacks,
 )
+from ada_command_center.web.alarms.configuration.web.family_callbacks import (
+    register_family_callbacks,
+)
 from ada_command_center.web.alarms.configuration.web.models import (
     AlarmConfigurationAdminWebContext,
 )
@@ -22,6 +25,7 @@ def create_alarm_configuration_admin_web_module(
 ) -> WebModule:
     def register_callbacks(app: object, _services: object) -> None:
         register_alarm_configuration_admin_callbacks(app, context)
+        register_family_callbacks(app)
 
     return WebModule(
         name='ada-command-center-alarm-configuration',

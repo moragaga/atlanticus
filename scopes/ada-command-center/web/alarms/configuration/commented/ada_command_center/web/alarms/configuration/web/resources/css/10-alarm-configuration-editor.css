@@ -1,31 +1,32 @@
-/* Presentación aislada del editor de Alarm Configuration; no modifica el CSS de Manager. */
+/* Los colores, tamaños básicos y estados se resuelven mediante los tokens Atlanticus. */
 .ada-command-center-alarm-editor {
-    --alarm-editor-border: var(--atlanticus-manager-border, #dce3ed);
-    --alarm-editor-surface: var(--atlanticus-manager-surface, #fff);
-    --alarm-editor-muted: var(--atlanticus-manager-surface-muted, #f6f8fb);
-    --alarm-editor-ink: var(--atlanticus-manager-text, #253143);
-    --alarm-editor-subtle: var(--atlanticus-manager-text-muted, #66758a);
-    --alarm-editor-accent: var(--atlanticus-manager-color-primary, #ac8742);
     display: grid;
-    gap: 1rem;
     min-width: 0;
-    color: var(--alarm-editor-ink);
+    gap: .9rem;
+    padding: 0 1rem 1rem;
+    color: var(--atlanticus-ui-text);
+    font-family: var(--atlanticus-ui-font);
 }
 
-.ada-command-center-alarm-editor,
-.ada-command-center-alarm-editor * {
+.ada-command-center-alarm-editor *,
+.alarm-family * {
     box-sizing: border-box;
 }
 
-.ada-command-center-alarm-editor > section {
+.ada-command-center-alarm-editor__context,
+.ada-command-center-alarm-editor__overview,
+.ada-command-center-alarm-editor__rules,
+.ada-command-center-alarm-editor__save {
     min-width: 0;
     padding: 1rem;
-    border: 1px solid var(--alarm-editor-border);
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
     border-radius: .85rem;
-    background: var(--alarm-editor-surface);
+    box-shadow: 0 4px 16px rgb(25 30 38 / 3.5%);
 }
 
-.ada-command-center-alarm-editor :is(h3, h4, h5, h6, p) {
+.ada-command-center-alarm-editor :is(h3, h4, h5, p),
+.alarm-family :is(h3, h4, h5, p) {
     margin: 0;
 }
 
@@ -34,26 +35,15 @@
     flex-wrap: wrap;
     align-items: center;
     gap: .65rem;
+    background: var(--atlanticus-ui-surface-muted);
 }
 
 .ada-command-center-alarm-editor__context > div {
     display: flex;
     align-items: center;
-    gap: .4rem;
+    gap: .45rem;
     min-width: 0;
-    font-size: .8rem;
-}
-
-.ada-command-center-alarm-editor__context > div:not(:last-child) {
-    padding: .45rem .65rem;
-    border: 1px solid var(--alarm-editor-border);
-    border-radius: .55rem;
-    background: var(--alarm-editor-muted);
-}
-
-.ada-command-center-alarm-editor__context > div > span,
-.ada-command-center-alarm-editor__overview > p {
-    color: var(--alarm-editor-subtle);
+    font-size: .75rem;
 }
 
 .ada-command-center-alarm-editor__context > div:last-child {
@@ -61,330 +51,309 @@
     flex-wrap: wrap;
 }
 
-.ada-command-center-alarm-editor__overview {
+.ada-command-center-alarm-editor__overview,
+.ada-command-center-alarm-editor__rules,
+.ada-command-center-alarm-editor__save,
+.alarm-family__section {
     display: grid;
-    gap: .65rem;
+    min-width: 0;
+    gap: .8rem;
 }
 
-.ada-command-center-alarm-editor__overview > h3,
+.ada-command-center-alarm-editor__overview h3,
 .ada-command-center-alarm-editor__rules h4,
-.ada-command-center-alarm-editor__messages h4 {
-    font-size: 1rem;
-    font-weight: 750;
+.alarm-family__section h4 {
+    font-size: .92rem;
+    font-weight: 780;
 }
 
-.ada-command-center-alarm-editor__overview > p {
-    font-size: .8rem;
-    line-height: 1.55;
+.ada-command-center-alarm-editor__overview p,
+.alarm-family__heading p,
+.alarm-family__section > p,
+.alarm-family__note {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .73rem;
+    line-height: 1.45;
 }
 
 .ada-command-center-alarm-editor__overview > div:last-child {
     display: flex;
     flex-wrap: wrap;
-    gap: .7rem;
-    font-size: .83rem;
-}
-
-.ada-command-center-alarm-editor__overview > div:last-child :is(strong, span) {
-    padding: .3rem .55rem;
-    border-radius: .5rem;
-    background: var(--alarm-editor-muted);
-}
-
-.ada-command-center-alarm-editor__rules,
-.ada-command-center-alarm-editor__messages {
-    display: grid;
-    gap: .85rem;
-}
-
-.ada-command-center-alarm-editor__rules > div:first-child,
-.ada-command-center-alarm-editor__messages > div:first-child {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: .7rem;
-}
-
-.ada-command-center-alarm-editor button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.2rem;
-    padding: .45rem .85rem;
-    border: 1px solid var(--alarm-editor-border);
-    border-radius: .5rem;
-    background: var(--alarm-editor-surface);
-    color: var(--alarm-editor-ink);
-    font: inherit;
+    gap: .6rem;
     font-size: .77rem;
-    font-weight: 620;
-    cursor: pointer;
-    transition: background .12s ease, border-color .12s ease;
 }
 
-.ada-command-center-alarm-editor button:hover:not(:disabled) {
-    border-color: var(--alarm-editor-accent);
-    background: var(--alarm-editor-muted);
+.ada-command-center-alarm-editor button,
+.alarm-family button {
+    min-height: 2.1rem;
+    border: 1px solid var(--atlanticus-ui-border-strong);
+    border-radius: var(--atlanticus-ui-control-radius);
+    padding: .45rem .7rem;
+    color: var(--atlanticus-ui-text);
+    background: var(--atlanticus-ui-surface);
+    font: inherit;
+    font-size: .75rem;
+    font-weight: 650;
+    cursor: pointer;
+    transition: border-color var(--atlanticus-ui-transition),
+        background var(--atlanticus-ui-transition);
+}
+
+.ada-command-center-alarm-editor button:not(:disabled):hover,
+.alarm-family button:not(:disabled):hover {
+    border-color: var(--atlanticus-ui-accent);
+    background: var(--atlanticus-ui-selection-soft);
 }
 
 .ada-command-center-alarm-editor button:focus-visible,
-.ada-command-center-alarm-editor a:focus-visible {
-    outline: 2px solid var(--alarm-editor-accent);
+.alarm-family button:focus-visible {
+    outline: 2px solid var(--atlanticus-ui-secondary);
     outline-offset: 2px;
 }
 
 .ada-command-center-alarm-editor button:disabled {
-    opacity: .5;
     cursor: not-allowed;
+    opacity: .45;
 }
 
-.ada-command-center-alarm-editor__rules > div:first-child button,
-.ada-command-center-alarm-editor__messages > div:first-child button,
-.ada-command-center-alarm-editor__save > button {
-    border-color: var(--alarm-editor-accent);
-    background: var(--alarm-editor-accent);
-    color: white;
-}
-
-.ada-command-center-alarm-editor__collection,
-.ada-command-center-alarm-editor__split,
-.ada-command-center-alarm-editor__index,
-.ada-command-center-alarm-editor__details {
-    min-width: 0;
-}
-
-/* Estructura de índice y detalle para Rules y Messages. */
-.ada-command-center-alarm-editor__split {
-    display: grid;
-    grid-template-columns: minmax(11.5rem, 15.5rem) minmax(0, 1fr);
-    align-items: start;
-    gap: 1rem;
-}
-
-.ada-command-center-alarm-editor__index {
-    display: grid;
-    align-content: start;
-    gap: .45rem;
-    padding: .75rem;
-    border: 1px solid var(--alarm-editor-border);
-    border-radius: .7rem;
-    background: var(--alarm-editor-muted);
-}
-
-.ada-command-center-alarm-editor__index h5 {
-    padding: .1rem .35rem .45rem;
-    font-size: .8rem;
-}
-
-.ada-command-center-alarm-editor__item {
+.ada-command-center-alarm-editor__section-header,
+.ada-command-center-alarm-editor__heading-actions,
+.alarm-family__navigation,
+.alarm-family__new,
+.alarm-family__tabs {
     display: flex;
-    align-items: flex-start;
-    gap: .65rem;
-    min-width: 0;
-    padding: .65rem;
-    border: 1px solid transparent;
-    border-radius: .55rem;
-    color: inherit;
-    background: var(--alarm-editor-surface);
-    text-decoration: none;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .55rem;
 }
 
-.ada-command-center-alarm-editor__item:hover,
-.ada-command-center-alarm-editor__item:focus-visible {
-    border-color: var(--alarm-editor-accent);
+.ada-command-center-alarm-editor__section-header {
+    justify-content: space-between;
 }
 
-.ada-command-center-alarm-editor__item-number {
-    flex: 0 0 auto;
-    color: var(--alarm-editor-accent);
-    font-size: .73rem;
-    font-weight: 750;
+.ada-command-center-alarm-editor__heading-actions {
+    justify-content: flex-end;
 }
 
-.ada-command-center-alarm-editor__item-copy {
+.alarm-family__new {
+    padding: .9rem;
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .72rem;
+    background: var(--atlanticus-ui-surface-muted);
+}
+
+.alarm-family__new label {
     display: grid;
-    min-width: 0;
-    gap: .22rem;
-}
-
-.ada-command-center-alarm-editor__item-copy strong {
-    overflow-wrap: anywhere;
-    font-size: .77rem;
-}
-
-.ada-command-center-alarm-editor__item-copy small {
-    color: var(--alarm-editor-subtle);
-    font-size: .68rem;
-    line-height: 1.35;
-}
-
-/* :target muestra un solo detalle, conservando todos los campos montados para Dash. */
-.ada-command-center-alarm-editor__details > .ada-command-center-alarm-editor__detail {
-    display: none;
-}
-
-.ada-command-center-alarm-editor__details:not(:has(> .ada-command-center-alarm-editor__detail:target))
-    > .ada-command-center-alarm-editor__detail:first-child,
-.ada-command-center-alarm-editor__details > .ada-command-center-alarm-editor__detail:target {
-    display: block;
-}
-
-.ada-command-center-alarm-editor__detail {
-    min-width: 0;
-    scroll-margin-top: 1rem;
-}
-
-.ada-command-center-alarm-editor__detail > fieldset {
-    display: grid;
-    min-width: 0;
-    gap: .9rem;
-    margin: 0;
-    padding: 1rem;
-    border: 1px solid var(--alarm-editor-border);
-    border-radius: .7rem;
-}
-
-.ada-command-center-alarm-editor__detail > fieldset > legend {
-    padding: 0 .4rem;
-    font-size: .9rem;
-    font-weight: 750;
-}
-
-.ada-command-center-alarm-editor__detail > fieldset > button {
-    justify-self: end;
-}
-
-.ada-command-center-alarm-editor__detail fieldset fieldset,
-.ada-command-center-alarm-editor__detail fieldset > section {
-    display: grid;
-    align-content: start;
-    min-width: 0;
-    gap: .75rem;
-    margin: 0;
-    padding: .85rem;
-    border: 1px solid var(--alarm-editor-border);
-    border-radius: .6rem;
-    background: var(--alarm-editor-muted);
-}
-
-.ada-command-center-alarm-editor__detail fieldset fieldset > legend {
-    padding: 0 .3rem;
-    color: var(--alarm-editor-ink);
-    font-size: .8rem;
+    min-width: min(100%, 16rem);
+    gap: .3rem;
+    font-size: .71rem;
     font-weight: 700;
 }
 
-.ada-command-center-alarm-editor__detail fieldset > section h5,
-.ada-command-center-alarm-editor__detail fieldset > section h6 {
-    font-size: .8rem;
-    font-weight: 720;
-}
-
-.ada-command-center-alarm-editor__detail label {
-    display: grid;
-    min-width: 0;
-    gap: .35rem;
-    color: var(--alarm-editor-ink);
-    font-size: .75rem;
-    font-weight: 630;
-}
-
-.ada-command-center-alarm-editor__detail label > :is(input, textarea),
-.ada-command-center-alarm-editor__detail label > .dash-dropdown {
+.alarm-family__new input,
+.alarm-family__detail input {
+    box-sizing: border-box;
     width: 100%;
     min-width: 0;
-    max-width: 100%;
-    font-weight: 450;
-}
-
-.ada-command-center-alarm-editor__detail :is(input, textarea) {
-    min-height: 2.2rem;
+    height: 2.3rem;
     padding: .45rem .6rem;
-    border: 1px solid var(--alarm-editor-border);
-    border-radius: .5rem;
-    background: var(--alarm-editor-surface);
-    color: var(--alarm-editor-ink);
+    color: var(--atlanticus-ui-text);
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: var(--atlanticus-ui-control-radius);
     font: inherit;
     font-size: .78rem;
 }
 
-.ada-command-center-alarm-editor__detail input:focus-visible {
-    outline: 2px solid var(--alarm-editor-accent);
-    outline-offset: 1px;
+.alarm-family__new input:focus,
+.alarm-family__detail input:focus {
+    border-color: var(--atlanticus-ui-secondary);
+    outline: 1px solid var(--atlanticus-ui-secondary);
 }
 
-.ada-command-center-alarm-editor__detail fieldset > div,
-.ada-command-center-alarm-editor__detail fieldset > section > div {
-    min-width: 0;
+.alarm-family__section {
+    padding: .25rem 0 0;
 }
 
-.ada-command-center-alarm-editor__detail fieldset > section > fieldset {
-    margin-top: .3rem;
-    background: var(--alarm-editor-surface);
-}
-
-.ada-command-center-alarm-editor__detail fieldset > section > fieldset > div {
+.alarm-family__heading {
     display: grid;
     gap: .35rem;
+}
+
+/* Sólo el agrupamiento por familias es específico de esta pantalla. */
+.alarm-family__cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+    gap: .65rem;
+}
+
+.alarm-family__card {
+    display: grid;
+    min-height: 7rem !important;
+    align-content: center;
+    justify-items: start;
+    gap: .35rem;
+    text-align: left;
+    background: var(--atlanticus-ui-surface-muted) !important;
+}
+
+.alarm-family__card strong {
+    overflow-wrap: anywhere;
+    font-size: .86rem;
+}
+
+.alarm-family__card small,
+.alarm-family__item small {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .68rem;
+    font-weight: 500;
+}
+
+.alarm-family__card-action {
+    color: var(--atlanticus-ui-secondary);
+    font-size: .7rem;
+}
+
+.alarm-family__tabs {
+    border-bottom: 1px solid var(--atlanticus-ui-border);
+}
+
+.alarm-family__tab {
+    border: none !important;
+    border-bottom: 2px solid transparent !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+}
+
+.alarm-family__tab--active {
+    color: var(--atlanticus-ui-primary) !important;
+    border-bottom-color: var(--atlanticus-ui-accent) !important;
+}
+
+.alarm-family__split {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(13rem, 15rem) minmax(0, 1fr);
+    align-items: start;
+    gap: .85rem;
+}
+
+.alarm-family__items {
+    display: grid;
+    gap: .4rem;
     min-width: 0;
 }
 
-.ada-command-center-alarm-editor__detail fieldset > section > fieldset > div > input {
-    width: 100%;
+.alarm-family__item {
+    display: grid;
+    justify-items: start;
+    gap: .24rem;
+    min-width: 0;
+    text-align: left;
+    overflow-wrap: anywhere;
 }
 
-.ada-command-center-alarm-editor__detail fieldset > section > fieldset > div > button {
-    justify-self: start;
+.alarm-family__item--active {
+    border-left: 3px solid var(--atlanticus-ui-accent) !important;
+    background: var(--atlanticus-ui-selection-soft) !important;
+}
+
+.alarm-family__detail {
+    min-width: 0;
+    padding: .9rem;
+    background: var(--atlanticus-ui-surface-muted);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .72rem;
+}
+
+.alarm-family__detail > p {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .76rem;
+}
+
+.alarm-family__detail > fieldset,
+.alarm-family__detail fieldset fieldset,
+.alarm-family__detail fieldset > section {
+    display: grid;
+    min-width: 0;
+    gap: .65rem;
+    margin: 0;
+    padding: .8rem;
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .65rem;
+    background: var(--atlanticus-ui-surface);
+}
+
+.alarm-family__detail > fieldset {
+    gap: .95rem;
+}
+
+.alarm-family__detail legend {
+    float: none;
+    width: auto;
+    padding-inline: .35rem;
+    color: var(--atlanticus-ui-text);
+    font-size: .78rem;
+    font-weight: 740;
+}
+
+.alarm-family__detail label {
+    display: grid;
+    min-width: 0;
+    gap: .3rem;
+    font-size: .72rem;
+    font-weight: 650;
+}
+
+.alarm-family__detail label > .dash-dropdown,
+.alarm-family__detail label > input {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.alarm-family__detail fieldset > div,
+.alarm-family__detail fieldset > section > div {
+    min-width: 0;
+}
+
+.alarm-family__detail fieldset > section > fieldset > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+}
+
+.alarm-family__detail fieldset > section > fieldset > div > input {
+    flex: 1 1 10rem;
 }
 
 .ada-command-center-alarm-editor__save {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 1rem;
 }
 
-.ada-command-center-alarm-editor__empty {
-    padding: 1.25rem;
-    border: 1px dashed var(--alarm-editor-border);
-    border-radius: .65rem;
-    color: var(--alarm-editor-subtle);
-    background: var(--alarm-editor-muted);
-    font-size: .8rem;
-}
-
-/* El índice horizontal facilita navegación táctil en pantallas estrechas. */
-@media (max-width: 850px) {
-    .ada-command-center-alarm-editor__split {
-        grid-template-columns: minmax(0, 1fr);
+/* La distribución cambia sin alterar navegación ni datos. */
+@media (max-width: 760px) {
+    .ada-command-center-alarm-editor {
+        padding-inline: .6rem;
     }
 
-    .ada-command-center-alarm-editor__index {
+    .alarm-family__split {
+        grid-template-columns: 1fr;
+    }
+
+    .alarm-family__items {
         display: flex;
-        align-items: stretch;
         overflow-x: auto;
-        gap: .5rem;
+        padding-bottom: .25rem;
     }
 
-    .ada-command-center-alarm-editor__index h5 {
-        flex: 0 0 auto;
-        align-self: center;
-    }
-
-    .ada-command-center-alarm-editor__item {
-        flex: 0 0 min(75vw, 13rem);
-    }
-}
-
-@media (max-width: 560px) {
-    .ada-command-center-alarm-editor > section,
-    .ada-command-center-alarm-editor__detail > fieldset {
-        padding: .75rem;
+    .alarm-family__item {
+        flex: 0 0 11rem;
     }
 
     .ada-command-center-alarm-editor__context > div:last-child {
         margin-left: 0;
-        width: 100%;
     }
 }
