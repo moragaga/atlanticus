@@ -3,13 +3,13 @@ from __future__ import annotations
 import os
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Generic, TypeVar
 
 from ada.web.tools.enums import ToolConfigurationKind, ToolScope
 from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 from ada_command_center.domain.alarms import (
     AlarmColor,
     AlarmConfiguration,
+    AlarmConfigurationSnapshot,
     AlarmDeactivationDefinition,
     AlarmDefinition,
     AlarmEscalationDefinition,
@@ -39,7 +39,19 @@ from ada_command_center.web.alarms.configuration.source_projection import (
 from ada_command_center.web.alarms.configuration.source_release import (
     AlarmConfigurationSourceService,
 )
-from ada_command_center.web.alarms.configuration.tool_references import AlarmToolReferenceReader
+from ada_command_center.web.alarms.configuration.tool_dependencies import (
+    select_alarm_tool_dependencies,
+)
+from ada_command_center.web.alarms.configuration.tool_references import (
+    AlarmToolReferenceCatalog,
+    AlarmToolReferenceReader,
+)
+from ada_command_center.web.alarms.persistence import (
+    AlarmConfigurationPersistenceSettings,
+    AlarmConfigurationProjectionProvider,
+    AlarmConfigurationSourceProvider,
+    compose_alarm_configuration_persistence,
+)
 from ada_command_center.web.application.configuration_manager.application import (
     create_configuration_manager_application,
 )
@@ -52,27 +64,9 @@ from ada_command_center.web.application.configuration_manager.dependencies impor
 )
 from atlanticus.web.manager import ManagerPrincipal
 from atlanticus.web.models import WebApplicationRuntime
-from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.projection.store import ProjectionStore
-from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
-from atlanticus.web.source.models import SourceKey, SourceReleaseId
-
-PayloadT = TypeVar('PayloadT')
-
-
-class InProcessProjectionStore(ProjectionStore[PayloadT], Generic[PayloadT]):
-    def __init__(self) -> None:
-        self._active: dict[SourceKey, ProjectionRecord[PayloadT]] = {}
-
-    def get_active(self, source_key: SourceKey) -> ProjectionRecord[PayloadT] | None:
-        return self._active.get(source_key)
-
-    def replace_active(
-        self,
-        projection: ProjectionRecord[PayloadT],
-    ) -> ProjectionRecord[PayloadT]:
-        self._active[projection.source_key] = projection
-        return projection
+from atlanticus.web.source.models import SourceReleaseId
+from atlanticus.web.source.store import SourceStore
 
 
 class InProcessToolCatalogStore(ToolCatalogStore):
@@ -92,11 +86,23 @@ def create_local_configuration_manager_dependencies(
     source_root: Path | None = None,
     seed_sample_configuration: bool = True,
 ) -> ConfigurationManagerDependencies:
-    root = source_root or _source_root()
-    source_store = LocalSourceStore(LocalSourceSettings(root=root))
-    projection_store = InProcessProjectionStore[AlarmConfiguration]()
-    tool_catalog_store = InProcessToolCatalogStore(create_local_tool_catalog_snapshot())
+    root = (source_root or _source_root()).expanduser().resolve()
+    persistence = compose_alarm_configuration_persistence(
+        settings=AlarmConfigurationPersistenceSettings(
+            source_provider=AlarmConfigurationSourceProvider.LOCAL,
+            projection_provider=AlarmConfigurationProjectionProvider.LOCAL,
+            local_source_root=root,
+            local_projection_root=root.parent / f'{root.name}-projection',
+        ),
+    )
+    source_store = persistence.source
+    projection_store = persistence.projection
+    tool_catalog_snapshot = create_local_tool_catalog_snapshot()
+    tool_catalog_store = InProcessToolCatalogStore(tool_catalog_snapshot)
     tool_reference_reader = AlarmToolReferenceReader(store=tool_catalog_store)
+    tool_references = tool_reference_reader.load()
+    if tool_references is None:
+        raise RuntimeError('Local Confirmed Tool Catalog could not be created')
     principal = ManagerPrincipal(
         subject_id='local',
         display_name='Administrador local',
@@ -104,14 +110,18 @@ def create_local_configuration_manager_dependencies(
         is_local=True,
     )
     if seed_sample_configuration:
-        _seed_alarm_configuration(source_store, projection_store)
+        _seed_alarm_configuration(
+            source_store,
+            projection_store,
+            tool_references=tool_references,
+        )
     return ConfigurationManagerDependencies(
         source_store=source_store,
         projection_store=projection_store,
         principal_provider=lambda: principal,
         tool_reference_reader=tool_reference_reader,
-        source_name='Local Source',
-        projection_name='In-process Projection',
+        source_name='Fuente local',
+        projection_name='Proyección local',
     )
 
 
@@ -342,8 +352,10 @@ def create_sample_alarm_configuration() -> AlarmConfiguration:
 
 
 def _seed_alarm_configuration(
-    source_store: LocalSourceStore,
-    projection_store: InProcessProjectionStore[AlarmConfiguration],
+    source_store: SourceStore,
+    projection_store: ProjectionStore[AlarmConfigurationSnapshot],
+    *,
+    tool_references: AlarmToolReferenceCatalog,
 ) -> None:
     source = AlarmConfigurationSourceService(
         source=source_store,
@@ -351,19 +363,27 @@ def _seed_alarm_configuration(
     )
     snapshot = source.get_current()
     if snapshot.current is None:
-        source.publish_configuration(
-            create_sample_alarm_configuration(),
+        configuration = create_sample_alarm_configuration()
+        source.publish_snapshot(
+            AlarmConfigurationSnapshot(
+                configuration=configuration,
+                tool_dependencies=select_alarm_tool_dependencies(
+                    configuration,
+                    tool_references.dependencies,
+                ),
+            ),
             published_by='local-bootstrap',
             expected_concurrency_token=snapshot.concurrency_token,
             basis_release=None,
         )
-    projection = create_alarm_configuration_projection_service(
-        source=source_store,
-        projection=projection_store,
-    )
-    target = projection.select_current_target(ALARM_CONFIGURATION_SOURCE_KEY)
-    if target is not None:
-        projection.project(target)
+    if projection_store.get_active(ALARM_CONFIGURATION_SOURCE_KEY) is None:
+        projection = create_alarm_configuration_projection_service(
+            source=source_store,
+            projection=projection_store,
+        )
+        target = projection.select_current_target(ALARM_CONFIGURATION_SOURCE_KEY)
+        if target is not None:
+            projection.project(target)
 
 
 def _source_root() -> Path:

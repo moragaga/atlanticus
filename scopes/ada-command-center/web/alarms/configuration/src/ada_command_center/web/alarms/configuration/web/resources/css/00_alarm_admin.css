@@ -1,0 +1,270 @@
+.alarm-admin {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    gap: .85rem;
+    padding: 0 1rem 1rem;
+    color: var(--atlanticus-ui-text);
+    font-family: var(--atlanticus-ui-font);
+}
+
+.alarm-admin__status,
+.alarm-admin__section,
+.alarm-admin__runtime {
+    min-width: 0;
+    padding: .9rem 1rem;
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .85rem;
+    background: var(--atlanticus-ui-surface);
+    box-shadow: 0 4px 16px rgb(25 30 38 / 3.5%);
+}
+
+.alarm-admin__runtime {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .45rem .85rem;
+    background: var(--atlanticus-ui-surface-muted);
+    font-size: .74rem;
+}
+
+.alarm-admin__runtime > div:last-child {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .4rem;
+    margin-left: auto;
+}
+
+.alarm-admin__runtime-help {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .69rem;
+}
+
+.alarm-admin__status {
+    display: grid;
+    gap: .35rem;
+    padding-block: .55rem;
+    font-size: .76rem;
+}
+
+.alarm-admin__status > div:empty {
+    display: none;
+}
+
+.alarm-admin__heading,
+.alarm-admin__footer {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: .75rem;
+}
+
+.alarm-admin__heading-copy {
+    display: grid;
+    min-width: 0;
+    gap: .14rem;
+}
+
+.alarm-admin__heading-copy h3 {
+    margin: 0;
+    font-size: .94rem;
+    font-weight: 760;
+}
+
+.alarm-admin__heading-copy p {
+    margin: 0;
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .72rem;
+}
+
+.alarm-admin__heading-actions,
+.alarm-admin__navigation {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .45rem;
+}
+
+.alarm-admin__heading-actions .btn:disabled {
+    display: none;
+}
+
+.alarm-admin__navigation {
+    margin-block: .6rem .8rem;
+}
+
+.alarm-admin__navigation .btn {
+    font-size: .73rem;
+}
+
+.alarm-admin__new-family {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: .55rem;
+    margin-bottom: .85rem;
+    padding: .72rem;
+    background: var(--atlanticus-ui-surface-muted);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .7rem;
+}
+
+.alarm-admin__new-family-field {
+    display: grid;
+    flex: 0 1 19rem;
+    min-width: 12rem;
+    gap: .26rem;
+    font-size: .74rem;
+    font-weight: 700;
+}
+
+.alarm-admin__new-family-field > input {
+    min-height: 2.12rem;
+    font-size: .75rem;
+}
+
+.alarm-admin__family-result {
+    flex: 1 1 100%;
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .73rem;
+}
+
+.alarm-admin__family-result:empty,
+.alarm-admin__save-result:empty {
+    display: none;
+}
+
+.alarm-admin__save-result {
+    flex: 1 1 100%;
+}
+
+.alarm-family__section,
+.alarm-family__heading,
+.alarm-family__title {
+    display: grid;
+    min-width: 0;
+    gap: .35rem;
+}
+
+.alarm-family__heading > h4,
+.alarm-family__title h4 {
+    margin: 0;
+    font-size: .83rem;
+    font-weight: 750;
+}
+
+.alarm-family__heading p,
+.alarm-family__title small,
+.alarm-family__section > p {
+    margin: 0;
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .72rem;
+}
+
+.alarm-family__cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: .5rem;
+    margin-top: .45rem;
+}
+
+.alarm-family__card,
+.alarm-family__item {
+    display: grid;
+    align-content: center;
+    min-width: 0;
+    gap: .23rem;
+    padding: .7rem .85rem;
+    text-align: left;
+    color: var(--atlanticus-ui-text);
+    background: var(--atlanticus-ui-surface-muted);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .65rem;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.alarm-family__card:hover,
+.alarm-family__item:hover {
+    border-color: var(--atlanticus-ui-secondary);
+    background: var(--atlanticus-ui-selection-soft);
+}
+
+.alarm-family__card:focus-visible,
+.alarm-family__item:focus-visible {
+    outline: 2px solid var(--atlanticus-ui-secondary);
+    outline-offset: 2px;
+}
+
+.alarm-family__card strong,
+.alarm-family__item strong {
+    overflow-wrap: anywhere;
+    font-size: .78rem;
+}
+
+.alarm-family__card small,
+.alarm-family__item small,
+.alarm-family__card-action {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .7rem;
+}
+
+.alarm-family__card-action {
+    color: var(--atlanticus-ui-secondary);
+    font-weight: 700;
+}
+
+.alarm-family__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    margin-block: .45rem .65rem;
+}
+
+.alarm-family__tab {
+    padding: .4rem .65rem;
+    color: var(--atlanticus-ui-text);
+    border: 1px solid var(--atlanticus-ui-border);
+    background: var(--atlanticus-ui-surface);
+    border-radius: .55rem;
+    font-size: .73rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.alarm-family__tab--active {
+    background: var(--atlanticus-ui-selection-soft);
+    border-color: var(--atlanticus-ui-secondary);
+    color: var(--atlanticus-ui-primary);
+}
+
+.alarm-family__items {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    align-content: start;
+    gap: .45rem;
+    margin-top: .45rem;
+}
+
+.alarm-family__item--active {
+    border-left: 3px solid var(--atlanticus-ui-secondary);
+}
+
+.alarm-family__empty,
+.alarm-family__notice {
+    grid-column: 1 / -1;
+    padding: .8rem;
+    background: var(--atlanticus-ui-surface-muted);
+    border: 1px dashed var(--atlanticus-ui-border);
+    border-radius: .55rem;
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .74rem;
+}
+
+@media (max-width: 48rem) {
+    .alarm-admin { padding-inline: .35rem; }
+    .alarm-admin__runtime > div:last-child { margin-left: 0; }
+    .alarm-admin__new-family-field { flex: 1 1 100%; }
+}

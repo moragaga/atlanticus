@@ -11,6 +11,7 @@ from ada.web.kpis.collector import (
     DEFAULT_KPI_TIMESERIES_DELIVERY_CONTAINER,
 )
 from ada.web.tools.persistence import ToolProjectionProvider, ToolSourceProvider
+from ada.web.tools.projection.cosmos import TOOL_PROJECTION_STORAGE_RESOURCE
 from atlanticus.connectivity.storage import (
     StorageConnectionStringCredential,
     StorageSasCredential,
@@ -35,6 +36,7 @@ def test_local_settings_build_tool_persistence_contract(tmp_path: Path) -> None:
     assert persistence.source_provider is ToolSourceProvider.LOCAL
     assert persistence.projection_provider is ToolProjectionProvider.LOCAL
     assert persistence.local_base_root == tmp_path
+    assert persistence.cosmos_container_name is None
     assert settings.storage_settings() is None
     assert settings.tool_projection_cosmos_settings() is None
     assert settings.kpi_delivery_cosmos_settings() is None
@@ -52,7 +54,6 @@ def test_blob_connection_string_and_cosmos_settings_are_provider_scoped() -> Non
             'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT': 'https://cosmos.example.test',
             'ADA_TOOL_PROJECTION_COSMOS_KEY': 'cosmos-key',
             'ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME': 'configuration',
-            'ADA_TOOL_PROJECTION_COSMOS_CONTAINER_NAME': 'tool-projection',
         }
     )
 
@@ -64,6 +65,10 @@ def test_blob_connection_string_and_cosmos_settings_are_provider_scoped() -> Non
     assert cosmos is not None
     assert cosmos.endpoint == 'https://cosmos.example.test'
     assert cosmos.database_name == 'configuration'
+    assert (
+        settings.tool_persistence_settings().cosmos_container_name
+        == TOOL_PROJECTION_STORAGE_RESOURCE.default_physical_name
+    )
 
 
 def test_kpi_delivery_cosmos_connection_is_named_and_independent(tmp_path: Path) -> None:
@@ -77,8 +82,6 @@ def test_kpi_delivery_cosmos_connection_is_named_and_independent(tmp_path: Path)
             'COSMOS_CONSUMPTION_ENDPOINT': 'https://consumption.example.test',
             'COSMOS_CONSUMPTION_KEY': 'consumption-key',
             'COSMOS_CONSUMPTION_DATABASE_NAME': 'consumption',
-            'KPI_LATEST_DELIVERY_CONTAINER': 'latest-custom',
-            'KPI_TIMESERIES_DELIVERY_CONTAINER': 'timeseries-custom',
         }
     )
 
@@ -89,8 +92,8 @@ def test_kpi_delivery_cosmos_connection_is_named_and_independent(tmp_path: Path)
     assert cosmos is not None
     assert cosmos.endpoint == 'https://consumption.example.test'
     assert cosmos.database_name == 'consumption'
-    assert reader.latest_container_name == 'latest-custom'
-    assert reader.timeseries_container_name == 'timeseries-custom'
+    assert reader.latest_container_name == DEFAULT_KPI_LATEST_DELIVERY_CONTAINER
+    assert reader.timeseries_container_name == DEFAULT_KPI_TIMESERIES_DELIVERY_CONTAINER
 
 
 def test_kpi_delivery_reader_uses_collector_container_defaults(tmp_path: Path) -> None:
@@ -105,6 +108,29 @@ def test_kpi_delivery_reader_uses_collector_container_defaults(tmp_path: Path) -
 
     reader = settings.kpi_delivery_reader_settings()
 
+    assert reader.latest_container_name == DEFAULT_KPI_LATEST_DELIVERY_CONTAINER
+    assert reader.timeseries_container_name == DEFAULT_KPI_TIMESERIES_DELIVERY_CONTAINER
+
+
+def test_cosmos_resource_names_are_internal_not_environment_configuration() -> None:
+    settings = AdaGenericSettings.from_mapping(
+        {
+            'ATLANTICUS_ENVIRONMENT': 'production',
+            'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
+            'ADA_TOOL_SOURCE_PROVIDER': 'blob',
+            'ADA_TOOL_PROJECTION_PROVIDER': 'cosmos',
+            'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME': 'configuration',
+            'ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING': 'UseDevelopmentStorage=true',
+            'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT': 'https://cosmos.example.test',
+            'ADA_TOOL_PROJECTION_COSMOS_KEY': 'cosmos-key',
+            'ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME': 'configuration',
+        }
+    )
+    persistence = settings.tool_persistence_settings()
+    reader = settings.kpi_delivery_reader_settings()
+    assert (
+        persistence.cosmos_container_name == TOOL_PROJECTION_STORAGE_RESOURCE.default_physical_name
+    )
     assert reader.latest_container_name == DEFAULT_KPI_LATEST_DELIVERY_CONTAINER
     assert reader.timeseries_container_name == DEFAULT_KPI_TIMESERIES_DELIVERY_CONTAINER
 

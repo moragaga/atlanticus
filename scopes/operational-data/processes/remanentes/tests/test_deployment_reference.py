@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-REPLICA_TIMEOUT = 300
+REPLICA_TIMEOUT = 190
 CRON = '*/10 * * * *'
 CONTAINER_NAME = 'remanentes-service'
 APPLICATION = 'operational-data-remanentes'

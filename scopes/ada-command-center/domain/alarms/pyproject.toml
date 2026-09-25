@@ -8,7 +8,12 @@ version = "1.0.0"
 description = "Shared alarm authoring and configuration domain for ADA Command Center."
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
-dependencies = []
+dependencies = [
+    "ada-command-center-tools-domain==1.0.0",
+]
+
+[tool.uv.sources]
+ada-command-center-tools-domain = { path = "../tools", editable = true }
 
 [dependency-groups]
 dev = ["pytest==9.1.1", "ruff==0.15.22"]

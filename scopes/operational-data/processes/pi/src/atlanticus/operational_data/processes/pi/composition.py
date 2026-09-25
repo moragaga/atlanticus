@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from atlanticus.configuration import ResolvedConfiguration
 from atlanticus.data_producers.pi import PiDataProducerComponents, build_pi_data_producer
@@ -40,12 +40,13 @@ class PiWebApiComposition:
     settings: PiWebApiProcessSettings
     catalog: PiCatalog
     client: PiWebApiClient
+    definition: JobDefinition
     producer: PiDataProducerComponents
 
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
         with self.client:
             return execute_job(
-                definition=PI_WEB_API_JOB_DEFINITION,
+                definition=self.definition,
                 iteration=self.producer.job.run_iteration,
                 argv=argv,
                 environ=self.configuration.values,
@@ -87,5 +88,9 @@ def build_composition(
         settings=settings,
         catalog=resolved_catalog,
         client=client,
+        definition=replace(
+            PI_WEB_API_JOB_DEFINITION,
+            sleep_seconds=settings.poll_interval_seconds,
+        ),
         producer=producer,
     )

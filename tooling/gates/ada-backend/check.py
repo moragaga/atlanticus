@@ -431,8 +431,8 @@ def _validate_delivery_process_contract(scope: Path) -> None:
     tool = document.get('tool')
     if not isinstance(project, dict) or not isinstance(tool, dict):
         raise SystemExit('KPI Delivery project metadata is incomplete')
-    expected_script = {'ada-kpi-delivery': 'ada.processes.kpi_delivery.bootstrap:main'}
-    if project.get('scripts') != expected_script:
+    expected_entrypoints = {'ada-kpi-delivery': 'ada.processes.kpi_delivery.bootstrap:main'}
+    if project.get('scripts') != expected_entrypoints:
         raise SystemExit('KPI Delivery entrypoint is not canonical')
     atlanticus = tool.get('atlanticus')
     container = atlanticus.get('container') if isinstance(atlanticus, dict) else None
@@ -448,8 +448,8 @@ def _validate_historian_process_contract(scope: Path) -> None:
     tool = document.get('tool')
     if not isinstance(project, dict) or not isinstance(tool, dict):
         raise SystemExit('KPI Historian project metadata is incomplete')
-    expected_script = {'ada-kpi-historian': 'ada.processes.kpi_historian.bootstrap:main'}
-    if project.get('scripts') != expected_script:
+    expected_entrypoints = {'ada-kpi-historian': 'ada.processes.kpi_historian.bootstrap:main'}
+    if project.get('scripts') != expected_entrypoints:
         raise SystemExit('KPI Historian entrypoint is not canonical')
     atlanticus = tool.get('atlanticus')
     container = atlanticus.get('container') if isinstance(atlanticus, dict) else None
@@ -465,10 +465,10 @@ def _validate_timeseries_delivery_process_contract(scope: Path) -> None:
     tool = document.get('tool')
     if not isinstance(project, dict) or not isinstance(tool, dict):
         raise SystemExit('KPI Timeseries Delivery project metadata is incomplete')
-    expected_script = {
+    expected_entrypoints = {
         'ada-kpi-timeseries-delivery': 'ada.processes.kpi_timeseries_delivery.bootstrap:main'
     }
-    if project.get('scripts') != expected_script:
+    if project.get('scripts') != expected_entrypoints:
         raise SystemExit('KPI Timeseries Delivery entrypoint is not canonical')
     atlanticus = tool.get('atlanticus')
     container = atlanticus.get('container') if isinstance(atlanticus, dict) else None
@@ -526,9 +526,9 @@ def _validate_mirrors(scope: Path, repository: Path) -> None:
         for relative in productive_files:
             if _semantic_tree(productive / relative) != _semantic_tree(commented / relative):
                 raise SystemExit(f'Commented mirror semantic mismatch: {relative}')
-    productive_script = repository / 'tooling/gates/ada-backend/check.py'
-    commented_script = repository / 'tooling/gates/ada-backend/commented/check.py'
-    if _semantic_tree(productive_script) != _semantic_tree(commented_script):
+    productive_gate = repository / 'tooling/gates/ada-backend/check.py'
+    commented_gate = repository / 'tooling/gates/ada-backend/commented/check.py'
+    if _semantic_tree(productive_gate) != _semantic_tree(commented_gate):
         raise SystemExit('ADA backend gate Python mirror is not semantically equivalent')
 
 

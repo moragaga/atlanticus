@@ -6,17 +6,14 @@ from typing import Self
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import SettingsConfigDict
 
-from ada.web.kpis.collector import (
-    DEFAULT_KPI_LATEST_DELIVERY_CONTAINER,
-    DEFAULT_KPI_TIMESERIES_DELIVERY_CONTAINER,
-    CosmosKpiDeliveryReaderSettings,
-)
+from ada.web.kpis.collector import CosmosKpiDeliveryReaderSettings
 from ada.web.storage.namespace import AdaStorageNamespace
 from ada.web.tools.persistence import (
     ToolPersistenceSettings,
     ToolProjectionProvider,
     ToolSourceProvider,
 )
+from ada.web.tools.projection.cosmos import TOOL_PROJECTION_STORAGE_RESOURCE
 from atlanticus.connectivity.cosmos import CosmosSettings
 from atlanticus.connectivity.storage import (
     StorageConnectionStringCredential,
@@ -25,7 +22,6 @@ from atlanticus.connectivity.storage import (
 )
 from atlanticus.web.configuration import WebSettings
 
-# Tool persistence conserva nombres propios porque Source y Projection pueden usar conexiones distintas.
 APPLICATION_NAMESPACE_VARIABLE = 'ADA_APPLICATION_NAMESPACE'
 TOOL_NAMESPACE_VARIABLE = 'ADA_TOOL_NAMESPACE'
 TOOL_SOURCE_PROVIDER_VARIABLE = 'ADA_TOOL_SOURCE_PROVIDER'
@@ -38,18 +34,13 @@ TOOL_SOURCE_BLOB_SAS_TOKEN_VARIABLE = 'ADA_TOOL_SOURCE_BLOB_SAS_TOKEN'
 TOOL_PROJECTION_COSMOS_ENDPOINT_VARIABLE = 'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT'
 TOOL_PROJECTION_COSMOS_KEY_VARIABLE = 'ADA_TOOL_PROJECTION_COSMOS_KEY'
 TOOL_PROJECTION_COSMOS_DATABASE_VARIABLE = 'ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME'
-TOOL_PROJECTION_COSMOS_CONTAINER_VARIABLE = 'ADA_TOOL_PROJECTION_COSMOS_CONTAINER_NAME'
-
-# KPI Delivery consume la conexión Cosmos de consumo ya usada por los procesos productores.
 KPI_DELIVERY_COSMOS_ENDPOINT_VARIABLE = 'COSMOS_CONSUMPTION_ENDPOINT'
 KPI_DELIVERY_COSMOS_KEY_VARIABLE = 'COSMOS_CONSUMPTION_KEY'
 KPI_DELIVERY_COSMOS_DATABASE_VARIABLE = 'COSMOS_CONSUMPTION_DATABASE_NAME'
-KPI_LATEST_DELIVERY_CONTAINER_VARIABLE = 'KPI_LATEST_DELIVERY_CONTAINER'
-KPI_TIMESERIES_DELIVERY_CONTAINER_VARIABLE = 'KPI_TIMESERIES_DELIVERY_CONTAINER'
 
 
+# Configura las conexiones sin exponer nombres físicos Cosmos al despliegue.
 class AdaGenericSettings(WebSettings):
-    # .env sigue siendo una entrada local; las variables de proceso mantienen precedencia.
     model_config = SettingsConfigDict(
         case_sensitive=True,
         env_file='.env',
@@ -101,11 +92,6 @@ class AdaGenericSettings(WebSettings):
         default=None,
         validation_alias=TOOL_PROJECTION_COSMOS_DATABASE_VARIABLE,
     )
-    tool_projection_cosmos_container_name: str | None = Field(
-        default=None,
-        validation_alias=TOOL_PROJECTION_COSMOS_CONTAINER_VARIABLE,
-    )
-    # La conexión KPI es opcional como capability completa: ausente no impide levantar la Web.
     kpi_delivery_cosmos_endpoint: str | None = Field(
         default=None,
         validation_alias=KPI_DELIVERY_COSMOS_ENDPOINT_VARIABLE,
@@ -117,15 +103,6 @@ class AdaGenericSettings(WebSettings):
     kpi_delivery_cosmos_database_name: str | None = Field(
         default=None,
         validation_alias=KPI_DELIVERY_COSMOS_DATABASE_VARIABLE,
-    )
-    # Los nombres de containers heredan los defaults congelados por el Collector.
-    kpi_latest_delivery_container_name: str = Field(
-        default=DEFAULT_KPI_LATEST_DELIVERY_CONTAINER,
-        validation_alias=KPI_LATEST_DELIVERY_CONTAINER_VARIABLE,
-    )
-    kpi_timeseries_delivery_container_name: str = Field(
-        default=DEFAULT_KPI_TIMESERIES_DELIVERY_CONTAINER,
-        validation_alias=KPI_TIMESERIES_DELIVERY_CONTAINER_VARIABLE,
     )
 
     @model_validator(mode='after')
@@ -162,16 +139,11 @@ class AdaGenericSettings(WebSettings):
                     TOOL_PROJECTION_COSMOS_DATABASE_VARIABLE,
                     self.tool_projection_cosmos_database_name,
                 ),
-                (
-                    TOOL_PROJECTION_COSMOS_CONTAINER_VARIABLE,
-                    self.tool_projection_cosmos_container_name,
-                ),
             )
             missing = next((name for name, value in required if value is None), None)
             if missing is not None:
                 raise ValueError(f'{missing} is required')
 
-        # KPI Delivery se habilita sólo cuando la conexión está completa; una configuración parcial sí es inválida.
         kpi_connection = (
             (KPI_DELIVERY_COSMOS_ENDPOINT_VARIABLE, self.kpi_delivery_cosmos_endpoint),
             (KPI_DELIVERY_COSMOS_KEY_VARIABLE, self.kpi_delivery_cosmos_key),
@@ -180,12 +152,11 @@ class AdaGenericSettings(WebSettings):
         if any(value is not None for _, value in kpi_connection):
             missing = next((name for name, value in kpi_connection if value is None), None)
             if missing is not None:
-                raise ValueError(
-                    f'{missing} is required when KPI delivery Cosmos is configured'
-                )
+                raise ValueError(f'{missing} is required when KPI delivery Cosmos is configured')
 
         return self
 
+    # La capability Tools posee el nombre físico de su Projection Cosmos.
     def tool_persistence_settings(self) -> ToolPersistenceSettings:
         return ToolPersistenceSettings(
             namespace=AdaStorageNamespace(
@@ -200,7 +171,11 @@ class AdaGenericSettings(WebSettings):
                 else None
             ),
             blob_container_name=self.tool_source_blob_container_name,
-            cosmos_container_name=self.tool_projection_cosmos_container_name,
+            cosmos_container_name=(
+                TOOL_PROJECTION_STORAGE_RESOURCE.default_physical_name
+                if self.tool_projection_provider is ToolProjectionProvider.COSMOS
+                else None
+            ),
         )
 
     def storage_settings(self) -> StorageSettings | None:
@@ -222,7 +197,6 @@ class AdaGenericSettings(WebSettings):
         return StorageSettings(credential=credential)
 
     def tool_projection_cosmos_settings(self) -> CosmosSettings | None:
-        # Este cliente existe sólo para resolver Tool Projection y el bootstrap lo cierra después de esa lectura.
         if self.tool_projection_provider is not ToolProjectionProvider.COSMOS:
             return None
         endpoint = self.tool_projection_cosmos_endpoint
@@ -238,7 +212,6 @@ class AdaGenericSettings(WebSettings):
         )
 
     def kpi_delivery_cosmos_settings(self) -> CosmosSettings | None:
-        # Ausencia total significa capability Collector no configurada, no fallo global de Web.
         endpoint = self.kpi_delivery_cosmos_endpoint
         key = self.kpi_delivery_cosmos_key
         database_name = self.kpi_delivery_cosmos_database_name
@@ -253,9 +226,6 @@ class AdaGenericSettings(WebSettings):
             allow_insecure_http=self.environment.is_local,
         )
 
+    # El collector administra internamente ambos contenedores de Delivery.
     def kpi_delivery_reader_settings(self) -> CosmosKpiDeliveryReaderSettings:
-        # Los containers Latest y Timeseries siguen siendo configurables sin cambiar el contrato de documentos.
-        return CosmosKpiDeliveryReaderSettings(
-            latest_container_name=self.kpi_latest_delivery_container_name,
-            timeseries_container_name=self.kpi_timeseries_delivery_container_name,
-        )
+        return CosmosKpiDeliveryReaderSettings()

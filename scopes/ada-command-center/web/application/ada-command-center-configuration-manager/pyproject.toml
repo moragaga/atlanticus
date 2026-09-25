@@ -11,6 +11,7 @@ classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "ada-command-center-alarms-domain==1.0.0",
     "ada-command-center-web-alarm-configuration[web]==0.1.0",
+    "ada-command-center-web-alarm-persistence==0.1.0",
     "ada-command-center-tools-catalog==0.1.0",
     "ada-web-tools==0.1.0",
     "atlanticus-web==0.1.0",
@@ -21,9 +22,13 @@ dependencies = [
     "atlanticus-web-source-local==0.1.0",
 ]
 
+[tool.uv]
+override-dependencies = ["atlanticus-storage==1.0.0"]
+
 [tool.uv.sources]
 ada-command-center-alarms-domain = { path = "../../../domain/alarms", editable = true }
 ada-command-center-web-alarm-configuration = { path = "../../alarms/configuration", editable = true }
+ada-command-center-web-alarm-persistence = { path = "../../alarms/persistence", editable = true }
 ada-command-center-tools-catalog = { path = "../../../backend/tools/catalog", editable = true }
 ada-web-tools = { path = "../../../../ada/web/tools/core", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
@@ -31,6 +36,7 @@ atlanticus-web-bootstrap = { path = "../../../../../web/framework/bootstrap", ed
 atlanticus-web-manager = { path = "../../../../../web/capabilities/manager", editable = true }
 atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
+atlanticus-storage = { path = "../../../../../connectivity/storage" }
 atlanticus-web-source-local = { path = "../../../../../web/capabilities/source/local", editable = true }
 
 [dependency-groups]
@@ -74,14 +80,23 @@ testpaths = ["tests"]
 pythonpath = [
     "src",
     "../../alarms/configuration/src",
+    "../../alarms/projection-local/src",
+    "../../alarms/projection-cosmos/src",
+    "../../alarms/persistence/src",
     "../../../domain/alarms/src",
+    "../../../domain/tools/src",
     "../../../backend/tools/catalog/src",
     "../../../../ada/web/tools/core/src",
+    "../../../../../connectivity/cosmos/src",
+    "../../../../../connectivity/storage/src",
+    "../../../../../backend/observability/src",
     "../../../../../web/framework/core/src",
     "../../../../../web/framework/bootstrap/src",
     "../../../../../web/capabilities/manager/src",
     "../../../../../web/capabilities/projection/core/src",
     "../../../../../web/capabilities/source/core/src",
     "../../../../../web/capabilities/source/local/src",
+    "../../../../../web/capabilities/source/blob/src",
+    "../../../../../web/capabilities/storage/topology/src",
 ]
 addopts = "-q --import-mode=importlib"

@@ -11,6 +11,19 @@ classifiers = [
     "Private :: Do Not Upload",
 ]
 dependencies = [
+    "ada-configuration-manager==0.5.1",
+    "atlanticus-web-users-cosmos==0.1.0",
+    "atlanticus-web-users-blob==0.1.0",
+    "atlanticus-web-source-blob==0.1.0",
+    "atlanticus-web-storage-topology==0.1.0",
+    "atlanticus-web-storage-cosmos==0.1.0",
+    "atlanticus-web-profiles-projection-cosmos==0.1.0",
+    "atlanticus-web-navigation-projection-cosmos==0.1.0",
+    "ada-web-tools-projection-cosmos==0.1.0",
+    "ada-web-kpi-registry-projection-cosmos==0.1.0",
+    "ada-web-kpi-definition-projection-cosmos==0.1.0",
+    "ada-web-access-projection-cosmos==0.1.0",
+    "ada-web-access-configuration==0.1.0",
     "ada-web-operational-state==0.1.0",
     "ada-web-operational-render-binding==0.1.0",
     "ada-web-storage-namespace==0.1.0",
@@ -39,6 +52,9 @@ dependencies = [
     "atlanticus-web-identity==0.1.0",
     "atlanticus-web-identity-local==0.1.0",
     "atlanticus-web-navigation==0.1.0",
+    "atlanticus-web-manager==0.3.18",
+    "atlanticus-web-profiles==0.1.0",
+    "atlanticus-web-users==0.1.0",
     "atlanticus-web-projection==0.1.0",
     "ada-web-ui-page-readiness==0.1.0",
     "pydantic==2.13.5",
@@ -52,9 +68,27 @@ dev = [
 ]
 
 [project.scripts]
+ada-generic-manager-resources = "ada.web.application.generic.manager_deployment:manager_resources_main"
 ada-generic-application = "ada.web.application.generic.__main__:main"
 
 [tool.uv.sources]
+atlanticus-web-storage-cosmos = { path = "../../../../../web/capabilities/storage/cosmos", editable = true }
+atlanticus-web-users-cosmos = { path = "../../../../../web/capabilities/users/cosmos", editable = true }
+atlanticus-web-users-blob = { path = "../../../../../web/capabilities/users/blob", editable = true }
+atlanticus-web-navigation-projection-cosmos = { path = "../../../../../web/capabilities/navigation/projection-cosmos", editable = true }
+ada-web-kpi-registry-projection-cosmos = { path = "../../kpis/registry/projection-cosmos", editable = true }
+ada-web-kpi-definition-projection-cosmos = { path = "../../kpis/definition/projection-cosmos", editable = true }
+ada-web-access-projection-cosmos = { path = "../../access/projection-cosmos", editable = true }
+ada-configuration-manager = { path = "../ada-configuration-manager", editable = true }
+ada-web-access = { path = "../../access/core", editable = true }
+ada-web-access-configuration = { path = "../../access/configuration", editable = true }
+ada-web-configuration = { path = "../../configuration/core", editable = true }
+ada-web-kpi-registry = { path = "../../kpis/registry/core", editable = true }
+ada-web-kpi-registry-configuration = { path = "../../kpis/registry/configuration", editable = true }
+ada-web-kpi-registry-projection-local = { path = "../../kpis/registry/projection-local", editable = true }
+ada-web-kpi-definition = { path = "../../kpis/definition/core", editable = true }
+ada-web-kpi-definition-configuration = { path = "../../kpis/definition/configuration", editable = true }
+ada-web-kpi-definition-projection-local = { path = "../../kpis/definition/projection-local", editable = true }
 ada-web-content-state = { path = "../../content-state/core", editable = true }
 ada-web-operational-state = { path = "../../operational-state", editable = true }
 ada-web-operational-render-binding = { path = "../../operational-render-binding", editable = true }
@@ -76,7 +110,16 @@ atlanticus-web-configuration = { path = "../../../../../web/framework/configurat
 atlanticus-web-observability = { path = "../../../../../web/framework/observability", editable = true }
 atlanticus-web-identity = { path = "../../../../../web/capabilities/identity/core", editable = true }
 atlanticus-web-identity-local = { path = "../../../../../web/capabilities/identity/local", editable = true }
+atlanticus-web-manager = { path = "../../../../../web/capabilities/manager", editable = true }
+atlanticus-web-composition-profiles-manager = { path = "../../../../../web/compositions/profiles-manager", editable = true }
+atlanticus-web-composition-users-manager = { path = "../../../../../web/compositions/users-manager", editable = true }
+atlanticus-web-profiles = { path = "../../../../../web/capabilities/profiles/core", editable = true }
+atlanticus-web-profiles-configuration = { path = "../../../../../web/capabilities/profiles/configuration", editable = true }
+atlanticus-web-profiles-projection-local = { path = "../../../../../web/capabilities/profiles/projection-local", editable = true }
+atlanticus-web-profiles-projection-cosmos = { path = "../../../../../web/capabilities/profiles/projection-cosmos", editable = true }
+atlanticus-web-users = { path = "../../../../../web/capabilities/users/core", editable = true }
 atlanticus-web-navigation = { path = "../../../../../web/capabilities/navigation/core", editable = true }
+atlanticus-web-navigation-configuration = { path = "../../../../../web/capabilities/navigation/configuration", editable = true }
 ada-web-ui-page-readiness = { path = "../../ui/page-readiness", editable = true }
 ada-web-storage-namespace = { path = "../../storage/namespace", editable = true }
 ada-web-tools = { path = "../../tools/core", editable = true }

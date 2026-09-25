@@ -20,6 +20,9 @@ from ada_command_center.web.alarms.configuration.web.authoring import (
     subcomponent_suggestions,
     tool_suggestions,
 )
+from ada_command_center.web.alarms.configuration.web.families import initial_navigation
+from ada_command_center.web.alarms.configuration.web.family_panel import build_family_panel
+from ada_command_center.web.alarms.configuration.web.guided_rule import build_rule_section
 from ada_command_center.web.alarms.configuration.web.ids import (
     ADD_MESSAGE_BUTTON_ID,
     ADD_RULE_BUTTON_ID,
@@ -27,7 +30,12 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     COMPONENT_ADD_TYPE,
     COMPONENT_FIELD_TYPE,
     COMPONENT_REMOVE_TYPE,
+    CREATE_FAMILY_ID,
     DOCUMENT_STATUS_ID,
+    FAMILY_ACTION_RESULT_ID,
+    FAMILY_CREATE_PANEL_ID,
+    FAMILY_NAV_STORE_ID,
+    FAMILY_NEW_KEY_ID,
     IMPORT_RESULT_ID,
     IMPORT_UPLOAD_ID,
     MESSAGE_FIELD_TYPE,
@@ -40,6 +48,8 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     RULES_EDITOR_ID,
     SAVE_BUTTON_ID,
     SAVE_RESULT_ID,
+    SHOW_FAMILIES_ID,
+    SHOW_GLOBAL_MESSAGES_ID,
     SOURCE_NAME_ID,
     STEP_ADD_TYPE,
     STEP_FIELD_TYPE,
@@ -54,9 +64,15 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     TOOL_REFERENCE_STATUS_ID,
     TOOL_REFERENCE_STORE_ID,
 )
+from ada_command_center.web.alarms.configuration.web.labels import (
+    field_help,
+    field_label,
+    value_label,
+)
 from ada_command_center.web.alarms.configuration.web.models import (
     AlarmConfigurationAdminWebContext,
 )
+from ada_command_center.web.alarms.configuration.web.select_style import dash_select_style
 
 
 def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) -> object:
@@ -69,95 +85,150 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                 storage_type='memory',
             ),
             dcc.Store(id=TOOL_REFERENCE_STORE_ID, data=None, storage_type='memory'),
+            dcc.Store(id=FAMILY_NAV_STORE_ID, data=initial_navigation(), storage_type='memory'),
             _runtime_context(context),
             html.Section(
                 [
-                    html.H3('Alarm Configuration'),
-                    html.P(
-                        'Structured authoring edits the same durable Rules + Messages contract. '
-                        'Tool references are suggestions and do not determine intrinsic validity.'
-                    ),
                     html.Div(id=TOOL_REFERENCE_STATUS_ID),
                     html.Div(id=DOCUMENT_STATUS_ID),
-                ]
+                ],
+                className='alarm-admin__status',
             ),
             html.Section(
                 [
                     html.Div(
                         [
-                            html.H4('Rules'),
+                            html.Div(
+                                [
+                                    html.H3('Familias, reglas y mensajes'),
+                                    html.P(
+                                        'Administra los elementos de cada familia por separado.'
+                                    ),
+                                ],
+                                className='alarm-admin__heading-copy',
+                            ),
+                            html.Div(
+                                [
+                                    html.Button(
+                                        '+ Nueva regla',
+                                        id=ADD_RULE_BUTTON_ID,
+                                        n_clicks=0,
+                                        disabled=True,
+                                        type='button',
+                                        className='btn btn-outline-secondary btn-sm',
+                                    ),
+                                    html.Button(
+                                        '+ Nuevo mensaje',
+                                        id=ADD_MESSAGE_BUTTON_ID,
+                                        n_clicks=0,
+                                        disabled=True,
+                                        type='button',
+                                        className='btn btn-outline-secondary btn-sm',
+                                    ),
+                                ],
+                                className='alarm-admin__heading-actions',
+                            ),
+                        ],
+                        className='alarm-admin__heading',
+                    ),
+                    html.Nav(
+                        [
                             html.Button(
-                                'Add rule',
-                                id=ADD_RULE_BUTTON_ID,
+                                'Todas las familias',
+                                id=SHOW_FAMILIES_ID,
                                 n_clicks=0,
                                 type='button',
+                                className='btn btn-outline-secondary btn-sm',
                             ),
-                        ]
+                            html.Button(
+                                'Mensajes globales',
+                                id=SHOW_GLOBAL_MESSAGES_ID,
+                                n_clicks=0,
+                                type='button',
+                                className='btn btn-outline-secondary btn-sm',
+                            ),
+                        ],
+                        className='alarm-admin__navigation',
+                    ),
+                    html.Div(
+                        [
+                            html.Label(
+                                [
+                                    html.Span('Nueva familia'),
+                                    dcc.Input(
+                                        id=FAMILY_NEW_KEY_ID,
+                                        type='text',
+                                        value='',
+                                        placeholder='Nombre o clave de la familia',
+                                        debounce=False,
+                                        className='form-control form-control-sm',
+                                    ),
+                                ],
+                                className='alarm-admin__new-family-field',
+                            ),
+                            html.Button(
+                                'Crear familia',
+                                id=CREATE_FAMILY_ID,
+                                n_clicks=0,
+                                type='button',
+                                className='btn btn-primary btn-sm',
+                            ),
+                            html.Div(
+                                id=FAMILY_ACTION_RESULT_ID, className='alarm-admin__family-result'
+                            ),
+                        ],
+                        id=FAMILY_CREATE_PANEL_ID,
+                        className='alarm-admin__new-family',
                     ),
                     html.Div(id=RULES_EDITOR_ID),
-                ]
+                    html.Div(id=MESSAGES_EDITOR_ID, hidden=True),
+                ],
+                className='alarm-admin__section',
             ),
             html.Section(
                 [
                     html.Div(
                         [
-                            html.H4('Messages'),
-                            html.Button(
-                                'Add message',
-                                id=ADD_MESSAGE_BUTTON_ID,
-                                n_clicks=0,
-                                type='button',
-                            ),
-                        ]
+                            html.H3('Borrador local · alarmas'),
+                            html.P('Guarda los cambios cuando completes los campos obligatorios.'),
+                        ],
+                        className='alarm-admin__heading-copy',
                     ),
-                    html.Div(id=MESSAGES_EDITOR_ID),
-                ]
-            ),
-            html.Section(
-                [
                     html.Button(
-                        'Save local draft',
+                        'Guardar borrador',
                         id=SAVE_BUTTON_ID,
                         n_clicks=0,
                         type='button',
+                        className='btn btn-primary btn-sm',
                     ),
-                    html.Div(id=SAVE_RESULT_ID),
-                ]
+                    html.Div(id=SAVE_RESULT_ID, className='alarm-admin__save-result'),
+                ],
+                className='alarm-admin__section alarm-admin__footer',
             ),
-        ]
+        ],
+        className='ada-command-center-alarm-editor atlanticus-bootstrap alarm-admin',
     )
 
 
 def build_structured_editors(
     authoring_document: dict[str, object] | None,
     reference_document: dict[str, object] | None,
+    navigation: dict[str, object] | None = None,
 ) -> tuple[object, object]:
     document = authoring_document or empty_authoring_document()
-    rules = document.get('rules')
-    messages = document.get('messages')
-    raw_rules = rules if isinstance(rules, list) else []
-    raw_messages = messages if isinstance(messages, list) else []
     tools = tool_suggestions(reference_document)
-    tool_datalist = html.Datalist(
+    datalist = html.Datalist(
         id=TOOL_DATALIST_ID,
         children=[html.Option(value=item['value'], label=item['label']) for item in tools],
     )
-    rule_children = [tool_datalist]
-    rule_children.extend(
-        _rule_editor(index, rule, raw_rules, raw_messages, reference_document)
-        for index, rule in enumerate(raw_rules)
-        if isinstance(rule, dict)
+    panel = build_family_panel(
+        document,
+        reference_document,
+        navigation,
+        rule_editor=_rule_editor,
+        message_editor=_message_editor,
     )
-    if len(rule_children) == 1:
-        rule_children.append(html.P('No rules in this draft.'))
-    message_children = [
-        _message_editor(index, message)
-        for index, message in enumerate(raw_messages)
-        if isinstance(message, dict)
-    ]
-    if not message_children:
-        message_children.append(html.P('No messages in this draft.'))
-    return html.Div(rule_children), html.Div(message_children)
+    return html.Div([datalist, panel], className='alarm-family'), html.Div()
 
 
 def _runtime_context(context: AlarmConfigurationAdminWebContext) -> object:
@@ -165,13 +236,13 @@ def _runtime_context(context: AlarmConfigurationAdminWebContext) -> object:
         [
             html.Div(
                 [
-                    html.Span('Source'),
+                    html.Span('Fuente'),
                     html.Strong(context.source_name, id=SOURCE_NAME_ID),
                 ]
             ),
             html.Div(
                 [
-                    html.Span('Projection'),
+                    html.Span('Proyección'),
                     html.Strong(context.projection_name, id=PROJECTION_NAME_ID),
                 ]
             ),
@@ -179,17 +250,16 @@ def _runtime_context(context: AlarmConfigurationAdminWebContext) -> object:
                 [
                     dcc.Upload(
                         id=IMPORT_UPLOAD_ID,
-                        children=html.Button('Import JSON', type='button'),
+                        children=html.Button('Importar JSON', type='button'),
                         accept='.json,application/json',
                         multiple=False,
                     ),
-                    html.Span(
-                        'Import replaces the browser draft only after the contract is valid.'
-                    ),
+                    html.Span('La importación sustituye el borrador sólo si es válido.'),
                     html.Div(id=IMPORT_RESULT_ID),
                 ]
             ),
-        ]
+        ],
+        className='alarm-admin__runtime',
     )
 
 
@@ -199,6 +269,7 @@ def _rule_editor(
     rules: list[object],
     messages: list[object],
     reference_document: dict[str, object] | None,
+    section: str = 'general',
 ) -> object:
     identity = _mapping(rule.get('identity'))
     reappearance = _mapping(rule.get('reappearance'))
@@ -209,7 +280,7 @@ def _rule_editor(
     family_key = _string(identity.get('family_key'))
     priority_group = _string(rule.get('priority_group'))
     title = _string(rule.get('display_name')) or _string(rule.get('rule_name'))
-    title = title or f'Rule {rule_index + 1}'
+    title = title or f'Regla {rule_index + 1}'
     message_options = _message_options(messages, family_key, _list(rule.get('message_keys')))
     special_options = _special_condition_options(
         rules,
@@ -217,11 +288,11 @@ def _rule_editor(
         priority_group,
         _list(reappearance.get('special_conditions')),
     )
-    return html.Fieldset(
+    return build_rule_section(
         [
             html.Legend(title),
             html.Button(
-                'Remove rule',
+                'Eliminar regla',
                 id={'type': RULE_REMOVE_TYPE, 'rule': rule_index},
                 n_clicks=0,
                 type='button',
@@ -229,17 +300,16 @@ def _rule_editor(
             _group(
                 'Identity and presentation',
                 [
-                    _text_field(
-                        rule_index,
-                        'identity.family_key',
-                        'Family key',
-                        identity.get('family_key'),
+                    html.Div(
+                        [html.Span('Familia'), html.Strong(family_key)],
+                        className='alarm-admin__read-only',
                     ),
-                    _text_field(
-                        rule_index,
-                        'identity.alarm_key',
-                        'Alarm key',
-                        identity.get('alarm_key'),
+                    html.Div(
+                        [
+                            html.Span('Identificador automático'),
+                            html.Code(identity.get('alarm_key') or 'Sin asignar'),
+                        ],
+                        className='alarm-admin__read-only',
                     ),
                     _text_field(rule_index, 'rule_name', 'Rule name', rule.get('rule_name')),
                     _text_field(
@@ -368,7 +438,12 @@ def _rule_editor(
             ),
             _escalation_editor(rule_index, escalation, steps),
             _visual_targets_editor(rule_index, targets, reference_document),
-        ]
+        ],
+        section=section,
+        criticality=rule.get('criticality'),
+        deactivation_enabled=deactivation.get('enabled'),
+        targets=targets,
+        references=reference_document,
     )
 
 
@@ -378,14 +453,14 @@ def _escalation_editor(
     steps: list[object],
 ) -> object:
     children: list[object] = [
-        html.H5('Escalation'),
+        html.H5('Escalamiento'),
         _tool_key_field(
             {'type': RULE_FIELD_TYPE, 'rule': rule_index, 'field': 'escalation.origin_tool_key'},
             'Origin tool key',
             escalation.get('origin_tool_key'),
         ),
         html.Button(
-            'Add escalation step',
+            'Agregar destino',
             id={'type': STEP_ADD_TYPE, 'rule': rule_index},
             n_clicks=0,
             type='button',
@@ -397,9 +472,9 @@ def _escalation_editor(
         children.append(
             html.Fieldset(
                 [
-                    html.Legend(f'Step {step_index + 1}'),
+                    html.Legend(f'Destino {step_index + 1}'),
                     html.Button(
-                        'Remove step',
+                        'Eliminar destino',
                         id={
                             'type': STEP_REMOVE_TYPE,
                             'rule': rule_index,
@@ -451,9 +526,9 @@ def _visual_targets_editor(
     reference_document: dict[str, object] | None,
 ) -> object:
     children: list[object] = [
-        html.H5('Visual targets'),
+        html.H5('Destinos visuales'),
         html.Button(
-            'Add visual target',
+            'Agregar destino visual',
             id={'type': TARGET_ADD_TYPE, 'rule': rule_index},
             n_clicks=0,
             type='button',
@@ -476,9 +551,9 @@ def _visual_targets_editor(
             f'alarm-configuration-subcomponent-options-{rule_index}-{target_index}'
         )
         target_children: list[object] = [
-            html.Legend(f'Visual target {target_index + 1}'),
+            html.Legend(f'Destino visual {target_index + 1}'),
             html.Button(
-                'Remove target',
+                'Eliminar destino visual',
                 id={
                     'type': TARGET_REMOVE_TYPE,
                     'rule': rule_index,
@@ -529,7 +604,7 @@ def _visual_targets_editor(
                     for item in subcomponents
                 ],
             ),
-            html.H6('Components'),
+            html.H6('Componentes'),
         ]
         for component_index, component_key in enumerate(component_keys):
             target_children.append(
@@ -548,7 +623,7 @@ def _visual_targets_editor(
                             debounce=True,
                         ),
                         html.Button(
-                            'Remove',
+                            'Eliminar',
                             id={
                                 'type': COMPONENT_REMOVE_TYPE,
                                 'rule': rule_index,
@@ -563,7 +638,7 @@ def _visual_targets_editor(
             )
         target_children.append(
             html.Button(
-                'Add component',
+                'Agregar componente',
                 id={
                     'type': COMPONENT_ADD_TYPE,
                     'rule': rule_index,
@@ -573,7 +648,7 @@ def _visual_targets_editor(
                 type='button',
             )
         )
-        target_children.append(html.H6('Subcomponents'))
+        target_children.append(html.H6('Subcomponentes'))
         raw_subcomponents = _list(raw_target.get('subcomponents'))
         for subcomponent_index, raw_subcomponent in enumerate(raw_subcomponents):
             if not isinstance(raw_subcomponent, dict):
@@ -593,7 +668,7 @@ def _visual_targets_editor(
                             value=raw_subcomponent.get('owner_component_key'),
                             list=owner_list_id,
                             debounce=True,
-                            placeholder='Owner component key',
+                            placeholder='Componente propietario',
                         ),
                         dcc.Input(
                             id={
@@ -607,10 +682,10 @@ def _visual_targets_editor(
                             value=raw_subcomponent.get('subcomponent_key'),
                             list=subcomponent_list_id,
                             debounce=True,
-                            placeholder='Subcomponent key',
+                            placeholder='Subcomponente',
                         ),
                         html.Button(
-                            'Remove',
+                            'Eliminar',
                             id={
                                 'type': SUBCOMPONENT_REMOVE_TYPE,
                                 'rule': rule_index,
@@ -625,7 +700,7 @@ def _visual_targets_editor(
             )
         target_children.append(
             html.Button(
-                'Add subcomponent',
+                'Agregar subcomponente',
                 id={
                     'type': SUBCOMPONENT_ADD_TYPE,
                     'rule': rule_index,
@@ -643,11 +718,11 @@ def _message_editor(message_index: int, message: dict[str, object]) -> object:
     scope = message.get('scope')
     override = message.get('deactivation_override')
     override_mapping = _mapping(override) if isinstance(override, dict) else None
-    title = _string(message.get('message_key')) or f'Message {message_index + 1}'
+    title = _string(message.get('message_key')) or f'Mensaje {message_index + 1}'
     children: list[object] = [
         html.Legend(title),
         html.Button(
-            'Remove message',
+            'Eliminar mensaje',
             id={'type': MESSAGE_REMOVE_TYPE, 'message': message_index},
             n_clicks=0,
             type='button',
@@ -715,7 +790,9 @@ def _message_editor(message_index: int, message: dict[str, object]) -> object:
 
 
 def _group(title: str, children: list[object]) -> object:
-    return html.Fieldset([html.Legend(title), *children])
+    return html.Fieldset(
+        [html.Legend(field_label(title)), *children], className='alarm-guided__group'
+    )
 
 
 def _text_field(rule_index: int, field: str, label: str, value: object) -> object:
@@ -757,16 +834,14 @@ def _number_field(rule_index: int, field: str, label: str, value: object) -> obj
 
 
 def _bool_field(rule_index: int, field: str, label: str, value: object) -> object:
-    return _dropdown_field(
-        rule_index,
-        field,
+    return _labeled(
         label,
-        value,
-        [
-            {'label': 'Yes', 'value': True},
-            {'label': 'No', 'value': False},
-        ],
-        clearable=True,
+        dcc.RadioItems(
+            id={'type': RULE_FIELD_TYPE, 'rule': rule_index, 'field': field},
+            options=[{'label': 'Sí', 'value': True}, {'label': 'No', 'value': False}],
+            value=value,
+            className='alarm-admin__choices',
+        ),
     )
 
 
@@ -777,7 +852,7 @@ def _enum_field(
     value: object,
     enum_type: object,
 ) -> object:
-    options = [{'label': item.value, 'value': item.value} for item in enum_type]
+    options = [{'label': value_label(item.value), 'value': item.value} for item in enum_type]
     return _dropdown_field(rule_index, field, label, value, options, clearable=True)
 
 
@@ -788,7 +863,7 @@ def _multi_enum_field(
     value: object,
     enum_type: object,
 ) -> object:
-    options = [{'label': item.value, 'value': item.value} for item in enum_type]
+    options = [{'label': value_label(item.value), 'value': item.value} for item in enum_type]
     return _dropdown_field(
         rule_index,
         field,
@@ -812,6 +887,8 @@ def _dropdown_field(
     return _labeled(
         label,
         dcc.Dropdown(
+            className='alarm-admin__dropdown',
+            style=dash_select_style(),
             id={'type': RULE_FIELD_TYPE, 'rule': rule_index, 'field': field},
             options=options,
             value=value,
@@ -855,19 +932,11 @@ def _step_bool_field(
 ) -> object:
     return _labeled(
         label,
-        dcc.Dropdown(
-            id={
-                'type': STEP_FIELD_TYPE,
-                'rule': rule_index,
-                'step': step_index,
-                'field': field,
-            },
-            options=[
-                {'label': 'Yes', 'value': True},
-                {'label': 'No', 'value': False},
-            ],
+        dcc.RadioItems(
+            id={'type': STEP_FIELD_TYPE, 'rule': rule_index, 'step': step_index, 'field': field},
+            options=[{'label': 'Sí', 'value': True}, {'label': 'No', 'value': False}],
             value=value,
-            clearable=True,
+            className='alarm-admin__choices',
         ),
     )
 
@@ -885,13 +954,15 @@ def _target_enum_field(
     return _labeled(
         label,
         dcc.Dropdown(
+            className='alarm-admin__dropdown',
+            style=dash_select_style(),
             id={
                 'type': TARGET_FIELD_TYPE,
                 'rule': rule_index,
                 'target': target_index,
                 'field': field,
             },
-            options=[{'label': item.value, 'value': item.value} for item in enum_type],
+            options=[{'label': value_label(item.value), 'value': item.value} for item in enum_type],
             value=value,
             clearable=clearable,
         ),
@@ -928,22 +999,14 @@ def _message_number_field(
     )
 
 
-def _message_bool_field(
-    message_index: int,
-    field: str,
-    label: str,
-    value: object,
-) -> object:
+def _message_bool_field(message_index: int, field: str, label: str, value: object) -> object:
     return _labeled(
         label,
-        dcc.Dropdown(
+        dcc.RadioItems(
             id={'type': MESSAGE_FIELD_TYPE, 'message': message_index, 'field': field},
-            options=[
-                {'label': 'Yes', 'value': True},
-                {'label': 'No', 'value': False},
-            ],
+            options=[{'label': 'Sí', 'value': True}, {'label': 'No', 'value': False}],
             value=value,
-            clearable=True,
+            className='alarm-admin__choices',
         ),
     )
 
@@ -958,8 +1021,10 @@ def _message_enum_field(
     return _labeled(
         label,
         dcc.Dropdown(
+            className='alarm-admin__dropdown',
+            style=dash_select_style(),
             id={'type': MESSAGE_FIELD_TYPE, 'message': message_index, 'field': field},
-            options=[{'label': item, 'value': item} for item in values],
+            options=[{'label': value_label(item), 'value': item} for item in values],
             value=value,
             clearable=True,
         ),
@@ -967,7 +1032,16 @@ def _message_enum_field(
 
 
 def _labeled(label: str, control: object) -> object:
-    return html.Label([html.Span(label), control])
+    hint = field_help(label)
+    shown = (
+        html.Div(control, className='alarm-admin__dropdown-shell')
+        if isinstance(control, dcc.Dropdown)
+        else control
+    )
+    children = [html.Span(field_label(label)), shown]
+    if hint is not None:
+        children.append(html.Small(hint, className='alarm-guided__field-help'))
+    return html.Label(children, className='alarm-guided__field')
 
 
 def _message_options(
@@ -990,7 +1064,7 @@ def _message_options(
             seen.add(message_key)
     for item in selected:
         if isinstance(item, str) and item not in seen:
-            options.append({'label': f'{item} (unresolved)', 'value': item})
+            options.append({'label': f'{item} (no encontrado)', 'value': item})
     return options
 
 
@@ -1018,7 +1092,7 @@ def _special_condition_options(
         seen.add(canonical)
     for item in _identity_values(selected):
         if item not in seen:
-            options.append({'label': f'{item} (unresolved)', 'value': item})
+            options.append({'label': f'{item} (no encontrado)', 'value': item})
     return options
 
 

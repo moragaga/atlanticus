@@ -73,8 +73,8 @@ def rule(
             max_duration_hours=2,
             approval_required=False,
         ),
-        escalation=AlarmEscalationDefinition(origin_tool_key='tool-a'),
-        visual_targets=(AlarmVisualTarget(tool_key='tool-a'),),
+        escalation=AlarmEscalationDefinition(origin_tool_key='tool_a'),
+        visual_targets=(AlarmVisualTarget(tool_key='tool_a'),),
     )
 
 

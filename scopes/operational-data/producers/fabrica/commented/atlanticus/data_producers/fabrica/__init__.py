@@ -1,19 +1,14 @@
-# Espejo comentado del API público de Fábrica. Mantiene exactamente la misma lógica ejecutable que producción.
+# Espejo pedagógico: misma ejecución y contratos que el archivo productivo.
 from atlanticus.data_producers.fabrica.composition import (
     FabricaDataProducerComponents,
     FabricaStorageConnection,
     build_fabrica_data_producer,
 )
 from atlanticus.data_producers.fabrica.contracts import (
-    FabricaKpiLevel,
-    FabricaPlanPartition,
+    FabricaDatasetDefinition,
+    FabricaMetricDefinition,
     FabricaValueKind,
-    KpiDatasetDefinition,
-    KpiMetricDefinition,
-    PlanMetricDefinition,
-    PlanPartitionDefinition,
-    validate_kpi_catalog,
-    validate_plan_catalog,
+    validate_dataset_catalog,
 )
 from atlanticus.data_producers.fabrica.errors import (
     FabricaContractError,
@@ -28,8 +23,6 @@ from atlanticus.data_producers.fabrica.materialization import (
     FabricaPartitionPublication,
 )
 from atlanticus.data_producers.fabrica.models import (
-    FabricaKpiStreamDefinition,
-    FabricaPlanStreamDefinition,
     FabricaSourceBlob,
     FabricaStreamDefinition,
     parse_source_file_timestamp,
@@ -52,14 +45,12 @@ __all__ = [
     'FabricaContractError',
     'FabricaDataProducerComponents',
     'FabricaDataProducerError',
+    'FabricaDatasetDefinition',
     'FabricaJob',
-    'FabricaKpiLevel',
-    'FabricaKpiStreamDefinition',
     'FabricaMaterializationResult',
     'FabricaMaterializer',
+    'FabricaMetricDefinition',
     'FabricaPartitionPublication',
-    'FabricaPlanPartition',
-    'FabricaPlanStreamDefinition',
     'FabricaProducerManifest',
     'FabricaProducerState',
     'FabricaSchemaError',
@@ -71,15 +62,10 @@ __all__ = [
     'FabricaStreamState',
     'FabricaTransformResult',
     'FabricaValueKind',
-    'KpiMetricDefinition',
-    'KpiDatasetDefinition',
-    'PlanMetricDefinition',
-    'PlanPartitionDefinition',
     '__version__',
     'build_fabrica_data_producer',
     'build_partition_frames',
     'merge_partition_frame',
     'parse_source_file_timestamp',
-    'validate_kpi_catalog',
-    'validate_plan_catalog',
+    'validate_dataset_catalog',
 ]

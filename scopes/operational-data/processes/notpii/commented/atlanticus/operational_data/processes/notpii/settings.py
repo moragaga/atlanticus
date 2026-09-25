@@ -19,6 +19,7 @@ INTERPOLATED_SERVICE_BUS_PREFIX = 'NOTPII_INTERPOLATED_SERVICE_BUS'
 RECORDED_SERVICE_BUS_PREFIX = 'NOTPII_RECORDED_SERVICE_BUS'
 RAW_BATCH_SIZE_VARIABLE = 'NOTPII_RAW_BATCH_SIZE'
 MAX_MESSAGE_COUNT_VARIABLE = 'NOTPII_MAX_MESSAGE_COUNT'
+POLL_INTERVAL_VARIABLE = 'POLL_INTERVAL_SECONDS'
 
 _MODE_PREFIXES = {
     PiExtractionMode.INTERPOLATED: INTERPOLATED_SERVICE_BUS_PREFIX,
@@ -32,6 +33,7 @@ class NotPiiSettings:
     service_buses: Mapping[PiExtractionMode, ServiceBusSettings]
     raw_batch_size: int
     max_message_count: int
+    poll_interval_seconds: float
 
     @classmethod
     def from_configuration(
@@ -59,6 +61,10 @@ class NotPiiSettings:
             service_buses=MappingProxyType(service_buses),
             raw_batch_size=raw_batch_size,
             max_message_count=max_message_count,
+            poll_interval_seconds=_non_negative_float(
+                configuration,
+                POLL_INTERVAL_VARIABLE,
+            ),
         )
 
 
@@ -73,6 +79,7 @@ def configuration_specs(
     return (
         ConfigurationVariableSpec(key='APPLICATION'),
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
+        ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='0'),
         *service_bus_specs,
         ConfigurationVariableSpec(key=RAW_BATCH_SIZE_VARIABLE, default='100000'),
         ConfigurationVariableSpec(key=MAX_MESSAGE_COUNT_VARIABLE, default='10'),
@@ -132,6 +139,17 @@ def _service_bus_specs(prefix: str) -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(key=f'{prefix}_SUBSCRIPTION_NAME', required=False),
         ConfigurationVariableSpec(key=f'{prefix}_MAX_WAIT_TIME_SECONDS', default='10'),
     )
+
+
+def _non_negative_float(configuration: ResolvedConfiguration, key: str) -> float:
+    raw = configuration.require(key)
+    try:
+        value = float(raw)
+    except ValueError:
+        raise NotPiiProcessConfigurationError(f'{key} must contain a non-negative number') from None
+    if not math.isfinite(value) or value < 0:
+        raise NotPiiProcessConfigurationError(f'{key} must contain a non-negative number')
+    return value
 
 
 def _positive_int(configuration: ResolvedConfiguration, key: str) -> int:

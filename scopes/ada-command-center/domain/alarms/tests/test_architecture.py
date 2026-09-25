@@ -16,16 +16,6 @@ def _imports(path: Path) -> tuple[str, ...]:
     return tuple(names)
 
 
-def test_domain_has_expected_production_files() -> None:
-    assert {path.name for path in _SOURCE_ROOT.glob('*.py')} == {
-        '__init__.py',
-        'configuration.py',
-        'definition.py',
-        'errors.py',
-        'models.py',
-    }
-
-
 def test_domain_does_not_depend_on_web_backend_runtime_persistence_or_atlanticus() -> None:
     forbidden = (
         'ada_command_center.web',

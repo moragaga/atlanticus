@@ -1,4 +1,5 @@
 from ada.web.tools.enums import ToolConfigurationKind
+from ada_command_center.domain.tools import ToolDependencyManifest
 from ada_command_center.web.alarms.configuration.tool_references import (
     AlarmToolComponentReference,
     AlarmToolReference,
@@ -88,6 +89,10 @@ def test_tool_reference_document_preserves_linked_subcomponent_owner() -> None:
                     ),
                 ),
             ),
+        ),
+        dependencies=ToolDependencyManifest(
+            confirmed_tool_catalog_revision='catalog-rev',
+            tools=(),
         ),
     )
 

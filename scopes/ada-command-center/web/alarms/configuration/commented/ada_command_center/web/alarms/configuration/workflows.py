@@ -1,6 +1,3 @@
-# Este módulo adapta Alarm Configuration a los workflows genéricos de Manager.
-# La validación es intrínseca y reutiliza AlarmConfiguration.from_document como autoridad.
-# Publicar conserva SourceSnapshot/concurrencia y la historia lee releases exactas.
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -8,12 +5,22 @@ from datetime import UTC, datetime
 
 from ada_command_center.domain.alarms import (
     AlarmConfiguration,
+    AlarmConfigurationSnapshot,
     AlarmConfigurationValidationError,
 )
-from ada_command_center.web.alarms.configuration.errors import AlarmConfigurationSourceError
+from ada_command_center.web.alarms.configuration.errors import (
+    AlarmConfigurationSourceError,
+    AlarmConfigurationToolDependencyError,
+)
 from ada_command_center.web.alarms.configuration.source_release import (
     AlarmConfigurationSourceService,
 )
+from ada_command_center.web.alarms.configuration.tool_dependencies import (
+    pin_workspace_tool_catalog_revision,
+    require_workspace_tool_catalog_revision,
+    select_alarm_tool_dependencies,
+)
+from ada_command_center.web.alarms.configuration.tool_references import AlarmToolReferenceCatalog
 from atlanticus.web.manager.projection import (
     DraftValidationResult,
     ProjectionAuditRecord,
@@ -29,17 +36,21 @@ from atlanticus.web.manager.workspace import build_workspace_revision
 from atlanticus.web.source.models import HistoryPage, SourceKey, SourceReleaseRef, SourceSnapshot
 
 AlarmConfigurationAuditActorProvider = Callable[[], str]
+AlarmToolReferenceProvider = Callable[[], AlarmToolReferenceCatalog | None]
 
 
+# Adapta Source al Manager y conserva la correlación Alarm/Tools sin estado compartido.
 class AlarmConfigurationManagerSourceWorkflow:
     def __init__(
         self,
         *,
         source: AlarmConfigurationSourceService,
         audit_actor_provider: AlarmConfigurationAuditActorProvider,
+        tool_reference_provider: AlarmToolReferenceProvider,
     ) -> None:
         self._source = source
         self._audit_actor_provider = audit_actor_provider
+        self._tool_reference_provider = tool_reference_provider
 
     @property
     def source_key(self) -> SourceKey:
@@ -58,9 +69,18 @@ class AlarmConfigurationManagerSourceWorkflow:
             raise AlarmConfigurationSourceError(
                 'Alarm Configuration source changed while it was being loaded'
             )
+        # Un workspace nuevo adopta la revisión Tools current, aunque el Source
+        # siga ligado a una revisión anterior.
+        payload = release.snapshot.configuration.to_document()
+        tool_references = self._tool_reference_provider()
+        if tool_references is not None:
+            payload = pin_workspace_tool_catalog_revision(
+                payload,
+                tool_references.catalog_revision,
+            )
         return SourceReadResult(
             snapshot=refreshed,
-            payload=release.configuration.to_document(),
+            payload=payload,
         )
 
     def list_history(self, *, limit: int = 20) -> HistoryPage:
@@ -73,7 +93,7 @@ class AlarmConfigurationManagerSourceWorkflow:
         release = self._source.load_release(release_ref)
         return SourceHistoryReadResult(
             release_ref=release.release_ref,
-            payload=release.configuration.to_document(),
+            payload=release.snapshot.configuration.to_document(),
         )
 
     def publish_draft(
@@ -96,9 +116,34 @@ class AlarmConfigurationManagerSourceWorkflow:
                 'Alarm Configuration publication actor must not be empty'
             )
         configuration = AlarmConfiguration.from_document(dict(payload))
+        try:
+            expected_tool_revision = require_workspace_tool_catalog_revision(payload)
+        except AlarmConfigurationToolDependencyError as error:
+            raise AlarmConfigurationSourceError(str(error)) from error
+        tool_references = self._tool_reference_provider()
+        if tool_references is None:
+            raise AlarmConfigurationSourceError(
+                'Confirmed Tool Catalog is required for Alarm Configuration publication'
+            )
+        # Si Tools cambió después del save/validate, publish no mezcla revisiones silenciosamente.
+        if tool_references.catalog_revision != expected_tool_revision:
+            raise AlarmConfigurationSourceError(
+                'Confirmed Tool Catalog changed after Alarm Configuration validation'
+            )
+        try:
+            tool_dependencies = select_alarm_tool_dependencies(
+                configuration,
+                tool_references.dependencies,
+            )
+        except AlarmConfigurationToolDependencyError as error:
+            raise AlarmConfigurationSourceError(str(error)) from error
+        alarm_snapshot = AlarmConfigurationSnapshot(
+            configuration=configuration,
+            tool_dependencies=tool_dependencies,
+        )
         basis_release = current.current.release_ref if current.current is not None else None
-        published = self._source.publish_configuration(
-            configuration,
+        published = self._source.publish_snapshot(
+            alarm_snapshot,
             published_by=actor,
             expected_concurrency_token=current.concurrency_token,
             basis_release=basis_release,
@@ -113,13 +158,16 @@ class AlarmConfigurationManagerSourceWorkflow:
         )
 
 
+# Validation sigue usando el contrato genérico de Manager, pero agrega la regla específica de Tools.
 class AlarmConfigurationManagerDraftValidationWorkflow:
     def __init__(
         self,
         *,
         audit_actor_provider: AlarmConfigurationAuditActorProvider,
+        tool_reference_provider: AlarmToolReferenceProvider,
     ) -> None:
         self._audit_actor_provider = audit_actor_provider
+        self._tool_reference_provider = tool_reference_provider
 
     def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult:
         audit = ProjectionAuditRecord(
@@ -130,16 +178,49 @@ class AlarmConfigurationManagerDraftValidationWorkflow:
         try:
             configuration = AlarmConfiguration.from_document(dict(payload))
         except AlarmConfigurationValidationError as error:
-            return DraftValidationResult(
-                draft_revision=revision,
-                valid=False,
+            return _invalid_validation(
+                revision=revision,
                 audit=audit,
-                issues=(
-                    ProjectionIssue(
-                        code='alarm.configuration.invalid',
-                        message=str(error),
-                    ),
-                ),
+                code='alarm.configuration.invalid',
+                message=str(error),
+            )
+        try:
+            expected_tool_revision = require_workspace_tool_catalog_revision(payload)
+        except AlarmConfigurationToolDependencyError as error:
+            return _invalid_validation(
+                revision=revision,
+                audit=audit,
+                code='alarm.tools.catalog_revision_missing',
+                message=str(error),
+            )
+        tool_references = self._tool_reference_provider()
+        if tool_references is None:
+            return _invalid_validation(
+                revision=revision,
+                audit=audit,
+                code='alarm.tools.catalog_unavailable',
+                message='Confirmed Tool Catalog is not available',
+            )
+        if tool_references.catalog_revision != expected_tool_revision:
+            return _invalid_validation(
+                revision=revision,
+                audit=audit,
+                code='alarm.tools.catalog_changed',
+                message='Confirmed Tool Catalog changed after the draft was saved',
+            )
+        # Esta etapa sólo exige que todas las Tool keys existan en el catálogo fijado.
+        # Routing y visual semantics continúan siendo responsabilidad de B.2.
+        try:
+            select_alarm_tool_dependencies(
+                configuration,
+                tool_references.dependencies,
+            )
+        except AlarmConfigurationToolDependencyError as error:
+            return _invalid_validation(
+                revision=revision,
+                audit=audit,
+                code='alarm.tools.reference_not_found',
+                message=str(error),
             )
         return DraftValidationResult(
             draft_revision=revision,
@@ -147,6 +228,21 @@ class AlarmConfigurationManagerDraftValidationWorkflow:
             audit=audit,
             summary=_summary(configuration),
         )
+
+
+def _invalid_validation(
+    *,
+    revision: str,
+    audit: ProjectionAuditRecord,
+    code: str,
+    message: str,
+) -> DraftValidationResult:
+    return DraftValidationResult(
+        draft_revision=revision,
+        valid=False,
+        audit=audit,
+        issues=(ProjectionIssue(code=code, message=message),),
+    )
 
 
 def _summary(

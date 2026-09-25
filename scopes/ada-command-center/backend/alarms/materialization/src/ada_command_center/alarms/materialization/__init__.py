@@ -17,6 +17,7 @@ from ada_command_center.alarms.materialization.resolution import (
     AlarmResolutionFindingSeverity,
     AlarmResolutionStatus,
 )
+from ada_command_center.alarms.materialization.resolver import resolve_alarm_configuration
 from ada_command_center.alarms.materialization.runtime import RuntimeAlarmConfiguration
 
 __version__ = '1.0.0'
@@ -37,4 +38,5 @@ __all__ = [
     'ResolvedVisualTarget',
     'RuntimeAlarmConfiguration',
     '__version__',
+    'resolve_alarm_configuration',
 ]

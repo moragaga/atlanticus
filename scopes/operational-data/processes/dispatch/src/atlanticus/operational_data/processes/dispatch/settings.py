@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfiguration
@@ -8,6 +9,7 @@ from atlanticus.data_producers.sql import SqlRetryPolicy
 from atlanticus.operational_data.processes.dispatch.errors import DispatchProcessConfigurationError
 
 DISPATCH_SQL_SUFFIX = 'DISPATCH'
+POLL_INTERVAL_VARIABLE = 'POLL_INTERVAL_SECONDS'
 _DEFAULT_RETRY_ATTEMPTS = 10
 _DEFAULT_RETRY_DELAY_SECONDS = 5.0
 
@@ -16,6 +18,7 @@ _DEFAULT_RETRY_DELAY_SECONDS = 5.0
 class DispatchSettings:
     sql: SqlSettings
     retry_policy: SqlRetryPolicy
+    poll_interval_seconds: float
 
     @classmethod
     def from_configuration(cls, configuration: ResolvedConfiguration) -> DispatchSettings:
@@ -30,6 +33,10 @@ class DispatchSettings:
                 configuration.values,
                 prefix=DISPATCH_SQL_SUFFIX,
             ),
+            poll_interval_seconds=_non_negative_float(
+                configuration,
+                POLL_INTERVAL_VARIABLE,
+            ),
         )
 
 
@@ -38,6 +45,7 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
     return (
         ConfigurationVariableSpec(key='APPLICATION'),
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
+        ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='0'),
         ConfigurationVariableSpec(key=keys.connection_string, sensitive=True),
         ConfigurationVariableSpec(key=keys.query_timeout_seconds, default='200'),
         ConfigurationVariableSpec(key=keys.batch_size, default='10000'),
@@ -64,3 +72,19 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
             sensitive=True,
         ),
     )
+
+
+def _non_negative_float(
+    configuration: ResolvedConfiguration,
+    key: str,
+) -> float:
+    raw = configuration.require(key)
+    try:
+        value = float(raw)
+    except ValueError:
+        raise DispatchProcessConfigurationError(
+            f'{key} must contain a non-negative number'
+        ) from None
+    if not math.isfinite(value) or value < 0:
+        raise DispatchProcessConfigurationError(f'{key} must contain a non-negative number')
+    return value

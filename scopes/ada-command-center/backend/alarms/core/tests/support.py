@@ -40,6 +40,7 @@ def plan(
     origin_tool_key: str = 'tool-a',
     destinations: tuple[RoutingDestination, ...] | None = None,
     deactivation_approval_required: bool | None = None,
+    reappearance_after_seconds: int | None = None,
     reappearance_special_conditions: tuple[AlarmIdentity, ...] = (),
 ) -> PlannedAlarm:
     return PlannedAlarm(
@@ -73,6 +74,7 @@ def plan(
             if deactivation_approval_required is None
             else DeactivationPolicy(approval_required=deactivation_approval_required)
         ),
+        reappearance_after_seconds=reappearance_after_seconds,
         reappearance_special_conditions=reappearance_special_conditions,
     )
 

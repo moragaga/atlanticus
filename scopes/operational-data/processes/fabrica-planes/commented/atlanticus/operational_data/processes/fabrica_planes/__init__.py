@@ -1,0 +1,36 @@
+# Espejo pedagógico: misma ejecución y contratos que el archivo productivo.
+from __future__ import annotations
+
+from collections.abc import Mapping, Sequence
+from pathlib import Path
+from typing import Any
+
+__version__ = '1.0.0'
+
+__all__ = ['__version__', 'build_catalog', 'build_composition', 'run']
+
+
+# Expone únicamente el stream de este proceso con niveles daily y weekly configurables.
+def build_catalog() -> Any:
+    from atlanticus.operational_data.processes.fabrica_planes.catalog import (
+        build_catalog as _build_catalog,
+    )
+    return _build_catalog()
+
+
+# Construye una ejecución independiente y su estado propio.
+def build_composition(*, configuration: Any, catalog: Any = None) -> Any:
+    from atlanticus.operational_data.processes.fabrica_planes.composition import (
+        build_composition as _build_composition,
+    )
+    return _build_composition(configuration=configuration, catalog=catalog)
+
+
+# Responsabilidad de run.
+def run(
+    *, argv: Sequence[str] | None = None,
+    environ: Mapping[str, str] | None = None,
+    process_root: str | Path | None = None,
+) -> Any:
+    from atlanticus.operational_data.processes.fabrica_planes.bootstrap import run as _run
+    return _run(argv=argv, environ=environ, process_root=process_root)

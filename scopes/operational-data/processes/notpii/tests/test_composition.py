@@ -33,6 +33,7 @@ def _configuration(tmp_path) -> ResolvedConfiguration:
         'ENVIRONMENT': 'local',
         'APPLICATION': 'operational-data-notpii',
         'VOLUMEN_PATH': str(tmp_path),
+        'POLL_INTERVAL_SECONDS': '3.5',
         'NOTPII_INTERPOLATED_SERVICE_BUS_CONNECTION_STRING': (
             'Endpoint=sb://one/;SharedAccessKeyName=a;SharedAccessKey=b'
         ),
@@ -65,6 +66,7 @@ def test_composition_passes_notpii_identity_to_data_producer(monkeypatch, tmp_pa
     monkeypatch.setattr(module, 'build_notpii_data_producer', fake_builder)
     composition = build_composition(configuration=_configuration(tmp_path), catalog=_catalog())
 
+    assert composition.definition.sleep_seconds == 3.5
     assert composition.producer is sentinel
     assert captured['producer_key'] == 'notpii'
     assert captured['dataset_namespace'] == ('pi', 'not_pii')

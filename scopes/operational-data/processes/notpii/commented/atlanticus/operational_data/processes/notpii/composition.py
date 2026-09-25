@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from contextlib import ExitStack
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from atlanticus.configuration import ResolvedConfiguration
 from atlanticus.data_producers.notpii import (
@@ -46,6 +46,7 @@ class NotPiiComposition:
     runtime_configuration: RuntimeConfiguration
     settings: NotPiiSettings
     catalog: PiCatalog
+    definition: JobDefinition
     producer: NotPiiDataProducerComponents
 
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
@@ -53,7 +54,7 @@ class NotPiiComposition:
             for receiver in self.producer.receivers.values():
                 stack.enter_context(receiver)
             return execute_job(
-                definition=NOTPII_JOB_DEFINITION,
+                definition=self.definition,
                 iteration=self.producer.job.run_iteration,
                 argv=argv,
                 environ=self.configuration.values,
@@ -93,5 +94,9 @@ def build_composition(
         runtime_configuration=runtime_configuration,
         settings=settings,
         catalog=resolved_catalog,
+        definition=replace(
+            NOTPII_JOB_DEFINITION,
+            sleep_seconds=settings.poll_interval_seconds,
+        ),
         producer=producer,
     )

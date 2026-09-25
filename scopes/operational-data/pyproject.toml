@@ -29,7 +29,8 @@ atlanticus-operational-data-pi-process = { workspace = true }
 atlanticus-operational-data-notpii-process = { workspace = true }
 atlanticus-operational-data-dispatch-process = { workspace = true }
 atlanticus-operational-data-blockgrade-process = { workspace = true }
-atlanticus-operational-data-fabrica-process = { workspace = true }
+atlanticus-operational-data-fabrica-planes-process = { workspace = true }
+atlanticus-operational-data-fabrica-kpis-process = { workspace = true }
 atlanticus-operational-data-remanentes-process = { workspace = true }
 atlanticus-configuration = { path = "../../backend/configuration", editable = true }
 atlanticus-datasets = { path = "../../backend/datasets", editable = true }
@@ -64,7 +65,8 @@ members = [
     "processes/notpii",
     "processes/dispatch",
     "processes/blockgrade",
-    "processes/fabrica",
+    "processes/fabrica-planes",
+    "processes/fabrica-kpis",
     "processes/remanentes",
 ]
 

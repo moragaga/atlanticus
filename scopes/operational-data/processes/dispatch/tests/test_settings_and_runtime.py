@@ -12,6 +12,7 @@ def _configuration(**overrides: str) -> ResolvedConfiguration:
         'ENVIRONMENT': 'local',
         'APPLICATION': 'operational-data-dispatch',
         'VOLUMEN_PATH': '/tmp/ada',
+        'POLL_INTERVAL_SECONDS': '0',
         'SQL_CONNECTION_STRING_DISPATCH': 'Server=localhost;Database=test',
         **overrides,
     }
@@ -43,6 +44,7 @@ def test_process_maps_named_sql_retry_configuration() -> None:
         )
     )
 
+    assert defaults.poll_interval_seconds == 0.0
     assert defaults.retry_policy.attempts == 10
     assert defaults.retry_policy.delay_seconds == 5.0
     assert configured.retry_policy.attempts == 6

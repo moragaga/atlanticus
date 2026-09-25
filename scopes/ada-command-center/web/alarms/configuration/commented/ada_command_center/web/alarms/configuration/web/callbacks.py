@@ -17,8 +17,6 @@ from ada_command_center.domain.alarms import (
 from ada_command_center.web.alarms.configuration.web.authoring import (
     add_component_key,
     add_escalation_step,
-    add_message,
-    add_rule,
     add_subcomponent,
     add_visual_target,
     empty_authoring_document,
@@ -36,14 +34,17 @@ from ada_command_center.web.alarms.configuration.web.authoring import (
     set_visual_target_field,
     tool_reference_catalog_to_document,
 )
+from ada_command_center.web.alarms.configuration.web.diagnostics import (
+    authoring_issues,
+    readiness_hints,
+)
 from ada_command_center.web.alarms.configuration.web.ids import (
-    ADD_MESSAGE_BUTTON_ID,
-    ADD_RULE_BUTTON_ID,
     AUTHORING_STORE_ID,
     COMPONENT_ADD_TYPE,
     COMPONENT_FIELD_TYPE,
     COMPONENT_REMOVE_TYPE,
     DOCUMENT_STATUS_ID,
+    FAMILY_NAV_STORE_ID,
     IMPORT_RESULT_ID,
     IMPORT_UPLOAD_ID,
     MESSAGE_FIELD_TYPE,
@@ -102,37 +103,45 @@ def register_alarm_configuration_admin_callbacks(
     )
     def load_tool_references(_mounted: object):
         if context.tool_reference_provider is None:
-            return None, html.Small('Tool catalog is not configured. Manual keys remain available.')
+            return None, html.Small('El catálogo de herramientas no está configurado.')
         try:
             catalog = context.tool_reference_provider()
         except Exception as error:
-            return None, _error(f'Tool reference catalog is unavailable: {error}')
+            return None, _error(f'No se pudo consultar el catálogo de herramientas: {error}')
         if catalog is None:
             return (
                 None,
-                html.Small('Tool catalog has no current snapshot. Manual keys remain available.'),
+                html.Small('No hay revisión confirmada del catálogo de herramientas.'),
             )
         document = tool_reference_catalog_to_document(catalog)
-        return document, html.Small(f'Tool catalog revision: {catalog.catalog_revision}')
+        return (
+            document,
+            html.Small(
+                f'Revisión Tool: {catalog.catalog_revision[:12]}…',
+                title=catalog.catalog_revision,
+            ),
+        )
 
     @app.callback(
         Output(RULES_EDITOR_ID, 'children'),
         Output(MESSAGES_EDITOR_ID, 'children'),
         Input(AUTHORING_STORE_ID, 'data'),
         Input(TOOL_REFERENCE_STORE_ID, 'data'),
+        Input(FAMILY_NAV_STORE_ID, 'data'),
     )
     def render_editors(
         authoring_document: dict[str, object] | None,
         reference_document: dict[str, object] | None,
+        navigation: dict[str, object] | None,
     ):
-        return build_structured_editors(authoring_document, reference_document)
+        return build_structured_editors(authoring_document, reference_document, navigation)
 
     # La revisión del editor sólo tiene significado cuando existe un workspace del Manager.
     # Sin esa base, una revisión del documento vacío bloquearía la hidratación automática.
     @app.callback(
         Output(context.editor_revision_store_id, 'data'),
         Input(AUTHORING_STORE_ID, 'data'),
-        State(context.draft_store_id, 'data'),
+        Input(context.draft_store_id, 'data'),
         prevent_initial_call=True,
     )
     def track_editor_revision(
@@ -143,7 +152,7 @@ def register_alarm_configuration_admin_callbacks(
             return None
         try:
             configuration = _configuration(authoring_document)
-            return build_workspace_revision(configuration.to_document())
+            return _editor_revision(configuration, draft_data)
         except Exception:
             return None
 
@@ -152,10 +161,16 @@ def register_alarm_configuration_admin_callbacks(
         Input(AUTHORING_STORE_ID, 'data'),
     )
     def render_document_status(authoring_document: dict[str, object] | None):
+        issues = authoring_issues(authoring_document)
+        hints = readiness_hints(authoring_document)
+        if issues:
+            return _authoring_feedback(issues, hints)
         try:
             configuration = _configuration(authoring_document)
         except Exception as error:
-            return _error(str(error))
+            return _error(f'El documento requiere revisión: {error}')
+        if hints:
+            return html.Div([_summary(configuration), _readiness_feedback(hints)])
         return _summary(configuration)
 
     @app.callback(
@@ -251,8 +266,6 @@ def register_alarm_configuration_admin_callbacks(
 
     @app.callback(
         Output(AUTHORING_STORE_ID, 'data', allow_duplicate=True),
-        Input(ADD_RULE_BUTTON_ID, 'n_clicks'),
-        Input(ADD_MESSAGE_BUTTON_ID, 'n_clicks'),
         Input({'type': RULE_REMOVE_TYPE, 'rule': ALL}, 'n_clicks'),
         Input({'type': MESSAGE_REMOVE_TYPE, 'message': ALL}, 'n_clicks'),
         Input({'type': STEP_ADD_TYPE, 'rule': ALL}, 'n_clicks'),
@@ -278,8 +291,6 @@ def register_alarm_configuration_admin_callbacks(
         prevent_initial_call=True,
     )
     def update_authoring_structure(
-        _add_rule_clicks: int | None,
-        _add_message_clicks: int | None,
         _remove_rule_clicks: list[int | None],
         _remove_message_clicks: list[int | None],
         _add_step_clicks: list[int | None],
@@ -296,10 +307,6 @@ def register_alarm_configuration_admin_callbacks(
         if current_document is None or not _click_is_real(_triggered_value()):
             return no_update
         try:
-            if component_id == ADD_RULE_BUTTON_ID:
-                return add_rule(current_document)
-            if component_id == ADD_MESSAGE_BUTTON_ID:
-                return add_message(current_document)
             if not isinstance(component_id, dict):
                 return no_update
             component_type = component_id.get('type')
@@ -377,7 +384,7 @@ def register_alarm_configuration_admin_callbacks(
             )
         except Exception as error:
             return no_update, no_update, _error(str(error))
-        return document, configuration.to_document(), _success('JSON imported into draft.')
+        return document, configuration.to_document(), _success('JSON importado al borrador.')
 
     @app.callback(
         Output(context.draft_store_id, 'data', allow_duplicate=True),
@@ -405,21 +412,70 @@ def register_alarm_configuration_admin_callbacks(
         ):
             return no_update, no_update, no_update
         if not context.can_manage():
-            return no_update, no_update, _error('Management access is denied')
+            return no_update, no_update, _error('No tienes permiso para guardar cambios.')
+        issues = authoring_issues(authoring_document)
+        if issues:
+            return no_update, no_update, _authoring_feedback(issues)
         try:
             configuration = _configuration(authoring_document)
+            if current_draft is not None:
+                expected_editor_revision = _editor_revision(configuration, current_draft)
+                if editor_revision != expected_editor_revision:
+                    raise ManagerProjectionError(
+                        'Alarm Configuration editor revision changed before saving the draft'
+                    )
             document = context.workspace_payload_writer(
                 current_draft,
                 configuration.to_document(),
             )
-            workspace = ManagerWorkspace.from_document(document)
-            if editor_revision != workspace.revision:
-                raise ManagerProjectionError(
-                    'Alarm Configuration editor revision changed before saving the draft'
-                )
         except (AlarmConfigurationValidationError, ManagerProjectionError, ValueError) as error:
             return no_update, no_update, _error(str(error))
-        return document, document, _success('Draft saved in this browser.')
+        return document, document, _success('Borrador guardado en este navegador.')
+
+
+# El sidecar Tools forma parte de ManagerWorkspace.revision, pero no del documento authored.
+# Si rules/messages no cambiaron usamos la revisión completa del workspace. Si el usuario editó
+# contenido, una revisión sólo del documento authored basta para detectar esa suciedad antes del Save.
+def _readiness_feedback(hints: tuple[str, ...]) -> object:
+    return html.Div(
+        [html.Strong('Observaciones para Materialization'),
+         html.Ul([html.Li(hint) for hint in hints])],
+        className='atlanticus-manager__message atlanticus-manager__message--warning',
+    )
+
+
+def _authoring_feedback(
+    issues: tuple[str, ...], hints: tuple[str, ...] = ()
+) -> object:
+    children = [
+        html.Strong('Configuración en edición'),
+        html.P('Completa estos datos antes de guardar o validar:'),
+        html.Ul([html.Li(issue) for issue in issues[:5]]),
+    ]
+    if len(issues) > 5:
+        children.append(
+            html.Details([
+                html.Summary(f'Ver {len(issues) - 5} observaciones restantes'),
+                html.Ul([html.Li(issue) for issue in issues[5:]]),
+            ])
+        )
+    if hints:
+        children.append(_readiness_feedback(hints))
+    return html.Div(
+        children,
+        className='atlanticus-manager__message atlanticus-manager__message--warning',
+    )
+
+
+def _editor_revision(
+    configuration: AlarmConfiguration,
+    draft_data: dict[str, object],
+) -> str:
+    workspace = ManagerWorkspace.from_document(draft_data)
+    saved_configuration = AlarmConfiguration.from_document(dict(workspace.payload))
+    if configuration == saved_configuration:
+        return workspace.revision
+    return build_workspace_revision(configuration.to_document())
 
 
 def _configuration(authoring_document: dict[str, object] | None) -> AlarmConfiguration:
@@ -445,10 +501,10 @@ def _decode_import(contents: str) -> AlarmConfiguration:
 def _summary(configuration: AlarmConfiguration) -> object:
     return html.Div(
         [
-            html.Strong('Valid document'),
-            html.Span(f'Rules: {len(configuration.rules)}'),
-            html.Span(f'Active rules: {sum(rule.is_active for rule in configuration.rules)}'),
-            html.Span(f'Messages: {len(configuration.messages)}'),
+            html.Strong('Documento completo'),
+            html.Span(f'Reglas: {len(configuration.rules)}'),
+            html.Span(f'Reglas activas: {sum(rule.is_active for rule in configuration.rules)}'),
+            html.Span(f'Mensajes: {len(configuration.messages)}'),
         ]
     )
 

@@ -16,6 +16,7 @@ def _configuration(**overrides: str) -> ResolvedConfiguration:
         'ENVIRONMENT': 'local',
         'APPLICATION': 'operational-data-notpii',
         'VOLUMEN_PATH': '/tmp/ada',
+        'POLL_INTERVAL_SECONDS': '3.5',
         'NOTPII_INTERPOLATED_SERVICE_BUS_CONNECTION_STRING': 'Endpoint=sb://one/;Key=value',
         'NOTPII_INTERPOLATED_SERVICE_BUS_TOPIC_NAME': 'interpolated',
         'NOTPII_INTERPOLATED_SERVICE_BUS_SUBSCRIPTION_NAME': 'materialization',
@@ -44,6 +45,15 @@ def test_settings_use_only_active_mode_and_default_batch_contract() -> None:
     assert set(settings.service_buses) == {PiExtractionMode.INTERPOLATED}
     assert settings.max_message_count == 10
     assert settings.raw_batch_size == 100000
+    assert settings.poll_interval_seconds == 3.5
+
+
+def test_settings_reject_negative_poll_interval() -> None:
+    with pytest.raises(NotPiiProcessConfigurationError, match='POLL_INTERVAL_SECONDS'):
+        NotPiiSettings.from_configuration(
+            _configuration(POLL_INTERVAL_SECONDS='-1'),
+            active_modes=(PiExtractionMode.INTERPOLATED,),
+        )
 
 
 def test_settings_reject_invalid_batch_limit() -> None:

@@ -1,7 +1,10 @@
 from datetime import UTC, datetime
 
+from ada_command_center.domain.alarms import AlarmConfigurationSnapshot
+from ada_command_center.domain.tools import ToolDependencyManifest
 from ada_command_center.web.alarms.configuration import (
     ALARM_CONFIGURATION_SOURCE_RESOURCE_PATH,
+    ALARM_CONFIGURATION_SOURCE_SCHEMA_VERSION,
     AlarmConfigurationSourceCodec,
     AlarmConfigurationSourceService,
 )
@@ -28,16 +31,35 @@ def _release_ref(value: str = 'release-1') -> SourceReleaseRef:
     )
 
 
-def test_alarm_configuration_source_codec_round_trips_configuration() -> None:
-    value = configuration()
+def _snapshot(revision: str = 'tools-r2') -> AlarmConfigurationSnapshot:
+    return AlarmConfigurationSnapshot(
+        configuration=configuration(),
+        tool_dependencies=ToolDependencyManifest(
+            confirmed_tool_catalog_revision=revision,
+            tools=(),
+        ),
+    )
+
+
+def test_alarm_configuration_source_codec_round_trips_versioned_snapshot() -> None:
+    value = _snapshot()
     codec = AlarmConfigurationSourceCodec()
 
-    resource = codec.encode(configuration=value, published_by='manager-user')
+    resource = codec.encode(snapshot=value, published_by='manager-user')
     decoded = codec.decode((resource,))
 
+    assert ALARM_CONFIGURATION_SOURCE_SCHEMA_VERSION == 3
     assert resource.logical_path == ALARM_CONFIGURATION_SOURCE_RESOURCE_PATH
-    assert decoded.configuration == value
+    assert decoded.snapshot == value
     assert decoded.published_by == 'manager-user'
+
+
+def test_alarm_configuration_source_payload_changes_when_only_tool_revision_changes() -> None:
+    codec = AlarmConfigurationSourceCodec()
+    first = codec.encode(snapshot=_snapshot('tools-r1'), published_by='manager-user')
+    second = codec.encode(snapshot=_snapshot('tools-r2'), published_by='manager-user')
+
+    assert first.content != second.content
 
 
 def test_alarm_configuration_source_service_preserves_generic_concurrency_contract() -> None:
@@ -93,8 +115,8 @@ def test_alarm_configuration_source_service_preserves_generic_concurrency_contra
     store = SourceStoreStub()
     service = AlarmConfigurationSourceService(source=store, source_key=source_key)
 
-    service.publish_configuration(
-        configuration(),
+    service.publish_snapshot(
+        _snapshot(),
         published_by='manager-user',
         expected_concurrency_token=current.concurrency_token,
         basis_release=current_ref,

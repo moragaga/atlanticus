@@ -1,4 +1,7 @@
-from atlanticus.integrations.pi.contracts import NotPiiSource, PiTagDefinition
+from atlanticus.integrations.pi.contracts import (
+    NotPiiSource,
+    PiTagDefinition,
+)
 
 # Fuente NOTPII utilizada por este proceso.
 SOURCE = NotPiiSource()

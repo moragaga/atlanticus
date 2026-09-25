@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfiguration
@@ -11,6 +12,7 @@ from atlanticus.operational_data.processes.blockgrade.errors import (
 
 # Sufijo de la conexión SQL nombrada que pertenece a Blockgrade.
 BLOCKGRADE_SQL_SUFFIX = 'BLOCKGRADE'
+POLL_INTERVAL_VARIABLE = 'POLL_INTERVAL_SECONDS'
 _DEFAULT_RETRY_ATTEMPTS = 10
 _DEFAULT_RETRY_DELAY_SECONDS = 5.0
 
@@ -20,6 +22,7 @@ _DEFAULT_RETRY_DELAY_SECONDS = 5.0
 class BlockgradeSettings:
     sql: SqlSettings
     retry_policy: SqlRetryPolicy
+    poll_interval_seconds: float
 
     @classmethod
     def from_configuration(cls, configuration: ResolvedConfiguration) -> BlockgradeSettings:
@@ -36,6 +39,10 @@ class BlockgradeSettings:
                 configuration.values,
                 prefix=BLOCKGRADE_SQL_SUFFIX,
             ),
+            poll_interval_seconds=_non_negative_float(
+                configuration,
+                POLL_INTERVAL_VARIABLE,
+            ),
         )
 
 
@@ -45,6 +52,7 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
     return (
         ConfigurationVariableSpec(key='APPLICATION'),
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
+        ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='0'),
         ConfigurationVariableSpec(key=keys.connection_string, sensitive=True),
         ConfigurationVariableSpec(key=keys.query_timeout_seconds, default='200'),
         ConfigurationVariableSpec(key=keys.batch_size, default='10000'),
@@ -71,3 +79,19 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
             sensitive=True,
         ),
     )
+
+
+def _non_negative_float(
+    configuration: ResolvedConfiguration,
+    key: str,
+) -> float:
+    raw = configuration.require(key)
+    try:
+        value = float(raw)
+    except ValueError:
+        raise BlockgradeProcessConfigurationError(
+            f'{key} must contain a non-negative number'
+        ) from None
+    if not math.isfinite(value) or value < 0:
+        raise BlockgradeProcessConfigurationError(f'{key} must contain a non-negative number')
+    return value

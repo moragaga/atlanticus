@@ -1,13 +1,9 @@
-# Composición del módulo Manager de Alarm Configuration.
-# Esta frontera conecta Source/Projection, workspace, autorización y la UI.
-# El Tool Reference Reader se inyecta opcionalmente y sólo alimenta sugerencias de authoring.
-
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 
-from ada_command_center.domain.alarms import AlarmConfiguration
+from ada_command_center.domain.alarms import AlarmConfigurationSnapshot
 from ada_command_center.web.alarms.configuration.source_projection import (
     create_alarm_configuration_projection_service,
 )
@@ -61,14 +57,14 @@ AlarmConfigurationPrincipalProvider = Callable[[], ManagerPrincipal]
 class AlarmConfigurationManagerComposition:
     module: ManagerModule
     source_workflow: AlarmConfigurationManagerSourceWorkflow
-    projection_service: SourceProjectionService[AlarmConfiguration]
+    projection_service: SourceProjectionService[AlarmConfigurationSnapshot]
     validation_workflow: AlarmConfigurationManagerDraftValidationWorkflow
 
 
 def compose_alarm_configuration_manager(
     *,
     source_store: SourceStore,
-    projection_store: ProjectionStore[AlarmConfiguration],
+    projection_store: ProjectionStore[AlarmConfigurationSnapshot],
     principal_provider: AlarmConfigurationPrincipalProvider,
     source_key: SourceKey,
     group_key: str,
@@ -86,6 +82,10 @@ def compose_alarm_configuration_manager(
 ) -> AlarmConfigurationManagerComposition:
     resolved_authorization = authorization or DefaultManagerAuthorizationPolicy()
     resolved_actor_provider = audit_actor_provider or (lambda: principal_provider().subject_id)
+    # La misma lectura confirmada alimenta UI, workspace, validation y publicación.
+    tool_reference_provider = (
+        (lambda: None) if tool_reference_reader is None else tool_reference_reader.load
+    )
     source_service = AlarmConfigurationSourceService(
         source=source_store,
         source_key=source_key,
@@ -93,9 +93,12 @@ def compose_alarm_configuration_manager(
     source_workflow = AlarmConfigurationManagerSourceWorkflow(
         source=source_service,
         audit_actor_provider=resolved_actor_provider,
+        tool_reference_provider=tool_reference_provider,
     )
+    # La especialización vive en Alarm Configuration; Manager genérico permanece intacto.
     validation_workflow = AlarmConfigurationManagerDraftValidationWorkflow(
         audit_actor_provider=resolved_actor_provider,
+        tool_reference_provider=tool_reference_provider,
     )
     projection_service = create_alarm_configuration_projection_service(
         source=source_store,
@@ -104,6 +107,7 @@ def compose_alarm_configuration_manager(
     workspace = AlarmConfigurationManagerWorkspaceBinding(
         source=source_workflow,
         principal_provider=principal_provider,
+        tool_reference_provider=tool_reference_provider,
     )
 
     context = AlarmConfigurationAdminWebContext(

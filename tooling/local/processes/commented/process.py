@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import os
 import shutil
 import subprocess
 import sys
@@ -12,6 +13,8 @@ from types import ModuleType
 PYTHON_VERSION = "3.14.2"
 BUNDLE_MODULE_NAME = "atlanticus_process_tool_bundle"
 LOCAL_MODULE_NAME = "atlanticus_process_tool_local"
+SIMULATION_MODULE_NAME = "atlanticus_process_tool_simulation"
+SOURCE_SIMULATION_NAME = "atlanticus-source"
 
 
 # Error operacional de la CLI local; se presenta al usuario sin traceback de infraestructura.
@@ -66,6 +69,7 @@ def _run(
     *,
     cwd: Path,
     capture_output: bool = False,
+    environment: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     print(">", " ".join(command), flush=True)
     try:
@@ -75,6 +79,7 @@ def _run(
             check=True,
             capture_output=capture_output,
             text=True,
+            env=environment,
         )
     except (OSError, subprocess.CalledProcessError) as error:
         raise ProcessToolError(f"Command failed: {' '.join(command)}") from error
@@ -92,17 +97,23 @@ def _compose(
     repository_root: Path,
     *arguments: str,
     capture_output: bool = False,
+    compose_file: Path | None = None,
+    environment: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
+    selected_compose = (
+        _compose_file(repository_root) if compose_file is None else compose_file
+    )
     return _run(
         [
             "docker",
             "compose",
             "-f",
-            str(_compose_file(repository_root)),
+            str(selected_compose),
             *arguments,
         ],
         cwd=repository_root,
         capture_output=capture_output,
+        environment=environment,
     )
 
 
@@ -195,12 +206,35 @@ def _prepare(
     )
     output_root = repository_root / "artifacts/processes"
     for process_root in process_roots:
+        # Captura el estado antes de construir para impedir receipts sobre source cambiante.
+        fingerprint_before = bundle.process_build_inputs_fingerprint(
+            repository_root,
+            process_root,
+        )
         output_path = bundle.build_process_bundle(
             repository_root=repository_root,
             process_root=process_root,
             output_root=output_root,
         )
+        fingerprint_after = bundle.process_build_inputs_fingerprint(
+            repository_root,
+            process_root,
+        )
+        if fingerprint_before != fingerprint_after:
+            # Un bundle potencialmente inconsistente no queda disponible como proyección QA.
+            shutil.rmtree(output_path, ignore_errors=True)
+            raise ProcessToolError(
+                "Process build inputs changed while prepare was running. "
+                "Run prepare again."
+            )
+        # El receipt demuestra prepare exitoso; no implica QA aprobado ni uso de Docker.
+        receipt_path = bundle.write_prepare_receipt(
+            repository_root,
+            process_root,
+            fingerprint_after,
+        )
         print(output_path)
+        print(f"Prepare receipt: {receipt_path}")
     print(f"Process artifacts prepared in: {output_root}")
     print("Create one .env beside each artifact pyproject.toml before local execution.")
 
@@ -306,6 +340,212 @@ def _run_process(
 
 
 # Expone targets lógicos en prepare; build/up operan sobre el conjunto de artifacts preparados.
+# Carga la capacidad común que genera el workspace de simulación.
+def _load_simulation(repository_root: Path) -> ModuleType:
+    return _load_module(
+        repository_root / "deployment/local/simulation.py",
+        SIMULATION_MODULE_NAME,
+    )
+
+
+def _docker_value(repository_root: Path, *arguments: str) -> str:
+    return _run(
+        ["docker", *arguments],
+        cwd=repository_root,
+        capture_output=True,
+    ).stdout.strip()
+
+
+# Resuelve el endpoint Docker del host y lo traduce a un socket montable por el scheduler.
+def _simulation_environment(
+    repository_root: Path,
+    simulation: ModuleType,
+) -> dict[str, str]:
+    endpoint = _docker_value(
+        repository_root,
+        "context",
+        "inspect",
+        "--format",
+        "{{.Endpoints.docker.Host}}",
+    )
+    operating_system = _docker_value(
+        repository_root,
+        "info",
+        "--format",
+        "{{.OperatingSystem}}",
+    )
+    engine_type = _docker_value(
+        repository_root,
+        "info",
+        "--format",
+        "{{.OSType}}",
+    )
+    environment = os.environ.copy()
+    environment["ATLANTICUS_DOCKER_SOCKET_SOURCE"] = (
+        simulation.resolve_docker_socket_source(
+            endpoint=endpoint,
+            operating_system=operating_system,
+            engine_type=engine_type,
+        )
+    )
+    return environment
+
+
+def _simulation_compose_files(repository_root: Path) -> tuple[Path, ...]:
+    workspace = _workspace_root(repository_root)
+    return (
+        workspace / "compose.simulate.yaml",
+        workspace / "compose.simulate.bind.yaml",
+    )
+
+
+def _simulation_processes(
+    repository_root: Path,
+    definitions,
+    simulation: ModuleType,
+) -> tuple[object, ...]:
+    return tuple(
+        simulation.load_simulation_process(
+            process_root=definition.artifact_root,
+            name=definition.name,
+            image=f"atlanticus-{definition.name}:local",
+        )
+        for definition in definitions
+    )
+
+
+# Prepara artifacts e infraestructura local sin modificar el runtime productivo.
+def _prepare_simulation(
+    repository_root: Path,
+    local: ModuleType,
+    simulation: ModuleType,
+    *,
+    bind: bool,
+) -> Path:
+    definitions = _validate_artifacts(repository_root, local)
+    workspace = _workspace_root(repository_root)
+    volume_mode = "bind" if bind else "named"
+    local.prepare_workspace(
+        repository_root=repository_root,
+        workspace_root=workspace,
+        definitions=definitions,
+        volume_mode=volume_mode,
+    )
+    if bind:
+        (workspace / "runtime").mkdir(parents=True, exist_ok=True)
+    return simulation.prepare_simulation(
+        workspace_root=repository_root,
+        local_root=workspace,
+        scheduler_source=repository_root / "deployment/local/scheduler",
+        project_name=local.PROJECT_NAME,
+        simulation_name=SOURCE_SIMULATION_NAME,
+        processes=_simulation_processes(
+            repository_root,
+            definitions,
+            simulation,
+        ),
+        volume_mode=volume_mode,
+        bind_runtime=workspace / "runtime",
+    )
+
+
+# Detiene primero el scheduler y luego limpia sólo ejecuciones etiquetadas por esta simulación.
+def _cleanup_simulation_containers(
+    repository_root: Path,
+    simulation_name: str,
+) -> None:
+    for role in ("scheduler", "execution"):
+        completed = _run(
+            [
+                "docker",
+                "ps",
+                "-aq",
+                "--filter",
+                f"label=atlanticus.simulation={simulation_name}",
+                "--filter",
+                f"label=atlanticus.role={role}",
+            ],
+            cwd=repository_root,
+            capture_output=True,
+        )
+        ids = tuple(line for line in completed.stdout.splitlines() if line)
+        if ids:
+            _run(["docker", "rm", "-f", *ids], cwd=repository_root)
+
+
+# Construye imágenes y deja residente únicamente el scheduler.
+def _simulate(
+    arguments: argparse.Namespace,
+    repository_root: Path,
+    local: ModuleType,
+    simulation: ModuleType,
+) -> None:
+    _validate_docker(repository_root)
+    compose_path = _prepare_simulation(
+        repository_root,
+        local,
+        simulation,
+        bind=arguments.bind,
+    )
+    _compose(repository_root, "build", "--no-cache")
+    environment = _simulation_environment(repository_root, simulation)
+    _cleanup_simulation_containers(repository_root, SOURCE_SIMULATION_NAME)
+    _compose(
+        repository_root,
+        "build",
+        "--no-cache",
+        "scheduler",
+        compose_file=compose_path,
+        environment=environment,
+    )
+    _compose(
+        repository_root,
+        "run",
+        "--rm",
+        "--entrypoint",
+        "docker",
+        "scheduler",
+        "version",
+        compose_file=compose_path,
+        environment=environment,
+    )
+    _compose(
+        repository_root,
+        "up",
+        "-d",
+        "scheduler",
+        compose_file=compose_path,
+        environment=environment,
+    )
+    _compose(
+        repository_root,
+        "ps",
+        "-a",
+        compose_file=compose_path,
+        environment=environment,
+    )
+
+
+# Detiene scheduler y ejecuciones efímeras sin afectar otros proyectos Docker.
+def _simulate_stop(
+    repository_root: Path,
+    simulation: ModuleType,
+) -> None:
+    _validate_docker(repository_root)
+    environment = _simulation_environment(repository_root, simulation)
+    _cleanup_simulation_containers(repository_root, SOURCE_SIMULATION_NAME)
+    for compose_path in _simulation_compose_files(repository_root):
+        if not compose_path.is_file():
+            continue
+        _compose(
+            repository_root,
+            "down",
+            "--remove-orphans",
+            compose_file=compose_path,
+            environment=environment,
+        )
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Prepare and run Atlanticus process artifacts locally."
@@ -328,6 +568,10 @@ def _parser() -> argparse.ArgumentParser:
     up = subparsers.add_parser("up")
     up.add_argument("--bind", action="store_true")
 
+    simulate = subparsers.add_parser("simulate")
+    simulate.add_argument("--bind", action="store_true")
+
+    subparsers.add_parser("simulate-stop")
     subparsers.add_parser("down")
     subparsers.add_parser("ps")
 
@@ -346,6 +590,7 @@ def main(argv: list[str] | None = None) -> int:
     repository_root = _repository_root()
     bundle = _load_bundle(repository_root)
     local = _load_local(repository_root)
+    simulation = _load_simulation(repository_root)
     try:
         if arguments.action == "prepare":
             _prepare(arguments, repository_root, bundle)
@@ -355,6 +600,10 @@ def main(argv: list[str] | None = None) -> int:
             _build(arguments, repository_root, local)
         elif arguments.action == "up":
             _up(arguments, repository_root, local)
+        elif arguments.action == "simulate":
+            _simulate(arguments, repository_root, local, simulation)
+        elif arguments.action == "simulate-stop":
+            _simulate_stop(repository_root, simulation)
         elif arguments.action == "down":
             _down(repository_root)
         elif arguments.action == "ps":
@@ -368,6 +617,7 @@ def main(argv: list[str] | None = None) -> int:
     except (
         bundle.ProcessBundleError,
         local.LocalDeploymentError,
+        simulation.LocalSimulationError,
         ProcessToolError,
     ) as error:
         raise SystemExit(str(error)) from error

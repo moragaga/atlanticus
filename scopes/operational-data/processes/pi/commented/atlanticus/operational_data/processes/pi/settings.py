@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from atlanticus.configuration import (
@@ -23,6 +24,8 @@ from atlanticus.integrations.pi.web_api import (
 )
 from atlanticus.operational_data.processes.pi.errors import PiWebApiProcessConfigurationError
 
+POLL_INTERVAL_VARIABLE = 'POLL_INTERVAL_SECONDS'
+
 
 @dataclass(frozen=True, slots=True)
 class PiWebApiProcessSettings:
@@ -31,6 +34,7 @@ class PiWebApiProcessSettings:
     max_recovery_window_seconds: int = 3600
     interpolated_max_parallel_requests: int = 3
     max_data_points: int = 150_000
+    poll_interval_seconds: float = 0.0
 
     def __post_init__(self) -> None:
         if self.max_recovery_window_seconds > self.max_recovery_lookback_seconds:
@@ -117,6 +121,10 @@ class PiWebApiProcessSettings:
                     configuration,
                     'PI_WEB_API_MAX_DATA_POINTS',
                 ),
+                poll_interval_seconds=_non_negative_float(
+                    configuration,
+                    POLL_INTERVAL_VARIABLE,
+                ),
             )
         except (
             ConfigurationValueError,
@@ -130,6 +138,7 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
     return (
         ConfigurationVariableSpec(key='APPLICATION'),
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
+        ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='0'),
         ConfigurationVariableSpec(key='PI_WEB_API_BASE_URL'),
         ConfigurationVariableSpec(key='PI_WEB_API_SERVER'),
         ConfigurationVariableSpec(key='PI_WEB_API_USERNAME', sensitive=True),
@@ -162,6 +171,19 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
             sensitive=True,
         ),
     )
+
+
+def _non_negative_float(configuration: ResolvedConfiguration, key: str) -> float:
+    raw = configuration.require(key)
+    try:
+        value = float(raw)
+    except ValueError:
+        raise PiWebApiProcessConfigurationError(
+            f'{key} must contain a non-negative number'
+        ) from None
+    if not math.isfinite(value) or value < 0:
+        raise PiWebApiProcessConfigurationError(f'{key} must contain a non-negative number')
+    return value
 
 
 def _positive_int(configuration: ResolvedConfiguration, key: str) -> int:

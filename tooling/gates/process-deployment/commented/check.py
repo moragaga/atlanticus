@@ -97,10 +97,28 @@ def _validate_structure(paths: Paths) -> None:
         paths.deployment / "processes" / "commented" / "bundle.py",
         paths.deployment / "local" / "generate_compose.py",
         paths.deployment / "local" / "commented" / "generate_compose.py",
+        paths.deployment / "local" / "simulation.py",
+        paths.deployment / "local" / "commented" / "simulation.py",
+        paths.deployment / "local" / "scheduler" / "Dockerfile",
+        paths.deployment / "local" / "scheduler" / "scheduler.py",
+        paths.deployment / "local" / "scheduler" / "commented" / "scheduler.py",
         paths.tooling / "local" / "processes" / "process.py",
         paths.tooling / "local" / "processes" / "process.sh",
         paths.tooling / "local" / "processes" / "process.cmd",
         paths.tooling / "local" / "processes" / "commented" / "process.py",
+        paths.tooling / "distribution" / "processes" / "distribute.py",
+        paths.tooling / "distribution" / "processes" / "distribute.sh",
+        paths.tooling / "distribution" / "processes" / "distribute.cmd",
+        paths.tooling / "distribution" / "processes" / "commented" / "distribute.py",
+        paths.tooling / "distribution" / "processes" / "consumer" / "process.py",
+        paths.tooling / "distribution" / "processes" / "consumer" / "process.sh",
+        paths.tooling / "distribution" / "processes" / "consumer" / "process.cmd",
+        paths.tooling
+        / "distribution"
+        / "processes"
+        / "consumer"
+        / "commented"
+        / "process.py",
         paths.gate / "check.py",
         paths.gate / "check.sh",
         paths.gate / "check.cmd",
@@ -109,22 +127,6 @@ def _validate_structure(paths: Paths) -> None:
     missing = tuple(path for path in required if not path.is_file())
     if missing:
         raise RuntimeError(f"Deployment file not found: {missing[0]}")
-    retired = (
-        paths.root / "scopes" / "ada" / "scripts" / "processes",
-        paths.root / "scripts" / "local-process.sh",
-        paths.root / "scripts" / "commented" / "local-process.sh",
-        paths.root / "scripts" / "deployment" / "check.py",
-        paths.root / "scripts" / "deployment" / "check.sh",
-        paths.root / "scripts" / "deployment" / "check.bat",
-        paths.root / "scripts" / "commented" / "deployment" / "check.py",
-        paths.root / "scripts" / "commented" / "deployment" / "check.sh",
-        paths.root / "scripts" / "commented" / "deployment" / "check.bat",
-    )
-    for path in retired:
-        if path.exists():
-            raise RuntimeError(
-                f"Retired process deployment tooling still exists: {path}"
-            )
 
 
 # Carga el bundler como capacidad Python para validar sus contratos sin shell intermediario.
@@ -220,8 +222,29 @@ def _validate_mirrors(paths: Paths) -> None:
         paths.deployment / "local" / "commented" / "generate_compose.py",
     )
     _validate_python_mirror(
+        paths.deployment / "local" / "simulation.py",
+        paths.deployment / "local" / "commented" / "simulation.py",
+    )
+    _validate_python_mirror(
+        paths.deployment / "local" / "scheduler" / "scheduler.py",
+        paths.deployment / "local" / "scheduler" / "commented" / "scheduler.py",
+    )
+    _validate_python_mirror(
         paths.tooling / "local" / "processes" / "process.py",
         paths.tooling / "local" / "processes" / "commented" / "process.py",
+    )
+    _validate_python_mirror(
+        paths.tooling / "distribution" / "processes" / "distribute.py",
+        paths.tooling / "distribution" / "processes" / "commented" / "distribute.py",
+    )
+    _validate_python_mirror(
+        paths.tooling / "distribution" / "processes" / "consumer" / "process.py",
+        paths.tooling
+        / "distribution"
+        / "processes"
+        / "consumer"
+        / "commented"
+        / "process.py",
     )
     _validate_python_mirror(
         paths.gate / "check.py",
@@ -249,10 +272,19 @@ def main(argv: list[str] | None = None) -> int:
         "deployment/processes/tests",
         "deployment/local/generate_compose.py",
         "deployment/local/commented/generate_compose.py",
+        "deployment/local/simulation.py",
+        "deployment/local/commented/simulation.py",
+        "deployment/local/scheduler/scheduler.py",
+        "deployment/local/scheduler/commented/scheduler.py",
         "deployment/local/tests",
         "tooling/local/processes/process.py",
         "tooling/local/processes/commented/process.py",
         "tooling/tests/local/processes",
+        "tooling/distribution/processes/distribute.py",
+        "tooling/distribution/processes/commented/distribute.py",
+        "tooling/distribution/processes/consumer/process.py",
+        "tooling/distribution/processes/consumer/commented/process.py",
+        "tooling/tests/distribution/processes",
         "tooling/gates/process-deployment/check.py",
         "tooling/gates/process-deployment/commented/check.py",
     ]
@@ -276,11 +308,23 @@ def main(argv: list[str] | None = None) -> int:
         [sys.executable, "-m", "pytest", "tooling/tests/local/processes"],
         cwd=paths.root,
     )
+    _run(
+        [sys.executable, "-m", "pytest", "tooling/tests/distribution/processes"],
+        cwd=paths.root,
+    )
     print("[7/8] Validating productive/commented semantic mirrors")
     _validate_mirrors(paths)
     print("[8/8] Validating process launchers")
     if sys.platform != "win32":
         _run(["sh", "-n", "tooling/local/processes/process.sh"], cwd=paths.root)
+        _run(
+            ["sh", "-n", "tooling/distribution/processes/distribute.sh"],
+            cwd=paths.root,
+        )
+        _run(
+            ["sh", "-n", "tooling/distribution/processes/consumer/process.sh"],
+            cwd=paths.root,
+        )
         _run(
             ["sh", "-n", "tooling/gates/process-deployment/check.sh"],
             cwd=paths.root,

@@ -33,7 +33,7 @@ def test_reader_returns_none_when_catalog_does_not_exist() -> None:
     assert reader.load() is None
 
 
-def test_reader_builds_alarm_reference_catalog_and_preserves_provenance() -> None:
+def test_reader_builds_ui_references_and_full_dependency_catalog_from_one_snapshot() -> None:
     snapshot = create_tool_catalog_snapshot(
         (_integrated_entry(), _process_entry(), _strategic_entry()),
         generated_at_utc=datetime(2026, 9, 21, 18, 0, tzinfo=UTC),
@@ -43,9 +43,15 @@ def test_reader_builds_alarm_reference_catalog_and_preserves_provenance() -> Non
 
     assert catalog is not None
     assert catalog.catalog_revision == snapshot.revision
+    assert catalog.dependencies.revision == snapshot.revision
     assert tuple(tool.tool_key for tool in catalog.tools) == (
         'integrated_tool',
         'process_tool',
+    )
+    assert tuple(tool.tool_key for tool in catalog.dependencies.tools) == (
+        'integrated_tool',
+        'process_tool',
+        'strategic_tool',
     )
     integrated = catalog.get_tool('integrated_tool')
     assert integrated is not None
@@ -54,6 +60,10 @@ def test_reader_builds_alarm_reference_catalog_and_preserves_provenance() -> Non
         'mine_primary',
         'mine_secondary',
     )
+    strategic = catalog.dependencies.get('strategic_tool')
+    assert strategic is not None
+    assert strategic.display_name == 'Strategic Tool'
+    assert strategic.source_release_id == 'release-strategic'
 
 
 def test_reader_uses_tool_structure_visible_subcomponent_addresses() -> None:
@@ -91,8 +101,8 @@ def test_alarm_configuration_remains_valid_without_catalog_resolution() -> None:
 
     configuration = AlarmConfiguration(rules=(unresolved,), messages=(message(),))
 
-    assert configuration.rules[0].escalation.origin_tool_key == 'tool-a'
-    assert configuration.rules[0].visual_targets[0].tool_key == 'tool-a'
+    assert configuration.rules[0].escalation.origin_tool_key == 'tool_a'
+    assert configuration.rules[0].visual_targets[0].tool_key == 'tool_a'
 
 
 def _integrated_entry() -> ToolCatalogEntry:

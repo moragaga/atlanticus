@@ -4,7 +4,7 @@
     "replicaRetryLimit": 0,
     "triggerType": "Schedule",
     "scheduleTriggerConfig": {
-      "cronExpression": "*/1 * * * *",
+      "cronExpression": "*/10 * * * *",
       "parallelism": 1
     }
   },

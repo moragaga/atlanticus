@@ -19,7 +19,8 @@ members = [
     "atlanticus-operational-data-calendar",
     "atlanticus-operational-data-core",
     "atlanticus-operational-data-dispatch-process",
-    "atlanticus-operational-data-fabrica-process",
+    "atlanticus-operational-data-fabrica-kpis-process",
+    "atlanticus-operational-data-fabrica-planes-process",
     "atlanticus-operational-data-notpii-process",
     "atlanticus-operational-data-pi-process",
     "atlanticus-operational-data-planner",
@@ -523,9 +524,46 @@ dev = [
 ]
 
 [[package]]
-name = "atlanticus-operational-data-fabrica-process"
+name = "atlanticus-operational-data-fabrica-kpis-process"
 version = "1.0.0"
-source = { editable = "processes/fabrica" }
+source = { editable = "processes/fabrica-kpis" }
+dependencies = [
+    { name = "atlanticus-configuration" },
+    { name = "atlanticus-data-producers-fabrica" },
+    { name = "atlanticus-job-runtime" },
+    { name = "atlanticus-kernel" },
+    { name = "atlanticus-key-vault" },
+    { name = "atlanticus-observability-azure" },
+    { name = "atlanticus-storage" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-configuration", editable = "../../backend/configuration" },
+    { name = "atlanticus-data-producers-fabrica", editable = "producers/fabrica" },
+    { name = "atlanticus-job-runtime", editable = "../../backend/runtime" },
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
+    { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
+    { name = "atlanticus-observability-azure", editable = "../../backend/observability-azure" },
+    { name = "atlanticus-storage", editable = "../../connectivity/storage" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "atlanticus-operational-data-fabrica-planes-process"
+version = "1.0.0"
+source = { editable = "processes/fabrica-planes" }
 dependencies = [
     { name = "atlanticus-configuration" },
     { name = "atlanticus-data-producers-fabrica" },
