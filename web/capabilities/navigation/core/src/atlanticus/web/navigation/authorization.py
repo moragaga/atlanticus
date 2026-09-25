@@ -63,16 +63,14 @@ def can_access_navigation_path(
     home_path: str = '/',
 ) -> bool:
     normalized = normalize_navigation_path(pathname)
-    if normalized == normalize_navigation_path(home_path):
-        return True
     match = resolve_navigation_route(definition, normalized)
-    if match is not None and not match.enabled:
-        return False
-    if principal.unrestricted:
+    if principal.administrative_override:
         return True
     if match is None:
+        return normalized == normalize_navigation_path(home_path)
+    if not match.enabled:
         return False
-    if not match.allowed_profiles:
+    if principal.unrestricted or not match.allowed_profiles:
         return True
     return principal.access_key in match.allowed_profiles
 

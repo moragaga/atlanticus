@@ -66,17 +66,19 @@ def can_access_navigation_path(
     home_path: str = '/',
 ) -> bool:
     normalized = normalize_navigation_path(pathname)
-    if normalized == normalize_navigation_path(home_path):
-        return True
+    # Resuelve la definición antes de considerar home: un home deshabilitado también se deniega.
     match = resolve_navigation_route(definition, normalized)
-    if match is not None and not match.enabled:
-        return False
-    if principal.unrestricted:
+    # El bypass no se infiere del nombre del perfil ni de unrestricted.
+    # La composición debe concederlo sólo a un contexto root/local verificado.
+    if principal.administrative_override:
         return True
+    # Home es la única ruta no registrada accesible sin bypass, para arrancar sin Navigation.
     if match is None:
+        return normalized == normalize_navigation_path(home_path)
+    if not match.enabled:
         return False
-    # Una ruta configurada sin perfiles no añade una restricción de perfil.
-    if not match.allowed_profiles:
+    # Unrestricted sólo elimina restricciones de perfil en rutas habilitadas y registradas.
+    if principal.unrestricted or not match.allowed_profiles:
         return True
     return principal.access_key in match.allowed_profiles
 

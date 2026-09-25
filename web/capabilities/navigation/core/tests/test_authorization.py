@@ -113,11 +113,16 @@ def test_restricted_principal_requires_explicit_route_permission() -> None:
     )
 
 
-def test_unrestricted_principal_can_open_unconfigured_route_but_not_disabled_route() -> None:
+def test_unrestricted_principal_bypasses_only_profiles_of_enabled_registered_routes() -> None:
     definition = _definition()
     principal = _principal('administrator', unrestricted=True)
 
     assert can_access_navigation_path(
+        definition,
+        principal=principal,
+        pathname='/guest',
+    )
+    assert not can_access_navigation_path(
         definition,
         principal=principal,
         pathname='/not-configured',

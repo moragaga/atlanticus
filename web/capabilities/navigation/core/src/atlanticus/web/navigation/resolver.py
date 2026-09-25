@@ -66,7 +66,7 @@ def _can_open(
     allowed_profiles: tuple[str, ...],
     principal: NavigationPrincipal,
 ) -> bool:
-    if principal.unrestricted or not allowed_profiles:
+    if principal.administrative_override or principal.unrestricted or not allowed_profiles:
         return True
     return principal.access_key in allowed_profiles
 

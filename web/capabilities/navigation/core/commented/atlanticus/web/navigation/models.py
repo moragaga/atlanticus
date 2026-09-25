@@ -80,12 +80,19 @@ class NavigationUser:
 
 @dataclass(frozen=True, slots=True)
 class NavigationPrincipal:
-    access_key: str
+    access_key: str | None
     user: NavigationUser
     unrestricted: bool = False
+    # Sólo la composición confiable de la aplicación puede conceder esta excepción.
+    administrative_override: bool = False
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, 'access_key', _normalize_profile_key(self.access_key))
+        # None representa ausencia de perfil; nunca equivale implícitamente a guest.
+        if self.access_key is not None:
+            object.__setattr__(self, 'access_key', _normalize_profile_key(self.access_key))
+        # Rechaza cadenas u otros valores truthy que concederían un bypass accidental.
+        if not isinstance(self.administrative_override, bool):
+            raise WebDefinitionError('Navigation administrative override must be boolean')
 
 
 @dataclass(frozen=True, slots=True)

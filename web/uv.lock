@@ -49,7 +49,7 @@ wheels = [
 [[package]]
 name = "atlanticus-cosmos"
 version = "1.0.0"
-source = { directory = "../connectivity/cosmos" }
+source = { editable = "../connectivity/cosmos" }
 dependencies = [
     { name = "atlanticus-observability" },
     { name = "azure-cosmos" },
@@ -167,7 +167,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-cosmos", directory = "../connectivity/cosmos" },
+    { name = "atlanticus-cosmos", editable = "../connectivity/cosmos" },
     { name = "atlanticus-storage", directory = "../connectivity/storage" },
     { name = "atlanticus-web", editable = "framework/core" },
     { name = "atlanticus-web-manager", editable = "capabilities/manager" },
@@ -202,7 +202,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-cosmos", directory = "../connectivity/cosmos" },
+    { name = "atlanticus-cosmos", editable = "../connectivity/cosmos" },
     { name = "atlanticus-storage", directory = "../connectivity/storage" },
     { name = "atlanticus-web", editable = "framework/core" },
     { name = "atlanticus-web-manager", editable = "capabilities/manager" },
@@ -351,7 +351,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-cosmos", directory = "../connectivity/cosmos" },
+    { name = "atlanticus-cosmos", editable = "../connectivity/cosmos" },
     { name = "atlanticus-web-navigation-configuration", editable = "capabilities/navigation/configuration" },
     { name = "atlanticus-web-projection", editable = "capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "capabilities/source/core" },
@@ -436,7 +436,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-cosmos", directory = "../connectivity/cosmos" },
+    { name = "atlanticus-cosmos", editable = "../connectivity/cosmos" },
     { name = "atlanticus-web-profiles", editable = "capabilities/profiles/core" },
     { name = "atlanticus-web-profiles-configuration", editable = "capabilities/profiles/configuration" },
     { name = "atlanticus-web-projection", editable = "capabilities/projection/core" },
@@ -531,7 +531,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-cosmos", directory = "../connectivity/cosmos" },
+    { name = "atlanticus-cosmos", editable = "../connectivity/cosmos" },
     { name = "atlanticus-web-storage-topology", editable = "capabilities/storage/topology" },
 ]
 
@@ -617,7 +617,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-cosmos", directory = "../connectivity/cosmos" },
+    { name = "atlanticus-cosmos", editable = "../connectivity/cosmos" },
     { name = "atlanticus-web-users", editable = "capabilities/users/core" },
 ]
 
