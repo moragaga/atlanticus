@@ -132,3 +132,26 @@ def test_commented_process_tool_is_structurally_equivalent() -> None:
     )
 
     assert production == commented
+
+
+def test_operational_data_target_discovers_both_fabrica_processes(tmp_path: Path) -> None:
+    kpis = _write_process(
+        tmp_path,
+        "scopes/operational-data/processes/fabrica-kpis",
+        command="operational-data-fabrica-kpis",
+        project_name="atlanticus-operational-data-fabrica-kpis-process",
+    )
+    planes = _write_process(
+        tmp_path,
+        "scopes/operational-data/processes/fabrica-planes",
+        command="operational-data-fabrica-planes",
+        project_name="atlanticus-operational-data-fabrica-planes-process",
+    )
+
+    roots = process_tool._resolve_target_processes(
+        tmp_path,
+        "operational-data",
+        BundleStub(),
+    )
+
+    assert roots == (kpis, planes)

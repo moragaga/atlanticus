@@ -141,13 +141,21 @@ CAPABILITIES: dict[str, OperationalDataCapability] = {
         'processes/blockgrade/src',
         'processes/blockgrade/commented',
     ),
-    'process-fabrica': OperationalDataCapability(
-        'process-fabrica',
-        'atlanticus-operational-data-fabrica-process',
-        'atlanticus.operational_data.processes.fabrica',
-        'processes/fabrica',
-        'processes/fabrica/src',
-        'processes/fabrica/commented',
+    'process-fabrica-planes': OperationalDataCapability(
+        'process-fabrica-planes',
+        'atlanticus-operational-data-fabrica-planes-process',
+        'atlanticus.operational_data.processes.fabrica_planes',
+        'processes/fabrica-planes',
+        'processes/fabrica-planes/src',
+        'processes/fabrica-planes/commented',
+    ),
+    'process-fabrica-kpis': OperationalDataCapability(
+        'process-fabrica-kpis',
+        'atlanticus-operational-data-fabrica-kpis-process',
+        'atlanticus.operational_data.processes.fabrica_kpis',
+        'processes/fabrica-kpis',
+        'processes/fabrica-kpis/src',
+        'processes/fabrica-kpis/commented',
     ),
     'process-remanentes': OperationalDataCapability(
         'process-remanentes',
@@ -174,7 +182,8 @@ EXPECTED_WORKSPACE_MEMBERS = [
     'processes/notpii',
     'processes/dispatch',
     'processes/blockgrade',
-    'processes/fabrica',
+    'processes/fabrica-planes',
+    'processes/fabrica-kpis',
     'processes/remanentes',
 ]
 
@@ -193,7 +202,8 @@ EXPECTED_WORKSPACE_SOURCES = {
     'atlanticus-operational-data-notpii-process': {'workspace': True},
     'atlanticus-operational-data-dispatch-process': {'workspace': True},
     'atlanticus-operational-data-blockgrade-process': {'workspace': True},
-    'atlanticus-operational-data-fabrica-process': {'workspace': True},
+    'atlanticus-operational-data-fabrica-planes-process': {'workspace': True},
+    'atlanticus-operational-data-fabrica-kpis-process': {'workspace': True},
     'atlanticus-operational-data-remanentes-process': {'workspace': True},
     'atlanticus-configuration': {'path': '../../backend/configuration', 'editable': True},
     'atlanticus-datasets': {'path': '../../backend/datasets', 'editable': True},
@@ -327,7 +337,16 @@ EXPECTED_DEPENDENCY_NAMES = {
         'atlanticus-observability-azure',
         'atlanticus-sql',
     ),
-    'process-fabrica': (
+    'process-fabrica-planes': (
+        'atlanticus-configuration',
+        'atlanticus-data-producers-fabrica',
+        'atlanticus-job-runtime',
+        'atlanticus-kernel',
+        'atlanticus-key-vault',
+        'atlanticus-observability-azure',
+        'atlanticus-storage',
+    ),
+    'process-fabrica-kpis': (
         'atlanticus-configuration',
         'atlanticus-data-producers-fabrica',
         'atlanticus-job-runtime',
@@ -371,7 +390,8 @@ PROCESS_CONTRACTS = {
     'process-notpii': ('operational-data-notpii', 'base'),
     'process-dispatch': ('operational-data-dispatch', 'sqlserver'),
     'process-blockgrade': ('operational-data-blockgrade', 'sqlserver'),
-    'process-fabrica': ('operational-data-fabrica', 'base'),
+    'process-fabrica-planes': ('operational-data-fabrica-planes', 'base'),
+    'process-fabrica-kpis': ('operational-data-fabrica-kpis', 'base'),
     'process-remanentes': ('operational-data-remanentes', 'base'),
 }
 
@@ -395,6 +415,7 @@ RETIRED_PROCESS_PATHS = (
     'scopes/ada/processes/dispatch',
     'scopes/ada/processes/blockgrade',
     'scopes/ada/processes/fabrica',
+    'scopes/operational-data/processes/fabrica',
     'scopes/ada/processes/remanentes',
 )
 

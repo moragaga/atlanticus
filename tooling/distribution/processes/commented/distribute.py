@@ -108,8 +108,10 @@ DEPLOYMENT_CATALOG = (
     ProcessDeployment("02", "operational-data-notpii", "notpii"),
     ProcessDeployment("03", "operational-data-dispatch", "dispatch"),
     ProcessDeployment("04", "operational-data-blockgrade", "blockgrade"),
-    ProcessDeployment("05", "operational-data-fabrica", "fabrica"),
-    ProcessDeployment("06", "operational-data-remanentes", "remanentes"),
+    # Sin despliegues anteriores, los identificadores operativos continúan sin huecos.
+    ProcessDeployment("05", "operational-data-fabrica-planes", "fabrica-planes"),
+    ProcessDeployment("06", "operational-data-fabrica-kpis", "fabrica-kpis"),
+    ProcessDeployment("07", "operational-data-remanentes", "remanentes"),
     ProcessDeployment("21", "ada-kpi-runtime", "kpis"),
     ProcessDeployment("22", "ada-kpi-historian", "kpis-historian"),
     ProcessDeployment("41", "ada-kpi-delivery", "kpis-delivery"),

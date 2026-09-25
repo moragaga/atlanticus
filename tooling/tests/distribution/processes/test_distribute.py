@@ -134,8 +134,9 @@ def test_deployment_catalog_is_stable() -> None:
         ("02", "operational-data-notpii", "notpii"),
         ("03", "operational-data-dispatch", "dispatch"),
         ("04", "operational-data-blockgrade", "blockgrade"),
-        ("05", "operational-data-fabrica", "fabrica"),
-        ("06", "operational-data-remanentes", "remanentes"),
+        ("05", "operational-data-fabrica-planes", "fabrica-planes"),
+        ("06", "operational-data-fabrica-kpis", "fabrica-kpis"),
+        ("07", "operational-data-remanentes", "remanentes"),
         ("21", "ada-kpi-runtime", "kpis"),
         ("22", "ada-kpi-historian", "kpis-historian"),
         ("41", "ada-kpi-delivery", "kpis-delivery"),
@@ -341,3 +342,71 @@ def test_distribution_keeps_local_deployment_assets_out_of_root(
     assert (target / "deployment/local/simulation.py").is_file()
     assert (target / "deployment/local/scheduler/Dockerfile").is_file()
     assert (target / "deployment/local/scheduler/scheduler.py").is_file()
+
+
+def test_split_fabrica_distribution_preserves_contiguous_slots(
+    tmp_path: Path, monkeypatch
+) -> None:
+    _write_transport(tmp_path)
+    roots = {
+        command: _write_source(
+            tmp_path,
+            f"scopes/operational-data/processes/{folder}",
+            command,
+        )
+        for command, folder in (
+            ("operational-data-fabrica-planes", "fabrica-planes"),
+            ("operational-data-fabrica-kpis", "fabrica-kpis"),
+            ("operational-data-remanentes", "remanentes"),
+        )
+    }
+    _patch_generation_context(monkeypatch, tmp_path)
+    bundle = BundleStub(roots)
+
+    combined = distribution.distribute(
+        repository_root=tmp_path,
+        output_root=tmp_path / "distribution",
+        distribution_name="fabrica-combined",
+        selections=tuple(reversed(tuple(roots))),
+        targets=(),
+        bundle=bundle,
+    )
+    services = json.loads((combined / "services.json").read_text(encoding="utf-8"))
+    assert [
+        (item["container_name"], item["excecution_file"], item["config_file"])
+        for item in services
+    ] == [
+        ("job05", "fabrica-planes", "processes/fabrica-planes/config.json"),
+        ("job06", "fabrica-kpis", "processes/fabrica-kpis/config.json"),
+        ("job07", "remanentes", "processes/remanentes/config.json"),
+    ]
+    manifest = json.loads((combined / "distribution.json").read_text(encoding="utf-8"))
+    assert [
+        (item["process"], item["deployment"]["container_name"])
+        for item in manifest["processes"]
+    ] == [
+        ("operational-data-fabrica-planes", "job05"),
+        ("operational-data-fabrica-kpis", "job06"),
+        ("operational-data-remanentes", "job07"),
+    ]
+
+    for command, expected_job in (
+        ("operational-data-fabrica-planes", "job05"),
+        ("operational-data-fabrica-kpis", "job06"),
+    ):
+        independent = distribution.distribute(
+            repository_root=tmp_path,
+            output_root=tmp_path / "distribution",
+            distribution_name=command,
+            selections=(command,),
+            targets=(),
+            bundle=bundle,
+        )
+        independent_services = json.loads(
+            (independent / "services.json").read_text(encoding="utf-8")
+        )
+        assert len(independent_services) == 1
+        assert independent_services[0]["container_name"] == expected_job
+        assert independent_services[0]["excecution_file"] == command.removeprefix(
+            "operational-data-"
+        )

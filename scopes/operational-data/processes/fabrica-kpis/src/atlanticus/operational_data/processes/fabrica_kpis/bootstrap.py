@@ -19,13 +19,17 @@ from atlanticus.runtime import RuntimeExecutionResult
 
 
 def load_configuration(
-    *, process_root: str | Path, environ: Mapping[str, str] | None = None,
+    *,
+    process_root: str | Path,
+    environ: Mapping[str, str] | None = None,
 ) -> ResolvedConfiguration:
     values = os.environ if environ is None else environ
     root = Path(process_root)
     specs = configuration_specs()
     bootstrap = ConfigurationBootstrap.from_process(
-        specs=specs, process_values=values, configuration_root=root,
+        specs=specs,
+        process_values=values,
+        configuration_root=root,
     )
     environment = bootstrap.environment
     if environment.is_local:
@@ -34,12 +38,15 @@ def load_configuration(
     manifest = SecretsManifest.from_path(root / 'secrets.json')
     secret_keys = {spec.key for spec in specs}
     required_secrets = tuple(
-        entry for entry in manifest.entries
+        entry
+        for entry in manifest.entries
         if entry.var_name in secret_keys and entry.exists_in_key_vault
     )
     if not required_secrets:
         configuration = ConfigurationBootstrap(
-            environment=environment, specs=specs, secrets_manifest=manifest,
+            environment=environment,
+            specs=specs,
+            secrets_manifest=manifest,
         ).load(process_values=values)
         return _absolute_volume(configuration)
     combined = {**manifest.static_values(), **values}
@@ -53,14 +60,17 @@ def load_configuration(
         raise FabricaProcessConfigurationError(str(error)) from error
     with KeyVaultClient(settings=vault) as resolver:
         configuration = ConfigurationBootstrap(
-            environment=environment, specs=specs,
-            secrets_manifest=manifest, secret_resolver=resolver,
+            environment=environment,
+            specs=specs,
+            secrets_manifest=manifest,
+            secret_resolver=resolver,
         ).load(process_values=values)
     return _absolute_volume(configuration)
 
 
 def run(
-    *, argv: Sequence[str] | None = None,
+    *,
+    argv: Sequence[str] | None = None,
     environ: Mapping[str, str] | None = None,
     process_root: str | Path | None = None,
 ) -> RuntimeExecutionResult:

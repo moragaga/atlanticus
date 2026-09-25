@@ -5,7 +5,9 @@ from atlanticus.data_producers.fabrica import FabricaDatasetDefinition, FabricaS
 
 DATASETS = (
     FabricaDatasetDefinition(name='daily', source_value='DAY', route_segment='daily', metrics=()),
-    FabricaDatasetDefinition(name='weekly', source_value='7LDB', route_segment='weekly', metrics=()),
+    FabricaDatasetDefinition(
+        name='weekly', source_value='7LDB', route_segment='weekly', metrics=()
+    ),
 )
 
 
@@ -14,7 +16,9 @@ def build_catalog() -> FabricaStreamDefinition:
     return FabricaStreamDefinition(
         stream_key='planes',
         source_prefix='planes_fabrica',
-        source_filename_pattern=re.compile(r'(^|.*/)planes_fabrica_(?P<file_timestamp>\d{14})\.parquet$'),
+        source_filename_pattern=re.compile(
+            r'(^|.*/)planes_fabrica_(?P<file_timestamp>\d{14})\.parquet$'
+        ),
         output_route_segment='planes',
         datasets=DATASETS,
         report_unknown_source_values=True,

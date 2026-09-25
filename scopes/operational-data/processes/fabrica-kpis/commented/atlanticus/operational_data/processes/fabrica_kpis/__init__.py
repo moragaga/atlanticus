@@ -15,6 +15,7 @@ def build_catalog() -> Any:
     from atlanticus.operational_data.processes.fabrica_kpis.catalog import (
         build_catalog as _build_catalog,
     )
+
     return _build_catalog()
 
 
@@ -23,14 +24,17 @@ def build_composition(*, configuration: Any, catalog: Any = None) -> Any:
     from atlanticus.operational_data.processes.fabrica_kpis.composition import (
         build_composition as _build_composition,
     )
+
     return _build_composition(configuration=configuration, catalog=catalog)
 
 
 # Responsabilidad de run.
 def run(
-    *, argv: Sequence[str] | None = None,
+    *,
+    argv: Sequence[str] | None = None,
     environ: Mapping[str, str] | None = None,
     process_root: str | Path | None = None,
 ) -> Any:
     from atlanticus.operational_data.processes.fabrica_kpis.bootstrap import run as _run
+
     return _run(argv=argv, environ=environ, process_root=process_root)

@@ -14,7 +14,9 @@ def build_catalog() -> FabricaStreamDefinition:
     return FabricaStreamDefinition(
         stream_key='kpis',
         source_prefix='MLP/kpi_fabrica/kpi_fabrica',
-        source_filename_pattern=re.compile(r'(^|.*/)kpi_fabrica_(?P<file_timestamp>\d{14})\.parquet$'),
+        source_filename_pattern=re.compile(
+            r'(^|.*/)kpi_fabrica_(?P<file_timestamp>\d{14})\.parquet$'
+        ),
         output_route_segment='kpis',
         datasets=DATASETS,
         report_unknown_source_values=False,
