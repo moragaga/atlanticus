@@ -12,6 +12,7 @@ from atlanticus.web.users.activity.routes import (
     register_user_activity_routes,
 )
 from atlanticus.web.users.activity.services import UserActivityService
+from atlanticus.web.users.runtime import UsersRuntime
 
 USER_ACTIVITY_ASSET_LAYER = AssetLayer(
     name='atlanticus_web_user_activity',
@@ -24,6 +25,7 @@ def create_user_activity_module(
     *,
     repository: UserActivityRepository,
     application_key: str,
+    users_runtime: UsersRuntime,
     route_resolver: ActivityRouteResolver | None = None,
     heartbeat_seconds: int = 30,
     track_local: bool = False,
@@ -37,6 +39,7 @@ def create_user_activity_module(
             UserActivityService(
                 repository=repository,
                 application_key=application_key,
+                users_runtime=users_runtime,
                 route_resolver=route_resolver,
                 track_local=track_local,
             ),

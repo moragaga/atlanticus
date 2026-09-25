@@ -1,12 +1,14 @@
 from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.users.activity import MemoryUserActivityRepository, create_user_activity_module
 from atlanticus.web.users.activity.routes import USER_ACTIVITY_SERVICE_KEY
+from atlanticus.web.users.runtime import UsersRuntime
 
 
 def test_module_publishes_assets_runtime_config_and_service() -> None:
     module = create_user_activity_module(
         repository=MemoryUserActivityRepository(),
         application_key='app',
+        users_runtime=UsersRuntime(),
         heartbeat_seconds=30,
     )
     services = ServiceRegistry()
@@ -21,5 +23,3 @@ def test_module_publishes_assets_runtime_config_and_service() -> None:
         'event_endpoint': '/_atlanticus/activity/events',
         'heartbeat_ms': 30000,
     }
-
-

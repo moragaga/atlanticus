@@ -8,6 +8,7 @@ from atlanticus.web.navigation.models import (
     NavigationGroupDefinition,
     NavigationLinkDefinition,
 )
+from atlanticus.web.users.runtime import UsersRuntime
 
 
 def _definition() -> NavigationDefinition:
@@ -56,6 +57,7 @@ def test_composition_factory_builds_activity_module() -> None:
         _definition(),
         repository=MemoryUserActivityRepository(),
         application_key='app',
+        users_runtime=UsersRuntime(),
     )
 
     assert module.name == 'user-activity'

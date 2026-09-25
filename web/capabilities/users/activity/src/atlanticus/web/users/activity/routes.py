@@ -27,6 +27,8 @@ def register_user_activity_routes(server: Flask, services: ServiceRegistry) -> N
         snapshot = access.current_or_none()
         if snapshot is None:
             return jsonify({'error': 'Access snapshot is not available'}), 401
+        if not activity.should_track(snapshot):
+            return jsonify({'error': 'User activity is not available'}), 403
         payload = request.get_json(silent=True)
         if not isinstance(payload, dict):
             return jsonify({'error': 'User activity payload must be a JSON object'}), 400
@@ -35,4 +37,6 @@ def register_user_activity_routes(server: Flask, services: ServiceRegistry) -> N
             result = activity.capture(snapshot=snapshot, event=event)
         except UserActivityError as error:
             return jsonify({'error': str(error)}), 400
+        if not result['tracked']:
+            return jsonify({'error': 'User activity is not available'}), 403
         return jsonify(result), 202

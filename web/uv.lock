@@ -136,12 +136,14 @@ version = "0.1.0"
 source = { editable = "compositions/navigation-activity" }
 dependencies = [
     { name = "atlanticus-web-navigation" },
+    { name = "atlanticus-web-users" },
     { name = "atlanticus-web-users-activity" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "atlanticus-web-navigation", editable = "capabilities/navigation/core" },
+    { name = "atlanticus-web-users", editable = "capabilities/users/core" },
     { name = "atlanticus-web-users-activity", editable = "capabilities/users/activity" },
 ]
 
@@ -577,6 +579,7 @@ source = { editable = "capabilities/users/activity" }
 dependencies = [
     { name = "atlanticus-web" },
     { name = "atlanticus-web-identity" },
+    { name = "atlanticus-web-users" },
     { name = "flask" },
 ]
 
@@ -584,6 +587,7 @@ dependencies = [
 requires-dist = [
     { name = "atlanticus-web", editable = "framework/core" },
     { name = "atlanticus-web-identity", editable = "capabilities/identity/core" },
+    { name = "atlanticus-web-users", editable = "capabilities/users/core" },
     { name = "flask", specifier = "==3.1.3" },
 ]
 

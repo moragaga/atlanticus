@@ -1,5 +1,5 @@
-# Traduce HTTP al contrato del servicio.
-# Identity sigue siendo la autoridad del principal efectivo.
+# Expone bootstrap y eventos Activity sobre AccessRuntime compartido con Identity.
+# Revalida promoción tanto antes de aceptar el evento como dentro de capture; rechaza direct POST.
 from __future__ import annotations
 
 from flask import Flask, jsonify, request
@@ -29,6 +29,8 @@ def register_user_activity_routes(server: Flask, services: ServiceRegistry) -> N
         snapshot = access.current_or_none()
         if snapshot is None:
             return jsonify({'error': 'Access snapshot is not available'}), 401
+        if not activity.should_track(snapshot):
+            return jsonify({'error': 'User activity is not available'}), 403
         payload = request.get_json(silent=True)
         if not isinstance(payload, dict):
             return jsonify({'error': 'User activity payload must be a JSON object'}), 400
@@ -37,4 +39,6 @@ def register_user_activity_routes(server: Flask, services: ServiceRegistry) -> N
             result = activity.capture(snapshot=snapshot, event=event)
         except UserActivityError as error:
             return jsonify({'error': str(error)}), 400
+        if not result['tracked']:
+            return jsonify({'error': 'User activity is not available'}), 403
         return jsonify(result), 202

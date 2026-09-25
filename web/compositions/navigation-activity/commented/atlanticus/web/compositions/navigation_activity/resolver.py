@@ -1,4 +1,5 @@
-# Adapta Navigation al contrato pequeño de resolución de rutas de Activity.
+# Adapta Navigation al contrato de resolución de rutas de Activity.
+# Transfiere UsersRuntime explícito al módulo para impedir seguimiento antes de la promoción.
 # Sólo rutas internas, habilitadas y exactas reciben una route_key canónica.
 from __future__ import annotations
 
@@ -6,6 +7,7 @@ from atlanticus.web.navigation.models import NavigationDefinition
 from atlanticus.web.users.activity.contracts import ActivityRoute, UserActivityRepository
 from atlanticus.web.users.activity.models import normalize_pathname
 from atlanticus.web.users.activity.module import create_user_activity_module
+from atlanticus.web.users.runtime import UsersRuntime
 
 
 class NavigationActivityRouteResolver:
@@ -37,12 +39,14 @@ def create_navigation_user_activity_module(
     *,
     repository: UserActivityRepository,
     application_key: str,
+    users_runtime: UsersRuntime,
     heartbeat_seconds: int = 30,
     track_local: bool = False,
 ):
     return create_user_activity_module(
         repository=repository,
         application_key=application_key,
+        users_runtime=users_runtime,
         route_resolver=create_navigation_activity_route_resolver(definition),
         heartbeat_seconds=heartbeat_seconds,
         track_local=track_local,

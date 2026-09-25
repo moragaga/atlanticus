@@ -14,6 +14,8 @@ from atlanticus.web.users.activity.models import (
     activity_document_id,
     actor_key,
 )
+from atlanticus.web.users.errors import UsersContextError
+from atlanticus.web.users.runtime import UsersRuntime
 
 
 class UserActivityService:
@@ -22,6 +24,7 @@ class UserActivityService:
         *,
         repository: UserActivityRepository,
         application_key: str,
+        users_runtime: UsersRuntime,
         route_resolver: ActivityRouteResolver | None = None,
         track_local: bool = False,
         max_active_delta_seconds: int = 600,
@@ -31,6 +34,8 @@ class UserActivityService:
         application_key = application_key.strip()
         if not application_key:
             raise UserActivityError('Application key must not be empty')
+        if not isinstance(users_runtime, UsersRuntime):
+            raise TypeError('User activity requires UsersRuntime')
         if max_active_delta_seconds < 1:
             raise UserActivityError('Maximum active delta must be positive')
         if max_routes < 1:
@@ -39,6 +44,7 @@ class UserActivityService:
             raise UserActivityError('Maximum conflict retries must be positive')
         self._repository = repository
         self._application_key = application_key
+        self._users_runtime = users_runtime
         self._route_resolver = route_resolver
         self._track_local = track_local
         self._max_active_delta_seconds = max_active_delta_seconds
@@ -50,9 +56,23 @@ class UserActivityService:
             snapshot is None
             or snapshot.status is not AccessStatus.READY
             or snapshot.identity is None
+            or snapshot.bootstrap_root
+            or snapshot.user_id is None
         ):
             return False
-        return self._track_local or snapshot.identity.provider_key != 'local'
+        if snapshot.identity.provider_key == 'local' and not self._track_local:
+            return False
+        try:
+            user = self._users_runtime.current_or_none(snapshot)
+        except UsersContextError:
+            return False
+        return bool(
+            user is not None
+            and user.enabled
+            and not user.is_local
+            and user.user_id == snapshot.user_id
+            and user.subject_id == snapshot.identity.subject_id
+        )
 
     def capture(
         self,
