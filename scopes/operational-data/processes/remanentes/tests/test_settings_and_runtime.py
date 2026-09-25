@@ -28,13 +28,13 @@ def _configuration(**overrides: str) -> ResolvedConfiguration:
     )
 
 
-def test_runtime_matches_current_process_standard() -> None:
+def test_runtime_matches_current_remanentes_contract() -> None:
     definition = REMANENTES_JOB_DEFINITION
     assert (
         definition.iteration_timeout_seconds,
         definition.execution_timeout_seconds,
         definition.shutdown_grace_seconds,
-    ) == (580, 600, 10)
+    ) == (160, 180, 10)
     assert (
         definition.lease_timeout_seconds,
         definition.lease_renew_seconds,

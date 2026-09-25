@@ -35,7 +35,7 @@ def test_composition_uses_job_runtime_and_empty_catalog(tmp_path) -> None:
     assert composition.definition.service_name == 'kpi-runtime'
     assert composition.definition.job_key == 'kpi-runtime'
     assert composition.definition.sleep_seconds == 1
-    assert composition.definition.iteration_timeout_seconds == 240
+    assert composition.definition.iteration_timeout_seconds == 580
     assert composition.definition.execution_timeout_seconds == 600
     assert composition.settings.reprocess_current is False
     assert len(composition.catalog) == 0

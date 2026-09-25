@@ -111,7 +111,7 @@ def _job_definition(*, poll_interval_seconds: float) -> JobDefinition:
         service_name='kpi-delivery',
         job_key='kpi-delivery',
         sleep_seconds=poll_interval_seconds,
-        iteration_timeout_seconds=240,
+        iteration_timeout_seconds=580,
         execution_timeout_seconds=600,
         shutdown_grace_seconds=10,
         lease_timeout_seconds=30,

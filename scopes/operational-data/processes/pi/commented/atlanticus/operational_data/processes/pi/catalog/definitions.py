@@ -1,38 +1,9 @@
-# Catálogo concreto del process PI Web API.
-# Los tags permanecen en Operational Data; adquisición, planificación y materialización viven en Data Producers.
+# Espejo del catálogo productivo PI Web API.
+# Las definiciones productivas permanecen vacías hasta que el proceso reciba una configuración explícita.
+# Para ejemplos de tags y combinaciones, consultar catalog/_definitions.example.py.
 
-from atlanticus.integrations.pi.contracts import (
-    PiExtractionMode,
-    PiMaterialization,
-    PiTagDefinition,
-    PiValueKind,
-    PiWebApiSource,
-)
+from atlanticus.integrations.pi.contracts import PiTagDefinition, PiWebApiSource
 
-# Intervalo común del catálogo PI Web API.
 SOURCE = PiWebApiSource(interpolation_seconds=10)
 
-# Definiciones concretas usadas por Operational Data para esta fuente.
-DEFINITIONS: tuple[PiTagDefinition, ...] = (
-    PiTagDefinition(
-        tag_name='ML001ARUN',
-        alias='estado_sag_1_inst',
-        value_kind=PiValueKind.TEXT,
-        extraction_mode=PiExtractionMode.INTERPOLATED,
-        materializations=(PiMaterialization.LATEST,),
-    ),
-    PiTagDefinition(
-        tag_name='320:L1.F80(INCH)',
-        alias='f80_sag_1_inst',
-        value_kind=PiValueKind.FLOAT,
-        extraction_mode=PiExtractionMode.INTERPOLATED,
-        materializations=(PiMaterialization.DAILY,),
-    ),
-    PiTagDefinition(
-        tag_name='330:RECCU_AJUST.H',
-        alias='recuperacion_ajustada_hora_inst',
-        value_kind=PiValueKind.FLOAT,
-        extraction_mode=PiExtractionMode.RECORDED,
-        materializations=(PiMaterialization.MONTHLY,),
-    ),
-)
+DEFINITIONS: tuple[PiTagDefinition, ...] = ()
