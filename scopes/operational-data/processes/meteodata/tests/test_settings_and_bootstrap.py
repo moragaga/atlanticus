@@ -1,9 +1,6 @@
-import pytest
-
-from atlanticus.configuration import ConfigurationBootstrap, MissingConfigurationVariablesError
+from atlanticus.configuration import ConfigurationBootstrap
 from atlanticus.connectivity.http import HttpAuthMode
 from atlanticus.operational_data.processes.meteodata.bootstrap import load_configuration
-from atlanticus.operational_data.processes.meteodata.errors import MeteodataProcessConfigurationError
 from atlanticus.operational_data.processes.meteodata.settings import MeteodataSettings, configuration_specs
 
 
@@ -14,7 +11,6 @@ def values(tmp_path):
         'VOLUMEN_PATH': str(tmp_path),
         'METEODATA_BASE_URL': 'https://pelambres.meteodata.cl/met/',
         'METEODATA_TOKEN': 'never-log-this-test-token',
-        'METEODATA_PROJECTION_TIMESTAMP_MODE': 'epoch_utc',
     }
 
 
@@ -33,15 +29,12 @@ def test_process_resolves_token_and_safe_defaults(tmp_path):
     assert settings.http.allow_insecure_http is False
 
 
-def test_timestamp_mode_must_be_selected_explicitly(tmp_path):
+def test_projection_does_not_require_a_timestamp_mode_setting(tmp_path):
     env = values(tmp_path)
-    env.pop('METEODATA_PROJECTION_TIMESTAMP_MODE')
-    with pytest.raises(MissingConfigurationVariablesError):
-        load_configuration(process_root=tmp_path, environ=env)
-    env['METEODATA_PROJECTION_TIMESTAMP_MODE'] = 'auto'
     config = load_configuration(process_root=tmp_path, environ=env)
-    with pytest.raises(MeteodataProcessConfigurationError, match='explicitly verified'):
-        MeteodataSettings.from_configuration(config)
+    settings = MeteodataSettings.from_configuration(config)
+    assert settings.http.token == env['METEODATA_TOKEN']
+    assert 'METEODATA_PROJECTION_TIMESTAMP_MODE' not in {spec.key for spec in configuration_specs()}
 
 
 def test_bootstrap_local_loads_env_and_never_requires_key_vault(tmp_path):
@@ -56,5 +49,5 @@ def test_bootstrap_local_loads_env_and_never_requires_key_vault(tmp_path):
 def test_config_specs_explicitly_mark_credentials_sensitive():
     specs = {spec.key: spec for spec in configuration_specs()}
     assert specs['METEODATA_TOKEN'].sensitive is True
-    assert specs['METEODATA_PROJECTION_TIMESTAMP_MODE'].default is None
+    assert 'METEODATA_PROJECTION_TIMESTAMP_MODE' not in specs
     assert specs['METEODATA_LOOKBACK_MINUTES'].default == '90'

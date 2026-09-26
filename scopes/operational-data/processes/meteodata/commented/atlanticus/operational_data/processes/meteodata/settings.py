@@ -18,18 +18,12 @@ from atlanticus.operational_data.processes.meteodata.errors import (
 @dataclass(frozen=True, slots=True)
 class MeteodataSettings:
     http: HttpSettings
-    projection_timestamp_mode: str
     lookback_minutes: int
     retry_delay_seconds: int
 
     @classmethod
     def from_configuration(cls, configuration: ResolvedConfiguration) -> MeteodataSettings:
         try:
-            mode = configuration.require('METEODATA_PROJECTION_TIMESTAMP_MODE')
-            if mode not in {'epoch_utc', 'fixed_gmt_minus_four_wall_clock'}:
-                raise MeteodataProcessConfigurationError(
-                    'METEODATA_PROJECTION_TIMESTAMP_MODE must be explicitly verified'
-                )
             return cls(
                 http=HttpSettings(
                     base_url=configuration.require('METEODATA_BASE_URL'),
@@ -43,7 +37,6 @@ class MeteodataSettings:
                     verify_tls=_bool(configuration, 'METEODATA_VERIFY_TLS'),
                     allow_insecure_http=False,
                 ),
-                projection_timestamp_mode=mode,
                 lookback_minutes=_positive_int(configuration, 'METEODATA_LOOKBACK_MINUTES'),
                 retry_delay_seconds=_non_negative_int(configuration, 'METEODATA_RETRY_DELAY_SECONDS'),
             )
@@ -57,7 +50,6 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
         ConfigurationVariableSpec(key='METEODATA_BASE_URL'),
         ConfigurationVariableSpec(key='METEODATA_TOKEN', sensitive=True),
-        ConfigurationVariableSpec(key='METEODATA_PROJECTION_TIMESTAMP_MODE'),
         ConfigurationVariableSpec(key='METEODATA_CONNECT_TIMEOUT_SECONDS', default='5'),
         ConfigurationVariableSpec(key='METEODATA_READ_TIMEOUT_SECONDS', default='15'),
         ConfigurationVariableSpec(key='METEODATA_WRITE_TIMEOUT_SECONDS', default='15'),

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-# La API entrega horas de medición en offset fijo GMT-4, independientemente del horario de Chile. La proyección requiere selección explícita de conversión.
+# Los datos y ts_last usan la hora de pared GMT-4 fija proporcionada por Meteodata.
+# Al reinterpretar ts_last con ese offset se obtiene siempre el instante UTC (+4 h),
+# sin depender del huso horario ni del cambio de hora del entorno de ejecución.
 
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime, timedelta, timezone
@@ -15,7 +17,6 @@ from atlanticus.data_producers.meteodata.models import Acquisition, Measurement,
 
 _FIXED_API_TZ = timezone(timedelta(hours=-4))
 _TIMESTAMP_FORMAT = '%Y-%m-%d %H:%M:%S'
-TIMESTAMP_MODES = frozenset({'epoch_utc', 'fixed_gmt_minus_four_wall_clock'})
 
 
 class JsonHttpClient(Protocol):
@@ -23,11 +24,8 @@ class JsonHttpClient(Protocol):
 
 
 class MeteodataAcquirer:
-    def __init__(self, *, client: JsonHttpClient, projection_timestamp_mode: str) -> None:
-        if projection_timestamp_mode not in TIMESTAMP_MODES:
-            raise ValueError('unsupported Meteodata projection timestamp mode')
+    def __init__(self, *, client: JsonHttpClient) -> None:
         self.client = client
-        self.projection_timestamp_mode = projection_timestamp_mode
 
     def acquire_projection(self) -> Projection:
         response = self.client.request_json('GET', 'consultas', params={'op': 'proyeccion'})
@@ -37,9 +35,9 @@ class MeteodataAcquirer:
         if isinstance(ts_last, bool) or not isinstance(ts_last, int) or ts_last < 0:
             raise MeteodataResponseError('projection ts_last must be Unix milliseconds')
         try:
-            timestamp = datetime.fromtimestamp(ts_last / 1000, tz=UTC)
-            if self.projection_timestamp_mode == 'fixed_gmt_minus_four_wall_clock':
-                timestamp = timestamp.replace(tzinfo=_FIXED_API_TZ).astimezone(UTC)
+            timestamp = datetime.fromtimestamp(ts_last / 1000, tz=UTC).replace(
+                tzinfo=_FIXED_API_TZ
+            ).astimezone(UTC)
             return Projection(
                 timestamp=timestamp,
                 promedio_dia_mp10=_number(response.get('promedio_dia')),

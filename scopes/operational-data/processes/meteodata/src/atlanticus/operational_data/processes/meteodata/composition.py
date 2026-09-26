@@ -26,8 +26,8 @@ METEODATA_JOB_DEFINITION = JobDefinition(
     job_key='meteodata-materialization',
     run_once=True,
     sleep_seconds=0,
-    iteration_timeout_seconds=160,
-    execution_timeout_seconds=180,
+    iteration_timeout_seconds=250,
+    execution_timeout_seconds=275,
     shutdown_grace_seconds=10,
     lease_timeout_seconds=30,
     lease_renew_seconds=10,
@@ -65,10 +65,7 @@ def build_composition(*, configuration: ResolvedConfiguration) -> MeteodataCompo
         store=ParquetDatasetStore(root=runtime_configuration.application_root / 'datasets')
     )
     job = MeteodataJob(
-        acquirer=MeteodataAcquirer(
-            client=client,
-            projection_timestamp_mode=settings.projection_timestamp_mode,
-        ),
+        acquirer=MeteodataAcquirer(client=client),
         materializer=MeteodataMaterializer(runtime=dataset_runtime),
         lookback_minutes=settings.lookback_minutes,
         retry_delay_seconds=settings.retry_delay_seconds,

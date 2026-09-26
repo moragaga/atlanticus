@@ -67,10 +67,7 @@ def build_composition(*, configuration: ResolvedConfiguration) -> MeteodataCompo
         store=ParquetDatasetStore(root=runtime_configuration.application_root / 'datasets')
     )
     job = MeteodataJob(
-        acquirer=MeteodataAcquirer(
-            client=client,
-            projection_timestamp_mode=settings.projection_timestamp_mode,
-        ),
+        acquirer=MeteodataAcquirer(client=client),
         materializer=MeteodataMaterializer(runtime=dataset_runtime),
         lookback_minutes=settings.lookback_minutes,
         retry_delay_seconds=settings.retry_delay_seconds,

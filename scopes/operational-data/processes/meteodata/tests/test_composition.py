@@ -12,7 +12,6 @@ def test_composition_uses_existing_http_dataset_and_runtime(tmp_path: Path):
         'VOLUMEN_PATH': str(tmp_path),
         'METEODATA_BASE_URL': 'https://pelambres.meteodata.cl/met/',
         'METEODATA_TOKEN': 'local-fake-token',
-        'METEODATA_PROJECTION_TIMESTAMP_MODE': 'epoch_utc',
     }
     config = ConfigurationBootstrap.from_process(
         specs=configuration_specs(), process_values=environ,
