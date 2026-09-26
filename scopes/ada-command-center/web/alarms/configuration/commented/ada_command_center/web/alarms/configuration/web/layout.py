@@ -114,7 +114,8 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                 [
                     html.Div(id=TOOL_REFERENCE_STATUS_ID),
                     html.Div(id=DOCUMENT_STATUS_ID),
-                    ],
+                    html.Div(id=SAVE_RESULT_ID, role='status'),
+                ],
                 className='alarm-admin__status',
             ),
             html.Section(
@@ -385,7 +386,6 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                         ],
                         className='alarm-admin__heading-copy',
                     ),
-                    html.Div(id=SAVE_RESULT_ID, role='status'),
                     html.Button(
                         'Guardar borrador',
                         id=SAVE_BUTTON_ID,
@@ -932,7 +932,7 @@ def _group(title: str, children: list[object]) -> object:
             'alarm-guided__group alarm-guided__group--evaluation'
             if title == 'Evaluation and priority'
             else 'alarm-guided__group'
-        )
+        ),
     )
 
 

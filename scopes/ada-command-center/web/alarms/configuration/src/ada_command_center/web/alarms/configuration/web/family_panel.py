@@ -126,14 +126,14 @@ def _family_listing(
                 className='alarm-family__heading',
             ),
             html.Div(
-                cards,
+                cards
+                if cards
+                else html.P(
+                    'Todavía no existen familias. Crea una para comenzar.',
+                    className='alarm-family__empty',
+                ),
                 className='alarm-family__cards alarm-page__results',
                 **{'data-page-size': str(page.request.page_size)},
-            )
-            if cards
-            else html.P(
-                'Todavía no existen familias. Crea una para comenzar.',
-                className='alarm-family__empty',
             ),
             list_pagination(page, 'families'),
         ],

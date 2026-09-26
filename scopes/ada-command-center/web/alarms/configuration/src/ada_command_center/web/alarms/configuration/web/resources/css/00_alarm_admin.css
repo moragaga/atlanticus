@@ -249,6 +249,20 @@
     margin: .7rem 0;
 }
 
+
+.alarm-page__results[data-page-size='10'] {
+    min-height: 42.95rem;
+}
+
+.alarm-page__results[data-page-size='20'] {
+    min-height: 86.45rem;
+}
+
+.alarm-page__results > .alarm-family__card,
+.alarm-page__results > .alarm-family__item--card {
+    min-height: 3.8rem;
+}
+
 .alarm-page {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;

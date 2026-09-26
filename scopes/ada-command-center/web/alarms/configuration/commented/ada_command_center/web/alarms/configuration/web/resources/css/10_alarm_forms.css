@@ -468,3 +468,36 @@
     .alarm-family__modal-footer { align-items: stretch; }
     .alarm-family__modal-actions { width: 100%; }
 }
+/* Unifica tipografía, estados y foco; los controles numéricos no duplican bordes internos. */
+
+.alarm-admin .alarm-guided__field input:not([type='radio']):not([type='checkbox']),
+.alarm-admin .alarm-family__detail input:not([type='radio']):not([type='checkbox']),
+.alarm-admin .alarm-admin__new-family-field input {
+    font-weight: 400;
+}
+
+.alarm-admin .alarm-guided__field input:not([type='radio']):not([type='checkbox']):hover:not(:disabled),
+.alarm-admin .alarm-family__detail input:not([type='radio']):not([type='checkbox']):hover:not(:disabled) {
+    border-color: var(--atlanticus-ui-secondary);
+}
+
+.alarm-admin input[type='radio']:focus-visible,
+.alarm-admin input[type='checkbox']:focus-visible {
+    outline: 2px solid var(--atlanticus-ui-secondary);
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+.alarm-admin .alarm-guided__field .dash-input-container input,
+.alarm-admin .alarm-family__detail .dash-input-container input {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    outline: 0;
+}
+
+.alarm-admin .alarm-guided__field .dash-input-container:focus-within,
+.alarm-admin .alarm-family__detail .dash-input-container:focus-within {
+    border-color: var(--atlanticus-ui-secondary);
+    box-shadow: var(--atlanticus-ui-control-focus-ring);
+}

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from copy import deepcopy
 
@@ -19,6 +20,18 @@ from ada_command_center.web.alarms.configuration.web.ids import (
 from ada_command_center.web.alarms.configuration.web.select_style import dash_select_style
 
 PARAMETER_KINDS = ('TEXT', 'FLOAT', 'BOOLEAN')
+
+
+# Normaliza los decimales localizados y preserva entradas parciales.
+def _parse_float(value: object) -> object:
+    if type(value) in (int, float):
+        return float(value)
+    if not isinstance(value, str):
+        return value
+    candidate = value.strip()
+    if not re.fullmatch(r'[+-]?(?:\d+(?:[.,]\d+)?|[.,]\d+)', candidate):
+        return value
+    return float(candidate.replace(',', '.'))
 
 
 def parameter_rows(rule: Mapping[str, object]) -> list[dict[str, object]]:
@@ -134,14 +147,12 @@ def set_parameter_field(
     elif field == 'kind':
         if value not in PARAMETER_KINDS:
             raise ValueError('Unsupported parameter kind')
-        row['kind'] = value
-        row['value'] = {'TEXT': '', 'FLOAT': None, 'BOOLEAN': None}[value]
+        if row.get('kind') != value:
+            row['kind'] = value
+            row['value'] = {'TEXT': '', 'FLOAT': None, 'BOOLEAN': None}[value]
     elif field == 'value':
         kind = row.get('kind')
-        if kind == 'FLOAT' and type(value) in (int, float):
-            row['value'] = float(value)
-        else:
-            row['value'] = value
+        row['value'] = _parse_float(value) if kind == 'FLOAT' else value
     _synchronize(rule, rows)
     return updated
 
@@ -161,9 +172,9 @@ def parameter_editor(rule_index: int, rule: dict[str, object]) -> object:
         if kind == 'FLOAT':
             value_field = dcc.Input(
                 id=value_id,
-                type='number',
+                type='text',
                 value=value,
-                debounce=True,
+                debounce=False,
                 className='alarm-parameter__value',
             )
         elif kind == 'BOOLEAN':
@@ -178,7 +189,7 @@ def parameter_editor(rule_index: int, rule: dict[str, object]) -> object:
                 id=value_id,
                 type='text',
                 value=value if isinstance(value, str) else '',
-                debounce=True,
+                debounce=False,
                 className='alarm-parameter__value',
             )
         items.append(
@@ -196,7 +207,7 @@ def parameter_editor(rule_index: int, rule: dict[str, object]) -> object:
                                 },
                                 type='text',
                                 value=row.get('key', ''),
-                                debounce=True,
+                                debounce=False,
                                 placeholder='Nombre exigido por el evaluador',
                             ),
                         ],

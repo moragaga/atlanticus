@@ -253,6 +253,21 @@
 }
 
 /* El pie del listado separa resultado total, navegación y tamaño de página. */
+/* La lista mantiene el alto de 10 o 20 filas aunque muestre menos elementos. */
+
+.alarm-page__results[data-page-size='10'] {
+    min-height: 42.95rem;
+}
+
+.alarm-page__results[data-page-size='20'] {
+    min-height: 86.45rem;
+}
+
+.alarm-page__results > .alarm-family__card,
+.alarm-page__results > .alarm-family__item--card {
+    min-height: 3.8rem;
+}
+
 .alarm-page {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;

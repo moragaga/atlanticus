@@ -618,7 +618,7 @@ def register_alarm_configuration_admin_callbacks(
         issues = authoring_issues(authoring_document)
         if issues:
             feedback = _authoring_feedback(issues)
-            return no_update, no_update, feedback, feedback
+            return no_update, no_update, None, feedback
         try:
             configuration = _configuration(authoring_document)
             if current_draft is not None:
@@ -629,7 +629,7 @@ def register_alarm_configuration_admin_callbacks(
                     )
             document = context.workspace_payload_writer(current_draft, configuration.to_document())
         except (AlarmConfigurationValidationError, ManagerProjectionError, ValueError) as error:
-            feedback = _error(str(error))
+            feedback = _error(_contract_error_message(error))
             return no_update, no_update, feedback, feedback
         feedback = _success('Borrador guardado en este navegador.')
         return document, document, feedback, feedback
@@ -666,6 +666,14 @@ def _authoring_feedback(issues: tuple[str, ...], hints: tuple[str, ...] = ()) ->
         children,
         className='atlanticus-manager__message atlanticus-manager__message--notice',
     )
+
+
+def _contract_error_message(error: Exception) -> str:
+    if isinstance(error, AlarmConfigurationValidationError) and error.__cause__ is not None:
+        detail = str(error.__cause__).strip()
+        if detail:
+            return detail
+    return str(error)
 
 
 def _editor_revision(

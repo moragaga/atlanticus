@@ -64,6 +64,11 @@ def authoring_issues(document: Mapping[str, object] | None) -> tuple[str, ...]:
                 result.append(
                     f'Regla {index + 1} · Desactivación: especifica si requiere aprobación.'
                 )
+        deactivation = entry.get('default_deactivation')
+        if isinstance(deactivation, dict) and deactivation.get('enabled') is True:
+            hours = deactivation.get('max_duration_hours')
+            if hours is not None and (type(hours) is not int or not 1 <= hours <= 12):
+                result.append(f'Rule {index + 1}: deactivation max duration must be 1 to 12 hours.')
         priority_order = entry.get('priority_order')
         if priority_order is not None and (type(priority_order) is not int or priority_order <= 0):
             result.append(
@@ -91,6 +96,13 @@ def authoring_issues(document: Mapping[str, object] | None) -> tuple[str, ...]:
                 result.append(f'Mensaje {index + 1}: completa «{label}».')
         if entry.get('scope') == 'FAMILY' and _missing(entry.get('family_key')):
             result.append(f'Mensaje {index + 1}: selecciona una familia.')
+        override = entry.get('deactivation_override')
+        if isinstance(override, dict) and override.get('enabled') is True:
+            hours = override.get('max_duration_hours')
+            if hours is None or type(hours) is not int or not 1 <= hours <= 12:
+                result.append(
+                    f'Message {index + 1}: deactivation max duration must be 1 to 12 hours.'
+                )
     return tuple(result)
 
 

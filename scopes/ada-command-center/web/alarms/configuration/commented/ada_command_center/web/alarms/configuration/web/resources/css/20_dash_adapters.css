@@ -67,3 +67,14 @@
     max-width: 100%;
     width: 100%;
 }
+/* Normaliza hover y focus del buscador interno de Dash. */
+
+.alarm-admin .alarm-admin__dropdown-shell .dash-dropdown-search-container:hover,
+.alarm-admin .alarm-admin__dropdown-shell .dash-dropdown:hover:not([aria-disabled='true']) {
+    border-color: var(--atlanticus-ui-secondary);
+}
+
+.alarm-admin .alarm-admin__dropdown-shell .dash-dropdown-search-container:focus-within {
+    outline-color: var(--atlanticus-ui-secondary);
+    box-shadow: var(--atlanticus-ui-control-focus-ring);
+}
