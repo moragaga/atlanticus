@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 
 from ada.web.application.generic.application import create_application_definition
+from ada.web.application.generic.composition import AdaApplicationComposition
+from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.tools.configuration import validate_ada_operational_tool_configuration
 from ada.web.tools.errors import ToolConfigurationValidationError
 from ada.web.tools.persistence import (
@@ -44,22 +46,32 @@ def resolve_operational_tool_projection(
 # Se construye Definition, no Runtime, para permitir que otras capabilities se adjunten antes de crear la Web.
 def create_definition_from_tool_resolution(
     resolution: ToolProjectionResolution,
+    *,
+    composition: AdaApplicationComposition | None = None,
+    operational_render_binding: OperationalRenderBinding | None = None,
 ) -> WebApplicationDefinition:
     if not isinstance(resolution, ToolProjectionResolution):
         raise TypeError('resolution must be ToolProjectionResolution')
+# No se altera la llamada histórica cuando no existe extensión externa.
+    extension: dict[str, object] = {}
+    if composition is not None:
+        extension['composition'] = composition
+    if operational_render_binding is not None:
+        extension['operational_render_binding'] = operational_render_binding
     if resolution.state is ToolProjectionResolutionState.READY:
         projection = resolution.projection
         if projection is None:
             raise RuntimeError('READY Tool Projection resolution has no projection')
         configuration = projection.payload
         return create_application_definition(
+            **extension,
             tool_display_name=configuration.display_name,
             branding_configuration=configuration.branding,
             source_consumption=configuration.source_consumption,
             source_operational_participation=configuration.source_operational_participation,
         )
     _log_degraded_resolution(resolution)
-    return create_application_definition()
+    return create_application_definition(**extension)
 
 
 # Los estados degradados conservan Web base y dejan diagnóstico explícito sin fallback de provider.

@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ada-application-starter"
+version = "0.1.0"
+requires-python = "==3.14.7"
+dependencies = [
+    "ada-generic-application==0.2.17",
+]
+
+[project.scripts]
+ada-application-starter = "application.__main__:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["application*"]
+
+[tool.setuptools.package-data]
+"application.modules.example" = ["resources/css/*.css", "resources/css/css.list"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --import-mode=importlib"
+
+[dependency-groups]
+dev = ["pytest==9.1.1", "ruff==0.15.22"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B"]
+ignore = ["E501"]

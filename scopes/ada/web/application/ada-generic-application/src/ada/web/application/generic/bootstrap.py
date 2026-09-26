@@ -15,7 +15,10 @@ from ada.web.application.configuration_manager.wiring import (
     ConfigurationManagerStores,
     read_manager_projection,
 )
-from ada.web.application.generic.composition import create_operational_navigation_modules
+from ada.web.application.generic.composition import (
+    AdaApplicationComposition,
+    create_operational_navigation_modules,
+)
 from ada.web.application.generic.manager_integration import integrate_manager_surface
 from ada.web.application.generic.manager_principal import (
     ManagerPrincipalBinding,
@@ -31,6 +34,10 @@ from ada.web.application.generic.operational_tool import (
     resolve_operational_tool_projection,
 )
 from ada.web.application.generic.settings import AdaGenericSettings
+from ada.web.operational_render_binding import (
+    OperationalRenderBinding,
+    bind_operational_render,
+)
 from ada.web.tools.persistence import (
     ToolProjectionResolution,
     ToolProjectionResolutionState,
@@ -94,12 +101,18 @@ _MANAGER_UNAVAILABLE_ERRORS = (
 )
 
 
+AdaOperationalCompositionFactory = Callable[
+    [OperationalRenderBinding | None], AdaApplicationComposition
+]
+
+
 def create_operational_application_runtime(
     *,
     settings: AdaGenericSettings | None = None,
     manager_dependencies: ConfigurationManagerDependencies | None = None,
     manager_stores: ConfigurationManagerStores | None = None,
     identity_provider: IdentityProvider | None = None,
+    composition_factory: AdaOperationalCompositionFactory | None = None,
 ) -> WebApplicationRuntime:
     if settings is not None and not isinstance(settings, AdaGenericSettings):
         raise TypeError('settings must be AdaGenericSettings')
@@ -112,6 +125,8 @@ def create_operational_application_runtime(
         raise TypeError('manager_stores must be ConfigurationManagerStores')
     if identity_provider is not None and not isinstance(identity_provider, IdentityProvider):
         raise TypeError('identity_provider must implement IdentityProvider')
+    if composition_factory is not None and not callable(composition_factory):
+        raise TypeError('composition_factory must be callable')
     if manager_dependencies is not None and manager_stores is not None:
         raise ValueError('Use manager_stores or manager_dependencies, not both')
     if identity_provider is not None and manager_stores is None:
@@ -127,7 +142,28 @@ def create_operational_application_runtime(
         )
         manager_dependencies = manager_identity[2]
     resolution = _resolve_tool_projection(resolved_settings)
-    definition = create_definition_from_tool_resolution(resolution)
+    if composition_factory is None:
+        definition = create_definition_from_tool_resolution(resolution)
+    else:
+        operational_binding = None
+        if resolution.state is ToolProjectionResolutionState.READY:
+            projection = resolution.projection
+            if projection is None:
+                raise RuntimeError('READY Tool Projection resolution has no projection')
+            if projection.payload.structure is not None:
+                operational_binding = bind_operational_render(projection.payload.structure)
+        composition = composition_factory(operational_binding)
+        if not isinstance(composition, AdaApplicationComposition):
+            raise TypeError('composition_factory must return AdaApplicationComposition')
+        definition = create_definition_from_tool_resolution(
+            resolution,
+            composition=composition,
+            operational_render_binding=(
+                operational_binding
+                if composition.operational_body_factory is not None
+                else None
+            ),
+        )
     if manager_identity is not None:
         provider, users_runtime, _dependencies, resolver = manager_identity
         definition = _bind_manager_identity(definition, provider, users_runtime, resolver)

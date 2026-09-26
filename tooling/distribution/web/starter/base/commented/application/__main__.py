@@ -1,0 +1,10 @@
+# Entrada mínima de la aplicación; el perfil elegido determina su runtime.
+from application.runtime import run_application
+
+
+def main() -> None:
+    run_application()
+
+
+if __name__ == '__main__':
+    main()

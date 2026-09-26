@@ -5,7 +5,10 @@ import os
 from ada.web.application.configuration_manager.local_runtime import (
     create_local_configuration_manager_stores,
 )
-from ada.web.application.generic.bootstrap import create_operational_application_runtime
+from ada.web.application.generic.bootstrap import (
+    AdaOperationalCompositionFactory,
+    create_operational_application_runtime,
+)
 from ada.web.application.generic.manager_deployment import (
     ManagerStartupOptions,
     open_durable_manager,
@@ -22,7 +25,15 @@ def _local_identity() -> LocalIdentityProvider:
     return LocalIdentityProvider(subject_id=selected)
 
 
-def main() -> None:
+def run_operational_application(
+    *,
+    composition_factory: AdaOperationalCompositionFactory | None = None,
+) -> None:
+    extension = (
+        {'composition_factory': composition_factory}
+        if composition_factory is not None
+        else {}
+    )
     settings = AdaGenericSettings()
     provider = ManagerStartupOptions().provider
     if provider == 'auto':
@@ -34,6 +45,7 @@ def main() -> None:
             settings=settings,
             manager_stores=create_local_configuration_manager_stores(),
             identity_provider=_local_identity(),
+            **extension,
         )
     elif provider == 'durable':
         if not settings.environment.is_local:
@@ -45,12 +57,20 @@ def main() -> None:
                 settings=settings,
                 manager_stores=deployment.stores,
                 identity_provider=_local_identity(),
+                **extension,
             )
             run_web_application(runtime)
         return
     else:
-        runtime = create_operational_application_runtime(settings=settings)
+        runtime = create_operational_application_runtime(
+            settings=settings,
+            **extension,
+        )
     run_web_application(runtime)
+
+
+def main() -> None:
+    run_operational_application()
 
 
 if __name__ == '__main__':
