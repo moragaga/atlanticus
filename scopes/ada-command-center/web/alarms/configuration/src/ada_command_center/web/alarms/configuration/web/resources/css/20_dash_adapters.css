@@ -1,49 +1,57 @@
-.alarm-admin__dropdown-shell,
-.alarm-admin__dropdown-shell .dash-dropdown-wrapper,
-.alarm-admin__dropdown-shell .dash-dropdown {
+.alarm-admin .dash-dropdown-wrapper,
+.alarm-admin .dash-dropdown,
+.alarm-admin .dash-dropdown-search-container,
+.alarm-admin .dash-dropdown-content {
     box-sizing: border-box;
     min-width: 0;
     max-width: 100%;
-    width: 100%;
-    color: var(--atlanticus-ui-text);
     font-family: var(--atlanticus-ui-font);
-    font-size: .74rem;
+    color: var(--atlanticus-ui-text);
+    --Dash-Stroke-Strong: var(--atlanticus-ui-secondary);
+    --Dash-Stroke-Weak: var(--atlanticus-ui-border);
+    --Dash-Fill-Interactive-Strong: var(--atlanticus-ui-secondary);
+    --Dash-Fill-Interactive-Weak: var(--atlanticus-ui-selection-soft);
+    --Dash-Fill-Primary-Hover: var(--atlanticus-ui-selection-soft);
+    --Dash-Fill-Primary-Active: var(--atlanticus-ui-selection-soft);
+    --Dash-Text-Primary: var(--atlanticus-ui-text);
+    --Dash-Text-Strong: var(--atlanticus-ui-text);
+    --Dash-Text-Weak: var(--atlanticus-ui-text-muted);
 }
 
-.alarm-admin__dropdown-shell .dash-dropdown {
-    border-color: var(--atlanticus-ui-border);
+.alarm-admin .dash-dropdown {
+    width: 100%;
+    min-height: 2.18rem;
+    border-color: var(--atlanticus-ui-border-strong);
+    border-radius: var(--atlanticus-ui-control-radius);
     background: var(--atlanticus-ui-surface);
+    font-size: .76rem;
 }
 
-.alarm-admin__dropdown-shell .dash-dropdown:focus,
-.alarm-admin__dropdown-shell .dash-dropdown-search-container:focus-within {
+.alarm-admin .dash-dropdown:focus-within,
+.alarm-admin .dash-dropdown-search-container:focus-within,
+.alarm-admin .dash-dropdown-search:focus {
+    outline: none;
     border-color: var(--atlanticus-ui-secondary);
-    outline: 1px solid var(--atlanticus-ui-secondary);
+    box-shadow: var(--atlanticus-ui-control-focus-ring);
 }
 
-.alarm-admin__dropdown-shell .dash-dropdown-content {
-    box-sizing: border-box;
-    min-width: var(--radix-popover-trigger-width);
+.alarm-admin .dash-dropdown-content {
     width: var(--radix-popover-trigger-width);
-    max-width: var(--radix-popover-trigger-width);
-    color: var(--atlanticus-ui-text);
-    background: var(--atlanticus-ui-surface);
+    max-width: min(var(--radix-popover-trigger-width), 90vw);
     border-color: var(--atlanticus-ui-border);
+    background: var(--atlanticus-ui-surface);
 }
 
-.alarm-admin__dropdown-shell .dash-dropdown-value,
-.alarm-admin__dropdown-shell .dash-dropdown-action-button,
-.alarm-admin__dropdown-shell .dash-options-list-option,
-.alarm-admin__dropdown-shell .dash-dropdown-search {
+.alarm-admin .dash-dropdown-value,
+.alarm-admin .dash-dropdown-action-button,
+.alarm-admin .dash-options-list-option,
+.alarm-admin .dash-dropdown-search {
     color: var(--atlanticus-ui-text);
-    font-size: .73rem;
+    font-size: .76rem;
 }
 
-.alarm-admin__dropdown-shell .dash-options-list-option:hover {
-    color: var(--atlanticus-ui-secondary);
-}
-
-.alarm-admin__dropdown-shell .dash-dropdown {
-    min-height: 2rem;
-    font-size: .74rem;
+.alarm-admin .dash-options-list-option:hover,
+.alarm-admin .dash-options-list-option[aria-selected="true"] {
+    color: var(--atlanticus-ui-primary);
+    background: var(--atlanticus-ui-selection-soft);
 }

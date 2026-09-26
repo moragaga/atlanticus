@@ -95,6 +95,6 @@ def test_pagination_button_ids_do_not_repeat_for_arrows_and_page_numbers():
 
     page = list_page(tuple(range(25)), initial_navigation(), 'rules')
     rendered = list_pagination(page, 'rules')
-    controls = rendered.children[1].children
+    controls = rendered.children[0].children
     ids = [str(item.id) for item in controls if isinstance(item, html.Button)]
     assert len(ids) == len(set(ids))

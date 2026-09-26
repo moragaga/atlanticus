@@ -53,37 +53,33 @@ def change_list_page(
     return {**navigation, 'pagination': pages}
 
 
-def list_pagination(page: Page[object], name: str) -> object:
+def list_pagination(page: Page[object], name: str) -> object | None:
     if name not in LIST_NAMES:
         raise ValueError('Unknown Alarm Configuration list')
+    if page.total_count <= min(ALLOWED_PAGE_SIZES):
+        return None
     controls = []
     for number in page_tokens(page.request.page_number, page.page_count):
         if number is None:
             controls.append(html.Span('…', className='alarm-page__ellipsis'))
             continue
-        current = number == page.request.page_number
+        selected = number == page.request.page_number
         controls.append(
             html.Button(
                 str(number),
                 id={'type': LIST_PAGE_TYPE, 'listing': name, 'page': number, 'action': 'page'},
                 type='button',
                 n_clicks=0,
-                disabled=current,
-                className='alarm-page__button alarm-page__button--active'
-                if current
-                else 'alarm-page__button',
-                **{'aria-current': 'page' if current else 'false'},
+                disabled=selected,
+                className=(
+                    'atlanticus-ui-button atlanticus-ui-button--secondary alarm-page__button'
+                    + (' alarm-page__button--active' if selected else '')
+                ),
+                **{'aria-current': 'page' if selected else 'false'},
             )
         )
     return html.Nav(
         [
-            html.Span(
-                f'{page.start_index}–{page.end_index} de {page.total_count}'
-                if page.total_count
-                else '0 elementos',
-                className='alarm-page__summary',
-                **{'aria-live': 'polite'},
-            ),
             html.Div(
                 [
                     html.Button(
@@ -91,13 +87,13 @@ def list_pagination(page: Page[object], name: str) -> object:
                         id={
                             'type': LIST_PAGE_TYPE,
                             'listing': name,
-                            'page': page.request.page_number - 1,
+                            'page': max(1, page.request.page_number - 1),
                             'action': 'previous',
                         },
                         n_clicks=0,
                         type='button',
                         disabled=not page.has_previous,
-                        className='alarm-page__button',
+                        className='atlanticus-ui-button atlanticus-ui-button--secondary alarm-page__button',
                         **{'aria-label': 'Página anterior'},
                     ),
                     *controls,
@@ -112,7 +108,7 @@ def list_pagination(page: Page[object], name: str) -> object:
                         n_clicks=0,
                         type='button',
                         disabled=not page.has_next,
-                        className='alarm-page__button',
+                        className='atlanticus-ui-button atlanticus-ui-button--secondary alarm-page__button',
                         **{'aria-label': 'Página siguiente'},
                     ),
                 ],
@@ -120,7 +116,11 @@ def list_pagination(page: Page[object], name: str) -> object:
             ),
             html.Div(
                 [
-                    html.Span('Filas', className='alarm-page__summary'),
+                    html.Span(
+                        f'{page.request.page_number} / {page.page_count}',
+                        className='atlanticus-manager__home-page-label',
+                    ),
+                    html.Span('Filas:', className='atlanticus-manager__home-page-label'),
                     *[
                         html.Button(
                             str(size),
@@ -128,17 +128,23 @@ def list_pagination(page: Page[object], name: str) -> object:
                             type='button',
                             n_clicks=0,
                             disabled=page.request.page_size == size,
-                            className='alarm-page__button alarm-page__button--active'
-                            if page.request.page_size == size
-                            else 'alarm-page__button',
+                            className=(
+                                'atlanticus-ui-button atlanticus-ui-button--secondary '
+                                'alarm-page__button'
+                                + (
+                                    ' alarm-page__button--active'
+                                    if page.request.page_size == size
+                                    else ''
+                                )
+                            ),
                         )
                         for size in ALLOWED_PAGE_SIZES
                     ],
                 ],
-                className='alarm-page__controls',
+                className='alarm-page__controls alarm-page__size',
             ),
         ],
-        className='alarm-page',
+        className='atlanticus-manager__home-pagination alarm-page',
         **{'aria-label': f'Paginación de {name}'},
     )
 

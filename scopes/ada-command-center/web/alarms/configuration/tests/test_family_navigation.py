@@ -156,7 +156,7 @@ def test_global_navigation_keeps_rules_separate(monkeypatch):
 
 
 def test_detail_renders_only_selected_item_without_discarding_other_document_data() -> None:
-    from ada_command_center.web.alarms.configuration.web.family_panel import build_family_panel
+    from ada_command_center.web.alarms.configuration.web.family_panel import build_active_editor
 
     document = add_rule_in_family(empty_authoring_document(), 'mine')
     document = add_rule_in_family(document, 'mine')
@@ -179,7 +179,7 @@ def test_detail_renders_only_selected_item_without_discarding_other_document_dat
         'tab': 'rules',
         'rule_index': 1,
     }
-    build_family_panel(
+    build_active_editor(
         document, None, navigation, rule_editor=rule_editor, message_editor=message_editor
     )
     assert called_rules == [1]
@@ -189,7 +189,7 @@ def test_detail_renders_only_selected_item_without_discarding_other_document_dat
 
     navigation['tab'] = 'messages'
     navigation['message_index'] = 0
-    build_family_panel(
+    build_active_editor(
         document, None, navigation, rule_editor=rule_editor, message_editor=message_editor
     )
     assert called_rules == [1]

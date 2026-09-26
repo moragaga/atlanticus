@@ -5,23 +5,15 @@ from collections.abc import Callable
 
 from dash import html
 
-from ada_command_center.web.alarms.configuration.web.diagnostics import (
-    authoring_issues,
-    readiness_hints,
-)
 from ada_command_center.web.alarms.configuration.web.families import (
     FamilySummary,
     merged_family_catalog,
     selected_family,
 )
 from ada_command_center.web.alarms.configuration.web.ids import (
-    CLOSE_EDITOR_ID,
     FAMILY_SELECT_TYPE,
     FAMILY_TAB_TYPE,
     MESSAGE_SELECT_TYPE,
-    MODAL_BACK_ID,
-    MODAL_SAVE_BUTTON_ID,
-    MODAL_SAVE_RESULT_ID,
     RULE_SELECT_TYPE,
 )
 from ada_command_center.web.alarms.configuration.web.labels import value_label
@@ -49,21 +41,57 @@ def build_family_panel(
         return _global_messages(catalog.global_message_indexes, document, current, message_editor)
     key = selected_family(current, document)
     if key is None:
-        return _family_listing(
-            catalog.families, len(catalog.global_message_indexes), pending_keys, current
-        )
+        return _family_listing(catalog.families, pending_keys, current)
     family = catalog.get(key)
     if family is None:
-        return _family_listing(
-            catalog.families, len(catalog.global_message_indexes), pending_keys, current
-        )
+        return _family_listing(catalog.families, pending_keys, current)
     return _family_content(family, document, references, current, rule_editor, message_editor)
+
+
+# Construye solo el editor seleccionado; su shell permanece estable en el layout.
+def build_active_editor(
+    document: dict[str, object],
+    references: dict[str, object] | None,
+    navigation: dict[str, object] | None,
+    *,
+    rule_editor: Callable[..., object],
+    message_editor: Callable[..., object],
+) -> tuple[str, object | None]:
+    current = navigation if isinstance(navigation, dict) else {}
+    catalog = merged_family_catalog(document, current)
+    rules = document.get('rules')
+    messages = document.get('messages')
+    all_rules = rules if isinstance(rules, list) else []
+    all_messages = messages if isinstance(messages, list) else []
+    message_index = current.get('message_index')
+    if current.get('page') == 'global':
+        if type(message_index) is int and message_index in catalog.global_message_indexes:
+            return 'Editar mensaje', message_editor(message_index, all_messages[message_index])
+        return '', None
+    family_key = selected_family(current, document)
+    family = catalog.get(family_key) if family_key is not None else None
+    if family is None:
+        return '', None
+    if current.get('tab') == 'messages':
+        if type(message_index) is int and message_index in family.message_indexes:
+            return 'Editar mensaje', message_editor(message_index, all_messages[message_index])
+        return '', None
+    rule_index = current.get('rule_index')
+    if type(rule_index) is int and rule_index in family.rule_indexes:
+        return 'Editar regla', rule_editor(
+            rule_index,
+            all_rules[rule_index],
+            all_rules,
+            all_messages,
+            references,
+            current.get('section', 'general'),
+        )
+    return '', None
 
 
 # La portada combina agrupaciones derivadas y familias pendientes en memoria.
 def _family_listing(
     families: tuple[FamilySummary, ...],
-    global_count: int,
     pending: list[str],
     navigation: dict[str, object],
 ) -> object:
@@ -108,8 +136,6 @@ def _family_listing(
                 className='alarm-family__empty',
             ),
             list_pagination(page, 'families'),
-            html.P(f'Mensajes globales: {global_count}', className='alarm-family__note'),
-            html.Div(id=MODAL_SAVE_RESULT_ID, hidden=True),
         ],
         className='alarm-family__section',
     )
@@ -208,13 +234,12 @@ def _rule_list(
     navigation: dict[str, object],
     rule_editor: Callable[..., object],
 ) -> object:
+    del references, rule_editor
     rules = document.get('rules')
-    messages = document.get('messages')
     all_rules = rules if isinstance(rules, list) else []
-    all_messages = messages if isinstance(messages, list) else []
     page = list_page(indexes, navigation, 'rules')
-    chosen = navigation.get('rule_index')
-    current = chosen if type(chosen) is int and chosen in indexes else None
+    selected = navigation.get('rule_index')
+    current = selected if type(selected) is int and selected in indexes else None
     items = [
         html.Button(
             [
@@ -228,26 +253,11 @@ def _rule_list(
         )
         for index in page.items
     ]
-    details = (
-        rule_editor(
-            current,
-            all_rules[current],
-            all_rules,
-            all_messages,
-            references,
-            navigation.get('section', 'general'),
-        )
-        if current is not None
-        else None
-    )
     return _split_editor(
         items,
-        details,
         empty='Esta familia todavía no tiene reglas.',
         pagination=list_pagination(page, 'rules'),
         page_size=page.request.page_size,
-        title='Editar regla',
-        validation=_item_issues(document, 'Regla', current),
     )
 
 
@@ -260,11 +270,12 @@ def _message_list(
     *,
     listing: str = 'messages',
 ) -> object:
+    del message_editor
     messages = document.get('messages')
     all_messages = messages if isinstance(messages, list) else []
     page = list_page(indexes, navigation, listing)
-    chosen = navigation.get('message_index')
-    current = chosen if type(chosen) is int and chosen in indexes else None
+    selected = navigation.get('message_index')
+    current = selected if type(selected) is int and selected in indexes else None
     items = [
         html.Button(
             [
@@ -278,46 +289,24 @@ def _message_list(
         )
         for index in page.items
     ]
-    details = message_editor(current, all_messages[current]) if current is not None else None
     return _split_editor(
         items,
-        details,
         empty='No hay mensajes en esta sección.',
         pagination=list_pagination(page, listing),
         page_size=page.request.page_size,
-        title='Editar mensaje',
-        validation=_item_issues(document, 'Mensaje', current),
     )
 
 
 # El layout usa los tokens visuales compartidos de Atlanticus mediante CSS propio.
-def _item_issues(document: dict[str, object], kind: str, index: int | None) -> tuple[str, ...]:
-    if index is None:
-        return ()
-    prefix = f'{kind} {index + 1}'
-    issues = tuple(
-        issue
-        for issue in authoring_issues(document)
-        if issue.startswith(prefix + ' ·') or issue.startswith(prefix + ':')
-    )
-    if kind == 'Regla':
-        issues += tuple(
-            issue for issue in readiness_hints(document) if issue.startswith(prefix + ' ·')
-        )
-    return issues
 
 
 def _split_editor(
     items: list[object],
-    details: object | None,
     *,
     empty: str,
     pagination: object,
-    title: str,
-    validation: tuple[str, ...],
     page_size: int,
 ) -> object:
-    is_open = details is not None
     return html.Div(
         [
             html.Div(
@@ -326,80 +315,6 @@ def _split_editor(
                 **{'data-page-size': str(page_size)},
             ),
             pagination,
-            html.Div(
-                [
-                    html.Div(className='alarm-family__modal-backdrop'),
-                    html.Div(
-                        [
-                            html.Header(
-                                [
-                                    html.Div(
-                                        [
-                                            html.Small('CENTRO DE CONTROL · CONFIGURACIÓN'),
-                                            html.H3(title),
-                                        ]
-                                    ),
-                                    html.Button(
-                                        'Cerrar',
-                                        id=CLOSE_EDITOR_ID,
-                                        n_clicks=0,
-                                        type='button',
-                                        className='btn btn-outline-secondary btn-sm',
-                                    ),
-                                ],
-                                className='alarm-family__modal-header modal-header',
-                            ),
-                            html.Div(details, className='alarm-family__detail'),
-                            html.Footer(
-                                [
-                                    html.Div(
-                                        [
-                                            html.Strong('Revisión de este elemento'),
-                                            html.Ul([html.Li(issue) for issue in validation])
-                                            if validation
-                                            else html.Span(
-                                                'Sin campos básicos pendientes. '
-                                                'El documento completo se valida antes de guardarse.'
-                                            ),
-                                        ],
-                                        className='alarm-family__validation',
-                                        role='status',
-                                    ),
-                                    html.Div(
-                                        id=MODAL_SAVE_RESULT_ID,
-                                        className='alarm-family__save-result',
-                                    ),
-                                    html.Div(
-                                        [
-                                            html.Button(
-                                                'Volver',
-                                                id=MODAL_BACK_ID,
-                                                n_clicks=0,
-                                                type='button',
-                                                className='btn btn-outline-secondary btn-sm',
-                                            ),
-                                            html.Button(
-                                                'Guardar borrador completo',
-                                                id=MODAL_SAVE_BUTTON_ID,
-                                                n_clicks=0,
-                                                type='button',
-                                                className='btn btn-primary btn-sm',
-                                            ),
-                                        ],
-                                        className='alarm-family__modal-actions',
-                                    ),
-                                ],
-                                className='alarm-family__modal-footer modal-footer',
-                            ),
-                        ],
-                        className='alarm-family__modal-dialog modal-content',
-                        role='dialog',
-                        **{'aria-modal': 'true' if is_open else 'false'},
-                    ),
-                ],
-                className='alarm-family__modal',
-                hidden=not is_open,
-            ),
         ],
         className='alarm-family__workspace',
     )

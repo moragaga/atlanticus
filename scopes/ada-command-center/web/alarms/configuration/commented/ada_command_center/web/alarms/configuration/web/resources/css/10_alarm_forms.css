@@ -10,8 +10,10 @@
     inset: 0;
     display: grid;
     place-items: center;
-    padding: 1rem;
-    overflow: auto;
+    box-sizing: border-box;
+    max-width: 100vw;
+    padding: .65rem;
+    overflow: hidden;
 }
 
 .alarm-family__modal-backdrop {
@@ -24,13 +26,14 @@
     position: relative;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
+    box-sizing: border-box;
     width: min(100%, 69rem);
-    max-height: 96vh;
-    min-height: 22rem;
+    max-width: 100%;
+    max-height: calc(100dvh - 1.3rem);
+    min-height: 0;
     min-width: 0;
     overflow: hidden;
     border: 1px solid var(--atlanticus-ui-border);
-    border-top: .2rem solid var(--atlanticus-ui-accent);
     border-radius: var(--atlanticus-ui-modal-radius);
     background: var(--atlanticus-ui-surface);
     box-shadow: var(--atlanticus-ui-modal-shadow);
@@ -41,9 +44,11 @@
     align-items: center;
     justify-content: space-between;
     gap: .75rem;
-    padding: .8rem 1rem;
+    min-width: 0;
+    padding: .75rem 1rem;
     border-bottom: 1px solid var(--atlanticus-ui-border);
-    color: var(--atlanticus-ui-primary);
+    color: var(--atlanticus-ui-surface);
+    background: var(--atlanticus-ui-primary);
 }
 
 .alarm-family__modal-header > div {
@@ -53,30 +58,39 @@
 
 .alarm-family__modal-header h3 {
     margin: 0;
-    font-size: .96rem;
-    font-weight: 780;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.3;
+    color: inherit;
 }
 
 .alarm-family__modal-header small {
-    color: var(--atlanticus-ui-text-muted);
-    font-size: .66rem;
-    font-weight: 700;
-    letter-spacing: .05em;
+    color: var(--atlanticus-ui-surface);
+    opacity: .82;
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .025em;
 }
 
 .alarm-family__detail {
+    box-sizing: border-box;
     min-width: 0;
     min-height: 0;
+    max-width: 100%;
+    overflow-x: hidden;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
 }
 
 .alarm-family__modal-footer {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     flex-wrap: wrap;
+    min-width: 0;
     gap: .6rem;
-    padding: .68rem 1rem;
+    padding: .65rem 1rem;
     border-top: 1px solid var(--atlanticus-ui-border);
     background: var(--atlanticus-ui-surface);
 }
@@ -296,6 +310,7 @@
 .alarm-guided__conditional > h5,
 .alarm-guided__visual > button,
 .alarm-guided__conditional > p,
+/* Los botones internos no deben convertirse en barras de ancho completo. */
 .alarm-guided__panels > section > button,
 .alarm-guided__panels > section > h5,
 .alarm-guided__panels > section > fieldset {
@@ -542,4 +557,61 @@
 
 @media (max-width: 48rem) {
     .alarm-admin__import-review { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* El cierre es un icono coherente con los modales del Manager. */
+.alarm-family__modal-close.atlanticus-ui-icon-button {
+    flex: 0 0 auto;
+    color: var(--atlanticus-ui-surface);
+    background: transparent;
+    border-color: rgb(255 255 255 / 38%);
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.alarm-family__modal-close.atlanticus-ui-icon-button:hover:not(:disabled) {
+    color: var(--atlanticus-ui-surface);
+    background: rgb(255 255 255 / 13%);
+}
+
+/* El shell restringe el tamaño de los elementos sin esconder controles. */
+.alarm-family__modal-dialog *,
+.alarm-family__modal-dialog *::before,
+.alarm-family__modal-dialog *::after {
+    box-sizing: border-box;
+    min-width: 0;
+}
+
+.alarm-family__modal-actions {
+    margin-inline-start: auto;
+}
+
+/* Los botones internos no deben convertirse en barras de ancho completo. */
+.alarm-guided__panels > section > button,
+.alarm-guided__panels fieldset > button,
+.alarm-guided__panels fieldset > div > button,
+.alarm-family__detail > fieldset > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    justify-self: start;
+    width: auto;
+    max-width: 100%;
+    min-height: 2rem;
+    padding: .3rem .7rem;
+    border: 1px solid var(--atlanticus-ui-border-strong);
+    border-radius: var(--atlanticus-ui-control-radius);
+    background: var(--atlanticus-ui-surface);
+    color: var(--atlanticus-ui-text);
+    font: inherit;
+    font-size: .76rem;
+    cursor: pointer;
+}
+
+.alarm-guided__panels > section > button:hover,
+.alarm-guided__panels fieldset > button:hover,
+.alarm-guided__panels fieldset > div > button:hover,
+.alarm-family__detail > fieldset > button:hover {
+    border-color: var(--atlanticus-ui-secondary);
+    background: var(--atlanticus-ui-selection-soft);
 }

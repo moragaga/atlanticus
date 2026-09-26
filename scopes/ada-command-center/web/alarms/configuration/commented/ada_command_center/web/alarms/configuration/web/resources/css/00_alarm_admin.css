@@ -1,7 +1,9 @@
 /* Espejo: colores y composición administrativos de Atlanticus. */
 .alarm-admin {
     display: grid;
+    box-sizing: border-box;
     width: 100%;
+    max-width: 100%;
     min-width: 0;
     gap: .85rem;
     padding: 0 1rem 1rem;
@@ -10,6 +12,7 @@
 }
 
 .alarm-admin__status,
+/* Los grids y tarjetas no deben superar el ancho de la superficie. */
 .alarm-admin__section,
 .alarm-admin__runtime {
     min-width: 0;
@@ -70,14 +73,16 @@
 
 .alarm-admin__heading-copy h3 {
     margin: 0;
-    font-size: .94rem;
-    font-weight: 760;
+    font-size: 1.08rem;
+    line-height: 1.32;
+    font-weight: 700;
 }
 
 .alarm-admin__heading-copy p {
     margin: 0;
+    font-size: .8rem;
+    line-height: 1.45;
     color: var(--atlanticus-ui-text-muted);
-    font-size: .72rem;
 }
 
 .alarm-admin__heading-actions,
@@ -88,17 +93,13 @@
     gap: .45rem;
 }
 
-.alarm-admin__heading-actions .btn:disabled {
-    display: none;
-}
+
 
 .alarm-admin__navigation {
     margin-block: .6rem .8rem;
 }
 
-.alarm-admin__navigation .btn {
-    font-size: .73rem;
-}
+
 
 .alarm-admin__new-family {
     display: flex;
@@ -271,66 +272,50 @@
 }
 
 .alarm-page {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    align-items: center;
-    gap: .75rem;
-    padding: .85rem 0 0;
-}
-
-.alarm-page__results {
-    align-content: start;
-    min-height: 34rem;
-}
-
-.alarm-page__results[data-page-size="20"] {
-    min-height: 68rem;
-}
-
-.alarm-page__summary {
-    color: var(--atlanticus-ui-text-muted);
-    font-size: .79rem;
-    font-weight: 550;
-}
-
-.alarm-page__controls {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: .27rem;
+    flex-wrap: wrap;
+    min-width: 0;
+    max-width: 100%;
+    gap: .7rem 1.25rem;
+    padding-top: .7rem;
+}
+
+.alarm-page__results {
+    min-width: 0;
+    min-height: 0;
+    align-content: start;
+}
+
+
+
+
+
+.alarm-page__controls {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: .3rem;
 }
 
 .alarm-page__button {
-    display: inline-flex;
     min-width: 2rem;
     height: 2rem;
-    align-items: center;
-    justify-content: center;
-    padding: .2rem .4rem;
-    border: 1px solid var(--atlanticus-ui-border);
-    border-radius: .53rem;
-    color: var(--atlanticus-ui-text);
-    background: var(--atlanticus-ui-surface);
-    font-size: .79rem;
-    font-weight: 650;
-    cursor: pointer;
+    padding: .2rem .45rem;
+    font-size: .74rem;
 }
 
-.alarm-page__button:not(:disabled):hover {
-    border-color: var(--atlanticus-ui-accent);
-    box-shadow: 0 3px 10px rgb(7 21 34 / 7%);
-}
 
-.alarm-page__button:disabled {
-    opacity: .45;
-    cursor: default;
-}
+
+
 
 .alarm-page__button--active {
-    border-color: var(--atlanticus-ui-primary-hover);
-    background: var(--atlanticus-ui-primary-hover);
+    border-color: var(--atlanticus-ui-primary);
     color: var(--atlanticus-ui-surface);
-    opacity: 1 !important;
+    background: var(--atlanticus-ui-primary);
 }
 
 .alarm-page__ellipsis {
@@ -350,7 +335,45 @@
 }
 
 @media (max-width: 48rem) {
-    .alarm-page { grid-template-columns: minmax(0, 1fr); }
+    .alarm-page { align-items: stretch; }
     .alarm-page__controls { justify-content: flex-start; }
-    .alarm-page__results { min-height: 22rem; }
+    .alarm-page__results { min-height: 0; }
+}
+
+/* No se reserva una tarjeta vacía si ni el catálogo ni el documento tienen advertencias. */
+.alarm-admin__status:not(:has(> div:not(:empty))) {
+    display: none;
+}
+
+/* Los botones inactivos se ocultan sin mezclar acciones ajenas al contexto. */
+.alarm-admin__heading-actions button:disabled {
+    display: none;
+}
+
+.alarm-admin__navigation .atlanticus-ui-button {
+    font-size: .74rem;
+}
+
+/* La página elegida no debe verse deshabilitada como las flechas. */
+.alarm-page__button.alarm-page__button--active:disabled {
+    opacity: 1;
+}
+
+.alarm-page__size {
+    margin-inline-start: auto;
+}
+
+/* Los grids y tarjetas no deben superar el ancho de la superficie. */
+.alarm-admin__section,
+.alarm-family__section,
+.alarm-family__workspace,
+.alarm-family__cards,
+.alarm-family__items {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+}
+
+@media (max-width: 48rem) {
+    .alarm-page__size { margin-inline-start: 0; }
 }

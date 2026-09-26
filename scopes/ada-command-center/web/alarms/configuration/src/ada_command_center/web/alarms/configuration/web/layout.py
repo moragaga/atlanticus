@@ -20,7 +20,10 @@ from ada_command_center.web.alarms.configuration.web.authoring import (
     tool_suggestions,
 )
 from ada_command_center.web.alarms.configuration.web.families import initial_navigation
-from ada_command_center.web.alarms.configuration.web.family_panel import build_family_panel
+from ada_command_center.web.alarms.configuration.web.family_panel import (
+    build_active_editor,
+    build_family_panel,
+)
 from ada_command_center.web.alarms.configuration.web.guided_rule import build_rule_section
 from ada_command_center.web.alarms.configuration.web.ids import (
     ADD_MESSAGE_BUTTON_ID,
@@ -28,6 +31,7 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     AUTHORING_STORE_ID,
     CANCEL_FAMILY_CREATE_FOOTER_ID,
     CANCEL_FAMILY_CREATE_ID,
+    CLOSE_EDITOR_ID,
     COMPONENT_ADD_TYPE,
     COMPONENT_FIELD_TYPE,
     COMPONENT_REMOVE_TYPE,
@@ -47,6 +51,12 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     MESSAGE_FIELD_TYPE,
     MESSAGE_REMOVE_TYPE,
     MESSAGES_EDITOR_ID,
+    MODAL_BACK_ID,
+    MODAL_BODY_ID,
+    MODAL_SAVE_BUTTON_ID,
+    MODAL_SAVE_RESULT_ID,
+    MODAL_TITLE_ID,
+    MODAL_WRAPPER_ID,
     MOUNT_STORE_ID,
     OPEN_FAMILY_CREATE_ID,
     PROJECTION_NAME_ID,
@@ -124,7 +134,7 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                                         n_clicks=0,
                                         disabled=True,
                                         type='button',
-                                        className='btn btn-outline-secondary btn-sm',
+                                        className='atlanticus-ui-button atlanticus-ui-button--secondary',
                                     ),
                                     html.Button(
                                         '+ Nuevo mensaje',
@@ -132,14 +142,14 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                                         n_clicks=0,
                                         disabled=True,
                                         type='button',
-                                        className='btn btn-outline-secondary btn-sm',
+                                        className='atlanticus-ui-button atlanticus-ui-button--secondary',
                                     ),
                                     html.Button(
                                         '+ Nueva familia',
                                         id=OPEN_FAMILY_CREATE_ID,
                                         n_clicks=0,
                                         type='button',
-                                        className='btn btn-outline-secondary btn-sm',
+                                        className='atlanticus-ui-button atlanticus-ui-button--secondary',
                                     ),
                                 ],
                                 className='alarm-admin__heading-actions',
@@ -154,14 +164,14 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                                 id=SHOW_FAMILIES_ID,
                                 n_clicks=0,
                                 type='button',
-                                className='btn btn-outline-secondary btn-sm',
+                                className='atlanticus-ui-button atlanticus-ui-button--secondary',
                             ),
                             html.Button(
                                 'Mensajes globales',
                                 id=SHOW_GLOBAL_MESSAGES_ID,
                                 n_clicks=0,
                                 type='button',
-                                className='btn btn-outline-secondary btn-sm',
+                                className='atlanticus-ui-button atlanticus-ui-button--secondary',
                             ),
                         ],
                         className='alarm-admin__navigation',
@@ -180,14 +190,15 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                                                 ]
                                             ),
                                             html.Button(
-                                                'Cerrar',
+                                                '×',
                                                 id=CANCEL_FAMILY_CREATE_ID,
                                                 type='button',
                                                 n_clicks=0,
-                                                className='btn btn-outline-secondary btn-sm',
+                                                className='atlanticus-ui-icon-button alarm-family__modal-close',
+                                                **{'aria-label': 'Cerrar'},
                                             ),
                                         ],
-                                        className='alarm-family__modal-header modal-header',
+                                        className='alarm-family__modal-header',
                                     ),
                                     html.Div(
                                         [
@@ -223,21 +234,21 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                                                 id=CANCEL_FAMILY_CREATE_FOOTER_ID,
                                                 n_clicks=0,
                                                 type='button',
-                                                className='btn btn-outline-secondary btn-sm',
+                                                className='atlanticus-ui-button atlanticus-ui-button--secondary',
                                             ),
                                             html.Button(
                                                 'Crear familia',
                                                 id=CREATE_FAMILY_ID,
                                                 n_clicks=0,
                                                 type='button',
-                                                className='btn btn-primary btn-sm',
+                                                className='atlanticus-ui-button atlanticus-ui-button--primary',
                                             ),
                                         ],
-                                        className='alarm-family__modal-footer modal-footer',
+                                        className='alarm-family__modal-footer',
                                     ),
                                 ],
                                 className='alarm-family__modal-dialog '
-                                'alarm-family__modal-dialog--small modal-content',
+                                'alarm-family__modal-dialog--small',
                                 role='dialog',
                                 **{'aria-modal': 'true'},
                             ),
@@ -248,6 +259,65 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                     ),
                     html.Div(id=RULES_EDITOR_ID),
                     html.Div(id=MESSAGES_EDITOR_ID, hidden=True),
+                    html.Div(
+                        [
+                            html.Div(className='alarm-family__modal-backdrop'),
+                            html.Div(
+                                [
+                                    html.Header(
+                                        [
+                                            html.H3(id=MODAL_TITLE_ID),
+                                            html.Button(
+                                                '×',
+                                                id=CLOSE_EDITOR_ID,
+                                                n_clicks=0,
+                                                type='button',
+                                                className='atlanticus-ui-icon-button alarm-family__modal-close',
+                                                **{'aria-label': 'Cerrar'},
+                                            ),
+                                        ],
+                                        className='alarm-family__modal-header',
+                                    ),
+                                    html.Div(id=MODAL_BODY_ID, className='alarm-family__detail'),
+                                    html.Footer(
+                                        [
+                                            html.Div(
+                                                id=MODAL_SAVE_RESULT_ID,
+                                                className='alarm-family__save-result',
+                                                role='status',
+                                            ),
+                                            html.Div(
+                                                [
+                                                    html.Button(
+                                                        'Volver',
+                                                        id=MODAL_BACK_ID,
+                                                        n_clicks=0,
+                                                        type='button',
+                                                        className='atlanticus-ui-button atlanticus-ui-button--secondary',
+                                                    ),
+                                                    html.Button(
+                                                        'Guardar',
+                                                        id=MODAL_SAVE_BUTTON_ID,
+                                                        n_clicks=0,
+                                                        type='button',
+                                                        className='atlanticus-ui-button atlanticus-ui-button--primary',
+                                                    ),
+                                                ],
+                                                className='alarm-family__modal-actions',
+                                            ),
+                                        ],
+                                        className='alarm-family__modal-footer',
+                                    ),
+                                ],
+                                className='alarm-family__modal-dialog',
+                                role='dialog',
+                                **{'aria-modal': 'true'},
+                            ),
+                        ],
+                        id=MODAL_WRAPPER_ID,
+                        className='alarm-family__modal',
+                        hidden=True,
+                    ),
                 ],
                 className='alarm-admin__section',
             ),
@@ -265,14 +335,15 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                                         ]
                                     ),
                                     html.Button(
-                                        'Cerrar',
+                                        '×',
                                         id=IMPORT_REVIEW_CANCEL_ID,
                                         n_clicks=0,
                                         type='button',
-                                        className='btn btn-outline-secondary btn-sm',
+                                        className='atlanticus-ui-icon-button alarm-family__modal-close',
+                                        **{'aria-label': 'Cerrar'},
                                     ),
                                 ],
-                                className='alarm-family__modal-header modal-header',
+                                className='alarm-family__modal-header',
                             ),
                             html.Div(
                                 id=IMPORT_REVIEW_CONTENT_ID,
@@ -286,14 +357,13 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                                         n_clicks=0,
                                         disabled=True,
                                         type='button',
-                                        className='btn btn-primary btn-sm',
+                                        className='atlanticus-ui-button atlanticus-ui-button--primary',
                                     ),
                                 ],
-                                className='alarm-family__modal-footer modal-footer',
+                                className='alarm-family__modal-footer',
                             ),
                         ],
-                        className='alarm-family__modal-dialog '
-                        'alarm-family__modal-dialog--small modal-content',
+                        className='alarm-family__modal-dialog alarm-family__modal-dialog--small',
                         role='dialog',
                         **{'aria-modal': 'true'},
                     ),
@@ -316,7 +386,7 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                         id=SAVE_BUTTON_ID,
                         n_clicks=0,
                         type='button',
-                        className='btn btn-primary btn-sm',
+                        className='atlanticus-ui-button atlanticus-ui-button--primary',
                     ),
                     html.Div(id=SAVE_RESULT_ID, className='alarm-admin__save-result'),
                 ],
@@ -348,6 +418,20 @@ def build_structured_editors(
     return html.Div([datalist, panel], className='alarm-family'), html.Div()
 
 
+def build_active_alarm_editor(
+    document: dict[str, object],
+    references: dict[str, object] | None,
+    navigation: dict[str, object] | None,
+) -> tuple[str, object | None]:
+    return build_active_editor(
+        document,
+        references,
+        navigation,
+        rule_editor=_rule_editor,
+        message_editor=_message_editor,
+    )
+
+
 def _runtime_context(context: AlarmConfigurationAdminWebContext) -> object:
     return html.Section(
         [
@@ -370,7 +454,7 @@ def _runtime_context(context: AlarmConfigurationAdminWebContext) -> object:
                         children=html.Button(
                             'Importar configuración',
                             type='button',
-                            className='btn btn-outline-secondary btn-sm',
+                            className='atlanticus-ui-button atlanticus-ui-button--secondary',
                         ),
                         accept='.json,application/json',
                         multiple=False,

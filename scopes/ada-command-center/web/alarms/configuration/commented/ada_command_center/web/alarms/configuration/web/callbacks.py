@@ -33,7 +33,6 @@ from ada_command_center.web.alarms.configuration.web.authoring import (
 )
 from ada_command_center.web.alarms.configuration.web.diagnostics import (
     authoring_issues,
-    readiness_hints,
 )
 from ada_command_center.web.alarms.configuration.web.ids import (
     AUTHORING_STORE_ID,
@@ -52,8 +51,11 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     MESSAGE_FIELD_TYPE,
     MESSAGE_REMOVE_TYPE,
     MESSAGES_EDITOR_ID,
+    MODAL_BODY_ID,
     MODAL_SAVE_BUTTON_ID,
     MODAL_SAVE_RESULT_ID,
+    MODAL_TITLE_ID,
+    MODAL_WRAPPER_ID,
     MOUNT_STORE_ID,
     PARAMETER_ADD_TYPE,
     PARAMETER_FIELD_TYPE,
@@ -80,7 +82,10 @@ from ada_command_center.web.alarms.configuration.web.import_review import (
     inspect_import,
     revision_warning,
 )
-from ada_command_center.web.alarms.configuration.web.layout import build_structured_editors
+from ada_command_center.web.alarms.configuration.web.layout import (
+    build_active_alarm_editor,
+    build_structured_editors,
+)
 from ada_command_center.web.alarms.configuration.web.models import (
     AlarmConfigurationAdminWebContext,
 )
@@ -126,25 +131,15 @@ def register_alarm_configuration_admin_callbacks(
         except Exception as error:
             return None, _error(f'No se pudo consultar el catálogo de herramientas: {error}')
         if catalog is None:
-            return (
-                None,
-                html.Small('No hay revisión confirmada del catálogo de herramientas.'),
-            )
-        document = tool_reference_catalog_to_document(catalog)
-        return (
-            document,
-            html.Details(
-                [
-                    html.Summary('Catálogo Tool confirmado · Ver revisión'),
-                    html.Code(catalog.catalog_revision),
-                ],
-                className='alarm-admin__tool-revision',
-            ),
-        )
+            return None, html.Small('No hay un catálogo de herramientas confirmado.')
+        return tool_reference_catalog_to_document(catalog), None
 
     @app.callback(
         Output(RULES_EDITOR_ID, 'children'),
         Output(MESSAGES_EDITOR_ID, 'children'),
+        Output(MODAL_TITLE_ID, 'children'),
+        Output(MODAL_BODY_ID, 'children'),
+        Output(MODAL_WRAPPER_ID, 'hidden'),
         Input(AUTHORING_STORE_ID, 'data'),
         Input(TOOL_REFERENCE_STORE_ID, 'data'),
         Input(FAMILY_NAV_STORE_ID, 'data'),
@@ -154,7 +149,12 @@ def register_alarm_configuration_admin_callbacks(
         reference_document: dict[str, object] | None,
         navigation: dict[str, object] | None,
     ):
-        return build_structured_editors(authoring_document, reference_document, navigation)
+        listing, messages = build_structured_editors(
+            authoring_document, reference_document, navigation
+        )
+        document = authoring_document or empty_authoring_document()
+        title, details = build_active_alarm_editor(document, reference_document, navigation)
+        return listing, messages, title, details, details is None
 
     # La revisión del editor sólo tiene significado cuando existe un workspace del Manager.
     # Sin esa base, una revisión del documento vacío bloquearía la hidratación automática.
@@ -182,16 +182,7 @@ def register_alarm_configuration_admin_callbacks(
     )
     def render_document_status(authoring_document: dict[str, object] | None):
         issues = authoring_issues(authoring_document)
-        hints = readiness_hints(authoring_document)
-        if issues:
-            return _authoring_feedback(issues, hints)
-        try:
-            configuration = _configuration(authoring_document)
-        except Exception as error:
-            return _error(f'El documento requiere revisión: {error}')
-        if hints:
-            return html.Div([_summary(configuration), _readiness_feedback(hints)])
-        return _summary(configuration)
+        return _authoring_feedback(issues) if issues else None
 
     @app.callback(
         Output(AUTHORING_STORE_ID, 'data', allow_duplicate=True),
@@ -625,17 +616,6 @@ def _configuration(authoring_document: dict[str, object] | None) -> AlarmConfigu
         empty_authoring_document() if authoring_document is None else dict(authoring_document)
     )
     return AlarmConfiguration.from_document(document)
-
-
-def _summary(configuration: AlarmConfiguration) -> object:
-    return html.Div(
-        [
-            html.Strong('Documento completo'),
-            html.Span(f'Reglas: {len(configuration.rules)}'),
-            html.Span(f'Reglas activas: {sum(rule.is_active for rule in configuration.rules)}'),
-            html.Span(f'Mensajes: {len(configuration.messages)}'),
-        ]
-    )
 
 
 def _triggered_value() -> object:
