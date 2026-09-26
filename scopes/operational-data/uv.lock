@@ -11,6 +11,7 @@ resolution-markers = [
 members = [
     "atlanticus-data-producers-core",
     "atlanticus-data-producers-fabrica",
+    "atlanticus-data-producers-meteodata",
     "atlanticus-data-producers-notpii",
     "atlanticus-data-producers-pi",
     "atlanticus-data-producers-remanentes",
@@ -21,6 +22,7 @@ members = [
     "atlanticus-operational-data-dispatch-process",
     "atlanticus-operational-data-fabrica-kpis-process",
     "atlanticus-operational-data-fabrica-planes-process",
+    "atlanticus-operational-data-meteodata-process",
     "atlanticus-operational-data-notpii-process",
     "atlanticus-operational-data-pi-process",
     "atlanticus-operational-data-planner",
@@ -114,6 +116,29 @@ requires-dist = [
 dev = [
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "atlanticus-data-producers-meteodata"
+version = "1.0.0"
+source = { editable = "producers/meteodata" }
+dependencies = [
+    { name = "atlanticus-datasets" },
+    { name = "atlanticus-datasets-parquet" },
+    { name = "atlanticus-datasets-runtime" },
+    { name = "atlanticus-http" },
+    { name = "atlanticus-job-runtime" },
+    { name = "pyarrow" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-datasets", editable = "../../backend/datasets" },
+    { name = "atlanticus-datasets-parquet", editable = "../../backend/datasets-parquet" },
+    { name = "atlanticus-datasets-runtime", editable = "../../backend/datasets-runtime" },
+    { name = "atlanticus-http", editable = "../../connectivity/http-client" },
+    { name = "atlanticus-job-runtime", editable = "../../backend/runtime" },
+    { name = "pyarrow", specifier = "==25.0.0" },
 ]
 
 [[package]]
@@ -595,6 +620,35 @@ requires-dist = [
 dev = [
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "atlanticus-operational-data-meteodata-process"
+version = "1.0.0"
+source = { editable = "processes/meteodata" }
+dependencies = [
+    { name = "atlanticus-configuration" },
+    { name = "atlanticus-data-producers-meteodata" },
+    { name = "atlanticus-datasets-parquet" },
+    { name = "atlanticus-datasets-runtime" },
+    { name = "atlanticus-http" },
+    { name = "atlanticus-job-runtime" },
+    { name = "atlanticus-kernel" },
+    { name = "atlanticus-key-vault" },
+    { name = "atlanticus-observability-azure" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-configuration", editable = "../../backend/configuration" },
+    { name = "atlanticus-data-producers-meteodata", editable = "producers/meteodata" },
+    { name = "atlanticus-datasets-parquet", editable = "../../backend/datasets-parquet" },
+    { name = "atlanticus-datasets-runtime", editable = "../../backend/datasets-runtime" },
+    { name = "atlanticus-http", editable = "../../connectivity/http-client" },
+    { name = "atlanticus-job-runtime", editable = "../../backend/runtime" },
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
+    { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
+    { name = "atlanticus-observability-azure", editable = "../../backend/observability-azure" },
 ]
 
 [[package]]

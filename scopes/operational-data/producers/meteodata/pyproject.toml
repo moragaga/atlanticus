@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atlanticus-data-producers-meteodata"
+version = "1.0.0"
+description = "Meteodata acquisition and dataset production for Atlanticus Operational Data."
+requires-python = "==3.14.2"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "atlanticus-datasets==1.0.0",
+    "atlanticus-datasets-parquet==1.0.0",
+    "atlanticus-datasets-runtime==1.0.0",
+    "atlanticus-http==1.0.0",
+    "atlanticus-job-runtime==1.0.0",
+    "pyarrow==25.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["atlanticus.data_producers.meteodata*"]
+namespaces = true
+
+[tool.setuptools.package-data]
+"atlanticus.data_producers.meteodata" = ["py.typed"]
+
+[tool.pytest.ini_options]
+addopts = "-q --import-mode=importlib"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+[tool.ruff.format]
+quote-style = "single"
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "SIM"]
+ignore = ["E501"]
+[tool.ruff.lint.isort]
+known-first-party = ["atlanticus"]
+combine-as-imports = true

@@ -22,10 +22,12 @@ atlanticus-operational-data-sources = { workspace = true }
 atlanticus-data-producers-core = { workspace = true }
 atlanticus-data-producers-sql = { workspace = true }
 atlanticus-data-producers-pi = { workspace = true }
+atlanticus-data-producers-meteodata = { workspace = true }
 atlanticus-data-producers-notpii = { workspace = true }
 atlanticus-data-producers-fabrica = { workspace = true }
 atlanticus-data-producers-remanentes = { workspace = true }
 atlanticus-operational-data-pi-process = { workspace = true }
+atlanticus-operational-data-meteodata-process = { workspace = true }
 atlanticus-operational-data-notpii-process = { workspace = true }
 atlanticus-operational-data-dispatch-process = { workspace = true }
 atlanticus-operational-data-blockgrade-process = { workspace = true }
@@ -58,10 +60,12 @@ members = [
     "producers/core",
     "producers/sql",
     "producers/pi",
+    "producers/meteodata",
     "producers/notpii",
     "producers/fabrica",
     "producers/remanentes",
     "processes/pi",
+    "processes/meteodata",
     "processes/notpii",
     "processes/dispatch",
     "processes/blockgrade",

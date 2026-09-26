@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atlanticus-operational-data-meteodata-process"
+version = "1.0.0"
+description = "Meteodata Operational Data ingestion process."
+requires-python = "==3.14.2"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "atlanticus-configuration==1.0.0",
+    "atlanticus-data-producers-meteodata==1.0.0",
+    "atlanticus-datasets-parquet==1.0.0",
+    "atlanticus-datasets-runtime==1.0.0",
+    "atlanticus-http==1.0.0",
+    "atlanticus-job-runtime==1.0.0",
+    "atlanticus-key-vault==1.0.0",
+    "atlanticus-kernel==1.0.0",
+    "atlanticus-observability-azure==1.0.0",
+]
+
+[project.scripts]
+operational-data-meteodata = "atlanticus.operational_data.processes.meteodata.bootstrap:main"
+
+[tool.atlanticus.container]
+command = "operational-data-meteodata"
+system-profile = "base"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["atlanticus.operational_data.processes.meteodata*"]
+namespaces = true
+
+[tool.setuptools.package-data]
+"atlanticus.operational_data.processes.meteodata" = ["py.typed"]
+
+[tool.pytest.ini_options]
+addopts = "-q --import-mode=importlib"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+[tool.ruff.format]
+quote-style = "single"
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "SIM"]
+ignore = ["E501"]
+[tool.ruff.lint.isort]
+known-first-party = ["atlanticus"]
+combine-as-imports = true

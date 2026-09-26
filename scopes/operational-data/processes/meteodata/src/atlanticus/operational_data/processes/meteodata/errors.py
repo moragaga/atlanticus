@@ -1,0 +1,2 @@
+class MeteodataProcessConfigurationError(ValueError):
+    pass
