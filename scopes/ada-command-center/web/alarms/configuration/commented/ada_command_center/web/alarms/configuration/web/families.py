@@ -9,6 +9,7 @@ from uuid import uuid4
 from ada_command_center.web.alarms.configuration.web.authoring import (
     add_message,
     add_rule,
+    normalize_authoring_document,
 )
 
 
@@ -106,6 +107,50 @@ def add_message_in_family(document: dict[str, object], key: str | None) -> dict[
     message = updated['messages'][-1]
     message['scope'] = 'GLOBAL' if key is None else 'FAMILY'
     message['family_key'] = key
+    return updated
+
+
+# El borrado de una familia comprueba referencias externas sin modificar la fuente.
+def remove_family(document: dict[str, object], key: str) -> dict[str, object]:
+    if not isinstance(document, dict) or not isinstance(key, str):
+        raise ValueError('Invalid family deletion request')
+    family = family_catalog(document).get(key)
+    if family is None:
+        raise ValueError('The selected family no longer exists')
+    rules = document.get('rules')
+    messages = document.get('messages')
+    if not isinstance(rules, list) or not isinstance(messages, list):
+        raise ValueError('Invalid configuration document')
+    rule_indexes = set(family.rule_indexes)
+    message_indexes = set(family.message_indexes)
+    removed_identities = {
+        (rules[index]['identity'].get('family_key'), rules[index]['identity'].get('alarm_key'))
+        for index in rule_indexes
+    }
+    removed_message_keys = {messages[index].get('message_key') for index in message_indexes}
+    for index, rule in enumerate(rules):
+        if index in rule_indexes or not isinstance(rule, dict):
+            continue
+        reappearance = rule.get('reappearance')
+        conditions = (
+            reappearance.get('special_conditions') if isinstance(reappearance, dict) else None
+        )
+        for condition in conditions if isinstance(conditions, list) else []:
+            if (
+                isinstance(condition, dict)
+                and (condition.get('family_key'), condition.get('alarm_key')) in removed_identities
+            ):
+                raise ValueError('Family rules are referenced by another family')
+        associated = rule.get('message_keys')
+        if isinstance(associated, list) and removed_message_keys.intersection(associated):
+            raise ValueError('Family messages are referenced by another family')
+    updated = normalize_authoring_document(document)
+    updated['rules'] = [
+        rule for index, rule in enumerate(updated['rules']) if index not in rule_indexes
+    ]
+    updated['messages'] = [
+        message for index, message in enumerate(updated['messages']) if index not in message_indexes
+    ]
     return updated
 
 

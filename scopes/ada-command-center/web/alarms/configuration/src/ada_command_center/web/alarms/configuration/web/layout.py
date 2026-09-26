@@ -212,7 +212,6 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                                                         value='',
                                                         placeholder='Ej.: control-planta',
                                                         debounce=False,
-                                                        className='form-control form-control-sm',
                                                     ),
                                                     html.Small(
                                                         'Se incorpora al documento con su primera regla o mensaje.'

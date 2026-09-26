@@ -40,6 +40,11 @@
     width: min(100%, 36rem);
 }
 
+/* Las cuatro secciones de la regla comparten la misma altura; el desplazamiento queda dentro. */
+.alarm-family__modal-dialog:not(.alarm-family__modal-dialog--small) {
+    height: min(44rem, calc(100dvh - 2rem));
+}
+
 .alarm-family__modal-header {
     display: flex;
     align-items: center;
@@ -328,14 +333,6 @@
     border-radius: var(--atlanticus-ui-control-radius);
     font: inherit;
     font-size: .78rem;
-}
-
-.alarm-guided__field input:focus,
-.alarm-family__detail input:focus,
-.alarm-admin__new-family-field input:focus {
-    border-color: var(--atlanticus-ui-secondary);
-    outline: 1px solid var(--atlanticus-ui-secondary);
-    box-shadow: var(--atlanticus-ui-control-focus-ring);
 }
 
 .alarm-admin__choices {

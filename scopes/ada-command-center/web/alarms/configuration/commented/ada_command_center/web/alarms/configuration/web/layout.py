@@ -210,13 +210,13 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                                             html.Label(
                                                 [
                                                     html.Span('Nombre o clave de la familia'),
+                                                    # dcc.Input sin clases Bootstrap: el borde procede de la hoja de estilo del módulo.
                                                     dcc.Input(
                                                         id=FAMILY_NEW_KEY_ID,
                                                         type='text',
                                                         value='',
                                                         placeholder='Ej.: control-planta',
                                                         debounce=False,
-                                                        className='form-control form-control-sm',
                                                     ),
                                                     html.Small(
                                                         'Se incorpora al documento con su primera regla o mensaje.'

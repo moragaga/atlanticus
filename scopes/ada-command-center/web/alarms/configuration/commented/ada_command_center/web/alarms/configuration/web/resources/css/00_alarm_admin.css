@@ -190,6 +190,23 @@
     border-radius: .7rem;
 }
 
+/* La eliminación de familias es una acción independiente del acceso Administrar. */
+.alarm-family__card-row {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    min-width: 0;
+    min-height: 3.8rem;
+}
+
+.alarm-family__card-row .alarm-family__card {
+    flex: 1 1 auto;
+}
+
+.alarm-family__card-row > button:last-child:not(.alarm-family__card) {
+    flex: 0 0 auto;
+}
+
 .alarm-family__card {
     cursor: pointer;
 }

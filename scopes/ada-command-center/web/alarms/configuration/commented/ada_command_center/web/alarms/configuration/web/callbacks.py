@@ -40,10 +40,12 @@ from ada_command_center.web.alarms.configuration.web.authoring import (
 from ada_command_center.web.alarms.configuration.web.diagnostics import (
     authoring_issues,
 )
+from ada_command_center.web.alarms.configuration.web.families import family_catalog, remove_family
 from ada_command_center.web.alarms.configuration.web.ids import (
     AUTHORING_STORE_ID,
     DOCUMENT_STATUS_ID,
     FAMILY_NAV_STORE_ID,
+    FAMILY_REMOVE_TYPE,
     IMPORT_RESULT_ID,
     IMPORT_REVIEW_CANCEL_ID,
     IMPORT_REVIEW_CONFIRM_ID,
@@ -402,12 +404,14 @@ def register_alarm_configuration_admin_callbacks(
         Output(REMOVE_RESULT_ID, 'children'),
         Input({'type': RULE_REMOVE_TYPE, 'rule': ALL}, 'n_clicks'),
         Input({'type': MESSAGE_REMOVE_TYPE, 'message': ALL}, 'n_clicks'),
+        Input({'type': FAMILY_REMOVE_TYPE, 'key': ALL}, 'n_clicks'),
         State(AUTHORING_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
     def request_deletion(
         _rule_clicks: list[int | None],
         _message_clicks: list[int | None],
+        _family_clicks: list[int | None],
         document: dict[str, object] | None,
     ):
         trigger = ctx.triggered_id
@@ -420,10 +424,32 @@ def register_alarm_configuration_admin_callbacks(
                 kind, index = 'rule', int(trigger['rule'])
             elif trigger.get('type') == MESSAGE_REMOVE_TYPE:
                 kind, index = 'message', int(trigger['message'])
+            # Previsualiza el borrado conjunto y deja la decisión final al usuario.
+            elif trigger.get('type') == FAMILY_REMOVE_TYPE:
+                key = trigger.get('key')
+                if not isinstance(key, str):
+                    return no_update, no_update, no_update, no_update
+                family = family_catalog(document).get(key)
+                if family is None:
+                    return no_update, no_update, no_update, no_update
+                remove_family(document, key)
+                return (
+                    True,
+                    f'¿Eliminar la familia {key} y sus {len(family.rule_indexes)} reglas y {len(family.message_indexes)} mensajes del borrador?',
+                    {
+                        'kind': 'family',
+                        'key': key,
+                        'rule_indexes': list(family.rule_indexes),
+                        'message_indexes': list(family.message_indexes),
+                    },
+                    None,
+                )
             else:
                 return no_update, no_update, no_update, no_update
             issue = _deletion_issue(document, kind, index)
-        except IndexError, KeyError, TypeError, ValueError:
+        except ValueError as error:
+            return False, '', None, _error(str(error))
+        except IndexError, KeyError, TypeError:
             return False, '', None, _error('The selected item is no longer available')
         if issue is not None:
             return False, '', None, _error(issue)
@@ -456,16 +482,44 @@ def register_alarm_configuration_admin_callbacks(
         if not isinstance(pending, dict) or not isinstance(document, dict):
             return no_update, no_update, None, _error('No deletion was requested')
         try:
-            kind, index = str(pending['kind']), int(pending['index'])
-            issue = _deletion_issue(document, kind, index)
-            if issue is not None:
-                return no_update, no_update, None, _error(issue)
-            updated = (
-                remove_rule(document, index) if kind == 'rule' else remove_message(document, index)
-            )
-        except IndexError, KeyError, TypeError, ValueError:
+            kind = str(pending['kind'])
+            if kind == 'family':
+                key = pending['key']
+                if not isinstance(key, str):
+                    raise ValueError('Invalid family deletion request')
+                family = family_catalog(document).get(key)
+                if family is None or (
+                    list(family.rule_indexes) != pending.get('rule_indexes')
+                    or list(family.message_indexes) != pending.get('message_indexes')
+                ):
+                    raise ValueError('The selected family changed; request deletion again')
+                updated = remove_family(document, key)
+            elif kind in {'rule', 'message'}:
+                index = int(pending['index'])
+                issue = _deletion_issue(document, kind, index)
+                if issue is not None:
+                    return no_update, no_update, None, _error(issue)
+                updated = (
+                    remove_rule(document, index)
+                    if kind == 'rule'
+                    else remove_message(document, index)
+                )
+            else:
+                raise ValueError('Unsupported deletion request')
+        except ValueError as error:
+            return no_update, no_update, None, _error(str(error))
+        except IndexError, KeyError, TypeError:
             return no_update, no_update, None, _error('The selected item is no longer available')
         current = navigation if isinstance(navigation, dict) else {}
+        if kind == 'family':
+            current = {
+                **current,
+                'page': 'families',
+                'family_key': None,
+                'pending_families': [
+                    item for item in current.get('pending_families', []) if item != key
+                ],
+            }
         return updated, {**current, 'rule_index': None, 'message_index': None}, None, None
 
     @app.callback(

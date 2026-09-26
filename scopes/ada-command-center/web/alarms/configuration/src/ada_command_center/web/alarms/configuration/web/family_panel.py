@@ -10,6 +10,7 @@ from ada_command_center.web.alarms.configuration.web.families import (
     selected_family,
 )
 from ada_command_center.web.alarms.configuration.web.ids import (
+    FAMILY_REMOVE_TYPE,
     FAMILY_SELECT_TYPE,
     FAMILY_TAB_TYPE,
     MESSAGE_REMOVE_TYPE,
@@ -97,22 +98,35 @@ def _family_listing(
 ) -> object:
     page = list_page(families, navigation, 'families')
     cards = [
-        html.Button(
+        html.Div(
             [
-                html.Strong(family.key),
-                html.Small(
-                    'Pendiente · agrega una regla o mensaje'
-                    if family.key in pending
-                    and not family.rule_indexes
-                    and not family.message_indexes
-                    else f'{len(family.rule_indexes)} reglas · {len(family.message_indexes)} mensajes'
+                html.Button(
+                    [
+                        html.Strong(family.key),
+                        html.Small(
+                            'Pendiente · agrega una regla o mensaje'
+                            if family.key in pending
+                            and not family.rule_indexes
+                            and not family.message_indexes
+                            else f'{len(family.rule_indexes)} reglas · {len(family.message_indexes)} mensajes'
+                        ),
+                        html.Span('Administrar ›', className='alarm-family__card-action'),
+                    ],
+                    id={'type': FAMILY_SELECT_TYPE, 'index': page.request.offset + position},
+                    n_clicks=0,
+                    className='alarm-family__card',
+                    type='button',
                 ),
-                html.Span('Administrar ›', className='alarm-family__card-action'),
+                html.Button(
+                    'Eliminar',
+                    id={'type': FAMILY_REMOVE_TYPE, 'key': family.key},
+                    n_clicks=0,
+                    type='button',
+                    className='atlanticus-ui-button atlanticus-ui-button--danger',
+                    **{'aria-label': f'Eliminar familia {family.key}'},
+                ),
             ],
-            id={'type': FAMILY_SELECT_TYPE, 'index': page.request.offset + position},
-            n_clicks=0,
-            className='alarm-family__card',
-            type='button',
+            className='alarm-family__card-row',
         )
         for position, family in enumerate(page.items)
     ]

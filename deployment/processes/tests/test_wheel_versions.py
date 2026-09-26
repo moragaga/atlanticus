@@ -133,19 +133,24 @@ def test_publication_cli_and_explicit_repository_location(tmp_path: Path, capsys
     assert repo.WheelRepository(location).resolve("atlanticus-http", "1.0.0")
 
 
-def test_repository_location_can_be_explicitly_configured(tmp_path: Path, monkeypatch):
-    root, older, _ = _fixture(tmp_path)
-    location = tmp_path / "external-wheel-storage"
-    store = repo.WheelRepository(location)
-    store.publish(_wheel(tmp_path / "wheels/atlanticus_http-1.0.0-py3-none-any.whl"))
-    monkeypatch.setenv(repo.REPOSITORY_ENVIRONMENT_VARIABLE, str(location))
-    _, historical, selected_store = bundle.resolve_bundle_dependencies(
-        root, bundle.load_project(older), bundle.discover_projects(root)
+def test_integrated_wheelhouse_is_default_and_external_override_is_rejected(
+    tmp_path: Path, monkeypatch
+):
+    root = tmp_path / "checkout"
+    root.mkdir()
+    monkeypatch.delenv(repo.REPOSITORY_ENVIRONMENT_VARIABLE, raising=False)
+    assert repo.wheel_repository_path(root) == root / "wheelhouse"
+    monkeypatch.setenv(repo.REPOSITORY_ENVIRONMENT_VARIABLE, str(root / "wheelhouse"))
+    assert repo.wheel_repository_path(root) == root / "wheelhouse"
+    monkeypatch.setenv(
+        repo.REPOSITORY_ENVIRONMENT_VARIABLE, str(tmp_path / "external-wheels")
     )
-    assert selected_store.root == location
-    assert [(item.name, item.version) for item in historical] == [
-        ("atlanticus-http", "1.0.0")
-    ]
+    with pytest.raises(repo.WheelRepositoryError, match="must point to"):
+        repo.wheel_repository_path(root)
+    monkeypatch.delenv(repo.REPOSITORY_ENVIRONMENT_VARIABLE)
+    (root / "wheelhouse").symlink_to(tmp_path / "external-wheels")
+    with pytest.raises(repo.WheelRepositoryError, match="cannot be a symlink"):
+        repo.wheel_repository_path(root)
 
 
 def test_repository_detects_corruption_and_unsafe_release(tmp_path: Path):
@@ -159,7 +164,7 @@ def test_repository_detects_corruption_and_unsafe_release(tmp_path: Path):
 
 def test_per_process_versions_and_exact_missing_failure(tmp_path: Path):
     root, older, newer = _fixture(tmp_path)
-    store = repo.WheelRepository(root / "artifacts/wheel-repository")
+    store = repo.WheelRepository(root / "wheelhouse")
     archive = _wheel(tmp_path / "wheels" / "atlanticus_http-1.0.0-py3-none-any.whl")
     store.publish(archive)
     projects = bundle.discover_projects(root)
@@ -177,7 +182,7 @@ def test_per_process_versions_and_exact_missing_failure(tmp_path: Path):
     assert [item.version for item in newer_sources] == ["1.1.0"]
     assert newer_wheels == ()
 
-    (root / "artifacts/wheel-repository/atlanticus-http/1.0.0/record.json").unlink()
+    (root / "wheelhouse/atlanticus-http/1.0.0/record.json").unlink()
     with pytest.raises(bundle.ProcessBundleError, match="record is invalid"):
         bundle.resolve_bundle_dependencies(root, bundle.load_project(older), projects)
 
@@ -191,7 +196,7 @@ def test_historical_transitives_and_conflicting_versions(tmp_path: Path):
         '"atlanticus-http==1.0.0",\n    "atlanticus-kernel==1.0.0",',
     )
     old_project.write_text(old_text, encoding="utf-8")
-    store = repo.WheelRepository(root / "artifacts/wheel-repository")
+    store = repo.WheelRepository(root / "wheelhouse")
     store.publish(
         _wheel(
             tmp_path / "wheels/atlanticus_http-1.0.0-py3-none-any.whl",
@@ -222,7 +227,7 @@ def test_historical_transitives_and_conflicting_versions(tmp_path: Path):
 
 def test_fingerprint_tracks_historical_hash_and_receipt(tmp_path: Path):
     root, older, _ = _fixture(tmp_path)
-    store = repo.WheelRepository(root / "artifacts/wheel-repository")
+    store = repo.WheelRepository(root / "wheelhouse")
     record = store.publish(
         _wheel(tmp_path / "wheels/atlanticus_http-1.0.0-py3-none-any.whl")
     )
@@ -231,9 +236,7 @@ def test_fingerprint_tracks_historical_hash_and_receipt(tmp_path: Path):
     assert bundle.require_prepared_build_inputs(root, older) == receipt
     assert (
         record.sha256
-        in (
-            root / "artifacts/wheel-repository/atlanticus-http/1.0.0/record.json"
-        ).read_text()
+        in (root / "wheelhouse/atlanticus-http/1.0.0/record.json").read_text()
     )
     record.path.write_bytes(b"corrupt")
     with pytest.raises(bundle.ProcessBundleError, match="checksum mismatch"):
@@ -242,7 +245,7 @@ def test_fingerprint_tracks_historical_hash_and_receipt(tmp_path: Path):
 
 def test_historical_process_fingerprint_ignores_newer_source_changes(tmp_path: Path):
     root, older, newer = _fixture(tmp_path)
-    store = repo.WheelRepository(root / "artifacts/wheel-repository")
+    store = repo.WheelRepository(root / "wheelhouse")
     store.publish(_wheel(tmp_path / "wheels/atlanticus_http-1.0.0-py3-none-any.whl"))
     before_old = bundle.process_build_inputs_fingerprint(root, older)
     before_new = bundle.process_build_inputs_fingerprint(root, newer)
@@ -256,7 +259,7 @@ def test_historical_process_fingerprint_ignores_newer_source_changes(tmp_path: P
 
 def test_bundle_copies_historical_wheel_with_own_lock(tmp_path: Path, monkeypatch):
     root, older, _ = _fixture(tmp_path)
-    store = repo.WheelRepository(root / "artifacts/wheel-repository")
+    store = repo.WheelRepository(root / "wheelhouse")
     archive = _wheel(tmp_path / "wheels/atlanticus_http-1.0.0-py3-none-any.whl")
     store.publish(archive)
 
@@ -308,7 +311,7 @@ def test_catalog_discovers_all_wheelable_domains_not_workspace_or_generated(
         '[project]\nname = "atlanticus-web-workspace"\nversion = "0.1.0"\n',
         encoding="utf-8",
     )
-    _project(root / "artifacts/wheel-repository/ignored", name="generated-package")
+    _project(root / "wheelhouse/ignored", name="generated-package")
     _project(root / "tooling/distribution/web/starter/ignored", name="template-package")
 
     discovered = repo.discover_wheel_projects(root)

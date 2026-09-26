@@ -36,6 +36,7 @@ FAMILY_ACTION_RESULT_ID = 'ada-command-center-alarm-configuration-family-action-
 SHOW_FAMILIES_ID = 'ada-command-center-alarm-configuration-show-families'
 SHOW_GLOBAL_MESSAGES_ID = 'ada-command-center-alarm-configuration-show-global-messages'
 FAMILY_SELECT_TYPE = 'ada-command-center-alarm-configuration-family-select'
+FAMILY_REMOVE_TYPE = 'ada-command-center-alarm-configuration-family-remove'
 FAMILY_TAB_TYPE = 'ada-command-center-alarm-configuration-family-tab'
 RULE_SELECT_TYPE = 'ada-command-center-alarm-configuration-rule-select'
 MESSAGE_SELECT_TYPE = 'ada-command-center-alarm-configuration-message-select'

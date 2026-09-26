@@ -14,7 +14,7 @@ from email.parser import BytesParser
 from pathlib import Path
 
 REPOSITORY_ENVIRONMENT_VARIABLE = "ATLANTICUS_WHEEL_REPOSITORY"
-REPOSITORY_RELATIVE_PATH = Path("artifacts/wheel-repository")
+REPOSITORY_RELATIVE_PATH = Path("wheelhouse")
 RECORD_SCHEMA_VERSION = 1
 SUPPORTED_SOURCE_ROOTS = ("backend", "connectivity", "integrations", "scopes", "web")
 BUILD_PYTHON_VERSION = "3.14.2"
@@ -48,15 +48,15 @@ def canonicalize_package_name(name: str) -> str:
 
 
 def wheel_repository_path(repository_root: Path) -> Path:
+    path = repository_root.resolve() / REPOSITORY_RELATIVE_PATH
+    if path.is_symlink():
+        raise WheelRepositoryError(f"Atlanticus wheelhouse cannot be a symlink: {path}")
     configured = os.environ.get(REPOSITORY_ENVIRONMENT_VARIABLE)
-    if configured:
-        path = Path(configured).expanduser()
-        if not path.is_absolute():
-            raise WheelRepositoryError(
-                f"{REPOSITORY_ENVIRONMENT_VARIABLE} must be an absolute path"
-            )
-        return path.resolve()
-    return repository_root / REPOSITORY_RELATIVE_PATH
+    if configured and Path(configured).expanduser().resolve() != path:
+        raise WheelRepositoryError(
+            f"{REPOSITORY_ENVIRONMENT_VARIABLE} must point to the Atlanticus wheelhouse: {path}"
+        )
+    return path
 
 
 def _wheel_metadata(path: Path) -> tuple[str, str, tuple[str, ...]]:

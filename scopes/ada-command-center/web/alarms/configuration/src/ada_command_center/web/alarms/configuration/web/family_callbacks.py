@@ -27,6 +27,7 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     FAMILY_CREATE_PANEL_ID,
     FAMILY_NAV_STORE_ID,
     FAMILY_NEW_KEY_ID,
+    FAMILY_REMOVE_TYPE,
     FAMILY_SELECT_TYPE,
     FAMILY_TAB_TYPE,
     LIST_PAGE_SIZE_TYPE,
@@ -195,6 +196,33 @@ def register_family_callbacks(app: object) -> None:
             ),
             '',
         )
+
+    @app.callback(
+        Output(FAMILY_NAV_STORE_ID, 'data', allow_duplicate=True),
+        Input({'type': FAMILY_REMOVE_TYPE, 'key': ALL}, 'n_clicks'),
+        State(FAMILY_NAV_STORE_ID, 'data'),
+        State(AUTHORING_STORE_ID, 'data'),
+        prevent_initial_call=True,
+    )
+    def remove_pending_family(_clicks, current_nav, document):
+        if not _real_click() or not isinstance(ctx.triggered_id, dict):
+            return no_update
+        trigger = ctx.triggered_id
+        if trigger.get('type') != FAMILY_REMOVE_TYPE:
+            return no_update
+        current = current_nav if isinstance(current_nav, dict) else initial_navigation()
+        key = trigger.get('key')
+        pending = _pending_families(current)
+        if (
+            not isinstance(key, str)
+            or key not in pending
+            or family_catalog(document).get(key) is not None
+        ):
+            return no_update
+        return {
+            **_base_navigation(current),
+            'pending_families': [item for item in pending if item != key],
+        }
 
     @app.callback(
         Output(FAMILY_NAV_STORE_ID, 'data', allow_duplicate=True),
