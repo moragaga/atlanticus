@@ -100,13 +100,16 @@ def test_container_command_must_be_safe_kebab_case(tmp_path: Path) -> None:
         bundle.load_container_definition(load_project(process))
 
 
-def test_discover_projects_ignores_generated_runtime_and_artifacts(
+def test_discover_projects_ignores_generated_runtime_artifacts_and_distribution(
     tmp_path: Path,
 ) -> None:
     repository = tmp_path / "repository"
     source = repository / "scopes" / "operational-data" / "processes" / "dispatch"
     runtime = repository / ".runtime" / "local-deployment" / "processes" / "dispatch"
     artifact = repository / "artifacts" / "processes" / "operational-data-dispatch"
+    distributed = (
+        repository / "distribution" / "fabrica-validation" / "processes" / "dispatch"
+    )
     _write_project(
         source, name="sample-process", command="sample", system_profile="base"
     )
@@ -116,10 +119,30 @@ def test_discover_projects_ignores_generated_runtime_and_artifacts(
     _write_project(
         artifact, name="sample-process", command="sample", system_profile="base"
     )
+    _write_project(
+        distributed, name="sample-process", command="sample", system_profile="base"
+    )
 
     projects = discover_projects(repository)
 
     assert projects["sample-process"].root == source
+
+
+def test_discover_projects_still_rejects_duplicate_source_packages(
+    tmp_path: Path,
+) -> None:
+    repository = tmp_path / "repository"
+    first = repository / "scopes" / "operational-data" / "processes" / "dispatch"
+    second = repository / "backend" / "duplicate"
+    _write_project(
+        first, name="sample-process", command="sample", system_profile="base"
+    )
+    _write_project(second, name="sample-process")
+
+    with pytest.raises(
+        ProcessBundleError, match="duplicate project name sample-process"
+    ):
+        discover_projects(repository)
 
 
 def test_internal_dependency_resolution_is_transitive_and_requires_exact_pins(

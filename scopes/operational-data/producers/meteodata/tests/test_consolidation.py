@@ -26,13 +26,21 @@ def test_delayed_hm_does_not_downgrade_existing_hm3_and_completes_vel_dir():
         existing=previous,
         measurements=(measure(HM, 'mp10', 40), measure(HM, 'vel', 2.2), measure(HM, 'dir', 190)),
     )
-    assert result == {T: {'timestamp': T, 'mp10': 42.0, 'vel': 2.2, 'dir': 190.0, 'estacion_mp10': HM3}}
+    assert result == {
+        T: {'timestamp': T, 'mp10': 42.0, 'vel': 2.2, 'dir': 190.0, 'estacion_mp10': HM3}
+    }
 
 
 def test_delayed_hm3_upgrades_previous_hm_fallback():
     previous = {T: {'timestamp': T, 'mp10': 40.0, 'vel': 2.2, 'dir': None, 'estacion_mp10': HM}}
     result = consolidate(existing=previous, measurements=(measure(HM3, 'mp10', 42),))
-    assert result[T] == {'timestamp': T, 'mp10': 42.0, 'vel': 2.2, 'dir': None, 'estacion_mp10': HM3}
+    assert result[T] == {
+        'timestamp': T,
+        'mp10': 42.0,
+        'vel': 2.2,
+        'dir': None,
+        'estacion_mp10': HM3,
+    }
 
 
 def test_existing_values_are_preserved_when_a_query_returns_only_one_variable():

@@ -9,7 +9,7 @@ from atlanticus.data_producers.meteodata.errors import (
     MeteodataAcquisitionError,
     MeteodataResponseError,
 )
-from atlanticus.data_producers.meteodata.models import Acquisition, Measurement, Projection, QUERIES
+from atlanticus.data_producers.meteodata.models import QUERIES, Acquisition, Measurement, Projection
 
 _FIXED_API_TZ = timezone(timedelta(hours=-4))
 _TIMESTAMP_FORMAT = '%Y-%m-%d %H:%M:%S'
@@ -31,9 +31,11 @@ class MeteodataAcquirer:
         if isinstance(ts_last, bool) or not isinstance(ts_last, int) or ts_last < 0:
             raise MeteodataResponseError('projection ts_last must be Unix milliseconds')
         try:
-            timestamp = datetime.fromtimestamp(ts_last / 1000, tz=UTC).replace(
-                tzinfo=_FIXED_API_TZ
-            ).astimezone(UTC)
+            timestamp = (
+                datetime.fromtimestamp(ts_last / 1000, tz=UTC)
+                .replace(tzinfo=_FIXED_API_TZ)
+                .astimezone(UTC)
+            )
             return Projection(
                 timestamp=timestamp,
                 promedio_dia_mp10=_number(response.get('promedio_dia')),
@@ -52,7 +54,11 @@ class MeteodataAcquirer:
     ) -> Acquisition:
         if now_utc.tzinfo is None or now_utc.utcoffset() is None:
             raise ValueError('now_utc must be timezone-aware')
-        if isinstance(lookback_minutes, bool) or not isinstance(lookback_minutes, int) or lookback_minutes <= 0:
+        if (
+            isinstance(lookback_minutes, bool)
+            or not isinstance(lookback_minutes, int)
+            or lookback_minutes <= 0
+        ):
             raise ValueError('lookback_minutes must be a positive integer')
         end = now_utc.astimezone(_FIXED_API_TZ).replace(second=0, microsecond=0)
         start = end - timedelta(minutes=lookback_minutes)
@@ -75,7 +81,7 @@ class MeteodataAcquirer:
                 )
                 samples.extend(_parse_data(response, station=station, variable=variable))
                 succeeded += 1
-            except (HttpError, MeteodataResponseError):
+            except HttpError, MeteodataResponseError:
                 failures.append(f'{station}.{variable}')
         if succeeded == 0:
             raise MeteodataAcquisitionError('all Meteodata measurement queries failed')
@@ -83,7 +89,11 @@ class MeteodataAcquirer:
 
 
 def _parse_data(payload: Any, *, station: str, variable: str) -> list[Measurement]:
-    if not isinstance(payload, Mapping) or payload.get('estacion') != station or payload.get('variable') != variable:
+    if (
+        not isinstance(payload, Mapping)
+        or payload.get('estacion') != station
+        or payload.get('variable') != variable
+    ):
         raise MeteodataResponseError('Meteodata station or variable response mismatch')
     rows = payload.get('datos')
     if not isinstance(rows, list):
@@ -93,7 +103,11 @@ def _parse_data(payload: Any, *, station: str, variable: str) -> list[Measuremen
         if not isinstance(row, (tuple, list)) or len(row) != 2 or not isinstance(row[0], str):
             raise MeteodataResponseError('invalid Meteodata measurement row')
         try:
-            timestamp = datetime.strptime(row[0], _TIMESTAMP_FORMAT).replace(tzinfo=_FIXED_API_TZ).astimezone(UTC)
+            timestamp = (
+                datetime.strptime(row[0], _TIMESTAMP_FORMAT)
+                .replace(tzinfo=_FIXED_API_TZ)
+                .astimezone(UTC)
+            )
             if row[1] is None:
                 continue
             result.append(Measurement(timestamp, station, variable, _number(row[1])))

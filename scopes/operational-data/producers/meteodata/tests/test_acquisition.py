@@ -4,7 +4,10 @@ import pytest
 
 from atlanticus.connectivity.http import HttpConnectionError
 from atlanticus.data_producers.meteodata.acquisition import MeteodataAcquirer
-from atlanticus.data_producers.meteodata.errors import MeteodataAcquisitionError, MeteodataResponseError
+from atlanticus.data_producers.meteodata.errors import (
+    MeteodataAcquisitionError,
+    MeteodataResponseError,
+)
 from atlanticus.data_producers.meteodata.models import HM, HM3
 
 
@@ -44,9 +47,7 @@ class FakeClient:
         (datetime(2026, 1, 15, 19, 30), datetime(2026, 1, 15, 23, 30, tzinfo=UTC)),
     ),
 )
-def test_projection_always_decodes_fixed_gmt_minus_four_wall_clock(
-    source_wall_clock, expected_utc
-):
+def test_projection_always_decodes_fixed_gmt_minus_four_wall_clock(source_wall_clock, expected_utc):
     encoded_milliseconds = int(source_wall_clock.replace(tzinfo=UTC).timestamp() * 1000)
     acquirer = MeteodataAcquirer(client=FakeClient(projection_ts_last=encoded_milliseconds))
     projection = acquirer.acquire_projection()
@@ -66,14 +67,19 @@ def test_four_queries_use_fixed_gmt_minus_four_even_during_chilean_dst():
     }
     client = FakeClient(replies=responses)
     acquirer = MeteodataAcquirer(client=client)
-    batch = acquirer.acquire_data(now_utc=datetime(2026, 9, 25, 23, 46, tzinfo=UTC), lookback_minutes=90)
+    batch = acquirer.acquire_data(
+        now_utc=datetime(2026, 9, 25, 23, 46, tzinfo=UTC), lookback_minutes=90
+    )
     assert [(m.station, m.variable, m.timestamp, m.value) for m in batch.measurements] == [
         (HM3, 'mp10', datetime(2026, 9, 25, 23, 40, tzinfo=UTC), 70.0)
     ]
     assert batch.successful_queries == 4
     assert len(client.calls) == 4
     assert {(c['est'], c['var']) for c in client.calls} == {
-        (HM, 'mp10'), (HM3, 'mp10'), (HM, 'vel'), (HM, 'dir')
+        (HM, 'mp10'),
+        (HM3, 'mp10'),
+        (HM, 'vel'),
+        (HM, 'dir'),
     }
     assert {c['tini'] for c in client.calls} == {'20260925_181600'}
     assert {c['tfin'] for c in client.calls} == {'20260925_194600'}
@@ -82,7 +88,9 @@ def test_four_queries_use_fixed_gmt_minus_four_even_during_chilean_dst():
 def test_partial_failure_does_not_discard_other_station_data():
     responses = {
         (HM, 'mp10'): {
-            'estacion': HM, 'variable': 'mp10', 'datos': [['2026-09-25 19:30:00', 44.0]],
+            'estacion': HM,
+            'variable': 'mp10',
+            'datos': [['2026-09-25 19:30:00', 44.0]],
         },
     }
     client = FakeClient(replies=responses, errors={(HM3, 'mp10')})
@@ -104,7 +112,13 @@ def test_every_query_failing_is_not_confused_with_no_updates():
 
 def test_mismatched_response_is_not_used_as_a_different_source():
     client = FakeClient(
-        replies={(HM3, 'mp10'): {'estacion': HM, 'variable': 'mp10', 'datos': [["2026-09-25 19:30:00", 30.0]]}}
+        replies={
+            (HM3, 'mp10'): {
+                'estacion': HM,
+                'variable': 'mp10',
+                'datos': [['2026-09-25 19:30:00', 30.0]],
+            }
+        }
     )
     batch = MeteodataAcquirer(client=client).acquire_data(
         now_utc=datetime(2026, 9, 25, 23, 46, tzinfo=UTC), lookback_minutes=90

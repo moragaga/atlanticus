@@ -1,7 +1,10 @@
 from atlanticus.configuration import ConfigurationBootstrap
 from atlanticus.connectivity.http import HttpAuthMode
 from atlanticus.operational_data.processes.meteodata.bootstrap import load_configuration
-from atlanticus.operational_data.processes.meteodata.settings import MeteodataSettings, configuration_specs
+from atlanticus.operational_data.processes.meteodata.settings import (
+    MeteodataSettings,
+    configuration_specs,
+)
 
 
 def values(tmp_path):
@@ -17,7 +20,8 @@ def values(tmp_path):
 def test_process_resolves_token_and_safe_defaults(tmp_path):
     env = values(tmp_path)
     config = ConfigurationBootstrap.from_process(
-        specs=configuration_specs(), process_values=env,
+        specs=configuration_specs(),
+        process_values=env,
     ).load(process_values=env)
     settings = MeteodataSettings.from_configuration(config)
     assert settings.http.auth_mode is HttpAuthMode.TOKEN

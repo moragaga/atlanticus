@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 # La consolidación se realiza por instante UTC, sin sincronizar la llegada de HM y HM3. HM3 tiene preferencia únicamente para MP10.
-
 from collections.abc import Iterable, Mapping
 from datetime import datetime
 from typing import Any

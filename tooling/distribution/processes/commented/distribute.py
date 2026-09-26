@@ -112,6 +112,8 @@ DEPLOYMENT_CATALOG = (
     ProcessDeployment("05", "operational-data-fabrica-planes", "fabrica-planes"),
     ProcessDeployment("06", "operational-data-fabrica-kpis", "fabrica-kpis"),
     ProcessDeployment("07", "operational-data-remanentes", "remanentes"),
+    # Nuevo proceso con número propio; los jobs existentes conservan su identificador.
+    ProcessDeployment("08", "operational-data-meteodata", "meteodata"),
     ProcessDeployment("21", "ada-kpi-runtime", "kpis"),
     ProcessDeployment("22", "ada-kpi-historian", "kpis-historian"),
     ProcessDeployment("41", "ada-kpi-delivery", "kpis-delivery"),

@@ -137,6 +137,7 @@ def test_deployment_catalog_is_stable() -> None:
         ("05", "operational-data-fabrica-planes", "fabrica-planes"),
         ("06", "operational-data-fabrica-kpis", "fabrica-kpis"),
         ("07", "operational-data-remanentes", "remanentes"),
+        ("08", "operational-data-meteodata", "meteodata"),
         ("21", "ada-kpi-runtime", "kpis"),
         ("22", "ada-kpi-historian", "kpis-historian"),
         ("41", "ada-kpi-delivery", "kpis-delivery"),
@@ -410,3 +411,67 @@ def test_split_fabrica_distribution_preserves_contiguous_slots(
         assert independent_services[0]["excecution_file"] == command.removeprefix(
             "operational-data-"
         )
+
+
+def test_meteodata_distribution_preserves_job08_in_single_and_combined_exports(
+    tmp_path: Path, monkeypatch
+) -> None:
+    _write_transport(tmp_path)
+    pi = _write_source(
+        tmp_path,
+        "scopes/operational-data/processes/pi",
+        "operational-data-pi",
+    )
+    meteodata = _write_source(
+        tmp_path,
+        "scopes/operational-data/processes/meteodata",
+        "operational-data-meteodata",
+    )
+    _patch_generation_context(monkeypatch, tmp_path)
+    bundle = BundleStub(
+        {
+            "operational-data-pi": pi,
+            "operational-data-meteodata": meteodata,
+        }
+    )
+
+    single = distribution.distribute(
+        repository_root=tmp_path,
+        output_root=tmp_path / "distribution",
+        distribution_name="meteodata-single",
+        selections=("operational-data-meteodata",),
+        targets=(),
+        bundle=bundle,
+    )
+    single_services = json.loads((single / "services.json").read_text(encoding="utf-8"))
+    assert len(single_services) == 1
+    assert single_services[0]["container_name"] == "job08"
+    assert single_services[0]["excecution_file"] == "meteodata"
+    assert single_services[0]["config_file"] == "processes/meteodata/config.json"
+    assert (single / "processes/meteodata/config.detail.json").is_file()
+
+    combined = distribution.distribute(
+        repository_root=tmp_path,
+        output_root=tmp_path / "distribution",
+        distribution_name="operational-pair",
+        selections=("operational-data-meteodata", "operational-data-pi"),
+        targets=(),
+        bundle=bundle,
+    )
+    combined_services = json.loads(
+        (combined / "services.json").read_text(encoding="utf-8")
+    )
+    assert [
+        (item["container_name"], item["excecution_file"]) for item in combined_services
+    ] == [
+        ("job01", "pi-web-api"),
+        ("job08", "meteodata"),
+    ]
+    manifest = json.loads((combined / "distribution.json").read_text(encoding="utf-8"))
+    assert [
+        (item["process"], item["deployment"]["container_name"])
+        for item in manifest["processes"]
+    ] == [
+        ("operational-data-pi", "job01"),
+        ("operational-data-meteodata", "job08"),
+    ]

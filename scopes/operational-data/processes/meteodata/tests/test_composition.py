@@ -14,13 +14,17 @@ def test_composition_uses_existing_http_dataset_and_runtime(tmp_path: Path):
         'METEODATA_TOKEN': 'local-fake-token',
     }
     config = ConfigurationBootstrap.from_process(
-        specs=configuration_specs(), process_values=environ,
+        specs=configuration_specs(),
+        process_values=environ,
     ).load(process_values=environ)
     composition = build_composition(configuration=config)
     assert composition.definition.job_key == 'meteodata-materialization'
     assert composition.definition.run_once is True
     assert composition.definition.sleep_seconds == 0
-    assert composition.definition.iteration_timeout_seconds < composition.definition.execution_timeout_seconds
+    assert (
+        composition.definition.iteration_timeout_seconds
+        < composition.definition.execution_timeout_seconds
+    )
     assert composition.settings.http.token == 'local-fake-token'
     assert composition.runtime_configuration.application == 'operational-data-meteodata-local'
     assert composition.job.materializer.runtime is composition.dataset_runtime

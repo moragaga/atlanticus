@@ -134,7 +134,9 @@ def test_commented_process_tool_is_structurally_equivalent() -> None:
     assert production == commented
 
 
-def test_operational_data_target_discovers_both_fabrica_processes(tmp_path: Path) -> None:
+def test_operational_data_target_discovers_both_fabrica_processes(
+    tmp_path: Path,
+) -> None:
     kpis = _write_process(
         tmp_path,
         "scopes/operational-data/processes/fabrica-kpis",

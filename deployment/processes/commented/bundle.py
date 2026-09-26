@@ -142,7 +142,10 @@ def discover_projects(
     projects: dict[str, ProjectDefinition] = {}
     for pyproject_path in sorted(repository_root.rglob("pyproject.toml")):
         relative_parts = pyproject_path.relative_to(repository_root).parts
-        if any(part in IGNORED_DIRECTORY_NAMES for part in relative_parts):
+        # La distribución raíz es una salida generada y no debe competir con proyectos fuente.
+        if relative_parts[0] == "distribution" or any(
+            part in IGNORED_DIRECTORY_NAMES for part in relative_parts
+        ):
             continue
         try:
             source = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))

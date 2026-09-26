@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 # Objetos inmutables para desacoplar adquisición, consolidación y persistencia.
-
 import math
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 
 HM = 'mlp_es_hm'
 HM3 = 'mlp_es_hm3'

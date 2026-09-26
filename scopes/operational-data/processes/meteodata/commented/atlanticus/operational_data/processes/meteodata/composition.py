@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 # Composición explícita del cliente HTTP, almacenamiento Parquet local y job reutilizando Atlanticus.
-
 from collections.abc import Sequence
 from dataclasses import dataclass
 

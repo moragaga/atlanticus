@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 # La conversión de ts_last no tiene default: se debe validar con Meteodata antes de publicar proyección.
-
 from dataclasses import dataclass
 
 from atlanticus.configuration import (
@@ -29,19 +28,31 @@ class MeteodataSettings:
                     base_url=configuration.require('METEODATA_BASE_URL'),
                     auth_mode=HttpAuthMode.TOKEN,
                     token=configuration.require('METEODATA_TOKEN'),
-                    connect_timeout_seconds=_positive_int(configuration, 'METEODATA_CONNECT_TIMEOUT_SECONDS'),
-                    read_timeout_seconds=_positive_int(configuration, 'METEODATA_READ_TIMEOUT_SECONDS'),
-                    write_timeout_seconds=_positive_int(configuration, 'METEODATA_WRITE_TIMEOUT_SECONDS'),
-                    pool_timeout_seconds=_positive_int(configuration, 'METEODATA_POOL_TIMEOUT_SECONDS'),
+                    connect_timeout_seconds=_positive_int(
+                        configuration, 'METEODATA_CONNECT_TIMEOUT_SECONDS'
+                    ),
+                    read_timeout_seconds=_positive_int(
+                        configuration, 'METEODATA_READ_TIMEOUT_SECONDS'
+                    ),
+                    write_timeout_seconds=_positive_int(
+                        configuration, 'METEODATA_WRITE_TIMEOUT_SECONDS'
+                    ),
+                    pool_timeout_seconds=_positive_int(
+                        configuration, 'METEODATA_POOL_TIMEOUT_SECONDS'
+                    ),
                     max_response_bytes=_positive_int(configuration, 'METEODATA_MAX_RESPONSE_BYTES'),
                     verify_tls=_bool(configuration, 'METEODATA_VERIFY_TLS'),
                     allow_insecure_http=False,
                 ),
                 lookback_minutes=_positive_int(configuration, 'METEODATA_LOOKBACK_MINUTES'),
-                retry_delay_seconds=_non_negative_int(configuration, 'METEODATA_RETRY_DELAY_SECONDS'),
+                retry_delay_seconds=_non_negative_int(
+                    configuration, 'METEODATA_RETRY_DELAY_SECONDS'
+                ),
             )
         except (ConfigurationValueError, HttpConfigurationError) as error:
-            raise MeteodataProcessConfigurationError('invalid Meteodata process configuration') from error
+            raise MeteodataProcessConfigurationError(
+                'invalid Meteodata process configuration'
+            ) from error
 
 
 def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
@@ -58,9 +69,7 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(key='METEODATA_VERIFY_TLS', default='true'),
         ConfigurationVariableSpec(key='METEODATA_LOOKBACK_MINUTES', default='90'),
         ConfigurationVariableSpec(key='METEODATA_RETRY_DELAY_SECONDS', default='60'),
-        ConfigurationVariableSpec(
-            key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED', default='true'
-        ),
+        ConfigurationVariableSpec(key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED', default='true'),
         ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_MODE', default='off'),
         ConfigurationVariableSpec(
             key='ATLANTICUS_AZURE_OBSERVABILITY_PROFILE',

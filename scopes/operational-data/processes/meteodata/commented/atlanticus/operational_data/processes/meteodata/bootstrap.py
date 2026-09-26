@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 # Se resuelve la configuración local o Key Vault sin que el productor lea variables de entorno.
-
 import os
 from collections.abc import Mapping, Sequence
 from pathlib import Path

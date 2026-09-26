@@ -2,7 +2,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from atlanticus.data_producers.meteodata.errors import MeteodataAcquisitionError, MeteodataResponseError
+from atlanticus.data_producers.meteodata.errors import (
+    MeteodataAcquisitionError,
+    MeteodataResponseError,
+)
 from atlanticus.data_producers.meteodata.job import MeteodataJob
 
 
@@ -67,8 +70,10 @@ def test_no_new_data_triggers_only_one_interruptible_retry():
     acquirer = Acquirer()
     context = Context()
     job = MeteodataJob(
-        acquirer=acquirer, materializer=Materializer([0, 2]),
-        lookback_minutes=90, retry_delay_seconds=60,
+        acquirer=acquirer,
+        materializer=Materializer([0, 2]),
+        lookback_minutes=90,
+        retry_delay_seconds=60,
     )
     job.run_iteration(context)
     assert acquirer.calls == 2
@@ -81,8 +86,10 @@ def test_failed_projection_does_not_block_data():
     acquirer = Acquirer(fail_projection=True)
     context = Context()
     MeteodataJob(
-        acquirer=acquirer, materializer=Materializer([3]),
-        lookback_minutes=90, retry_delay_seconds=60,
+        acquirer=acquirer,
+        materializer=Materializer([3]),
+        lookback_minutes=90,
+        retry_delay_seconds=60,
     ).run_iteration(context)
     assert context.facts['projection_failed'] is True
     assert context.facts['data_rows_updated'] == 3
@@ -92,7 +99,9 @@ def test_failed_projection_does_not_block_data():
 def test_both_failed_streams_raise_explicit_error():
     job = MeteodataJob(
         acquirer=Acquirer(fail_projection=True, fail_data=True),
-        materializer=Materializer([]), lookback_minutes=90, retry_delay_seconds=60,
+        materializer=Materializer([]),
+        lookback_minutes=90,
+        retry_delay_seconds=60,
     )
     with pytest.raises(MeteodataAcquisitionError, match='both'):
         job.run_iteration(Context())

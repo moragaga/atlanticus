@@ -88,8 +88,20 @@ def test_daily_merges_across_utc_midnight_and_late_station_arrivals():
     )
     first = runtime.tables[day1.identifier].to_pylist()[0]
     second = runtime.tables[day2.identifier].to_pylist()[0]
-    assert first == {'timestamp': early, 'mp10': 42.0, 'vel': 2.0, 'dir': None, 'estacion_mp10': HM3}
-    assert second == {'timestamp': late, 'mp10': 50.0, 'vel': None, 'dir': 190.0, 'estacion_mp10': HM3}
+    assert first == {
+        'timestamp': early,
+        'mp10': 42.0,
+        'vel': 2.0,
+        'dir': None,
+        'estacion_mp10': HM3,
+    }
+    assert second == {
+        'timestamp': late,
+        'mp10': 50.0,
+        'vel': None,
+        'dir': 190.0,
+        'estacion_mp10': HM3,
+    }
     assert all(num == 1 for operation, _, num in runtime.writes if operation == 'merge')
 
 
@@ -97,15 +109,24 @@ def test_daily_hm_fallback_upgrades_when_hm3_arrives_later():
     runtime = MemoryRuntime()
     materializer = MeteodataMaterializer(runtime=runtime)
     timestamp = datetime(2026, 9, 25, 23, 40, tzinfo=UTC)
-    assert materializer.publish_data(
-        measurements=(Measurement(timestamp, HM, 'mp10', 41.0),), context=Context()
-    ) == 1
-    assert materializer.publish_data(
-        measurements=(Measurement(timestamp, HM3, 'mp10', 43.0),), context=Context()
-    ) == 1
-    assert materializer.publish_data(
-        measurements=(Measurement(timestamp, HM, 'mp10', 41.0),), context=Context()
-    ) == 0
+    assert (
+        materializer.publish_data(
+            measurements=(Measurement(timestamp, HM, 'mp10', 41.0),), context=Context()
+        )
+        == 1
+    )
+    assert (
+        materializer.publish_data(
+            measurements=(Measurement(timestamp, HM3, 'mp10', 43.0),), context=Context()
+        )
+        == 1
+    )
+    assert (
+        materializer.publish_data(
+            measurements=(Measurement(timestamp, HM, 'mp10', 41.0),), context=Context()
+        )
+        == 0
+    )
     target = DATA_DATASET.resolve_target(
         materialization='daily', partition={'year': '2026', 'month': '09', 'day': '25'}
     )

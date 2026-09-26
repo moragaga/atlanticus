@@ -81,7 +81,9 @@ class MeteodataMaterializer:
         grouped: dict[tuple[str, str, str], list[Measurement]] = defaultdict(list)
         for sample in measurements:
             timestamp = sample.timestamp
-            grouped[(timestamp.strftime('%Y'), timestamp.strftime('%m'), timestamp.strftime('%d'))].append(sample)
+            grouped[
+                (timestamp.strftime('%Y'), timestamp.strftime('%m'), timestamp.strftime('%d'))
+            ].append(sample)
         changed = 0
         for (year, month, day), samples in sorted(grouped.items()):
             context.raise_if_cancelled()

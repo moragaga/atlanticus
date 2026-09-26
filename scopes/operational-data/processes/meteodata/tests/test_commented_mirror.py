@@ -11,7 +11,11 @@ IGNORED = {tokenize.COMMENT, tokenize.ENCODING, tokenize.NL}
 
 def meaningful_tokens(path: Path):
     with path.open('rb') as source:
-        return [(item.type, item.string) for item in tokenize.tokenize(source.readline) if item.type not in IGNORED]
+        return [
+            (item.type, item.string)
+            for item in tokenize.tokenize(source.readline)
+            if item.type not in IGNORED
+        ]
 
 
 def test_pedagogical_mirror_has_same_python_behavior():

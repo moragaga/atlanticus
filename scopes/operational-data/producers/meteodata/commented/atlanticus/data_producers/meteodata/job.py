@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 # El job aísla proyección y mediciones. Reintenta los datos únicamente cuando no hay nuevas filas o correcciones.
-
 from datetime import UTC, datetime
 
 from atlanticus.connectivity.http import HttpError
@@ -63,27 +62,33 @@ class MeteodataJob:
             )
             if data_rows_updated == 0 and self.retry_delay_seconds:
                 context.raise_if_cancelled()
-                if context.safe_remaining_seconds > self.retry_delay_seconds + 90:
-                    if context.wait(self.retry_delay_seconds):
-                        context.raise_if_cancelled()
-                        data_retried = True
-                        retry = self.acquirer.acquire_data(
-                            now_utc=datetime.now(UTC),
-                            lookback_minutes=self.lookback_minutes,
-                            check_cancelled=context.raise_if_cancelled,
-                        )
-                        failed_queries = retry.failed_queries
-                        data_rows_updated = self.materializer.publish_data(
-                            measurements=retry.measurements,
-                            context=context,
-                        )
+                if context.safe_remaining_seconds > self.retry_delay_seconds + 90 and context.wait(
+                    self.retry_delay_seconds
+                ):
+                    context.raise_if_cancelled()
+                    data_retried = True
+                    retry = self.acquirer.acquire_data(
+                        now_utc=datetime.now(UTC),
+                        lookback_minutes=self.lookback_minutes,
+                        check_cancelled=context.raise_if_cancelled,
+                    )
+                    failed_queries = retry.failed_queries
+                    data_rows_updated = self.materializer.publish_data(
+                        measurements=retry.measurements,
+                        context=context,
+                    )
             if failed_queries:
                 context.logger.warning(
                     'Some Meteodata measurement queries failed',
                     event_name='meteodata.data.partial',
                     failed_queries=tuple(sorted(set(failed_queries))),
                 )
-        except (HttpError, MeteodataResponseError, MeteodataAcquisitionError, DatasetRuntimeError) as error:
+        except (
+            HttpError,
+            MeteodataResponseError,
+            MeteodataAcquisitionError,
+            DatasetRuntimeError,
+        ) as error:
             data_error = True
             context.logger.warning(
                 'Meteodata measurements acquisition or publication failed',
@@ -96,7 +101,10 @@ class MeteodataJob:
         context.set_iteration_fact('failed_queries', len(failed_queries))
         context.set_iteration_fact('projection_failed', projection_error)
         context.set_iteration_fact('data_failed', data_error)
-        context.set_iteration_fact('outcome', 'partial' if projection_error or data_error or failed_queries else 'completed')
+        context.set_iteration_fact(
+            'outcome',
+            'partial' if projection_error or data_error or failed_queries else 'completed',
+        )
         if projection_updated or data_rows_updated:
             context.mark_iteration_work()
         if projection_error and data_error:
