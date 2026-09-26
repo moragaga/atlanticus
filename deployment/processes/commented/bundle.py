@@ -21,7 +21,7 @@ from typing import Any
 
 PYTHON_VERSION = "3.14.2"
 BUNDLE_DEPENDENCY_GROUP = "bundle-internal"
-BUILD_INPUTS_FINGERPRINT_VERSION = 1
+BUILD_INPUTS_FINGERPRINT_VERSION = 2
 PREPARE_RECEIPT_SCHEMA_VERSION = 1
 PREPARE_RECEIPT_ROOT = Path("artifacts/receipts/processes")
 TRANSPORT_EXCLUDED_ROOT_NAMES = frozenset({"commented", "docs", "scripts", "tests"})
@@ -336,6 +336,102 @@ def _project_input_files(
     return tuple(files)
 
 
+# Construye el cliente de wheels por operación sin crear estado de conexión global.
+def _wheel_store(repository_root: Path) -> Any:
+    import importlib.util
+    import sys
+
+    path = Path(__file__).resolve().with_name("wheel_repository.py")
+    spec = importlib.util.spec_from_file_location("atlanticus_wheel_repository", path)
+    if spec is None or spec.loader is None:
+        raise ProcessBundleError(f"Wheel repository module is unavailable: {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    try:
+        return module.WheelRepository(module.wheel_repository_path(repository_root))
+    except module.WheelRepositoryError as error:
+        raise ProcessBundleError(str(error)) from error
+
+
+# Impide rangos de versión ambiguos en dependencias internas.
+def _internal_pin(requirement: str, name: str) -> str:
+    match = re.fullmatch(
+        r"\s*([A-Za-z0-9][A-Za-z0-9._-]*)\s*==\s*([A-Za-z0-9][A-Za-z0-9._+!-]*)\s*",
+        requirement,
+    )
+    if match is None or canonicalize_package_name(match.group(1)) != name:
+        raise ProcessBundleError(
+            f"Internal dependency must have an exact version pin: {requirement}"
+        )
+    return match.group(2)
+
+
+# Recorre todas las dependencias: fuente vigente o wheel histórico inmutable.
+def resolve_bundle_dependencies(
+    repository_root: Path,
+    process: ProjectDefinition,
+    projects: MappingProxyType[str, ProjectDefinition],
+) -> tuple[tuple[ProjectDefinition, ...], tuple[Any, ...], Any]:
+    store = _wheel_store(repository_root)
+    selected: dict[str, str] = {
+        canonicalize_package_name(process.name): process.version
+    }
+    visiting: set[str] = {canonicalize_package_name(process.name)}
+    visited: set[str] = set()
+    sources: list[ProjectDefinition] = []
+    historical: list[Any] = []
+
+    # Recursión local al proceso: cada paquete solo puede tener una versión.
+    def visit(requirements: tuple[str, ...]) -> None:
+        for requirement in requirements:
+            name = _extract_dependency_name(requirement)
+            current = projects.get(name)
+            if current is None and not store.has_package(name):
+                if name.startswith(("atlanticus-", "ada-")):
+                    raise ProcessBundleError(
+                        f"Internal dependency has no source or archived wheel: {name}"
+                    )
+                continue
+            version = _internal_pin(requirement, name)
+            previous_version = selected.get(name)
+            if previous_version is not None and previous_version != version:
+                raise ProcessBundleError(
+                    f"Conflicting internal versions for {name}: "
+                    f"{previous_version} and {version}"
+                )
+            if name in visiting:
+                raise ProcessBundleError(f"Cyclic internal dependency: {name}")
+            if name in visited:
+                continue
+            selected[name] = version
+            # La fuente solo se usa si coincide exactamente con el pin solicitado.
+            if current is not None and current.version == version:
+                _validate_python_contract(current)
+                visiting.add(name)
+                visit(current.dependencies)
+                visiting.remove(name)
+                sources.append(current)
+            else:
+                # Si la fuente avanzó, se recupera la versión publicada, sin recompilarla.
+                try:
+                    archive = store.resolve(name, version)
+                except RuntimeError as error:
+                    raise ProcessBundleError(str(error)) from error
+                if archive is None:
+                    raise ProcessBundleError(
+                        f"Internal wheel is not published: {name}=={version}"
+                    )
+                visiting.add(name)
+                visit(archive.dependencies)
+                visiting.remove(name)
+                historical.append(archive)
+            visited.add(name)
+
+    visit(process.dependencies)
+    return tuple(sources), tuple(historical), store
+
+
 # Identifica proceso, dependencias internas y la semántica productiva del bundler.
 def process_build_inputs_fingerprint(
     repository_root: Path,
@@ -345,9 +441,9 @@ def process_build_inputs_fingerprint(
     _validate_python_contract(process)
     load_container_definition(process)
     projects = discover_projects(repository_root)
-    dependencies = resolve_internal_dependencies(process, projects)
-    for dependency in dependencies:
-        _validate_python_contract(dependency)
+    source_dependencies, archived_dependencies, store = resolve_bundle_dependencies(
+        repository_root, process, projects
+    )
     hasher = hashlib.sha256()
     _fingerprint_component(
         hasher,
@@ -356,12 +452,15 @@ def process_build_inputs_fingerprint(
     try:
         # Un cambio en el bundler invalida receipts previos porque puede cambiar la salida.
         _fingerprint_component(hasher, Path(__file__).read_bytes())
+        _fingerprint_component(
+            hasher, Path(__file__).with_name("wheel_repository.py").read_bytes()
+        )
         ordered = (
             ("process", process),
             *(
                 ("dependency", dependency)
                 for dependency in sorted(
-                    dependencies,
+                    source_dependencies,
                     key=lambda item: canonicalize_package_name(item.name),
                 )
             ),
@@ -379,6 +478,10 @@ def process_build_inputs_fingerprint(
                 relative = path.relative_to(project.root).as_posix()
                 _fingerprint_component(hasher, relative.encode())
                 _fingerprint_component(hasher, path.read_bytes())
+        for archive in sorted(archived_dependencies, key=lambda item: item.name):
+            _fingerprint_component(hasher, archive.name.encode())
+            _fingerprint_component(hasher, archive.version.encode())
+            _fingerprint_component(hasher, archive.sha256.encode())
     except OSError as error:
         raise ProcessBundleError(
             f"could not fingerprint process build inputs: {process_root}"
@@ -472,9 +575,9 @@ def build_process_bundle(
     _validate_python_contract(process)
     load_container_definition(process)
     projects = discover_projects(repository_root)
-    dependencies = resolve_internal_dependencies(process, projects)
-    for dependency in dependencies:
-        _validate_python_contract(dependency)
+    source_dependencies, archived_dependencies, store = resolve_bundle_dependencies(
+        repository_root, process, projects
+    )
     output_path = output_root / load_container_definition(process).command
     output_root.mkdir(parents=True, exist_ok=True)
     temporary_parent = Path(
@@ -485,14 +588,21 @@ def build_process_bundle(
         _copy_process_project(source=process_root, target=temporary_project)
         wheel_sources = _build_internal_wheels(
             repository_root=repository_root,
-            dependencies=dependencies,
+            dependencies=source_dependencies,
             wheel_directory=temporary_project / "wheels",
         )
+        wheel_sources = dict(wheel_sources)
+        for archive in archived_dependencies:
+            try:
+                copied = store.copy(archive, temporary_project / "wheels")
+            except RuntimeError as error:
+                raise ProcessBundleError(str(error)) from error
+            wheel_sources[archive.name] = f"wheels/{copied.name}"
         _write_export_pyproject(
             source_path=process_root / "pyproject.toml",
             target_path=temporary_project / "pyproject.toml",
-            dependencies=dependencies,
-            wheel_sources=wheel_sources,
+            dependencies=(*source_dependencies, *archived_dependencies),
+            wheel_sources=MappingProxyType(wheel_sources),
         )
         _run(
             (
@@ -693,7 +803,7 @@ def _write_export_pyproject(
     *,
     source_path: Path,
     target_path: Path,
-    dependencies: tuple[ProjectDefinition, ...],
+    dependencies: tuple[Any, ...],
     wheel_sources: MappingProxyType[str, str],
 ) -> None:
     source_text = source_path.read_text(encoding="utf-8").rstrip()
