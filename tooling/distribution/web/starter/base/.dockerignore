@@ -1,0 +1,15 @@
+*
+!pyproject.toml
+!manifest.json
+!src/
+!src/**
+!docker/
+!docker/verify_wheelhouse.py
+!wheelhouse/
+!wheelhouse/*.whl
+!wheelhouse/manifest.json
+**/.env
+**/.env.*
+**/secrets.json
+**/secrets.*.json
+**/*mapping-env.csv

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import replace
 from functools import partial
 from importlib.metadata import version
@@ -34,6 +35,13 @@ from atlanticus.web.models import ApplicationMetadata, WebApplicationDefinition
 _LOGGER = logging.getLogger(__name__)
 _APPLICATION_ROOT = Path(__file__).resolve().parents[5]
 _APPLICATION_DISTRIBUTION = 'ada-generic-application'
+
+
+def _resolve_publications_root() -> Path:
+    configured = os.getenv('APPLICATION_PUBLICATIONS_ROOT')
+    if configured is None or not configured.strip():
+        return _APPLICATION_ROOT / '.runtime' / 'publications'
+    return Path(configured).expanduser().resolve()
 
 
 def create_application_definition(
@@ -90,7 +98,7 @@ def create_application_definition(
             display_name='ADA',
             version=application_version,
         ),
-        publications_root=_APPLICATION_ROOT / '.runtime' / 'publications',
+        publications_root=_resolve_publications_root(),
         layout=partial(
             resolved_composition.layout,
             operational_brand=operational_brand,
