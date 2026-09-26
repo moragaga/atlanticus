@@ -99,6 +99,30 @@ def _validate_structure(paths: Paths) -> None:
         paths.tooling / "local" / "processes" / "process.sh",
         paths.tooling / "local" / "processes" / "process.cmd",
         paths.tooling / "local" / "processes" / "commented" / "process.py",
+        paths.tooling / "distribution" / "processes" / "update_package.py",
+        paths.tooling
+        / "distribution"
+        / "processes"
+        / "commented"
+        / "update_package.py",
+        paths.tooling / "distribution" / "processes" / "consumer" / "update.py",
+        paths.tooling
+        / "distribution"
+        / "processes"
+        / "consumer"
+        / "commented"
+        / "update.py",
+        paths.tooling
+        / "distribution"
+        / "processes"
+        / "consumer"
+        / "update_contract.py",
+        paths.tooling
+        / "distribution"
+        / "processes"
+        / "consumer"
+        / "commented"
+        / "update_contract.py",
         paths.tooling / "distribution" / "processes" / "distribute.py",
         paths.tooling / "distribution" / "processes" / "distribute.sh",
         paths.tooling / "distribution" / "processes" / "distribute.cmd",
@@ -235,6 +259,36 @@ def _validate_mirrors(paths: Paths) -> None:
         / "process.py",
     )
     _validate_python_mirror(
+        paths.tooling / "distribution" / "processes" / "update_package.py",
+        paths.tooling
+        / "distribution"
+        / "processes"
+        / "commented"
+        / "update_package.py",
+    )
+    _validate_python_mirror(
+        paths.tooling / "distribution" / "processes" / "consumer" / "update.py",
+        paths.tooling
+        / "distribution"
+        / "processes"
+        / "consumer"
+        / "commented"
+        / "update.py",
+    )
+    _validate_python_mirror(
+        paths.tooling
+        / "distribution"
+        / "processes"
+        / "consumer"
+        / "update_contract.py",
+        paths.tooling
+        / "distribution"
+        / "processes"
+        / "consumer"
+        / "commented"
+        / "update_contract.py",
+    )
+    _validate_python_mirror(
         paths.gate / "check.py",
         paths.gate / "commented" / "check.py",
     )
@@ -267,6 +321,12 @@ def main(argv: list[str] | None = None) -> int:
         "tooling/local/processes/process.py",
         "tooling/local/processes/commented/process.py",
         "tooling/tests/local/processes",
+        "tooling/distribution/processes/update_package.py",
+        "tooling/distribution/processes/commented/update_package.py",
+        "tooling/distribution/processes/consumer/update.py",
+        "tooling/distribution/processes/consumer/commented/update.py",
+        "tooling/distribution/processes/consumer/update_contract.py",
+        "tooling/distribution/processes/consumer/commented/update_contract.py",
         "tooling/distribution/processes/distribute.py",
         "tooling/distribution/processes/commented/distribute.py",
         "tooling/distribution/processes/consumer/process.py",

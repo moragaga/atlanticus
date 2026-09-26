@@ -115,7 +115,13 @@ def _write_transport(root: Path) -> None:
 def _patch_generation_context(monkeypatch, tmp_path: Path) -> None:
     template = tmp_path / "consumer"
     template.mkdir()
-    for name in ("process.py", "process.sh", "process.cmd"):
+    for name in (
+        "process.py",
+        "process.sh",
+        "process.cmd",
+        "update.py",
+        "update_contract.py",
+    ):
         (template / name).write_text(name, encoding="utf-8")
     monkeypatch.setattr(distribution, "_consumer_template_root", lambda: template)
     monkeypatch.setattr(distribution, "_generated_at", lambda: "2026-09-22T23:30:00Z")
@@ -344,6 +350,8 @@ def test_distribution_keeps_local_deployment_assets_out_of_root(
     assert (target / "deployment/local/simulation.py").is_file()
     assert (target / "deployment/local/scheduler/Dockerfile").is_file()
     assert (target / "deployment/local/scheduler/scheduler.py").is_file()
+    assert (target / "tooling/local/processes/update.py").is_file()
+    assert (target / "tooling/local/processes/update_contract.py").is_file()
 
 
 def test_split_fabrica_distribution_preserves_contiguous_slots(

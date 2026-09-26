@@ -833,6 +833,10 @@ def _parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="action", required=True)
 
     subparsers.add_parser("validate")
+    inspect = subparsers.add_parser("inspect-update")
+    inspect.add_argument("archive", type=Path)
+    apply = subparsers.add_parser("apply-update")
+    apply.add_argument("archive", type=Path)
     integrate = subparsers.add_parser("integrate")
     integrate.add_argument("extension", type=Path)
 
@@ -871,6 +875,36 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if arguments.action == "validate":
             _validate(root)
+        # La instalación sólo publica artefactos; no reinicia servicios.
+        elif arguments.action == "inspect-update":
+            from update import ProcessUpdateError, inspect_update
+
+            try:
+                plan = inspect_update(root, arguments.archive, sys.modules[__name__])
+            except ProcessUpdateError as error:
+                raise ConsumerProcessError(str(error)) from error
+            print(
+                json.dumps(
+                    {
+                        "process": plan.alias,
+                        "from": plan.manifest["from"],
+                        "to": plan.manifest["to"],
+                        "changed_wheels": plan.manifest["changed_wheels"],
+                    },
+                    indent=2,
+                )
+            )
+        elif arguments.action == "apply-update":
+            from update import ProcessUpdateError, apply_update
+
+            try:
+                previous = apply_update(root, arguments.archive, sys.modules[__name__])
+            except ProcessUpdateError as error:
+                raise ConsumerProcessError(str(error)) from error
+            print(
+                f"Dependencies staged; previous dependency files saved in: {previous}"
+            )
+            print("Activation is separate; no services were restarted.")
         elif arguments.action == "integrate":
             _integrate(root, arguments.extension)
         elif arguments.action == "build":

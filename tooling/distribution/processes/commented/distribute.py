@@ -572,7 +572,13 @@ def _copy_consumer_tooling(staging_root: Path) -> None:
     source = _consumer_template_root()
     target = staging_root / "tooling/local/processes"
     target.mkdir(parents=True)
-    for name in ("process.py", "process.sh", "process.cmd"):
+    for name in (
+        "process.py",
+        "process.sh",
+        "process.cmd",
+        "update.py",
+        "update_contract.py",
+    ):
         source_path = source / name
         if not source_path.is_file():
             raise DistributionError(
@@ -693,7 +699,13 @@ def _validate_staging(
             )
     if (staging_root / ".runtime").exists():
         raise DistributionError("Generated distribution must not contain .runtime")
-    for name in ("process.py", "process.sh", "process.cmd"):
+    for name in (
+        "process.py",
+        "process.sh",
+        "process.cmd",
+        "update.py",
+        "update_contract.py",
+    ):
         if not (staging_root / "tooling/local/processes" / name).is_file():
             raise DistributionError(
                 f"Generated consumer process tool is missing: {name}"
@@ -886,6 +898,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("distribution")
     parser.add_argument("processes", nargs="*")
     parser.add_argument(
+        "--update-from",
+        type=Path,
+        help="Existing distribution root used as the expected update baseline.",
+    )
+    parser.add_argument(
         "--extension",
         action="store_true",
         help="Generate an integration ZIP instead of a complete distribution.",
@@ -914,6 +931,27 @@ def main(argv: list[str] | None = None) -> int:
         if arguments.output_root is not None
         else repository_root / "distribution"
     )
+    # Construye la actualización desde una distribución base sin alterar el flujo tradicional.
+    if arguments.update_from is not None:
+        if arguments.extension or arguments.target or len(arguments.processes) != 1:
+            raise SystemExit(
+                "--update-from requires exactly one process and cannot be combined with --extension or --target"
+            )
+        from update_package import ProcessUpdateError, create_update
+
+        try:
+            target = create_update(
+                builder=sys.modules[__name__],
+                repository_root=repository_root,
+                baseline_root=arguments.update_from,
+                distribution_name=arguments.distribution,
+                process=arguments.processes[0],
+                output_root=output_root,
+            )
+        except (ProcessUpdateError, DistributionError) as error:
+            raise SystemExit(str(error)) from error
+        print(f"Dependency update package: {target}")
+        return 0
     try:
         target = distribute(
             repository_root=repository_root,
