@@ -98,9 +98,9 @@ def _family_listing(
 ) -> object:
     page = list_page(families, navigation, 'families')
     cards = [
-        html.Div(
+        html.Article(
             [
-                html.Button(
+                html.Div(
                     [
                         html.Strong(family.key),
                         html.Small(
@@ -110,23 +110,35 @@ def _family_listing(
                             and not family.message_indexes
                             else f'{len(family.rule_indexes)} reglas · {len(family.message_indexes)} mensajes'
                         ),
-                        html.Span('Administrar ›', className='alarm-family__card-action'),
                     ],
-                    id={'type': FAMILY_SELECT_TYPE, 'index': page.request.offset + position},
-                    n_clicks=0,
-                    className='alarm-family__card',
-                    type='button',
+                    className='alarm-family__item-copy',
                 ),
-                html.Button(
-                    'Eliminar',
-                    id={'type': FAMILY_REMOVE_TYPE, 'key': family.key},
-                    n_clicks=0,
-                    type='button',
-                    className='atlanticus-ui-button atlanticus-ui-button--danger',
-                    **{'aria-label': f'Eliminar familia {family.key}'},
+                html.Div(
+                    [
+                        html.Button(
+                            'Administrar',
+                            id={
+                                'type': FAMILY_SELECT_TYPE,
+                                'index': page.request.offset + position,
+                            },
+                            n_clicks=0,
+                            type='button',
+                            className='btn btn-outline-secondary btn-sm',
+                            **{'aria-label': f'Administrar familia {family.key}'},
+                        ),
+                        html.Button(
+                            'Eliminar',
+                            id={'type': FAMILY_REMOVE_TYPE, 'key': family.key},
+                            n_clicks=0,
+                            type='button',
+                            className='btn btn-outline-danger btn-sm',
+                            **{'aria-label': f'Eliminar familia {family.key}'},
+                        ),
+                    ],
+                    className='alarm-family__item-actions',
                 ),
             ],
-            className='alarm-family__card-row',
+            className='alarm-family__item alarm-family__item--card',
         )
         for position, family in enumerate(page.items)
     ]
@@ -368,7 +380,11 @@ def _rule_subtitle(rule: dict[str, object]) -> str:
     kind = value_label(str(rule.get('kind'))) if rule.get('kind') else 'Sin clasificación'
     criticality = str(rule.get('criticality') or 'Sin criticidad')
     status = _active_label(rule.get('is_active'), feminine=True)
-    return f'{kind} · {criticality} · {status}'
+    raw_group = rule.get('priority_group')
+    group = raw_group if isinstance(raw_group, str) and raw_group.strip() else 'Sin grupo'
+    raw_order = rule.get('priority_order')
+    ranking = str(raw_order) if type(raw_order) is int and raw_order > 0 else 'Sin orden'
+    return f'{kind} · {criticality} · {status} · Grupo: {group} · Ranking: {ranking}'
 
 
 def _message_title(message: dict[str, object]) -> str:

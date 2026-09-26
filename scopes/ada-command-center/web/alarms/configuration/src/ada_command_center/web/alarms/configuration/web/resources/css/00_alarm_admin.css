@@ -171,7 +171,6 @@
     align-content: start;
 }
 
-.alarm-family__card,
 .alarm-family__item--card {
     display: flex;
     align-items: center;
@@ -187,48 +186,13 @@
     border-radius: .7rem;
 }
 
-.alarm-family__card-row {
-    display: flex;
-    align-items: center;
-    gap: .65rem;
-    min-width: 0;
-    min-height: 3.8rem;
-}
-
-.alarm-family__card-row .alarm-family__card {
-    flex: 1 1 auto;
-}
-
-.alarm-family__card-row > button:last-child:not(.alarm-family__card) {
-    flex: 0 0 auto;
-}
-
-.alarm-family__card {
-    cursor: pointer;
-}
-
-.alarm-family__card:hover,
-.alarm-family__card:focus-visible {
-    border-color: var(--atlanticus-ui-accent);
-    box-shadow: var(--atlanticus-ui-control-focus-ring);
-}
-
-.alarm-family__card strong,
 .alarm-family__item-copy strong {
     font-size: .83rem;
 }
 
-.alarm-family__card small,
 .alarm-family__item-copy small {
     display: block;
     margin-top: .23rem;
-}
-
-.alarm-family__card-action {
-    flex: 0 0 auto;
-    color: var(--atlanticus-ui-primary);
-    font-size: .75rem;
-    font-weight: 700;
 }
 
 .alarm-family__item-copy {
@@ -274,7 +238,6 @@
     min-height: 86.45rem;
 }
 
-.alarm-page__results > .alarm-family__card,
 .alarm-page__results > .alarm-family__item--card {
     min-height: 3.8rem;
 }

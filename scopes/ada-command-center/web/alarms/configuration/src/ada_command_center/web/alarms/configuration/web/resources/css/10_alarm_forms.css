@@ -111,6 +111,7 @@
 
 .alarm-guided {
     display: grid;
+    min-height: 100%;
     grid-template-columns: minmax(10rem, 13rem) minmax(0, 1fr);
     min-width: 0;
     gap: 0;
@@ -329,6 +330,14 @@
     border-radius: var(--atlanticus-ui-control-radius);
     font: inherit;
     font-size: .78rem;
+}
+
+.alarm-admin__new-family-field,
+.alarm-admin__new-family-field .dash-input-container:not(input) {
+    border: 0;
+    outline: 0;
+    box-shadow: none;
+    background: transparent;
 }
 
 .alarm-admin__choices {
