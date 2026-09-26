@@ -19,6 +19,7 @@ pytestmark = pytest.mark.integration
 
 _BASE_URL = os.getenv('ATLANTICUS_FAKE_HTTP_BASE_URL', 'http://http-fake-api:8080')
 _BEARER_TOKEN = os.getenv('ATLANTICUS_FAKE_HTTP_BEARER_TOKEN', 'atlanticus-bearer-token')
+_TOKEN = os.getenv('ATLANTICUS_FAKE_HTTP_TOKEN', 'atlanticus-token')
 _BASIC_USERNAME = os.getenv('ATLANTICUS_FAKE_HTTP_BASIC_USERNAME', 'atlanticus-user')
 _BASIC_PASSWORD = os.getenv('ATLANTICUS_FAKE_HTTP_BASIC_PASSWORD', 'atlanticus-password')
 
@@ -74,6 +75,34 @@ def test_public_bearer_and_basic_contracts_against_fake_api() -> None:
     }
     assert output.getvalue().startswith(b'atlanticus-http-stream-')
     assert stream_result.bytes_transferred == len(output.getvalue())
+
+
+def test_token_contract_against_fake_api() -> None:
+    _require_integration()
+    _wait_until_ready()
+
+    settings = HttpSettings(
+        base_url=_BASE_URL,
+        auth_mode=HttpAuthMode.TOKEN,
+        token=_TOKEN,
+        allow_insecure_http=True,
+    )
+    with HttpClient(settings=settings) as client:
+        response = client.request_json('GET', 'token/json', params={'op': 'datos'})
+    assert response['auth_mode'] == 'token'
+    assert response['query'] == {'op': ['datos']}
+
+    wrong = HttpSettings(
+        base_url=_BASE_URL,
+        auth_mode=HttpAuthMode.TOKEN,
+        token='invalid-token',
+        allow_insecure_http=True,
+    )
+    with HttpClient(settings=wrong) as client:
+        with pytest.raises(HttpStatusError) as captured:
+            client.request_json('GET', 'token/json')
+    assert captured.value.status_code == 401
+    assert 'invalid-token' not in repr(captured.value)
 
 
 def test_invalid_credentials_status_errors_and_timeout_are_safe_and_not_retried() -> None:

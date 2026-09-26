@@ -20,6 +20,7 @@ class HttpAuthMode(StrEnum):
 
     NONE = 'none'
     BEARER = 'bearer'
+    TOKEN = 'token'
     BASIC = 'basic'
 
 

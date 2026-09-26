@@ -20,6 +20,8 @@ class HttpAuthMode(StrEnum):
 
     NONE = 'none'
     BEARER = 'bearer'
+    # Token utiliza un esquema HTTP distinto de Bearer con una credencial propia.
+    TOKEN = 'token'
     BASIC = 'basic'
 
 

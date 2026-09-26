@@ -350,6 +350,8 @@ def _build_auth(settings: HttpSettings) -> httpx.Auth | None:
 def _build_default_headers(settings: HttpSettings) -> Mapping[str, str] | None:
     if settings.auth_mode == HttpAuthMode.BEARER:
         return {'Authorization': f'Bearer {_require_secret(settings.bearer_token)}'}
+    if settings.auth_mode == HttpAuthMode.TOKEN:
+        return {'Authorization': f'Token {_require_secret(settings.token)}'}
     return None
 
 

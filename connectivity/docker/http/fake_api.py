@@ -14,6 +14,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
 _BEARER_TOKEN = os.getenv('ATLANTICUS_FAKE_HTTP_BEARER_TOKEN', 'atlanticus-bearer-token')
+_TOKEN = os.getenv('ATLANTICUS_FAKE_HTTP_TOKEN', 'atlanticus-token')
 _BASIC_USERNAME = os.getenv('ATLANTICUS_FAKE_HTTP_BASIC_USERNAME', 'atlanticus-user')
 _BASIC_PASSWORD = os.getenv('ATLANTICUS_FAKE_HTTP_BASIC_PASSWORD', 'atlanticus-password')
 _MAX_REQUEST_BODY_BYTES = 1024 * 1024
@@ -87,7 +88,7 @@ class FakeApiHandler(BaseHTTPRequestHandler):
             self.state.reset()
             self._send_json(HTTPStatus.OK, {'reset': True})
             return
-        if len(segments) < 2 or segments[0] not in {'public', 'bearer', 'basic'}:
+        if len(segments) < 2 or segments[0] not in {'public', 'bearer', 'basic', 'token'}:
             self._send_json(HTTPStatus.NOT_FOUND, {'error': 'not_found'})
             return
 
@@ -160,6 +161,9 @@ class FakeApiHandler(BaseHTTPRequestHandler):
         if auth_mode == 'bearer':
             expected = f'Bearer {_BEARER_TOKEN}'
             return authorization is not None and hmac.compare_digest(authorization, expected)
+        if auth_mode == 'token':
+            expected = f'Token {_TOKEN}'
+            return authorization is not None and hmac.compare_digest(authorization, expected)
         credentials = base64.b64encode(f'{_BASIC_USERNAME}:{_BASIC_PASSWORD}'.encode()).decode()
         expected = f'Basic {credentials}'
         return authorization is not None and hmac.compare_digest(authorization, expected)
@@ -225,7 +229,9 @@ class FakeApiHandler(BaseHTTPRequestHandler):
 
 
 def _challenge(auth_mode: str) -> str:
-    return 'Basic realm="atlanticus"' if auth_mode == 'basic' else 'Bearer'
+    if auth_mode == 'basic':
+        return 'Basic realm="atlanticus"'
+    return 'Token' if auth_mode == 'token' else 'Bearer'
 
 
 def main() -> None:

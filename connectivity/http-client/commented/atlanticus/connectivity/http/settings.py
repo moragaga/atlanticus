@@ -22,6 +22,8 @@ class HttpSettings:
     base_url: str
     auth_mode: HttpAuthMode
     bearer_token: str | None = field(default=None, repr=False)
+    # No reutilizar bearer_token: cada esquema valida su propia credencial.
+    token: str | None = field(default=None, repr=False)
     username: str | None = field(default=None, repr=False)
     password: str | None = field(default=None, repr=False)
     connect_timeout_seconds: float = 5.0
@@ -61,15 +63,18 @@ class HttpSettings:
         )
 
         bearer_token = _optional_credential(self.bearer_token, 'bearer_token')
+        token = _optional_credential(self.token, 'token')
         username = _optional_credential(self.username, 'username')
         password = _optional_credential(self.password, 'password')
         _validate_authentication(
             auth_mode=auth_mode,
             bearer_token=bearer_token,
+            token=token,
             username=username,
             password=password,
         )
         object.__setattr__(self, 'bearer_token', bearer_token)
+        object.__setattr__(self, 'token', token)
         object.__setattr__(self, 'username', username)
         object.__setattr__(self, 'password', password)
 
@@ -149,21 +154,33 @@ def _validate_authentication(
     *,
     auth_mode: HttpAuthMode,
     bearer_token: str | None,
+    token: str | None,
     username: str | None,
     password: str | None,
 ) -> None:
     if auth_mode == HttpAuthMode.NONE:
-        if any(value is not None for value in (bearer_token, username, password)):
+        if any(value is not None for value in (bearer_token, token, username, password)):
             raise HttpConfigurationError('auth_mode none does not accept credentials')
         return
     if auth_mode == HttpAuthMode.BEARER:
         if bearer_token is None:
             raise HttpConfigurationError('bearer_token is required for bearer authentication')
-        if username is not None or password is not None:
-            raise HttpConfigurationError('bearer authentication does not accept basic credentials')
+        if token is not None or username is not None or password is not None:
+            raise HttpConfigurationError('bearer authentication does not accept token or basic credentials')
         if any(character.isspace() for character in bearer_token):
             raise HttpConfigurationError('bearer_token must not contain whitespace')
         return
+    # Rechazar combinaciones ambiguas antes de construir Authorization.
+    if auth_mode == HttpAuthMode.TOKEN:
+        if token is None:
+            raise HttpConfigurationError('token is required for token authentication')
+        if bearer_token is not None or username is not None or password is not None:
+            raise HttpConfigurationError('token authentication does not accept other credentials')
+        if any(character.isspace() for character in token):
+            raise HttpConfigurationError('token must not contain whitespace')
+        return
+    if token is not None:
+        raise HttpConfigurationError('basic authentication does not accept token')
     if username is None or password is None:
         raise HttpConfigurationError('username and password are required for basic authentication')
     if bearer_token is not None:
