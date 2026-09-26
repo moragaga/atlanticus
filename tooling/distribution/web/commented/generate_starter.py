@@ -77,7 +77,7 @@ def main() -> None:
     parser.add_argument('--destination', type=Path)
     args = parser.parse_args()
     destination = args.destination or (
-        REPOSITORY_ROOT / 'distributed' / f'{args.profile}-web-starter'
+        REPOSITORY_ROOT / 'distribution' / f'{args.profile}-web-starter'
     )
     print(generate_starter(profile=args.profile, destination=destination))
 

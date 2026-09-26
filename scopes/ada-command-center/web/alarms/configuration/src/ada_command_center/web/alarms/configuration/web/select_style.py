@@ -3,7 +3,7 @@ from __future__ import annotations
 
 def dash_select_style() -> dict[str, str]:
     return {
-        '--Dash-Spacing': '3px',
+        '--Dash-Spacing': '4px',
         '--Dash-Stroke-Strong': 'var(--atlanticus-ui-secondary)',
         '--Dash-Stroke-Weak': 'var(--atlanticus-ui-border)',
         '--Dash-Fill-Interactive-Strong': 'var(--atlanticus-ui-secondary)',

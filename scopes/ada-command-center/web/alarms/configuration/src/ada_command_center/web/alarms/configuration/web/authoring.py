@@ -116,6 +116,137 @@ def subcomponent_suggestions(
     return tuple(values)
 
 
+def synchronize_visual_targets(
+    document: dict[str, object],
+    rule_index: int,
+    references: dict[str, object] | None,
+) -> dict[str, object]:
+    updated = normalize_authoring_document(document)
+    if not isinstance(references, dict) or not isinstance(references.get('tools'), list):
+        return updated
+    rule = _rule(updated, rule_index)
+    catalog = {
+        tool['tool_key']: tool
+        for tool in _tools(references)
+        if isinstance(tool.get('tool_key'), str)
+    }
+    escalation = rule.get('escalation')
+    route = escalation if isinstance(escalation, dict) else {}
+    requested: list[str] = []
+    origin = route.get('origin_tool_key')
+    if isinstance(origin, str) and origin in catalog:
+        requested.append(origin)
+    steps = route.get('steps')
+    for step in steps if isinstance(steps, list) else []:
+        if not isinstance(step, dict) or step.get('is_enabled') is not True:
+            continue
+        key = step.get('target_tool_key')
+        if isinstance(key, str) and key in catalog and key not in requested:
+            requested.append(key)
+    raw_targets = rule.get('visual_targets')
+    existing = {
+        value['tool_key']: value
+        for value in (raw_targets if isinstance(raw_targets, list) else [])
+        if isinstance(value, dict) and isinstance(value.get('tool_key'), str)
+    }
+    targets: list[dict[str, object]] = []
+    for key in requested:
+        previous = existing.get(key)
+        target = (
+            deepcopy(previous)
+            if previous is not None
+            else {
+                'tool_key': key,
+                'component_keys': [],
+                'subcomponents': [],
+                'process_projection_mode': None,
+            }
+        )
+        if str(catalog[key].get('kind')).upper() != 'PROCESS':
+            target['process_projection_mode'] = None
+        targets.append(target)
+    rule['visual_targets'] = targets
+    return updated
+
+
+def set_visual_components(
+    document: dict[str, object],
+    rule_index: int,
+    target_index: int,
+    selected: object,
+    references: dict[str, object] | None,
+) -> dict[str, object]:
+    if not isinstance(selected, list) or any(not isinstance(v, str) for v in selected):
+        raise ValueError('Invalid component selection')
+    updated = normalize_authoring_document(document)
+    target = _visual_target(_rule(updated, rule_index), target_index)
+    options = component_suggestions(references, target.get('tool_key'))
+    allowed = {item['value'] for item in options}
+    if any(key not in allowed for key in selected):
+        raise ValueError('Selected component is not in the confirmed Tool catalog')
+    keys = list(dict.fromkeys(selected))
+    target['component_keys'] = keys
+    allowed_subcomponents = (
+        {
+            (item['owner_component_key'], item['subcomponent_key'])
+            for item in subcomponent_suggestions(references, target.get('tool_key'), keys)
+        }
+        if keys
+        else set()
+    )
+    previous_subcomponents = target.get('subcomponents')
+    target['subcomponents'] = [
+        entry
+        for entry in (previous_subcomponents if isinstance(previous_subcomponents, list) else [])
+        if isinstance(entry, dict)
+        and (entry.get('owner_component_key'), entry.get('subcomponent_key'))
+        in allowed_subcomponents
+    ]
+    return updated
+
+
+def set_visual_subcomponents(
+    document: dict[str, object],
+    rule_index: int,
+    target_index: int,
+    selected: object,
+    references: dict[str, object] | None,
+) -> dict[str, object]:
+    if not isinstance(selected, list) or any(not isinstance(v, str) for v in selected):
+        raise ValueError('Invalid subcomponent selection')
+    updated = normalize_authoring_document(document)
+    target = _visual_target(_rule(updated, rule_index), target_index)
+    selected_components = target.get('component_keys')
+    component_keys = selected_components if isinstance(selected_components, list) else []
+    options = subcomponent_suggestions(references, target.get('tool_key'), component_keys)
+    allowed = (
+        {(item['owner_component_key'], item['subcomponent_key']) for item in options}
+        if component_keys
+        else set()
+    )
+    chosen: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for token in selected:
+        try:
+            pair = json.loads(token)
+        except (TypeError, ValueError) as exc:
+            raise ValueError('Invalid subcomponent selection') from exc
+        if (
+            not isinstance(pair, list)
+            or len(pair) != 2
+            or any(not isinstance(value, str) for value in pair)
+        ):
+            raise ValueError('Invalid subcomponent selection')
+        identity = (pair[0], pair[1])
+        if identity not in allowed:
+            raise ValueError('Selected subcomponent is not in the confirmed Tool catalog')
+        if identity not in seen:
+            seen.add(identity)
+            chosen.append({'owner_component_key': identity[0], 'subcomponent_key': identity[1]})
+    target['subcomponents'] = chosen
+    return updated
+
+
 def add_rule(document: dict[str, object]) -> dict[str, object]:
     value = normalize_authoring_document(document)
     _rules(value).append(_new_rule())
@@ -371,6 +502,26 @@ def set_message_field(
 ) -> dict[str, object]:
     value = normalize_authoring_document(document)
     message = _message(value, message_index)
+    if field == 'deactivation_policy':
+        if field_value == 'INHERIT':
+            message['deactivation_override'] = None
+        elif field_value == 'ALLOW':
+            previous = message.get('deactivation_override')
+            details = previous if isinstance(previous, dict) else {}
+            message['deactivation_override'] = {
+                'enabled': True,
+                'max_duration_hours': details.get('max_duration_hours'),
+                'approval_required': details.get('approval_required') is True,
+            }
+        elif field_value == 'DENY':
+            message['deactivation_override'] = {
+                'enabled': False,
+                'max_duration_hours': None,
+                'approval_required': False,
+            }
+        else:
+            raise ValueError('Invalid message deactivation policy')
+        return value
     if field in {'message_key', 'display_text', 'is_active'}:
         message[field] = field_value
         return value

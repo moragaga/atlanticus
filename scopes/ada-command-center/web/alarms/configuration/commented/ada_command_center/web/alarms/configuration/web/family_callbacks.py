@@ -1,4 +1,6 @@
-# Coordinación de selección y alta de familia, separada de Manager genérico.
+# La navegación y la paginación conservan el contexto y el borrador entre páginas.
+# Estructura y comportamiento idénticos al módulo productivo.
+
 from __future__ import annotations
 
 from dash import ALL, Input, Output, State, ctx, html, no_update
@@ -43,9 +45,7 @@ from ada_command_center.web.alarms.configuration.web.ids import (
 from ada_command_center.web.alarms.configuration.web.pagination import change_list_page
 
 
-# La navegación efímera no modifica los workflows de Manager ni su persistencia.
 def register_family_callbacks(app: object) -> None:
-    # Cada flujo actualiza únicamente navegación o datos de autoría según su contrato.
     @app.callback(
         Output(FAMILY_NAV_STORE_ID, 'data'),
         Input(SHOW_FAMILIES_ID, 'n_clicks'),
@@ -116,7 +116,6 @@ def register_family_callbacks(app: object) -> None:
             return {**current, 'tab': 'messages', 'message_index': index}
         return no_update
 
-    # Cada flujo actualiza únicamente navegación o datos de autoría según su contrato.
     @app.callback(
         Output(AUTHORING_STORE_ID, 'data', allow_duplicate=True),
         Output(FAMILY_NAV_STORE_ID, 'data', allow_duplicate=True),
@@ -159,7 +158,6 @@ def register_family_callbacks(app: object) -> None:
             }
         return no_update, no_update
 
-    # Cada flujo actualiza únicamente navegación o datos de autoría según su contrato.
     @app.callback(
         Output(FAMILY_NAV_STORE_ID, 'data', allow_duplicate=True),
         Output(FAMILY_ACTION_RESULT_ID, 'children'),
@@ -201,7 +199,6 @@ def register_family_callbacks(app: object) -> None:
             '',
         )
 
-    # Cada flujo actualiza únicamente navegación o datos de autoría según su contrato.
     @app.callback(
         Output(FAMILY_NAV_STORE_ID, 'data', allow_duplicate=True),
         Input({'type': RULE_SECTION_TYPE, 'section': ALL}, 'n_clicks'),
@@ -222,7 +219,6 @@ def register_family_callbacks(app: object) -> None:
             return no_update
         return {**navigation, 'section': section}
 
-    # Cada flujo actualiza únicamente navegación o datos de autoría según su contrato.
     @app.callback(
         Output(FAMILY_NAV_STORE_ID, 'data', allow_duplicate=True),
         Input(CLOSE_EDITOR_ID, 'n_clicks'),
@@ -235,7 +231,6 @@ def register_family_callbacks(app: object) -> None:
             return no_update
         return {**navigation, 'rule_index': None, 'message_index': None}
 
-    # Cada flujo actualiza únicamente navegación o datos de autoría según su contrato.
     @app.callback(
         Output(FAMILY_CREATE_PANEL_ID, 'hidden'),
         Input(FAMILY_NAV_STORE_ID, 'data'),
@@ -247,7 +242,6 @@ def register_family_callbacks(app: object) -> None:
             or not navigation.get('family_create_open', False)
         )
 
-    # Cada flujo actualiza únicamente navegación o datos de autoría según su contrato.
     @app.callback(
         Output(ADD_RULE_BUTTON_ID, 'disabled'),
         Output(ADD_MESSAGE_BUTTON_ID, 'disabled'),
@@ -264,20 +258,31 @@ def register_family_callbacks(app: object) -> None:
     @app.callback(
         Output(FAMILY_NAV_STORE_ID, 'data', allow_duplicate=True),
         Input({'type': LIST_PAGE_TYPE, 'listing': ALL, 'page': ALL, 'action': ALL}, 'n_clicks'),
-        Input({'type': LIST_PAGE_SIZE_TYPE, 'listing': ALL, 'size': ALL}, 'n_clicks'),
+        Input({'type': LIST_PAGE_SIZE_TYPE, 'listing': ALL, 'size': ALL}, 'value'),
         State(FAMILY_NAV_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
-    def change_pagination(_page_clicks, _size_clicks, navigation):
+    def change_pagination(_page_clicks, _size_values, navigation):
         trigger = ctx.triggered_id
-        if not _real_click() or not isinstance(trigger, dict):
+        if not isinstance(trigger, dict) or not ctx.triggered:
             return no_update
         current = navigation if isinstance(navigation, dict) else initial_navigation()
         try:
             if trigger.get('type') == LIST_PAGE_TYPE:
+                if not _real_click():
+                    return no_update
                 return change_list_page(current, trigger.get('listing'), page=trigger.get('page'))
             if trigger.get('type') == LIST_PAGE_SIZE_TYPE:
-                return change_list_page(current, trigger.get('listing'), size=trigger.get('size'))
+                size = ctx.triggered[0].get('value')
+                if type(size) is not int:
+                    return no_update
+                existing = current.get('pagination', {})
+                item = (
+                    existing.get(trigger.get('listing'), {}) if isinstance(existing, dict) else {}
+                )
+                if isinstance(item, dict) and item.get('size', 10) == size:
+                    return no_update
+                return change_list_page(current, trigger.get('listing'), size=size)
         except ValueError:
             pass
         return no_update
@@ -301,7 +306,6 @@ def register_family_callbacks(app: object) -> None:
         return no_update
 
 
-# Descarta disparos espurios durante el montaje de controles dinámicos.
 def _pending_families(navigation: dict[str, object]) -> list[str]:
     raw = navigation.get('pending_families')
     return [key for key in raw if isinstance(key, str)] if isinstance(raw, list) else []

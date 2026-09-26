@@ -1,6 +1,17 @@
 from __future__ import annotations
 
-from dash import ALL, Input, Output, State, ctx, html, no_update
+import json
+
+from dash import (
+    ALL,
+    MATCH,
+    Input,
+    Output,
+    State,
+    ctx,
+    html,
+    no_update,
+)
 
 from ada_command_center.domain.alarms import (
     AlarmConfiguration,
@@ -8,23 +19,19 @@ from ada_command_center.domain.alarms import (
 )
 from ada_command_center.domain.tools import ToolDependencyManifest
 from ada_command_center.web.alarms.configuration.web.authoring import (
-    add_component_key,
     add_escalation_step,
-    add_subcomponent,
-    add_visual_target,
     empty_authoring_document,
-    remove_component_key,
     remove_escalation_step,
     remove_message,
     remove_rule,
-    remove_subcomponent,
-    remove_visual_target,
-    set_component_key,
     set_escalation_step_field,
     set_message_field,
     set_rule_field,
-    set_subcomponent_field,
+    set_visual_components,
+    set_visual_subcomponents,
     set_visual_target_field,
+    subcomponent_suggestions,
+    synchronize_visual_targets,
     tool_reference_catalog_to_document,
 )
 from ada_command_center.web.alarms.configuration.web.diagnostics import (
@@ -32,9 +39,6 @@ from ada_command_center.web.alarms.configuration.web.diagnostics import (
 )
 from ada_command_center.web.alarms.configuration.web.ids import (
     AUTHORING_STORE_ID,
-    COMPONENT_ADD_TYPE,
-    COMPONENT_FIELD_TYPE,
-    COMPONENT_REMOVE_TYPE,
     DOCUMENT_STATUS_ID,
     FAMILY_NAV_STORE_ID,
     IMPORT_RESULT_ID,
@@ -50,28 +54,28 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     MODAL_BODY_ID,
     MODAL_SAVE_BUTTON_ID,
     MODAL_SAVE_RESULT_ID,
+    MODAL_SHAPE_STORE_ID,
     MODAL_TITLE_ID,
     MODAL_WRAPPER_ID,
     MOUNT_STORE_ID,
     PARAMETER_ADD_TYPE,
     PARAMETER_FIELD_TYPE,
     PARAMETER_REMOVE_TYPE,
+    REMOVE_CONFIRM_ID,
+    REMOVE_PENDING_STORE_ID,
+    REMOVE_RESULT_ID,
     RULE_FIELD_TYPE,
     RULE_REMOVE_TYPE,
     RULES_EDITOR_ID,
-    SAVE_BUTTON_ID,
     SAVE_RESULT_ID,
     STEP_ADD_TYPE,
     STEP_FIELD_TYPE,
     STEP_REMOVE_TYPE,
-    SUBCOMPONENT_ADD_TYPE,
-    SUBCOMPONENT_FIELD_TYPE,
-    SUBCOMPONENT_REMOVE_TYPE,
-    TARGET_ADD_TYPE,
     TARGET_FIELD_TYPE,
-    TARGET_REMOVE_TYPE,
     TOOL_REFERENCE_STATUS_ID,
     TOOL_REFERENCE_STORE_ID,
+    VISUAL_SUBCOMPONENT_SELECT_TYPE,
+    VISUAL_TOOL_STORE_TYPE,
 )
 from ada_command_center.web.alarms.configuration.web.import_review import (
     can_confirm,
@@ -87,6 +91,7 @@ from ada_command_center.web.alarms.configuration.web.models import (
 )
 from ada_command_center.web.alarms.configuration.web.parameters import (
     add_parameter,
+    parameter_rows,
     remove_parameter,
     set_parameter_field,
 )
@@ -130,24 +135,94 @@ def register_alarm_configuration_admin_callbacks(
     @app.callback(
         Output(RULES_EDITOR_ID, 'children'),
         Output(MESSAGES_EDITOR_ID, 'children'),
-        Output(MODAL_TITLE_ID, 'children'),
-        Output(MODAL_BODY_ID, 'children'),
-        Output(MODAL_WRAPPER_ID, 'hidden'),
         Input(AUTHORING_STORE_ID, 'data'),
         Input(TOOL_REFERENCE_STORE_ID, 'data'),
         Input(FAMILY_NAV_STORE_ID, 'data'),
     )
-    def render_editors(
+    def render_listings(
         authoring_document: dict[str, object] | None,
         reference_document: dict[str, object] | None,
         navigation: dict[str, object] | None,
     ):
-        listing, messages = build_structured_editors(
-            authoring_document, reference_document, navigation
-        )
+        return build_structured_editors(authoring_document, reference_document, navigation)
+
+    @app.callback(
+        Output(MODAL_SHAPE_STORE_ID, 'data'),
+        Input(AUTHORING_STORE_ID, 'data'),
+        State(FAMILY_NAV_STORE_ID, 'data'),
+        State(MODAL_SHAPE_STORE_ID, 'data'),
+    )
+    def sync_modal_shape(
+        authoring_document: dict[str, object] | None,
+        navigation: dict[str, object] | None,
+        previous: str | None,
+    ):
+        signature = _modal_shape(authoring_document, navigation)
+        return no_update if signature == previous else signature
+
+    @app.callback(
+        Output(MODAL_TITLE_ID, 'children'),
+        Output(MODAL_BODY_ID, 'children'),
+        Output(MODAL_WRAPPER_ID, 'hidden'),
+        Input(FAMILY_NAV_STORE_ID, 'data'),
+        Input(TOOL_REFERENCE_STORE_ID, 'data'),
+        Input(MODAL_SHAPE_STORE_ID, 'data'),
+        State(AUTHORING_STORE_ID, 'data'),
+    )
+    def render_modal(
+        navigation: dict[str, object] | None,
+        references: dict[str, object] | None,
+        _shape: str | None,
+        authoring_document: dict[str, object] | None,
+    ):
         document = authoring_document or empty_authoring_document()
-        title, details = build_active_alarm_editor(document, reference_document, navigation)
-        return listing, messages, title, details, details is None
+        title, details = build_active_alarm_editor(document, references, navigation)
+        return title, details, details is None
+
+    @app.callback(
+        Output(
+            {'type': VISUAL_SUBCOMPONENT_SELECT_TYPE, 'rule': MATCH, 'target': MATCH},
+            'options',
+        ),
+        Output(
+            {'type': VISUAL_SUBCOMPONENT_SELECT_TYPE, 'rule': MATCH, 'target': MATCH},
+            'value',
+        ),
+        Output(
+            {'type': VISUAL_SUBCOMPONENT_SELECT_TYPE, 'rule': MATCH, 'target': MATCH},
+            'disabled',
+        ),
+        Input(
+            {'type': TARGET_FIELD_TYPE, 'rule': MATCH, 'target': MATCH, 'field': 'component_keys'},
+            'value',
+        ),
+        State({'type': VISUAL_TOOL_STORE_TYPE, 'rule': MATCH, 'target': MATCH}, 'data'),
+        State(TOOL_REFERENCE_STORE_ID, 'data'),
+        State({'type': VISUAL_SUBCOMPONENT_SELECT_TYPE, 'rule': MATCH, 'target': MATCH}, 'value'),
+    )
+    def update_subcomponent_choices(
+        selected_components: list[str] | None,
+        tool_key: str | None,
+        references: dict[str, object] | None,
+        previous: list[str] | None,
+    ):
+        if not isinstance(references, dict):
+            return no_update, no_update, no_update
+        selected = selected_components if isinstance(selected_components, list) else []
+        options = [
+            {
+                'label': f'{item["owner_component_key"]} · {item["display_name"]}',
+                'value': json.dumps(
+                    [item['owner_component_key'], item['subcomponent_key']],
+                    separators=(',', ':'),
+                ),
+            }
+            for item in subcomponent_suggestions(references, tool_key, selected)
+            if selected
+        ]
+        allowed = {item['value'] for item in options}
+        values = [value for value in previous or [] if value in allowed]
+        return options, values, not bool(selected)
 
     @app.callback(
         Output(context.editor_revision_store_id, 'data'),
@@ -180,34 +255,22 @@ def register_alarm_configuration_admin_callbacks(
         Input({'type': RULE_FIELD_TYPE, 'rule': ALL, 'field': ALL}, 'value'),
         Input({'type': STEP_FIELD_TYPE, 'rule': ALL, 'step': ALL, 'field': ALL}, 'value'),
         Input({'type': TARGET_FIELD_TYPE, 'rule': ALL, 'target': ALL, 'field': ALL}, 'value'),
-        Input(
-            {'type': COMPONENT_FIELD_TYPE, 'rule': ALL, 'target': ALL, 'component': ALL},
-            'value',
-        ),
-        Input(
-            {
-                'type': SUBCOMPONENT_FIELD_TYPE,
-                'rule': ALL,
-                'target': ALL,
-                'subcomponent': ALL,
-                'field': ALL,
-            },
-            'value',
-        ),
+        Input({'type': VISUAL_SUBCOMPONENT_SELECT_TYPE, 'rule': ALL, 'target': ALL}, 'value'),
         Input({'type': PARAMETER_FIELD_TYPE, 'rule': ALL, 'parameter': ALL, 'field': ALL}, 'value'),
         Input({'type': MESSAGE_FIELD_TYPE, 'message': ALL, 'field': ALL}, 'value'),
         State(AUTHORING_STORE_ID, 'data'),
+        State(TOOL_REFERENCE_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
     def update_authoring_fields(
         _rule_values: list[object],
         _step_values: list[object],
         _target_values: list[object],
-        _component_values: list[object],
-        _subcomponent_values: list[object],
+        _visual_subcomponent_values: list[object],
         _parameter_values: list[object],
         _message_values: list[object],
         current_document: dict[str, object] | None,
+        reference_document: dict[str, object] | None,
     ):
         component_id = ctx.triggered_id
         if not isinstance(component_id, dict) or current_document is None:
@@ -216,44 +279,50 @@ def register_alarm_configuration_admin_callbacks(
         component_type = component_id.get('type')
         try:
             if component_type == RULE_FIELD_TYPE:
-                updated = set_rule_field(
-                    current_document,
-                    int(component_id['rule']),
-                    str(component_id['field']),
-                    field_value,
-                )
+                rule_index = int(component_id['rule'])
+                field = str(component_id['field'])
+                if field == 'escalation.origin_tool_key' and field_value is None:
+                    return no_update
+                updated = set_rule_field(current_document, rule_index, field, field_value)
+                if field == 'escalation.origin_tool_key':
+                    updated = synchronize_visual_targets(updated, rule_index, reference_document)
             elif component_type == STEP_FIELD_TYPE:
+                rule_index = int(component_id['rule'])
                 updated = set_escalation_step_field(
                     current_document,
-                    int(component_id['rule']),
+                    rule_index,
                     int(component_id['step']),
                     str(component_id['field']),
                     field_value,
                 )
+                if component_id['field'] in {'target_tool_key', 'is_enabled'}:
+                    updated = synchronize_visual_targets(updated, rule_index, reference_document)
             elif component_type == TARGET_FIELD_TYPE:
-                updated = set_visual_target_field(
+                rule_index = int(component_id['rule'])
+                target_index = int(component_id['target'])
+                if component_id['field'] == 'component_keys':
+                    updated = set_visual_components(
+                        current_document,
+                        rule_index,
+                        target_index,
+                        field_value,
+                        reference_document,
+                    )
+                else:
+                    updated = set_visual_target_field(
+                        current_document,
+                        rule_index,
+                        target_index,
+                        str(component_id['field']),
+                        field_value,
+                    )
+            elif component_type == VISUAL_SUBCOMPONENT_SELECT_TYPE:
+                updated = set_visual_subcomponents(
                     current_document,
                     int(component_id['rule']),
                     int(component_id['target']),
-                    str(component_id['field']),
                     field_value,
-                )
-            elif component_type == COMPONENT_FIELD_TYPE:
-                updated = set_component_key(
-                    current_document,
-                    int(component_id['rule']),
-                    int(component_id['target']),
-                    int(component_id['component']),
-                    field_value,
-                )
-            elif component_type == SUBCOMPONENT_FIELD_TYPE:
-                updated = set_subcomponent_field(
-                    current_document,
-                    int(component_id['rule']),
-                    int(component_id['target']),
-                    int(component_id['subcomponent']),
-                    str(component_id['field']),
-                    field_value,
+                    reference_document,
                 )
             elif component_type == PARAMETER_FIELD_TYPE:
                 updated = set_parameter_field(
@@ -278,58 +347,29 @@ def register_alarm_configuration_admin_callbacks(
 
     @app.callback(
         Output(AUTHORING_STORE_ID, 'data', allow_duplicate=True),
-        Input({'type': RULE_REMOVE_TYPE, 'rule': ALL}, 'n_clicks'),
-        Input({'type': MESSAGE_REMOVE_TYPE, 'message': ALL}, 'n_clicks'),
         Input({'type': PARAMETER_ADD_TYPE, 'rule': ALL}, 'n_clicks'),
         Input({'type': PARAMETER_REMOVE_TYPE, 'rule': ALL, 'parameter': ALL}, 'n_clicks'),
         Input({'type': STEP_ADD_TYPE, 'rule': ALL}, 'n_clicks'),
         Input({'type': STEP_REMOVE_TYPE, 'rule': ALL, 'step': ALL}, 'n_clicks'),
-        Input({'type': TARGET_ADD_TYPE, 'rule': ALL}, 'n_clicks'),
-        Input({'type': TARGET_REMOVE_TYPE, 'rule': ALL, 'target': ALL}, 'n_clicks'),
-        Input({'type': COMPONENT_ADD_TYPE, 'rule': ALL, 'target': ALL}, 'n_clicks'),
-        Input(
-            {'type': COMPONENT_REMOVE_TYPE, 'rule': ALL, 'target': ALL, 'component': ALL},
-            'n_clicks',
-        ),
-        Input({'type': SUBCOMPONENT_ADD_TYPE, 'rule': ALL, 'target': ALL}, 'n_clicks'),
-        Input(
-            {
-                'type': SUBCOMPONENT_REMOVE_TYPE,
-                'rule': ALL,
-                'target': ALL,
-                'subcomponent': ALL,
-            },
-            'n_clicks',
-        ),
         State(AUTHORING_STORE_ID, 'data'),
+        State(TOOL_REFERENCE_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
     def update_authoring_structure(
-        _remove_rule_clicks: list[int | None],
-        _remove_message_clicks: list[int | None],
         _add_parameter_clicks: list[int | None],
         _remove_parameter_clicks: list[int | None],
         _add_step_clicks: list[int | None],
         _remove_step_clicks: list[int | None],
-        _add_target_clicks: list[int | None],
-        _remove_target_clicks: list[int | None],
-        _add_component_clicks: list[int | None],
-        _remove_component_clicks: list[int | None],
-        _add_subcomponent_clicks: list[int | None],
-        _remove_subcomponent_clicks: list[int | None],
         current_document: dict[str, object] | None,
+        reference_document: dict[str, object] | None,
     ):
         component_id = ctx.triggered_id
         if current_document is None or not _click_is_real(_triggered_value()):
             return no_update
+        if not isinstance(component_id, dict):
+            return no_update
         try:
-            if not isinstance(component_id, dict):
-                return no_update
             component_type = component_id.get('type')
-            if component_type == RULE_REMOVE_TYPE:
-                return remove_rule(current_document, int(component_id['rule']))
-            if component_type == MESSAGE_REMOVE_TYPE:
-                return remove_message(current_document, int(component_id['message']))
             if component_type == PARAMETER_ADD_TYPE:
                 return add_parameter(current_document, int(component_id['rule']))
             if component_type == PARAMETER_REMOVE_TYPE:
@@ -341,48 +381,87 @@ def register_alarm_configuration_admin_callbacks(
             if component_type == STEP_ADD_TYPE:
                 return add_escalation_step(current_document, int(component_id['rule']))
             if component_type == STEP_REMOVE_TYPE:
-                return remove_escalation_step(
-                    current_document,
-                    int(component_id['rule']),
-                    int(component_id['step']),
+                rule_index = int(component_id['rule'])
+                updated = remove_escalation_step(
+                    current_document, rule_index, int(component_id['step'])
                 )
-            if component_type == TARGET_ADD_TYPE:
-                return add_visual_target(current_document, int(component_id['rule']))
-            if component_type == TARGET_REMOVE_TYPE:
-                return remove_visual_target(
-                    current_document,
-                    int(component_id['rule']),
-                    int(component_id['target']),
-                )
-            if component_type == COMPONENT_ADD_TYPE:
-                return add_component_key(
-                    current_document,
-                    int(component_id['rule']),
-                    int(component_id['target']),
-                )
-            if component_type == COMPONENT_REMOVE_TYPE:
-                return remove_component_key(
-                    current_document,
-                    int(component_id['rule']),
-                    int(component_id['target']),
-                    int(component_id['component']),
-                )
-            if component_type == SUBCOMPONENT_ADD_TYPE:
-                return add_subcomponent(
-                    current_document,
-                    int(component_id['rule']),
-                    int(component_id['target']),
-                )
-            if component_type == SUBCOMPONENT_REMOVE_TYPE:
-                return remove_subcomponent(
-                    current_document,
-                    int(component_id['rule']),
-                    int(component_id['target']),
-                    int(component_id['subcomponent']),
-                )
+                return synchronize_visual_targets(updated, rule_index, reference_document)
         except IndexError, KeyError, TypeError, ValueError:
             return no_update
         return no_update
+
+    @app.callback(
+        Output(REMOVE_CONFIRM_ID, 'displayed'),
+        Output(REMOVE_CONFIRM_ID, 'message'),
+        Output(REMOVE_PENDING_STORE_ID, 'data'),
+        Output(REMOVE_RESULT_ID, 'children'),
+        Input({'type': RULE_REMOVE_TYPE, 'rule': ALL}, 'n_clicks'),
+        Input({'type': MESSAGE_REMOVE_TYPE, 'message': ALL}, 'n_clicks'),
+        State(AUTHORING_STORE_ID, 'data'),
+        prevent_initial_call=True,
+    )
+    def request_deletion(
+        _rule_clicks: list[int | None],
+        _message_clicks: list[int | None],
+        document: dict[str, object] | None,
+    ):
+        trigger = ctx.triggered_id
+        if not isinstance(trigger, dict) or not _click_is_real(_triggered_value()):
+            return no_update, no_update, no_update, no_update
+        if not isinstance(document, dict):
+            return False, '', None, _error('No configuration is loaded')
+        try:
+            if trigger.get('type') == RULE_REMOVE_TYPE:
+                kind, index = 'rule', int(trigger['rule'])
+            elif trigger.get('type') == MESSAGE_REMOVE_TYPE:
+                kind, index = 'message', int(trigger['message'])
+            else:
+                return no_update, no_update, no_update, no_update
+            issue = _deletion_issue(document, kind, index)
+        except IndexError, KeyError, TypeError, ValueError:
+            return False, '', None, _error('The selected item is no longer available')
+        if issue is not None:
+            return False, '', None, _error(issue)
+        subject = 'esta regla' if kind == 'rule' else 'este mensaje'
+        return True, f'¿Eliminar {subject} del borrador?', {'kind': kind, 'index': index}, None
+
+    @app.callback(
+        Output(AUTHORING_STORE_ID, 'data', allow_duplicate=True),
+        Output(FAMILY_NAV_STORE_ID, 'data', allow_duplicate=True),
+        Output(REMOVE_PENDING_STORE_ID, 'data', allow_duplicate=True),
+        Output(REMOVE_RESULT_ID, 'children', allow_duplicate=True),
+        Input(REMOVE_CONFIRM_ID, 'submit_n_clicks'),
+        Input(REMOVE_CONFIRM_ID, 'cancel_n_clicks'),
+        State(REMOVE_PENDING_STORE_ID, 'data'),
+        State(AUTHORING_STORE_ID, 'data'),
+        State(FAMILY_NAV_STORE_ID, 'data'),
+        prevent_initial_call=True,
+    )
+    def confirm_deletion(
+        clicks: int | None,
+        cancel_clicks: int | None,
+        pending: dict[str, object] | None,
+        document: dict[str, object] | None,
+        navigation: dict[str, object] | None,
+    ):
+        if ctx.triggered and ctx.triggered[0]['prop_id'].endswith('.cancel_n_clicks'):
+            return no_update, no_update, None, None
+        if not _click_is_real(clicks) or ctx.triggered_id != REMOVE_CONFIRM_ID:
+            return no_update, no_update, no_update, no_update
+        if not isinstance(pending, dict) or not isinstance(document, dict):
+            return no_update, no_update, None, _error('No deletion was requested')
+        try:
+            kind, index = str(pending['kind']), int(pending['index'])
+            issue = _deletion_issue(document, kind, index)
+            if issue is not None:
+                return no_update, no_update, None, _error(issue)
+            updated = (
+                remove_rule(document, index) if kind == 'rule' else remove_message(document, index)
+            )
+        except IndexError, KeyError, TypeError, ValueError:
+            return no_update, no_update, None, _error('The selected item is no longer available')
+        current = navigation if isinstance(navigation, dict) else {}
+        return updated, {**current, 'rule_index': None, 'message_index': None}, None, None
 
     @app.callback(
         Output(IMPORT_REVIEW_STORE_ID, 'data'),
@@ -508,7 +587,6 @@ def register_alarm_configuration_admin_callbacks(
         Output(context.saved_draft_store_id, 'data', allow_duplicate=True),
         Output(SAVE_RESULT_ID, 'children'),
         Output(MODAL_SAVE_RESULT_ID, 'children'),
-        Input(SAVE_BUTTON_ID, 'n_clicks'),
         Input(MODAL_SAVE_BUTTON_ID, 'n_clicks'),
         Input(context.draft_save_action_id, 'n_clicks'),
         State(AUTHORING_STORE_ID, 'data'),
@@ -517,23 +595,21 @@ def register_alarm_configuration_admin_callbacks(
         prevent_initial_call=True,
     )
     def save_draft(
-        content_clicks: int | None,
-        workflow_clicks: int | None,
         modal_clicks: int | None,
+        workflow_clicks: int | None,
         authoring_document: dict[str, object] | None,
         current_draft: dict[str, object] | None,
         editor_revision: str | None,
     ):
         if not _save_draft_click_is_real(
             ctx.triggered_id,
-            content_clicks=content_clicks,
-            workflow_clicks=workflow_clicks,
             modal_clicks=modal_clicks,
+            workflow_clicks=workflow_clicks,
             workflow_id=context.draft_save_action_id,
         ):
             return no_update, no_update, no_update, no_update
         if not context.can_manage():
-            error = _error('No tienes permiso para guardar cambios.')
+            error = _error('You do not have permission to save changes')
             return no_update, no_update, error, error
         issues = authoring_issues(authoring_document)
         if issues:
@@ -542,8 +618,8 @@ def register_alarm_configuration_admin_callbacks(
         try:
             configuration = _configuration(authoring_document)
             if current_draft is not None:
-                expected_editor_revision = _editor_revision(configuration, current_draft)
-                if editor_revision != expected_editor_revision:
+                expected_revision = _editor_revision(configuration, current_draft)
+                if editor_revision != expected_revision:
                     raise ManagerProjectionError(
                         'Alarm Configuration editor revision changed before saving the draft'
                     )
@@ -615,13 +691,10 @@ def _triggered_value() -> object:
 def _save_draft_click_is_real(
     trigger: object,
     *,
-    content_clicks: int | None,
+    modal_clicks: int | None,
     workflow_clicks: int | None,
     workflow_id: object,
-    modal_clicks: int | None = None,
 ) -> bool:
-    if trigger == SAVE_BUTTON_ID:
-        return _click_is_real(content_clicks)
     if trigger == MODAL_SAVE_BUTTON_ID:
         return _click_is_real(modal_clicks)
     if isinstance(trigger, dict) and isinstance(workflow_id, dict):
@@ -645,3 +718,102 @@ def _error(message: str) -> object:
         message,
         className='atlanticus-manager__message atlanticus-manager__message--error',
     )
+
+
+def _modal_shape(
+    document: dict[str, object] | None,
+    navigation: dict[str, object] | None,
+) -> str | None:
+    if not isinstance(document, dict) or not isinstance(navigation, dict):
+        return None
+    if navigation.get('page') == 'global' or navigation.get('tab') == 'messages':
+        messages = document.get('messages')
+        index = navigation.get('message_index')
+        if (
+            not isinstance(messages, list)
+            or type(index) is not int
+            or not 0 <= index < len(messages)
+        ):
+            return None
+        item = messages[index]
+        if not isinstance(item, dict):
+            return None
+        override = item.get('deactivation_override')
+        value = override.get('enabled') if isinstance(override, dict) else None
+        return json.dumps(['message', index, value])
+    rules = document.get('rules')
+    index = navigation.get('rule_index')
+    if not isinstance(rules, list) or type(index) is not int or not 0 <= index < len(rules):
+        return None
+    rule = rules[index]
+    if not isinstance(rule, dict):
+        return None
+    section = navigation.get('section', 'general')
+    if section == 'evaluation':
+        values = tuple(item.get('kind') for item in parameter_rows(rule))
+    elif section == 'behavior':
+        defaults = rule.get('default_deactivation')
+        escalation = rule.get('escalation')
+        steps = escalation.get('steps') if isinstance(escalation, dict) else []
+        values = (
+            rule.get('criticality'),
+            escalation.get('origin_tool_key') if isinstance(escalation, dict) else None,
+            defaults.get('enabled') if isinstance(defaults, dict) else None,
+            len(steps) if isinstance(steps, list) else 0,
+        )
+    elif section == 'visual':
+        targets = rule.get('visual_targets')
+        values = (
+            tuple(item.get('tool_key') for item in targets if isinstance(item, dict))
+            if isinstance(targets, list)
+            else ()
+        )
+    else:
+        values = ()
+    return json.dumps(['rule', index, section, values])
+
+
+def _deletion_issue(document: dict[str, object], kind: str, index: int) -> str | None:
+    rules = document.get('rules')
+    messages = document.get('messages')
+    all_rules = rules if isinstance(rules, list) else []
+    all_messages = messages if isinstance(messages, list) else []
+    if kind == 'rule':
+        if index < 0 or index >= len(all_rules) or not isinstance(all_rules[index], dict):
+            raise IndexError(index)
+        target = all_rules[index].get('identity')
+        identity = target if isinstance(target, dict) else {}
+        pair = identity.get('family_key'), identity.get('alarm_key')
+        for other_index, rule in enumerate(all_rules):
+            if other_index == index or not isinstance(rule, dict):
+                continue
+            reappearance = rule.get('reappearance')
+            configured = (
+                reappearance.get('special_conditions') if isinstance(reappearance, dict) else []
+            )
+            for item in configured if isinstance(configured, list) else []:
+                if (
+                    isinstance(item, dict)
+                    and (item.get('family_key'), item.get('alarm_key')) == pair
+                ):
+                    return 'Rule cannot be deleted while referenced by another rule'
+        return None
+    if kind != 'message' or index < 0 or index >= len(all_messages):
+        raise IndexError(index)
+    message = all_messages[index]
+    if not isinstance(message, dict):
+        raise IndexError(index)
+    key = message.get('message_key')
+    scope = message.get('scope')
+    family = message.get('family_key')
+    for rule in all_rules:
+        if not isinstance(rule, dict):
+            continue
+        selected_keys = rule.get('message_keys')
+        if not isinstance(selected_keys, list) or key not in selected_keys:
+            continue
+        identity = rule.get('identity')
+        rule_family = identity.get('family_key') if isinstance(identity, dict) else None
+        if scope == 'GLOBAL' or scope == 'FAMILY' and rule_family == family:
+            return 'Message cannot be deleted while referenced by a rule'
+    return None

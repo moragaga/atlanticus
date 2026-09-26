@@ -18,13 +18,13 @@ def test_guided_section_mounts_only_selected_group() -> None:
         for index in range(7)
     ]
     result = build_rule_section(
-        [html.Legend('Ejemplo'), html.Button('Eliminar'), *groups],
+        groups,
         section='evaluation',
         criticality='C2',
         targets=[],
         references=None,
     )
-    body = result.children[1]
+    body = result
     content = body.children[1]
     panels = content.children[1]
     assert panels.children == [groups[2]]
@@ -43,13 +43,13 @@ def test_criticality_three_omits_add_step_without_deleting_existing_data() -> No
         ]
     )
     result = build_rule_section(
-        [html.Legend('Ejemplo'), html.Button('Eliminar'), *groups],
+        groups,
         section='behavior',
         criticality='C3',
         targets=[],
         references=None,
     )
-    rendered = result.children[1].children[1].children[1].children[-1]
+    rendered = result.children[1].children[1].children[-1]
     assert existing in rendered.children
     assert all(
         getattr(item, 'id', None) != {'type': STEP_ADD_TYPE, 'rule': 0}

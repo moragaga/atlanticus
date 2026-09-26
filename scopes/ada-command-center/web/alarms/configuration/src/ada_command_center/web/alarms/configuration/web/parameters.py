@@ -211,9 +211,9 @@ def parameter_editor(rule_index: int, rule: dict[str, object]) -> object:
                                         'field': 'kind',
                                     },
                                     options=[
-                                        {'label': 'Texto', 'value': 'TEXT'},
-                                        {'label': 'Número', 'value': 'FLOAT'},
-                                        {'label': 'Sí/No', 'value': 'BOOLEAN'},
+                                        {'label': 'Text', 'value': 'TEXT'},
+                                        {'label': 'Float', 'value': 'FLOAT'},
+                                        {'label': 'Boolean', 'value': 'BOOLEAN'},
                                     ],
                                     value=kind,
                                     clearable=False,

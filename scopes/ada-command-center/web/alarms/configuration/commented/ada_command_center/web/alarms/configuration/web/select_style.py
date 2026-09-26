@@ -1,11 +1,12 @@
-# Adaptador visual reutilizado del patrón Navigation; aplica variables en
-# la raíz efectiva del selector de Dash, incluido su portal emergente.
+# Tokens de Atlanticus inyectados en cada Dropdown para que su portal no herede el morado.
+# Estructura y comportamiento idénticos al módulo productivo.
+
 from __future__ import annotations
 
 
 def dash_select_style() -> dict[str, str]:
     return {
-        '--Dash-Spacing': '3px',
+        '--Dash-Spacing': '4px',
         '--Dash-Stroke-Strong': 'var(--atlanticus-ui-secondary)',
         '--Dash-Stroke-Weak': 'var(--atlanticus-ui-border)',
         '--Dash-Fill-Interactive-Strong': 'var(--atlanticus-ui-secondary)',

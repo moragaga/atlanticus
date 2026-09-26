@@ -1,62 +1,69 @@
-/* La paleta compartida se aplica a todos los Dropdown de Dash, incluso los que no tienen wrapper específico. */
-.alarm-admin .dash-dropdown-wrapper,
-.alarm-admin .dash-dropdown,
-.alarm-admin .dash-dropdown-search-container,
-.alarm-admin .dash-dropdown-content {
+/* El Dropdown recibe las variables compartidas en el wrapper que controla el popover de Dash. */
+
+.alarm-admin .alarm-admin__dropdown-shell,
+.alarm-admin .alarm-admin__dropdown-shell .dash-dropdown-wrapper,
+.alarm-admin .alarm-admin__dropdown-shell .dash-dropdown {
     box-sizing: border-box;
     min-width: 0;
     max-width: 100%;
-    font-family: var(--atlanticus-ui-font);
-    color: var(--atlanticus-ui-text);
-    --Dash-Stroke-Strong: var(--atlanticus-ui-secondary);
-    --Dash-Stroke-Weak: var(--atlanticus-ui-border);
-    --Dash-Fill-Interactive-Strong: var(--atlanticus-ui-secondary);
-    --Dash-Fill-Interactive-Weak: var(--atlanticus-ui-selection-soft);
-    --Dash-Fill-Primary-Hover: var(--atlanticus-ui-selection-soft);
-    --Dash-Fill-Primary-Active: var(--atlanticus-ui-selection-soft);
-    --Dash-Text-Primary: var(--atlanticus-ui-text);
-    --Dash-Text-Strong: var(--atlanticus-ui-text);
-    --Dash-Text-Weak: var(--atlanticus-ui-text-muted);
+    width: 100%;
 }
 
-/* El control hereda las dimensiones y bordes de Atlanticus, no los valores morados de Dash. */
-.alarm-admin .dash-dropdown {
-    width: 100%;
-    min-height: 2.18rem;
+.alarm-admin .alarm-admin__dropdown-shell .dash-dropdown {
+    min-height: 2.25rem;
+    color: var(--atlanticus-ui-text);
+    background: var(--atlanticus-ui-surface);
     border-color: var(--atlanticus-ui-border-strong);
     border-radius: var(--atlanticus-ui-control-radius);
-    background: var(--atlanticus-ui-surface);
-    font-size: .76rem;
+    font-family: var(--atlanticus-ui-font);
+    font-size: .78rem;
 }
 
-/* El foco visible utiliza el mismo anillo accesible que los demás campos del Manager. */
-.alarm-admin .dash-dropdown:focus-within,
-.alarm-admin .dash-dropdown-search-container:focus-within,
-.alarm-admin .dash-dropdown-search:focus {
-    outline: none;
+.alarm-admin .alarm-admin__dropdown-shell .dash-dropdown:hover {
+    border-color: var(--atlanticus-ui-border-strong);
+}
+
+.alarm-admin .alarm-admin__dropdown-shell .dash-dropdown:focus,
+.alarm-admin .alarm-admin__dropdown-shell .dash-dropdown:focus-within,
+.alarm-admin .alarm-admin__dropdown-shell .dash-dropdown-search-container:focus-within {
     border-color: var(--atlanticus-ui-secondary);
+    outline: 1px solid var(--atlanticus-ui-secondary);
     box-shadow: var(--atlanticus-ui-control-focus-ring);
 }
 
-/* La lista desplegada respeta el ancho disponible para impedir desbordes laterales. */
-.alarm-admin .dash-dropdown-content {
+.alarm-admin .alarm-admin__dropdown-shell .dash-dropdown-content {
+    box-sizing: border-box;
+    min-width: var(--radix-popover-trigger-width);
+    max-width: var(--radix-popover-trigger-width);
     width: var(--radix-popover-trigger-width);
-    max-width: min(var(--radix-popover-trigger-width), 90vw);
-    border-color: var(--atlanticus-ui-border);
-    background: var(--atlanticus-ui-surface);
-}
-
-/* Las opciones conservan texto legible y un estado activo coherente con el Manager. */
-.alarm-admin .dash-dropdown-value,
-.alarm-admin .dash-dropdown-action-button,
-.alarm-admin .dash-options-list-option,
-.alarm-admin .dash-dropdown-search {
     color: var(--atlanticus-ui-text);
-    font-size: .76rem;
+    background: var(--atlanticus-ui-surface);
+    border-color: var(--atlanticus-ui-border);
 }
 
-.alarm-admin .dash-options-list-option:hover,
-.alarm-admin .dash-options-list-option[aria-selected="true"] {
-    color: var(--atlanticus-ui-primary);
-    background: var(--atlanticus-ui-selection-soft);
+.alarm-admin .alarm-admin__dropdown-shell .dash-dropdown-search,
+.alarm-admin .alarm-admin__dropdown-shell .dash-dropdown-value,
+.alarm-admin .alarm-admin__dropdown-shell .dash-dropdown-action-button,
+.alarm-admin .alarm-admin__dropdown-shell .dash-options-list-option {
+    color: var(--atlanticus-ui-text);
+    font-family: var(--atlanticus-ui-font);
+    font-size: .77rem;
+}
+
+.alarm-admin .alarm-admin__dropdown-shell .dash-dropdown-search-container:focus-within .dash-dropdown-search-icon,
+.alarm-admin .alarm-admin__dropdown-shell .dash-dropdown-action-button:hover,
+.alarm-admin .alarm-admin__dropdown-shell .dash-options-list-option:hover {
+    color: var(--atlanticus-ui-secondary);
+}
+
+.alarm-admin .alarm-admin__dropdown-shell .dash-options-list-option-checkbox {
+    accent-color: var(--atlanticus-ui-secondary);
+    outline-color: var(--atlanticus-ui-secondary);
+}
+
+.alarm-admin .alarm-admin__dropdown-shell .dash-dropdown-focus-target {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
 }

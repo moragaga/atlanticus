@@ -80,11 +80,11 @@ def test_pagination_callback_preserves_current_family_and_draft(monkeypatch):
         family_callbacks,
         'ctx',
         SimpleNamespace(
-            triggered_id={'type': LIST_PAGE_SIZE_TYPE, 'listing': 'rules', 'size': 20},
-            triggered=[{'value': 1}],
+            triggered_id={'type': LIST_PAGE_SIZE_TYPE, 'listing': 'rules', 'size': 0},
+            triggered=[{'value': 20}],
         ),
     )
-    resized = app.callbacks['change_pagination']([], [1], updated)
+    resized = app.callbacks['change_pagination']([], [20], updated)
     assert resized['pagination']['rules'] == {'page': 1, 'size': 20}
 
 
@@ -95,6 +95,6 @@ def test_pagination_button_ids_do_not_repeat_for_arrows_and_page_numbers():
 
     page = list_page(tuple(range(25)), initial_navigation(), 'rules')
     rendered = list_pagination(page, 'rules')
-    controls = rendered.children[0].children
+    controls = rendered.children[1].children
     ids = [str(item.id) for item in controls if isinstance(item, html.Button)]
     assert len(ids) == len(set(ids))

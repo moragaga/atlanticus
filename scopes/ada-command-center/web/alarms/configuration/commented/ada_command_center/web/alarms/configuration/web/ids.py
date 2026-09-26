@@ -1,5 +1,5 @@
-# Identificadores estables compartidos por layout y callbacks.
-# Los IDs de tipo permiten manejar colecciones dinámicas con pattern matching de Dash.
+# Identificadores estables para los componentes de Dash y sus callbacks asociados.
+# Estructura y comportamiento idénticos al módulo productivo.
 
 MOUNT_STORE_ID = 'ada-command-center-alarm-configuration-mounted'
 AUTHORING_STORE_ID = 'ada-command-center-alarm-configuration-authoring'
@@ -13,7 +13,6 @@ ADD_RULE_BUTTON_ID = 'ada-command-center-alarm-configuration-add-rule'
 ADD_MESSAGE_BUTTON_ID = 'ada-command-center-alarm-configuration-add-message'
 IMPORT_UPLOAD_ID = 'ada-command-center-alarm-configuration-import'
 IMPORT_RESULT_ID = 'ada-command-center-alarm-configuration-import-result'
-SAVE_BUTTON_ID = 'ada-command-center-alarm-configuration-save'
 SAVE_RESULT_ID = 'ada-command-center-alarm-configuration-save-result'
 SOURCE_NAME_ID = 'ada-command-center-alarm-configuration-source-name'
 PROJECTION_NAME_ID = 'ada-command-center-alarm-configuration-projection-name'
@@ -55,10 +54,15 @@ CANCEL_FAMILY_CREATE_FOOTER_ID = 'ada-command-center-alarm-cancel-family-modal'
 MODAL_BACK_ID = 'ada-command-center-alarm-modal-back'
 MODAL_SAVE_BUTTON_ID = 'ada-command-center-alarm-modal-save'
 MODAL_SAVE_RESULT_ID = 'ada-command-center-alarm-modal-save-result'
-# Identificadores del modal estable, montado fuera de los resultados dinámicos.
 MODAL_WRAPPER_ID = 'ada-command-center-alarm-modal'
 MODAL_TITLE_ID = 'ada-command-center-alarm-modal-title'
 MODAL_BODY_ID = 'ada-command-center-alarm-modal-body'
+MODAL_SHAPE_STORE_ID = 'ada-command-center-alarm-modal-shape'
+REMOVE_PENDING_STORE_ID = 'ada-command-center-alarm-remove-pending'
+REMOVE_CONFIRM_ID = 'ada-command-center-alarm-remove-confirm'
+REMOVE_RESULT_ID = 'ada-command-center-alarm-remove-result'
+VISUAL_SUBCOMPONENT_SELECT_TYPE = 'ada-command-center-alarm-visual-subcomponents'
+VISUAL_TOOL_STORE_TYPE = 'ada-command-center-alarm-visual-tool'
 PARAMETER_ADD_TYPE = 'ada-command-center-alarm-parameter-add'
 PARAMETER_REMOVE_TYPE = 'ada-command-center-alarm-parameter-remove'
 PARAMETER_FIELD_TYPE = 'ada-command-center-alarm-parameter-field'

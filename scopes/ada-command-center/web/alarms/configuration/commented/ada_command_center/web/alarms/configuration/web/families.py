@@ -1,4 +1,6 @@
-# Agrupación de familia en el editor; el dominio durable sigue siendo Rules + Messages.
+# La familia se determina por su clave estable y por la pertenencia real de reglas y mensajes.
+# Estructura y comportamiento idénticos al módulo productivo.
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,7 +12,6 @@ from ada_command_center.web.alarms.configuration.web.authoring import (
 )
 
 
-# Cada agrupación se deriva del documento: no introduce otra entidad persistente.
 @dataclass(frozen=True, slots=True)
 class FamilySummary:
     key: str
@@ -18,7 +19,6 @@ class FamilySummary:
     message_indexes: tuple[int, ...]
 
 
-# Mantiene índices originales para respetar los callbacks existentes del autor.
 @dataclass(frozen=True, slots=True)
 class FamilyCatalog:
     families: tuple[FamilySummary, ...]
@@ -28,7 +28,6 @@ class FamilyCatalog:
         return next((family for family in self.families if family.key == key), None)
 
 
-# Los mensajes GLOBAL quedan separados y los FAMILY se agrupan por su clave.
 def family_catalog(document: dict[str, object] | None) -> FamilyCatalog:
     value = document or {}
     groups: dict[str, tuple[list[int], list[int]]] = {}
@@ -42,7 +41,7 @@ def family_catalog(document: dict[str, object] | None) -> FamilyCatalog:
         if not isinstance(identity, dict):
             continue
         key = identity.get('family_key')
-        if isinstance(key, str):
+        if isinstance(key, str) and key.strip():
             groups.setdefault(key, ([], []))[0].append(index)
     for index, message in enumerate(messages if isinstance(messages, list) else []):
         if not isinstance(message, dict):
@@ -51,7 +50,7 @@ def family_catalog(document: dict[str, object] | None) -> FamilyCatalog:
             global_messages.append(index)
         elif message.get('scope') == 'FAMILY':
             key = message.get('family_key')
-            if isinstance(key, str):
+            if isinstance(key, str) and key.strip():
                 groups.setdefault(key, ([], []))[1].append(index)
     return FamilyCatalog(
         families=tuple(
@@ -64,7 +63,6 @@ def family_catalog(document: dict[str, object] | None) -> FamilyCatalog:
     )
 
 
-# Crear una familia requiere empezar con su primera regla o mensaje.
 def require_new_family_key(
     document: dict[str, object] | None,
     raw_key: object,
@@ -80,7 +78,6 @@ def require_new_family_key(
     return raw_key
 
 
-# Se usa la misma factory de edición y sólo se fija la familia elegida.
 def add_rule_in_family(document: dict[str, object], key: str) -> dict[str, object]:
     if not isinstance(key, str) or not key.strip():
         raise ValueError('A valid family is required to create a rule')
@@ -102,7 +99,6 @@ def add_rule_in_family(document: dict[str, object], key: str) -> dict[str, objec
     return updated
 
 
-# El scope y la familia se fijan al crear, antes de completar el formulario.
 def add_message_in_family(document: dict[str, object], key: str | None) -> dict[str, object]:
     if key is not None and (not isinstance(key, str) or not key.strip()):
         raise ValueError('A valid family is required to create a family message')
@@ -113,7 +109,6 @@ def add_message_in_family(document: dict[str, object], key: str | None) -> dict[
     return updated
 
 
-# El estado de navegación es efímero; no forma parte de Source ni Workspace.
 def initial_navigation() -> dict[str, object]:
     return {
         'page': 'families',
@@ -126,7 +121,6 @@ def initial_navigation() -> dict[str, object]:
     }
 
 
-# Nunca se inventa una familia: se exige que exista en el documento actual.
 def selected_family(navigation: object, document: dict[str, object] | None) -> str | None:
     if not isinstance(navigation, dict) or navigation.get('page') != 'family':
         return None

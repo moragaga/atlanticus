@@ -255,20 +255,31 @@ def register_family_callbacks(app: object) -> None:
     @app.callback(
         Output(FAMILY_NAV_STORE_ID, 'data', allow_duplicate=True),
         Input({'type': LIST_PAGE_TYPE, 'listing': ALL, 'page': ALL, 'action': ALL}, 'n_clicks'),
-        Input({'type': LIST_PAGE_SIZE_TYPE, 'listing': ALL, 'size': ALL}, 'n_clicks'),
+        Input({'type': LIST_PAGE_SIZE_TYPE, 'listing': ALL, 'size': ALL}, 'value'),
         State(FAMILY_NAV_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
-    def change_pagination(_page_clicks, _size_clicks, navigation):
+    def change_pagination(_page_clicks, _size_values, navigation):
         trigger = ctx.triggered_id
-        if not _real_click() or not isinstance(trigger, dict):
+        if not isinstance(trigger, dict) or not ctx.triggered:
             return no_update
         current = navigation if isinstance(navigation, dict) else initial_navigation()
         try:
             if trigger.get('type') == LIST_PAGE_TYPE:
+                if not _real_click():
+                    return no_update
                 return change_list_page(current, trigger.get('listing'), page=trigger.get('page'))
             if trigger.get('type') == LIST_PAGE_SIZE_TYPE:
-                return change_list_page(current, trigger.get('listing'), size=trigger.get('size'))
+                size = ctx.triggered[0].get('value')
+                if type(size) is not int:
+                    return no_update
+                existing = current.get('pagination', {})
+                item = (
+                    existing.get(trigger.get('listing'), {}) if isinstance(existing, dict) else {}
+                )
+                if isinstance(item, dict) and item.get('size', 10) == size:
+                    return no_update
+                return change_list_page(current, trigger.get('listing'), size=size)
         except ValueError:
             pass
         return no_update

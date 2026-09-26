@@ -1,16 +1,19 @@
+# La lógica usa el paginador de Atlanticus y su superficie reproduce el patrón de Navigation.
+# Estructura y comportamiento idénticos al módulo productivo.
+
 from __future__ import annotations
 
 from collections.abc import Mapping
 
-from dash import html
+from dash import dcc, html
 
 from ada_command_center.web.alarms.configuration.web.ids import (
     LIST_PAGE_SIZE_TYPE,
     LIST_PAGE_TYPE,
 )
+from ada_command_center.web.alarms.configuration.web.select_style import dash_select_style
 from atlanticus.web.pagination import ALLOWED_PAGE_SIZES, Page, PageRequest, paginate_items
 
-# Cada lista guarda su propia página y tamaño de página.
 LIST_NAMES = frozenset({'families', 'rules', 'messages', 'global'})
 
 
@@ -54,11 +57,10 @@ def change_list_page(
     return {**navigation, 'pagination': pages}
 
 
-def list_pagination(page: Page[object], name: str) -> object | None:
+# La navegación por páginas no modifica los índices de los elementos originales.
+def list_pagination(page: Page[object], name: str) -> object:
     if name not in LIST_NAMES:
         raise ValueError('Unknown Alarm Configuration list')
-    if page.total_count <= min(ALLOWED_PAGE_SIZES):
-        return None
     controls = []
     for number in page_tokens(page.request.page_number, page.page_count):
         if number is None:
@@ -69,18 +71,26 @@ def list_pagination(page: Page[object], name: str) -> object | None:
             html.Button(
                 str(number),
                 id={'type': LIST_PAGE_TYPE, 'listing': name, 'page': number, 'action': 'page'},
-                type='button',
                 n_clicks=0,
+                type='button',
                 disabled=selected,
                 className=(
-                    'atlanticus-ui-button atlanticus-ui-button--secondary alarm-page__button'
-                    + (' alarm-page__button--active' if selected else '')
+                    'alarm-page__button alarm-page__button--active'
+                    if selected
+                    else 'alarm-page__button'
                 ),
                 **{'aria-current': 'page' if selected else 'false'},
             )
         )
     return html.Nav(
         [
+            html.Span(
+                f'Mostrando {page.start_index}–{page.end_index} de {page.total_count}'
+                if page.total_count
+                else 'Mostrando 0 de 0',
+                className='alarm-page__summary',
+                **{'aria-live': 'polite'},
+            ),
             html.Div(
                 [
                     html.Button(
@@ -94,7 +104,7 @@ def list_pagination(page: Page[object], name: str) -> object | None:
                         n_clicks=0,
                         type='button',
                         disabled=not page.has_previous,
-                        className='atlanticus-ui-button atlanticus-ui-button--secondary alarm-page__button',
+                        className='alarm-page__button',
                         **{'aria-label': 'Página anterior'},
                     ),
                     *controls,
@@ -109,43 +119,33 @@ def list_pagination(page: Page[object], name: str) -> object | None:
                         n_clicks=0,
                         type='button',
                         disabled=not page.has_next,
-                        className='atlanticus-ui-button atlanticus-ui-button--secondary alarm-page__button',
+                        className='alarm-page__button',
                         **{'aria-label': 'Página siguiente'},
                     ),
                 ],
                 className='alarm-page__controls',
             ),
-            html.Div(
+            html.Label(
                 [
-                    html.Span(
-                        f'{page.request.page_number} / {page.page_count}',
-                        className='atlanticus-manager__home-page-label',
+                    html.Span('Filas', className='alarm-page__summary'),
+                    html.Div(
+                        dcc.Dropdown(
+                            id={'type': LIST_PAGE_SIZE_TYPE, 'listing': name, 'size': 0},
+                            options=[
+                                {'label': str(size), 'value': size} for size in ALLOWED_PAGE_SIZES
+                            ],
+                            value=page.request.page_size,
+                            clearable=False,
+                            searchable=False,
+                            style=dash_select_style(),
+                        ),
+                        className='alarm-admin__dropdown-shell alarm-page__size-select',
                     ),
-                    html.Span('Filas:', className='atlanticus-manager__home-page-label'),
-                    *[
-                        html.Button(
-                            str(size),
-                            id={'type': LIST_PAGE_SIZE_TYPE, 'listing': name, 'size': size},
-                            type='button',
-                            n_clicks=0,
-                            disabled=page.request.page_size == size,
-                            className=(
-                                'atlanticus-ui-button atlanticus-ui-button--secondary '
-                                'alarm-page__button'
-                                + (
-                                    ' alarm-page__button--active'
-                                    if page.request.page_size == size
-                                    else ''
-                                )
-                            ),
-                        )
-                        for size in ALLOWED_PAGE_SIZES
-                    ],
                 ],
-                className='alarm-page__controls alarm-page__size',
+                className='alarm-page__size',
             ),
         ],
-        className='atlanticus-manager__home-pagination alarm-page',
+        className='alarm-page',
         **{'aria-label': f'Paginación de {name}'},
     )
 

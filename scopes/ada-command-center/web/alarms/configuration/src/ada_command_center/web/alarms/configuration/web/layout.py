@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 
 from dash import dcc, html
@@ -32,9 +33,6 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     CANCEL_FAMILY_CREATE_FOOTER_ID,
     CANCEL_FAMILY_CREATE_ID,
     CLOSE_EDITOR_ID,
-    COMPONENT_ADD_TYPE,
-    COMPONENT_FIELD_TYPE,
-    COMPONENT_REMOVE_TYPE,
     CREATE_FAMILY_ID,
     DOCUMENT_STATUS_ID,
     FAMILY_ACTION_RESULT_ID,
@@ -49,21 +47,22 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     IMPORT_REVIEW_STORE_ID,
     IMPORT_UPLOAD_ID,
     MESSAGE_FIELD_TYPE,
-    MESSAGE_REMOVE_TYPE,
     MESSAGES_EDITOR_ID,
     MODAL_BACK_ID,
     MODAL_BODY_ID,
     MODAL_SAVE_BUTTON_ID,
     MODAL_SAVE_RESULT_ID,
+    MODAL_SHAPE_STORE_ID,
     MODAL_TITLE_ID,
     MODAL_WRAPPER_ID,
     MOUNT_STORE_ID,
     OPEN_FAMILY_CREATE_ID,
     PROJECTION_NAME_ID,
+    REMOVE_CONFIRM_ID,
+    REMOVE_PENDING_STORE_ID,
+    REMOVE_RESULT_ID,
     RULE_FIELD_TYPE,
-    RULE_REMOVE_TYPE,
     RULES_EDITOR_ID,
-    SAVE_BUTTON_ID,
     SAVE_RESULT_ID,
     SHOW_FAMILIES_ID,
     SHOW_GLOBAL_MESSAGES_ID,
@@ -71,15 +70,11 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     STEP_ADD_TYPE,
     STEP_FIELD_TYPE,
     STEP_REMOVE_TYPE,
-    SUBCOMPONENT_ADD_TYPE,
-    SUBCOMPONENT_FIELD_TYPE,
-    SUBCOMPONENT_REMOVE_TYPE,
-    TARGET_ADD_TYPE,
     TARGET_FIELD_TYPE,
-    TARGET_REMOVE_TYPE,
-    TOOL_DATALIST_ID,
     TOOL_REFERENCE_STATUS_ID,
     TOOL_REFERENCE_STORE_ID,
+    VISUAL_SUBCOMPONENT_SELECT_TYPE,
+    VISUAL_TOOL_STORE_TYPE,
 )
 from ada_command_center.web.alarms.configuration.web.labels import (
     field_help,
@@ -105,11 +100,16 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
             dcc.Store(id=TOOL_REFERENCE_STORE_ID, data=None, storage_type='memory'),
             dcc.Store(id=IMPORT_REVIEW_STORE_ID, data=None, storage_type='memory'),
             dcc.Store(id=FAMILY_NAV_STORE_ID, data=initial_navigation(), storage_type='memory'),
+            dcc.Store(id=MODAL_SHAPE_STORE_ID, data=None, storage_type='memory'),
+            dcc.Store(id=REMOVE_PENDING_STORE_ID, data=None, storage_type='memory'),
+            dcc.ConfirmDialog(id=REMOVE_CONFIRM_ID, displayed=False),
+            html.Div(id=REMOVE_RESULT_ID, role='status'),
             _runtime_context(context),
             html.Section(
                 [
                     html.Div(id=TOOL_REFERENCE_STATUS_ID),
                     html.Div(id=DOCUMENT_STATUS_ID),
+                    html.Div(id=SAVE_RESULT_ID, role='status'),
                 ],
                 className='alarm-admin__status',
             ),
@@ -190,11 +190,11 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                                                 ]
                                             ),
                                             html.Button(
-                                                '×',
+                                                '',
                                                 id=CANCEL_FAMILY_CREATE_ID,
                                                 type='button',
                                                 n_clicks=0,
-                                                className='atlanticus-ui-icon-button alarm-family__modal-close',
+                                                className='btn-close',
                                                 **{'aria-label': 'Cerrar'},
                                             ),
                                         ],
@@ -268,11 +268,11 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                                         [
                                             html.H3(id=MODAL_TITLE_ID),
                                             html.Button(
-                                                '×',
+                                                '',
                                                 id=CLOSE_EDITOR_ID,
                                                 n_clicks=0,
                                                 type='button',
-                                                className='atlanticus-ui-icon-button alarm-family__modal-close',
+                                                className='btn-close',
                                                 **{'aria-label': 'Cerrar'},
                                             ),
                                         ],
@@ -289,7 +289,7 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                                             html.Div(
                                                 [
                                                     html.Button(
-                                                        'Volver',
+                                                        'Cancelar',
                                                         id=MODAL_BACK_ID,
                                                         n_clicks=0,
                                                         type='button',
@@ -335,11 +335,11 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                                         ]
                                     ),
                                     html.Button(
-                                        '×',
+                                        '',
                                         id=IMPORT_REVIEW_CANCEL_ID,
                                         n_clicks=0,
                                         type='button',
-                                        className='atlanticus-ui-icon-button alarm-family__modal-close',
+                                        className='btn-close',
                                         **{'aria-label': 'Cerrar'},
                                     ),
                                 ],
@@ -372,26 +372,6 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                 className='alarm-family__modal',
                 hidden=True,
             ),
-            html.Section(
-                [
-                    html.Div(
-                        [
-                            html.H3('Borrador local · alarmas'),
-                            html.P('Guarda los cambios cuando completes los campos obligatorios.'),
-                        ],
-                        className='alarm-admin__heading-copy',
-                    ),
-                    html.Button(
-                        'Guardar borrador',
-                        id=SAVE_BUTTON_ID,
-                        n_clicks=0,
-                        type='button',
-                        className='atlanticus-ui-button atlanticus-ui-button--primary',
-                    ),
-                    html.Div(id=SAVE_RESULT_ID, className='alarm-admin__save-result'),
-                ],
-                className='alarm-admin__section alarm-admin__footer',
-            ),
         ],
         className='ada-command-center-alarm-editor atlanticus-bootstrap alarm-admin',
     )
@@ -403,11 +383,6 @@ def build_structured_editors(
     navigation: dict[str, object] | None = None,
 ) -> tuple[object, object]:
     document = authoring_document or empty_authoring_document()
-    tools = tool_suggestions(reference_document)
-    datalist = html.Datalist(
-        id=TOOL_DATALIST_ID,
-        children=[html.Option(value=item['value'], label=item['label']) for item in tools],
-    )
     panel = build_family_panel(
         document,
         reference_document,
@@ -415,7 +390,7 @@ def build_structured_editors(
         rule_editor=_rule_editor,
         message_editor=_message_editor,
     )
-    return html.Div([datalist, panel], className='alarm-family'), html.Div()
+    return html.Div(panel, className='alarm-family'), html.Div()
 
 
 def build_active_alarm_editor(
@@ -484,8 +459,6 @@ def _rule_editor(
     targets = _list(rule.get('visual_targets'))
     family_key = _string(identity.get('family_key'))
     priority_group = _string(rule.get('priority_group'))
-    title = _string(rule.get('display_name')) or _string(rule.get('rule_name'))
-    title = title or f'Regla {rule_index + 1}'
     message_options = _message_options(messages, family_key, _list(rule.get('message_keys')))
     special_options = _special_condition_options(
         rules,
@@ -495,13 +468,6 @@ def _rule_editor(
     )
     return build_rule_section(
         [
-            html.Legend(title),
-            html.Button(
-                'Eliminar regla',
-                id={'type': RULE_REMOVE_TYPE, 'rule': rule_index},
-                n_clicks=0,
-                type='button',
-            ),
             _group(
                 'Identity and presentation',
                 [
@@ -636,7 +602,7 @@ def _rule_editor(
                     ),
                 ],
             ),
-            _escalation_editor(rule_index, escalation, steps),
+            _escalation_editor(rule_index, escalation, steps, reference_document),
             _visual_targets_editor(rule_index, targets, reference_document),
         ],
         section=section,
@@ -651,44 +617,45 @@ def _escalation_editor(
     rule_index: int,
     escalation: Mapping[str, object],
     steps: list[object],
+    reference_document: dict[str, object] | None,
 ) -> object:
+    origin = escalation.get('origin_tool_key')
     children: list[object] = [
         html.H5('Escalamiento'),
         _tool_key_field(
             {'type': RULE_FIELD_TYPE, 'rule': rule_index, 'field': 'escalation.origin_tool_key'},
-            'Origin tool key',
-            escalation.get('origin_tool_key'),
+            'Herramienta de origen',
+            origin,
+            reference_document,
         ),
         html.Button(
             'Agregar destino',
             id={'type': STEP_ADD_TYPE, 'rule': rule_index},
             n_clicks=0,
             type='button',
+            className='btn btn-outline-secondary btn-sm',
         ),
     ]
-    for step_index, raw_step in enumerate(steps):
-        if not isinstance(raw_step, dict):
+    for step_index, step in enumerate(steps):
+        if not isinstance(step, dict):
             continue
         children.append(
             html.Fieldset(
                 [
                     html.Legend(f'Destino {step_index + 1}'),
                     html.Button(
-                        'Eliminar destino',
-                        id={
-                            'type': STEP_REMOVE_TYPE,
-                            'rule': rule_index,
-                            'step': step_index,
-                        },
+                        'Quitar destino',
+                        id={'type': STEP_REMOVE_TYPE, 'rule': rule_index, 'step': step_index},
                         n_clicks=0,
                         type='button',
+                        className='btn btn-outline-danger btn-sm',
                     ),
                     _step_number_field(
                         rule_index,
                         step_index,
                         'step_order',
-                        'Step order',
-                        raw_step.get('step_order'),
+                        'Orden del paso',
+                        step.get('step_order'),
                     ),
                     _tool_key_field(
                         {
@@ -697,27 +664,30 @@ def _escalation_editor(
                             'step': step_index,
                             'field': 'target_tool_key',
                         },
-                        'Target tool key',
-                        raw_step.get('target_tool_key'),
+                        'Herramienta de destino',
+                        step.get('target_tool_key'),
+                        reference_document,
+                        exclude=origin if isinstance(origin, str) else None,
                     ),
                     _step_bool_field(
                         rule_index,
                         step_index,
                         'is_enabled',
-                        'Enabled',
-                        raw_step.get('is_enabled'),
+                        'Habilitado',
+                        step.get('is_enabled'),
                     ),
                     _step_number_field(
                         rule_index,
                         step_index,
                         'wait_minutes_from_previous_step',
-                        'Wait minutes from previous step',
-                        raw_step.get('wait_minutes_from_previous_step'),
+                        'Espera desde el paso anterior (minutos)',
+                        step.get('wait_minutes_from_previous_step'),
                     ),
-                ]
+                ],
+                className='alarm-guided__routing-step',
             )
         )
-    return html.Section(children)
+    return html.Section(children, className='alarm-guided__conditional')
 
 
 def _visual_targets_editor(
@@ -725,268 +695,207 @@ def _visual_targets_editor(
     targets: list[object],
     reference_document: dict[str, object] | None,
 ) -> object:
-    children: list[object] = [
-        html.H5('Destinos visuales'),
-        html.Button(
-            'Agregar destino visual',
-            id={'type': TARGET_ADD_TYPE, 'rule': rule_index},
-            n_clicks=0,
-            type='button',
-        ),
-    ]
+    children: list[object] = [html.H5('Destinos de presentación')]
+    if not targets:
+        children.append(
+            html.P(
+                'Configura las herramientas de routing en Comportamiento. '
+                'Sus destinos visuales aparecerán automáticamente aquí.',
+                className='alarm-guided__notice',
+            )
+        )
     for target_index, raw_target in enumerate(targets):
         if not isinstance(raw_target, dict):
             continue
         tool_key = _string(raw_target.get('tool_key'))
-        component_keys = _string_list(raw_target.get('component_keys'))
-        components = component_suggestions(reference_document, tool_key)
-        subcomponents = subcomponent_suggestions(
-            reference_document,
-            tool_key,
-            component_keys,
+        tools = reference_document.get('tools') if isinstance(reference_document, dict) else None
+        selected_tool = (
+            next(
+                (
+                    tool
+                    for tool in tools
+                    if isinstance(tool, dict) and tool.get('tool_key') == tool_key
+                ),
+                None,
+            )
+            if isinstance(tools, list)
+            else None
         )
-        component_list_id = f'alarm-configuration-component-options-{rule_index}-{target_index}'
-        owner_list_id = f'alarm-configuration-owner-options-{rule_index}-{target_index}'
-        subcomponent_list_id = (
-            f'alarm-configuration-subcomponent-options-{rule_index}-{target_index}'
-        )
-        target_children: list[object] = [
-            html.Legend(f'Destino visual {target_index + 1}'),
-            html.Button(
-                'Eliminar destino visual',
-                id={
-                    'type': TARGET_REMOVE_TYPE,
-                    'rule': rule_index,
-                    'target': target_index,
-                },
-                n_clicks=0,
-                type='button',
-            ),
-            _tool_key_field(
-                {
-                    'type': TARGET_FIELD_TYPE,
-                    'rule': rule_index,
-                    'target': target_index,
-                    'field': 'tool_key',
-                },
-                'Tool key',
-                tool_key,
-            ),
-            _target_enum_field(
-                rule_index,
-                target_index,
-                'process_projection_mode',
-                'Process projection mode',
-                raw_target.get('process_projection_mode'),
-                ProcessAlarmProjectionMode,
-                clearable=True,
-            ),
-            html.Datalist(
-                id=component_list_id,
-                children=[
-                    html.Option(value=item['value'], label=item['label']) for item in components
-                ],
-            ),
-            html.Datalist(
-                id=owner_list_id,
-                children=[
-                    html.Option(value=value)
-                    for value in sorted({item['owner_component_key'] for item in subcomponents})
-                ],
-            ),
-            html.Datalist(
-                id=subcomponent_list_id,
-                children=[
-                    html.Option(
-                        value=item['subcomponent_key'],
-                        label=f'{item["display_name"]} ({item["owner_component_key"]})',
-                    )
-                    for item in subcomponents
-                ],
-            ),
-            html.H6('Componentes'),
+        kind = str(selected_tool.get('kind')).upper() if isinstance(selected_tool, dict) else None
+        name = selected_tool.get('display_name') if isinstance(selected_tool, dict) else tool_key
+        raw_components = raw_target.get('component_keys')
+        component_keys = raw_components if isinstance(raw_components, list) else []
+        raw_subcomponents = raw_target.get('subcomponents')
+        current_subcomponents = raw_subcomponents if isinstance(raw_subcomponents, list) else []
+        options = component_suggestions(reference_document, tool_key)
+        subcomponents = subcomponent_suggestions(reference_document, tool_key, component_keys)
+        subcomponent_options = [
+            {
+                'label': f'{item["owner_component_key"]} · {item["display_name"]}',
+                'value': json.dumps(
+                    [item['owner_component_key'], item['subcomponent_key']],
+                    separators=(',', ':'),
+                ),
+            }
+            for item in subcomponents
+            if component_keys
         ]
-        for component_index, component_key in enumerate(component_keys):
+        allowed_subcomponents = {item['value'] for item in subcomponent_options}
+        selected_subcomponents = [
+            json.dumps(
+                [entry['owner_component_key'], entry['subcomponent_key']],
+                separators=(',', ':'),
+            )
+            for entry in current_subcomponents
+            if isinstance(entry, dict)
+            and isinstance(entry.get('owner_component_key'), str)
+            and isinstance(entry.get('subcomponent_key'), str)
+            and json.dumps(
+                [entry['owner_component_key'], entry['subcomponent_key']],
+                separators=(',', ':'),
+            )
+            in allowed_subcomponents
+        ]
+        target_children: list[object] = [
+            html.Legend(str(name or tool_key)),
+            html.Div(
+                [
+                    html.Span('Herramienta de routing'),
+                    html.Strong(str(name or tool_key)),
+                ],
+                className='alarm-admin__read-only',
+            ),
+            html.Div(
+                [
+                    html.Span('Modelo de visualización'),
+                    html.Strong(
+                        'queue_in_queue'
+                        if kind == 'INTEGRATED_OPERATIONS'
+                        else 'carousel'
+                        if kind == 'PROCESS'
+                        else 'Sin modelo definido'
+                    ),
+                ],
+                className='alarm-admin__read-only',
+            ),
+        ]
+        if kind == 'PROCESS':
             target_children.append(
-                html.Div(
-                    [
-                        dcc.Input(
-                            id={
-                                'type': COMPONENT_FIELD_TYPE,
-                                'rule': rule_index,
-                                'target': target_index,
-                                'component': component_index,
-                            },
-                            type='text',
-                            value=component_key,
-                            list=component_list_id,
-                            debounce=True,
-                        ),
-                        html.Button(
-                            'Eliminar',
-                            id={
-                                'type': COMPONENT_REMOVE_TYPE,
-                                'rule': rule_index,
-                                'target': target_index,
-                                'component': component_index,
-                            },
-                            n_clicks=0,
-                            type='button',
-                        ),
-                    ]
+                _target_enum_field(
+                    rule_index,
+                    target_index,
+                    'process_projection_mode',
+                    'Modo de proyección',
+                    raw_target.get('process_projection_mode'),
+                    ProcessAlarmProjectionMode,
+                    clearable=False,
                 )
             )
-        target_children.append(
-            html.Button(
-                'Agregar componente',
-                id={
-                    'type': COMPONENT_ADD_TYPE,
-                    'rule': rule_index,
-                    'target': target_index,
-                },
-                n_clicks=0,
-                type='button',
-            )
+        target_children.extend(
+            [
+                _labeled(
+                    'Componentes',
+                    dcc.Dropdown(
+                        id={
+                            'type': TARGET_FIELD_TYPE,
+                            'rule': rule_index,
+                            'target': target_index,
+                            'field': 'component_keys',
+                        },
+                        options=list(options),
+                        value=component_keys,
+                        multi=True,
+                        searchable=True,
+                        clearable=True,
+                        style=dash_select_style(),
+                    ),
+                ),
+                dcc.Store(
+                    id={
+                        'type': VISUAL_TOOL_STORE_TYPE,
+                        'rule': rule_index,
+                        'target': target_index,
+                    },
+                    data=tool_key,
+                ),
+                _labeled(
+                    'Subcomponentes',
+                    dcc.Dropdown(
+                        id={
+                            'type': VISUAL_SUBCOMPONENT_SELECT_TYPE,
+                            'rule': rule_index,
+                            'target': target_index,
+                        },
+                        options=subcomponent_options,
+                        value=selected_subcomponents,
+                        multi=True,
+                        disabled=not component_keys,
+                        searchable=True,
+                        clearable=True,
+                        style=dash_select_style(),
+                    ),
+                ),
+            ]
         )
-        target_children.append(html.H6('Subcomponentes'))
-        raw_subcomponents = _list(raw_target.get('subcomponents'))
-        for subcomponent_index, raw_subcomponent in enumerate(raw_subcomponents):
-            if not isinstance(raw_subcomponent, dict):
-                continue
-            target_children.append(
-                html.Div(
-                    [
-                        dcc.Input(
-                            id={
-                                'type': SUBCOMPONENT_FIELD_TYPE,
-                                'rule': rule_index,
-                                'target': target_index,
-                                'subcomponent': subcomponent_index,
-                                'field': 'owner_component_key',
-                            },
-                            type='text',
-                            value=raw_subcomponent.get('owner_component_key'),
-                            list=owner_list_id,
-                            debounce=True,
-                            placeholder='Componente propietario',
-                        ),
-                        dcc.Input(
-                            id={
-                                'type': SUBCOMPONENT_FIELD_TYPE,
-                                'rule': rule_index,
-                                'target': target_index,
-                                'subcomponent': subcomponent_index,
-                                'field': 'subcomponent_key',
-                            },
-                            type='text',
-                            value=raw_subcomponent.get('subcomponent_key'),
-                            list=subcomponent_list_id,
-                            debounce=True,
-                            placeholder='Subcomponente',
-                        ),
-                        html.Button(
-                            'Eliminar',
-                            id={
-                                'type': SUBCOMPONENT_REMOVE_TYPE,
-                                'rule': rule_index,
-                                'target': target_index,
-                                'subcomponent': subcomponent_index,
-                            },
-                            n_clicks=0,
-                            type='button',
-                        ),
-                    ]
-                )
-            )
-        target_children.append(
-            html.Button(
-                'Agregar subcomponente',
-                id={
-                    'type': SUBCOMPONENT_ADD_TYPE,
-                    'rule': rule_index,
-                    'target': target_index,
-                },
-                n_clicks=0,
-                type='button',
-            )
-        )
-        children.append(html.Fieldset(target_children))
-    return html.Section(children)
+        children.append(html.Fieldset(target_children, className='alarm-guided__target'))
+    return html.Section(children, className='alarm-guided__visual')
 
 
 def _message_editor(message_index: int, message: dict[str, object]) -> object:
-    scope = message.get('scope')
     override = message.get('deactivation_override')
-    override_mapping = _mapping(override) if isinstance(override, dict) else None
-    title = _string(message.get('message_key')) or f'Mensaje {message_index + 1}'
+    policy = (
+        'INHERIT'
+        if not isinstance(override, dict)
+        else 'ALLOW'
+        if override.get('enabled') is True
+        else 'DENY'
+        if override.get('enabled') is False
+        else 'INHERIT'
+    )
     children: list[object] = [
-        html.Legend(title),
-        html.Button(
-            'Eliminar mensaje',
-            id={'type': MESSAGE_REMOVE_TYPE, 'message': message_index},
-            n_clicks=0,
-            type='button',
+        _message_text_field(
+            message_index, 'message_key', 'Identificador', message.get('message_key')
         ),
         _message_text_field(
-            message_index, 'message_key', 'Message key', message.get('message_key')
+            message_index, 'display_text', 'Texto del mensaje', message.get('display_text')
         ),
-        _message_enum_field(message_index, 'scope', 'Scope', scope, ('GLOBAL', 'FAMILY')),
+        _message_bool_field(message_index, 'is_active', 'Activo', message.get('is_active')),
+        _labeled(
+            'Desactivación',
+            dcc.RadioItems(
+                id={
+                    'type': MESSAGE_FIELD_TYPE,
+                    'message': message_index,
+                    'field': 'deactivation_policy',
+                },
+                options=[
+                    {'label': 'Heredar de la regla', 'value': 'INHERIT'},
+                    {'label': 'Permitir', 'value': 'ALLOW'},
+                    {'label': 'No permitir', 'value': 'DENY'},
+                ],
+                value=policy,
+                className='alarm-admin__choices',
+            ),
+        ),
     ]
-    if scope == 'FAMILY':
-        children.append(
-            _message_text_field(
-                message_index,
-                'family_key',
-                'Family key',
-                message.get('family_key'),
-            )
-        )
-    children.extend(
-        [
-            _message_text_field(
-                message_index,
-                'display_text',
-                'Display text',
-                message.get('display_text'),
-            ),
-            _message_bool_field(
-                message_index,
-                'is_active',
-                'Active',
-                message.get('is_active'),
-            ),
-            _message_bool_field(
-                message_index,
-                'deactivation_override.present',
-                'Deactivation override',
-                override_mapping is not None,
-            ),
-        ]
-    )
-    if override_mapping is not None:
+    if policy == 'ALLOW' and isinstance(override, dict):
         children.extend(
             [
-                _message_bool_field(
-                    message_index,
-                    'deactivation_override.enabled',
-                    'Override enabled',
-                    override_mapping.get('enabled'),
-                ),
                 _message_number_field(
                     message_index,
                     'deactivation_override.max_duration_hours',
-                    'Override max duration hours',
-                    override_mapping.get('max_duration_hours'),
+                    'Duración máxima (horas)',
+                    override.get('max_duration_hours'),
                 ),
                 _message_bool_field(
                     message_index,
                     'deactivation_override.approval_required',
-                    'Override approval required',
-                    override_mapping.get('approval_required'),
+                    'Requiere aprobación',
+                    override.get('approval_required'),
                 ),
             ]
         )
-    return html.Fieldset(children)
+    return html.Fieldset(children, className='alarm-message__form')
 
 
 def _group(title: str, children: list[object]) -> object:
@@ -1007,15 +916,26 @@ def _text_field(rule_index: int, field: str, label: str, value: object) -> objec
     )
 
 
-def _tool_key_field(component_id: object, label: str, value: object) -> object:
+def _tool_key_field(
+    component_id: object,
+    label: str,
+    value: object,
+    reference_document: dict[str, object] | None,
+    *,
+    exclude: str | None = None,
+) -> object:
+    options = [item for item in tool_suggestions(reference_document) if item['value'] != exclude]
+    current = value if isinstance(value, str) and value else None
     return _labeled(
         label,
-        dcc.Input(
+        dcc.Dropdown(
             id=component_id,
-            type='text',
-            value=value if isinstance(value, str) else '',
-            list=TOOL_DATALIST_ID,
-            debounce=True,
+            options=options,
+            value=current,
+            clearable=False,
+            searchable=True,
+            placeholder='Seleccionar herramienta',
+            style=dash_select_style(),
         ),
     )
 

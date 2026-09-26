@@ -1,3 +1,6 @@
+# Las etiquetas del formulario se separan de los tipos TEXT, FLOAT y BOOLEAN del documento.
+# Estructura y comportamiento idénticos al módulo productivo.
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -15,7 +18,6 @@ from ada_command_center.web.alarms.configuration.web.ids import (
 )
 from ada_command_center.web.alarms.configuration.web.select_style import dash_select_style
 
-# Los controles temporales se convierten al contrato dict al completar cada fila.
 PARAMETER_KINDS = ('TEXT', 'FLOAT', 'BOOLEAN')
 
 
@@ -212,9 +214,9 @@ def parameter_editor(rule_index: int, rule: dict[str, object]) -> object:
                                         'field': 'kind',
                                     },
                                     options=[
-                                        {'label': 'Texto', 'value': 'TEXT'},
-                                        {'label': 'Número', 'value': 'FLOAT'},
-                                        {'label': 'Sí/No', 'value': 'BOOLEAN'},
+                                        {'label': 'Text', 'value': 'TEXT'},
+                                        {'label': 'Float', 'value': 'FLOAT'},
+                                        {'label': 'Boolean', 'value': 'BOOLEAN'},
                                     ],
                                     value=kind,
                                     clearable=False,

@@ -64,6 +64,6 @@ def test_global_message_editor_is_only_opened_from_global_context():
     assert seen == [0]
 
 
-def test_small_list_hides_redundant_page_controls():
+def test_small_list_keeps_manager_page_controls():
     page = list_page(tuple(range(3)), initial_navigation(), 'families')
-    assert list_pagination(page, 'families') is None
+    assert list_pagination(page, 'families') is not None

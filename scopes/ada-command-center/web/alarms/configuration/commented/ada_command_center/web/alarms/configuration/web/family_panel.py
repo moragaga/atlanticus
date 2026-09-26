@@ -1,4 +1,6 @@
-# Presentación específica de Alarm Configuration siguiendo los tokens de Atlanticus.
+# Los listados muestran acciones independientes sin acoplarse al ciclo de vida del modal.
+# Estructura y comportamiento idénticos al módulo productivo.
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -13,7 +15,9 @@ from ada_command_center.web.alarms.configuration.web.families import (
 from ada_command_center.web.alarms.configuration.web.ids import (
     FAMILY_SELECT_TYPE,
     FAMILY_TAB_TYPE,
+    MESSAGE_REMOVE_TYPE,
     MESSAGE_SELECT_TYPE,
+    RULE_REMOVE_TYPE,
     RULE_SELECT_TYPE,
 )
 from ada_command_center.web.alarms.configuration.web.labels import value_label
@@ -23,8 +27,6 @@ from ada_command_center.web.alarms.configuration.web.pagination import (
 )
 
 
-# La UI recibe editores del contrato existente sin replicar campos del dominio.
-# La paginación no altera los índices originales del documento.
 def build_family_panel(
     document: dict[str, object],
     references: dict[str, object] | None,
@@ -48,7 +50,7 @@ def build_family_panel(
     return _family_content(family, document, references, current, rule_editor, message_editor)
 
 
-# Construye solo el editor seleccionado; su shell permanece estable en el layout.
+# Solo se crea el editor asociado a la selección contextual de la navegación.
 def build_active_editor(
     document: dict[str, object],
     references: dict[str, object] | None,
@@ -59,14 +61,15 @@ def build_active_editor(
 ) -> tuple[str, object | None]:
     current = navigation if isinstance(navigation, dict) else {}
     catalog = merged_family_catalog(document, current)
-    rules = document.get('rules')
-    messages = document.get('messages')
-    all_rules = rules if isinstance(rules, list) else []
-    all_messages = messages if isinstance(messages, list) else []
+    all_rules = document.get('rules')
+    all_messages = document.get('messages')
+    rules = all_rules if isinstance(all_rules, list) else []
+    messages = all_messages if isinstance(all_messages, list) else []
     message_index = current.get('message_index')
     if current.get('page') == 'global':
         if type(message_index) is int and message_index in catalog.global_message_indexes:
-            return 'Editar mensaje', message_editor(message_index, all_messages[message_index])
+            message = messages[message_index]
+            return 'Editar mensaje', message_editor(message_index, message)
         return '', None
     family_key = selected_family(current, document)
     family = catalog.get(family_key) if family_key is not None else None
@@ -74,22 +77,23 @@ def build_active_editor(
         return '', None
     if current.get('tab') == 'messages':
         if type(message_index) is int and message_index in family.message_indexes:
-            return 'Editar mensaje', message_editor(message_index, all_messages[message_index])
+            message = messages[message_index]
+            return 'Editar mensaje', message_editor(message_index, message)
         return '', None
     rule_index = current.get('rule_index')
     if type(rule_index) is int and rule_index in family.rule_indexes:
+        rule = rules[rule_index]
         return 'Editar regla', rule_editor(
             rule_index,
-            all_rules[rule_index],
-            all_rules,
-            all_messages,
+            rule,
+            rules,
+            messages,
             references,
             current.get('section', 'general'),
         )
     return '', None
 
 
-# La portada combina agrupaciones derivadas y familias pendientes en memoria.
 def _family_listing(
     families: tuple[FamilySummary, ...],
     pending: list[str],
@@ -141,7 +145,6 @@ def _family_listing(
     )
 
 
-# El detalle separa reglas y mensajes, conservando índices reales para Dash.
 def _family_content(
     family: FamilySummary,
     document: dict[str, object],
@@ -204,7 +207,6 @@ def _family_content(
     )
 
 
-# Los mensajes globales se editan fuera de una familia.
 def _global_messages(
     indexes: tuple[int, ...],
     document: dict[str, object],
@@ -226,7 +228,6 @@ def _global_messages(
     )
 
 
-# Se monta sólo la regla seleccionada para evitar el formulario interminable.
 def _rule_list(
     indexes: tuple[int, ...],
     document: dict[str, object],
@@ -235,21 +236,15 @@ def _rule_list(
     rule_editor: Callable[..., object],
 ) -> object:
     del references, rule_editor
-    rules = document.get('rules')
-    all_rules = rules if isinstance(rules, list) else []
+    raw = document.get('rules')
+    rules = raw if isinstance(raw, list) else []
     page = list_page(indexes, navigation, 'rules')
-    selected = navigation.get('rule_index')
-    current = selected if type(selected) is int and selected in indexes else None
     items = [
-        html.Button(
-            [
-                html.Strong(_rule_title(all_rules[index])),
-                html.Small(_rule_subtitle(all_rules[index])),
-            ],
-            id={'type': RULE_SELECT_TYPE, 'index': index},
-            n_clicks=0,
-            type='button',
-            className=_item_class(current == index),
+        _list_card(
+            title=_rule_title(rules[index]),
+            subtitle=_rule_subtitle(rules[index]),
+            edit_id={'type': RULE_SELECT_TYPE, 'index': index},
+            delete_id={'type': RULE_REMOVE_TYPE, 'rule': index},
         )
         for index in page.items
     ]
@@ -261,7 +256,6 @@ def _rule_list(
     )
 
 
-# La lista de mensajes preserva índices para el contrato de callbacks existente.
 def _message_list(
     indexes: tuple[int, ...],
     document: dict[str, object],
@@ -271,21 +265,15 @@ def _message_list(
     listing: str = 'messages',
 ) -> object:
     del message_editor
-    messages = document.get('messages')
-    all_messages = messages if isinstance(messages, list) else []
+    raw = document.get('messages')
+    messages = raw if isinstance(raw, list) else []
     page = list_page(indexes, navigation, listing)
-    selected = navigation.get('message_index')
-    current = selected if type(selected) is int and selected in indexes else None
     items = [
-        html.Button(
-            [
-                html.Strong(_message_title(all_messages[index])),
-                html.Small(_active_label(all_messages[index].get('is_active'), feminine=False)),
-            ],
-            id={'type': MESSAGE_SELECT_TYPE, 'index': index},
-            n_clicks=0,
-            type='button',
-            className=_item_class(current == index),
+        _list_card(
+            title=_message_title(messages[index]),
+            subtitle=_active_label(messages[index].get('is_active'), feminine=False),
+            edit_id={'type': MESSAGE_SELECT_TYPE, 'index': index},
+            delete_id={'type': MESSAGE_REMOVE_TYPE, 'message': index},
         )
         for index in page.items
     ]
@@ -297,7 +285,41 @@ def _message_list(
     )
 
 
-# El layout usa los tokens visuales compartidos de Atlanticus mediante CSS propio.
+def _list_card(
+    *,
+    title: str,
+    subtitle: str,
+    edit_id: dict[str, object],
+    delete_id: dict[str, object],
+) -> object:
+    return html.Article(
+        [
+            html.Div(
+                [html.Strong(title), html.Small(subtitle)],
+                className='alarm-family__item-copy',
+            ),
+            html.Div(
+                [
+                    html.Button(
+                        'Editar',
+                        id=edit_id,
+                        n_clicks=0,
+                        type='button',
+                        className='btn btn-outline-secondary btn-sm',
+                    ),
+                    html.Button(
+                        'Eliminar',
+                        id=delete_id,
+                        n_clicks=0,
+                        type='button',
+                        className='btn btn-outline-danger btn-sm',
+                    ),
+                ],
+                className='alarm-family__item-actions',
+            ),
+        ],
+        className='alarm-family__item alarm-family__item--card',
+    )
 
 
 def _split_editor(

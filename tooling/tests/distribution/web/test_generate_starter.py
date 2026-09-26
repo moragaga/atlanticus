@@ -49,3 +49,16 @@ def test_starter_generation_never_overwrites_an_existing_application(tmp_path):
     generate_starter(profile='generic', destination=destination)
     with pytest.raises(FileExistsError):
         generate_starter(profile='ada', destination=destination)
+
+
+def test_cli_generates_into_distribution_not_distributed(tmp_path, monkeypatch):
+    import sys
+
+    monkeypatch.setattr(_module, 'REPOSITORY_ROOT', tmp_path)
+    monkeypatch.setattr(sys, 'argv', ['generate_starter.py', '--profile', 'generic'])
+    _module.main()
+
+    generated = tmp_path / 'distribution' / 'generic-web-starter'
+    assert generated.is_dir()
+    assert (generated / 'manifest.json').is_file()
+    assert not (tmp_path / 'distributed').exists()

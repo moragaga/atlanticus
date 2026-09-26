@@ -38,7 +38,7 @@ def family_catalog(document: dict[str, object] | None) -> FamilyCatalog:
         if not isinstance(identity, dict):
             continue
         key = identity.get('family_key')
-        if isinstance(key, str):
+        if isinstance(key, str) and key.strip():
             groups.setdefault(key, ([], []))[0].append(index)
     for index, message in enumerate(messages if isinstance(messages, list) else []):
         if not isinstance(message, dict):
@@ -47,7 +47,7 @@ def family_catalog(document: dict[str, object] | None) -> FamilyCatalog:
             global_messages.append(index)
         elif message.get('scope') == 'FAMILY':
             key = message.get('family_key')
-            if isinstance(key, str):
+            if isinstance(key, str) and key.strip():
                 groups.setdefault(key, ([], []))[1].append(index)
     return FamilyCatalog(
         families=tuple(
