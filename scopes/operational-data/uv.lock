@@ -638,6 +638,12 @@ dependencies = [
     { name = "atlanticus-observability-azure" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "atlanticus-configuration", editable = "../../backend/configuration" },
@@ -649,6 +655,12 @@ requires-dist = [
     { name = "atlanticus-kernel", editable = "../../backend/kernel" },
     { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
     { name = "atlanticus-observability-azure", editable = "../../backend/observability-azure" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
 ]
 
 [[package]]

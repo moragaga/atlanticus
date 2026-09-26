@@ -20,6 +20,9 @@ dependencies = [
     "atlanticus-observability-azure==1.0.0",
 ]
 
+[dependency-groups]
+dev = ["pytest==9.1.1", "ruff==0.15.22"]
+
 [project.scripts]
 operational-data-meteodata = "atlanticus.operational_data.processes.meteodata.bootstrap:main"
 
