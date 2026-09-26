@@ -1,0 +1,110 @@
+/* Header administrativo genérico: preserva los tokens existentes y no depende del shell ADA. */
+.atlanticus-manager__header {
+    position: sticky;
+    z-index: 20;
+    top: 0;
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .75rem 1.25rem;
+    background: var(--atlanticus-manager-surface);
+    border-bottom: 1px solid var(--atlanticus-manager-border);
+    box-shadow: 0 .2rem .8rem rgba(7, 21, 34, .06);
+}
+
+.atlanticus-manager__header-identity,
+.atlanticus-manager__header-end,
+.atlanticus-manager__header-actions {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 1rem;
+}
+
+.atlanticus-manager__header-brand {
+    color: var(--atlanticus-manager-color-primary-strong);
+    font-family: var(--atlanticus-manager-font-brand);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: .09em;
+}
+
+.atlanticus-manager__header-context {
+    display: grid;
+    min-width: 0;
+    gap: .05rem;
+    padding-left: 1rem;
+    border-left: 1px solid var(--atlanticus-manager-border);
+}
+
+.atlanticus-manager__header-name {
+    color: var(--atlanticus-manager-color-primary-ink);
+    font-size: .82rem;
+    font-weight: 800;
+}
+
+.atlanticus-manager__header-section {
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .7rem;
+    overflow-wrap: anywhere;
+}
+
+.atlanticus-manager__header-actions {
+    gap: .5rem;
+}
+
+.atlanticus-manager__header-link {
+    padding: .5rem .7rem;
+    color: var(--atlanticus-manager-color-primary-dark);
+    border-radius: var(--atlanticus-admin-control-radius);
+    font-size: .75rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.atlanticus-manager__header-link:hover,
+.atlanticus-manager__header-link:focus-visible {
+    background: var(--atlanticus-manager-color-primary-soft);
+    outline: 2px solid var(--atlanticus-manager-color-primary);
+    outline-offset: 1px;
+}
+
+.atlanticus-manager__header-link--return {
+    border: 1px solid var(--atlanticus-manager-border);
+}
+
+.atlanticus-manager__header-principal {
+    max-width: 16rem;
+    padding-left: 1rem;
+    color: var(--atlanticus-manager-text-muted);
+    border-left: 1px solid var(--atlanticus-manager-border);
+    font-size: .75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 48rem) {
+    .atlanticus-manager__header {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: .7rem .85rem;
+    }
+
+    .atlanticus-manager__header-end {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: space-between;
+    }
+
+    .atlanticus-manager__header-identity {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .atlanticus-manager__header-principal {
+        max-width: 100%;
+    }
+}

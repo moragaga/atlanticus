@@ -101,8 +101,13 @@ class ManagerSurfaceDefinition:
     route_prefix: str = ''
     web_modules: tuple[WebModule, ...] = ()
     entries: tuple[ManagerEntry, ...] = ()
+    # El retorno a una aplicación es opt-in: Manager no conoce rutas operacionales.
+    application_home_href: str | None = None
 
     def __post_init__(self) -> None:
         prefix = self.route_prefix
         if prefix and (not _ROUTE_PREFIX_PATTERN.fullmatch(prefix) or prefix.endswith('/')):
             raise ManagerDefinitionError('Manager route prefix has an invalid format')
+        href = self.application_home_href
+        if href is not None and href != '/' and (not _ROUTE_PREFIX_PATTERN.fullmatch(href) or href.endswith('/')):
+            raise ManagerDefinitionError('Manager application return route must be an internal path')

@@ -1,4 +1,5 @@
 LOCATION_ID = 'atlanticus-manager-location'
+HEADER_SECTION_ID = 'atlanticus-manager-header-section'
 SUMMARY_ID = 'atlanticus-manager-summary'
 SIDEBAR_ID = 'atlanticus-manager-sidebar'
 SIDEBAR_BACKDROP_ID = 'atlanticus-manager-sidebar-backdrop'

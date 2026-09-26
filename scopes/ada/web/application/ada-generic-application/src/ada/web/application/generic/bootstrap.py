@@ -338,7 +338,9 @@ def _integrate_manager(
     definition: WebApplicationDefinition,
     dependencies: ConfigurationManagerDependencies,
 ) -> WebApplicationDefinition:
-    surface = ManagerSurface(build_configuration_manager_surface(dependencies))
+    surface = ManagerSurface(
+        replace(build_configuration_manager_surface(dependencies), application_home_href='/')
+    )
     return integrate_manager_surface(
         definition,
         manager=surface,

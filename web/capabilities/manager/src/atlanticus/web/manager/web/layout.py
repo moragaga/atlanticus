@@ -16,6 +16,7 @@ from atlanticus.web.manager.models import (
 )
 from atlanticus.web.manager.projection import ProjectionState, resolve_projection_state
 from atlanticus.web.manager.registry import ManagerModuleRegistry, ManagerRegisteredItem
+from atlanticus.web.manager.web.header import build_manager_header
 from atlanticus.web.manager.web.home import build_manager_home
 from atlanticus.web.manager.web.ids import (
     CONTENT_ID,
@@ -95,6 +96,11 @@ def build_manager_surface(
                 if module.source_signal_id is not None
             ],
             *[_module_stores(module) for module in visible_modules],
+            build_manager_header(
+                registry=registry,
+                principal=principal,
+                application_home_href=definition.application_home_href,
+            ),
             html.Section(id=SUMMARY_ID, className='atlanticus-manager__summary', hidden=True),
             html.Div(
                 id=HOME_ID,

@@ -3,6 +3,8 @@
 # Los comentarios no alteran la estructura ejecutable ni el comportamiento del archivo productivo.
 
 LOCATION_ID = 'atlanticus-manager-location'
+# Se actualiza con la ruta visible y autorizada; no duplica el módulo activo.
+HEADER_SECTION_ID = 'atlanticus-manager-header-section'
 SUMMARY_ID = 'atlanticus-manager-summary'
 SIDEBAR_ID = 'atlanticus-manager-sidebar'
 SIDEBAR_BACKDROP_ID = 'atlanticus-manager-sidebar-backdrop'

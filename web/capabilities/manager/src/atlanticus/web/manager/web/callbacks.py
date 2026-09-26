@@ -19,9 +19,11 @@ from atlanticus.web.manager.projection import (
     resolve_projection_state,
 )
 from atlanticus.web.manager.registry import ManagerModuleRegistry
+from atlanticus.web.manager.web.header import resolve_manager_header_section
 from atlanticus.web.manager.web.home import build_home_page_content, build_manager_home_return
 from atlanticus.web.manager.web.ids import (
     CONTENT_ID,
+    HEADER_SECTION_ID,
     HOME_CARDS_ID,
     HOME_ID,
     HOME_NEXT_ID,
@@ -105,6 +107,18 @@ def register_manager_callbacks(
         for module in registry.modules
         if module.source_signal_id is not None
     ]
+
+    @app.callback(
+        Output(HEADER_SECTION_ID, 'children'),
+        Input(LOCATION_ID, 'pathname'),
+    )
+    def render_header_section(pathname: str | None):
+        return resolve_manager_header_section(
+            pathname=pathname,
+            registry=registry,
+            principal=definition.principal_provider(),
+            authorization=authorization,
+        )
 
     @app.callback(
         Output(SIDEBAR_ID, 'className'),
