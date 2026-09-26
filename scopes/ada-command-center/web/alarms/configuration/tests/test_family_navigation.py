@@ -152,7 +152,7 @@ def test_global_navigation_keeps_rules_separate(monkeypatch):
     assert nav['page'] == 'global'
     assert nav['tab'] == 'messages'
     assert selected_family(nav, document) is None
-    assert callbacks['update_add_controls'](nav, document) == (True, False)
+    assert callbacks['update_add_controls'](nav, document) == (True, False, True)
 
 
 def test_detail_renders_only_selected_item_without_discarding_other_document_data() -> None:

@@ -6,29 +6,13 @@ from dash import html
 
 from ada_command_center.web.alarms.configuration.web.ids import (
     RULE_SECTION_TYPE,
-    STEP_ADD_TYPE,
 )
 
 RULE_SECTIONS = (
-    ('general', 'Información general', 'Identidad, nombre visible y texto que explica la alarma.'),
-    ('classification', 'Clasificación', 'Define el comportamiento y las categorías de esta regla.'),
-    (
-        'evaluation',
-        'Evaluación y prioridad',
-        'Indica cómo se evalúa y cómo compite con otras reglas.',
-    ),
-    (
-        'reappearance',
-        'Reaparición',
-        'Opcional: cuándo puede volver una alarma previamente gestionada.',
-    ),
-    ('deactivation', 'Desactivación', 'Configura si se permite una desactivación temporal.'),
-    (
-        'escalation',
-        'Origen y escalamiento',
-        'El escalamiento no es lo mismo que el destino visual.',
-    ),
-    ('visual', 'Visualización', 'Herramientas y elementos que la Web debe representar o colorear.'),
+    ('general', 'Información general', 'Identidad, clasificación y textos de presentación.'),
+    ('evaluation', 'Evaluación y prioridad', 'Evaluador, parámetros y orden del grupo.'),
+    ('behavior', 'Comportamiento', 'Reaparición, desactivación y origen operacional.'),
+    ('visual', 'Presentación visual', 'Elementos y componentes que la Web debe representar.'),
 )
 
 
@@ -44,13 +28,18 @@ def build_rule_section(
     selected = section if section in {item[0] for item in RULE_SECTIONS} else 'general'
     index = next(i for i, item in enumerate(RULE_SECTIONS) if item[0] == selected)
     _, label, help_text = RULE_SECTIONS[index]
-    active = children[index + 2]
-    if selected == 'deactivation' and deactivation_enabled is False:
-        active = html.Fieldset(active.children[:2], className='alarm-guided__group')
-    if selected == 'escalation' and criticality == 'C3':
-        active = _criticality_three_panel(active)
-    if selected == 'visual':
-        active = _visual_panel(active, targets, references)
+    deactivation = children[6]
+    if deactivation_enabled is False:
+        deactivation = html.Fieldset(deactivation.children[:2], className='alarm-guided__group')
+    escalation = children[7]
+    if criticality == 'C3':
+        escalation = _criticality_three_panel(escalation)
+    panels = {
+        'general': [children[2], children[3]],
+        'evaluation': [children[4]],
+        'behavior': [children[5], deactivation, escalation],
+        'visual': [_visual_panel(children[8], targets, references)],
+    }
     return html.Div(
         [
             html.Div(
@@ -59,7 +48,7 @@ def build_rule_section(
                         [
                             html.Strong(children[0].children),
                             html.Small(
-                                'Completa cada sección. Los cambios se conservan en el editor.'
+                                'Los cambios permanecen en edición hasta guardar el borrador.'
                             ),
                         ],
                         className='alarm-guided__heading',
@@ -68,38 +57,46 @@ def build_rule_section(
                 ],
                 className='alarm-guided__top',
             ),
-            html.Nav(
+            html.Div(
                 [
-                    html.Button(
-                        [html.Span(f'{position + 1:02d}'), html.Span(item_label)],
-                        id={'type': RULE_SECTION_TYPE, 'section': key},
-                        n_clicks=0,
-                        type='button',
-                        className=(
-                            'alarm-guided__tab alarm-guided__tab--active'
-                            if key == selected
-                            else 'alarm-guided__tab'
-                        ),
-                        **{'aria-current': 'step' if key == selected else 'false'},
-                    )
-                    for position, (key, item_label, _) in enumerate(RULE_SECTIONS)
-                ],
-                className='alarm-guided__tabs',
-                **{'aria-label': 'Secciones de la alarma'},
-            ),
-            html.Section(
-                [
-                    html.Div(
+                    html.Nav(
                         [
-                            html.Span(f'Sección {index + 1} de {len(RULE_SECTIONS)}'),
-                            html.H5(label),
-                            html.P(help_text),
+                            html.Button(
+                                [
+                                    html.Span(
+                                        f'{position + 1:02d}', className='alarm-guided__step-number'
+                                    ),
+                                    html.Span(item_label),
+                                ],
+                                id={'type': RULE_SECTION_TYPE, 'section': key},
+                                n_clicks=0,
+                                type='button',
+                                className='alarm-guided__tab alarm-guided__tab--active'
+                                if key == selected
+                                else 'alarm-guided__tab',
+                                **{'aria-current': 'step' if key == selected else 'false'},
+                            )
+                            for position, (key, item_label, _) in enumerate(RULE_SECTIONS)
                         ],
-                        className='alarm-guided__section-heading',
+                        className='alarm-guided__tabs',
+                        **{'aria-label': 'Apartados de la regla'},
                     ),
-                    active,
+                    html.Section(
+                        [
+                            html.Div(
+                                [
+                                    html.Span(f'Apartado {index + 1} de {len(RULE_SECTIONS)}'),
+                                    html.H5(label),
+                                    html.P(help_text),
+                                ],
+                                className='alarm-guided__section-heading',
+                            ),
+                            html.Div(panels[selected], className='alarm-guided__panels'),
+                        ],
+                        className='alarm-guided__content',
+                    ),
                 ],
-                className='alarm-guided__content',
+                className='alarm-guided__body',
             ),
         ],
         className='alarm-guided',
@@ -110,20 +107,26 @@ def _criticality_three_panel(panel: object) -> object:
     children = getattr(panel, 'children', None)
     if not isinstance(children, list):
         return panel
-    kept = []
-    for child in children:
-        component_id = getattr(child, 'id', None)
-        if isinstance(component_id, dict) and component_id.get('type') == STEP_ADD_TYPE:
-            continue
-        kept.append(child)
+    existing = [child for child in children[3:] if child is not None]
     return html.Section(
         [
+            html.H5('Origen operacional'),
+            children[1],
             html.P(
-                'C3 utiliza solamente la herramienta de origen. No admite nuevos pasos '
-                'habilitados. Si hay pasos anteriores, desactívalos o elimínalos.',
+                'C3 no tiene escalonamiento. El origen conserva su función de referencia.',
                 className='alarm-guided__notice',
             ),
-            *kept,
+            *(
+                [
+                    html.P(
+                        'Existen pasos anteriores que deben revisarse y eliminarse para C3.',
+                        className='alarm-guided__notice',
+                    ),
+                    *existing,
+                ]
+                if existing
+                else []
+            ),
         ],
         className='alarm-guided__conditional',
     )

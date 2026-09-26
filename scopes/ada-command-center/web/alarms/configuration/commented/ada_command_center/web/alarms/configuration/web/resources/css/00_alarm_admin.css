@@ -1,4 +1,4 @@
-/* Estilos específicos de Alarm: sin modificar CSS compartido del Manager. */
+/* Espejo: colores y composición administrativos de Atlanticus. */
 .alarm-admin {
     display: grid;
     width: 100%;
@@ -268,4 +268,89 @@
     .alarm-admin { padding-inline: .35rem; }
     .alarm-admin__runtime > div:last-child { margin-left: 0; }
     .alarm-admin__new-family-field { flex: 1 1 100%; }
+}
+
+.alarm-page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: .75rem;
+    padding: .85rem 0 0;
+}
+
+.alarm-page__results {
+    align-content: start;
+    min-height: 34rem;
+}
+
+.alarm-page__results[data-page-size="20"] {
+    min-height: 68rem;
+}
+
+.alarm-page__summary {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .79rem;
+    font-weight: 550;
+}
+
+.alarm-page__controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .27rem;
+}
+
+.alarm-page__button {
+    display: inline-flex;
+    min-width: 2rem;
+    height: 2rem;
+    align-items: center;
+    justify-content: center;
+    padding: .2rem .4rem;
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .53rem;
+    color: var(--atlanticus-ui-text);
+    background: var(--atlanticus-ui-surface);
+    font-size: .79rem;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.alarm-page__button:not(:disabled):hover {
+    border-color: var(--atlanticus-ui-accent);
+    box-shadow: 0 3px 10px rgb(7 21 34 / 7%);
+}
+
+.alarm-page__button:disabled {
+    opacity: .45;
+    cursor: default;
+}
+
+.alarm-page__button--active {
+    border-color: var(--atlanticus-ui-primary-hover);
+    background: var(--atlanticus-ui-primary-hover);
+    color: var(--atlanticus-ui-surface);
+    opacity: 1 !important;
+}
+
+.alarm-page__ellipsis {
+    color: var(--atlanticus-ui-text-muted);
+}
+
+.alarm-family__cards {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+}
+
+.alarm-family__items {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+}
+
+.alarm-admin__new-family[hidden] {
+    display: none;
+}
+
+@media (max-width: 48rem) {
+    .alarm-page { grid-template-columns: minmax(0, 1fr); }
+    .alarm-page__controls { justify-content: flex-start; }
+    .alarm-page__results { min-height: 22rem; }
 }

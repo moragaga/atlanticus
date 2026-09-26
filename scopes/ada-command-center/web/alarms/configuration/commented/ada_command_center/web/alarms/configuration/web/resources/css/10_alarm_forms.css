@@ -1,36 +1,39 @@
-/* Estilos específicos de Alarm: sin modificar CSS compartido del Manager. */
-.alarm-family__modal[hidden] {
-    display: none !important;
+/* Espejo: colores y composición administrativos de Atlanticus. */
+.alarm-family__modal[hidden],
+.alarm-admin__new-family[hidden] {
+    display: none;
 }
 
 .alarm-family__modal {
     position: fixed;
-    z-index: 1200;
+    z-index: 1300;
     inset: 0;
     display: grid;
     place-items: center;
     padding: 1rem;
+    overflow: auto;
 }
 
 .alarm-family__modal-backdrop {
     position: absolute;
     inset: 0;
-    background: rgb(7 21 34 / 53%);
+    background: var(--atlanticus-ui-overlay);
 }
 
 .alarm-family__modal-dialog {
     position: relative;
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
-    width: min(100%, 73rem);
-    max-height: min(92vh, 59rem);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    width: min(100%, 69rem);
+    max-height: 96vh;
+    min-height: 22rem;
     min-width: 0;
     overflow: hidden;
-    background: var(--atlanticus-ui-surface);
     border: 1px solid var(--atlanticus-ui-border);
-    border-top: .24rem solid var(--atlanticus-ui-secondary);
-    border-radius: .85rem;
-    box-shadow: 0 20px 60px rgb(7 21 34 / 30%);
+    border-top: .2rem solid var(--atlanticus-ui-accent);
+    border-radius: var(--atlanticus-ui-modal-radius);
+    background: var(--atlanticus-ui-surface);
+    box-shadow: var(--atlanticus-ui-modal-shadow);
 }
 
 .alarm-family__modal-header {
@@ -38,101 +41,199 @@
     align-items: center;
     justify-content: space-between;
     gap: .75rem;
-    padding: .65rem .95rem;
+    padding: .8rem 1rem;
     border-bottom: 1px solid var(--atlanticus-ui-border);
-    color: var(--atlanticus-ui-text);
-    font-size: .76rem;
+    color: var(--atlanticus-ui-primary);
+}
+
+.alarm-family__modal-header > div {
+    display: grid;
+    gap: .15rem;
+}
+
+.alarm-family__modal-header h3 {
+    margin: 0;
+    font-size: .96rem;
+    font-weight: 780;
+}
+
+.alarm-family__modal-header small {
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .66rem;
+    font-weight: 700;
+    letter-spacing: .05em;
 }
 
 .alarm-family__detail {
     min-width: 0;
-    max-height: 100%;
+    min-height: 0;
     overflow-y: auto;
-    padding: .9rem 1rem 1rem;
 }
 
-.alarm-guided,
-.alarm-guided__content,
-.alarm-guided__heading {
+.alarm-family__modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .6rem;
+    padding: .68rem 1rem;
+    border-top: 1px solid var(--atlanticus-ui-border);
+    background: var(--atlanticus-ui-surface);
+}
+
+.alarm-family__validation {
+    display: grid;
+    gap: .18rem;
+    min-width: min(100%, 16rem);
+    flex: 1 1 22rem;
+    max-height: 5rem;
+    overflow-y: auto;
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .71rem;
+}
+
+.alarm-family__validation strong {
+    color: var(--atlanticus-ui-primary);
+}
+
+.alarm-family__validation ul {
+    margin: .12rem 0;
+    padding-left: 1.2rem;
+    color: var(--atlanticus-ui-warning);
+}
+
+.alarm-family__save-result {
+    flex: 1 1 10rem;
+    font-size: .72rem;
+}
+
+.alarm-family__save-result:empty {
+    display: none;
+}
+
+.alarm-family__modal-actions {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    margin-left: auto;
+}
+
+.alarm-guided {
     display: grid;
     min-width: 0;
-    gap: .55rem;
-}
-
-.alarm-guided__heading > strong {
-    color: var(--atlanticus-ui-primary);
-    font-size: 1.02rem;
+    gap: .65rem;
+    padding: .75rem 1rem;
 }
 
 .alarm-guided__top {
     display: flex;
-    align-items: start;
+    align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: .75rem;
+    padding-bottom: .35rem;
 }
 
-.alarm-guided__heading > small,
-.alarm-guided__section-heading p,
-.alarm-guided__field-help {
+.alarm-guided__heading {
+    display: grid;
+    gap: .16rem;
+}
+
+.alarm-guided__heading strong {
+    color: var(--atlanticus-ui-primary);
+    font-size: 1rem;
+}
+
+.alarm-guided__heading small,
+.alarm-guided__field-help,
+.alarm-guided__section-heading p {
     color: var(--atlanticus-ui-text-muted);
     font-size: .7rem;
-    font-weight: 400;
-    line-height: 1.4;
+    font-weight: 450;
+    line-height: 1.35;
 }
 
 .alarm-guided__top > button {
-    padding: .3rem .58rem;
-    background: var(--atlanticus-ui-surface);
-    color: var(--atlanticus-ui-danger);
+    padding: .34rem .6rem;
     border: 1px solid var(--atlanticus-ui-border);
     border-radius: .5rem;
-    font-size: .72rem;
-    cursor: pointer;
+    color: var(--atlanticus-ui-danger);
+    background: var(--atlanticus-ui-surface);
+    font-size: .73rem;
+}
+
+.alarm-guided__body {
+    display: grid;
+    grid-template-columns: 13.5rem minmax(0, 1fr);
+    min-width: 0;
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .66rem;
+    overflow: hidden;
 }
 
 .alarm-guided__tabs {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
-    gap: .38rem;
-    padding: .3rem 0 .7rem;
+    align-content: start;
+    gap: .25rem;
+    padding: .75rem .55rem;
+    background: var(--atlanticus-ui-surface-muted);
+    border-right: 1px solid var(--atlanticus-ui-border);
 }
 
 .alarm-guided__tab {
     display: flex;
+    gap: .48rem;
     align-items: center;
-    gap: .3rem;
-    min-width: 0;
-    padding: .46rem .58rem;
-    color: var(--atlanticus-ui-text);
-    background: var(--atlanticus-ui-surface-muted);
-    border: 1px solid var(--atlanticus-ui-border);
-    border-radius: .5rem;
-    font-size: .7rem;
-    font-weight: 700;
+    width: 100%;
+    padding: .59rem .47rem;
     text-align: left;
+    border: 1px solid transparent;
+    border-radius: .5rem;
+    color: var(--atlanticus-ui-text);
+    background: transparent;
+    font-size: .75rem;
+    font-weight: 670;
     cursor: pointer;
 }
 
-.alarm-guided__tab > span:first-child {
-    color: var(--atlanticus-ui-text-muted);
-    font-size: .63rem;
-}
-
 .alarm-guided__tab--active {
-    border-color: var(--atlanticus-ui-secondary);
     color: var(--atlanticus-ui-primary);
     background: var(--atlanticus-ui-selection-soft);
+    border-color: var(--atlanticus-ui-border-strong);
+    border-left: 3px solid var(--atlanticus-ui-secondary);
+}
+
+.alarm-guided__step-number {
+    display: inline-grid;
+    width: 1.55rem;
+    height: 1.55rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: 50%;
+    background: var(--atlanticus-ui-surface);
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .68rem;
+}
+
+.alarm-guided__tab--active .alarm-guided__step-number {
+    color: var(--atlanticus-ui-surface);
+    background: var(--atlanticus-ui-primary);
+}
+
+.alarm-guided__content {
+    display: grid;
+    min-width: 0;
+    align-content: start;
+    gap: .65rem;
+    padding: .9rem;
 }
 
 .alarm-guided__section-heading {
     display: grid;
-    gap: .13rem;
-    padding-block: .35rem .6rem;
-}
-
-.alarm-guided__section-heading h5,
-.alarm-guided__section-heading p {
-    margin: 0;
+    gap: .16rem;
+    padding-bottom: .62rem;
+    border-bottom: 1px solid var(--atlanticus-ui-border);
 }
 
 .alarm-guided__section-heading > span {
@@ -141,47 +242,82 @@
     font-weight: 700;
 }
 
-.alarm-guided__content > fieldset,
-.alarm-guided__content > section,
-.alarm-guided__conditional,
-.alarm-guided__visual,
+.alarm-guided__section-heading h5,
+.alarm-guided__section-heading p {
+    margin: 0;
+}
+
+.alarm-guided__section-heading h5 {
+    color: var(--atlanticus-ui-primary);
+    font-size: .88rem;
+}
+
+.alarm-guided__panels {
+    display: grid;
+    align-content: start;
+    gap: .75rem;
+    min-width: 0;
+}
+
+.alarm-guided__panels > fieldset,
+.alarm-guided__panels > section,
 .alarm-guided__visual > fieldset,
-.alarm-guided__content fieldset fieldset,
+.alarm-guided__conditional > fieldset,
 .alarm-family__detail > fieldset {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-content: start;
-    gap: .65rem .85rem;
+    gap: .7rem .9rem;
     min-width: 0;
     margin: 0;
     padding: .75rem;
     border: 1px solid var(--atlanticus-ui-border);
-    border-radius: .65rem;
+    border-radius: .6rem;
+    background: var(--atlanticus-ui-surface);
 }
 
-.alarm-guided__content > fieldset > legend {
-    display: none;
-}
-
-.alarm-guided__content fieldset legend,
-.alarm-family__detail > fieldset > legend {
+.alarm-guided__panels > fieldset > legend {
     float: none;
     width: auto;
-    padding: 0 .2rem;
+    padding: 0 .25rem;
     color: var(--atlanticus-ui-primary);
-    font-size: .78rem;
-    font-weight: 750;
+    font-size: .77rem;
+    font-weight: 760;
 }
 
-.alarm-guided__content > section > h5,
+.alarm-guided__visual,
+.alarm-guided__conditional {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: .58rem;
+}
+
 .alarm-guided__visual > h5,
-.alarm-guided__content > section > button,
+.alarm-guided__conditional > h5,
+.alarm-guided__visual > button,
 .alarm-guided__conditional > p,
-.alarm-guided__visual > fieldset,
-.alarm-guided__content > section > fieldset,
-.alarm-family__detail > fieldset > legend,
-.alarm-family__detail > fieldset > button {
+.alarm-guided__panels > section > button,
+.alarm-guided__panels > section > h5,
+.alarm-guided__panels > section > fieldset {
     grid-column: 1 / -1;
+}
+
+.alarm-guided__panels fieldset fieldset {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .65rem;
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .55rem;
+    padding: .65rem;
+}
+
+.alarm-guided__panels fieldset legend {
+    float: none;
+    padding: .05rem .25rem;
+    width: auto;
+    color: var(--atlanticus-ui-primary);
+    font-size: .75rem;
+    font-weight: 750;
 }
 
 .alarm-guided__field,
@@ -189,66 +325,65 @@
     display: grid;
     align-content: start;
     min-width: 0;
-    gap: .26rem;
+    gap: .27rem;
     font-size: .73rem;
-    font-weight: 650;
+    font-weight: 690;
 }
 
 .alarm-guided__field > input,
 .alarm-family__detail > fieldset > label > input,
 .alarm-guided__visual > fieldset input {
-    min-width: 0;
     width: 100%;
-    min-height: 2.08rem;
-    padding: .37rem .55rem;
+    min-width: 0;
+    min-height: 2.18rem;
+    padding: .41rem .58rem;
     color: var(--atlanticus-ui-text);
     background: var(--atlanticus-ui-surface);
-    border: 1px solid var(--atlanticus-ui-border);
-    border-radius: .45rem;
+    border: 1px solid var(--atlanticus-ui-border-strong);
+    border-radius: .5rem;
     font-size: .76rem;
 }
 
-.alarm-guided__field > input:focus-visible,
-.alarm-family__detail input:focus-visible {
-    outline: 2px solid var(--atlanticus-ui-secondary);
-    outline-offset: 1px;
+.alarm-guided__field > input:focus,
+.alarm-family__detail input:focus {
+    outline: none;
+    border-color: var(--atlanticus-ui-secondary);
+    box-shadow: var(--atlanticus-ui-control-focus-ring);
 }
 
 .alarm-admin__read-only {
     display: grid;
     align-content: start;
     min-width: 0;
-    gap: .25rem;
-    color: var(--atlanticus-ui-text-muted);
+    gap: .23rem;
     font-size: .72rem;
+    color: var(--atlanticus-ui-text-muted);
 }
 
 .alarm-admin__read-only strong,
 .alarm-admin__read-only code {
-    display: block;
-    overflow-wrap: anywhere;
-    padding: .39rem .48rem;
+    padding: .48rem .54rem;
     border: 1px solid var(--atlanticus-ui-border);
-    border-radius: .42rem;
+    border-radius: .5rem;
+    background: var(--atlanticus-ui-control-disabled);
     color: var(--atlanticus-ui-text);
-    background: var(--atlanticus-ui-surface-muted);
-    font-size: .77rem;
-    font-weight: 650;
+    font-size: .75rem;
+    overflow-wrap: anywhere;
 }
 
 .alarm-admin__choices {
     display: flex;
-    flex-wrap: wrap;
-    gap: .36rem .9rem;
-    min-height: 2rem;
     align-items: center;
+    flex-wrap: wrap;
+    gap: .38rem .9rem;
+    min-height: 2.18rem;
     font-size: .75rem;
 }
 
 .alarm-admin__choices label {
     display: inline-flex;
     align-items: center;
-    gap: .3rem;
+    gap: .32rem;
     white-space: nowrap;
     font-weight: 500;
 }
@@ -260,28 +395,151 @@
 .alarm-guided__tip,
 .alarm-guided__notice {
     grid-column: 1 / -1;
-    padding: .5rem .65rem;
     margin: 0;
+    padding: .5rem .64rem;
+    border-left: 2px solid var(--atlanticus-ui-accent);
+    border-radius: .4rem;
+    color: var(--atlanticus-ui-text);
     background: var(--atlanticus-ui-selection-soft);
-    border-left: 3px solid var(--atlanticus-ui-secondary);
-    border-radius: .25rem;
     font-size: .7rem;
 }
 
 .alarm-guided__visual > fieldset > div {
     display: grid;
+    gap: .35rem;
     min-width: 0;
-    gap: .32rem;
 }
 
 @media (max-width: 48rem) {
-    .alarm-family__modal { padding: .25rem; }
+    .alarm-family__modal { padding: .35rem; }
     .alarm-family__modal-dialog { width: 100%; max-height: 98vh; }
-    .alarm-guided__content > fieldset,
-    .alarm-guided__content > section,
-    .alarm-guided__conditional,
-    .alarm-guided__visual,
+    .alarm-guided__body { grid-template-columns: minmax(0, 1fr); }
+    .alarm-guided__tabs {
+        display: flex;
+        overflow-x: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--atlanticus-ui-border);
+    }
+    .alarm-guided__tab { flex: 0 0 auto; width: auto; }
+    .alarm-guided__panels > fieldset,
+    .alarm-guided__panels > section,
     .alarm-guided__visual > fieldset,
-    .alarm-guided__content fieldset fieldset,
+    .alarm-guided__conditional > fieldset,
     .alarm-family__detail > fieldset { grid-template-columns: minmax(0, 1fr); }
+    .alarm-family__modal-footer { align-items: stretch; }
+    .alarm-family__modal-actions { width: 100%; justify-content: flex-end; }
+}
+
+.alarm-parameter {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: .65rem;
+    padding: .78rem;
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .62rem;
+    background: var(--atlanticus-ui-surface-muted);
+}
+
+.alarm-parameter__heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .65rem;
+}
+
+.alarm-parameter__heading h5 {
+    margin: 0 0 .25rem;
+    color: var(--atlanticus-ui-primary);
+    font-size: .82rem;
+}
+
+.alarm-parameter__heading p {
+    margin: 0;
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .7rem;
+}
+
+.alarm-parameter__rows {
+    display: grid;
+    gap: .55rem;
+}
+
+.alarm-parameter__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(7.5rem, .63fr) minmax(0, 1fr) auto;
+    align-items: end;
+    gap: .55rem;
+}
+
+.alarm-parameter__row > button {
+    align-self: end;
+    height: 2.19rem;
+}
+
+.alarm-parameter__issues {
+    margin: 0;
+    color: var(--atlanticus-ui-danger);
+    font-size: .71rem;
+}
+
+@media (max-width: 48rem) {
+    .alarm-parameter__row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.alarm-family__modal-dialog--small {
+    width: min(100%, 38rem);
+    min-height: auto;
+}
+
+.alarm-admin__family-modal-body,
+.alarm-admin__import-review-body {
+    display: grid;
+    min-width: 0;
+    gap: .7rem;
+    padding: 1rem;
+    max-height: 65vh;
+    overflow-y: auto;
+}
+
+.alarm-admin__import-review {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .55rem;
+}
+
+.alarm-admin__import-review > div {
+    display: grid;
+    min-width: 0;
+    gap: .16rem;
+    padding: .6rem .75rem;
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .55rem;
+    background: var(--atlanticus-ui-surface-muted);
+}
+
+.alarm-admin__import-review strong,
+.alarm-admin__import-review span,
+.alarm-admin__import-review code {
+    overflow-wrap: anywhere;
+    font-size: .74rem;
+}
+
+.alarm-admin__import-review > p {
+    grid-column: 1 / -1;
+}
+
+.alarm-admin__runtime > div:not(:last-child) {
+    display: inline-flex;
+    align-items: baseline;
+    gap: .38rem;
+    padding: .38rem .6rem;
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: 999px;
+    background: var(--atlanticus-ui-background);
+    color: var(--atlanticus-ui-primary);
+}
+
+@media (max-width: 48rem) {
+    .alarm-admin__import-review { grid-template-columns: minmax(0, 1fr); }
 }

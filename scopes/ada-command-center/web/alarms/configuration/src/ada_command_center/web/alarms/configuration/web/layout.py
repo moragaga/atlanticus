@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping
 
 from dash import dcc, html
@@ -27,6 +26,8 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     ADD_MESSAGE_BUTTON_ID,
     ADD_RULE_BUTTON_ID,
     AUTHORING_STORE_ID,
+    CANCEL_FAMILY_CREATE_FOOTER_ID,
+    CANCEL_FAMILY_CREATE_ID,
     COMPONENT_ADD_TYPE,
     COMPONENT_FIELD_TYPE,
     COMPONENT_REMOVE_TYPE,
@@ -37,11 +38,17 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     FAMILY_NAV_STORE_ID,
     FAMILY_NEW_KEY_ID,
     IMPORT_RESULT_ID,
+    IMPORT_REVIEW_CANCEL_ID,
+    IMPORT_REVIEW_CONFIRM_ID,
+    IMPORT_REVIEW_CONTENT_ID,
+    IMPORT_REVIEW_MODAL_ID,
+    IMPORT_REVIEW_STORE_ID,
     IMPORT_UPLOAD_ID,
     MESSAGE_FIELD_TYPE,
     MESSAGE_REMOVE_TYPE,
     MESSAGES_EDITOR_ID,
     MOUNT_STORE_ID,
+    OPEN_FAMILY_CREATE_ID,
     PROJECTION_NAME_ID,
     RULE_FIELD_TYPE,
     RULE_REMOVE_TYPE,
@@ -72,6 +79,7 @@ from ada_command_center.web.alarms.configuration.web.labels import (
 from ada_command_center.web.alarms.configuration.web.models import (
     AlarmConfigurationAdminWebContext,
 )
+from ada_command_center.web.alarms.configuration.web.parameters import parameter_editor
 from ada_command_center.web.alarms.configuration.web.select_style import dash_select_style
 
 
@@ -85,6 +93,7 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                 storage_type='memory',
             ),
             dcc.Store(id=TOOL_REFERENCE_STORE_ID, data=None, storage_type='memory'),
+            dcc.Store(id=IMPORT_REVIEW_STORE_ID, data=None, storage_type='memory'),
             dcc.Store(id=FAMILY_NAV_STORE_ID, data=initial_navigation(), storage_type='memory'),
             _runtime_context(context),
             html.Section(
@@ -125,6 +134,13 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                                         type='button',
                                         className='btn btn-outline-secondary btn-sm',
                                     ),
+                                    html.Button(
+                                        '+ Nueva familia',
+                                        id=OPEN_FAMILY_CREATE_ID,
+                                        n_clicks=0,
+                                        type='button',
+                                        className='btn btn-outline-secondary btn-sm',
+                                    ),
                                 ],
                                 className='alarm-admin__heading-actions',
                             ),
@@ -152,38 +168,139 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                     ),
                     html.Div(
                         [
-                            html.Label(
+                            html.Div(className='alarm-family__modal-backdrop'),
+                            html.Div(
                                 [
-                                    html.Span('Nueva familia'),
-                                    dcc.Input(
-                                        id=FAMILY_NEW_KEY_ID,
-                                        type='text',
-                                        value='',
-                                        placeholder='Nombre o clave de la familia',
-                                        debounce=False,
-                                        className='form-control form-control-sm',
+                                    html.Header(
+                                        [
+                                            html.Div(
+                                                [
+                                                    html.Small('ADMINISTRAR FAMILIAS'),
+                                                    html.H3('Nueva familia'),
+                                                ]
+                                            ),
+                                            html.Button(
+                                                'Cerrar',
+                                                id=CANCEL_FAMILY_CREATE_ID,
+                                                type='button',
+                                                n_clicks=0,
+                                                className='btn btn-outline-secondary btn-sm',
+                                            ),
+                                        ],
+                                        className='alarm-family__modal-header modal-header',
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.Label(
+                                                [
+                                                    html.Span('Nombre o clave de la familia'),
+                                                    dcc.Input(
+                                                        id=FAMILY_NEW_KEY_ID,
+                                                        type='text',
+                                                        value='',
+                                                        placeholder='Ej.: control-planta',
+                                                        debounce=False,
+                                                        className='form-control form-control-sm',
+                                                    ),
+                                                    html.Small(
+                                                        'Se incorpora al documento con su primera regla o mensaje.'
+                                                    ),
+                                                ],
+                                                className='alarm-admin__new-family-field',
+                                            ),
+                                            html.Div(
+                                                id=FAMILY_ACTION_RESULT_ID,
+                                                className='alarm-admin__family-result',
+                                                role='status',
+                                            ),
+                                        ],
+                                        className='alarm-admin__family-modal-body',
+                                    ),
+                                    html.Footer(
+                                        [
+                                            html.Button(
+                                                'Cancelar',
+                                                id=CANCEL_FAMILY_CREATE_FOOTER_ID,
+                                                n_clicks=0,
+                                                type='button',
+                                                className='btn btn-outline-secondary btn-sm',
+                                            ),
+                                            html.Button(
+                                                'Crear familia',
+                                                id=CREATE_FAMILY_ID,
+                                                n_clicks=0,
+                                                type='button',
+                                                className='btn btn-primary btn-sm',
+                                            ),
+                                        ],
+                                        className='alarm-family__modal-footer modal-footer',
                                     ),
                                 ],
-                                className='alarm-admin__new-family-field',
-                            ),
-                            html.Button(
-                                'Crear familia',
-                                id=CREATE_FAMILY_ID,
-                                n_clicks=0,
-                                type='button',
-                                className='btn btn-primary btn-sm',
-                            ),
-                            html.Div(
-                                id=FAMILY_ACTION_RESULT_ID, className='alarm-admin__family-result'
+                                className='alarm-family__modal-dialog '
+                                'alarm-family__modal-dialog--small modal-content',
+                                role='dialog',
+                                **{'aria-modal': 'true'},
                             ),
                         ],
                         id=FAMILY_CREATE_PANEL_ID,
-                        className='alarm-admin__new-family',
+                        className='alarm-family__modal',
+                        hidden=True,
                     ),
                     html.Div(id=RULES_EDITOR_ID),
                     html.Div(id=MESSAGES_EDITOR_ID, hidden=True),
                 ],
                 className='alarm-admin__section',
+            ),
+            html.Div(
+                [
+                    html.Div(className='alarm-family__modal-backdrop'),
+                    html.Div(
+                        [
+                            html.Header(
+                                [
+                                    html.Div(
+                                        [
+                                            html.Small('CONFIGURACIÓN · IMPORTACIÓN'),
+                                            html.H3('Revisar importación'),
+                                        ]
+                                    ),
+                                    html.Button(
+                                        'Cerrar',
+                                        id=IMPORT_REVIEW_CANCEL_ID,
+                                        n_clicks=0,
+                                        type='button',
+                                        className='btn btn-outline-secondary btn-sm',
+                                    ),
+                                ],
+                                className='alarm-family__modal-header modal-header',
+                            ),
+                            html.Div(
+                                id=IMPORT_REVIEW_CONTENT_ID,
+                                className='alarm-admin__import-review-body',
+                            ),
+                            html.Footer(
+                                [
+                                    html.Button(
+                                        'Confirmar importación',
+                                        id=IMPORT_REVIEW_CONFIRM_ID,
+                                        n_clicks=0,
+                                        disabled=True,
+                                        type='button',
+                                        className='btn btn-primary btn-sm',
+                                    ),
+                                ],
+                                className='alarm-family__modal-footer modal-footer',
+                            ),
+                        ],
+                        className='alarm-family__modal-dialog '
+                        'alarm-family__modal-dialog--small modal-content',
+                        role='dialog',
+                        **{'aria-modal': 'true'},
+                    ),
+                ],
+                id=IMPORT_REVIEW_MODAL_ID,
+                className='alarm-family__modal',
+                hidden=True,
             ),
             html.Section(
                 [
@@ -250,11 +367,15 @@ def _runtime_context(context: AlarmConfigurationAdminWebContext) -> object:
                 [
                     dcc.Upload(
                         id=IMPORT_UPLOAD_ID,
-                        children=html.Button('Importar JSON', type='button'),
+                        children=html.Button(
+                            'Importar configuración',
+                            type='button',
+                            className='btn btn-outline-secondary btn-sm',
+                        ),
                         accept='.json,application/json',
                         multiple=False,
                     ),
-                    html.Span('La importación sustituye el borrador sólo si es válido.'),
+                    html.Span('El archivo se revisa antes de sustituir el borrador.'),
                     html.Div(id=IMPORT_RESULT_ID),
                 ]
             ),
@@ -372,12 +493,7 @@ def _rule_editor(
                     _text_field(
                         rule_index, 'evaluator_key', 'Evaluator key', rule.get('evaluator_key')
                     ),
-                    _text_field(
-                        rule_index,
-                        'parameters',
-                        'Parameters JSON',
-                        _parameters_text(rule.get('parameters')),
-                    ),
+                    parameter_editor(rule_index, rule),
                     _text_field(
                         rule_index, 'priority_group', 'Priority group', rule.get('priority_group')
                     ),
@@ -1113,15 +1229,6 @@ def _canonical_identity(value: Mapping[str, object]) -> str:
     if not family_key or not alarm_key:
         return ''
     return f'{family_key}/{alarm_key}'
-
-
-def _parameters_text(value: object) -> str:
-    if isinstance(value, str):
-        return value
-    try:
-        return json.dumps(value, ensure_ascii=False, sort_keys=True)
-    except TypeError:
-        return str(value)
 
 
 def _mapping(value: object) -> dict[str, object]:

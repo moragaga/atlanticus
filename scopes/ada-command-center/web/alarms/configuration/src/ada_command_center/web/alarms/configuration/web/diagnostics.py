@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from ada_command_center.web.alarms.configuration.web.labels import field_label
+from ada_command_center.web.alarms.configuration.web.parameters import parameter_issues
 
 _RULE_FIELDS = (
     ('identity.alarm_key', 'general', 'Alarm key'),
@@ -68,6 +69,8 @@ def authoring_issues(document: Mapping[str, object] | None) -> tuple[str, ...]:
             result.append(
                 f'Regla {index + 1} · Evaluación y prioridad: el orden debe ser positivo.'
             )
+        for parameter_issue in parameter_issues(entry):
+            result.append(f'Regla {index + 1} · Evaluación y prioridad: {parameter_issue}')
         parameters = entry.get('parameters')
         if not isinstance(parameters, dict):
             result.append(

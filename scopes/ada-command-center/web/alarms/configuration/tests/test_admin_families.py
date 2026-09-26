@@ -110,7 +110,7 @@ def test_close_editor_only_changes_navigation(monkeypatch):
         'section': 'visual',
     }
     _trigger(monkeypatch, CLOSE_EDITOR_ID)
-    closed = callbacks['close_editor'](1, nav)
+    closed = callbacks['close_editor'](1, None, nav)
     assert closed['page'] == 'family'
     assert closed['family_key'] == 'mina'
     assert closed['rule_index'] is None
@@ -129,6 +129,10 @@ def test_identity_cannot_be_changed_through_authoring_fields():
 
 def test_family_creation_is_available_only_on_family_list():
     callbacks = _callbacks()
-    assert callbacks['show_family_creation'](initial_navigation()) is False
+    assert callbacks['show_family_creation'](initial_navigation()) is True
+    assert (
+        callbacks['show_family_creation']({**initial_navigation(), 'family_create_open': True})
+        is False
+    )
     assert callbacks['show_family_creation']({**initial_navigation(), 'page': 'family'}) is True
     assert callbacks['show_family_creation']({**initial_navigation(), 'page': 'global'}) is True

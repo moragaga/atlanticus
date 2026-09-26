@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-import base64
-import json
-from binascii import Error as BinasciiError
-
 from dash import ALL, Input, Output, State, ctx, html, no_update
 
 from ada_command_center.domain.alarms import (
     AlarmConfiguration,
     AlarmConfigurationValidationError,
 )
+from ada_command_center.domain.tools import ToolDependencyManifest
 from ada_command_center.web.alarms.configuration.web.authoring import (
     add_component_key,
     add_escalation_step,
@@ -42,11 +39,21 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     DOCUMENT_STATUS_ID,
     FAMILY_NAV_STORE_ID,
     IMPORT_RESULT_ID,
+    IMPORT_REVIEW_CANCEL_ID,
+    IMPORT_REVIEW_CONFIRM_ID,
+    IMPORT_REVIEW_CONTENT_ID,
+    IMPORT_REVIEW_MODAL_ID,
+    IMPORT_REVIEW_STORE_ID,
     IMPORT_UPLOAD_ID,
     MESSAGE_FIELD_TYPE,
     MESSAGE_REMOVE_TYPE,
     MESSAGES_EDITOR_ID,
+    MODAL_SAVE_BUTTON_ID,
+    MODAL_SAVE_RESULT_ID,
     MOUNT_STORE_ID,
+    PARAMETER_ADD_TYPE,
+    PARAMETER_FIELD_TYPE,
+    PARAMETER_REMOVE_TYPE,
     RULE_FIELD_TYPE,
     RULE_REMOVE_TYPE,
     RULES_EDITOR_ID,
@@ -64,9 +71,19 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     TOOL_REFERENCE_STATUS_ID,
     TOOL_REFERENCE_STORE_ID,
 )
+from ada_command_center.web.alarms.configuration.web.import_review import (
+    can_confirm,
+    inspect_import,
+    revision_warning,
+)
 from ada_command_center.web.alarms.configuration.web.layout import build_structured_editors
 from ada_command_center.web.alarms.configuration.web.models import (
     AlarmConfigurationAdminWebContext,
+)
+from ada_command_center.web.alarms.configuration.web.parameters import (
+    add_parameter,
+    remove_parameter,
+    set_parameter_field,
 )
 from atlanticus.web.manager.errors import ManagerProjectionError
 from atlanticus.web.manager.workspace import ManagerWorkspace, build_workspace_revision
@@ -109,9 +126,12 @@ def register_alarm_configuration_admin_callbacks(
         document = tool_reference_catalog_to_document(catalog)
         return (
             document,
-            html.Small(
-                f'Revisión Tool: {catalog.catalog_revision[:12]}…',
-                title=catalog.catalog_revision,
+            html.Details(
+                [
+                    html.Summary('Catálogo Tool confirmado · Ver revisión'),
+                    html.Code(catalog.catalog_revision),
+                ],
+                className='alarm-admin__tool-revision',
             ),
         )
 
@@ -183,6 +203,7 @@ def register_alarm_configuration_admin_callbacks(
             },
             'value',
         ),
+        Input({'type': PARAMETER_FIELD_TYPE, 'rule': ALL, 'parameter': ALL, 'field': ALL}, 'value'),
         Input({'type': MESSAGE_FIELD_TYPE, 'message': ALL, 'field': ALL}, 'value'),
         State(AUTHORING_STORE_ID, 'data'),
         prevent_initial_call=True,
@@ -193,6 +214,7 @@ def register_alarm_configuration_admin_callbacks(
         _target_values: list[object],
         _component_values: list[object],
         _subcomponent_values: list[object],
+        _parameter_values: list[object],
         _message_values: list[object],
         current_document: dict[str, object] | None,
     ):
@@ -242,6 +264,14 @@ def register_alarm_configuration_admin_callbacks(
                     str(component_id['field']),
                     field_value,
                 )
+            elif component_type == PARAMETER_FIELD_TYPE:
+                updated = set_parameter_field(
+                    current_document,
+                    int(component_id['rule']),
+                    int(component_id['parameter']),
+                    str(component_id['field']),
+                    field_value,
+                )
             elif component_type == MESSAGE_FIELD_TYPE:
                 updated = set_message_field(
                     current_document,
@@ -259,6 +289,8 @@ def register_alarm_configuration_admin_callbacks(
         Output(AUTHORING_STORE_ID, 'data', allow_duplicate=True),
         Input({'type': RULE_REMOVE_TYPE, 'rule': ALL}, 'n_clicks'),
         Input({'type': MESSAGE_REMOVE_TYPE, 'message': ALL}, 'n_clicks'),
+        Input({'type': PARAMETER_ADD_TYPE, 'rule': ALL}, 'n_clicks'),
+        Input({'type': PARAMETER_REMOVE_TYPE, 'rule': ALL, 'parameter': ALL}, 'n_clicks'),
         Input({'type': STEP_ADD_TYPE, 'rule': ALL}, 'n_clicks'),
         Input({'type': STEP_REMOVE_TYPE, 'rule': ALL, 'step': ALL}, 'n_clicks'),
         Input({'type': TARGET_ADD_TYPE, 'rule': ALL}, 'n_clicks'),
@@ -284,6 +316,8 @@ def register_alarm_configuration_admin_callbacks(
     def update_authoring_structure(
         _remove_rule_clicks: list[int | None],
         _remove_message_clicks: list[int | None],
+        _add_parameter_clicks: list[int | None],
+        _remove_parameter_clicks: list[int | None],
         _add_step_clicks: list[int | None],
         _remove_step_clicks: list[int | None],
         _add_target_clicks: list[int | None],
@@ -305,6 +339,14 @@ def register_alarm_configuration_admin_callbacks(
                 return remove_rule(current_document, int(component_id['rule']))
             if component_type == MESSAGE_REMOVE_TYPE:
                 return remove_message(current_document, int(component_id['message']))
+            if component_type == PARAMETER_ADD_TYPE:
+                return add_parameter(current_document, int(component_id['rule']))
+            if component_type == PARAMETER_REMOVE_TYPE:
+                return remove_parameter(
+                    current_document,
+                    int(component_id['rule']),
+                    int(component_id['parameter']),
+                )
             if component_type == STEP_ADD_TYPE:
                 return add_escalation_step(current_document, int(component_id['rule']))
             if component_type == STEP_REMOVE_TYPE:
@@ -352,36 +394,131 @@ def register_alarm_configuration_admin_callbacks(
         return no_update
 
     @app.callback(
-        Output(context.draft_store_id, 'data', allow_duplicate=True),
-        Output(AUTHORING_STORE_ID, 'data', allow_duplicate=True),
+        Output(IMPORT_REVIEW_STORE_ID, 'data'),
         Output(IMPORT_RESULT_ID, 'children'),
         Input(IMPORT_UPLOAD_ID, 'contents'),
+        State(IMPORT_UPLOAD_ID, 'filename'),
+        prevent_initial_call=True,
+    )
+    def inspect_import_file(contents: str | None, filename: str | None):
+        if contents is None:
+            return no_update, no_update
+        if not context.can_manage():
+            return no_update, _error('No tienes permiso para importar configuraciones.')
+        try:
+            preview = inspect_import(contents, filename)
+            configuration = AlarmConfiguration.from_document(preview['configuration'])
+            if isinstance(preview.get('tool_dependencies'), dict):
+                dependency = ToolDependencyManifest.from_document(preview['tool_dependencies'])
+                if dependency.revision != preview['tool_revision']:
+                    raise ValueError('La revisión Tool incluida no coincide con sus dependencias.')
+            preview['configuration'] = configuration.to_document()
+            preview.pop('tool_dependencies', None)
+        except (ValueError, TypeError, AlarmConfigurationValidationError) as error:
+            return None, _error(str(error))
+        return preview, no_update
+
+    @app.callback(
+        Output(IMPORT_REVIEW_MODAL_ID, 'hidden'),
+        Output(IMPORT_REVIEW_CONTENT_ID, 'children'),
+        Output(IMPORT_REVIEW_CONFIRM_ID, 'disabled'),
+        Input(IMPORT_REVIEW_STORE_ID, 'data'),
+        Input(TOOL_REFERENCE_STORE_ID, 'data'),
+    )
+    def render_import_review(
+        review: dict[str, object] | None, reference_document: dict[str, object] | None
+    ):
+        if not isinstance(review, dict):
+            return True, None, True
+        current = (
+            reference_document.get('catalog_revision')
+            if isinstance(reference_document, dict)
+            else None
+        )
+        warning = revision_warning(review, current)
+        source_revision = review.get('tool_revision')
+        panel = html.Div(
+            [
+                html.Div([html.Strong('Archivo'), html.Span(str(review.get('filename')))]),
+                html.Div([html.Strong('Tipo'), html.Span(str(review.get('kind')))]),
+                html.Div(
+                    [
+                        html.Strong('Revisión Tool actual'),
+                        html.Code(current if isinstance(current, str) else 'No disponible'),
+                    ]
+                ),
+                html.Div(
+                    [
+                        html.Strong('Revisión Tool del archivo'),
+                        html.Code(
+                            source_revision if isinstance(source_revision, str) else 'No incluida'
+                        ),
+                    ]
+                ),
+                html.P(warning, className='alarm-guided__notice')
+                if warning
+                else html.P(
+                    'Revisión Tool coincidente. La publicación requiere validación propia.',
+                    className='alarm-guided__tip',
+                ),
+            ],
+            className='alarm-admin__import-review',
+        )
+        return False, panel, not can_confirm(review, current)
+
+    @app.callback(
+        Output(context.draft_store_id, 'data', allow_duplicate=True),
+        Output(AUTHORING_STORE_ID, 'data', allow_duplicate=True),
+        Output(IMPORT_REVIEW_STORE_ID, 'data', allow_duplicate=True),
+        Output(IMPORT_RESULT_ID, 'children', allow_duplicate=True),
+        Input(IMPORT_REVIEW_CONFIRM_ID, 'n_clicks'),
+        Input(IMPORT_REVIEW_CANCEL_ID, 'n_clicks'),
+        State(IMPORT_REVIEW_STORE_ID, 'data'),
+        State(TOOL_REFERENCE_STORE_ID, 'data'),
         State(context.draft_store_id, 'data'),
         prevent_initial_call=True,
     )
-    def import_configuration(
-        contents: str | None,
-        current_draft: dict[str, object] | None,
-    ):
-        if contents is None:
-            return no_update, no_update, no_update
+    def confirm_import(_confirm_clicks, _cancel_clicks, review, references, current_draft):
+        if not _click_is_real(_triggered_value()):
+            return no_update, no_update, no_update, no_update
+        if ctx.triggered_id == IMPORT_REVIEW_CANCEL_ID:
+            return no_update, no_update, None, no_update
+        if ctx.triggered_id != IMPORT_REVIEW_CONFIRM_ID or not isinstance(review, dict):
+            return no_update, no_update, no_update, no_update
         if not context.can_manage():
-            return no_update, no_update, _error('Management access is denied')
-        try:
-            configuration = _decode_import(contents)
-            document = context.workspace_payload_writer(
-                current_draft,
-                configuration.to_document(),
+            return no_update, no_update, no_update, _error('No tienes permiso para importar.')
+        current = references.get('catalog_revision') if isinstance(references, dict) else None
+        if not can_confirm(review, current):
+            return (
+                no_update,
+                no_update,
+                no_update,
+                _error('La revisión Tool del archivo no coincide.'),
             )
-        except Exception as error:
-            return no_update, no_update, _error(str(error))
-        return document, configuration.to_document(), _success('JSON importado al borrador.')
+        try:
+            configuration = AlarmConfiguration.from_document(review['configuration'])
+            document = context.workspace_payload_writer(current_draft, configuration.to_document())
+        except (
+            AlarmConfigurationValidationError,
+            ManagerProjectionError,
+            ValueError,
+            TypeError,
+        ) as error:
+            return no_update, no_update, no_update, _error(str(error))
+        return (
+            document,
+            configuration.to_document(),
+            None,
+            _success('JSON importado al borrador en edición.'),
+        )
 
     @app.callback(
         Output(context.draft_store_id, 'data', allow_duplicate=True),
         Output(context.saved_draft_store_id, 'data', allow_duplicate=True),
         Output(SAVE_RESULT_ID, 'children'),
+        Output(MODAL_SAVE_RESULT_ID, 'children'),
         Input(SAVE_BUTTON_ID, 'n_clicks'),
+        Input(MODAL_SAVE_BUTTON_ID, 'n_clicks'),
         Input(context.draft_save_action_id, 'n_clicks'),
         State(AUTHORING_STORE_ID, 'data'),
         State(context.draft_store_id, 'data'),
@@ -391,6 +528,7 @@ def register_alarm_configuration_admin_callbacks(
     def save_draft(
         content_clicks: int | None,
         workflow_clicks: int | None,
+        modal_clicks: int | None,
         authoring_document: dict[str, object] | None,
         current_draft: dict[str, object] | None,
         editor_revision: str | None,
@@ -399,14 +537,17 @@ def register_alarm_configuration_admin_callbacks(
             ctx.triggered_id,
             content_clicks=content_clicks,
             workflow_clicks=workflow_clicks,
+            modal_clicks=modal_clicks,
             workflow_id=context.draft_save_action_id,
         ):
-            return no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update
         if not context.can_manage():
-            return no_update, no_update, _error('No tienes permiso para guardar cambios.')
+            error = _error('No tienes permiso para guardar cambios.')
+            return no_update, no_update, error, error
         issues = authoring_issues(authoring_document)
         if issues:
-            return no_update, no_update, _authoring_feedback(issues)
+            feedback = _authoring_feedback(issues)
+            return no_update, no_update, feedback, feedback
         try:
             configuration = _configuration(authoring_document)
             if current_draft is not None:
@@ -415,13 +556,12 @@ def register_alarm_configuration_admin_callbacks(
                     raise ManagerProjectionError(
                         'Alarm Configuration editor revision changed before saving the draft'
                     )
-            document = context.workspace_payload_writer(
-                current_draft,
-                configuration.to_document(),
-            )
+            document = context.workspace_payload_writer(current_draft, configuration.to_document())
         except (AlarmConfigurationValidationError, ManagerProjectionError, ValueError) as error:
-            return no_update, no_update, _error(str(error))
-        return document, document, _success('Borrador guardado en este navegador.')
+            feedback = _error(str(error))
+            return no_update, no_update, feedback, feedback
+        feedback = _success('Borrador guardado en este navegador.')
+        return document, document, feedback, feedback
 
 
 def _readiness_feedback(hints: tuple[str, ...]) -> object:
@@ -475,19 +615,6 @@ def _configuration(authoring_document: dict[str, object] | None) -> AlarmConfigu
     return AlarmConfiguration.from_document(document)
 
 
-def _decode_import(contents: str) -> AlarmConfiguration:
-    if ',' not in contents:
-        raise ValueError('Alarm Configuration import payload is invalid')
-    try:
-        payload = base64.b64decode(contents.split(',', 1)[1], validate=True)
-        document = json.loads(payload.decode('utf-8'))
-    except (BinasciiError, UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise ValueError('Alarm Configuration import is not valid JSON') from error
-    if not isinstance(document, dict):
-        raise ValueError('Alarm Configuration import root must be an object')
-    return AlarmConfiguration.from_document(document)
-
-
 def _summary(configuration: AlarmConfiguration) -> object:
     return html.Div(
         [
@@ -511,9 +638,12 @@ def _save_draft_click_is_real(
     content_clicks: int | None,
     workflow_clicks: int | None,
     workflow_id: object,
+    modal_clicks: int | None = None,
 ) -> bool:
     if trigger == SAVE_BUTTON_ID:
         return _click_is_real(content_clicks)
+    if trigger == MODAL_SAVE_BUTTON_ID:
+        return _click_is_real(modal_clicks)
     if isinstance(trigger, dict) and isinstance(workflow_id, dict):
         return dict(trigger) == dict(workflow_id) and _click_is_real(workflow_clicks)
     return trigger == workflow_id and _click_is_real(workflow_clicks)

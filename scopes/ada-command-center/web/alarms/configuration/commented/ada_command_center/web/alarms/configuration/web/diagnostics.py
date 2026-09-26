@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from ada_command_center.web.alarms.configuration.web.labels import field_label
+from ada_command_center.web.alarms.configuration.web.parameters import parameter_issues
 
 _RULE_FIELDS = (
     ('identity.alarm_key', 'general', 'Alarm key'),
@@ -59,20 +60,18 @@ def authoring_issues(document: Mapping[str, object] | None) -> tuple[str, ...]:
         deactivation = entry.get('default_deactivation')
         if isinstance(deactivation, dict) and deactivation.get('enabled') is True:
             if _missing(deactivation.get('max_duration_hours')):
-                result.append(
-                    f'Regla {index + 1} · Desactivación: indica la duración máxima.'
-                )
+                result.append(f'Regla {index + 1} · Desactivación: indica la duración máxima.')
             if deactivation.get('approval_required') is None:
                 result.append(
                     f'Regla {index + 1} · Desactivación: especifica si requiere aprobación.'
                 )
         priority_order = entry.get('priority_order')
-        if priority_order is not None and (
-            type(priority_order) is not int or priority_order <= 0
-        ):
+        if priority_order is not None and (type(priority_order) is not int or priority_order <= 0):
             result.append(
                 f'Regla {index + 1} · Evaluación y prioridad: el orden debe ser positivo.'
             )
+        for parameter_issue in parameter_issues(entry):
+            result.append(f'Regla {index + 1} · Evaluación y prioridad: {parameter_issue}')
         parameters = entry.get('parameters')
         if not isinstance(parameters, dict):
             result.append(
@@ -119,9 +118,11 @@ def readiness_hints(document: Mapping[str, object] | None) -> tuple[str, ...]:
             continue
         escalation = rule.get('escalation')
         steps = escalation.get('steps') if isinstance(escalation, dict) else None
-        enabled = [
-            step for step in steps if isinstance(step, dict) and step.get('is_enabled') is True
-        ] if isinstance(steps, list) else []
+        enabled = (
+            [step for step in steps if isinstance(step, dict) and step.get('is_enabled') is True]
+            if isinstance(steps, list)
+            else []
+        )
         if rule.get('criticality') == 'C3' and enabled:
             hints.append(
                 f'Regla {index + 1} · Escalamiento: C3 no admite pasos habilitados '
@@ -130,12 +131,11 @@ def readiness_hints(document: Mapping[str, object] | None) -> tuple[str, ...]:
         if rule.get('criticality') == 'C1' and any(
             step.get('wait_minutes_from_previous_step') not in (None, 0) for step in enabled
         ):
-            hints.append(
-                f'Regla {index + 1} · Escalamiento: C1 sólo admite pasos inmediatos.'
-            )
+            hints.append(f'Regla {index + 1} · Escalamiento: C1 sólo admite pasos inmediatos.')
         if rule.get('criticality') == 'C2' and any(
             type(step.get('wait_minutes_from_previous_step')) is not int
-            or step['wait_minutes_from_previous_step'] <= 0 for step in enabled
+            or step['wait_minutes_from_previous_step'] <= 0
+            for step in enabled
         ):
             hints.append(
                 f'Regla {index + 1} · Escalamiento: C2 exige una espera positiva '

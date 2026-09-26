@@ -20,6 +20,8 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     ADD_MESSAGE_BUTTON_ID,
     ADD_RULE_BUTTON_ID,
     AUTHORING_STORE_ID,
+    CANCEL_FAMILY_CREATE_FOOTER_ID,
+    CANCEL_FAMILY_CREATE_ID,
     CLOSE_EDITOR_ID,
     CREATE_FAMILY_ID,
     FAMILY_ACTION_RESULT_ID,
@@ -28,12 +30,17 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     FAMILY_NEW_KEY_ID,
     FAMILY_SELECT_TYPE,
     FAMILY_TAB_TYPE,
+    LIST_PAGE_SIZE_TYPE,
+    LIST_PAGE_TYPE,
     MESSAGE_SELECT_TYPE,
+    MODAL_BACK_ID,
+    OPEN_FAMILY_CREATE_ID,
     RULE_SECTION_TYPE,
     RULE_SELECT_TYPE,
     SHOW_FAMILIES_ID,
     SHOW_GLOBAL_MESSAGES_ID,
 )
+from ada_command_center.web.alarms.configuration.web.pagination import change_list_page
 
 
 # La navegación efímera no modifica los workflows de Manager ni su persistencia.
@@ -219,10 +226,11 @@ def register_family_callbacks(app: object) -> None:
     @app.callback(
         Output(FAMILY_NAV_STORE_ID, 'data', allow_duplicate=True),
         Input(CLOSE_EDITOR_ID, 'n_clicks'),
+        Input(MODAL_BACK_ID, 'n_clicks'),
         State(FAMILY_NAV_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
-    def close_editor(_clicks, navigation):
+    def close_editor(_clicks, _back_clicks, navigation):
         if not _real_click() or not isinstance(navigation, dict):
             return no_update
         return {**navigation, 'rule_index': None, 'message_index': None}
@@ -233,19 +241,64 @@ def register_family_callbacks(app: object) -> None:
         Input(FAMILY_NAV_STORE_ID, 'data'),
     )
     def show_family_creation(navigation):
-        return not isinstance(navigation, dict) or navigation.get('page') != 'families'
+        return (
+            not isinstance(navigation, dict)
+            or navigation.get('page') != 'families'
+            or not navigation.get('family_create_open', False)
+        )
 
     # Cada flujo actualiza únicamente navegación o datos de autoría según su contrato.
     @app.callback(
         Output(ADD_RULE_BUTTON_ID, 'disabled'),
         Output(ADD_MESSAGE_BUTTON_ID, 'disabled'),
+        Output(OPEN_FAMILY_CREATE_ID, 'disabled'),
         Input(FAMILY_NAV_STORE_ID, 'data'),
         Input(AUTHORING_STORE_ID, 'data'),
     )
     def update_add_controls(navigation, document):
         family = selected_family(navigation, document)
         global_messages = isinstance(navigation, dict) and navigation.get('page') == 'global'
-        return not bool(family), not bool(family) and not global_messages
+        listing = isinstance(navigation, dict) and navigation.get('page') == 'families'
+        return not bool(family), not bool(family) and not global_messages, not listing
+
+    @app.callback(
+        Output(FAMILY_NAV_STORE_ID, 'data', allow_duplicate=True),
+        Input({'type': LIST_PAGE_TYPE, 'listing': ALL, 'page': ALL, 'action': ALL}, 'n_clicks'),
+        Input({'type': LIST_PAGE_SIZE_TYPE, 'listing': ALL, 'size': ALL}, 'n_clicks'),
+        State(FAMILY_NAV_STORE_ID, 'data'),
+        prevent_initial_call=True,
+    )
+    def change_pagination(_page_clicks, _size_clicks, navigation):
+        trigger = ctx.triggered_id
+        if not _real_click() or not isinstance(trigger, dict):
+            return no_update
+        current = navigation if isinstance(navigation, dict) else initial_navigation()
+        try:
+            if trigger.get('type') == LIST_PAGE_TYPE:
+                return change_list_page(current, trigger.get('listing'), page=trigger.get('page'))
+            if trigger.get('type') == LIST_PAGE_SIZE_TYPE:
+                return change_list_page(current, trigger.get('listing'), size=trigger.get('size'))
+        except ValueError:
+            pass
+        return no_update
+
+    @app.callback(
+        Output(FAMILY_NAV_STORE_ID, 'data', allow_duplicate=True),
+        Input(OPEN_FAMILY_CREATE_ID, 'n_clicks'),
+        Input(CANCEL_FAMILY_CREATE_ID, 'n_clicks'),
+        Input(CANCEL_FAMILY_CREATE_FOOTER_ID, 'n_clicks'),
+        State(FAMILY_NAV_STORE_ID, 'data'),
+        prevent_initial_call=True,
+    )
+    def toggle_family_creation(_open_clicks, _cancel_clicks, _footer_clicks, navigation):
+        if not _real_click():
+            return no_update
+        current = navigation if isinstance(navigation, dict) else initial_navigation()
+        if ctx.triggered_id == OPEN_FAMILY_CREATE_ID and current.get('page') == 'families':
+            return {**current, 'family_create_open': True}
+        if ctx.triggered_id in {CANCEL_FAMILY_CREATE_ID, CANCEL_FAMILY_CREATE_FOOTER_ID}:
+            return {**current, 'family_create_open': False}
+        return no_update
 
 
 # Descarta disparos espurios durante el montaje de controles dinámicos.
@@ -255,7 +308,11 @@ def _pending_families(navigation: dict[str, object]) -> list[str]:
 
 
 def _base_navigation(current: dict[str, object]) -> dict[str, object]:
-    return {**initial_navigation(), 'pending_families': _pending_families(current)}
+    return {
+        **initial_navigation(),
+        'pending_families': _pending_families(current),
+        'pagination': current.get('pagination', {}),
+    }
 
 
 def _real_click() -> bool:
