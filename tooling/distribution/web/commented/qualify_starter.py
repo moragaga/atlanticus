@@ -171,6 +171,54 @@ def run_probe(
     return result
 
 
+
+
+def verify_wheelhouse(application: Path, profile: str) -> list[str]:
+    root = application / 'wheelhouse'
+    manifest_path = root / 'manifest.json'
+    if not manifest_path.is_file():
+        return ['Portable qualification requires a wheelhouse manifest']
+    try:
+        payload = json.loads(manifest_path.read_text(encoding='utf-8'))
+    except (ValueError, OSError):
+        return ['Wheelhouse manifest is invalid']
+    if payload.get('schema_version') != 1 or payload.get('profile') != profile:
+        return ['Wheelhouse manifest profile or schema is invalid']
+    if payload.get('python') != python_requirement(application / 'pyproject.toml').removeprefix('=='):
+        return ['Wheelhouse runtime does not match Starter Python requirement']
+    if payload.get('qualification') != 'UNVERIFIED':
+        return ['Wheelhouse manifest has an unexpected qualification state']
+    packages = payload.get('packages')
+    if not isinstance(packages, list) or not packages:
+        return ['Wheelhouse manifest has no packages']
+    filenames: set[str] = set()
+    errors: list[str] = []
+    for package in packages:
+        if not isinstance(package, dict):
+            errors.append('Wheelhouse manifest contains an invalid package')
+            continue
+        filename, expected = package.get('filename'), package.get('sha256')
+        if (not isinstance(filename, str) or Path(filename).name != filename
+                or not filename.endswith('.whl') or filename in filenames
+                or not isinstance(expected, str) or len(expected) != 64):
+            errors.append('Wheelhouse manifest contains an invalid wheel entry')
+            continue
+        filenames.add(filename)
+        wheel = root / filename
+        if not wheel.is_file():
+            errors.append(f'Wheelhouse wheel is missing: {filename}')
+            continue
+        digest = hashlib.sha256()
+        with wheel.open('rb') as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+                digest.update(chunk)
+        if digest.hexdigest() != expected:
+            errors.append(f'Wheelhouse wheel integrity failed: {filename}')
+    if {path.name for path in root.glob('*.whl')} != filenames:
+        errors.append('Wheelhouse wheel inventory differs from its manifest')
+    return errors
+
+
 # Se diferencian explícitamente preflight, smoke de fuentes y calificación portable.
 def qualify(
     *, application: Path, profile: str, python: Path, timeout: int,
@@ -186,6 +234,8 @@ def qualify(
         wheelhouse = application / 'wheelhouse'
         if not wheelhouse.is_dir() or not tuple(wheelhouse.glob('*.whl')):
             errors.append('Portable qualification requires a populated wheelhouse')
+        elif not errors:
+            errors.extend(verify_wheelhouse(application, profile))
     if errors:
         return {'status': 'BLOCKED', 'profile': profile, 'application': str(application),
                 'errors': errors}

@@ -192,3 +192,28 @@ def test_qualification_preserves_virtualenv_interpreter_symlink(tmp_path, monkey
     )
     assert result['status'] == 'PASS'
     assert observed['python'] == interpreter.absolute()
+
+
+def test_portable_manifest_checks_wheel_inventory_integrity_and_python(tmp_path, monkeypatch):
+    app = _starter(tmp_path / 'starter', python='==3.14.2')
+    root = app / 'wheelhouse'
+    root.mkdir()
+    filename = 'dummy-0.1-py3-none-any.whl'
+    wheel = root / filename
+    wheel.write_bytes(b'fixture')
+    payload = {
+        'schema_version': 1, 'profile': 'generic', 'python': '3.14.2',
+        'qualification': 'UNVERIFIED',
+        'packages': [{'filename': filename, 'sha256': hashlib.sha256(b'fixture').hexdigest()}],
+    }
+    (root / 'manifest.json').write_text(json.dumps(payload))
+    monkeypatch.setattr(_module, 'REPOSITORY_ROOT', tmp_path / 'unavailable-repo')
+    assert _module.verify_wheelhouse(app, 'generic') == []
+    assert _module.qualify(application=app, profile='generic', python=tmp_path,
+                           timeout=5, portable=True, inspect_only=True)['status'] == 'PRECHECK_PASS'
+    wheel.write_bytes(b'changed')
+    assert 'Wheelhouse wheel integrity failed' in _module.verify_wheelhouse(app, 'generic')[0]
+    wheel.write_bytes(b'fixture')
+    payload['profile'] = 'ada'
+    (root / 'manifest.json').write_text(json.dumps(payload))
+    assert 'profile or schema' in _module.verify_wheelhouse(app, 'generic')[0]
