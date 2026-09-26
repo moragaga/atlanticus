@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -33,6 +34,11 @@ def test_generated_starter_is_self_consistent_and_reproducible(tmp_path, profile
     assert manifest['profile'] == profile
     assert manifest['qualification'] == 'UNVERIFIED'
     assert manifest['wheelhouse_included'] is False
+    assert (first / '.python-version').read_text(encoding='utf-8').strip() == '3.14.2'
+    assert (
+        tomllib.loads((first / 'pyproject.toml').read_text(encoding='utf-8'))
+        ['project']['requires-python']
+    ) == '==3.14.2'
     assert {
         relative: hashlib.sha256((first / relative).read_bytes()).hexdigest()
         for relative in manifest['files']
