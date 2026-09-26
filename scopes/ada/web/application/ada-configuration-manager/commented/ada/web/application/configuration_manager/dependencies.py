@@ -6,13 +6,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ada.web.access.configuration import AdaAccessConfiguration, AdaAccessSourceService
-from ada.web.kpis.registry.models import KpiRegistry
+from ada.web.kpis.definition.configuration import KpiDefinitionSourceService
+from ada.web.kpis.definition.coverage import KpiDefinitionCatalog
 from ada.web.kpis.registry.configuration import (
     KpiDestinationCatalogProvider,
     KpiRegistrySourceService,
 )
-from ada.web.kpis.definition.coverage import KpiDefinitionCatalog
-from ada.web.kpis.definition.configuration import KpiDefinitionSourceService
+from ada.web.kpis.registry.models import KpiRegistry
 from ada.web.tools.configuration import ToolConfiguration, ToolSourceService
 from atlanticus.web.manager import ManagerEntry, ManagerModule, ManagerPrincipalProvider
 from atlanticus.web.navigation.configuration import (
@@ -36,6 +36,8 @@ class ConfigurationManagerDependencies:
     principal_provider: ManagerPrincipalProvider
     profiles_module: ManagerModule
     users_entry: ManagerEntry
+    # El consumidor operacional puede leer la misma proyección que publica Manager.
+    navigation_projection_store: ProjectionStore[NavigationConfigurationCatalog] | None = None
     kpi_registry_source: KpiRegistrySourceService | None = None
     kpi_registry_projection: SourceProjectionService[KpiRegistry] | None = None
     kpi_registry_destinations: KpiDestinationCatalogProvider | None = None

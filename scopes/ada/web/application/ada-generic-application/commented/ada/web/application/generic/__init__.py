@@ -7,9 +7,9 @@ from ada.web.application.generic.composition import (
     create_ada_operational_shell_modules,
     create_ada_runtime_experience_modules,
     create_ada_shared_ui_modules,
-    create_identity_navigation_modules,
     create_local_identity_modules,
     create_local_operational_composition,
+    create_operational_navigation_modules,
 )
 from ada.web.application.generic.layout import (
     build_body_application_layout,
@@ -37,8 +37,8 @@ __all__ = [
     'create_ada_shared_ui_modules',
     'create_application_definition',
     'create_application_runtime',
-    'create_identity_navigation_modules',
     'create_local_identity_modules',
+    'create_operational_navigation_modules',
     'create_local_operational_composition',
     'materialize_operational_components',
 ]

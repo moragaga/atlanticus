@@ -214,6 +214,7 @@ def compose_configuration_manager_dependencies(
     return ConfigurationManagerDependencies(
         navigation_source=navigation_source,
         navigation_projection=navigation_projection,
+        navigation_projection_store=stores.navigation,
         tools_source=tools_source,
         tools_projection=tools_projection,
         access_source=access_source,

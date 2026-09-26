@@ -35,6 +35,7 @@ from atlanticus.connectivity.cosmos import CosmosOperationError
 from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
 from atlanticus.web.configuration import WebEnvironment
 from atlanticus.web.identity.access import (
+    ACCESS_RUNTIME_SERVICE_KEY,
     AccessDecision,
     AccessRuntime,
     AccessSnapshot,
@@ -299,6 +300,7 @@ def test_integrated_local_runtime_mounts_authorized_manager(tmp_path, monkeypatc
     runtime = bootstrap.create_operational_application_runtime(
         settings=settings, manager_dependencies=dependencies
     )
+    assert runtime.services.contains(ACCESS_RUNTIME_SERVICE_KEY)
     client = runtime.server.test_client()
     assert client.get('/').status_code == 200
     assert client.get('/manager').status_code == 200

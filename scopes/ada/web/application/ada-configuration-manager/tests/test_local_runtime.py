@@ -64,7 +64,7 @@ def test_local_runtime_grants_explicit_configuration_capabilities(tmp_path) -> N
     principal = dependencies.principal_provider()
 
     assert principal.is_local is True
-    assert principal.profile_keys == ()
+    assert principal.profile_keys == ('local',)
     assert principal.access_keys == (
         USERS_MANAGER_ACCESS_KEY,
         PROFILES_MANAGER_ACCESS_KEY,

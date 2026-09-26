@@ -174,10 +174,16 @@ def create_local_configuration_manager_dependencies(
         local_principal = ManagerPrincipal(
             subject_id='local',
             display_name='Administrador local',
+            # La factory local certifica el perfil antes de delegar a Navigation.
+            profile_keys=('local',),
             access_keys=MANAGER_ACCESS_KEYS,
             is_local=True,
         )
-        principal_provider = lambda: local_principal
+        # Conserva el principal local configurado sin asignar una lambda.
+        def local_provider() -> ManagerPrincipal:
+            return local_principal
+
+        principal_provider = local_provider
     return compose_configuration_manager_dependencies(
         stores=stores,
         principal_provider=principal_provider,

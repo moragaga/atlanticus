@@ -151,4 +151,4 @@ def test_real_runtime_keeps_operational_shell_with_unavailable_manager(
     assert 'private-provider-detail' not in payload
     assert 'private-provider-detail' not in caplog.text
     assert client.get('/').status_code == 200
-    assert client.get('/manager').status_code == 200
+    assert client.get('/manager', headers={'Accept': 'text/html'}).status_code == 403

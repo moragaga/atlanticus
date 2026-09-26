@@ -79,8 +79,8 @@ def test_definition_composes_current_ada_web_capabilities() -> None:
         'ada-alarm-management-summary',
         'ada-alarm-status',
         'ada-branding',
-        'identity',
         'navigation',
+        'navigation-authorization',
         'ada-navigation',
         'ada-operational-header',
         'ada-session',
@@ -114,13 +114,13 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
     assert 'ada-navigation-offcanvas' in payload
     assert 'ada-operational-header__primary' in payload
     assert 'ada-navigation__anchor-host' not in payload
-    assert 'Test User' in payload
+    assert 'Visitante' in payload
     assert 'Asistente de Decisiones Ágiles' in payload
     assert DEFAULT_OPERATIONAL_BRAND_LOGO_SRC in payload
     assert DEFAULT_OPERATIONAL_BRAND_SECONDARY_LOGO_SRC in payload
     assert DEFAULT_PELAMBRES_BRAND_LOGO_SRC in payload
     assert 'Versión 0.2.17' in payload
-    assert runtime.services.contains(ACCESS_RUNTIME_SERVICE_KEY)
+    assert not runtime.services.contains(ACCESS_RUNTIME_SERVICE_KEY)
     assert runtime.services.contains(NAVIGATION_PRINCIPAL_PROVIDER_SERVICE_KEY)
     assert any(
         entry.startswith(f'{BOOTSTRAP_FOUNDATION_ASSET_LAYER.target_name}/css/')
@@ -164,8 +164,8 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
         NavigationDefinitionProvider,
     )
     navigation = provider.current()
-    assert navigation.home_route_key == 'home'
-    assert navigation.find_link('home').href == '/'
+    assert navigation.home_route_key is None
+    assert navigation.links == ()
 
 
 def test_global_indicators_mount_only_when_explicitly_injected(tmp_path, monkeypatch) -> None:

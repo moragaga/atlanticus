@@ -10,9 +10,9 @@ from ada.web.application.generic.composition import (
     create_ada_operational_shell_modules,
     create_ada_runtime_experience_modules,
     create_ada_shared_ui_modules,
-    create_identity_navigation_modules,
     create_local_identity_modules,
     create_local_operational_composition,
+    create_operational_navigation_modules,
 )
 from ada.web.application.generic.layout import (
     build_body_application_layout,
@@ -105,7 +105,10 @@ def test_local_operational_composition_is_built_from_explicit_responsibility_blo
     )
     assert tuple(module.name for module in create_ada_branding_modules()) == ('ada-branding',)
     assert tuple(module.name for module in create_local_identity_modules()) == ('identity',)
-    assert tuple(module.name for module in create_identity_navigation_modules()) == ('navigation',)
+    assert tuple(module.name for module in create_operational_navigation_modules()) == (
+        'navigation',
+        'navigation-authorization',
+    )
     assert tuple(
         module.name for module in create_ada_operational_shell_modules(include_navigation=True)
     ) == ('ada-navigation', 'ada-operational-header')
@@ -122,8 +125,8 @@ def test_local_operational_composition_is_built_from_explicit_responsibility_blo
         'ada-alarm-management-summary',
         'ada-alarm-status',
         'ada-branding',
-        'identity',
         'navigation',
+        'navigation-authorization',
         'ada-navigation',
         'ada-operational-header',
         'ada-session',

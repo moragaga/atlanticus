@@ -155,10 +155,14 @@ def create_local_configuration_manager_dependencies(
         local_principal = ManagerPrincipal(
             subject_id='local',
             display_name='Administrador local',
+            profile_keys=('local',),
             access_keys=MANAGER_ACCESS_KEYS,
             is_local=True,
         )
-        principal_provider = lambda: local_principal
+        def local_provider() -> ManagerPrincipal:
+            return local_principal
+
+        principal_provider = local_provider
     return compose_configuration_manager_dependencies(
         stores=stores,
         principal_provider=principal_provider,
