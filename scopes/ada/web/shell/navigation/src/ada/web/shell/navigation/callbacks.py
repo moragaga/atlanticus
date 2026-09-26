@@ -9,21 +9,39 @@ from atlanticus.web.services import ServiceRegistry
 def register_ada_navigation_callbacks(app: Dash, _services: ServiceRegistry) -> None:
     app.clientside_callback(
         """
-        function(_mobileClicks, _desktopClicks, _pathname, isOpen) {
+        function(mobileClicks, desktopClicks, pathname, isOpen, lastPath) {
             const context = window.dash_clientside.callback_context;
-            const triggeredId = context ? context.triggered_id : null;
-            if (triggeredId === 'ada-navigation-location') {
-                return false;
+            const triggered = context && Array.isArray(context.triggered)
+                ? context.triggered : [];
+            const hasChanged = (key) => triggered.some((entry) =>
+                entry && entry.prop_id === key);
+            const noUpdate = window.dash_clientside.no_update;
+            const path = typeof pathname === 'string' ? pathname : null;
+            const rememberPath = path !== null && path !== lastPath ? path : noUpdate;
+
+            const mobilePressed = hasChanged('ada-navigation-mobile-toggle.n_clicks') &&
+                Number(mobileClicks) > 0;
+            const desktopPressed = hasChanged('ada-navigation-desktop-toggle.n_clicks') &&
+                Number(desktopClicks) > 0;
+            if (mobilePressed || desktopPressed) {
+                return [!Boolean(isOpen), rememberPath];
             }
-            return !Boolean(isOpen);
+
+            if (hasChanged('ada-navigation-location.pathname')) {
+                const navigated = lastPath !== null && lastPath !== undefined &&
+                    path !== null && path !== lastPath;
+                return [navigated ? false : noUpdate, rememberPath];
+            }
+            return [noUpdate, rememberPath];
         }
         """,
         Output(AdaNavigationIds.OFFCANVAS, 'is_open'),
+        Output(AdaNavigationIds.LAST_PATH, 'data'),
         Input(AdaNavigationIds.MOBILE_TOGGLE, 'n_clicks'),
         Input(AdaNavigationIds.DESKTOP_TOGGLE, 'n_clicks'),
         Input(AdaNavigationIds.LOCATION, 'pathname'),
         State(AdaNavigationIds.OFFCANVAS, 'is_open'),
-        prevent_initial_call=True,
+        State(AdaNavigationIds.LAST_PATH, 'data'),
     )
 
     app.clientside_callback(

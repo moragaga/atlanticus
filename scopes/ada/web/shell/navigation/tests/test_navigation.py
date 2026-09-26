@@ -4,6 +4,7 @@ from ada.web.shell.navigation import (
     ADA_NAVIGATION_ASSET_LAYER,
     AdaNavigationAction,
     AdaNavigationView,
+    build_ada_navigation_controller,
     build_ada_navigation_desktop_trigger,
     build_ada_navigation_mobile_trigger,
     build_ada_navigation_offcanvas,
@@ -74,7 +75,13 @@ def test_desktop_trigger_contract_is_preserved() -> None:
 
     assert props['id'] == 'ada-navigation-desktop-toggle'
     assert props['n_clicks'] == 0
-    assert props['title'] == 'Abrir navegación'
+    assert 'title' not in props
+    assert any(
+        child.to_plotly_json()['props'].get('className') == 'visually-hidden'
+        and child.children == 'Abrir navegación'
+        for child in trigger.children
+    )
+
 
 def test_mobile_trigger_contract_is_preserved() -> None:
     trigger = build_ada_navigation_mobile_trigger()
@@ -82,7 +89,26 @@ def test_mobile_trigger_contract_is_preserved() -> None:
 
     assert props['id'] == 'ada-navigation-mobile-toggle'
     assert props['n_clicks'] == 0
-    assert props['title'] == 'Abrir navegación'
+    assert 'title' not in props
+    assert any(
+        child.to_plotly_json()['props'].get('className') == 'visually-hidden'
+        and child.children == 'Abrir navegación'
+        for child in trigger.children
+    )
+
+
+def test_navigation_controller_is_always_mounted_independently_from_offcanvas() -> None:
+    controller = build_ada_navigation_controller()
+    assert controller.id == 'ada-navigation-controller'
+    assert tuple(child.id for child in controller.children) == (
+        'ada-navigation-location',
+        'ada-navigation-last-path',
+    )
+    assert controller.children[0].refresh is False
+    assert controller.children[1].data is None
+    offcanvas = build_ada_navigation_offcanvas(_menu())
+    assert all(child.id != 'ada-navigation-location' for child in offcanvas.children)
+
 
 def test_offcanvas_preserves_navigation_contract_with_injected_view() -> None:
     component = build_ada_navigation_offcanvas(
@@ -126,12 +152,14 @@ def test_offcanvas_preserves_navigation_contract_with_injected_view() -> None:
     assert '/assets/ada/pelambres.svg' in payload
     assert 'Versión 0.1.5' in payload
 
+
 def test_user_card_preserves_user_information() -> None:
     payload = str(build_ada_navigation_offcanvas(_menu()).to_plotly_json())
 
     assert 'Local User' in payload
     assert 'local@example.com' in payload
     assert 'LU' in payload
+
 
 def test_optional_action_is_rendered_only_when_injected() -> None:
     without_action = str(build_ada_navigation_offcanvas(_menu()).to_plotly_json())

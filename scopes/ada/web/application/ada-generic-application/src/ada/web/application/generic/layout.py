@@ -21,6 +21,7 @@ from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.shell.header import build_ada_operational_header
 from ada.web.shell.navigation import (
     AdaNavigationView,
+    build_ada_navigation_controller,
     build_ada_navigation_desktop_trigger,
     build_ada_navigation_mobile_trigger,
     build_ada_navigation_offcanvas,
@@ -103,6 +104,7 @@ def build_operational_application_layout(
     )
     children = [header]
     if navigation_offcanvas is not None:
+        children.append(build_ada_navigation_controller())
         children.append(navigation_offcanvas)
     children.append(
         html.Main(

@@ -8,6 +8,8 @@ class AdaNavigationIds:
     MOBILE_TOGGLE = 'ada-navigation-mobile-toggle'
     OFFCANVAS = 'ada-navigation-offcanvas'
     LOCATION = 'ada-navigation-location'
+    # Última ruta reconocida por el control de apertura y cierre.
+    LAST_PATH = 'ada-navigation-last-path'
     MENU_CONTENT = 'ada-navigation-menu-content'
     ROUTE_GROUPS = 'ada-navigation-route-groups'
     GROUP_TOGGLE = 'ada-navigation-group-toggle'

@@ -124,6 +124,26 @@ def test_operational_authorization_consumes_injected_profiles_without_identity(
     runtime = create_application_runtime(composition=composition)
     client = runtime.server.test_client()
 
+    response = client.get('/_dash-layout')
+    assert response.status_code == 200
+    application_children = response.get_json()['props']['children']
+    controller = next(
+        node for node in application_children
+        if node['props'].get('id') == 'ada-navigation-controller'
+    )
+    offcanvas = next(
+        node for node in application_children
+        if node['props'].get('id') == 'ada-navigation-offcanvas'
+    )
+    assert {node['props']['id'] for node in controller['props']['children']} == {
+        'ada-navigation-location',
+        'ada-navigation-last-path',
+    }
+    assert all(
+        node['props'].get('id') != 'ada-navigation-location'
+        for node in offcanvas['props']['children']
+    )
+
     assert client.get('/public', headers={'Accept': 'text/html'}).status_code == 200
     assert client.get('/restricted', headers={'Accept': 'text/html'}).status_code == 200
     assert client.get('/disabled', headers={'Accept': 'text/html'}).status_code == 403

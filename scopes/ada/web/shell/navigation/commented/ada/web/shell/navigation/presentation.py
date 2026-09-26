@@ -22,8 +22,10 @@ def build_ada_navigation_desktop_trigger() -> dbc.Button:
         className='ada-navigation__trigger ada-navigation__trigger--desktop',
         color='dark',
         n_clicks=0,
-        title='Abrir navegación',
-        children=[html.I(className='bi bi-chevron-left')],
+        children=[
+            html.I(className='bi bi-chevron-left'),
+            html.Span('Abrir navegación', className='visually-hidden'),
+        ],
     )
 
 
@@ -33,8 +35,21 @@ def build_ada_navigation_mobile_trigger() -> dbc.Button:
         className='ada-navigation__trigger ada-navigation__trigger--mobile',
         color='dark',
         n_clicks=0,
-        title='Abrir navegación',
-        children=[html.I(className='bi bi-list')],
+        children=[
+            html.I(className='bi bi-list'),
+            html.Span('Abrir navegación', className='visually-hidden'),
+        ],
+    )
+
+
+# Controller persistente: Location y Store deben montarse fuera del Offcanvas cerrado.
+def build_ada_navigation_controller() -> html.Div:
+    return html.Div(
+        [
+            dcc.Location(id=AdaNavigationIds.LOCATION, refresh=False),
+            dcc.Store(id=AdaNavigationIds.LAST_PATH, data=None),
+        ],
+        id='ada-navigation-controller',
     )
 
 
@@ -52,7 +67,6 @@ def build_ada_navigation_offcanvas(
         placement='end',
         className='ada-navigation ada-navigation__offcanvas',
         children=[
-            dcc.Location(id=AdaNavigationIds.LOCATION, refresh=False),
             html.Div(
                 _build_menu_content(menu, resolved_view),
                 id=AdaNavigationIds.MENU_CONTENT,
