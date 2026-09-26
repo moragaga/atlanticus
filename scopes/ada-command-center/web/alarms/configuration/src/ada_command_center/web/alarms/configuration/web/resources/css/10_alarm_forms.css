@@ -257,6 +257,40 @@
     grid-column: 1 / -1;
 }
 
+.alarm-guided__group--evaluation > .alarm-guided__field:nth-child(2),
+.alarm-guided__group--evaluation > .alarm-parameter,
+.alarm-guided__group--evaluation > .alarm-guided__field:last-child {
+    grid-column: 1 / -1;
+}
+
+.alarm-guided__group--evaluation > .alarm-guided__field:nth-child(2) {
+    width: min(100%, 29rem);
+}
+
+.alarm-guided__routing-step {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 1rem 1.25rem;
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .65rem;
+}
+
+.alarm-guided__routing-step > legend {
+    float: none;
+    width: auto;
+    color: var(--atlanticus-ui-primary);
+    font-size: .8rem;
+    font-weight: 750;
+}
+
+.alarm-guided__routing-step > button {
+    grid-column: 1 / -1;
+    justify-self: start;
+}
+
 .alarm-guided__target {
     gap: .9rem 1rem;
 }
@@ -380,7 +414,7 @@
 
 .alarm-parameter__row {
     display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr) minmax(0, 1.1fr) auto;
+    grid-template-columns: minmax(10rem, 1.5fr) minmax(8rem, .9fr) minmax(12rem, 1.1fr) auto;
     align-items: end;
     gap: .65rem;
     min-width: 0;
@@ -417,6 +451,7 @@
     }
     .alarm-guided__tab { flex: 0 0 auto; width: auto; }
     .alarm-parameter__row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .alarm-guided__routing-step { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 38rem) {

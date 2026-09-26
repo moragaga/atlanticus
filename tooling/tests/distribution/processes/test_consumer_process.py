@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+import zipfile
 from pathlib import Path
 
 MODULE_PATH = (
@@ -152,3 +153,46 @@ def test_validate_rejects_legacy_services_execution_key(tmp_path: Path) -> None:
         assert "Pipeline services manifest does not match" in str(error)
     else:
         raise AssertionError("Legacy services key must be rejected")
+
+
+def test_integrate_rejects_unsafe_archive_without_changing_distribution(
+    tmp_path: Path,
+) -> None:
+    _distribution(tmp_path, with_env=True)
+    manifest_path = tmp_path / "distribution.json"
+    before = manifest_path.read_bytes()
+    extension_path = tmp_path.parent / "unsafe.extension.zip"
+    with zipfile.ZipFile(extension_path, "w") as archive:
+        archive.writestr(
+            "extension.json",
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "name": "unsafe",
+                    "generated_at": "2026-09-26T00:00:00Z",
+                    "source": {"repository": "atlanticus", "revision": "a" * 40},
+                    "processes": [
+                        {
+                            "process": "operational-data-meteodata",
+                            "project": "atlanticus-operational-data-meteodata-process",
+                            "version": "1.0.0",
+                            "description": "Meteodata",
+                            "runtime": {"language": "python", "version": "3.14.2"},
+                            "deployment": {
+                                "execution_file": "meteodata",
+                                "container_name": "job08",
+                            },
+                        }
+                    ],
+                }
+            ),
+        )
+        archive.writestr("../unexpected.txt", "unsafe")
+    try:
+        consumer._integrate(tmp_path, extension_path)
+    except consumer.ConsumerProcessError as error:
+        assert "Unsafe extension archive entry" in str(error)
+    else:
+        raise AssertionError("Path traversal must be rejected")
+    assert manifest_path.read_bytes() == before
+    assert not (tmp_path.parent / "unexpected.txt").exists()

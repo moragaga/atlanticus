@@ -12,6 +12,7 @@ import sys
 import tempfile
 import tomllib
 import uuid
+import zipfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -474,6 +475,7 @@ def _manifest(
                     "execution_file": item.deployment.execution_file,
                     "container_name": item.deployment.container_name,
                 },
+                "source": {"repository": "atlanticus", "revision": source_revision},
             }
             for item in selected
         ],
@@ -496,6 +498,53 @@ def _service(item: SelectedProcess) -> dict[str, object]:
 
 def _services(selected: tuple[SelectedProcess, ...]) -> list[dict[str, object]]:
     return [_service(item) for item in selected]
+
+
+def _package_extension(
+    *,
+    staging_root: Path,
+    selected: tuple[SelectedProcess, ...],
+    manifest: dict[str, object],
+    output_path: Path,
+) -> Path:
+    processes_root = staging_root / "processes"
+    processes_root.mkdir(parents=True)
+    for item in selected:
+        alias = item.deployment.execution_file
+        shutil.copytree(
+            item.artifact.root,
+            processes_root / alias,
+            ignore=_artifact_ignore,
+        )
+        staged = _load_artifact(processes_root / alias, require_directory_match=False)
+        if staged.command != item.artifact.command:
+            raise DistributionError(f"Extension process command is invalid: {alias}")
+    (staging_root / "extension.json").write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+    )
+    with tempfile.NamedTemporaryFile(
+        dir=output_path.parent,
+        prefix=f".{output_path.stem}-",
+        suffix=".zip",
+        delete=False,
+    ) as temporary_archive:
+        archive_path = Path(temporary_archive.name)
+    with zipfile.ZipFile(
+        archive_path, "w", compression=zipfile.ZIP_DEFLATED
+    ) as archive:
+        for path in sorted(staging_root.rglob("*")):
+            relative = path.relative_to(staging_root).as_posix()
+            if path.is_dir():
+                archive.write(path, relative + "/")
+            elif path.is_file():
+                archive.write(path, relative)
+            else:
+                raise DistributionError(f"Unsupported extension entry: {relative}")
+    try:
+        os.replace(archive_path, output_path)
+    finally:
+        archive_path.unlink(missing_ok=True)
+    return output_path
 
 
 def _consumer_template_root() -> Path:
@@ -658,6 +707,7 @@ def distribute(
     selections: tuple[str, ...],
     targets: tuple[str, ...],
     bundle: ModuleType | None = None,
+    extension: bool = False,
 ) -> Path:
     if not DISTRIBUTION_NAME_PATTERN.fullmatch(distribution_name):
         raise DistributionError(f"Invalid distribution name: {distribution_name}")
@@ -714,6 +764,18 @@ def distribute(
         except bundle.ProcessBundleError as error:
             raise DistributionError(str(error)) from error
         selected_processes = tuple(selected)
+        if extension:
+            return _package_extension(
+                staging_root=temporary / "extension",
+                selected=selected_processes,
+                manifest=_manifest(
+                    distribution_name,
+                    selected_processes,
+                    generated_at=generated_at,
+                    source_revision=source_revision,
+                ),
+                output_path=output_root / f"{distribution_name}.extension.zip",
+            )
         staging_root = temporary / distribution_name
         staging_root.mkdir()
         shutil.copy2(
@@ -797,6 +859,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("distribution")
     parser.add_argument("processes", nargs="*")
     parser.add_argument(
+        "--extension",
+        action="store_true",
+        help="Generate an integration ZIP instead of a complete distribution.",
+    )
+    parser.add_argument(
         "--target",
         action="append",
         default=[],
@@ -827,9 +894,16 @@ def main(argv: list[str] | None = None) -> int:
             distribution_name=arguments.distribution,
             selections=tuple(arguments.processes),
             targets=tuple(arguments.target),
+            extension=arguments.extension,
         )
     except DistributionError as error:
         raise SystemExit(str(error)) from error
+    if arguments.extension:
+        print(f"Extension package: {target}")
+        print(
+            "Integrate from the existing project with: process.sh integrate <extension.zip>"
+        )
+        return 0
     print(f"Distribution package: {target}")
     print(f"Configure process files under: {target / 'processes'}")
     print(f"Pipeline manifest: {target / 'services.json'}")

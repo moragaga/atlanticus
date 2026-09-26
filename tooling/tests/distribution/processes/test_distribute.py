@@ -5,6 +5,7 @@ import json
 import shutil
 import sys
 import tomllib
+import zipfile
 from pathlib import Path
 
 MODULE_PATH = (
@@ -482,3 +483,144 @@ def test_meteodata_distribution_preserves_job08_in_single_and_combined_exports(
         ("operational-data-pi", "job01"),
         ("operational-data-meteodata", "job08"),
     ]
+
+
+def test_extension_integrates_into_existing_project_without_rebuilding_existing_process(
+    tmp_path: Path, monkeypatch
+) -> None:
+    _write_transport(tmp_path)
+    pi = _write_source(
+        tmp_path, "scopes/operational-data/processes/pi", "operational-data-pi"
+    )
+    meteodata = _write_source(
+        tmp_path,
+        "scopes/operational-data/processes/meteodata",
+        "operational-data-meteodata",
+    )
+    _patch_generation_context(monkeypatch, tmp_path)
+    bundle = BundleStub(
+        {"operational-data-pi": pi, "operational-data-meteodata": meteodata}
+    )
+    original = distribution.distribute(
+        repository_root=tmp_path,
+        output_root=tmp_path / "distribution",
+        distribution_name="sample-app",
+        selections=("operational-data-pi",),
+        targets=(),
+        bundle=bundle,
+    )
+    current = original / "processes/pi-web-api"
+    (current / ".env").write_text("TOKEN=retained\n", encoding="utf-8")
+    (current / "config.json").write_text('{"retained": true}\n', encoding="utf-8")
+    (original / ".runtime").mkdir()
+    (original / ".runtime/state").write_text("retained", encoding="utf-8")
+    extension = distribution.distribute(
+        repository_root=tmp_path,
+        output_root=tmp_path / "distribution",
+        distribution_name="meteodata-addon",
+        selections=("operational-data-meteodata",),
+        targets=(),
+        bundle=bundle,
+        extension=True,
+    )
+    assert bundle.builds == ["operational-data-pi", "operational-data-meteodata"]
+    assert extension.name == "meteodata-addon.extension.zip"
+    with zipfile.ZipFile(extension) as archive:
+        names = set(archive.namelist())
+        assert "extension.json" in names
+        assert "processes/meteodata/.env.detail" in names
+        assert "processes/meteodata/uv.lock" in names
+        assert "processes/meteodata/.env" not in names
+        assert "services.json" not in names
+        assert "processes/pi-web-api/pyproject.toml" not in names
+        payload = json.loads(archive.read("extension.json"))
+        assert [
+            item["deployment"]["execution_file"] for item in payload["processes"]
+        ] == ["meteodata"]
+    tampered = tmp_path / "tampered.extension.zip"
+    with zipfile.ZipFile(extension) as source, zipfile.ZipFile(tampered, "w") as output:
+        for member in source.infolist():
+            if member.is_dir():
+                output.writestr(member, b"")
+            elif member.filename == "extension.json":
+                invalid = json.loads(source.read(member))
+                invalid["processes"][0]["version"] = "9.9.9"
+                output.writestr(member, json.dumps(invalid))
+            else:
+                output.writestr(member, source.read(member))
+    consumer_path = (
+        Path(__file__).resolve().parents[3]
+        / "distribution/processes/consumer/process.py"
+    )
+    spec = importlib.util.spec_from_file_location(
+        "test_extension_integration_consumer", consumer_path
+    )
+    assert spec is not None and spec.loader is not None
+    consumer = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = consumer
+    spec.loader.exec_module(consumer)
+    before = (original / "distribution.json").read_bytes()
+    try:
+        consumer._integrate(original, tampered)
+    except consumer.ConsumerProcessError as error:
+        assert "contract does not match manifest" in str(error)
+    else:
+        raise AssertionError("Inconsistent extension metadata must be rejected")
+    assert (original / "distribution.json").read_bytes() == before
+    assert not (original / "processes/meteodata").exists()
+    original_replace = consumer.os.replace
+    failed = False
+
+    def fail_services_once(source: Path, destination: Path) -> None:
+        nonlocal failed
+        if not failed and Path(destination) == original / "services.json":
+            failed = True
+            raise OSError("Simulated services publication failure")
+        original_replace(source, destination)
+
+    monkeypatch.setattr(consumer.os, "replace", fail_services_once)
+    try:
+        consumer._integrate(original, extension)
+    except consumer.ConsumerProcessError as error:
+        assert "Extension integration failed" in str(error)
+    else:
+        raise AssertionError("Failed integration must trigger rollback")
+    assert (original / "distribution.json").read_bytes() == before
+    assert not (original / "processes/meteodata").exists()
+    assert (original / "processes/pi-web-api/.env").read_text(
+        encoding="utf-8"
+    ) == "TOKEN=retained\n"
+    consumer._integrate(original, extension)
+    assert consumer._validate_distribution(original, require_environment=False) == (
+        "pi-web-api",
+        "meteodata",
+    )
+    manifest = json.loads((original / "distribution.json").read_text(encoding="utf-8"))
+    assert [item["deployment"]["execution_file"] for item in manifest["processes"]] == [
+        "pi-web-api",
+        "meteodata",
+    ]
+    assert (
+        manifest["processes"][1]["source"]["revision"] == payload["source"]["revision"]
+    )
+    assert (original / "processes/pi-web-api/.env").read_text(
+        encoding="utf-8"
+    ) == "TOKEN=retained\n"
+    assert (original / "processes/pi-web-api/config.json").read_text(
+        encoding="utf-8"
+    ) == '{"retained": true}\n'
+    assert not (original / "processes/meteodata/.env").exists()
+    assert (original / "processes/meteodata/config.detail.json").is_file()
+    assert (original / ".runtime/state").read_text(encoding="utf-8") == "retained"
+    for mode in ("compose.yaml", "compose.bind.yaml"):
+        compose = (original / "deployment/local" / mode).read_text(encoding="utf-8")
+        assert "FILENAME: pi-web-api" in compose
+        assert "FILENAME: meteodata" in compose
+    before = (original / "distribution.json").read_bytes()
+    try:
+        consumer._integrate(original, extension)
+    except consumer.ConsumerProcessError as error:
+        assert "conflicts with an installed process" in str(error)
+    else:
+        raise AssertionError("Integrating the same component again must fail")
+    assert (original / "distribution.json").read_bytes() == before

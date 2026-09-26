@@ -70,6 +70,7 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     RULE_FIELD_TYPE,
     RULE_REMOVE_TYPE,
     RULES_EDITOR_ID,
+    SAVE_BUTTON_ID,
     SAVE_RESULT_ID,
     STEP_ADD_TYPE,
     STEP_FIELD_TYPE,
@@ -592,6 +593,7 @@ def register_alarm_configuration_admin_callbacks(
         Output(SAVE_RESULT_ID, 'children'),
         Output(MODAL_SAVE_RESULT_ID, 'children'),
         Input(MODAL_SAVE_BUTTON_ID, 'n_clicks'),
+        Input(SAVE_BUTTON_ID, 'n_clicks'),
         Input(context.draft_save_action_id, 'n_clicks'),
         State(AUTHORING_STORE_ID, 'data'),
         State(context.draft_store_id, 'data'),
@@ -600,6 +602,7 @@ def register_alarm_configuration_admin_callbacks(
     )
     def save_draft(
         modal_clicks: int | None,
+        footer_clicks: int | None,
         workflow_clicks: int | None,
         authoring_document: dict[str, object] | None,
         current_draft: dict[str, object] | None,
@@ -608,6 +611,7 @@ def register_alarm_configuration_admin_callbacks(
         if not _save_draft_click_is_real(
             ctx.triggered_id,
             modal_clicks=modal_clicks,
+            footer_clicks=footer_clicks,
             workflow_clicks=workflow_clicks,
             workflow_id=context.draft_save_action_id,
         ):
@@ -641,10 +645,11 @@ def _readiness_feedback(hints: tuple[str, ...]) -> object:
             html.Strong('Observaciones para Materialization'),
             html.Ul([html.Li(hint) for hint in hints]),
         ],
-        className='atlanticus-manager__message atlanticus-manager__message--warning',
+        className='atlanticus-manager__message atlanticus-manager__message--notice',
     )
 
 
+# El Manager publica el estilo notice para avisos operativos.
 def _authoring_feedback(issues: tuple[str, ...], hints: tuple[str, ...] = ()) -> object:
     children = [
         html.Strong('Configuración en edición'),
@@ -664,7 +669,7 @@ def _authoring_feedback(issues: tuple[str, ...], hints: tuple[str, ...] = ()) ->
         children.append(_readiness_feedback(hints))
     return html.Div(
         children,
-        className='atlanticus-manager__message atlanticus-manager__message--warning',
+        className='atlanticus-manager__message atlanticus-manager__message--notice',
     )
 
 
@@ -696,11 +701,14 @@ def _save_draft_click_is_real(
     trigger: object,
     *,
     modal_clicks: int | None,
+    footer_clicks: int | None,
     workflow_clicks: int | None,
     workflow_id: object,
 ) -> bool:
     if trigger == MODAL_SAVE_BUTTON_ID:
         return _click_is_real(modal_clicks)
+    if trigger == SAVE_BUTTON_ID:
+        return _click_is_real(footer_clicks)
     if isinstance(trigger, dict) and isinstance(workflow_id, dict):
         return dict(trigger) == dict(workflow_id) and _click_is_real(workflow_clicks)
     return trigger == workflow_id and _click_is_real(workflow_clicks)

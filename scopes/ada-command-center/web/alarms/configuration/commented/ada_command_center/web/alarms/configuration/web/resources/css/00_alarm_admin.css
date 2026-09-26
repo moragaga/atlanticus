@@ -74,10 +74,35 @@
     display: none;
 }
 
-.alarm-admin__status,
-.alarm-admin__footer {
+/* Las advertencias de edición son compactas y el guardado general vuelve al pie. */
+.alarm-admin__status {
     display: grid;
-    gap: .6rem;
+    gap: .4rem;
+    padding: .75rem 1rem;
+    border-left: .22rem solid var(--atlanticus-ui-accent);
+    background: var(--atlanticus-ui-surface-muted);
+}
+
+.alarm-admin__status ul {
+    margin: .35rem 0 0;
+    padding-left: 1.3rem;
+}
+
+.alarm-admin__footer {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .7rem 1rem;
+    justify-content: space-between;
+    border-top: .2rem solid var(--atlanticus-ui-accent);
+}
+
+.alarm-admin__footer > div[role='status'] {
+    flex: 1 1 16rem;
+}
+
+.alarm-admin__footer > button {
+    margin-left: auto;
 }
 
 .alarm-admin__heading,
@@ -227,14 +252,17 @@
     margin: .7rem 0;
 }
 
+/* El pie del listado separa resultado total, navegación y tamaño de página. */
 .alarm-page {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center;
-    gap: .75rem;
+    gap: .9rem 1.35rem;
     min-width: 0;
     width: 100%;
-    padding-top: .85rem;
+    margin-top: .85rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--atlanticus-ui-border);
 }
 
 .alarm-page__summary {

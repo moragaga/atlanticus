@@ -66,6 +66,7 @@ from ada_command_center.web.alarms.configuration.web.ids import (
     REMOVE_RESULT_ID,
     RULE_FIELD_TYPE,
     RULES_EDITOR_ID,
+    SAVE_BUTTON_ID,
     SAVE_RESULT_ID,
     SHOW_FAMILIES_ID,
     SHOW_GLOBAL_MESSAGES_ID,
@@ -113,8 +114,7 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                 [
                     html.Div(id=TOOL_REFERENCE_STATUS_ID),
                     html.Div(id=DOCUMENT_STATUS_ID),
-                    html.Div(id=SAVE_RESULT_ID, role='status'),
-                ],
+                    ],
                 className='alarm-admin__status',
             ),
             html.Section(
@@ -376,8 +376,31 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                 className='alarm-family__modal',
                 hidden=True,
             ),
+            html.Section(
+                [
+                    html.Div(
+                        [
+                            html.H3('Borrador local · alarmas'),
+                            html.P('Guarda los cambios cuando completes los campos obligatorios.'),
+                        ],
+                        className='alarm-admin__heading-copy',
+                    ),
+                    html.Div(id=SAVE_RESULT_ID, role='status'),
+                    html.Button(
+                        'Guardar borrador',
+                        id=SAVE_BUTTON_ID,
+                        n_clicks=0,
+                        type='button',
+                        className='atlanticus-ui-button atlanticus-ui-button--primary',
+                    ),
+                ],
+                className='alarm-admin__footer',
+            ),
+            # El guardado general sigue siendo accesible al final de la pantalla.
         ],
         className='ada-command-center-alarm-editor atlanticus-bootstrap alarm-admin',
+        # Los tokens heredados también tematizan Input y RadioItems de Dash.
+        style=dash_select_style(),
     )
 
 
@@ -904,7 +927,12 @@ def _message_editor(message_index: int, message: dict[str, object]) -> object:
 
 def _group(title: str, children: list[object]) -> object:
     return html.Fieldset(
-        [html.Legend(field_label(title)), *children], className='alarm-guided__group'
+        [html.Legend(field_label(title)), *children],
+        className=(
+            'alarm-guided__group alarm-guided__group--evaluation'
+            if title == 'Evaluation and priority'
+            else 'alarm-guided__group'
+        )
     )
 
 

@@ -94,7 +94,7 @@ def _criticality_three_panel(panel: object) -> object:
             html.H5('Origen operacional'),
             children[1],
             html.P(
-                'C3 no tiene escalonamiento. El origen conserva su función de referencia.',
+                'C3 solo utiliza la herramienta de origen; no admite destinos de escalamiento.',
                 className='alarm-guided__notice',
             ),
             *(
