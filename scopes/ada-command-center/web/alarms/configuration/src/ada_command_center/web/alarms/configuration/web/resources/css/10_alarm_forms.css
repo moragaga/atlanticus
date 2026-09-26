@@ -305,8 +305,7 @@
 }
 
 .alarm-guided__field,
-.alarm-family__detail > fieldset > label,
-.alarm-admin__new-family-field {
+.alarm-family__detail > fieldset > label {
     display: grid;
     align-content: start;
     min-width: 0;
@@ -316,8 +315,7 @@
 }
 
 .alarm-guided__field input,
-.alarm-family__detail input:not([type='radio']):not([type='checkbox']),
-.alarm-admin__new-family-field input {
+.alarm-family__detail input:not([type='radio']):not([type='checkbox']) {
     box-sizing: border-box;
     width: 100%;
     max-width: 100%;
@@ -330,14 +328,6 @@
     border-radius: var(--atlanticus-ui-control-radius);
     font: inherit;
     font-size: .78rem;
-}
-
-.alarm-admin__new-family-field,
-.alarm-admin__new-family-field .dash-input-container:not(input) {
-    border: 0;
-    outline: 0;
-    box-shadow: none;
-    background: transparent;
 }
 
 .alarm-admin__choices {
@@ -472,8 +462,7 @@
 }
 
 .alarm-admin .alarm-guided__field input:not([type='radio']):not([type='checkbox']),
-.alarm-admin .alarm-family__detail input:not([type='radio']):not([type='checkbox']),
-.alarm-admin .alarm-admin__new-family-field input {
+.alarm-admin .alarm-family__detail input:not([type='radio']):not([type='checkbox']) {
     font-weight: 400;
 }
 

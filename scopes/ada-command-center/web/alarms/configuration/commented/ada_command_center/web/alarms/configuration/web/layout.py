@@ -222,7 +222,7 @@ def build_alarm_configuration_admin(context: AlarmConfigurationAdminWebContext) 
                                                         'Se incorpora al documento con su primera regla o mensaje.'
                                                     ),
                                                 ],
-                                                className='alarm-admin__new-family-field',
+                                                className='alarm-guided__field',
                                             ),
                                             html.Div(
                                                 id=FAMILY_ACTION_RESULT_ID,
