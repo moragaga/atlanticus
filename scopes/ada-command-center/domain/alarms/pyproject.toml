@@ -10,10 +10,12 @@ requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "ada-command-center-tools-domain==1.0.0",
+    "ada-web-tools==0.1.0",
 ]
 
 [tool.uv.sources]
 ada-command-center-tools-domain = { path = "../tools", editable = true }
+ada-web-tools = { path = "../../../ada/web/tools/core", editable = true }
 
 [dependency-groups]
 dev = ["pytest==9.1.1", "ruff==0.15.22"]

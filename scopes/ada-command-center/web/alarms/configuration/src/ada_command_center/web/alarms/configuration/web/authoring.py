@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from copy import deepcopy
 
+from ada.web.tools.enums import ToolConfigurationKind
+from ada_command_center.domain.alarms import next_routing_tool_kind
 from ada_command_center.web.alarms.configuration.tool_references import (
     AlarmToolReferenceCatalog,
 )
@@ -30,6 +33,14 @@ def tool_reference_catalog_to_document(
         return None
     return {
         'catalog_revision': catalog.catalog_revision,
+        'routing_tools': [
+            {
+                'tool_key': tool.tool_key,
+                'display_name': tool.display_name,
+                'kind': tool.kind.value,
+            }
+            for tool in catalog.dependencies.tools
+        ],
         'tools': [
             {
                 'tool_key': tool.tool_key,
@@ -63,8 +74,76 @@ def tool_suggestions(reference_document: dict[str, object] | None) -> tuple[dict
             'value': tool['tool_key'],
             'label': f'{tool["display_name"]} ({tool["tool_key"]})',
         }
-        for tool in _tools(reference_document)
+        for tool in _routing_tools(reference_document)
     )
+
+
+def routing_target_suggestions(
+    reference_document: dict[str, object] | None,
+    escalation: Mapping[str, object],
+    step_index: int | None,
+) -> tuple[dict[str, str], ...]:
+    catalog = {
+        tool['tool_key']: tool
+        for tool in _routing_tools(reference_document)
+        if isinstance(tool.get('tool_key'), str)
+    }
+    origin = escalation.get('origin_tool_key')
+    source = catalog.get(origin) if isinstance(origin, str) else None
+    if source is None:
+        return ()
+    previous = source
+    steps = escalation.get('steps')
+    indexed = [
+        (index, step)
+        for index, step in enumerate(steps if isinstance(steps, list) else [])
+        if isinstance(step, dict)
+    ]
+    indexed.sort(
+        key=lambda item: (
+            item[1].get('step_order') if type(item[1].get('step_order')) is int else float('inf'),
+            item[0],
+        )
+    )
+    for index, step in indexed:
+        if index == step_index:
+            break
+        if step.get('is_enabled') is not True:
+            continue
+        key = step.get('target_tool_key')
+        if not isinstance(key, str) or key not in catalog:
+            return ()
+        previous = catalog[key]
+    try:
+        expected = next_routing_tool_kind(ToolConfigurationKind(previous['kind']))
+    except KeyError, TypeError, ValueError:
+        return ()
+    if expected is None:
+        return ()
+    used = {
+        step.get('target_tool_key')
+        for index, step in indexed
+        if index != step_index and step.get('is_enabled') is True
+    }
+    return tuple(
+        {
+            'value': tool['tool_key'],
+            'label': f'{tool["display_name"]} ({tool["tool_key"]})',
+        }
+        for tool in _routing_tools(reference_document)
+        if tool.get('kind') == expected.value
+        and tool.get('tool_key') not in used
+        and tool.get('tool_key') != origin
+    )
+
+
+def _routing_tools(reference_document: dict[str, object] | None) -> list[dict[str, object]]:
+    if not isinstance(reference_document, dict):
+        return []
+    value = reference_document.get('routing_tools')
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
 
 
 def component_suggestions(

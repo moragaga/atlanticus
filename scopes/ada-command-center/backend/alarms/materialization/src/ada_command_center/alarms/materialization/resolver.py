@@ -37,6 +37,7 @@ from ada_command_center.domain.alarms import (
     AlarmVisualTarget,
     Criticality,
     MessageDefinition,
+    next_routing_tool_kind,
 )
 
 
@@ -146,6 +147,7 @@ def _collect_findings(
                 )
             )
         findings.extend(_routing_findings(rule))
+        findings.extend(_routing_direction_findings(rule, confirmed_tool_catalog))
         for target in rule.visual_targets:
             findings.extend(
                 _visual_target_findings(
@@ -265,6 +267,44 @@ def _routing_findings(rule: AlarmDefinition) -> tuple[AlarmResolutionFinding, ..
                 reference_key=step.target_tool_key,
             )
         )
+    return tuple(findings)
+
+
+def _routing_direction_findings(
+    rule: AlarmDefinition,
+    confirmed_tool_catalog: _ConfirmedToolCatalog,
+) -> tuple[AlarmResolutionFinding, ...]:
+    if rule.criticality is Criticality.C3:
+        return ()
+    origin = confirmed_tool_catalog.get(rule.escalation.origin_tool_key)
+    if origin is None:
+        return ()
+    previous_kind = origin.kind
+    findings: list[AlarmResolutionFinding] = []
+    for step in sorted(rule.escalation.steps, key=lambda item: item.step_order):
+        if not step.is_enabled:
+            continue
+        target = confirmed_tool_catalog.get(step.target_tool_key)
+        if target is None:
+            break
+        required = next_routing_tool_kind(previous_kind)
+        if target.kind is not required:
+            expected = 'no further destination' if required is None else required.value
+            findings.append(
+                _blocking_finding(
+                    code='routing_invalid_direction',
+                    message=(
+                        f'Routing from {previous_kind.value} to {target.kind.value} is invalid; '
+                        f'expected {expected}'
+                    ),
+                    rule=rule,
+                    field_path=(
+                        f'{_rule_path(rule)}.escalation.steps[{step.step_order}].target_tool_key'
+                    ),
+                    reference_key=step.target_tool_key,
+                )
+            )
+        previous_kind = target.kind
     return tuple(findings)
 
 

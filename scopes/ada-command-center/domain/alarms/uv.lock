@@ -8,6 +8,7 @@ version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "ada-command-center-tools-domain" },
+    { name = "ada-web-tools" },
 ]
 
 [package.dev-dependencies]
@@ -17,7 +18,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "ada-command-center-tools-domain", editable = "../tools" }]
+requires-dist = [
+    { name = "ada-command-center-tools-domain", editable = "../tools" },
+    { name = "ada-web-tools", editable = "../../../ada/web/tools/core" },
+]
 
 [package.metadata.requires-dev]
 dev = [

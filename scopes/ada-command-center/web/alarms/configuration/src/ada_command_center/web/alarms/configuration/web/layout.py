@@ -17,6 +17,7 @@ from ada_command_center.domain.alarms import (
 from ada_command_center.web.alarms.configuration.web.authoring import (
     component_suggestions,
     empty_authoring_document,
+    routing_target_suggestions,
     subcomponent_suggestions,
     tool_suggestions,
 )
@@ -640,6 +641,7 @@ def _escalation_editor(
     reference_document: dict[str, object] | None,
 ) -> object:
     origin = escalation.get('origin_tool_key')
+    can_add = bool(routing_target_suggestions(reference_document, escalation, None))
     children: list[object] = [
         html.H5('Escalamiento'),
         _tool_key_field(
@@ -648,17 +650,28 @@ def _escalation_editor(
             origin,
             reference_document,
         ),
-        html.Button(
-            'Agregar destino',
-            id={'type': STEP_ADD_TYPE, 'rule': rule_index},
-            n_clicks=0,
-            type='button',
-            className='btn btn-outline-secondary btn-sm',
+        (
+            html.Button(
+                'Agregar destino',
+                id={'type': STEP_ADD_TYPE, 'rule': rule_index},
+                n_clicks=0,
+                type='button',
+                className='btn btn-outline-secondary btn-sm',
+            )
+            if can_add
+            else html.Span()
         ),
     ]
     for step_index, step in enumerate(steps):
         if not isinstance(step, dict):
             continue
+        available = routing_target_suggestions(reference_document, escalation, step_index)
+        selected = step.get('target_tool_key')
+        selected_is_invalid = (
+            step.get('is_enabled') is True
+            and bool(selected)
+            and selected not in {option['value'] for option in available}
+        )
         children.append(
             html.Fieldset(
                 [
@@ -685,9 +698,18 @@ def _escalation_editor(
                             'field': 'target_tool_key',
                         },
                         'Herramienta de destino',
-                        step.get('target_tool_key'),
+                        selected,
                         reference_document,
-                        exclude=origin if isinstance(origin, str) else None,
+                        options=available,
+                    ),
+                    (
+                        html.Small(
+                            'El destino configurado no corresponde al siguiente nivel. '
+                            'Selecciona una herramienta permitida.',
+                            className='alarm-guided__notice',
+                        )
+                        if selected_is_invalid
+                        else None
                     ),
                     _step_bool_field(
                         rule_index,
@@ -948,14 +970,27 @@ def _tool_key_field(
     reference_document: dict[str, object] | None,
     *,
     exclude: str | None = None,
+    options: tuple[dict[str, str], ...] | None = None,
 ) -> object:
-    options = [item for item in tool_suggestions(reference_document) if item['value'] != exclude]
+    choices = [
+        item
+        for item in (tool_suggestions(reference_document) if options is None else options)
+        if item['value'] != exclude
+    ]
     current = value if isinstance(value, str) and value else None
+    if current is not None and current not in {item['value'] for item in choices}:
+        choices.append(
+            {
+                'value': current,
+                'label': f'Destino anterior incompatible ({current})',
+                'disabled': True,
+            }
+        )
     return _labeled(
         label,
         dcc.Dropdown(
             id=component_id,
-            options=options,
+            options=choices,
             value=current,
             clearable=False,
             searchable=True,

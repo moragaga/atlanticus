@@ -19,6 +19,7 @@ from ada_command_center.domain.alarms.definition import (
 )
 from ada_command_center.domain.alarms.errors import AlarmConfigurationValidationError
 from ada_command_center.domain.alarms.models import AlarmIdentity, AlarmKind, Criticality
+from ada_command_center.domain.alarms.routing_policy import next_routing_tool_kind
 from ada_command_center.domain.alarms.snapshot import AlarmConfigurationSnapshot
 
 __version__ = '1.0.0'
@@ -45,5 +46,6 @@ __all__ = [
     'ProcessAlarmProjectionMode',
     'ReappearanceDefinition',
     'VisibilityMode',
+    'next_routing_tool_kind',
     '__version__',
 ]

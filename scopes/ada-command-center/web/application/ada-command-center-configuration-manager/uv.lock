@@ -11,10 +11,14 @@ version = "1.0.0"
 source = { editable = "../../../domain/alarms" }
 dependencies = [
     { name = "ada-command-center-tools-domain" },
+    { name = "ada-web-tools" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "ada-command-center-tools-domain", editable = "../../../domain/tools" }]
+requires-dist = [
+    { name = "ada-command-center-tools-domain", editable = "../../../domain/tools" },
+    { name = "ada-web-tools", editable = "../../../../ada/web/tools/core" },
+]
 
 [package.metadata.requires-dev]
 dev = [

@@ -115,7 +115,16 @@ def test_ready_resolution_materializes_runtime_and_delivery_atomically() -> None
             ),
         ),
     )
-    catalog = tool_catalog('tool_a', 'tool_b', 'tool_c', revision='TOOLS-9')
+    catalog = tool_catalog(
+        'tool_a',
+        'tool_b',
+        'tool_c',
+        revision='TOOLS-9',
+        kinds={
+            'tool_b': ToolConfigurationKind.INTEGRATED_OPERATIONS,
+            'tool_c': ToolConfigurationKind.STRATEGIC,
+        },
+    )
 
     result = resolve_alarm_configuration(
         configuration=configuration,
@@ -260,7 +269,11 @@ def test_invalid_routing_for_criticality_blocks_candidate(
     result = resolve_alarm_configuration(
         configuration=configuration,
         alarm_configuration_revision='ALARMS-1',
-        confirmed_tool_catalog=tool_catalog('tool_a', 'tool_b'),
+        confirmed_tool_catalog=tool_catalog(
+            'tool_a',
+            'tool_b',
+            kinds={'tool_b': ToolConfigurationKind.INTEGRATED_OPERATIONS},
+        ),
         tool_qualification=green_qualification('tool_a', 'tool_b'),
         evaluator_qualification=evaluator_qualification(),
     )
@@ -294,7 +307,16 @@ def test_c2_disabled_steps_do_not_contribute_to_executable_delay() -> None:
     result = resolve_alarm_configuration(
         configuration=configuration,
         alarm_configuration_revision='ALARMS-1',
-        confirmed_tool_catalog=tool_catalog('tool_a', 'tool_b', 'tool_c', 'tool_d'),
+        confirmed_tool_catalog=tool_catalog(
+            'tool_a',
+            'tool_b',
+            'tool_c',
+            'tool_d',
+            kinds={
+                'tool_b': ToolConfigurationKind.INTEGRATED_OPERATIONS,
+                'tool_d': ToolConfigurationKind.STRATEGIC,
+            },
+        ),
         tool_qualification=green_qualification('tool_a', 'tool_b', 'tool_c', 'tool_d'),
         evaluator_qualification=evaluator_qualification(),
     )
@@ -505,11 +527,17 @@ def green_qualification(*tool_keys: str) -> ToolReconciliationQualification:
     return ToolReconciliationQualification(green_tool_keys=tuple(tool_keys))
 
 
-def tool_catalog(*tool_keys: str, revision: str = 'TOOLS-1') -> ConfirmedToolCatalog:
+def tool_catalog(
+    *tool_keys: str,
+    revision: str = 'TOOLS-1',
+    kinds: dict[str, ToolConfigurationKind] | None = None,
+) -> ConfirmedToolCatalog:
     return ConfirmedToolCatalog(
         revision=revision,
         entries={
-            tool_key: catalog_entry(tool_key, ToolConfigurationKind.PROCESS)
+            tool_key: catalog_entry(
+                tool_key, (kinds or {}).get(tool_key, ToolConfigurationKind.PROCESS)
+            )
             for tool_key in tool_keys
         },
     )
