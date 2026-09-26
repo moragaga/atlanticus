@@ -102,7 +102,7 @@ def _deployment_entries(root: Path) -> tuple[tuple[str, str], ...]:
             or not isinstance(deployment, dict)
         ):
             raise ConsumerProcessError("Distribution process manifest entry is invalid")
-        alias = deployment.get("excecution_file")
+        alias = deployment.get("execution_file")
         container_name = deployment.get("container_name")
         if (
             not isinstance(alias, str)
@@ -123,7 +123,7 @@ def _expected_services(root: Path) -> list[dict[str, object]]:
     return [
         {
             "repository": alias,
-            "excecution_file": alias,
+            "execution_file": alias,
             "container_name": container_name,
             "config_file": f"processes/{alias}/config.json",
             "to_deploy": True,

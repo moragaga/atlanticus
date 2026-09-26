@@ -62,7 +62,7 @@ class DistributionError(RuntimeError):
 class ProcessDeployment:
     number: str
     process: str
-    excecution_file: str
+    execution_file: str
 
     @property
     def container_name(self) -> str:
@@ -70,7 +70,7 @@ class ProcessDeployment:
 
     @property
     def config_file(self) -> str:
-        return f"processes/{self.excecution_file}/config.json"
+        return f"processes/{self.execution_file}/config.json"
 
 
 @dataclass(frozen=True, slots=True)
@@ -361,9 +361,9 @@ def _artifact_ignore(directory: str, names: list[str]) -> set[str]:
 def _preserve_consumer_configuration(
     current_root: Path,
     staged_process: Path,
-    excecution_file: str,
+    execution_file: str,
 ) -> None:
-    current_process = current_root / "processes" / excecution_file
+    current_process = current_root / "processes" / execution_file
     for name in CONSUMER_CONFIGURATION_FILES:
         current = current_process / name
         if current.is_file():
@@ -376,7 +376,7 @@ def _render_service(
     *,
     volume_mode: str,
 ) -> str:
-    alias = selected.deployment.excecution_file
+    alias = selected.deployment.execution_file
     artifact = selected.artifact
     volume_source = "runtime" if volume_mode == "named" else "../../.runtime/volumen"
     return "\n".join(
@@ -471,7 +471,7 @@ def _manifest(
                     "version": item.artifact.runtime_version,
                 },
                 "deployment": {
-                    "excecution_file": item.deployment.excecution_file,
+                    "execution_file": item.deployment.execution_file,
                     "container_name": item.deployment.container_name,
                 },
             }
@@ -483,8 +483,8 @@ def _manifest(
 def _service(item: SelectedProcess) -> dict[str, object]:
     deployment = item.deployment
     return {
-        "repository": deployment.excecution_file,
-        "excecution_file": deployment.excecution_file,
+        "repository": deployment.execution_file,
+        "execution_file": deployment.execution_file,
         "container_name": deployment.container_name,
         "config_file": deployment.config_file,
         "to_deploy": True,
@@ -552,7 +552,7 @@ def _validate_staging(
     generated_at: str,
     source_revision: str,
 ) -> None:
-    expected_aliases = tuple(item.deployment.excecution_file for item in selected)
+    expected_aliases = tuple(item.deployment.execution_file for item in selected)
     actual_aliases = tuple(
         sorted(
             path.name
@@ -566,12 +566,12 @@ def _validate_staging(
         )
     for item in selected:
         staged = _load_artifact(
-            staging_root / "processes" / item.deployment.excecution_file,
+            staging_root / "processes" / item.deployment.execution_file,
             require_directory_match=False,
         )
         if staged.command != item.artifact.command:
             raise DistributionError(
-                f"Staged process command is invalid: {item.deployment.excecution_file}"
+                f"Staged process command is invalid: {item.deployment.execution_file}"
             )
     manifest_path = staging_root / "distribution.json"
     services_path = staging_root / "services.json"
@@ -727,7 +727,7 @@ def distribute(
         processes_root = staging_root / "processes"
         processes_root.mkdir()
         for item in selected_processes:
-            alias = item.deployment.excecution_file
+            alias = item.deployment.execution_file
             staged_process = processes_root / alias
             shutil.copytree(
                 item.artifact.root,

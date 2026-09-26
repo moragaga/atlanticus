@@ -127,7 +127,7 @@ def _patch_generation_context(monkeypatch, tmp_path: Path) -> None:
 
 def test_deployment_catalog_is_stable() -> None:
     assert [
-        (item.number, item.process, item.excecution_file)
+        (item.number, item.process, item.execution_file)
         for item in distribution.DEPLOYMENT_CATALOG
     ] == [
         ("01", "operational-data-pi", "pi-web-api"),
@@ -374,7 +374,7 @@ def test_split_fabrica_distribution_preserves_contiguous_slots(
     )
     services = json.loads((combined / "services.json").read_text(encoding="utf-8"))
     assert [
-        (item["container_name"], item["excecution_file"], item["config_file"])
+        (item["container_name"], item["execution_file"], item["config_file"])
         for item in services
     ] == [
         ("job05", "fabrica-planes", "processes/fabrica-planes/config.json"),
@@ -408,7 +408,7 @@ def test_split_fabrica_distribution_preserves_contiguous_slots(
         )
         assert len(independent_services) == 1
         assert independent_services[0]["container_name"] == expected_job
-        assert independent_services[0]["excecution_file"] == command.removeprefix(
+        assert independent_services[0]["execution_file"] == command.removeprefix(
             "operational-data-"
         )
 
@@ -446,8 +446,10 @@ def test_meteodata_distribution_preserves_job08_in_single_and_combined_exports(
     single_services = json.loads((single / "services.json").read_text(encoding="utf-8"))
     assert len(single_services) == 1
     assert single_services[0]["container_name"] == "job08"
-    assert single_services[0]["excecution_file"] == "meteodata"
+    assert single_services[0]["execution_file"] == "meteodata"
     assert single_services[0]["config_file"] == "processes/meteodata/config.json"
+    assert "execution_file" in single_services[0]
+    assert "excecution_file" not in single_services[0]
     assert (single / "processes/meteodata/config.detail.json").is_file()
 
     combined = distribution.distribute(
@@ -462,12 +464,17 @@ def test_meteodata_distribution_preserves_job08_in_single_and_combined_exports(
         (combined / "services.json").read_text(encoding="utf-8")
     )
     assert [
-        (item["container_name"], item["excecution_file"]) for item in combined_services
+        (item["container_name"], item["execution_file"]) for item in combined_services
     ] == [
         ("job01", "pi-web-api"),
         ("job08", "meteodata"),
     ]
     manifest = json.loads((combined / "distribution.json").read_text(encoding="utf-8"))
+    assert all(
+        "execution_file" in item["deployment"]
+        and "excecution_file" not in item["deployment"]
+        for item in manifest["processes"]
+    )
     assert [
         (item["process"], item["deployment"]["container_name"])
         for item in manifest["processes"]

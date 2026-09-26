@@ -48,7 +48,7 @@ def _distribution(root: Path, *, with_env: bool) -> None:
                             "version": "3.14.2",
                         },
                         "deployment": {
-                            "excecution_file": alias,
+                            "execution_file": alias,
                             "container_name": "job21",
                         },
                     }
@@ -62,7 +62,7 @@ def _distribution(root: Path, *, with_env: bool) -> None:
             [
                 {
                     "repository": alias,
-                    "excecution_file": alias,
+                    "execution_file": alias,
                     "container_name": "job21",
                     "config_file": f"processes/{alias}/config.json",
                     "to_deploy": True,
@@ -121,3 +121,34 @@ def test_validate_rejects_services_drift(tmp_path: Path) -> None:
         assert "Pipeline services manifest does not match" in str(error)
     else:
         raise AssertionError("Expected services.json drift to fail validation")
+
+
+def test_validate_rejects_legacy_manifest_execution_key(tmp_path: Path) -> None:
+    _distribution(tmp_path, with_env=True)
+    manifest_path = tmp_path / "distribution.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    deployment = manifest["processes"][0]["deployment"]
+    deployment["excecution_file"] = deployment.pop("execution_file")
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    try:
+        consumer._validate_distribution(tmp_path, require_environment=True)
+    except consumer.ConsumerProcessError as error:
+        assert "Distribution deployment metadata is invalid" in str(error)
+    else:
+        raise AssertionError("Legacy manifest key must be rejected")
+
+
+def test_validate_rejects_legacy_services_execution_key(tmp_path: Path) -> None:
+    _distribution(tmp_path, with_env=True)
+    services_path = tmp_path / "services.json"
+    services = json.loads(services_path.read_text(encoding="utf-8"))
+    services[0]["excecution_file"] = services[0].pop("execution_file")
+    services_path.write_text(json.dumps(services), encoding="utf-8")
+
+    try:
+        consumer._validate_distribution(tmp_path, require_environment=True)
+    except consumer.ConsumerProcessError as error:
+        assert "Pipeline services manifest does not match" in str(error)
+    else:
+        raise AssertionError("Legacy services key must be rejected")
