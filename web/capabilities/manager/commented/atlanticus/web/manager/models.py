@@ -34,6 +34,33 @@ class ManagerPrincipal:
                 raise ManagerDefinitionError('Manager principal key has an invalid format')
 
 
+# El consumidor define marcas opcionales; ninguna marca es obligatoria para Manager.
+@dataclass(frozen=True, slots=True)
+class ManagerHeaderBrandMark:
+    role: str
+    logo_src: str
+    logo_alt: str
+    label: str | None = None
+    eyebrow: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.role not in {'product', 'framework', 'organization'}:
+            raise ManagerDefinitionError('Manager brand role is not supported')
+        source = self.logo_src
+        if (
+            not re.fullmatch(r'/assets/[A-Za-z0-9._/-]+', source)
+            or '..' in source.split('/')
+            or '//' in source
+        ):
+            raise ManagerDefinitionError('Manager brand must reference a published local asset')
+        if not self.logo_alt.strip():
+            raise ManagerDefinitionError('Manager brand alternative text must not be empty')
+        if self.label is not None and not self.label.strip():
+            raise ManagerDefinitionError('Manager brand label must not be empty')
+        if self.eyebrow is not None and not self.eyebrow.strip():
+            raise ManagerDefinitionError('Manager brand eyebrow must not be empty')
+
+
 @dataclass(frozen=True, slots=True)
 class ManagerModuleGroup:
     key: str
@@ -103,6 +130,9 @@ class ManagerSurfaceDefinition:
     entries: tuple[ManagerEntry, ...] = ()
     # El retorno a una aplicación es opt-in: Manager no conoce rutas operacionales.
     application_home_href: str | None = None
+    header_brand_marks: tuple[ManagerHeaderBrandMark, ...] = ()
+    header_title: str = 'Manager'
+    header_subtitle: str | None = None
 
     def __post_init__(self) -> None:
         prefix = self.route_prefix
@@ -111,3 +141,14 @@ class ManagerSurfaceDefinition:
         href = self.application_home_href
         if href is not None and href != '/' and (not _ROUTE_PREFIX_PATTERN.fullmatch(href) or href.endswith('/')):
             raise ManagerDefinitionError('Manager application return route must be an internal path')
+        # El header no permite dos marcas del mismo tipo ni logos no publicados.
+        if not self.header_title.strip():
+            raise ManagerDefinitionError('Manager header title must not be empty')
+        if self.header_subtitle is not None and not self.header_subtitle.strip():
+            raise ManagerDefinitionError('Manager header subtitle must not be empty')
+        marks = tuple(self.header_brand_marks)
+        if any(not isinstance(mark, ManagerHeaderBrandMark) for mark in marks):
+            raise ManagerDefinitionError('Manager header brand marks must have valid types')
+        if len({mark.role for mark in marks}) != len(marks):
+            raise ManagerDefinitionError('Manager header brand roles are duplicated')
+        object.__setattr__(self, 'header_brand_marks', marks)

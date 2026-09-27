@@ -78,6 +78,8 @@ include = ["ada.web.application.configuration_manager*"]
     "py.typed",
     "resources/css/*.css",
     "resources/css/css.list",
+    "resources/img/*.svg",
+    "resources/img/*.png",
 ]
 
 [tool.ruff]

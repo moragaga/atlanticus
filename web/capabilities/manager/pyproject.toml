@@ -35,4 +35,5 @@ include = ["atlanticus.web.manager*"]
     "py.typed",
     "resources/css/*.css",
     "resources/css/css.list",
+    "resources/img/*.webp",
 ]

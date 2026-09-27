@@ -102,6 +102,9 @@ def build_manager_surface(
                 registry=registry,
                 principal=principal,
                 application_home_href=definition.application_home_href,
+                brand_marks=definition.header_brand_marks,
+                title=definition.header_title,
+                subtitle=definition.header_subtitle,
             ),
             html.Section(id=SUMMARY_ID, className='atlanticus-manager__summary', hidden=True),
             html.Div(

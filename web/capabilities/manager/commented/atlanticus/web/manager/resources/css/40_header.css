@@ -1,107 +1,206 @@
-/* Header administrativo genérico: preserva los tokens existentes y no depende del shell ADA. */
+/* El shell Manager no impone logos; usa slots de marca inyectados y diseño adaptable. */
 .atlanticus-manager__header {
     position: sticky;
     z-index: 20;
     top: 0;
     display: flex;
+    min-height: 5.25rem;
     min-width: 0;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-    padding: .75rem 1.25rem;
-    background: var(--atlanticus-manager-surface);
-    border-bottom: 1px solid var(--atlanticus-manager-border);
-    box-shadow: 0 .2rem .8rem rgba(7, 21, 34, .06);
+    gap: 1.1rem;
+    padding: .65rem 1.25rem;
+    color: #FFFFFF;
+    background: radial-gradient(circle at 42% 0, rgba(201, 162, 75, .11), transparent 32rem),
+        linear-gradient(135deg, #071522, #26425a);
+    border-bottom: 1px solid rgba(201, 162, 75, .3);
+    box-shadow: 0 .35rem 1rem rgba(7, 21, 34, .16);
 }
 
 .atlanticus-manager__header-identity,
 .atlanticus-manager__header-end,
-.atlanticus-manager__header-actions {
+.atlanticus-manager__header-actions,
+.atlanticus-manager__brand-mark {
     display: flex;
     min-width: 0;
     align-items: center;
+}
+
+.atlanticus-manager__header-identity {
+    flex: 1 1 auto;
     gap: 1rem;
 }
 
-.atlanticus-manager__header-brand {
-    color: var(--atlanticus-manager-color-primary-strong);
-    font-family: var(--atlanticus-manager-font-brand);
-    font-size: 1rem;
-    font-weight: 700;
-    letter-spacing: .09em;
+.atlanticus-manager__brand-mark {
+    flex: 0 0 auto;
+    gap: .4rem;
+}
+
+.atlanticus-manager__brand-mark img {
+    display: block;
+    width: auto;
+    height: auto;
+    max-height: 3.6rem;
+    object-fit: contain;
+}
+
+.atlanticus-manager__brand-mark--product {
+    padding-right: 1rem;
+    border-right: 1px solid rgba(255, 255, 255, .25);
+}
+
+.atlanticus-manager__brand-mark--product img {
+    width: clamp(6.25rem, 9vw, 9.5rem);
+    max-height: 3.4rem;
 }
 
 .atlanticus-manager__header-context {
     display: grid;
     min-width: 0;
-    gap: .05rem;
-    padding-left: 1rem;
-    border-left: 1px solid var(--atlanticus-manager-border);
+    gap: .18rem;
 }
 
 .atlanticus-manager__header-name {
-    color: var(--atlanticus-manager-color-primary-ink);
-    font-size: .82rem;
-    font-weight: 800;
+    color: #FFFFFF;
+    font-size: clamp(.86rem, 1.1vw, 1.05rem);
+    font-weight: 750;
+    line-height: 1.2;
 }
 
 .atlanticus-manager__header-section {
-    color: var(--atlanticus-manager-text-muted);
-    font-size: .7rem;
+    color: #E8D3A3;
+    font-size: .72rem;
+    line-height: 1.25;
     overflow-wrap: anywhere;
 }
 
+.atlanticus-manager__header-subtitle {
+    color: rgba(255, 255, 255, .79);
+    font-size: .68rem;
+    line-height: 1.25;
+}
+
+.atlanticus-manager__header-supporting {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: .65rem;
+    margin-left: auto;
+    padding-left: .75rem;
+    border-left: 1px solid rgba(255, 255, 255, .2);
+}
+
+.atlanticus-manager__brand-mark--framework img {
+    max-width: 6rem;
+    max-height: 3.6rem;
+}
+
+.atlanticus-manager__brand-mark--organization img {
+    max-width: 5.7rem;
+    max-height: 3.25rem;
+}
+
+.atlanticus-manager__brand-caption {
+    display: grid;
+    gap: .12rem;
+    font-size: .7rem;
+    color: #FFFFFF;
+}
+
+.atlanticus-manager__brand-caption small {
+    color: #E8D3A3;
+}
+
+.atlanticus-manager__header-end {
+    flex: 0 0 auto;
+    gap: .55rem;
+}
+
 .atlanticus-manager__header-actions {
-    gap: .5rem;
+    gap: .4rem;
 }
 
 .atlanticus-manager__header-link {
-    padding: .5rem .7rem;
-    color: var(--atlanticus-manager-color-primary-dark);
+    padding: .45rem .55rem;
+    color: #F3E6C7;
     border-radius: var(--atlanticus-admin-control-radius);
-    font-size: .75rem;
+    font-size: .74rem;
     font-weight: 700;
     text-decoration: none;
+    white-space: nowrap;
 }
 
 .atlanticus-manager__header-link:hover,
 .atlanticus-manager__header-link:focus-visible {
-    background: var(--atlanticus-manager-color-primary-soft);
-    outline: 2px solid var(--atlanticus-manager-color-primary);
+    color: #FFFFFF;
+    background: rgba(255, 255, 255, .14);
+    outline: 2px solid #C9A24B;
     outline-offset: 1px;
 }
 
 .atlanticus-manager__header-link--return {
-    border: 1px solid var(--atlanticus-manager-border);
+    border: 1px solid rgba(255, 255, 255, .3);
 }
 
 .atlanticus-manager__header-principal {
-    max-width: 16rem;
-    padding-left: 1rem;
-    color: var(--atlanticus-manager-text-muted);
-    border-left: 1px solid var(--atlanticus-manager-border);
-    font-size: .75rem;
+    max-width: 10rem;
+    padding-left: .7rem;
+    color: #FFFFFF;
+    border-left: 1px solid rgba(255, 255, 255, .27);
+    font-size: .73rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-@media (max-width: 48rem) {
+@media (max-width: 72rem) {
     .atlanticus-manager__header {
-        align-items: flex-start;
-        flex-direction: column;
-        padding: .7rem .85rem;
+        flex-wrap: wrap;
+    }
+
+    .atlanticus-manager__header-identity {
+        flex-basis: 100%;
+    }
+
+    .atlanticus-manager__header-supporting {
+        margin-left: auto;
     }
 
     .atlanticus-manager__header-end {
         width: 100%;
-        flex-wrap: wrap;
-        justify-content: space-between;
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 48rem) {
+    .atlanticus-manager__header {
+        padding: .65rem .85rem;
     }
 
     .atlanticus-manager__header-identity {
-        width: 100%;
         flex-wrap: wrap;
+        gap: .6rem;
+    }
+
+    .atlanticus-manager__header-supporting {
+        flex-basis: 100%;
+        justify-content: flex-start;
+        margin-left: 0;
+        padding-left: 0;
+        border-left: 0;
+    }
+
+    .atlanticus-manager__brand-mark--framework img {
+        max-height: 2.3rem;
+    }
+
+    .atlanticus-manager__brand-mark--organization img {
+        max-height: 2.15rem;
+    }
+
+    .atlanticus-manager__header-end {
+        flex-wrap: wrap;
+        justify-content: space-between;
     }
 
     .atlanticus-manager__header-principal {

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dash import dcc, html
 
 from atlanticus.web.manager.authorization import ManagerAuthorizationPolicy
-from atlanticus.web.manager.models import ManagerPrincipal
+from atlanticus.web.manager.models import ManagerHeaderBrandMark, ManagerPrincipal
 from atlanticus.web.manager.registry import ManagerModuleRegistry
 from atlanticus.web.manager.web.ids import HEADER_SECTION_ID
 
@@ -13,7 +13,17 @@ def build_manager_header(
     registry: ManagerModuleRegistry,
     principal: ManagerPrincipal,
     application_home_href: str | None,
+    brand_marks: tuple[ManagerHeaderBrandMark, ...] = (),
+    title: str = 'Manager',
+    subtitle: str | None = None,
 ) -> object:
+    product = next((mark for mark in brand_marks if mark.role == 'product'), None)
+    supporting = tuple(
+        mark
+        for role in ('framework', 'organization')
+        if (mark := next((entry for entry in brand_marks if entry.role == role), None))
+        is not None
+    )
     actions = [
         dcc.Link(
             'Manager Home',
@@ -33,15 +43,23 @@ def build_manager_header(
         [
             html.Div(
                 [
-                    html.Strong('ATLANTICUS', className='atlanticus-manager__header-brand'),
+                    _brand_mark(product) if product is not None else None,
                     html.Div(
                         [
-                            html.Span('Manager', className='atlanticus-manager__header-name'),
-                            html.Span('Inicio', id=HEADER_SECTION_ID,
-                                      className='atlanticus-manager__header-section'),
+                            html.Strong(title, className='atlanticus-manager__header-name'),
+                            html.Span(
+                                'Inicio', id=HEADER_SECTION_ID,
+                                className='atlanticus-manager__header-section',
+                            ),
+                            html.Span(subtitle, className='atlanticus-manager__header-subtitle')
+                            if subtitle is not None else None,
                         ],
                         className='atlanticus-manager__header-context',
                     ),
+                    html.Div(
+                        [_brand_mark(mark) for mark in supporting],
+                        className='atlanticus-manager__header-supporting',
+                    ) if supporting else None,
                 ],
                 className='atlanticus-manager__header-identity',
             ),
@@ -62,6 +80,22 @@ def build_manager_header(
             ),
         ],
         className='atlanticus-manager__header',
+    )
+
+
+def _brand_mark(mark: ManagerHeaderBrandMark) -> object:
+    return html.Div(
+        [
+            html.Img(src=mark.logo_src, alt=mark.logo_alt),
+            html.Div(
+                [
+                    html.Small(mark.eyebrow) if mark.eyebrow is not None else None,
+                    html.Span(mark.label) if mark.label is not None else None,
+                ],
+                className='atlanticus-manager__brand-caption',
+            ) if mark.eyebrow is not None or mark.label is not None else None,
+        ],
+        className=f'atlanticus-manager__brand-mark atlanticus-manager__brand-mark--{mark.role}',
     )
 
 

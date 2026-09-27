@@ -6,6 +6,10 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from ada.web.application.configuration_manager.access import create_access_manager_module
+from ada.web.application.configuration_manager.branding import (
+    build_ada_manager_brand_marks,
+    create_ada_manager_brand_module,
+)
 from ada.web.application.configuration_manager.dependencies import ConfigurationManagerDependencies
 from ada.web.application.configuration_manager.kpi_definitions import (
     KpiDefinitionManagerWebContext,
@@ -220,8 +224,12 @@ def build_configuration_manager_surface(
         ),
         entries=(dependencies.users_entry,),
         route_prefix=MANAGER_ROUTE_PREFIX,
+        header_brand_marks=build_ada_manager_brand_marks(),
+        header_title='Gestor de configuración ADA',
+        header_subtitle='Asistente de decisiones ágiles · Configuraciones revisionadas y proyecciones de consumo',
         web_modules=(
             create_bootstrap_web_module(),
+            create_ada_manager_brand_module(),
             WebModule(
                 name='ada-configuration-manager-services',
                 register_services=lambda services: _register_services(services, dependencies),
