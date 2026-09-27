@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import re
 from pathlib import Path
+from threading import RLock
 
 from dash import Dash
 from flask import Flask, request
@@ -27,11 +28,17 @@ _EXTENSION_KEY = 'atlanticus_web'
 _DASH_SETUP_DEFERRED_PATH_PREFIXES = ('/assets/', '/health/', '/.auth/')
 
 
+# Serializar la preparación diferida de Dash también cuando Gunicorn usa hilos.
 class _AtlanticusDash(Dash):
+    def __init__(self, *args, **kwargs):
+        self._atlanticus_setup_lock = RLock()
+        super().__init__(*args, **kwargs)
+
     def _setup_server(self):
         if request.path.startswith(_DASH_SETUP_DEFERRED_PATH_PREFIXES):
             return None
-        return super()._setup_server()
+        with self._atlanticus_setup_lock:
+            return super()._setup_server()
 
 
 BASE_ASSET_LAYER = AssetLayer(

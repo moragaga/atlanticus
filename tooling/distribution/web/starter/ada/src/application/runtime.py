@@ -14,6 +14,7 @@ from ada.web.application.generic.manager_deployment import (
 )
 from ada.web.application.generic.settings import AdaGenericSettings
 from application.composition import create_composition
+from atlanticus.web.dash_worker import prepare_dash_worker
 from atlanticus.web.identity.errors import IdentityConfigurationError
 from atlanticus.web.identity.local import LocalIdentityProvider
 from atlanticus.web.identity.provider import IdentityProvider
@@ -83,6 +84,7 @@ def create_worker_runtime() -> AdaWorkerRuntime:
                 settings=settings,
                 composition_factory=create_composition,
             )
+        prepare_dash_worker(application.dash)
         return AdaWorkerRuntime(application, resources)
     except Exception:
         resources.close()
