@@ -1,5 +1,3 @@
-# Construye clientes, providers y store usando configuración explícita.
-# Verifica topología Cosmos sin crear infraestructura; execute_job aporta lease, timeout y shutdown.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -9,7 +7,7 @@ from ada_command_center.processes.alarms_materialization.acquisition import Alar
 from ada_command_center.processes.alarms_materialization.job import AlarmMaterializationJob
 from ada_command_center.processes.alarms_materialization.publication import (
     AlarmMaterializationPublisher,
-    CosmosAlarmMaterializationResultStore,
+    LocalAlarmMaterializationResultStore,
 )
 from ada_command_center.processes.alarms_materialization.qualification import (
     JsonFileAlarmQualificationProvider,
@@ -36,7 +34,7 @@ from atlanticus.runtime import (
 from atlanticus.web.source.models import SourceKey
 
 
-# Operación compose_cosmos_alarm_candidate_acquirer: mantiene invariantes de esta frontera.
+# La adquisición Cosmos se conserva: cambiar la salida no altera la fuente operacional.
 def compose_cosmos_alarm_candidate_acquirer(
     *, cosmos_client: CosmosClient, container_name: str, source_key: SourceKey
 ) -> AlarmCandidateAcquirer:
@@ -50,7 +48,6 @@ def compose_cosmos_alarm_candidate_acquirer(
 
 
 @dataclass(slots=True)
-# Contrato AlarmMaterializationComposition: mantiene invariantes de esta frontera.
 class AlarmMaterializationComposition:
     configuration: ResolvedConfiguration
     settings: AlarmMaterializationSettings
@@ -60,11 +57,11 @@ class AlarmMaterializationComposition:
 
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
         with self.cosmos:
-            names = {self.settings.projection_container, self.settings.output_container}
             CosmosProvisioner(client=self.cosmos).validate_containers(
-                tuple(
-                    CosmosContainerSpec(name=name, partition_key_path='/partition_key')
-                    for name in sorted(names)
+                (
+                    CosmosContainerSpec(
+                        name=self.settings.projection_container, partition_key_path='/partition_key'
+                    ),
                 )
             )
             return execute_job(
@@ -75,7 +72,6 @@ class AlarmMaterializationComposition:
             )
 
 
-# Operación build_composition: mantiene invariantes de esta frontera.
 def build_composition(*, configuration: ResolvedConfiguration) -> AlarmMaterializationComposition:
     if not isinstance(configuration, ResolvedConfiguration):
         raise TypeError('configuration must be a ResolvedConfiguration')
@@ -87,12 +83,13 @@ def build_composition(*, configuration: ResolvedConfiguration) -> AlarmMateriali
         container_name=settings.projection_container,
         source_key=SourceKey(settings.source_key),
     )
+    # Componemos el escritor local bajo la raíz compartida del dominio Alarm.
     job = AlarmMaterializationJob(
         acquirer=acquirer,
         qualifications=JsonFileAlarmQualificationProvider(settings.qualification_file),
         publisher=AlarmMaterializationPublisher(
-            CosmosAlarmMaterializationResultStore(
-                client=client, container_name=settings.output_container
+            LocalAlarmMaterializationResultStore(
+                root=settings.volume_path / 'ada-command-center' / 'alarms' / 'materialization'
             )
         ),
     )

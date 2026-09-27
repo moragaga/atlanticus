@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-command-center-alarms-materialization-process"
-version = "0.2.1"
+version = "0.3.0"
 description = "Executable Alarm Configuration materialization process for ADA Command Center"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
@@ -20,6 +20,7 @@ dependencies = [
     "atlanticus-job-runtime==1.0.0",
     "atlanticus-key-vault==1.0.0",
     "atlanticus-kernel==1.0.0",
+    "atlanticus-state==1.0.0",
     "atlanticus-web-projection==0.1.0",
     "atlanticus-web-source==0.1.0",
 ]
@@ -37,6 +38,7 @@ atlanticus-configuration = { path = "../../../../../backend/configuration", edit
 atlanticus-job-runtime = { path = "../../../../../backend/runtime", editable = true }
 atlanticus-key-vault = { path = "../../../../../connectivity/key-vault", editable = true }
 atlanticus-kernel = { path = "../../../../../backend/kernel", editable = true }
+atlanticus-state = { path = "../../../../../backend/state", editable = true }
 atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
 
@@ -71,6 +73,7 @@ pythonpath = [
     "../../../../../connectivity/key-vault/src",
     "../../../../../backend/configuration/src",
     "../../../../../backend/runtime/src",
+    "../../../../../backend/state/src",
     "../../../../../backend/kernel/src",
     "../../../../../backend/observability/src",
     "../../../../../web/framework/core/src",

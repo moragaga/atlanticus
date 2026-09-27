@@ -1,5 +1,3 @@
-# Declara configuración de entrada, salida, evidence y cadencia sin nombres físicos inventados.
-# Usa el esquema ConfigurationBootstrap del proyecto y CosmosSettings para validación segura.
 from __future__ import annotations
 
 import math
@@ -10,18 +8,17 @@ from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfigur
 from atlanticus.connectivity.cosmos import CosmosConfigurationError, CosmosSettings
 
 
-# Contrato AlarmMaterializationSettingsError: mantiene invariantes de esta frontera.
 class AlarmMaterializationSettingsError(ValueError):
     pass
 
 
 @dataclass(frozen=True, slots=True)
-# Contrato AlarmMaterializationSettings: mantiene invariantes de esta frontera.
+# La configuración conserva Cosmos exclusivamente para obtener la proyección operacional.
 class AlarmMaterializationSettings:
     cosmos: CosmosSettings
+    volume_path: Path
     source_key: str
     projection_container: str
-    output_container: str
     qualification_file: Path
     poll_interval_seconds: float
 
@@ -40,6 +37,10 @@ class AlarmMaterializationSettings:
             )
         except CosmosConfigurationError as error:
             raise AlarmMaterializationSettingsError(str(error)) from error
+        # El volumen es el único destino del materializado; no existe contenedor Cosmos de salida.
+        volume = Path(configuration.require('VOLUMEN_PATH')).expanduser()
+        if not volume.is_absolute():
+            raise AlarmMaterializationSettingsError('VOLUMEN_PATH must be absolute')
         path = Path(configuration.require('ALARM_QUALIFICATIONS_FILE')).expanduser()
         if not path.is_absolute():
             raise AlarmMaterializationSettingsError('ALARM_QUALIFICATIONS_FILE must be absolute')
@@ -55,17 +56,14 @@ class AlarmMaterializationSettings:
             )
         return cls(
             cosmos=cosmos,
+            volume_path=volume,
             source_key=_required(configuration.require('ALARM_CONFIGURATION_SOURCE_KEY')),
             projection_container=_required(configuration.require('ALARM_PROJECTION_CONTAINER')),
-            output_container=_required(
-                configuration.require('ALARM_MATERIALIZATION_OUTPUT_CONTAINER')
-            ),
             qualification_file=path,
             poll_interval_seconds=interval,
         )
 
 
-# Operación _required: mantiene invariantes de esta frontera.
 def _required(value: str) -> str:
     if not isinstance(value, str) or not value or value.strip() != value:
         raise AlarmMaterializationSettingsError(
@@ -74,7 +72,6 @@ def _required(value: str) -> str:
     return value
 
 
-# Operación configuration_specs: mantiene invariantes de esta frontera.
 def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
     return (
         ConfigurationVariableSpec(key='APPLICATION'),
@@ -84,7 +81,6 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(key='ALARM_COSMOS_DATABASE_NAME'),
         ConfigurationVariableSpec(key='ALARM_CONFIGURATION_SOURCE_KEY'),
         ConfigurationVariableSpec(key='ALARM_PROJECTION_CONTAINER'),
-        ConfigurationVariableSpec(key='ALARM_MATERIALIZATION_OUTPUT_CONTAINER'),
         ConfigurationVariableSpec(key='ALARM_QUALIFICATIONS_FILE'),
         ConfigurationVariableSpec(key='ALARM_MATERIALIZATION_POLL_SECONDS', default='30'),
         ConfigurationVariableSpec(key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED', default='true'),

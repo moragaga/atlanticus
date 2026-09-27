@@ -65,7 +65,7 @@ dev = [
 
 [[package]]
 name = "ada-command-center-alarms-materialization-process"
-version = "0.2.1"
+version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "ada-command-center-alarms-core" },
@@ -79,6 +79,7 @@ dependencies = [
     { name = "atlanticus-job-runtime" },
     { name = "atlanticus-kernel" },
     { name = "atlanticus-key-vault" },
+    { name = "atlanticus-state" },
     { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
 ]
@@ -103,6 +104,7 @@ requires-dist = [
     { name = "atlanticus-job-runtime", editable = "../../../../../backend/runtime" },
     { name = "atlanticus-kernel", editable = "../../../../../backend/kernel" },
     { name = "atlanticus-key-vault", editable = "../../../../../connectivity/key-vault" },
+    { name = "atlanticus-state", editable = "../../../../../backend/state" },
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
 ]
@@ -394,6 +396,17 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "atlanticus-kernel", editable = "../../../../../backend/kernel" }]
+
+[[package]]
+name = "atlanticus-state"
+version = "1.0.0"
+source = { editable = "../../../../../backend/state" }
+dependencies = [
+    { name = "atlanticus-observability" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "atlanticus-observability", editable = "../../../../../backend/observability" }]
 
 [[package]]
 name = "atlanticus-storage"

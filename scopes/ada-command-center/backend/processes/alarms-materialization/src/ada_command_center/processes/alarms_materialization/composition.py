@@ -7,7 +7,7 @@ from ada_command_center.processes.alarms_materialization.acquisition import Alar
 from ada_command_center.processes.alarms_materialization.job import AlarmMaterializationJob
 from ada_command_center.processes.alarms_materialization.publication import (
     AlarmMaterializationPublisher,
-    CosmosAlarmMaterializationResultStore,
+    LocalAlarmMaterializationResultStore,
 )
 from ada_command_center.processes.alarms_materialization.qualification import (
     JsonFileAlarmQualificationProvider,
@@ -56,11 +56,11 @@ class AlarmMaterializationComposition:
 
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
         with self.cosmos:
-            names = {self.settings.projection_container, self.settings.output_container}
             CosmosProvisioner(client=self.cosmos).validate_containers(
-                tuple(
-                    CosmosContainerSpec(name=name, partition_key_path='/partition_key')
-                    for name in sorted(names)
+                (
+                    CosmosContainerSpec(
+                        name=self.settings.projection_container, partition_key_path='/partition_key'
+                    ),
                 )
             )
             return execute_job(
@@ -86,8 +86,8 @@ def build_composition(*, configuration: ResolvedConfiguration) -> AlarmMateriali
         acquirer=acquirer,
         qualifications=JsonFileAlarmQualificationProvider(settings.qualification_file),
         publisher=AlarmMaterializationPublisher(
-            CosmosAlarmMaterializationResultStore(
-                client=client, container_name=settings.output_container
+            LocalAlarmMaterializationResultStore(
+                root=settings.volume_path / 'ada-command-center' / 'alarms' / 'materialization'
             )
         ),
     )

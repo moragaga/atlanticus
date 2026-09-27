@@ -8,12 +8,16 @@ from ada_command_center.alarms.materialization import (
     resolve_alarm_configuration,
 )
 from ada_command_center.processes.alarms_materialization.acquisition import AlarmCandidateAcquirer
+from ada_command_center.processes.alarms_materialization.candidate import (
+    AlarmMaterializationCandidate,
+)
 from ada_command_center.processes.alarms_materialization.publication import (
     AlarmMaterializationPublisher,
     result_id_for,
 )
 from ada_command_center.processes.alarms_materialization.qualification import (
     AlarmQualificationError,
+    AlarmQualificationEvidence,
     AlarmQualificationProvider,
 )
 from atlanticus.runtime import JobRuntimeContext
@@ -59,6 +63,24 @@ class AlarmMaterializationJob:
                 self._publisher.read_ready(
                     source_key=candidate.source_key.value, result_id=result_id
                 )
+                if not self._publisher.is_current_ready(candidate, evidence):
+                    context.raise_if_cancelled()
+                    self._revalidate(candidate, evidence)
+                    context.assert_lease_current()
+                    with context.fenced_mutation():
+                        promoted = self._publisher.promote_ready(candidate, evidence)
+                    if promoted:
+                        context.mark_iteration_work()
+                    result = AlarmMaterializationIterationResult(
+                        outcome=(
+                            AlarmMaterializationOutcome.READY
+                            if promoted
+                            else AlarmMaterializationOutcome.UNCHANGED
+                        ),
+                        result_id=result_id,
+                    )
+                    self._record(context, candidate, result)
+                    return result
             result = AlarmMaterializationIterationResult(
                 outcome=AlarmMaterializationOutcome.UNCHANGED, result_id=result_id
             )
@@ -74,16 +96,7 @@ class AlarmMaterializationJob:
             evaluator_qualification=evidence.evaluators,
         )
         context.raise_if_cancelled()
-        current = self._acquirer.acquire(expected_release=candidate.source_release)
-        if current.fingerprint != candidate.fingerprint:
-            raise AlarmMaterializationSupersededError(
-                'Alarm Configuration projection changed during materialization'
-            )
-        refreshed = self._qualifications.load(candidate)
-        if refreshed.digest != evidence.digest:
-            raise AlarmQualificationError(
-                'Alarm qualification evidence changed during materialization'
-            )
+        self._revalidate(candidate, evidence)
         context.assert_lease_current()
         with context.fenced_mutation():
             result_id = self._publisher.publish(candidate, evidence, resolution)
@@ -98,6 +111,20 @@ class AlarmMaterializationJob:
         )
         self._record(context, candidate, result)
         return result
+
+    def _revalidate(
+        self, candidate: AlarmMaterializationCandidate, evidence: AlarmQualificationEvidence
+    ) -> None:
+        current = self._acquirer.acquire(expected_release=candidate.source_release)
+        if current.fingerprint != candidate.fingerprint:
+            raise AlarmMaterializationSupersededError(
+                'Alarm Configuration projection changed during materialization'
+            )
+        refreshed = self._qualifications.load(candidate)
+        if refreshed.digest != evidence.digest:
+            raise AlarmQualificationError(
+                'Alarm qualification evidence changed during materialization'
+            )
 
     @staticmethod
     def _record(context, candidate, result) -> None:

@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 
 import pytest
 
@@ -43,6 +44,7 @@ from ada_command_center.processes.alarms_materialization.codec import (
     runtime_from_document,
     runtime_to_document,
 )
+from ada_command_center.processes.alarms_materialization.errors import AlarmCandidateMismatchError
 from ada_command_center.processes.alarms_materialization.job import (
     AlarmMaterializationJob,
     AlarmMaterializationOutcome,
@@ -51,14 +53,14 @@ from ada_command_center.processes.alarms_materialization.job import (
 from ada_command_center.processes.alarms_materialization.publication import (
     AlarmMaterializationPublicationError,
     AlarmMaterializationPublisher,
-    CosmosAlarmMaterializationResultStore,
+    LocalAlarmMaterializationResultStore,
 )
 from ada_command_center.processes.alarms_materialization.qualification import (
     AlarmQualificationError,
     AlarmQualificationEvidence,
     JsonFileAlarmQualificationProvider,
 )
-from atlanticus.connectivity.cosmos import CosmosConflictError, CosmosError
+from atlanticus.state import StateWriteError
 from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.source.models import SourceKey, SourceReleaseId
 
@@ -91,26 +93,6 @@ class _Projection:
         assert source_key == _SOURCE_KEY
         self.calls += 1
         return self.second if self.calls == 2 and self.second is not None else self.record
-
-
-class _Client:
-    def __init__(self):
-        self.items = {}
-        self.writes = 0
-        self.fail = False
-
-    def find_item(self, *, container_name, item_id, partition_key):
-        return self.items.get((container_name, item_id, partition_key))
-
-    def create_item(self, *, container_name, item):
-        self.writes += 1
-        if self.fail:
-            raise CosmosError('Storage unavailable')
-        key = (container_name, item['id'], item['partition_key'])
-        if key in self.items:
-            raise CosmosConflictError('Already exists')
-        self.items[key] = dict(item)
-        return dict(item)
 
 
 class _Context:
@@ -169,13 +151,11 @@ class _Qualifications:
         )
 
 
-def _job(projection=None, provider=None, client=None):
+def _job(tmp_path, projection=None, provider=None, store=None):
     projection = projection or _Projection()
     provider = provider or _Qualifications(_evidence())
-    client = client or _Client()
-    publisher = AlarmMaterializationPublisher(
-        CosmosAlarmMaterializationResultStore(client=client, container_name='materialized-alarms')
-    )
+    store = store or LocalAlarmMaterializationResultStore(root=tmp_path / 'materialization')
+    publisher = AlarmMaterializationPublisher(store)
     return (
         AlarmMaterializationJob(
             acquirer=AlarmCandidateAcquirer(projection=projection, source_key=_SOURCE_KEY),
@@ -184,7 +164,7 @@ def _job(projection=None, provider=None, client=None):
         ),
         projection,
         provider,
-        client,
+        store,
         publisher,
     )
 
@@ -205,29 +185,45 @@ def _ready(key=None):
     )
 
 
-def test_ready_cycle_publishes_one_atomic_document_and_exact_reader():
-    job, _, _, client, publisher = _job()
+def _version_root(tmp_path, result_id):
+    return tmp_path / 'materialization' / 'versions' / result_id
+
+
+def test_ready_cycle_publishes_coherent_artifacts_and_exact_reader(tmp_path):
+    job, _, _, store, publisher = _job(tmp_path)
     context = _Context()
 
     result = job.run_iteration(context)
 
     assert result.outcome is AlarmMaterializationOutcome.READY
-    assert context.work == 1
-    assert context.fences == 1
-    assert client.writes == 1
-    stored = next(iter(client.items.values()))
+    assert context.work == 1 and context.fences == 1
+    version = _version_root(tmp_path, result.result_id)
+    assert sorted(path.name for path in version.iterdir()) == [
+        'delivery.json',
+        'manifest.json',
+        'runtime.json',
+    ]
+    stored = store.get(source_key=_SOURCE_KEY.value, result_id=result.result_id)
     assert stored['status'] == 'READY'
-    assert stored['runtime'] is not None and stored['delivery'] is not None
-    assert stored['manifest']['source_release_id'] == 'alarm-r10'
-    assert stored['manifest']['confirmed_tool_catalog_revision'] == 'catalog-c5'
-    restored = publisher.read_ready(source_key=_SOURCE_KEY.value, result_id=result.result_id)
+    assert stored['provenance']['source_release_id'] == 'alarm-r10'
+    assert stored['provenance']['confirmed_tool_catalog_revision'] == 'catalog-c5'
+    restored = publisher.read_published_ready(source_key=_SOURCE_KEY.value)
+    assert restored.result_id == result.result_id
     assert restored.runtime == _ready().runtime_configuration
     assert restored.delivery == _ready().delivery_configuration
-    assert restored.manifest['qualification_producer'] == 'controlled-qualification-test'
+    assert restored.manifest['provenance']['qualification_producer'] == (
+        'controlled-qualification-test'
+    )
+    exact = publisher.read_ready(
+        source_key=_SOURCE_KEY.value,
+        result_id=result.result_id,
+        expected_manifest_sha256=restored.manifest_sha256,
+    )
+    assert exact == restored
 
 
-def test_same_candidate_and_qualification_is_idempotent():
-    job, _, _, client, _ = _job()
+def test_same_candidate_is_idempotent_without_new_mutation(tmp_path):
+    job, _, _, _, _ = _job(tmp_path)
     first = job.run_iteration(_Context())
     context = _Context()
 
@@ -235,61 +231,63 @@ def test_same_candidate_and_qualification_is_idempotent():
 
     assert second.outcome is AlarmMaterializationOutcome.UNCHANGED
     assert first.result_id == second.result_id
-    assert client.writes == 1
+    assert len(list((tmp_path / 'materialization' / 'versions').iterdir())) == 1
     assert context.work == 0 and context.fences == 0
 
 
-def test_different_qualification_attestation_creates_separate_result():
+def test_changed_qualification_produces_distinct_version_with_shared_resolution_key(tmp_path):
     provider = _Qualifications(_evidence())
-    job, _, _, client, _ = _job(provider=provider)
+    job, _, _, store, _ = _job(tmp_path, provider=provider)
     first = job.run_iteration(_Context())
     provider.evidence = _evidence(qualified_at='2026-09-26T12:03:00+00:00')
     provider.calls = 0
 
     second = job.run_iteration(_Context())
 
+    assert second.result_id != first.result_id
     assert second.outcome is AlarmMaterializationOutcome.READY
-    assert first.result_id != second.result_id
-    assert len(client.items) == 2
-
-
-def test_evidence_for_different_release_fails_closed():
-    job, _, _, client, _ = _job(provider=_Qualifications(_evidence('alarm-r9')))
-
-    with pytest.raises(AlarmQualificationError, match='does not match'):
-        job.run_iteration(_Context())
-
-    assert client.writes == 0
-
-
-def test_projection_switch_during_materialization_never_publishes():
-    projection = _Projection()
-    projection.second = _record('alarm-r11')
-    job, _, _, client, _ = _job(projection=projection)
-
-    from ada_command_center.processes.alarms_materialization.errors import (
-        AlarmCandidateMismatchError,
+    assert len(list((tmp_path / 'materialization' / 'versions').iterdir())) == 2
+    assert store.read_published_ready(source_key=_SOURCE_KEY.value).result_id == second.result_id
+    assert (
+        store.read_ready(source_key=_SOURCE_KEY.value, result_id=first.result_id).runtime.resolution_key
+        == store.read_ready(source_key=_SOURCE_KEY.value, result_id=second.result_id).runtime.resolution_key
     )
 
+
+def test_qualification_for_different_release_fails_closed(tmp_path):
+    job, _, _, _, publisher = _job(
+        tmp_path, provider=_Qualifications(_evidence('alarm-r9'))
+    )
+    with pytest.raises(AlarmQualificationError, match='does not match'):
+        job.run_iteration(_Context())
+    assert publisher.read_published_ready(source_key=_SOURCE_KEY.value) is None
+
+
+def test_projection_switch_during_resolution_never_publishes(tmp_path):
+    projection = _Projection()
+    projection.second = _record('alarm-r11')
+    job, _, _, _, publisher = _job(tmp_path, projection=projection)
     with pytest.raises((AlarmCandidateMismatchError, AlarmMaterializationSupersededError)):
         job.run_iteration(_Context())
+    assert publisher.read_published_ready(source_key=_SOURCE_KEY.value) is None
 
-    assert client.writes == 0
 
-
-def test_evidence_change_during_materialization_never_publishes():
+def test_evidence_change_during_resolution_never_publishes(tmp_path):
     provider = _Qualifications(_evidence())
     provider.next_evidence = _evidence(qualified_at='2026-09-26T12:04:00+00:00')
-    job, _, _, client, _ = _job(provider=provider)
-
+    job, _, _, _, publisher = _job(tmp_path, provider=provider)
     with pytest.raises(AlarmQualificationError, match='changed'):
         job.run_iteration(_Context())
+    assert publisher.read_published_ready(source_key=_SOURCE_KEY.value) is None
 
-    assert client.writes == 0
 
-
-def test_blocked_result_keeps_findings_without_runtime_artifacts(monkeypatch):
+def test_blocked_diagnostics_do_not_replace_previous_ready(monkeypatch, tmp_path):
     import ada_command_center.processes.alarms_materialization.job as job_module
+
+    job, projection, provider, store, publisher = _job(tmp_path)
+    previous = job.run_iteration(_Context())
+    projection.record = _record('alarm-r11')
+    provider.evidence = _evidence('alarm-r11')
 
     def blocked(**kwargs):
         key = AlarmResolutionKey(
@@ -308,62 +306,224 @@ def test_blocked_result_keeps_findings_without_runtime_artifacts(monkeypatch):
         )
 
     monkeypatch.setattr(job_module, 'resolve_alarm_configuration', blocked)
-    job, _, _, client, publisher = _job()
+    blocked_result = job.run_iteration(_Context())
 
-    result = job.run_iteration(_Context())
-
-    assert result.outcome is AlarmMaterializationOutcome.BLOCKED
-    stored = next(iter(client.items.values()))
-    assert stored['status'] == 'BLOCKED'
-    assert stored['runtime'] is None and stored['delivery'] is None
-    assert stored['findings'][0]['code'] == 'evaluator_not_qualified'
+    assert blocked_result.outcome is AlarmMaterializationOutcome.BLOCKED
+    manifest = store.get(source_key=_SOURCE_KEY.value, result_id=blocked_result.result_id)
+    assert manifest['status'] == 'BLOCKED'
+    assert manifest['artifacts'] == {}
+    assert manifest['findings'][0]['code'] == 'evaluator_not_qualified'
+    assert sorted(path.name for path in _version_root(tmp_path, blocked_result.result_id).iterdir()) == [
+        'manifest.json'
+    ]
+    assert publisher.read_published_ready(source_key=_SOURCE_KEY.value).result_id == previous.result_id
     with pytest.raises(AlarmMaterializationPublicationError, match='unavailable'):
-        publisher.read_ready(source_key=_SOURCE_KEY.value, result_id=result.result_id)
+        publisher.read_ready(source_key=_SOURCE_KEY.value, result_id=blocked_result.result_id)
 
 
-def test_failed_storage_never_creates_ready_result():
-    client = _Client()
-    client.fail = True
-    job, _, _, client, _ = _job(client=client)
+def test_failed_version_staging_does_not_publish_ready(monkeypatch, tmp_path):
+    import ada_command_center.processes.alarms_materialization.publication as publication
 
+    job, _, _, _, publisher = _job(tmp_path)
+
+    def fail_rename(*args):
+        raise OSError('Injected directory promotion failure')
+
+    monkeypatch.setattr(publication.os, 'rename', fail_rename)
     with pytest.raises(AlarmMaterializationPublicationError, match='publish'):
         job.run_iteration(_Context())
+    assert publisher.read_published_ready(source_key=_SOURCE_KEY.value) is None
+    assert list((tmp_path / 'materialization' / 'versions').iterdir()) == []
 
-    assert client.items == {}
+
+@pytest.mark.parametrize('filename', ['runtime.json', 'delivery.json', 'manifest.json'])
+def test_partial_artifact_write_never_exposes_ready(monkeypatch, tmp_path, filename):
+    from atlanticus.state import AtomicJsonStore
+
+    job, _, _, store, _ = _job(tmp_path)
+    original = AtomicJsonStore.replace
+
+    def fail_selected(self, relative_path, value):
+        if relative_path == filename:
+            raise StateWriteError('Injected artifact write failure')
+        return original(self, relative_path, value)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(AtomicJsonStore, 'replace', fail_selected)
+        with pytest.raises(AlarmMaterializationPublicationError, match='publish'):
+            job.run_iteration(_Context())
+
+    assert store.read_published_ready(source_key=_SOURCE_KEY.value) is None
+    assert list((tmp_path / 'materialization' / 'versions').iterdir()) == []
 
 
-def test_checksum_corruption_blocks_ready_reader():
-    job, _, _, client, publisher = _job()
+def test_failed_ready_pointer_can_recover_committed_version(monkeypatch, tmp_path):
+    from atlanticus.state import AtomicJsonStore
+
+    job, _, _, _, publisher = _job(tmp_path)
+    original = AtomicJsonStore.replace
+
+    def fail_ready(self, relative_path, value):
+        if relative_path == 'ready.json':
+            raise StateWriteError('Injected pointer promotion failure')
+        return original(self, relative_path, value)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(AtomicJsonStore, 'replace', fail_ready)
+        with pytest.raises(AlarmMaterializationPublicationError, match='promote'):
+            job.run_iteration(_Context())
+    assert publisher.read_published_ready(source_key=_SOURCE_KEY.value) is None
+    assert len(list((tmp_path / 'materialization' / 'versions').iterdir())) == 1
+
+    context = _Context()
+    recovered = job.run_iteration(context)
+
+    assert recovered.outcome is AlarmMaterializationOutcome.READY
+    assert context.work == 1 and context.fences == 1
+    assert publisher.read_published_ready(source_key=_SOURCE_KEY.value).result_id == (
+        recovered.result_id
+    )
+
+
+def test_existing_valid_version_can_be_promoted_after_reversion(tmp_path):
+    job, projection, provider, store, _ = _job(tmp_path)
+    first = job.run_iteration(_Context())
+    projection.record = _record('alarm-r11')
+    provider.evidence = _evidence('alarm-r11')
+    second = job.run_iteration(_Context())
+    projection.record = _record('alarm-r10')
+    provider.evidence = _evidence()
+    context = _Context()
+
+    reverted = job.run_iteration(context)
+
+    assert reverted.outcome is AlarmMaterializationOutcome.READY
+    assert reverted.result_id == first.result_id != second.result_id
+    assert store.read_published_ready(source_key=_SOURCE_KEY.value).result_id == first.result_id
+    assert len(list((tmp_path / 'materialization' / 'versions').iterdir())) == 2
+    assert context.work == 1 and context.fences == 1
+
+
+def test_reversion_does_not_promote_if_projection_changed_during_revalidation(tmp_path):
+    job, projection, provider, store, _ = _job(tmp_path)
+    first = job.run_iteration(_Context())
+    projection.record = _record('alarm-r11')
+    provider.evidence = _evidence('alarm-r11')
+    second = job.run_iteration(_Context())
+    projection.record = _record('alarm-r10')
+    projection.second = _record('alarm-r12')
+    projection.calls = 0
+    provider.evidence = _evidence()
+
+    with pytest.raises((AlarmCandidateMismatchError, AlarmMaterializationSupersededError)):
+        job.run_iteration(_Context())
+    assert first.result_id != second.result_id
+    assert store.read_published_ready(source_key=_SOURCE_KEY.value).result_id == second.result_id
+
+
+@pytest.mark.parametrize('artifact', ['runtime.json', 'delivery.json'])
+def test_corrupt_runtime_artifact_is_rejected_without_fallback(tmp_path, artifact):
+    job, _, _, store, _ = _job(tmp_path)
     result = job.run_iteration(_Context())
-    item = next(iter(client.items.values()))
-    item['runtime']['defined_alarm_identities'].append({'family_key': 'extra', 'alarm_key': 'a'})
+    runtime_path = _version_root(tmp_path, result.result_id) / artifact
+    runtime_path.write_bytes(runtime_path.read_bytes() + b' ')
 
     with pytest.raises(AlarmMaterializationPublicationError, match='integrity'):
-        publisher.read_ready(source_key=_SOURCE_KEY.value, result_id=result.result_id)
+        store.read_published_ready(source_key=_SOURCE_KEY.value)
 
 
-def test_existing_content_conflict_cannot_be_silently_overwritten():
-    job, _, _, client, _ = _job()
+def test_exact_reader_rejects_incorrect_manifest_digest(tmp_path):
+    job, _, _, store, _ = _job(tmp_path)
+    result = job.run_iteration(_Context())
+
+    with pytest.raises(AlarmMaterializationPublicationError, match='manifest integrity'):
+        store.read_ready(
+            source_key=_SOURCE_KEY.value,
+            result_id=result.result_id,
+            expected_manifest_sha256='0' * 64,
+        )
+
+
+def test_pointer_rejects_different_source_key(tmp_path):
+    job, _, _, store, _ = _job(tmp_path)
     job.run_iteration(_Context())
-    item = next(iter(client.items.values()))
-    item['manifest']['source_release_id'] = 'tampered'
+
+    with pytest.raises(AlarmMaterializationPublicationError, match='pointer'):
+        store.read_published_ready(source_key='another-source')
+
+
+def test_modified_manifest_is_rejected_by_pointer_digest(tmp_path):
+    job, _, _, store, _ = _job(tmp_path)
+    result = job.run_iteration(_Context())
+    manifest_path = _version_root(tmp_path, result.result_id) / 'manifest.json'
+    manifest_path.write_bytes(manifest_path.read_bytes() + b' ')
+
+    with pytest.raises(AlarmMaterializationPublicationError, match='manifest integrity'):
+        store.read_published_ready(source_key=_SOURCE_KEY.value)
+
+
+def test_uncommitted_orphan_stage_is_recovered_on_retry(tmp_path):
+    job, projection, _, store, _ = _job(tmp_path)
+    candidate = AlarmCandidateAcquirer(projection=projection, source_key=_SOURCE_KEY).acquire()
+    evidence = _evidence()
+    from ada_command_center.processes.alarms_materialization.publication import result_id_for
+
+    identifier = result_id_for(candidate, evidence)
+    orphan = tmp_path / 'materialization' / 'versions' / f'.{identifier}.stale.staging'
+    orphan.mkdir(parents=True)
+    (orphan / 'runtime.json').write_text('incomplete', encoding='utf-8')
+
+    result = job.run_iteration(_Context())
+
+    assert result.result_id == identifier
+    assert not orphan.exists()
+    assert store.read_published_ready(source_key=_SOURCE_KEY.value).result_id == identifier
+
+
+def test_failure_during_new_version_preserves_old_ready(monkeypatch, tmp_path):
+    import ada_command_center.processes.alarms_materialization.publication as publication
+
+    job, projection, provider, store, _ = _job(tmp_path)
+    first = job.run_iteration(_Context())
+    projection.record = _record('alarm-r11')
+    provider.evidence = _evidence('alarm-r11')
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            publication.os,
+            'rename',
+            lambda *args: (_ for _ in ()).throw(OSError('Injected rename failure')),
+        )
+        with pytest.raises(AlarmMaterializationPublicationError, match='publish'):
+            job.run_iteration(_Context())
+
+    assert store.read_published_ready(source_key=_SOURCE_KEY.value).result_id == first.result_id
+    assert len(list((tmp_path / 'materialization' / 'versions').iterdir())) == 1
+
+
+def test_existing_content_conflict_is_not_silently_overwritten(tmp_path):
+    job, _, _, store, _ = _job(tmp_path)
+    first = job.run_iteration(_Context())
+    manifest_path = _version_root(tmp_path, first.result_id) / 'manifest.json'
+    manifest = manifest_path.read_text(encoding='utf-8')
+    manifest_path.write_text(manifest.replace('controlled-qualification-test', 'tampered'), encoding='utf-8')
 
     with pytest.raises(AlarmMaterializationPublicationError):
         job.run_iteration(_Context())
-    assert client.writes == 1
+    assert len(list((tmp_path / 'materialization' / 'versions').iterdir())) == 1
+    with pytest.raises(AlarmMaterializationPublicationError):
+        store.read_published_ready(source_key=_SOURCE_KEY.value)
 
 
 def test_qualification_file_must_match_candidate(tmp_path):
-    _, projection, _, _, _ = _job()
+    _, projection, _, _, _ = _job(tmp_path)
     candidate = AlarmCandidateAcquirer(projection=projection, source_key=_SOURCE_KEY).acquire()
-    source = tmp_path / 'qualification.json'
     import json
 
+    source = tmp_path / 'qualification.json'
     source.write_text(json.dumps(_evidence().to_document()), encoding='utf-8')
     provider = JsonFileAlarmQualificationProvider(source)
     assert provider.load(candidate).digest == _evidence().digest
-    document = _evidence('alarm-r9').to_document()
-    source.write_text(json.dumps(document), encoding='utf-8')
+    source.write_text(json.dumps(_evidence('alarm-r9').to_document()), encoding='utf-8')
     with pytest.raises(AlarmQualificationError):
         provider.load(candidate)
 
@@ -437,10 +597,8 @@ def test_codec_recovers_nonempty_runtime_and_delivery_contracts():
             ),
         ),
     )
-
     restored_runtime = runtime_from_document(runtime_to_document(runtime))
     restored_delivery = delivery_from_document(delivery_to_document(delivery))
-
     assert restored_runtime.resolution_key == runtime.resolution_key
     assert restored_runtime.planned_alarms == runtime.planned_alarms
     assert dict(restored_runtime.parameters_by_alarm[identity]) == dict(
@@ -456,32 +614,49 @@ def test_module_entrypoint_delegates_to_bootstrap(monkeypatch):
 
     calls = []
     monkeypatch.setattr(bootstrap, 'main', lambda: calls.append('executed'))
-
     runpy.run_module(
-        'ada_command_center.processes.alarms_materialization.__main__',
-        run_name='__main__',
+        'ada_command_center.processes.alarms_materialization.__main__', run_name='__main__'
     )
-
     assert calls == ['executed']
 
 
-def test_concurrent_same_result_create_is_idempotent():
-    job, _, _, client, _ = _job()
-
-    def concurrent_create(*, container_name, item):
-        client.items[(container_name, item['id'], item['partition_key'])] = dict(item)
-        raise CosmosConflictError('Concurrent writer created the same result')
-
-    client.create_item = concurrent_create
-
-    result = job.run_iteration(_Context())
-
-    assert result.outcome is AlarmMaterializationOutcome.READY
-    assert len(client.items) == 1
-
-
 def test_missing_qualification_file_fails_without_inferred_green(tmp_path):
-    _, projection, _, _, _ = _job()
+    _, projection, _, _, _ = _job(tmp_path)
     candidate = AlarmCandidateAcquirer(projection=projection, source_key=_SOURCE_KEY).acquire()
     with pytest.raises(AlarmQualificationError, match='Could not load'):
         JsonFileAlarmQualificationProvider(tmp_path / 'not-present.json').load(candidate)
+
+
+def test_composition_validates_only_cosmos_projection_input(monkeypatch):
+    import ada_command_center.processes.alarms_materialization.composition as module
+
+    inspected = []
+
+    class Client:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    class Provisioner:
+        def __init__(self, *, client):
+            assert isinstance(client, Client)
+
+        def validate_containers(self, specs):
+            inspected.extend(specs)
+
+    monkeypatch.setattr(module, 'CosmosProvisioner', Provisioner)
+    monkeypatch.setattr(module, 'execute_job', lambda **kwargs: 'executed')
+    composition = module.AlarmMaterializationComposition(
+        configuration=SimpleNamespace(values={}),
+        settings=SimpleNamespace(projection_container='alarm-projection'),
+        cosmos=Client(),
+        job=SimpleNamespace(run_iteration=lambda context: None),
+        definition=object(),
+    )
+
+    assert composition.execute() == 'executed'
+    assert len(inspected) == 1
+    assert inspected[0].name == 'alarm-projection'
+    assert inspected[0].partition_key_path == '/partition_key'

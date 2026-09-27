@@ -1,5 +1,3 @@
-# Presenta la API pública del proceso, sin iniciar conexiones en tiempo de importación.
-# Los stores se construyen explícitamente en composition cuando se ejecuta el proceso.
 from ada_command_center.processes.alarms_materialization.acquisition import AlarmCandidateAcquirer
 from ada_command_center.processes.alarms_materialization.bootstrap import (
     load_configuration,
@@ -29,7 +27,7 @@ from ada_command_center.processes.alarms_materialization.job import (
 from ada_command_center.processes.alarms_materialization.publication import (
     AlarmMaterializationPublicationError,
     AlarmMaterializationPublisher,
-    CosmosAlarmMaterializationResultStore,
+    LocalAlarmMaterializationResultStore,
     ReadyAlarmMaterialization,
     result_id_for,
 )
@@ -45,7 +43,8 @@ from ada_command_center.processes.alarms_materialization.settings import (
     configuration_specs,
 )
 
-__version__ = '0.2.1'
+# La interfaz pública sustituye el store Cosmos de salida por el almacenamiento local.
+__version__ = '0.3.0'
 
 __all__ = [
     'AlarmCandidateAcquirer',
@@ -66,8 +65,8 @@ __all__ = [
     'AlarmQualificationEvidence',
     'AlarmQualificationError',
     'AlarmQualificationProvider',
-    'CosmosAlarmMaterializationResultStore',
     'JsonFileAlarmQualificationProvider',
+    'LocalAlarmMaterializationResultStore',
     'ReadyAlarmMaterialization',
     '__version__',
     'build_composition',
