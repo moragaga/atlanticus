@@ -179,6 +179,7 @@ def build_ada_distribution(*, application: Path, uv: str) -> dict:
         requirements.mkdir()
         for source in (external, host, starter_build):
             shutil.copyfile(source, requirements / source.name)
+        shutil.copyfile(external, requirements / 'project-runtime.txt')
         revision = subprocess.run(
             ['git', 'rev-parse', 'HEAD'], cwd=REPOSITORY_ROOT,
             text=True, capture_output=True, check=True,
@@ -192,7 +193,7 @@ def build_ada_distribution(*, application: Path, uv: str) -> dict:
             'qualification': 'UNVERIFIED',
             'runtime_lock_sha256': _sha256(project / 'uv.lock'),
             'requirements': {
-                item.name: _sha256(item) for item in sorted(requirements.iterdir())
+                item.name: _sha256(item) for item in (external, host, starter_build)
             },
             'packages': records,
         }
@@ -200,16 +201,29 @@ def build_ada_distribution(*, application: Path, uv: str) -> dict:
             json.dumps(metadata, ensure_ascii=False, sort_keys=True, indent=2) + '\n',
             encoding='utf-8',
         )
+        starter['wheelhouse_included'] = True
+        starter['delivery_strategy'] = metadata['strategy']
+        manifest_bytes = (
+            json.dumps(starter, ensure_ascii=False, sort_keys=True, indent=2) + '\n'
+        ).encode('utf-8')
+        source_project = (application / 'pyproject.toml').read_bytes()
+        project_lock = {
+            'schema_version': 1,
+            'distribution_manifest_sha256': hashlib.sha256(manifest_bytes).hexdigest(),
+            'wheelhouse_manifest_sha256': _sha256(target / 'manifest.json'),
+            'external_runtime_sha256': _sha256(external),
+            'project_sha256': hashlib.sha256(source_project).hexdigest(),
+            'project_runtime_sha256': _sha256(requirements / 'project-runtime.txt'),
+        }
+        (requirements / 'project.lock.json').write_text(
+            json.dumps(project_lock, ensure_ascii=False, sort_keys=True, indent=2) + '\n',
+            encoding='utf-8',
+        )
         target.rename(application / 'wheelhouse')
         try:
             requirements.rename(application / 'requirements')
-            starter['wheelhouse_included'] = True
-            starter['delivery_strategy'] = metadata['strategy']
             staged_manifest = staging / 'starter-manifest.json'
-            staged_manifest.write_text(
-                json.dumps(starter, ensure_ascii=False, sort_keys=True, indent=2) + '\n',
-                encoding='utf-8',
-            )
+            staged_manifest.write_bytes(manifest_bytes)
             staged_manifest.replace(application / 'manifest.json')
         except OSError:
             shutil.rmtree(application / 'wheelhouse')

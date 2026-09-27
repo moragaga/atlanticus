@@ -57,7 +57,9 @@ def test_generated_starter_selects_its_image_contract(tmp_path, monkeypatch, pro
     else:
         assert 'UV_OFFLINE=1' not in dockerfile
         assert '--require-hashes' in dockerfile
-        assert 'requirements/external-runtime.txt' in dockerfile
+        assert 'requirements/project-runtime.txt' in dockerfile
+        assert 'requirements/project.lock.json' in ignored
+        assert 'tooling/' not in ignored
         assert 'EXPOSE 8000' in dockerfile
         assert 'HEALTHCHECK' not in dockerfile
         assert 'gunicorn' in dockerfile

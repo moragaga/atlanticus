@@ -63,6 +63,21 @@ def _candidate(tmp_path):
         'wheelhouse_included': True, 'delivery_strategy': strategy, 'files': files,
     }
     (app / 'manifest.json').write_text(json.dumps(starter_manifest))
+    (app / 'pyproject.toml').write_text('[project]\nname="app"\n')
+    (req / 'project-runtime.txt').write_bytes((req / 'external-runtime.txt').read_bytes())
+    lock = {
+        'schema_version': 1,
+        'distribution_manifest_sha256': hashlib.sha256((app / 'manifest.json').read_bytes()).hexdigest(),
+        'wheelhouse_manifest_sha256': hashlib.sha256(
+            (wheelhouse / 'manifest.json').read_bytes()
+        ).hexdigest(),
+        'external_runtime_sha256': locks['external-runtime.txt'],
+        'project_sha256': hashlib.sha256((app / 'pyproject.toml').read_bytes()).hexdigest(),
+        'project_runtime_sha256': hashlib.sha256(
+            (req / 'project-runtime.txt').read_bytes()
+        ).hexdigest(),
+    }
+    (req / 'project.lock.json').write_text(json.dumps(lock))
     return app
 
 
@@ -86,3 +101,26 @@ def test_preflight_rejects_tampered_external_requirements(tmp_path, monkeypatch)
     result = tool.qualify_ada_distribution(app)
     assert result['status'] == 'BLOCKED'
     assert 'requirements integrity' in result['error']
+
+
+def test_preflight_accepts_editable_project_only_with_matching_derived_lock(tmp_path, monkeypatch):
+    tool = _load_qualifier(monkeypatch)
+    app = _candidate(tmp_path)
+    original = json.loads((app / 'manifest.json').read_text())
+    original['files']['pyproject.toml'] = hashlib.sha256(
+        (app / 'pyproject.toml').read_bytes()
+    ).hexdigest()
+    (app / 'manifest.json').write_text(json.dumps(original))
+    (app / 'pyproject.toml').write_text('[project]\nname="updated-app"\n')
+    lock_location = app / 'requirements/project.lock.json'
+    lock = json.loads(lock_location.read_text())
+    lock['distribution_manifest_sha256'] = hashlib.sha256(
+        (app / 'manifest.json').read_bytes()
+    ).hexdigest()
+    lock['project_sha256'] = hashlib.sha256((app / 'pyproject.toml').read_bytes()).hexdigest()
+    lock_location.write_text(json.dumps(lock))
+    assert tool.qualify_ada_distribution(app)['status'] == 'PRECHECK_PASS'
+    (app / 'requirements/project-runtime.txt').write_text('tampered-runtime\n')
+    response = tool.qualify_ada_distribution(app)
+    assert response['status'] == 'BLOCKED'
+    assert 'Project runtime lock integrity failed' in response['error']

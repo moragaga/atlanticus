@@ -11,6 +11,7 @@
 !wheelhouse/manifest.json
 !requirements/
 !requirements/*.txt
+!requirements/project.lock.json
 **/.env
 **/.env.*
 **/secrets.json

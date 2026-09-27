@@ -1,5 +1,3 @@
-# Constructor con acceso a PyPI sólo en build: la imagen final no resuelve dependencias.
-# Rechazo implícito al fallar checksums o instalación; no existe HEALTHCHECK Docker.
 FROM python:3.14.2-slim-bookworm AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.29 /uv /bin/uv
@@ -21,7 +19,7 @@ RUN python verify_delivery.py . \
     && uv build --wheel --no-build-isolation --python /opt/buildvenv/bin/python \
        --out-dir /build/starter-wheels /build \
     && uv pip install --python /opt/venv/bin/python --only-binary :all: --require-hashes \
-       -r requirements/external-runtime.txt -r requirements/host-runtime.txt \
+       -r requirements/project-runtime.txt -r requirements/host-runtime.txt \
     && uv pip install --python /opt/venv/bin/python --no-index --no-deps \
        --find-links /build/wheelhouse /build/wheelhouse/*.whl \
     && uv pip install --python /opt/venv/bin/python --no-index --no-deps \
@@ -49,3 +47,5 @@ USER app
 EXPOSE 8000
 
 ENTRYPOINT ["gunicorn", "--config", "/etc/atlanticus/gunicorn.conf.py", "application.wsgi:application"]
+
+# Instalación reproducible desde el lock derivado; producción permanece sin uv.

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-# Espejo pedagógico en español del código productivo.
-
+# Espejo pedagógico. El constructor conserva inmutables los requisitos originales y publica un lock de proyecto derivado.
 import argparse
 import hashlib
 import importlib.util
@@ -15,7 +14,6 @@ from pathlib import Path
 from packaging.tags import Tag
 from packaging.utils import canonicalize_name, parse_wheel_filename
 
-# Reutiliza el builder genérico por ruta real sin duplicar la lógica de wheels.
 _SHARED_BUILDER = Path(__file__).resolve().parents[1] / 'build_wheelhouse.py'
 _spec = importlib.util.spec_from_file_location('atlanticus_shared_web_wheels', _SHARED_BUILDER)
 if _spec is None or _spec.loader is None:
@@ -41,7 +39,6 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-# Conserva diagnósticos útiles de uv y oculta líneas con posibles credenciales.
 def _run(command: list[str], *, cwd: Path) -> None:
     result = subprocess.run(command, cwd=cwd, text=True, capture_output=True, check=False)
     if result.returncode != 0:
@@ -59,7 +56,6 @@ def _run(command: list[str], *, cwd: Path) -> None:
         )
 
 
-# Admite el formato multilineal real de uv y exige versión exacta y SHA256.
 def _validate_hashed_requirements(path: Path) -> None:
     requirements = 0
     hashed = False
@@ -82,7 +78,6 @@ def _validate_hashed_requirements(path: Path) -> None:
         raise AdaDistributionError(f'Empty or unhashed distribution requirement in {path.name}')
 
 
-# Sólo referencias PyPI con hashes; descarga durante el build Docker, no al distribuir.
 def _write_external_requirements(*, uv: str, project: Path, staging: Path) -> tuple[Path, Path]:
     output = staging / 'external-runtime.txt'
     constraints = staging / 'constraints.txt'
@@ -94,7 +89,6 @@ def _write_external_requirements(*, uv: str, project: Path, staging: Path) -> tu
     return output, constraints
 
 
-# Gunicorn lleva lock propio limitado por el runtime ADA.
 def _write_host_requirements(*, uv: str, staging: Path, constraints: Path) -> Path:
     input_file = staging / 'host.in'
     output = staging / 'host-runtime.txt'
@@ -109,7 +103,6 @@ def _write_host_requirements(*, uv: str, staging: Path, constraints: Path) -> Pa
     return output
 
 
-# Build backend aislado para no forzar setuptools runtime.
 def _write_starter_build_requirements(*, uv: str, staging: Path,
                                       build_requirements: list[str]) -> Path:
     input_file = staging / 'starter-build.in'
@@ -126,10 +119,7 @@ def _write_starter_build_requirements(*, uv: str, staging: Path,
     return output
 
 
-# Exporta el conjunto activo desde el lock y sólo incluye ruedas internas puras.
 def _build_internal(*, uv: str, project: Path, target: Path, staging: Path) -> list[dict]:
-    # uv exige que un pylock exportado se llame pylock.*.toml; runtime.pylock.toml falla.
-    # La exportación local usa nuestro runner para mostrar diagnósticos filtrados ante fallos.
     lock_path = staging / 'pylock.runtime.toml'
     _run([
         uv, 'export', '--project', str(project), '--locked', '--no-dev',
@@ -166,7 +156,7 @@ def _build_internal(*, uv: str, project: Path, target: Path, staging: Path) -> l
     return sorted(records, key=lambda item: item['name'])
 
 
-# Publica staged manifests y wheels únicamente tras construir todo con éxito.
+# Emite los tres locks originales y el nuevo lock editable del consumidor.
 def build_ada_distribution(*, application: Path, uv: str) -> dict:
     wheels._require_python()
     application = application.expanduser().resolve()
@@ -191,6 +181,7 @@ def build_ada_distribution(*, application: Path, uv: str) -> dict:
         requirements.mkdir()
         for source in (external, host, starter_build):
             shutil.copyfile(source, requirements / source.name)
+        shutil.copyfile(external, requirements / 'project-runtime.txt')
         revision = subprocess.run(
             ['git', 'rev-parse', 'HEAD'], cwd=REPOSITORY_ROOT,
             text=True, capture_output=True, check=True,
@@ -204,7 +195,7 @@ def build_ada_distribution(*, application: Path, uv: str) -> dict:
             'qualification': 'UNVERIFIED',
             'runtime_lock_sha256': _sha256(project / 'uv.lock'),
             'requirements': {
-                item.name: _sha256(item) for item in sorted(requirements.iterdir())
+                item.name: _sha256(item) for item in (external, host, starter_build)
             },
             'packages': records,
         }
@@ -212,16 +203,29 @@ def build_ada_distribution(*, application: Path, uv: str) -> dict:
             json.dumps(metadata, ensure_ascii=False, sort_keys=True, indent=2) + '\n',
             encoding='utf-8',
         )
+        starter['wheelhouse_included'] = True
+        starter['delivery_strategy'] = metadata['strategy']
+        manifest_bytes = (
+            json.dumps(starter, ensure_ascii=False, sort_keys=True, indent=2) + '\n'
+        ).encode('utf-8')
+        source_project = (application / 'pyproject.toml').read_bytes()
+        project_lock = {
+            'schema_version': 1,
+            'distribution_manifest_sha256': hashlib.sha256(manifest_bytes).hexdigest(),
+            'wheelhouse_manifest_sha256': _sha256(target / 'manifest.json'),
+            'external_runtime_sha256': _sha256(external),
+            'project_sha256': hashlib.sha256(source_project).hexdigest(),
+            'project_runtime_sha256': _sha256(requirements / 'project-runtime.txt'),
+        }
+        (requirements / 'project.lock.json').write_text(
+            json.dumps(project_lock, ensure_ascii=False, sort_keys=True, indent=2) + '\n',
+            encoding='utf-8',
+        )
         target.rename(application / 'wheelhouse')
         try:
             requirements.rename(application / 'requirements')
-            starter['wheelhouse_included'] = True
-            starter['delivery_strategy'] = metadata['strategy']
             staged_manifest = staging / 'starter-manifest.json'
-            staged_manifest.write_text(
-                json.dumps(starter, ensure_ascii=False, sort_keys=True, indent=2) + '\n',
-                encoding='utf-8',
-            )
+            staged_manifest.write_bytes(manifest_bytes)
             staged_manifest.replace(application / 'manifest.json')
         except OSError:
             shutil.rmtree(application / 'wheelhouse')
@@ -237,7 +241,6 @@ def build_ada_distribution(*, application: Path, uv: str) -> dict:
     }
 
 
-# Punto de entrada exclusivo de distribución ADA.
 def main() -> None:
     parser = argparse.ArgumentParser(description='Build an ADA image distribution')
     parser.add_argument('--application', type=Path, default=REPOSITORY_ROOT / 'distribution/ada-web-starter')

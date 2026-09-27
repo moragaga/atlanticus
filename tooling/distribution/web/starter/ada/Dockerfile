@@ -19,7 +19,7 @@ RUN python verify_delivery.py . \
     && uv build --wheel --no-build-isolation --python /opt/buildvenv/bin/python \
        --out-dir /build/starter-wheels /build \
     && uv pip install --python /opt/venv/bin/python --only-binary :all: --require-hashes \
-       -r requirements/external-runtime.txt -r requirements/host-runtime.txt \
+       -r requirements/project-runtime.txt -r requirements/host-runtime.txt \
     && uv pip install --python /opt/venv/bin/python --no-index --no-deps \
        --find-links /build/wheelhouse /build/wheelhouse/*.whl \
     && uv pip install --python /opt/venv/bin/python --no-index --no-deps \

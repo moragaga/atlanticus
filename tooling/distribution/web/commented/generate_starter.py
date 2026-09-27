@@ -10,6 +10,7 @@ import io
 import json
 import re
 import shutil
+import stat
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -51,6 +52,8 @@ def _copy_product_files(source: Path, destination: Path) -> None:
         target = destination / path.relative_to(source)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(path, target)
+        if path.suffix == '.sh':
+            target.chmod(target.stat().st_mode | stat.S_IXUSR)
 
 
 # Un dato activo sin clasificación o con duplicados bloquea el artifact antes de crearlo.

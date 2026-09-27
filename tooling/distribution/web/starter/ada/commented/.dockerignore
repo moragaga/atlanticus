@@ -1,4 +1,3 @@
-# Whitelist de entradas al contexto del build: nunca copiar contratos .env o secretos.
 *
 !pyproject.toml
 !manifest.json
@@ -12,8 +11,11 @@
 !wheelhouse/manifest.json
 !requirements/
 !requirements/*.txt
+!requirements/project.lock.json
 **/.env
 **/.env.*
 **/secrets.json
 **/secrets.*.json
 **/*mapping-env.csv
+
+# Incluye el lock derivado pero no incluye tooling ni credenciales en la imagen.

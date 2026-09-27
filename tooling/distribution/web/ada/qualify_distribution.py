@@ -26,11 +26,14 @@ def qualify_ada_distribution(application: Path) -> dict:
         entries = starter.get('files')
         if not isinstance(entries, dict) or not entries:
             raise ValueError('ADA Starter source manifest is incomplete')
+        customized = (application / 'requirements/project.lock.json').is_file()
         for name, digest in entries.items():
             relative = Path(name)
             if relative.is_absolute() or '..' in relative.parts:
                 raise ValueError('ADA Starter source manifest contains an unsafe path')
             target = application / relative
+            if customized and (name == 'pyproject.toml' or relative.parts[0] == 'src'):
+                continue
             if not target.is_file() or _sha256(target) != digest:
                 raise ValueError(f'ADA Starter source integrity failed: {name}')
         verifier = application / 'docker/verify_delivery.py'
@@ -42,6 +45,8 @@ def qualify_ada_distribution(application: Path) -> dict:
         count = module.verify_delivery(application)
         for name in ('external-runtime.txt', 'host-runtime.txt', 'starter-build.txt'):
             _validate_hashed_requirements(application / 'requirements' / name)
+        if (application / 'requirements/project-runtime.txt').is_file():
+            _validate_hashed_requirements(application / 'requirements/project-runtime.txt')
     except (OSError, ValueError, RuntimeError) as error:
         return {'status': 'BLOCKED', 'profile': 'ada', 'error': str(error)}
     return {

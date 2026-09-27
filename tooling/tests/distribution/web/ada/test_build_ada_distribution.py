@@ -62,6 +62,10 @@ def test_builder_packages_only_internals_and_locks_external_install_at_image_bui
     repo = tmp_path / 'repo'
     app = tmp_path / 'generated'
     app.mkdir()
+    (app / 'pyproject.toml').write_text(
+        '[project]\nname="ada-application-starter"\nversion="0.1.0"\n'
+        'dependencies=["ada-generic-application==0.2.17"]\n', encoding='utf-8'
+    )
     source = repo / 'scopes/ada/web/application/ada-generic-application'
     source.mkdir(parents=True)
     (source / 'uv.lock').write_text('test-lock', encoding='utf-8')
@@ -114,6 +118,13 @@ def test_builder_packages_only_internals_and_locks_external_install_at_image_bui
     assert not (app / 'wheelhouse/external-1.0.0-py3-none-any.whl').exists()
     assert 'external==1.0.0' in (app / 'requirements/external-runtime.txt').read_text()
     assert 'gunicorn==1.0.0' in (app / 'requirements/host-runtime.txt').read_text()
+    project_lock = json.loads((app / 'requirements/project.lock.json').read_text())
+    assert project_lock['project_runtime_sha256'] == tool._sha256(
+        app / 'requirements/project-runtime.txt'
+    )
+    assert (app / 'requirements/project-runtime.txt').read_bytes() == (
+        app / 'requirements/external-runtime.txt'
+    ).read_bytes()
     manifest = json.loads((app / 'wheelhouse/manifest.json').read_text())
     assert manifest['strategy'] == 'internal-wheels-external-image-build'
     assert manifest['requirements']['host-runtime.txt'] == tool._sha256(
