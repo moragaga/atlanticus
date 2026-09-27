@@ -209,6 +209,7 @@ def compose_configuration_manager_dependencies(
         administration=users_administration,
         principal_provider=principal_provider,
         group_key='administration',
+        title='Usuarios',
         access_key=USERS_MANAGER_ACCESS_KEY,
     )
     return ConfigurationManagerDependencies(

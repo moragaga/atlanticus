@@ -41,6 +41,7 @@ def test_local_dependencies_use_one_injected_principal_for_manager(tmp_path, mon
     assert {item.key for item in visible} == {
         'users', 'profiles', 'access', 'navigation', 'tools', 'kpis', 'kpi-definitions'
     }
+    assert surface.registry.require_entry('users').title == 'Usuarios'
 
 
 def test_local_factory_is_unavailable_in_production(tmp_path, monkeypatch):

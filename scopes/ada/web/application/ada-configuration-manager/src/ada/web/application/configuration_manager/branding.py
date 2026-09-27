@@ -26,11 +26,6 @@ def build_ada_manager_brand_marks() -> tuple[ManagerHeaderBrandMark, ...]:
             logo_src=f'{framework}/atlanticus-primary.webp',
             logo_alt='Atlanticus Framework',
         ),
-        ManagerHeaderBrandMark(
-            role='organization',
-            logo_src=f'{application}/amsa-pelambres-primary.png',
-            logo_alt='Minera Los Pelambres',
-        ),
     )
 
 
