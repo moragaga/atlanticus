@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from atlanticus.web.manager import ManagerPrincipal
 from atlanticus.web.navigation.api import NavigationPrincipal, NavigationUser
+from atlanticus.web.profiles.models import LOCAL_PROFILE_KEY
+from atlanticus.web.users.local import LOCAL_USERS
 
 
 def public_navigation_principal() -> NavigationPrincipal:
@@ -25,6 +27,16 @@ def manager_navigation_principal(
     administrative_override = (profile_key == 'root' and not principal.is_local) or (
         profile_key == 'local' and principal.is_local and allow_local
     )
+    local_user = next(
+        (
+            user
+            for user in LOCAL_USERS
+            if principal.is_local
+            and profile_key == LOCAL_PROFILE_KEY
+            and user.subject_id == principal.subject_id
+        ),
+        None,
+    )
     display_name = principal.display_name
     initials = ''.join(word[0] for word in display_name.split()[:2]).upper() or 'U'
     return NavigationPrincipal(
@@ -34,8 +46,16 @@ def manager_navigation_principal(
             display_name=display_name,
             profile_key=profile_key or 'public',
             profile_label=profile_key.title() if profile_key is not None else 'Sin perfil',
-            profile_background_color='#3778C2',
-            profile_text_color='#FFFFFF',
+            profile_background_color=(
+                local_user.avatar_background_color if local_user is not None else '#3778C2'
+            ),
+            profile_text_color=(
+                local_user.avatar_text_color if local_user is not None else '#FFFFFF'
+            ),
             avatar_text=initials,
+            avatar_background_color=(
+                local_user.avatar_background_color if local_user is not None else None
+            ),
+            avatar_text_color=local_user.avatar_text_color if local_user is not None else None,
         ),
     )
