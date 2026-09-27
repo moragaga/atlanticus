@@ -1,5 +1,5 @@
-# Expone la API contractual pública de Materialization y el resolver puro B.2.
-# El resolver no adquiere datos ni persiste artifacts: sólo transforma inputs ya cargados.
+# Expone tanto los contratos puros B.2 como el lector local compartido.
+# La publicación y EFFECTIVE siguen fuera de este paquete.
 from ada_command_center.alarms.materialization.delivery import (
     DeliveryAlarmConfiguration,
     ResolvedDeactivationPolicy,
@@ -7,6 +7,12 @@ from ada_command_center.alarms.materialization.delivery import (
     ResolvedDeliveryMessage,
     ResolvedVisualSubcomponentTarget,
     ResolvedVisualTarget,
+)
+from ada_command_center.alarms.materialization.local_reader import (
+    AlarmMaterializationPublicationError,
+    LocalAlarmMaterializationReader,
+    ReadyAlarmMaterialization,
+    materialization_root,
 )
 from ada_command_center.alarms.materialization.qualification import (
     EvaluatorQualificationCatalog,
@@ -26,12 +32,15 @@ __version__ = '1.0.0'
 
 __all__ = [
     'AlarmConfigurationResolution',
+    'AlarmMaterializationPublicationError',
     'AlarmResolutionFinding',
     'AlarmResolutionFindingSeverity',
     'AlarmResolutionStatus',
     'DeliveryAlarmConfiguration',
     'EvaluatorQualificationCatalog',
     'EvaluatorQualificationKey',
+    'LocalAlarmMaterializationReader',
+    'ReadyAlarmMaterialization',
     'ToolReconciliationQualification',
     'ResolvedDeactivationPolicy',
     'ResolvedDeliveryAlarm',
@@ -40,5 +49,6 @@ __all__ = [
     'ResolvedVisualTarget',
     'RuntimeAlarmConfiguration',
     '__version__',
+    'materialization_root',
     'resolve_alarm_configuration',
 ]

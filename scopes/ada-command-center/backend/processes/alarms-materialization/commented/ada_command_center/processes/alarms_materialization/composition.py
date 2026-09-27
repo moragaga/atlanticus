@@ -1,8 +1,10 @@
+# Composition mantiene Cosmos sólo como input de ProjectionRecord y usa disco como output.
 from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from ada_command_center.alarms.materialization.local_reader import materialization_root
 from ada_command_center.processes.alarms_materialization.acquisition import AlarmCandidateAcquirer
 from ada_command_center.processes.alarms_materialization.job import AlarmMaterializationJob
 from ada_command_center.processes.alarms_materialization.publication import (
@@ -34,7 +36,6 @@ from atlanticus.runtime import (
 from atlanticus.web.source.models import SourceKey
 
 
-# La adquisición Cosmos se conserva: cambiar la salida no altera la fuente operacional.
 def compose_cosmos_alarm_candidate_acquirer(
     *, cosmos_client: CosmosClient, container_name: str, source_key: SourceKey
 ) -> AlarmCandidateAcquirer:
@@ -72,6 +73,7 @@ class AlarmMaterializationComposition:
             )
 
 
+# Ambas aplicaciones consumidoras resuelven el mismo layout materialization_root.
 def build_composition(*, configuration: ResolvedConfiguration) -> AlarmMaterializationComposition:
     if not isinstance(configuration, ResolvedConfiguration):
         raise TypeError('configuration must be a ResolvedConfiguration')
@@ -83,13 +85,12 @@ def build_composition(*, configuration: ResolvedConfiguration) -> AlarmMateriali
         container_name=settings.projection_container,
         source_key=SourceKey(settings.source_key),
     )
-    # Componemos el escritor local bajo la raíz compartida del dominio Alarm.
     job = AlarmMaterializationJob(
         acquirer=acquirer,
         qualifications=JsonFileAlarmQualificationProvider(settings.qualification_file),
         publisher=AlarmMaterializationPublisher(
             LocalAlarmMaterializationResultStore(
-                root=settings.volume_path / 'ada-command-center' / 'alarms' / 'materialization'
+                root=materialization_root(settings.volume_path)
             )
         ),
     )

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ada-command-center-alarms-materialization"
 version = "1.0.0"
-description = "Pure Alarm Configuration materialization contracts for ADA Command Center."
+description = "Pure Alarm Configuration materialization contracts and shared local artifact reader for ADA Command Center."
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-ada-command-center-alarms-core = { path = "../core", editable = true }
+ada-command-center-alarms-core = { workspace = true }
 ada-command-center-alarms-domain = { path = "../../../domain/alarms", editable = true }
 ada-web-tools = { path = "../../../../ada/web/tools/core", editable = true }
 

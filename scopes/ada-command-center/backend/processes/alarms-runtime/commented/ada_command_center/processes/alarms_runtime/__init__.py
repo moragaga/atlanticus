@@ -1,6 +1,5 @@
-# Espejo comentado: API pública estable del runtime operacional de Alarmas en ADA Command Center.
-# Mantiene exactamente los mismos tokens ejecutables que el archivo productivo.
-
+# API actual de Runtime más el nuevo lector READY de solo lectura.
+# Adoption durable y Effective Head quedan fuera de este incremento.
 from ada_command_center.processes.alarms_runtime.adoption import (
     AlarmConfigurationRevision,
     AlarmConfigurationRevisionError,
@@ -50,6 +49,9 @@ from ada_command_center.processes.alarms_runtime.job_composition import (
     AlarmRuntimeJobCompositionError,
     AlarmRuntimeJobIterationResult,
     execute_alarm_runtime_job,
+)
+from ada_command_center.processes.alarms_runtime.local_configuration import (
+    RuntimeLocalConfigurationReader,
 )
 from ada_command_center.processes.alarms_runtime.session import (
     AlarmEvaluatorContract,
@@ -106,6 +108,7 @@ __all__ = [
     'ConfigurationAdoptionPlanError',
     'ConfigurationAdoptionRejectionReason',
     'DEFAULT_ALARM_RUNTIME_ITERATION_PERIOD_SECONDS',
+    'RuntimeLocalConfigurationReader',
     '__version__',
     'build_alarm_execution_session',
     'build_alarm_runtime_composition',

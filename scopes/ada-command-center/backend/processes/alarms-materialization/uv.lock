@@ -5,7 +5,7 @@ requires-python = "==3.14.2"
 [[package]]
 name = "ada-command-center-alarms-core"
 version = "1.0.0"
-source = { editable = "../../alarms/core" }
+source = { directory = "../../alarms/core" }
 dependencies = [
     { name = "ada-command-center-alarms-domain" },
 ]
@@ -42,7 +42,7 @@ dev = [
 
 [[package]]
 name = "ada-command-center-alarms-materialization"
-version = "1.0.0"
+version = "1.1.0"
 source = { editable = "../../alarms/materialization" }
 dependencies = [
     { name = "ada-command-center-alarms-core" },
@@ -52,7 +52,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-command-center-alarms-core", editable = "../../alarms/core" },
+    { name = "ada-command-center-alarms-core", directory = "../../alarms/core" },
     { name = "ada-command-center-alarms-domain", editable = "../../../domain/alarms" },
     { name = "ada-web-tools", editable = "../../../../ada/web/tools/core" },
 ]
@@ -65,7 +65,7 @@ dev = [
 
 [[package]]
 name = "ada-command-center-alarms-materialization-process"
-version = "0.3.0"
+version = "0.3.1"
 source = { editable = "." }
 dependencies = [
     { name = "ada-command-center-alarms-core" },
@@ -93,7 +93,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-command-center-alarms-core", editable = "../../alarms/core" },
+    { name = "ada-command-center-alarms-core", directory = "../../alarms/core" },
     { name = "ada-command-center-alarms-domain", editable = "../../../domain/alarms" },
     { name = "ada-command-center-alarms-materialization", editable = "../../alarms/materialization" },
     { name = "ada-command-center-web-alarm-configuration", editable = "../../../web/alarms/configuration" },

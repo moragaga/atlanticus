@@ -1,3 +1,5 @@
+# Codec contractual compartido entre escritor y lectores Runtime/Delivery.
+# No serializa ejecutables ni consulta el Tool Catalog actual.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -12,15 +14,15 @@ from ada_command_center.alarms.core import (
     PlannedAlarm,
     RoutingDestination,
 )
-from ada_command_center.alarms.materialization import (
+from ada_command_center.alarms.materialization.delivery import (
     DeliveryAlarmConfiguration,
     ResolvedDeactivationPolicy,
     ResolvedDeliveryAlarm,
     ResolvedDeliveryMessage,
     ResolvedVisualSubcomponentTarget,
     ResolvedVisualTarget,
-    RuntimeAlarmConfiguration,
 )
+from ada_command_center.alarms.materialization.runtime import RuntimeAlarmConfiguration
 from ada_command_center.domain.alarms import (
     AlarmColor,
     AlarmIdentity,
@@ -64,6 +66,7 @@ def _key(document: dict[str, object]) -> AlarmResolutionKey:
     )
 
 
+# Preserva la AlarmResolutionKey y el plan lógico, no la sesión ejecutable en memoria.
 def runtime_to_document(configuration: RuntimeAlarmConfiguration) -> dict[str, object]:
     return {
         'resolution_key': _json_value(configuration.resolution_key),
@@ -78,6 +81,7 @@ def runtime_to_document(configuration: RuntimeAlarmConfiguration) -> dict[str, o
     }
 
 
+# Reconstituye las entidades tipadas después de la validación física del artifact.
 def runtime_from_document(document: dict[str, object]) -> RuntimeAlarmConfiguration:
     planned = []
     for entry in document['planned_alarms']:
@@ -128,10 +132,12 @@ def runtime_from_document(document: dict[str, object]) -> RuntimeAlarmConfigurat
     )
 
 
+# Ambos artifact usan el mismo tratamiento JSON de enums y dataclasses.
 def delivery_to_document(configuration: DeliveryAlarmConfiguration) -> dict[str, object]:
     return _json_value(configuration)
 
 
+# Entrega la configuración de Delivery vinculada a la misma resolución exacta.
 def delivery_from_document(document: dict[str, object]) -> DeliveryAlarmConfiguration:
     alarms = []
     for entry in document['alarms']:

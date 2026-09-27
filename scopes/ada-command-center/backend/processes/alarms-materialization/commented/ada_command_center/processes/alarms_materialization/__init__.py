@@ -1,3 +1,5 @@
+# API del proceso escritor; el resultado READY se importa del contrato compartido.
+from ada_command_center.alarms.materialization.local_reader import ReadyAlarmMaterialization
 from ada_command_center.processes.alarms_materialization.acquisition import AlarmCandidateAcquirer
 from ada_command_center.processes.alarms_materialization.bootstrap import (
     load_configuration,
@@ -28,7 +30,6 @@ from ada_command_center.processes.alarms_materialization.publication import (
     AlarmMaterializationPublicationError,
     AlarmMaterializationPublisher,
     LocalAlarmMaterializationResultStore,
-    ReadyAlarmMaterialization,
     result_id_for,
 )
 from ada_command_center.processes.alarms_materialization.qualification import (
@@ -43,8 +44,7 @@ from ada_command_center.processes.alarms_materialization.settings import (
     configuration_specs,
 )
 
-# La interfaz pública sustituye el store Cosmos de salida por el almacenamiento local.
-__version__ = '0.3.0'
+__version__ = '1.0.0'
 
 __all__ = [
     'AlarmCandidateAcquirer',

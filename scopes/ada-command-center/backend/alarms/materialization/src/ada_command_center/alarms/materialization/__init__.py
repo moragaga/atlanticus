@@ -6,6 +6,12 @@ from ada_command_center.alarms.materialization.delivery import (
     ResolvedVisualSubcomponentTarget,
     ResolvedVisualTarget,
 )
+from ada_command_center.alarms.materialization.local_reader import (
+    AlarmMaterializationPublicationError,
+    LocalAlarmMaterializationReader,
+    ReadyAlarmMaterialization,
+    materialization_root,
+)
 from ada_command_center.alarms.materialization.qualification import (
     EvaluatorQualificationCatalog,
     EvaluatorQualificationKey,
@@ -24,12 +30,15 @@ __version__ = '1.0.0'
 
 __all__ = [
     'AlarmConfigurationResolution',
+    'AlarmMaterializationPublicationError',
     'AlarmResolutionFinding',
     'AlarmResolutionFindingSeverity',
     'AlarmResolutionStatus',
     'DeliveryAlarmConfiguration',
     'EvaluatorQualificationCatalog',
     'EvaluatorQualificationKey',
+    'LocalAlarmMaterializationReader',
+    'ReadyAlarmMaterialization',
     'ToolReconciliationQualification',
     'ResolvedDeactivationPolicy',
     'ResolvedDeliveryAlarm',
@@ -38,5 +47,6 @@ __all__ = [
     'ResolvedVisualTarget',
     'RuntimeAlarmConfiguration',
     '__version__',
+    'materialization_root',
     'resolve_alarm_configuration',
 ]

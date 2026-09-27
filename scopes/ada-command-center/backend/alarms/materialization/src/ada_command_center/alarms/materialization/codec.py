@@ -1,5 +1,3 @@
-# Serializa explícitamente Runtime y Delivery sin modificar los contratos del resolver puro.
-# El decoder reconstruye tipos de dominio; no realiza lookups externos.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -14,15 +12,15 @@ from ada_command_center.alarms.core import (
     PlannedAlarm,
     RoutingDestination,
 )
-from ada_command_center.alarms.materialization import (
+from ada_command_center.alarms.materialization.delivery import (
     DeliveryAlarmConfiguration,
     ResolvedDeactivationPolicy,
     ResolvedDeliveryAlarm,
     ResolvedDeliveryMessage,
     ResolvedVisualSubcomponentTarget,
     ResolvedVisualTarget,
-    RuntimeAlarmConfiguration,
 )
+from ada_command_center.alarms.materialization.runtime import RuntimeAlarmConfiguration
 from ada_command_center.domain.alarms import (
     AlarmColor,
     AlarmIdentity,
@@ -35,7 +33,6 @@ from ada_command_center.domain.alarms import (
 )
 
 
-# Operación _json_value: mantiene invariantes de esta frontera.
 def _json_value(value: object) -> object:
     if isinstance(value, Enum):
         return value.value
@@ -52,17 +49,14 @@ def _json_value(value: object) -> object:
     raise TypeError('Alarm materialization JSON contains an unsupported value')
 
 
-# Operación _identity: mantiene invariantes de esta frontera.
 def _identity(identity: AlarmIdentity) -> dict[str, object]:
     return {'family_key': identity.family_key, 'alarm_key': identity.alarm_key}
 
 
-# Operación _decode_identity: mantiene invariantes de esta frontera.
 def _decode_identity(document: dict[str, object]) -> AlarmIdentity:
     return AlarmIdentity(family_key=document['family_key'], alarm_key=document['alarm_key'])
 
 
-# Operación _key: mantiene invariantes de esta frontera.
 def _key(document: dict[str, object]) -> AlarmResolutionKey:
     return AlarmResolutionKey(
         alarm_configuration_revision=document['alarm_configuration_revision'],
@@ -70,7 +64,6 @@ def _key(document: dict[str, object]) -> AlarmResolutionKey:
     )
 
 
-# Operación runtime_to_document: mantiene invariantes de esta frontera.
 def runtime_to_document(configuration: RuntimeAlarmConfiguration) -> dict[str, object]:
     return {
         'resolution_key': _json_value(configuration.resolution_key),
@@ -85,7 +78,6 @@ def runtime_to_document(configuration: RuntimeAlarmConfiguration) -> dict[str, o
     }
 
 
-# Operación runtime_from_document: mantiene invariantes de esta frontera.
 def runtime_from_document(document: dict[str, object]) -> RuntimeAlarmConfiguration:
     planned = []
     for entry in document['planned_alarms']:
@@ -136,12 +128,10 @@ def runtime_from_document(document: dict[str, object]) -> RuntimeAlarmConfigurat
     )
 
 
-# Operación delivery_to_document: mantiene invariantes de esta frontera.
 def delivery_to_document(configuration: DeliveryAlarmConfiguration) -> dict[str, object]:
     return _json_value(configuration)
 
 
-# Operación delivery_from_document: mantiene invariantes de esta frontera.
 def delivery_from_document(document: dict[str, object]) -> DeliveryAlarmConfiguration:
     alarms = []
     for entry in document['alarms']:

@@ -18,12 +18,20 @@ from ada_command_center.alarms.materialization import (
     AlarmResolutionFindingSeverity,
     AlarmResolutionStatus,
     DeliveryAlarmConfiguration,
+    LocalAlarmMaterializationReader,
     ResolvedDeactivationPolicy,
     ResolvedDeliveryAlarm,
     ResolvedDeliveryMessage,
     ResolvedVisualSubcomponentTarget,
     ResolvedVisualTarget,
     RuntimeAlarmConfiguration,
+    materialization_root,
+)
+from ada_command_center.alarms.materialization.codec import (
+    delivery_from_document,
+    delivery_to_document,
+    runtime_from_document,
+    runtime_to_document,
 )
 from ada_command_center.domain.alarms import (
     AlarmColor,
@@ -38,12 +46,6 @@ from ada_command_center.domain.alarms import (
 )
 from ada_command_center.domain.tools import ToolDependencyManifest
 from ada_command_center.processes.alarms_materialization.acquisition import AlarmCandidateAcquirer
-from ada_command_center.processes.alarms_materialization.codec import (
-    delivery_from_document,
-    delivery_to_document,
-    runtime_from_document,
-    runtime_to_document,
-)
 from ada_command_center.processes.alarms_materialization.errors import AlarmCandidateMismatchError
 from ada_command_center.processes.alarms_materialization.job import (
     AlarmMaterializationJob,
@@ -249,15 +251,17 @@ def test_changed_qualification_produces_distinct_version_with_shared_resolution_
     assert len(list((tmp_path / 'materialization' / 'versions').iterdir())) == 2
     assert store.read_published_ready(source_key=_SOURCE_KEY.value).result_id == second.result_id
     assert (
-        store.read_ready(source_key=_SOURCE_KEY.value, result_id=first.result_id).runtime.resolution_key
-        == store.read_ready(source_key=_SOURCE_KEY.value, result_id=second.result_id).runtime.resolution_key
+        store.read_ready(
+            source_key=_SOURCE_KEY.value, result_id=first.result_id
+        ).runtime.resolution_key
+        == store.read_ready(
+            source_key=_SOURCE_KEY.value, result_id=second.result_id
+        ).runtime.resolution_key
     )
 
 
 def test_qualification_for_different_release_fails_closed(tmp_path):
-    job, _, _, _, publisher = _job(
-        tmp_path, provider=_Qualifications(_evidence('alarm-r9'))
-    )
+    job, _, _, _, publisher = _job(tmp_path, provider=_Qualifications(_evidence('alarm-r9')))
     with pytest.raises(AlarmQualificationError, match='does not match'):
         job.run_iteration(_Context())
     assert publisher.read_published_ready(source_key=_SOURCE_KEY.value) is None
@@ -313,10 +317,12 @@ def test_blocked_diagnostics_do_not_replace_previous_ready(monkeypatch, tmp_path
     assert manifest['status'] == 'BLOCKED'
     assert manifest['artifacts'] == {}
     assert manifest['findings'][0]['code'] == 'evaluator_not_qualified'
-    assert sorted(path.name for path in _version_root(tmp_path, blocked_result.result_id).iterdir()) == [
-        'manifest.json'
-    ]
-    assert publisher.read_published_ready(source_key=_SOURCE_KEY.value).result_id == previous.result_id
+    assert sorted(
+        path.name for path in _version_root(tmp_path, blocked_result.result_id).iterdir()
+    ) == ['manifest.json']
+    assert (
+        publisher.read_published_ready(source_key=_SOURCE_KEY.value).result_id == previous.result_id
+    )
     with pytest.raises(AlarmMaterializationPublicationError, match='unavailable'):
         publisher.read_ready(source_key=_SOURCE_KEY.value, result_id=blocked_result.result_id)
 
@@ -505,7 +511,9 @@ def test_existing_content_conflict_is_not_silently_overwritten(tmp_path):
     first = job.run_iteration(_Context())
     manifest_path = _version_root(tmp_path, first.result_id) / 'manifest.json'
     manifest = manifest_path.read_text(encoding='utf-8')
-    manifest_path.write_text(manifest.replace('controlled-qualification-test', 'tampered'), encoding='utf-8')
+    manifest_path.write_text(
+        manifest.replace('controlled-qualification-test', 'tampered'), encoding='utf-8'
+    )
 
     with pytest.raises(AlarmMaterializationPublicationError):
         job.run_iteration(_Context())
@@ -660,3 +668,21 @@ def test_composition_validates_only_cosmos_projection_input(monkeypatch):
     assert len(inspected) == 1
     assert inspected[0].name == 'alarm-projection'
     assert inspected[0].partition_key_path == '/partition_key'
+
+
+def test_shared_reader_can_independently_consume_published_pair(tmp_path):
+    store = LocalAlarmMaterializationResultStore(root=materialization_root(tmp_path))
+    job, _, _, _, _ = _job(tmp_path, store=store)
+    result = job.run_iteration(_Context())
+    reader = LocalAlarmMaterializationReader(root=materialization_root(tmp_path))
+
+    ready = reader.read_published_ready(source_key=_SOURCE_KEY.value)
+    exact = reader.read_exact_ready(
+        source_key=_SOURCE_KEY.value,
+        result_id=ready.result_id,
+        manifest_sha256=ready.manifest_sha256,
+    )
+
+    assert ready.result_id == result.result_id
+    assert exact == ready
+    assert ready.runtime.resolution_key == ready.delivery.resolution_key

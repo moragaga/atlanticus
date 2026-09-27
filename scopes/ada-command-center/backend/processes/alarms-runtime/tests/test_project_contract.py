@@ -4,7 +4,7 @@ from pathlib import Path
 _ROOT = Path(__file__).parents[1]
 
 
-def test_project_contract_pins_only_a3_dependencies() -> None:
+def test_project_contract_pins_required_dependencies() -> None:
     project = tomllib.loads((_ROOT / 'pyproject.toml').read_text(encoding='utf-8'))['project']
 
     assert project['name'] == 'ada-command-center-alarms-runtime-process'
@@ -13,6 +13,7 @@ def test_project_contract_pins_only_a3_dependencies() -> None:
     assert project['dependencies'] == [
         'ada-command-center-alarms-domain==1.0.0',
         'ada-command-center-alarms-core==1.0.0',
+        'ada-command-center-alarms-materialization==1.0.0',
         'ada-command-center-alarms-persistence==1.0.0',
         'atlanticus-job-runtime==1.0.0',
         'atlanticus-operational-data-core==1.0.0',

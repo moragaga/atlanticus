@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from ada_command_center.alarms.materialization.local_reader import materialization_root
 from ada_command_center.processes.alarms_materialization.acquisition import AlarmCandidateAcquirer
 from ada_command_center.processes.alarms_materialization.job import AlarmMaterializationJob
 from ada_command_center.processes.alarms_materialization.publication import (
@@ -86,9 +87,7 @@ def build_composition(*, configuration: ResolvedConfiguration) -> AlarmMateriali
         acquirer=acquirer,
         qualifications=JsonFileAlarmQualificationProvider(settings.qualification_file),
         publisher=AlarmMaterializationPublisher(
-            LocalAlarmMaterializationResultStore(
-                root=settings.volume_path / 'ada-command-center' / 'alarms' / 'materialization'
-            )
+            LocalAlarmMaterializationResultStore(root=materialization_root(settings.volume_path))
         ),
     )
     definition = JobDefinition(

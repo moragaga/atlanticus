@@ -11,11 +11,27 @@ classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "ada-command-center-alarms-domain==1.0.0",
     "ada-command-center-alarms-core==1.0.0",
+    "ada-command-center-alarms-materialization==1.0.0",
     "ada-command-center-alarms-persistence==1.0.0",
     "atlanticus-job-runtime==1.0.0",
     "atlanticus-operational-data-core==1.0.0",
     "atlanticus-operational-data-planner==1.0.0",
 ]
+
+[tool.uv.sources]
+ada-command-center-alarms-domain = { path = "../../../domain/alarms", editable = true }
+ada-command-center-alarms-core = { workspace = true }
+ada-command-center-alarms-materialization = { workspace = true }
+ada-command-center-alarms-persistence = { workspace = true }
+ada-command-center-tools-domain = { path = "../../../domain/tools", editable = true }
+ada-web-tools = { path = "../../../../ada/web/tools/core", editable = true }
+atlanticus-job-runtime = { path = "../../../../../backend/runtime", editable = true }
+atlanticus-kernel = { path = "../../../../../backend/kernel", editable = true }
+atlanticus-observability = { path = "../../../../../backend/observability", editable = true }
+atlanticus-json = { path = "../../../../../backend/json", editable = true }
+atlanticus-state = { path = "../../../../../backend/state", editable = true }
+atlanticus-operational-data-core = { path = "../../../../operational-data/core", editable = true }
+atlanticus-operational-data-planner = { path = "../../../../operational-data/planner", editable = true }
 
 [dependency-groups]
 dev = ["pytest==9.1.1", "ruff==0.15.22"]
