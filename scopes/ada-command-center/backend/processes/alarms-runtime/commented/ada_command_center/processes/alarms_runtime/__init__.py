@@ -1,5 +1,5 @@
-# API actual de Runtime más el nuevo lector READY de solo lectura.
-# Adoption durable y Effective Head quedan fuera de este incremento.
+# API de Runtime con selección READY para planificación y EFFECTIVE para ejecución.
+# El vínculo exacto con el Head durable se conserva en RuntimeEffectiveConfiguration.
 
 from ada_command_center.processes.alarms_runtime.adoption import (
     AlarmConfigurationRevision,
@@ -52,6 +52,8 @@ from ada_command_center.processes.alarms_runtime.job_composition import (
     execute_alarm_runtime_job,
 )
 from ada_command_center.processes.alarms_runtime.local_configuration import (
+    RuntimeEffectiveConfiguration,
+    RuntimeEffectiveConfigurationError,
     RuntimeLocalConfigurationReader,
     build_alarm_configuration_revision,
 )
@@ -110,6 +112,8 @@ __all__ = [
     'ConfigurationAdoptionPlanError',
     'ConfigurationAdoptionRejectionReason',
     'DEFAULT_ALARM_RUNTIME_ITERATION_PERIOD_SECONDS',
+    'RuntimeEffectiveConfiguration',
+    'RuntimeEffectiveConfigurationError',
     'RuntimeLocalConfigurationReader',
     '__version__',
     'build_alarm_configuration_revision',

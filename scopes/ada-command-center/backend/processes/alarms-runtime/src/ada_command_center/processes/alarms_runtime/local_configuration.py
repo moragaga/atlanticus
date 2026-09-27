@@ -11,11 +11,45 @@ from ada_command_center.alarms.materialization.local_reader import (
     ReadyAlarmMaterialization,
     materialization_root,
 )
+from ada_command_center.alarms.persistence import (
+    AlarmEffectiveConfigurationHead,
+    AlarmPersistence,
+)
 from ada_command_center.processes.alarms_runtime.adoption import AlarmConfigurationRevision
 from ada_command_center.processes.alarms_runtime.session import (
     AlarmEvaluatorRegistry,
     build_alarm_execution_session,
 )
+
+
+class RuntimeEffectiveConfigurationError(RuntimeError):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeEffectiveConfiguration:
+    effective_head: AlarmEffectiveConfigurationHead
+    revision: AlarmConfigurationRevision
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.effective_head, AlarmEffectiveConfigurationHead):
+            raise TypeError('effective_head must be AlarmEffectiveConfigurationHead')
+        if not isinstance(self.revision, AlarmConfigurationRevision):
+            raise TypeError('revision must be an AlarmConfigurationRevision')
+        expected = self.effective_head.target_artifact_ref
+        actual = self.revision.artifact_ref
+        if (
+            actual.source_key != expected.source_key
+            or actual.result_id != expected.result_id
+            or actual.manifest_sha256 != expected.manifest_sha256
+            or actual.resolution_key.alarm_configuration_revision
+            != expected.alarm_configuration_revision
+            or actual.resolution_key.confirmed_tool_catalog_revision
+            != expected.confirmed_tool_catalog_revision
+        ):
+            raise RuntimeEffectiveConfigurationError(
+                'Runtime revision does not match the exact EFFECTIVE artifact'
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +82,54 @@ class RuntimeLocalConfigurationReader:
             result_id=result_id,
             manifest_sha256=manifest_sha256,
         )
+
+    def load_effective_revision(
+        self,
+        *,
+        persistence: AlarmPersistence,
+        evaluator_registry: AlarmEvaluatorRegistry,
+    ) -> RuntimeEffectiveConfiguration | None:
+        self._require_persistence(persistence)
+        if not isinstance(evaluator_registry, AlarmEvaluatorRegistry):
+            raise TypeError('evaluator_registry must be an AlarmEvaluatorRegistry')
+        head = persistence.read_effective_head()
+        if head is None:
+            return None
+        pin = head.target_artifact_ref
+        if pin.source_key != self.source_key:
+            raise RuntimeEffectiveConfigurationError(
+                'EFFECTIVE source_key does not match Runtime configuration reader'
+            )
+        candidate = self.load_exact_candidate(
+            result_id=pin.result_id,
+            manifest_sha256=pin.manifest_sha256,
+        )
+        selected = RuntimeEffectiveConfiguration(
+            effective_head=head,
+            revision=build_alarm_configuration_revision(
+                candidate=candidate,
+                evaluator_registry=evaluator_registry,
+            ),
+        )
+        self.assert_current_effective(persistence=persistence, selected=selected)
+        return selected
+
+    def assert_current_effective(
+        self, *, persistence: AlarmPersistence, selected: RuntimeEffectiveConfiguration
+    ) -> None:
+        self._require_persistence(persistence)
+        if not isinstance(selected, RuntimeEffectiveConfiguration):
+            raise TypeError('selected must be RuntimeEffectiveConfiguration')
+        if persistence.read_effective_head() != selected.effective_head:
+            raise RuntimeEffectiveConfigurationError(
+                'EFFECTIVE changed after Runtime selected its configuration'
+            )
+
+    def _require_persistence(self, persistence: AlarmPersistence) -> None:
+        if not isinstance(persistence, AlarmPersistence):
+            raise TypeError('persistence must be AlarmPersistence')
+        if persistence.paths.shared_volume_path != self.volume_path:
+            raise ValueError('Runtime reader and Persistence must use the same VOLUMEN_PATH')
 
 
 def build_alarm_configuration_revision(

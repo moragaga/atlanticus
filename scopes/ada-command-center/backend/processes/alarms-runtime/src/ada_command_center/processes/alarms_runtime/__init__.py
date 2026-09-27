@@ -49,6 +49,8 @@ from ada_command_center.processes.alarms_runtime.job_composition import (
     execute_alarm_runtime_job,
 )
 from ada_command_center.processes.alarms_runtime.local_configuration import (
+    RuntimeEffectiveConfiguration,
+    RuntimeEffectiveConfigurationError,
     RuntimeLocalConfigurationReader,
     build_alarm_configuration_revision,
 )
@@ -107,6 +109,8 @@ __all__ = [
     'ConfigurationAdoptionPlanError',
     'ConfigurationAdoptionRejectionReason',
     'DEFAULT_ALARM_RUNTIME_ITERATION_PERIOD_SECONDS',
+    'RuntimeEffectiveConfiguration',
+    'RuntimeEffectiveConfigurationError',
     'RuntimeLocalConfigurationReader',
     '__version__',
     'build_alarm_configuration_revision',
