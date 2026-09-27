@@ -5,6 +5,10 @@ from collections.abc import Sequence
 from contextlib import suppress
 from pathlib import Path
 
+from ada_command_center.alarms.persistence.configuration_adoption import (
+    CONFIGURATION_ADOPTION_RECORD_SCHEMA_VERSION,
+    ConfigurationAdoptionRecord,
+)
 from ada_command_center.alarms.persistence.errors import (
     AlarmPersistenceConflictError,
     AlarmPersistenceCorruptionError,
@@ -30,9 +34,17 @@ class EngineJournal:
             raise TypeError('paths must be AlarmPersistencePaths')
         self._paths = paths
 
-    def append_batch(self, records: Sequence[EngineCommitRecord]) -> tuple[JournalEntry, ...]:
+    def append_batch(
+        self, records: Sequence[EngineCommitRecord | ConfigurationAdoptionRecord]
+    ) -> tuple[JournalEntry, ...]:
         ordered = _validate_batch(records)
-        segment_id = segment_id_for_evaluated_at(ordered[0].commit.evaluated_at)
+        first = ordered[0]
+        evaluated_at = (
+            first.commit.evaluated_at
+            if isinstance(first, EngineCommitRecord)
+            else first.effective_at
+        )
+        segment_id = segment_id_for_evaluated_at(evaluated_at)
         path = self._paths.journal_segment_path(segment_id, sealed=False)
         sealed_path = self._paths.journal_segment_path(segment_id, sealed=True)
         if sealed_path.exists():
@@ -55,7 +67,11 @@ class EngineJournal:
                             end=JournalPosition(
                                 segment_id=segment_id,
                                 byte_offset=end_offset,
-                                commit_id=record.commit.commit_id,
+                                commit_id=(
+                                    record.commit.commit_id
+                                    if isinstance(record, EngineCommitRecord)
+                                    else record.adoption_id
+                                ),
                             ),
                         )
                     )
@@ -125,8 +141,29 @@ class EngineJournal:
             return ()
         entries = self.read_entries(after=None, through=durable)
         previous_by_group: dict[str, str] = {}
+        previous_artifact_ref = None
+        seen_group_before_adoption = False
+        adoption_ids: set[str] = set()
         for entry in entries:
-            commit = entry.record.commit
+            record = entry.record
+            if isinstance(record, ConfigurationAdoptionRecord):
+                if previous_artifact_ref is None and seen_group_before_adoption:
+                    raise AlarmPersistenceCorruptionError(
+                        'configuration adoption requires explicit legacy state migration'
+                    )
+                if record.adoption_id in adoption_ids:
+                    raise AlarmPersistenceCorruptionError(
+                        'configuration adoption_id is duplicated in durable journal'
+                    )
+                if record.previous_artifact_ref != previous_artifact_ref:
+                    raise AlarmPersistenceCorruptionError(
+                        'configuration adoption artifact chain is discontinuous'
+                    )
+                adoption_ids.add(record.adoption_id)
+                previous_artifact_ref = record.target_artifact_ref
+                continue
+            seen_group_before_adoption = True
+            commit = record.commit
             expected_previous = previous_by_group.get(commit.priority_group)
             if commit.previous_commit_id != expected_previous:
                 raise AlarmPersistenceCorruptionError(
@@ -303,7 +340,12 @@ class EngineJournal:
                             'journal durable boundary splits a record'
                         )
                     payload = decode_record_line(line)
-                    record = EngineCommitRecord.from_document(payload)
+                    record = (
+                        ConfigurationAdoptionRecord.from_document(payload)
+                        if payload.get('record_schema_version')
+                        == CONFIGURATION_ADOPTION_RECORD_SCHEMA_VERSION
+                        else EngineCommitRecord.from_document(payload)
+                    )
                     entries.append(
                         JournalEntry(
                             record=record,
@@ -311,7 +353,11 @@ class EngineJournal:
                             end=JournalPosition(
                                 segment_id=segment_id,
                                 byte_offset=new_cursor,
-                                commit_id=record.commit.commit_id,
+                                commit_id=(
+                                    record.commit.commit_id
+                                    if isinstance(record, EngineCommitRecord)
+                                    else record.adoption_id
+                                ),
                             ),
                         )
                     )
@@ -361,11 +407,19 @@ class EngineJournal:
                 directory.rmdir()
 
 
-def _validate_batch(records: Sequence[EngineCommitRecord]) -> tuple[EngineCommitRecord, ...]:
+def _validate_batch(
+    records: Sequence[EngineCommitRecord | ConfigurationAdoptionRecord],
+) -> tuple[EngineCommitRecord | ConfigurationAdoptionRecord, ...]:
     if isinstance(records, str | bytes) or not isinstance(records, Sequence):
         raise TypeError('records must be a sequence')
     if not records:
         raise AlarmPersistenceValidationError('records must not be empty')
+    if len(records) == 1 and isinstance(records[0], ConfigurationAdoptionRecord):
+        return (records[0],)
+    if any(isinstance(record, ConfigurationAdoptionRecord) for record in records):
+        raise AlarmPersistenceValidationError(
+            'configuration adoption must use a standalone WAL batch'
+        )
     cycle_id: str | None = None
     groups: set[str] = set()
     normalized: list[EngineCommitRecord] = []

@@ -1,8 +1,14 @@
+# Se exponen los contratos físicos de adopción sin importar Materialization en Persistence.
 # Espejo pedagógico de la API pública de Alarm Persistence.
 # Este archivo conserva exactamente los mismos tokens ejecutables que producción.
 # Las notas se mantienen fuera del código para que Ruff pueda formatear ambos árboles de forma idéntica.
 # La API publicada expone contratos de persistencia, modelos, errores y la versión del paquete.
 
+from ada_command_center.alarms.persistence.configuration_adoption import (
+    CONFIGURATION_ADOPTION_RECORD_SCHEMA_VERSION,
+    AlarmArtifactRefSnapshot,
+    ConfigurationAdoptionRecord,
+)
 from ada_command_center.alarms.persistence.errors import (
     AlarmPersistenceConflictError,
     AlarmPersistenceCorruptionError,
@@ -36,6 +42,9 @@ from ada_command_center.alarms.persistence.store import (
 __version__ = '1.0.0'
 
 __all__ = [
+    'CONFIGURATION_ADOPTION_RECORD_SCHEMA_VERSION',
+    'AlarmArtifactRefSnapshot',
+    'ConfigurationAdoptionRecord',
     'ENGINE_COMMIT_RECORD_SCHEMA_VERSION',
     'GROUP_RUNTIME_SNAPSHOT_SCHEMA_VERSION',
     'JOURNAL_HEAD_SCHEMA_VERSION',

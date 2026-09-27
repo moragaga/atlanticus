@@ -5,9 +5,13 @@ from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
 from pathlib import Path
 
+from ada_command_center.alarms.persistence.configuration_adoption import (
+    ConfigurationAdoptionRecord,
+)
 from ada_command_center.alarms.persistence.errors import (
     AlarmPersistenceConflictError,
     AlarmPersistenceCorruptionError,
+    AlarmPersistenceValidationError,
     AlarmPersistenceWriteError,
     AlarmRecoveryRequiredError,
 )
@@ -23,6 +27,7 @@ from ada_command_center.alarms.persistence.models import (
     segment_id_for_evaluated_at,
 )
 from ada_command_center.alarms.persistence.paths import AlarmPersistencePaths
+from ada_command_center.alarms.persistence.serialization import build_record_hash
 from atlanticus.state import AtomicJsonStore, StateError
 
 AuthorityCheck = Callable[[], None]
@@ -89,7 +94,25 @@ class AlarmPersistence:
             return ()
         if after is not None and _position_key(after) > _position_key(head.durable):
             raise ValueError('after must not be ahead of durable journal head')
-        return self._journal.read_entries(after=after, through=head.durable)
+        return tuple(
+            entry
+            for entry in self._journal.read_entries(after=after, through=head.durable)
+            if isinstance(entry.record, EngineCommitRecord)
+        )
+
+    def read_durable_adoptions(
+        self, *, after: JournalPosition | None = None
+    ) -> tuple[JournalEntry, ...]:
+        head = self.read_head()
+        if head.durable is None or after == head.durable:
+            return ()
+        if after is not None and _position_key(after) > _position_key(head.durable):
+            raise ValueError('after must not be ahead of durable journal head')
+        return tuple(
+            entry
+            for entry in self._journal.read_entries(after=after, through=head.durable)
+            if isinstance(entry.record, ConfigurationAdoptionRecord)
+        )
 
     def commit_batch(
         self,
@@ -102,49 +125,111 @@ class AlarmPersistence:
         mutation = _require_mutation_fence(fenced_mutation)
         ordered = _ordered_records(records)
         with self._write_lock:
+            return self._commit_records(ordered, authority=authority, mutation=mutation)
+
+    def commit_adoption(
+        self,
+        record: ConfigurationAdoptionRecord,
+        *,
+        assert_authority: AuthorityCheck,
+        fenced_mutation: MutationFence,
+    ) -> CommitBatchResult:
+        if not isinstance(record, ConfigurationAdoptionRecord):
+            raise TypeError('record must be ConfigurationAdoptionRecord')
+        if record.record_hash != build_record_hash(record.unsigned_document()):
+            raise AlarmPersistenceValidationError('configuration adoption record hash mismatch')
+        authority = _require_authority(assert_authority)
+        mutation = _require_mutation_fence(fenced_mutation)
+        with self._write_lock:
             authority()
             head = self.read_head()
             if not head.aligned:
                 raise AlarmRecoveryRequiredError(
                     'Alarm Engine journal must be recovered before committing new work'
                 )
-            self._validate_previous_state(ordered)
-            segment_id = segment_id_for_evaluated_at(ordered[0].commit.evaluated_at)
-            with mutation():
-                _require_unchanged_head(self.read_head(), head, stage='WAL append')
-                self._journal.discard_unconfirmed_tail(head.durable)
-                sealed_count = 0
-                if head.durable is not None and segment_id > head.durable.segment_id:
-                    sealed_count = self._journal.seal_before(segment_id)
-                self._journal.verify_append_position(durable=head.durable, segment_id=segment_id)
-                entries = self._journal.append_batch(ordered)
-            final_position = entries[-1].end
-            durable_head = JournalHead(durable=final_position, materialized=head.materialized)
-            with mutation():
-                _require_unchanged_head(self.read_head(), head, stage='durable publication')
-                self._replace_head(durable_head)
-            for entry in entries:
-                with mutation():
-                    _require_durable_head(
-                        self.read_head(), durable_head, stage='snapshot materialization'
-                    )
-                    self._materialize_entry(entry)
-            completed_head = JournalHead(
-                durable=final_position,
-                materialized=final_position,
+            if head.durable is None and self._has_group_snapshots():
+                raise AlarmPersistenceCorruptionError(
+                    'Alarm Engine snapshots exist without a durable journal head'
+                )
+            entries = self._journal.validate_durable_region(head.durable)
+            adoptions = tuple(
+                entry.record
+                for entry in entries
+                if isinstance(entry.record, ConfigurationAdoptionRecord)
             )
+            if not adoptions and entries:
+                raise AlarmPersistenceConflictError(
+                    'configuration adoption requires explicit legacy state migration'
+                )
+            previous = None if not adoptions else adoptions[-1].target_artifact_ref
+            if record.previous_artifact_ref != previous:
+                raise AlarmPersistenceConflictError(
+                    'configuration adoption previous artifact does not match durable authority'
+                )
+            if any(item.adoption_id == record.adoption_id for item in adoptions):
+                raise AlarmPersistenceConflictError('configuration adoption_id is already durable')
+            return self._commit_records(
+                (record,), authority=authority, mutation=mutation, expected_head=head
+            )
+
+    def _commit_records(
+        self,
+        records: Sequence[EngineCommitRecord | ConfigurationAdoptionRecord],
+        *,
+        authority: AuthorityCheck,
+        mutation: MutationFence,
+        expected_head: JournalHead | None = None,
+    ) -> CommitBatchResult:
+        authority()
+        head = self.read_head()
+        if expected_head is not None and head != expected_head:
+            raise AlarmPersistenceConflictError(
+                'Alarm Engine journal changed during configuration adoption preparation'
+            )
+        if not head.aligned:
+            raise AlarmRecoveryRequiredError(
+                'Alarm Engine journal must be recovered before committing new work'
+            )
+        self._validate_previous_state(
+            tuple(record for record in records if isinstance(record, EngineCommitRecord))
+        )
+        first = records[0]
+        evaluated_at = (
+            first.commit.evaluated_at
+            if isinstance(first, EngineCommitRecord)
+            else first.effective_at
+        )
+        segment_id = segment_id_for_evaluated_at(evaluated_at)
+        with mutation():
+            _require_unchanged_head(self.read_head(), head, stage='WAL append')
+            self._journal.discard_unconfirmed_tail(head.durable)
+            sealed_count = 0
+            if head.durable is not None and segment_id > head.durable.segment_id:
+                sealed_count = self._journal.seal_before(segment_id)
+            self._journal.verify_append_position(durable=head.durable, segment_id=segment_id)
+            entries = self._journal.append_batch(records)
+        final_position = entries[-1].end
+        durable_head = JournalHead(durable=final_position, materialized=head.materialized)
+        with mutation():
+            _require_unchanged_head(self.read_head(), head, stage='durable publication')
+            self._replace_head(durable_head)
+        for entry in entries:
             with mutation():
                 _require_durable_head(
-                    self.read_head(), durable_head, stage='materialized publication'
+                    self.read_head(), durable_head, stage='snapshot materialization'
                 )
-                self._replace_head(completed_head)
-            return CommitBatchResult(
-                record_count=len(entries),
-                bytes_appended=sum(entry.end.byte_offset - entry.start_offset for entry in entries),
-                durable=final_position,
-                materialized=final_position,
-                sealed_segment_count=sealed_count,
-            )
+                self._materialize_entry(entry)
+        completed_head = JournalHead(durable=final_position, materialized=final_position)
+        with mutation():
+            _require_durable_head(self.read_head(), durable_head, stage='materialized publication')
+            self._replace_head(completed_head)
+        return CommitBatchResult(
+            record_count=len(entries),
+            bytes_appended=sum(entry.end.byte_offset - entry.start_offset for entry in entries),
+            durable=final_position,
+            materialized=final_position,
+            sealed_segment_count=sealed_count,
+        )
 
     def recover(
         self,
@@ -244,6 +329,8 @@ class AlarmPersistence:
 
     def _materialize_entry(self, entry: JournalEntry) -> bool:
         record = entry.record
+        if isinstance(record, ConfigurationAdoptionRecord):
+            return True
         current = self.read_snapshot(record.commit.priority_group)
         if current is not None and current.last_commit_id == record.commit.commit_id:
             return False

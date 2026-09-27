@@ -7,6 +7,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from ada_command_center.alarms.persistence.configuration_adoption import (
+    ConfigurationAdoptionRecord,
+)
 from ada_command_center.alarms.persistence.errors import (
     AlarmPersistenceCorruptionError,
     AlarmPersistenceValidationError,
@@ -346,13 +349,13 @@ class EngineCommitRecord:
 
 @dataclass(frozen=True, slots=True)
 class JournalEntry:
-    record: EngineCommitRecord
+    record: EngineCommitRecord | ConfigurationAdoptionRecord
     start_offset: int
     end: JournalPosition
 
     def __post_init__(self) -> None:
-        if not isinstance(self.record, EngineCommitRecord):
-            raise TypeError('record must be an EngineCommitRecord')
+        if not isinstance(self.record, EngineCommitRecord | ConfigurationAdoptionRecord):
+            raise TypeError('record must be a supported journal record')
         if isinstance(self.start_offset, bool) or not isinstance(self.start_offset, int):
             raise TypeError('start_offset must be an int')
         if self.start_offset < 0:
@@ -361,7 +364,12 @@ class JournalEntry:
             raise TypeError('end must be a JournalPosition')
         if self.start_offset >= self.end.byte_offset:
             raise ValueError('start_offset must be lower than end byte_offset')
-        if self.end.commit_id != self.record.commit.commit_id:
+        record_id = (
+            self.record.commit.commit_id
+            if isinstance(self.record, EngineCommitRecord)
+            else self.record.adoption_id
+        )
+        if self.end.commit_id != record_id:
             raise ValueError('journal entry end commit_id must match record commit_id')
 
 

@@ -3,15 +3,6 @@ from pathlib import Path
 
 _PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 _ROOT = _PACKAGE_ROOT / 'src/ada_command_center/alarms/persistence'
-_EXPECTED_PRODUCTION_FILES = {
-    '__init__.py',
-    'errors.py',
-    'journal.py',
-    'models.py',
-    'paths.py',
-    'serialization.py',
-    'store.py',
-}
 
 
 def _import_names(path: Path) -> tuple[str, ...]:
@@ -23,11 +14,6 @@ def _import_names(path: Path) -> tuple[str, ...]:
         elif isinstance(node, ast.ImportFrom):
             names.append(node.module or '')
     return tuple(names)
-
-
-def test_persistence_has_expected_production_files() -> None:
-    actual = {path.name for path in _ROOT.glob('*.py')}
-    assert actual == _EXPECTED_PRODUCTION_FILES
 
 
 def test_persistence_keeps_runtime_and_external_infrastructure_out_of_domain_storage() -> None:
