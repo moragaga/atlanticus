@@ -18,6 +18,7 @@ _SPEC.loader.exec_module(_verifier)
 _GEN_SPEC = importlib.util.spec_from_file_location('generate_web_starter_for_container', _ROOT / 'generate_starter.py')
 assert _GEN_SPEC is not None and _GEN_SPEC.loader is not None
 _generator = importlib.util.module_from_spec(_GEN_SPEC)
+sys.modules[_GEN_SPEC.name] = _generator
 _GEN_SPEC.loader.exec_module(_generator)
 
 
@@ -26,7 +27,10 @@ def test_generated_starter_includes_offline_local_image_contract(tmp_path, monke
     if profile == 'ada':
         path = tmp_path / 'scopes/ada/web/application/ada-generic-application/.env.detail'
         path.parent.mkdir(parents=True)
-        path.write_text('# Fixture\n', encoding='utf-8')
+        path.write_text(
+            '# @distribution manual-default\nADA_TOOL_SOURCE_PROVIDER=blob\n',
+            encoding='utf-8',
+        )
         monkeypatch.setattr(_generator, 'REPOSITORY_ROOT', tmp_path)
     output = _generator.generate_starter(profile=profile, destination=tmp_path / 'generated')
     dockerfile = (output / 'Dockerfile').read_text(encoding='utf-8')
@@ -60,7 +64,7 @@ def _candidate(tmp_path: Path):
     payload = {'schema_version': 1, 'profile': 'generic', 'python': platform.python_version(),
                'platform': sys.platform, 'machine': platform.machine(),
                'packages': [{'filename': wheel.name,
-                             'sha256': hashlib.sha256(wheel.read_bytes()).hexdigest()}]}
+                            'sha256': hashlib.sha256(wheel.read_bytes()).hexdigest()}]}
     (wheelhouse / 'manifest.json').write_text(json.dumps(payload), encoding='utf-8')
     return root, wheel
 
