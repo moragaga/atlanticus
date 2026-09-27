@@ -30,6 +30,10 @@ class AlarmPersistencePaths:
     def journal_head_relative(self) -> Path:
         return Path('runtime/state/journal-head.json')
 
+    @property
+    def effective_head_relative(self) -> Path:
+        return Path('runtime/state/effective-head.json')
+
     def group_snapshot_relative(self, priority_group: str) -> Path:
         return Path('runtime/state/groups') / f'{_require_priority_group(priority_group)}.json'
 

@@ -13,6 +13,10 @@ from ada_command_center.alarms.persistence.configuration_adoption import (
     ConfigurationAdoptionRecordV2,
     GroupCommitReference,
 )
+from ada_command_center.alarms.persistence.effective_head import (
+    ALARM_EFFECTIVE_HEAD_SCHEMA_VERSION,
+    AlarmEffectiveConfigurationHead,
+)
 from ada_command_center.alarms.persistence.errors import (
     AlarmPersistenceConflictError,
     AlarmPersistenceCorruptionError,
@@ -55,6 +59,8 @@ __all__ = [
     'ENGINE_COMMIT_RECORD_SCHEMA_VERSION',
     'GROUP_RUNTIME_SNAPSHOT_SCHEMA_VERSION',
     'JOURNAL_HEAD_SCHEMA_VERSION',
+    'ALARM_EFFECTIVE_HEAD_SCHEMA_VERSION',
+    'AlarmEffectiveConfigurationHead',
     'AlarmPersistence',
     'AlarmPersistenceConflictError',
     'AlarmPersistenceCorruptionError',

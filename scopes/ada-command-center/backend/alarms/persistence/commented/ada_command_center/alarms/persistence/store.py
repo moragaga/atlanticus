@@ -20,6 +20,9 @@ from ada_command_center.alarms.persistence.configuration_adoption import (
     ConfigurationAdoptionRecordV2,
     GroupCommitReference,
 )
+from ada_command_center.alarms.persistence.effective_head import (
+    AlarmEffectiveConfigurationHead,
+)
 from ada_command_center.alarms.persistence.errors import (
     AlarmPersistenceConflictError,
     AlarmPersistenceCorruptionError,
@@ -125,6 +128,29 @@ class AlarmPersistence:
             for entry in self._journal.read_entries(after=after, through=head.durable)
             if isinstance(entry.record, ConfigurationAdoptionRecord)
         )
+
+    def read_effective_head(self) -> AlarmEffectiveConfigurationHead | None:
+        head = self.read_head()
+        if not head.aligned:
+            raise AlarmRecoveryRequiredError(
+                'Alarm Engine journal must be recovered before reading EFFECTIVE'
+            )
+        entries = self._journal.validate_durable_region(head.durable)
+        expected = self._expected_effective_head(entries)
+        if expected is None:
+            self._assert_effective_absent()
+            if self.read_head() != head:
+                raise AlarmRecoveryRequiredError('journal changed during EFFECTIVE read')
+            return None
+        actual = self._read_effective_document()
+        if actual != expected:
+            raise AlarmRecoveryRequiredError(
+                'EFFECTIVE projection requires recovery from the durable WAL'
+            )
+        self._verify_durable_snapshots(entries)
+        if self.read_head() != head:
+            raise AlarmRecoveryRequiredError('journal changed during EFFECTIVE read')
+        return expected
 
     def commit_batch(
         self,
@@ -245,6 +271,7 @@ class AlarmPersistence:
             raise AlarmRecoveryRequiredError(
                 'Alarm Engine journal must be recovered before committing new work'
             )
+        self.read_effective_head()
         self._validate_previous_state(
             tuple(record for record in records if isinstance(record, EngineCommitRecord))
         )
@@ -278,6 +305,12 @@ class AlarmPersistence:
         with mutation():
             _require_durable_head(self.read_head(), durable_head, stage='materialized publication')
             self._replace_head(completed_head)
+        if isinstance(records[-1], ConfigurationAdoptionRecord):
+            with mutation():
+                _require_unchanged_head(
+                    self.read_head(), completed_head, stage='effective publication'
+                )
+                self._reconcile_effective_head(completed_head)
         return CommitBatchResult(
             record_count=len(entries),
             bytes_appended=sum(entry.end.byte_offset - entry.start_offset for entry in entries),
@@ -307,6 +340,7 @@ class AlarmPersistence:
             authority()
             self._journal.validate_durable_region(head.durable)
             if head.durable is None:
+                self._assert_effective_absent()
                 return RecoveryResult(
                     durable=None,
                     materialized=None,
@@ -319,6 +353,11 @@ class AlarmPersistence:
                 with mutation():
                     _require_unchanged_head(self.read_head(), head, stage='recovery sealing')
                     sealed_count = self._journal.seal_before(head.durable.segment_id)
+                with mutation():
+                    _require_unchanged_head(
+                        self.read_head(), head, stage='recovery effective publication'
+                    )
+                    self._reconcile_effective_head(head)
                 return RecoveryResult(
                     durable=head.durable,
                     materialized=head.materialized,
@@ -379,6 +418,11 @@ class AlarmPersistence:
             with mutation():
                 _require_unchanged_head(self.read_head(), current_head, stage='recovery sealing')
                 sealed_count = self._journal.seal_before(head.durable.segment_id)
+            with mutation():
+                _require_unchanged_head(
+                    self.read_head(), current_head, stage='recovery effective publication'
+                )
+                self._reconcile_effective_head(current_head)
             return RecoveryResult(
                 durable=head.durable,
                 materialized=current_materialized,
@@ -387,6 +431,72 @@ class AlarmPersistence:
                 discarded_tail_bytes=discarded,
                 sealed_segment_count=sealed_count,
             )
+
+    def _expected_effective_head(
+        self, entries: Sequence[JournalEntry]
+    ) -> AlarmEffectiveConfigurationHead | None:
+        for entry in reversed(entries):
+            if isinstance(entry.record, ConfigurationAdoptionRecord):
+                return AlarmEffectiveConfigurationHead.from_adoption_entry(entry)
+        return None
+
+    def _read_effective_document(self) -> AlarmEffectiveConfigurationHead | None:
+        try:
+            document = self._state.read(self._paths.effective_head_relative)
+        except StateError as error:
+            raise AlarmPersistenceCorruptionError(
+                'could not read Alarm Engine effective head'
+            ) from error
+        if document is None:
+            return None
+        return AlarmEffectiveConfigurationHead.from_document(document)
+
+    def _assert_effective_absent(self) -> None:
+        if self._read_effective_document() is not None:
+            raise AlarmPersistenceCorruptionError(
+                'EFFECTIVE projection exists without a durable adoption'
+            )
+
+    def _verify_durable_snapshots(self, entries: Sequence[JournalEntry]) -> None:
+        latest = {
+            entry.record.commit.priority_group: entry.record.snapshot_after
+            for entry in entries
+            if isinstance(entry.record, EngineCommitRecord)
+        }
+        snapshots = self.list_snapshots()
+        actual = {snapshot.priority_group: snapshot for snapshot in snapshots}
+        if (
+            len(actual) != len(snapshots)
+            or set(actual) != set(latest)
+            or any(actual[group] != expected for group, expected in latest.items())
+        ):
+            raise AlarmPersistenceCorruptionError(
+                'group snapshots do not match the durable journal before EFFECTIVE publication'
+            )
+
+    def _write_effective_head(self, head: AlarmEffectiveConfigurationHead) -> None:
+        try:
+            self._state.replace(self._paths.effective_head_relative, head.as_document())
+        except StateError as error:
+            raise AlarmPersistenceWriteError('could not publish Alarm Engine EFFECTIVE') from error
+
+    def _reconcile_effective_head(self, expected_journal_head: JournalHead) -> None:
+        if not expected_journal_head.aligned or self.read_head() != expected_journal_head:
+            raise AlarmRecoveryRequiredError(
+                'journal must be aligned and unchanged before EFFECTIVE publication'
+            )
+        entries = self._journal.validate_durable_region(expected_journal_head.durable)
+        expected = self._expected_effective_head(entries)
+        if expected is None:
+            self._assert_effective_absent()
+            return
+        self._verify_durable_snapshots(entries)
+        try:
+            actual = self._read_effective_document()
+        except AlarmPersistenceCorruptionError:
+            actual = None
+        if actual != expected:
+            self._write_effective_head(expected)
 
     def _validate_previous_state(self, records: Sequence[EngineCommitRecord]) -> None:
         for record in records:
