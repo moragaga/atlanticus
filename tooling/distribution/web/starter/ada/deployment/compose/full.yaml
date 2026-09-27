@@ -1,0 +1,101 @@
+name: ada-local-full
+x-local-application-settings: &local_application_settings
+  ATLANTICUS_ENVIRONMENT: local
+  ADA_MANAGER_PERSISTENCE_PROVIDER: durable
+  ADA_APPLICATION_NAMESPACE: ${ADA_APPLICATION_NAMESPACE:-conciencia_situacional}
+  ADA_TOOL_NAMESPACE: ${ADA_TOOL_NAMESPACE:?Set ADA_TOOL_NAMESPACE in the distribution .env}
+  ADA_TOOL_SOURCE_PROVIDER: blob
+  ADA_TOOL_PROJECTION_PROVIDER: cosmos
+  ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME: ${ADA_LOCAL_BLOB_CONTAINER:-ada-source}
+  ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING: 'DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;'
+  ADA_TOOL_PROJECTION_COSMOS_ENDPOINT: http://cosmos-emulator:8081
+  ADA_TOOL_PROJECTION_COSMOS_KEY: 'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=='
+  ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME: ${ADA_LOCAL_COSMOS_DATABASE:-ada-local}
+  APPLICATION_PUBLICATIONS_ROOT: /var/lib/atlanticus/publications
+  ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID: ${ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID:-}
+services:
+
+  cosmos-emulator:
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest
+    environment:
+      PROTOCOL: http
+      GATEWAY_PUBLIC_ENDPOINT: cosmos-emulator
+      ENABLE_EXPLORER: 'false'
+      ENABLE_TELEMETRY: 'false'
+      LOG_LEVEL: warn
+    volumes:
+      - cosmos_data:/data
+    ports:
+      - '127.0.0.1:${ADA_COSMOS_PORT:-8081}:8081'
+      - '127.0.0.1:${ADA_COSMOS_READY_PORT:-8080}:8080'
+    networks:
+      - support
+    restart: unless-stopped
+    mem_limit: 2g
+    cpus: 1.0
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:3.36.0
+    command:
+      - azurite-blob
+      - --blobHost
+      - 0.0.0.0
+      - --location
+      - /data
+      - --skipApiVersionCheck
+      - --disableProductStyleUrl
+    volumes:
+      - azurite_data:/data
+    ports:
+      - '127.0.0.1:${ADA_AZURITE_PORT:-10000}:10000'
+    networks:
+      - support
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 0.5
+
+  resources:
+    image: ${ADA_WEB_IMAGE:-ada-generic:compose-local}
+    entrypoint: ['python', '-m', 'application.local_resources']
+    environment:
+      <<: *local_application_settings
+    depends_on:
+      cosmos-emulator:
+        condition: service_started
+      azurite:
+        condition: service_started
+    networks:
+      - support
+    restart: 'no'
+  web:
+    image: ${ADA_WEB_IMAGE:-ada-generic:compose-local}
+    build:
+      context: .
+    environment:
+      <<: *local_application_settings
+    depends_on:
+      resources:
+        condition: service_completed_successfully
+    ports:
+      - '127.0.0.1:${ADA_WEB_PORT:-8000}:8000'
+    networks:
+      - support
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test: ['CMD', 'python', '-c', 'from urllib.request import urlopen; urlopen("http://127.0.0.1:8000/health/live", timeout=3).close()']
+      interval: 20s
+      timeout: 5s
+      start_period: 25s
+      retries: 4
+networks:
+  support:
+    external: true
+    name: ${ADA_COMPOSE_NETWORK:-ada-generic-support}
+volumes:
+  cosmos_data:
+    external: true
+    name: ${ADA_COSMOS_VOLUME:-ada-generic-cosmos}
+  azurite_data:
+    external: true
+    name: ${ADA_AZURITE_VOLUME:-ada-generic-azurite}

@@ -1,0 +1,40 @@
+# ADA con dependencias externas explícitas
+name: ada-local-web
+services:
+  # Web utiliza el .env del consumidor sin reescribir proveedores.
+  # project.sh establece la raíz de la distribución con --project-directory.
+  web:
+    image: ${ADA_WEB_IMAGE:-ada-generic:compose-local}
+    build:
+      context: .
+    env_file:
+      - .env
+    environment:
+      APPLICATION_PUBLICATIONS_ROOT: /var/lib/atlanticus/publications
+    ports:
+      - '127.0.0.1:${ADA_WEB_PORT:-8000}:8000'
+    networks:
+      - support
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test: ['CMD', 'python', '-c', 'from urllib.request import urlopen; urlopen("http://127.0.0.1:8000/health/live", timeout=3).close()']
+      interval: 20s
+      timeout: 5s
+      start_period: 25s
+      retries: 4
+  # Preparación local opt-in: sólo puede operar contra emuladores conocidos.
+  resources:
+    profiles: ['setup']
+    image: ${ADA_WEB_IMAGE:-ada-generic:compose-local}
+    entrypoint: ['python', '-m', 'application.local_resources']
+    env_file:
+      - .env
+    networks:
+      - support
+    restart: 'no'
+networks:
+  support:
+    external: true
+    name: ${ADA_COMPOSE_NETWORK:-ada-generic-support}

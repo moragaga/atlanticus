@@ -22,7 +22,9 @@ DEPENDENCY_NAME = re.compile(
     r'(?:\s*,\s*(?:==|~=|!=|>=|<=|>|<)\s*[0-9][A-Za-z0-9.*+!_-]*)*$'
 )
 COMPOSE_PROFILES = frozenset({'web', 'infra', 'full'})
-COMPOSE_ACTIONS = frozenset({'up', 'down', 'logs', 'ps', 'build'})
+COMPOSE_ACTIONS = frozenset({'up', 'down', 'logs', 'ps', 'build', 'prepare'})
+_COMPOSE_NETWORK_DEFAULT = 'ada-generic-support'
+_COMPOSE_PROJECTS = {'infra': 'ada-local-infra', 'web': 'ada-local-web', 'full': 'ada-local-full'}
 
 
 class ProjectError(RuntimeError):
@@ -445,14 +447,102 @@ def docker(root: Path, action: str, *, tag: str | None = None) -> None:
     raise ProjectError(f'Unsupported Docker operation: {action}')
 
 
+def _compose_setting(root: Path, key: str, default: str = '') -> str:
+    parent = os.environ.get(key)
+    if parent is not None:
+        return parent
+    location = root / '.env'
+    if not location.is_file():
+        return default
+    for line in location.read_text(encoding='utf-8').splitlines():
+        if re.fullmatch(rf'{re.escape(key)}\s*=.*', line.strip()):
+            raw = line.split('=', 1)[1].strip()
+            if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in ('"', "'"):
+                raw = raw[1:-1]
+            return raw
+    return default
+
+
+def _docker_network(root: Path, *, create: bool) -> None:
+    name = _compose_setting(root, 'ADA_COMPOSE_NETWORK', _COMPOSE_NETWORK_DEFAULT)
+    if re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,62}', name) is None:
+        raise ProjectError('ADA_COMPOSE_NETWORK is not a valid Docker network name')
+    result = subprocess.run(['docker', 'network', 'inspect', name], cwd=root,
+                            capture_output=True, text=True, check=False)
+    if result.returncode == 0:
+        return
+    if not create:
+        raise ProjectError('The supporting network is missing; start infra or full first')
+    _command(['docker', 'network', 'create', '--driver', 'bridge', name], root=root)
+
+
+def _docker_volumes(root: Path) -> None:
+    for key, default in (
+        ('ADA_COSMOS_VOLUME', 'ada-generic-cosmos'),
+        ('ADA_AZURITE_VOLUME', 'ada-generic-azurite'),
+    ):
+        name = _compose_setting(root, key, default)
+        if re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,62}', name) is None:
+            raise ProjectError(f'{key} is not a valid Docker volume name')
+        _command(['docker', 'volume', 'create', name], root=root)
+
+
+def _running_compose_project(root: Path, project: str) -> bool:
+    result = subprocess.run([
+        'docker', 'ps', '--quiet', '--filter', f'label=com.docker.compose.project={project}',
+    ], cwd=root, capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        raise ProjectError('Could not inspect running Docker Compose projects')
+    return bool(result.stdout.strip())
+
+
+def _validate_compose_start(root: Path, profile: str) -> None:
+    if profile != 'infra' and not (root / '.env').is_file():
+        raise ProjectError('The selected Compose profile requires a configured .env file')
+    if profile == 'full':
+        namespace = _compose_setting(root, 'ADA_TOOL_NAMESPACE')
+        if not namespace or re.search(r'<[^>]+>', namespace):
+            raise ProjectError('Set ADA_TOOL_NAMESPACE in .env before starting full Compose')
+    if profile == 'web':
+        values = {
+            key: _compose_setting(root, key)
+            for key in ('ADA_MANAGER_PERSISTENCE_PROVIDER', 'ADA_TOOL_SOURCE_PROVIDER',
+                        'ADA_TOOL_PROJECTION_PROVIDER')
+        }
+        if values != {
+            'ADA_MANAGER_PERSISTENCE_PROVIDER': 'durable',
+            'ADA_TOOL_SOURCE_PROVIDER': 'blob',
+            'ADA_TOOL_PROJECTION_PROVIDER': 'cosmos',
+        }:
+            raise ProjectError('Web Compose requires durable Manager, Blob Source and Cosmos Projection')
+        unresolved = _unresolved_environment(root)
+        if unresolved:
+            raise ProjectError(f'Unresolved environment placeholders: {", ".join(unresolved)}')
+
+
 def compose(root: Path, action: str, profile: str) -> None:
     if action not in COMPOSE_ACTIONS or profile not in COMPOSE_PROFILES:
         raise ProjectError('Unsupported Compose operation or profile')
     location = root / 'deployment/compose' / f'{profile}.yaml'
     if location.is_symlink() or not location.is_file():
         raise ProjectError(f'Compose profile is not generated yet: {profile}')
-    if profile != 'infra' and not (root / '.env').is_file():
-        raise ProjectError('The selected Compose profile requires a configured .env file')
+    if action in ('up', 'prepare'):
+        if action == 'prepare' and profile != 'web':
+            raise ProjectError('Local resource preparation is available only for web Compose')
+        _validate_compose_start(root, profile)
+        if profile in ('infra', 'full'):
+            incompatible = ('full',) if profile == 'infra' else ('infra', 'web')
+            if any(_running_compose_project(root, _COMPOSE_PROJECTS[item])
+                   for item in incompatible):
+                raise ProjectError('Stop incompatible infra/full/web Compose stacks before switching')
+        _docker_network(root, create=True)
+        if action == 'up' and profile in ('infra', 'full'):
+            _docker_volumes(root)
+    if action == 'prepare':
+        _command(['docker', 'compose', '--project-directory', str(root), '-f', str(location),
+                  '--profile', 'setup', 'run', '--rm', '--no-deps', 'resources'],
+                 root=root, passthrough=True)
+        return
     arguments = {
         'up': ['up', '--detach'], 'down': ['down'], 'logs': ['logs', '--follow'],
         'ps': ['ps'], 'build': ['build'],

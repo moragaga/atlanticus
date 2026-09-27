@@ -229,6 +229,8 @@ def test_docker_build_uses_distributed_context_with_derived_lock(distribution, m
 
 
 def test_compose_profile_requires_generated_files_and_env(distribution, monkeypatch):
+    for key in ('ADA_TOOL_NAMESPACE', 'ADA_COSMOS_VOLUME', 'ADA_AZURITE_VOLUME'):
+        monkeypatch.delenv(key, raising=False)
     with pytest.raises(project.ProjectError, match='not generated'):
         project.compose(distribution, 'up', 'full')
     directory = distribution / 'deployment/compose'
@@ -237,11 +239,20 @@ def test_compose_profile_requires_generated_files_and_env(distribution, monkeypa
     with pytest.raises(project.ProjectError, match='configured .env'):
         project.compose(distribution, 'up', 'full')
     (distribution / '.env').write_text('EXAMPLE=1\n')
+    with pytest.raises(project.ProjectError, match='ADA_TOOL_NAMESPACE'):
+        project.compose(distribution, 'up', 'full')
+    (distribution / '.env').write_text('ADA_TOOL_NAMESPACE=operaciones_integradas\n')
     commands = []
+    monkeypatch.setattr(project, '_running_compose_project', lambda *_args: False)
+    monkeypatch.setattr(project, '_docker_network', lambda *_args, **_kw: None)
     monkeypatch.setattr(project, '_command', lambda command, **_kw: commands.append(command))
     project.compose(distribution, 'up', 'full')
-    assert commands[0][-2:] == ['up', '--detach']
-    assert str(directory / 'full.yaml') in commands[0]
+    assert commands[:2] == [
+        ['docker', 'volume', 'create', 'ada-generic-cosmos'],
+        ['docker', 'volume', 'create', 'ada-generic-azurite'],
+    ]
+    assert commands[2][-2:] == ['up', '--detach']
+    assert str(directory / 'full.yaml') in commands[2]
 
 
 def test_project_tool_mirrors_and_portable_launchers():

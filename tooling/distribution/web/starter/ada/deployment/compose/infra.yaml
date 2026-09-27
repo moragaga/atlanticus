@@ -1,0 +1,51 @@
+name: ada-local-infra
+services:
+
+  cosmos-emulator:
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest
+    environment:
+      PROTOCOL: http
+      GATEWAY_PUBLIC_ENDPOINT: cosmos-emulator
+      ENABLE_EXPLORER: 'false'
+      ENABLE_TELEMETRY: 'false'
+      LOG_LEVEL: warn
+    volumes:
+      - cosmos_data:/data
+    ports:
+      - '127.0.0.1:${ADA_COSMOS_PORT:-8081}:8081'
+      - '127.0.0.1:${ADA_COSMOS_READY_PORT:-8080}:8080'
+    networks:
+      - support
+    restart: unless-stopped
+    mem_limit: 2g
+    cpus: 1.0
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:3.36.0
+    command:
+      - azurite-blob
+      - --blobHost
+      - 0.0.0.0
+      - --location
+      - /data
+      - --skipApiVersionCheck
+      - --disableProductStyleUrl
+    volumes:
+      - azurite_data:/data
+    ports:
+      - '127.0.0.1:${ADA_AZURITE_PORT:-10000}:10000'
+    networks:
+      - support
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 0.5
+networks:
+  support:
+    external: true
+    name: ${ADA_COMPOSE_NETWORK:-ada-generic-support}
+volumes:
+  cosmos_data:
+    external: true
+    name: ${ADA_COSMOS_VOLUME:-ada-generic-cosmos}
+  azurite_data:
+    external: true
+    name: ${ADA_AZURITE_VOLUME:-ada-generic-azurite}
