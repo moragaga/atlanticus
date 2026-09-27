@@ -1,0 +1,19 @@
+# Whitelist de entradas al contexto del build: nunca copiar contratos .env o secretos.
+*
+!pyproject.toml
+!manifest.json
+!gunicorn.conf.py
+!src/
+!src/**
+!docker/
+!docker/verify_delivery.py
+!wheelhouse/
+!wheelhouse/*.whl
+!wheelhouse/manifest.json
+!requirements/
+!requirements/*.txt
+**/.env
+**/.env.*
+**/secrets.json
+**/secrets.*.json
+**/*mapping-env.csv

@@ -23,7 +23,7 @@ _GEN_SPEC.loader.exec_module(_generator)
 
 
 @pytest.mark.parametrize('profile', ('generic', 'ada'))
-def test_generated_starter_includes_offline_local_image_contract(tmp_path, monkeypatch, profile):
+def test_generated_starter_selects_its_image_contract(tmp_path, monkeypatch, profile):
     if profile == 'ada':
         path = tmp_path / 'scopes/ada/web/application/ada-generic-application/.env.detail'
         path.parent.mkdir(parents=True)
@@ -36,19 +36,33 @@ def test_generated_starter_includes_offline_local_image_contract(tmp_path, monke
     dockerfile = (output / 'Dockerfile').read_text(encoding='utf-8')
     ignored = (output / '.dockerignore').read_text(encoding='utf-8')
     manifest = json.loads((output / 'manifest.json').read_text(encoding='utf-8'))
-    for path in ('Dockerfile', '.dockerignore', 'docker/verify_wheelhouse.py'):
+    required = ['Dockerfile', '.dockerignore']
+    if profile == 'ada':
+        required.append('docker/verify_delivery.py')
+    else:
+        required.append('docker/verify_wheelhouse.py')
+    for path in required:
         assert manifest['files'][path] == hashlib.sha256((output / path).read_bytes()).hexdigest()
     assert 'python:3.14.2-slim-bookworm' in dockerfile
-    assert 'UV_OFFLINE=1' in dockerfile
-    assert '--no-index --find-links /build/wheelhouse' in dockerfile
     assert 'USER app' in dockerfile
-    assert 'exec python -m application' in dockerfile
-    entrypoint = next(line.removeprefix('ENTRYPOINT ') for line in dockerfile.splitlines() if line.startswith('ENTRYPOINT '))
-    assert json.loads(entrypoint)[:2] == ['/bin/sh', '-c']
-    assert 'cannot run in production' in json.loads(entrypoint)[2]
     assert 'secrets.json' in ignored
     assert 'mapping-env.csv' in ignored
     assert 'wheelhouse/*.whl' in ignored
+    if profile == 'generic':
+        assert 'UV_OFFLINE=1' in dockerfile
+        assert '--no-index --find-links /build/wheelhouse' in dockerfile
+        assert 'exec python -m application' in dockerfile
+        assert 'EXPOSE 8050' in dockerfile
+        assert 'cannot run in production' in dockerfile
+    else:
+        assert 'UV_OFFLINE=1' not in dockerfile
+        assert '--require-hashes' in dockerfile
+        assert 'requirements/external-runtime.txt' in dockerfile
+        assert 'EXPOSE 8000' in dockerfile
+        assert 'HEALTHCHECK' not in dockerfile
+        assert 'gunicorn' in dockerfile
+        assert 'cannot run in production' not in dockerfile
+        assert 'requirements/*.txt' in ignored
 
 
 def _candidate(tmp_path: Path):
