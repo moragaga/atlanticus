@@ -65,6 +65,7 @@ def test_host_marks_are_rendered_with_accessible_order_and_without_dropping_cont
         '/assets/example/img/mlp.png',
     ]
     assert [node.href for node in _descendants(header, dcc.Link)] == ['/manager', '/']
+    assert all(node.children != principal.display_name for node in _descendants(header, html.Span))
     assert any(node.children == 'Gestor de configuración ADA' for node in _descendants(header, html.Strong))
 
 

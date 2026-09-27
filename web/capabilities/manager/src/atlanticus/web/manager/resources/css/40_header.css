@@ -112,9 +112,6 @@
 
 .atlanticus-manager__header-end {
     flex: 0 1 auto;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: .15rem;
 }
 
 .atlanticus-manager__header-actions {
@@ -143,15 +140,6 @@
 
 .atlanticus-manager__header-link--return {
     border: 1px solid rgba(255, 255, 255, .3);
-}
-
-.atlanticus-manager__header-principal {
-    max-width: 100%;
-    color: #FFFFFF;
-    font-size: .73rem;
-    line-height: 1.25;
-    overflow-wrap: anywhere;
-    text-align: right;
 }
 
 @media (max-width: 72rem) {
@@ -199,11 +187,4 @@
         max-height: 2.15rem;
     }
 
-    .atlanticus-manager__header-end {
-        align-items: flex-end;
-    }
-
-    .atlanticus-manager__header-principal {
-        max-width: 100%;
-    }
 }

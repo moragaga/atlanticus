@@ -70,11 +70,6 @@ def build_manager_header(
                         className='atlanticus-manager__header-actions',
                         **{'aria-label': 'Accesos del Manager'},
                     ),
-                    html.Span(
-                        principal.display_name,
-                        className='atlanticus-manager__header-principal',
-                        **{'aria-label': 'Usuario actual'},
-                    ),
                 ],
                 className='atlanticus-manager__header-end',
             ),

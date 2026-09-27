@@ -47,19 +47,15 @@ def _find(component: object, component_id: object) -> object | None:
     return None
 
 
-def _find_by_class(component: object, class_name: str) -> object | None:
-    if getattr(component, 'className', None) == class_name:
-        return component
+def _texts(component: object) -> tuple[str, ...]:
+    if isinstance(component, str):
+        return (component,)
     children = getattr(component, 'children', None)
     if isinstance(children, (list, tuple)):
-        for child in children:
-            if child is not None:
-                result = _find_by_class(child, class_name)
-                if result is not None:
-                    return result
-    elif children is not None and not isinstance(children, str):
-        return _find_by_class(children, class_name)
-    return None
+        return tuple(text for child in children for text in _texts(child))
+    if children is None:
+        return ()
+    return _texts(children)
 
 
 def _links(component: object) -> tuple[dcc.Link, ...]:
@@ -86,7 +82,7 @@ def test_header_is_generic_and_return_is_opt_in():
     assert _find(standalone, HEADER_SECTION_ID).children == 'Inicio'
     assert [link.href for link in _links(standalone)] == ['/manager']
     assert [link.href for link in _links(integrated)] == ['/manager', '/']
-    assert _find_by_class(integrated, 'atlanticus-manager__header-principal').children == 'Jane Doe'
+    assert principal.display_name not in _texts(integrated)
 
 
 @pytest.mark.parametrize('value', ['https://example.org', '//example.org', '/manager?next=/x',
