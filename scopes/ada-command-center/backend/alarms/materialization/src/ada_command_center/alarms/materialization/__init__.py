@@ -1,3 +1,6 @@
+from ada_command_center.alarms.materialization.artifact_reference import (
+    AlarmConfigurationArtifactRef,
+)
 from ada_command_center.alarms.materialization.delivery import (
     DeliveryAlarmConfiguration,
     ResolvedDeactivationPolicy,
@@ -29,6 +32,7 @@ from ada_command_center.alarms.materialization.runtime import RuntimeAlarmConfig
 __version__ = '1.0.0'
 
 __all__ = [
+    'AlarmConfigurationArtifactRef',
     'AlarmConfigurationResolution',
     'AlarmMaterializationPublicationError',
     'AlarmResolutionFinding',

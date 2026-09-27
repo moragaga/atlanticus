@@ -40,6 +40,7 @@ from ada_command_center.processes.alarms_runtime import (
     ConfigurationAdoptionRejectionReason,
     RuntimeLocalConfigurationReader,
     __version__,
+    build_alarm_configuration_revision,
     build_alarm_execution_session,
     build_alarm_runtime_composition,
     compose_engine_commit_record,
@@ -93,6 +94,7 @@ def test_public_api_and_version() -> None:
     )
     assert all(item is not None for item in exported)
     assert DEFAULT_ALARM_RUNTIME_ITERATION_PERIOD_SECONDS == 5.0
+    assert callable(build_alarm_configuration_revision)
     assert callable(build_alarm_execution_session)
     assert callable(build_alarm_runtime_composition)
     assert callable(compose_engine_commit_record)

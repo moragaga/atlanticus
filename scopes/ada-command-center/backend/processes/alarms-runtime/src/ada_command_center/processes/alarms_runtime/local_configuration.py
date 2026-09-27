@@ -3,10 +3,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from ada_command_center.alarms.materialization.artifact_reference import (
+    AlarmConfigurationArtifactRef,
+)
 from ada_command_center.alarms.materialization.local_reader import (
     LocalAlarmMaterializationReader,
     ReadyAlarmMaterialization,
     materialization_root,
+)
+from ada_command_center.processes.alarms_runtime.adoption import AlarmConfigurationRevision
+from ada_command_center.processes.alarms_runtime.session import (
+    AlarmEvaluatorRegistry,
+    build_alarm_execution_session,
 )
 
 
@@ -40,3 +48,45 @@ class RuntimeLocalConfigurationReader:
             result_id=result_id,
             manifest_sha256=manifest_sha256,
         )
+
+
+def build_alarm_configuration_revision(
+    *,
+    candidate: ReadyAlarmMaterialization,
+    evaluator_registry: AlarmEvaluatorRegistry,
+) -> AlarmConfigurationRevision:
+    if not isinstance(candidate, ReadyAlarmMaterialization):
+        raise TypeError('candidate must be a ReadyAlarmMaterialization')
+    if not isinstance(evaluator_registry, AlarmEvaluatorRegistry):
+        raise TypeError('evaluator_registry must be an AlarmEvaluatorRegistry')
+    runtime = candidate.runtime
+    key = runtime.resolution_key
+    if (
+        candidate.delivery.resolution_key != key
+        or candidate.manifest.get('status') != 'READY'
+        or candidate.manifest.get('result_id') != candidate.result_id
+        or candidate.manifest.get('resolution_key')
+        != {
+            'alarm_configuration_revision': key.alarm_configuration_revision,
+            'confirmed_tool_catalog_revision': key.confirmed_tool_catalog_revision,
+        }
+    ):
+        raise ValueError('candidate materialization identity or resolution key is inconsistent')
+    artifact_ref = AlarmConfigurationArtifactRef(
+        source_key=candidate.manifest.get('source_key'),
+        result_id=candidate.result_id,
+        manifest_sha256=candidate.manifest_sha256,
+        resolution_key=key,
+    )
+    session = build_alarm_execution_session(
+        alarm_configuration_revision=key.alarm_configuration_revision,
+        tool_registry_revision=key.confirmed_tool_catalog_revision,
+        planned_alarms=runtime.planned_alarms,
+        parameters_by_alarm=runtime.parameters_by_alarm,
+        evaluator_registry=evaluator_registry,
+    )
+    return AlarmConfigurationRevision(
+        artifact_ref=artifact_ref,
+        defined_alarm_identities=runtime.defined_alarm_identities,
+        session=session,
+    )

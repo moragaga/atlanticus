@@ -1,5 +1,6 @@
-# Espejo comentado: Contratos puros para clasificar cambios entre revisiones de configuración.
-# Mantiene exactamente los mismos tokens ejecutables que el archivo productivo.
+# Planificación pura de la transición entre DOS artefactos exactos; no persiste ni ejecuta cambios.
+# La unión de identidades definidas evita confundir nuevas Rules, Rules deshabilitadas y Rules eliminadas.
+# ADDED y ENABLED sólo se clasifican aquí: el ejecutor durable todavía no implementa esas transiciones.
 
 from __future__ import annotations
 
@@ -7,6 +8,9 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from ada_command_center.alarms.core import PlannedAlarm
+from ada_command_center.alarms.materialization.artifact_reference import (
+    AlarmConfigurationArtifactRef,
+)
 from ada_command_center.domain.alarms import (
     AlarmIdentity,
     Criticality,
@@ -25,6 +29,8 @@ class ConfigurationAdoptionPlanError(ValueError):
 class ConfigurationAdoptionDisposition(StrEnum):
     UNCHANGED = 'unchanged'
     COMPATIBLE = 'compatible'
+    ADDED = 'added'
+    ENABLED = 'enabled'
     DISABLED = 'disabled'
     REMOVED = 'removed'
     STRUCTURAL_RESET = 'structural_reset'
@@ -40,46 +46,49 @@ class ConfigurationAdoptionRejectionReason(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+# Cada revisión de planificación queda vinculada a un artifact_ref exacto, no sólo a Rn/Cn.
 class AlarmConfigurationRevision:
-    alarm_configuration_revision: str
-    tool_registry_revision: str
+    artifact_ref: AlarmConfigurationArtifactRef
     defined_alarm_identities: tuple[AlarmIdentity, ...]
     session: AlarmExecutionSession
 
     def __post_init__(self) -> None:
-        alarm_revision = _required_text(
-            self.alarm_configuration_revision,
-            'alarm_configuration_revision',
-        )
-        tool_revision = _required_text(self.tool_registry_revision, 'tool_registry_revision')
-        identities = tuple(self.defined_alarm_identities)
+        if not isinstance(self.artifact_ref, AlarmConfigurationArtifactRef):
+            raise TypeError('artifact_ref must be an AlarmConfigurationArtifactRef')
+        if not isinstance(self.defined_alarm_identities, tuple):
+            raise TypeError('defined_alarm_identities must be a tuple')
+        identities = self.defined_alarm_identities
         if not all(isinstance(item, AlarmIdentity) for item in identities):
             raise TypeError('defined_alarm_identities must contain AlarmIdentity values')
         if len(identities) != len(set(identities)):
             raise AlarmConfigurationRevisionError('defined alarm identities must be unique')
         if not isinstance(self.session, AlarmExecutionSession):
             raise TypeError('session must be AlarmExecutionSession')
-        if self.session.alarm_configuration_revision != alarm_revision:
+        if self.session.alarm_configuration_revision != self.alarm_configuration_revision:
             raise AlarmConfigurationRevisionError(
-                'execution session alarm configuration revision does not match revision'
+                'execution session alarm configuration revision does not match artifact'
             )
-        if self.session.tool_registry_revision != tool_revision:
+        if self.session.tool_registry_revision != self.tool_registry_revision:
             raise AlarmConfigurationRevisionError(
-                'execution session tool registry revision does not match revision'
+                'execution session tool registry revision does not match artifact'
             )
-        defined = set(identities)
-        executable = set(self.session.identities)
-        if not executable <= defined:
+        if not set(self.session.identities) <= set(identities):
             raise AlarmConfigurationRevisionError(
                 'execution session alarms must be defined by the configuration revision'
             )
-        object.__setattr__(self, 'alarm_configuration_revision', alarm_revision)
-        object.__setattr__(self, 'tool_registry_revision', tool_revision)
         object.__setattr__(
             self,
             'defined_alarm_identities',
             tuple(sorted(identities, key=lambda item: item.canonical_key)),
         )
+
+    @property
+    def alarm_configuration_revision(self) -> str:
+        return self.artifact_ref.resolution_key.alarm_configuration_revision
+
+    @property
+    def tool_registry_revision(self) -> str:
+        return self.artifact_ref.resolution_key.confirmed_tool_catalog_revision
 
     @property
     def revision_key(self) -> tuple[str, str]:
@@ -127,6 +136,7 @@ class ConfigurationAdoptionChange:
 
 
 @dataclass(frozen=True, slots=True)
+# El plan exige cubrir la UNIÓN definida en origen y destino, incluso Rules inactivas.
 class ConfigurationAdoptionPlan:
     source: AlarmConfigurationRevision
     target: AlarmConfigurationRevision
@@ -137,17 +147,26 @@ class ConfigurationAdoptionPlan:
             raise TypeError('source must be AlarmConfigurationRevision')
         if not isinstance(self.target, AlarmConfigurationRevision):
             raise TypeError('target must be AlarmConfigurationRevision')
-        if self.source.revision_key == self.target.revision_key:
-            raise ConfigurationAdoptionPlanError('source and target revisions must differ')
+        if self.source.artifact_ref.source_key != self.target.artifact_ref.source_key:
+            raise ConfigurationAdoptionPlanError('source and target must have the same source_key')
+        if self.source.artifact_ref.result_id == self.target.artifact_ref.result_id:
+            if self.source.artifact_ref != self.target.artifact_ref:
+                raise ConfigurationAdoptionPlanError(
+                    'same result_id cannot identify conflicting materialization artifacts'
+                )
+            raise ConfigurationAdoptionPlanError('source and target artifacts must differ')
         changes = tuple(self.changes)
         if not all(isinstance(item, ConfigurationAdoptionChange) for item in changes):
             raise TypeError('changes must contain ConfigurationAdoptionChange values')
         identities = tuple(change.identity for change in changes)
         if len(identities) != len(set(identities)):
             raise ConfigurationAdoptionPlanError('configuration changes must be unique by identity')
-        if set(identities) != set(self.source.session.identities):
+        universe = set(self.source.defined_alarm_identities) | set(
+            self.target.defined_alarm_identities
+        )
+        if set(identities) != universe:
             raise ConfigurationAdoptionPlanError(
-                'configuration changes must exactly cover source execution session alarms'
+                'configuration changes must cover source and target defined alarm identities'
             )
         for change in changes:
             self._validate_change(change)
@@ -161,6 +180,21 @@ class ConfigurationAdoptionPlan:
     def is_adoptable(self) -> bool:
         return all(
             change.disposition is not ConfigurationAdoptionDisposition.REJECTED
+            for change in self.changes
+        )
+
+    @property
+    def requires_execution_upgrade(self) -> bool:
+        return any(
+            change.disposition
+            in {
+                ConfigurationAdoptionDisposition.ADDED,
+                ConfigurationAdoptionDisposition.ENABLED,
+            }
+            or (
+                change.disposition is ConfigurationAdoptionDisposition.REMOVED
+                and not self.source.is_executable(change.identity)
+            )
             for change in self.changes
         )
 
@@ -181,15 +215,42 @@ class ConfigurationAdoptionPlan:
         }
         return tuple(sorted(groups))
 
+    # Esta validación evita que un plan construido manualmente suplante ADDED, ENABLED o REMOVED.
     def _validate_change(self, change: ConfigurationAdoptionChange) -> None:
-        source_plan = self.source.plan_for(change.identity)
-        if source_plan is None:
-            raise ConfigurationAdoptionPlanError(
-                f'{change.identity.canonical_key}: source execution plan is missing'
-            )
-        target_plan = self.target.plan_for(change.identity)
+        source_defined = self.source.is_defined(change.identity)
         target_defined = self.target.is_defined(change.identity)
-        if change.disposition in {
+        source_plan = self.source.plan_for(change.identity)
+        target_plan = self.target.plan_for(change.identity)
+        disposition = change.disposition
+        if disposition is ConfigurationAdoptionDisposition.ADDED:
+            if source_defined or not target_defined:
+                raise ConfigurationAdoptionPlanError(
+                    'added alarm must be absent in source and defined in target'
+                )
+            return
+        if disposition is ConfigurationAdoptionDisposition.ENABLED:
+            if not source_defined or source_plan is not None or target_plan is None:
+                raise ConfigurationAdoptionPlanError(
+                    'enabled alarm must be disabled in source and executable in target'
+                )
+            return
+        if disposition is ConfigurationAdoptionDisposition.UNCHANGED and source_plan is None:
+            if not source_defined or not target_defined or target_plan is not None:
+                raise ConfigurationAdoptionPlanError(
+                    'unchanged disabled alarm must remain defined and disabled'
+                )
+            return
+        if source_plan is None:
+            if (
+                disposition is ConfigurationAdoptionDisposition.REMOVED
+                and source_defined
+                and not target_defined
+            ):
+                return
+            raise ConfigurationAdoptionPlanError(
+                'configuration change requires an executable source alarm'
+            )
+        if disposition in {
             ConfigurationAdoptionDisposition.UNCHANGED,
             ConfigurationAdoptionDisposition.COMPATIBLE,
             ConfigurationAdoptionDisposition.STRUCTURAL_RESET,
@@ -198,26 +259,27 @@ class ConfigurationAdoptionPlan:
             if target_plan is None:
                 raise ConfigurationAdoptionPlanError(
                     f'{change.identity.canonical_key}: target execution plan is required for '
-                    f'{change.disposition.value}'
+                    f'{disposition.value}'
                 )
             return
         if target_plan is not None:
             raise ConfigurationAdoptionPlanError(
-                f'{change.identity.canonical_key}: {change.disposition.value} alarm must not be '
+                f'{change.identity.canonical_key}: {disposition.value} alarm must not be '
                 'executable in target revision'
             )
-        if change.disposition is ConfigurationAdoptionDisposition.DISABLED and not target_defined:
+        if disposition is ConfigurationAdoptionDisposition.DISABLED and not target_defined:
             raise ConfigurationAdoptionPlanError(
                 f'{change.identity.canonical_key}: disabled alarm must remain defined in target '
                 'revision'
             )
-        if change.disposition is ConfigurationAdoptionDisposition.REMOVED and target_defined:
+        if disposition is ConfigurationAdoptionDisposition.REMOVED and target_defined:
             raise ConfigurationAdoptionPlanError(
                 f'{change.identity.canonical_key}: removed alarm must not be defined in target '
                 'revision'
             )
 
 
+# La clasificación es pura y determinista; no escribe WAL ni selecciona candidatos automáticamente.
 def plan_configuration_adoption(
     source: AlarmConfigurationRevision,
     target: AlarmConfigurationRevision,
@@ -226,30 +288,42 @@ def plan_configuration_adoption(
         raise TypeError('source must be AlarmConfigurationRevision')
     if not isinstance(target, AlarmConfigurationRevision):
         raise TypeError('target must be AlarmConfigurationRevision')
-    changes = tuple(
-        _classify_change(source, target, identity) for identity in source.session.identities
-    )
+    universe = set(source.defined_alarm_identities) | set(target.defined_alarm_identities)
+    changes = tuple(_classify_change(source, target, identity) for identity in sorted(universe))
     return ConfigurationAdoptionPlan(source=source, target=target, changes=changes)
 
 
+# Distingue nueva definición, activación, desactivación y eliminación sin inferir INVALID como REMOVED.
 def _classify_change(
     source: AlarmConfigurationRevision,
     target: AlarmConfigurationRevision,
     identity: AlarmIdentity,
 ) -> ConfigurationAdoptionChange:
+    source_defined = source.is_defined(identity)
+    target_defined = target.is_defined(identity)
+    if not source_defined:
+        return ConfigurationAdoptionChange(
+            identity=identity, disposition=ConfigurationAdoptionDisposition.ADDED
+        )
+    if not target_defined:
+        return ConfigurationAdoptionChange(
+            identity=identity, disposition=ConfigurationAdoptionDisposition.REMOVED
+        )
     source_plan = source.plan_for(identity)
-    if source_plan is None:
-        raise ConfigurationAdoptionPlanError(
-            f'{identity.canonical_key}: source execution plan is missing'
-        )
     target_plan = target.plan_for(identity)
-    if target_plan is None:
-        disposition = (
-            ConfigurationAdoptionDisposition.DISABLED
-            if target.is_defined(identity)
-            else ConfigurationAdoptionDisposition.REMOVED
+    if source_plan is None:
+        return ConfigurationAdoptionChange(
+            identity=identity,
+            disposition=(
+                ConfigurationAdoptionDisposition.ENABLED
+                if target_plan is not None
+                else ConfigurationAdoptionDisposition.UNCHANGED
+            ),
         )
-        return ConfigurationAdoptionChange(identity=identity, disposition=disposition)
+    if target_plan is None:
+        return ConfigurationAdoptionChange(
+            identity=identity, disposition=ConfigurationAdoptionDisposition.DISABLED
+        )
     rejection_reason = _rejection_reason(source_plan, target_plan)
     if rejection_reason is not None:
         return ConfigurationAdoptionChange(
@@ -301,6 +375,7 @@ def _routing_rejection_reason(
     return None
 
 
+# Conserva la comparación operacional actual; reappearance y nuevas políticas siguen fuera de este incremento.
 def _runtime_semantics_equal(
     source: AlarmConfigurationRevision,
     target: AlarmConfigurationRevision,
@@ -322,15 +397,6 @@ def _runtime_semantics_equal(
         and source_plan.deactivation_policy == target_plan.deactivation_policy
         and source_entry.parameters == target_entry.parameters
     )
-
-
-def _required_text(value: str, field_name: str) -> str:
-    if not isinstance(value, str):
-        raise TypeError(f'{field_name} must be a string')
-    normalized = value.strip()
-    if not normalized:
-        raise ValueError(f'{field_name} must not be empty')
-    return normalized
 
 
 def _require_identity(identity: AlarmIdentity) -> None:

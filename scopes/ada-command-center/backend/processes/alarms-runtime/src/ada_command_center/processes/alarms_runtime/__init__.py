@@ -50,6 +50,7 @@ from ada_command_center.processes.alarms_runtime.job_composition import (
 )
 from ada_command_center.processes.alarms_runtime.local_configuration import (
     RuntimeLocalConfigurationReader,
+    build_alarm_configuration_revision,
 )
 from ada_command_center.processes.alarms_runtime.session import (
     AlarmEvaluatorContract,
@@ -108,6 +109,7 @@ __all__ = [
     'DEFAULT_ALARM_RUNTIME_ITERATION_PERIOD_SECONDS',
     'RuntimeLocalConfigurationReader',
     '__version__',
+    'build_alarm_configuration_revision',
     'build_alarm_execution_session',
     'build_alarm_runtime_composition',
     'compose_engine_commit_record',
