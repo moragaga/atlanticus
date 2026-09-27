@@ -1,3 +1,5 @@
+# El lote V2 exige commits contiguos ordenados y un marcador global final.
+# Recovery valida referencias contra bytes ya incluidos en la región durable.
 # El mismo journal físico acepta dos contratos sin crear otro WAL ni un grupo ficticio.
 # Espejo pedagógico del WAL físico del Alarm Engine.
 # El journal escribe registros JSONL append-only, fuerza flush y fsync antes de confirmar durable.
@@ -15,7 +17,10 @@ from pathlib import Path
 
 from ada_command_center.alarms.persistence.configuration_adoption import (
     CONFIGURATION_ADOPTION_RECORD_SCHEMA_VERSION,
+    CONFIGURATION_ADOPTION_RECORD_V2_SCHEMA_VERSION,
     ConfigurationAdoptionRecord,
+    ConfigurationAdoptionRecordV2,
+    GroupCommitReference,
 )
 from ada_command_center.alarms.persistence.errors import (
     AlarmPersistenceConflictError,
@@ -153,10 +158,64 @@ class EngineJournal:
         previous_artifact_ref = None
         seen_group_before_adoption = False
         adoption_ids: set[str] = set()
-        for entry in entries:
+        for index, entry in enumerate(entries):
             record = entry.record
+            if isinstance(record, ConfigurationAdoptionRecordV2):
+                group_count = len(record.group_commits)
+                if group_count > index:
+                    raise AlarmPersistenceCorruptionError(
+                        'V2 adoption is missing its contiguous group commits'
+                    )
+                group_entries = entries[index - group_count : index]
+                if any(not isinstance(item.record, EngineCommitRecord) for item in group_entries):
+                    raise AlarmPersistenceCorruptionError(
+                        'V2 adoption group commits must be contiguous'
+                    )
+                expected_refs = tuple(
+                    GroupCommitReference(
+                        priority_group=item.record.commit.priority_group,
+                        commit_id=item.record.commit.commit_id,
+                        record_hash=item.record.record_hash,
+                    )
+                    for item in group_entries
+                )
+                if expected_refs != record.group_commits or any(
+                    item.end.segment_id != entry.end.segment_id for item in group_entries
+                ):
+                    raise AlarmPersistenceCorruptionError(
+                        'V2 adoption group references do not match the WAL'
+                    )
+                if any(
+                    item.record.commit.alarm_configuration_revision
+                    != record.target_artifact_ref.alarm_configuration_revision
+                    or item.record.commit.tool_registry_revision
+                    != record.target_artifact_ref.confirmed_tool_catalog_revision
+                    for item in group_entries
+                ):
+                    raise AlarmPersistenceCorruptionError(
+                        'V2 group commit revisions must match target artifact'
+                    )
+                if any(
+                    segment_id_for_evaluated_at(item.record.commit.evaluated_at)
+                    != entry.end.segment_id
+                    for item in group_entries
+                ):
+                    raise AlarmPersistenceCorruptionError(
+                        'V2 group commit timestamps must match WAL segment'
+                    )
+                if segment_id_for_evaluated_at(record.effective_at) != entry.end.segment_id:
+                    raise AlarmPersistenceCorruptionError(
+                        'V2 adoption effective_at segment does not match its group commits'
+                    )
             if isinstance(record, ConfigurationAdoptionRecord):
-                if previous_artifact_ref is None and seen_group_before_adoption:
+                if (
+                    previous_artifact_ref is None
+                    and seen_group_before_adoption
+                    and (
+                        not isinstance(record, ConfigurationAdoptionRecordV2)
+                        or index != len(record.group_commits)
+                    )
+                ):
                     raise AlarmPersistenceCorruptionError(
                         'configuration adoption requires explicit legacy state migration'
                     )
@@ -349,12 +408,13 @@ class EngineJournal:
                             'journal durable boundary splits a record'
                         )
                     payload = decode_record_line(line)
-                    record = (
-                        ConfigurationAdoptionRecord.from_document(payload)
-                        if payload.get('record_schema_version')
-                        == CONFIGURATION_ADOPTION_RECORD_SCHEMA_VERSION
-                        else EngineCommitRecord.from_document(payload)
-                    )
+                    version = payload.get('record_schema_version')
+                    if version == CONFIGURATION_ADOPTION_RECORD_SCHEMA_VERSION:
+                        record = ConfigurationAdoptionRecord.from_document(payload)
+                    elif version == CONFIGURATION_ADOPTION_RECORD_V2_SCHEMA_VERSION:
+                        record = ConfigurationAdoptionRecordV2.from_document(payload)
+                    else:
+                        record = EngineCommitRecord.from_document(payload)
                     entries.append(
                         JournalEntry(
                             record=record,
@@ -423,12 +483,40 @@ def _validate_batch(
         raise TypeError('records must be a sequence')
     if not records:
         raise AlarmPersistenceValidationError('records must not be empty')
-    if len(records) == 1 and isinstance(records[0], ConfigurationAdoptionRecord):
+    if len(records) == 1 and type(records[0]) is ConfigurationAdoptionRecord:
         return (records[0],)
-    if any(isinstance(record, ConfigurationAdoptionRecord) for record in records):
-        raise AlarmPersistenceValidationError(
-            'configuration adoption must use a standalone WAL batch'
+    if isinstance(records[-1], ConfigurationAdoptionRecordV2):
+        ordered = _validate_batch(records[:-1])
+        group_records = tuple(
+            record for record in ordered if isinstance(record, EngineCommitRecord)
         )
+        if len(group_records) != len(ordered) or tuple(records[:-1]) != ordered:
+            raise AlarmPersistenceValidationError('V2 group commits must be in canonical order')
+        references = tuple(
+            GroupCommitReference(
+                priority_group=group.commit.priority_group,
+                commit_id=group.commit.commit_id,
+                record_hash=group.record_hash,
+            )
+            for group in group_records
+        )
+        if references != records[-1].group_commits:
+            raise AlarmPersistenceValidationError('V2 adoption group references do not match')
+        if any(
+            group.commit.alarm_configuration_revision
+            != records[-1].target_artifact_ref.alarm_configuration_revision
+            or group.commit.tool_registry_revision
+            != records[-1].target_artifact_ref.confirmed_tool_catalog_revision
+            for group in group_records
+        ):
+            raise AlarmPersistenceValidationError('V2 group commit revisions must match target')
+        if segment_id_for_evaluated_at(records[-1].effective_at) != segment_id_for_evaluated_at(
+            group_records[0].commit.evaluated_at
+        ):
+            raise AlarmPersistenceValidationError('V2 adoption must use the same UTC hour')
+        return (*group_records, records[-1])
+    if any(isinstance(record, ConfigurationAdoptionRecord) for record in records):
+        raise AlarmPersistenceValidationError('configuration adoption has invalid WAL batch')
     cycle_id: str | None = None
     groups: set[str] = set()
     normalized: list[EngineCommitRecord] = []

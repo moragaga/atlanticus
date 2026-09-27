@@ -7,6 +7,8 @@ from pathlib import Path
 
 from ada_command_center.alarms.persistence.configuration_adoption import (
     ConfigurationAdoptionRecord,
+    ConfigurationAdoptionRecordV2,
+    GroupCommitReference,
 )
 from ada_command_center.alarms.persistence.errors import (
     AlarmPersistenceConflictError,
@@ -131,6 +133,7 @@ class AlarmPersistence:
         self,
         record: ConfigurationAdoptionRecord,
         *,
+        group_records: Sequence[EngineCommitRecord] = (),
         assert_authority: AuthorityCheck,
         fenced_mutation: MutationFence,
     ) -> CommitBatchResult:
@@ -138,6 +141,43 @@ class AlarmPersistence:
             raise TypeError('record must be ConfigurationAdoptionRecord')
         if record.record_hash != build_record_hash(record.unsigned_document()):
             raise AlarmPersistenceValidationError('configuration adoption record hash mismatch')
+        if isinstance(group_records, str | bytes) or not isinstance(group_records, Sequence):
+            raise TypeError('group_records must be a sequence')
+        if isinstance(record, ConfigurationAdoptionRecordV2):
+            if not group_records:
+                raise AlarmPersistenceValidationError('V2 adoption requires group records')
+            ordered_groups = _ordered_records(group_records)
+            references = tuple(
+                GroupCommitReference(
+                    priority_group=item.commit.priority_group,
+                    commit_id=item.commit.commit_id,
+                    record_hash=item.record_hash,
+                )
+                for item in ordered_groups
+            )
+            if references != record.group_commits:
+                raise AlarmPersistenceValidationError('V2 adoption group references do not match')
+            if any(
+                item.commit.alarm_configuration_revision
+                != record.target_artifact_ref.alarm_configuration_revision
+                or item.commit.tool_registry_revision
+                != record.target_artifact_ref.confirmed_tool_catalog_revision
+                for item in ordered_groups
+            ):
+                raise AlarmPersistenceValidationError('V2 group commit revisions must match target')
+            if any(
+                item.record_hash != build_record_hash(item.unsigned_document())
+                for item in ordered_groups
+            ):
+                raise AlarmPersistenceValidationError('V2 group commit record hash mismatch')
+            if segment_id_for_evaluated_at(record.effective_at) != segment_id_for_evaluated_at(
+                ordered_groups[0].commit.evaluated_at
+            ):
+                raise AlarmPersistenceValidationError('V2 adoption must use the same UTC hour')
+        else:
+            if group_records:
+                raise AlarmPersistenceValidationError('V1 adoption cannot include group records')
+            ordered_groups = ()
         authority = _require_authority(assert_authority)
         mutation = _require_mutation_fence(fenced_mutation)
         with self._write_lock:
@@ -169,7 +209,10 @@ class AlarmPersistence:
             if any(item.adoption_id == record.adoption_id for item in adoptions):
                 raise AlarmPersistenceConflictError('configuration adoption_id is already durable')
             return self._commit_records(
-                (record,), authority=authority, mutation=mutation, expected_head=head
+                (*ordered_groups, record),
+                authority=authority,
+                mutation=mutation,
+                expected_head=head,
             )
 
     def _commit_records(
@@ -277,15 +320,40 @@ class AlarmPersistence:
             skipped = 0
             current_materialized = head.materialized
             current_head = head
-            for entry in entries:
-                with mutation():
-                    _require_unchanged_head(
-                        self.read_head(),
-                        current_head,
-                        stage='recovery snapshot materialization',
-                    )
-                    was_applied = self._materialize_entry(entry)
-                next_head = JournalHead(durable=head.durable, materialized=entry.end)
+            batch_end_by_start: dict[int, int] = {}
+            for index, entry in enumerate(entries):
+                if isinstance(entry.record, ConfigurationAdoptionRecordV2):
+                    start = index - len(entry.record.group_commits)
+                    if start < 0 or any(
+                        isinstance(item.record, ConfigurationAdoptionRecord)
+                        for item in entries[start:index]
+                    ):
+                        raise AlarmPersistenceCorruptionError(
+                            'materialized position splits a V2 adoption transaction'
+                        )
+                    if any(start < other_end for other_end in batch_end_by_start.values()):
+                        raise AlarmPersistenceCorruptionError(
+                            'V2 adoption transaction boundaries overlap'
+                        )
+                    batch_end_by_start[start] = index
+            index = 0
+            while index < len(entries):
+                final_index = batch_end_by_start.get(index, index)
+                batch = entries[index : final_index + 1]
+                for entry in batch:
+                    with mutation():
+                        _require_unchanged_head(
+                            self.read_head(),
+                            current_head,
+                            stage='recovery snapshot materialization',
+                        )
+                        was_applied = self._materialize_entry(entry)
+                    if was_applied:
+                        applied += 1
+                    else:
+                        skipped += 1
+                next_position = batch[-1].end
+                next_head = JournalHead(durable=head.durable, materialized=next_position)
                 with mutation():
                     _require_unchanged_head(
                         self.read_head(),
@@ -293,12 +361,9 @@ class AlarmPersistence:
                         stage='recovery materialized publication',
                     )
                     self._replace_head(next_head)
-                if was_applied:
-                    applied += 1
-                else:
-                    skipped += 1
-                current_materialized = entry.end
+                current_materialized = next_position
                 current_head = next_head
+                index = final_index + 1
             with mutation():
                 _require_unchanged_head(self.read_head(), current_head, stage='recovery sealing')
                 sealed_count = self._journal.seal_before(head.durable.segment_id)

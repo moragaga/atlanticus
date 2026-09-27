@@ -1,3 +1,5 @@
+# V2 vincula uno o más commits de grupos por identidad y hash, conservando el lector V1.
+# El hash V2 integra referencias exactas y preserva la cadena global de adopciones.
 # Contrato físico autónomo para registrar la adopción global sin acoplar Persistence a Materialization.
 # AlarmArtifactRefSnapshot fija el identificador exacto del artefacto READY validado previamente.
 # ConfigurationAdoptionRecord conserva la transición anterior -> objetivo dentro del WAL existente.
@@ -17,6 +19,7 @@ from ada_command_center.alarms.persistence.serialization import build_record_has
 from atlanticus.json import JsonDocument
 
 CONFIGURATION_ADOPTION_RECORD_SCHEMA_VERSION = 'configuration-adoption-record.v1'
+CONFIGURATION_ADOPTION_RECORD_V2_SCHEMA_VERSION = 'configuration-adoption-record.v2'
 _RESULT_PATTERN = re.compile(r'alarm-materialization-[0-9a-f]{64}')
 _SHA256_PATTERN = re.compile(r'[0-9a-f]{64}')
 _RECORD_HASH_PATTERN = re.compile(r'sha256:[0-9a-f]{64}')
@@ -241,3 +244,163 @@ def _require_utc_timestamp(value: str, name: str) -> datetime:
     if timestamp.tzinfo is None or timestamp.utcoffset() != timedelta(0):
         raise ValueError(f'{name} must be timezone-aware UTC')
     return timestamp
+
+
+@dataclass(frozen=True, slots=True)
+class GroupCommitReference:
+    priority_group: str
+    commit_id: str
+    record_hash: str
+
+    def __post_init__(self) -> None:
+        _require_text(self.priority_group, 'priority_group')
+        _require_text(self.commit_id, 'commit_id')
+        if (
+            not isinstance(self.record_hash, str)
+            or _RECORD_HASH_PATTERN.fullmatch(self.record_hash) is None
+        ):
+            raise ValueError('group commit record_hash must be a canonical SHA-256 digest')
+
+    def as_document(self) -> JsonDocument:
+        return {
+            'priority_group': self.priority_group,
+            'commit_id': self.commit_id,
+            'record_hash': self.record_hash,
+        }
+
+    @classmethod
+    def from_document(cls, value: Mapping[str, Any]) -> GroupCommitReference:
+        document = _require_exact_mapping(
+            value,
+            {'priority_group', 'commit_id', 'record_hash'},
+            'group commit reference',
+        )
+        try:
+            return cls(**document)
+        except (TypeError, ValueError) as error:
+            raise AlarmPersistenceCorruptionError('group commit reference is invalid') from error
+
+
+@dataclass(frozen=True, slots=True)
+class ConfigurationAdoptionRecordV2(ConfigurationAdoptionRecord):
+    group_commits: tuple[GroupCommitReference, ...]
+
+    def __post_init__(self) -> None:
+        ConfigurationAdoptionRecord.__post_init__(self)
+        if not isinstance(self.group_commits, tuple) or not self.group_commits:
+            raise ValueError('V2 adoption requires a non-empty tuple of group commits')
+        if not all(isinstance(item, GroupCommitReference) for item in self.group_commits):
+            raise TypeError('group_commits must contain GroupCommitReference values')
+        groups = tuple(ref.priority_group for ref in self.group_commits)
+        if groups != tuple(sorted(set(groups))):
+            raise ValueError('group_commits must be unique and sorted by priority_group')
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        adoption_id: str,
+        previous_artifact_ref: AlarmArtifactRefSnapshot | None,
+        target_artifact_ref: AlarmArtifactRefSnapshot,
+        effective_at: str,
+        committed_at: str,
+        group_commits: tuple[GroupCommitReference, ...],
+    ) -> ConfigurationAdoptionRecordV2:
+        unsigned = _unsigned_document_v2(
+            adoption_id=adoption_id,
+            previous_artifact_ref=previous_artifact_ref,
+            target_artifact_ref=target_artifact_ref,
+            effective_at=effective_at,
+            committed_at=committed_at,
+            group_commits=group_commits,
+        )
+        return cls(
+            adoption_id=adoption_id,
+            previous_artifact_ref=previous_artifact_ref,
+            target_artifact_ref=target_artifact_ref,
+            effective_at=effective_at,
+            committed_at=committed_at,
+            record_hash=build_record_hash(unsigned),
+            group_commits=group_commits,
+        )
+
+    def unsigned_document(self) -> JsonDocument:
+        return _unsigned_document_v2(
+            adoption_id=self.adoption_id,
+            previous_artifact_ref=self.previous_artifact_ref,
+            target_artifact_ref=self.target_artifact_ref,
+            effective_at=self.effective_at,
+            committed_at=self.committed_at,
+            group_commits=self.group_commits,
+        )
+
+    @classmethod
+    def from_document(cls, value: Mapping[str, Any]) -> ConfigurationAdoptionRecordV2:
+        document = _require_exact_mapping(
+            value,
+            {
+                'record_schema_version',
+                'adoption_id',
+                'previous_artifact_ref',
+                'target_artifact_ref',
+                'effective_at',
+                'committed_at',
+                'record_hash',
+                'group_commits',
+            },
+            'V2 configuration adoption record',
+        )
+        if document['record_schema_version'] != CONFIGURATION_ADOPTION_RECORD_V2_SCHEMA_VERSION:
+            raise AlarmPersistenceCorruptionError('V2 adoption schema version is unsupported')
+        previous = document['previous_artifact_ref']
+        references = document['group_commits']
+        if not isinstance(references, list):
+            raise AlarmPersistenceCorruptionError('group_commits must be an array')
+        try:
+            record = cls(
+                adoption_id=document['adoption_id'],
+                previous_artifact_ref=(
+                    None if previous is None else AlarmArtifactRefSnapshot.from_document(previous)
+                ),
+                target_artifact_ref=AlarmArtifactRefSnapshot.from_document(
+                    document['target_artifact_ref']
+                ),
+                effective_at=document['effective_at'],
+                committed_at=document['committed_at'],
+                group_commits=tuple(GroupCommitReference.from_document(ref) for ref in references),
+                record_hash=document['record_hash'],
+            )
+        except (TypeError, ValueError) as error:
+            raise AlarmPersistenceCorruptionError(
+                'V2 configuration adoption record is invalid'
+            ) from error
+        if build_record_hash(record.unsigned_document()) != record.record_hash:
+            raise AlarmPersistenceCorruptionError('V2 configuration adoption record hash mismatch')
+        return record
+
+
+def _unsigned_document_v2(
+    *,
+    adoption_id: str,
+    previous_artifact_ref: AlarmArtifactRefSnapshot | None,
+    target_artifact_ref: AlarmArtifactRefSnapshot,
+    effective_at: str,
+    committed_at: str,
+    group_commits: tuple[GroupCommitReference, ...],
+) -> JsonDocument:
+    if (
+        not isinstance(group_commits, tuple)
+        or not group_commits
+        or not all(isinstance(item, GroupCommitReference) for item in group_commits)
+    ):
+        raise ValueError('V2 adoption requires non-empty group commit references')
+    document = _unsigned_document(
+        adoption_id=adoption_id,
+        previous_artifact_ref=previous_artifact_ref,
+        target_artifact_ref=target_artifact_ref,
+        effective_at=effective_at,
+        committed_at=committed_at,
+    )
+    document['record_schema_version'] = CONFIGURATION_ADOPTION_RECORD_V2_SCHEMA_VERSION
+    document['group_commits'] = [item.as_document() for item in group_commits]
+    return document
