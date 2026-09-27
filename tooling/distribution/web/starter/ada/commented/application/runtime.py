@@ -69,6 +69,8 @@ def create_worker_runtime() -> AdaWorkerRuntime:
                 settings=settings,
                 manager_stores=deployment.stores,
                 identity_provider=identity,
+                manager_source_name='Blob Storage',
+                manager_projection_name='Cosmos DB',
                 composition_factory=create_composition,
             )
         elif provider == 'local':
@@ -76,6 +78,8 @@ def create_worker_runtime() -> AdaWorkerRuntime:
                 settings=settings,
                 manager_stores=create_local_configuration_manager_stores(),
                 identity_provider=_local_identity(),
+                manager_source_name='Local Source',
+                manager_projection_name='Local Projection',
                 composition_factory=create_composition,
             )
         elif provider == 'durable':
@@ -84,6 +88,8 @@ def create_worker_runtime() -> AdaWorkerRuntime:
                 settings=settings,
                 manager_stores=deployment.stores,
                 identity_provider=_local_identity(),
+                manager_source_name='Blob Storage',
+                manager_projection_name='Cosmos DB',
                 composition_factory=create_composition,
             )
         else:

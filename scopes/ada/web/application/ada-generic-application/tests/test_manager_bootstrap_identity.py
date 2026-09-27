@@ -259,4 +259,41 @@ def test_cli_local_selects_explicit_identity(monkeypatch):
     entrypoint.main()
     assert calls['manager_stores'] == 'stores'
     assert calls['identity_provider'].resolve(None).subject_id == 'local:john-doe'
+    assert calls['manager_source_name'] == 'Local Source'
+    assert calls['manager_projection_name'] == 'Local Projection'
+    assert calls['run'] == 'runtime'
+
+
+def test_cli_durable_manager_uses_durable_display_names(monkeypatch):
+    import importlib
+    from contextlib import contextmanager
+    from types import SimpleNamespace
+
+    entrypoint = importlib.import_module('ada.web.application.generic.__main__')
+    calls = {}
+    monkeypatch.setenv('ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID', 'local:john-doe')
+    monkeypatch.setattr(
+        entrypoint, 'AdaGenericSettings',
+        lambda: SimpleNamespace(environment=WebEnvironment.LOCAL),
+    )
+    monkeypatch.setattr(
+        entrypoint, 'ManagerStartupOptions', lambda: SimpleNamespace(provider='durable'),
+    )
+
+    @contextmanager
+    def deployed(_settings):
+        yield SimpleNamespace(stores='durable-stores')
+
+    monkeypatch.setattr(entrypoint, 'open_durable_manager', deployed)
+    monkeypatch.setattr(
+        entrypoint, 'create_operational_application_runtime',
+        lambda **kwargs: calls.update(kwargs) or 'runtime',
+    )
+    monkeypatch.setattr(
+        entrypoint, 'run_web_application', lambda runtime: calls.update(run=runtime),
+    )
+    entrypoint.main()
+    assert calls['manager_stores'] == 'durable-stores'
+    assert calls['manager_source_name'] == 'Blob Storage'
+    assert calls['manager_projection_name'] == 'Cosmos DB'
     assert calls['run'] == 'runtime'

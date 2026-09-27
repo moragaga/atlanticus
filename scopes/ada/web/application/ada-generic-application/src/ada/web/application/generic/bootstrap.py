@@ -112,6 +112,8 @@ def create_operational_application_runtime(
     manager_dependencies: ConfigurationManagerDependencies | None = None,
     manager_stores: ConfigurationManagerStores | None = None,
     identity_provider: IdentityProvider | None = None,
+    manager_source_name: str = 'Source',
+    manager_projection_name: str = 'Projection',
     composition_factory: AdaOperationalCompositionFactory | None = None,
 ) -> WebApplicationRuntime:
     if settings is not None and not isinstance(settings, AdaGenericSettings):
@@ -139,6 +141,8 @@ def create_operational_application_runtime(
             stores=manager_stores,
             provider=identity_provider,
             settings=resolved_settings,
+            source_name=manager_source_name,
+            projection_name=manager_projection_name,
         )
         manager_dependencies = manager_identity[2]
     resolution = _resolve_tool_projection(resolved_settings)
@@ -219,6 +223,8 @@ def _prepare_manager_identity(
     stores: ConfigurationManagerStores,
     provider: IdentityProvider | None,
     settings: AdaGenericSettings,
+    source_name: str,
+    projection_name: str,
 ) -> tuple[IdentityProvider, UsersRuntime, ConfigurationManagerDependencies, AccessResolver]:
     if WebSettings().environment is not settings.environment:
         raise ValueError('Integrated Manager environment does not match Web environment')
@@ -242,6 +248,8 @@ def _prepare_manager_identity(
         access_runtime=access_runtime,
         users_runtime=users_runtime,
         environment=settings.environment,
+        source_name=source_name,
+        projection_name=projection_name,
     )
     if shared_store is None:
         resolver = AuthenticatedAccessResolver()

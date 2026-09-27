@@ -45,6 +45,8 @@ def run_operational_application(
             settings=settings,
             manager_stores=create_local_configuration_manager_stores(),
             identity_provider=_local_identity(),
+            manager_source_name='Local Source',
+            manager_projection_name='Local Projection',
             **extension,
         )
     elif provider == 'durable':
@@ -57,6 +59,8 @@ def run_operational_application(
                 settings=settings,
                 manager_stores=deployment.stores,
                 identity_provider=_local_identity(),
+                manager_source_name='Blob Storage',
+                manager_projection_name='Cosmos DB',
                 **extension,
             )
             run_web_application(runtime)
