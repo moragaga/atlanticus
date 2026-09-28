@@ -2,7 +2,7 @@
 # El bootstrap se confirma mediante el WAL existente; no se inventa una revisión de origen.
 # La sesión confirmada se inmoviliza en memoria de la ejecución; los ciclos siguientes sólo usan esa sesión.
 # El ciclo operacional se inyecta porque su fuente de datos es una frontera independiente.
-# Ante ausencia total de configuración, el retraso de 30 segundos usa el runtime del job.
+# Ante ausencia, READY inválida o READY aún no ejecutable, se reintenta cada 30 segundos sin iniciar ciclos.
 # Una READY no adoptable no interrumpe la ejecución de la versión EFFECTIVE.
 # Recovery y la propiedad del lease siguen siendo responsabilidad de JobComposition.
 
@@ -97,12 +97,14 @@ class AlarmConfiguredIterationExecutor:
             ready = self.reader.load_ready_candidate()
         except AlarmMaterializationPublicationError as error:
             if selected is None:
-                context.logger.exception(
-                    'Initial READY configuration is invalid',
-                    error,
-                    event_name='alarms.runtime.configuration.invalid',
+                # Sin EFFECTIVE se espera un READY válido: nunca se omite la validación.
+                return self._wait_for_initial_configuration(
+                    context,
+                    status='waiting_for_valid_ready',
+                    notice_key=('invalid_ready', str(error)),
+                    severity='warning',
+                    message='Initial READY is invalid; checking again in 30 seconds',
                 )
-                raise
             self._notice(
                 context,
                 ('invalid_ready', str(error)),
@@ -113,17 +115,12 @@ class AlarmConfiguredIterationExecutor:
 
         if ready is None:
             if selected is None:
-                context.set_next_iteration_delay(INITIAL_CONFIGURATION_RETRY_SECONDS)
-                context.set_iteration_fact('alarm_configuration_status', 'waiting_for_ready')
-                self._notice(
+                return self._wait_for_initial_configuration(
                     context,
-                    ('waiting',),
-                    'info',
-                    'No EFFECTIVE or READY configuration; checking again in 30 seconds',
-                )
-                return AlarmRuntimeJobIterationResult(
-                    adoption_outcome=AlarmRuntimeJobAdoptionOutcome.NOT_REQUIRED,
-                    cycle_executed=False,
+                    status='waiting_for_ready',
+                    notice_key=('waiting',),
+                    severity='info',
+                    message='No EFFECTIVE or READY configuration; checking again in 30 seconds',
                 )
             self._notice(
                 context,
@@ -153,12 +150,18 @@ class AlarmConfiguredIterationExecutor:
             )
         except ValueError as error:
             if selected is None:
-                context.logger.exception(
-                    'Initial READY configuration cannot be executed',
-                    error,
-                    event_name='alarms.runtime.configuration.invalid',
+                return self._wait_for_initial_configuration(
+                    context,
+                    status='waiting_for_executable_ready',
+                    notice_key=(
+                        'unexecutable_ready',
+                        ready.result_id,
+                        ready.manifest_sha256,
+                        str(error),
+                    ),
+                    severity='warning',
+                    message='Initial READY cannot be executed; checking again in 30 seconds',
                 )
-                raise
             self._notice(
                 context,
                 ('invalid_candidate', ready.result_id, ready.manifest_sha256),
@@ -215,6 +218,24 @@ class AlarmConfiguredIterationExecutor:
             'Alarm configuration adoption confirmed',
         )
         return self._run_effective(context, selected, outcome)
+
+    # La espera sólo opera antes del pin; el framework conserva su ventana y permite cancelar.
+    def _wait_for_initial_configuration(
+        self,
+        context: JobRuntimeContext,
+        *,
+        status: str,
+        notice_key: tuple[str, ...],
+        severity: str,
+        message: str,
+    ) -> AlarmRuntimeJobIterationResult:
+        context.set_next_iteration_delay(INITIAL_CONFIGURATION_RETRY_SECONDS)
+        context.set_iteration_fact('alarm_configuration_status', status)
+        self._notice(context, notice_key, severity, message)
+        return AlarmRuntimeJobIterationResult(
+            adoption_outcome=AlarmRuntimeJobAdoptionOutcome.NOT_REQUIRED,
+            cycle_executed=False,
+        )
 
     def _run_effective(
         self,

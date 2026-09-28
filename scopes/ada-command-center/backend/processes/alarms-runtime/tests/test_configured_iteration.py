@@ -10,7 +10,6 @@ from types import SimpleNamespace
 import pytest
 
 from ada_command_center.alarms.materialization.local_reader import (
-    AlarmMaterializationPublicationError,
     materialization_result_id,
     materialization_root,
 )
@@ -303,31 +302,115 @@ def test_rejected_candidate_preserves_effective_on_next_job(tmp_path, monkeypatc
     assert len(new_runs) == 1
 
 
-def test_invalid_ready_keeps_existing_effective_but_never_bootstraps(tmp_path):
-    _publish(tmp_path)
+def test_invalid_initial_ready_waits_without_logging_repeatedly_and_can_bootstrap(
+    tmp_path, monkeypatch
+):
+    published = _publish(tmp_path)
     root = materialization_root(tmp_path)
     pointer = json.loads((root / 'ready.json').read_text())
     original_digest = pointer['manifest_sha256']
     pointer['manifest_sha256'] = '0' * 64
     _write(root / 'ready.json', pointer)
-    first, context, runs = _compose(tmp_path)
-    with pytest.raises(AlarmMaterializationPublicationError):
-        first.iteration(context)
-    assert first.composition.durability.persistence.read_effective_head() is None
-    assert runs == []
+    job, context, runs = _compose(tmp_path)
+    warnings = []
+    monkeypatch.setattr(
+        context.logger, 'warning', lambda message, **kwargs: warnings.append(message)
+    )
+    persistence = job.composition.durability.persistence
+    for iteration in (1, 2):
+        if iteration > 1:
+            context._begin_iteration(iteration)
+        result = job.iteration(context)
+        assert result.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.NOT_REQUIRED
+        assert result.cycle_executed is False
+        assert context._next_iteration_delay() == 30.0
+        assert context.get_iteration_fact('alarm_configuration_status') == 'waiting_for_valid_ready'
+        assert persistence.read_effective_head() is None
+        assert persistence.read_durable_adoptions() == ()
+        assert runs == []
+    assert len(warnings) == 1
 
     pointer['manifest_sha256'] = original_digest
     _write(root / 'ready.json', pointer)
-    first.iteration(context)
-    new_pointer = json.loads((root / 'ready.json').read_text())
-    new_pointer['manifest_sha256'] = '0' * 64
-    _write(root / 'ready.json', new_pointer)
+    context._begin_iteration(3)
+    result = job.iteration(context)
+    assert result.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.BOOTSTRAPPED
+    assert result.cycle_executed is True
+    assert context._next_iteration_delay() is None
+    assert persistence.read_effective_head().target_artifact_ref.result_id == published
+    assert len(persistence.read_durable_adoptions()) == 1
+    assert len(runs) == 1
+
+    pointer['manifest_sha256'] = '0' * 64
+    _write(root / 'ready.json', pointer)
     restarted, new_context, new_runs = _compose(tmp_path)
     result = restarted.iteration(new_context)
     assert result.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.REJECTED
-    assert len(runs) == 1
+    assert result.cycle_executed is True
+    assert new_context._next_iteration_delay() is None
     assert len(new_runs) == 1
     assert len(restarted.composition.durability.persistence.read_durable_adoptions()) == 1
+
+
+def test_unexecutable_initial_ready_waits_until_new_ready_is_published(tmp_path, monkeypatch):
+    import ada_command_center.processes.alarms_runtime.configured_iteration as module
+
+    unexecutable = _publish(tmp_path)
+    job, context, runs = _compose(tmp_path)
+    actual_builder = module.build_alarm_configuration_revision
+
+    def build_candidate(*, candidate, evaluator_registry):
+        if candidate.result_id == unexecutable:
+            raise ValueError('Required evaluator contract is unavailable')
+        return actual_builder(candidate=candidate, evaluator_registry=evaluator_registry)
+
+    monkeypatch.setattr(module, 'build_alarm_configuration_revision', build_candidate)
+    warnings = []
+    monkeypatch.setattr(
+        context.logger, 'warning', lambda message, **kwargs: warnings.append(message)
+    )
+    persistence = job.composition.durability.persistence
+    for iteration in (1, 2):
+        if iteration > 1:
+            context._begin_iteration(iteration)
+        result = job.iteration(context)
+        assert result.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.NOT_REQUIRED
+        assert result.cycle_executed is False
+        assert context._next_iteration_delay() == 30.0
+        assert (
+            context.get_iteration_fact('alarm_configuration_status')
+            == 'waiting_for_executable_ready'
+        )
+        assert persistence.read_effective_head() is None
+        assert persistence.read_durable_adoptions() == ()
+        assert runs == []
+    assert len(warnings) == 1
+
+    valid = _publish(tmp_path, qualification='c')
+    context._begin_iteration(3)
+    result = job.iteration(context)
+    assert result.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.BOOTSTRAPPED
+    assert result.cycle_executed is True
+    assert context._next_iteration_delay() is None
+    assert persistence.read_effective_head().target_artifact_ref.result_id == valid
+    assert len(persistence.read_durable_adoptions()) == 1
+    assert len(runs) == 1
+
+
+def test_initial_ready_reader_error_does_not_hide_durable_effective_corruption(tmp_path):
+    _publish(tmp_path)
+    job, context, runs = _compose(tmp_path)
+    assert job.iteration(context).adoption_outcome is AlarmRuntimeJobAdoptionOutcome.BOOTSTRAPPED
+    restarted, new_context, new_runs = _compose(tmp_path)
+    pointer = materialization_root(tmp_path) / 'ready.json'
+    pointer.write_text('{invalid-json')
+    effective_path = tmp_path / 'ada-command-center' / 'alarms' / 'runtime' / 'state'
+    (effective_path / 'effective-head.json').unlink()
+    with pytest.raises(AlarmRecoveryRequiredError):
+        restarted.iteration(new_context)
+    assert len(restarted.composition.durability.persistence.read_durable_adoptions()) == 1
+    assert len(runs) == 1
+    assert new_runs == []
 
 
 def test_new_job_fails_closed_if_effective_projection_disappears_after_recovery(tmp_path):
