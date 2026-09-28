@@ -15,6 +15,7 @@ def test_users_projection_registers_a_separate_authorized_manager_entry():
     )
     assert entry.key == 'users-projection'
     assert entry.route == '/users-projection'
+    assert entry.title == 'Proyección de usuarios'
     assert entry.group_key == 'administration'
     assert entry.access_key == 'users.manage'
     assert entry.web_module is not None

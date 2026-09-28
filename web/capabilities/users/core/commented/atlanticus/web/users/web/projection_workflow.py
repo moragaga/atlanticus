@@ -14,13 +14,13 @@ from atlanticus.web.users.recovery import (
 
 
 @dataclass(frozen=True, slots=True)
-# Coordina la UI con los contratos ya existentes de captura y recuperación.
+# Contrato genérico: la UI no conoce conexiones ni rutas de persistencia.
 class UsersProjectionWorkflow:
     recovery: UsersApprovedRecoveryService | Callable[[], UsersApprovedRecoveryService]
     snapshot_ids: Callable[[], tuple[str, ...]]
     operator_id: Callable[[], str]
 
-    # El servicio se resuelve al ejecutar acciones, sin consultar Cosmos en startup.
+    # Resolución tardía para evitar actividad remota en el arranque web.
     def _service(self) -> UsersApprovedRecoveryService:
         return self.recovery() if callable(self.recovery) else self.recovery
 
@@ -31,7 +31,7 @@ class UsersProjectionWorkflow:
         preview = self._service().preview_capture()
         return _capture_document(preview)
 
-# Revalida el estado del servidor antes de aceptar una captura aprobada.
+    # Revalida el contenido antes de persistir un respaldo aprobado.
     def capture(self, preview: dict[str, object], approval_reference: str) -> dict[str, object]:
         reference = _required(approval_reference, 'Approval reference')
         service = self._service()
@@ -56,7 +56,7 @@ class UsersProjectionWorkflow:
         validation = self._service().validate_replace(_required(snapshot_id, 'Snapshot id'))
         return _inspection(validation)
 
-# Las confirmaciones del navegador no sustituyen la revalidación del backend.
+    # La confirmación del modal no evita revalidar el estado y permisos del backend.
     def apply(
         self,
         *,
@@ -65,12 +65,12 @@ class UsersProjectionWorkflow:
         approval_reference: str,
         maintenance_confirmed: bool,
         revocations_reviewed: bool,
-        typed_confirmation: str,
+        confirmed: bool,
     ) -> dict[str, object]:
         if not isinstance(inspection, dict):
             raise UsersRecoveryConflictError('Inspect a snapshot before applying changes')
-        if mode not in {'restore', 'replace'} or typed_confirmation != mode.upper():
-            raise UsersRecoveryConflictError('Type the selected operation to confirm it')
+        if mode not in {'restore', 'replace'} or confirmed is not True:
+            raise UsersRecoveryConflictError('Explicit operation confirmation is required')
         if maintenance_confirmed is not True or revocations_reviewed is not True:
             raise UsersRecoveryConflictError('Maintenance and revocation review are required')
         reference = _required(approval_reference, 'Approval reference')
@@ -170,7 +170,6 @@ def _capture_document(preview: object) -> dict[str, object]:
     }
 
 
-# La huella incorpora ETags y estado del registro sin exponerlos en el navegador.
 def _target_fingerprint(validation: UsersReplaceValidation) -> str:
     content = {
         'registry_version': validation.recovery.registry_version,

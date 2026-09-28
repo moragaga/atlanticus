@@ -61,12 +61,12 @@ class UsersProjectionWorkflow:
         approval_reference: str,
         maintenance_confirmed: bool,
         revocations_reviewed: bool,
-        typed_confirmation: str,
+        confirmed: bool,
     ) -> dict[str, object]:
         if not isinstance(inspection, dict):
             raise UsersRecoveryConflictError('Inspect a snapshot before applying changes')
-        if mode not in {'restore', 'replace'} or typed_confirmation != mode.upper():
-            raise UsersRecoveryConflictError('Type the selected operation to confirm it')
+        if mode not in {'restore', 'replace'} or confirmed is not True:
+            raise UsersRecoveryConflictError('Explicit operation confirmation is required')
         if maintenance_confirmed is not True or revocations_reviewed is not True:
             raise UsersRecoveryConflictError('Maintenance and revocation review are required')
         reference = _required(approval_reference, 'Approval reference')

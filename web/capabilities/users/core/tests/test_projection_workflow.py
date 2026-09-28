@@ -101,24 +101,24 @@ def test_replace_requires_review_and_same_inspection():
     inspected = workflow.inspect('snapshot-a')
     assert inspected['update_ids'] == ['user-a']
     assert inspected['discarded_candidate_ids'] == ['candidate-b']
-    with pytest.raises(UsersRecoveryConflictError, match='Type'):
+    with pytest.raises(UsersRecoveryConflictError, match='confirmation'):
         workflow.apply(
             inspection=inspected, mode='replace', approval_reference='APPROVAL-1',
             maintenance_confirmed=True, revocations_reviewed=True,
-            typed_confirmation='OTHER',
+            confirmed=False,
         )
     recovery.version = 'v2'
     with pytest.raises(UsersRecoveryConflictError, match='Target changed'):
         workflow.apply(
             inspection=inspected, mode='replace', approval_reference='APPROVAL-1',
             maintenance_confirmed=True, revocations_reviewed=True,
-            typed_confirmation='REPLACE',
+            confirmed=True,
         )
     inspected = workflow.inspect('snapshot-a')
     result = workflow.apply(
         inspection=inspected, mode='replace', approval_reference='APPROVAL-1',
         maintenance_confirmed=True, revocations_reviewed=True,
-        typed_confirmation='REPLACE',
+        confirmed=True,
     )
     assert result['updated'] == 1
     assert result['discarded_candidates'] == 1
@@ -127,7 +127,7 @@ def test_replace_requires_review_and_same_inspection():
         workflow.apply(
             inspection=workflow.inspect('snapshot-a'), mode='replace',
             approval_reference='APPROVAL-1', maintenance_confirmed=True,
-            revocations_reviewed=True, typed_confirmation='REPLACE',
+            revocations_reviewed=True, confirmed=True,
         )
 
 
@@ -146,3 +146,44 @@ def test_recovery_factory_is_lazy_and_resolves_once_per_action():
     assert events == ['resolved']
     workflow.inspect('snapshot-a')
     assert events == ['resolved', 'resolved']
+
+
+def test_strict_restore_requires_modal_confirmation_and_keeps_non_missing_users():
+    class StrictRecovery(Recovery):
+        def validate_replace(self, snapshot_id):
+            value = super().validate_replace(snapshot_id)
+            value.recovery.can_restore = True
+            value.recovery.registry_state.value = 'match'
+            value.plan.create_ids = ('missing-user',) if not self.aligned else ()
+            value.plan.update_ids = ()
+            value.plan.delete_ids = ()
+            value.plan.registry_discarded_ids = ()
+            value.plan.registry_write_required = False
+            value.recovery.differences = () if self.aligned else (
+                SimpleNamespace(
+                    user_id='missing-user', kind=SimpleNamespace(value='missing'), fields=(),
+                ),
+            )
+            return value
+
+        def restore(self, **arguments):
+            self.calls.append(('restore', arguments))
+            self.aligned = True
+            return SimpleNamespace(differences=(), registry_state=SimpleNamespace(value='match'))
+
+    service = StrictRecovery()
+    workflow = _workflow(service)
+    inspection = workflow.inspect('snapshot-a')
+    with pytest.raises(UsersRecoveryConflictError, match='confirmation'):
+        workflow.apply(
+            inspection=inspection, mode='restore', approval_reference='TICKET-1',
+            maintenance_confirmed=True, revocations_reviewed=True, confirmed=False,
+        )
+    result = workflow.apply(
+        inspection=inspection, mode='restore', approval_reference='TICKET-1',
+        maintenance_confirmed=True, revocations_reviewed=True, confirmed=True,
+    )
+    assert result['created'] == 1
+    assert result['updated'] == result['deleted'] == 0
+    assert service.calls[-1][0] == 'restore'
+    assert service.calls[-1][1]['operator_id'] == 'authenticated-operator'

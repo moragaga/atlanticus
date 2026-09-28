@@ -95,10 +95,10 @@ def compose_users_projection_manager(
     entry = ManagerEntry(
         key='users-projection',
         group_key=group_key,
-        title='Users Projection',
+        title='Proyección de usuarios',
         route='/users-projection',
         order=11,
-        description='Snapshots aprobados, diferencias y recuperación de usuarios.',
+        description='Respaldos aprobados, comparación y aplicación controlada de usuarios.',
         layout=lambda _services: build_users_projection_configuration(context),
         access_key=access_key,
         web_module=create_users_projection_web_module(context),
