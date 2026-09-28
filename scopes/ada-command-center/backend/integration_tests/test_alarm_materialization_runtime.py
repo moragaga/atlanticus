@@ -1437,3 +1437,102 @@ def test_composed_runtime_process_rejects_wrong_service_definition(tmp_path: Pat
             episode_id_factory=lambda group, at: 'unused-episode',
             commit_time_provider=_CommitClock(),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class _BulkControlledResult:
+    as_of: datetime
+    plan: DataLoadPlan
+    value: float
+
+    @property
+    def failures(self):
+        return {}
+
+    def context_for(self, key: str) -> DataRuntimeContext:
+        assert key == _IDENTITY.canonical_key
+        assert len(self.plan.views) == 1
+        return DataRuntimeContext(frames={self.plan.views[0].view: _ControlledFrame(self.value)})
+
+
+@dataclass(slots=True)
+class _BulkControlledLoader:
+    values: list[float]
+    loads: list[tuple[DataLoadPlan, datetime]]
+
+    def load(self, *, plan: DataLoadPlan, as_of: datetime) -> _BulkControlledResult:
+        self.loads.append((plan, as_of))
+        return _BulkControlledResult(as_of=as_of, plan=plan, value=self.values.pop(0))
+
+
+def test_composed_runtime_accepts_bulk_source_contract_without_reloading_per_alarm(
+    tmp_path: Path,
+) -> None:
+    from ada_command_center.processes.alarms_runtime import AlarmDataSourceAdapter
+
+    volume = tmp_path / 'volume'
+    volume.mkdir()
+    evidence_file = tmp_path / 'qualification.json'
+    projection = _ControlledProjection(_record('alarm-r10'))
+    _write_qualification(
+        evidence_file, revision='alarm-r10', qualified_at='2026-09-27T12:02:00+00:00'
+    )
+    producer = _materialization_job(
+        volume=volume, projection=projection, qualification_file=evidence_file
+    )
+    assert _publish(producer, volume, run_id='bulk-materialization').outcome is (
+        AlarmMaterializationOutcome.READY
+    )
+    requirement = DataRequirement(
+        source=DataSource.PI_INTERPOLATED,
+        partition=DataPartition.LATEST,
+        columns=(DataColumn(name='value', data_type=DataColumnType.FLOAT),),
+    )
+    registry = AlarmEvaluatorRegistry(
+        contracts=(
+            AlarmEvaluatorContract(
+                family_key='mill',
+                evaluator_key='threshold',
+                evaluator=_threshold_from_loaded_frame,
+                requirements=(requirement,),
+            ),
+        )
+    )
+    bulk = _BulkControlledLoader(values=[12.0, 8.0], loads=[])
+    timeline = iter((_AT, _AT + timedelta(seconds=1), _AT + timedelta(seconds=6)))
+    process = build_alarm_runtime_process(
+        runtime_configuration=_runtime_configuration(volume),
+        definition=JobDefinition(
+            module_name='ada_command_center.processes.alarms_runtime',
+            service_name='alarms-runtime',
+        ),
+        source_key=_SOURCE.value,
+        evaluator_registry=registry,
+        source_loader=AlarmDataSourceAdapter(source_loader=bulk),
+        technical_evidence_contract=EvidenceContractRef(
+            contract_key='controlled-integration', contract_version='v1'
+        ),
+        runtime_artifact_version='1.0.0',
+        occurrence_id_factory=lambda identity, at: f'occurrence-{at:%Y%m%dT%H%M%S}',
+        episode_id_factory=lambda group, at: f'episode-{at:%Y%m%dT%H%M%S}',
+        commit_time_provider=_CommitClock(),
+        clock=lambda: next(timeline),
+    )
+    context = _context(volume, service_name='alarms-runtime', run_id='bulk-runtime')
+    process.job.recover(context)
+    first = process.job.iteration(context)
+    assert first.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.BOOTSTRAPPED
+    assert first.cycle_executed is True
+    context._begin_iteration(2)
+    second = process.job.iteration(context)
+    assert second.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.NOT_REQUIRED
+    assert second.cycle_executed is True
+    assert len(bulk.loads) == 2
+    assert bulk.loads[0][0] is bulk.loads[1][0]
+    assert tuple(as_of for _, as_of in bulk.loads) == (
+        _AT + timedelta(seconds=1),
+        _AT + timedelta(seconds=6),
+    )
+    persistence = process.job.composition.durability.persistence
+    assert len(persistence.read_durable_records()) == 2
+    assert persistence.read_snapshot('mill-feed').as_document().get('episode') is None

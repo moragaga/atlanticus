@@ -78,6 +78,7 @@ from ada_command_center.processes.alarms_runtime.snapshot import (
     decode_group_runtime_snapshot,
     encode_group_runtime_snapshot,
 )
+from ada_command_center.processes.alarms_runtime.source_adapter import AlarmDataSourceAdapter
 
 __version__ = '1.0.0'
 
@@ -87,6 +88,7 @@ __all__ = [
     'AlarmConfigurationRevision',
     'AlarmConfigurationRevisionError',
     'AlarmConfiguredIterationExecutor',
+    'AlarmDataSourceAdapter',
     'AlarmEvaluatorContract',
     'AlarmEvaluatorRegistry',
     'AlarmExecutionEntry',
