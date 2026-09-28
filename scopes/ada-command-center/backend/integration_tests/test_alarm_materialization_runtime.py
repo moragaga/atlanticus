@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -61,6 +61,7 @@ from ada_command_center.processes.alarms_runtime import (
     AlarmExecutionSession,
     AlarmIterationLoader,
     AlarmOperationalCycle,
+    AlarmOperationalCycleError,
     AlarmOperationalCycleResult,
     AlarmRuntimeJobAdoptionOutcome,
     AlarmRuntimeJobComposition,
@@ -904,3 +905,165 @@ def test_real_materialization_drives_repeated_operational_cycles_and_next_job_v2
         durable.read_effective_head()
     )
     assert len(recovered.composition.durability.persistence.read_durable_adoptions()) == 2
+
+
+def _structural_ready_after_active_cycle(tmp_path: Path) -> tuple[Path, str]:
+    volume = tmp_path / 'volume'
+    volume.mkdir()
+    evidence_file = tmp_path / 'qualification.json'
+    projection = _ControlledProjection(_record('alarm-r10'))
+    _write_qualification(
+        evidence_file, revision='alarm-r10', qualified_at='2026-09-27T12:02:00+00:00'
+    )
+    materialization = _materialization_job(
+        volume=volume, projection=projection, qualification_file=evidence_file
+    )
+    published_a = _publish(materialization, volume, run_id='materialization-a')
+    assert published_a.outcome is AlarmMaterializationOutcome.READY
+
+    runtime_a, context_a, cycles_a = _operational_runtime_job(
+        volume,
+        source_loader=_ControlledSourceLoader(values=[12.0], loads=[]),
+        iteration_times=(_AT + timedelta(seconds=1),),
+        adoption_at=_AT,
+        run_id='runtime-a',
+    )
+    assert runtime_a.iteration(context_a).adoption_outcome is (
+        AlarmRuntimeJobAdoptionOutcome.BOOTSTRAPPED
+    )
+    assert cycles_a[0].evaluations[0].status is AlarmStatus.ACTIVE
+    original = runtime_a.composition.durability.persistence
+    assert len(original.read_durable_adoptions()) == 1
+    assert len(original.read_durable_records()) == 1
+    assert original.read_snapshot('mill-feed') is not None
+    assert (
+        runtime_a.composition.load_group(
+            'mill-feed', planned_alarms=cycles_a[0].iteration.session.planned_alarms
+        ).state.episode
+        is not None
+    )
+
+    candidate_b = _record('alarm-r11')
+    candidate_rule = replace(candidate_b.payload.configuration.rules[0], criticality=Criticality.C2)
+    projection.record = replace(
+        candidate_b,
+        payload=replace(
+            candidate_b.payload,
+            configuration=replace(candidate_b.payload.configuration, rules=(candidate_rule,)),
+        ),
+    )
+    _write_qualification(
+        evidence_file, revision='alarm-r11', qualified_at='2026-09-27T12:03:00+00:00'
+    )
+    published_b = _publish(materialization, volume, run_id='materialization-b')
+    assert published_b.outcome is AlarmMaterializationOutcome.READY
+    assert published_b.result_id != published_a.result_id
+    ready = _reader(volume).read_published_ready(source_key=_SOURCE.value)
+    assert ready is not None
+    assert ready.result_id == published_b.result_id
+    assert len(ready.runtime.planned_alarms) == 1
+    assert ready.runtime.planned_alarms[0].criticality is Criticality.C2
+    return volume, published_b.result_id
+
+
+def test_v2_same_second_conflict_is_explicit_and_next_iteration_keeps_pin(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    volume, published_b = _structural_ready_after_active_cycle(tmp_path)
+    adoption_at = _AT + timedelta(seconds=20)
+    source_b = _ControlledSourceLoader(values=[14.0, 15.0], loads=[])
+    runtime_b, context_b, cycles_b = _operational_runtime_job(
+        volume,
+        source_loader=source_b,
+        iteration_times=(adoption_at, adoption_at + timedelta(seconds=1)),
+        adoption_at=adoption_at,
+        run_id='runtime-b',
+    )
+    with pytest.raises(
+        AlarmOperationalCycleError,
+        match='priority group already has a durable commit for iteration as_of',
+    ):
+        runtime_b.iteration(context_b)
+
+    persistence = runtime_b.composition.durability.persistence
+    assert persistence.read_head().aligned
+    assert persistence.read_effective_head().target_artifact_ref.result_id == published_b
+    assert len(persistence.read_durable_adoptions()) == 2
+    adoption = persistence.read_durable_adoptions()[-1].record
+    assert type(adoption) is ConfigurationAdoptionRecordV2
+    assert tuple(ref.priority_group for ref in adoption.group_commits) == ('mill-feed',)
+    assert len(persistence.read_durable_records()) == 2
+    assert persistence.read_snapshot('mill-feed').last_commit_id == (
+        adoption.group_commits[0].commit_id
+    )
+    assert cycles_b == []
+    assert len(source_b.loads) == 1
+    assert source_b.loads[0][1] == adoption_at
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('A pinned job must not reopen configuration readers on the next cycle')
+
+    context_b._begin_iteration(2)
+    with monkeypatch.context() as patch:
+        patch.setattr(RuntimeLocalConfigurationReader, 'load_ready_candidate', forbidden)
+        patch.setattr(RuntimeLocalConfigurationReader, 'load_effective_revision', forbidden)
+        patch.setattr(RuntimeLocalConfigurationReader, 'assert_current_effective', forbidden)
+        subsequent = runtime_b.iteration(context_b)
+
+    assert subsequent.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.NOT_REQUIRED
+    assert subsequent.cycle_executed is True
+    assert cycles_b[0].iteration.session.alarm_configuration_revision == 'alarm-r11'
+    assert cycles_b[0].evaluations[0].status is AlarmStatus.ACTIVE
+    assert cycles_b[0].commit_result is not None
+    assert len(source_b.loads) == 2
+    assert source_b.loads[0][0] is source_b.loads[1][0]
+    assert source_b.loads[1][1] == adoption_at + timedelta(seconds=1)
+    assert len(persistence.read_durable_adoptions()) == 2
+    assert len(persistence.read_durable_records()) == 3
+    assert persistence.read_snapshot('mill-feed').last_commit_id != (
+        adoption.group_commits[0].commit_id
+    )
+
+
+def test_v2_first_operational_cycle_one_second_later_does_not_collide(
+    tmp_path: Path,
+) -> None:
+    volume, published_b = _structural_ready_after_active_cycle(tmp_path)
+    adoption_at = _AT + timedelta(seconds=20)
+    operational_at = adoption_at + timedelta(seconds=1)
+    source_b = _ControlledSourceLoader(values=[14.0], loads=[])
+    runtime_b, context_b, cycles_b = _operational_runtime_job(
+        volume,
+        source_loader=source_b,
+        iteration_times=(operational_at,),
+        adoption_at=adoption_at,
+        run_id='runtime-b',
+    )
+    first = runtime_b.iteration(context_b)
+    assert first.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.ADOPTED
+    assert first.cycle_executed is True
+    assert len(cycles_b) == 1
+    assert cycles_b[0].evaluations[0].status is AlarmStatus.ACTIVE
+    assert cycles_b[0].commit_result is not None
+    assert len(source_b.loads) == 1
+    assert source_b.loads[0][1] == operational_at
+
+    persistence = runtime_b.composition.durability.persistence
+    assert persistence.read_head().aligned
+    assert persistence.read_effective_head().target_artifact_ref.result_id == published_b
+    assert len(persistence.read_durable_adoptions()) == 2
+    adoption = persistence.read_durable_adoptions()[-1].record
+    assert type(adoption) is ConfigurationAdoptionRecordV2
+    assert tuple(ref.priority_group for ref in adoption.group_commits) == ('mill-feed',)
+    assert len(persistence.read_durable_records()) == 3
+    persisted_at = persistence.read_durable_records()[-1].record.commit.evaluated_at
+    assert datetime.fromisoformat(persisted_at) == operational_at
+    assert persistence.read_snapshot('mill-feed').last_commit_id != (
+        adoption.group_commits[0].commit_id
+    )
+    assert (
+        runtime_b.composition.load_group(
+            'mill-feed', planned_alarms=cycles_b[0].iteration.session.planned_alarms
+        ).state.episode
+        is not None
+    )
