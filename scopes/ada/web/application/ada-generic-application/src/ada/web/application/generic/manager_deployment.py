@@ -16,10 +16,15 @@ from ada.web.application.generic.manager_persistence import (
     compose_durable_manager_stores,
     resolve_manager_cosmos_plan_for_connection,
 )
+from ada.web.application.generic.resource_preparation import (
+    ResourceObserver,
+    ResourcePreparationReport,
+    prepare_manager_resources,
+)
 from ada.web.application.generic.settings import AdaGenericSettings
 from ada.web.storage.namespace import AdaStorageNamespace
 from ada.web.tools.persistence import ToolProjectionProvider, ToolSourceProvider
-from atlanticus.connectivity.cosmos import CosmosClient, CosmosProvisioner, CosmosSettings
+from atlanticus.connectivity.cosmos import CosmosClient, CosmosSettings
 from atlanticus.connectivity.storage import StorageClient, StorageSettings
 from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
 from atlanticus.web.configuration import WebEnvironment
@@ -28,10 +33,6 @@ from atlanticus.web.users.blob.recovery import (
     BlobApprovedUsersSnapshotStore,
     BlobUsersRecoveryAuditStore,
     BlobUsersReplaceBeforeImageStore,
-)
-from atlanticus.web.storage.cosmos import (
-    ensure_cosmos_storage_plan,
-    validate_cosmos_storage_plan,
 )
 from atlanticus.web.users.recovery import UsersApprovedRecoveryService, UsersRecoveryConflictError
 
@@ -200,58 +201,59 @@ def _attach_users_recovery(
 def prepare_durable_manager_resources(
     deployment: DurableManagerRuntime,
     *,
-    action: Literal['validate', 'ensure-local'],
+    action: Literal['validate', 'prepare'],
     environment: WebEnvironment,
-) -> tuple[str, ...]:
+    observe_failure: ResourceObserver | None = None,
+) -> ResourcePreparationReport:
     if not isinstance(deployment, DurableManagerRuntime):
         raise TypeError('Resource preparation requires a durable Manager runtime')
-    if not isinstance(environment, WebEnvironment):
-        raise TypeError('Resource preparation requires WebEnvironment')
-    if action not in ('validate', 'ensure-local'):
-        raise ValueError('Unknown Manager resource preparation action')
-    if action == 'ensure-local' and not environment.is_local:
-        raise ValueError('Manager resource creation is restricted to local environment')
-
-    blobs = {
-        (resource.connection_ref, resource.container_name)
-        for resource in (
-            deployment.resources.application_source,
-            deployment.resources.tool_source,
-            deployment.resources.users_registry,
-        )
-    }
-    for connection_ref, container_name in sorted(blobs):
-        deployment.connections.storage[connection_ref].health_check(container_name=container_name)
-
-    cosmos_ref = deployment.resources.cosmos_plan.resources[0].connection_ref
-    cosmos = deployment.connections.cosmos[cosmos_ref]
-    provisioner = CosmosProvisioner(client=cosmos)
-    provisioners = {cosmos_ref: provisioner}
-    if action == 'ensure-local':
-        provisioner.ensure_database()
-        ensure_cosmos_storage_plan(
-            deployment.resources.cosmos_plan,
-            provisioners=provisioners,
-        )
-    else:
-        validate_cosmos_storage_plan(
-            deployment.resources.cosmos_plan,
-            provisioners=provisioners,
-        )
-    return tuple(resource.physical_name for resource in deployment.resources.cosmos_plan.resources)
+    return prepare_manager_resources(
+        resources=deployment.resources,
+        connections=deployment.connections,
+        action=action,
+        environment=environment,
+        observe_failure=observe_failure,
+    )
 
 
 def manager_resources_main(argv: Sequence[str] | None = None) -> None:
+    import json
     from argparse import ArgumentParser
 
+    from atlanticus.web.observability import configure_web_observability
+
     parser = ArgumentParser(description='Validate or prepare ADA Manager resources')
-    parser.add_argument('action', choices=('validate', 'ensure-local'))
+    parser.add_argument('action', choices=('validate', 'prepare'))
     options = parser.parse_args(argv)
-    settings = AdaGenericSettings()
-    with open_durable_manager(settings) as deployment:
-        containers = prepare_durable_manager_resources(
-            deployment,
-            action=options.action,
-            environment=settings.environment,
+    observer = configure_web_observability(application='ada-resource-preparation', json_output=True)
+
+    def observe_failure(result):
+        observer.error(
+            'ada.resource.preparation.failed',
+            'Resource preparation failed',
+            resource_kind=result.kind,
+            logical_id=result.logical_id,
+            physical_name=result.physical_name,
+            status=result.status.value,
+            error_type=result.error_type,
         )
-    print(f'Manager resources {options.action}: {", ".join(containers)}')
+
+    try:
+        settings = AdaGenericSettings()
+        with open_durable_manager(settings) as deployment:
+            report = prepare_durable_manager_resources(
+                deployment,
+                action=options.action,
+                environment=settings.environment,
+                observe_failure=observe_failure,
+            )
+    except Exception as error:
+        observer.error(
+            'ada.resource.preparation.unavailable',
+            'Resource preparation could not be started',
+            error_type=type(error).__name__,
+        )
+        raise SystemExit(2) from error
+    print(json.dumps(report.to_dict(), ensure_ascii=False))
+    if report.status != 'COMPLETED':
+        raise SystemExit(1)

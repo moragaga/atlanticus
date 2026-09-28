@@ -1,13 +1,11 @@
 from __future__ import annotations
 
+import json
 import socket
 import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import urlopen
-
-from azure.core.exceptions import ResourceExistsError
-from azure.storage.blob import BlobServiceClient
 
 from ada.web.application.generic.manager_deployment import (
     open_durable_manager,
@@ -62,32 +60,48 @@ def _wait_for_emulators() -> None:
     raise RuntimeError('Local Cosmos or Azurite was not ready before timeout')
 
 
-def prepare_local_resources() -> tuple[str, ...]:
+def prepare_local_resources(*, observe_failure=None):
     settings = AdaGenericSettings()
     if not _is_emulator_configuration(settings):
         raise RuntimeError('Local resource preparation requires the isolated Compose emulators')
     _wait_for_emulators()
-    credential = settings.tool_source_blob_connection_string
-    container = settings.tool_source_blob_container_name
-    if credential is None or container is None:
-        raise RuntimeError('Local Blob settings are incomplete')
-    with BlobServiceClient.from_connection_string(credential.get_secret_value()) as client:
-        try:
-            client.create_container(container)
-        except ResourceExistsError:
-            pass
     with open_durable_manager(settings) as manager:
         return prepare_durable_manager_resources(
             manager,
-            action='ensure-local',
+            action='prepare',
             environment=WebEnvironment.LOCAL,
+            observe_failure=observe_failure,
         )
 
 
 def main() -> None:
-    containers = prepare_local_resources()
-    print(f'Local ADA Manager resources ready: {len(containers)} Cosmos containers')
+    from atlanticus.web.observability import configure_web_observability
 
+    observer = configure_web_observability(application='ada-local-resources', json_output=True)
+
+    def observe_failure(result):
+        observer.error(
+            'ada.resource.preparation.failed',
+            'Resource preparation failed',
+            resource_kind=result.kind,
+            logical_id=result.logical_id,
+            physical_name=result.physical_name,
+            status=result.status.value,
+            error_type=result.error_type,
+        )
+
+    try:
+        report = prepare_local_resources(observe_failure=observe_failure)
+    except Exception as error:
+        observer.error(
+            'ada.resource.preparation.unavailable',
+            'Local resource preparation could not be started',
+            error_type=type(error).__name__,
+        )
+        raise SystemExit(2) from error
+    print(json.dumps(report.to_dict(), ensure_ascii=False))
+    if report.status != 'COMPLETED':
+        raise SystemExit(1)
 
 if __name__ == '__main__':
     main()

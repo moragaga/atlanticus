@@ -171,25 +171,6 @@ def _load_local_resources(monkeypatch, *, endpoint='http://cosmos-emulator:8081'
         monkeypatch.setitem(sys.modules, name, obj)
         return obj
 
-    class ResourceExistsError(Exception):
-        pass
-
-    class BlobClient:
-        @classmethod
-        def from_connection_string(cls, connection):
-            calls.append(('storage-connection', connection))
-            return cls()
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_args):
-            calls.append('storage-closed')
-
-        def create_container(self, container):
-            calls.append(('container', container))
-            raise ResourceExistsError('existing')
-
     class Secret:
         def get_secret_value(self):
             return 'DefaultEndpointsProtocol=http;BlobEndpoint=http://azurite:10000/devstoreaccount1;'
@@ -211,12 +192,10 @@ def _load_local_resources(monkeypatch, *, endpoint='http://cosmos-emulator:8081'
         finally:
             calls.append('manager-closed')
 
-    def prepare(deployment, *, action, environment):
+    def prepare(deployment, *, action, environment, observe_failure=None):
         calls.append(('ensure', deployment, action, environment))
-        return ('navigation', 'tools')
+        return SimpleNamespace(status='COMPLETED', results=())
 
-    module('azure.core.exceptions', ResourceExistsError=ResourceExistsError)
-    module('azure.storage.blob', BlobServiceClient=BlobClient)
     module('ada.web.application.generic.manager_deployment',
            open_durable_manager=manager, prepare_durable_manager_resources=prepare)
     module('ada.web.application.generic.settings', AdaGenericSettings=Settings)
@@ -228,15 +207,11 @@ def _load_local_resources(monkeypatch, *, endpoint='http://cosmos-emulator:8081'
 def test_local_resource_job_creates_only_missing_emulator_resources(monkeypatch):
     resources, calls = _load_local_resources(monkeypatch)
     monkeypatch.setattr(resources, '_wait_for_emulators', lambda: calls.append('ready'))
-    assert resources.prepare_local_resources() == ('navigation', 'tools')
+    assert resources.prepare_local_resources().status == 'COMPLETED'
     assert calls == [
         'ready',
-        ('storage-connection',
-         'DefaultEndpointsProtocol=http;BlobEndpoint=http://azurite:10000/devstoreaccount1;'),
-        ('container', 'ada-source'),
-        'storage-closed',
         'manager-open',
-        ('ensure', 'manager-deployment', 'ensure-local', 'local'),
+        ('ensure', 'manager-deployment', 'prepare', 'local'),
         'manager-closed',
     ]
 

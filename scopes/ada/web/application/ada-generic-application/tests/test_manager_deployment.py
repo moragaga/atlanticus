@@ -177,62 +177,27 @@ def test_failed_composition_closes_clients(tmp_path, monkeypatch):
     assert len(closed) == 2
 
 
-def test_preparation_validates_blob_and_all_cosmos_without_mutation(tmp_path, monkeypatch):
-    events = []
-    settings = _settings(tmp_path)
-    with open_durable_manager(settings) as runtime:
-        monkeypatch.setattr(
-            type(runtime.connections.storage['ada-blob']),
-            'health_check',
-            lambda self, *, container_name: events.append(('blob', container_name)),
-        )
-        monkeypatch.setattr(
-            manager_deployment,
-            'CosmosProvisioner',
-            lambda *, client: SimpleNamespace(
-                client=client, ensure_database=lambda: events.append(('ensure-db',))
-            ),
-        )
-        monkeypatch.setattr(
-            manager_deployment,
-            'validate_cosmos_storage_plan',
-            lambda plan, *, provisioners: events.append(('validate', len(plan.resources))),
-        )
-        names = prepare_durable_manager_resources(
-            runtime, action='validate', environment=WebEnvironment.LOCAL
-        )
-    assert len(names) == 6
-    assert events == [('blob', 'configuration'), ('validate', 6)]
+def test_preparation_wrapper_reuses_shared_resource_coordinator(tmp_path, monkeypatch):
+    calls = []
+    expected = object()
 
+    def fake_prepare(**kwargs):
+        calls.append(kwargs)
+        return expected
 
-def test_local_ensure_does_not_run_in_production_or_without_blob(tmp_path, monkeypatch):
-    events = []
+    monkeypatch.setattr(manager_deployment, 'prepare_manager_resources', fake_prepare)
     with open_durable_manager(_settings(tmp_path)) as runtime:
-        with pytest.raises(ValueError, match='restricted to local'):
-            prepare_durable_manager_resources(
-                runtime, action='ensure-local', environment=WebEnvironment.PRODUCTION
-            )
-        monkeypatch.setattr(
-            type(runtime.connections.storage['ada-blob']),
-            'health_check',
-            lambda self, *, container_name: events.append(('blob', container_name)),
+        actual = prepare_durable_manager_resources(
+            runtime, action='prepare', environment=WebEnvironment.PRODUCTION,
         )
-        monkeypatch.setattr(
-            manager_deployment,
-            'CosmosProvisioner',
-            lambda *, client: SimpleNamespace(
-                client=client, ensure_database=lambda: events.append(('ensure-db',))
-            ),
-        )
-        monkeypatch.setattr(
-            manager_deployment,
-            'ensure_cosmos_storage_plan',
-            lambda plan, *, provisioners: events.append(('ensure-containers', len(plan.resources))),
-        )
-        prepare_durable_manager_resources(
-            runtime, action='ensure-local', environment=WebEnvironment.LOCAL
-        )
-    assert events == [('blob', 'configuration'), ('ensure-db',), ('ensure-containers', 6)]
+        assert actual is expected
+        assert calls == [{
+            'resources': runtime.resources,
+            'connections': runtime.connections,
+            'action': 'prepare',
+            'environment': WebEnvironment.PRODUCTION,
+            'observe_failure': None,
+        }]
 
 
 def test_unsupported_action_rejected_before_provider_access(tmp_path):

@@ -70,7 +70,7 @@ services:
     networks:
       - support
     restart: 'no'
-  # Web espera la terminación exitosa del job.
+  # Web depende de servicios arrancados, no del resultado de la preparación.
   web:
     image: ${ADA_WEB_IMAGE:-ada-generic:compose-local}
     build:
@@ -78,8 +78,10 @@ services:
     environment:
       <<: *local_application_settings
     depends_on:
-      resources:
-        condition: service_completed_successfully
+      cosmos-emulator:
+        condition: service_started
+      azurite:
+        condition: service_started
     ports:
       - '127.0.0.1:${ADA_WEB_PORT:-8000}:8000'
     networks:
