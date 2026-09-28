@@ -121,15 +121,12 @@ class AlarmConfigurationAdoptionExecutor:
             raise ValueError('runtime_artifact_version must be a non-empty string')
         self.runtime_artifact_version = self.runtime_artifact_version.strip()
 
-    def execute(
+    def prepare(
         self,
-        context: JobRuntimeContext,
         plan: ConfigurationAdoptionPlan,
         *,
         effective_at: datetime,
-    ) -> ConfigurationAdoptionExecutionResult:
-        if not isinstance(context, JobRuntimeContext):
-            raise TypeError('context must be JobRuntimeContext')
+    ) -> tuple[ConfigurationAdoptionGroupResult, ...]:
         if not isinstance(plan, ConfigurationAdoptionPlan):
             raise TypeError('plan must be ConfigurationAdoptionPlan')
         _require_utc_datetime(effective_at, 'effective_at')
@@ -147,14 +144,9 @@ class AlarmConfigurationAdoptionExecutor:
             )
         grouped_changes = self._grouped_changes(plan)
         if not grouped_changes:
-            return ConfigurationAdoptionExecutionResult(
-                plan=plan,
-                effective_at=effective_at,
-                groups=(),
-                commit_result=None,
-            )
+            return ()
         committed_at = self._committed_at(effective_at)
-        groups = tuple(
+        return tuple(
             self._prepare_group(
                 plan,
                 priority_group=priority_group,
@@ -164,19 +156,19 @@ class AlarmConfigurationAdoptionExecutor:
             )
             for priority_group, changes in sorted(grouped_changes.items())
         )
-        materializations = tuple(
-            group.materialization for group in groups if group.materialization is not None
-        )
-        commit_result = (
-            None
-            if not materializations
-            else self.composition.commit_batch(context, materializations)
-        )
-        return ConfigurationAdoptionExecutionResult(
-            plan=plan,
-            effective_at=effective_at,
-            groups=groups,
-            commit_result=commit_result,
+
+    def execute(
+        self,
+        context: JobRuntimeContext,
+        plan: ConfigurationAdoptionPlan,
+        *,
+        effective_at: datetime,
+    ) -> ConfigurationAdoptionExecutionResult:
+        if not isinstance(context, JobRuntimeContext):
+            raise TypeError('context must be JobRuntimeContext')
+        self.prepare(plan, effective_at=effective_at)
+        raise ConfigurationAdoptionExecutionError(
+            'global V1/V2 confirmation is required before executing configuration adoption'
         )
 
     def _grouped_changes(
@@ -188,11 +180,18 @@ class AlarmConfigurationAdoptionExecutor:
             if change.disposition is ConfigurationAdoptionDisposition.UNCHANGED:
                 continue
             source_plan = plan.source.plan_for(change.identity)
-            if source_plan is None:
+            target_plan = plan.target.plan_for(change.identity)
+            if source_plan is None and target_plan is None:
+                if change.disposition in {
+                    ConfigurationAdoptionDisposition.ADDED,
+                    ConfigurationAdoptionDisposition.REMOVED,
+                }:
+                    continue
                 raise ConfigurationAdoptionExecutionError(
-                    f'{change.identity.canonical_key}: source plan is missing during adoption'
+                    f'{change.identity.canonical_key}: adoption group cannot be resolved'
                 )
-            grouped.setdefault(source_plan.priority_group, []).append(change)
+            selected_plan = source_plan if source_plan is not None else target_plan
+            grouped.setdefault(selected_plan.priority_group, []).append(change)
         return {priority_group: tuple(changes) for priority_group, changes in grouped.items()}
 
     def _prepare_group(
