@@ -187,3 +187,40 @@ def test_strict_restore_requires_modal_confirmation_and_keeps_non_missing_users(
     assert result['updated'] == result['deleted'] == 0
     assert service.calls[-1][0] == 'restore'
     assert service.calls[-1][1]['operator_id'] == 'authenticated-operator'
+
+
+def test_approval_reference_normalizes_boundary_whitespace():
+    service = Recovery()
+    workflow = _workflow(service)
+    preview = workflow.preview_capture()
+    workflow.capture(preview, '  REVIEW-007  ')
+    assert service.calls[-1][1]['approval_reference'] == 'REVIEW-007'
+    inspection = workflow.inspect('snapshot-a')
+    workflow.apply(
+        inspection=inspection, mode='replace', approval_reference='  REVIEW-008 ',
+        maintenance_confirmed=True, revocations_reviewed=True, confirmed=True,
+    )
+    assert service.calls[-1][1]['approval_reference'] == 'REVIEW-008'
+
+
+def test_snapshot_catalog_and_details_are_injected_without_eager_service_calls():
+    service = Recovery()
+    entries = (('snapshot-a', '2026-09-28T08:45:00+00:00'),)
+    snapshot = SimpleNamespace(
+        snapshot_id='snapshot-a', captured_at_utc='2026-09-28T08:44:00+00:00',
+        origin_environment='original', users=(object(),), approval_reference='TICKET-001',
+        operator_id='user-test',
+    )
+    workflow = UsersProjectionWorkflow(
+        recovery=service, snapshot_ids=lambda: ('snapshot-a',),
+        operator_id=lambda: 'user-test', snapshot_summaries=lambda: entries,
+        read_snapshot=lambda _id: snapshot,
+    )
+    assert workflow.history_details() == ({'snapshot_id': 'snapshot-a',
+                                           'saved_at_utc': entries[0][1]},)
+    info = workflow.describe_snapshot('snapshot-a')
+    assert info['origin_environment'] == 'original'
+    assert info['approved_count'] == 1
+    assert info['approval_reference'] == 'TICKET-001'
+    with pytest.raises(UsersRecoveryConflictError, match='match the selected'):
+        workflow.describe_snapshot('snapshot-b')

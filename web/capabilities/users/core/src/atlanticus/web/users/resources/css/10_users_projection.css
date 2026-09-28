@@ -175,6 +175,68 @@
     border-color: var(--atlanticus-ui-border) !important;
 }
 
+
+.atlanticus-users-projection .dash-dropdown:hover:not(:disabled),
+.atlanticus-users-projection .Select-control:hover {
+    border-color: rgb(201 162 75 / 55%) !important;
+}
+
+.atlanticus-users-projection .dash-dropdown:focus-visible,
+.atlanticus-users-projection .dash-dropdown-wrapper:focus-within .dash-dropdown,
+.atlanticus-users-projection .is-open > .Select-control {
+    border-color: var(--atlanticus-ui-secondary) !important;
+    outline: 0 !important;
+    box-shadow: var(--atlanticus-ui-control-focus-ring) !important;
+}
+
+.atlanticus-users-projection .dash-dropdown-value,
+.atlanticus-users-projection .Select-value,
+.atlanticus-users-projection .Select-value-label,
+.atlanticus-users-projection .Select-input > input,
+.atlanticus-users-projection .dash-dropdown-search {
+    color: var(--atlanticus-ui-text) !important;
+}
+
+.atlanticus-users-projection .dash-dropdown-placeholder,
+.atlanticus-users-projection .Select-placeholder,
+.atlanticus-users-projection .dash-dropdown-search::placeholder {
+    color: var(--atlanticus-ui-text-muted) !important;
+}
+
+.atlanticus-users-projection .dash-dropdown-content,
+.atlanticus-users-projection .Select-menu-outer {
+    background: var(--atlanticus-ui-surface) !important;
+    box-shadow: 0 .7rem 1.5rem rgb(7 21 34 / 12%) !important;
+    border-radius: var(--atlanticus-ui-control-radius) !important;
+}
+
+.atlanticus-users-projection .dash-dropdown-option,
+.atlanticus-users-projection .Select-option {
+    color: var(--atlanticus-ui-text) !important;
+    background: var(--atlanticus-ui-surface) !important;
+    font-size: .76rem;
+}
+
+.atlanticus-users-projection .dash-dropdown-option:not(:has(input[disabled])):hover,
+.atlanticus-users-projection .dash-dropdown-option:not(:has(input[disabled])):focus-within,
+.atlanticus-users-projection .Select-option.is-focused {
+    color: var(--atlanticus-ui-primary) !important;
+    background: var(--atlanticus-ui-selection-soft) !important;
+}
+
+.atlanticus-users-projection .dash-dropdown-option.selected,
+.atlanticus-users-projection .Select-option.is-selected {
+    color: var(--atlanticus-ui-primary) !important;
+    background: var(--atlanticus-ui-selection-soft) !important;
+    font-weight: 700;
+}
+
+.atlanticus-users-projection .dash-dropdown-trigger-icon,
+.atlanticus-users-projection .dash-dropdown-value-count {
+    color: var(--atlanticus-ui-text-muted) !important;
+    fill: var(--atlanticus-ui-text-muted) !important;
+}
+
 .atlanticus-users-projection__actions {
     display: flex;
     flex-wrap: wrap;
@@ -262,6 +324,7 @@
 
 .atlanticus-users-projection__facts > div {
     display: grid;
+    align-content: center;
     gap: .2rem;
     min-width: 0;
     padding: .65rem .75rem;
@@ -271,7 +334,7 @@
 }
 
 .atlanticus-users-projection__facts strong {
-    font-size: 1rem;
+    font-size: .9rem;
     font-weight: 800;
 }
 
@@ -400,8 +463,13 @@
 }
 
 .atlanticus-users-projection__modal-reference {
+    padding: .55rem .7rem;
     color: var(--atlanticus-ui-text-muted);
+    background: var(--atlanticus-ui-surface-muted);
+    border-left: 2px solid var(--atlanticus-ui-border);
+    border-radius: .35rem;
     font-size: .71rem;
+    overflow-wrap: anywhere;
 }
 
 .atlanticus-users-projection__modal {

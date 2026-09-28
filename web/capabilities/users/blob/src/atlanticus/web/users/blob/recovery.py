@@ -96,6 +96,11 @@ class BlobApprovedUsersSnapshotStore:
         self._prefix = _require_prefix(prefix)
 
     def list_snapshot_ids(self, *, max_items: int = 200) -> tuple[str, ...]:
+        return tuple(item[0] for item in self.list_snapshot_summaries(max_items=max_items))
+
+    def list_snapshot_summaries(
+        self, *, max_items: int = 200
+    ) -> tuple[tuple[str, str | None], ...]:
         try:
             items = self._client.list_blobs(
                 container_name=self._container_name,
@@ -106,13 +111,20 @@ class BlobApprovedUsersSnapshotStore:
             raise UsersRecoveryUnavailableError('Could not list Users snapshots') from error
         prefix = f'{self._prefix}/'
         candidates = (
-            (item.name[len(prefix):-5], item.last_modified.timestamp() if item.last_modified else 0)
+            (
+                item.name[len(prefix):-5],
+                item.last_modified.isoformat() if item.last_modified else None,
+                item.last_modified.timestamp() if item.last_modified else 0,
+            )
             for item in items
             if item.name.startswith(prefix)
             and item.name.endswith('.json')
             and _ID_PATTERN.fullmatch(item.name[len(prefix):-5]) is not None
         )
-        return tuple(identifier for identifier, _ in sorted(candidates, key=lambda x: x[1], reverse=True))
+        return tuple(
+            (identifier, saved_at_utc)
+            for identifier, saved_at_utc, _ in sorted(candidates, key=lambda x: x[2], reverse=True)
+        )
 
     def save(self, snapshot: ApprovedUsersSnapshot) -> None:
         if not isinstance(snapshot, ApprovedUsersSnapshot):

@@ -202,6 +202,8 @@ def _attach_users_recovery(
         stores,
         users_recovery=recovery_provider,
         users_snapshot_ids=snapshots.list_snapshot_ids,
+        users_snapshot_summaries=snapshots.list_snapshot_summaries,
+        users_read_snapshot=snapshots.load,
     )
 
 

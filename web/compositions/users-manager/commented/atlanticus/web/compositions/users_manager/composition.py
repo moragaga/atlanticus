@@ -12,7 +12,7 @@ from atlanticus.web.manager import (
 )
 from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.users.administration import UsersAdministrationService
-from atlanticus.web.users.recovery import UsersApprovedRecoveryService
+from atlanticus.web.users.recovery import ApprovedUsersSnapshot, UsersApprovedRecoveryService
 from atlanticus.web.users.web import (
     UsersAdminWebContext,
     build_users_admin_configuration,
@@ -81,6 +81,8 @@ def compose_users_projection_manager(
     recovery: UsersApprovedRecoveryService | Callable[[], UsersApprovedRecoveryService],
     snapshot_ids: Callable[[], tuple[str, ...]],
     principal_provider: UsersPrincipalProvider,
+    snapshot_summaries: Callable[[], tuple[tuple[str, str | None], ...]] | None = None,
+    read_snapshot: Callable[[str], ApprovedUsersSnapshot] | None = None,
     group_key: str,
     access_key: str,
     authorization: ManagerAuthorizationPolicy | None = None,
@@ -91,6 +93,8 @@ def compose_users_projection_manager(
             recovery=recovery,
             snapshot_ids=snapshot_ids,
             operator_id=lambda: principal_provider().subject_id,
+            snapshot_summaries=snapshot_summaries,
+            read_snapshot=read_snapshot,
         ),
         can_manage=lambda: policy.can_view(principal_provider(), entry),
     )

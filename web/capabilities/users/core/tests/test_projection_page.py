@@ -22,6 +22,17 @@ class _Workflow:
     def history(self):
         return self.snapshot_ids
 
+    def history_details(self):
+        return ({'snapshot_id': self.snapshot_ids[0],
+                 'saved_at_utc': '2026-09-28T08:45:00+00:00'},)
+
+    def describe_snapshot(self, snapshot_id):
+        self.calls.append(('describe', snapshot_id))
+        return {'snapshot_id': snapshot_id,
+                'captured_at_utc': '2026-09-28T08:44:00+00:00',
+                'origin_environment': 'lab', 'approved_count': 1,
+                'approval_reference': 'APPROVAL-REF', 'operator_id': 'user-a'}
+
     def preview_capture(self):
         self.calls.append(('preview',))
         return {'approved_ids': ['one'], 'candidate_ids': ['candidate'], 'digest': 'abcd'}
@@ -87,7 +98,11 @@ def test_history_and_inspection_must_be_reselected_after_change(monkeypatch):
     options, error = callbacks['history'](None, None)
     assert len(options) == 1 and error is None
     assert options[0]['value'] == '0123456789abcdef'
-    assert 'Respaldo' in options[0]['label']
+    assert 'Guardado: 28/09/2026 08:45 UTC' in options[0]['label']
+    summary = callbacks['selected_summary'](options[0]['value'])
+    assert 'describe' in workflow.calls[-1]
+    assert 'lab' in str(summary)
+    workflow.calls.clear()
     page.ctx.triggered_id = page._id('snapshot-select')
     inspection, panel = callbacks['inspect'](0, options[0]['value'], 0, None, None)
     assert inspection is None
@@ -104,7 +119,7 @@ def test_capture_requires_preview_reference_and_modal_approval(monkeypatch):
     workflow, callbacks = _callbacks(monkeypatch)
     preview, _ = callbacks['preview_capture'](1)
     assert callbacks['capture_ready'](preview, '')
-    assert not callbacks['capture_ready'](preview, 'TICKET-1')
+    assert not callbacks['capture_ready'](preview, ' TICKET-1 ')
     page.ctx.triggered_id = page._id('open-capture')
     shown = callbacks['modal'](1, 0, 0, 0, 0, preview, 'TICKET-1', None, None, None, None)
     assert '--open' in shown[0]
@@ -113,6 +128,8 @@ def test_capture_requires_preview_reference_and_modal_approval(monkeypatch):
     assert result[0] == page._CLOSED
     assert result[5] == '0123456789abcdef'
     assert workflow.calls[-1] == ('capture', preview, 'TICKET-1')
+    assert result[8] == ''
+    assert callbacks['capture_ready'](None, '')
 
 
 def test_projection_requires_inspection_explicit_modal_and_human_reviews(monkeypatch):
@@ -195,3 +212,8 @@ def test_complete_substitution_is_distinct_and_needs_modal_review(monkeypatch):
     assert approved[0] == page._CLOSED
     assert workflow.calls[-1][1]['mode'] == 'replace'
     assert workflow.calls[-1][1]['confirmed'] is True
+
+
+def test_history_fallback_without_blob_date():
+    assert page._snapshot_option({'snapshot_id': '0123456789abcdef',
+                                  'saved_at_utc': None}).startswith('Fecha no disponible')

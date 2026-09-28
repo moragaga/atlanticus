@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from uuid import uuid4
 
 from atlanticus.web.users.recovery import (
+    ApprovedUsersSnapshot,
     UsersApprovedRecoveryService,
     UsersRecoveryConflictError,
     UsersReplaceValidation,
@@ -19,6 +20,8 @@ class UsersProjectionWorkflow:
     recovery: UsersApprovedRecoveryService | Callable[[], UsersApprovedRecoveryService]
     snapshot_ids: Callable[[], tuple[str, ...]]
     operator_id: Callable[[], str]
+    snapshot_summaries: Callable[[], tuple[tuple[str, str | None], ...]] | None = None
+    read_snapshot: Callable[[str], ApprovedUsersSnapshot] | None = None
 
     # Resolución tardía para evitar actividad remota en el arranque web.
     def _service(self) -> UsersApprovedRecoveryService:
@@ -27,13 +30,40 @@ class UsersProjectionWorkflow:
     def history(self) -> tuple[str, ...]:
         return self.snapshot_ids()
 
+    # Enumera fechas de Storage sin descargar todos los respaldos.
+    def history_details(self) -> tuple[dict[str, str | None], ...]:
+        summaries = (
+            self.snapshot_summaries() if self.snapshot_summaries is not None
+            else tuple((snapshot_id, None) for snapshot_id in self.history())
+        )
+        return tuple(
+            {'snapshot_id': snapshot_id, 'saved_at_utc': saved_at_utc}
+            for snapshot_id, saved_at_utc in summaries
+        )
+
+    def describe_snapshot(self, snapshot_id: str) -> dict[str, object]:
+        if self.read_snapshot is None:
+            raise UsersRecoveryConflictError('Snapshot details provider is required')
+        requested_id = _required(snapshot_id, 'Snapshot id')
+        snapshot = self.read_snapshot(requested_id)
+        if snapshot.snapshot_id != requested_id:
+            raise UsersRecoveryConflictError('Snapshot details do not match the selected id')
+        return {
+            'snapshot_id': snapshot.snapshot_id,
+            'captured_at_utc': snapshot.captured_at_utc,
+            'origin_environment': snapshot.origin_environment,
+            'approved_count': len(snapshot.users),
+            'approval_reference': snapshot.approval_reference,
+            'operator_id': snapshot.operator_id,
+        }
+
     def preview_capture(self) -> dict[str, object]:
         preview = self._service().preview_capture()
         return _capture_document(preview)
 
     # Revalida el contenido antes de persistir un respaldo aprobado.
     def capture(self, preview: dict[str, object], approval_reference: str) -> dict[str, object]:
-        reference = _required(approval_reference, 'Approval reference')
+        reference = _approval_reference(approval_reference)
         service = self._service()
         fresh = service.preview_capture()
         if preview != _capture_document(fresh):
@@ -73,7 +103,7 @@ class UsersProjectionWorkflow:
             raise UsersRecoveryConflictError('Explicit operation confirmation is required')
         if maintenance_confirmed is not True or revocations_reviewed is not True:
             raise UsersRecoveryConflictError('Maintenance and revocation review are required')
-        reference = _required(approval_reference, 'Approval reference')
+        reference = _approval_reference(approval_reference)
         snapshot_id = _required(inspection.get('snapshot_id'), 'Snapshot id')
         service = self._service()
         fresh = service.validate_replace(snapshot_id)
@@ -159,6 +189,13 @@ def _required(value: object, label: str) -> str:
     if not isinstance(value, str) or not value.strip() or value != value.strip():
         raise UsersRecoveryConflictError(f'{label} is required')
     return value
+
+
+# Una referencia con espacios al principio o al final conserva su contenido útil.
+def _approval_reference(value: object) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise UsersRecoveryConflictError('Approval reference is required')
+    return value.strip()
 
 
 def _capture_document(preview: object) -> dict[str, object]:

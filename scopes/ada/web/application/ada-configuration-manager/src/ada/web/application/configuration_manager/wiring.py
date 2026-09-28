@@ -58,7 +58,7 @@ from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.models import SourceKey
 from atlanticus.web.source.store import SourceStore
 from atlanticus.web.users.administration import UsersAdministrationService
-from atlanticus.web.users.recovery import UsersApprovedRecoveryService
+from atlanticus.web.users.recovery import ApprovedUsersSnapshot, UsersApprovedRecoveryService
 from atlanticus.web.users.store import (
     UsersAdministrationStore,
     UsersDirectoryReader,
@@ -102,6 +102,8 @@ class ConfigurationManagerStores:
     users_directory: UsersDirectoryReader | None = None
     users_recovery: UsersApprovedRecoveryService | Callable[[], UsersApprovedRecoveryService] | None = None
     users_snapshot_ids: Callable[[], tuple[str, ...]] | None = None
+    users_snapshot_summaries: Callable[[], tuple[tuple[str, str | None], ...]] | None = None
+    users_read_snapshot: Callable[[str], ApprovedUsersSnapshot] | None = None
 
     def __post_init__(self) -> None:
         for name, expected in (
@@ -138,6 +140,13 @@ class ConfigurationManagerStores:
             raise TypeError('Users recovery service has an invalid type')
         if self.users_snapshot_ids is not None and not callable(self.users_snapshot_ids):
             raise TypeError('Users snapshot catalog must be callable')
+        if any(provider is not None for provider in (
+            self.users_snapshot_summaries, self.users_read_snapshot,
+        )) and (
+            self.users_recovery is None or self.users_snapshot_ids is None
+            or not callable(self.users_snapshot_summaries) or not callable(self.users_read_snapshot)
+        ):
+            raise ValueError('Users snapshot metadata providers must be injected together')
 
 
 def compose_configuration_manager_dependencies(
@@ -232,6 +241,8 @@ def compose_configuration_manager_dependencies(
         compose_users_projection_manager(
             recovery=stores.users_recovery,
             snapshot_ids=stores.users_snapshot_ids,
+            snapshot_summaries=stores.users_snapshot_summaries,
+            read_snapshot=stores.users_read_snapshot,
             principal_provider=principal_provider,
             group_key='administration',
             access_key=USERS_MANAGER_ACCESS_KEY,

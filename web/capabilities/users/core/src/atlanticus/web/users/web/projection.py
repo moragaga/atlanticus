@@ -107,8 +107,13 @@ def build_users_projection_configuration(context: UsersProjectionWebContext) -> 
                                     disabled=not permitted,
                                     className=f'{_PREFIX}__select',
                                 ),
-                                'El identificador distingue cada captura aprobada. Los datos '
-                                'y el origen se muestran después de comparar.',
+                                'El selector muestra la fecha de guardado. Al elegir verás el origen '
+                                'y la referencia antes de comparar.',
+                            ),
+                            html.Div(
+                                _empty('Elige un respaldo para conocer su fecha, origen y aprobación.'),
+                                id=_id('selected-summary'),
+                                className=f'{_PREFIX}__result',
                             ),
                             html.Div(
                                 [
@@ -310,16 +315,41 @@ def register_users_projection_callbacks(app: object, context: UsersProjectionWeb
         if not context.can_manage():
             return [], _error('No tienes autorización para consultar los respaldos.')
         try:
-            ids = context.workflow.history()
             options = [
-                {'label': f'Respaldo {snapshot_id[:8]}… ({snapshot_id[-6:]})',
-                 'value': snapshot_id}
-                for snapshot_id in ids
+                {'label': _snapshot_option(item), 'value': item['snapshot_id']}
+                for item in context.workflow.history_details()
             ]
             return options, None if options else _empty('No hay respaldos aprobados disponibles.')
         except Exception:
             _LOGGER.exception('Could not list Users snapshots')
             return [], _error('No se pudo obtener el historial de respaldos.')
+
+    @app.callback(
+        Output(_id('selected-summary'), 'children'),
+        Input(_id('snapshot-select'), 'value'),
+    )
+    def selected_summary(snapshot_id):
+        if not isinstance(snapshot_id, str) or not snapshot_id:
+            return _empty('Elige un respaldo para conocer su fecha, origen y aprobación.')
+        if not context.can_manage():
+            return _error('No tienes autorización para consultar este respaldo.')
+        try:
+            info = context.workflow.describe_snapshot(snapshot_id)
+        except (UsersDefinitionError, UsersRecoveryConflictError) as error:
+            return _error('No se pudieron leer los detalles del respaldo.', error)
+        except Exception:
+            _LOGGER.exception('Could not read selected Users snapshot')
+            return _error('No se pudieron leer los detalles del respaldo.')
+        return html.Div([
+            html.Strong('Datos del respaldo elegido'),
+            _facts((
+                ('Fecha de captura', _format_timestamp(info['captured_at_utc'])),
+                ('Usuarios aprobados', info['approved_count']),
+            )),
+            html.P(f"Ambiente de origen: {info['origin_environment']}"),
+            html.P(f"Referencia de aprobación: {info['approval_reference']}"),
+            _technical('Identificador completo', info['snapshot_id']),
+        ], className=f'{_PREFIX}__summary')
 
     @app.callback(
         Output(_id('capture-preview'), 'data'),
@@ -479,10 +509,10 @@ def register_users_projection_callbacks(app: object, context: UsersProjectionWeb
                     _facts((('Usuarios aprobados', len(preview['approved_ids'])),
                             ('Candidatos no incluidos', len(preview['candidate_ids'])))),
                     html.P('No se modificarán los usuarios actuales.'),
-                    html.P(f'Referencia: {capture_ref}', className=f'{_PREFIX}__modal-reference'),
+                    html.P(f'Referencia: {capture_ref.strip()}', className=f'{_PREFIX}__modal-reference'),
                 ]),
                 'Guardar respaldo',
-                {'action': 'capture', 'preview': preview, 'reference': capture_ref},
+                {'action': 'capture', 'preview': preview, 'reference': capture_ref.strip()},
                 [], [], None,
             )
         if triggered == _id('open-apply'):
@@ -517,11 +547,11 @@ def register_users_projection_callbacks(app: object, context: UsersProjectionWeb
                            className=f'{_PREFIX}__warning' if replace else ''),
                     html.P('Estas confirmaciones no activan mantenimiento ni revocan sesiones de forma automática.',
                            className=f'{_PREFIX}__warning'),
-                    html.P(f'Referencia: {apply_ref}', className=f'{_PREFIX}__modal-reference'),
+                    html.P(f'Referencia: {apply_ref.strip()}', className=f'{_PREFIX}__modal-reference'),
                 ]),
                 'Confirmar sustitución' if replace else 'Confirmar restauración',
                 {'action': 'apply', 'inspection': inspection, 'snapshot_id': snapshot_id,
-                 'mode': mode, 'reference': apply_ref},
+                 'mode': mode, 'reference': apply_ref.strip()},
                 [
                     {'label': 'Confirmo que el ambiente está en mantenimiento',
                      'value': 'maintenance'},
@@ -541,6 +571,7 @@ def register_users_projection_callbacks(app: object, context: UsersProjectionWeb
         Output(_id('capture-finished'), 'data'),
         Output(_id('apply-result'), 'children'),
         Output(_id('apply-finished'), 'data'),
+        Output(_id('capture-reference'), 'value'),
         Input(_id('modal-confirm'), 'n_clicks'),
         State(_id('pending-action'), 'data'),
         State(_id('modal-checks'), 'value'),
@@ -549,34 +580,34 @@ def register_users_projection_callbacks(app: object, context: UsersProjectionWeb
     )
     def confirm(clicks, action, confirmations):
         no_result = (no_update, no_update, no_update, no_update, no_update,
-                     no_update, no_update, no_update)
+                     no_update, no_update, no_update, no_update)
         if not clicks or not isinstance(action, dict):
             return no_result
         if not context.can_manage():
             return (_CLOSED, None, no_update, _error('Acceso denegado.'),
-                    no_update, no_update, no_update, no_update)
+                    no_update, no_update, no_update, no_update, no_update)
         if action['action'] == 'capture':
             try:
                 saved = context.workflow.capture(action['preview'], action['reference'])
                 return (_CLOSED, None, None,
                         _notice(f"Respaldo creado correctamente. Usuarios aprobados: {saved['approved_count']}."),
-                        None, saved['snapshot_id'], no_update, no_update)
+                        None, saved['snapshot_id'], no_update, no_update, '')
             except (UsersDefinitionError, UsersRecoveryConflictError) as error:
                 return (_CLOSED, None, None,
                         _error('No se guardó el respaldo. Revisa nuevamente el estado.', error),
-                        None, no_update, no_update, no_update)
+                        None, no_update, no_update, no_update, no_update)
             except Exception:
                 _LOGGER.exception('Users capture failed')
                 return (_CLOSED, None, None,
                         _error('No se guardó el respaldo. Revisa nuevamente el estado.'),
-                        None, no_update, no_update, no_update)
+                        None, no_update, no_update, no_update, no_update)
         if action['action'] != 'apply':
             return no_result
         selected = set(confirmations or [])
         if not {'maintenance', 'revocations'} <= selected:
             return (no_update, no_update,
                     _error('Confirma el mantenimiento y la revisión de sesiones antes de continuar.'),
-                    no_update, no_update, no_update, no_update, no_update)
+                    no_update, no_update, no_update, no_update, no_update, no_update)
         try:
             result = context.workflow.apply(
                 inspection=action['inspection'],
@@ -593,17 +624,17 @@ def register_users_projection_callbacks(app: object, context: UsersProjectionWeb
                     f"modificados: {result['updated']}; eliminados: {result['deleted']}. "
                     'Compara de nuevo antes de realizar otra operación.'
                 ),
-                result['operation_id'],
+                result['operation_id'], no_update,
             )
         except (UsersDefinitionError, UsersRecoveryConflictError) as error:
             return (_CLOSED, None, None, no_update, no_update, no_update,
                     _error('La operación no se completó. Revisa la auditoría antes de reintentar.', error),
-                    uuid4().hex)
+                    uuid4().hex, no_update)
         except Exception:
             _LOGGER.exception('Users projection failed')
             return (_CLOSED, None, None, no_update, no_update, no_update,
                     _error('La operación no se completó. Revisa la auditoría antes de reintentar.'),
-                    uuid4().hex)
+                    uuid4().hex, no_update)
 
 
 def _mode_options(can_restore: bool, can_replace: bool) -> list[dict[str, object]]:
@@ -626,7 +657,7 @@ def _has_changes(inspection: dict[str, object]) -> bool:
 
 
 def _valid_reference(value: object) -> bool:
-    return isinstance(value, str) and bool(value.strip()) and value == value.strip()
+    return isinstance(value, str) and bool(value.strip())
 
 
 def _render_inspection(document: dict[str, object]) -> object:
@@ -694,6 +725,15 @@ def _render_inspection(document: dict[str, object]) -> object:
             ),
         ], className=f'{_PREFIX}__summary'),
     ], className=f'{_PREFIX}__inspection')
+
+
+def _snapshot_option(item: dict[str, str | None]) -> str:
+    snapshot_id = item['snapshot_id']
+    saved = item.get('saved_at_utc')
+    date_label = 'Fecha no disponible'
+    if saved:
+        date_label = f'Guardado: {_format_timestamp(saved)}'
+    return f'{date_label} · Respaldo {snapshot_id[:8]}… ({snapshot_id[-6:]})'
 
 
 def _format_timestamp(value: str) -> str:
