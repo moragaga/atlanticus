@@ -17,12 +17,12 @@ from atlanticus.web.users.recovery import (
     UsersRecoveryAuditEvent,
     UsersRecoveryConflictError,
     UsersRecoveryUnavailableError,
+    UsersReplaceBeforeImage,
 )
 
 _ID_PATTERN = re.compile(r'[A-Za-z0-9][A-Za-z0-9-]{0,63}\Z')
 
 
-# Este protocolo refleja únicamente las operaciones físicas necesarias para estos artefactos.
 class _StorageClient(Protocol):
     def download(self, *, container_name: str, blob_name: str) -> bytes: ...
 
@@ -37,10 +37,11 @@ class _StorageClient(Protocol):
         content_type: str | None = None,
     ) -> None: ...
 
-    def get_properties(self, *, container_name: str, blob_name: str) -> StorageBlobProperties: ...
+    def get_properties(
+        self, *, container_name: str, blob_name: str
+    ) -> StorageBlobProperties: ...
 
 
-# El prefijo completo lo configura la composición; debe estar acotado al namespace de aplicación.
 def _require_prefix(value: str) -> str:
     if (
         not isinstance(value, str)
@@ -60,7 +61,6 @@ def _require_id(value: str) -> str:
     return value
 
 
-# Los snapshots y eventos solo se crean; una colisión de nombres no debe reemplazar evidencia anterior.
 def _write_new(
     client: _StorageClient,
     *,
@@ -69,10 +69,7 @@ def _write_new(
     document: dict[str, object],
 ) -> None:
     payload = json.dumps(
-        document,
-        sort_keys=True,
-        ensure_ascii=False,
-        separators=(',', ':'),
+        document, sort_keys=True, ensure_ascii=False, separators=(',', ':'),
     ).encode('utf-8')
     try:
         client.upload(
@@ -88,14 +85,12 @@ def _write_new(
         raise UsersRecoveryUnavailableError('Could not save recovery artifact') from error
 
 
-# Esta implementación almacena copias aprobadas de forma independiente del registro administrativo V2.
 class BlobApprovedUsersSnapshotStore:
     def __init__(self, *, client: _StorageClient, container_name: str, prefix: str) -> None:
         self._client = client
         self._container_name = _require_name(container_name)
         self._prefix = _require_prefix(prefix)
 
-    # El JSON se escribe sin sobrescribir ningún snapshot previamente aprobado.
     def save(self, snapshot: ApprovedUsersSnapshot) -> None:
         if not isinstance(snapshot, ApprovedUsersSnapshot):
             raise TypeError('snapshot must be ApprovedUsersSnapshot')
@@ -106,7 +101,6 @@ class BlobApprovedUsersSnapshotStore:
             document=snapshot.to_document(),
         )
 
-    # Los ETags anterior y posterior detectan cambios del objeto mientras se descarga.
     def load(self, snapshot_id: str) -> ApprovedUsersSnapshot:
         blob_name = f'{self._prefix}/{_require_id(snapshot_id)}.json'
         try:
@@ -121,27 +115,77 @@ class BlobApprovedUsersSnapshotStore:
             raise UsersRecoveryUnavailableError('Approved snapshot is not available') from error
         except StorageError as error:
             raise UsersRecoveryUnavailableError('Could not read approved snapshot') from error
-        if not before.etag or not after.etag or before.etag != after.etag:
+        if (
+            not before.etag
+            or not after.etag
+            or before.etag != after.etag
+        ):
             raise UsersRecoveryConflictError('Approved snapshot changed during read')
         try:
             document: Any = json.loads(raw.decode('utf-8'))
             snapshot = ApprovedUsersSnapshot.from_document(document)
         except (UnicodeDecodeError, json.JSONDecodeError, UsersDefinitionError) as error:
             raise UsersRecoveryConflictError('Approved snapshot is invalid') from error
-        # El contenido no puede hacerse pasar por un artefacto con otro identificador.
         if snapshot.snapshot_id != snapshot_id:
             raise UsersRecoveryConflictError('Approved snapshot id does not match artifact')
         return snapshot
 
 
-# La auditoría tiene prefijo y contenedor inyectables y puede usar credenciales más restrictivas.
+# Cada reemplazo deja una copia previa inmutable y verificable en Storage.
+class BlobUsersReplaceBeforeImageStore:
+    def __init__(self, *, client: _StorageClient, container_name: str, prefix: str) -> None:
+        self._client = client
+        self._container_name = _require_name(container_name)
+        self._prefix = _require_prefix(prefix)
+
+    def save(self, image: UsersReplaceBeforeImage) -> None:
+        if not isinstance(image, UsersReplaceBeforeImage):
+            raise TypeError('image must be UsersReplaceBeforeImage')
+        _write_new(
+            self._client,
+            container_name=self._container_name,
+            blob_name=f'{self._prefix}/{_require_id(image.operation_id)}.json',
+            document=image.to_document(),
+        )
+
+    # Dos lecturas de propiedades permiten detectar cambios físicos durante la lectura.
+    def load(self, operation_id: str) -> UsersReplaceBeforeImage:
+        blob_name = f'{self._prefix}/{_require_id(operation_id)}.json'
+        try:
+            before = self._client.get_properties(
+                container_name=self._container_name, blob_name=blob_name,
+            )
+            raw = self._client.download(container_name=self._container_name, blob_name=blob_name)
+            after = self._client.get_properties(
+                container_name=self._container_name, blob_name=blob_name,
+            )
+        except StorageBlobNotFoundError as error:
+            raise UsersRecoveryUnavailableError(
+                'Users replacement before-image is missing'
+            ) from error
+        except StorageError as error:
+            raise UsersRecoveryUnavailableError(
+                'Could not read Users replacement before-image'
+            ) from error
+        if not before.etag or before.etag != after.etag:
+            raise UsersRecoveryConflictError('Users replacement before-image changed during read')
+        try:
+            image = UsersReplaceBeforeImage.from_document(json.loads(raw.decode('utf-8')))
+        except (UnicodeDecodeError, json.JSONDecodeError, UsersDefinitionError) as error:
+            raise UsersRecoveryConflictError(
+                'Users replacement before-image is invalid'
+            ) from error
+        if image.operation_id != operation_id:
+            raise UsersRecoveryConflictError('Users replacement before-image id does not match')
+        return image
+
+
 class BlobUsersRecoveryAuditStore:
     def __init__(self, *, client: _StorageClient, container_name: str, prefix: str) -> None:
         self._client = client
         self._container_name = _require_name(container_name)
         self._prefix = _require_prefix(prefix)
 
-    # Cada fase deja un objeto individual: started, completed o failed.
     def record(self, event: UsersRecoveryAuditEvent) -> None:
         if not isinstance(event, UsersRecoveryAuditEvent):
             raise TypeError('event must be UsersRecoveryAuditEvent')

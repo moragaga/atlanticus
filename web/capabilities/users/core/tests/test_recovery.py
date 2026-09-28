@@ -14,9 +14,10 @@ from atlanticus.web.users.recovery import (
     UserDifferenceKind,
     UsersApprovedRecoveryService,
     UsersRecoveryConflictError,
+    UsersReplaceBeforeImage,
+    VersionedUser,
 )
 from atlanticus.web.users.store import UsersAdministrationStore, UsersRegistryStore
-
 
 CUSTOM = '11111111-1111-4111-8111-111111111111'
 
@@ -54,6 +55,9 @@ class MemoryPromoted(UsersAdministrationStore):
         self.users = {value.user_id: value for value in users}
         self.creates = 0
         self.fail_after = None
+        self.versions = {value.user_id: 'v1' for value in users}
+        self.fail_delete_after = None
+        self.deletes = 0
 
     def get(self, user_id):
         return self.users.get(user_id)
@@ -67,12 +71,34 @@ class MemoryPromoted(UsersAdministrationStore):
         if self.fail_after is not None and self.creates >= self.fail_after:
             raise RuntimeError('Simulated Cosmos outage')
         self.users[value.user_id] = value
+        self.versions[value.user_id] = 'v1'
         self.creates += 1
         return value
 
     def replace(self, user):
         self.users[user.user_id] = user
+        self.versions[user.user_id] = 'v2'
         return user
+
+    def list_versioned_users(self):
+        return tuple(
+            VersionedUser(user=user, version=self.versions[user.user_id])
+            for user in self.users.values()
+        )
+
+    def replace_if_version(self, user, *, expected_version):
+        if self.versions.get(user.user_id) != expected_version:
+            raise RuntimeError('Concurrent user change')
+        return self.replace(user)
+
+    def delete_if_version(self, user_id, *, expected_version):
+        if self.versions.get(user_id) != expected_version:
+            raise RuntimeError('Concurrent user change')
+        if self.fail_delete_after is not None and self.deletes >= self.fail_delete_after:
+            raise RuntimeError('Simulated delete outage')
+        del self.users[user_id]
+        del self.versions[user_id]
+        self.deletes += 1
 
 
 class MemorySnapshots:
@@ -100,6 +126,19 @@ class MemoryAudit:
         if key in self.events:
             raise UsersRecoveryConflictError('Audit event already exists')
         self.events[key] = event
+
+
+class MemoryBeforeImages:
+    def __init__(self):
+        self.images = {}
+        self.available = True
+
+    def save(self, image):
+        if not self.available:
+            raise RuntimeError('Before-image unavailable')
+        if image.operation_id in self.images:
+            raise RuntimeError('Before-image already exists')
+        self.images[image.operation_id] = image
 
 
 def profiles(with_custom=True):
@@ -396,3 +435,155 @@ def test_capture_does_not_need_audit_but_restore_requires_it():
     )
     with pytest.raises(UsersRecoveryConflictError, match='audit store'):
         restore(destination, destination.validate(saved.snapshot_id))
+
+
+def replacement_service(registry, promoted, snapshots, audit, before_images, *, catalog=None):
+    return UsersApprovedRecoveryService(
+        registry=registry,
+        promoted=promoted,
+        replace_store=promoted,
+        profiles=lambda: catalog if catalog is not None else profiles(),
+        snapshots=snapshots,
+        audit=audit,
+        before_images=before_images,
+        application_key='ada-generic',
+        identity_realm='tenant-1',
+        environment='UAT',
+    )
+
+
+def execute_replace(service, validation, *, operation_id='replace-1', confirmed=True, maintenance=True, revocations=True):
+    return service.replace_approved(
+        validation=validation,
+        confirmed_digest=validation.recovery.snapshot.content_digest,
+        operator_id='operator',
+        approval_reference='replace-ticket',
+        operation_id=operation_id,
+        confirmed=confirmed,
+        maintenance_confirmed=maintenance,
+        revocations_reviewed=revocations,
+    )
+
+
+def test_replace_reconciles_registry_candidates_and_cosmos_using_snapshot():
+    source = (user('approved'), user('missing', enabled=False))
+    _, snapshot, snapshots = capture(source)
+    altered = replace(source[0], profile_key='root')
+    unexpected = user('extra')
+    candidate = user('candidate', profile_key='guest', enabled=False)
+    registry = MemoryRegistry((altered, unexpected, candidate), version='v1')
+    promoted = MemoryPromoted((altered, unexpected))
+    audit, before = MemoryAudit(), MemoryBeforeImages()
+    target = replacement_service(registry, promoted, snapshots, audit, before)
+    validation = target.validate_replace(snapshot.snapshot_id)
+    assert not validation.recovery.can_restore
+    assert validation.can_replace
+    assert validation.plan.registry_discarded_ids == (candidate.user_id, unexpected.user_id)
+    assert validation.plan.update_ids == (source[0].user_id,)
+    assert validation.plan.create_ids == (source[1].user_id,)
+    assert validation.plan.delete_ids == (unexpected.user_id,)
+    done = execute_replace(target, validation)
+    assert done.recovery.registry_state is RegistryRecoveryState.MATCH
+    assert not done.recovery.differences
+    assert not done.plan.registry_write_required
+    assert tuple(sorted(promoted.users)) == tuple(sorted(value.user_id for value in source))
+    assert registry.snapshot.users == tuple(sorted(source, key=lambda record: record.user_id))
+    assert registry.replaces == 1
+    assert promoted.deletes == 1
+    assert audit.events[('replace-1', 'completed')].to_document()['schema_version'] == 2
+    assert audit.events[('replace-1', 'completed')].updated_user_ids == (source[0].user_id,)
+    assert audit.events[('replace-1', 'completed')].deleted_user_ids == (unexpected.user_id,)
+    image = before.images['replace-1']
+    assert image.registry_users == tuple(sorted((altered, unexpected, candidate), key=lambda record: record.user_id))
+    assert image.promoted_users == tuple(sorted((altered, unexpected), key=lambda record: record.user_id))
+    assert UsersReplaceBeforeImage.from_document(image.to_document()) == image
+    document = image.to_document()
+    document['promoted_users'][0]['profile_key'] = 'basic'
+    with pytest.raises(ValueError, match='before-image'):
+        UsersReplaceBeforeImage.from_document(document)
+
+
+def test_replace_noop_after_success_and_rejects_stale_plan_or_confirmation():
+    approved = user('approved')
+    _, snapshot, snapshots = capture((approved,))
+    registry = MemoryRegistry((approved,), version='v1')
+    promoted, audit, before = MemoryPromoted((approved,)), MemoryAudit(), MemoryBeforeImages()
+    target = replacement_service(registry, promoted, snapshots, audit, before)
+    validation = target.validate_replace(snapshot.snapshot_id)
+    assert validation.plan.unchanged_ids == (approved.user_id,)
+    assert not validation.plan.registry_write_required
+    with pytest.raises(UsersRecoveryConflictError, match='confirmation'):
+        execute_replace(target, validation, confirmed=False)
+    with pytest.raises(UsersRecoveryConflictError, match='revocation'):
+        execute_replace(target, validation, revocations=False)
+    assert not audit.events and not before.images
+    promoted.versions[approved.user_id] = 'other-version'
+    with pytest.raises(UsersRecoveryConflictError, match='changed'):
+        execute_replace(target, validation)
+    assert not audit.events and not before.images
+    after = execute_replace(target, target.validate_replace(snapshot.snapshot_id))
+    assert not after.recovery.differences
+    assert registry.replaces == 0 and promoted.creates == 0 and promoted.deletes == 0
+
+
+def test_replace_partial_delete_failure_can_retry_from_fresh_validation():
+    approved = user('approved')
+    _, snapshot, snapshots = capture((approved,))
+    extra_one, extra_two = user('extra-1'), user('extra-2')
+    registry = MemoryRegistry((extra_one, extra_two), version='v1')
+    promoted = MemoryPromoted((extra_one, extra_two))
+    promoted.fail_delete_after = 1
+    audit, before = MemoryAudit(), MemoryBeforeImages()
+    target = replacement_service(registry, promoted, snapshots, audit, before)
+    with pytest.raises(RuntimeError, match='delete outage'):
+        execute_replace(target, target.validate_replace(snapshot.snapshot_id))
+    assert ('replace-1', 'failed') in audit.events
+    assert len(audit.events[('replace-1', 'failed')].deleted_user_ids) == 1
+    assert len(before.images) == 1
+    assert registry.snapshot.users == (approved,)
+    promoted.fail_delete_after = None
+    new_validation = target.validate_replace(snapshot.snapshot_id)
+    assert new_validation.can_replace
+    result = execute_replace(target, new_validation, operation_id='replace-2')
+    assert not result.recovery.differences
+    assert set(promoted.users) == {approved.user_id}
+    assert registry.replaces == 1
+    assert set(before.images) == {'replace-1', 'replace-2'}
+
+
+def test_replace_needs_valid_profiles_and_immutable_before_image():
+    selected = user('approved', profile_key=CUSTOM)
+    _, snapshot, snapshots = capture((selected,))
+    registry = MemoryRegistry()
+    promoted, audit, before = MemoryPromoted(), MemoryAudit(), MemoryBeforeImages()
+    target = replacement_service(registry, promoted, snapshots, audit, before, catalog=profiles(False))
+    validation = target.validate_replace(snapshot.snapshot_id)
+    assert not validation.can_replace
+    with pytest.raises(UsersRecoveryConflictError, match='compatible'):
+        execute_replace(target, validation)
+    assert not audit.events and registry.replaces == 0
+    target = replacement_service(registry, promoted, snapshots, audit, before)
+    before.available = False
+    with pytest.raises(RuntimeError, match='Before-image'):
+        execute_replace(target, target.validate_replace(snapshot.snapshot_id))
+    assert registry.replaces == 0 and not audit.events
+
+
+def test_replace_rejects_registry_race_after_before_image_and_audits_failure():
+    approved = user('approved')
+    _, snapshot, snapshots = capture((approved,))
+    registry, promoted, audit = MemoryRegistry(), MemoryPromoted(), MemoryAudit()
+
+    class RacingBeforeImages(MemoryBeforeImages):
+        def save(self, image):
+            super().save(image)
+            registry.snapshot = replace(registry.snapshot, version='externally-modified')
+
+    before = RacingBeforeImages()
+    target = replacement_service(registry, promoted, snapshots, audit, before)
+    with pytest.raises(UsersRegistryConflictError, match='concurrently'):
+        execute_replace(target, target.validate_replace(snapshot.snapshot_id))
+    assert registry.replaces == 0
+    assert promoted.list_users() == ()
+    assert ('replace-1', 'failed') in audit.events
+    assert 'replace-1' in before.images

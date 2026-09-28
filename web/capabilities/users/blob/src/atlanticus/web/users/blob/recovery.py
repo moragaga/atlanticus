@@ -17,6 +17,7 @@ from atlanticus.web.users.recovery import (
     UsersRecoveryAuditEvent,
     UsersRecoveryConflictError,
     UsersRecoveryUnavailableError,
+    UsersReplaceBeforeImage,
 )
 
 _ID_PATTERN = re.compile(r'[A-Za-z0-9][A-Za-z0-9-]{0,63}\Z')
@@ -36,7 +37,9 @@ class _StorageClient(Protocol):
         content_type: str | None = None,
     ) -> None: ...
 
-    def get_properties(self, *, container_name: str, blob_name: str) -> StorageBlobProperties: ...
+    def get_properties(
+        self, *, container_name: str, blob_name: str
+    ) -> StorageBlobProperties: ...
 
 
 def _require_prefix(value: str) -> str:
@@ -66,10 +69,7 @@ def _write_new(
     document: dict[str, object],
 ) -> None:
     payload = json.dumps(
-        document,
-        sort_keys=True,
-        ensure_ascii=False,
-        separators=(',', ':'),
+        document, sort_keys=True, ensure_ascii=False, separators=(',', ':'),
     ).encode('utf-8')
     try:
         client.upload(
@@ -115,7 +115,11 @@ class BlobApprovedUsersSnapshotStore:
             raise UsersRecoveryUnavailableError('Approved snapshot is not available') from error
         except StorageError as error:
             raise UsersRecoveryUnavailableError('Could not read approved snapshot') from error
-        if not before.etag or not after.etag or before.etag != after.etag:
+        if (
+            not before.etag
+            or not after.etag
+            or before.etag != after.etag
+        ):
             raise UsersRecoveryConflictError('Approved snapshot changed during read')
         try:
             document: Any = json.loads(raw.decode('utf-8'))
@@ -125,6 +129,53 @@ class BlobApprovedUsersSnapshotStore:
         if snapshot.snapshot_id != snapshot_id:
             raise UsersRecoveryConflictError('Approved snapshot id does not match artifact')
         return snapshot
+
+
+class BlobUsersReplaceBeforeImageStore:
+    def __init__(self, *, client: _StorageClient, container_name: str, prefix: str) -> None:
+        self._client = client
+        self._container_name = _require_name(container_name)
+        self._prefix = _require_prefix(prefix)
+
+    def save(self, image: UsersReplaceBeforeImage) -> None:
+        if not isinstance(image, UsersReplaceBeforeImage):
+            raise TypeError('image must be UsersReplaceBeforeImage')
+        _write_new(
+            self._client,
+            container_name=self._container_name,
+            blob_name=f'{self._prefix}/{_require_id(image.operation_id)}.json',
+            document=image.to_document(),
+        )
+
+    def load(self, operation_id: str) -> UsersReplaceBeforeImage:
+        blob_name = f'{self._prefix}/{_require_id(operation_id)}.json'
+        try:
+            before = self._client.get_properties(
+                container_name=self._container_name, blob_name=blob_name,
+            )
+            raw = self._client.download(container_name=self._container_name, blob_name=blob_name)
+            after = self._client.get_properties(
+                container_name=self._container_name, blob_name=blob_name,
+            )
+        except StorageBlobNotFoundError as error:
+            raise UsersRecoveryUnavailableError(
+                'Users replacement before-image is missing'
+            ) from error
+        except StorageError as error:
+            raise UsersRecoveryUnavailableError(
+                'Could not read Users replacement before-image'
+            ) from error
+        if not before.etag or before.etag != after.etag:
+            raise UsersRecoveryConflictError('Users replacement before-image changed during read')
+        try:
+            image = UsersReplaceBeforeImage.from_document(json.loads(raw.decode('utf-8')))
+        except (UnicodeDecodeError, json.JSONDecodeError, UsersDefinitionError) as error:
+            raise UsersRecoveryConflictError(
+                'Users replacement before-image is invalid'
+            ) from error
+        if image.operation_id != operation_id:
+            raise UsersRecoveryConflictError('Users replacement before-image id does not match')
+        return image
 
 
 class BlobUsersRecoveryAuditStore:

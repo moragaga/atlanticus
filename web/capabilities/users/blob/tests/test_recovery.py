@@ -258,3 +258,35 @@ def test_snapshot_load_rejects_physical_change_during_read():
     client.download = changed_download
     with pytest.raises(UsersRecoveryConflictError, match='changed during read'):
         store.load(saved.snapshot_id)
+
+
+def test_replacement_before_image_is_immutable_and_detects_tampering():
+    from atlanticus.web.users.blob.recovery import BlobUsersReplaceBeforeImageStore
+    from atlanticus.web.users.recovery import UsersReplaceBeforeImage
+
+    client = FakeBlobClient()
+    store = BlobUsersReplaceBeforeImageStore(
+        client=client, container_name='audit', prefix='ada-generic/users/replace-before',
+    )
+    saved = snapshot()
+    image = UsersReplaceBeforeImage(
+        operation_id='replace-1',
+        snapshot_id=saved.snapshot_id,
+        snapshot_digest=saved.content_digest,
+        target_environment='UAT',
+        registry_version='previous-etag',
+        registry_users=saved.users,
+        promoted_users=saved.users,
+        at_utc=datetime.now(UTC).isoformat(),
+    )
+    store.save(image)
+    assert store.load(image.operation_id) == image
+    with pytest.raises(UsersRecoveryConflictError, match='already exists'):
+        store.save(image)
+    key = ('audit', 'ada-generic/users/replace-before/replace-1.json')
+    content, etag = client.data[key]
+    document = json.loads(content)
+    document['registry_users'][0]['profile_key'] = 'root'
+    client.data[key] = (json.dumps(document).encode(), etag)
+    with pytest.raises(UsersRecoveryConflictError, match='invalid'):
+        store.load(image.operation_id)

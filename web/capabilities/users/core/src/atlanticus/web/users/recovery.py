@@ -225,6 +225,133 @@ class UsersRecoveryValidation:
 
 
 @dataclass(frozen=True, slots=True)
+class VersionedUser:
+    user: UserRecord
+    version: str
+
+    def __post_init__(self) -> None:
+        _required(self.version, 'User version')
+
+
+class UsersReplaceStore(Protocol):
+    def list_versioned_users(self) -> tuple[VersionedUser, ...]: ...
+
+    def create(self, user: UserRecord) -> UserRecord: ...
+
+    def replace_if_version(self, user: UserRecord, *, expected_version: str) -> UserRecord: ...
+
+    def delete_if_version(self, user_id: str, *, expected_version: str) -> None: ...
+
+
+@dataclass(frozen=True, slots=True)
+class UsersReplacePlan:
+    create_ids: tuple[str, ...]
+    update_ids: tuple[str, ...]
+    delete_ids: tuple[str, ...]
+    unchanged_ids: tuple[str, ...]
+    registry_discarded_ids: tuple[str, ...]
+    registry_write_required: bool
+
+
+@dataclass(frozen=True, slots=True)
+class UsersReplaceValidation:
+    recovery: UsersRecoveryValidation
+    registry_users: tuple[UserRecord, ...]
+    versioned_users: tuple[VersionedUser, ...]
+
+    @property
+    def can_replace(self) -> bool:
+        return all(
+            difference.kind not in {
+                UserDifferenceKind.PROFILE_UNAVAILABLE,
+                UserDifferenceKind.IDENTITY_CONFLICT,
+            }
+            for difference in self.recovery.differences
+        )
+
+    @property
+    def plan(self) -> UsersReplacePlan:
+        expected = {user.user_id: user for user in self.recovery.snapshot.users}
+        current = {item.user.user_id: item.user for item in self.versioned_users}
+        registry_ids = {user.user_id for user in self.registry_users}
+        return UsersReplacePlan(
+            create_ids=tuple(sorted(set(expected) - set(current))),
+            update_ids=tuple(sorted(
+                user_id for user_id in set(expected) & set(current)
+                if expected[user_id] != current[user_id]
+            )),
+            delete_ids=tuple(sorted(set(current) - set(expected))),
+            unchanged_ids=tuple(sorted(
+                user_id for user_id in set(expected) & set(current)
+                if expected[user_id] == current[user_id]
+            )),
+            registry_discarded_ids=tuple(sorted(registry_ids - set(expected))),
+            registry_write_required=self.registry_users != self.recovery.snapshot.users,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class UsersReplaceBeforeImage:
+    operation_id: str
+    snapshot_id: str
+    snapshot_digest: str
+    target_environment: str
+    registry_version: str | None
+    registry_users: tuple[UserRecord, ...]
+    promoted_users: tuple[UserRecord, ...]
+    at_utc: str
+
+    def to_document(self) -> dict[str, object]:
+        document: dict[str, object] = {
+            'document_type': 'atlanticus_users_replace_before_image',
+            'schema_version': 1,
+            'operation_id': self.operation_id,
+            'snapshot_id': self.snapshot_id,
+            'snapshot_digest': self.snapshot_digest,
+            'target_environment': self.target_environment,
+            'registry_version': self.registry_version,
+            'registry_users': [user.to_document() for user in self.registry_users],
+            'promoted_users': [user.to_document() for user in self.promoted_users],
+            'at_utc': self.at_utc,
+        }
+        content = json.dumps(document, sort_keys=True, ensure_ascii=False, separators=(',', ':'))
+        document['artifact_digest'] = hashlib.sha256(content.encode('utf-8')).hexdigest()
+        return document
+
+    @classmethod
+    def from_document(cls, document: dict[str, Any]) -> UsersReplaceBeforeImage:
+        try:
+            if (
+                document['document_type'] != 'atlanticus_users_replace_before_image'
+                or document['schema_version'] != 1
+            ):
+                raise ValueError
+            value = cls(
+                operation_id=_identifier(document['operation_id'], 'Operation id'),
+                snapshot_id=_identifier(document['snapshot_id'], 'Snapshot id'),
+                snapshot_digest=_required(document['snapshot_digest'], 'Snapshot digest'),
+                target_environment=_required(document['target_environment'], 'Target environment'),
+                registry_version=document['registry_version'],
+                registry_users=tuple(
+                    UserRecord.from_document(user) for user in document['registry_users']
+                ),
+                promoted_users=tuple(
+                    UserRecord.from_document(user) for user in document['promoted_users']
+                ),
+                at_utc=_required(document['at_utc'], 'Capture time'),
+            )
+            if value.to_document() != document:
+                raise ValueError
+            return value
+        except (KeyError, ValueError, TypeError) as error:
+            raise UsersDefinitionError('Users replacement before-image is invalid') from error
+
+
+class UsersReplaceBeforeImageStore(Protocol):
+    def save(self, image: UsersReplaceBeforeImage) -> None: ...
+
+
+@dataclass(frozen=True, slots=True)
 class UsersRecoveryAuditEvent:
     operation_id: str
     stage: str
@@ -236,11 +363,16 @@ class UsersRecoveryAuditEvent:
     at_utc: str
     created_user_ids: tuple[str, ...] = ()
     error_type: str | None = None
+    mode: str = 'restore'
+    updated_user_ids: tuple[str, ...] = ()
+    deleted_user_ids: tuple[str, ...] = ()
+    registry_replaced: bool = False
+    before_image_id: str | None = None
 
     def to_document(self) -> dict[str, object]:
-        return {
+        document: dict[str, object] = {
             'document_type': 'atlanticus_users_recovery_audit',
-            'schema_version': 1,
+            'schema_version': 1 if self.mode == 'restore' else 2,
             'operation_id': self.operation_id,
             'stage': self.stage,
             'snapshot_id': self.snapshot_id,
@@ -252,6 +384,15 @@ class UsersRecoveryAuditEvent:
             'created_user_ids': list(self.created_user_ids),
             'error_type': self.error_type,
         }
+        if self.mode == 'replace':
+            document.update({
+                'mode': 'replace',
+                'updated_user_ids': list(self.updated_user_ids),
+                'deleted_user_ids': list(self.deleted_user_ids),
+                'registry_replaced': self.registry_replaced,
+                'before_image_id': self.before_image_id,
+            })
+        return document
 
 
 class ApprovedUsersSnapshotStore(Protocol):
@@ -276,12 +417,16 @@ class UsersApprovedRecoveryService:
         identity_realm: str,
         environment: str,
         audit: UsersRecoveryAuditStore | None = None,
+        replace_store: UsersReplaceStore | None = None,
+        before_images: UsersReplaceBeforeImageStore | None = None,
     ) -> None:
         self._registry = registry
         self._promoted = promoted
         self._profiles = profiles
         self._snapshots = snapshots
         self._audit = audit
+        self._replace_store = replace_store
+        self._before_images = before_images
         self._application_key = _required(application_key, 'application_key')
         self._identity_realm = _required(identity_realm, 'identity_realm')
         self._environment = _required(environment, 'environment')
@@ -377,8 +522,7 @@ class UsersApprovedRecoveryService:
                         user_id,
                         UserDifferenceKind.DIFFERENT,
                         tuple(
-                            field
-                            for field in _USER_FIELDS
+                            field for field in _USER_FIELDS
                             if getattr(user, field) != getattr(existing, field)
                         ),
                     )
@@ -395,8 +539,7 @@ class UsersApprovedRecoveryService:
         registry_conflicts = (
             tuple(
                 sorted(
-                    user_id
-                    for user_id in set(registry_expected) | set(expected)
+                    user_id for user_id in set(registry_expected) | set(expected)
                     if registry_expected.get(user_id) != expected.get(user_id)
                 )
             )
@@ -497,5 +640,180 @@ class UsersApprovedRecoveryService:
             except Exception as audit_error:
                 raise UsersRecoveryUnavailableError(
                     'Recovery failed and failure audit was not saved'
+                ) from audit_error
+            raise
+
+
+    def validate_replace(self, snapshot_id: str) -> UsersReplaceValidation:
+        if self._replace_store is None:
+            raise UsersRecoveryConflictError('Users replacement store is required')
+        recovery = self.validate(snapshot_id)
+        registry = self._registry.load()
+        versions = self._replace_store.list_versioned_users()
+        projected = UsersRegistrySnapshot(users=self._promoted.list_users()).users
+        observed = UsersRegistrySnapshot(users=tuple(item.user for item in versions)).users
+        if observed != projected or registry.version != recovery.registry_version:
+            raise UsersRecoveryConflictError('Users replacement target changed during validation')
+        expected = {user.user_id: user for user in recovery.snapshot.users}
+        actual = {user.user_id: user for user in observed}
+        differences = []
+        for user_id, user in expected.items():
+            current = actual.get(user_id)
+            if current is None:
+                differences.append(UserRecoveryDifference(user_id, UserDifferenceKind.MISSING))
+            elif (current.issuer, current.subject_id) != (user.issuer, user.subject_id):
+                differences.append(
+                    UserRecoveryDifference(user_id, UserDifferenceKind.IDENTITY_CONFLICT)
+                )
+            elif current != user:
+                differences.append(UserRecoveryDifference(
+                    user_id,
+                    UserDifferenceKind.DIFFERENT,
+                    tuple(
+                        field for field in _USER_FIELDS
+                        if getattr(user, field) != getattr(current, field)
+                    ),
+                ))
+        for user_id in set(actual) - set(expected):
+            differences.append(UserRecoveryDifference(user_id, UserDifferenceKind.UNEXPECTED))
+        relevant = tuple(
+            item for item in recovery.differences
+            if item.kind is not UserDifferenceKind.PROFILE_UNAVAILABLE
+        )
+        if tuple(sorted(differences, key=lambda item: (item.user_id, item.kind))) != relevant:
+            raise UsersRecoveryConflictError('Users replacement target changed during validation')
+        if (
+            recovery.registry_state is RegistryRecoveryState.MATCH
+            and registry.users != recovery.snapshot.users
+        ):
+            raise UsersRecoveryConflictError('Users registry changed during validation')
+        if recovery.registry_state is RegistryRecoveryState.EMPTY and registry.users:
+            raise UsersRecoveryConflictError('Users registry changed during validation')
+        return UsersReplaceValidation(
+            recovery=recovery,
+            registry_users=registry.users,
+            versioned_users=tuple(sorted(versions, key=lambda item: item.user.user_id)),
+        )
+
+    def replace_approved(
+        self,
+        *,
+        validation: UsersReplaceValidation,
+        confirmed_digest: str,
+        operator_id: str,
+        approval_reference: str,
+        operation_id: str,
+        confirmed: bool,
+        maintenance_confirmed: bool,
+        revocations_reviewed: bool,
+    ) -> UsersReplaceValidation:
+        if not all((confirmed is True, maintenance_confirmed is True, revocations_reviewed is True)):
+            raise UsersRecoveryConflictError(
+                'Replacement requires confirmation, maintenance and revocation review'
+            )
+        _required(operator_id, 'operator_id')
+        _required(approval_reference, 'approval_reference')
+        _identifier(operation_id, 'Operation id')
+        if not isinstance(validation, UsersReplaceValidation):
+            raise UsersRecoveryConflictError('Users replacement validation is required')
+        if self._replace_store is None or self._audit is None or self._before_images is None:
+            raise UsersRecoveryConflictError('Users replacement dependencies are required')
+        current = self.validate_replace(validation.recovery.snapshot.snapshot_id)
+        if current != validation or current.recovery.snapshot.content_digest != confirmed_digest:
+            raise UsersRecoveryConflictError('Users replacement validation or snapshot changed')
+        if not current.can_replace:
+            raise UsersRecoveryConflictError(
+                'Users replacement requires compatible identities and Profiles'
+            )
+        snapshot = current.recovery.snapshot
+        event_data = {
+            'operation_id': operation_id,
+            'snapshot_id': snapshot.snapshot_id,
+            'snapshot_digest': snapshot.content_digest,
+            'target_environment': self._environment,
+            'operator_id': operator_id,
+            'approval_reference': approval_reference,
+            'mode': 'replace',
+            'before_image_id': operation_id,
+        }
+        before = UsersReplaceBeforeImage(
+            operation_id=operation_id,
+            snapshot_id=snapshot.snapshot_id,
+            snapshot_digest=snapshot.content_digest,
+            target_environment=self._environment,
+            registry_version=current.recovery.registry_version,
+            registry_users=current.registry_users,
+            promoted_users=tuple(item.user for item in current.versioned_users),
+            at_utc=datetime.now(UTC).isoformat(),
+        )
+        self._before_images.save(before)
+        self._audit.record(UsersRecoveryAuditEvent(
+            stage='started', at_utc=datetime.now(UTC).isoformat(), **event_data,
+        ))
+        created: list[str] = []
+        updated: list[str] = []
+        deleted: list[str] = []
+        registry_replaced = False
+        expected = {user.user_id: user for user in snapshot.users}
+        actual = {item.user.user_id: item for item in current.versioned_users}
+        try:
+            if current.plan.registry_write_required:
+                persisted = self._registry.replace(
+                    snapshot.users,
+                    expected_version=current.recovery.registry_version,
+                )
+                if persisted.users != snapshot.users:
+                    raise UsersRecoveryUnavailableError(
+                        'Users replacement registry differs from approved snapshot'
+                    )
+                registry_replaced = True
+            for user_id in current.plan.delete_ids:
+                self._replace_store.delete_if_version(
+                    user_id, expected_version=actual[user_id].version,
+                )
+                deleted.append(user_id)
+            for user_id in current.plan.update_ids:
+                saved = self._replace_store.replace_if_version(
+                    expected[user_id], expected_version=actual[user_id].version,
+                )
+                if saved != expected[user_id]:
+                    raise UsersRecoveryUnavailableError(
+                        'Users replacement persisted a different user'
+                    )
+                updated.append(user_id)
+            for user_id in current.plan.create_ids:
+                saved = self._replace_store.create(expected[user_id])
+                if saved != expected[user_id]:
+                    raise UsersRecoveryUnavailableError(
+                        'Users replacement created a different user'
+                    )
+                created.append(user_id)
+            after = self.validate_replace(snapshot.snapshot_id)
+            if (
+                after.recovery.registry_state is not RegistryRecoveryState.MATCH
+                or after.recovery.differences
+                or after.plan.registry_write_required
+            ):
+                raise UsersRecoveryConflictError(
+                    'Users replacement target changed during execution'
+                )
+            self._audit.record(UsersRecoveryAuditEvent(
+                stage='completed', at_utc=datetime.now(UTC).isoformat(),
+                created_user_ids=tuple(created), updated_user_ids=tuple(updated),
+                deleted_user_ids=tuple(deleted), registry_replaced=registry_replaced,
+                **event_data,
+            ))
+            return after
+        except Exception as error:
+            try:
+                self._audit.record(UsersRecoveryAuditEvent(
+                    stage='failed', at_utc=datetime.now(UTC).isoformat(),
+                    created_user_ids=tuple(created), updated_user_ids=tuple(updated),
+                    deleted_user_ids=tuple(deleted), registry_replaced=registry_replaced,
+                    error_type=type(error).__name__, **event_data,
+                ))
+            except Exception as audit_error:
+                raise UsersRecoveryUnavailableError(
+                    'Users replacement failed and failure audit was not saved'
                 ) from audit_error
             raise

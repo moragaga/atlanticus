@@ -20,10 +20,10 @@ from atlanticus.web.users.errors import (
 )
 from atlanticus.web.users.identity import build_user_key
 from atlanticus.web.users.models import UserRecord
+from atlanticus.web.users.recovery import VersionedUser
 from atlanticus.web.users.store import UsersAdministrationStore, UsersRuntimeStore
 
 _USER_DOCUMENT_TYPE = 'atlanticus_user'
-# v2 reemplaza authority_key por profile_key sin compatibilidad dual.
 _USER_SCHEMA_VERSION = 2
 _USERS_QUERY = 'SELECT * FROM c WHERE c.document_type = @document_type'
 
@@ -64,7 +64,17 @@ class _CosmosClient(Protocol):
         query: str,
         parameters: Sequence[CosmosQueryParameter | Mapping[str, Any]] | None = None,
         cross_partition: bool = False,
+        include_metadata: bool = False,
     ) -> tuple[dict[str, Any], ...]: ...
+
+    def delete_item(
+        self,
+        *,
+        container_name: str,
+        item_id: str,
+        partition_key: object,
+        if_match_etag: str | None = None,
+    ) -> None: ...
 
 
 class CosmosUsersStore(UsersRuntimeStore, UsersAdministrationStore):
@@ -93,9 +103,7 @@ class CosmosUsersStore(UsersRuntimeStore, UsersAdministrationStore):
             )
         except CosmosError as error:
             raise UsersStoreUnavailableError('Could not read users store') from error
-        if document is None:
-            return None
-        return _user_from_document(document)
+        return None if document is None else _user_from_document(document)
 
     def list_users(self) -> tuple[UserRecord, ...]:
         try:
@@ -129,6 +137,102 @@ class CosmosUsersStore(UsersRuntimeStore, UsersAdministrationStore):
             raise UsersStoreUnavailableError('Cosmos persisted a different user')
         return persisted
 
+    # La consulta captura el ETag de cada documento para evitar escrituras sobre datos obsoletos.
+    def list_versioned_users(self) -> tuple[VersionedUser, ...]:
+        try:
+            documents = self._client.query_items(
+                container_name=self._container_name,
+                query=_USERS_QUERY,
+                parameters=(
+                    CosmosQueryParameter(name='@document_type', value=_USER_DOCUMENT_TYPE),
+                ),
+                cross_partition=True,
+                include_metadata=True,
+            )
+        except CosmosError as error:
+            raise UsersStoreUnavailableError('Could not inspect promoted users') from error
+        versions = tuple(
+            VersionedUser(user=_user_from_document(document), version=_required_etag(document))
+            for document in documents
+        )
+        return tuple(sorted(versions, key=lambda item: item.user.user_id))
+
+    # El parche usa If-Match; no se sobreescribe un documento cambiado durante la operación.
+    def replace_if_version(self, user: UserRecord, *, expected_version: str) -> UserRecord:
+        if not isinstance(user, UserRecord):
+            raise TypeError('user must be UserRecord')
+        try:
+            current = self._client.find_item(
+                container_name=self._container_name,
+                item_id=user.user_id,
+                partition_key=user.user_id,
+                include_metadata=True,
+            )
+            if current is None or _required_etag(current) != expected_version:
+                raise UsersStoreUnavailableError(
+                    'Promoted user changed since replacement validation'
+                )
+            current_user = _user_from_document(current)
+            if (current_user.issuer, current_user.subject_id) != (user.issuer, user.subject_id):
+                raise UsersIdentityConflictError('Promoted user identity cannot be changed')
+            operations = tuple(
+                CosmosPatchOperation(operation='set', path=f'/{key}', value=value)
+                for key, value in _user_to_document(user).items() if key != 'id'
+            )
+            saved = self._client.patch_item(
+                container_name=self._container_name,
+                item_id=user.user_id,
+                partition_key=user.user_id,
+                operations=operations,
+                if_match_etag=expected_version,
+            )
+        except (UsersIdentityConflictError, UsersStoreUnavailableError):
+            raise
+        except (CosmosItemNotFoundError, CosmosPreconditionFailedError) as error:
+            raise UsersStoreUnavailableError(
+                'Promoted user changed since replacement validation'
+            ) from error
+        except CosmosError as error:
+            raise UsersStoreUnavailableError(
+                'Could not conditionally replace promoted user'
+            ) from error
+        persisted = _user_from_document(saved)
+        if persisted != user:
+            raise UsersStoreUnavailableError('Cosmos persisted a different user')
+        return persisted
+
+    # La eliminación se limita a usuarios de esta capability y usa el ETag validado.
+    def delete_if_version(self, user_id: str, *, expected_version: str) -> None:
+        normalized = _required_user_id(user_id)
+        try:
+            current = self._client.find_item(
+                container_name=self._container_name,
+                item_id=normalized,
+                partition_key=normalized,
+                include_metadata=True,
+            )
+            if current is None or _required_etag(current) != expected_version:
+                raise UsersStoreUnavailableError(
+                    'Promoted user changed since replacement validation'
+                )
+            _user_from_document(current)
+            self._client.delete_item(
+                container_name=self._container_name,
+                item_id=normalized,
+                partition_key=normalized,
+                if_match_etag=expected_version,
+            )
+        except UsersStoreUnavailableError:
+            raise
+        except (CosmosItemNotFoundError, CosmosPreconditionFailedError) as error:
+            raise UsersStoreUnavailableError(
+                'Promoted user changed since replacement validation'
+            ) from error
+        except CosmosError as error:
+            raise UsersStoreUnavailableError(
+                'Could not conditionally delete promoted user'
+            ) from error
+
     def replace(self, user: UserRecord) -> UserRecord:
         if not isinstance(user, UserRecord):
             raise TypeError('user must be UserRecord')
@@ -142,17 +246,13 @@ class CosmosUsersStore(UsersRuntimeStore, UsersAdministrationStore):
             if current is None:
                 raise UsersStoreUnavailableError('Promoted user does not exist')
             current_user = _user_from_document(current)
-            if (current_user.issuer, current_user.subject_id) != (
-                user.issuer,
-                user.subject_id,
-            ):
+            if (current_user.issuer, current_user.subject_id) != (user.issuer, user.subject_id):
                 raise UsersIdentityConflictError('Promoted user identity cannot be changed')
             etag = _required_etag(current)
             desired = _user_to_document(user)
             operations = tuple(
                 CosmosPatchOperation(operation='set', path=f'/{field}', value=value)
-                for field, value in desired.items()
-                if field != 'id'
+                for field, value in desired.items() if field != 'id'
             )
             saved = self._client.patch_item(
                 container_name=self._container_name,
