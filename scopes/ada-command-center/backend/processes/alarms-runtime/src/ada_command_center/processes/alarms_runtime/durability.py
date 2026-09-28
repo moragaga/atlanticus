@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from ada_command_center.alarms.persistence import (
     AlarmPersistence,
     CommitBatchResult,
+    ConfigurationAdoptionRecord,
     EngineCommitRecord,
     RecoveryResult,
 )
@@ -63,6 +64,31 @@ class AlarmRuntimeDurability:
         context.set_iteration_fact('alarm_commit_bytes_appended', result.bytes_appended)
         context.set_iteration_fact('alarm_commit_sealed_segment_count', result.sealed_segment_count)
         context.increment_execution_counter('alarm_commits_confirmed', result.record_count)
+        context.increment_execution_counter('alarm_commit_bytes_appended', result.bytes_appended)
+        return result
+
+    def commit_adoption(
+        self,
+        context: JobRuntimeContext,
+        record: ConfigurationAdoptionRecord,
+        *,
+        group_records: Sequence[EngineCommitRecord] = (),
+    ) -> CommitBatchResult:
+        _require_context(context)
+        context.raise_if_cancelled()
+        result = self.persistence.commit_adoption(
+            record,
+            group_records=group_records,
+            assert_authority=context.assert_lease_current,
+            fenced_mutation=context.fenced_mutation,
+        )
+        context.mark_iteration_work()
+        context.set_iteration_fact('alarm_adoption_record_count', 1)
+        context.set_iteration_fact('alarm_commit_record_count', len(group_records))
+        context.set_iteration_fact('alarm_commit_bytes_appended', result.bytes_appended)
+        context.set_iteration_fact('alarm_commit_sealed_segment_count', result.sealed_segment_count)
+        context.increment_execution_counter('alarm_adoptions_confirmed', 1)
+        context.increment_execution_counter('alarm_commits_confirmed', len(group_records))
         context.increment_execution_counter('alarm_commit_bytes_appended', result.bytes_appended)
         return result
 

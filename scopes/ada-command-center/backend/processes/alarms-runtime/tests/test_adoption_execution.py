@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from types import SimpleNamespace
@@ -5,14 +6,26 @@ from types import SimpleNamespace
 import pytest
 
 from ada_command_center.alarms.core import (
+    AlarmEvaluation,
     AlarmResolutionKey,
     AlarmRouting,
     AlarmRuntimeState,
+    AlarmStatus,
     DeactivationEffect,
+    EvidenceSnapshot,
     GroupLifecycleState,
     PlannedAlarm,
+    materialize_group_commit,
+    reduce_group_cycle,
 )
 from ada_command_center.alarms.materialization import AlarmConfigurationArtifactRef
+from ada_command_center.alarms.persistence import (
+    AlarmPersistence,
+    AlarmPersistenceConflictError,
+    AlarmRecoveryRequiredError,
+    ConfigurationAdoptionRecord,
+    ConfigurationAdoptionRecordV2,
+)
 from ada_command_center.domain.alarms import AlarmIdentity, AlarmKind, Criticality
 from ada_command_center.processes.alarms_runtime import (
     AlarmConfigurationAdoptionExecutor,
@@ -25,6 +38,7 @@ from ada_command_center.processes.alarms_runtime import (
     build_alarm_runtime_composition,
     plan_configuration_adoption,
 )
+from ada_command_center.processes.alarms_runtime.commit import compose_engine_commit_record
 from atlanticus.kernel import Environment
 from atlanticus.runtime import JobDefinition, JobRuntimeContext, RuntimeConfiguration
 
@@ -100,7 +114,7 @@ def _executor(tmp_path):
 
 
 def _context(executor):
-    return JobRuntimeContext.create(
+    context = JobRuntimeContext.create(
         definition=JobDefinition(
             module_name='ada_command_center.processes.alarms_runtime',
             service_name='alarms-runtime',
@@ -110,6 +124,13 @@ def _context(executor):
         correlation_id='correlation-1',
         wall_clock=lambda: AT,
     )
+
+    @contextmanager
+    def fence():
+        yield
+
+    context._bind_lease_authority(generation=1, checker=lambda: None, fence=fence)
+    return context
 
 
 @pytest.mark.parametrize(
@@ -210,27 +231,317 @@ def test_prepare_rejects_executable_group_migration(tmp_path):
         executor.prepare(plan_configuration_adoption(source, target), effective_at=AT)
 
 
-def test_execute_never_confirms_group_only_adoption_before_global_integration(tmp_path):
+def test_bootstrap_v1_pins_ready_without_synthetic_groups(tmp_path):
+    executor = _executor(tmp_path)
+    target = _revision('a', defined=('old',), executable=('old',))
+    context = _context(executor)
+
+    result = executor.bootstrap(context, target, effective_at=AT, adoption_id='first')
+
+    persistence = executor.composition.durability.persistence
+    assert result.record_count == 1
+    assert persistence.list_snapshots() == ()
+    assert persistence.read_durable_records() == ()
+    (adoption,) = tuple(entry.record for entry in persistence.read_durable_adoptions())
+    assert type(adoption) is ConfigurationAdoptionRecord
+    assert adoption.previous_artifact_ref is None
+    assert adoption.target_artifact_ref.result_id == target.artifact_ref.result_id
+    assert persistence.read_effective_head().adoption_id == 'first'
+
+    with pytest.raises(ConfigurationAdoptionExecutionError, match='absence of an EFFECTIVE'):
+        executor.bootstrap(context, target, effective_at=AT, adoption_id='retry')
+    assert len(persistence.read_durable_adoptions()) == 1
+
+
+def test_execute_v1_records_metadata_only_change_after_bootstrap(tmp_path):
     executor = _executor(tmp_path)
     context = _context(executor)
-    cases = (
-        (_revision('a'), _revision('b', defined=('new',), executable=('new',))),
-        (_revision('c', defined=('old',)), _revision('d', defined=('old',), executable=('old',))),
-        (_revision('e', defined=('old',)), _revision('f')),
-        (
-            _revision('g', defined=('old',), executable=('old',)),
-            _revision('h', defined=('old',)),
-        ),
-        (
-            _revision('i', defined=('old',), executable=('old',)),
-            _revision('j', defined=('old',), executable=('old',)),
-        ),
+    source = _revision('a', defined=('old',))
+    target = _revision('b', defined=('old', 'new'))
+    executor.bootstrap(context, source, effective_at=AT, adoption_id='first')
+
+    result = executor.execute(
+        context,
+        plan_configuration_adoption(source, target),
+        effective_at=AT + timedelta(seconds=2),
+        adoption_id='second',
     )
-    for source, target in cases:
-        plan = plan_configuration_adoption(source, target)
-        with pytest.raises(ConfigurationAdoptionExecutionError, match='global V1/V2'):
-            executor.execute(context, plan, effective_at=AT)
+
+    persistence = executor.composition.durability.persistence
+    assert result.groups == ()
+    assert result.materializations == ()
+    assert result.commit_result.record_count == 1
+    assert type(result.adoption_record) is ConfigurationAdoptionRecord
+    assert persistence.read_effective_head().target_artifact_ref.result_id == (
+        target.artifact_ref.result_id
+    )
+    assert tuple(entry.record for entry in persistence.read_durable_adoptions()) == (
+        persistence.read_durable_adoptions()[0].record,
+        result.adoption_record,
+    )
+    assert persistence.read_durable_records() == ()
+
+
+def test_execute_requires_current_exact_effective_and_no_legacy_commit(tmp_path):
+    executor = _executor(tmp_path)
+    context = _context(executor)
+    source = _revision('a', defined=('old',))
+    target = _revision('b', defined=('old',), executable=('old',))
+    plan = plan_configuration_adoption(source, target)
+    with pytest.raises(ConfigurationAdoptionExecutionError, match='initial configuration'):
+        executor.execute(context, plan, effective_at=AT, adoption_id='not-bootstrap')
     assert executor.composition.durability.persistence.read_head().durable is None
+    executor.bootstrap(context, target, effective_at=AT, adoption_id='first')
+    with pytest.raises(ConfigurationAdoptionExecutionError, match='does not match'):
+        executor.execute(context, plan, effective_at=AT + timedelta(seconds=2), adoption_id='stale')
+    assert len(executor.composition.durability.persistence.read_durable_adoptions()) == 1
+
+
+def test_execute_v1_supports_added_enabled_and_removed_without_group_state(tmp_path):
+    executor = _executor(tmp_path)
+    context = _context(executor)
+    source = _revision('a', defined=('removed', 'enabled'))
+    target = _revision(
+        'b',
+        defined=('enabled', 'added'),
+        executable=('enabled', 'added'),
+    )
+    executor.bootstrap(context, source, effective_at=AT, adoption_id='first')
+
+    result = executor.execute(
+        context,
+        plan_configuration_adoption(source, target),
+        effective_at=AT + timedelta(seconds=2),
+        adoption_id='second',
+    )
+    assert tuple(group.priority_group for group in result.groups) == ('group-a',)
+    assert result.materializations == ()
+    assert result.commit_result.record_count == 1
+    assert type(result.adoption_record) is ConfigurationAdoptionRecord
+    assert executor.composition.durability.persistence.list_snapshots() == ()
+
+
+def test_execute_v1_pins_delivery_only_artifact_without_group_commits(tmp_path):
+    executor = _executor(tmp_path)
+    context = _context(executor)
+    source = _revision('a', defined=('old',), executable=('old',))
+    target = _revision('b', defined=('old',), executable=('old',))
+    executor.bootstrap(context, source, effective_at=AT, adoption_id='first')
+
+    result = executor.execute(
+        context,
+        plan_configuration_adoption(source, target),
+        effective_at=AT + timedelta(seconds=2),
+        adoption_id='delivery-only',
+    )
+    assert result.groups == ()
+    assert result.commit_result.record_count == 1
+    assert type(result.adoption_record) is ConfigurationAdoptionRecord
+    assert executor.composition.durability.persistence.read_effective_head().adoption_id == (
+        'delivery-only'
+    )
+
+
+def test_execute_rejected_plan_does_not_change_effective(tmp_path):
+    executor = _executor(tmp_path)
+    context = _context(executor)
+    source = _revision('a', defined=('old',), executable=('old',))
+    target = _revision(
+        'b',
+        defined=('old',),
+        executable=('old',),
+        groups={'old': 'group-b'},
+    )
+    executor.bootstrap(context, source, effective_at=AT, adoption_id='first')
+    with pytest.raises(ConfigurationAdoptionExecutionError, match='plan is rejected'):
+        executor.execute(
+            context,
+            plan_configuration_adoption(source, target),
+            effective_at=AT + timedelta(seconds=2),
+            adoption_id='rejected',
+        )
+    persistence = executor.composition.durability.persistence
+    assert persistence.read_effective_head().adoption_id == 'first'
+    assert len(persistence.read_durable_adoptions()) == 1
+    assert persistence.read_durable_records() == ()
+
+
+def _seed_open_occurrences(executor, context, source, *, at):
+    persistence = executor.composition.durability.persistence
+    group_records = []
+    for entry in source.session.entries:
+        plan = entry.planned_alarm
+        previous = GroupLifecycleState(priority_group=plan.priority_group)
+        evaluation = AlarmEvaluation(
+            alarm_identity=plan.identity,
+            status=AlarmStatus.ACTIVE,
+            evaluated_at=at,
+            evidence_snapshot=EvidenceSnapshot(
+                contract_key='threshold',
+                contract_version='v1',
+                payload={'value': 10.0},
+            ),
+        )
+        decision = reduce_group_cycle(
+            previous,
+            cycle_at=at,
+            planned_alarms=(plan,),
+            evaluations=(evaluation,),
+            occurrence_id_factory=lambda identity, when: f'O-{identity.alarm_key}',
+            episode_id_factory=lambda group, when: f'E-{group}',
+        )
+        materialization = materialize_group_commit(
+            previous,
+            decision,
+            evaluations=(evaluation,),
+            cycle_at=at,
+            committed_at=at,
+            alarm_configuration_revision=source.alarm_configuration_revision,
+            tool_registry_revision=source.tool_registry_revision,
+            runtime_artifact_version='1.0.0',
+        )
+        assert materialization is not None
+        group_records.append(compose_engine_commit_record(materialization, previous_snapshot=None))
+    persistence.commit_batch(
+        tuple(group_records),
+        assert_authority=context.assert_lease_current,
+        fenced_mutation=context.fenced_mutation,
+    )
+
+
+def test_execute_v2_atomically_closes_two_groups_and_updates_effective(tmp_path):
+    executor = _executor(tmp_path)
+    context = _context(executor)
+    source = _revision(
+        'a',
+        defined=('one', 'two'),
+        executable=('one', 'two'),
+        groups={'one': 'group-a', 'two': 'group-b'},
+    )
+    target = _revision('b', defined=('one', 'two'))
+    executor.bootstrap(context, source, effective_at=AT, adoption_id='first')
+    _seed_open_occurrences(executor, context, source, at=AT + timedelta(seconds=1))
+
+    result = executor.execute(
+        context,
+        plan_configuration_adoption(source, target),
+        effective_at=AT + timedelta(seconds=2),
+        adoption_id='second',
+    )
+
+    persistence = executor.composition.durability.persistence
+    assert tuple(group.priority_group for group in result.groups) == (
+        'group-a',
+        'group-b',
+    )
+    assert len(result.materializations) == 2
+    assert type(result.adoption_record) is ConfigurationAdoptionRecordV2
+    assert tuple(ref.priority_group for ref in result.adoption_record.group_commits) == (
+        'group-a',
+        'group-b',
+    )
+    assert result.commit_result.record_count == 3
+    assert persistence.read_effective_head().target_artifact_ref.result_id == (
+        target.artifact_ref.result_id
+    )
+    assert len(persistence.read_durable_adoptions()) == 2
+    assert all(
+        'episode' not in persistence.read_snapshot(group).as_document()
+        for group in ('group-a', 'group-b')
+    )
+    restarted = AlarmPersistence(shared_volume_path=tmp_path)
+    assert restarted.read_effective_head() == persistence.read_effective_head()
+
+
+def test_v2_crash_replays_all_groups_before_exposing_new_effective(tmp_path, monkeypatch):
+    executor = _executor(tmp_path)
+    context = _context(executor)
+    source = _revision(
+        'a',
+        defined=('one', 'two'),
+        executable=('one', 'two'),
+        groups={'one': 'group-a', 'two': 'group-b'},
+    )
+    target = _revision('b', defined=('one', 'two'))
+    executor.bootstrap(context, source, effective_at=AT, adoption_id='first')
+    _seed_open_occurrences(executor, context, source, at=AT + timedelta(seconds=1))
+    persistence = executor.composition.durability.persistence
+    original = persistence._materialize_entry
+    calls = 0
+
+    def fail_second(entry):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise RuntimeError('simulated second-group crash')
+        return original(entry)
+
+    monkeypatch.setattr(persistence, '_materialize_entry', fail_second)
+    with pytest.raises(RuntimeError, match='simulated second-group crash'):
+        executor.execute(
+            context,
+            plan_configuration_adoption(source, target),
+            effective_at=AT + timedelta(seconds=2),
+            adoption_id='second',
+        )
+    assert not persistence.read_head().aligned
+    with pytest.raises(AlarmRecoveryRequiredError):
+        persistence.read_effective_head()
+    monkeypatch.setattr(persistence, '_materialize_entry', original)
+    executor.composition.recover(context)
+    assert persistence.read_effective_head().target_artifact_ref.result_id == (
+        target.artifact_ref.result_id
+    )
+    assert len(persistence.read_durable_adoptions()) == 2
+    with pytest.raises(ConfigurationAdoptionExecutionError, match='does not match'):
+        executor.execute(
+            context,
+            plan_configuration_adoption(source, target),
+            effective_at=AT + timedelta(seconds=3),
+            adoption_id='second',
+        )
+    assert len(persistence.read_durable_adoptions()) == 2
+
+
+def test_bootstrap_refuses_legacy_group_only_history(tmp_path):
+    executor = _executor(tmp_path)
+    context = _context(executor)
+    source = _revision('a', defined=('old',), executable=('old',))
+    _seed_open_occurrences(executor, context, source, at=AT + timedelta(seconds=1))
+
+    with pytest.raises(AlarmPersistenceConflictError, match='legacy state migration'):
+        executor.bootstrap(
+            context,
+            source,
+            effective_at=AT + timedelta(seconds=2),
+            adoption_id='first',
+        )
+    assert executor.composition.durability.persistence.read_effective_head() is None
+
+
+def test_crash_after_durable_bootstrap_requires_recovery_without_double_adoption(
+    tmp_path, monkeypatch
+):
+    executor = _executor(tmp_path)
+    context = _context(executor)
+    persistence = executor.composition.durability.persistence
+    original = persistence._materialize_entry
+    monkeypatch.setattr(
+        persistence,
+        '_materialize_entry',
+        lambda entry: (_ for _ in ()).throw(RuntimeError('simulated snapshot crash')),
+    )
+    with pytest.raises(RuntimeError, match='simulated snapshot crash'):
+        executor.bootstrap(context, _revision('a'), effective_at=AT, adoption_id='first')
+    assert persistence.read_head().durable is not None
+    with pytest.raises(AlarmRecoveryRequiredError):
+        persistence.read_effective_head()
+    monkeypatch.setattr(persistence, '_materialize_entry', original)
+    executor.composition.recover(context)
+    assert persistence.read_effective_head().adoption_id == 'first'
+    with pytest.raises(ConfigurationAdoptionExecutionError, match='absence of an EFFECTIVE'):
+        executor.bootstrap(context, _revision('a'), effective_at=AT, adoption_id='first')
+    assert len(persistence.read_durable_adoptions()) == 1
 
 
 def test_prepare_fails_when_journal_requires_recovery(tmp_path, monkeypatch):
