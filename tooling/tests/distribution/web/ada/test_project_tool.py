@@ -5,11 +5,8 @@ import hashlib
 import importlib.util
 import json
 import os
-import platform
-import sys
 import tomllib
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -164,27 +161,69 @@ def test_init_copies_template_only_on_request(distribution, monkeypatch):
     assert not commands
 
 
-def test_sync_installs_hashed_runtime_and_internal_wheels_and_is_repeatable(distribution, monkeypatch):
-    commands = []
+def _stub_sync_commands(monkeypatch, commands):
     def execute(command, *, root, **_kw):
         commands.append(command)
-        if command[1] == 'venv':
+        if command[1] == 'venv' and Path(command[2]) == root / '.venv':
             executable = project._python(root)
             executable.parent.mkdir(parents=True, exist_ok=True)
             executable.write_bytes(b'python')
+        if command[1] == 'build':
+            output = Path(command[command.index('--out-dir') + 1])
+            (output / 'ada_application_starter-0.1.0-py3-none-any.whl').write_bytes(b'wheel')
     monkeypatch.setattr(project, '_command', execute)
+
+
+def test_sync_installs_hashed_runtime_and_internal_wheels_and_is_repeatable(distribution, monkeypatch):
+    commands = []
+    _stub_sync_commands(monkeypatch, commands)
     output = project.sync(distribution)
     assert output['status'] == 'SYNCED'
-    assert len(commands) == 4
+    assert len(commands) == 8
     assert '--require-hashes' in commands[1]
     assert 'project-runtime.txt' in ' '.join(commands[1])
     assert '--no-index' in commands[2]
-    assert commands[3][1:3] == ['pip', 'check']
+    assert commands[3][1] == 'venv'
+    assert '--require-hashes' in commands[4]
+    assert 'starter-build.txt' in ' '.join(commands[4])
+    assert commands[5][1:4] == ['build', '--wheel', '--no-build-isolation']
+    assert '--no-index' in commands[6]
+    assert 'ada_application_starter-0.1.0' in commands[6][-1]
+    assert commands[7][1:3] == ['pip', 'check']
     assert project.sync(distribution)['status'] == 'ALREADY_SYNCED'
-    assert len(commands) == 4
-    project.sync(distribution, force=True)
     assert len(commands) == 8
-    assert commands[4][1] == 'venv'
+    project.sync(distribution, force=True)
+    assert len(commands) == 16
+    assert commands[8][1] == 'venv'
+
+
+def test_sync_rebuilds_starter_when_its_source_changes(distribution, monkeypatch):
+    commands = []
+    _stub_sync_commands(monkeypatch, commands)
+    assert project.sync(distribution)['status'] == 'SYNCED'
+    assert project.sync(distribution)['status'] == 'ALREADY_SYNCED'
+    (distribution / 'src/application/__main__.py').write_text('print("changed")\n')
+    assert project.sync(distribution)['status'] == 'SYNCED'
+    assert len(commands) == 16
+
+
+def test_failed_starter_build_does_not_leave_a_valid_sync_stamp(distribution, monkeypatch):
+    commands = []
+    _stub_sync_commands(monkeypatch, commands)
+    initial = project._command
+
+    def failing(command, *, root, **kwargs):
+        if command[1] == 'build':
+            raise project.ProjectError('Starter build failed')
+        initial(command, root=root, **kwargs)
+
+    monkeypatch.setattr(project, '_command', failing)
+    with pytest.raises(project.ProjectError, match='Starter build failed'):
+        project.sync(distribution)
+    assert not (distribution / '.runtime/project-sync.json').exists()
+    _stub_sync_commands(monkeypatch, commands)
+    assert project.sync(distribution)['status'] == 'SYNCED'
+    assert project.sync(distribution)['status'] == 'ALREADY_SYNCED'
 
 
 def test_sync_does_not_install_on_stale_dependencies(distribution, monkeypatch):

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import importlib.util
 import json
 import os
 import platform
@@ -37,6 +36,25 @@ def _root() -> Path:
 
 def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _starter_source_digest(root: Path) -> str:
+    source = root / 'src'
+    files = sorted(
+        path for path in source.rglob('*')
+        if path.is_file()
+        and not {'__pycache__'} & set(path.relative_to(source).parts)
+        and not any(part.endswith('.egg-info') for part in path.relative_to(source).parts)
+        and path.suffix != '.pyc'
+    )
+    if not files:
+        raise ProjectError('ADA Starter source is missing')
+    digest = hashlib.sha256()
+    for path in files:
+        digest.update(path.relative_to(source).as_posix().encode('utf-8'))
+        digest.update(b'\0')
+        digest.update(bytes.fromhex(_sha(path)))
+    return digest.hexdigest()
 
 
 def _canonical(name: str) -> str:
@@ -337,7 +355,8 @@ def sync(root: Path, *, force: bool = False) -> dict:
     python = _python(root)
     fingerprint = hashlib.sha256(json.dumps({
         'lock': state, 'host_runtime_sha256': _sha(root / 'requirements/host-runtime.txt'),
-        'python': PYTHON_VERSION,
+        'python': PYTHON_VERSION, 'starter_install_schema': 1,
+        'starter_source_sha256': _starter_source_digest(root),
     }, sort_keys=True).encode()).hexdigest()
     if not force and python.is_file() and stamp.is_file():
         try:
@@ -348,6 +367,7 @@ def sync(root: Path, *, force: bool = False) -> dict:
     virtual_environment = root / '.venv'
     if virtual_environment.is_symlink():
         raise ProjectError('Managed virtual environment must not be a symbolic link')
+    stamp.unlink(missing_ok=True)
     if virtual_environment.exists():
         shutil.rmtree(virtual_environment)
     _command([uv, 'venv', str(virtual_environment), '--python', PYTHON_VERSION,
@@ -363,6 +383,29 @@ def sync(root: Path, *, force: bool = False) -> dict:
         raise ProjectError('Internal wheelhouse is empty')
     _command([uv, 'pip', 'install', '--python', str(python), '--no-index', '--no-deps',
               *wheels], root=root)
+    with tempfile.TemporaryDirectory(prefix='.ada-starter-build-') as temporary:
+        staging = Path(temporary)
+        build_environment = staging / 'buildvenv'
+        build_python = build_environment / (
+            'Scripts/python.exe' if os.name == 'nt' else 'bin/python'
+        )
+        output = staging / 'wheels'
+        output.mkdir()
+        _command([uv, 'venv', str(build_environment), '--python', PYTHON_VERSION,
+                  '--no-python-downloads'], root=root)
+        _command([
+            uv, 'pip', 'install', '--python', str(build_python), '--only-binary', ':all:',
+            '--require-hashes', '-r', str(root / 'requirements/starter-build.txt'),
+        ], root=root)
+        _command([
+            uv, 'build', '--wheel', '--no-build-isolation', '--python', str(build_python),
+            '--out-dir', str(output), str(root),
+        ], root=root)
+        starter_wheels = tuple(output.glob('*.whl'))
+        if len(starter_wheels) != 1:
+            raise ProjectError('ADA Starter build must produce exactly one wheel')
+        _command([uv, 'pip', 'install', '--python', str(python), '--no-index', '--no-deps',
+                  str(starter_wheels[0])], root=root)
     _command([uv, 'pip', 'check', '--python', str(python)], root=root)
     stamp.parent.mkdir(parents=True, exist_ok=True)
     stamp.write_text(json.dumps({'fingerprint': fingerprint}, indent=2) + '\n',
