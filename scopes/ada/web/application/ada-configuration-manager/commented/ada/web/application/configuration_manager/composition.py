@@ -222,7 +222,11 @@ def build_configuration_manager_surface(
             *_kpi_modules(kpi_context, dependencies),
             *_kpi_definition_modules(kpi_definition_context, dependencies),
         ),
-        entries=(dependencies.users_entry,),
+        entries=(
+            dependencies.users_entry,
+            *((dependencies.users_projection_entry,)
+              if dependencies.users_projection_entry is not None else ()),
+        ),
         route_prefix=MANAGER_ROUTE_PREFIX,
         header_brand_marks=build_ada_manager_brand_marks(),
         header_title='Gestor de configuración ADA',

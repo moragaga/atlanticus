@@ -142,6 +142,10 @@ def test_open_manager_closes_both_clients_and_is_lazy(tmp_path, monkeypatch):
     monkeypatch.setattr(
         manager_deployment, 'compose_durable_manager_stores', lambda **kwargs: kwargs
     )
+    monkeypatch.setattr(
+        manager_deployment,
+        '_attach_users_recovery', lambda stores, *_arguments: stores
+    )
     with open_durable_manager(_settings(tmp_path)) as runtime:
         assert len(constructed) == 2
         assert not any(client.closed for client in constructed)

@@ -33,6 +33,7 @@ class ConfigurationManagerDependencies:
     principal_provider: ManagerPrincipalProvider
     profiles_module: ManagerModule
     users_entry: ManagerEntry
+    users_projection_entry: ManagerEntry | None = None
     navigation_projection_store: ProjectionStore[NavigationConfigurationCatalog] | None = None
     kpi_registry_source: KpiRegistrySourceService | None = None
     kpi_registry_projection: SourceProjectionService[KpiRegistry] | None = None

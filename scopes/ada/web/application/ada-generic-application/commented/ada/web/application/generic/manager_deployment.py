@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
 from contextlib import ExitStack, contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 from pydantic import Field
@@ -21,11 +21,19 @@ from ada.web.storage.namespace import AdaStorageNamespace
 from ada.web.tools.persistence import ToolProjectionProvider, ToolSourceProvider
 from atlanticus.connectivity.cosmos import CosmosClient, CosmosProvisioner, CosmosSettings
 from atlanticus.connectivity.storage import StorageClient, StorageSettings
+from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
 from atlanticus.web.configuration import WebEnvironment
+from atlanticus.web.profiles.models import ProfileCatalog
+from atlanticus.web.users.blob.recovery import (
+    BlobApprovedUsersSnapshotStore,
+    BlobUsersRecoveryAuditStore,
+    BlobUsersReplaceBeforeImageStore,
+)
 from atlanticus.web.storage.cosmos import (
     ensure_cosmos_storage_plan,
     validate_cosmos_storage_plan,
 )
+from atlanticus.web.users.recovery import UsersApprovedRecoveryService, UsersRecoveryConflictError
 
 _STORAGE_CONNECTION = 'ada-blob'
 _COSMOS_CONNECTION = 'ada-cosmos'
@@ -127,6 +135,7 @@ def open_durable_manager(
             resources=resolved.resources,
             connections=connections,
         )
+        stores = _attach_users_recovery(stores, resolved, connections, settings)
         yield DurableManagerRuntime(
             stores=stores,
             resources=resolved.resources,
@@ -136,6 +145,66 @@ def open_durable_manager(
 
 # La preparación es una operación explícita posterior al despliegue Web.
 # La validación no muta; ensure-local solo crea recursos Cosmos en desarrollo.
+# Construye recuperación una sola vez sobre los stores durables existentes.
+def _attach_users_recovery(
+    stores: ConfigurationManagerStores,
+    resolved: DurableManagerConfiguration,
+    connections: ManagerPersistenceConnections,
+    settings: AdaGenericSettings,
+) -> ConfigurationManagerStores:
+    resource = resolved.resources.users_registry
+    client = connections.storage[resource.connection_ref]
+    namespace = resolved.namespace
+
+    def profiles_provider() -> ProfileCatalog:
+        active = stores.profiles.get_active(PROFILES_CONFIGURATION_SOURCE_KEY)
+        if active is None or not isinstance(active.payload, ProfileCatalog):
+            raise UsersRecoveryConflictError('An active Profiles projection is required')
+        return active.payload
+
+    snapshots = BlobApprovedUsersSnapshotStore(
+        client=client,
+        container_name=resource.container_name,
+        prefix=namespace.application_blob_name('users/recovery/snapshots'),
+    )
+    # No se consultan usuarios al construir Manager; el contexto se valida por operación.
+    def recovery_provider() -> UsersApprovedRecoveryService:
+        # La identidad real procede de promovidos, nunca del namespace de la herramienta.
+        issuers = {user.issuer for user in stores.users_promoted.list_users()}
+        if len(issuers) != 1:
+            raise UsersRecoveryConflictError(
+                'Users Projection requires one identifiable issuer among promoted users'
+            )
+        return UsersApprovedRecoveryService(
+            registry=stores.users_registry,
+            promoted=stores.users_promoted,
+            replace_store=stores.users_promoted,
+            profiles=profiles_provider,
+            snapshots=snapshots,
+            audit=BlobUsersRecoveryAuditStore(
+                client=client,
+                container_name=resource.container_name,
+                prefix=namespace.application_blob_name('users/recovery/audit'),
+            ),
+            before_images=BlobUsersReplaceBeforeImageStore(
+                client=client,
+                container_name=resource.container_name,
+                prefix=namespace.application_blob_name('users/recovery/replace-before'),
+            ),
+            application_key=namespace.application_namespace,
+            identity_realm=next(iter(issuers)),
+            environment=(
+                f'{settings.environment.value}:{resolved.cosmos_settings.database_name}'
+            ),
+        )
+
+    return replace(
+        stores,
+        users_recovery=recovery_provider,
+        users_snapshot_ids=snapshots.list_snapshot_ids,
+    )
+
+
 # Blob se valida mediante la API pública: su connector actual no crea contenedores.
 def prepare_durable_manager_resources(
     deployment: DurableManagerRuntime,

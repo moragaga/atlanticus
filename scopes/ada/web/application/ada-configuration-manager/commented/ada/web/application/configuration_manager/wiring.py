@@ -44,7 +44,10 @@ from atlanticus.web.compositions.profiles_manager import (
     PROFILES_CONFIGURATION_SOURCE_KEY,
     compose_profiles_manager,
 )
-from atlanticus.web.compositions.users_manager import compose_users_manager
+from atlanticus.web.compositions.users_manager import (
+    compose_users_manager,
+    compose_users_projection_manager,
+)
 from atlanticus.web.manager import ManagerPrincipal
 from atlanticus.web.navigation.configuration import (
     NavigationConfigurationCatalog,
@@ -58,6 +61,7 @@ from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.models import SourceKey
 from atlanticus.web.source.store import SourceStore
 from atlanticus.web.users.administration import UsersAdministrationService
+from atlanticus.web.users.recovery import UsersApprovedRecoveryService
 from atlanticus.web.users.store import (
     UsersAdministrationStore,
     UsersDirectoryReader,
@@ -100,6 +104,8 @@ class ConfigurationManagerStores:
     users_registry: UsersRegistryStore
     users_promoted: UsersAdministrationStore
     users_directory: UsersDirectoryReader | None = None
+    users_recovery: UsersApprovedRecoveryService | Callable[[], UsersApprovedRecoveryService] | None = None
+    users_snapshot_ids: Callable[[], tuple[str, ...]] | None = None
 
     # Verifica invariantes y deriva datos de la entrada explícita.
     def __post_init__(self) -> None:
@@ -127,6 +133,16 @@ class ConfigurationManagerStores:
             self.users_directory, UsersDirectoryReader
         ):
             raise TypeError('Configuration Manager directory must implement UsersDirectoryReader')
+        if (self.users_recovery is None) != (self.users_snapshot_ids is None):
+            raise ValueError('Users recovery and snapshot catalog must be injected together')
+        if (
+            self.users_recovery is not None
+            and not isinstance(self.users_recovery, UsersApprovedRecoveryService)
+            and not callable(self.users_recovery)
+        ):
+            raise TypeError('Users recovery service has an invalid type')
+        if self.users_snapshot_ids is not None and not callable(self.users_snapshot_ids):
+            raise TypeError('Users snapshot catalog must be callable')
 
 
 # Composición o lectura independiente del proveedor físico.
@@ -219,7 +235,20 @@ def compose_configuration_manager_dependencies(
         title='Usuarios',
         access_key=USERS_MANAGER_ACCESS_KEY,
     )
+    # Registra una Entry sin simular un Source/Projection para los usuarios.
+    users_projection_entry = (
+        compose_users_projection_manager(
+            recovery=stores.users_recovery,
+            snapshot_ids=stores.users_snapshot_ids,
+            principal_provider=principal_provider,
+            group_key='administration',
+            access_key=USERS_MANAGER_ACCESS_KEY,
+        )
+        if stores.users_recovery is not None and stores.users_snapshot_ids is not None
+        else None
+    )
     return ConfigurationManagerDependencies(
+        users_projection_entry=users_projection_entry,
         navigation_source=navigation_source,
         navigation_projection=navigation_projection,
         navigation_projection_store=stores.navigation,

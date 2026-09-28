@@ -41,6 +41,10 @@ class _StorageClient(Protocol):
         self, *, container_name: str, blob_name: str
     ) -> StorageBlobProperties: ...
 
+    def list_blobs(
+        self, *, container_name: str, prefix: str | None = None, max_items: int | None = None
+    ) -> tuple[StorageBlobProperties, ...]: ...
+
 
 def _require_prefix(value: str) -> str:
     if (
@@ -90,6 +94,25 @@ class BlobApprovedUsersSnapshotStore:
         self._client = client
         self._container_name = _require_name(container_name)
         self._prefix = _require_prefix(prefix)
+
+    def list_snapshot_ids(self, *, max_items: int = 200) -> tuple[str, ...]:
+        try:
+            items = self._client.list_blobs(
+                container_name=self._container_name,
+                prefix=f'{self._prefix}/',
+                max_items=max_items,
+            )
+        except StorageError as error:
+            raise UsersRecoveryUnavailableError('Could not list Users snapshots') from error
+        prefix = f'{self._prefix}/'
+        candidates = (
+            (item.name[len(prefix):-5], item.last_modified.timestamp() if item.last_modified else 0)
+            for item in items
+            if item.name.startswith(prefix)
+            and item.name.endswith('.json')
+            and _ID_PATTERN.fullmatch(item.name[len(prefix):-5]) is not None
+        )
+        return tuple(identifier for identifier, _ in sorted(candidates, key=lambda x: x[1], reverse=True))
 
     def save(self, snapshot: ApprovedUsersSnapshot) -> None:
         if not isinstance(snapshot, ApprovedUsersSnapshot):

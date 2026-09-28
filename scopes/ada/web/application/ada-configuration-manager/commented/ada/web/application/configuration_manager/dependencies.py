@@ -36,6 +36,8 @@ class ConfigurationManagerDependencies:
     principal_provider: ManagerPrincipalProvider
     profiles_module: ManagerModule
     users_entry: ManagerEntry
+    # Entry opcional: solo se activa con persistencia durable y snapshot compatible.
+    users_projection_entry: ManagerEntry | None = None
     # El consumidor operacional puede leer la misma proyección que publica Manager.
     navigation_projection_store: ProjectionStore[NavigationConfigurationCatalog] | None = None
     kpi_registry_source: KpiRegistrySourceService | None = None
