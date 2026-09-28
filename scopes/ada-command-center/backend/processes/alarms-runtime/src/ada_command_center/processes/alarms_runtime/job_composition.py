@@ -87,7 +87,7 @@ class AlarmRuntimeJobComposition:
             raise TypeError('iteration_executor must return AlarmRuntimeJobIterationResult')
         context.set_iteration_fact('adoption_outcome', result.adoption_outcome.value)
         context.set_iteration_fact('cycle_executed', result.cycle_executed)
-        if result.immediate_next_iteration:
+        if result.immediate_next_iteration and context._next_iteration_delay() is None:
             context.set_next_iteration_delay(0)
         return result
 

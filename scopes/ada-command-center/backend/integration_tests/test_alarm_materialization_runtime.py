@@ -63,6 +63,7 @@ from ada_command_center.processes.alarms_runtime import (
     AlarmOperationalCycle,
     AlarmOperationalCycleError,
     AlarmOperationalCycleResult,
+    AlarmOperationalCycleRunner,
     AlarmRuntimeJobAdoptionOutcome,
     AlarmRuntimeJobComposition,
     RuntimeLocalConfigurationReader,
@@ -1067,3 +1068,245 @@ def test_v2_first_operational_cycle_one_second_later_does_not_collide(
         ).state.episode
         is not None
     )
+
+
+def _coordinated_runtime_job(
+    volume: Path,
+    *,
+    source_loader: _ControlledSourceLoader,
+    iteration_times: tuple[datetime, ...],
+    adoption_at: datetime,
+    run_id: str,
+):
+    composition = build_alarm_runtime_composition(
+        runtime_configuration=_runtime_configuration(volume)
+    )
+    requirement = DataRequirement(
+        source=DataSource.PI_INTERPOLATED,
+        partition=DataPartition.LATEST,
+        columns=(DataColumn(name='value', data_type=DataColumnType.FLOAT),),
+    )
+    registry = AlarmEvaluatorRegistry(
+        contracts=(
+            AlarmEvaluatorContract(
+                family_key='mill',
+                evaluator_key='threshold',
+                evaluator=_threshold_from_loaded_frame,
+                requirements=(requirement,),
+            ),
+        )
+    )
+
+    def cycle_factory(session: AlarmExecutionSession) -> AlarmOperationalCycle:
+        return AlarmOperationalCycle(
+            session=session,
+            composition=composition,
+            occurrence_id_factory=lambda identity, at: f'{identity.alarm_key}-{at:%Y%m%dT%H%M%S}',
+            episode_id_factory=lambda group, at: f'{group}-{at:%Y%m%dT%H%M%S}',
+            commit_time_provider=_CommitClock(),
+            runtime_artifact_version='1.0.0',
+            technical_evidence_contract=EvidenceContractRef(
+                contract_key='controlled-integration', contract_version='v1'
+            ),
+        )
+
+    clock = iter(iteration_times)
+    runner = AlarmOperationalCycleRunner(
+        composition=composition,
+        source_loader=source_loader,
+        cycle_factory=cycle_factory,
+        clock=lambda: next(clock),
+    )
+    configured = AlarmConfiguredIterationExecutor(
+        reader=RuntimeLocalConfigurationReader(volume_path=volume, source_key=_SOURCE.value),
+        evaluator_registry=registry,
+        adoption_executor=AlarmConfigurationAdoptionExecutor(
+            composition=composition,
+            commit_time_provider=_CommitClock(),
+            runtime_artifact_version='1.0.0',
+        ),
+        run_cycle=runner,
+        clock=lambda: adoption_at,
+        adoption_id_factory=lambda: (
+            f'adoption-{len(composition.durability.persistence.read_durable_adoptions()) + 1}'
+        ),
+    )
+    job = AlarmRuntimeJobComposition(composition=composition, iteration_executor=configured)
+    context = _context(volume, service_name='alarms-runtime', run_id=run_id)
+    job.recover(context)
+    return job, context
+
+
+def test_v2_same_second_runner_defers_before_consuming_sources(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    volume, published_b = _structural_ready_after_active_cycle(tmp_path)
+    adoption_at = _AT + timedelta(seconds=20)
+    source = _ControlledSourceLoader(values=[14.0], loads=[])
+    runtime, context = _coordinated_runtime_job(
+        volume,
+        source_loader=source,
+        iteration_times=(adoption_at, adoption_at + timedelta(seconds=1)),
+        adoption_at=adoption_at,
+        run_id='runtime-b-coordinated',
+    )
+    first = runtime.iteration(context)
+    assert first.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.ADOPTED
+    assert first.cycle_executed is False
+    assert context._next_iteration_delay() == 1.0
+    assert source.loads == []
+    persistence = runtime.composition.durability.persistence
+    assert persistence.read_effective_head().target_artifact_ref.result_id == published_b
+    assert len(persistence.read_durable_adoptions()) == 2
+    assert len(persistence.read_durable_records()) == 2
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('pinned runner must not reopen configuration after temporal defer')
+
+    context._begin_iteration(2)
+    with monkeypatch.context() as patch:
+        patch.setattr(RuntimeLocalConfigurationReader, 'load_ready_candidate', forbidden)
+        patch.setattr(RuntimeLocalConfigurationReader, 'load_effective_revision', forbidden)
+        patch.setattr(RuntimeLocalConfigurationReader, 'assert_current_effective', forbidden)
+        second = runtime.iteration(context)
+    assert second.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.NOT_REQUIRED
+    assert second.cycle_executed is True
+    assert context._next_iteration_delay() is None
+    assert len(source.loads) == 1
+    assert source.loads[0][1] == adoption_at + timedelta(seconds=1)
+    assert len(persistence.read_durable_records()) == 3
+    assert persistence.read_snapshot('mill-feed').last_commit_id != (
+        persistence.read_durable_adoptions()[-1].record.group_commits[0].commit_id
+    )
+
+
+def test_two_operational_cycles_same_second_defer_second_before_data_load(
+    tmp_path: Path,
+) -> None:
+    volume = tmp_path / 'volume'
+    volume.mkdir()
+    evidence_file = tmp_path / 'qualification.json'
+    projection = _ControlledProjection(_record('alarm-r10'))
+    _write_qualification(
+        evidence_file, revision='alarm-r10', qualified_at='2026-09-27T12:02:00+00:00'
+    )
+    materialization = _materialization_job(
+        volume=volume, projection=projection, qualification_file=evidence_file
+    )
+    assert _publish(materialization, volume, run_id='materialization-a').outcome is (
+        AlarmMaterializationOutcome.READY
+    )
+    first_at = _AT + timedelta(seconds=1)
+    source = _ControlledSourceLoader(values=[12.0, 8.0], loads=[])
+    runtime, context = _coordinated_runtime_job(
+        volume,
+        source_loader=source,
+        iteration_times=(first_at, first_at, first_at + timedelta(seconds=1)),
+        adoption_at=_AT,
+        run_id='runtime-a-coordinated',
+    )
+    assert runtime.iteration(context).adoption_outcome is (
+        AlarmRuntimeJobAdoptionOutcome.BOOTSTRAPPED
+    )
+    assert len(source.loads) == 1
+    assert len(runtime.composition.durability.persistence.read_durable_records()) == 1
+
+    context._begin_iteration(2)
+    deferred = runtime.iteration(context)
+    assert deferred.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.NOT_REQUIRED
+    assert deferred.cycle_executed is False
+    assert context._next_iteration_delay() == 1.0
+    assert len(source.loads) == 1
+    assert len(runtime.composition.durability.persistence.read_durable_records()) == 1
+
+    context._begin_iteration(3)
+    final = runtime.iteration(context)
+    assert final.cycle_executed is True
+    assert context._next_iteration_delay() is None
+    assert len(source.loads) == 2
+    assert source.loads[-1][1] == first_at + timedelta(seconds=1)
+    persistence = runtime.composition.durability.persistence
+    assert len(persistence.read_durable_records()) == 2
+    snapshot = persistence.read_snapshot('mill-feed')
+    assert snapshot is not None
+    assert snapshot.as_document().get('episode') is None
+
+
+def test_runner_keeps_first_cycle_immediate_when_second_is_distinct(tmp_path: Path) -> None:
+    volume, published_b = _structural_ready_after_active_cycle(tmp_path)
+    adoption_at = _AT + timedelta(seconds=20)
+    operational_at = adoption_at + timedelta(seconds=1)
+    source = _ControlledSourceLoader(values=[14.0], loads=[])
+    runtime, context = _coordinated_runtime_job(
+        volume,
+        source_loader=source,
+        iteration_times=(operational_at,),
+        adoption_at=adoption_at,
+        run_id='runtime-b-coordinated',
+    )
+    first = runtime.iteration(context)
+    assert first.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.ADOPTED
+    assert first.cycle_executed is True
+    assert context._next_iteration_delay() is None
+    assert len(source.loads) == 1
+    persistence = runtime.composition.durability.persistence
+    assert persistence.read_effective_head().target_artifact_ref.result_id == published_b
+    assert len(persistence.read_durable_records()) == 3
+
+
+def test_fractional_v2_adoption_blocks_only_until_next_utc_second(tmp_path: Path) -> None:
+    volume, published_b = _structural_ready_after_active_cycle(tmp_path)
+    adoption_at = _AT + timedelta(seconds=20, milliseconds=500)
+    sampled_at = _AT + timedelta(seconds=20, milliseconds=750)
+    source = _ControlledSourceLoader(values=[14.0], loads=[])
+    runtime, context = _coordinated_runtime_job(
+        volume,
+        source_loader=source,
+        iteration_times=(sampled_at, _AT + timedelta(seconds=21)),
+        adoption_at=adoption_at,
+        run_id='runtime-b-fractional-adoption',
+    )
+    first = runtime.iteration(context)
+    assert first.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.ADOPTED
+    assert first.cycle_executed is False
+    assert context._next_iteration_delay() == 0.25
+    assert source.loads == []
+    assert (
+        runtime.composition.durability.persistence.read_effective_head().target_artifact_ref.result_id
+        == (published_b)
+    )
+
+    context._begin_iteration(2)
+    assert runtime.iteration(context).cycle_executed is True
+    assert len(source.loads) == 1
+    assert source.loads[0][1] == _AT + timedelta(seconds=21)
+    assert len(runtime.composition.durability.persistence.read_durable_records()) == 3
+
+
+def test_runner_wait_is_remaining_fraction_not_fixed_one_second(tmp_path: Path) -> None:
+    volume, published_b = _structural_ready_after_active_cycle(tmp_path)
+    adoption_at = _AT + timedelta(seconds=20)
+    sampled_at = adoption_at + timedelta(milliseconds=750)
+    source = _ControlledSourceLoader(values=[14.0], loads=[])
+    runtime, context = _coordinated_runtime_job(
+        volume,
+        source_loader=source,
+        iteration_times=(sampled_at, adoption_at + timedelta(seconds=1)),
+        adoption_at=adoption_at,
+        run_id='runtime-b-fractional',
+    )
+    first = runtime.iteration(context)
+    assert first.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.ADOPTED
+    assert first.cycle_executed is False
+    assert context._next_iteration_delay() == 0.25
+    assert source.loads == []
+    assert (
+        runtime.composition.durability.persistence.read_effective_head().target_artifact_ref.result_id
+        == (published_b)
+    )
+
+    context._begin_iteration(2)
+    assert runtime.iteration(context).cycle_executed is True
+    assert len(source.loads) == 1
+    assert source.loads[0][1] == adoption_at + timedelta(seconds=1)
+    assert len(runtime.composition.durability.persistence.read_durable_records()) == 3

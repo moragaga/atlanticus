@@ -62,6 +62,9 @@ from ada_command_center.processes.alarms_runtime.local_configuration import (
     RuntimeLocalConfigurationReader,
     build_alarm_configuration_revision,
 )
+from ada_command_center.processes.alarms_runtime.operational_runner import (
+    AlarmOperationalCycleRunner,
+)
 from ada_command_center.processes.alarms_runtime.session import (
     AlarmEvaluatorContract,
     AlarmEvaluatorRegistry,
@@ -99,6 +102,7 @@ __all__ = [
     'AlarmOperationalCycle',
     'AlarmOperationalCycleError',
     'AlarmOperationalCycleResult',
+    'AlarmOperationalCycleRunner',
     'AlarmOperationalInputs',
     'AlarmPendingDeactivationRequest',
     'AlarmRuntimeComposition',

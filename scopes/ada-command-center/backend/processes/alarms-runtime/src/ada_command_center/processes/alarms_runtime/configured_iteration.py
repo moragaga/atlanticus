@@ -46,7 +46,7 @@ class AlarmConfiguredIterationExecutor:
     reader: RuntimeLocalConfigurationReader
     evaluator_registry: AlarmEvaluatorRegistry
     adoption_executor: AlarmConfigurationAdoptionExecutor
-    run_cycle: Callable[[JobRuntimeContext, AlarmExecutionSession], None]
+    run_cycle: Callable[[JobRuntimeContext, AlarmExecutionSession], bool | None]
     clock: Callable[[], datetime] = field(default=_utc_now)
     adoption_id_factory: Callable[[], str] = field(default=_adoption_id)
 
@@ -251,8 +251,12 @@ class AlarmConfiguredIterationExecutor:
         outcome: AlarmRuntimeJobAdoptionOutcome,
     ) -> AlarmRuntimeJobIterationResult:
         context.raise_if_cancelled()
-        self.run_cycle(context, pinned.revision.session)
-        return AlarmRuntimeJobIterationResult(adoption_outcome=outcome, cycle_executed=True)
+        cycle_result = self.run_cycle(context, pinned.revision.session)
+        if cycle_result is not None and not isinstance(cycle_result, bool):
+            raise TypeError('run_cycle must return bool or None')
+        return AlarmRuntimeJobIterationResult(
+            adoption_outcome=outcome, cycle_executed=cycle_result is not False
+        )
 
     def _effective_at(self) -> datetime:
         timestamp = self.clock()
