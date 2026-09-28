@@ -21,6 +21,7 @@ def _values(tmp_path, *, master_path: str | None = None):
 
 
 def test_absent_or_blank_master_material_path_is_allowed(tmp_path, monkeypatch):
+    monkeypatch.delenv('ADA_MASTER_PROJECTION_MATERIAL_PATH', raising=False)
     monkeypatch.chdir(tmp_path)
     assert AdaGenericSettings.from_mapping(_values(tmp_path)).master_projection_material_path == ''
     assert AdaGenericSettings.from_mapping(
