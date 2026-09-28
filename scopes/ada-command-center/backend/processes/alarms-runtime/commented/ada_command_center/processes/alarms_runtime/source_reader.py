@@ -153,3 +153,27 @@ def build_alarm_source_adapter(
         runtime_factory=runtime_factory,
     )
     return AlarmDataSourceAdapter(source_loader=DataSourceLoader(reader=reader, registry=registry))
+
+
+# Convertimos valores puros de configuración en contratos físicos dentro de la frontera.
+def build_configured_alarm_source_adapter(
+    *,
+    volume_path: Path,
+    pi_source: str,
+    pi_application: str,
+    dispatch_application: str | None,
+    blockgrade_application: str | None,
+    remanentes_application: str | None,
+    fabrica_planes_application: str | None,
+) -> AlarmDataSourceAdapter:
+    return build_alarm_source_adapter(
+        volume_path=volume_path,
+        pi_source=PiSourceProvider(pi_source),
+        applications=DataSourceApplications(
+            pi=pi_application,
+            dispatch=dispatch_application,
+            blockgrade=blockgrade_application,
+            remanentes=remanentes_application,
+            fabrica_planes=fabrica_planes_application,
+        ),
+    )
