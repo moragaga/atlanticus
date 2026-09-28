@@ -25,6 +25,13 @@ dependencies = [
     "atlanticus-web-source==0.1.0",
 ]
 
+[project.scripts]
+ada-command-center-alarms-materialization = "ada_command_center.processes.alarms_materialization.bootstrap:main"
+
+[tool.atlanticus.container]
+command = "ada-command-center-alarms-materialization"
+system-profile = "base"
+
 [tool.uv.sources]
 ada-command-center-alarms-domain = { path = "../../../domain/alarms", editable = true }
 ada-command-center-alarms-core = { workspace = true }
@@ -32,7 +39,6 @@ ada-command-center-alarms-materialization = { workspace = true }
 ada-web-tools = { path = "../../../../ada/web/tools/core", editable = true }
 ada-command-center-web-alarm-configuration = { path = "../../../web/alarms/configuration", editable = true }
 ada-command-center-web-alarm-projection-cosmos = { path = "../../../web/alarms/projection-cosmos", editable = true }
-ada-command-center-web-alarm-projection-local = { path = "../../../web/alarms/projection-local", editable = true }
 atlanticus-cosmos = { path = "../../../../../connectivity/cosmos", editable = true }
 atlanticus-configuration = { path = "../../../../../backend/configuration", editable = true }
 atlanticus-job-runtime = { path = "../../../../../backend/runtime", editable = true }
@@ -43,7 +49,7 @@ atlanticus-web-projection = { path = "../../../../../web/capabilities/projection
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
 
 [dependency-groups]
-dev = ["ada-command-center-web-alarm-projection-local==0.1.0", "pytest==9.1.1", "ruff==0.15.22"]
+dev = ["pytest==9.1.1", "ruff==0.15.22"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

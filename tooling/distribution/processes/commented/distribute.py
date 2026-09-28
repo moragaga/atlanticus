@@ -117,12 +117,17 @@ DEPLOYMENT_CATALOG = (
     ProcessDeployment("08", "operational-data-meteodata", "meteodata"),
     ProcessDeployment("21", "ada-kpi-runtime", "kpis"),
     ProcessDeployment("22", "ada-kpi-historian", "kpis-historian"),
+    # Ejecuciones logicas: Runtime evalua alarmas; Materialization resuelve y publica configuraciones.
+    ProcessDeployment("23", "ada-command-center-alarms-runtime", "alarms-runtime"),
+    ProcessDeployment("24", "ada-command-center-alarms-materialization", "alarms-materialization"),
     ProcessDeployment("41", "ada-kpi-delivery", "kpis-delivery"),
     ProcessDeployment(
         "42",
         "ada-kpi-timeseries-delivery",
         "kpis-timeseries-delivery",
     ),
+    # Delivery recibe las publicaciones del Engine; no se renumeran jobs existentes.
+    ProcessDeployment("43", "ada-command-center-alarms-delivery", "alarms-delivery"),
 )
 DEPLOYMENT_BY_PROCESS = {item.process: item for item in DEPLOYMENT_CATALOG}
 

@@ -147,8 +147,11 @@ def test_deployment_catalog_is_stable() -> None:
         ("08", "operational-data-meteodata", "meteodata"),
         ("21", "ada-kpi-runtime", "kpis"),
         ("22", "ada-kpi-historian", "kpis-historian"),
+        ("23", "ada-command-center-alarms-runtime", "alarms-runtime"),
+        ("24", "ada-command-center-alarms-materialization", "alarms-materialization"),
         ("41", "ada-kpi-delivery", "kpis-delivery"),
         ("42", "ada-kpi-timeseries-delivery", "kpis-timeseries-delivery"),
+        ("43", "ada-command-center-alarms-delivery", "alarms-delivery"),
     ]
 
 

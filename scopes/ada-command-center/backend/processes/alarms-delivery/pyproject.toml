@@ -19,6 +19,10 @@ dependencies = [
 [project.scripts]
 ada-command-center-alarms-delivery = "ada_command_center.processes.alarms_delivery.bootstrap:main"
 
+[tool.atlanticus.container]
+command = "ada-command-center-alarms-delivery"
+system-profile = "base"
+
 [tool.uv.sources]
 ada-command-center-alarms-materialization = { workspace = true }
 ada-command-center-alarms-persistence = { workspace = true }
