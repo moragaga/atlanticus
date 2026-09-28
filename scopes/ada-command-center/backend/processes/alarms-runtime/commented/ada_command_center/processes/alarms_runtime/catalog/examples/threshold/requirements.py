@@ -1,4 +1,4 @@
-# Declaración manual de datos: no consulta ni interpreta parámetros de la Web.
+# Ejemplo de declaración manual de datos: independiente de los parámetros Web.
 # La tupla puede contener varios DataRequirement de fuentes o particiones distintas.
 
 from atlanticus.operational_data.core import (

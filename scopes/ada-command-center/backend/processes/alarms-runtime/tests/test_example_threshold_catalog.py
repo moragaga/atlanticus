@@ -22,7 +22,10 @@ from ada_command_center.processes.alarms_runtime import (
     build_alarm_execution_session,
 )
 from ada_command_center.processes.alarms_runtime.catalog import build_alarm_evaluator_registry
-from ada_command_center.processes.alarms_runtime.catalog.mina.threshold.requirements import (
+from ada_command_center.processes.alarms_runtime.catalog.examples.threshold import (
+    build_threshold_contract,
+)
+from ada_command_center.processes.alarms_runtime.catalog.examples.threshold.requirements import (
     THRESHOLD_REQUIREMENTS,
 )
 from atlanticus.operational_data.core import (
@@ -54,12 +57,16 @@ def _planned(key: str, order: int = 1, evaluator_key: str = 'threshold') -> Plan
     )
 
 
+def _example_registry() -> AlarmEvaluatorRegistry:
+    return AlarmEvaluatorRegistry(contracts=(build_threshold_contract(),))
+
+
 def _session(*plans: PlannedAlarm, parameters_by_alarm=None):
     return build_alarm_execution_session(
         alarm_configuration_revision='R10',
         tool_registry_revision='C5',
         planned_alarms=plans,
-        evaluator_registry=build_alarm_evaluator_registry(),
+        evaluator_registry=_example_registry(),
         parameters_by_alarm=parameters_by_alarm,
     )
 
@@ -79,7 +86,11 @@ def _context(alarm: PlannedAlarm, parameters, values) -> EvaluationContext:
     )
 
 
-def test_registry_keeps_developer_requirements_independent_from_web_parameters() -> None:
+def test_productive_registry_excludes_example() -> None:
+    assert build_alarm_evaluator_registry().contracts == ()
+
+
+def test_example_keeps_developer_requirements_independent_from_web_parameters() -> None:
     first, second = _planned('first', 1), _planned('second', 2)
     session = _session(
         first,

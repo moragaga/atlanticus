@@ -1,9 +1,10 @@
-# La lógica exporta un único contrato, reuniendo su evaluador y requisitos manuales.
+# Ejemplo educativo: reúne evaluador y requisitos declarados manualmente.
+# El registro productivo no importa automáticamente este contrato.
 
-from ada_command_center.processes.alarms_runtime.catalog.mina.threshold.evaluator import (
+from ada_command_center.processes.alarms_runtime.catalog.examples.threshold.evaluator import (
     evaluate_threshold,
 )
-from ada_command_center.processes.alarms_runtime.catalog.mina.threshold.requirements import (
+from ada_command_center.processes.alarms_runtime.catalog.examples.threshold.requirements import (
     THRESHOLD_REQUIREMENTS,
 )
 from ada_command_center.processes.alarms_runtime.session import AlarmEvaluatorContract

@@ -1,7 +1,7 @@
-from ada_command_center.processes.alarms_runtime.catalog.mina.threshold.evaluator import (
+from ada_command_center.processes.alarms_runtime.catalog.examples.threshold.evaluator import (
     evaluate_threshold,
 )
-from ada_command_center.processes.alarms_runtime.catalog.mina.threshold.requirements import (
+from ada_command_center.processes.alarms_runtime.catalog.examples.threshold.requirements import (
     THRESHOLD_REQUIREMENTS,
 )
 from ada_command_center.processes.alarms_runtime.session import AlarmEvaluatorContract

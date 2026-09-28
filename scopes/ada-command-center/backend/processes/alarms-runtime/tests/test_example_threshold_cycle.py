@@ -15,13 +15,16 @@ from ada_command_center.alarms.core import (
 )
 from ada_command_center.domain.alarms import AlarmIdentity, AlarmKind, Criticality
 from ada_command_center.processes.alarms_runtime import (
+    AlarmEvaluatorRegistry,
     AlarmIterationLoader,
     AlarmOperationalCycle,
     build_alarm_execution_session,
     build_alarm_runtime_composition,
     build_alarm_source_adapter,
 )
-from ada_command_center.processes.alarms_runtime.catalog import build_alarm_evaluator_registry
+from ada_command_center.processes.alarms_runtime.catalog.examples.threshold import (
+    build_threshold_contract,
+)
 from atlanticus.kernel import Environment
 from atlanticus.operational_data.core import DataPartition, DataSource
 from atlanticus.operational_data.sources import DataSourceApplications, PiSourceProvider
@@ -75,7 +78,7 @@ def test_example_shared_read_optional_parameters_and_durable_evidence(tmp_path: 
         alarm_configuration_revision='R10',
         tool_registry_revision='C5',
         planned_alarms=(first, second),
-        evaluator_registry=build_alarm_evaluator_registry(),
+        evaluator_registry=AlarmEvaluatorRegistry(contracts=(build_threshold_contract(),)),
         parameters_by_alarm={second.identity: {'limit': 90.0}},
     )
     assert session.entry_for(first.identity).parameters == {}
