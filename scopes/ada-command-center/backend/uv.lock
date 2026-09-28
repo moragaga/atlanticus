@@ -10,6 +10,7 @@ resolution-markers = [
 [manifest]
 members = [
     "ada-command-center-alarms-core",
+    "ada-command-center-alarms-delivery-process",
     "ada-command-center-alarms-materialization",
     "ada-command-center-alarms-materialization-process",
     "ada-command-center-alarms-persistence",
@@ -33,6 +34,39 @@ dev = [
 
 [package.metadata]
 requires-dist = [{ name = "ada-command-center-alarms-domain", editable = "../domain/alarms" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-command-center-alarms-delivery-process"
+version = "1.0.0"
+source = { editable = "processes/alarms-delivery" }
+dependencies = [
+    { name = "ada-command-center-alarms-materialization" },
+    { name = "ada-command-center-alarms-persistence" },
+    { name = "atlanticus-configuration" },
+    { name = "atlanticus-job-runtime" },
+    { name = "atlanticus-state" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-command-center-alarms-materialization", editable = "alarms/materialization" },
+    { name = "ada-command-center-alarms-persistence", editable = "alarms/persistence" },
+    { name = "atlanticus-configuration", editable = "../../../backend/configuration" },
+    { name = "atlanticus-job-runtime", editable = "../../../backend/runtime" },
+    { name = "atlanticus-state", editable = "../../../backend/state" },
+]
 
 [package.metadata.requires-dev]
 dev = [
@@ -188,6 +222,7 @@ dependencies = [
     { name = "atlanticus-operational-data-core" },
     { name = "atlanticus-operational-data-planner" },
     { name = "atlanticus-operational-data-sources" },
+    { name = "atlanticus-state" },
 ]
 
 [package.dev-dependencies]
@@ -211,6 +246,7 @@ requires-dist = [
     { name = "atlanticus-operational-data-core", editable = "../../operational-data/core" },
     { name = "atlanticus-operational-data-planner", editable = "../../operational-data/planner" },
     { name = "atlanticus-operational-data-sources", editable = "../../operational-data/sources" },
+    { name = "atlanticus-state", editable = "../../../backend/state" },
 ]
 
 [package.metadata.requires-dev]
@@ -225,6 +261,7 @@ version = "1.0.0"
 source = { virtual = "." }
 dependencies = [
     { name = "ada-command-center-alarms-core" },
+    { name = "ada-command-center-alarms-delivery-process" },
     { name = "ada-command-center-alarms-domain" },
     { name = "ada-command-center-alarms-persistence" },
     { name = "ada-command-center-alarms-runtime-process" },
@@ -239,6 +276,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "ada-command-center-alarms-core", editable = "alarms/core" },
+    { name = "ada-command-center-alarms-delivery-process", editable = "processes/alarms-delivery" },
     { name = "ada-command-center-alarms-domain", editable = "../domain/alarms" },
     { name = "ada-command-center-alarms-persistence", editable = "alarms/persistence" },
     { name = "ada-command-center-alarms-runtime-process", editable = "processes/alarms-runtime" },

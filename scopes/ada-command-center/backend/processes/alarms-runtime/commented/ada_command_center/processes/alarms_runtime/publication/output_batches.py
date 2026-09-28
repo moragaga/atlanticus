@@ -44,10 +44,12 @@ def _fact_batch(entry: JournalEntry, pin: AlarmArtifactRefSnapshot) -> dict[str,
         raise EngineFactsPublicationError(
             'Committed facts do not match the selected EFFECTIVE revision'
         )
+    if re.fullmatch(r'sha256:[0-9a-f]{64}', record.record_hash) is None:
+        raise EngineFactsPublicationError('Committed record hash is invalid')
     batch = {
         'document_type': DOCUMENT_TYPE,
         'schema_version': SCHEMA_VERSION,
-        'batch_id': f'facts-{record.record_hash}',
+        'batch_id': f"facts-{record.record_hash.removeprefix('sha256:')}",
         'artifact_ref': _artifact_document(pin),
         'journal_position': entry.end.as_document(),
         'commit': commit.as_document(),

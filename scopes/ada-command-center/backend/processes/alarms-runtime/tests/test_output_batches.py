@@ -44,7 +44,7 @@ def _entry(offset, revision='R1', records=None):
         tool_registry_revision='C1',
         as_document=lambda: {'commit_id': commit_id, 'alarm_configuration_revision': revision},
     )
-    record = SimpleNamespace(commit=commit, record_hash=f'{offset:064x}', records=records)
+    record = SimpleNamespace(commit=commit, record_hash=f'sha256:{offset:064x}', records=records)
     return SimpleNamespace(
         record=record,
         end=JournalPosition(
@@ -91,8 +91,9 @@ def test_exports_only_durable_facts_and_replay_is_idempotent(tmp_path):
     persistence.entries.append(entry)
     assert exporter.publish_unexported(context=context, persistence=persistence, pin=_pin()) == 1
     store = AtomicJsonStore(root_path=tmp_path, max_document_bytes=None)
-    batch = store.read(f'facts/facts-{entry.record.record_hash}.json')
+    batch = store.read(f'facts/facts-{entry.record.record_hash.removeprefix("sha256:")}.json')
     assert batch['artifact_ref']['resolution_key']['alarm_configuration_revision'] == 'R1'
+    assert batch['commit_record_hash'] == entry.record.record_hash
     assert batch['journal_position'] == entry.end.as_document()
     assert batch['records'] == {'journey_events': entry.record.records['journey_events']}
     assert exporter.publish_unexported(context=context, persistence=persistence, pin=_pin()) == 0
@@ -147,7 +148,7 @@ def test_retries_after_file_is_written_but_cursor_write_fails(tmp_path, monkeypa
 def test_existing_batch_cannot_be_silently_overwritten(tmp_path):
     entry = _entry(10)
     exporter = AlarmCommittedFactsExporter(root=tmp_path, source_key='alarms')
-    path = f'facts/facts-{entry.record.record_hash}.json'
+    path = f'facts/facts-{entry.record.record_hash.removeprefix("sha256:")}.json'
     persistence = _Persistence([])
     exporter.initialize_if_needed(context=_Context(), persistence=persistence, pin=_pin())
     persistence.entries.append(entry)
@@ -164,7 +165,7 @@ def test_tampered_last_published_batch_rejects_checkpoint(tmp_path):
     persistence.entries.append(entry)
     exporter.publish_unexported(context=_Context(), persistence=persistence, pin=_pin())
     store = AtomicJsonStore(root_path=tmp_path)
-    path = f'facts/facts-{entry.record.record_hash}.json'
+    path = f'facts/facts-{entry.record.record_hash.removeprefix("sha256:")}.json'
     document = store.read(path)
     document['records']['journey_events'][0]['event_key'] = 'altered'
     store.replace(path, document)
@@ -181,8 +182,13 @@ def test_baseline_excludes_older_wal_and_keeps_new_facts(tmp_path):
     persistence.entries.append(recent)
     assert exporter.publish_unexported(context=_Context(), persistence=persistence, pin=_pin()) == 1
     store = AtomicJsonStore(root_path=tmp_path)
-    assert store.read(f'facts/facts-{older.record.record_hash}.json') is None
-    assert store.read(f'facts/facts-{recent.record.record_hash}.json') is not None
+    assert (
+        store.read(f'facts/facts-{older.record.record_hash.removeprefix("sha256:")}.json') is None
+    )
+    assert (
+        store.read(f'facts/facts-{recent.record.record_hash.removeprefix("sha256:")}.json')
+        is not None
+    )
 
 
 def test_initialization_is_idempotent(tmp_path):
