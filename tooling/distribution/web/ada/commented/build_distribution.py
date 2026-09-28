@@ -22,7 +22,7 @@ wheels = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(wheels)
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
-HOST_REQUIREMENTS = ('gunicorn==23.0.0',)
+HOST_REQUIREMENTS = ('gunicorn==23.0.0', 'pyzipper==0.4.0')
 _REQUIREMENT = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_.-]*(?:\[[A-Za-z0-9_,.-]+\])?==[^\s;\\]+(?:\s*;\s*[^\\]+)?$')
 _HASH = re.compile(r'--hash=sha256:[a-f0-9]{64}')
 
