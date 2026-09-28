@@ -15,7 +15,7 @@ from ada_command_center.alarms.persistence import (
 from atlanticus.state import AtomicJsonStore
 
 DOCUMENT_TYPE = 'ada_command_center_engine_committed_facts_batch'
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 _CURSOR = 'state/facts-export-cursor.json'
 
 
@@ -27,7 +27,11 @@ def _artifact_document(pin: AlarmArtifactRefSnapshot) -> dict[str, object]:
     return pin.as_document()
 
 
-def _fact_batch(entry: JournalEntry, pin: AlarmArtifactRefSnapshot) -> dict[str, object]:
+def _fact_batch(
+    entry: JournalEntry,
+    pin: AlarmArtifactRefSnapshot,
+    previous_batch: dict[str, str] | None,
+) -> dict[str, object]:
     record = entry.record
     commit = record.commit
     if (
@@ -47,6 +51,7 @@ def _fact_batch(entry: JournalEntry, pin: AlarmArtifactRefSnapshot) -> dict[str,
         'journal_position': entry.end.as_document(),
         'commit': commit.as_document(),
         'commit_record_hash': record.record_hash,
+        'previous_batch': previous_batch,
         'records': {key: value for key, value in record.records.items() if value},
     }
     batch['sha256'] = _digest(batch)
@@ -80,8 +85,15 @@ class AlarmCommittedFactsExporter:
         if not isinstance(pin, AlarmArtifactRefSnapshot) or pin.source_key != self.source_key:
             raise EngineFactsPublicationError('Selected EFFECTIVE source_key does not match output')
         store = AtomicJsonStore(root_path=self.root, max_document_bytes=None)
-        if store.read(_CURSOR) is not None:
+        existing = store.read(_CURSOR)
+        if existing is not None:
+            self._read_checkpoint(existing, store)
             return False
+        facts_root = self.root / 'facts'
+        if facts_root.exists() and any(facts_root.iterdir()):
+            raise EngineFactsPublicationError(
+                'Existing facts files require controlled initialization of the v2 export chain'
+            )
         context.assert_lease_current()
         head = persistence.read_head()
         if not head.aligned:
@@ -134,10 +146,18 @@ class AlarmCommittedFactsExporter:
             raise EngineFactsPublicationError(
                 'Historical commit origin is ambiguous after a same-revision artifact change'
             )
+        previous_batch = (
+            None
+            if checkpoint['batch_id'] is None
+            else {
+                'batch_id': checkpoint['batch_id'],
+                'sha256': checkpoint['batch_sha256'],
+            }
+        )
         count = 0
         for entry in entries:
             context.assert_lease_current()
-            batch = _fact_batch(entry, pin)
+            batch = _fact_batch(entry, pin, previous_batch)
             path = f'facts/{batch["batch_id"]}.json'
             with context.fenced_mutation():
                 current = store.read(path)
@@ -158,16 +178,28 @@ class AlarmCommittedFactsExporter:
                         'journal_position': entry.end.as_document(),
                     },
                 )
+            previous_batch = {'batch_id': batch['batch_id'], 'sha256': batch['sha256']}
             count += 1
         return count
 
     @staticmethod
     def _read_checkpoint(checkpoint: dict, store: AtomicJsonStore) -> JournalPosition | None:
         if (
-            checkpoint.get('document_type') != 'ada_command_center_engine_facts_export_cursor'
+            set(checkpoint)
+            != {
+                'document_type',
+                'schema_version',
+                'artifact_ref',
+                'batch_id',
+                'batch_sha256',
+                'journal_position',
+            }
+            or checkpoint.get('document_type') != 'ada_command_center_engine_facts_export_cursor'
             or checkpoint.get('schema_version') != SCHEMA_VERSION
         ):
-            raise EngineFactsPublicationError('Invalid Engine facts export checkpoint')
+            raise EngineFactsPublicationError(
+                'Engine facts export checkpoint requires the v2 chain contract'
+            )
         previous = checkpoint.get('artifact_ref')
         if not isinstance(previous, dict) or set(previous) != {
             'source_key',

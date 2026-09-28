@@ -106,12 +106,13 @@ def _fact(pin, *, offset, code):
     position = JournalPosition(segment_id=_SEGMENT, byte_offset=offset, commit_id=commit.commit_id)
     batch = {
         'document_type': 'ada_command_center_engine_committed_facts_batch',
-        'schema_version': 1,
+        'schema_version': 2,
         'batch_id': f'facts-{code * 64}',
         'artifact_ref': pin.as_document(),
         'journal_position': position.as_document(),
         'commit': commit.as_document(),
         'commit_record_hash': 'sha256:' + code * 64,
+        'previous_batch': None,
         'records': {'journey_events': [{'event_id': f'event-{offset}'}]},
     }
     batch['sha256'] = receiver_module._hash(batch)
@@ -120,14 +121,20 @@ def _fact(pin, *, offset, code):
 
 def _publish_facts(volume, batches):
     store = _engine(volume)
+    previous = None
     for batch in batches:
+        batch['previous_batch'] = previous
+        batch['sha256'] = receiver_module._hash(
+            {key: value for key, value in batch.items() if key != 'sha256'}
+        )
         store.replace(f'facts/{batch["batch_id"]}.json', batch)
+        previous = {'batch_id': batch['batch_id'], 'sha256': batch['sha256']}
     last = batches[-1]
     store.replace(
         'state/facts-export-cursor.json',
         {
             'document_type': 'ada_command_center_engine_facts_export_cursor',
-            'schema_version': 1,
+            'schema_version': 2,
             'artifact_ref': last['artifact_ref'],
             'batch_id': last['batch_id'],
             'batch_sha256': last['sha256'],
@@ -169,7 +176,7 @@ def test_initial_engine_export_cursor_waits_without_committed_facts(setup_receiv
         'state/facts-export-cursor.json',
         {
             'document_type': 'ada_command_center_engine_facts_export_cursor',
-            'schema_version': 1,
+            'schema_version': 2,
             'artifact_ref': pin.as_document(),
             'batch_id': None,
             'batch_sha256': None,
@@ -321,3 +328,82 @@ def test_uncommitted_orphan_batch_is_not_accepted(setup_receiver):
     with pytest.raises(AlarmDeliveryInputError, match='without a committed export cursor'):
         receiver.consume(_Lease())
     assert _input(volume).read(f'facts/{batch["batch_id"]}.json') is None
+
+
+def test_missing_intermediate_export_batch_rejects_all_receipts(setup_receiver):
+    volume, pin, receiver = setup_receiver
+    batches = [_fact(pin, offset=i, code=c) for i, c in ((2, 'a'), (3, 'b'), (4, 'c'))]
+    _publish_facts(volume, batches)
+    _engine(volume).path_for(f'facts/{batches[1]["batch_id"]}.json').unlink()
+    with pytest.raises(AlarmDeliveryInputError, match='chain'):
+        receiver.consume(_Lease())
+    assert _input(volume).read('state/facts-consumption-cursor.json') is None
+    assert not list((receiver.inbox_root / 'facts').glob('*.json'))
+
+
+def test_missing_first_export_batch_fails_closed(setup_receiver):
+    volume, pin, receiver = setup_receiver
+    batches = [_fact(pin, offset=i, code=c) for i, c in ((2, 'a'), (3, 'b'))]
+    _publish_facts(volume, batches)
+    _engine(volume).path_for(f'facts/{batches[0]["batch_id"]}.json').unlink()
+    with pytest.raises(AlarmDeliveryInputError, match='chain'):
+        receiver.consume(_Lease())
+    assert _input(volume).read('state/facts-consumption-cursor.json') is None
+
+
+def test_missing_after_partial_receipt_does_not_advance_cursor(setup_receiver):
+    volume, pin, receiver = setup_receiver
+    receiver.max_facts_per_iteration = 1
+    batches = [_fact(pin, offset=i, code=c) for i, c in ((2, 'a'), (3, 'b'), (4, 'c'))]
+    _publish_facts(volume, batches)
+    assert receiver.consume(_Lease()).staged_facts == 1
+    previous_cursor = _input(volume).read('state/facts-consumption-cursor.json')
+    _engine(volume).path_for(f'facts/{batches[1]["batch_id"]}.json').unlink()
+    with pytest.raises(AlarmDeliveryInputError, match='chain'):
+        receiver.consume(_Lease())
+    assert _input(volume).read('state/facts-consumption-cursor.json') == previous_cursor
+
+
+def test_recomputed_batch_checksum_does_not_hide_wrong_previous_link(setup_receiver):
+    volume, pin, receiver = setup_receiver
+    batches = [_fact(pin, offset=i, code=c) for i, c in ((2, 'a'), (3, 'b'))]
+    _publish_facts(volume, batches)
+    forged = json.loads(json.dumps(batches[-1]))
+    forged['previous_batch']['sha256'] = '0' * 64
+    forged['sha256'] = receiver_module._hash({k: v for k, v in forged.items() if k != 'sha256'})
+    _engine(volume).replace(f'facts/{forged["batch_id"]}.json', forged)
+    cursor = _engine(volume).read('state/facts-export-cursor.json')
+    cursor['batch_sha256'] = forged['sha256']
+    _engine(volume).replace('state/facts-export-cursor.json', cursor)
+    with pytest.raises(AlarmDeliveryInputError, match='chain'):
+        receiver.consume(_Lease())
+    assert _input(volume).read('state/facts-consumption-cursor.json') is None
+
+
+def test_recover_audits_historical_receipt_chain_not_only_tip(setup_receiver):
+    volume, pin, receiver = setup_receiver
+    batches = [_fact(pin, offset=i, code=c) for i, c in ((2, 'a'), (3, 'b'), (4, 'c'))]
+    _publish_facts(volume, batches)
+    assert receiver.consume(_Lease()).staged_facts == 3
+    _input(volume).path_for(f'facts/{batches[1]["batch_id"]}.json').unlink()
+    with pytest.raises(AlarmDeliveryInputError, match='missing a prior batch'):
+        receiver.recover(_Lease())
+
+
+def test_legacy_producer_or_consumer_cursor_is_rejected(setup_receiver):
+    volume, pin, receiver = setup_receiver
+    first = _fact(pin, offset=2, code='a')
+    _publish_facts(volume, [first])
+    cursor = _engine(volume).read('state/facts-export-cursor.json')
+    cursor['schema_version'] = 1
+    _engine(volume).replace('state/facts-export-cursor.json', cursor)
+    with pytest.raises(AlarmDeliveryInputError, match='export cursor is invalid'):
+        receiver.consume(_Lease())
+    cursor['schema_version'] = 2
+    _engine(volume).replace('state/facts-export-cursor.json', cursor)
+    assert receiver.consume(_Lease()).staged_facts == 1
+    received = _input(volume).read('state/facts-consumption-cursor.json')
+    received['schema_version'] = 1
+    _input(volume).replace('state/facts-consumption-cursor.json', received)
+    with pytest.raises(AlarmDeliveryInputError, match='receipt cursor is invalid'):
+        receiver.recover(_Lease())

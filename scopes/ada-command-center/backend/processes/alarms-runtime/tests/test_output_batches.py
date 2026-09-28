@@ -94,6 +94,8 @@ def test_exports_only_durable_facts_and_replay_is_idempotent(tmp_path):
     batch = store.read(f'facts/facts-{entry.record.record_hash.removeprefix("sha256:")}.json')
     assert batch['artifact_ref']['resolution_key']['alarm_configuration_revision'] == 'R1'
     assert batch['commit_record_hash'] == entry.record.record_hash
+    assert batch['schema_version'] == 2
+    assert batch['previous_batch'] is None
     assert batch['journal_position'] == entry.end.as_document()
     assert batch['records'] == {'journey_events': entry.record.records['journey_events']}
     assert exporter.publish_unexported(context=context, persistence=persistence, pin=_pin()) == 0
@@ -207,3 +209,107 @@ def test_existing_history_must_not_be_silently_skipped(tmp_path):
     with pytest.raises(EngineFactsPublicationError, match='initial export baseline'):
         exporter.initialize_if_needed(context=_Context(), persistence=persistence, pin=_pin())
     assert AtomicJsonStore(root_path=tmp_path).read('state/facts-export-cursor.json') is None
+
+
+def test_chain_links_multiple_publications_across_effective_revisions(tmp_path):
+    exporter = AlarmCommittedFactsExporter(root=tmp_path, source_key='alarms')
+    context = _Context()
+    persistence = _Persistence([])
+    exporter.initialize_if_needed(context=context, persistence=persistence, pin=_pin())
+    first = _entry(10)
+    second = _entry(20)
+    third = _entry(30, revision='R2')
+    store = AtomicJsonStore(root_path=tmp_path)
+    persistence.entries.append(first)
+    assert exporter.publish_unexported(context=context, persistence=persistence, pin=_pin()) == 1
+    persistence.entries.append(second)
+    assert exporter.publish_unexported(context=context, persistence=persistence, pin=_pin()) == 1
+    persistence.entries.append(third)
+    assert (
+        exporter.publish_unexported(context=context, persistence=persistence, pin=_pin('R2')) == 1
+    )
+    batch_ids = [
+        f'facts-{item.record.record_hash.removeprefix("sha256:")}'
+        for item in (first, second, third)
+    ]
+    batches = [store.read(f'facts/{name}.json') for name in batch_ids]
+    assert all(batch['schema_version'] == 2 for batch in batches)
+    assert batches[0]['previous_batch'] is None
+    for earlier, later in zip(batches, batches[1:], strict=False):
+        assert later['previous_batch'] == {
+            'batch_id': earlier['batch_id'],
+            'sha256': earlier['sha256'],
+        }
+    cursor = store.read('state/facts-export-cursor.json')
+    assert cursor['schema_version'] == 2
+    assert cursor['batch_id'] == batches[-1]['batch_id']
+    assert (
+        exporter.publish_unexported(context=context, persistence=persistence, pin=_pin('R2')) == 0
+    )
+
+
+def test_legacy_export_checkpoint_requires_explicit_migration(tmp_path):
+    exporter = AlarmCommittedFactsExporter(root=tmp_path, source_key='alarms')
+    store = AtomicJsonStore(root_path=tmp_path)
+    store.replace(
+        'state/facts-export-cursor.json',
+        {
+            'document_type': 'ada_command_center_engine_facts_export_cursor',
+            'schema_version': 1,
+            'artifact_ref': _pin().as_document(),
+            'batch_id': None,
+            'batch_sha256': None,
+            'journal_position': None,
+        },
+    )
+    with pytest.raises(EngineFactsPublicationError, match='v2 chain'):
+        exporter.initialize_if_needed(context=_Context(), persistence=_Persistence([]), pin=_pin())
+    with pytest.raises(EngineFactsPublicationError, match='v2 chain'):
+        exporter.publish_unexported(context=_Context(), persistence=_Persistence([]), pin=_pin())
+    assert store.read('state/facts-export-cursor.json')['schema_version'] == 1
+
+
+def test_orphan_facts_are_not_silently_adopted_as_new_genesis(tmp_path):
+    exporter = AlarmCommittedFactsExporter(root=tmp_path, source_key='alarms')
+    AtomicJsonStore(root_path=tmp_path).replace(
+        'facts/facts-' + 'a' * 64 + '.json', {'orphan': True}
+    )
+    with pytest.raises(EngineFactsPublicationError, match='controlled initialization'):
+        exporter.initialize_if_needed(context=_Context(), persistence=_Persistence([]), pin=_pin())
+    assert AtomicJsonStore(root_path=tmp_path).read('state/facts-export-cursor.json') is None
+
+
+def test_interrupted_successor_replay_preserves_previous_hash(tmp_path, monkeypatch):
+    exporter = AlarmCommittedFactsExporter(root=tmp_path, source_key='alarms')
+    persistence = _Persistence([])
+    context = _Context()
+    assert exporter.initialize_if_needed(context=context, persistence=persistence, pin=_pin())
+    first, second = _entry(10), _entry(20)
+    persistence.entries.append(first)
+    assert exporter.publish_unexported(context=context, persistence=persistence, pin=_pin()) == 1
+    store = AtomicJsonStore(root_path=tmp_path)
+    first_id = f'facts-{first.record.record_hash.removeprefix("sha256:")}'
+    first_batch = store.read(f'facts/{first_id}.json')
+    persistence.entries.append(second)
+    original = AtomicJsonStore.replace
+    interrupted = False
+
+    def broken_once(instance, name, document):
+        nonlocal interrupted
+        if name == 'state/facts-export-cursor.json' and not interrupted:
+            interrupted = True
+            raise OSError('Simulated failure after successor publication')
+        return original(instance, name, document)
+
+    monkeypatch.setattr(AtomicJsonStore, 'replace', broken_once)
+    with pytest.raises(OSError, match='Simulated failure'):
+        exporter.publish_unexported(context=context, persistence=persistence, pin=_pin())
+    second_id = f'facts-{second.record.record_hash.removeprefix("sha256:")}'
+    before_retry = store.read(f'facts/{second_id}.json')
+    assert before_retry['previous_batch'] == {
+        'batch_id': first_batch['batch_id'],
+        'sha256': first_batch['sha256'],
+    }
+    assert exporter.publish_unexported(context=context, persistence=persistence, pin=_pin()) == 1
+    assert store.read(f'facts/{second_id}.json') == before_retry
+    assert store.read('state/facts-export-cursor.json')['batch_sha256'] == before_retry['sha256']

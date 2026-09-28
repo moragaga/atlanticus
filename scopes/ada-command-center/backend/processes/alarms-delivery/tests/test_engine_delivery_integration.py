@@ -365,3 +365,17 @@ def test_real_engine_current_and_durable_facts_survive_independent_delivery_rest
     assert repeat.current_status == 'CURRENT_UNCHANGED'
     assert repeat.staged_facts == 0
     assert len(list((delivery_after_restart.receiver.inbox_root / 'facts').glob('*.json'))) == 2
+    batches = sorted(
+        received_batches,
+        key=lambda batch: (
+            batch['journal_position']['segment_id'],
+            batch['journal_position']['byte_offset'],
+        ),
+    )
+    assert batches[0]['schema_version'] == 2
+    assert batches[0]['previous_batch'] is None
+    assert batches[1]['schema_version'] == 2
+    assert batches[1]['previous_batch'] == {
+        'batch_id': batches[0]['batch_id'],
+        'sha256': batches[0]['sha256'],
+    }

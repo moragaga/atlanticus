@@ -179,12 +179,22 @@ def _current(document: dict[str, Any], *, source_key: str) -> AlarmArtifactRefSn
 def _facts(document: dict[str, Any], *, source_key: str) -> tuple[AlarmArtifactRefSnapshot, JournalPosition]:
     if set(document) != {
         'document_type', 'schema_version', 'batch_id', 'artifact_ref', 'journal_position',
-        'commit', 'commit_record_hash', 'records', 'sha256',
+        'commit', 'commit_record_hash', 'previous_batch', 'records', 'sha256',
     }:
         raise AlarmDeliveryInputError('Facts batch has unsupported fields')
-    if document['document_type'] != _FACTS_TYPE or document['schema_version'] != 1:
+    if document['document_type'] != _FACTS_TYPE or document['schema_version'] != 2:
         raise AlarmDeliveryInputError('Facts batch contract is unsupported')
     _verify_digest(document)
+    previous = document['previous_batch']
+    if previous is not None and (
+        not isinstance(previous, dict)
+        or set(previous) != {'batch_id', 'sha256'}
+        or not isinstance(previous['batch_id'], str)
+        or not _BATCH_ID.fullmatch(previous['batch_id'])
+        or not isinstance(previous['sha256'], str)
+        or not _HASH.fullmatch(previous['sha256'])
+    ):
+        raise AlarmDeliveryInputError('Facts previous batch reference is invalid')
     batch_id = document['batch_id']
     if not isinstance(batch_id, str) or not _BATCH_ID.fullmatch(batch_id):
         raise AlarmDeliveryInputError('Facts batch identity is invalid')
@@ -270,7 +280,7 @@ class LocalAlarmDeliveryReceiver:
         inbox = AtomicJsonStore(root_path=self.inbox_root, max_document_bytes=None)
         checkpoint = inbox.read(_CONSUMER_CURSOR_PATH)
         if checkpoint is not None:
-            self._consumer_cursor(checkpoint, inbox)
+            self._verify_received_chain(checkpoint, inbox)
         current = inbox.read(_CURRENT_PATH)
         if current is not None:
             _current(current, source_key=self.source_key)
@@ -286,6 +296,34 @@ class LocalAlarmDeliveryReceiver:
             staged_facts=count,
             last_facts_batch_id=last,
         )
+
+    # Audita el historial íntegro únicamente al recuperar; durante consumo valida nuevos lotes.
+    def _verify_received_chain(self, checkpoint: dict[str, Any], inbox: AtomicJsonStore) -> None:
+        cursor, position = self._consumer_cursor(checkpoint, inbox)
+        document = inbox.read(f"facts/{cursor['batch_id']}.json")
+        if document is None:
+            raise AlarmDeliveryInputError('Last received facts batch disappeared during recovery')
+        seen: set[str] = set()
+        while True:
+            batch_id = document['batch_id']
+            if batch_id in seen:
+                raise AlarmDeliveryInputError('Delivery receipt chain contains a cycle')
+            seen.add(batch_id)
+            previous = document['previous_batch']
+            if previous is None:
+                return
+            predecessor = inbox.read(f"facts/{previous['batch_id']}.json")
+            if predecessor is None:
+                raise AlarmDeliveryInputError('Delivery receipt chain is missing a prior batch')
+            _, before = _facts(predecessor, source_key=self.source_key)
+            if (
+                predecessor['batch_id'] != previous['batch_id']
+                or predecessor['sha256'] != previous['sha256']
+                or _position_order(before) >= _position_order(position)
+            ):
+                raise AlarmDeliveryInputError('Delivery receipt chain has invalid predecessor')
+            document = predecessor
+            position = before
 
     def _effective(self) -> AlarmEffectiveConfigurationHead | None:
         document = AtomicJsonStore(root_path=self.alarms_root, max_document_bytes=None).read(
@@ -369,7 +407,7 @@ class LocalAlarmDeliveryReceiver:
         if set(cursor) != {
             'document_type', 'schema_version', 'artifact_ref', 'batch_id', 'batch_sha256',
             'journal_position',
-        } or cursor['document_type'] != _EXPORT_CURSOR_TYPE or cursor['schema_version'] != 1:
+        } or cursor['document_type'] != _EXPORT_CURSOR_TYPE or cursor['schema_version'] != 2:
             raise AlarmDeliveryInputError('Engine facts export cursor is invalid')
         batch_id = cursor['batch_id']
         if batch_id is None:
@@ -403,7 +441,7 @@ class LocalAlarmDeliveryReceiver:
         if set(cursor) != {
             'document_type', 'schema_version', 'artifact_ref', 'batch_id', 'batch_sha256',
             'journal_position',
-        } or cursor['document_type'] != _CONSUMER_CURSOR_TYPE or cursor['schema_version'] != 1:
+        } or cursor['document_type'] != _CONSUMER_CURSOR_TYPE or cursor['schema_version'] != 2:
             raise AlarmDeliveryInputError('Delivery facts receipt cursor is invalid')
         batch_id = cursor['batch_id']
         if not isinstance(batch_id, str) or not _BATCH_ID.fullmatch(batch_id):
@@ -438,7 +476,10 @@ class LocalAlarmDeliveryReceiver:
         if consumer is not None and _position_order(consumer[1]) > _position_order(producer_position):
             raise AlarmDeliveryInputError('Delivery consumption is ahead of Engine export')
         if consumer is not None and consumer[1] == producer_position:
-            if consumer[0]['batch_id'] != producer_cursor['batch_id']:
+            if (
+                consumer[0]['batch_id'] != producer_cursor['batch_id']
+                or consumer[0]['batch_sha256'] != producer_cursor['batch_sha256']
+            ):
                 raise AlarmDeliveryInputError('Same exported position has conflicting batch identities')
             return 0, consumer[0]['batch_id']
         pending: list[tuple[JournalPosition, dict[str, Any]]] = []
@@ -456,11 +497,35 @@ class LocalAlarmDeliveryReceiver:
             ):
                 pending.append((position, document))
         pending.sort(key=lambda pair: _position_order(pair[0]))
-        if not pending or pending[-1][0] != producer_position and len(pending) < self.max_facts_per_iteration:
+        if not pending or pending[-1][0] != producer_position:
             raise AlarmDeliveryInputError('Engine export cursor refers to an incomplete batch set')
-        if any(_position_order(a[0]) == _position_order(b[0])
-               for a, b in zip(pending, pending[1:], strict=False)):
+        if any(
+            _position_order(a[0]) == _position_order(b[0])
+            for a, b in zip(pending, pending[1:], strict=False)
+        ):
             raise AlarmDeliveryInputError('Multiple facts batches share a journal position')
+        # Comprueba toda la cadena hasta el cursor confirmado ANTES de copiar lotes.
+        expected_previous = (
+            None
+            if consumer is None
+            else {
+                'batch_id': consumer[0]['batch_id'],
+                'sha256': consumer[0]['batch_sha256'],
+            }
+        )
+        for _, document in pending:
+            # Un hueco, reorden o hash ajeno bloquea también el avance parcial.
+            if document['previous_batch'] != expected_previous:
+                raise AlarmDeliveryInputError('Engine facts chain contains a missing or reordered batch')
+            expected_previous = {
+                'batch_id': document['batch_id'],
+                'sha256': document['sha256'],
+            }
+        if expected_previous != {
+            'batch_id': producer_cursor['batch_id'],
+            'sha256': producer_cursor['batch_sha256'],
+        }:
+            raise AlarmDeliveryInputError('Engine facts chain tip does not match export cursor')
         staged_count = 0
         last = None
         for position, document in pending[: self.max_facts_per_iteration]:
@@ -478,7 +543,7 @@ class LocalAlarmDeliveryReceiver:
                     _CONSUMER_CURSOR_PATH,
                     {
                         'document_type': _CONSUMER_CURSOR_TYPE,
-                        'schema_version': 1,
+                        'schema_version': 2,
                         'artifact_ref': document['artifact_ref'],
                         'batch_id': document['batch_id'],
                         'batch_sha256': document['sha256'],
