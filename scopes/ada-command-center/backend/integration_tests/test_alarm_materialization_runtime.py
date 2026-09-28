@@ -10,10 +10,19 @@ import pytest
 from ada.web.tools.enums import ToolConfigurationKind, ToolScope
 from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 
+from ada_command_center.alarms.core import (
+    AlarmEvaluation,
+    AlarmStatus,
+    EvidenceSnapshot,
+    GroupLifecycleState,
+    materialize_group_commit,
+    reduce_group_cycle,
+)
 from ada_command_center.alarms.materialization import (
     LocalAlarmMaterializationReader,
     materialization_root,
 )
+from ada_command_center.alarms.persistence import ConfigurationAdoptionRecordV2
 from ada_command_center.domain.alarms import (
     AlarmColor,
     AlarmConfiguration,
@@ -77,14 +86,14 @@ class _CommitClock:
         return cycle_at
 
 
-def _rule() -> AlarmDefinition:
+def _rule(*, is_active: bool = True) -> AlarmDefinition:
     return AlarmDefinition(
         identity=_IDENTITY,
         rule_name='risk-rule',
         display_name='Risk',
         title='Risk alarm',
         cause_template='Value exceeds threshold',
-        is_active=True,
+        is_active=is_active,
         visibility_mode=VisibilityMode.VISIBLE,
         is_special_condition=False,
         kind=AlarmKind.RISK,
@@ -106,7 +115,7 @@ def _rule() -> AlarmDefinition:
     )
 
 
-def _record(revision: str) -> ProjectionRecord:
+def _record(revision: str, *, is_active: bool = True) -> ProjectionRecord:
     kind = ToolConfigurationKind.PROCESS
     structure = ToolStructure(
         tool_key='tool_a',
@@ -126,7 +135,7 @@ def _record(revision: str) -> ProjectionRecord:
         source_published_at_utc=_PUBLISHED,
         projected_at_utc=_PUBLISHED + timedelta(minutes=1),
         payload=AlarmConfigurationSnapshot(
-            configuration=AlarmConfiguration(rules=(_rule(),), messages=()),
+            configuration=AlarmConfiguration(rules=(_rule(is_active=is_active),), messages=()),
             tool_dependencies=ToolDependencyManifest(
                 confirmed_tool_catalog_revision='catalog-c5',
                 tools=(
@@ -483,3 +492,128 @@ def test_corrupt_initial_ready_from_real_producer_waits_then_bootstraps(tmp_path
     assert started.cycle_executed is True
     assert len(executed) == 1
     assert len(runtime.composition.durability.persistence.read_durable_adoptions()) == 1
+
+
+def test_real_producer_v2_closes_active_group_only_in_next_job(tmp_path: Path) -> None:
+    volume = tmp_path / 'volume'
+    volume.mkdir()
+    evidence_file = tmp_path / 'qualification.json'
+    projection = _ControlledProjection(_record('alarm-r10'))
+    _write_qualification(
+        evidence_file, revision='alarm-r10', qualified_at='2026-09-27T12:02:00+00:00'
+    )
+    materialization = _materialization_job(
+        volume=volume, projection=projection, qualification_file=evidence_file
+    )
+    result_a = _publish(materialization, volume, run_id='materialization-a')
+    assert result_a.outcome is AlarmMaterializationOutcome.READY
+    published_a = _reader(volume).read_published_ready(source_key=_SOURCE.value)
+    assert published_a is not None
+
+    runtime_a, context_a, executions_a = _runtime_job(volume, run_id='runtime-a')
+    assert runtime_a.iteration(context_a).adoption_outcome is (
+        AlarmRuntimeJobAdoptionOutcome.BOOTSTRAPPED
+    )
+    session_a = executions_a[0]
+    assert session_a.identities == (_IDENTITY,)
+    persistence = runtime_a.composition.durability.persistence
+    effective_a = persistence.read_effective_head()
+    assert effective_a.target_artifact_ref.result_id == published_a.result_id
+    assert persistence.read_durable_records() == ()
+
+    operational_at = _AT + timedelta(seconds=1)
+    empty_group = GroupLifecycleState(priority_group='mill-feed')
+    evaluation = AlarmEvaluation(
+        alarm_identity=_IDENTITY,
+        status=AlarmStatus.ACTIVE,
+        evaluated_at=operational_at,
+        evidence_snapshot=EvidenceSnapshot(
+            contract_key='threshold', contract_version='v1', payload={'value': 11.0}
+        ),
+    )
+    decision = reduce_group_cycle(
+        empty_group,
+        cycle_at=operational_at,
+        planned_alarms=session_a.planned_alarms,
+        evaluations=(evaluation,),
+        occurrence_id_factory=lambda identity, when: 'occurrence-a',
+        episode_id_factory=lambda group, when: 'episode-a',
+    )
+    assert decision.state.episode is not None
+    assert decision.state.alarms[0].occurrence is not None
+    seed = materialize_group_commit(
+        empty_group,
+        decision,
+        evaluations=(evaluation,),
+        cycle_at=operational_at,
+        committed_at=operational_at,
+        alarm_configuration_revision=session_a.alarm_configuration_revision,
+        tool_registry_revision=session_a.tool_registry_revision,
+        runtime_artifact_version='1.0.0',
+    )
+    assert seed is not None
+    assert runtime_a.composition.commit_batch(context_a, (seed,)).record_count == 1
+    before_snapshot = persistence.read_snapshot('mill-feed')
+    assert before_snapshot is not None
+    assert len(persistence.read_durable_records()) == 1
+
+    projection.record = _record('alarm-r11', is_active=False)
+    _write_qualification(
+        evidence_file, revision='alarm-r11', qualified_at='2026-09-27T12:03:00+00:00'
+    )
+    result_b = _publish(materialization, volume, run_id='materialization-b')
+    assert result_b.outcome is AlarmMaterializationOutcome.READY
+    published_b = _reader(volume).read_published_ready(source_key=_SOURCE.value)
+    assert published_b is not None
+    assert published_b.result_id == result_b.result_id != result_a.result_id
+    assert published_b.runtime.defined_alarm_identities == (_IDENTITY,)
+    assert published_b.runtime.planned_alarms == ()
+    assert published_b.delivery.alarms[0].is_active is False
+
+    context_a._begin_iteration(2)
+    assert runtime_a.iteration(context_a).adoption_outcome is (
+        AlarmRuntimeJobAdoptionOutcome.NOT_REQUIRED
+    )
+    assert executions_a[-1] is session_a
+    assert persistence.read_effective_head() == effective_a
+    assert persistence.read_snapshot('mill-feed') == before_snapshot
+    assert len(persistence.read_durable_adoptions()) == 1
+
+    runtime_b, context_b, executions_b = _runtime_job(volume, run_id='runtime-b')
+    runtime_b.iteration_executor.clock = lambda: _AT + timedelta(seconds=2)
+    result = runtime_b.iteration(context_b)
+    assert result.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.ADOPTED
+    assert result.cycle_executed is True
+    assert executions_b[0].alarm_configuration_revision == 'alarm-r11'
+    assert executions_b[0].entries == ()
+
+    adopted = runtime_b.composition.durability.persistence
+    head = adopted.read_effective_head()
+    assert head.target_artifact_ref.result_id == published_b.result_id
+    assert head.target_artifact_ref.manifest_sha256 == published_b.manifest_sha256
+    assert adopted.read_head().aligned
+    adoptions = adopted.read_durable_adoptions()
+    assert len(adoptions) == 2
+    v2 = adoptions[-1].record
+    assert type(v2) is ConfigurationAdoptionRecordV2
+    assert tuple(ref.priority_group for ref in v2.group_commits) == ('mill-feed',)
+    durable_groups = adopted.read_durable_records()
+    assert len(durable_groups) == 2
+    assert durable_groups[-1].record.commit.priority_group == 'mill-feed'
+    assert durable_groups[-1].record.record_hash == v2.group_commits[0].record_hash
+    after_snapshot = adopted.read_snapshot('mill-feed')
+    assert after_snapshot is not None
+    assert after_snapshot.last_commit_id == v2.group_commits[0].commit_id
+    restored_group = runtime_b.composition.load_group('mill-feed', planned_alarms=())
+    assert restored_group.state.episode is None
+    assert all(alarm.occurrence is None for alarm in restored_group.state.alarms)
+
+    restarted, new_context, new_executions = _runtime_job(volume, run_id='runtime-c')
+    assert restarted.iteration(new_context).adoption_outcome is (
+        AlarmRuntimeJobAdoptionOutcome.NOT_REQUIRED
+    )
+    assert new_executions[0].entries == ()
+    replayed = restarted.composition.durability.persistence
+    assert replayed.read_effective_head() == head
+    assert replayed.read_snapshot('mill-feed') == after_snapshot
+    assert len(replayed.read_durable_adoptions()) == 2
