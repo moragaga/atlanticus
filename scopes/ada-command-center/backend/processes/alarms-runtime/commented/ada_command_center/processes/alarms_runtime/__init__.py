@@ -65,6 +65,10 @@ from ada_command_center.processes.alarms_runtime.local_configuration import (
 from ada_command_center.processes.alarms_runtime.operational_runner import (
     AlarmOperationalCycleRunner,
 )
+from ada_command_center.processes.alarms_runtime.process import (
+    AlarmRuntimeProcessComposition,
+    build_alarm_runtime_process,
+)
 from ada_command_center.processes.alarms_runtime.session import (
     AlarmEvaluatorContract,
     AlarmEvaluatorRegistry,
@@ -113,6 +117,7 @@ __all__ = [
     'AlarmRuntimeJobComposition',
     'AlarmRuntimeJobCompositionError',
     'AlarmRuntimeJobIterationResult',
+    'AlarmRuntimeProcessComposition',
     'ConfigurationAdoptionChange',
     'ConfigurationAdoptionDisposition',
     'ConfigurationAdoptionExecutionError',
@@ -130,6 +135,7 @@ __all__ = [
     'build_alarm_configuration_revision',
     'build_alarm_execution_session',
     'build_alarm_runtime_composition',
+    'build_alarm_runtime_process',
     'compose_engine_commit_record',
     'decode_group_runtime_snapshot',
     'encode_group_runtime_snapshot',

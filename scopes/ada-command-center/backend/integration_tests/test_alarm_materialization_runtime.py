@@ -68,6 +68,7 @@ from ada_command_center.processes.alarms_runtime import (
     AlarmRuntimeJobComposition,
     RuntimeLocalConfigurationReader,
     build_alarm_runtime_composition,
+    build_alarm_runtime_process,
 )
 from atlanticus.kernel import Environment
 from atlanticus.operational_data.core import (
@@ -1310,3 +1311,129 @@ def test_runner_wait_is_remaining_fraction_not_fixed_one_second(tmp_path: Path) 
     assert len(source.loads) == 1
     assert source.loads[0][1] == adoption_at + timedelta(seconds=1)
     assert len(runtime.composition.durability.persistence.read_durable_records()) == 3
+
+
+def test_composed_runtime_process_bootstraps_and_runs_pinned_operational_cycles(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    volume = tmp_path / 'volume'
+    volume.mkdir()
+    evidence_file = tmp_path / 'qualification.json'
+    projection = _ControlledProjection(_record('alarm-r10'))
+    _write_qualification(
+        evidence_file, revision='alarm-r10', qualified_at='2026-09-27T12:02:00+00:00'
+    )
+    materialization = _materialization_job(
+        volume=volume, projection=projection, qualification_file=evidence_file
+    )
+    assert _publish(materialization, volume, run_id='composed-materialization').outcome is (
+        AlarmMaterializationOutcome.READY
+    )
+    requirement = DataRequirement(
+        source=DataSource.PI_INTERPOLATED,
+        partition=DataPartition.LATEST,
+        columns=(DataColumn(name='value', data_type=DataColumnType.FLOAT),),
+    )
+    registry = AlarmEvaluatorRegistry(
+        contracts=(
+            AlarmEvaluatorContract(
+                family_key='mill',
+                evaluator_key='threshold',
+                evaluator=_threshold_from_loaded_frame,
+                requirements=(requirement,),
+            ),
+        )
+    )
+    source = _ControlledSourceLoader(values=[12.0, 8.0], loads=[])
+    timeline = iter((_AT, _AT + timedelta(seconds=1), _AT + timedelta(seconds=6)))
+    definition = JobDefinition(
+        module_name='ada_command_center.processes.alarms_runtime',
+        service_name='alarms-runtime',
+        sleep_seconds=5.0,
+    )
+    process = build_alarm_runtime_process(
+        runtime_configuration=_runtime_configuration(volume),
+        definition=definition,
+        source_key=_SOURCE.value,
+        evaluator_registry=registry,
+        source_loader=source,
+        technical_evidence_contract=EvidenceContractRef(
+            contract_key='controlled-integration', contract_version='v1'
+        ),
+        runtime_artifact_version='1.0.0',
+        occurrence_id_factory=lambda identity, at: f'occurrence-{at:%Y%m%dT%H%M%S}',
+        episode_id_factory=lambda group, at: f'episode-{at:%Y%m%dT%H%M%S}',
+        commit_time_provider=_CommitClock(),
+        clock=lambda: next(timeline),
+    )
+    assert process.definition is definition
+    assert process.operational_runner.composition is process.job.composition
+    context = _context(volume, service_name='alarms-runtime', run_id='composed-runtime')
+    process.job.recover(context)
+    first = process.job.iteration(context)
+    assert first.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.BOOTSTRAPPED
+    assert first.cycle_executed is True
+    persistence = process.job.composition.durability.persistence
+    assert persistence.read_effective_head() is not None
+    assert len(persistence.read_durable_adoptions()) == 1
+    assert len(persistence.read_durable_records()) == 1
+    context._begin_iteration(2)
+    second = process.job.iteration(context)
+    assert second.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.NOT_REQUIRED
+    assert second.cycle_executed is True
+    assert tuple(at for _, at in source.loads) == (
+        _AT + timedelta(seconds=1),
+        _AT + timedelta(seconds=6),
+    )
+    assert len(persistence.read_durable_records()) == 2
+    assert persistence.read_snapshot('mill-feed') is not None
+    assert persistence.read_snapshot('mill-feed').as_document().get('episode') is None
+
+    calls = []
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            'ada_command_center.processes.alarms_runtime.process.execute_alarm_runtime_job',
+            lambda **kwargs: calls.append(kwargs) or object(),
+        )
+        process.execute(
+            argv=('--once',),
+            environ={
+                'ENVIRONMENT': 'local',
+                'APPLICATION': 'ada-command-center',
+                'VOLUMEN_PATH': str(volume),
+            },
+        )
+    assert len(calls) == 1
+    assert calls[0]['definition'] is definition
+    assert calls[0]['composition'] is process.job
+    assert calls[0]['argv'] == ('--once',)
+    with pytest.raises(ValueError, match='execution environment'):
+        process.execute(
+            environ={
+                'ENVIRONMENT': 'local',
+                'APPLICATION': 'another-app',
+                'VOLUMEN_PATH': str(volume),
+            }
+        )
+    assert len(calls) == 1
+
+
+def test_composed_runtime_process_rejects_wrong_service_definition(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match='alarms-runtime service'):
+        build_alarm_runtime_process(
+            runtime_configuration=_runtime_configuration(tmp_path),
+            definition=JobDefinition(
+                module_name='ada_command_center.processes.alarms_runtime',
+                service_name='not-alarms-runtime',
+            ),
+            source_key=_SOURCE.value,
+            evaluator_registry=AlarmEvaluatorRegistry(contracts=()),
+            source_loader=_ControlledSourceLoader(values=[], loads=[]),
+            technical_evidence_contract=EvidenceContractRef(
+                contract_key='controlled-integration', contract_version='v1'
+            ),
+            runtime_artifact_version='1.0.0',
+            occurrence_id_factory=lambda identity, at: 'unused-occurrence',
+            episode_id_factory=lambda group, at: 'unused-episode',
+            commit_time_provider=_CommitClock(),
+        )
