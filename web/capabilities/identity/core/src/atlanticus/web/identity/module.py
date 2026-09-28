@@ -34,7 +34,21 @@ def create_identity_module(
     provider: IdentityProvider,
     *,
     access_resolver: AccessResolver | None = None,
+    independent_routes: tuple[str, ...] = (),
 ) -> WebModule:
+    if not isinstance(independent_routes, tuple) or any(
+        not isinstance(route, str) for route in independent_routes
+    ):
+        raise ValueError('Independent route declarations must contain strings')
+    if len(independent_routes) != len(set(independent_routes)):
+        raise ValueError('Independent route declarations must be unique')
+    if any(
+        not isinstance(route, str) or not route.startswith('/') or route == '/'
+        or route.endswith('/') or '//' in route
+        or route.startswith(('/health/', '/assets/', '/.auth/', '/_dash'))
+        for route in independent_routes
+    ):
+        raise ValueError('Independent route declarations contain an invalid route')
     resolver = access_resolver or AuthenticatedAccessResolver()
 
     def register_services(services: ServiceRegistry) -> None:
@@ -58,7 +72,7 @@ def create_identity_module(
 
         @server.before_request
         def enforce_application_access():
-            if _is_public_request():
+            if _is_public_request(independent_routes):
                 return None
             try:
                 snapshot = _resolve_request_snapshot(bootstrap, runtime)
@@ -89,8 +103,9 @@ def _resolve_request_snapshot(
     return bootstrap.refresh(request)
 
 
-def _is_public_request() -> bool:
-    return request.path.startswith(('/assets/', '/health/', '/.auth/'))
+def _is_public_request(independent_routes: tuple[str, ...] = ()) -> bool:
+    return (request.path in independent_routes
+            or request.path.startswith(('/assets/', '/health/', '/.auth/')))
 
 
 def _is_page_document_request() -> bool:

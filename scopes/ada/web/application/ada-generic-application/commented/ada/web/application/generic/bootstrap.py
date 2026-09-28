@@ -24,6 +24,14 @@ from ada.web.application.generic.manager_principal import (
     ManagerPrincipalBinding,
     compose_integrated_manager_dependencies,
 )
+from ada.web.application.generic.master_projection.composition import (
+    compose_master_projection_planner,
+)
+from ada.web.application.generic.master_projection.web import (
+    MASTER_PROJECTION_INDEPENDENT_ROUTES,
+    MasterMaterialReader,
+    MasterProjectionWebBinding,
+)
 from ada.web.application.generic.navigation_binding import (
     manager_navigation_principal,
     public_navigation_principal,
@@ -118,6 +126,7 @@ def create_operational_application_runtime(
     manager_source_name: str = 'Source',
     manager_projection_name: str = 'Projection',
     composition_factory: AdaOperationalCompositionFactory | None = None,
+    master_material_reader: MasterMaterialReader | None = None,
 ) -> WebApplicationRuntime:
     if settings is not None and not isinstance(settings, AdaGenericSettings):
         raise TypeError('settings must be AdaGenericSettings')
@@ -174,7 +183,10 @@ def create_operational_application_runtime(
         )
     if manager_identity is not None:
         provider, users_runtime, _dependencies, resolver = manager_identity
-        definition = _bind_manager_identity(definition, provider, users_runtime, resolver)
+        definition = _bind_manager_identity(
+            definition, provider, users_runtime, resolver,
+            master_routes=master_material_reader is not None,
+        )
     # La composición directa con ManagerPrincipalBinding requiere un snapshot Access.
     # Solo el entorno local puede instalar de forma controlada su proveedor local.
     elif (
@@ -187,7 +199,16 @@ def create_operational_application_runtime(
             )
         definition = replace(
             definition,
-            modules=(create_identity_module(LocalIdentityProvider()), *definition.modules),
+            modules=(
+                create_identity_module(
+                    LocalIdentityProvider(),
+                    independent_routes=(
+                        MASTER_PROJECTION_INDEPENDENT_ROUTES
+                        if master_material_reader is not None else ()
+                    ),
+                ),
+                *definition.modules,
+            ),
         )
     if manager_dependencies is not None:
         definition = _bind_manager_navigation(
@@ -218,6 +239,20 @@ def create_operational_application_runtime(
         if manager_dependencies is not None:
             definition = _integrate_manager(definition, manager_dependencies)
 
+        if master_material_reader is not None:
+            planner = (
+                compose_master_projection_planner(manager_stores)
+                if manager_stores is not None else None
+            )
+            master_module = MasterProjectionWebBinding(
+                application_namespace=resolved_settings.application_namespace,
+                environment=resolved_settings.environment.value,
+                planner=planner,
+                reader=master_material_reader,
+            ).module()
+            # Atender Master antes de Identity y Navigation: no necesita el snapshot del Manager.
+            # El propio módulo Master limita las rutas exactas y valida su sesión.
+            definition = replace(definition, modules=(master_module, *definition.modules))
         return create_web_application(definition)
     except Exception:
         _close_client(kpi_cosmos_client, 'KPI Delivery Cosmos')
@@ -288,9 +323,14 @@ def _bind_manager_identity(
     provider: IdentityProvider,
     users_runtime: UsersRuntime,
     resolver: AccessResolver,
+    *,
+    master_routes: bool = False,
 ) -> WebApplicationDefinition:
     # Añade Identity sólo cuando la composición Manager lo necesita.
-    identity = create_identity_module(provider, access_resolver=resolver)
+    identity = create_identity_module(
+        provider, access_resolver=resolver,
+        independent_routes=MASTER_PROJECTION_INDEPENDENT_ROUTES if master_routes else (),
+    )
     identity_count = sum(module.name == identity.name for module in definition.modules)
     if identity_count > 1:
         raise ValueError('Operational definition contains multiple identity modules')

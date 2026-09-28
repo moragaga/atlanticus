@@ -4,18 +4,18 @@ from __future__ import annotations
 
 import os
 from contextlib import ExitStack
+from pathlib import Path
 
 from ada.web.application.configuration_manager.local_runtime import (
     create_local_configuration_manager_stores,
 )
 from ada.web.application.generic.bootstrap import create_operational_application_runtime
-from ada.web.application.generic.host import run_operational_application
 from ada.web.application.generic.manager_deployment import (
     ManagerStartupOptions,
     open_durable_manager,
 )
 from ada.web.application.generic.settings import AdaGenericSettings
-from application.composition import create_composition
+from atlanticus.web.application import run_web_application
 from atlanticus.web.dash_worker import prepare_dash_worker
 from atlanticus.web.identity.errors import IdentityConfigurationError
 from atlanticus.web.identity.local import LocalIdentityProvider
@@ -23,10 +23,14 @@ from atlanticus.web.identity.provider import IdentityProvider
 from atlanticus.web.models import WebApplicationRuntime
 from atlanticus.web.users.local import select_local_user
 
+from application.composition import create_composition
+from application.master_projection.reader import StarterMasterMaterialReader
+
 
 # Adaptador mínimo del runtime Flask con cierre de recursos durables por worker.
 class AdaWorkerRuntime:
     def __init__(self, application: WebApplicationRuntime, resources: ExitStack) -> None:
+        self.application = application
         self.server = application.server
         self._resources = resources
 
@@ -56,6 +60,10 @@ def _production_identity() -> IdentityProvider:
 def create_worker_runtime() -> AdaWorkerRuntime:
     settings = AdaGenericSettings()
     provider = ManagerStartupOptions().provider
+    material_path = settings.master_projection_material_path.strip()
+    material_reader = StarterMasterMaterialReader(
+        Path(material_path).expanduser() if material_path else None
+    )
     if provider == 'auto':
         provider = 'local' if settings.environment.is_local else 'disabled'
     resources = ExitStack()
@@ -72,6 +80,7 @@ def create_worker_runtime() -> AdaWorkerRuntime:
                 manager_source_name='Blob Storage',
                 manager_projection_name='Cosmos DB',
                 composition_factory=create_composition,
+                master_material_reader=material_reader,
             )
         elif provider == 'local':
             application = create_operational_application_runtime(
@@ -81,6 +90,7 @@ def create_worker_runtime() -> AdaWorkerRuntime:
                 manager_source_name='Local Source',
                 manager_projection_name='Local Projection',
                 composition_factory=create_composition,
+                master_material_reader=material_reader,
             )
         elif provider == 'durable':
             deployment = resources.enter_context(open_durable_manager(settings))
@@ -91,11 +101,13 @@ def create_worker_runtime() -> AdaWorkerRuntime:
                 manager_source_name='Blob Storage',
                 manager_projection_name='Cosmos DB',
                 composition_factory=create_composition,
+                master_material_reader=material_reader,
             )
         else:
             application = create_operational_application_runtime(
                 settings=settings,
                 composition_factory=create_composition,
+                master_material_reader=material_reader,
             )
         # Preparar los recursos Dash dentro del worker y fallar antes de admitir tráfico.
         prepare_dash_worker(application.dash)
@@ -107,4 +119,8 @@ def create_worker_runtime() -> AdaWorkerRuntime:
 
 # Mantener ejecución no Docker como camino independiente de Gunicorn.
 def run_application() -> None:
-    run_operational_application(composition_factory=create_composition)
+    worker = create_worker_runtime()
+    try:
+        run_web_application(worker.application)
+    finally:
+        worker.close()

@@ -37,6 +37,7 @@ TOOL_PROJECTION_COSMOS_DATABASE_VARIABLE = 'ADA_TOOL_PROJECTION_COSMOS_DATABASE_
 KPI_DELIVERY_COSMOS_ENDPOINT_VARIABLE = 'COSMOS_CONSUMPTION_ENDPOINT'
 KPI_DELIVERY_COSMOS_KEY_VARIABLE = 'COSMOS_CONSUMPTION_KEY'
 KPI_DELIVERY_COSMOS_DATABASE_VARIABLE = 'COSMOS_CONSUMPTION_DATABASE_NAME'
+MASTER_PROJECTION_MATERIAL_PATH_VARIABLE = 'ADA_MASTER_PROJECTION_MATERIAL_PATH'
 
 
 # Configura las conexiones sin exponer nombres físicos Cosmos al despliegue.
@@ -54,6 +55,9 @@ class AdaGenericSettings(WebSettings):
     application_namespace: str = Field(
         default='conciencia_situacional',
         validation_alias=APPLICATION_NAMESPACE_VARIABLE,
+    )
+    master_projection_material_path: str = Field(
+        default='', validation_alias=MASTER_PROJECTION_MATERIAL_PATH_VARIABLE,
     )
     tool_namespace: str = Field(validation_alias=TOOL_NAMESPACE_VARIABLE)
     tool_source_provider: ToolSourceProvider = Field(validation_alias=TOOL_SOURCE_PROVIDER_VARIABLE)
@@ -107,6 +111,9 @@ class AdaGenericSettings(WebSettings):
 
     @model_validator(mode='after')
     def validate_provider_requirements(self) -> Self:
+        material_path = self.master_projection_material_path.strip()
+        if material_path and not Path(material_path).expanduser().is_absolute():
+            raise ValueError('Master Projection material path must be absolute')
         if (
             self.tool_source_provider is ToolSourceProvider.LOCAL
             or self.tool_projection_provider is ToolProjectionProvider.LOCAL
