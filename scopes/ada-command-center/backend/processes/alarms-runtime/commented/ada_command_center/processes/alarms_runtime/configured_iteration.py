@@ -1,5 +1,6 @@
-# Selección exacta de EFFECTIVE y consulta READY sin usar la última candidata como autoridad.
+# Selección exacta de EFFECTIVE y consulta READY una vez antes del primer ciclo del job.
 # El bootstrap se confirma mediante el WAL existente; no se inventa una revisión de origen.
+# La sesión confirmada se inmoviliza en memoria de la ejecución; los ciclos siguientes sólo usan esa sesión.
 # El ciclo operacional se inyecta porque su fuente de datos es una frontera independiente.
 # Ante ausencia total de configuración, el retraso de 30 segundos usa el runtime del job.
 # Una READY no adoptable no interrumpe la ejecución de la versión EFFECTIVE.
@@ -37,6 +38,7 @@ from atlanticus.runtime import JobRuntimeContext
 
 INITIAL_CONFIGURATION_RETRY_SECONDS = 30.0
 _STATUS_MEMORY_KEY = 'ada_command_center.alarms.runtime.configuration.status'
+_PINNED_MEMORY_KEY = 'ada_command_center.alarms.runtime.configuration.pinned'
 
 
 def _utc_now() -> datetime:
@@ -80,6 +82,12 @@ class AlarmConfiguredIterationExecutor:
             raise TypeError('context must be JobRuntimeContext')
         context.assert_lease_current()
         context.raise_if_cancelled()
+        # Una sesión ya inmovilizada evita toda nueva lectura de READY y EFFECTIVE.
+        pinned = context.get_memory(_PINNED_MEMORY_KEY)
+        if pinned is not None:
+            if not isinstance(pinned, RuntimeEffectiveConfiguration):
+                raise TypeError('pinned configuration must be RuntimeEffectiveConfiguration')
+            return self._run_pinned(context, pinned, AlarmRuntimeJobAdoptionOutcome.NOT_REQUIRED)
         persistence = self.adoption_executor.composition.durability.persistence
         selected = self.reader.load_effective_revision(
             persistence=persistence,
@@ -219,7 +227,18 @@ class AlarmConfiguredIterationExecutor:
             persistence=self.adoption_executor.composition.durability.persistence,
             selected=selected,
         )
-        self.run_cycle(context, selected.revision.session)
+        # El pin se instala antes del primer ciclo, incluso si ese ciclo falla.
+        context.set_memory(_PINNED_MEMORY_KEY, selected)
+        return self._run_pinned(context, selected, outcome)
+
+    def _run_pinned(
+        self,
+        context: JobRuntimeContext,
+        pinned: RuntimeEffectiveConfiguration,
+        outcome: AlarmRuntimeJobAdoptionOutcome,
+    ) -> AlarmRuntimeJobIterationResult:
+        context.raise_if_cancelled()
+        self.run_cycle(context, pinned.revision.session)
         return AlarmRuntimeJobIterationResult(adoption_outcome=outcome, cycle_executed=True)
 
     def _effective_at(self) -> datetime:

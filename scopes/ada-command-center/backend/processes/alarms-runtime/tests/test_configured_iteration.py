@@ -210,26 +210,71 @@ def test_restart_uses_exact_effective_without_published_ready(tmp_path):
     assert len(restarted.composition.durability.persistence.read_durable_adoptions()) == 1
 
 
-def test_new_ready_with_same_revisions_adopts_exact_new_artifact(tmp_path):
-    _publish(tmp_path)
+def test_new_ready_is_adopted_only_by_next_job(tmp_path):
+    original = _publish(tmp_path)
     job, context, runs = _compose(tmp_path)
-    job.iteration(context)
+    assert job.iteration(context).adoption_outcome is AlarmRuntimeJobAdoptionOutcome.BOOTSTRAPPED
+    first_session = runs[0]
     new_ready = _publish(tmp_path, qualification='c')
+
     context._begin_iteration(2)
     result = job.iteration(context)
-    assert result.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.ADOPTED
+    assert result.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.NOT_REQUIRED
     assert result.cycle_executed is True
     assert context._next_iteration_delay() is None
     persistence = job.composition.durability.persistence
+    assert persistence.read_effective_head().target_artifact_ref.result_id == original
+    assert len(persistence.read_durable_adoptions()) == 1
+    assert len(runs) == 2
+    assert runs[1] is first_session
+
+    restarted, new_context, new_runs = _compose(tmp_path)
+    result = restarted.iteration(new_context)
+    assert result.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.ADOPTED
+    assert result.cycle_executed is True
+    assert new_context._next_iteration_delay() is None
+    persistence = restarted.composition.durability.persistence
     assert persistence.read_effective_head().target_artifact_ref.result_id == new_ready
     assert len(persistence.read_durable_adoptions()) == 2
-    assert len(runs) == 2
-    context._begin_iteration(3)
-    assert job.iteration(context).adoption_outcome is AlarmRuntimeJobAdoptionOutcome.NOT_REQUIRED
+    assert len(new_runs) == 1
+    new_context._begin_iteration(2)
+    assert (
+        restarted.iteration(new_context).adoption_outcome
+        is AlarmRuntimeJobAdoptionOutcome.NOT_REQUIRED
+    )
+    assert new_runs[1] is new_runs[0]
     assert len(persistence.read_durable_adoptions()) == 2
 
 
-def test_rejected_candidate_preserves_effective_and_runs_current_session(tmp_path, monkeypatch):
+def test_pinned_job_does_not_reopen_configuration_readers(tmp_path, monkeypatch):
+    original = _publish(tmp_path)
+    job, context, runs = _compose(tmp_path)
+    job.iteration(context)
+    first_session = runs[0]
+    _publish(tmp_path, qualification='c')
+
+    def unexpected_lookup(*args, **kwargs):
+        raise AssertionError('configuration must not be reread during an active job')
+
+    monkeypatch.setattr(
+        RuntimeLocalConfigurationReader, 'load_effective_revision', unexpected_lookup
+    )
+    monkeypatch.setattr(RuntimeLocalConfigurationReader, 'load_ready_candidate', unexpected_lookup)
+    monkeypatch.setattr(
+        RuntimeLocalConfigurationReader, 'assert_current_effective', unexpected_lookup
+    )
+    for number in (2, 3):
+        context._begin_iteration(number)
+        result = job.iteration(context)
+        assert result.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.NOT_REQUIRED
+        assert result.cycle_executed is True
+        assert runs[-1] is first_session
+    persistence = job.composition.durability.persistence
+    assert persistence.read_effective_head().target_artifact_ref.result_id == original
+    assert len(persistence.read_durable_adoptions()) == 1
+
+
+def test_rejected_candidate_preserves_effective_on_next_job(tmp_path, monkeypatch):
     original = _publish(tmp_path)
     job, context, runs = _compose(tmp_path)
     job.iteration(context)
@@ -245,16 +290,17 @@ def test_rejected_candidate_preserves_effective_and_runs_current_session(tmp_pat
             rejected_changes=(rejection,),
         ),
     )
-    context._begin_iteration(2)
-    result = job.iteration(context)
+    restarted, new_context, new_runs = _compose(tmp_path)
+    result = restarted.iteration(new_context)
     assert result.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.REJECTED
     assert result.cycle_executed is True
     assert (
-        job.composition.durability.persistence.read_effective_head().target_artifact_ref.result_id
+        restarted.composition.durability.persistence.read_effective_head().target_artifact_ref.result_id
         == original
     )
-    assert len(job.composition.durability.persistence.read_durable_adoptions()) == 1
-    assert len(runs) == 2
+    assert len(restarted.composition.durability.persistence.read_durable_adoptions()) == 1
+    assert len(runs) == 1
+    assert len(new_runs) == 1
 
 
 def test_invalid_ready_keeps_existing_effective_but_never_bootstraps(tmp_path):
@@ -276,24 +322,26 @@ def test_invalid_ready_keeps_existing_effective_but_never_bootstraps(tmp_path):
     new_pointer = json.loads((root / 'ready.json').read_text())
     new_pointer['manifest_sha256'] = '0' * 64
     _write(root / 'ready.json', new_pointer)
-    context._begin_iteration(2)
-    result = first.iteration(context)
+    restarted, new_context, new_runs = _compose(tmp_path)
+    result = restarted.iteration(new_context)
     assert result.adoption_outcome is AlarmRuntimeJobAdoptionOutcome.REJECTED
-    assert len(runs) == 2
-    assert len(first.composition.durability.persistence.read_durable_adoptions()) == 1
+    assert len(runs) == 1
+    assert len(new_runs) == 1
+    assert len(restarted.composition.durability.persistence.read_durable_adoptions()) == 1
 
 
-def test_missing_effective_projection_fails_closed_without_using_latest_ready(tmp_path):
+def test_new_job_fails_closed_if_effective_projection_disappears_after_recovery(tmp_path):
     _publish(tmp_path)
     job, context, runs = _compose(tmp_path)
     job.iteration(context)
+    restarted, new_context, new_runs = _compose(tmp_path)
     root = tmp_path / 'ada-command-center' / 'alarms' / 'runtime' / 'state'
     (root / 'effective-head.json').unlink()
-    context._begin_iteration(2)
     with pytest.raises(AlarmRecoveryRequiredError):
-        job.iteration(context)
-    assert len(job.composition.durability.persistence.read_durable_adoptions()) == 1
+        restarted.iteration(new_context)
+    assert len(restarted.composition.durability.persistence.read_durable_adoptions()) == 1
     assert len(runs) == 1
+    assert new_runs == []
 
 
 def test_crash_during_cycle_after_bootstrap_does_not_duplicate_adoption(tmp_path):

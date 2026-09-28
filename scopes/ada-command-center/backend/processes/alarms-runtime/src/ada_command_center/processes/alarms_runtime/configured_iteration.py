@@ -30,6 +30,7 @@ from atlanticus.runtime import JobRuntimeContext
 
 INITIAL_CONFIGURATION_RETRY_SECONDS = 30.0
 _STATUS_MEMORY_KEY = 'ada_command_center.alarms.runtime.configuration.status'
+_PINNED_MEMORY_KEY = 'ada_command_center.alarms.runtime.configuration.pinned'
 
 
 def _utc_now() -> datetime:
@@ -73,6 +74,11 @@ class AlarmConfiguredIterationExecutor:
             raise TypeError('context must be JobRuntimeContext')
         context.assert_lease_current()
         context.raise_if_cancelled()
+        pinned = context.get_memory(_PINNED_MEMORY_KEY)
+        if pinned is not None:
+            if not isinstance(pinned, RuntimeEffectiveConfiguration):
+                raise TypeError('pinned configuration must be RuntimeEffectiveConfiguration')
+            return self._run_pinned(context, pinned, AlarmRuntimeJobAdoptionOutcome.NOT_REQUIRED)
         persistence = self.adoption_executor.composition.durability.persistence
         selected = self.reader.load_effective_revision(
             persistence=persistence,
@@ -216,7 +222,17 @@ class AlarmConfiguredIterationExecutor:
             persistence=self.adoption_executor.composition.durability.persistence,
             selected=selected,
         )
-        self.run_cycle(context, selected.revision.session)
+        context.set_memory(_PINNED_MEMORY_KEY, selected)
+        return self._run_pinned(context, selected, outcome)
+
+    def _run_pinned(
+        self,
+        context: JobRuntimeContext,
+        pinned: RuntimeEffectiveConfiguration,
+        outcome: AlarmRuntimeJobAdoptionOutcome,
+    ) -> AlarmRuntimeJobIterationResult:
+        context.raise_if_cancelled()
+        self.run_cycle(context, pinned.revision.session)
         return AlarmRuntimeJobIterationResult(adoption_outcome=outcome, cycle_executed=True)
 
     def _effective_at(self) -> datetime:
