@@ -15,9 +15,12 @@ def test_project_contract_pins_required_dependencies() -> None:
         'ada-command-center-alarms-core==1.0.0',
         'ada-command-center-alarms-materialization==1.0.0',
         'ada-command-center-alarms-persistence==1.0.0',
+        'atlanticus-datasets-parquet==1.0.0',
+        'atlanticus-datasets-runtime==1.0.0',
         'atlanticus-job-runtime==1.0.0',
         'atlanticus-operational-data-core==1.0.0',
         'atlanticus-operational-data-planner==1.0.0',
+        'atlanticus-operational-data-sources==1.0.0',
     ]
 
 

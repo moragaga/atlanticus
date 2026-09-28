@@ -30,9 +30,14 @@ atlanticus-json = { path = "../../../backend/json", editable = true }
 atlanticus-state = { path = "../../../backend/state", editable = true }
 atlanticus-observability = { path = "../../../backend/observability", editable = true }
 atlanticus-kernel = { path = "../../../backend/kernel", editable = true }
+atlanticus-datasets = { path = "../../../backend/datasets", editable = true }
+atlanticus-datasets-parquet = { path = "../../../backend/datasets-parquet", editable = true }
+atlanticus-datasets-runtime = { path = "../../../backend/datasets-runtime", editable = true }
 atlanticus-job-runtime = { path = "../../../backend/runtime", editable = true }
 atlanticus-operational-data-core = { path = "../../operational-data/core", editable = true }
 atlanticus-operational-data-planner = { path = "../../operational-data/planner", editable = true }
+atlanticus-operational-data-calendar = { path = "../../operational-data/calendar", editable = true }
+atlanticus-operational-data-sources = { path = "../../operational-data/sources", editable = true }
 
 [tool.uv.workspace]
 members = [

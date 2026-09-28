@@ -20,24 +20,44 @@ def test_runtime_uses_only_command_center_namespace() -> None:
         assert 'ada.alarms.' not in source
 
 
-def test_runtime_does_not_import_deferred_physical_dependencies() -> None:
-    forbidden = (
-        'atlanticus.operational_data.sources',
-        'atlanticus.datasets',
+def test_physical_dependencies_are_confined_to_the_alarm_source_boundary() -> None:
+    deferred = (
         'atlanticus.state',
         'atlanticus.storage',
         'atlanticus.cosmos',
         'azure',
+    )
+    physical = (
+        'atlanticus.operational_data.sources',
+        'atlanticus.datasets',
         'pandas',
         'pyarrow',
     )
+    allowed = {
+        'source_adapter.py': ('atlanticus.operational_data.sources',),
+        'source_reader.py': (
+            'atlanticus.datasets',
+            'atlanticus.operational_data.sources',
+        ),
+    }
     for path in sorted(_SOURCE_ROOT.glob('*.py')):
+        permitted = allowed.get(path.name, ())
         tree = ast.parse(path.read_text(encoding='utf-8'))
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and node.module is not None:
-                assert not node.module.startswith(forbidden)
-            if isinstance(node, ast.Import):
-                assert all(not alias.name.startswith(forbidden) for alias in node.names)
+        imports = (
+            node.module
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module is not None
+        )
+        direct_imports = (
+            alias.name
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Import)
+            for alias in node.names
+        )
+        for module in (*imports, *direct_imports):
+            assert not module.startswith(deferred)
+            if module.startswith(physical):
+                assert module.startswith(permitted), (path.name, module)
 
 
 def test_session_uses_operational_data_contracts_without_source_io() -> None:

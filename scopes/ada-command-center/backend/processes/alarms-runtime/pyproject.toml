@@ -13,9 +13,12 @@ dependencies = [
     "ada-command-center-alarms-core==1.0.0",
     "ada-command-center-alarms-materialization==1.0.0",
     "ada-command-center-alarms-persistence==1.0.0",
+    "atlanticus-datasets-parquet==1.0.0",
+    "atlanticus-datasets-runtime==1.0.0",
     "atlanticus-job-runtime==1.0.0",
     "atlanticus-operational-data-core==1.0.0",
     "atlanticus-operational-data-planner==1.0.0",
+    "atlanticus-operational-data-sources==1.0.0",
 ]
 
 [tool.uv.sources]
@@ -25,6 +28,9 @@ ada-command-center-alarms-materialization = { workspace = true }
 ada-command-center-alarms-persistence = { workspace = true }
 ada-command-center-tools-domain = { path = "../../../domain/tools", editable = true }
 ada-web-tools = { path = "../../../../ada/web/tools/core", editable = true }
+atlanticus-datasets-runtime = { path = "../../../../../backend/datasets-runtime", editable = true }
+atlanticus-datasets = { path = "../../../../../backend/datasets", editable = true }
+atlanticus-datasets-parquet = { path = "../../../../../backend/datasets-parquet", editable = true }
 atlanticus-job-runtime = { path = "../../../../../backend/runtime", editable = true }
 atlanticus-kernel = { path = "../../../../../backend/kernel", editable = true }
 atlanticus-observability = { path = "../../../../../backend/observability", editable = true }
@@ -32,6 +38,8 @@ atlanticus-json = { path = "../../../../../backend/json", editable = true }
 atlanticus-state = { path = "../../../../../backend/state", editable = true }
 atlanticus-operational-data-core = { path = "../../../../operational-data/core", editable = true }
 atlanticus-operational-data-planner = { path = "../../../../operational-data/planner", editable = true }
+atlanticus-operational-data-sources = { path = "../../../../operational-data/sources", editable = true }
+atlanticus-operational-data-calendar = { path = "../../../../operational-data/calendar", editable = true }
 
 [dependency-groups]
 dev = ["pytest==9.1.1", "ruff==0.15.22"]

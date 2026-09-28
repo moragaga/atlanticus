@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
 
@@ -16,6 +16,9 @@ from atlanticus.operational_data.core import DataRequirement
 from atlanticus.operational_data.planner import DataLoadPlan, DataRequirementPlanner
 
 AlarmParameterValue = str | float | bool
+AlarmRequirementsResolver = Callable[
+    [PlannedAlarm, Mapping[str, AlarmParameterValue]], tuple[DataRequirement, ...]
+]
 
 
 class AlarmExecutionSessionError(ValueError):
@@ -28,6 +31,7 @@ class AlarmEvaluatorContract:
     evaluator_key: str
     evaluator: Evaluator
     requirements: tuple[DataRequirement, ...] = ()
+    requirements_resolver: AlarmRequirementsResolver | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, 'family_key', _required_text(self.family_key, 'family_key'))
@@ -40,10 +44,34 @@ class AlarmEvaluatorContract:
         if not all(isinstance(item, DataRequirement) for item in requirements):
             raise TypeError('requirements must contain DataRequirement values')
         object.__setattr__(self, 'requirements', requirements)
+        if self.requirements_resolver is not None:
+            if not callable(self.requirements_resolver):
+                raise TypeError('requirements_resolver must be callable or None')
+            if requirements:
+                raise ValueError('requirements and requirements_resolver are mutually exclusive')
 
     @property
     def key(self) -> tuple[str, str]:
         return self.family_key, self.evaluator_key
+
+    def resolve_requirements(
+        self, planned_alarm: PlannedAlarm, parameters: Mapping[str, AlarmParameterValue]
+    ) -> tuple[DataRequirement, ...]:
+        if self.requirements_resolver is None:
+            return self.requirements
+        try:
+            resolved = self.requirements_resolver(planned_alarm, parameters)
+        except (TypeError, ValueError) as error:
+            raise AlarmExecutionSessionError(
+                f'{planned_alarm.identity.canonical_key}: invalid evaluator data requirements'
+            ) from error
+        if not isinstance(resolved, tuple) or not all(
+            isinstance(item, DataRequirement) for item in resolved
+        ):
+            raise AlarmExecutionSessionError(
+                f'{planned_alarm.identity.canonical_key}: resolver must return tuple[DataRequirement, ...]'
+            )
+        return resolved
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,6 +105,7 @@ class AlarmExecutionEntry:
     planned_alarm: PlannedAlarm
     evaluator_contract: AlarmEvaluatorContract
     parameters: Mapping[str, AlarmParameterValue]
+    resolved_requirements: tuple[DataRequirement, ...] | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.planned_alarm, PlannedAlarm):
@@ -90,6 +119,16 @@ class AlarmExecutionEntry:
                 'planned alarm'
             )
         object.__setattr__(self, 'parameters', _normalize_parameters(self.parameters))
+        if (
+            self.evaluator_contract.requirements_resolver is not None
+            and self.resolved_requirements is None
+        ):
+            raise AlarmExecutionSessionError('dynamic evaluator requirements must be resolved')
+        if self.resolved_requirements is not None:
+            values = tuple(self.resolved_requirements)
+            if not all(isinstance(item, DataRequirement) for item in values):
+                raise TypeError('resolved_requirements must contain DataRequirement values')
+            object.__setattr__(self, 'resolved_requirements', values)
 
     @property
     def identity(self) -> AlarmIdentity:
@@ -101,7 +140,11 @@ class AlarmExecutionEntry:
 
     @property
     def requirements(self) -> tuple[DataRequirement, ...]:
-        return self.evaluator_contract.requirements
+        return (
+            self.evaluator_contract.requirements
+            if self.resolved_requirements is None
+            else self.resolved_requirements
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -209,10 +252,12 @@ def build_alarm_execution_session(
                 'session'
             )
         contract = evaluator_registry.resolve(plan)
+        entry_parameters = parameters.get(plan.identity, MappingProxyType({}))
         entry = AlarmExecutionEntry(
             planned_alarm=plan,
             evaluator_contract=contract,
-            parameters=parameters.get(plan.identity, MappingProxyType({})),
+            parameters=entry_parameters,
+            resolved_requirements=contract.resolve_requirements(plan, entry_parameters),
         )
         entries.append(entry)
         requirements_by_key[plan.identity.canonical_key] = entry.requirements

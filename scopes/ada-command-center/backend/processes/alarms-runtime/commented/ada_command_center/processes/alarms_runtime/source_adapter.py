@@ -1,10 +1,9 @@
 # Puente entre el cargador genérico de fuentes de Atlanticus y el puerto de iteración del Engine.
-# Se usa tipado estructural para evitar una dependencia obligatoria de pandas/pyarrow
-# hasta que la composición ejecutable incorpore fuentes concretas en otro incremento.
+# El adaptador usa tipado estructural y la composición específica aporta las fuentes físicas.
 # Un plan se carga exactamente una vez por iteración; la separación por Rule ocurre al
 # solicitar context_for(canonical_key), preservando requerimientos y proyecciones.
 # Los fallos conocidos de una vista se convierten en AlarmIterationDataError por Rule;
-# los errores de contrato, schema y configuración no se ocultan como valores físicos.
+# Los errores de esquema del contexto se representan como errores de entrada por alarma.
 
 from __future__ import annotations
 
@@ -24,6 +23,10 @@ from atlanticus.operational_data.core import (
     normalize_utc_second,
 )
 from atlanticus.operational_data.planner import DataLoadPlan
+from atlanticus.operational_data.sources import (
+    DataSourceSchemaError,
+    DataSourceUnavailableError,
+)
 
 
 @runtime_checkable
@@ -77,7 +80,19 @@ class _AlarmLoadedIterationData:
                     source_key=requirement.source.value,
                     reason_key='source_unavailable',
                 )
-        context = self.loaded.context_for(key)
+        try:
+            context = self.loaded.context_for(key)
+        except DataSourceUnavailableError as error:
+            raise AlarmIterationDataError(
+                'Alarm input source is unavailable',
+                source_key=error.source.value,
+                reason_key='source_unavailable',
+            ) from error
+        except DataSourceSchemaError as error:
+            raise AlarmIterationDataError(
+                'Alarm input source has an invalid schema',
+                reason_key='source_schema_error',
+            ) from error
         if not isinstance(context, DataRuntimeContext):
             raise TypeError('loaded sources must return DataRuntimeContext')
         return context

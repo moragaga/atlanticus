@@ -16,6 +16,10 @@ from atlanticus.operational_data.core import (
     normalize_utc_second,
 )
 from atlanticus.operational_data.planner import DataLoadPlan
+from atlanticus.operational_data.sources import (
+    DataSourceSchemaError,
+    DataSourceUnavailableError,
+)
 
 
 @runtime_checkable
@@ -69,7 +73,19 @@ class _AlarmLoadedIterationData:
                     source_key=requirement.source.value,
                     reason_key='source_unavailable',
                 )
-        context = self.loaded.context_for(key)
+        try:
+            context = self.loaded.context_for(key)
+        except DataSourceUnavailableError as error:
+            raise AlarmIterationDataError(
+                'Alarm input source is unavailable',
+                source_key=error.source.value,
+                reason_key='source_unavailable',
+            ) from error
+        except DataSourceSchemaError as error:
+            raise AlarmIterationDataError(
+                'Alarm input source has an invalid schema',
+                reason_key='source_schema_error',
+            ) from error
         if not isinstance(context, DataRuntimeContext):
             raise TypeError('loaded sources must return DataRuntimeContext')
         return context

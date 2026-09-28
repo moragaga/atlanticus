@@ -83,6 +83,10 @@ from ada_command_center.processes.alarms_runtime.snapshot import (
     encode_group_runtime_snapshot,
 )
 from ada_command_center.processes.alarms_runtime.source_adapter import AlarmDataSourceAdapter
+from ada_command_center.processes.alarms_runtime.source_reader import (
+    AlarmRoutedDatasetReader,
+    build_alarm_source_adapter,
+)
 
 __version__ = '1.0.0'
 
@@ -120,6 +124,7 @@ __all__ = [
     'AlarmRuntimeJobCompositionError',
     'AlarmRuntimeJobIterationResult',
     'AlarmRuntimeProcessComposition',
+    'AlarmRoutedDatasetReader',
     'ConfigurationAdoptionChange',
     'ConfigurationAdoptionDisposition',
     'ConfigurationAdoptionExecutionError',
@@ -138,6 +143,7 @@ __all__ = [
     'build_alarm_execution_session',
     'build_alarm_runtime_composition',
     'build_alarm_runtime_process',
+    'build_alarm_source_adapter',
     'compose_engine_commit_record',
     'decode_group_runtime_snapshot',
     'encode_group_runtime_snapshot',
