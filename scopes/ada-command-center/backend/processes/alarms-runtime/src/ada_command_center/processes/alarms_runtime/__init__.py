@@ -20,6 +20,10 @@ from ada_command_center.processes.alarms_runtime.composition import (
     AlarmRuntimeGroup,
     build_alarm_runtime_composition,
 )
+from ada_command_center.processes.alarms_runtime.configured_iteration import (
+    INITIAL_CONFIGURATION_RETRY_SECONDS,
+    AlarmConfiguredIterationExecutor,
+)
 from ada_command_center.processes.alarms_runtime.cycle import (
     AlarmCommitTimeProvider,
     AlarmGroupCycleResult,
@@ -75,6 +79,7 @@ __all__ = [
     'AlarmConfigurationAdoptionExecutor',
     'AlarmConfigurationRevision',
     'AlarmConfigurationRevisionError',
+    'AlarmConfiguredIterationExecutor',
     'AlarmEvaluatorContract',
     'AlarmEvaluatorRegistry',
     'AlarmExecutionEntry',
@@ -109,6 +114,7 @@ __all__ = [
     'ConfigurationAdoptionPlanError',
     'ConfigurationAdoptionRejectionReason',
     'DEFAULT_ALARM_RUNTIME_ITERATION_PERIOD_SECONDS',
+    'INITIAL_CONFIGURATION_RETRY_SECONDS',
     'RuntimeEffectiveConfiguration',
     'RuntimeEffectiveConfigurationError',
     'RuntimeLocalConfigurationReader',

@@ -1,5 +1,6 @@
-# API de Runtime con selección READY para planificación y EFFECTIVE para ejecución.
-# El vínculo exacto con el Head durable se conserva en RuntimeEffectiveConfiguration.
+# API pública del Runtime: B2c.2b agrega la composición de selección y adopción automática.
+# La autorización de ejecución siempre depende del pin EFFECTIVE durable y validado.
+# La carga de fuentes y los evaluadores físicos reales permanecen como dependencias explícitas.
 
 from ada_command_center.processes.alarms_runtime.adoption import (
     AlarmConfigurationRevision,
@@ -22,6 +23,10 @@ from ada_command_center.processes.alarms_runtime.composition import (
     AlarmRuntimeComposition,
     AlarmRuntimeGroup,
     build_alarm_runtime_composition,
+)
+from ada_command_center.processes.alarms_runtime.configured_iteration import (
+    INITIAL_CONFIGURATION_RETRY_SECONDS,
+    AlarmConfiguredIterationExecutor,
 )
 from ada_command_center.processes.alarms_runtime.cycle import (
     AlarmCommitTimeProvider,
@@ -78,6 +83,7 @@ __all__ = [
     'AlarmConfigurationAdoptionExecutor',
     'AlarmConfigurationRevision',
     'AlarmConfigurationRevisionError',
+    'AlarmConfiguredIterationExecutor',
     'AlarmEvaluatorContract',
     'AlarmEvaluatorRegistry',
     'AlarmExecutionEntry',
@@ -112,6 +118,7 @@ __all__ = [
     'ConfigurationAdoptionPlanError',
     'ConfigurationAdoptionRejectionReason',
     'DEFAULT_ALARM_RUNTIME_ITERATION_PERIOD_SECONDS',
+    'INITIAL_CONFIGURATION_RETRY_SECONDS',
     'RuntimeEffectiveConfiguration',
     'RuntimeEffectiveConfigurationError',
     'RuntimeLocalConfigurationReader',
