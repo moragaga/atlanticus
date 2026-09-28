@@ -25,7 +25,7 @@ from ada.web.application.generic.manager_principal import (
     compose_integrated_manager_dependencies,
 )
 from ada.web.application.generic.master_projection.composition import (
-    compose_master_projection_planner,
+    compose_master_projection_backend,
 )
 from ada.web.application.generic.master_projection.web import (
     MASTER_PROJECTION_INDEPENDENT_ROUTES,
@@ -234,15 +234,16 @@ def create_operational_application_runtime(
             definition = _integrate_manager(definition, manager_dependencies)
 
         if master_material_reader is not None:
-            planner = (
-                compose_master_projection_planner(manager_stores)
+            backend = (
+                compose_master_projection_backend(manager_stores)
                 if manager_stores is not None else None
             )
             master_module = MasterProjectionWebBinding(
                 application_namespace=resolved_settings.application_namespace,
                 environment=resolved_settings.environment.value,
-                planner=planner,
+                planner=backend.planner if backend is not None else None,
                 reader=master_material_reader,
+                executor=backend.executor if backend is not None else None,
             ).module()
             definition = replace(definition, modules=(master_module, *definition.modules))
         return create_web_application(definition)
