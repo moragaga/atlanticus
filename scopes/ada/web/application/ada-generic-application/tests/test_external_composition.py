@@ -31,7 +31,7 @@ def _settings(tmp_path) -> AdaGenericSettings:
 
 def _ready_resolution() -> ToolProjectionResolution:
     structure = ToolStructure(
-        tool_key='sample-tool',
+        tool_key='sample_tool',
         kind=ToolConfigurationKind.INTEGRATED_OPERATIONS,
         components=(
             ToolComponent(
