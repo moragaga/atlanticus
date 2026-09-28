@@ -35,6 +35,10 @@ from ada_command_center.processes.alarms_runtime.local_configuration import (
 from ada_command_center.processes.alarms_runtime.operational_runner import (
     AlarmOperationalCycleRunner,
 )
+from ada_command_center.processes.alarms_runtime.publication import (
+    AlarmCommittedFactsExporter,
+    AlarmCurrentStatePublisher,
+)
 from ada_command_center.processes.alarms_runtime.session import AlarmEvaluatorRegistry
 from atlanticus.runtime import (
     JobDefinition,
@@ -128,6 +132,7 @@ def build_alarm_runtime_process(
         {} if operational_inputs_provider is None
         else {'operational_inputs_provider': operational_inputs_provider}
     )
+    output_root = runtime_configuration.volume_path / 'ada-command-center/alarms/runtime/output'
     # El runner fija una única sesión y evita commits coincidentes por segundo UTC.
     runner = AlarmOperationalCycleRunner(
         composition=composition,
@@ -141,6 +146,8 @@ def build_alarm_runtime_process(
             runtime_artifact_version=runtime_artifact_version,
             technical_evidence_contract=technical_evidence_contract,
         ),
+        batch_exporter=AlarmCommittedFactsExporter(root=output_root, source_key=source_key),
+        current_publisher=AlarmCurrentStatePublisher(root=output_root, source_key=source_key),
         clock=clock,
         **runner_options,
     )

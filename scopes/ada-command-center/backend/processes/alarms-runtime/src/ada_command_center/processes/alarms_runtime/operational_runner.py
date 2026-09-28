@@ -5,11 +5,19 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
 from ada_command_center.processes.alarms_runtime.composition import AlarmRuntimeComposition
+from ada_command_center.processes.alarms_runtime.configured_iteration import _PINNED_MEMORY_KEY
 from ada_command_center.processes.alarms_runtime.cycle import AlarmOperationalCycle
 from ada_command_center.processes.alarms_runtime.inputs import AlarmOperationalInputs
 from ada_command_center.processes.alarms_runtime.iteration import (
     AlarmIterationLoader,
     AlarmIterationSourceLoader,
+)
+from ada_command_center.processes.alarms_runtime.local_configuration import (
+    RuntimeEffectiveConfiguration,
+)
+from ada_command_center.processes.alarms_runtime.publication import (
+    AlarmCommittedFactsExporter,
+    AlarmCurrentStatePublisher,
 )
 from ada_command_center.processes.alarms_runtime.session import AlarmExecutionSession
 from atlanticus.operational_data.core import normalize_utc_second
@@ -42,6 +50,8 @@ class AlarmOperationalCycleRunner:
     operational_inputs_provider: Callable[[JobRuntimeContext], AlarmOperationalInputs] = field(
         default=_empty_inputs
     )
+    batch_exporter: AlarmCommittedFactsExporter | None = None
+    current_publisher: AlarmCurrentStatePublisher | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.composition, AlarmRuntimeComposition):
@@ -54,6 +64,14 @@ class AlarmOperationalCycleRunner:
             raise TypeError('clock must be callable')
         if not callable(self.operational_inputs_provider):
             raise TypeError('operational_inputs_provider must be callable')
+        if self.batch_exporter is not None and not isinstance(
+            self.batch_exporter, AlarmCommittedFactsExporter
+        ):
+            raise TypeError('batch_exporter must be AlarmCommittedFactsExporter or None')
+        if self.current_publisher is not None and not isinstance(
+            self.current_publisher, AlarmCurrentStatePublisher
+        ):
+            raise TypeError('current_publisher must be AlarmCurrentStatePublisher or None')
 
     def __call__(self, context: JobRuntimeContext, session: AlarmExecutionSession) -> bool:
         if not isinstance(context, JobRuntimeContext):
@@ -80,7 +98,33 @@ class AlarmOperationalCycleRunner:
         if not isinstance(bound, _BoundExecution) or bound.session is not session:
             raise RuntimeError('operational runner session differs from the pinned job session')
         iteration = bound.loader.load(as_of=as_of)
-        bound.cycle.execute(context, iteration, operational_inputs=inputs)
+        if self.batch_exporter is not None or self.current_publisher is not None:
+            persistence = self.composition.durability.persistence
+            pinned = context.get_memory(_PINNED_MEMORY_KEY)
+            if (
+                not isinstance(pinned, RuntimeEffectiveConfiguration)
+                or pinned.revision.session is not session
+            ):
+                raise RuntimeError('Confirmed pinned EFFECTIVE session is required for publication')
+            pin = pinned.effective_head.target_artifact_ref
+            if (
+                pin.alarm_configuration_revision != session.alarm_configuration_revision
+                or pin.confirmed_tool_catalog_revision != session.tool_registry_revision
+            ):
+                raise RuntimeError('Current Engine session differs from confirmed EFFECTIVE')
+            if self.batch_exporter is not None:
+                self.batch_exporter.initialize_if_needed(
+                    context=context, persistence=persistence, pin=pin
+                )
+        cycle_result = bound.cycle.execute(context, iteration, operational_inputs=inputs)
+        if self.current_publisher is not None:
+            self.current_publisher.publish(
+                context=context, result=cycle_result, pin=pin, inputs=inputs
+            )
+        if self.batch_exporter is not None:
+            self.batch_exporter.publish_unexported(
+                context=context, persistence=persistence, pin=pin
+            )
         context.set_iteration_fact('alarm_operational_cycle_status', 'executed')
         return True
 

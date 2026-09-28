@@ -23,6 +23,7 @@ def test_project_contract_pins_required_dependencies() -> None:
         'atlanticus-operational-data-core==1.0.0',
         'atlanticus-operational-data-planner==1.0.0',
         'atlanticus-operational-data-sources==1.0.0',
+        'atlanticus-state==1.0.0',
     ]
 
 
