@@ -38,14 +38,32 @@ class KpiRuntimeSettings:
             raise TypeError('configuration must be a ResolvedConfiguration')
         return cls(
             pi_source=_pi_source(configuration.require(PI_SOURCE_VARIABLE)),
-            pi_application=_required_application(configuration.require(PI_APPLICATION_VARIABLE), PI_APPLICATION_VARIABLE),
-            dispatch_application=_optional_application(configuration.get(DISPATCH_APPLICATION_VARIABLE), DISPATCH_APPLICATION_VARIABLE),
-            blockgrade_application=_optional_application(configuration.get(BLOCKGRADE_APPLICATION_VARIABLE), BLOCKGRADE_APPLICATION_VARIABLE),
-            remanentes_application=_optional_application(configuration.get(REMANENTES_APPLICATION_VARIABLE), REMANENTES_APPLICATION_VARIABLE),
-            fabrica_planes_application=_optional_application(configuration.get(FABRICA_PLANES_APPLICATION_VARIABLE), FABRICA_PLANES_APPLICATION_VARIABLE),
-            fabrica_kpis_application=_optional_application(configuration.get(FABRICA_KPIS_APPLICATION_VARIABLE), FABRICA_KPIS_APPLICATION_VARIABLE),
-            poll_interval_seconds=_positive_float(configuration.require(POLL_INTERVAL_VARIABLE), POLL_INTERVAL_VARIABLE),
-            reprocess_current=_boolean(configuration.require(REPROCESS_CURRENT_VARIABLE), REPROCESS_CURRENT_VARIABLE),
+            pi_application=_required_application(
+                configuration.require(PI_APPLICATION_VARIABLE), PI_APPLICATION_VARIABLE
+            ),
+            dispatch_application=_optional_application(
+                configuration.get(DISPATCH_APPLICATION_VARIABLE), DISPATCH_APPLICATION_VARIABLE
+            ),
+            blockgrade_application=_optional_application(
+                configuration.get(BLOCKGRADE_APPLICATION_VARIABLE), BLOCKGRADE_APPLICATION_VARIABLE
+            ),
+            remanentes_application=_optional_application(
+                configuration.get(REMANENTES_APPLICATION_VARIABLE), REMANENTES_APPLICATION_VARIABLE
+            ),
+            fabrica_planes_application=_optional_application(
+                configuration.get(FABRICA_PLANES_APPLICATION_VARIABLE),
+                FABRICA_PLANES_APPLICATION_VARIABLE,
+            ),
+            fabrica_kpis_application=_optional_application(
+                configuration.get(FABRICA_KPIS_APPLICATION_VARIABLE),
+                FABRICA_KPIS_APPLICATION_VARIABLE,
+            ),
+            poll_interval_seconds=_positive_float(
+                configuration.require(POLL_INTERVAL_VARIABLE), POLL_INTERVAL_VARIABLE
+            ),
+            reprocess_current=_boolean(
+                configuration.require(REPROCESS_CURRENT_VARIABLE), REPROCESS_CURRENT_VARIABLE
+            ),
         )
 
 
@@ -66,14 +84,18 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED', default='true'),
         ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_MODE', default='off'),
         ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_PROFILE', required=False),
-        ConfigurationVariableSpec(key='APPLICATION_INSIGHTS_CONNECTION_STRING', required=False, sensitive=True),
+        ConfigurationVariableSpec(
+            key='APPLICATION_INSIGHTS_CONNECTION_STRING', required=False, sensitive=True
+        ),
     )
 
 
 # Responsabilidad de _pi_source.
 def _pi_source(value: str) -> PiSourceProvider:
     if value != value.strip():
-        raise KpiRuntimeConfigurationError(f'{PI_SOURCE_VARIABLE} must not contain surrounding whitespace')
+        raise KpiRuntimeConfigurationError(
+            f'{PI_SOURCE_VARIABLE} must not contain surrounding whitespace'
+        )
     normalized = value.lower()
     aliases = {
         'notpii': PiSourceProvider.NOTPII,
@@ -83,7 +105,9 @@ def _pi_source(value: str) -> PiSourceProvider:
     try:
         return aliases[normalized]
     except KeyError as error:
-        raise KpiRuntimeConfigurationError(f'{PI_SOURCE_VARIABLE} must be NOTPII or PI_WEB_API') from error
+        raise KpiRuntimeConfigurationError(
+            f'{PI_SOURCE_VARIABLE} must be NOTPII or PI_WEB_API'
+        ) from error
 
 
 # Responsabilidad de _required_application.

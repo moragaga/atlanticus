@@ -13,9 +13,16 @@ from ada.processes.kpi_runtime.source_state import PiOperationalWatermarkReader
 from atlanticus.configuration import ResolvedConfiguration
 from atlanticus.operational_data.planner import DataRequirementPlanner
 from atlanticus.operational_data.sources import (
-    DataSourceApplications, DataSourceLoader, build_current_source_registry,
+    DataSourceApplications,
+    DataSourceLoader,
+    build_current_source_registry,
 )
-from atlanticus.runtime import JobDefinition, RuntimeConfiguration, RuntimeExecutionResult, execute_job
+from atlanticus.runtime import (
+    JobDefinition,
+    RuntimeConfiguration,
+    RuntimeExecutionResult,
+    execute_job,
+)
 from atlanticus.state import AtomicStateStore
 
 
@@ -38,7 +45,9 @@ class KpiRuntimeComposition:
 
 
 def build_composition(
-    *, configuration: ResolvedConfiguration, catalog: KpiCatalog | None = None,
+    *,
+    configuration: ResolvedConfiguration,
+    catalog: KpiCatalog | None = None,
 ) -> KpiRuntimeComposition:
     if not isinstance(configuration, ResolvedConfiguration):
         raise TypeError('configuration must be a ResolvedConfiguration')
@@ -48,7 +57,9 @@ def build_composition(
     settings = KpiRuntimeSettings.from_configuration(configuration)
     runtime_configuration = RuntimeConfiguration.from_sources(environ=configuration.values)
     registry = build_current_source_registry(pi_source=settings.pi_source)
-    plan = DataRequirementPlanner().plan({spec.key: spec.requirements for spec in resolved_catalog.specs})
+    plan = DataRequirementPlanner().plan(
+        {spec.key: spec.requirements for spec in resolved_catalog.specs}
+    )
     applications = DataSourceApplications(
         pi=settings.pi_application,
         dispatch=settings.dispatch_application,
@@ -73,7 +84,9 @@ def build_composition(
         volume_path=runtime_configuration.volume_path,
         application=settings.pi_application,
     )
-    source_watermarks = PiOperationalWatermarkReader(store=source_store, provider=settings.pi_source)
+    source_watermarks = PiOperationalWatermarkReader(
+        store=source_store, provider=settings.pi_source
+    )
     job = KpiRuntimeJob(
         catalog=resolved_catalog,
         plan=plan,
