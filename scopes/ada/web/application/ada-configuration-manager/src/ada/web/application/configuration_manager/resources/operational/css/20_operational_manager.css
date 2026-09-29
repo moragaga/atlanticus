@@ -1,5 +1,8 @@
 .ada-operational-admin {
     display: grid;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
     min-width: 0;
     gap: .9rem;
     padding: 0 1rem 1rem;
@@ -7,9 +10,11 @@
     font-family: var(--atlanticus-ui-font);
 }
 
-.ada-operational-admin__intro,
 .ada-operational-admin__panel,
 .ada-operational-admin__metadata {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
     min-width: 0;
     border: 1px solid var(--atlanticus-ui-border);
     border-radius: .85rem;
@@ -17,37 +22,24 @@
     box-shadow: 0 4px 16px rgb(25 30 38 / 3.5%);
 }
 
-.ada-operational-admin__intro,
 .ada-operational-admin__panel {
     padding: 1rem;
 }
 
-.ada-operational-admin__intro {
-    border-top: .2rem solid var(--atlanticus-ui-accent);
-}
-
-.ada-operational-admin__intro h3,
-.ada-operational-admin__intro p,
 .ada-operational-admin__section-copy h3,
 .ada-operational-admin__section-copy p {
     margin: 0;
 }
 
-.ada-operational-admin__intro h3,
 .ada-operational-admin__section-copy h3 {
     font-size: .93rem;
     font-weight: 780;
 }
 
-.ada-operational-admin__intro p,
 .ada-operational-admin__section-copy p {
     color: var(--atlanticus-ui-text-muted);
     font-size: .76rem;
     line-height: 1.4;
-}
-
-.ada-operational-admin__intro p {
-    margin-top: .3rem;
 }
 
 .ada-operational-admin__tabs {
@@ -79,6 +71,13 @@
     outline: 0;
 }
 
+.ada-operational-admin__body {
+    display: grid;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
 .ada-operational-admin__panel { display: none; }
 .ada-operational-admin__panel--active { display: block; }
 
@@ -99,7 +98,9 @@
 
 .ada-operational-admin__filters {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 7rem;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 7rem);
+    width: 100%;
+    min-width: 0;
     align-items: end;
     gap: .65rem;
     margin-block: .75rem;
@@ -124,13 +125,19 @@
     color: var(--atlanticus-ui-text);
 }
 
-.ada-operational-admin__field > .form-control:focus {
-    border-color: var(--atlanticus-ui-secondary);
-    box-shadow: var(--atlanticus-ui-control-focus-ring);
+.ada-operational-admin .ada-operational-admin__field > .form-control:focus,
+.ada-operational-admin .ada-operational-admin__field > .form-control:focus-visible {
+    border-color: var(--atlanticus-ui-secondary) !important;
+    outline: 0;
+    box-shadow: var(--atlanticus-ui-control-focus-ring) !important;
 }
 
 .ada-operational-admin__paged-list {
     display: grid;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
     gap: .7rem;
 }
 
@@ -304,48 +311,61 @@
     z-index: 1450;
     inset: 0;
     display: none;
-    place-items: center;
-    padding: 1rem;
+    overflow: hidden;
+    overscroll-behavior: none;
 }
 
-.ada-operational-admin__modal--open { display: grid; }
+.ada-operational-admin__modal--open { display: block; }
 
 html:has(.ada-operational-admin__modal--open),
 body:has(.ada-operational-admin__modal--open) { overflow: hidden; }
 
 .ada-operational-admin__modal-backdrop {
-    position: absolute;
+    position: fixed;
+    z-index: 0;
     inset: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0;
     border: 0;
     background: var(--atlanticus-ui-overlay);
     cursor: pointer;
 }
 
 .ada-operational-admin__modal-dialog {
-    position: relative;
+    position: fixed;
+    z-index: 1;
+    top: 50%;
+    left: 50%;
     display: grid;
+    box-sizing: border-box;
     grid-template-rows: auto minmax(0, 1fr) auto;
-    width: min(96vw, 40rem);
-    max-height: calc(100vh - 2rem);
+    width: min(calc(100vw - 2rem), 40rem);
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100dvh - 2rem);
     overflow: hidden;
     border: 1px solid var(--atlanticus-ui-border);
-    border-radius: .9rem;
+    border-radius: var(--atlanticus-ui-modal-radius);
     background: var(--atlanticus-ui-surface);
-    box-shadow: 0 1rem 3rem rgb(7 21 34 / 20%);
+    box-shadow: var(--atlanticus-ui-modal-shadow);
+    transform: translate(-50%, -50%);
 }
 
 .ada-operational-admin__modal-head {
     display: flex;
-    align-items: center;
+    min-width: 0;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
-    padding: .85rem 1rem;
-    border-bottom: 1px solid var(--atlanticus-ui-border);
+    padding: 1rem 1.1rem;
+    color: var(--atlanticus-ui-surface);
+    background: var(--atlanticus-ui-primary);
+    border-bottom: 2px solid var(--atlanticus-ui-accent);
 }
 
 .ada-operational-admin__modal-head h2 {
     margin: 0;
-    color: var(--atlanticus-ui-text);
+    color: var(--atlanticus-ui-surface);
     font-size: .96rem;
     font-weight: 780;
 }
@@ -353,16 +373,19 @@ body:has(.ada-operational-admin__modal--open) { overflow: hidden; }
 .ada-operational-admin__close {
     border: 0;
     background: transparent;
-    color: var(--atlanticus-ui-text-muted);
+    color: var(--atlanticus-ui-surface);
     cursor: pointer;
     font-size: 1.4rem;
 }
 
 .ada-operational-admin__modal-body {
     display: grid;
+    min-width: 0;
+    min-height: 0;
     gap: .8rem;
     overflow-y: auto;
-    padding: 1rem;
+    padding: 1rem 1.1rem;
+    background: var(--atlanticus-ui-background);
 }
 
 .ada-operational-admin__modal-copy {
@@ -391,8 +414,9 @@ body:has(.ada-operational-admin__modal--open) { overflow: hidden; }
     display: flex;
     justify-content: flex-end;
     flex-wrap: wrap;
-    gap: .5rem;
-    padding: .8rem 1rem;
+    gap: .55rem;
+    padding: .8rem 1.1rem;
+    background: var(--atlanticus-ui-surface);
     border-top: 1px solid var(--atlanticus-ui-border);
 }
 
@@ -412,4 +436,67 @@ body:has(.ada-operational-admin__modal--open) { overflow: hidden; }
     .ada-operational-admin__row-actions { justify-content: space-between; }
     .ada-operational-admin__pagination { justify-content: center; }
     .ada-operational-admin__modal-actions > .btn { flex: 1 1 9rem; }
+}
+
+.ada-operational-admin__identifier {
+    display: grid;
+    min-width: 0;
+    gap: .3rem;
+}
+
+.ada-operational-admin__identifier-label {
+    font-size: .76rem;
+    font-weight: 700;
+}
+
+.ada-operational-admin__identifier-value {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: .6rem .7rem;
+    overflow-wrap: anywhere;
+    color: var(--atlanticus-ui-text-muted);
+    background: var(--atlanticus-ui-surface-muted);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: var(--atlanticus-ui-control-radius);
+    font-size: .72rem;
+}
+
+.ada-operational-admin__modal-body .ada-operational-admin__field > .form-control {
+    background: var(--atlanticus-ui-surface);
+}
+
+.ada-operational-admin__modal .ada-operational-admin__check {
+    font-size: .76rem;
+    color: var(--atlanticus-ui-text);
+}
+
+@media (max-width: 48rem) {
+    .ada-operational-admin__modal-dialog {
+        width: calc(100vw - 1rem);
+        max-width: calc(100vw - 1rem);
+        max-height: calc(100dvh - 1rem);
+    }
+}
+
+.ada-operational-admin__result {
+    padding: .55rem .7rem;
+    border-radius: .45rem;
+}
+
+.ada-operational-admin__result--success {
+    color: var(--atlanticus-ui-success);
+    background: var(--atlanticus-ui-success-soft);
+}
+
+.ada-operational-admin__result--warning {
+    color: var(--atlanticus-ui-warning);
+    background: var(--atlanticus-ui-warning-soft);
+}
+
+.ada-operational-admin__result--error {
+    color: var(--atlanticus-ui-danger);
+    background: var(--atlanticus-ui-danger-soft);
 }

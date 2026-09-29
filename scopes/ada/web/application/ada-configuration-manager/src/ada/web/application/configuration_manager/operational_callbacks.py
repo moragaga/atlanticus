@@ -56,8 +56,10 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
     def display_tab(value):
         assignment = value != 'positions'
         return (
-            _tab_class(assignment), _tab_class(not assignment),
-            _panel_class(assignment), _panel_class(not assignment),
+            _tab_class(assignment),
+            _tab_class(not assignment),
+            _panel_class(assignment),
+            _panel_class(not assignment),
             'true' if assignment else 'false',
             'false' if assignment else 'true',
         )
@@ -76,8 +78,10 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
     def change_assignment_page(_prev, _next, _jump, _size, _query, current, jump_ids):
         return _next_page(
             current=current,
-            previous_clicks=_prev, next_clicks=_next,
-            jump_clicks=_jump, jump_ids=jump_ids,
+            previous_clicks=_prev,
+            next_clicks=_next,
+            jump_clicks=_jump,
+            jump_ids=jump_ids,
             previous_id=ids.ASSIGN_PREVIOUS,
             next_id=ids.ASSIGN_NEXT,
             jump_type=ids.ASSIGN_JUMP,
@@ -98,8 +102,10 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
     def change_position_page(_prev, _next, _jump, _size, _query, current, jump_ids):
         return _next_page(
             current=current,
-            previous_clicks=_prev, next_clicks=_next,
-            jump_clicks=_jump, jump_ids=jump_ids,
+            previous_clicks=_prev,
+            next_clicks=_next,
+            jump_clicks=_jump,
+            jump_ids=jump_ids,
             previous_id=ids.POSITION_PREVIOUS,
             next_id=ids.POSITION_NEXT,
             jump_type=ids.POSITION_JUMP,
@@ -119,7 +125,9 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
         if not context.can_manage():
             return html.P('Acceso denegado.'), '', 1
         try:
-            content, page = render_assignment_list(context, query, int(number or 1), int(size or 10))
+            content, page = render_assignment_list(
+                context, query, int(number or 1), int(size or 10)
+            )
             return content, page_label(page), page.request.page_number
         except Exception:
             return html.P('No fue posible leer las asignaciones.'), 'Datos no disponibles', 1
@@ -240,7 +248,12 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
             return None, None, None, None
         try:
             snapshot, assignment = context.service.assignment_for_edit(user_id)
-            return assignment.area_id, assignment.position_id, assignment.group_id, _revision(snapshot)
+            return (
+                assignment.area_id,
+                assignment.position_id,
+                assignment.group_id,
+                _revision(snapshot),
+            )
         except Exception:
             return None, None, None, None
 
@@ -280,7 +293,9 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
             return html.Div(
                 [
                     html.Span(_status_label(status), className='ada-operational-admin__badge'),
-                    html.Small(f'Source: {_release_label(snapshot.current.release_ref if snapshot.current else None)}'),
+                    html.Small(
+                        f'Source: {_release_label(snapshot.current.release_ref if snapshot.current else None)}'
+                    ),
                     html.Small(f'Projection: {_release_label(status.projected_source_release)}'),
                 ],
                 className='ada-operational-admin__selected-metadata',
@@ -289,26 +304,25 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
             return html.Span('No fue posible verificar Source y Projection.')
 
     @app.callback(
-        Output(ids.POSITION_ID, 'value'),
+        Output(ids.POSITION_ID, 'children'),
         Output(ids.POSITION_LABEL, 'value'),
         Output(ids.POSITION_ACTIVE, 'value'),
-        Output(ids.POSITION_ID, 'disabled'),
         Input(ids.POSITION_SELECT, 'value'),
         Input(ids.POSITION_MODAL, 'className'),
     )
     def select_position(position_id, _modal_state=None):
         if not context.can_manage():
-            return '', '', [], True
+            return 'No disponible', '', []
         if not position_id:
-            return '', '', ['active'], False
+            return 'Se generará al guardar', '', ['active']
         try:
             _snapshot, catalog = context.service.catalog_for_edit()
             position = catalog.position(position_id)
             if position is None:
-                return '', '', ['active'], False
-            return position.id, position.label, ['active'] if position.active else [], True
+                return 'Se generará al guardar', '', ['active']
+            return position.id, position.label, ['active'] if position.active else []
         except Exception:
-            return '', '', [], True
+            return 'No disponible', '', []
 
     @app.callback(
         Output(ids.CATALOG_REVISION, 'data'),
@@ -318,7 +332,7 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
         Output(ids.CATALOG_RESULT, 'children'),
         Input(ids.CATALOG_SAVE, 'n_clicks'),
         State(ids.POSITION_SELECT, 'value'),
-        State(ids.POSITION_ID, 'value'),
+        State(ids.POSITION_ID, 'children'),
         State(ids.POSITION_LABEL, 'value'),
         State(ids.POSITION_ACTIVE, 'value'),
         State(ids.CATALOG_REVISION, 'data'),
@@ -330,42 +344,71 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
         try:
             snapshot, catalog = context.service.catalog_for_edit()
             if _revision(snapshot) != revision:
-                return no_update, no_update, no_update, no_update, _message(
-                    'El catálogo cambió. Recarga la página.'
+                return (
+                    no_update,
+                    no_update,
+                    no_update,
+                    no_update,
+                    _message('El catálogo cambió. Recarga la página.', error=True),
                 )
-            if selected and selected != position_id:
-                return no_update, no_update, no_update, no_update, _message(
-                    'El identificador del cargo no se puede cambiar.'
+            if selected:
+                previous = catalog.position(selected)
+                if previous is None or previous.id != position_id:
+                    return (
+                        no_update,
+                        no_update,
+                        no_update,
+                        no_update,
+                        _message(
+                            'El identificador del cargo es inmutable. Recarga la página.',
+                            error=True,
+                        ),
+                    )
+                position = Position(
+                    id=previous.id,
+                    label=label,
+                    active='active' in (active or ()),
                 )
-            position = Position(
-                id=position_id,
-                label=label,
-                active='active' in (active or ()),
-            )
-            updated = tuple(item for item in catalog.positions if item.id != position.id) + (
-                position,
-            )
-            revised_catalog = OperationalCatalog(positions=updated)
-            context.service.publish_catalog(
-                revised_catalog,
-                actor=context.principal().subject_id,
-                expected=snapshot,
-            )
+                updated = tuple(item for item in catalog.positions if item.id != previous.id) + (
+                    position,
+                )
+                revised_catalog = OperationalCatalog(positions=updated)
+                context.service.publish_catalog(
+                    revised_catalog,
+                    actor=context.principal().subject_id,
+                    expected=snapshot,
+                )
+            else:
+                position, _result = context.service.create_position(
+                    label=label,
+                    active='active' in (active or ()),
+                    actor=context.principal().subject_id,
+                    expected=snapshot,
+                )
+                _latest, revised_catalog = context.service.catalog_for_edit()
             options = _position_options(revised_catalog)
             new_snapshot, _value = context.service.catalog_for_edit()
         except ValueError:
-            return no_update, no_update, no_update, no_update, _message(
-                'Los datos del cargo no son válidos.'
+            return (
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                _message('Los datos del cargo no son válidos.', error=True),
             )
         except Exception:
-            return no_update, no_update, no_update, no_update, _message(
-                'No fue posible guardar el cargo. Recarga y reintenta.'
+            return (
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                _message('No fue posible guardar el cargo. Recarga y reintenta.', error=True),
             )
         try:
             context.service.project_current(CATALOG_SOURCE_KEY)
             result = _message('Cargo guardado y proyectado.')
         except Exception:
-            result = _message('Cargo guardado en Source. Usa Reintentar proyección.')
+            result = _message('Cargo guardado en Source. Usa Reintentar proyección.', warning=True)
         return (
             _revision(new_snapshot),
             _position_options(revised_catalog, include_inactive=True),
@@ -391,7 +434,9 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
         try:
             snapshot, _existing = context.service.assignment_for_edit(user_id)
             if _revision(snapshot) != revision:
-                return no_update, _message('La asignación cambió. Selecciona de nuevo al usuario.')
+                return no_update, _message(
+                    'La asignación cambió. Selecciona de nuevo al usuario.', error=True
+                )
             assignment = OperationalAssignment(
                 user_id=user_id,
                 area_id=area,
@@ -405,12 +450,16 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
             )
             updated_snapshot, _value = context.service.assignment_for_edit(user_id)
         except Exception:
-            return no_update, _message('No fue posible guardar la asignación. Recarga y reintenta.')
+            return no_update, _message(
+                'No fue posible guardar la asignación. Recarga y reintenta.', error=True
+            )
         try:
             context.service.project_current(assignment_source_key(user_id))
             result = _message('Asignación guardada y proyectada.')
         except Exception:
-            result = _message('Asignación guardada en Source. Usa Reintentar proyección.')
+            result = _message(
+                'Asignación guardada en Source. Usa Reintentar proyección.', warning=True
+            )
         return _revision(updated_snapshot), result
 
     @app.callback(
@@ -425,7 +474,7 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
             result = context.service.project_current(CATALOG_SOURCE_KEY)
             return _message('Catálogo proyectado.' if result is not None else 'No hay publicación.')
         except Exception:
-            return _message('No fue posible proyectar el catálogo.')
+            return _message('No fue posible proyectar el catálogo.', error=True)
 
     @app.callback(
         Output(ids.ASSIGNMENT_RESULT, 'children', allow_duplicate=True),
@@ -438,9 +487,11 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
             return no_update
         try:
             result = context.service.project_current(assignment_source_key(user_id))
-            return _message('Asignación proyectada.' if result is not None else 'No hay publicación.')
+            return _message(
+                'Asignación proyectada.' if result is not None else 'No hay publicación.'
+            )
         except Exception:
-            return _message('No fue posible proyectar la asignación.')
+            return _message('No fue posible proyectar la asignación.', error=True)
 
 
 def _next_page(
@@ -471,5 +522,9 @@ def _next_page(
     return no_update
 
 
-def _message(value: str) -> object:
-    return html.P(value, className='ada-operational-admin__result')
+def _message(value: str, *, error: bool = False, warning: bool = False) -> object:
+    state = 'error' if error else 'warning' if warning else 'success'
+    return html.P(
+        value,
+        className=f'ada-operational-admin__result ada-operational-admin__result--{state}',
+    )

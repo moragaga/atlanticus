@@ -1,6 +1,8 @@
 # Servicio operativo que verifica promoción sin mutar Users; expone publicación y proyección como pasos separados.
 from __future__ import annotations
 
+from uuid import uuid4
+
 from ada.web.operational.identification.errors import OperationalReferenceError
 from ada.web.operational.identification.keys import (
     CATALOG_SOURCE_KEY,
@@ -11,9 +13,11 @@ from ada.web.operational.identification.models import (
     OperationalAssignment,
     OperationalCatalog,
     OperationalDocument,
+    Position,
 )
 from ada.web.operational.identification.projection import create_operational_projection_service
 from ada.web.operational.identification.source import OperationalSourceService
+
 from atlanticus.web.projection.models import ProjectionRecord, ProjectionStatus
 from atlanticus.web.projection.service import SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
@@ -60,6 +64,31 @@ class OperationalIdentificationService:
         if not isinstance(value, OperationalAssignment) or value.user_id != user_id:
             raise OperationalReferenceError('Operational assignment source has an invalid type')
         return snapshot, value
+
+    # Crea identidades opacas del lado servidor, sin derivarlas de etiquetas ni del navegador.
+    # El snapshot exigido evita agregar cargos sobre una publicación ajena más reciente.
+    def create_position(
+        self,
+        *,
+        label: str,
+        active: bool = True,
+        actor: str,
+        expected: SourceSnapshot,
+    ) -> tuple[Position, PublishResult]:
+        snapshot, catalog = self.catalog_for_edit()
+        if snapshot != expected:
+            raise OperationalReferenceError('Operational catalog changed before creating position')
+        identifiers = {position.id for position in catalog.positions}
+        for _attempt in range(10):
+            position_id = f'position_{uuid4().hex}'
+            if position_id not in identifiers:
+                break
+        else:
+            raise OperationalReferenceError('Could not generate a unique position identifier')
+        position = Position(id=position_id, label=label, active=active)
+        updated = OperationalCatalog(positions=(*catalog.positions, position))
+        result = self.publish_catalog(updated, actor=actor, expected=expected)
+        return position, result
 
     # Publicación optimista; otros administradores no pierden cambios silenciosamente.
     def publish_catalog(

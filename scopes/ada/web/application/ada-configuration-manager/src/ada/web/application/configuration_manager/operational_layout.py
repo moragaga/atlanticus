@@ -30,7 +30,9 @@ def build_operational_manager_layout(context: OperationalManagerContext) -> obje
         return html.P('No tienes acceso a esta configuración.')
     try:
         snapshot, catalog = context.service.catalog_for_edit()
-        assignment_list, assignment_page = render_assignment_list(context, None, 1, DEFAULT_PAGE_SIZE)
+        assignment_list, assignment_page = render_assignment_list(
+            context, None, 1, DEFAULT_PAGE_SIZE
+        )
         position_list, position_page = render_position_list(context, None, 1, DEFAULT_PAGE_SIZE)
         metadata = catalog_metadata(context, snapshot)
     except Exception:
@@ -50,23 +52,24 @@ def build_operational_manager_layout(context: OperationalManagerContext) -> obje
                 options=_position_options(catalog, include_inactive=True),
                 style={'display': 'none'},
             ),
-            html.Section(
-                [
-                    html.H3('Administración operacional'),
-                    html.P('Mantén los cargos y asigna información operacional a usuarios promovidos.'),
-                ],
-                className='ada-operational-admin__intro',
-            ),
             html.Div(
                 [
                     html.Button(
-                        'Asignaciones', id=ids.ASSIGN_TAB, n_clicks=0,
-                        className=_tab_class(True), type='button', role='tab',
+                        'Asignaciones',
+                        id=ids.ASSIGN_TAB,
+                        n_clicks=0,
+                        className=_tab_class(True),
+                        type='button',
+                        role='tab',
                         **{'aria-selected': 'true'},
                     ),
                     html.Button(
-                        'Cargos', id=ids.POSITION_TAB, n_clicks=0,
-                        className=_tab_class(False), type='button', role='tab',
+                        'Cargos',
+                        id=ids.POSITION_TAB,
+                        n_clicks=0,
+                        className=_tab_class(False),
+                        type='button',
+                        role='tab',
                         **{'aria-selected': 'false'},
                     ),
                 ],
@@ -95,7 +98,8 @@ def build_operational_manager_layout(context: OperationalManagerContext) -> obje
                             _filter_bar(ids.ASSIGN_SEARCH, ids.ASSIGN_SIZE, 'Buscar usuarios'),
                             html.Div(assignment_list, id=ids.ASSIGN_LIST),
                             html.Div(
-                                page_label(assignment_page), id=ids.ASSIGN_STATUS,
+                                page_label(assignment_page),
+                                id=ids.ASSIGN_STATUS,
                                 className='ada-operational-admin__sr-only',
                                 **{'aria-live': 'polite'},
                             ),
@@ -111,13 +115,18 @@ def build_operational_manager_layout(context: OperationalManagerContext) -> obje
                                     html.Div(
                                         [
                                             html.H3('Catálogo de cargos'),
-                                            html.P('Identificadores estables. Los cargos se desactivan; no se borran.'),
+                                            html.P(
+                                                'Identificadores automáticos e inmutables. Los cargos se desactivan; no se borran.'
+                                            ),
                                         ],
                                         className='ada-operational-admin__section-copy',
                                     ),
                                     html.Button(
-                                        'Nuevo cargo', id=ids.POSITION_NEW, type='button',
-                                        className='btn btn-primary', n_clicks=0,
+                                        'Nuevo cargo',
+                                        id=ids.POSITION_NEW,
+                                        type='button',
+                                        className='btn btn-primary',
+                                        n_clicks=0,
                                     ),
                                 ],
                                 className='ada-operational-admin__section-head',
@@ -126,18 +135,20 @@ def build_operational_manager_layout(context: OperationalManagerContext) -> obje
                             html.Div(
                                 [
                                     html.Button(
-                                        'Reintentar proyección', id=ids.CATALOG_REPROJECT,
-                                        n_clicks=0, type='button',
+                                        'Reintentar proyección',
+                                        id=ids.CATALOG_REPROJECT,
+                                        n_clicks=0,
+                                        type='button',
                                         className='btn btn-outline-secondary btn-sm',
                                     ),
-                                    html.Div(id=ids.CATALOG_RESULT, role='status'),
                                 ],
                                 className='ada-operational-admin__source-actions',
                             ),
                             _filter_bar(ids.POSITION_SEARCH, ids.POSITION_SIZE, 'Buscar cargos'),
                             html.Div(position_list, id=ids.POSITION_LIST),
                             html.Div(
-                                page_label(position_page), id=ids.POSITION_STATUS,
+                                page_label(position_page),
+                                id=ids.POSITION_STATUS,
                                 className='ada-operational-admin__sr-only',
                                 **{'aria-live': 'polite'},
                             ),
@@ -162,13 +173,21 @@ def render_assignment_list(
     number: int,
     size: int,
 ) -> tuple[object, Page[object]]:
-    users = tuple(sorted(context.promoted_users(), key=lambda user: (
-        user.display_name.casefold(), user.user_id,
-    )))
+    users = tuple(
+        sorted(
+            context.promoted_users(),
+            key=lambda user: (
+                user.display_name.casefold(),
+                user.user_id,
+            ),
+        )
+    )
     needle = (query or '').strip().casefold()
     filtered = tuple(
-        user for user in users
-        if not needle or any(
+        user
+        for user in users
+        if not needle
+        or any(
             needle in str(value or '').casefold()
             for value in (user.display_name, getattr(user, 'email', None), user.user_id)
         )
@@ -199,9 +218,14 @@ def render_position_list(
     _, catalog = context.service.catalog_for_edit()
     needle = (query or '').strip().casefold()
     positions = tuple(
-        position for position in sorted(catalog.positions, key=lambda item: (
-            item.label.casefold(), item.id,
-        ))
+        position
+        for position in sorted(
+            catalog.positions,
+            key=lambda item: (
+                item.label.casefold(),
+                item.id,
+            ),
+        )
         if not needle or needle in position.label.casefold() or needle in position.id.casefold()
     )
     page = paginate_items(positions, PageRequest(number, size))
@@ -245,8 +269,10 @@ def _assignment_row(
         state = _status_label(status)
         publication_exists = snapshot.current is not None
         assignment_label = (
-            'Sin asignación' if not publication_exists
-            else 'Con atributos' if any(
+            'Sin asignación'
+            if not publication_exists
+            else 'Con atributos'
+            if any(
                 value is not None
                 for value in (assignment.area_id, assignment.position_id, assignment.group_id)
             )
@@ -282,8 +308,11 @@ def _assignment_row(
                     html.Span(assignment_label, className='ada-operational-admin__badge'),
                     html.Span(state, className='ada-operational-admin__badge'),
                     html.Button(
-                        'Editar', id={'type': ids.ASSIGN_EDIT, 'index': user_id},
-                        n_clicks=0, type='button', className='btn btn-outline-secondary btn-sm',
+                        'Editar',
+                        id={'type': ids.ASSIGN_EDIT, 'index': user_id},
+                        n_clicks=0,
+                        type='button',
+                        className='btn btn-outline-secondary btn-sm',
                     ),
                 ],
                 className='ada-operational-admin__row-actions',
@@ -307,8 +336,11 @@ def _position_row(position: Position) -> object:
                         className='ada-operational-admin__badge',
                     ),
                     html.Button(
-                        'Editar', id={'type': ids.POSITION_EDIT, 'index': position.id},
-                        n_clicks=0, type='button', className='btn btn-outline-secondary btn-sm',
+                        'Editar',
+                        id={'type': ids.POSITION_EDIT, 'index': position.id},
+                        n_clicks=0,
+                        type='button',
+                        className='btn btn-outline-secondary btn-sm',
                     ),
                 ],
                 className='ada-operational-admin__row-actions',
@@ -356,14 +388,20 @@ def _paged_list(
                     html.Div(
                         [
                             html.Button(
-                                '‹', id=prev_id, n_clicks=0, type='button',
+                                '‹',
+                                id=prev_id,
+                                n_clicks=0,
+                                type='button',
                                 disabled=not page.has_previous,
                                 className='ada-operational-admin__pager-button',
                                 **{'aria-label': 'Página anterior'},
                             ),
                             *buttons,
                             html.Button(
-                                '›', id=next_id, n_clicks=0, type='button',
+                                '›',
+                                id=next_id,
+                                n_clicks=0,
+                                type='button',
                                 disabled=not page.has_next,
                                 className='ada-operational-admin__pager-button',
                                 **{'aria-label': 'Página siguiente'},
@@ -414,7 +452,8 @@ def _filter_bar(search_id: str, size_id: str, label: str) -> object:
                     _dropdown(
                         size_id,
                         [{'label': str(size), 'value': size} for size in ALLOWED_PAGE_SIZES],
-                        value=DEFAULT_PAGE_SIZE, clearable=False,
+                        value=DEFAULT_PAGE_SIZE,
+                        clearable=False,
                     ),
                 ],
                 className='ada-operational-admin__field ada-operational-admin__size',
@@ -426,25 +465,32 @@ def _filter_bar(search_id: str, size_id: str, label: str) -> object:
 
 def _assignment_modal(catalog: OperationalCatalog) -> object:
     return _modal(
-        ids.ASSIGN_MODAL, ids.ASSIGN_MODAL_BACKDROP, ids.ASSIGN_MODAL_CLOSE,
+        ids.ASSIGN_MODAL,
+        ids.ASSIGN_MODAL_BACKDROP,
+        ids.ASSIGN_MODAL_CLOSE,
         'Editar asignación',
         [
             html.P(id=ids.ASSIGN_SELECTED_NAME, className='ada-operational-admin__modal-copy'),
             html.Div(id=ids.ASSIGN_MODAL_STATUS, className='ada-operational-admin__modal-copy'),
             _field(
-                'Área', _dropdown(
+                'Área',
+                _dropdown(
                     ids.AREA,
                     [{'label': 'Mina', 'value': 'mina'}, {'label': 'Planta', 'value': 'planta'}],
                     placeholder='Sin información',
                 ),
             ),
             _field(
-                'Cargo', _dropdown(
-                    ids.POSITION, _position_options(catalog), placeholder='Sin información',
+                'Cargo',
+                _dropdown(
+                    ids.POSITION,
+                    _position_options(catalog),
+                    placeholder='Sin información',
                 ),
             ),
             _field(
-                'Grupo', _dropdown(
+                'Grupo',
+                _dropdown(
                     ids.GROUP,
                     [{'label': f'Grupo {number}', 'value': number} for number in range(1, 5)],
                     placeholder='Sin información',
@@ -454,16 +500,25 @@ def _assignment_modal(catalog: OperationalCatalog) -> object:
         ],
         [
             html.Button(
-                'Cancelar', id=ids.ASSIGN_MODAL_CANCEL, n_clicks=0,
-                type='button', className='btn btn-outline-secondary',
+                'Cancelar',
+                id=ids.ASSIGN_MODAL_CANCEL,
+                n_clicks=0,
+                type='button',
+                className='btn btn-outline-secondary',
             ),
             html.Button(
-                'Reintentar proyección', id=ids.ASSIGNMENT_REPROJECT,
-                type='button', n_clicks=0, className='btn btn-outline-secondary',
+                'Reintentar proyección',
+                id=ids.ASSIGNMENT_REPROJECT,
+                type='button',
+                n_clicks=0,
+                className='btn btn-outline-secondary',
             ),
             html.Button(
-                'Guardar asignación', id=ids.ASSIGNMENT_SAVE, n_clicks=0,
-                type='button', className='btn btn-primary',
+                'Guardar asignación',
+                id=ids.ASSIGNMENT_SAVE,
+                n_clicks=0,
+                type='button',
+                className='btn btn-primary',
             ),
         ],
     )
@@ -471,30 +526,53 @@ def _assignment_modal(catalog: OperationalCatalog) -> object:
 
 def _position_modal() -> object:
     return _modal(
-        ids.POSITION_MODAL, ids.POSITION_MODAL_BACKDROP, ids.POSITION_MODAL_CLOSE,
+        ids.POSITION_MODAL,
+        ids.POSITION_MODAL_BACKDROP,
+        ids.POSITION_MODAL_CLOSE,
         'Cargo',
         [
-            _field('Identificador', dcc.Input(
-                id=ids.POSITION_ID, type='text', maxLength=64, className='form-control',
-            )),
-            _field('Nombre del cargo', dcc.Input(
-                id=ids.POSITION_LABEL, type='text', maxLength=120, className='form-control',
-            )),
+            html.Div(
+                [
+                    html.Span('Identificador', className='ada-operational-admin__identifier-label'),
+                    html.Code(
+                        'Se generará al guardar',
+                        id=ids.POSITION_ID,
+                        className='ada-operational-admin__identifier-value',
+                    ),
+                ],
+                className='ada-operational-admin__identifier',
+            ),
+            _field(
+                'Nombre del cargo',
+                dcc.Input(
+                    id=ids.POSITION_LABEL,
+                    type='text',
+                    maxLength=120,
+                    className='form-control',
+                ),
+            ),
             dcc.Checklist(
                 id=ids.POSITION_ACTIVE,
                 options=[{'label': 'Activo', 'value': 'active'}],
                 value=['active'],
                 className='ada-operational-admin__check',
             ),
+            html.Div(id=ids.CATALOG_RESULT, role='status'),
         ],
         [
             html.Button(
-                'Cancelar', id=ids.POSITION_MODAL_CANCEL,
-                type='button', n_clicks=0, className='btn btn-outline-secondary',
+                'Cancelar',
+                id=ids.POSITION_MODAL_CANCEL,
+                type='button',
+                n_clicks=0,
+                className='btn btn-outline-secondary',
             ),
             html.Button(
-                'Guardar cargo', id=ids.CATALOG_SAVE, n_clicks=0,
-                type='button', className='btn btn-primary',
+                'Guardar cargo',
+                id=ids.CATALOG_SAVE,
+                n_clicks=0,
+                type='button',
+                className='btn btn-primary',
             ),
         ],
     )
@@ -511,7 +589,10 @@ def _modal(
     return html.Div(
         [
             html.Button(
-                '', id=backdrop_id, type='button', n_clicks=0,
+                '',
+                id=backdrop_id,
+                type='button',
+                n_clicks=0,
                 className='ada-operational-admin__modal-backdrop',
                 **{'aria-label': 'Cerrar formulario'},
             ),
@@ -521,7 +602,10 @@ def _modal(
                         [
                             html.H2(title),
                             html.Button(
-                                '×', id=close_id, type='button', n_clicks=0,
+                                '×',
+                                id=close_id,
+                                type='button',
+                                n_clicks=0,
                                 className='ada-operational-admin__close',
                                 **{'aria-label': 'Cerrar formulario'},
                             ),
@@ -543,7 +627,8 @@ def _modal(
 
 def _field(label: str, control: object) -> object:
     return html.Label(
-        [html.Span(label), control], className='ada-operational-admin__field',
+        [html.Span(label), control],
+        className='ada-operational-admin__field',
     )
 
 
@@ -572,6 +657,8 @@ def _dash_select_style() -> dict[str, str]:
         '--Dash-Fill-Primary-Hover': 'var(--atlanticus-ui-selection-soft)',
         '--Dash-Fill-Primary-Active': 'var(--atlanticus-ui-selection-soft)',
         '--Dash-Fill-Disabled': 'var(--atlanticus-ui-border)',
+        '--Dash-Shading-Strong': 'rgb(7 21 34 / 25%)',
+        '--Dash-Shading-Weak': 'rgb(7 21 34 / 12%)',
     }
 
 

@@ -71,3 +71,24 @@
 .ada-operational-admin__select input[type='checkbox'] {
     accent-color: var(--atlanticus-ui-secondary);
 }
+
+.ada-operational-admin .ada-operational-admin__select .dash-dropdown-focus-target,
+.ada-operational-admin .ada-operational-admin__select .dash-dropdown-search-container,
+.ada-operational-admin .ada-operational-admin__select .dash-dropdown-content {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.ada-operational-admin .ada-operational-admin__select .dash-dropdown:focus-within,
+.ada-operational-admin .ada-operational-admin__select .dash-dropdown-search-container:focus-within {
+    border-color: var(--atlanticus-ui-secondary) !important;
+    outline-color: var(--atlanticus-ui-secondary);
+    box-shadow: var(--atlanticus-ui-control-focus-ring) !important;
+}
+
+.ada-operational-admin .ada-operational-admin__select .dash-options-list-option:focus-visible,
+.ada-operational-admin .ada-operational-admin__select .dash-options-list-option:hover {
+    color: var(--atlanticus-ui-secondary) !important;
+    background: var(--atlanticus-ui-selection-soft) !important;
+}

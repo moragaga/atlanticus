@@ -104,22 +104,22 @@ def test_manager_saves_catalog_and_assignment_with_distinct_sources(tmp_path):
         ['active'],
         None,
     )
-    assert selected == 'engineering'
+    assert selected.startswith('position_')
     assert new_catalog_rev is not None
-    assert context.service.catalog_for_read().position('engineering') is not None
+    assert context.service.catalog_for_read().position(selected) is not None
 
     _, _, _, revision = app.registered['select_user'](USER_ID)
     updated_revision, _ = app.registered['save_assignment'](
         1,
         USER_ID,
         'mina',
-        'engineering',
+        selected,
         2,
         revision,
     )
     assert updated_revision is not None
     assert context.service.assignment_for_read(USER_ID).area_id == 'mina'
-    assert context.service.assignment_for_read(USER_ID).position_id == 'engineering'
+    assert context.service.assignment_for_read(USER_ID).position_id == selected
     assert context.service.assignment_for_read(USER_ID).group_id == 2
     assert context.service.project_current(CATALOG_SOURCE_KEY) is not None
     assert context.service.project_current(assignment_source_key(USER_ID)) is not None
@@ -133,7 +133,7 @@ def test_manager_detects_stale_assignment_and_catalog(tmp_path):
     assert result[0] is not None
     stale = app.registered['save_position'](2, None, 'second', 'Second', ['active'], None)
     assert stale[0] is no_update
-    assert context.service.catalog_for_read().position('second') is None
+    assert all(item.label != 'Second' for item in context.service.catalog_for_read().positions)
 
 
 def test_manager_callbacks_enforce_permission(tmp_path):

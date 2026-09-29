@@ -65,6 +65,7 @@ def make_context(tmp_path, count=23):
         projections=MemoryProjectionStore(),
         users=users,
     )
+
     def principal():
         return ManagerPrincipal(
             subject_id='operator',
@@ -116,9 +117,9 @@ def test_position_catalog_has_same_10_20_pagination_and_search(tmp_path):
     context, _users = make_context(tmp_path, 0)
     snapshot, _catalog = context.service.catalog_for_edit()
     context.service.publish_catalog(
-        OperationalCatalog(tuple(
-            Position(f'cargo-{number:02}', f'Cargo {number:02}') for number in range(23)
-        )),
+        OperationalCatalog(
+            tuple(Position(f'cargo-{number:02}', f'Cargo {number:02}') for number in range(23))
+        ),
         actor='operator',
         expected=snapshot,
     )
@@ -168,8 +169,10 @@ def test_source_publication_and_projection_are_distinguishable_in_user_list(tmp_
 
 def test_error_does_not_appear_as_missing_assignment(tmp_path):
     context, _users = make_context(tmp_path, 1)
+
     def unavailable(_user_id):
         raise RuntimeError('unavailable')
+
     context.service.assignment_for_edit = unavailable
     list_content, page = render_assignment_list(context, None, 1, 10)
     assert page.total_count == 1
