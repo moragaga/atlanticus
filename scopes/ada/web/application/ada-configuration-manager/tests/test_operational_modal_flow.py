@@ -35,7 +35,7 @@ def test_assignment_completion_handles_dash_serialization_without_closing_on_err
     error = {'props': {'className': 'ada-operational-admin__result--error'}}
     assert finish(error) == (no_update, no_update)
     saved = html.P('Guardado', className='ada-operational-admin__result--success')
-    assert finish(saved) == (modal_class(False), saved)
+    assert finish(saved) == (modal_class(False), None)
     warning = {
         'type': 'P',
         'props': {
@@ -58,3 +58,14 @@ def test_modal_open_clears_stale_feedback_but_cancel_does_not_commit(monkeypatch
     selected.triggered_id = ids.POSITION_MODAL_CANCEL
     result = app.callbacks['open_position']([], 0, 1, 0, 0, [])
     assert result == (no_update, modal_class(False), no_update)
+
+
+def test_catalog_success_does_not_duplicate_trace_alert_but_warning_survives():
+    app = FakeApp()
+    operational_callbacks.register_operational_callbacks(app, object())
+    reflect = app.callbacks['reflect_catalog_result']
+    success = html.P('Guardado', className='ada-operational-admin__result--success')
+    warning = html.P('Pendiente', className='ada-operational-admin__result--warning')
+    assert reflect(success) is None
+    assert reflect(warning) is warning
+    assert reflect(None) is None

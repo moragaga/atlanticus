@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import dash_bootstrap_components as dbc
+
 from ada.web.application.configuration_manager.operational import OperationalManagerContext
 from ada.web.application.configuration_manager.operational_layout import (
     build_operational_manager_layout,
@@ -71,6 +73,9 @@ def test_assignment_is_initial_and_catalog_remains_independent(tmp_path):
     assert _find(layout, ids.ASSIGN_LIST) is not None
     assert _find(layout, ids.ASSIGN_SIZE) is not None
     assert _find(layout, ids.POSITION_SIZE) is not None
+    assert isinstance(_find(layout, ids.POSITION_ACTIVE), dbc.Checklist)
+    cargo_modal = _find(layout, ids.POSITION_MODAL)
+    assert getattr(cargo_modal.children[1], 'aria-label') == 'Cargo'
     tabs = _find(layout, ids.ASSIGN_TAB).children, _find(layout, ids.POSITION_TAB).children
     assert tabs == ('Asignación', 'Datos operacionales')
     assert getattr(_find(layout, ids.ASSIGN_TAB), 'aria-selected') == 'true'

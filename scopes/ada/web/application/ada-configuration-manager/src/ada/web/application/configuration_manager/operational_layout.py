@@ -623,7 +623,7 @@ def _position_modal() -> object:
                     className='form-control',
                 ),
             ),
-            dcc.Checklist(
+            dbc.Checklist(
                 id=ids.POSITION_ACTIVE,
                 options=[{'label': 'Activo', 'value': 'active'}],
                 value=['active'],
@@ -661,7 +661,6 @@ def _modal(
     return html.Div(
         [
             html.Button(
-                '',
                 id=backdrop_id,
                 type='button',
                 n_clicks=0,
@@ -675,32 +674,27 @@ def _modal(
                             html.Div(
                                 [
                                     html.H2(title),
-                                    html.P(
-                                        'Revisa la información antes de guardar.'
-                                    ),
+                                    html.P('Revisa la información antes de guardar.'),
                                 ],
                                 className='ada-operational-admin__modal-heading',
                             ),
                             html.Button(
-                                '',
+                                '×',
                                 id=close_id,
                                 type='button',
                                 n_clicks=0,
-                                className='btn-close ada-operational-admin__close',
+                                className='ada-operational-admin__modal-close',
                                 **{'aria-label': 'Cerrar formulario'},
                             ),
                         ],
-                        className='modal-header ada-operational-admin__modal-head',
+                        className='ada-operational-admin__modal-header',
                     ),
-                    html.Div(body, className='modal-body ada-operational-admin__modal-body'),
-                    html.Footer(
-                        actions,
-                        className='modal-footer ada-operational-admin__modal-actions',
-                    ),
+                    html.Div(body, className='ada-operational-admin__modal-body'),
+                    html.Footer(actions, className='ada-operational-admin__modal-actions'),
                 ],
-                className='modal-content ada-operational-admin__modal-dialog',
+                className='ada-operational-admin__modal-card',
                 role='dialog',
-                **{'aria-modal': 'true'},
+                **{'aria-modal': 'true', 'aria-label': title},
             ),
         ],
         id=modal_id,

@@ -168,7 +168,7 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
         Input(ids.CATALOG_RESULT, 'children'),
     )
     def reflect_catalog_result(message):
-        return message
+        return None if _operation_result_kind(message) == 'success' else message
 
     @app.callback(
         Output(ids.USER, 'data'),
@@ -515,21 +515,10 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
         prevent_initial_call=True,
     )
     def finish_assignment_operation(message):
-        if isinstance(message, dict):
-            properties = message.get('props') or {}
-            style = properties.get('className', '')
-        else:
-            style = getattr(message, 'className', '')
-        completed = isinstance(style, str) and any(
-            token in style.split()
-            for token in (
-                'ada-operational-admin__result--success',
-                'ada-operational-admin__result--warning',
-            )
-        )
-        if not completed:
+        kind = _operation_result_kind(message)
+        if kind not in {'success', 'warning'}:
             return no_update, no_update
-        return modal_class(False), message
+        return modal_class(False), message if kind == 'warning' else None
 
     @app.callback(
         Output(ids.CATALOG_RESULT, 'children', allow_duplicate=True),
@@ -561,6 +550,20 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
             )
         except Exception:
             return _message('No fue posible proyectar la asignación.', error=True)
+
+
+def _operation_result_kind(message: object) -> str | None:
+    if isinstance(message, dict):
+        style = (message.get('props') or {}).get('className', '')
+    else:
+        style = getattr(message, 'className', '')
+    if not isinstance(style, str):
+        return None
+    tokens = set(style.split())
+    for kind in ('success', 'warning', 'error'):
+        if f'ada-operational-admin__result--{kind}' in tokens:
+            return kind
+    return None
 
 
 def _next_page(
