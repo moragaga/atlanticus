@@ -36,6 +36,7 @@ system-profile = "base"
 ada-command-center-alarms-domain = { path = "../../../domain/alarms", editable = true }
 ada-command-center-alarms-core = { workspace = true }
 ada-command-center-alarms-materialization = { workspace = true }
+ada-command-center-alarms-materialization-process = { workspace = true }
 ada-command-center-alarms-persistence = { workspace = true }
 ada-command-center-tools-domain = { path = "../../../domain/tools", editable = true }
 ada-web-tools = { path = "../../../../ada/web/tools/core", editable = true }
@@ -56,7 +57,11 @@ atlanticus-operational-data-sources = { path = "../../../../operational-data/sou
 atlanticus-operational-data-calendar = { path = "../../../../operational-data/calendar", editable = true }
 
 [dependency-groups]
-dev = ["pytest==9.1.1", "ruff==0.15.22"]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.15.22",
+    "ada-command-center-alarms-materialization-process==1.0.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
