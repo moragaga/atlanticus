@@ -234,6 +234,8 @@ def build_configuration_manager_surface(
                         service=dependencies.operational_service,
                         promoted_users=dependencies.operational_users,
                         principal=dependencies.principal_provider,
+                        source_name=dependencies.tools_source_name,
+                        projection_name=dependencies.tools_projection_name,
                     ),
                 ),)
                 if dependencies.operational_service is not None

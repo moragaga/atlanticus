@@ -1,5 +1,3 @@
-# API local de Operational Identification para la composición ADA de Manager.
-# No se modifica el framework generic ni el contrato de persistencia existente.
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -19,6 +17,7 @@ from atlanticus.web.modules import WebModule
 from atlanticus.web.users.models import UserRecord
 
 OPERATIONAL_MANAGER_ACCESS_KEY = 'operational.manage'
+# Los estilos y assets son propiedad exclusiva de esta capacidad de ADA.
 OPERATIONAL_MANAGER_ASSETS = AssetLayer(
     name='ada_configuration_manager_operational',
     load_order=740,
@@ -28,17 +27,19 @@ OPERATIONAL_MANAGER_ASSETS = AssetLayer(
 
 
 @dataclass(frozen=True, slots=True)
-# Reúne el servicio de dominio, la lista de promovidos y la autoridad del principal.
 class OperationalManagerContext:
     service: OperationalIdentificationService
     promoted_users: Callable[[], tuple[UserRecord, ...]]
     principal: Callable[[], ManagerPrincipal]
+    # Nombres de los providers resueltos por la composición anfitriona.
+    source_name: str = 'Source'
+    projection_name: str = 'Projection'
 
     def can_manage(self) -> bool:
         return OPERATIONAL_MANAGER_ACCESS_KEY in self.principal().access_keys
 
 
-# Compone la página dentro de ManagerEntry; el CSS sigue perteneciendo a ADA.
+# El entry se integra en el registro normal de Manager y exige la clave funcional.
 def create_operational_manager_entry(context: OperationalManagerContext) -> ManagerEntry:
     return ManagerEntry(
         key='operational-identification',

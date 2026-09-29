@@ -7,6 +7,8 @@ from dash import ALL, Input, Output, State, ctx, html, no_update
 from ada.web.application.configuration_manager import operational_ids as ids
 from ada.web.application.configuration_manager.operational_layout import (
     _panel_class,
+    _surface_class,
+    _surface_tab_class,
     _position_options,
     _release_label,
     _revision,
@@ -30,8 +32,41 @@ if TYPE_CHECKING:
     from ada.web.application.configuration_manager.operational import OperationalManagerContext
 
 
-# Los callbacks conservan autorización del lado servidor para toda escritura.
 def register_operational_callbacks(app: object, context: OperationalManagerContext) -> None:
+    @app.callback(
+        Output(ids.SURFACE, 'data'),
+        Input(ids.CONFIG_TAB, 'n_clicks'),
+        Input(ids.TRACE_TAB, 'n_clicks'),
+        prevent_initial_call=True,
+    )
+    # Alterna las superficies administrativas sin volver a publicar configuración.
+    def change_surface(_configuration, _trace):
+        if ctx.triggered_id == ids.CONFIG_TAB and _configuration:
+            return 'configuration'
+        if ctx.triggered_id == ids.TRACE_TAB and _trace:
+            return 'trace'
+        return no_update
+
+    @app.callback(
+        Output(ids.CONFIG_TAB, 'className'),
+        Output(ids.TRACE_TAB, 'className'),
+        Output(ids.CONFIG_PANEL, 'className'),
+        Output(ids.TRACE_PANEL, 'className'),
+        Output(ids.CONFIG_TAB, 'aria-selected'),
+        Output(ids.TRACE_TAB, 'aria-selected'),
+        Input(ids.SURFACE, 'data'),
+    )
+    def display_surface(surface):
+        configuration = surface != 'trace'
+        return (
+            _surface_tab_class(configuration),
+            _surface_tab_class(not configuration),
+            _surface_class(configuration),
+            _surface_class(not configuration),
+            'true' if configuration else 'false',
+            'false' if configuration else 'true',
+        )
+
     @app.callback(
         Output(ids.VIEW, 'data'),
         Input(ids.ASSIGN_TAB, 'n_clicks'),
@@ -122,6 +157,7 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
         Input(ids.ASSIGN_SIZE, 'value'),
         Input(ids.ASSIGNMENT_RESULT, 'children'),
     )
+    # La lista se regenera con consultas limitadas a su página y el estado Source/Projection.
     def refresh_assignments(number, query, size, _message):
         if not context.can_manage():
             return html.P('Acceso denegado.'), '', 1
@@ -155,6 +191,7 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
         Output(ids.CATALOG_METADATA, 'children'),
         Input(ids.CATALOG_RESULT, 'children'),
     )
+    # La trazabilidad siempre se calcula desde el servicio real tras guardar o reproyectar.
     def refresh_catalog_metadata(_result):
         if not context.can_manage():
             return html.P('Acceso denegado.')
@@ -163,6 +200,14 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
             return catalog_metadata(context, snapshot)
         except Exception:
             return html.P('No fue posible verificar Source y Projection.')
+
+    # El resultado del catálogo también se informa en su superficie de trazabilidad.
+    @app.callback(
+        Output(ids.TRACE_FEEDBACK, 'children'),
+        Input(ids.CATALOG_RESULT, 'children'),
+    )
+    def reflect_catalog_result(message):
+        return message
 
     @app.callback(
         Output(ids.USER, 'data'),
@@ -311,7 +356,6 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
         Input(ids.POSITION_SELECT, 'value'),
         Input(ids.POSITION_MODAL, 'className'),
     )
-    # El identificador de un cargo publicado se muestra, pero nunca se edita.
     def select_position(position_id, _modal_state=None):
         if not context.can_manage():
             return 'No disponible', '', []
@@ -340,7 +384,6 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
         State(ids.CATALOG_REVISION, 'data'),
         prevent_initial_call=True,
     )
-    # Crear delega la identidad al servicio; editar retiene la identidad persistida.
     def save_position(clicks, selected, position_id, label, active, revision):
         if not clicks or not context.can_manage():
             return no_update, no_update, no_update, no_update, no_update

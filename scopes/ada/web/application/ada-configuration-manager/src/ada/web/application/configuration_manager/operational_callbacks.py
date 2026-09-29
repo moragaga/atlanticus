@@ -7,6 +7,8 @@ from dash import ALL, Input, Output, State, ctx, html, no_update
 from ada.web.application.configuration_manager import operational_ids as ids
 from ada.web.application.configuration_manager.operational_layout import (
     _panel_class,
+    _surface_class,
+    _surface_tab_class,
     _position_options,
     _release_label,
     _revision,
@@ -31,6 +33,39 @@ if TYPE_CHECKING:
 
 
 def register_operational_callbacks(app: object, context: OperationalManagerContext) -> None:
+    @app.callback(
+        Output(ids.SURFACE, 'data'),
+        Input(ids.CONFIG_TAB, 'n_clicks'),
+        Input(ids.TRACE_TAB, 'n_clicks'),
+        prevent_initial_call=True,
+    )
+    def change_surface(_configuration, _trace):
+        if ctx.triggered_id == ids.CONFIG_TAB and _configuration:
+            return 'configuration'
+        if ctx.triggered_id == ids.TRACE_TAB and _trace:
+            return 'trace'
+        return no_update
+
+    @app.callback(
+        Output(ids.CONFIG_TAB, 'className'),
+        Output(ids.TRACE_TAB, 'className'),
+        Output(ids.CONFIG_PANEL, 'className'),
+        Output(ids.TRACE_PANEL, 'className'),
+        Output(ids.CONFIG_TAB, 'aria-selected'),
+        Output(ids.TRACE_TAB, 'aria-selected'),
+        Input(ids.SURFACE, 'data'),
+    )
+    def display_surface(surface):
+        configuration = surface != 'trace'
+        return (
+            _surface_tab_class(configuration),
+            _surface_tab_class(not configuration),
+            _surface_class(configuration),
+            _surface_class(not configuration),
+            'true' if configuration else 'false',
+            'false' if configuration else 'true',
+        )
+
     @app.callback(
         Output(ids.VIEW, 'data'),
         Input(ids.ASSIGN_TAB, 'n_clicks'),
@@ -162,6 +197,13 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
             return catalog_metadata(context, snapshot)
         except Exception:
             return html.P('No fue posible verificar Source y Projection.')
+
+    @app.callback(
+        Output(ids.TRACE_FEEDBACK, 'children'),
+        Input(ids.CATALOG_RESULT, 'children'),
+    )
+    def reflect_catalog_result(message):
+        return message
 
     @app.callback(
         Output(ids.USER, 'data'),

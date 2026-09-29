@@ -1,7 +1,6 @@
-# Un espacio de identificadores exclusivo evita colisiones con Users, Profiles y Navigation.
-# Separar IDs de layout y callbacks evita un ciclo de importación entre ambas superficies.
 from __future__ import annotations
 
+# Todos los callbacks de esta pantalla usan IDs aislados del resto del Manager.
 _PREFIX = 'ada-operational-manager'
 
 USER = f'{_PREFIX}-user'
@@ -59,3 +58,12 @@ POSITION_MODAL_BACKDROP = f'{_PREFIX}-position-backdrop'
 POSITION_MODAL_CANCEL = f'{_PREFIX}-position-cancel'
 POSITION_MODAL_CLOSE = f'{_PREFIX}-position-close'
 CATALOG_METADATA = f'{_PREFIX}-catalog-metadata'
+
+SURFACE = f'{_PREFIX}-surface'
+CONFIG_TAB = f'{_PREFIX}-config-tab'
+TRACE_TAB = f'{_PREFIX}-trace-tab'
+CONFIG_PANEL = f'{_PREFIX}-config-panel'
+TRACE_PANEL = f'{_PREFIX}-trace-panel'
+
+# Identificadores exclusivos de las pestañas externas de Manager.
+TRACE_FEEDBACK = f'{_PREFIX}-trace-feedback'

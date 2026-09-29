@@ -500,3 +500,239 @@ body:has(.ada-operational-admin__modal--open) { overflow: hidden; }
     color: var(--atlanticus-ui-danger);
     background: var(--atlanticus-ui-danger-soft);
 }
+
+
+.ada-operational-admin,
+.ada-operational-admin > *,
+.ada-operational-admin__surface,
+.ada-operational-admin__body,
+.ada-operational-admin__panel,
+.ada-operational-admin__list-shell,
+.ada-operational-admin__list-view,
+.ada-operational-admin__paged-list,
+.ada-operational-admin__pagination,
+.ada-operational-admin__rows,
+.ada-operational-admin__row-copy {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.ada-operational-admin__primary-tabs {
+    display: flex;
+    gap: .75rem;
+    min-width: 0;
+    margin: 0;
+    border-bottom: 1px solid var(--atlanticus-ui-border);
+}
+
+.ada-operational-admin__primary-tab {
+    padding: .65rem .2rem;
+    color: var(--atlanticus-ui-text-muted);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    cursor: pointer;
+    font: inherit;
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+.ada-operational-admin__primary-tab:hover,
+.ada-operational-admin__primary-tab:focus-visible,
+.ada-operational-admin__primary-tab--active {
+    color: var(--atlanticus-ui-primary-hover);
+    border-bottom-color: var(--atlanticus-ui-accent);
+    outline: 0;
+}
+
+.ada-operational-admin__surface { display: none; }
+.ada-operational-admin__surface--active {
+    display: grid;
+    min-width: 0;
+    gap: .9rem;
+}
+
+.ada-operational-admin__providers {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .55rem .75rem;
+    min-width: 0;
+    padding: .72rem 1rem;
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .85rem;
+    box-shadow: 0 4px 16px rgb(25 30 38 / 3.5%);
+}
+
+.ada-operational-admin__provider {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: .4rem;
+    min-width: 0;
+    padding: .38rem .62rem;
+    color: var(--atlanticus-ui-primary-hover);
+    background: var(--atlanticus-ui-background);
+    border: 1px solid rgb(201 162 75 / 30%);
+    border-radius: 999px;
+    font-size: .7rem;
+}
+
+.ada-operational-admin__provider span { color: var(--atlanticus-ui-text-muted); }
+
+.ada-operational-admin__tabs { padding-inline: 0; }
+
+.ada-operational-admin__filters {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    margin-block: .5rem .75rem;
+}
+
+.ada-operational-admin__list-shell {
+    position: relative;
+    display: grid;
+}
+
+.ada-operational-admin__paged-list[data-page-size='10'] .ada-operational-admin__rows {
+    min-height: 35rem;
+}
+
+.ada-operational-admin__paged-list[data-page-size='20'] .ada-operational-admin__rows {
+    min-height: 70rem;
+}
+
+.ada-operational-admin__rows { width: 100%; }
+
+.ada-operational-admin__row { box-sizing: border-box; max-width: 100%; }
+.ada-operational-admin__row-copy { overflow-wrap: anywhere; }
+.ada-operational-admin__row-actions { min-width: 0; }
+
+.ada-operational-admin__pagination {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    justify-content: initial;
+    align-items: center;
+    gap: .75rem;
+    padding-top: .15rem;
+    padding-right: 9rem;
+}
+
+.ada-operational-admin__page-summary {
+    justify-self: start;
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .82rem;
+    font-weight: 500;
+}
+
+.ada-operational-admin__pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    min-width: 0;
+    max-width: 100%;
+    gap: .3rem;
+}
+
+.ada-operational-admin__pager-button {
+    padding: 0 .4rem;
+    font-size: .82rem;
+    font-weight: 600;
+}
+
+.ada-operational-admin__pager-button:disabled:not(.ada-operational-admin__pager-button--active) {
+    opacity: .45;
+}
+
+.ada-operational-admin__pager-button--active,
+.ada-operational-admin__pager-button--active:disabled {
+    color: var(--atlanticus-ui-surface);
+    background: var(--atlanticus-ui-primary-hover);
+    border-color: var(--atlanticus-ui-primary-hover);
+    opacity: 1;
+}
+
+.ada-operational-admin__footer-size {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .45rem;
+    width: 8.4rem;
+    min-width: 0;
+    margin: 0;
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .73rem;
+    font-weight: 600;
+}
+
+.ada-operational-admin__footer-size > .ada-operational-admin__select {
+    width: 5rem;
+    min-width: 0;
+}
+
+.ada-operational-admin__surface#ada-operational-manager-trace-panel {
+    align-content: start;
+    padding: 1rem;
+    background: var(--atlanticus-ui-surface);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .85rem;
+}
+
+.ada-operational-admin__trace-copy {
+    margin: 0;
+    color: var(--atlanticus-ui-text-muted);
+    font-size: .75rem;
+    line-height: 1.45;
+}
+
+.ada-operational-admin__trace-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .65rem;
+}
+
+.ada-operational-admin__trace-panel .ada-operational-admin__metadata,
+.ada-operational-admin__surface--active .ada-operational-admin__metadata {
+    box-shadow: none;
+}
+
+@media (max-width: 58rem) {
+    .ada-operational-admin__pagination {
+        grid-template-columns: 1fr;
+        justify-items: center;
+        padding-right: 0;
+        padding-bottom: 0;
+    }
+    .ada-operational-admin__page-summary { justify-self: center; }
+    .ada-operational-admin__footer-size {
+        position: static;
+        justify-self: end;
+        margin-top: .35rem;
+    }
+}
+
+@media (max-width: 48rem) {
+    .ada-operational-admin__paged-list[data-page-size='10'] .ada-operational-admin__rows,
+    .ada-operational-admin__paged-list[data-page-size='20'] .ada-operational-admin__rows {
+        min-height: 0;
+    }
+    .ada-operational-admin__provider { border-radius: .65rem; }
+}
+
+.ada-operational-admin__trace-feedback:empty { display: none; }
+.ada-operational-admin__trace-feedback:not(:empty) {
+    padding: .6rem .75rem;
+    color: var(--atlanticus-ui-text);
+    background: var(--atlanticus-ui-surface-muted);
+    border: 1px solid var(--atlanticus-ui-border);
+    border-radius: .65rem;
+    font-size: .75rem;
+}

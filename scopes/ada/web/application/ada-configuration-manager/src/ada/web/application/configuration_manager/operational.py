@@ -30,6 +30,8 @@ class OperationalManagerContext:
     service: OperationalIdentificationService
     promoted_users: Callable[[], tuple[UserRecord, ...]]
     principal: Callable[[], ManagerPrincipal]
+    source_name: str = 'Source'
+    projection_name: str = 'Projection'
 
     def can_manage(self) -> bool:
         return OPERATIONAL_MANAGER_ACCESS_KEY in self.principal().access_keys
