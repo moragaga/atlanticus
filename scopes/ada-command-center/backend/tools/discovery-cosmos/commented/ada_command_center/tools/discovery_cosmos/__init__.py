@@ -1,3 +1,4 @@
+# API publica del descubridor. Exponemos servicios sin duplicar responsabilidades.
 from ada_command_center.tools.discovery_cosmos.connections import (
     TOOL_COSMOS_PREFIX,
     ToolCosmosConnectionConfigurationError,
@@ -5,9 +6,6 @@ from ada_command_center.tools.discovery_cosmos.connections import (
     ToolCosmosConnectionDeclarations,
     open_tool_catalog_discovery,
 )
-# API pública del adapter Cosmos para descubrir Tool Projection.
-# El Tool Catalog genérico sigue libre de dependencias físicas adicionales.
-
 from ada_command_center.tools.discovery_cosmos.discovery import (
     DiscoveredTool,
     ToolCatalogConnectionStatus,
@@ -16,6 +14,14 @@ from ada_command_center.tools.discovery_cosmos.discovery import (
     ToolCatalogDiscoveryIssue,
     ToolCatalogDiscoveryReport,
     ToolConnectionInspection,
+)
+from ada_command_center.tools.discovery_cosmos.manager import (
+    AdoptedToolCatalog,
+    ToolCandidateSummary,
+    ToolCatalogManagerConflictError,
+    ToolCatalogManagerService,
+    ToolCatalogReview,
+    ToolConnectionSummary,
 )
 
 __all__ = [
@@ -31,4 +37,10 @@ __all__ = [
     'ToolCatalogDiscoveryIssue',
     'ToolCatalogDiscoveryReport',
     'ToolConnectionInspection',
+    'AdoptedToolCatalog',
+    'ToolCandidateSummary',
+    'ToolCatalogManagerConflictError',
+    'ToolCatalogManagerService',
+    'ToolCatalogReview',
+    'ToolConnectionSummary',
 ]

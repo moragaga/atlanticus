@@ -1,9 +1,11 @@
-# La composición monta un único módulo real dentro de la superficie Manager genérica.
-# El SourceKey y el access key pertenecen al host temporal y no cambian AlarmConfiguration.
+# La pantalla de consolidación solo aparece cuando se inyecta el servicio real.
 from __future__ import annotations
 
 from ada_command_center.web.alarms.configuration.manager import (
     compose_alarm_configuration_manager,
+)
+from ada_command_center.web.application.configuration_manager.catalog_manager import (
+    create_tool_catalog_manager_entry,
 )
 from ada_command_center.web.application.configuration_manager.dependencies import (
     ConfigurationManagerDependencies,
@@ -33,6 +35,14 @@ def build_configuration_manager_surface(
         source_name=dependencies.source_name,
         projection_name=dependencies.projection_name,
     )
+    entry = (
+        create_tool_catalog_manager_entry(
+            manager=dependencies.tool_catalog_manager,
+            principal_provider=dependencies.principal_provider,
+        )
+        if dependencies.tool_catalog_manager is not None
+        else None
+    )
     return ManagerSurfaceDefinition(
         principal_provider=dependencies.principal_provider,
         groups=(
@@ -43,6 +53,7 @@ def build_configuration_manager_surface(
             ),
         ),
         modules=(alarm_configuration.module,),
+        entries=(entry,) if entry is not None else (),
         route_prefix=MANAGER_ROUTE_PREFIX,
         web_modules=(create_bootstrap_web_module(),),
     )

@@ -1,155 +1,211 @@
-from ada_command_center.domain.alarms import AlarmConfiguration
+from __future__ import annotations
+
+from datetime import UTC, datetime
+
+import pytest
+
+from ada.web.tools.enums import ToolConfigurationKind, ToolScope
+from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
+from ada_command_center.domain.alarms import AlarmConfiguration, AlarmConfigurationSnapshot
+from ada_command_center.domain.tools import ToolDependencyManifest
+from ada_command_center.tools.catalog import (
+    BlobToolCatalogStore,
+    BlobToolCatalogStoreSettings,
+    ToolCatalogEntry,
+    create_tool_catalog_snapshot,
+)
 from ada_command_center.web.alarms.configuration.source_release import (
     AlarmConfigurationSourceService,
 )
-from ada_command_center.web.application.configuration_manager import (
-    ALARM_CONFIGURATION_MANAGER_ACCESS_KEY,
-    ALARM_CONFIGURATION_SOURCE_KEY,
+from ada_command_center.web.application.configuration_manager import ALARM_CONFIGURATION_SOURCE_KEY
+from ada_command_center.web.application.configuration_manager.catalog_configuration import (
+    COMMAND_CENTER_CATALOG_BLOB_NAME,
+    ManagerConfigurationReader,
 )
 from ada_command_center.web.application.configuration_manager.local_runtime import (
-    create_local_configuration_manager_dependencies,
-    create_local_tool_catalog_snapshot,
-    create_sample_alarm_configuration,
+    open_local_configuration_manager,
 )
-from atlanticus.web.manager import ManagerWorkspace
+from atlanticus.connectivity.storage import StorageBlobNotFoundError, StorageClient
+from atlanticus.web.manager import ManagerPrincipal
+from atlanticus.web.source.models import SourceReleaseId
 
 
-def test_local_runtime_seeds_source_projection_and_tool_references(tmp_path) -> None:
-    dependencies = create_local_configuration_manager_dependencies(source_root=tmp_path)
+class StorageStub(StorageClient):
+    def __init__(self, *, settings, blobs):
+        self.settings = settings
+        self.blobs = blobs
+        self.closed = False
+
+    def download(self, *, container_name, blob_name):
+        try:
+            return self.blobs[(container_name, blob_name)]
+        except KeyError:
+            raise StorageBlobNotFoundError('Not found') from None
+
+    def upload(self, *, container_name, blob_name, data, **_kwargs):
+        self.blobs[(container_name, blob_name)] = bytes(data)
+
+    def close(self):
+        self.closed = True
+
+
+def _reader(tmp_path, *, environment='local'):
+    return ManagerConfigurationReader(
+        root=tmp_path,
+        environ_supplier=lambda: {
+            'ATLANTICUS_ENVIRONMENT': environment,
+            'ADA_MANAGER_PERSISTENCE_PROVIDER': 'local',
+            'ADA_COMMAND_CENTER_STORAGE_CONNECTION_STRING': 'UseDevelopmentStorage=true',
+            'ADA_COMMAND_CENTER_STORAGE_CONTAINER_NAME': 'configurations',
+        },
+    )
+
+
+def _storage(monkeypatch):
+    from ada_command_center.web.application.configuration_manager import local_runtime
+
+    blobs = {}
+    instances = []
+
+    def factory(*, settings):
+        storage = StorageStub(settings=settings, blobs=blobs)
+        instances.append(storage)
+        return storage
+
+    monkeypatch.setattr(local_runtime, 'StorageClient', factory)
+    return blobs, instances
+
+
+def _principal():
+    return ManagerPrincipal(
+        subject_id='local',
+        display_name='Administrador local',
+        access_keys=('alarms.manage', 'tools.manage'),
+        is_local=True,
+    )
+
+
+def _manual_catalog():
+    structure = ToolStructure(
+        tool_key='mine_tool',
+        kind=ToolConfigurationKind.PROCESS,
+        operational_scope=ToolScope.PLANT,
+        components=(
+            ToolComponent(
+                key='process',
+                display_name='Process',
+                subcomponents=(ToolSubcomponent(key='line', display_name='Line'),),
+            ),
+        ),
+    )
+    return create_tool_catalog_snapshot(
+        (
+            ToolCatalogEntry(
+                tool_key='mine_tool',
+                display_name='Mine Tool',
+                kind=ToolConfigurationKind.PROCESS,
+                source_release_id=SourceReleaseId('manual-release'),
+                structure=structure,
+            ),
+        ),
+        generated_at_utc=datetime(2026, 9, 29, tzinfo=UTC),
+    )
+
+
+def _manual_alarm_release(dependencies, revision):
     source = AlarmConfigurationSourceService(
         source=dependencies.source_store,
         source_key=ALARM_CONFIGURATION_SOURCE_KEY,
     )
-
-    release = source.load_current()
-    projection = dependencies.projection_store.get_active(ALARM_CONFIGURATION_SOURCE_KEY)
-    catalog = dependencies.tool_reference_reader.load()
-
-    assert release is not None
-    assert catalog is not None
-    assert release.snapshot.configuration == create_sample_alarm_configuration()
-    assert release.snapshot.confirmed_tool_catalog_revision == catalog.catalog_revision
-    assert tuple(tool.tool_key for tool in release.snapshot.tool_dependencies.tools) == (
-        'integrated_operations',
-        'process_control',
+    observed = source.get_current()
+    snapshot = AlarmConfigurationSnapshot(
+        configuration=AlarmConfiguration(rules=(), messages=()),
+        tool_dependencies=ToolDependencyManifest(
+            confirmed_tool_catalog_revision=revision,
+            tools=(),
+        ),
     )
-    integrated = release.snapshot.tool_dependencies.get('integrated_operations')
-    assert integrated is not None
-    assert integrated.display_name == 'Integrated Operations'
-    assert integrated.structure.component('mine_primary').display_name == 'Mine Primary'
-    assert release.published_by == 'local-bootstrap'
-    assert projection is not None
-    assert projection.payload == release.snapshot
-    assert tuple(tool.tool_key for tool in catalog.tools) == (
-        'integrated_operations',
-        'process_control',
+    source.publish_snapshot(
+        snapshot,
+        published_by='manual-test',
+        expected_concurrency_token=observed.concurrency_token,
+        basis_release=observed.current.release_ref if observed.current else None,
     )
-    visible = catalog.subcomponents('integrated_operations', 'mine_secondary')
-    assert ('mine_primary', 'crusher') in tuple(
-        (item.owner_component_key, item.subcomponent_key) for item in visible
-    )
+    return snapshot
 
 
-def test_local_runtime_does_not_reseed_existing_source(tmp_path) -> None:
-    first = create_local_configuration_manager_dependencies(source_root=tmp_path)
-    source = AlarmConfigurationSourceService(
-        source=first.source_store,
-        source_key=ALARM_CONFIGURATION_SOURCE_KEY,
-    )
-    initial = source.get_current()
-
-    second = create_local_configuration_manager_dependencies(source_root=tmp_path)
-    repeated = AlarmConfigurationSourceService(
-        source=second.source_store,
-        source_key=ALARM_CONFIGURATION_SOURCE_KEY,
-    ).get_current()
-
-    assert repeated.current == initial.current
-
-
-def test_local_runtime_can_start_without_sample_configuration(tmp_path) -> None:
-    dependencies = create_local_configuration_manager_dependencies(
-        source_root=tmp_path,
-        seed_sample_configuration=False,
-    )
-    source = AlarmConfigurationSourceService(
-        source=dependencies.source_store,
-        source_key=ALARM_CONFIGURATION_SOURCE_KEY,
-    )
-
-    assert source.get_current().current is None
-    assert dependencies.projection_store.get_active(ALARM_CONFIGURATION_SOURCE_KEY) is None
+def test_local_starts_empty_without_examples_and_closes_storage(tmp_path, monkeypatch) -> None:
+    blobs, clients = _storage(monkeypatch)
+    with open_local_configuration_manager(
+        reader=_reader(tmp_path),
+        principal_provider=_principal,
+        base_root=tmp_path,
+    ) as dependencies:
+        assert dependencies.tool_reference_reader.load() is None
+        assert dependencies.projection_store.get_active(ALARM_CONFIGURATION_SOURCE_KEY) is None
+        source = AlarmConfigurationSourceService(
+            source=dependencies.source_store,
+            source_key=ALARM_CONFIGURATION_SOURCE_KEY,
+        )
+        assert source.load_current() is None
+        assert dependencies.tool_catalog_manager is not None
+        assert dependencies.principal_provider().access_keys == ('alarms.manage', 'tools.manage')
+    assert not blobs
+    assert len(clients) == 1 and clients[0].closed
 
 
-def test_local_runtime_grants_only_alarm_configuration_capability(tmp_path) -> None:
-    dependencies = create_local_configuration_manager_dependencies(source_root=tmp_path)
-    principal = dependencies.principal_provider()
-
-    assert principal.is_local is True
-    assert principal.profile_keys == ()
-    assert principal.access_keys == (ALARM_CONFIGURATION_MANAGER_ACCESS_KEY,)
-
-
-def test_sample_configuration_exercises_engine_facing_attributes() -> None:
-    configuration = create_sample_alarm_configuration()
-    primary = configuration.rules[1]
-
-    assert primary.evaluator_key == 'local.threshold'
-    assert primary.parameters == {
-        'threshold_tph': 1200.0,
-        'window': '15m',
-        'quality_required': True,
-    }
-    assert primary.reappearance.after_minutes == 15
-    assert primary.reappearance.special_conditions == (configuration.rules[0].identity,)
-    assert primary.default_deactivation.enabled is True
-    assert primary.default_deactivation.approval_required is True
-    assert primary.escalation.origin_tool_key == 'integrated_operations'
-    assert primary.escalation.steps[0].target_tool_key == 'process_control'
-    assert primary.escalation.steps[0].wait_minutes_from_previous_step == 10
-    assert tuple(target.tool_key for target in primary.visual_targets) == (
-        'integrated_operations',
-        'process_control',
-    )
-
-
-def test_local_tool_catalog_contains_integrated_and_process_topology() -> None:
-    snapshot = create_local_tool_catalog_snapshot()
-
-    integrated = snapshot.get('integrated_operations')
-    process = snapshot.get('process_control')
-
-    assert integrated is not None
-    assert process is not None
-    assert integrated.structure.alarm_baseline_component_keys == (
-        'mine_primary',
-        'mine_secondary',
-    )
-    assert process.structure.alarm_baseline_component_keys == ('plant_process',)
+def test_manually_confirmed_catalog_is_the_only_local_tool_source(tmp_path, monkeypatch) -> None:
+    _blobs, clients = _storage(monkeypatch)
+    with open_local_configuration_manager(
+        reader=_reader(tmp_path),
+        principal_provider=_principal,
+        base_root=tmp_path,
+    ) as dependencies:
+        store = BlobToolCatalogStore(
+            storage=clients[-1],
+            settings=BlobToolCatalogStoreSettings(
+                container_name='configurations',
+                blob_name=COMMAND_CENTER_CATALOG_BLOB_NAME,
+            ),
+        )
+        snapshot = _manual_catalog()
+        store.replace_current(snapshot)
+        loaded = dependencies.tool_reference_reader.load()
+        assert loaded is not None
+        assert loaded.catalog_revision == snapshot.revision
+        assert tuple(tool.tool_key for tool in loaded.tools) == ('mine_tool',)
+        source = AlarmConfigurationSourceService(
+            source=dependencies.source_store,
+            source_key=ALARM_CONFIGURATION_SOURCE_KEY,
+        )
+        assert source.load_current() is None
+        _manual_alarm_release(dependencies, snapshot.revision)
+        assert dependencies.projection_store.get_active(ALARM_CONFIGURATION_SOURCE_KEY) is None
+    with open_local_configuration_manager(
+        reader=_reader(tmp_path),
+        principal_provider=_principal,
+        base_root=tmp_path,
+    ) as restarted:
+        assert restarted.tool_reference_reader.load().catalog_revision == snapshot.revision
+        source = AlarmConfigurationSourceService(
+            source=restarted.source_store,
+            source_key=ALARM_CONFIGURATION_SOURCE_KEY,
+        )
+        assert source.load_current() is not None
+        assert restarted.projection_store.get_active(ALARM_CONFIGURATION_SOURCE_KEY) is None
+    assert (tmp_path / 'conciencia_situacional' / 'command-center').exists()
 
 
-def test_sample_configuration_survives_browser_integral_number_workspace_round_trip(
-    tmp_path,
+def test_local_provider_rejects_production_even_with_storage_configuration(
+    tmp_path, monkeypatch
 ) -> None:
-    dependencies = create_local_configuration_manager_dependencies(source_root=tmp_path)
-    source = AlarmConfigurationSourceService(
-        source=dependencies.source_store,
-        source_key=ALARM_CONFIGURATION_SOURCE_KEY,
-    )
-    release = source.load_current()
-
-    assert release is not None
-    workspace = ManagerWorkspace.create(
-        owner_subject_id='local',
-        payload=release.snapshot.configuration.to_document(),
-        base=source.get_current(),
-    )
-    document = workspace.to_document()
-    document['payload']['rules'][1]['parameters']['threshold_tph'] = 1200
-
-    restored = ManagerWorkspace.from_document(document)
-    configuration = AlarmConfiguration.from_document(restored.payload)
-
-    threshold = configuration.rules[1].parameters['threshold_tph']
-    assert threshold == 1200.0
-    assert isinstance(threshold, float)
+    _storage(monkeypatch)
+    with (
+        pytest.raises(ValueError, match='local Web environment'),
+        open_local_configuration_manager(
+            reader=_reader(tmp_path, environment='production'),
+            principal_provider=_principal,
+            base_root=tmp_path,
+        ),
+    ):
+        pass

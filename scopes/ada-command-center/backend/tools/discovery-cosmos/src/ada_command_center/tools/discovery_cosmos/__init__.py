@@ -14,6 +14,14 @@ from ada_command_center.tools.discovery_cosmos.discovery import (
     ToolCatalogDiscoveryReport,
     ToolConnectionInspection,
 )
+from ada_command_center.tools.discovery_cosmos.manager import (
+    AdoptedToolCatalog,
+    ToolCandidateSummary,
+    ToolCatalogManagerConflictError,
+    ToolCatalogManagerService,
+    ToolCatalogReview,
+    ToolConnectionSummary,
+)
 
 __all__ = [
     'TOOL_COSMOS_PREFIX',
@@ -28,4 +36,10 @@ __all__ = [
     'ToolCatalogDiscoveryIssue',
     'ToolCatalogDiscoveryReport',
     'ToolConnectionInspection',
+    'AdoptedToolCatalog',
+    'ToolCandidateSummary',
+    'ToolCatalogManagerConflictError',
+    'ToolCatalogManagerService',
+    'ToolCatalogReview',
+    'ToolConnectionSummary',
 ]
