@@ -1,0 +1,73 @@
+.ada-operational-admin__select,
+.ada-operational-admin__select .dash-dropdown-wrapper,
+.ada-operational-admin__select .dash-dropdown {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.ada-operational-admin__select {
+    color: var(--atlanticus-ui-text);
+    font-family: var(--atlanticus-ui-font);
+    font-size: .75rem;
+}
+
+.ada-operational-admin__select .dash-dropdown,
+.ada-operational-admin__select .Select-control {
+    min-height: 2.4rem;
+    border-color: var(--atlanticus-ui-border);
+    border-radius: var(--atlanticus-ui-control-radius);
+    background: var(--atlanticus-ui-surface);
+    color: var(--atlanticus-ui-text);
+}
+
+.ada-operational-admin__select .dash-dropdown:hover,
+.ada-operational-admin__select .Select-control:hover {
+    border-color: var(--atlanticus-ui-border-strong);
+}
+
+.ada-operational-admin__select .dash-dropdown:focus,
+.ada-operational-admin__select .dash-dropdown-wrapper:focus-within .dash-dropdown,
+.ada-operational-admin__select .is-focused > .Select-control,
+.ada-operational-admin__select .is-open > .Select-control {
+    border-color: var(--atlanticus-ui-secondary) !important;
+    outline: 0;
+    box-shadow: var(--atlanticus-ui-control-focus-ring) !important;
+}
+
+.ada-operational-admin__select .dash-dropdown-content,
+.ada-operational-admin__select .Select-menu-outer {
+    width: var(--radix-popover-trigger-width, 100%);
+    min-width: var(--radix-popover-trigger-width, 100%);
+    max-width: var(--radix-popover-trigger-width, 100%);
+    background: var(--atlanticus-ui-surface);
+    border-color: var(--atlanticus-ui-border);
+    color: var(--atlanticus-ui-text);
+}
+
+.ada-operational-admin__select .dash-dropdown-value,
+.ada-operational-admin__select .dash-dropdown-search,
+.ada-operational-admin__select .dash-options-list-option,
+.ada-operational-admin__select .Select-value-label {
+    color: var(--atlanticus-ui-text);
+}
+
+.ada-operational-admin__select .dash-options-list-option:not(:has(input[disabled])):hover,
+.ada-operational-admin__select .dash-options-list-option:not(:has(input[disabled])):focus-within {
+    color: var(--atlanticus-ui-secondary);
+    background: var(--atlanticus-ui-selection-soft);
+}
+
+.ada-operational-admin__select .dash-dropdown-search-container:focus-within {
+    border-color: var(--atlanticus-ui-secondary);
+    outline: 1px solid var(--atlanticus-ui-secondary);
+}
+
+.ada-operational-admin__select .dash-dropdown-search-icon {
+    color: var(--atlanticus-ui-secondary);
+}
+
+.ada-operational-admin__select input[type='checkbox'] {
+    accent-color: var(--atlanticus-ui-secondary);
+}
