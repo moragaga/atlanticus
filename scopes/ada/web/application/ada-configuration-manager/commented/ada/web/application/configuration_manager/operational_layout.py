@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
 # La página usa la jerarquía administrativa de Manager sin duplicar su encabezado.
 def build_operational_manager_layout(context: OperationalManagerContext) -> object:
+    # Catálogo primero: el usuario no recibe cargos sin proyección vigente.
     if not context.can_manage():
         return html.P('No tienes acceso a esta configuración.')
     try:
@@ -41,8 +42,8 @@ def build_operational_manager_layout(context: OperationalManagerContext) -> obje
         return html.P('No fue posible cargar los datos operacionales.')
     return html.Div(
         [
-            dcc.Store(id=ids.SURFACE, data='configuration'),
-            dcc.Store(id=ids.VIEW, data='assignments'),
+            # La pestaña inicial es el catálogo compartido; Asignación es independiente.
+            dcc.Store(id=ids.VIEW, data='positions'),
             dcc.Store(id=ids.ASSIGN_PAGE, data=1),
             dcc.Store(id=ids.ASSIGN_CURRENT_PAGE, data=assignment_page.request.page_number),
             dcc.Store(id=ids.POSITION_PAGE, data=1),
@@ -58,28 +59,28 @@ def build_operational_manager_layout(context: OperationalManagerContext) -> obje
             html.Div(
                 [
                     html.Button(
-                        'Configuración',
-                        id=ids.CONFIG_TAB,
+                        'Datos operacionales',
+                        id=ids.POSITION_TAB,
                         n_clicks=0,
                         type='button',
                         role='tab',
                         className=_surface_tab_class(True),
-                        **{'aria-selected': 'true'},
+                        **{'aria-selected': 'true', 'aria-controls': ids.POSITION_PANEL},
                     ),
                     html.Button(
-                        'Estado y trazabilidad',
-                        id=ids.TRACE_TAB,
+                        'Asignación',
+                        id=ids.ASSIGN_TAB,
                         n_clicks=0,
                         type='button',
                         role='tab',
                         className=_surface_tab_class(False),
-                        **{'aria-selected': 'false'},
+                        **{'aria-selected': 'false', 'aria-controls': ids.ASSIGN_PANEL},
                     ),
                 ],
                 className='ada-operational-admin__primary-tabs',
                 role='tablist',
             ),
-            html.Div(
+            html.Section(
                 [
                     html.Div(
                         [
@@ -88,156 +89,118 @@ def build_operational_manager_layout(context: OperationalManagerContext) -> obje
                         ],
                         className='ada-operational-admin__providers',
                     ),
-                    html.Div(
+                    html.Section(
                         [
-                            html.Button(
-                                'Asignaciones',
-                                id=ids.ASSIGN_TAB,
-                                n_clicks=0,
-                                className=_tab_class(True),
-                                type='button',
-                                role='tab',
-                                **{'aria-selected': 'true'},
+                            html.Div(
+                                [
+                                    html.Div(
+                                        [
+                                            html.H3('Catálogo de cargos'),
+                                            html.P(
+                                                'Identificadores automáticos e inmutables. '
+                                                'Desactiva los cargos que ya no se usan.'
+                                            ),
+                                        ],
+                                        className='ada-operational-admin__section-copy',
+                                    ),
+                                    html.Button(
+                                        'Nuevo cargo',
+                                        id=ids.POSITION_NEW,
+                                        n_clicks=0,
+                                        type='button',
+                                        className='btn btn-outline-secondary',
+                                    ),
+                                ],
+                                className='ada-operational-admin__section-head',
                             ),
-                            html.Button(
-                                'Cargos',
-                                id=ids.POSITION_TAB,
-                                n_clicks=0,
-                                className=_tab_class(False),
-                                type='button',
-                                role='tab',
-                                **{'aria-selected': 'false'},
+                            html.Div(
+                                [
+                                    _metadata_cell('Áreas operacionales', 'Mina · Planta'),
+                                    _metadata_cell('Grupos', '1 · 2 · 3 · 4'),
+                                ],
+                                className='ada-operational-admin__metadata',
+                            ),
+                            _filter_bar(ids.POSITION_SEARCH, 'Buscar cargos'),
+                            _list_shell(ids.POSITION_LIST, position_list, ids.POSITION_SIZE),
+                            html.Div(
+                                page_label(position_page),
+                                id=ids.POSITION_STATUS,
+                                className='ada-operational-admin__sr-only',
+                                **{'aria-live': 'polite'},
                             ),
                         ],
-                        className='ada-operational-admin__tabs',
-                        role='tablist',
+                        className='ada-operational-admin__catalog-section',
                     ),
-                    html.Div(
+                    # Estado de catálogo y reintento permanecen junto a su edición.
+                    html.Section(
                         [
-                            html.Section(
+                            html.Div(
                                 [
-                                    html.Div(
-                                        [
-                                            html.Div(
-                                                [
-                                                    html.H3('Asignaciones'),
-                                                    html.P(
-                                                        'Información operacional de usuarios promovidos.'
-                                                    ),
-                                                ],
-                                                className='ada-operational-admin__section-copy',
-                                            ),
-                                        ],
-                                        className='ada-operational-admin__section-head',
-                                    ),
-                                    _filter_bar(ids.ASSIGN_SEARCH, 'Buscar usuarios'),
-                                    _list_shell(ids.ASSIGN_LIST, assignment_list, ids.ASSIGN_SIZE),
-                                    html.Div(
-                                        page_label(assignment_page),
-                                        id=ids.ASSIGN_STATUS,
-                                        className='ada-operational-admin__sr-only',
-                                        **{'aria-live': 'polite'},
+                                    html.H3('Estado y trazabilidad'),
+                                    html.P(
+                                        'Publicaciones y proyecciones del catálogo. '
+                                        'Las asignaciones conservan su estado individual.'
                                     ),
                                 ],
-                                id=ids.ASSIGN_PANEL,
-                                className=_panel_class(True),
-                                role='tabpanel',
+                                className='ada-operational-admin__section-copy',
                             ),
-                            html.Section(
+                            html.Div(metadata, id=ids.CATALOG_METADATA),
+                            html.Div(
                                 [
-                                    html.Div(
-                                        [
-                                            html.Div(
-                                                [
-                                                    html.H3('Catálogo de cargos'),
-                                                    html.P(
-                                                        'Identificadores automáticos e inmutables. Desactiva los cargos que ya no se usan.'
-                                                    ),
-                                                ],
-                                                className='ada-operational-admin__section-copy',
-                                            ),
-                                            html.Button(
-                                                'Nuevo cargo',
-                                                id=ids.POSITION_NEW,
-                                                n_clicks=0,
-                                                type='button',
-                                                className='btn btn-outline-secondary',
-                                            ),
-                                        ],
-                                        className='ada-operational-admin__section-head',
+                                    html.P(
+                                        'Si existe una publicación pendiente, puedes '
+                                        'reintentar su proyección sin modificar el Source.',
+                                        className='ada-operational-admin__trace-copy',
                                     ),
-                                    # Referencias estáticas de dominio, presentes también en la proyección del catálogo.
-                                    html.Div(
-                                        [
-                                            _metadata_cell('Áreas operacionales', 'Mina · Planta'),
-                                            _metadata_cell('Grupos', '1 · 2 · 3 · 4'),
-                                        ],
-                                        className='ada-operational-admin__metadata',
-                                    ),
-                                    _filter_bar(ids.POSITION_SEARCH, 'Buscar cargos'),
-                                    _list_shell(
-                                        ids.POSITION_LIST, position_list, ids.POSITION_SIZE
-                                    ),
-                                    html.Div(
-                                        page_label(position_page),
-                                        id=ids.POSITION_STATUS,
-                                        className='ada-operational-admin__sr-only',
-                                        **{'aria-live': 'polite'},
+                                    html.Button(
+                                        'Reintentar proyección',
+                                        id=ids.CATALOG_REPROJECT,
+                                        n_clicks=0,
+                                        type='button',
+                                        className='btn btn-outline-secondary btn-sm',
                                     ),
                                 ],
-                                id=ids.POSITION_PANEL,
-                                className=_panel_class(False),
-                                role='tabpanel',
+                                className='ada-operational-admin__trace-actions',
+                            ),
+                            html.Div(
+                                id=ids.TRACE_FEEDBACK,
+                                className='ada-operational-admin__trace-feedback',
+                                role='status',
                             ),
                         ],
-                        className='ada-operational-admin__body',
+                        id=ids.TRACE_PANEL,
+                        className='ada-operational-admin__trace-section',
+                        role='region',
+                        **{'aria-label': 'Estado y trazabilidad del catálogo'},
                     ),
                 ],
-                id=ids.CONFIG_PANEL,
+                id=ids.POSITION_PANEL,
                 className=_surface_class(True),
                 role='tabpanel',
+                **{'aria-labelledby': ids.POSITION_TAB},
             ),
             html.Section(
                 [
                     html.Div(
                         [
-                            html.H3('Catálogo de cargos'),
-                            html.P(
-                                'Revisiones efectivamente publicadas y proyectadas. El catálogo y cada usuario tienen Source independientes.'
-                            ),
+                            html.H3('Asignación'),
+                            html.P('Información operacional de usuarios promovidos.'),
                         ],
                         className='ada-operational-admin__section-copy',
                     ),
-                    html.Div(metadata, id=ids.CATALOG_METADATA),
+                    _filter_bar(ids.ASSIGN_SEARCH, 'Buscar usuarios'),
+                    _list_shell(ids.ASSIGN_LIST, assignment_list, ids.ASSIGN_SIZE),
                     html.Div(
-                        [
-                            html.P(
-                                'Si existe una publicación pendiente, puedes reintentar su proyección sin modificar el Source.',
-                                className='ada-operational-admin__trace-copy',
-                            ),
-                            html.Button(
-                                'Reintentar proyección',
-                                id=ids.CATALOG_REPROJECT,
-                                n_clicks=0,
-                                type='button',
-                                className='btn btn-outline-secondary btn-sm',
-                            ),
-                        ],
-                        className='ada-operational-admin__trace-actions',
-                    ),
-                    html.Div(
-                        id=ids.TRACE_FEEDBACK,
-                        className='ada-operational-admin__trace-feedback',
-                        role='status',
-                    ),
-                    html.P(
-                        'Las asignaciones son individuales: su estado y su reintento se consultan en cada usuario de la pestaña Asignaciones.',
-                        className='ada-operational-admin__trace-copy',
+                        page_label(assignment_page),
+                        id=ids.ASSIGN_STATUS,
+                        className='ada-operational-admin__sr-only',
+                        **{'aria-live': 'polite'},
                     ),
                 ],
-                id=ids.TRACE_PANEL,
+                id=ids.ASSIGN_PANEL,
                 className=_surface_class(False),
                 role='tabpanel',
+                **{'aria-labelledby': ids.ASSIGN_TAB},
             ),
             _assignment_modal(projected_catalog),
             _position_modal(),
@@ -814,16 +777,6 @@ def _metadata_cell(label: str, value: str) -> object:
         [html.Span(label), html.Code(value)],
         className='ada-operational-admin__metadata-cell',
     )
-
-
-def _tab_class(active: bool) -> str:
-    base = 'ada-operational-admin__tab'
-    return f'{base} {base}--active' if active else base
-
-
-def _panel_class(active: bool) -> str:
-    base = 'ada-operational-admin__panel'
-    return f'{base} {base}--active' if active else base
 
 
 def modal_class(opened: bool) -> str:

@@ -38,7 +38,7 @@ def _find(component, target):
     return next((found for child in children if (found := _find(child, target)) is not None), None)
 
 
-def test_configuration_and_trace_share_one_manager_shell_without_duplicate_title(tmp_path):
+def test_operational_catalog_is_first_and_trace_is_inside_it(tmp_path):
     from ada.web.application.configuration_manager import operational_ids as ids
 
     service = OperationalIdentificationService(
@@ -59,13 +59,48 @@ def test_configuration_and_trace_share_one_manager_shell_without_duplicate_title
         projection_name='Cosmos DB',
     )
     layout = build_operational_manager_layout(context)
-    assert _find(layout, ids.CONFIG_TAB) is not None
-    assert _find(layout, ids.TRACE_TAB) is not None
-    assert _find(layout, ids.CONFIG_PANEL) is not None
-    assert _find(layout, ids.TRACE_PANEL) is not None
+    assert _find(layout, ids.VIEW).data == 'positions'
+    assert _find(layout, ids.POSITION_TAB).children == 'Datos operacionales'
+    assert _find(layout, ids.ASSIGN_TAB).children == 'Asignación'
+    assert getattr(_find(layout, ids.POSITION_TAB), 'aria-controls') == ids.POSITION_PANEL
+    assert getattr(_find(layout, ids.ASSIGN_TAB), 'aria-controls') == ids.ASSIGN_PANEL
+    assert _find(layout, ids.CATALOG_REPROJECT) is not None
+    assert _find(layout, ids.ASSIGNMENT_REPROJECT) is not None
+    assert _find(layout, ids.CATALOG_METADATA) is not None
+    assert _find(layout, ids.ASSIGN_LIST) is not None
     assert _find(layout, ids.ASSIGN_SIZE) is not None
     assert _find(layout, ids.POSITION_SIZE) is not None
-    assert _find(_find(layout, ids.ASSIGN_LIST), ids.ASSIGN_SIZE) is None
-    assert _find(_find(layout, ids.POSITION_LIST), ids.POSITION_SIZE) is None
-    assert _find(_find(layout, ids.POSITION_PANEL), ids.CATALOG_METADATA) is None
-    assert _find(_find(layout, ids.TRACE_PANEL), ids.CATALOG_METADATA) is not None
+
+
+def test_primary_navigation_selects_catalog_and_assignments(monkeypatch):
+    from dash import no_update
+
+    from ada.web.application.configuration_manager import (
+        operational_callbacks,
+        operational_ids as ids,
+    )
+
+    class FakeApp:
+        def __init__(self):
+            self.callbacks = {}
+
+        def callback(self, *_args, **_kwargs):
+            def register(fn):
+                self.callbacks[fn.__name__] = fn
+                return fn
+
+            return register
+
+    app = FakeApp()
+    operational_callbacks.register_operational_callbacks(app, object())
+    event = SimpleNamespace(triggered_id=ids.ASSIGN_TAB)
+    monkeypatch.setattr(operational_callbacks, 'ctx', event)
+    assert app.callbacks['change_tab'](0, 1) == 'assignments'
+    assignment = app.callbacks['display_tab']('assignments')
+    assert assignment[-2:] == ('false', 'true')
+
+    event.triggered_id = ids.POSITION_TAB
+    assert app.callbacks['change_tab'](1, 0) == 'positions'
+    catalog = app.callbacks['display_tab']('positions')
+    assert catalog[-2:] == ('true', 'false')
+    assert app.callbacks['change_tab'](0, 0) is no_update

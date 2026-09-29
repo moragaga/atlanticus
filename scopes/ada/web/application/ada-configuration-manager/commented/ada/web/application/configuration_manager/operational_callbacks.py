@@ -6,14 +6,12 @@ from dash import ALL, Input, Output, State, ctx, html, no_update
 
 from ada.web.application.configuration_manager import operational_ids as ids
 from ada.web.application.configuration_manager.operational_layout import (
-    _panel_class,
-    _surface_class,
-    _surface_tab_class,
     _position_options,
     _release_label,
     _revision,
     _status_label,
-    _tab_class,
+    _surface_class,
+    _surface_tab_class,
     catalog_metadata,
     modal_class,
     page_label,
@@ -34,70 +32,38 @@ if TYPE_CHECKING:
 
 def register_operational_callbacks(app: object, context: OperationalManagerContext) -> None:
     @app.callback(
-        Output(ids.SURFACE, 'data'),
-        Input(ids.CONFIG_TAB, 'n_clicks'),
-        Input(ids.TRACE_TAB, 'n_clicks'),
-        prevent_initial_call=True,
-    )
-    # Alterna las superficies administrativas sin volver a publicar configuración.
-    def change_surface(_configuration, _trace):
-        if ctx.triggered_id == ids.CONFIG_TAB and _configuration:
-            return 'configuration'
-        if ctx.triggered_id == ids.TRACE_TAB and _trace:
-            return 'trace'
-        return no_update
-
-    @app.callback(
-        Output(ids.CONFIG_TAB, 'className'),
-        Output(ids.TRACE_TAB, 'className'),
-        Output(ids.CONFIG_PANEL, 'className'),
-        Output(ids.TRACE_PANEL, 'className'),
-        Output(ids.CONFIG_TAB, 'aria-selected'),
-        Output(ids.TRACE_TAB, 'aria-selected'),
-        Input(ids.SURFACE, 'data'),
-    )
-    def display_surface(surface):
-        configuration = surface != 'trace'
-        return (
-            _surface_tab_class(configuration),
-            _surface_tab_class(not configuration),
-            _surface_class(configuration),
-            _surface_class(not configuration),
-            'true' if configuration else 'false',
-            'false' if configuration else 'true',
-        )
-
-    @app.callback(
         Output(ids.VIEW, 'data'),
-        Input(ids.ASSIGN_TAB, 'n_clicks'),
         Input(ids.POSITION_TAB, 'n_clicks'),
+        Input(ids.ASSIGN_TAB, 'n_clicks'),
         prevent_initial_call=True,
     )
-    def change_tab(_assign, _positions):
-        if ctx.triggered_id == ids.ASSIGN_TAB and _assign:
-            return 'assignments'
+    # Cambiar de pestaña no ejecuta publicaciones ni proyecciones.
+    def change_tab(_positions, _assign):
         if ctx.triggered_id == ids.POSITION_TAB and _positions:
             return 'positions'
+        if ctx.triggered_id == ids.ASSIGN_TAB and _assign:
+            return 'assignments'
         return no_update
 
     @app.callback(
-        Output(ids.ASSIGN_TAB, 'className'),
         Output(ids.POSITION_TAB, 'className'),
-        Output(ids.ASSIGN_PANEL, 'className'),
+        Output(ids.ASSIGN_TAB, 'className'),
         Output(ids.POSITION_PANEL, 'className'),
-        Output(ids.ASSIGN_TAB, 'aria-selected'),
+        Output(ids.ASSIGN_PANEL, 'className'),
         Output(ids.POSITION_TAB, 'aria-selected'),
+        Output(ids.ASSIGN_TAB, 'aria-selected'),
         Input(ids.VIEW, 'data'),
     )
+    # Las dos pestañas primarias controlan directamente sus paneles.
     def display_tab(value):
-        assignment = value != 'positions'
+        positions = value != 'assignments'
         return (
-            _tab_class(assignment),
-            _tab_class(not assignment),
-            _panel_class(assignment),
-            _panel_class(not assignment),
-            'true' if assignment else 'false',
-            'false' if assignment else 'true',
+            _surface_tab_class(positions),
+            _surface_tab_class(not positions),
+            _surface_class(positions),
+            _surface_class(not positions),
+            'true' if positions else 'false',
+            'false' if positions else 'true',
         )
 
     @app.callback(
@@ -324,18 +290,21 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
                 {
                     'label': item.label,
                     'value': item.id,
-                    'disabled': item.id != assignment.position_id and (not item.active or not current),
+                    'disabled': item.id != assignment.position_id
+                    and (not item.active or not current),
                 }
                 for item in catalog.positions
             ]
             if assignment.position_id and all(
                 item['value'] != assignment.position_id for item in options
             ):
-                options.append({
-                    'label': f'{assignment.position_id} (asignado, no proyectado)',
-                    'value': assignment.position_id,
-                    'disabled': False,
-                })
+                options.append(
+                    {
+                        'label': f'{assignment.position_id} (asignado, no proyectado)',
+                        'value': assignment.position_id,
+                        'disabled': False,
+                    }
+                )
             return options
         except Exception:
             return []
@@ -364,7 +333,8 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
                     ),
                     html.Small(f'Projection: {_release_label(status.projected_source_release)}'),
                     html.Small(
-                        'Catálogo proyectado y vigente' if catalog_current
+                        'Catálogo proyectado y vigente'
+                        if catalog_current
                         else 'Catálogo pendiente de proyección: no se admiten nuevas asignaciones de cargos.'
                     ),
                 ],

@@ -59,11 +59,7 @@ POSITION_MODAL_CANCEL = f'{_PREFIX}-position-cancel'
 POSITION_MODAL_CLOSE = f'{_PREFIX}-position-close'
 CATALOG_METADATA = f'{_PREFIX}-catalog-metadata'
 
-SURFACE = f'{_PREFIX}-surface'
-CONFIG_TAB = f'{_PREFIX}-config-tab'
-TRACE_TAB = f'{_PREFIX}-trace-tab'
-CONFIG_PANEL = f'{_PREFIX}-config-panel'
 TRACE_PANEL = f'{_PREFIX}-trace-panel'
 
-# Identificadores exclusivos de las pestañas externas de Manager.
+# La trazabilidad del catálogo permanece dentro de Datos operacionales.
 TRACE_FEEDBACK = f'{_PREFIX}-trace-feedback'
