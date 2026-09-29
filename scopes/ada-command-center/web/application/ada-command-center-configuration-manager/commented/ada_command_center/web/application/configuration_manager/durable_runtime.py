@@ -6,8 +6,6 @@ from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 
 from ada.web.storage.namespace import AdaStorageNamespace
-from ada_command_center.tools.catalog import BlobToolCatalogStore, BlobToolCatalogStoreSettings
-from ada_command_center.tools.discovery_cosmos.manager import ToolCatalogManagerService
 from ada_command_center.web.alarms.configuration.tool_references import AlarmToolReferenceReader
 from ada_command_center.web.alarms.persistence import (
     AlarmConfigurationPersistenceSettings,
@@ -28,6 +26,8 @@ from ada_command_center.web.application.configuration_manager.catalog_configurat
 from ada_command_center.web.application.configuration_manager.dependencies import (
     ConfigurationManagerDependencies,
 )
+from ada_command_center.web.tools.catalog import BlobToolCatalogStore, BlobToolCatalogStoreSettings
+from ada_command_center.web.tools.discovery_cosmos.manager import ToolCatalogManagerService
 from atlanticus.connectivity.cosmos import CosmosClient, CosmosSettings
 from atlanticus.connectivity.storage import StorageClient, StorageSettings
 from atlanticus.web.configuration import WebEnvironment

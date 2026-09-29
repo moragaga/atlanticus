@@ -7,7 +7,7 @@ from ada_command_center.domain.tools import (
     ToolDependencyEntry,
     ToolDependencyManifest,
 )
-from ada_command_center.tools.catalog import ToolCatalogEntry, ToolCatalogStore
+from ada_command_center.web.tools.catalog import ToolCatalogEntry, ToolCatalogStore
 from atlanticus.web.source.models import SourceReleaseId
 
 

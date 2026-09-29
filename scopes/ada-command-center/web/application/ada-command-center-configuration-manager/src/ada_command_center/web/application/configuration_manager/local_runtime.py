@@ -4,8 +4,6 @@ from collections.abc import Callable, Iterator
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
 
-from ada_command_center.tools.catalog import BlobToolCatalogStore, BlobToolCatalogStoreSettings
-from ada_command_center.tools.discovery_cosmos.manager import ToolCatalogManagerService
 from ada_command_center.web.alarms.configuration.tool_references import AlarmToolReferenceReader
 from ada_command_center.web.alarms.persistence import (
     AlarmConfigurationPersistenceSettings,
@@ -23,6 +21,8 @@ from ada_command_center.web.application.configuration_manager.catalog_configurat
 from ada_command_center.web.application.configuration_manager.dependencies import (
     ConfigurationManagerDependencies,
 )
+from ada_command_center.web.tools.catalog import BlobToolCatalogStore, BlobToolCatalogStoreSettings
+from ada_command_center.web.tools.discovery_cosmos.manager import ToolCatalogManagerService
 from atlanticus.connectivity.storage import StorageClient
 from atlanticus.web.configuration import WebEnvironment
 from atlanticus.web.manager import ManagerPrincipal

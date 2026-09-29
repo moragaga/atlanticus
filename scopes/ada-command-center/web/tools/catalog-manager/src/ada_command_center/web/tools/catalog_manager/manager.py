@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 from dash import Input, Output, State, ctx, dcc, html, no_update
 
-from ada_command_center.tools.discovery_cosmos.manager import (
+from ada_command_center.web.tools.discovery_cosmos.manager import (
     AdoptedToolCatalog,
     ToolCatalogManagerConflictError,
     ToolCatalogManagerService,

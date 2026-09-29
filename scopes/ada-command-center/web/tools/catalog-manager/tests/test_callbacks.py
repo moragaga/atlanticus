@@ -1,13 +1,13 @@
 from types import SimpleNamespace
 
-from ada_command_center.tools.discovery_cosmos.manager import (
+from ada_command_center.web.tools.catalog_manager import manager as catalog_manager
+from ada_command_center.web.tools.discovery_cosmos.manager import (
     AdoptedToolCatalog,
     ToolCandidateSummary,
     ToolCatalogManagerConflictError,
     ToolCatalogReview,
     ToolConnectionSummary,
 )
-from ada_command_center.web.tools.catalog_manager import manager as catalog_manager
 from atlanticus.web.manager import ManagerPrincipal
 
 

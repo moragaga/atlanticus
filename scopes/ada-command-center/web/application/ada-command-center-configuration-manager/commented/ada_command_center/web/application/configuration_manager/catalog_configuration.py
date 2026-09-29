@@ -9,7 +9,7 @@ from types import MappingProxyType
 from dotenv import dotenv_values
 
 from ada.web.storage.namespace import AdaStorageNamespace
-from ada_command_center.tools.discovery_cosmos import ToolCosmosConnectionDeclarations
+from ada_command_center.web.tools.discovery_cosmos import ToolCosmosConnectionDeclarations
 from atlanticus.connectivity.cosmos import CosmosSettings
 from atlanticus.connectivity.storage import (
     StorageConnectionStringCredential,

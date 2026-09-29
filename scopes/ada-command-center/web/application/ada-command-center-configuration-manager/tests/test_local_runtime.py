@@ -8,12 +8,6 @@ from ada.web.tools.enums import ToolConfigurationKind, ToolScope
 from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 from ada_command_center.domain.alarms import AlarmConfiguration, AlarmConfigurationSnapshot
 from ada_command_center.domain.tools import ToolDependencyManifest
-from ada_command_center.tools.catalog import (
-    BlobToolCatalogStore,
-    BlobToolCatalogStoreSettings,
-    ToolCatalogEntry,
-    create_tool_catalog_snapshot,
-)
 from ada_command_center.web.alarms.configuration.source_release import (
     AlarmConfigurationSourceService,
 )
@@ -24,6 +18,12 @@ from ada_command_center.web.application.configuration_manager.catalog_configurat
 )
 from ada_command_center.web.application.configuration_manager.local_runtime import (
     open_local_configuration_manager,
+)
+from ada_command_center.web.tools.catalog import (
+    BlobToolCatalogStore,
+    BlobToolCatalogStoreSettings,
+    ToolCatalogEntry,
+    create_tool_catalog_snapshot,
 )
 from atlanticus.connectivity.storage import StorageBlobNotFoundError, StorageClient
 from atlanticus.web.manager import ManagerPrincipal

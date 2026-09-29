@@ -14,8 +14,8 @@ dependencies = [
     "ada-command-center-web-alarm-persistence==0.1.0",
     "ada-command-center-web-alarm-projection-cosmos==0.1.0",
     "ada-command-center-web-tool-catalog-manager==0.1.0",
-    "ada-command-center-tools-catalog==0.1.0",
-    "ada-command-center-tools-discovery-cosmos==0.1.0",
+    "ada-command-center-web-tool-catalog==0.1.0",
+    "ada-command-center-web-tool-discovery-cosmos==0.1.0",
     "ada-web-tools==0.1.0",
     "atlanticus-web==0.1.0",
     "atlanticus-web-bootstrap==0.1.0",
@@ -38,8 +38,8 @@ ada-command-center-web-alarm-configuration = { path = "../../alarms/configuratio
 ada-command-center-web-alarm-persistence = { path = "../../alarms/persistence", editable = true }
 ada-command-center-web-alarm-projection-cosmos = { path = "../../alarms/projection-cosmos", editable = true }
 ada-command-center-web-tool-catalog-manager = { path = "../../tools/catalog-manager", editable = true }
-ada-command-center-tools-catalog = { path = "../../../backend/tools/catalog", editable = true }
-ada-command-center-tools-discovery-cosmos = { path = "../../../backend/tools/discovery-cosmos", editable = true }
+ada-command-center-web-tool-catalog = { path = "../../tools/catalog", editable = true }
+ada-command-center-web-tool-discovery-cosmos = { path = "../../tools/discovery-cosmos", editable = true }
 ada-web-tools = { path = "../../../../ada/web/tools/core", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
 atlanticus-web-bootstrap = { path = "../../../../../web/framework/bootstrap", editable = true }
@@ -98,8 +98,8 @@ pythonpath = [
     "../../tools/catalog-manager/src",
     "../../../domain/alarms/src",
     "../../../domain/tools/src",
-    "../../../backend/tools/catalog/src",
-    "../../../backend/tools/discovery-cosmos/src",
+    "../../tools/catalog/src",
+    "../../tools/discovery-cosmos/src",
     "../../../../ada/web/tools/core/src",
     "../../../../ada/web/tools/configuration/src",
     "../../../../ada/web/tools/projection-cosmos/src",

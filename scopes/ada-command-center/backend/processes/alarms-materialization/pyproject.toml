@@ -75,7 +75,7 @@ pythonpath = [
     "../../alarms/core/src",
     "../../alarms/materialization/src",
     "../../../domain/tools/src",
-    "../../../backend/tools/catalog/src",
+    "../../../web/tools/catalog/src",
     "../../../web/alarms/configuration/src",
     "../../../web/alarms/projection-cosmos/src",
     "../../../web/alarms/projection-local/src",

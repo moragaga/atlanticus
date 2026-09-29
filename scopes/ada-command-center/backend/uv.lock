@@ -297,33 +297,6 @@ dev = [
 ]
 
 [[package]]
-name = "ada-command-center-tools-catalog"
-version = "0.1.0"
-source = { editable = "tools/catalog" }
-dependencies = [
-    { name = "ada-web-tools" },
-    { name = "ada-web-tools-configuration" },
-    { name = "atlanticus-storage" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-web-tools", editable = "../../ada/web/tools/core" },
-    { name = "ada-web-tools-configuration", editable = "../../ada/web/tools/configuration" },
-    { name = "atlanticus-storage", editable = "../../../connectivity/storage" },
-    { name = "atlanticus-web-projection", editable = "../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../web/capabilities/source/core" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
 name = "ada-command-center-tools-domain"
 version = "1.0.0"
 source = { editable = "../domain/tools" }
@@ -346,8 +319,8 @@ version = "0.1.0"
 source = { editable = "../web/alarms/configuration" }
 dependencies = [
     { name = "ada-command-center-alarms-domain" },
-    { name = "ada-command-center-tools-catalog" },
     { name = "ada-command-center-tools-domain" },
+    { name = "ada-command-center-web-tool-catalog" },
     { name = "ada-web-tools" },
     { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
@@ -356,8 +329,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "ada-command-center-alarms-domain", editable = "../domain/alarms" },
-    { name = "ada-command-center-tools-catalog", editable = "tools/catalog" },
     { name = "ada-command-center-tools-domain", editable = "../domain/tools" },
+    { name = "ada-command-center-web-tool-catalog", editable = "../web/tools/catalog" },
     { name = "ada-web-tools", editable = "../../ada/web/tools/core" },
     { name = "atlanticus-web", marker = "extra == 'web'", editable = "../../../web/framework/core" },
     { name = "atlanticus-web-manager", marker = "extra == 'web'", editable = "../../../web/capabilities/manager" },
@@ -420,6 +393,33 @@ dependencies = [
 requires-dist = [
     { name = "ada-command-center-alarms-domain", editable = "../domain/alarms" },
     { name = "ada-command-center-web-alarm-configuration", editable = "../web/alarms/configuration" },
+    { name = "atlanticus-web-projection", editable = "../../../web/capabilities/projection/core" },
+    { name = "atlanticus-web-source", editable = "../../../web/capabilities/source/core" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-command-center-web-tool-catalog"
+version = "0.1.0"
+source = { editable = "../web/tools/catalog" }
+dependencies = [
+    { name = "ada-web-tools" },
+    { name = "ada-web-tools-configuration" },
+    { name = "atlanticus-storage" },
+    { name = "atlanticus-web-projection" },
+    { name = "atlanticus-web-source" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-web-tools", editable = "../../ada/web/tools/core" },
+    { name = "ada-web-tools-configuration", editable = "../../ada/web/tools/configuration" },
+    { name = "atlanticus-storage", editable = "../../../connectivity/storage" },
     { name = "atlanticus-web-projection", editable = "../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../web/capabilities/source/core" },
 ]
