@@ -14,6 +14,7 @@ dependencies = [
     { name = "ada-web-kpi-registry" },
     { name = "ada-web-kpi-registry-configuration", extra = ["web"] },
     { name = "ada-web-kpi-registry-projection-local" },
+    { name = "ada-web-operational-identification" },
     { name = "ada-web-tools" },
     { name = "ada-web-tools-configuration", extra = ["web"] },
     { name = "atlanticus-web" },
@@ -45,6 +46,7 @@ requires-dist = [
     { name = "ada-web-kpi-registry", editable = "../../kpis/registry/core" },
     { name = "ada-web-kpi-registry-configuration", extras = ["web"], editable = "../../kpis/registry/configuration" },
     { name = "ada-web-kpi-registry-projection-local", editable = "../../kpis/registry/projection-local" },
+    { name = "ada-web-operational-identification", editable = "../../operational-identification" },
     { name = "ada-web-tools", editable = "../../tools/core" },
     { name = "ada-web-tools-configuration", extras = ["web"], editable = "../../tools/configuration" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
@@ -323,6 +325,32 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-operational-identification"
+version = "0.1.0"
+source = { editable = "../../operational-identification" }
+dependencies = [
+    { name = "atlanticus-cosmos" },
+    { name = "atlanticus-web-projection" },
+    { name = "atlanticus-web-source" },
+    { name = "atlanticus-web-users" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
+    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
+    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
+    { name = "atlanticus-web-users", editable = "../../../../../web/capabilities/users/core" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "atlanticus-web-source-local", editable = "../../../../../web/capabilities/source/local" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]

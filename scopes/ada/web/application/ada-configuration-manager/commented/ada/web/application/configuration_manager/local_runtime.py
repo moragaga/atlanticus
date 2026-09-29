@@ -31,6 +31,7 @@ from ada.web.kpis.registry.projection.local import (
     LocalKpiRegistryProjectionStore,
     LocalKpiRegistryProjectionStoreSettings,
 )
+from ada.web.operational.identification.models import OperationalDocument
 from ada.web.tools.configuration import ToolConfiguration
 from atlanticus.web.configuration import WebSettings
 from atlanticus.web.manager import ManagerPrincipal
@@ -159,6 +160,8 @@ def create_local_configuration_manager_stores(
         ),
         users_registry=InProcessUsersRegistryStore(),
         users_promoted=InProcessUsersAdministrationStore(),
+        operational_source=source_store,
+        operational=InProcessProjectionStore[OperationalDocument](),
     )
     return stores
 

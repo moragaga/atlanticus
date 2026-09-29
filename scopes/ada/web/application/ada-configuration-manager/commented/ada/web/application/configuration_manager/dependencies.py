@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from ada.web.access.configuration import AdaAccessConfiguration, AdaAccessSourceService
@@ -13,6 +14,7 @@ from ada.web.kpis.registry.configuration import (
     KpiRegistrySourceService,
 )
 from ada.web.kpis.registry.models import KpiRegistry
+from ada.web.operational.identification import OperationalIdentificationService
 from ada.web.tools.configuration import ToolConfiguration, ToolSourceService
 from atlanticus.web.manager import ManagerEntry, ManagerModule, ManagerPrincipalProvider
 from atlanticus.web.navigation.configuration import (
@@ -22,6 +24,7 @@ from atlanticus.web.navigation.configuration import (
 from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.projection.service import SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
+from atlanticus.web.users.models import UserRecord
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,6 +41,8 @@ class ConfigurationManagerDependencies:
     users_entry: ManagerEntry
     # Entry opcional: solo se activa con persistencia durable y snapshot compatible.
     users_projection_entry: ManagerEntry | None = None
+    operational_service: OperationalIdentificationService | None = None
+    operational_users: Callable[[], tuple[UserRecord, ...]] | None = None
     # El consumidor operacional puede leer la misma proyección que publica Manager.
     navigation_projection_store: ProjectionStore[NavigationConfigurationCatalog] | None = None
     kpi_registry_source: KpiRegistrySourceService | None = None
@@ -58,6 +63,8 @@ class ConfigurationManagerDependencies:
     kpi_definitions_projection_name: str = 'Projection'
 
     def __post_init__(self) -> None:
+        if (self.operational_service is None) != (self.operational_users is None):
+            raise ValueError('Operational service and promoted users must be injected together')
         kpi_contract = (
             self.kpi_registry_source,
             self.kpi_registry_projection,

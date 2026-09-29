@@ -23,6 +23,10 @@ from ada.web.application.configuration_manager.kpis import (
     build_kpi_manager_configuration,
     create_kpi_manager_web_module,
 )
+from ada.web.application.configuration_manager.operational import (
+    OperationalManagerContext,
+    create_operational_manager_entry,
+)
 from ada.web.application.configuration_manager.tools import (
     ToolManagerWebContext,
     build_tool_history_preview,
@@ -224,6 +228,17 @@ def build_configuration_manager_surface(
         ),
         entries=(
             dependencies.users_entry,
+            *(
+                (create_operational_manager_entry(
+                    OperationalManagerContext(
+                        service=dependencies.operational_service,
+                        promoted_users=dependencies.operational_users,
+                        principal=dependencies.principal_provider,
+                    ),
+                ),)
+                if dependencies.operational_service is not None
+                and dependencies.operational_users is not None else ()
+            ),
             *((dependencies.users_projection_entry,)
               if dependencies.users_projection_entry is not None else ()),
         ),

@@ -12,6 +12,7 @@ classifiers = [
 ]
 dependencies = [
     "ada-configuration-manager==0.5.1",
+    "ada-web-operational-identification==0.1.0",
     "atlanticus-web-users-cosmos==0.1.0",
     "atlanticus-web-users-blob==0.1.0",
     "atlanticus-web-source-blob==0.1.0",
@@ -80,6 +81,7 @@ ada-web-kpi-registry-projection-cosmos = { path = "../../kpis/registry/projectio
 ada-web-kpi-definition-projection-cosmos = { path = "../../kpis/definition/projection-cosmos", editable = true }
 ada-web-access-projection-cosmos = { path = "../../access/projection-cosmos", editable = true }
 ada-configuration-manager = { path = "../ada-configuration-manager", editable = true }
+ada-web-operational-identification = { path = "../../operational-identification", editable = true }
 ada-web-access = { path = "../../access/core", editable = true }
 ada-web-access-configuration = { path = "../../access/configuration", editable = true }
 ada-web-configuration = { path = "../../configuration/core", editable = true }

@@ -19,6 +19,7 @@ from ada.web.application.configuration_manager.composition import (
     USERS_MANAGER_ACCESS_KEY,
 )
 from ada.web.application.configuration_manager.dependencies import ConfigurationManagerDependencies
+from ada.web.application.configuration_manager.operational import OPERATIONAL_MANAGER_ACCESS_KEY
 from ada.web.application.configuration_manager.tool_kpi_registry_destinations import (
     ToolConfigurationKpiDestinationCatalogProvider,
 )
@@ -32,6 +33,8 @@ from ada.web.kpis.registry.configuration import (
     create_kpi_registry_projection_service,
 )
 from ada.web.kpis.registry.models import KpiRegistry
+from ada.web.operational.identification import OperationalIdentificationService
+from ada.web.operational.identification.models import OperationalDocument
 from ada.web.tools.configuration import (
     ToolConfiguration,
     ToolSourceService,
@@ -75,6 +78,7 @@ PayloadT = TypeVar('PayloadT')
 
 MANAGER_ACCESS_KEYS = (
     USERS_MANAGER_ACCESS_KEY,
+    OPERATIONAL_MANAGER_ACCESS_KEY,
     PROFILES_MANAGER_ACCESS_KEY,
     ACCESS_MANAGER_ACCESS_KEY,
     NAVIGATION_MANAGER_ACCESS_KEY,
@@ -100,6 +104,8 @@ class ConfigurationManagerStores:
     users_registry: UsersRegistryStore
     users_promoted: UsersAdministrationStore
     users_directory: UsersDirectoryReader | None = None
+    operational_source: SourceStore | None = None
+    operational: ProjectionStore[OperationalDocument] | None = None
     users_recovery: UsersApprovedRecoveryService | Callable[[], UsersApprovedRecoveryService] | None = None
     users_snapshot_ids: Callable[[], tuple[str, ...]] | None = None
     users_snapshot_summaries: Callable[[], tuple[tuple[str, str | None], ...]] | None = None
@@ -126,6 +132,12 @@ class ConfigurationManagerStores:
                 raise TypeError(
                     f'Configuration Manager {name} must implement {expected.__name__}'
                 )
+        if (self.operational_source is None) != (self.operational is None):
+            raise ValueError('Operational source and projection must be injected together')
+        if self.operational_source is not None and not isinstance(self.operational_source, SourceStore):
+            raise TypeError('Operational source must implement SourceStore')
+        if self.operational is not None and not isinstance(self.operational, ProjectionStore):
+            raise TypeError('Operational projection must implement ProjectionStore')
         if self.users_directory is not None and not isinstance(
             self.users_directory, UsersDirectoryReader
         ):
@@ -178,6 +190,15 @@ def compose_configuration_manager_dependencies(
         source=stores.kpi_definitions_source, source_key=KPI_DEFINITION_SOURCE_KEY
     )
 
+    operational_service = (
+        OperationalIdentificationService(
+            source_store=stores.operational_source,
+            projections=stores.operational,
+            users=stores.users_promoted,
+        )
+        if stores.operational_source is not None and stores.operational is not None
+        else None
+    )
     navigation_projection = create_navigation_projection_service(
         source=stores.navigation_source, projection=stores.navigation
     )
@@ -263,6 +284,8 @@ def compose_configuration_manager_dependencies(
         principal_provider=principal_provider,
         profiles_module=profiles_manager.module,
         users_entry=users_manager.entry,
+        operational_service=operational_service,
+        operational_users=stores.users_promoted.list_users if operational_service is not None else None,
         kpi_registry_source=kpi_registry_source,
         kpi_registry_projection=kpi_registry_projection,
         kpi_registry_destinations=kpi_destinations,

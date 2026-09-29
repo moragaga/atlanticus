@@ -14,6 +14,9 @@ from ada.web.application.configuration_manager.local_runtime import (
     TOOLS_SOURCE_KEY,
     create_local_configuration_manager_dependencies,
 )
+from ada.web.application.configuration_manager.operational import (
+    OPERATIONAL_MANAGER_ACCESS_KEY,
+)
 from atlanticus.web.compositions.profiles_manager import (
     PROFILES_MANAGER_PROJECTION_SERVICE,
     PROFILES_MANAGER_SOURCE_SERVICE,
@@ -67,6 +70,7 @@ def test_local_runtime_grants_explicit_configuration_capabilities(tmp_path) -> N
     assert principal.profile_keys == ('local',)
     assert principal.access_keys == (
         USERS_MANAGER_ACCESS_KEY,
+        OPERATIONAL_MANAGER_ACCESS_KEY,
         PROFILES_MANAGER_ACCESS_KEY,
         ACCESS_MANAGER_ACCESS_KEY,
         NAVIGATION_MANAGER_ACCESS_KEY,

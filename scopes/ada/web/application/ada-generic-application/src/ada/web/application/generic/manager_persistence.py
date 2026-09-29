@@ -20,6 +20,7 @@ from ada.web.kpis.registry.projection.cosmos import (
     CosmosKpiRegistryProjectionStore,
     CosmosKpiRegistryProjectionStoreSettings,
 )
+from ada.web.operational.identification import CosmosOperationalProjectionStore
 from ada.web.storage.namespace import AdaStorageNamespace
 from ada.web.tools.projection.cosmos import (
     TOOL_PROJECTION_STORAGE_RESOURCE,
@@ -212,6 +213,11 @@ def compose_durable_manager_stores(
             blob_name=namespace.application_blob_name('users/users.json.gz'),
         ),
         users_promoted=users,
+        operational_source=application_source,
+        operational=CosmosOperationalProjectionStore(
+            client=cosmos['users_support'],
+            container_name=physical['users_support'].physical_name,
+        ),
     )
 
 
