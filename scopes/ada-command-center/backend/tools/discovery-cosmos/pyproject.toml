@@ -1,0 +1,82 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ada-command-center-tools-discovery-cosmos"
+version = "0.1.0"
+description = "Read-only Cosmos Tool Projection discovery adapter for ADA Command Center"
+requires-python = "==3.14.2"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "ada-command-center-tools-catalog==0.1.0",
+    "ada-web-storage-namespace==0.1.0",
+    "ada-web-tools-configuration==0.1.0",
+    "ada-web-tools-projection-cosmos==0.1.0",
+    "atlanticus-cosmos==1.0.0",
+    "atlanticus-web-projection==0.1.0",
+    "atlanticus-web-source==0.1.0",
+]
+
+[tool.uv.sources]
+ada-command-center-tools-catalog = { path = "../catalog", editable = true }
+ada-web-storage-namespace = { path = "../../../../ada/web/storage/namespace", editable = true }
+ada-web-tools-configuration = { path = "../../../../ada/web/tools/configuration", editable = true }
+ada-web-tools-projection-cosmos = { path = "../../../../ada/web/tools/projection-cosmos", editable = true }
+atlanticus-cosmos = { path = "../../../../../connectivity/cosmos", editable = true }
+atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
+atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.15.22",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+include = ["ada_command_center.tools.discovery_cosmos*"]
+
+[tool.setuptools.package-data]
+"ada_command_center.tools.discovery_cosmos" = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+target-version = "py314"
+extend-exclude = ["build", "dist", "commented"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ada", "ada_command_center", "atlanticus"]
+combine-as-imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [
+    "src",
+    "../catalog/src",
+    "../../../../ada/web/tools/core/src",
+    "../../../../ada/web/tools/configuration/src",
+    "../../../../ada/web/tools/projection-cosmos/src",
+    "../../../../ada/web/storage/namespace/src",
+    "../../../../../connectivity/cosmos/src",
+    "../../../../../connectivity/storage/src",
+    "../../../../../backend/observability/src",
+    "../../../../../web/capabilities/projection/core/src",
+    "../../../../../web/capabilities/source/core/src",
+    "../../../../../web/capabilities/storage/topology/src",
+]
+addopts = "-q --import-mode=importlib"
