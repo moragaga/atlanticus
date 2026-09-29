@@ -1,4 +1,4 @@
-# La exploración se ejecuta en modo de solo lectura y los clientes pertenecen al host.
+# La exploración recibe exclusivamente Cosmos externos; Command Center no es un input.
 from __future__ import annotations
 
 import re
@@ -131,45 +131,35 @@ class ToolCatalogDiscoveryReport:
 
 # Reutilizamos conexiones ya creadas, sin administrar secretos ni clientes globales.
 class ToolCatalogDiscovery:
+    # El host crea y cierra clientes externos exclusivamente durante la operación administrativa.
     def __init__(
         self,
         *,
         connections: Mapping[str, CosmosClient],
-        own_connection_name: str,
         max_documents_per_connection: int = _MAX_DOCUMENTS,
     ) -> None:
         if not isinstance(connections, Mapping) or not connections:
-            raise ValueError('Named Cosmos connections are required')
-        if not isinstance(own_connection_name, str) or not _CONNECTION_NAME.fullmatch(
-            own_connection_name
-        ):
-            raise ValueError('Own connection name is invalid')
-        if own_connection_name not in connections:
-            raise ValueError('Own connection must be present for explicit exclusion')
+            raise ValueError('External Cosmos connections are required')
         if any(
             not isinstance(name, str)
             or _CONNECTION_NAME.fullmatch(name) is None
+            or name in ('command-center', 'command_center')
             or not isinstance(client, CosmosClient)
             for name, client in connections.items()
         ):
             raise TypeError('Named Cosmos connections are invalid')
-        if len(connections) < 2:
-            raise ValueError('At least one external Cosmos connection is required')
         if (
             type(max_documents_per_connection) is not int
             or not 1 <= max_documents_per_connection <= _MAX_DOCUMENTS
         ):
             raise ValueError('Discovery document limit is invalid')
         self._connections = dict(connections)
-        self._own_connection_name = own_connection_name
         self._max_documents = max_documents_per_connection
 
     # La exclusión usa el alias lógico explícito del propio Command Center.
     def inspect(self) -> ToolCatalogDiscoveryReport:
         results = []
         for name, client in sorted(self._connections.items()):
-            if name == self._own_connection_name:
-                continue
             results.append(self._inspect_connection(name, client))
         return ToolCatalogDiscoveryReport(connections=tuple(results))
 

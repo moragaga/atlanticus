@@ -112,8 +112,7 @@ def _discover(
 ):
     manager = own or CosmosStub()
     return ToolCatalogDiscovery(
-        connections={'command-center': manager, **upstream},
-        own_connection_name='command-center',
+        connections=upstream,
         max_documents_per_connection=limit,
     ).inspect(), manager
 
@@ -319,17 +318,13 @@ def test_no_tools_anywhere_cannot_construct_consolidator_inputs() -> None:
         report.consolidation_inputs(current=None)
 
 
-def test_requires_explicit_name_for_own_connection_and_external_sources() -> None:
+def test_requires_external_sources_and_rejects_reserved_command_center_alias() -> None:
     own = CosmosStub()
-    with pytest.raises(ValueError, match='Own connection must be present'):
-        ToolCatalogDiscovery(connections={'external': own}, own_connection_name='command-center')
-    with pytest.raises(ValueError, match='At least one external'):
-        ToolCatalogDiscovery(
-            connections={'command-center': own}, own_connection_name='command-center'
-        )
+    with pytest.raises(ValueError, match='External Cosmos connections'):
+        ToolCatalogDiscovery(connections={})
+    with pytest.raises(TypeError, match='Named Cosmos connections'):
+        ToolCatalogDiscovery(connections={'command-center': own})
     with pytest.raises(ValueError, match='document limit'):
         ToolCatalogDiscovery(
-            connections={'command-center': own, 'external': CosmosStub()},
-            own_connection_name='command-center',
-            max_documents_per_connection=257,
+            connections={'external': CosmosStub()}, max_documents_per_connection=257
         )
