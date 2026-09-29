@@ -17,7 +17,6 @@ from ada.web.operational.identification.models import (
 )
 from ada.web.operational.identification.projection import create_operational_projection_service
 from ada.web.operational.identification.source import OperationalSourceService
-
 from atlanticus.web.projection.models import ProjectionRecord, ProjectionStatus
 from atlanticus.web.projection.service import SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
@@ -123,7 +122,9 @@ class OperationalIdentificationService:
         snapshot, _ = self.catalog_for_edit()
         active = self._projections.get_active(CATALOG_SOURCE_KEY)
         if snapshot.current is None or active is None:
-            raise OperationalReferenceError('Operational catalog must be projected before assigning positions')
+            raise OperationalReferenceError(
+                'Operational catalog must be projected before assigning positions'
+            )
         if active.source_release != snapshot.current.release_ref:
             raise OperationalReferenceError('Operational catalog projection is outdated')
         if not isinstance(active.payload, OperationalCatalog):

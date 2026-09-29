@@ -1,0 +1,35 @@
+{
+  "tool_key": "validation_integrated",
+  "display_name": "Operación integrada de validación",
+  "kind": "integrated_operations",
+  "source_consumption": {"tool_key": "validation_integrated", "source_keys": ["pi"]},
+  "source_operational_participation": {
+    "tool_key": "validation_integrated",
+    "control_sources": [
+      {"source_key": "pi", "pre_degrading_after_seconds": 200, "degrading_after_seconds": 300}
+    ]
+  },
+  "structure": {
+    "tool_key": "validation_integrated",
+    "kind": "integrated_operations",
+    "components": [
+      {
+        "key": "mine_validation",
+        "display_name": "Mina de validación",
+        "scope": "mine",
+        "subcomponents": [
+          {"key": "crushing", "display_name": "Chancado", "linked_component_keys": []}
+        ]
+      },
+      {
+        "key": "plant_validation",
+        "display_name": "Planta de validación",
+        "scope": "plant",
+        "subcomponents": [
+          {"key": "concentrator", "display_name": "Concentradora", "linked_component_keys": []}
+        ]
+      }
+    ]
+  },
+  "branding": {"variant": "original"}
+}

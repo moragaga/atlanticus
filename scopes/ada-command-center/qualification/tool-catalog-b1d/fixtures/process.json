@@ -1,0 +1,27 @@
+{
+  "tool_key": "validation_process",
+  "display_name": "Proceso de validación",
+  "kind": "process",
+  "source_consumption": {"tool_key": "validation_process", "source_keys": ["pi"]},
+  "source_operational_participation": {
+    "tool_key": "validation_process",
+    "control_sources": [
+      {"source_key": "pi", "pre_degrading_after_seconds": 200, "degrading_after_seconds": 300}
+    ]
+  },
+  "structure": {
+    "tool_key": "validation_process",
+    "kind": "process",
+    "operational_scope": "plant",
+    "components": [
+      {
+        "key": "validation_line",
+        "display_name": "Línea de validación",
+        "subcomponents": [
+          {"key": "line_a", "display_name": "Línea A", "linked_component_keys": []}
+        ]
+      }
+    ]
+  },
+  "branding": {"variant": "original"}
+}
