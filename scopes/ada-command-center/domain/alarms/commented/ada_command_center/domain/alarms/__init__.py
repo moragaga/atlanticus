@@ -2,6 +2,8 @@
 # Publicamos la identidad estable para que Web y los tres procesos no la redeclaren.
 from ada_command_center.domain.alarms.configuration import AlarmConfiguration
 from ada_command_center.domain.alarms.definition import (
+    DEACTIVATION_MAX_HOURS,
+    END_OF_SHIFT,
     AlarmColor,
     AlarmDeactivationDefinition,
     AlarmDefinition,
@@ -10,6 +12,7 @@ from ada_command_center.domain.alarms.definition import (
     AlarmVisualSubcomponentTarget,
     AlarmVisualTarget,
     BusinessCategory,
+    DeactivationLimit,
     MessageDeactivationDefinition,
     MessageDefinition,
     MessageScope,
@@ -28,6 +31,8 @@ __version__ = '1.0.0'
 
 __all__ = [
     'ALARM_CONFIGURATION_SOURCE_KEY',
+    'DEACTIVATION_MAX_HOURS',
+    'END_OF_SHIFT',
     'AlarmColor',
     'AlarmConfiguration',
     'AlarmConfigurationSnapshot',
@@ -42,6 +47,7 @@ __all__ = [
     'AlarmVisualTarget',
     'BusinessCategory',
     'Criticality',
+    'DeactivationLimit',
     'MessageDeactivationDefinition',
     'MessageDefinition',
     'MessageScope',

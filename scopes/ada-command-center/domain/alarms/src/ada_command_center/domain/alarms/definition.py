@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from types import MappingProxyType
+from typing import Literal
 
 from ada_command_center.domain.alarms.models import AlarmIdentity, AlarmKind, Criticality
 
@@ -40,10 +41,15 @@ class ProcessAlarmProjectionMode(StrEnum):
     DISTRIBUTED = 'DISTRIBUTED'
 
 
+DEACTIVATION_MAX_HOURS = 11
+END_OF_SHIFT = 'END_OF_SHIFT'
+type DeactivationLimit = int | Literal['END_OF_SHIFT'] | None
+
+
 @dataclass(frozen=True, slots=True)
 class AlarmDeactivationDefinition:
     enabled: bool
-    max_duration_hours: int | None
+    max_duration_hours: DeactivationLimit
     approval_required: bool
 
     def __post_init__(self) -> None:
@@ -57,7 +63,7 @@ class AlarmDeactivationDefinition:
 @dataclass(frozen=True, slots=True)
 class MessageDeactivationDefinition:
     enabled: bool
-    max_duration_hours: int | None
+    max_duration_hours: DeactivationLimit
     approval_required: bool
 
     def __post_init__(self) -> None:
@@ -317,7 +323,7 @@ class AlarmDefinition:
 def _validate_deactivation_definition(
     *,
     enabled: bool,
-    max_duration_hours: int | None,
+    max_duration_hours: DeactivationLimit,
     approval_required: bool,
 ) -> None:
     _require_bool(enabled, 'enabled')
@@ -330,9 +336,11 @@ def _validate_deactivation_definition(
         return
     if max_duration_hours is None:
         raise ValueError('enabled deactivation requires max_duration_hours')
+    if max_duration_hours == END_OF_SHIFT:
+        return
     _require_int(max_duration_hours, 'max_duration_hours')
-    if not 1 <= max_duration_hours <= 12:
-        raise ValueError('max_duration_hours must be between 1 and 12')
+    if not 1 <= max_duration_hours <= DEACTIVATION_MAX_HOURS:
+        raise ValueError('max_duration_hours must be 1 to 11 or END_OF_SHIFT')
 
 
 def _require_non_empty_string(value: object, name: str) -> None:

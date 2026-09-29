@@ -5,11 +5,14 @@ from dataclasses import dataclass
 from ada.web.tools.enums import ToolConfigurationKind
 from ada_command_center.alarms.core import AlarmResolutionKey
 from ada_command_center.domain.alarms import (
+    DEACTIVATION_MAX_HOURS,
+    END_OF_SHIFT,
     AlarmColor,
     AlarmIdentity,
     AlarmKind,
     BusinessCategory,
     Criticality,
+    DeactivationLimit,
     OperationalArea,
     ProcessAlarmProjectionMode,
     VisibilityMode,
@@ -19,7 +22,7 @@ from ada_command_center.domain.alarms import (
 @dataclass(frozen=True, slots=True)
 class ResolvedDeactivationPolicy:
     enabled: bool
-    max_duration_hours: int | None
+    max_duration_hours: DeactivationLimit
     approval_required: bool
 
     def __post_init__(self) -> None:
@@ -33,9 +36,11 @@ class ResolvedDeactivationPolicy:
             return
         if self.max_duration_hours is None:
             raise ValueError('enabled deactivation requires max_duration_hours')
+        if self.max_duration_hours == END_OF_SHIFT:
+            return
         _require_int(self.max_duration_hours, 'max_duration_hours')
-        if not 1 <= self.max_duration_hours <= 12:
-            raise ValueError('max_duration_hours must be between 1 and 12')
+        if not 1 <= self.max_duration_hours <= DEACTIVATION_MAX_HOURS:
+            raise ValueError('max_duration_hours must be 1 to 11 or END_OF_SHIFT')
 
 
 @dataclass(frozen=True, slots=True)

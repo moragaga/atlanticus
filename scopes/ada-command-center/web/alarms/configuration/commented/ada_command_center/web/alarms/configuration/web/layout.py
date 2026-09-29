@@ -1,5 +1,6 @@
 # Composición visual del editor de alarmas siguiendo los controles del Manager de Atlanticus.
 # Estructura y comportamiento idénticos al módulo productivo.
+# La misma lista de duraciones se usa para reglas y mensajes.
 
 from __future__ import annotations
 
@@ -9,6 +10,8 @@ from collections.abc import Mapping
 from dash import dcc, html
 
 from ada_command_center.domain.alarms import (
+    DEACTIVATION_MAX_HOURS,
+    END_OF_SHIFT,
     AlarmColor,
     AlarmKind,
     BusinessCategory,
@@ -616,10 +619,10 @@ def _rule_editor(
                         'Enabled',
                         deactivation.get('enabled'),
                     ),
-                    _number_field(
+                    _deactivation_duration_field(
                         rule_index,
                         'default_deactivation.max_duration_hours',
-                        'Max duration hours',
+                        'Duración máxima',
                         deactivation.get('max_duration_hours'),
                     ),
                     _bool_field(
@@ -931,10 +934,10 @@ def _message_editor(message_index: int, message: dict[str, object]) -> object:
     if policy == 'ALLOW' and isinstance(override, dict):
         children.extend(
             [
-                _message_number_field(
+                _message_deactivation_duration_field(
                     message_index,
                     'deactivation_override.max_duration_hours',
-                    'Duración máxima (horas)',
+                    'Duración máxima',
                     override.get('max_duration_hours'),
                 ),
                 _message_bool_field(
@@ -1004,6 +1007,29 @@ def _tool_key_field(
             clearable=False,
             searchable=True,
             placeholder='Seleccionar herramienta',
+            style=dash_select_style(),
+        ),
+    )
+
+
+def _deactivation_duration_options() -> list[dict[str, object]]:
+    return [
+        {'label': f'{hour} hora' if hour == 1 else f'{hour} horas', 'value': hour}
+        for hour in range(1, DEACTIVATION_MAX_HOURS + 1)
+    ] + [{'label': 'Fin del turno', 'value': END_OF_SHIFT}]
+
+
+def _deactivation_duration_field(
+    rule_index: int, field: str, label: str, value: object
+) -> object:
+    return _labeled(
+        label,
+        dcc.Dropdown(
+            id={'type': RULE_FIELD_TYPE, 'rule': rule_index, 'field': field},
+            options=_deactivation_duration_options(),
+            value=value,
+            clearable=True,
+            searchable=False,
             style=dash_select_style(),
         ),
     )
@@ -1170,7 +1196,7 @@ def _message_text_field(message_index: int, field: str, label: str, value: objec
     )
 
 
-def _message_number_field(
+def _message_deactivation_duration_field(
     message_index: int,
     field: str,
     label: str,
@@ -1178,12 +1204,13 @@ def _message_number_field(
 ) -> object:
     return _labeled(
         label,
-        dcc.Input(
+        dcc.Dropdown(
             id={'type': MESSAGE_FIELD_TYPE, 'message': message_index, 'field': field},
-            type='number',
+            options=_deactivation_duration_options(),
             value=value,
-            step=1,
-            debounce=True,
+            clearable=True,
+            searchable=False,
+            style=dash_select_style(),
         ),
     )
 

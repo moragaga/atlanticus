@@ -5,7 +5,9 @@ from dataclasses import dataclass
 from typing import Any
 
 # El aggregate combina Rules y Messages ya tipados por el dominio.
+# El codec conserva END_OF_SHIFT como discriminante, sin convertirlo en una duración fija.
 from ada_command_center.domain.alarms.definition import (
+    END_OF_SHIFT,
     AlarmColor,
     AlarmDeactivationDefinition,
     AlarmDefinition,
@@ -14,6 +16,7 @@ from ada_command_center.domain.alarms.definition import (
     AlarmVisualSubcomponentTarget,
     AlarmVisualTarget,
     BusinessCategory,
+    DeactivationLimit,
     MessageDeactivationDefinition,
     MessageDefinition,
     MessageScope,
@@ -308,6 +311,12 @@ def _reappearance_from_document(document: object) -> ReappearanceDefinition:
     )
 
 
+def _deactivation_limit_from_document(value: object) -> DeactivationLimit:
+    if value == END_OF_SHIFT:
+        return END_OF_SHIFT
+    return None if value is None else _require_int(value)
+
+
 def _alarm_deactivation_to_document(value: AlarmDeactivationDefinition) -> dict[str, object]:
     return {
         'enabled': value.enabled,
@@ -321,7 +330,7 @@ def _alarm_deactivation_from_document(document: object) -> AlarmDeactivationDefi
     raw_max_duration = value.get('max_duration_hours')
     return AlarmDeactivationDefinition(
         enabled=_require_bool(value['enabled']),
-        max_duration_hours=(None if raw_max_duration is None else _require_int(raw_max_duration)),
+        max_duration_hours=_deactivation_limit_from_document(raw_max_duration),
         approval_required=_require_bool(value['approval_required']),
     )
 
@@ -339,7 +348,7 @@ def _message_deactivation_from_document(document: object) -> MessageDeactivation
     raw_max_duration = value.get('max_duration_hours')
     return MessageDeactivationDefinition(
         enabled=_require_bool(value['enabled']),
-        max_duration_hours=(None if raw_max_duration is None else _require_int(raw_max_duration)),
+        max_duration_hours=_deactivation_limit_from_document(raw_max_duration),
         approval_required=_require_bool(value['approval_required']),
     )
 

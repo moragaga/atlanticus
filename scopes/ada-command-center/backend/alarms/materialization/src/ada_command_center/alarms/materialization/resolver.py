@@ -36,6 +36,7 @@ from ada_command_center.domain.alarms import (
     AlarmDefinition,
     AlarmVisualTarget,
     Criticality,
+    DeactivationLimit,
     MessageDefinition,
     next_routing_tool_kind,
 )
@@ -54,7 +55,7 @@ class _ConfirmedToolCatalog(Protocol):
 
 class _DeactivationDefinition(Protocol):
     enabled: bool
-    max_duration_hours: int | None
+    max_duration_hours: DeactivationLimit
     approval_required: bool
 
 

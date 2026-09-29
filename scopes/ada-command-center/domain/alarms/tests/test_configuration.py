@@ -1,8 +1,12 @@
+from dataclasses import replace
+
 import pytest
 
 from ada_command_center.domain.alarms import (
     AlarmConfiguration,
     AlarmConfigurationValidationError,
+    AlarmDeactivationDefinition,
+    MessageDeactivationDefinition,
     AlarmIdentity,
     AlarmKind,
     MessageScope,
@@ -18,6 +22,24 @@ def test_alarm_configuration_document_round_trips_core_contracts() -> None:
 
     assert decoded == value
     assert decoded.rules[0].parameters == value.rules[0].parameters
+
+
+def test_shift_end_policy_round_trips_rule_and_message_without_resolving_a_clock() -> None:
+    value = configuration()
+    rule = replace(
+        value.rules[0],
+        default_deactivation=AlarmDeactivationDefinition(True, 'END_OF_SHIFT', True),
+    )
+    message = replace(
+        value.messages[0],
+        deactivation_override=MessageDeactivationDefinition(True, 'END_OF_SHIFT', False),
+    )
+    configured = AlarmConfiguration(rules=(rule,), messages=(message,))
+    document = configured.to_document()
+
+    assert document['rules'][0]['default_deactivation']['max_duration_hours'] == 'END_OF_SHIFT'
+    assert document['messages'][0]['deactivation_override']['max_duration_hours'] == 'END_OF_SHIFT'
+    assert AlarmConfiguration.from_document(document) == configured
 
 
 def test_alarm_configuration_normalizes_browser_integral_parameter_to_float() -> None:

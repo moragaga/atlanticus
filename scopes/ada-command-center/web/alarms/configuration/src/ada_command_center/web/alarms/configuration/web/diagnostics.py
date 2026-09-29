@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from ada_command_center.domain.alarms import DEACTIVATION_MAX_HOURS, END_OF_SHIFT
 from ada_command_center.web.alarms.configuration.web.labels import field_label
 from ada_command_center.web.alarms.configuration.web.parameters import parameter_issues
 
@@ -67,8 +68,8 @@ def authoring_issues(document: Mapping[str, object] | None) -> tuple[str, ...]:
         deactivation = entry.get('default_deactivation')
         if isinstance(deactivation, dict) and deactivation.get('enabled') is True:
             hours = deactivation.get('max_duration_hours')
-            if hours is not None and (type(hours) is not int or not 1 <= hours <= 12):
-                result.append(f'Rule {index + 1}: deactivation max duration must be 1 to 12 hours.')
+            if hours is not None and not _valid_deactivation_limit(hours):
+                result.append(f'Rule {index + 1}: invalid deactivation duration limit.')
         priority_order = entry.get('priority_order')
         if priority_order is not None and (type(priority_order) is not int or priority_order <= 0):
             result.append(
@@ -99,11 +100,15 @@ def authoring_issues(document: Mapping[str, object] | None) -> tuple[str, ...]:
         override = entry.get('deactivation_override')
         if isinstance(override, dict) and override.get('enabled') is True:
             hours = override.get('max_duration_hours')
-            if hours is None or type(hours) is not int or not 1 <= hours <= 12:
-                result.append(
-                    f'Message {index + 1}: deactivation max duration must be 1 to 12 hours.'
-                )
+            if hours is None or not _valid_deactivation_limit(hours):
+                result.append(f'Message {index + 1}: invalid deactivation duration limit.')
     return tuple(result)
+
+
+def _valid_deactivation_limit(value: object) -> bool:
+    return value == END_OF_SHIFT or (
+        type(value) is int and 1 <= value <= DEACTIVATION_MAX_HOURS
+    )
 
 
 def _field(document: dict[str, object], path: str) -> object:

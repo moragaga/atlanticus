@@ -53,7 +53,7 @@ def test_deactivation_issue_detected_before_document_serialization():
         'max_duration_hours': 13,
         'approval_required': False,
     }
-    assert any('1 to 12' in issue for issue in authoring_issues(document))
+    assert any('invalid deactivation duration limit' in issue for issue in authoring_issues(document))
 
 
 def test_save_exposes_nested_domain_error_and_does_not_persist_invalid_document(monkeypatch):

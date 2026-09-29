@@ -36,6 +36,13 @@ def test_resolved_deactivation_policy_preserves_enabled_contract() -> None:
         )
 
 
+def test_resolved_policy_preserves_shift_end_without_guessing_its_timestamp() -> None:
+    policy = ResolvedDeactivationPolicy(True, 'END_OF_SHIFT', True)
+    assert policy.max_duration_hours == 'END_OF_SHIFT'
+    with pytest.raises(ValueError, match='1 to 11'):
+        ResolvedDeactivationPolicy(True, 12, True)
+
+
 def test_resolved_delivery_message_requires_effective_policy() -> None:
     policy = ResolvedDeactivationPolicy(
         enabled=False,

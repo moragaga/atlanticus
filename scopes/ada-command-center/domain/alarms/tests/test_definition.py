@@ -149,16 +149,24 @@ def test_deactivation_disabled_shape_is_strict() -> None:
         AlarmDeactivationDefinition(False, None, True)
 
 
-@pytest.mark.parametrize('hours', [1, 12])
+@pytest.mark.parametrize('hours', [1, 11])
 def test_deactivation_accepts_configured_shift_range(hours: int) -> None:
     value = AlarmDeactivationDefinition(True, hours, False)
     assert value.max_duration_hours == hours
 
 
-@pytest.mark.parametrize('hours', [0, 13])
+@pytest.mark.parametrize('hours', [0, 12, 13])
 def test_deactivation_rejects_duration_outside_shift_range(hours: int) -> None:
-    with pytest.raises(ValueError, match='between 1 and 12'):
+    with pytest.raises(ValueError, match='1 to 11'):
         AlarmDeactivationDefinition(True, hours, False)
+
+
+def test_deactivation_supports_shift_end_for_rules_and_messages() -> None:
+    for definition in (AlarmDeactivationDefinition, MessageDeactivationDefinition):
+        value = definition(True, 'END_OF_SHIFT', False)
+        assert value.max_duration_hours == 'END_OF_SHIFT'
+        with pytest.raises(TypeError, match='max_duration_hours'):
+            definition(True, 'UNKNOWN_MODE', False)
 
 
 def test_message_scope_is_locally_coherent() -> None:

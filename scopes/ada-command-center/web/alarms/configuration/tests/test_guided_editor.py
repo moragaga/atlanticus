@@ -1,5 +1,6 @@
-from dash import html
+from dash import dcc, html
 
+from ada_command_center.web.alarms.configuration.web import layout
 from ada_command_center.web.alarms.configuration.web.diagnostics import (
     authoring_issues,
     readiness_hints,
@@ -10,6 +11,17 @@ from ada_command_center.web.alarms.configuration.web.guided_rule import (
 )
 from ada_command_center.web.alarms.configuration.web.ids import STEP_ADD_TYPE
 from ada_command_center.web.alarms.configuration.web.labels import field_help, value_label
+
+
+def test_deactivation_selectors_share_1_to_11_and_shift_end_values() -> None:
+    expected = [*range(1, 12), 'END_OF_SHIFT']
+    rule = layout._deactivation_duration_field(0, 'default_deactivation.max_duration_hours', 'Límite', 'END_OF_SHIFT')
+    message = layout._message_deactivation_duration_field(0, 'deactivation_override.max_duration_hours', 'Límite', 'END_OF_SHIFT')
+    for control in (rule, message):
+        dropdown = next(node.children for node in control.children if hasattr(node, 'className') and node.className == 'alarm-admin__dropdown-shell')
+        assert isinstance(dropdown, dcc.Dropdown)
+        assert [option['value'] for option in dropdown.options] == expected
+        assert dropdown.value == 'END_OF_SHIFT'
 
 
 def test_guided_section_mounts_only_selected_group() -> None:

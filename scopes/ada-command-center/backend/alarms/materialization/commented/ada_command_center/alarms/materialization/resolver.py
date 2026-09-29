@@ -39,6 +39,7 @@ from ada_command_center.domain.alarms import (
     AlarmDefinition,
     AlarmVisualTarget,
     Criticality,
+    DeactivationLimit,
     MessageDefinition,
     next_routing_tool_kind,
 )
@@ -58,9 +59,10 @@ class _ConfirmedToolCatalog(Protocol):
 
 
 # Unifica estructuralmente las policies authored de Rule y Message para materializarlas sin adapters.
+# El límite de turno conserva su etiqueta hasta la superficie de consumo, sin resolver horarios.
 class _DeactivationDefinition(Protocol):
     enabled: bool
-    max_duration_hours: int | None
+    max_duration_hours: DeactivationLimit
     approval_required: bool
 
 

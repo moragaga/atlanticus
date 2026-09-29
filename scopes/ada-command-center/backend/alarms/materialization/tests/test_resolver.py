@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import pytest
 
@@ -164,6 +164,29 @@ def test_ready_resolution_materializes_runtime_and_delivery_atomically() -> None
     assert risk_delivery.messages[1].deactivation_policy.enabled is False
     assert risk_delivery.messages[1].deactivation_policy.max_duration_hours is None
     assert risk_delivery.visual_targets[0].tool_kind is ToolConfigurationKind.PROCESS
+
+
+def test_shift_end_is_preserved_through_qualified_materialization() -> None:
+    authored = replace(
+        rule(message_keys=('shift',)),
+        default_deactivation=AlarmDeactivationDefinition(True, 'END_OF_SHIFT', False),
+    )
+    configuration = AlarmConfiguration(
+        rules=(authored,),
+        messages=(message('shift', override=MessageDeactivationDefinition(True, 'END_OF_SHIFT', True)),),
+    )
+    result = resolve_alarm_configuration(
+        configuration=configuration,
+        alarm_configuration_revision='ALARMS-SHIFT',
+        confirmed_tool_catalog=tool_catalog('tool_a'),
+        tool_qualification=green_qualification('tool_a'),
+        evaluator_qualification=evaluator_qualification(),
+    )
+    assert result.status is AlarmResolutionStatus.READY
+    assert result.delivery_configuration is not None
+    alarm = result.delivery_configuration.alarms[0]
+    assert alarm.default_deactivation_policy.max_duration_hours == 'END_OF_SHIFT'
+    assert alarm.messages[0].deactivation_policy.max_duration_hours == 'END_OF_SHIFT'
 
 
 def test_disabled_rule_still_requires_evaluator_qualification() -> None:
