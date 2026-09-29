@@ -46,6 +46,7 @@ name = "ada-command-center-alarms-delivery-process"
 version = "1.0.0"
 source = { editable = "processes/alarms-delivery" }
 dependencies = [
+    { name = "ada-command-center-alarms-domain" },
     { name = "ada-command-center-alarms-materialization" },
     { name = "ada-command-center-alarms-persistence" },
     { name = "atlanticus-configuration" },
@@ -64,6 +65,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "ada-command-center-alarms-domain", editable = "../domain/alarms" },
     { name = "ada-command-center-alarms-materialization", editable = "alarms/materialization" },
     { name = "ada-command-center-alarms-persistence", editable = "alarms/persistence" },
     { name = "atlanticus-configuration", editable = "../../../backend/configuration" },

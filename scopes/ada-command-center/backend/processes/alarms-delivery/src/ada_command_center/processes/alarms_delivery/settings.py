@@ -3,23 +3,24 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from ada_command_center.domain.alarms import ALARM_CONFIGURATION_SOURCE_KEY
 from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfiguration
 
 
 @dataclass(frozen=True, slots=True)
 class AlarmDeliverySettings:
-    source_key: str
     poll_seconds: float
     max_facts_per_iteration: int
     max_workers: int
+
+    @property
+    def source_key(self) -> str:
+        return ALARM_CONFIGURATION_SOURCE_KEY
 
     @classmethod
     def from_configuration(cls, configuration: ResolvedConfiguration) -> AlarmDeliverySettings:
         if not isinstance(configuration, ResolvedConfiguration):
             raise TypeError('configuration must be ResolvedConfiguration')
-        source_key = configuration.require('ALARM_CONFIGURATION_SOURCE_KEY')
-        if not source_key or source_key != source_key.strip():
-            raise ValueError('ALARM_CONFIGURATION_SOURCE_KEY must be non-empty text')
         try:
             poll_seconds = float(configuration.require('ALARM_DELIVERY_POLL_SECONDS'))
             batch_limit = int(configuration.require('ALARM_DELIVERY_MAX_FACTS_PER_ITERATION'))
@@ -31,7 +32,6 @@ class AlarmDeliverySettings:
         if max_workers <= 0:
             raise ValueError('ALARM_DELIVERY_MAX_WORKERS must be positive')
         return cls(
-            source_key=source_key,
             poll_seconds=poll_seconds,
             max_facts_per_iteration=batch_limit,
             max_workers=max_workers,
@@ -42,7 +42,6 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
     return (
         ConfigurationVariableSpec(key='APPLICATION'),
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
-        ConfigurationVariableSpec(key='ALARM_CONFIGURATION_SOURCE_KEY'),
         ConfigurationVariableSpec(key='ALARM_DELIVERY_POLL_SECONDS', default='5'),
         ConfigurationVariableSpec(key='ALARM_DELIVERY_MAX_FACTS_PER_ITERATION', default='100'),
         ConfigurationVariableSpec(key='ALARM_DELIVERY_MAX_WORKERS', default='2'),

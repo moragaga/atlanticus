@@ -4,6 +4,8 @@ import math
 from dataclasses import dataclass
 
 from ada_command_center.alarms.core import EvidenceContractRef
+# El identificador compartido no puede ser cambiado mediante .env del proceso.
+from ada_command_center.domain.alarms import ALARM_CONFIGURATION_SOURCE_KEY
 from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfiguration
 
 
@@ -11,10 +13,9 @@ class AlarmRuntimeSettingsError(ValueError):
     pass
 
 
-# Agrupamos los valores de despliegue que el proceso realmente consume.
+# Agrupamos parámetros reales de Runtime: rutas a productores aún son manuales.
 @dataclass(frozen=True, slots=True)
 class AlarmRuntimeSettings:
-    source_key: str
     pi_source: str
     pi_application: str
     dispatch_application: str | None
@@ -24,16 +25,15 @@ class AlarmRuntimeSettings:
     technical_evidence_contract: EvidenceContractRef
     poll_interval_seconds: float
 
-# Normalizamos solo la configuración resuelta por el bootstrap.
+    @property
+    def source_key(self) -> str:
+        return ALARM_CONFIGURATION_SOURCE_KEY
+
     @classmethod
     def from_configuration(cls, configuration: ResolvedConfiguration) -> AlarmRuntimeSettings:
         if not isinstance(configuration, ResolvedConfiguration):
             raise TypeError('configuration must be ResolvedConfiguration')
         return cls(
-            source_key=_required(
-                configuration.require('ALARM_CONFIGURATION_SOURCE_KEY'),
-                'ALARM_CONFIGURATION_SOURCE_KEY',
-            ),
             pi_source=_pi_source(configuration.require('PI_SOURCE')),
             pi_application=_required(configuration.require('PI_APPLICATION'), 'PI_APPLICATION'),
             dispatch_application=_optional_application(
@@ -64,12 +64,11 @@ class AlarmRuntimeSettings:
         )
 
 
-# Declaramos las variables autorizadas y los defaults conocidos.
+# Declaramos solo entradas operacionales configurables.
 def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
     return (
         ConfigurationVariableSpec(key='APPLICATION'),
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
-        ConfigurationVariableSpec(key='ALARM_CONFIGURATION_SOURCE_KEY'),
         ConfigurationVariableSpec(key='PI_SOURCE'),
         ConfigurationVariableSpec(key='PI_APPLICATION'),
         ConfigurationVariableSpec(key='DISPATCH_APPLICATION', required=False),
@@ -88,7 +87,6 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
     )
 
 
-# Los identificadores no se recortan silenciosamente.
 def _required(value: str, name: str) -> str:
     if not isinstance(value, str) or not value or value != value.strip():
         raise AlarmRuntimeSettingsError(
@@ -97,14 +95,13 @@ def _required(value: str, name: str) -> str:
     return value
 
 
-# Una ruta opcional vacía deshabilita el enlace al productor.
+# Una aplicación opcional vacía significa que el productor no está disponible.
 def _optional_application(value: str | None, name: str) -> str | None:
     if value is None or value == '':
         return None
     return _required(value, name)
 
 
-# Validamos el nombre sin cargar dependencias físicas en la configuración.
 def _pi_source(value: str) -> str:
     if not isinstance(value, str) or value != value.strip():
         raise AlarmRuntimeSettingsError('PI_SOURCE must be NOTPII or PI_WEB_API')
@@ -114,7 +111,7 @@ def _pi_source(value: str) -> str:
     return normalized
 
 
-# Rechazamos intervalos no finitos o no positivos antes del arranque.
+# El sondeo es local a Runtime y no se acopla al de Delivery.
 def _poll_interval(value: str) -> float:
     try:
         interval = float(value)

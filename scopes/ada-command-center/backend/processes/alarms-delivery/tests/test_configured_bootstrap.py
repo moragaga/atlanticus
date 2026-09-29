@@ -28,9 +28,8 @@ def _prepared(tmp_path):
     )
     return {
         'ENVIRONMENT': 'local',
-        'APPLICATION': 'alarms-delivery-test',
+        'APPLICATION': 'ada-command-center',
         'VOLUMEN_PATH': str(tmp_path),
-        'ALARM_CONFIGURATION_SOURCE_KEY': 'source',
         'ALARM_DELIVERY_MAX_WORKERS': '2',
         'TEST_ENDPOINT': 'http://localhost:8081',
         'TEST_DATABASE': 'ada',

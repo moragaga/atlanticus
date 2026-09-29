@@ -19,9 +19,8 @@ def test_application_wires_existing_job_and_preserves_execution_environment(
 ):
     values = {
         'ENVIRONMENT': 'local',
-        'APPLICATION': 'ada-command-center-alarms-runtime-local',
+        'APPLICATION': 'ada-command-center',
         'VOLUMEN_PATH': str(tmp_path),
-        'ALARM_CONFIGURATION_SOURCE_KEY': 'alarm-configuration',
         'PI_SOURCE': 'NOTPII',
         'PI_APPLICATION': 'notpii-local',
         'ALARM_TECHNICAL_EVIDENCE_CONTRACT_KEY': 'test.technical',

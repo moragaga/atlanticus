@@ -7,6 +7,8 @@ from types import SimpleNamespace
 import pytest
 
 import ada_command_center.processes.alarms_runtime.bootstrap as bootstrap
+from ada_command_center.domain.alarms import ALARM_CONFIGURATION_SOURCE_KEY
+from ada_command_center.processes.alarms_runtime.settings import AlarmRuntimeSettings
 
 
 def _write_env(root: Path, *, volume: str) -> None:
@@ -14,9 +16,8 @@ def _write_env(root: Path, *, volume: str) -> None:
         '\n'.join(
             (
                 'ENVIRONMENT=local',
-                'APPLICATION=ada-command-center-alarms-runtime-local',
+                'APPLICATION=ada-command-center',
                 f'VOLUMEN_PATH={volume}',
-                'ALARM_CONFIGURATION_SOURCE_KEY=alarm-configuration',
                 'PI_SOURCE=NOTPII',
                 'PI_APPLICATION=notpii-local',
                 'ALARM_TECHNICAL_EVIDENCE_CONTRACT_KEY=test.technical',
@@ -28,10 +29,13 @@ def _write_env(root: Path, *, volume: str) -> None:
     )
 
 
-def test_local_configuration_resolves_required_contracts_and_default_period(tmp_path: Path):
+def test_local_configuration_resolves_defaults_and_domain_source(tmp_path: Path):
     _write_env(tmp_path, volume=str(tmp_path))
     resolved = bootstrap.load_configuration(process_root=tmp_path, environ={})
-    assert resolved.require('ALARM_CONFIGURATION_SOURCE_KEY') == 'alarm-configuration'
+    assert resolved.require('APPLICATION') == 'ada-command-center'
+    assert AlarmRuntimeSettings.from_configuration(resolved).source_key == (
+        ALARM_CONFIGURATION_SOURCE_KEY
+    )
     assert resolved.require('ALARM_RUNTIME_POLL_SECONDS') == '5'
 
 

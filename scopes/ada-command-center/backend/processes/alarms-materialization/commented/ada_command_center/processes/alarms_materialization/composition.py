@@ -1,4 +1,4 @@
-# Composition mantiene Cosmos sólo como input de ProjectionRecord y usa disco como output.
+# Cosmos es solo entrada a Materialization; los resultados van al volumen local.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -18,6 +18,7 @@ from ada_command_center.processes.alarms_materialization.settings import (
     AlarmMaterializationSettings,
 )
 from ada_command_center.web.alarms.projection.cosmos import (
+    ALARM_CONFIGURATION_PROJECTION_STORAGE_RESOURCE,
     CosmosAlarmConfigurationProjectionStore,
     CosmosAlarmConfigurationProjectionStoreSettings,
 )
@@ -56,12 +57,16 @@ class AlarmMaterializationComposition:
     job: AlarmMaterializationJob
     definition: JobDefinition
 
+    # Valida la topología del contrato existente; no crea ni elige un contenedor nuevo.
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
         with self.cosmos:
             CosmosProvisioner(client=self.cosmos).validate_containers(
                 (
                     CosmosContainerSpec(
-                        name=self.settings.projection_container, partition_key_path='/partition_key'
+                        name=self.settings.projection_container,
+                        partition_key_path=(
+                            ALARM_CONFIGURATION_PROJECTION_STORAGE_RESOURCE.topology.partition_key_path
+                        ),
                     ),
                 )
             )
@@ -73,10 +78,10 @@ class AlarmMaterializationComposition:
             )
 
 
-# Ambas aplicaciones consumidoras resuelven el mismo layout materialization_root.
 def build_composition(*, configuration: ResolvedConfiguration) -> AlarmMaterializationComposition:
     if not isinstance(configuration, ResolvedConfiguration):
         raise TypeError('configuration must be a ResolvedConfiguration')
+    # El operador sigue controlando endpoint, base de datos, credenciales y volumen.
     settings = AlarmMaterializationSettings.from_configuration(configuration)
     RuntimeConfiguration.from_sources(environ=configuration.values)
     client = CosmosClient(settings=settings.cosmos)
@@ -89,9 +94,7 @@ def build_composition(*, configuration: ResolvedConfiguration) -> AlarmMateriali
         acquirer=acquirer,
         qualifications=JsonFileAlarmQualificationProvider(settings.qualification_file),
         publisher=AlarmMaterializationPublisher(
-            LocalAlarmMaterializationResultStore(
-                root=materialization_root(settings.volume_path)
-            )
+            LocalAlarmMaterializationResultStore(root=materialization_root(settings.volume_path))
         ),
     )
     definition = JobDefinition(

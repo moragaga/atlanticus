@@ -4,6 +4,7 @@ import math
 from dataclasses import dataclass
 
 from ada_command_center.alarms.core import EvidenceContractRef
+from ada_command_center.domain.alarms import ALARM_CONFIGURATION_SOURCE_KEY
 from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfiguration
 
 
@@ -13,7 +14,6 @@ class AlarmRuntimeSettingsError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class AlarmRuntimeSettings:
-    source_key: str
     pi_source: str
     pi_application: str
     dispatch_application: str | None
@@ -23,15 +23,15 @@ class AlarmRuntimeSettings:
     technical_evidence_contract: EvidenceContractRef
     poll_interval_seconds: float
 
+    @property
+    def source_key(self) -> str:
+        return ALARM_CONFIGURATION_SOURCE_KEY
+
     @classmethod
     def from_configuration(cls, configuration: ResolvedConfiguration) -> AlarmRuntimeSettings:
         if not isinstance(configuration, ResolvedConfiguration):
             raise TypeError('configuration must be ResolvedConfiguration')
         return cls(
-            source_key=_required(
-                configuration.require('ALARM_CONFIGURATION_SOURCE_KEY'),
-                'ALARM_CONFIGURATION_SOURCE_KEY',
-            ),
             pi_source=_pi_source(configuration.require('PI_SOURCE')),
             pi_application=_required(configuration.require('PI_APPLICATION'), 'PI_APPLICATION'),
             dispatch_application=_optional_application(
@@ -66,7 +66,6 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
     return (
         ConfigurationVariableSpec(key='APPLICATION'),
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
-        ConfigurationVariableSpec(key='ALARM_CONFIGURATION_SOURCE_KEY'),
         ConfigurationVariableSpec(key='PI_SOURCE'),
         ConfigurationVariableSpec(key='PI_APPLICATION'),
         ConfigurationVariableSpec(key='DISPATCH_APPLICATION', required=False),

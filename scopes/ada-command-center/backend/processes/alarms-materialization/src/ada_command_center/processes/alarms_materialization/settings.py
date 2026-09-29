@@ -4,6 +4,10 @@ import math
 from dataclasses import dataclass
 from pathlib import Path
 
+from ada_command_center.domain.alarms import ALARM_CONFIGURATION_SOURCE_KEY
+from ada_command_center.web.alarms.projection.cosmos import (
+    ALARM_CONFIGURATION_PROJECTION_STORAGE_RESOURCE,
+)
 from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfiguration
 from atlanticus.connectivity.cosmos import CosmosConfigurationError, CosmosSettings
 
@@ -16,10 +20,16 @@ class AlarmMaterializationSettingsError(ValueError):
 class AlarmMaterializationSettings:
     cosmos: CosmosSettings
     volume_path: Path
-    source_key: str
-    projection_container: str
     qualification_file: Path
     poll_interval_seconds: float
+
+    @property
+    def source_key(self) -> str:
+        return ALARM_CONFIGURATION_SOURCE_KEY
+
+    @property
+    def projection_container(self) -> str:
+        return ALARM_CONFIGURATION_PROJECTION_STORAGE_RESOURCE.default_physical_name
 
     @classmethod
     def from_configuration(
@@ -55,19 +65,9 @@ class AlarmMaterializationSettings:
         return cls(
             cosmos=cosmos,
             volume_path=volume,
-            source_key=_required(configuration.require('ALARM_CONFIGURATION_SOURCE_KEY')),
-            projection_container=_required(configuration.require('ALARM_PROJECTION_CONTAINER')),
             qualification_file=path,
             poll_interval_seconds=interval,
         )
-
-
-def _required(value: str) -> str:
-    if not isinstance(value, str) or not value or value.strip() != value:
-        raise AlarmMaterializationSettingsError(
-            'Alarm Materialization setting must be non-empty text'
-        )
-    return value
 
 
 def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
@@ -77,8 +77,6 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(key='ALARM_COSMOS_ENDPOINT'),
         ConfigurationVariableSpec(key='ALARM_COSMOS_KEY', sensitive=True),
         ConfigurationVariableSpec(key='ALARM_COSMOS_DATABASE_NAME'),
-        ConfigurationVariableSpec(key='ALARM_CONFIGURATION_SOURCE_KEY'),
-        ConfigurationVariableSpec(key='ALARM_PROJECTION_CONTAINER'),
         ConfigurationVariableSpec(key='ALARM_QUALIFICATIONS_FILE'),
         ConfigurationVariableSpec(key='ALARM_MATERIALIZATION_POLL_SECONDS', default='30'),
         ConfigurationVariableSpec(key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED', default='true'),

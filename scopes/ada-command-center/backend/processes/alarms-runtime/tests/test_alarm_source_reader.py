@@ -100,11 +100,13 @@ def test_all_current_source_partitions_are_registered_without_future_sources() -
         DataSource.REMANENTES_NO_EXTRAIBLES: {DataPartition.LATEST},
         DataSource.REMANENTES_STOCKS: {DataPartition.LATEST},
         DataSource.FABRICA_PLANES: {DataPartition.DAILY, DataPartition.WEEKLY},
+        DataSource.METEODATA_DATA: {DataPartition.DAILY},
+        DataSource.METEODATA_PROJECTION: {DataPartition.LATEST},
+        DataSource.FABRICA_KPIS: {DataPartition.DAILY, DataPartition.WEEKLY},
     }
     assert actual == {
         (source, partition) for source, partitions in expected.items() for partition in partitions
     }
-    assert DataSource.FABRICA_KPIS not in registry.sources
 
 
 def test_shared_history_consolidates_read_and_delivers_exact_alarm_windows(tmp_path: Path) -> None:

@@ -17,6 +17,7 @@ from ada_command_center.processes.alarms_materialization.settings import (
     AlarmMaterializationSettings,
 )
 from ada_command_center.web.alarms.projection.cosmos import (
+    ALARM_CONFIGURATION_PROJECTION_STORAGE_RESOURCE,
     CosmosAlarmConfigurationProjectionStore,
     CosmosAlarmConfigurationProjectionStoreSettings,
 )
@@ -60,7 +61,10 @@ class AlarmMaterializationComposition:
             CosmosProvisioner(client=self.cosmos).validate_containers(
                 (
                     CosmosContainerSpec(
-                        name=self.settings.projection_container, partition_key_path='/partition_key'
+                        name=self.settings.projection_container,
+                        partition_key_path=(
+                            ALARM_CONFIGURATION_PROJECTION_STORAGE_RESOURCE.topology.partition_key_path
+                        ),
                     ),
                 )
             )

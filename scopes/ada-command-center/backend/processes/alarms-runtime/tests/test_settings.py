@@ -15,9 +15,8 @@ from atlanticus.kernel import Environment
 def _configuration(volume: Path, **changes: str) -> ResolvedConfiguration:
     values = {
         'ENVIRONMENT': 'local',
-        'APPLICATION': 'alarms-runtime-local',
+        'APPLICATION': 'ada-command-center',
         'VOLUMEN_PATH': str(volume),
-        'ALARM_CONFIGURATION_SOURCE_KEY': 'alarm-configuration',
         'PI_SOURCE': 'NOTPII',
         'PI_APPLICATION': 'notpii-local',
         'ALARM_TECHNICAL_EVIDENCE_CONTRACT_KEY': 'test.technical',

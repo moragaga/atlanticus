@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from ada_command_center.domain.alarms import (
+    ALARM_CONFIGURATION_SOURCE_KEY as ALARM_CONFIGURATION_SOURCE_KEY_VALUE,
+)
 from ada_command_center.web.alarms.configuration.manager import (
     compose_alarm_configuration_manager,
 )
@@ -15,7 +18,7 @@ from atlanticus.web.source.models import SourceKey
 
 MANAGER_ROUTE_PREFIX = '/manager'
 ALARM_CONFIGURATION_MANAGER_ACCESS_KEY = 'alarms.manage'
-ALARM_CONFIGURATION_SOURCE_KEY = SourceKey('alarm-configuration')
+ALARM_CONFIGURATION_SOURCE_KEY = SourceKey(ALARM_CONFIGURATION_SOURCE_KEY_VALUE)
 
 
 def build_configuration_manager_surface(

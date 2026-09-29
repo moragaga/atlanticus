@@ -92,12 +92,20 @@ class MeteodataAcquirer:
 
 
 def _parse_data(payload: Any, *, station: str, variable: str) -> list[Measurement]:
+    if not isinstance(payload, Mapping):
+        raise MeteodataResponseError('Meteodata response must be an object')
+
+    station_data = payload.get('estacion')
+    variable_data = payload.get('variable')
+
     if (
-        not isinstance(payload, Mapping)
-        or payload.get('estacion') != station
-        or payload.get('variable') != variable
+        not isinstance(station_data, Mapping)
+        or not isinstance(variable_data, Mapping)
+        or station_data.get('codigo') != station
+        or variable_data.get('codigo') != variable
     ):
         raise MeteodataResponseError('Meteodata station or variable response mismatch')
+
     rows = payload.get('datos')
     if not isinstance(rows, list):
         raise MeteodataResponseError('Meteodata datos must be an array')
