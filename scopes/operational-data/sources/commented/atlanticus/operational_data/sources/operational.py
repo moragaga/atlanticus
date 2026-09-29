@@ -45,6 +45,13 @@ class OperationalWindowResolver:
         }:
             window = calendar.resolve_operational_day(value)
             return OperationalWindow(window.start_utc, min(value, window.end_utc))
+        # La semana se determina con el calendario existente del área y se recorta a as_of.
+        if scope in {
+            OperationalScope.CURRENT_OPERATIONAL_WEEK_MINE,
+            OperationalScope.CURRENT_OPERATIONAL_WEEK_PLANT,
+        }:
+            window = calendar.resolve_operational_week(value)
+            return OperationalWindow(window.start_utc, min(value, window.end_utc))
         return _operational_month(calendar=calendar, value=value)
 
 

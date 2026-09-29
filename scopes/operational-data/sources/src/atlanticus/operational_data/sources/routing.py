@@ -22,6 +22,8 @@ _SOURCE_APPLICATION_FIELDS = {
     DataSource.REMANENTES_STOCKS: 'remanentes',
     DataSource.FABRICA_PLANES: 'fabrica_planes',
     DataSource.FABRICA_KPIS: 'fabrica_kpis',
+    DataSource.METEODATA_DATA: 'meteodata',
+    DataSource.METEODATA_PROJECTION: 'meteodata',
 }
 
 
@@ -33,13 +35,23 @@ class DataSourceApplications:
     remanentes: str | None = None
     fabrica_planes: str | None = None
     fabrica_kpis: str | None = None
+    meteodata: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, 'pi', _required_application(self.pi, field_name='pi'))
-        for field_name in ('dispatch', 'blockgrade', 'remanentes', 'fabrica_planes', 'fabrica_kpis'):
+        for field_name in (
+            'dispatch',
+            'blockgrade',
+            'remanentes',
+            'fabrica_planes',
+            'fabrica_kpis',
+            'meteodata',
+        ):
             value = getattr(self, field_name)
             if value is not None:
-                object.__setattr__(self, field_name, _required_application(value, field_name=field_name))
+                object.__setattr__(
+                    self, field_name, _required_application(value, field_name=field_name)
+                )
 
     def application_for(self, source: DataSource) -> str:
         if not isinstance(source, DataSource):
@@ -47,10 +59,14 @@ class DataSourceApplications:
         try:
             field_name = _SOURCE_APPLICATION_FIELDS[source]
         except KeyError as error:
-            raise DataSourceRoutingError(f'{source.value}: data source has no application routing contract') from error
+            raise DataSourceRoutingError(
+                f'{source.value}: data source has no application routing contract'
+            ) from error
         value = getattr(self, field_name)
         if value is None:
-            raise DataSourceRoutingError(f'{source.value}: data source application route is not configured')
+            raise DataSourceRoutingError(
+                f'{source.value}: data source application route is not configured'
+            )
         return value
 
     def validate_sources(self, sources: Iterable[DataSource]) -> None:
@@ -62,5 +78,7 @@ def _required_application(value: object, *, field_name: str) -> str:
     if not isinstance(value, str) or not value:
         raise DataSourceRoutingError(f'{field_name} application must be a non-empty string')
     if value != value.strip():
-        raise DataSourceRoutingError(f'{field_name} application must not contain surrounding whitespace')
+        raise DataSourceRoutingError(
+            f'{field_name} application must not contain surrounding whitespace'
+        )
     return value

@@ -14,6 +14,7 @@ BLOCKGRADE_APPLICATION_VARIABLE = 'BLOCKGRADE_APPLICATION'
 REMANENTES_APPLICATION_VARIABLE = 'REMANENTES_APPLICATION'
 FABRICA_PLANES_APPLICATION_VARIABLE = 'FABRICA_PLANES_APPLICATION'
 FABRICA_KPIS_APPLICATION_VARIABLE = 'FABRICA_KPIS_APPLICATION'
+METEODATA_APPLICATION_VARIABLE = 'METEODATA_APPLICATION'
 POLL_INTERVAL_VARIABLE = 'KPI_POLL_INTERVAL_SECONDS'
 REPROCESS_CURRENT_VARIABLE = 'REPROCESS_CURRENT'
 
@@ -27,6 +28,7 @@ class KpiRuntimeSettings:
     remanentes_application: str | None
     fabrica_planes_application: str | None
     fabrica_kpis_application: str | None
+    meteodata_application: str | None
     poll_interval_seconds: float
     reprocess_current: bool
 
@@ -56,6 +58,10 @@ class KpiRuntimeSettings:
                 configuration.get(FABRICA_KPIS_APPLICATION_VARIABLE),
                 FABRICA_KPIS_APPLICATION_VARIABLE,
             ),
+            meteodata_application=_optional_application(
+                configuration.get(METEODATA_APPLICATION_VARIABLE),
+                METEODATA_APPLICATION_VARIABLE,
+            ),
             poll_interval_seconds=_positive_float(
                 configuration.require(POLL_INTERVAL_VARIABLE), POLL_INTERVAL_VARIABLE
             ),
@@ -76,6 +82,7 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(key=REMANENTES_APPLICATION_VARIABLE, required=False),
         ConfigurationVariableSpec(key=FABRICA_PLANES_APPLICATION_VARIABLE, required=False),
         ConfigurationVariableSpec(key=FABRICA_KPIS_APPLICATION_VARIABLE, required=False),
+        ConfigurationVariableSpec(key=METEODATA_APPLICATION_VARIABLE, required=False),
         ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='1'),
         ConfigurationVariableSpec(key=REPROCESS_CURRENT_VARIABLE, default='false'),
         ConfigurationVariableSpec(key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED', default='true'),

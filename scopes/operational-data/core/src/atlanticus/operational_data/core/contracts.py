@@ -25,6 +25,8 @@ class DataSource(StrEnum):
 
     FABRICA_PLANES = 'fabrica.planes'
     FABRICA_KPIS = 'fabrica.kpis'
+    METEODATA_DATA = 'meteodata.datos'
+    METEODATA_PROJECTION = 'meteodata.proyeccion'
 
 
 class DataColumnType(StrEnum):
@@ -62,6 +64,8 @@ class OperationalScope(StrEnum):
     PREVIOUS_TURN_PLANT = 'previous_turn_plant'
     CURRENT_OPERATIONAL_DAY_MINE = 'current_operational_day_mine'
     CURRENT_OPERATIONAL_DAY_PLANT = 'current_operational_day_plant'
+    CURRENT_OPERATIONAL_WEEK_MINE = 'current_operational_week_mine'
+    CURRENT_OPERATIONAL_WEEK_PLANT = 'current_operational_week_plant'
     CURRENT_OPERATIONAL_MONTH_MINE = 'current_operational_month_mine'
     CURRENT_OPERATIONAL_MONTH_PLANT = 'current_operational_month_plant'
 
@@ -268,6 +272,8 @@ _DAILY_OPERATIONAL_SCOPES = frozenset(
         OperationalScope.PREVIOUS_TURN_PLANT,
         OperationalScope.CURRENT_OPERATIONAL_DAY_MINE,
         OperationalScope.CURRENT_OPERATIONAL_DAY_PLANT,
+        OperationalScope.CURRENT_OPERATIONAL_WEEK_MINE,
+        OperationalScope.CURRENT_OPERATIONAL_WEEK_PLANT,
     }
 )
 

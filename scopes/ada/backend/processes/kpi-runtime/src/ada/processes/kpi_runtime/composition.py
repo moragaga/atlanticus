@@ -67,6 +67,7 @@ def build_composition(
         remanentes=settings.remanentes_application,
         fabrica_planes=settings.fabrica_planes_application,
         fabrica_kpis=settings.fabrica_kpis_application,
+        meteodata=settings.meteodata_application,
     )
     applications.validate_sources(plan.sources)
     reader = RoutedDatasetSourceReader(
