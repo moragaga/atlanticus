@@ -38,7 +38,7 @@ def _find(component, target):
     return next((found for child in children if (found := _find(child, target)) is not None), None)
 
 
-def test_operational_catalog_is_first_and_trace_is_inside_it(tmp_path):
+def test_assignment_is_initial_and_catalog_remains_independent(tmp_path):
     from ada.web.application.configuration_manager import operational_ids as ids
 
     service = OperationalIdentificationService(
@@ -59,17 +59,22 @@ def test_operational_catalog_is_first_and_trace_is_inside_it(tmp_path):
         projection_name='Cosmos DB',
     )
     layout = build_operational_manager_layout(context)
-    assert _find(layout, ids.VIEW).data == 'positions'
+    assert _find(layout, ids.VIEW).data == 'assignments'
     assert _find(layout, ids.POSITION_TAB).children == 'Datos operacionales'
     assert _find(layout, ids.ASSIGN_TAB).children == 'Asignación'
     assert getattr(_find(layout, ids.POSITION_TAB), 'aria-controls') == ids.POSITION_PANEL
     assert getattr(_find(layout, ids.ASSIGN_TAB), 'aria-controls') == ids.ASSIGN_PANEL
     assert _find(layout, ids.CATALOG_REPROJECT) is not None
+    assert _find(layout, ids.ASSIGN_FEEDBACK) is not None
     assert _find(layout, ids.ASSIGNMENT_REPROJECT) is not None
     assert _find(layout, ids.CATALOG_METADATA) is not None
     assert _find(layout, ids.ASSIGN_LIST) is not None
     assert _find(layout, ids.ASSIGN_SIZE) is not None
     assert _find(layout, ids.POSITION_SIZE) is not None
+    tabs = _find(layout, ids.ASSIGN_TAB).children, _find(layout, ids.POSITION_TAB).children
+    assert tabs == ('Asignación', 'Datos operacionales')
+    assert getattr(_find(layout, ids.ASSIGN_TAB), 'aria-selected') == 'true'
+    assert getattr(_find(layout, ids.POSITION_TAB), 'aria-selected') == 'false'
 
 
 def test_primary_navigation_selects_catalog_and_assignments(monkeypatch):
@@ -98,6 +103,8 @@ def test_primary_navigation_selects_catalog_and_assignments(monkeypatch):
     assert app.callbacks['change_tab'](0, 1) == 'assignments'
     assignment = app.callbacks['display_tab']('assignments')
     assert assignment[-2:] == ('false', 'true')
+    assert assignment[2] == 'ada-operational-admin__surface'
+    assert 'ada-operational-admin__surface--active' in assignment[3]
 
     event.triggered_id = ids.POSITION_TAB
     assert app.callbacks['change_tab'](1, 0) == 'positions'

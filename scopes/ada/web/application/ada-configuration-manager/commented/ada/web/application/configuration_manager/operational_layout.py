@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import dash_bootstrap_components as dbc
 from dash import dcc, html
 
 from ada.web.application.configuration_manager import operational_ids as ids
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
 
 # La página usa la jerarquía administrativa de Manager sin duplicar su encabezado.
 def build_operational_manager_layout(context: OperationalManagerContext) -> object:
-    # Catálogo primero: el usuario no recibe cargos sin proyección vigente.
+    # Asignación es la entrada inicial; el catálogo sigue siendo independiente.
     if not context.can_manage():
         return html.P('No tienes acceso a esta configuración.')
     try:
@@ -42,8 +43,8 @@ def build_operational_manager_layout(context: OperationalManagerContext) -> obje
         return html.P('No fue posible cargar los datos operacionales.')
     return html.Div(
         [
-            # La pestaña inicial es el catálogo compartido; Asignación es independiente.
-            dcc.Store(id=ids.VIEW, data='positions'),
+            # El tab inicial es Asignación; el catálogo se consulta en la segunda pestaña.
+            dcc.Store(id=ids.VIEW, data='assignments'),
             dcc.Store(id=ids.ASSIGN_PAGE, data=1),
             dcc.Store(id=ids.ASSIGN_CURRENT_PAGE, data=assignment_page.request.page_number),
             dcc.Store(id=ids.POSITION_PAGE, data=1),
@@ -59,22 +60,22 @@ def build_operational_manager_layout(context: OperationalManagerContext) -> obje
             html.Div(
                 [
                     html.Button(
-                        'Datos operacionales',
-                        id=ids.POSITION_TAB,
-                        n_clicks=0,
-                        type='button',
-                        role='tab',
-                        className=_surface_tab_class(True),
-                        **{'aria-selected': 'true', 'aria-controls': ids.POSITION_PANEL},
-                    ),
-                    html.Button(
                         'Asignación',
                         id=ids.ASSIGN_TAB,
                         n_clicks=0,
                         type='button',
                         role='tab',
+                        className=_surface_tab_class(True),
+                        **{'aria-selected': 'true', 'aria-controls': ids.ASSIGN_PANEL},
+                    ),
+                    html.Button(
+                        'Datos operacionales',
+                        id=ids.POSITION_TAB,
+                        n_clicks=0,
+                        type='button',
+                        role='tab',
                         className=_surface_tab_class(False),
-                        **{'aria-selected': 'false', 'aria-controls': ids.ASSIGN_PANEL},
+                        **{'aria-selected': 'false', 'aria-controls': ids.POSITION_PANEL},
                     ),
                 ],
                 className='ada-operational-admin__primary-tabs',
@@ -175,7 +176,7 @@ def build_operational_manager_layout(context: OperationalManagerContext) -> obje
                     ),
                 ],
                 id=ids.POSITION_PANEL,
-                className=_surface_class(True),
+                className=_surface_class(False),
                 role='tabpanel',
                 **{'aria-labelledby': ids.POSITION_TAB},
             ),
@@ -188,6 +189,7 @@ def build_operational_manager_layout(context: OperationalManagerContext) -> obje
                         ],
                         className='ada-operational-admin__section-copy',
                     ),
+                    html.Div(id=ids.ASSIGN_FEEDBACK, role='status'),
                     _filter_bar(ids.ASSIGN_SEARCH, 'Buscar usuarios'),
                     _list_shell(ids.ASSIGN_LIST, assignment_list, ids.ASSIGN_SIZE),
                     html.Div(
@@ -198,7 +200,7 @@ def build_operational_manager_layout(context: OperationalManagerContext) -> obje
                     ),
                 ],
                 id=ids.ASSIGN_PANEL,
-                className=_surface_class(False),
+                className=_surface_class(True),
                 role='tabpanel',
                 **{'aria-labelledby': ids.ASSIGN_TAB},
             ),
@@ -502,7 +504,10 @@ def _paged_list(
             ),
         ],
         className='ada-operational-admin__paged-list',
-        **{'data-page-size': str(page.request.page_size)},
+        **{
+            'data-page-size': str(page.request.page_size),
+            'data-empty': 'true' if not rows else 'false',
+        },
     )
 
 
@@ -621,7 +626,7 @@ def _position_modal() -> object:
             ),
             _field(
                 'Nombre del cargo',
-                dcc.Input(
+                dbc.Input(
                     id=ids.POSITION_LABEL,
                     type='text',
                     maxLength=120,
@@ -673,26 +678,37 @@ def _modal(
                 className='ada-operational-admin__modal-backdrop',
                 **{'aria-label': 'Cerrar formulario'},
             ),
-            html.Div(
+            html.Section(
                 [
-                    html.Div(
+                    html.Header(
                         [
-                            html.H2(title),
+                            html.Div(
+                                [
+                                    html.H2(title),
+                                    html.P(
+                                        'Revisa la información antes de guardar.'
+                                    ),
+                                ],
+                                className='ada-operational-admin__modal-heading',
+                            ),
                             html.Button(
-                                '×',
+                                '',
                                 id=close_id,
                                 type='button',
                                 n_clicks=0,
-                                className='ada-operational-admin__close',
+                                className='btn-close ada-operational-admin__close',
                                 **{'aria-label': 'Cerrar formulario'},
                             ),
                         ],
-                        className='ada-operational-admin__modal-head',
+                        className='modal-header ada-operational-admin__modal-head',
                     ),
-                    html.Div(body, className='ada-operational-admin__modal-body'),
-                    html.Div(actions, className='ada-operational-admin__modal-actions'),
+                    html.Div(body, className='modal-body ada-operational-admin__modal-body'),
+                    html.Footer(
+                        actions,
+                        className='modal-footer ada-operational-admin__modal-actions',
+                    ),
                 ],
-                className='ada-operational-admin__modal-dialog',
+                className='modal-content ada-operational-admin__modal-dialog',
                 role='dialog',
                 **{'aria-modal': 'true'},
             ),

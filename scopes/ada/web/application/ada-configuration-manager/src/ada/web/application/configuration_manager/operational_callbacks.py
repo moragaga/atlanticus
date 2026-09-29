@@ -38,10 +38,10 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
         prevent_initial_call=True,
     )
     def change_tab(_positions, _assign):
-        if ctx.triggered_id == ids.POSITION_TAB and _positions:
-            return 'positions'
         if ctx.triggered_id == ids.ASSIGN_TAB and _assign:
             return 'assignments'
+        if ctx.triggered_id == ids.POSITION_TAB and _positions:
+            return 'positions'
         return no_update
 
     @app.callback(
@@ -54,14 +54,14 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
         Input(ids.VIEW, 'data'),
     )
     def display_tab(value):
-        positions = value != 'assignments'
+        assignment = value != 'positions'
         return (
-            _surface_tab_class(positions),
-            _surface_tab_class(not positions),
-            _surface_class(positions),
-            _surface_class(not positions),
-            'true' if positions else 'false',
-            'false' if positions else 'true',
+            _surface_tab_class(not assignment),
+            _surface_tab_class(assignment),
+            _surface_class(not assignment),
+            _surface_class(assignment),
+            'false' if assignment else 'true',
+            'true' if assignment else 'false',
         )
 
     @app.callback(
@@ -174,6 +174,8 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
         Output(ids.USER, 'data'),
         Output(ids.ASSIGN_SELECTED_NAME, 'children'),
         Output(ids.ASSIGN_MODAL, 'className'),
+        Output(ids.ASSIGNMENT_RESULT, 'children', allow_duplicate=True),
+        Output(ids.ASSIGN_FEEDBACK, 'children', allow_duplicate=True),
         Input({'type': ids.ASSIGN_EDIT, 'index': ALL}, 'n_clicks'),
         Input(ids.ASSIGN_MODAL_CANCEL, 'n_clicks'),
         Input(ids.ASSIGN_MODAL_CLOSE, 'n_clicks'),
@@ -188,25 +190,26 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
             or (selected == ids.ASSIGN_MODAL_CLOSE and _close)
             or (selected == ids.ASSIGN_MODAL_BACKDROP and _backdrop)
         ):
-            return no_update, no_update, modal_class(False)
+            return no_update, no_update, modal_class(False), no_update, no_update
         if not isinstance(selected, dict) or selected.get('type') != ids.ASSIGN_EDIT:
-            return no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update
         clicked = any(
             ident.get('index') == selected.get('index') and count
             for ident, count in zip(edit_ids or (), _edits or (), strict=True)
         )
         if not clicked or not context.can_manage():
-            return no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update
         user_id = selected.get('index')
         try:
             user = next(user for user in context.promoted_users() if user.user_id == user_id)
         except StopIteration:
-            return no_update, no_update, no_update
-        return user_id, f'{user.display_name} · {user_id}', modal_class(True)
+            return no_update, no_update, no_update, no_update, no_update
+        return user_id, f'{user.display_name} · {user_id}', modal_class(True), None, None
 
     @app.callback(
         Output(ids.POSITION_SELECT, 'value'),
         Output(ids.POSITION_MODAL, 'className'),
+        Output(ids.CATALOG_RESULT, 'children', allow_duplicate=True),
         Input({'type': ids.POSITION_EDIT, 'index': ALL}, 'n_clicks'),
         Input(ids.POSITION_NEW, 'n_clicks'),
         Input(ids.POSITION_MODAL_CANCEL, 'n_clicks'),
@@ -222,25 +225,25 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
             or (selected == ids.POSITION_MODAL_CLOSE and _close)
             or (selected == ids.POSITION_MODAL_BACKDROP and _backdrop)
         ):
-            return no_update, modal_class(False)
+            return no_update, modal_class(False), no_update
         if not context.can_manage():
-            return no_update, no_update
+            return no_update, no_update, no_update
         if selected == ids.POSITION_NEW and _new:
-            return None, modal_class(True)
+            return None, modal_class(True), None
         if isinstance(selected, dict) and selected.get('type') == ids.POSITION_EDIT:
             clicked = any(
                 ident.get('index') == selected.get('index') and count
                 for ident, count in zip(edit_ids or (), _edits or (), strict=True)
             )
             if not clicked:
-                return no_update, no_update
+                return no_update, no_update, no_update
             try:
                 _snapshot, catalog = context.service.catalog_for_edit()
                 if catalog.position(selected.get('index')) is not None:
-                    return selected['index'], modal_class(True)
+                    return selected['index'], modal_class(True), None
             except Exception:
-                return no_update, no_update
-        return no_update, no_update
+                return no_update, no_update, no_update
+        return no_update, no_update, no_update
 
     @app.callback(
         Output(ids.AREA, 'value'),
@@ -496,6 +499,37 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
                 'Asignación guardada en Source. Usa Reintentar proyección.', warning=True
             )
         return _revision(updated_snapshot), result
+
+    @app.callback(
+        Output(ids.POSITION_MODAL, 'className', allow_duplicate=True),
+        Input(ids.CATALOG_REVISION, 'data'),
+        prevent_initial_call=True,
+    )
+    def close_position_after_publication(revision):
+        return modal_class(False) if revision else no_update
+
+    @app.callback(
+        Output(ids.ASSIGN_MODAL, 'className', allow_duplicate=True),
+        Output(ids.ASSIGN_FEEDBACK, 'children'),
+        Input(ids.ASSIGNMENT_RESULT, 'children'),
+        prevent_initial_call=True,
+    )
+    def finish_assignment_operation(message):
+        if isinstance(message, dict):
+            properties = message.get('props') or {}
+            style = properties.get('className', '')
+        else:
+            style = getattr(message, 'className', '')
+        completed = isinstance(style, str) and any(
+            token in style.split()
+            for token in (
+                'ada-operational-admin__result--success',
+                'ada-operational-admin__result--warning',
+            )
+        )
+        if not completed:
+            return no_update, no_update
+        return modal_class(False), message
 
     @app.callback(
         Output(ids.CATALOG_RESULT, 'children', allow_duplicate=True),
