@@ -15,33 +15,12 @@ from ada_command_center.alarms.materialization.local_reader import (
 from ada_command_center.alarms.persistence import (
     AlarmArtifactRefSnapshot,
     AlarmEffectiveConfigurationHead,
-    EngineCommitMetadata,
-    JournalPosition,
 )
 from atlanticus.state import AtomicJsonStore
 
 _CURRENT_TYPE = 'ada_command_center_engine_resolved_current_state'
-_FACTS_TYPE = 'ada_command_center_engine_committed_facts_batch'
-_EXPORT_CURSOR_TYPE = 'ada_command_center_engine_facts_export_cursor'
-_CONSUMER_CURSOR_TYPE = 'ada_command_center_delivery_facts_receipt_cursor'
 _CURRENT_PATH = 'current/latest.json'
-_EXPORT_CURSOR_PATH = 'state/facts-export-cursor.json'
-_CONSUMER_CURSOR_PATH = 'state/facts-consumption-cursor.json'
 _HASH = re.compile(r'[0-9a-f]{64}\Z')
-_BATCH_ID = re.compile(r'facts-[0-9a-f]{64}\Z')
-_RECORD_COLLECTIONS = frozenset(
-    {
-        'assignment_changes',
-        'deactivation_effects',
-        'deactivation_requests',
-        'episode_changes',
-        'evidence_records',
-        'input_receipts',
-        'journey_events',
-        'management_effects',
-        'occurrence_changes',
-    }
-)
 
 
 class AlarmDeliveryInputError(RuntimeError):
@@ -83,19 +62,6 @@ def _reference(value: object) -> AlarmArtifactRefSnapshot:
         return AlarmArtifactRefSnapshot.from_document(value)
     except (TypeError, ValueError, RuntimeError) as error:
         raise AlarmDeliveryInputError('Publication artifact reference is invalid') from error
-
-
-def _position(value: object) -> JournalPosition:
-    if not isinstance(value, dict):
-        raise AlarmDeliveryInputError('Publication journal position is invalid')
-    try:
-        return JournalPosition.from_document(value)
-    except (TypeError, ValueError, RuntimeError) as error:
-        raise AlarmDeliveryInputError('Publication journal position is invalid') from error
-
-
-def _position_order(value: JournalPosition) -> tuple[str, int]:
-    return value.segment_id, value.byte_offset
 
 
 def _current(document: dict[str, Any], *, source_key: str) -> AlarmArtifactRefSnapshot:
@@ -192,88 +158,15 @@ def _current(document: dict[str, Any], *, source_key: str) -> AlarmArtifactRefSn
     return pin
 
 
-def _facts(
-    document: dict[str, Any], *, source_key: str
-) -> tuple[AlarmArtifactRefSnapshot, JournalPosition]:
-    if set(document) != {
-        'document_type',
-        'schema_version',
-        'batch_id',
-        'artifact_ref',
-        'journal_position',
-        'commit',
-        'commit_record_hash',
-        'previous_batch',
-        'records',
-        'sha256',
-    }:
-        raise AlarmDeliveryInputError('Facts batch has unsupported fields')
-    if document['document_type'] != _FACTS_TYPE or document['schema_version'] != 2:
-        raise AlarmDeliveryInputError('Facts batch contract is unsupported')
-    _verify_digest(document)
-    previous = document['previous_batch']
-    if previous is not None and (
-        not isinstance(previous, dict)
-        or set(previous) != {'batch_id', 'sha256'}
-        or not isinstance(previous['batch_id'], str)
-        or not _BATCH_ID.fullmatch(previous['batch_id'])
-        or not isinstance(previous['sha256'], str)
-        or not _HASH.fullmatch(previous['sha256'])
-    ):
-        raise AlarmDeliveryInputError('Facts previous batch reference is invalid')
-    batch_id = document['batch_id']
-    if not isinstance(batch_id, str) or not _BATCH_ID.fullmatch(batch_id):
-        raise AlarmDeliveryInputError('Facts batch identity is invalid')
-    record_hash = document['commit_record_hash']
-    if (
-        not isinstance(record_hash, str)
-        or re.fullmatch(r'sha256:[0-9a-f]{64}', record_hash) is None
-        or batch_id != f'facts-{record_hash.removeprefix("sha256:")}'
-    ):
-        raise AlarmDeliveryInputError('Facts batch and commit record identity differ')
-    pin = _reference(document['artifact_ref'])
-    if pin.source_key != source_key:
-        raise AlarmDeliveryInputError('Facts batch source is invalid')
-    position = _position(document['journal_position'])
-    commit_document = document['commit']
-    if not isinstance(commit_document, dict):
-        raise AlarmDeliveryInputError('Facts commit metadata is invalid')
-    try:
-        commit = EngineCommitMetadata.from_document(commit_document)
-    except (TypeError, ValueError, RuntimeError) as error:
-        raise AlarmDeliveryInputError('Facts commit metadata is invalid') from error
-    if position.commit_id != commit.commit_id:
-        raise AlarmDeliveryInputError('Facts journal position does not match commit')
-    if (
-        commit.alarm_configuration_revision != pin.alarm_configuration_revision
-        or commit.tool_registry_revision != pin.confirmed_tool_catalog_revision
-    ):
-        raise AlarmDeliveryInputError('Facts commit configuration does not match artifact')
-    records = document['records']
-    if not isinstance(records, dict) or set(records) - _RECORD_COLLECTIONS:
-        raise AlarmDeliveryInputError('Facts records contain unsupported collections')
-    if any(
-        not isinstance(items, list)
-        or not items
-        or not all(isinstance(item, dict) for item in items)
-        for items in records.values()
-    ):
-        raise AlarmDeliveryInputError('Facts records must contain non-empty object arrays')
-    return pin, position
-
-
 @dataclass(frozen=True, slots=True)
 class DeliveryInputCycleResult:
     current_status: str
-    staged_facts: int
-    last_facts_batch_id: str | None
 
 
 @dataclass(slots=True)
 class LocalAlarmDeliveryReceiver:
     volume_path: Path
     source_key: str
-    max_facts_per_iteration: int = 100
 
     def __post_init__(self) -> None:
         if not isinstance(self.volume_path, Path) or not self.volume_path.is_absolute():
@@ -284,12 +177,6 @@ class LocalAlarmDeliveryReceiver:
             or self.source_key != self.source_key.strip()
         ):
             raise ValueError('ALARM_CONFIGURATION_SOURCE_KEY must be non-empty text')
-        if (
-            isinstance(self.max_facts_per_iteration, bool)
-            or not isinstance(self.max_facts_per_iteration, int)
-            or self.max_facts_per_iteration <= 0
-        ):
-            raise ValueError('max_facts_per_iteration must be a positive integer')
 
     @property
     def engine_root(self) -> Path:
@@ -304,11 +191,9 @@ class LocalAlarmDeliveryReceiver:
         return self.volume_path / 'ada-command-center' / 'alarms'
 
     def recover(self, _context: object) -> None:
-        inbox = AtomicJsonStore(root_path=self.inbox_root, max_document_bytes=None)
-        checkpoint = inbox.read(_CONSUMER_CURSOR_PATH)
-        if checkpoint is not None:
-            self._verify_received_chain(checkpoint, inbox)
-        current = inbox.read(_CURRENT_PATH)
+        current = AtomicJsonStore(root_path=self.inbox_root, max_document_bytes=None).read(
+            _CURRENT_PATH
+        )
         if current is not None:
             _current(current, source_key=self.source_key)
 
@@ -316,40 +201,9 @@ class LocalAlarmDeliveryReceiver:
         context.assert_lease_current()
         inbox = AtomicJsonStore(root_path=self.inbox_root, max_document_bytes=None)
         engine = AtomicJsonStore(root_path=self.engine_root, max_document_bytes=None)
-        current_status = self._stage_current(context, inbox, engine)
-        count, last = self._stage_facts(context, inbox, engine)
         return DeliveryInputCycleResult(
-            current_status=current_status,
-            staged_facts=count,
-            last_facts_batch_id=last,
+            current_status=self._stage_current(context, inbox, engine),
         )
-
-    def _verify_received_chain(self, checkpoint: dict[str, Any], inbox: AtomicJsonStore) -> None:
-        cursor, position = self._consumer_cursor(checkpoint, inbox)
-        document = inbox.read(f'facts/{cursor["batch_id"]}.json')
-        if document is None:
-            raise AlarmDeliveryInputError('Last received facts batch disappeared during recovery')
-        seen: set[str] = set()
-        while True:
-            batch_id = document['batch_id']
-            if batch_id in seen:
-                raise AlarmDeliveryInputError('Delivery receipt chain contains a cycle')
-            seen.add(batch_id)
-            previous = document['previous_batch']
-            if previous is None:
-                return
-            predecessor = inbox.read(f'facts/{previous["batch_id"]}.json')
-            if predecessor is None:
-                raise AlarmDeliveryInputError('Delivery receipt chain is missing a prior batch')
-            _, before = _facts(predecessor, source_key=self.source_key)
-            if (
-                predecessor['batch_id'] != previous['batch_id']
-                or predecessor['sha256'] != previous['sha256']
-                or _position_order(before) >= _position_order(position)
-            ):
-                raise AlarmDeliveryInputError('Delivery receipt chain has invalid predecessor')
-            document = predecessor
-            position = before
 
     def _effective(self) -> AlarmEffectiveConfigurationHead | None:
         document = AtomicJsonStore(root_path=self.alarms_root, max_document_bytes=None).read(
@@ -427,191 +281,3 @@ class LocalAlarmDeliveryReceiver:
                 return 'EFFECTIVE_CHANGED'
             inbox.replace(_CURRENT_PATH, document)
         return 'CURRENT_STAGED'
-
-    def _producer_cursor(
-        self, engine: AtomicJsonStore
-    ) -> tuple[dict[str, Any], JournalPosition] | None:
-        cursor = engine.read(_EXPORT_CURSOR_PATH)
-        if cursor is None:
-            return None
-        if (
-            set(cursor)
-            != {
-                'document_type',
-                'schema_version',
-                'artifact_ref',
-                'batch_id',
-                'batch_sha256',
-                'journal_position',
-            }
-            or cursor['document_type'] != _EXPORT_CURSOR_TYPE
-            or cursor['schema_version'] != 2
-        ):
-            raise AlarmDeliveryInputError('Engine facts export cursor is invalid')
-        batch_id = cursor['batch_id']
-        if batch_id is None:
-            if cursor['batch_sha256'] is not None:
-                raise AlarmDeliveryInputError('Initial Engine facts export cursor is invalid')
-            pin = _reference(cursor['artifact_ref'])
-            if pin.source_key != self.source_key:
-                raise AlarmDeliveryInputError(
-                    'Initial Engine facts export cursor source is invalid'
-                )
-            if cursor['journal_position'] is not None:
-                _position(cursor['journal_position'])
-            return None
-        if not isinstance(batch_id, str) or not _BATCH_ID.fullmatch(batch_id):
-            raise AlarmDeliveryInputError('Engine facts export cursor batch identity is invalid')
-        source = engine.read(f'facts/{batch_id}.json')
-        if source is None:
-            raise AlarmDeliveryInputError('Engine last exported facts batch is unavailable')
-        _, position = _facts(source, source_key=self.source_key)
-        if (
-            source['batch_id'] != batch_id
-            or source['artifact_ref'] != cursor['artifact_ref']
-            or source['sha256'] != cursor['batch_sha256']
-            or source['journal_position'] != cursor['journal_position']
-        ):
-            raise AlarmDeliveryInputError('Engine facts export cursor differs from last batch')
-        return cursor, position
-
-    def _consumer_cursor(
-        self, cursor: dict[str, Any], inbox: AtomicJsonStore
-    ) -> tuple[dict[str, Any], JournalPosition]:
-        if (
-            set(cursor)
-            != {
-                'document_type',
-                'schema_version',
-                'artifact_ref',
-                'batch_id',
-                'batch_sha256',
-                'journal_position',
-            }
-            or cursor['document_type'] != _CONSUMER_CURSOR_TYPE
-            or cursor['schema_version'] != 2
-        ):
-            raise AlarmDeliveryInputError('Delivery facts receipt cursor is invalid')
-        batch_id = cursor['batch_id']
-        if not isinstance(batch_id, str) or not _BATCH_ID.fullmatch(batch_id):
-            raise AlarmDeliveryInputError('Delivery facts receipt cursor batch identity is invalid')
-        received = inbox.read(f'facts/{batch_id}.json')
-        if received is None:
-            raise AlarmDeliveryInputError(
-                'Last received facts batch is missing from Delivery inbox'
-            )
-        _, position = _facts(received, source_key=self.source_key)
-        if (
-            received['batch_id'] != batch_id
-            or received['artifact_ref'] != cursor['artifact_ref']
-            or received['sha256'] != cursor['batch_sha256']
-            or received['journal_position'] != cursor['journal_position']
-        ):
-            raise AlarmDeliveryInputError('Delivery facts receipt cursor differs from staged batch')
-        return cursor, position
-
-    def _stage_facts(
-        self, context: object, inbox: AtomicJsonStore, engine: AtomicJsonStore
-    ) -> tuple[int, str | None]:
-        previous = inbox.read(_CONSUMER_CURSOR_PATH)
-        consumer = None if previous is None else self._consumer_cursor(previous, inbox)
-        producer = self._producer_cursor(engine)
-        if producer is None:
-            if consumer is not None:
-                raise AlarmDeliveryInputError('Engine export cursor disappeared after consumption')
-            if self._fact_files():
-                raise AlarmDeliveryInputError(
-                    'Facts batches exist without a committed export cursor'
-                )
-            return 0, None
-        producer_cursor, producer_position = producer
-        if consumer is not None and _position_order(consumer[1]) > _position_order(
-            producer_position
-        ):
-            raise AlarmDeliveryInputError('Delivery consumption is ahead of Engine export')
-        if consumer is not None and consumer[1] == producer_position:
-            if (
-                consumer[0]['batch_id'] != producer_cursor['batch_id']
-                or consumer[0]['batch_sha256'] != producer_cursor['batch_sha256']
-            ):
-                raise AlarmDeliveryInputError(
-                    'Same exported position has conflicting batch identities'
-                )
-            return 0, consumer[0]['batch_id']
-        pending: list[tuple[JournalPosition, dict[str, Any]]] = []
-        for path in self._fact_files():
-            if path.is_symlink():
-                raise AlarmDeliveryInputError('Engine facts batch must not be a symlink')
-            document = engine.read(f'facts/{path.name}')
-            if document is None:
-                raise AlarmDeliveryInputError('Engine facts batch disappeared while reading')
-            _, position = _facts(document, source_key=self.source_key)
-            if path.name != f'{document["batch_id"]}.json':
-                raise AlarmDeliveryInputError('Engine facts filename does not match batch identity')
-            if _position_order(position) <= _position_order(producer_position) and (
-                consumer is None or _position_order(position) > _position_order(consumer[1])
-            ):
-                pending.append((position, document))
-        pending.sort(key=lambda pair: _position_order(pair[0]))
-        if not pending or pending[-1][0] != producer_position:
-            raise AlarmDeliveryInputError('Engine export cursor refers to an incomplete batch set')
-        if any(
-            _position_order(a[0]) == _position_order(b[0])
-            for a, b in zip(pending, pending[1:], strict=False)
-        ):
-            raise AlarmDeliveryInputError('Multiple facts batches share a journal position')
-        expected_previous = (
-            None
-            if consumer is None
-            else {
-                'batch_id': consumer[0]['batch_id'],
-                'sha256': consumer[0]['batch_sha256'],
-            }
-        )
-        for _, document in pending:
-            if document['previous_batch'] != expected_previous:
-                raise AlarmDeliveryInputError(
-                    'Engine facts chain contains a missing or reordered batch'
-                )
-            expected_previous = {
-                'batch_id': document['batch_id'],
-                'sha256': document['sha256'],
-            }
-        if expected_previous != {
-            'batch_id': producer_cursor['batch_id'],
-            'sha256': producer_cursor['batch_sha256'],
-        }:
-            raise AlarmDeliveryInputError('Engine facts chain tip does not match export cursor')
-        staged_count = 0
-        last = None
-        for position, document in pending[: self.max_facts_per_iteration]:
-            pin = _reference(document['artifact_ref'])
-            self._exact(pin)
-            name = f'facts/{document["batch_id"]}.json'
-            staged = inbox.read(name)
-            if staged is not None and staged != document:
-                raise AlarmDeliveryInputError('Previously received facts batch is inconsistent')
-            context.assert_lease_current()
-            with context.fenced_mutation():
-                if staged is None:
-                    inbox.replace(name, document)
-                inbox.replace(
-                    _CONSUMER_CURSOR_PATH,
-                    {
-                        'document_type': _CONSUMER_CURSOR_TYPE,
-                        'schema_version': 2,
-                        'artifact_ref': document['artifact_ref'],
-                        'batch_id': document['batch_id'],
-                        'batch_sha256': document['sha256'],
-                        'journal_position': position.as_document(),
-                    },
-                )
-            staged_count += 1
-            last = document['batch_id']
-        return staged_count, last
-
-    def _fact_files(self) -> tuple[Path, ...]:
-        path = self.engine_root / 'facts'
-        if not path.exists():
-            return ()
-        return tuple(sorted(path.glob('facts-*.json')))

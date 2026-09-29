@@ -13,7 +13,6 @@ def test_delivery_derives_source_and_retains_independent_polling():
         'APPLICATION': 'ada-command-center',
         'VOLUMEN_PATH': '/operator/selected/volume',
         'ALARM_DELIVERY_POLL_SECONDS': '7',
-        'ALARM_DELIVERY_MAX_FACTS_PER_ITERATION': '150',
         'ALARM_DELIVERY_MAX_WORKERS': '3',
     }
     resolved = ResolvedConfiguration(
@@ -23,5 +22,7 @@ def test_delivery_derives_source_and_retains_independent_polling():
     )
     settings = AlarmDeliverySettings.from_configuration(resolved)
     assert settings.source_key == ALARM_CONFIGURATION_SOURCE_KEY
-    assert (settings.poll_seconds, settings.max_facts_per_iteration, settings.max_workers) == (7, 150, 3)
-    assert 'ALARM_CONFIGURATION_SOURCE_KEY' not in {spec.key for spec in configuration_specs()}
+    assert (settings.poll_seconds, settings.max_workers) == (7, 3)
+    keys = {spec.key for spec in configuration_specs()}
+    assert 'ALARM_CONFIGURATION_SOURCE_KEY' not in keys
+    assert 'ALARM_DELIVERY_MAX_FACTS_PER_ITERATION' not in keys

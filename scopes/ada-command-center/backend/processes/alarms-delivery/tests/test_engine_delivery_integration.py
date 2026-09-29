@@ -243,7 +243,7 @@ def _delivery(configuration: RuntimeConfiguration, *, run_id: str):
     return job, context
 
 
-def test_real_engine_current_and_durable_facts_survive_independent_delivery_restart(tmp_path):
+def test_real_engine_current_only_delivery_survives_restart_and_facts_remain_available(tmp_path):
     plan = PlannedAlarm(
         identity=AlarmIdentity('mina', 'temperature'),
         kind=AlarmKind.RISK,
@@ -296,20 +296,20 @@ def test_real_engine_current_and_durable_facts_survive_independent_delivery_rest
     assert current.publish(
         context=engine_context, result=started, pin=pin, inputs=AlarmOperationalInputs()
     )
-    assert (
-        exporter.publish_unexported(context=engine_context, persistence=persistence, pin=pin) == 1
-    )
+    assert exporter.publish_unexported(
+        context=engine_context, persistence=persistence, pin=pin
+    ) == 1
 
     delivery, delivery_context = _delivery(configuration, run_id='delivery-1')
     received = delivery.iteration(delivery_context)
     assert received.current_status == 'CURRENT_STAGED'
-    assert received.staged_facts == 1
     inbox = _inbox(tmp_path)
     first = inbox.read('current/latest.json')
     assert len(first['state']['alarms']) == 1
     evidence = first['state']['alarms'][0]['evaluation']['evidence']['payload']
     assert evidence['observed_value'] == 82.0
-    assert len(tuple((delivery.receiver.inbox_root / 'facts').glob('*.json'))) == 1
+    assert not (delivery.receiver.inbox_root / 'facts').exists()
+    assert inbox.read('state/facts-consumption-cursor.json') is None
 
     dataset.temperature = 70.0
     restarted_composition = build_alarm_runtime_composition(runtime_configuration=configuration)
@@ -319,7 +319,9 @@ def test_real_engine_current_and_durable_facts_survive_independent_delivery_rest
         root=_engine_output_root(tmp_path), source_key=_SOURCE
     )
     assert not restarted_exporter.initialize_if_needed(
-        context=restarted_engine, persistence=restarted_composition.durability.persistence, pin=pin
+        context=restarted_engine,
+        persistence=restarted_composition.durability.persistence,
+        pin=pin,
     )
     restarted_engine._begin_iteration(1)
     next_at = _AT + timedelta(minutes=1)
@@ -332,41 +334,23 @@ def test_real_engine_current_and_durable_facts_survive_independent_delivery_rest
     assert current.publish(
         context=restarted_engine, result=closed, pin=pin, inputs=AlarmOperationalInputs()
     )
-    assert (
-        restarted_exporter.publish_unexported(
-            context=restarted_engine,
-            persistence=restarted_composition.durability.persistence,
-            pin=pin,
-        )
-        == 1
-    )
+    assert restarted_exporter.publish_unexported(
+        context=restarted_engine,
+        persistence=restarted_composition.durability.persistence,
+        pin=pin,
+    ) == 1
 
     delivery_after_restart, context_after_restart = _delivery(configuration, run_id='delivery-2')
     second = delivery_after_restart.iteration(context_after_restart)
     assert second.current_status == 'CURRENT_STAGED'
-    assert second.staged_facts == 1
     assert inbox.read('current/latest.json')['state']['alarms'] == []
-    received_batches = [
-        inbox.read(f'facts/{path.name}')
-        for path in sorted((delivery_after_restart.receiver.inbox_root / 'facts').glob('*.json'))
-    ]
-    assert len(received_batches) == 2
-    events = [
-        event['event_key']
-        for batch in received_batches
-        for event in batch['records'].get('journey_events', [])
-    ]
-    assert 'occurrence_started' in events
-    assert 'occurrence_closed' in events
-    for batch in received_batches:
-        assert batch['commit_record_hash'] == batch['batch_id'].replace('facts-', 'sha256:', 1)
-    context_after_restart._begin_iteration(2)
-    repeat = delivery_after_restart.iteration(context_after_restart)
-    assert repeat.current_status == 'CURRENT_UNCHANGED'
-    assert repeat.staged_facts == 0
-    assert len(list((delivery_after_restart.receiver.inbox_root / 'facts').glob('*.json'))) == 2
+    assert not (delivery_after_restart.receiver.inbox_root / 'facts').exists()
+    assert inbox.read('state/facts-consumption-cursor.json') is None
+
+    producer_facts = sorted((_engine_output_root(tmp_path) / 'facts').glob('facts-*.json'))
+    assert len(producer_facts) == 2
     batches = sorted(
-        received_batches,
+        [json.loads(path.read_text(encoding='utf-8')) for path in producer_facts],
         key=lambda batch: (
             batch['journal_position']['segment_id'],
             batch['journal_position']['byte_offset'],
@@ -379,3 +363,16 @@ def test_real_engine_current_and_durable_facts_survive_independent_delivery_rest
         'batch_id': batches[0]['batch_id'],
         'sha256': batches[0]['sha256'],
     }
+    events = [
+        event['event_key']
+        for batch in batches
+        for event in batch['records'].get('journey_events', [])
+    ]
+    assert 'occurrence_started' in events
+    assert 'occurrence_closed' in events
+
+    context_after_restart._begin_iteration(2)
+    assert delivery_after_restart.iteration(context_after_restart).current_status == (
+        'CURRENT_UNCHANGED'
+    )
+    assert not (delivery_after_restart.receiver.inbox_root / 'facts').exists()

@@ -53,8 +53,7 @@ def test_delivery_job_owns_separate_identity_and_recovery_gate(tmp_path):
     job.recover(context)
     result = job.iteration(context)
     assert result.current_status == 'WAITING_EFFECTIVE'
-    assert result.staged_facts == 0
-    assert context.facts['alarm_delivery_current_status'] == 'WAITING_EFFECTIVE'
+    assert context.facts == {'alarm_delivery_current_status': 'WAITING_EFFECTIVE'}
 
 
 def test_delivery_job_rejects_invalid_polling(tmp_path):

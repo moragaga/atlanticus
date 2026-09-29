@@ -23,7 +23,7 @@ from atlanticus.connectivity.key_vault import KeyVaultClient, KeyVaultSettings
 from atlanticus.runtime import RuntimeConfiguration, RuntimeExecutionResult
 
 
-# Primero conoce las referencias del archivo y luego resuelve todas sus variables con bootstrap.
+# Bootstrap conserva la resolución de credenciales y conexiones previa a C4.
 def load_configuration(
     *,
     process_root: str | Path,
@@ -33,7 +33,10 @@ def load_configuration(
     values = os.environ if environ is None else environ
     root = Path(process_root)
     active_registry = registry if registry is not None else read_connection_registry(root)
-    specs = (*configuration_specs(), *(active_registry.configuration_specs() if active_registry else ()))
+    specs = (
+        *configuration_specs(),
+        *(active_registry.configuration_specs() if active_registry else ()),
+    )
     bootstrap = ConfigurationBootstrap.from_process(
         specs=specs, process_values=values, configuration_root=root
     )
@@ -75,7 +78,7 @@ def load_configuration(
     return resolved
 
 
-# La identidad para Key Vault debe provenir del despliegue, nunca inferirse.
+# Key Vault requiere identificadores suministrados explícitamente.
 def _required_bootstrap_value(values: Mapping[str, str], name: str) -> str:
     value = values.get(name)
     if not isinstance(value, str) or not value or value != value.strip():
@@ -83,7 +86,7 @@ def _required_bootstrap_value(values: Mapping[str, str], name: str) -> str:
     return value
 
 
-# Sin archivo no se adquiere lease. Con archivo, se valida el registro una sola vez al iniciar.
+# El arranque mantiene las conexiones Cosmos existentes; el job sólo recibe CURRENT.
 def run(
     *,
     argv: Sequence[str] | None = None,
@@ -97,17 +100,18 @@ def run(
         return None
     configuration = load_configuration(process_root=root, registry=registry, environ=values)
     settings = AlarmDeliverySettings.from_configuration(configuration)
-    connections = registry.resolve(values=configuration.values, environment=configuration.environment)
+    connections = registry.resolve(
+        values=configuration.values, environment=configuration.environment
+    )
     runtime_configuration = RuntimeConfiguration.from_sources(environ=configuration.values)
     with ParallelCosmosPublisher(connections=connections, max_workers=settings.max_workers):
         return build_delivery_input_job(
             runtime_configuration=runtime_configuration,
             source_key=settings.source_key,
             poll_seconds=settings.poll_seconds,
-            max_facts_per_iteration=settings.max_facts_per_iteration,
         ).execute(argv=argv, environ=configuration.values)
 
 
-# El entrypoint conserva la misma forma que los demás jobs de Atlanticus.
+# El entrypoint público del proceso no cambia.
 def main() -> None:
     run()

@@ -106,7 +106,6 @@ def run(
             runtime_configuration=runtime_configuration,
             source_key=settings.source_key,
             poll_seconds=settings.poll_seconds,
-            max_facts_per_iteration=settings.max_facts_per_iteration,
         ).execute(argv=argv, environ=configuration.values)
 
 
