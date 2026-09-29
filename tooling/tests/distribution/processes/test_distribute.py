@@ -307,6 +307,7 @@ def test_regeneration_preserves_retained_consumer_configuration(
     )
     retained = target / "processes/kpis"
     for name in distribution.CONSUMER_CONFIGURATION_FILES:
+        (retained / name).parent.mkdir(parents=True, exist_ok=True)
         (retained / name).write_text(f"{name}\n", encoding="utf-8")
 
     target = distribution.distribute(

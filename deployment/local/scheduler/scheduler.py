@@ -250,6 +250,33 @@ def _container_name(
     )
 
 
+def _config_mount(schedule: ProcessSchedule) -> list[str]:
+    config_root = schedule.env_file.parent / "config"
+    if not (config_root / "connections.detail.json").is_file():
+        return []
+    hostname = os.environ.get("HOSTNAME")
+    if not hostname:
+        raise SchedulerError("Scheduler HOSTNAME is unavailable")
+    completed = _docker(["inspect", "--format", "{{json .Mounts}}", hostname])
+    try:
+        mounts = json.loads(completed.stdout)
+    except json.JSONDecodeError as error:
+        raise SchedulerError("Scheduler Docker mounts are invalid") from error
+    if not isinstance(mounts, list):
+        raise SchedulerError("Scheduler Docker mounts are invalid")
+    for mount in mounts:
+        if not isinstance(mount, dict) or mount.get("Destination") != str(WORKSPACE_ROOT):
+            continue
+        if mount.get("Type") != "bind":
+            raise SchedulerError("Scheduler workspace requires a bind mount")
+        source = mount.get("Source")
+        if not isinstance(source, str) or not source:
+            raise SchedulerError("Scheduler workspace mount source is invalid")
+        target = Path(source) / config_root.relative_to(WORKSPACE_ROOT)
+        return ["--mount", f"type=bind,source={target},target=/app/process/config,readonly"]
+    raise SchedulerError("Scheduler workspace mount not found")
+
+
 def _docker_run_command(
     *,
     simulation: str,
@@ -294,6 +321,7 @@ def _docker_run_command(
         f"{schedule.cpus:g}",
         "--memory",
         schedule.memory,
+        *_config_mount(schedule),
         schedule.image,
     ]
 

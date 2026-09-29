@@ -41,7 +41,7 @@ REQUIRED_ARTIFACT_ENTRIES = (
     "config.detail.json",
     "secrets.detail.json",
 )
-CONSUMER_CONFIGURATION_FILES = (".env", "config.json", "secrets.json")
+CONSUMER_CONFIGURATION_FILES = (".env", "config.json", "secrets.json", "config/connections.json")
 LOCAL_ONLY_NAMES = frozenset(
     {
         ".runtime",
@@ -358,6 +358,8 @@ def _artifact_ignore(directory: str, names: list[str]) -> set[str]:
     ignored.update(
         name for name in names if name.startswith(".env.") and name != ".env.detail"
     )
+    if Path(directory).name == "config":
+        ignored.add("connections.json")
     ignored.update(name for name in names if name in CONSUMER_CONFIGURATION_FILES)
     return ignored
 
@@ -371,6 +373,7 @@ def _preserve_consumer_configuration(
     for name in CONSUMER_CONFIGURATION_FILES:
         current = current_process / name
         if current.is_file():
+            (staged_process / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(current, staged_process / name)
 
 
@@ -383,6 +386,10 @@ def _render_service(
     alias = selected.deployment.execution_file
     artifact = selected.artifact
     volume_source = "runtime" if volume_mode == "named" else "../../.runtime/volumen"
+    config_mount = (
+        (f"      - ../../processes/{alias}/config:/app/process/config:ro",)
+        if (artifact.root / "config/connections.detail.json").is_file() else ()
+    )
     return "\n".join(
         (
             f"  {alias}:",
@@ -400,6 +407,7 @@ def _render_service(
             f"      VOLUMEN_PATH: {DEFAULT_VOLUME_PATH}",
             "    volumes:",
             f"      - {volume_source}:{DEFAULT_VOLUME_PATH}",
+            *config_mount,
             f"    cpus: {artifact.cpus:g}",
             f"    mem_limit: {artifact.memory}",
         )

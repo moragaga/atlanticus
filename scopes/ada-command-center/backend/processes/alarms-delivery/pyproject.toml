@@ -12,7 +12,10 @@ dependencies = [
     "ada-command-center-alarms-materialization==1.0.0",
     "ada-command-center-alarms-persistence==1.0.0",
     "atlanticus-configuration==1.0.0",
+    "atlanticus-cosmos==1.0.0",
     "atlanticus-job-runtime==1.0.0",
+    "atlanticus-key-vault==1.0.0",
+    "atlanticus-kernel==1.0.0",
     "atlanticus-state==1.0.0",
 ]
 
@@ -27,7 +30,10 @@ system-profile = "base"
 ada-command-center-alarms-materialization = { workspace = true }
 ada-command-center-alarms-persistence = { workspace = true }
 atlanticus-configuration = { path = "../../../../../backend/configuration", editable = true }
+atlanticus-cosmos = { path = "../../../../../connectivity/cosmos", editable = true }
 atlanticus-job-runtime = { path = "../../../../../backend/runtime", editable = true }
+atlanticus-key-vault = { path = "../../../../../connectivity/key-vault", editable = true }
+atlanticus-kernel = { path = "../../../../../backend/kernel", editable = true }
 atlanticus-state = { path = "../../../../../backend/state", editable = true }
 
 [dependency-groups]

@@ -577,7 +577,7 @@ def _validate_extension_archive(
         if parts[1] not in aliases:
             raise ConsumerProcessError(f"Unexpected extension process: {raw}")
         if len(parts) >= 3 and any(
-            part in {".env", "config.json", "secrets.json"}
+            part in {".env", "config.json", "secrets.json", "connections.json"}
             or (part.startswith(".env.") and part != ".env.detail")
             for part in parts[2:]
         ):
@@ -654,6 +654,10 @@ def _render_extension_compose(root: Path, *, volume_mode: str) -> str:
     for process in manifest["processes"]:
         alias = process["deployment"]["execution_file"]
         cpus, memory = _read_process_contract(root, process)
+        config_mount = (
+            (f"      - ../../processes/{alias}/config:/app/process/config:ro",)
+            if (root / "processes" / alias / "config/connections.detail.json").is_file() else ()
+        )
         services.append(
             "\n".join(
                 (
@@ -672,6 +676,7 @@ def _render_extension_compose(root: Path, *, volume_mode: str) -> str:
                     "      VOLUMEN_PATH: /app/volumen",
                     "    volumes:",
                     f"      - {volume_source}:/app/volumen",
+                    *config_mount,
                     f"    cpus: {cpus:g}",
                     f"    mem_limit: {memory}",
                 )
