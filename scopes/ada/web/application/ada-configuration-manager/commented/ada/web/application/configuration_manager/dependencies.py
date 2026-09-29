@@ -7,6 +7,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from ada.web.access.configuration import AdaAccessConfiguration, AdaAccessSourceService
+from ada.web.application.configuration_manager.operational_catalog_workflows import (
+    OperationalCatalogManagerContracts,
+)
 from ada.web.kpis.definition.configuration import KpiDefinitionSourceService
 from ada.web.kpis.definition.coverage import KpiDefinitionCatalog
 from ada.web.kpis.registry.configuration import (
@@ -43,6 +46,8 @@ class ConfigurationManagerDependencies:
     users_projection_entry: ManagerEntry | None = None
     operational_service: OperationalIdentificationService | None = None
     operational_users: Callable[[], tuple[UserRecord, ...]] | None = None
+    # Los contratos administrativos del catálogo no cambian el Entry individual.
+    operational_catalog_contracts: OperationalCatalogManagerContracts | None = None
     # El consumidor operacional puede leer la misma proyección que publica Manager.
     navigation_projection_store: ProjectionStore[NavigationConfigurationCatalog] | None = None
     kpi_registry_source: KpiRegistrySourceService | None = None
@@ -65,6 +70,9 @@ class ConfigurationManagerDependencies:
     def __post_init__(self) -> None:
         if (self.operational_service is None) != (self.operational_users is None):
             raise ValueError('Operational service and promoted users must be injected together')
+        # No publicar contratos si no existe el dominio operacional.
+        if self.operational_catalog_contracts is not None and self.operational_service is None:
+            raise ValueError('Operational catalog contracts require operational service')
         kpi_contract = (
             self.kpi_registry_source,
             self.kpi_registry_projection,
@@ -86,10 +94,5 @@ class ConfigurationManagerDependencies:
             raise ValueError('KPI Definition source and projection must be injected together')
         if self.kpi_definitions_source is not None and self.kpi_registry_source is None:
             raise ValueError('KPI Definition requires KPI Registry')
-        if (
-            self.kpi_definitions_source is not None
-            and self.kpi_registry_projection_store is None
-        ):
-            raise ValueError(
-                'KPI Definition requires the KPI Registry projection store'
-            )
+        if self.kpi_definitions_source is not None and self.kpi_registry_projection_store is None:
+            raise ValueError('KPI Definition requires the KPI Registry projection store')

@@ -24,6 +24,13 @@ from ada.web.application.configuration_manager.operational import (
     OperationalManagerContext,
     create_operational_manager_entry,
 )
+from ada.web.application.configuration_manager.operational_catalog_workflows import (
+    OPERATIONAL_CATALOG_DRAFT_VALIDATION_SERVICE,
+    OPERATIONAL_CATALOG_PROJECTION_SERVICE,
+    OPERATIONAL_CATALOG_SOURCE_HISTORY_SERVICE,
+    OPERATIONAL_CATALOG_SOURCE_READER_SERVICE,
+    OPERATIONAL_CATALOG_SOURCE_SERVICE,
+)
 from ada.web.application.configuration_manager.tools import (
     ToolManagerWebContext,
     build_tool_history_preview,
@@ -31,10 +38,10 @@ from ada.web.application.configuration_manager.tools import (
     create_tool_manager_web_module,
 )
 from ada.web.application.configuration_manager.workflows import (
-    KpiRegistryManagerDraftValidationWorkflow,
-    KpiRegistryManagerSourceWorkflow,
     KpiDefinitionManagerDraftValidationWorkflow,
     KpiDefinitionManagerSourceWorkflow,
+    KpiRegistryManagerDraftValidationWorkflow,
+    KpiRegistryManagerSourceWorkflow,
     NavigationManagerDraftValidationWorkflow,
     NavigationManagerSourceWorkflow,
     ToolManagerDraftValidationWorkflow,
@@ -224,20 +231,26 @@ def build_configuration_manager_surface(
         entries=(
             dependencies.users_entry,
             *(
-                (create_operational_manager_entry(
-                    OperationalManagerContext(
-                        service=dependencies.operational_service,
-                        promoted_users=dependencies.operational_users,
-                        principal=dependencies.principal_provider,
-                        source_name=dependencies.tools_source_name,
-                        projection_name=dependencies.tools_projection_name,
+                (
+                    create_operational_manager_entry(
+                        OperationalManagerContext(
+                            service=dependencies.operational_service,
+                            promoted_users=dependencies.operational_users,
+                            principal=dependencies.principal_provider,
+                            source_name=dependencies.tools_source_name,
+                            projection_name=dependencies.tools_projection_name,
+                        ),
                     ),
-                ),)
+                )
                 if dependencies.operational_service is not None
-                and dependencies.operational_users is not None else ()
+                and dependencies.operational_users is not None
+                else ()
             ),
-            *((dependencies.users_projection_entry,)
-              if dependencies.users_projection_entry is not None else ()),
+            *(
+                (dependencies.users_projection_entry,)
+                if dependencies.users_projection_entry is not None
+                else ()
+            ),
         ),
         route_prefix=MANAGER_ROUTE_PREFIX,
         header_brand_marks=build_ada_manager_brand_marks(),
@@ -294,6 +307,18 @@ def _register_services(
         ToolManagerDraftValidationWorkflow(audit_actor_provider=actor_provider),
     )
     services.add(TOOLS_PROJECTION_SERVICE, dependencies.tools_projection)
+
+    if dependencies.operational_catalog_contracts is not None:
+        contracts = dependencies.operational_catalog_contracts
+        _register_source_workflow(
+            services,
+            workflow=contracts.source,
+            source_service=OPERATIONAL_CATALOG_SOURCE_SERVICE,
+            source_reader_service=OPERATIONAL_CATALOG_SOURCE_READER_SERVICE,
+            source_history_service=OPERATIONAL_CATALOG_SOURCE_HISTORY_SERVICE,
+        )
+        services.add(OPERATIONAL_CATALOG_DRAFT_VALIDATION_SERVICE, contracts.validation)
+        services.add(OPERATIONAL_CATALOG_PROJECTION_SERVICE, contracts.projection)
 
     if (
         dependencies.kpi_registry_source is not None

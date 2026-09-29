@@ -4,6 +4,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from ada.web.access.configuration import AdaAccessConfiguration, AdaAccessSourceService
+from ada.web.application.configuration_manager.operational_catalog_workflows import (
+    OperationalCatalogManagerContracts,
+)
 from ada.web.kpis.definition.configuration import KpiDefinitionSourceService
 from ada.web.kpis.definition.coverage import KpiDefinitionCatalog
 from ada.web.kpis.registry.configuration import (
@@ -39,6 +42,7 @@ class ConfigurationManagerDependencies:
     users_projection_entry: ManagerEntry | None = None
     operational_service: OperationalIdentificationService | None = None
     operational_users: Callable[[], tuple[UserRecord, ...]] | None = None
+    operational_catalog_contracts: OperationalCatalogManagerContracts | None = None
     navigation_projection_store: ProjectionStore[NavigationConfigurationCatalog] | None = None
     kpi_registry_source: KpiRegistrySourceService | None = None
     kpi_registry_projection: SourceProjectionService[KpiRegistry] | None = None
@@ -60,6 +64,8 @@ class ConfigurationManagerDependencies:
     def __post_init__(self) -> None:
         if (self.operational_service is None) != (self.operational_users is None):
             raise ValueError('Operational service and promoted users must be injected together')
+        if self.operational_catalog_contracts is not None and self.operational_service is None:
+            raise ValueError('Operational catalog contracts require operational service')
         kpi_contract = (
             self.kpi_registry_source,
             self.kpi_registry_projection,
