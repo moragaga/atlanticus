@@ -8,7 +8,6 @@ def test_new_commented_mirrors_match_productive_ast() -> None:
     commented = root / 'commented/ada_command_center/web/application/configuration_manager'
     for name in (
         'catalog_configuration.py',
-        'catalog_manager.py',
         'durable_runtime.py',
         'composition.py',
         'dependencies.py',

@@ -26,7 +26,6 @@ def _authorized(principal_provider: Callable[[], ManagerPrincipal]) -> bool:
     return TOOL_CATALOG_ACCESS_KEY in principal_provider().access_keys
 
 
-# La página del catálogo es una entrada administrativa, no un Source/Projection Manager.
 def _layout(_services: object) -> object:
     return html.Div(
         [
@@ -81,8 +80,8 @@ def create_tool_catalog_manager_entry(
     *,
     manager: ToolCatalogManagerService,
     principal_provider: Callable[[], ManagerPrincipal],
+    group_key: str,
 ) -> ManagerEntry:
-    # La autorización se verifica también en cada acción de servidor.
     def register_callbacks(app: object, _services: object) -> None:
         @app.callback(
             Output(_STATE, 'data'),
@@ -129,7 +128,6 @@ def create_tool_catalog_manager_entry(
                     'Descubrimiento finalizado. Revisa los resultados antes de confirmar.',
                     no_update,
                 )
-            # Se repite la lectura de Cosmos; el navegador solo conserva una huella.
             if action == _CONFIRM:
                 if not isinstance(state, dict) or state.get('can_confirm') is not True:
                     return None, 'Realiza nuevamente el descubrimiento.', no_update
@@ -220,7 +218,7 @@ def create_tool_catalog_manager_entry(
 
     return ManagerEntry(
         key='tool-catalog',
-        group_key='configuration',
+        group_key=group_key,
         title='Consolidación de herramientas',
         route='/tool-catalog',
         order=5,

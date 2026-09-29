@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ada-command-center-web-tool-catalog-manager"
+version = "0.1.0"
+description = "Independent Manager UI for the ADA Command Center Tool Catalog"
+requires-python = "==3.14.2"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "ada-command-center-tools-discovery-cosmos==0.1.0",
+    "atlanticus-web==0.1.0",
+    "atlanticus-web-manager==0.3.18",
+    "dash==4.4.1",
+]
+
+[tool.uv.sources]
+ada-command-center-tools-discovery-cosmos = { path = "../../../backend/tools/discovery-cosmos", editable = true }
+atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
+atlanticus-web-manager = { path = "../../../../../web/capabilities/manager", editable = true }
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.15.22",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+include = ["ada_command_center.web.tools.catalog_manager*"]
+
+[tool.setuptools.package-data]
+"ada_command_center.web.tools.catalog_manager" = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+target-version = "py314"
+extend-exclude = ["build", "dist", "commented"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ada", "ada_command_center", "atlanticus"]
+combine-as-imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [
+    "src",
+    "../../../backend/tools/discovery-cosmos/src",
+    "../../../backend/tools/catalog/src",
+    "../../../../ada/web/tools/core/src",
+    "../../../../ada/web/tools/configuration/src",
+    "../../../../ada/web/tools/projection-cosmos/src",
+    "../../../../ada/web/storage/namespace/src",
+    "../../../../../connectivity/cosmos/src",
+    "../../../../../connectivity/storage/src",
+    "../../../../../backend/observability/src",
+    "../../../../../web/framework/core/src",
+    "../../../../../web/capabilities/manager/src",
+    "../../../../../web/capabilities/projection/core/src",
+    "../../../../../web/capabilities/source/core/src",
+    "../../../../../web/capabilities/storage/topology/src",
+]
+addopts = "-q --import-mode=importlib"

@@ -7,7 +7,7 @@ from ada_command_center.tools.discovery_cosmos.manager import (
     ToolCatalogReview,
     ToolConnectionSummary,
 )
-from ada_command_center.web.application.configuration_manager import catalog_manager
+from ada_command_center.web.tools.catalog_manager import manager as catalog_manager
 from atlanticus.web.manager import ManagerPrincipal
 
 
@@ -65,7 +65,9 @@ def _register(monkeypatch, access=()):
     manager = FakeManager()
     principal = ManagerPrincipal('user', 'User', access_keys=access)
     entry = catalog_manager.create_tool_catalog_manager_entry(
-        manager=manager, principal_provider=lambda: principal
+        manager=manager,
+        principal_provider=lambda: principal,
+        group_key='configuration',
     )
     app = FakeDash()
     entry.web_module.register_callbacks(app, object())
@@ -115,3 +117,28 @@ def test_confirmation_conflict_requires_fresh_inspection(monkeypatch) -> None:
     assert cleared is None
     assert 'descubrimiento' in message
     assert 'private' not in message
+
+
+def test_confirmation_without_valid_review_does_not_use_service(monkeypatch) -> None:
+    handlers, manager, trigger = _register(monkeypatch, ('tools.manage',))
+    trigger.triggered_id = 'acc-tool-catalog-confirm'
+    cleared, _, _ = handlers[0](0, 1, 0, {'can_confirm': False})
+    assert cleared is None
+    assert manager.calls == []
+
+
+def test_adopted_reads_without_discovering(monkeypatch) -> None:
+    handlers, manager, trigger = _register(monkeypatch, ('tools.manage',))
+    trigger.triggered_id = 'acc-tool-catalog-adopted'
+    state, message, result = handlers[0](0, 0, 1, None)
+    assert manager.calls == ['adopted']
+    assert state is catalog_manager.no_update
+    assert 'Storage' in message
+    assert result is not catalog_manager.no_update
+
+
+def test_preview_requires_confirmable_review(monkeypatch) -> None:
+    handlers, _, _ = _register(monkeypatch, ('tools.manage',))
+    assert handlers[1](None) == (None, True)
+    _, disabled = handlers[1]({'connections': [], 'can_confirm': False})
+    assert disabled is True

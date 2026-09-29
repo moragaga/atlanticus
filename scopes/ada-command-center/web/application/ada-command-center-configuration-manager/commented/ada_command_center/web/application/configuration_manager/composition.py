@@ -1,14 +1,14 @@
-# La pantalla de consolidación solo aparece cuando se inyecta el servicio real.
+# El host sigue siendo propietario de la composición, pero ya no implementa Tool Catalog.
 from __future__ import annotations
 
 from ada_command_center.web.alarms.configuration.manager import (
     compose_alarm_configuration_manager,
 )
-from ada_command_center.web.application.configuration_manager.catalog_manager import (
-    create_tool_catalog_manager_entry,
-)
 from ada_command_center.web.application.configuration_manager.dependencies import (
     ConfigurationManagerDependencies,
+)
+from ada_command_center.web.tools.catalog_manager import (
+    create_tool_catalog_manager_entry,
 )
 from atlanticus.web.bootstrap import create_bootstrap_web_module
 from atlanticus.web.manager import ManagerModuleGroup, ManagerSurfaceDefinition
@@ -35,10 +35,12 @@ def build_configuration_manager_surface(
         source_name=dependencies.source_name,
         projection_name=dependencies.projection_name,
     )
+    # Tool Catalog es opcional y el host decide a qué grupo del Manager pertenece.
     entry = (
         create_tool_catalog_manager_entry(
             manager=dependencies.tool_catalog_manager,
             principal_provider=dependencies.principal_provider,
+            group_key='configuration',
         )
         if dependencies.tool_catalog_manager is not None
         else None
