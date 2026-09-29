@@ -372,3 +372,89 @@
         flex-direction: column;
     }
 }
+
+.atlanticus-manager__primary-tabs {
+    display: flex;
+    min-width: 0;
+    gap: .65rem;
+    margin-inline: 1.35rem;
+    padding-inline: .15rem;
+    border-bottom: 1px solid var(--atlanticus-manager-border);
+}
+
+.atlanticus-manager__primary-tab {
+    padding: .48rem .2rem;
+    color: var(--atlanticus-manager-text-muted);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    cursor: pointer;
+    font: inherit;
+    font-size: .76rem;
+    font-weight: 700;
+}
+
+.atlanticus-manager__primary-tab:hover,
+.atlanticus-manager__primary-tab:focus-visible,
+.atlanticus-manager__primary-tab--active {
+    color: var(--atlanticus-manager-color-primary-dark);
+    border-bottom-color: var(--atlanticus-manager-color-primary);
+    outline: 0;
+}
+
+.atlanticus-manager__primary-panel {
+    display: none;
+    min-width: 0;
+}
+
+.atlanticus-manager__primary-panel--active {
+    display: grid;
+    min-width: 0;
+    gap: .9rem;
+}
+
+.atlanticus-manager__primary-module-header {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-inline: 1rem;
+    padding: .7rem 1rem;
+    background: var(--atlanticus-manager-surface);
+    border: 1px solid var(--atlanticus-manager-border);
+    border-radius: var(--atlanticus-manager-radius);
+}
+
+.atlanticus-manager__primary-module-copy {
+    display: grid;
+    min-width: 0;
+    gap: .2rem;
+}
+
+.atlanticus-manager__primary-module-copy h3,
+.atlanticus-manager__primary-module-copy p {
+    margin: 0;
+}
+
+.atlanticus-manager__primary-module-copy h3 {
+    font-size: .9rem;
+    font-weight: 780;
+}
+
+.atlanticus-manager__primary-module-copy p {
+    color: var(--atlanticus-manager-text-muted);
+    font-size: .72rem;
+}
+
+@media (max-width: 48rem) {
+    .atlanticus-manager__primary-tabs {
+        flex-wrap: wrap;
+    }
+
+    .atlanticus-manager__primary-module-header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+}

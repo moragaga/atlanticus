@@ -12,6 +12,7 @@ from atlanticus.web.manager.errors import (
 )
 from atlanticus.web.manager.lifecycle import ManagerLifecycleState, resolve_manager_lifecycle
 from atlanticus.web.manager.models import (
+    ManagerCompanionView,
     ManagerEntry,
     ManagerHeaderBrandMark,
     ManagerHistoryPreviewRenderer,
@@ -65,6 +66,7 @@ __all__ = [
     'ManagerAuthorizationError',
     'ManagerAuthorizationPolicy',
     'ManagerDefinitionError',
+    'ManagerCompanionView',
     'ManagerEntry',
     'ManagerHeaderBrandMark',
     'ManagerError',

@@ -44,6 +44,9 @@ from atlanticus.web.manager.web.ids import (
     module_section_panel_id,
     module_section_store_id,
     module_status_id,
+    primary_view_button_id,
+    primary_view_panel_id,
+    primary_view_store_id,
     workflow_action_id,
     workflow_conflict_details_id,
     workflow_conflict_id,
@@ -261,6 +264,36 @@ def register_manager_callbacks(
         if not authorization.can_view(principal, module):
             return no_update
         return module.layout(services)
+
+    @app.callback(
+        Output(primary_view_store_id(MATCH), 'data'),
+        Input(primary_view_button_id(MATCH, ALL), 'n_clicks'),
+        State(primary_view_button_id(MATCH, ALL), 'id'),
+        State(primary_view_store_id(MATCH), 'data'),
+        prevent_initial_call=True,
+    )
+    def select_primary_view(clicks, button_ids, current):
+        trigger = ctx.triggered_id
+        if not _pattern_click_is_real(trigger, clicks, button_ids):
+            return current
+        selected = str(trigger.get('view', current))
+        return selected if selected in {'module', 'companion'} else current
+
+    @app.callback(
+        Output(primary_view_panel_id(MATCH, 'companion'), 'className'),
+        Output(primary_view_panel_id(MATCH, 'module'), 'className'),
+        Output(primary_view_button_id(MATCH, 'companion'), 'className'),
+        Output(primary_view_button_id(MATCH, 'module'), 'className'),
+        Input(primary_view_store_id(MATCH), 'data'),
+    )
+    def render_primary_view(selected):
+        companion = selected == 'companion'
+        return (
+            _primary_panel_class(companion),
+            _primary_panel_class(not companion),
+            _primary_tab_class(companion),
+            _primary_tab_class(not companion),
+        )
 
     @app.callback(
         Output(module_section_store_id(MATCH), 'data'),
@@ -1095,6 +1128,16 @@ def _state_label(state: ProjectionState) -> str:
 
 def _state_class(state: ProjectionState) -> str:
     return f'atlanticus-manager__state atlanticus-manager__state--{state.value}'
+
+
+def _primary_tab_class(active: bool) -> str:
+    base = 'atlanticus-manager__primary-tab'
+    return f'{base} {base}--active' if active else base
+
+
+def _primary_panel_class(active: bool) -> str:
+    base = 'atlanticus-manager__primary-panel'
+    return f'{base} {base}--active' if active else base
 
 
 def _panel_class(active: bool) -> str:

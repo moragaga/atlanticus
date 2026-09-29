@@ -36,6 +36,9 @@ from atlanticus.web.manager.web.ids import (
     module_section_panel_id,
     module_section_store_id,
     module_status_id,
+    primary_view_button_id,
+    primary_view_panel_id,
+    primary_view_store_id,
     workflow_action_id,
     workflow_conflict_details_id,
     workflow_conflict_id,
@@ -268,6 +271,7 @@ def build_entry_content(*, entry: ManagerEntry, services: ServiceRegistry) -> ob
     )
 
 
+# El contenido administrativo se monta una sola vez; la vista complementaria solo cambia su visibilidad.
 def build_module_content(
     *,
     module: ManagerModule,
@@ -290,57 +294,118 @@ def build_module_content(
     content = module.layout(services)
     preamble = module.preamble(services) if module.preamble is not None else None
     default_section = module.default_section
+    workflow_sections = [
+        preamble,
+        dcc.Store(
+            id=module_section_store_id(module.key),
+            data=default_section,
+            storage_type='memory',
+        ),
+        html.Nav(
+            [
+                html.Button(
+                    module.content_section_title,
+                    id=module_section_button_id(module.key, 'content'),
+                    n_clicks=0,
+                    className=_section_button_class(default_section == 'content'),
+                ),
+                html.Button(
+                    module.workflow_section_title,
+                    id=module_section_button_id(module.key, 'workflow'),
+                    n_clicks=0,
+                    className=_section_button_class(default_section == 'workflow'),
+                ),
+            ],
+            className='atlanticus-manager__module-tabs',
+        ),
+        html.Div(
+            content,
+            id=module_section_panel_id(module.key, 'content'),
+            className=_section_panel_class(default_section == 'content'),
+        ),
+        html.Div(
+            build_workflow_panel(module=module, status=status, history=history, error=error),
+            id=module_section_panel_id(module.key, 'workflow'),
+            className=_section_panel_class(default_section == 'workflow'),
+        ),
+    ]
+    heading = html.Div(
+        [
+            html.P('Configuración', className='atlanticus-manager__eyebrow'),
+            html.H2(module.title),
+            html.P(module.description),
+        ],
+        className='atlanticus-manager__module-heading',
+    )
+    companion = module.companion_view
+    if companion is None:
+        return html.Section(
+            [
+                html.Header(
+                    [heading, _build_module_status(module.key, status)],
+                    className='atlanticus-manager__module-header',
+                ),
+                *workflow_sections,
+            ],
+            className='atlanticus-manager__module',
+        )
+    selected = module.default_primary_view
+    primary_title = module.primary_view_title or module.title
+    views = (
+        ('companion', companion.title),
+        ('module', primary_title),
+    )
+    if selected == 'module':
+        views = tuple(reversed(views))
     return html.Section(
         [
-            html.Header(
-                [
-                    html.Div(
-                        [
-                            html.P('Configuración', className='atlanticus-manager__eyebrow'),
-                            html.H2(module.title),
-                            html.P(module.description),
-                        ],
-                        className='atlanticus-manager__module-heading',
-                    ),
-                    _build_module_status(module.key, status),
-                ],
-                className='atlanticus-manager__module-header',
-            ),
-            preamble,
+            html.Header([heading], className='atlanticus-manager__module-header'),
             dcc.Store(
-                id=module_section_store_id(module.key),
-                data=default_section,
+                id=primary_view_store_id(module.key),
+                data=selected,
                 storage_type='memory',
             ),
             html.Nav(
                 [
                     html.Button(
-                        module.content_section_title,
-                        id=module_section_button_id(module.key, 'content'),
+                        title,
+                        id=primary_view_button_id(module.key, view),
                         n_clicks=0,
-                        className=_section_button_class(default_section == 'content'),
-                    ),
-                    html.Button(
-                        module.workflow_section_title,
-                        id=module_section_button_id(module.key, 'workflow'),
-                        n_clicks=0,
-                        className=_section_button_class(default_section == 'workflow'),
-                    ),
+                        type='button',
+                        className=_primary_view_tab_class(selected == view),
+                    )
+                    for view, title in views
                 ],
-                className='atlanticus-manager__module-tabs',
+                className='atlanticus-manager__primary-tabs',
+                **{'aria-label': 'Secciones de administración'},
             ),
             html.Div(
-                content,
-                id=module_section_panel_id(module.key, 'content'),
-                className=_section_panel_class(default_section == 'content'),
+                companion.layout(services),
+                id=primary_view_panel_id(module.key, 'companion'),
+                className=_primary_view_panel_class(selected == 'companion'),
             ),
             html.Div(
-                build_workflow_panel(module=module, status=status, history=history, error=error),
-                id=module_section_panel_id(module.key, 'workflow'),
-                className=_section_panel_class(default_section == 'workflow'),
+                [
+                    html.Header(
+                        [
+                            html.Div(
+                                [
+                                    html.H3(primary_title),
+                                    html.P('Configuración y ciclo de vida administrativo.'),
+                                ],
+                                className='atlanticus-manager__primary-module-copy',
+                            ),
+                            _build_module_status(module.key, status),
+                        ],
+                        className='atlanticus-manager__primary-module-header',
+                    ),
+                    *workflow_sections,
+                ],
+                id=primary_view_panel_id(module.key, 'module'),
+                className=_primary_view_panel_class(selected == 'module'),
             ),
         ],
-        className='atlanticus-manager__module',
+        className='atlanticus-manager__module atlanticus-manager__module--companion',
     )
 
 
@@ -857,6 +922,17 @@ def _short(value: str | None) -> str:
 
 def _format_datetime(value: datetime) -> str:
     return value.astimezone().strftime('%Y-%m-%d %H:%M:%S')
+
+
+# Los estilos de visibilidad se calculan exclusivamente desde el estado de navegación principal.
+def _primary_view_tab_class(active: bool) -> str:
+    base = 'atlanticus-manager__primary-tab'
+    return f'{base} {base}--active' if active else base
+
+
+def _primary_view_panel_class(active: bool) -> str:
+    base = 'atlanticus-manager__primary-panel'
+    return f'{base} {base}--active' if active else base
 
 
 def _section_button_class(active: bool) -> str:

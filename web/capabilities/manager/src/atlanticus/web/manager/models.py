@@ -80,6 +80,16 @@ class ManagerEntry:
 
 
 @dataclass(frozen=True, slots=True)
+class ManagerCompanionView:
+    title: str
+    layout: ManagerLayoutFactory
+
+    def __post_init__(self) -> None:
+        if not self.title.strip():
+            raise ManagerDefinitionError('Manager companion title must not be empty')
+
+
+@dataclass(frozen=True, slots=True)
 class ManagerModule:
     key: str
     group_key: str
@@ -104,6 +114,9 @@ class ManagerModule:
     source_name: str = 'Source'
     projection_name: str = 'Projection'
     history_preview_renderer: ManagerHistoryPreviewRenderer | None = None
+    companion_view: ManagerCompanionView | None = None
+    primary_view_title: str | None = None
+    default_primary_view: str = 'module'
 
     def __post_init__(self) -> None:
         service_keys = (
@@ -116,6 +129,14 @@ class ManagerModule:
             raise ManagerDefinitionError('Manager module service keys must not be empty')
         if self.source_history_service is not None and not self.source_history_service.strip():
             raise ManagerDefinitionError('Manager source history service key must not be empty')
+        if self.companion_view is not None and not isinstance(self.companion_view, ManagerCompanionView):
+            raise ManagerDefinitionError('Manager companion view has an invalid type')
+        if self.primary_view_title is not None and not self.primary_view_title.strip():
+            raise ManagerDefinitionError('Manager primary view title must not be empty')
+        if self.default_primary_view not in {'module', 'companion'}:
+            raise ManagerDefinitionError('Manager default primary view is invalid')
+        if self.default_primary_view == 'companion' and self.companion_view is None:
+            raise ManagerDefinitionError('Manager default companion view requires a companion')
 
 
 @dataclass(frozen=True, slots=True)

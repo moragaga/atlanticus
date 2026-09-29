@@ -105,6 +105,18 @@ def workflow_workspace_confirmation_message_id(module_key: str) -> dict[str, str
     return _module_id('atlanticus-manager-workspace-confirmation-message', module_key)
 
 
+def primary_view_store_id(module_key: str) -> dict[str, str]:
+    return _module_id('atlanticus-manager-primary-view-store', module_key)
+
+
+def primary_view_button_id(module_key: str, view: str) -> dict[str, str]:
+    return {'type': 'atlanticus-manager-primary-view-button', 'module': module_key, 'view': view}
+
+
+def primary_view_panel_id(module_key: str, view: str) -> dict[str, str]:
+    return {'type': 'atlanticus-manager-primary-view-panel', 'module': module_key, 'view': view}
+
+
 def module_section_store_id(module_key: str) -> dict[str, str]:
     return _module_id('atlanticus-manager-module-section-store', module_key)
 
