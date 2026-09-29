@@ -641,12 +641,14 @@ def register_alarm_configuration_admin_callbacks(
         Output(context.saved_draft_store_id, 'data', allow_duplicate=True),
         Output(SAVE_RESULT_ID, 'children'),
         Output(MODAL_SAVE_RESULT_ID, 'children'),
+        Output(FAMILY_NAV_STORE_ID, 'data', allow_duplicate=True),
         Input(MODAL_SAVE_BUTTON_ID, 'n_clicks'),
         Input(SAVE_BUTTON_ID, 'n_clicks'),
         Input(context.draft_save_action_id, 'n_clicks'),
         State(AUTHORING_STORE_ID, 'data'),
         State(context.draft_store_id, 'data'),
         State(context.editor_revision_store_id, 'data'),
+        State(FAMILY_NAV_STORE_ID, 'data'),
         prevent_initial_call=True,
     )
     def save_draft(
@@ -656,6 +658,7 @@ def register_alarm_configuration_admin_callbacks(
         authoring_document: dict[str, object] | None,
         current_draft: dict[str, object] | None,
         editor_revision: str | None,
+        navigation: dict[str, object] | None,
     ):
         if not _save_draft_click_is_real(
             ctx.triggered_id,
@@ -664,14 +667,14 @@ def register_alarm_configuration_admin_callbacks(
             workflow_clicks=workflow_clicks,
             workflow_id=context.draft_save_action_id,
         ):
-            return no_update, no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update
         if not context.can_manage():
             error = _error('You do not have permission to save changes')
-            return no_update, no_update, error, error
+            return no_update, no_update, error, error, no_update
         issues = authoring_issues(authoring_document)
         if issues:
             feedback = _authoring_feedback(issues)
-            return no_update, no_update, None, feedback
+            return no_update, no_update, None, feedback, no_update
         try:
             configuration = _configuration(authoring_document)
             if current_draft is not None:
@@ -683,9 +686,12 @@ def register_alarm_configuration_admin_callbacks(
             document = context.workspace_payload_writer(current_draft, configuration.to_document())
         except (AlarmConfigurationValidationError, ManagerProjectionError, ValueError) as error:
             feedback = _error(_contract_error_message(error))
-            return no_update, no_update, feedback, feedback
+            return no_update, no_update, feedback, feedback, no_update
         feedback = _success('Borrador guardado en este navegador.')
-        return document, document, feedback, feedback
+        navigation_update = no_update
+        if ctx.triggered_id == MODAL_SAVE_BUTTON_ID and isinstance(navigation, dict):
+            navigation_update = {**navigation, 'rule_index': None, 'message_index': None}
+        return document, document, feedback, feedback, navigation_update
 
 
 def _readiness_feedback(hints: tuple[str, ...]) -> object:

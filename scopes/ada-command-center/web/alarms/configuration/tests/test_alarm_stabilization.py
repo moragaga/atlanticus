@@ -76,8 +76,8 @@ def test_save_exposes_nested_domain_error_and_does_not_persist_invalid_document(
             }
         ],
     }
-    updated, saved, feedback, modal_feedback = app.callbacks['save_draft'](
-        None, 1, None, document, None, None
+    updated, saved, feedback, modal_feedback, nav_update = app.callbacks['save_draft'](
+        None, 1, None, document, None, None, None
     )
     from dash import no_update
 
@@ -85,6 +85,7 @@ def test_save_exposes_nested_domain_error_and_does_not_persist_invalid_document(
     assert saved is no_update
     assert 'disabled deactivation' in feedback.children
     assert modal_feedback.children == feedback.children
+    assert nav_update is no_update
 
 
 def test_pagination_keeps_selected_capacity_when_list_contains_fewer_items():
