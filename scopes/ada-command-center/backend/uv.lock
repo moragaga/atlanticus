@@ -49,7 +49,10 @@ dependencies = [
     { name = "ada-command-center-alarms-materialization" },
     { name = "ada-command-center-alarms-persistence" },
     { name = "atlanticus-configuration" },
+    { name = "atlanticus-cosmos" },
     { name = "atlanticus-job-runtime" },
+    { name = "atlanticus-kernel" },
+    { name = "atlanticus-key-vault" },
     { name = "atlanticus-state" },
 ]
 
@@ -64,7 +67,10 @@ requires-dist = [
     { name = "ada-command-center-alarms-materialization", editable = "alarms/materialization" },
     { name = "ada-command-center-alarms-persistence", editable = "alarms/persistence" },
     { name = "atlanticus-configuration", editable = "../../../backend/configuration" },
+    { name = "atlanticus-cosmos", editable = "../../../connectivity/cosmos" },
     { name = "atlanticus-job-runtime", editable = "../../../backend/runtime" },
+    { name = "atlanticus-kernel", editable = "../../../backend/kernel" },
+    { name = "atlanticus-key-vault", editable = "../../../connectivity/key-vault" },
     { name = "atlanticus-state", editable = "../../../backend/state" },
 ]
 
@@ -147,7 +153,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "ada-command-center-web-alarm-projection-local" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -172,7 +177,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "ada-command-center-web-alarm-projection-local", editable = "../web/alarms/projection-local" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]
@@ -389,31 +393,6 @@ requires-dist = [
     { name = "atlanticus-web-projection", editable = "../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../web/capabilities/source/core" },
     { name = "atlanticus-web-storage-topology", editable = "../../../web/capabilities/storage/topology" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-command-center-web-alarm-projection-local"
-version = "0.1.0"
-source = { editable = "../web/alarms/projection-local" }
-dependencies = [
-    { name = "ada-command-center-alarms-domain" },
-    { name = "ada-command-center-web-alarm-configuration" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-command-center-alarms-domain", editable = "../domain/alarms" },
-    { name = "ada-command-center-web-alarm-configuration", editable = "../web/alarms/configuration" },
-    { name = "atlanticus-web-projection", editable = "../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../web/capabilities/source/core" },
 ]
 
 [package.metadata.requires-dev]
