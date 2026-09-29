@@ -309,17 +309,31 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
             return no_update
         try:
             _snapshot, assignment = context.service.assignment_for_edit(user_id)
-            _snapshot, catalog = context.service.catalog_for_edit()
-            return [
+            catalog = context.service.catalog_for_read()
+            status = context.service.projection_status(CATALOG_SOURCE_KEY)
+            current = (
+                status.source_current_release is not None
+                and status.source_current_release == status.projected_source_release
+            )
+            options = [
                 {
                     'label': item.label,
                     'value': item.id,
-                    'disabled': not item.active and item.id != assignment.position_id,
+                    'disabled': item.id != assignment.position_id and (not item.active or not current),
                 }
                 for item in catalog.positions
             ]
+            if assignment.position_id and all(
+                item['value'] != assignment.position_id for item in options
+            ):
+                options.append({
+                    'label': f'{assignment.position_id} (asignado, no proyectado)',
+                    'value': assignment.position_id,
+                    'disabled': False,
+                })
+            return options
         except Exception:
-            return no_update
+            return []
 
     @app.callback(
         Output(ids.ASSIGN_MODAL_STATUS, 'children'),
@@ -332,6 +346,11 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
         try:
             snapshot, _value = context.service.assignment_for_edit(user_id)
             status = context.service.projection_status(assignment_source_key(user_id))
+            catalog_status = context.service.projection_status(CATALOG_SOURCE_KEY)
+            catalog_current = (
+                catalog_status.source_current_release is not None
+                and catalog_status.source_current_release == catalog_status.projected_source_release
+            )
             return html.Div(
                 [
                     html.Span(_status_label(status), className='ada-operational-admin__badge'),
@@ -339,6 +358,10 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
                         f'Source: {_release_label(snapshot.current.release_ref if snapshot.current else None)}'
                     ),
                     html.Small(f'Projection: {_release_label(status.projected_source_release)}'),
+                    html.Small(
+                        'Catálogo proyectado y vigente' if catalog_current
+                        else 'Catálogo pendiente de proyección: no se admiten nuevas asignaciones de cargos.'
+                    ),
                 ],
                 className='ada-operational-admin__selected-metadata',
             )
@@ -428,7 +451,7 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
                     expected=snapshot,
                 )
                 _latest, revised_catalog = context.service.catalog_for_edit()
-            options = _position_options(revised_catalog)
+            options = []
             new_snapshot, _value = context.service.catalog_for_edit()
         except ValueError:
             return (
@@ -448,6 +471,7 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
             )
         try:
             context.service.project_current(CATALOG_SOURCE_KEY)
+            options = _position_options(context.service.catalog_for_read())
             result = _message('Cargo guardado y proyectado.')
         except Exception:
             result = _message('Cargo guardado en Source. Usa Reintentar proyección.', warning=True)

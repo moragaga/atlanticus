@@ -103,11 +103,23 @@ class OperationalIdentificationService:
         expected: SourceSnapshot,
     ) -> PublishResult:
         self._require_user(assignment.user_id)
-        _, catalog = self.catalog_for_edit()
         _, previous = self.assignment_for_edit(assignment.user_id)
-        if assignment.position_id is not None:
-            catalog.require_position(assignment.position_id, current_id=previous.position_id)
+        if assignment.position_id is not None and assignment.position_id != previous.position_id:
+            self._require_projected_position(assignment.position_id)
         return self._source.publish(assignment, actor=actor, expected=expected)
+
+    def _require_projected_position(self, position_id: str) -> None:
+        snapshot, _ = self.catalog_for_edit()
+        active = self._projections.get_active(CATALOG_SOURCE_KEY)
+        if snapshot.current is None or active is None:
+            raise OperationalReferenceError('Operational catalog must be projected before assigning positions')
+        if active.source_release != snapshot.current.release_ref:
+            raise OperationalReferenceError('Operational catalog projection is outdated')
+        if not isinstance(active.payload, OperationalCatalog):
+            raise OperationalReferenceError('Operational catalog projection has an invalid type')
+        active.payload.require_position(position_id)
+        if self._source.snapshot(CATALOG_SOURCE_KEY) != snapshot:
+            raise OperationalReferenceError('Operational catalog changed before assigning position')
 
     def projection_status(self, source_key: SourceKey) -> ProjectionStatus:
         source_kind(source_key)

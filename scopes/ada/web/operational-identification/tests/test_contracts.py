@@ -241,6 +241,7 @@ def test_deactivated_position_retains_existing_assignment_only(tmp_path):
         actor='manager',
         expected=original,
     )
+    service.project_current(CATALOG_SOURCE_KEY)
     initial, _ = service.assignment_for_edit(USER_A)
     service.publish_assignment(
         OperationalAssignment(user_id=USER_A, position_id='engineer'),
@@ -260,6 +261,13 @@ def test_deactivated_position_retains_existing_assignment_only(tmp_path):
         expected=current,
     )
     new_user, _ = service.assignment_for_edit(USER_B)
+    with pytest.raises(OperationalReferenceError, match='outdated'):
+        service.publish_assignment(
+            OperationalAssignment(user_id=USER_B, position_id='engineer'),
+            actor='manager',
+            expected=new_user,
+        )
+    service.project_current(CATALOG_SOURCE_KEY)
     with pytest.raises(OperationalReferenceError, match='unavailable'):
         service.publish_assignment(
             OperationalAssignment(user_id=USER_B, position_id='engineer'),

@@ -36,6 +36,7 @@ def build_operational_manager_layout(context: OperationalManagerContext) -> obje
         )
         position_list, position_page = render_position_list(context, None, 1, DEFAULT_PAGE_SIZE)
         metadata = catalog_metadata(context, snapshot)
+        projected_catalog = context.service.catalog_for_read()
     except Exception:
         return html.P('No fue posible cargar los datos operacionales.')
     return html.Div(
@@ -165,6 +166,14 @@ def build_operational_manager_layout(context: OperationalManagerContext) -> obje
                                         ],
                                         className='ada-operational-admin__section-head',
                                     ),
+                                    # Referencias estáticas de dominio, presentes también en la proyección del catálogo.
+                                    html.Div(
+                                        [
+                                            _metadata_cell('Áreas operacionales', 'Mina · Planta'),
+                                            _metadata_cell('Grupos', '1 · 2 · 3 · 4'),
+                                        ],
+                                        className='ada-operational-admin__metadata',
+                                    ),
                                     _filter_bar(ids.POSITION_SEARCH, 'Buscar cargos'),
                                     _list_shell(
                                         ids.POSITION_LIST, position_list, ids.POSITION_SIZE
@@ -230,7 +239,7 @@ def build_operational_manager_layout(context: OperationalManagerContext) -> obje
                 className=_surface_class(False),
                 role='tabpanel',
             ),
-            _assignment_modal(catalog),
+            _assignment_modal(projected_catalog),
             _position_modal(),
         ],
         className='ada-operational-admin atlanticus-bootstrap',
