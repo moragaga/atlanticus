@@ -4,6 +4,9 @@ from collections.abc import Callable, Iterator
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
 
+from ada_command_center.web.alarms.configuration.resources import (
+    ALARM_CONFIGURATION_PROJECTION_PHYSICAL_NAME,
+)
 from ada_command_center.web.alarms.configuration.tool_references import AlarmToolReferenceReader
 from ada_command_center.web.alarms.persistence import (
     AlarmConfigurationPersistenceSettings,
@@ -51,7 +54,10 @@ def open_local_configuration_manager(
             source_provider=AlarmConfigurationSourceProvider.LOCAL,
             projection_provider=AlarmConfigurationProjectionProvider.LOCAL,
             local_source_root=namespace.local_tool_root(root),
-            local_projection_root=namespace.local_projection_root(root),
+            local_projection_root=(
+                namespace.local_projection_root(root)
+                / ALARM_CONFIGURATION_PROJECTION_PHYSICAL_NAME
+            ),
         ),
     )
     with ExitStack() as stack:

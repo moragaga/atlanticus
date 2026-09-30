@@ -1,11 +1,15 @@
 # Espejo pedagógico en español; el comportamiento equivale al archivo de src.
+from ada_command_center.web.alarms.configuration.resources import (
+    ALARM_CONFIGURATION_PROJECTION_PHYSICAL_NAME,
+)
 from atlanticus.web.storage.topology import (
     CosmosContainerTopology,
     StorageResourceContract,
     StorageResourceOverrideField,
 )
 
-# Recurso declarativo Cosmos. Database y cliente se resuelven por fuera; no se acopla el dominio a infraestructura.
+# Recurso declarativo Cosmos. La identidad física se comparte con el adapter local mientras
+# que la topología específica de Cosmos permanece en este provider.
 ALARM_CONFIGURATION_PROJECTION_STORAGE_RESOURCE: StorageResourceContract[
     CosmosContainerTopology
 ] = StorageResourceContract(
@@ -13,7 +17,7 @@ ALARM_CONFIGURATION_PROJECTION_STORAGE_RESOURCE: StorageResourceContract[
     owner='ada.command_center.alarms.configuration',
     provider='cosmos',
     default_connection_ref=None,
-    default_physical_name='ada-command-center-alarm-configuration-projection',
+    default_physical_name=ALARM_CONFIGURATION_PROJECTION_PHYSICAL_NAME,
     topology=CosmosContainerTopology(
         partition_key_path='/partition_key',
         default_ttl_seconds=None,

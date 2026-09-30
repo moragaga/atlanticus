@@ -40,6 +40,15 @@ def test_local_manager_projection_survives_recomposition(tmp_path, monkeypatch) 
         initial = first.projection_store.get_active(ALARM_CONFIGURATION_SOURCE_KEY)
         assert initial is not None
         assert initial.payload == snapshot
+        projection_root = (
+            tmp_path
+            / 'conciencia_situacional'
+            / 'command-center'
+            / 'projections'
+            / 'alarm-configuration'
+        )
+        assert projection_root.is_dir()
+        assert tuple(projection_root.glob('alarm_configuration_projection_*.json'))
 
     with open_local_configuration_manager(
         reader=_reader(tmp_path), principal_provider=_principal, base_root=tmp_path

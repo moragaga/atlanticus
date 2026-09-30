@@ -1,3 +1,6 @@
+from ada_command_center.web.alarms.configuration.resources import (
+    ALARM_CONFIGURATION_PROJECTION_PHYSICAL_NAME,
+)
 from atlanticus.web.storage.topology import (
     CosmosContainerTopology,
     StorageResourceContract,
@@ -11,7 +14,7 @@ ALARM_CONFIGURATION_PROJECTION_STORAGE_RESOURCE: StorageResourceContract[
     owner='ada.command_center.alarms.configuration',
     provider='cosmos',
     default_connection_ref=None,
-    default_physical_name='ada-command-center-alarm-configuration-projection',
+    default_physical_name=ALARM_CONFIGURATION_PROJECTION_PHYSICAL_NAME,
     topology=CosmosContainerTopology(
         partition_key_path='/partition_key',
         default_ttl_seconds=None,

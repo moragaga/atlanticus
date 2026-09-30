@@ -5,6 +5,7 @@ FILES = (
     '__init__.py',
     'errors.py',
     'manager.py',
+    'resources.py',
     'source_projection.py',
     'source_release.py',
     'tool_dependencies.py',

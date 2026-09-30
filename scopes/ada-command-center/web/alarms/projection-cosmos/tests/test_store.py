@@ -87,7 +87,7 @@ def test_cosmos_projection_resource_contract() -> None:
     assert resource.logical_id == 'ada.command_center.alarms.configuration.projection'
     assert resource.owner == 'ada.command_center.alarms.configuration'
     assert resource.provider == 'cosmos'
-    assert resource.default_physical_name == 'ada-command-center-alarm-configuration-projection'
+    assert resource.default_physical_name == 'alarm-configuration'
     assert resource.topology.partition_key_path == '/partition_key'
     assert resource.topology.default_ttl_seconds is None
 
