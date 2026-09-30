@@ -82,7 +82,10 @@ def test_editor_preserves_draft_identity_without_implicit_publication(tmp_path):
     assert len(generated) == len('position_') + 32
     assert service.catalog_for_edit()[0].current is None
     edited = editor.update_position(
-        document, position_id=generated, label='Ingeniero de sala', active=False
+        document,
+        position_id=generated,
+        label='Ingeniero de sala',
+        active=False,
     )
     assert edited['positions'][0]['id'] == generated
     assert edited['positions'][0]['active'] is False
@@ -139,13 +142,17 @@ def test_publication_requires_matching_source_snapshot_and_history_is_exact(tmp_
     contracts, service, _projection = _contracts(tmp_path)
     before = contracts.source.get_source_snapshot()
     first, generated = contracts.editor.add_position(
-        OperationalCatalog().to_document(), label='Operador'
+        OperationalCatalog().to_document(),
+        label='Operador',
     )
     first_pub = contracts.source.publish_draft(first, before)
     with pytest.raises(OperationalReferenceError, match='changed'):
         contracts.source.publish_draft(first, before)
     second = contracts.editor.update_position(
-        first, position_id=generated, label='Supervisor', active=True
+        first,
+        position_id=generated,
+        label='Supervisor',
+        active=True,
     )
     contracts.source.publish_draft(second, first_pub.source.snapshot)
     history = contracts.source.list_history()
@@ -159,7 +166,8 @@ def test_publication_requires_matching_source_snapshot_and_history_is_exact(tmp_
 def test_catalog_and_individual_assignment_remain_independent(tmp_path):
     contracts, service, projections = _contracts(tmp_path)
     payload, position_id = contracts.editor.add_position(
-        OperationalCatalog().to_document(), label='Operador'
+        OperationalCatalog().to_document(),
+        label='Operador',
     )
     contracts.source.publish_draft(payload, contracts.source.get_source_snapshot())
     target = contracts.projection.select_current_target(CATALOG_SOURCE_KEY)
@@ -179,14 +187,26 @@ def test_catalog_and_individual_assignment_remain_independent(tmp_path):
     assert len(contracts.source.list_history().items) == 1
 
 
-def test_local_wiring_exposes_catalog_contracts_without_another_manager_page(tmp_path, monkeypatch):
+def test_local_wiring_exposes_operational_catalog_as_manager_module(tmp_path, monkeypatch):
     monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'local')
     dependencies = create_local_configuration_manager_dependencies(source_root=tmp_path)
     contracts = dependencies.operational_catalog_contracts
     assert contracts is not None
     definition = build_configuration_manager_surface(dependencies)
-    assert [entry.key for entry in definition.entries].count('operational-identification') == 1
-    assert all(module.key != 'operational-identification' for module in definition.modules)
+    assert all(entry.key != 'operational-identification' for entry in definition.entries)
+    operational = tuple(
+        module for module in definition.modules if module.key == 'operational-identification'
+    )
+    assert len(operational) == 1
+    module = operational[0]
+    assert module.title == 'Datos operacionales'
+    assert module.primary_view_title == 'Catálogo de cargos'
+    assert module.default_primary_view == 'companion'
+    assert module.companion_view is not None
+    assert module.companion_view.title == 'Asignaciones'
+    assert module.source_name == dependencies.operational_source_name
+    assert module.projection_name == dependencies.operational_projection_name
+
     services_module = next(
         module
         for module in definition.web_modules

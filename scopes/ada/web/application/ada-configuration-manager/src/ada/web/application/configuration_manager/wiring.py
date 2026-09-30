@@ -325,6 +325,8 @@ def compose_configuration_manager_dependencies(
         navigation_projection_name=projection_name,
         tools_source_name=source_name,
         tools_projection_name=projection_name,
+        operational_source_name=source_name,
+        operational_projection_name=projection_name,
         access_source_name=source_name,
         access_projection_name=projection_name,
         kpi_registry_source_name=source_name,

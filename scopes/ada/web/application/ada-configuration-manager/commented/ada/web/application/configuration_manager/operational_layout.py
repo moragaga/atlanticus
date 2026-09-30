@@ -1,3 +1,6 @@
+# Construye las dos superficies visuales sin duplicar el workflow: catálogo en el módulo y asignaciones en la companion.
+# Este espejo conserva exactamente el mismo AST y comportamiento que producción.
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -7,7 +10,6 @@ from dash import dcc, html
 
 from ada.web.application.configuration_manager import operational_ids as ids
 from ada.web.operational.identification import (
-    CATALOG_SOURCE_KEY,
     OperationalCatalog,
     Position,
     assignment_source_key,
@@ -23,168 +25,146 @@ from atlanticus.web.projection.models import ProjectionAlignment, ProjectionStat
 from atlanticus.web.source.models import SourceSnapshot
 
 if TYPE_CHECKING:
-    from ada.web.application.configuration_manager.operational import OperationalManagerContext
+    from ada.web.application.configuration_manager.operational import (
+        OperationalAssignmentContext,
+        OperationalCatalogManagerWebContext,
+    )
 
 
-# La página usa la jerarquía administrativa de Manager sin duplicar su encabezado.
-def build_operational_manager_layout(context: OperationalManagerContext) -> object:
-    # Asignación es la entrada inicial; el catálogo sigue siendo independiente.
+# Expone o ejecuta la responsabilidad `build_operational_catalog_configuration` sin cambiar contratos externos.
+def build_operational_catalog_configuration(
+    context: OperationalCatalogManagerWebContext,
+) -> object:
     if not context.can_manage():
-        return html.P('No tienes acceso a esta configuración.')
+        return html.P('You do not have access to this configuration.')
     try:
-        snapshot, catalog = context.service.catalog_for_edit()
-        assignment_list, assignment_page = render_assignment_list(
-            context, None, 1, DEFAULT_PAGE_SIZE
+        payload = context.current_payload_provider()
+        catalog = (
+            OperationalCatalog.from_document(payload)
+            if payload is not None
+            else OperationalCatalog()
         )
-        position_list, position_page = render_position_list(context, None, 1, DEFAULT_PAGE_SIZE)
-        metadata = catalog_metadata(context, snapshot)
-        projected_catalog = context.service.catalog_for_read()
+        position_list, position_page = render_position_list(
+            catalog,
+            None,
+            1,
+            DEFAULT_PAGE_SIZE,
+        )
     except Exception:
-        return html.P('No fue posible cargar los datos operacionales.')
+        return html.P('Operational catalog could not be loaded.')
     return html.Div(
         [
-            # El tab inicial es Asignación; el catálogo se consulta en la segunda pestaña.
-            dcc.Store(id=ids.VIEW, data='assignments'),
-            dcc.Store(id=ids.ASSIGN_PAGE, data=1),
-            dcc.Store(id=ids.ASSIGN_CURRENT_PAGE, data=assignment_page.request.page_number),
+            dcc.Store(id=ids.CATALOG_EDITOR, data=catalog.to_document()),
             dcc.Store(id=ids.POSITION_PAGE, data=1),
             dcc.Store(id=ids.POSITION_CURRENT_PAGE, data=position_page.request.page_number),
-            dcc.Store(id=ids.USER),
-            dcc.Store(id=ids.ASSIGNMENT_REVISION),
-            dcc.Store(id=ids.CATALOG_REVISION, data=_revision(snapshot)),
             dcc.Dropdown(
                 id=ids.POSITION_SELECT,
                 options=_position_options(catalog, include_inactive=True),
                 style={'display': 'none'},
             ),
-            html.Div(
-                [
-                    html.Button(
-                        'Asignación',
-                        id=ids.ASSIGN_TAB,
-                        n_clicks=0,
-                        type='button',
-                        role='tab',
-                        className=_surface_tab_class(True),
-                        **{'aria-selected': 'true', 'aria-controls': ids.ASSIGN_PANEL},
-                    ),
-                    html.Button(
-                        'Datos operacionales',
-                        id=ids.POSITION_TAB,
-                        n_clicks=0,
-                        type='button',
-                        role='tab',
-                        className=_surface_tab_class(False),
-                        **{'aria-selected': 'false', 'aria-controls': ids.POSITION_PANEL},
-                    ),
-                ],
-                className='ada-operational-admin__primary-tabs',
-                role='tablist',
-            ),
             html.Section(
                 [
                     html.Div(
                         [
-                            _provider_label('Fuente de verdad', context.source_name),
-                            _provider_label('Proyección', context.projection_name),
-                        ],
-                        className='ada-operational-admin__providers',
-                    ),
-                    html.Section(
-                        [
                             html.Div(
                                 [
-                                    html.Div(
-                                        [
-                                            html.H3('Catálogo de cargos'),
-                                            html.P(
-                                                'Identificadores automáticos e inmutables. '
-                                                'Desactiva los cargos que ya no se usan.'
-                                            ),
-                                        ],
-                                        className='ada-operational-admin__section-copy',
-                                    ),
-                                    html.Button(
-                                        'Nuevo cargo',
-                                        id=ids.POSITION_NEW,
-                                        n_clicks=0,
-                                        type='button',
-                                        className='btn btn-outline-secondary',
-                                    ),
-                                ],
-                                className='ada-operational-admin__section-head',
-                            ),
-                            html.Div(
-                                [
-                                    _metadata_cell('Áreas operacionales', 'Mina · Planta'),
-                                    _metadata_cell('Grupos', '1 · 2 · 3 · 4'),
-                                ],
-                                className='ada-operational-admin__metadata',
-                            ),
-                            _filter_bar(ids.POSITION_SEARCH, 'Buscar cargos'),
-                            _list_shell(ids.POSITION_LIST, position_list, ids.POSITION_SIZE),
-                            html.Div(
-                                page_label(position_page),
-                                id=ids.POSITION_STATUS,
-                                className='ada-operational-admin__sr-only',
-                                **{'aria-live': 'polite'},
-                            ),
-                        ],
-                        className='ada-operational-admin__catalog-section',
-                    ),
-                    # Estado de catálogo y reintento permanecen junto a su edición.
-                    html.Section(
-                        [
-                            html.Div(
-                                [
-                                    html.H3('Estado y trazabilidad'),
+                                    html.H3('Catálogo de cargos'),
                                     html.P(
-                                        'Publicaciones y proyecciones del catálogo. '
-                                        'Las asignaciones conservan su estado individual.'
+                                        'Los identificadores se generan una sola vez y son '
+                                        'inmutables. '
+                                        'Los cargos dejan de utilizarse desactivándolos.'
                                     ),
                                 ],
                                 className='ada-operational-admin__section-copy',
                             ),
-                            html.Div(metadata, id=ids.CATALOG_METADATA),
-                            html.Div(
-                                [
-                                    html.P(
-                                        'Si existe una publicación pendiente, puedes '
-                                        'reintentar su proyección sin modificar el Source.',
-                                        className='ada-operational-admin__trace-copy',
-                                    ),
-                                    html.Button(
-                                        'Reintentar proyección',
-                                        id=ids.CATALOG_REPROJECT,
-                                        n_clicks=0,
-                                        type='button',
-                                        className='btn btn-outline-secondary btn-sm',
-                                    ),
-                                ],
-                                className='ada-operational-admin__trace-actions',
-                            ),
-                            html.Div(
-                                id=ids.TRACE_FEEDBACK,
-                                className='ada-operational-admin__trace-feedback',
-                                role='status',
+                            html.Button(
+                                'Nuevo cargo',
+                                id=ids.POSITION_NEW,
+                                n_clicks=0,
+                                type='button',
+                                className='btn btn-outline-secondary',
                             ),
                         ],
-                        id=ids.TRACE_PANEL,
-                        className='ada-operational-admin__trace-section',
-                        role='region',
-                        **{'aria-label': 'Estado y trazabilidad del catálogo'},
+                        className='ada-operational-admin__section-head',
+                    ),
+                    html.Div(
+                        [
+                            _metadata_cell('Áreas operacionales', 'Mina · Planta'),
+                            _metadata_cell('Grupos', '1 · 2 · 3 · 4'),
+                        ],
+                        className='ada-operational-admin__metadata',
+                    ),
+                    _filter_bar(ids.POSITION_SEARCH, 'Buscar cargos'),
+                    _list_shell(ids.POSITION_LIST, position_list, ids.POSITION_SIZE),
+                    html.Div(
+                        page_label(position_page),
+                        id=ids.POSITION_STATUS,
+                        className='ada-operational-admin__sr-only',
+                        **{'aria-live': 'polite'},
                     ),
                 ],
-                id=ids.POSITION_PANEL,
-                className=_surface_class(False),
-                role='tabpanel',
-                **{'aria-labelledby': ids.POSITION_TAB},
+                className='ada-operational-admin__catalog-section',
             ),
             html.Section(
                 [
                     html.Div(
                         [
-                            html.H3('Asignación'),
+                            html.Div(
+                                [
+                                    html.H3('Borrador local · catálogo de cargos'),
+                                    html.P(
+                                        'Guarda el catálogo actual en este navegador. '
+                                        'Validar, publicar y proyectar se realiza en Estado y '
+                                        'trazabilidad.'
+                                    ),
+                                ],
+                                className='ada-operational-admin__section-copy',
+                            ),
+                            html.Button(
+                                'Guardar borrador',
+                                id=ids.CATALOG_SAVE_DRAFT,
+                                n_clicks=0,
+                                type='button',
+                                className='btn btn-primary',
+                            ),
+                        ],
+                        className='ada-operational-admin__section-head',
+                    ),
+                    html.Div(id=ids.CATALOG_SAVE_RESULT, role='status'),
+                ],
+                className='ada-operational-admin__catalog-section',
+            ),
+            _position_modal(),
+        ],
+        className='ada-operational-admin atlanticus-bootstrap',
+    )
+
+
+# Expone o ejecuta la responsabilidad `build_operational_assignments` sin cambiar contratos externos.
+def build_operational_assignments(context: OperationalAssignmentContext) -> object:
+    if not context.can_manage():
+        return html.P('You do not have access to this configuration.')
+    try:
+        assignment_list, assignment_page = render_assignment_list(
+            context,
+            None,
+            1,
+            DEFAULT_PAGE_SIZE,
+        )
+        projected_catalog = context.service.catalog_for_read()
+    except Exception:
+        return html.P('Operational assignments could not be loaded.')
+    return html.Div(
+        [
+            dcc.Store(id=ids.ASSIGN_PAGE, data=1),
+            dcc.Store(id=ids.ASSIGN_CURRENT_PAGE, data=assignment_page.request.page_number),
+            dcc.Store(id=ids.USER),
+            dcc.Store(id=ids.ASSIGNMENT_REVISION),
+            html.Section(
+                [
+                    html.Div(
+                        [
+                            html.H3('Asignaciones'),
                             html.P('Información operacional de usuarios promovidos.'),
                         ],
                         className='ada-operational-admin__section-copy',
@@ -199,60 +179,36 @@ def build_operational_manager_layout(context: OperationalManagerContext) -> obje
                         **{'aria-live': 'polite'},
                     ),
                 ],
-                id=ids.ASSIGN_PANEL,
-                className=_surface_class(True),
-                role='tabpanel',
-                **{'aria-labelledby': ids.ASSIGN_TAB},
+                className='ada-operational-admin__catalog-section',
             ),
             _assignment_modal(projected_catalog),
-            _position_modal(),
         ],
         className='ada-operational-admin atlanticus-bootstrap',
     )
 
 
-def _provider_label(label: str, name: str) -> object:
-    return html.Div(
-        [html.Span(label), html.Strong(name)],
-        className='ada-operational-admin__provider',
-    )
-
-
-# El selector de filas es hermano estable del listado para impedir ciclos de callbacks al paginar.
-def _list_shell(list_id: str, initial: object, size_id: str) -> object:
+# Expone o ejecuta la responsabilidad `build_operational_catalog_history_preview` sin cambiar contratos externos.
+def build_operational_catalog_history_preview(payload: dict[str, object]) -> object:
+    catalog = OperationalCatalog.from_document(payload)
     return html.Div(
         [
-            html.Div(initial, id=list_id, className='ada-operational-admin__list-view'),
-            html.Label(
+            html.H4('Catálogo de cargos'),
+            html.Div(
                 [
-                    html.Span('Filas'),
-                    _dropdown(
-                        size_id,
-                        [{'label': str(size), 'value': size} for size in ALLOWED_PAGE_SIZES],
-                        value=DEFAULT_PAGE_SIZE,
-                        clearable=False,
+                    _history_item('Cargos configurados', str(len(catalog.positions))),
+                    _history_item(
+                        'Cargos activos',
+                        str(sum(position.active for position in catalog.positions)),
                     ),
-                ],
-                className='ada-operational-admin__footer-size',
+                ]
             ),
-        ],
-        className='ada-operational-admin__list-shell',
+        ]
     )
 
 
-def _surface_tab_class(active: bool) -> str:
-    name = 'ada-operational-admin__primary-tab'
-    return f'{name} {name}--active' if active else name
-
-
-def _surface_class(active: bool) -> str:
-    name = 'ada-operational-admin__surface'
-    return f'{name} {name}--active' if active else name
-
-
-# Solo se consultan las publicaciones de usuarios de la página visible para limitar operaciones.
+# Expone o ejecuta la responsabilidad `render_assignment_list` sin cambiar contratos externos.
 def render_assignment_list(
-    context: OperationalManagerContext,
+    context: OperationalAssignmentContext,
     query: str | None,
     number: int,
     size: int,
@@ -278,7 +234,7 @@ def render_assignment_list(
     )
     page = paginate_items(filtered, PageRequest(number, size))
     try:
-        _, catalog = context.service.catalog_for_edit()
+        catalog = context.service.catalog_for_read()
         labels = {item.id: item.label for item in catalog.positions}
     except Exception:
         labels = {}
@@ -293,14 +249,13 @@ def render_assignment_list(
     ), page
 
 
-# Los cargos se ordenan y paginan sin alterar la identidad técnica que conserva Source.
+# Expone o ejecuta la responsabilidad `render_position_list` sin cambiar contratos externos.
 def render_position_list(
-    context: OperationalManagerContext,
+    catalog: OperationalCatalog,
     query: str | None,
     number: int,
     size: int,
 ) -> tuple[object, Page[Position]]:
-    _, catalog = context.service.catalog_for_edit()
     needle = (query or '').strip().casefold()
     positions = tuple(
         position
@@ -324,27 +279,9 @@ def render_position_list(
     ), page
 
 
-# El catálogo informa el Source actual y la proyección efectiva, no asume sincronización.
-def catalog_metadata(context: OperationalManagerContext, snapshot: SourceSnapshot) -> object:
-    try:
-        status = context.service.projection_status(CATALOG_SOURCE_KEY)
-        state = _status_label(status)
-        projected = _release_label(status.projected_source_release)
-    except Exception:
-        state, projected = 'Proyección no disponible', 'No verificable'
-    source = _release_label(snapshot.current.release_ref if snapshot.current else None)
-    return html.Div(
-        [
-            _metadata_cell('Source', source),
-            _metadata_cell('Projection', projected),
-            html.Span(state, className='ada-operational-admin__badge'),
-        ],
-        className='ada-operational-admin__metadata',
-    )
-
-
+# Expone o ejecuta la responsabilidad `_assignment_row` sin cambiar contratos externos.
 def _assignment_row(
-    context: OperationalManagerContext,
+    context: OperationalAssignmentContext,
     user: object,
     positions: dict[str, str],
 ) -> object:
@@ -370,7 +307,8 @@ def _assignment_row(
             else ' · '.join(
                 (
                     f'Área: {dict(mina="Mina", planta="Planta").get(assignment.area_id, "—")}',
-                    f'Cargo: {positions.get(assignment.position_id, assignment.position_id or "—")}',
+                    'Cargo: '
+                    f'{positions.get(assignment.position_id, assignment.position_id or "—")}',
                     f'Grupo: {assignment.group_id if assignment.group_id is not None else "—"}',
                 )
             )
@@ -378,7 +316,7 @@ def _assignment_row(
     except Exception:
         state = 'Datos no disponibles'
         assignment_label = 'No verificable'
-        details = 'No fue posible verificar Source y Projection.'
+        details = 'Source and Projection could not be verified.'
     return html.Article(
         [
             html.Div(
@@ -408,6 +346,7 @@ def _assignment_row(
     )
 
 
+# Expone o ejecuta la responsabilidad `_position_row` sin cambiar contratos externos.
 def _position_row(position: Position) -> object:
     return html.Article(
         [
@@ -436,7 +375,29 @@ def _position_row(position: Position) -> object:
     )
 
 
-# La paginación solo genera controles y resultados; no recrea el selector de filas.
+# Expone o ejecuta la responsabilidad `_list_shell` sin cambiar contratos externos.
+def _list_shell(list_id: str, initial: object, size_id: str) -> object:
+    return html.Div(
+        [
+            html.Div(initial, id=list_id, className='ada-operational-admin__list-view'),
+            html.Label(
+                [
+                    html.Span('Filas'),
+                    _dropdown(
+                        size_id,
+                        [{'label': str(size), 'value': size} for size in ALLOWED_PAGE_SIZES],
+                        value=DEFAULT_PAGE_SIZE,
+                        clearable=False,
+                    ),
+                ],
+                className='ada-operational-admin__footer-size',
+            ),
+        ],
+        className='ada-operational-admin__list-shell',
+    )
+
+
+# Expone o ejecuta la responsabilidad `_paged_list` sin cambiar contratos externos.
 def _paged_list(
     *,
     rows: tuple[object, ...],
@@ -511,6 +472,7 @@ def _paged_list(
     )
 
 
+# Expone o ejecuta la responsabilidad `_page_tokens` sin cambiar contratos externos.
 def _page_tokens(current: int, total: int) -> tuple[int | None, ...]:
     if total <= 7:
         return tuple(range(1, total + 1))
@@ -523,13 +485,14 @@ def _page_tokens(current: int, total: int) -> tuple[int | None, ...]:
     return tuple(result)
 
 
+# Expone o ejecuta la responsabilidad `page_label` sin cambiar contratos externos.
 def page_label(page: Page[object]) -> str:
     if not page.total_count:
         return '0 de 0'
     return f'{page.start_index}–{page.end_index} de {page.total_count}'
 
 
-# La búsqueda queda fuera del listado reemplazable y el tamaño queda estable en el pie.
+# Expone o ejecuta la responsabilidad `_filter_bar` sin cambiar contratos externos.
 def _filter_bar(search_id: str, label: str) -> object:
     return html.Div(
         [
@@ -545,6 +508,7 @@ def _filter_bar(search_id: str, label: str) -> object:
     )
 
 
+# Expone o ejecuta la responsabilidad `_assignment_modal` sin cambiar contratos externos.
 def _assignment_modal(catalog: OperationalCatalog) -> object:
     return _modal(
         ids.ASSIGN_MODAL,
@@ -606,6 +570,7 @@ def _assignment_modal(catalog: OperationalCatalog) -> object:
     )
 
 
+# Expone o ejecuta la responsabilidad `_position_modal` sin cambiar contratos externos.
 def _position_modal() -> object:
     return _modal(
         ids.POSITION_MODAL,
@@ -639,7 +604,7 @@ def _position_modal() -> object:
                 value=['active'],
                 className='ada-operational-admin__check',
             ),
-            html.Div(id=ids.CATALOG_RESULT, role='status'),
+            html.Div(id=ids.POSITION_RESULT, role='status'),
         ],
         [
             html.Button(
@@ -650,8 +615,8 @@ def _position_modal() -> object:
                 className='btn btn-outline-secondary',
             ),
             html.Button(
-                'Guardar cargo',
-                id=ids.CATALOG_SAVE,
+                'Guardar en borrador',
+                id=ids.POSITION_APPLY,
                 n_clicks=0,
                 type='button',
                 className='btn btn-primary',
@@ -660,8 +625,7 @@ def _position_modal() -> object:
     )
 
 
-# El modal replica la composición visual de Profiles con estilos propios.
-# No hereda clases genéricas modal-* que puedan ocultar su encabezado.
+# Expone o ejecuta la responsabilidad `_modal` sin cambiar contratos externos.
 def _modal(
     modal_id: str,
     backdrop_id: str,
@@ -714,6 +678,7 @@ def _modal(
     )
 
 
+# Expone o ejecuta la responsabilidad `_field` sin cambiar contratos externos.
 def _field(label: str, control: object) -> object:
     return html.Label(
         [html.Span(label), control],
@@ -721,6 +686,7 @@ def _field(label: str, control: object) -> object:
     )
 
 
+# Expone o ejecuta la responsabilidad `_dropdown` sin cambiar contratos externos.
 def _dropdown(component_id: str, options: list[dict], **kwargs: object) -> object:
     return dcc.Dropdown(
         id=component_id,
@@ -731,6 +697,7 @@ def _dropdown(component_id: str, options: list[dict], **kwargs: object) -> objec
     )
 
 
+# Expone o ejecuta la responsabilidad `_dash_select_style` sin cambiar contratos externos.
 def _dash_select_style() -> dict[str, str]:
     return {
         '--Dash-Spacing': '4px',
@@ -751,10 +718,12 @@ def _dash_select_style() -> dict[str, str]:
     }
 
 
+# Expone o ejecuta la responsabilidad `_revision` sin cambiar contratos externos.
 def _revision(snapshot: SourceSnapshot) -> str | None:
     return snapshot.current.release_ref.release_id.value if snapshot.current else None
 
 
+# Expone o ejecuta la responsabilidad `_position_options` sin cambiar contratos externos.
 def _position_options(
     catalog: OperationalCatalog,
     *,
@@ -770,10 +739,12 @@ def _position_options(
     ]
 
 
+# Expone o ejecuta la responsabilidad `_release_label` sin cambiar contratos externos.
 def _release_label(release: object) -> str:
     return 'Sin publicación' if release is None else release.release_id.value
 
 
+# Expone o ejecuta la responsabilidad `_status_label` sin cambiar contratos externos.
 def _status_label(status: ProjectionStatus) -> str:
     if status.source_current_release is None:
         return 'Sin publicar' if status.projected_source_release is None else 'Source ausente'
@@ -784,6 +755,7 @@ def _status_label(status: ProjectionStatus) -> str:
     return 'Proyección desactualizada'
 
 
+# Expone o ejecuta la responsabilidad `_metadata_cell` sin cambiar contratos externos.
 def _metadata_cell(label: str, value: str) -> object:
     return html.Div(
         [html.Span(label), html.Code(value)],
@@ -791,6 +763,12 @@ def _metadata_cell(label: str, value: str) -> object:
     )
 
 
+# Expone o ejecuta la responsabilidad `_history_item` sin cambiar contratos externos.
+def _history_item(label: str, value: str) -> object:
+    return html.Div([html.Small(label), html.Strong(value)])
+
+
+# Expone o ejecuta la responsabilidad `modal_class` sin cambiar contratos externos.
 def modal_class(opened: bool) -> str:
     base = 'ada-operational-admin__modal'
     return f'{base} {base}--open' if opened else base

@@ -1,6 +1,8 @@
+# Centraliza los identificadores Dash propios de las superficies operacional y de catálogo; el workflow genérico usa IDs del Manager.
+# Este espejo conserva exactamente el mismo AST y comportamiento que producción.
+
 from __future__ import annotations
 
-# Todos los callbacks de esta pantalla usan IDs aislados del resto del Manager.
 _PREFIX = 'ada-operational-manager'
 
 USER = f'{_PREFIX}-user'
@@ -12,20 +14,6 @@ ASSIGNMENT_SAVE = f'{_PREFIX}-assignment-save'
 ASSIGNMENT_REPROJECT = f'{_PREFIX}-assignment-reproject'
 ASSIGNMENT_RESULT = f'{_PREFIX}-assignment-result'
 ASSIGN_FEEDBACK = f'{_PREFIX}-assign-feedback'
-POSITION_SELECT = f'{_PREFIX}-position-select'
-POSITION_ID = f'{_PREFIX}-position-id'
-POSITION_LABEL = f'{_PREFIX}-position-label'
-POSITION_ACTIVE = f'{_PREFIX}-position-active'
-CATALOG_REVISION = f'{_PREFIX}-catalog-revision'
-CATALOG_SAVE = f'{_PREFIX}-catalog-save'
-CATALOG_REPROJECT = f'{_PREFIX}-catalog-reproject'
-CATALOG_RESULT = f'{_PREFIX}-catalog-result'
-
-VIEW = f'{_PREFIX}-view'
-ASSIGN_TAB = f'{_PREFIX}-assign-tab'
-POSITION_TAB = f'{_PREFIX}-position-tab'
-ASSIGN_PANEL = f'{_PREFIX}-assign-panel'
-POSITION_PANEL = f'{_PREFIX}-position-panel'
 ASSIGN_SEARCH = f'{_PREFIX}-assign-search'
 ASSIGN_SIZE = f'{_PREFIX}-assign-size'
 ASSIGN_PAGE = f'{_PREFIX}-assign-page'
@@ -43,6 +31,15 @@ ASSIGN_MODAL_CLOSE = f'{_PREFIX}-assign-close'
 ASSIGN_SELECTED_NAME = f'{_PREFIX}-assign-selected-name'
 ASSIGN_MODAL_STATUS = f'{_PREFIX}-assign-modal-status'
 
+CATALOG_EDITOR = f'{_PREFIX}-catalog-editor'
+CATALOG_SAVE_DRAFT = f'{_PREFIX}-catalog-save-draft'
+CATALOG_SAVE_RESULT = f'{_PREFIX}-catalog-save-result'
+POSITION_SELECT = f'{_PREFIX}-position-select'
+POSITION_ID = f'{_PREFIX}-position-id'
+POSITION_LABEL = f'{_PREFIX}-position-label'
+POSITION_ACTIVE = f'{_PREFIX}-position-active'
+POSITION_APPLY = f'{_PREFIX}-position-apply'
+POSITION_RESULT = f'{_PREFIX}-position-result'
 POSITION_SEARCH = f'{_PREFIX}-position-search'
 POSITION_SIZE = f'{_PREFIX}-position-size'
 POSITION_PAGE = f'{_PREFIX}-position-page'
@@ -58,9 +55,3 @@ POSITION_MODAL = f'{_PREFIX}-position-modal'
 POSITION_MODAL_BACKDROP = f'{_PREFIX}-position-backdrop'
 POSITION_MODAL_CANCEL = f'{_PREFIX}-position-cancel'
 POSITION_MODAL_CLOSE = f'{_PREFIX}-position-close'
-CATALOG_METADATA = f'{_PREFIX}-catalog-metadata'
-
-TRACE_PANEL = f'{_PREFIX}-trace-panel'
-
-# La trazabilidad del catálogo permanece dentro de Datos operacionales.
-TRACE_FEEDBACK = f'{_PREFIX}-trace-feedback'

@@ -18,7 +18,6 @@
 }
 
 .ada-operational-admin > *,
-.ada-operational-admin__surface > *,
 .ada-operational-admin__list-shell > *,
 .ada-operational-admin__list-view,
 .ada-operational-admin__paged-list,
@@ -29,102 +28,16 @@
     max-width: 100%;
 }
 
-.ada-operational-admin__primary-tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .75rem;
-    min-width: 0;
-    border-bottom: 1px solid var(--atlanticus-ui-border);
-}
-
-.ada-operational-admin__primary-tab {
-    padding: .65rem .2rem;
-    border: 0;
-    border-bottom: 2px solid transparent;
-    border-radius: 0;
-    color: var(--atlanticus-ui-text-muted);
-    background: transparent;
-    cursor: pointer;
-    font: inherit;
-    font-size: .8rem;
-    font-weight: 700;
-}
-
-.ada-operational-admin__primary-tab:hover,
-.ada-operational-admin__primary-tab--active,
-.ada-operational-admin__primary-tab:focus-visible {
-    border-bottom-color: var(--atlanticus-ui-accent);
-    color: var(--atlanticus-ui-primary-hover);
-}
-
-.ada-operational-admin__primary-tab:focus-visible {
-    outline: 2px solid var(--atlanticus-ui-secondary);
-    outline-offset: 2px;
-}
-
-.ada-operational-admin__surface {
-    display: none;
-    min-width: 0;
-}
-
-.ada-operational-admin__surface--active {
+.ada-operational-admin__catalog-section {
     display: grid;
     min-width: 0;
     align-content: start;
     gap: .9rem;
-}
-
-#ada-operational-manager-assign-panel.ada-operational-admin__surface--active {
     padding: 1rem;
     border: 1px solid var(--atlanticus-ui-border);
     border-radius: .85rem;
     background: var(--atlanticus-ui-surface);
     box-shadow: 0 4px 16px rgb(25 30 38 / 4%);
-}
-
-.ada-operational-admin__catalog-section,
-.ada-operational-admin__trace-section,
-.ada-operational-admin__providers {
-    min-width: 0;
-    padding: 1rem;
-    border: 1px solid var(--atlanticus-ui-border);
-    border-radius: .85rem;
-    background: var(--atlanticus-ui-surface);
-    box-shadow: 0 4px 16px rgb(25 30 38 / 4%);
-}
-
-.ada-operational-admin__catalog-section,
-.ada-operational-admin__trace-section {
-    display: grid;
-    min-width: 0;
-    align-content: start;
-    gap: .9rem;
-}
-
-.ada-operational-admin__providers {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: .55rem .75rem;
-    padding: .72rem 1rem;
-}
-
-.ada-operational-admin__provider {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    min-width: 0;
-    gap: .35rem;
-    padding: .38rem .65rem;
-    border: 1px solid rgb(201 162 75 / 30%);
-    border-radius: 999px;
-    color: var(--atlanticus-ui-primary-hover);
-    background: var(--atlanticus-ui-background);
-    font-size: .72rem;
-}
-
-.ada-operational-admin__provider span {
-    color: var(--atlanticus-ui-text-muted);
 }
 
 .ada-operational-admin__section-head {
@@ -152,8 +65,7 @@
     font-weight: 800;
 }
 
-.ada-operational-admin__section-copy p,
-.ada-operational-admin__trace-copy {
+.ada-operational-admin__section-copy p {
     color: var(--atlanticus-ui-text-muted);
     font-size: .77rem;
     line-height: 1.45;
@@ -241,29 +153,27 @@
     box-shadow: var(--atlanticus-ui-control-focus-ring) !important;
 }
 
-.ada-operational-admin__list-shell {
+.ada-operational-admin__list-shell,
+.ada-operational-admin__list-view,
+.ada-operational-admin__paged-list,
+.ada-operational-admin__rows {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     width: 100%;
     min-width: 0;
+}
+
+.ada-operational-admin__list-shell {
     gap: .65rem;
 }
 
 .ada-operational-admin__list-view,
 .ada-operational-admin__paged-list {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    width: 100%;
-    min-width: 0;
     gap: .75rem;
 }
 
 .ada-operational-admin__rows {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
     align-content: start;
-    width: 100%;
-    min-width: 0;
     gap: .5rem;
 }
 
@@ -416,12 +326,6 @@
     min-width: 0;
 }
 
-.ada-operational-admin__trace-copy {
-    margin: 0;
-}
-
-.ada-operational-admin__trace-actions,
-.ada-operational-admin__source-actions,
 .ada-operational-admin__selected-metadata {
     display: flex;
     flex-wrap: wrap;
@@ -435,18 +339,6 @@
     overflow-wrap: anywhere;
     color: var(--atlanticus-ui-text-muted);
     font-size: .72rem;
-}
-
-.ada-operational-admin__source-actions > :last-child:empty,
-.ada-operational-admin__trace-feedback:empty {
-    display: none;
-}
-
-.ada-operational-admin__trace-feedback:not(:empty) {
-    padding: .7rem;
-    border: 1px solid var(--atlanticus-ui-border);
-    border-radius: .65rem;
-    background: var(--atlanticus-ui-surface-muted);
 }
 
 .ada-operational-admin__result {
@@ -694,9 +586,7 @@ body:has(.ada-operational-admin__modal--open) {
         padding-inline: .75rem;
     }
 
-    #ada-operational-manager-assign-panel.ada-operational-admin__surface--active,
-    .ada-operational-admin__catalog-section,
-    .ada-operational-admin__trace-section {
+    .ada-operational-admin__catalog-section {
         padding: .8rem;
     }
 

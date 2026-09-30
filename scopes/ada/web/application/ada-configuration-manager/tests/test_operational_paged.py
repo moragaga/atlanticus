@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from ada.web.application.configuration_manager.operational import OperationalManagerContext
+from ada.web.application.configuration_manager.operational import OperationalAssignmentContext
 from ada.web.application.configuration_manager.operational_layout import (
     _page_tokens,
     page_label,
@@ -74,7 +74,7 @@ def make_context(tmp_path, count=23):
             access_keys=('operational.manage',),
         )
 
-    return OperationalManagerContext(
+    return OperationalAssignmentContext(
         service=service,
         promoted_users=users.list_users,
         principal=principal,
@@ -113,29 +113,23 @@ def test_assignments_paginate_promoted_users_without_reading_off_page(tmp_path):
     assert 'Usuario 09' in _strings(second)
 
 
-def test_position_catalog_has_same_10_20_pagination_and_search(tmp_path):
-    context, _users = make_context(tmp_path, 0)
-    snapshot, _catalog = context.service.catalog_for_edit()
-    context.service.publish_catalog(
-        OperationalCatalog(
-            tuple(Position(f'cargo-{number:02}', f'Cargo {number:02}') for number in range(23))
-        ),
-        actor='operator',
-        expected=snapshot,
+def test_position_catalog_has_same_10_20_pagination_and_search():
+    catalog = OperationalCatalog(
+        tuple(Position(f'cargo-{number:02}', f'Cargo {number:02}') for number in range(23))
     )
-    first, first_page = render_position_list(context, None, 1, 10)
+    first, first_page = render_position_list(catalog, None, 1, 10)
     assert first_page.total_count == 23
     assert page_label(first_page) == '1–10 de 23'
     assert 'Cargo 00' in _strings(first)
     assert 'Cargo 10' not in _strings(first)
-    last, last_page = render_position_list(context, None, 99, 10)
+    last, last_page = render_position_list(catalog, None, 99, 10)
     assert page_label(last_page) == '21–23 de 23'
     assert 'Cargo 22' in _strings(last)
-    larger, larger_page = render_position_list(context, None, 2, 20)
+    larger, larger_page = render_position_list(catalog, None, 2, 20)
     assert larger_page.request.page_size == 20
     assert page_label(larger_page) == '21–23 de 23'
     assert 'Cargo 22' in _strings(larger)
-    searched, search_page = render_position_list(context, 'cargo 02', 1, 20)
+    searched, search_page = render_position_list(catalog, 'cargo 02', 1, 20)
     assert search_page.total_count == 1
     assert 'Cargo 02' in _strings(searched)
     assert _page_tokens(5, 12) == (1, None, 3, 4, 5, 6, 7, None, 12)

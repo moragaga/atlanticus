@@ -54,6 +54,8 @@ class ConfigurationManagerDependencies:
     navigation_projection_name: str = 'Projection'
     tools_source_name: str = 'Source'
     tools_projection_name: str = 'Projection'
+    operational_source_name: str = 'Source'
+    operational_projection_name: str = 'Projection'
     access_source_name: str = 'Source'
     access_projection_name: str = 'Projection'
     kpi_registry_source_name: str = 'Source'
@@ -66,6 +68,8 @@ class ConfigurationManagerDependencies:
             raise ValueError('Operational service and promoted users must be injected together')
         if self.operational_catalog_contracts is not None and self.operational_service is None:
             raise ValueError('Operational catalog contracts require operational service')
+        if self.operational_service is not None and self.operational_catalog_contracts is None:
+            raise ValueError('Operational service requires operational catalog contracts')
         kpi_contract = (
             self.kpi_registry_source,
             self.kpi_registry_projection,

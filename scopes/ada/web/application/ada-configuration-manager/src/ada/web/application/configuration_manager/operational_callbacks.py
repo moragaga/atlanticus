@@ -10,9 +10,6 @@ from ada.web.application.configuration_manager.operational_layout import (
     _release_label,
     _revision,
     _status_label,
-    _surface_class,
-    _surface_tab_class,
-    catalog_metadata,
     modal_class,
     page_label,
     render_assignment_list,
@@ -22,71 +19,99 @@ from ada.web.operational.identification import (
     CATALOG_SOURCE_KEY,
     OperationalAssignment,
     OperationalCatalog,
-    Position,
     assignment_source_key,
+)
+from atlanticus.web.manager import (
+    ManagerProjectionError,
+    ManagerWorkspace,
+    build_workspace_revision,
 )
 
 if TYPE_CHECKING:
-    from ada.web.application.configuration_manager.operational import OperationalManagerContext
+    from ada.web.application.configuration_manager.operational import (
+        OperationalAssignmentContext,
+        OperationalCatalogManagerWebContext,
+    )
 
 
-def register_operational_callbacks(app: object, context: OperationalManagerContext) -> None:
+def register_operational_callbacks(
+    app: object,
+    catalog_context: OperationalCatalogManagerWebContext,
+    assignment_context: OperationalAssignmentContext,
+) -> None:
+    _register_catalog_callbacks(app, catalog_context)
+    _register_assignment_callbacks(app, assignment_context)
+
+
+def _register_catalog_callbacks(
+    app: object,
+    context: OperationalCatalogManagerWebContext,
+) -> None:
     @app.callback(
-        Output(ids.VIEW, 'data'),
-        Input(ids.POSITION_TAB, 'n_clicks'),
-        Input(ids.ASSIGN_TAB, 'n_clicks'),
+        Output(ids.CATALOG_EDITOR, 'data'),
+        Input(context.draft_store_id, 'data'),
+    )
+    def load_catalog_manager_draft(draft_data: dict[str, object] | None):
+        try:
+            payload = context.workspace_payload_reader(draft_data)
+            if payload is None:
+                return no_update
+            return OperationalCatalog.from_document(payload).to_document()
+        except (ManagerProjectionError, ValueError):
+            return no_update
+
+    @app.callback(
+        Output(context.editor_revision_store_id, 'data', allow_duplicate=True),
+        Input(ids.CATALOG_EDITOR, 'data'),
         prevent_initial_call=True,
     )
-    def change_tab(_positions, _assign):
-        if ctx.triggered_id == ids.ASSIGN_TAB and _assign:
-            return 'assignments'
-        if ctx.triggered_id == ids.POSITION_TAB and _positions:
-            return 'positions'
-        return no_update
+    def track_catalog_revision(catalog_data: dict[str, object] | None):
+        try:
+            catalog = _catalog(catalog_data)
+        except ValueError:
+            return 'invalid'
+        return build_workspace_revision(catalog.to_document())
 
     @app.callback(
-        Output(ids.POSITION_TAB, 'className'),
-        Output(ids.ASSIGN_TAB, 'className'),
-        Output(ids.POSITION_PANEL, 'className'),
-        Output(ids.ASSIGN_PANEL, 'className'),
-        Output(ids.POSITION_TAB, 'aria-selected'),
-        Output(ids.ASSIGN_TAB, 'aria-selected'),
-        Input(ids.VIEW, 'data'),
-    )
-    def display_tab(value):
-        assignment = value != 'positions'
-        return (
-            _surface_tab_class(not assignment),
-            _surface_tab_class(assignment),
-            _surface_class(not assignment),
-            _surface_class(assignment),
-            'false' if assignment else 'true',
-            'true' if assignment else 'false',
-        )
-
-    @app.callback(
-        Output(ids.ASSIGN_PAGE, 'data'),
-        Input(ids.ASSIGN_PREVIOUS, 'n_clicks'),
-        Input(ids.ASSIGN_NEXT, 'n_clicks'),
-        Input({'type': ids.ASSIGN_JUMP, 'index': ALL}, 'n_clicks'),
-        Input(ids.ASSIGN_SIZE, 'value'),
-        Input(ids.ASSIGN_SEARCH, 'value'),
-        State(ids.ASSIGN_CURRENT_PAGE, 'data'),
-        State({'type': ids.ASSIGN_JUMP, 'index': ALL}, 'id'),
+        Output(context.result_id, 'children', allow_duplicate=True),
+        Output(ids.CATALOG_SAVE_RESULT, 'children'),
+        Output(context.draft_store_id, 'data', allow_duplicate=True),
+        Output(context.saved_draft_store_id, 'data', allow_duplicate=True),
+        Input(ids.CATALOG_SAVE_DRAFT, 'n_clicks'),
+        Input(context.draft_save_action_id, 'n_clicks'),
+        State(ids.CATALOG_EDITOR, 'data'),
+        State(context.draft_store_id, 'data'),
+        State(context.editor_revision_store_id, 'data'),
         prevent_initial_call=True,
     )
-    def change_assignment_page(_prev, _next, _jump, _size, _query, current, jump_ids):
-        return _next_page(
-            current=current,
-            previous_clicks=_prev,
-            next_clicks=_next,
-            jump_clicks=_jump,
-            jump_ids=jump_ids,
-            previous_id=ids.ASSIGN_PREVIOUS,
-            next_id=ids.ASSIGN_NEXT,
-            jump_type=ids.ASSIGN_JUMP,
-            reset_ids=(ids.ASSIGN_SIZE, ids.ASSIGN_SEARCH),
-        )
+    def save_catalog_draft(
+        local_clicks: int | None,
+        workflow_clicks: int | None,
+        catalog_data: dict[str, object] | None,
+        current_draft_data: dict[str, object] | None,
+        editor_revision: str | None,
+    ):
+        if not (_click_is_real(local_clicks) or _click_is_real(workflow_clicks)):
+            return no_update, no_update, no_update, no_update
+        if not context.can_manage():
+            message = _message(
+                'You do not have permission to manage the operational catalog.',
+                error=True,
+            )
+            return message, message, no_update, no_update
+        try:
+            catalog = _catalog(catalog_data)
+            document = context.workspace_payload_writer(
+                current_draft_data,
+                catalog.to_document(),
+            )
+            workspace = ManagerWorkspace.from_document(document)
+            if editor_revision != workspace.revision:
+                raise ManagerProjectionError('Editor revision changed before the draft was saved')
+        except (ManagerProjectionError, ValueError) as error:
+            message = _message(str(error), error=True)
+            return message, message, no_update, no_update
+        return None, _message('Borrador guardado en este navegador.'), document, document
 
     @app.callback(
         Output(ids.POSITION_PAGE, 'data'),
@@ -113,6 +138,173 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
         )
 
     @app.callback(
+        Output(ids.POSITION_LIST, 'children'),
+        Output(ids.POSITION_STATUS, 'children'),
+        Output(ids.POSITION_CURRENT_PAGE, 'data'),
+        Input(ids.POSITION_PAGE, 'data'),
+        Input(ids.POSITION_SEARCH, 'value'),
+        Input(ids.POSITION_SIZE, 'value'),
+        Input(ids.CATALOG_EDITOR, 'data'),
+    )
+    def refresh_positions(number, query, size, catalog_data):
+        if not context.can_manage():
+            return html.P('Access denied.'), '', 1
+        try:
+            content, page = render_position_list(
+                _catalog(catalog_data),
+                query,
+                int(number or 1),
+                int(size or 10),
+            )
+            return content, page_label(page), page.request.page_number
+        except Exception:
+            return html.P('Operational catalog could not be read.'), 'Data unavailable', 1
+
+    @app.callback(
+        Output(ids.POSITION_SELECT, 'value'),
+        Output(ids.POSITION_MODAL, 'className'),
+        Output(ids.POSITION_RESULT, 'children', allow_duplicate=True),
+        Input({'type': ids.POSITION_EDIT, 'index': ALL}, 'n_clicks'),
+        Input(ids.POSITION_NEW, 'n_clicks'),
+        Input(ids.POSITION_MODAL_CANCEL, 'n_clicks'),
+        Input(ids.POSITION_MODAL_CLOSE, 'n_clicks'),
+        Input(ids.POSITION_MODAL_BACKDROP, 'n_clicks'),
+        State({'type': ids.POSITION_EDIT, 'index': ALL}, 'id'),
+        State(ids.CATALOG_EDITOR, 'data'),
+        prevent_initial_call=True,
+    )
+    def open_position(_edits, _new, _cancel, _close, _backdrop, edit_ids, catalog_data):
+        selected = ctx.triggered_id
+        if (
+            (selected == ids.POSITION_MODAL_CANCEL and _cancel)
+            or (selected == ids.POSITION_MODAL_CLOSE and _close)
+            or (selected == ids.POSITION_MODAL_BACKDROP and _backdrop)
+        ):
+            return no_update, modal_class(False), no_update
+        if not context.can_manage():
+            return no_update, no_update, no_update
+        if selected == ids.POSITION_NEW and _new:
+            return None, modal_class(True), None
+        if isinstance(selected, dict) and selected.get('type') == ids.POSITION_EDIT:
+            clicked = any(
+                ident.get('index') == selected.get('index') and count
+                for ident, count in zip(edit_ids or (), _edits or (), strict=True)
+            )
+            if not clicked:
+                return no_update, no_update, no_update
+            try:
+                if _catalog(catalog_data).position(selected.get('index')) is not None:
+                    return selected['index'], modal_class(True), None
+            except (TypeError, ValueError):
+                return no_update, no_update, no_update
+        return no_update, no_update, no_update
+
+    @app.callback(
+        Output(ids.POSITION_ID, 'children'),
+        Output(ids.POSITION_LABEL, 'value'),
+        Output(ids.POSITION_ACTIVE, 'value'),
+        Input(ids.POSITION_SELECT, 'value'),
+        Input(ids.POSITION_MODAL, 'className'),
+        State(ids.CATALOG_EDITOR, 'data'),
+    )
+    def select_position(position_id, _modal_state=None, catalog_data=None):
+        if not context.can_manage():
+            return 'Unavailable', '', []
+        if not position_id:
+            return 'Se generará al guardar', '', ['active']
+        try:
+            position = _catalog(catalog_data).position(position_id)
+            if position is None:
+                return 'Se generará al guardar', '', ['active']
+            return position.id, position.label, ['active'] if position.active else []
+        except (TypeError, ValueError):
+            return 'Unavailable', '', []
+
+    @app.callback(
+        Output(ids.CATALOG_EDITOR, 'data', allow_duplicate=True),
+        Output(ids.POSITION_SELECT, 'options'),
+        Output(ids.POSITION_SELECT, 'value', allow_duplicate=True),
+        Output(ids.POSITION_RESULT, 'children'),
+        Input(ids.POSITION_APPLY, 'n_clicks'),
+        State(ids.POSITION_SELECT, 'value'),
+        State(ids.POSITION_LABEL, 'value'),
+        State(ids.POSITION_ACTIVE, 'value'),
+        State(ids.CATALOG_EDITOR, 'data'),
+        prevent_initial_call=True,
+    )
+    def apply_position(clicks, selected, label, active, catalog_data):
+        if not clicks or not context.can_manage():
+            return no_update, no_update, no_update, no_update
+        try:
+            payload = _catalog(catalog_data).to_document()
+            enabled = 'active' in (active or ())
+            if selected:
+                updated = context.editor.update_position(
+                    payload,
+                    position_id=selected,
+                    label=label,
+                    active=enabled,
+                )
+                position_id = selected
+            else:
+                updated, position_id = context.editor.add_position(
+                    payload,
+                    label=label,
+                    active=enabled,
+                )
+            catalog = OperationalCatalog.from_document(updated)
+        except Exception:
+            return (
+                no_update,
+                no_update,
+                no_update,
+                _message('Position draft could not be updated.', error=True),
+            )
+        return (
+            catalog.to_document(),
+            _position_options(catalog, include_inactive=True),
+            position_id,
+            _message('Cargo actualizado en el editor. Guarda el borrador para conservarlo.'),
+        )
+
+    @app.callback(
+        Output(ids.POSITION_MODAL, 'className', allow_duplicate=True),
+        Input(ids.POSITION_RESULT, 'children'),
+        prevent_initial_call=True,
+    )
+    def finish_position_operation(message):
+        return modal_class(False) if _operation_result_kind(message) == 'success' else no_update
+
+
+def _register_assignment_callbacks(
+    app: object,
+    context: OperationalAssignmentContext,
+) -> None:
+    @app.callback(
+        Output(ids.ASSIGN_PAGE, 'data'),
+        Input(ids.ASSIGN_PREVIOUS, 'n_clicks'),
+        Input(ids.ASSIGN_NEXT, 'n_clicks'),
+        Input({'type': ids.ASSIGN_JUMP, 'index': ALL}, 'n_clicks'),
+        Input(ids.ASSIGN_SIZE, 'value'),
+        Input(ids.ASSIGN_SEARCH, 'value'),
+        State(ids.ASSIGN_CURRENT_PAGE, 'data'),
+        State({'type': ids.ASSIGN_JUMP, 'index': ALL}, 'id'),
+        prevent_initial_call=True,
+    )
+    def change_assignment_page(_prev, _next, _jump, _size, _query, current, jump_ids):
+        return _next_page(
+            current=current,
+            previous_clicks=_prev,
+            next_clicks=_next,
+            jump_clicks=_jump,
+            jump_ids=jump_ids,
+            previous_id=ids.ASSIGN_PREVIOUS,
+            next_id=ids.ASSIGN_NEXT,
+            jump_type=ids.ASSIGN_JUMP,
+            reset_ids=(ids.ASSIGN_SIZE, ids.ASSIGN_SEARCH),
+        )
+
+    @app.callback(
         Output(ids.ASSIGN_LIST, 'children'),
         Output(ids.ASSIGN_STATUS, 'children'),
         Output(ids.ASSIGN_CURRENT_PAGE, 'data'),
@@ -123,52 +315,17 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
     )
     def refresh_assignments(number, query, size, _message):
         if not context.can_manage():
-            return html.P('Acceso denegado.'), '', 1
+            return html.P('Access denied.'), '', 1
         try:
             content, page = render_assignment_list(
-                context, query, int(number or 1), int(size or 10)
+                context,
+                query,
+                int(number or 1),
+                int(size or 10),
             )
             return content, page_label(page), page.request.page_number
         except Exception:
-            return html.P('No fue posible leer las asignaciones.'), 'Datos no disponibles', 1
-
-    @app.callback(
-        Output(ids.POSITION_LIST, 'children'),
-        Output(ids.POSITION_STATUS, 'children'),
-        Output(ids.POSITION_CURRENT_PAGE, 'data'),
-        Input(ids.POSITION_PAGE, 'data'),
-        Input(ids.POSITION_SEARCH, 'value'),
-        Input(ids.POSITION_SIZE, 'value'),
-        Input(ids.CATALOG_RESULT, 'children'),
-    )
-    def refresh_positions(number, query, size, _message):
-        if not context.can_manage():
-            return html.P('Acceso denegado.'), '', 1
-        try:
-            content, page = render_position_list(context, query, int(number or 1), int(size or 10))
-            return content, page_label(page), page.request.page_number
-        except Exception:
-            return html.P('No fue posible leer el catálogo.'), 'Datos no disponibles', 1
-
-    @app.callback(
-        Output(ids.CATALOG_METADATA, 'children'),
-        Input(ids.CATALOG_RESULT, 'children'),
-    )
-    def refresh_catalog_metadata(_result):
-        if not context.can_manage():
-            return html.P('Acceso denegado.')
-        try:
-            snapshot, _catalog = context.service.catalog_for_edit()
-            return catalog_metadata(context, snapshot)
-        except Exception:
-            return html.P('No fue posible verificar Source y Projection.')
-
-    @app.callback(
-        Output(ids.TRACE_FEEDBACK, 'children'),
-        Input(ids.CATALOG_RESULT, 'children'),
-    )
-    def reflect_catalog_result(message):
-        return None if _operation_result_kind(message) == 'success' else message
+            return html.P('Operational assignments could not be read.'), 'Data unavailable', 1
 
     @app.callback(
         Output(ids.USER, 'data'),
@@ -205,45 +362,6 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
         except StopIteration:
             return no_update, no_update, no_update, no_update, no_update
         return user_id, f'{user.display_name} · {user_id}', modal_class(True), None, None
-
-    @app.callback(
-        Output(ids.POSITION_SELECT, 'value'),
-        Output(ids.POSITION_MODAL, 'className'),
-        Output(ids.CATALOG_RESULT, 'children', allow_duplicate=True),
-        Input({'type': ids.POSITION_EDIT, 'index': ALL}, 'n_clicks'),
-        Input(ids.POSITION_NEW, 'n_clicks'),
-        Input(ids.POSITION_MODAL_CANCEL, 'n_clicks'),
-        Input(ids.POSITION_MODAL_CLOSE, 'n_clicks'),
-        Input(ids.POSITION_MODAL_BACKDROP, 'n_clicks'),
-        State({'type': ids.POSITION_EDIT, 'index': ALL}, 'id'),
-        prevent_initial_call=True,
-    )
-    def open_position(_edits, _new, _cancel, _close, _backdrop, edit_ids):
-        selected = ctx.triggered_id
-        if (
-            (selected == ids.POSITION_MODAL_CANCEL and _cancel)
-            or (selected == ids.POSITION_MODAL_CLOSE and _close)
-            or (selected == ids.POSITION_MODAL_BACKDROP and _backdrop)
-        ):
-            return no_update, modal_class(False), no_update
-        if not context.can_manage():
-            return no_update, no_update, no_update
-        if selected == ids.POSITION_NEW and _new:
-            return None, modal_class(True), None
-        if isinstance(selected, dict) and selected.get('type') == ids.POSITION_EDIT:
-            clicked = any(
-                ident.get('index') == selected.get('index') and count
-                for ident, count in zip(edit_ids or (), _edits or (), strict=True)
-            )
-            if not clicked:
-                return no_update, no_update, no_update
-            try:
-                _snapshot, catalog = context.service.catalog_for_edit()
-                if catalog.position(selected.get('index')) is not None:
-                    return selected['index'], modal_class(True), None
-            except Exception:
-                return no_update, no_update, no_update
-        return no_update, no_update, no_update
 
     @app.callback(
         Output(ids.AREA, 'value'),
@@ -326,134 +444,25 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
                 [
                     html.Span(_status_label(status), className='ada-operational-admin__badge'),
                     html.Small(
-                        f'Source: {_release_label(snapshot.current.release_ref if snapshot.current else None)}'
+                        'Source: '
+                        f'{_release_label(
+                            snapshot.current.release_ref if snapshot.current else None
+                        )}'
                     ),
                     html.Small(f'Projection: {_release_label(status.projected_source_release)}'),
                     html.Small(
                         'Catálogo proyectado y vigente'
                         if catalog_current
-                        else 'Catálogo pendiente de proyección: no se admiten nuevas asignaciones de cargos.'
+                        else (
+                            'Catálogo pendiente de proyección: no se admiten nuevas '
+                            'asignaciones de cargos.'
+                        )
                     ),
                 ],
                 className='ada-operational-admin__selected-metadata',
             )
         except Exception:
-            return html.Span('No fue posible verificar Source y Projection.')
-
-    @app.callback(
-        Output(ids.POSITION_ID, 'children'),
-        Output(ids.POSITION_LABEL, 'value'),
-        Output(ids.POSITION_ACTIVE, 'value'),
-        Input(ids.POSITION_SELECT, 'value'),
-        Input(ids.POSITION_MODAL, 'className'),
-    )
-    def select_position(position_id, _modal_state=None):
-        if not context.can_manage():
-            return 'No disponible', '', []
-        if not position_id:
-            return 'Se generará al guardar', '', ['active']
-        try:
-            _snapshot, catalog = context.service.catalog_for_edit()
-            position = catalog.position(position_id)
-            if position is None:
-                return 'Se generará al guardar', '', ['active']
-            return position.id, position.label, ['active'] if position.active else []
-        except Exception:
-            return 'No disponible', '', []
-
-    @app.callback(
-        Output(ids.CATALOG_REVISION, 'data'),
-        Output(ids.POSITION_SELECT, 'options'),
-        Output(ids.POSITION, 'options'),
-        Output(ids.POSITION_SELECT, 'value', allow_duplicate=True),
-        Output(ids.CATALOG_RESULT, 'children'),
-        Input(ids.CATALOG_SAVE, 'n_clicks'),
-        State(ids.POSITION_SELECT, 'value'),
-        State(ids.POSITION_ID, 'children'),
-        State(ids.POSITION_LABEL, 'value'),
-        State(ids.POSITION_ACTIVE, 'value'),
-        State(ids.CATALOG_REVISION, 'data'),
-        prevent_initial_call=True,
-    )
-    def save_position(clicks, selected, position_id, label, active, revision):
-        if not clicks or not context.can_manage():
-            return no_update, no_update, no_update, no_update, no_update
-        try:
-            snapshot, catalog = context.service.catalog_for_edit()
-            if _revision(snapshot) != revision:
-                return (
-                    no_update,
-                    no_update,
-                    no_update,
-                    no_update,
-                    _message('El catálogo cambió. Recarga la página.', error=True),
-                )
-            if selected:
-                previous = catalog.position(selected)
-                if previous is None or previous.id != position_id:
-                    return (
-                        no_update,
-                        no_update,
-                        no_update,
-                        no_update,
-                        _message(
-                            'El identificador del cargo es inmutable. Recarga la página.',
-                            error=True,
-                        ),
-                    )
-                position = Position(
-                    id=previous.id,
-                    label=label,
-                    active='active' in (active or ()),
-                )
-                updated = tuple(item for item in catalog.positions if item.id != previous.id) + (
-                    position,
-                )
-                revised_catalog = OperationalCatalog(positions=updated)
-                context.service.publish_catalog(
-                    revised_catalog,
-                    actor=context.principal().subject_id,
-                    expected=snapshot,
-                )
-            else:
-                position, _result = context.service.create_position(
-                    label=label,
-                    active='active' in (active or ()),
-                    actor=context.principal().subject_id,
-                    expected=snapshot,
-                )
-                _latest, revised_catalog = context.service.catalog_for_edit()
-            options = []
-            new_snapshot, _value = context.service.catalog_for_edit()
-        except ValueError:
-            return (
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                _message('Los datos del cargo no son válidos.', error=True),
-            )
-        except Exception:
-            return (
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                _message('No fue posible guardar el cargo. Recarga y reintenta.', error=True),
-            )
-        try:
-            context.service.project_current(CATALOG_SOURCE_KEY)
-            options = _position_options(context.service.catalog_for_read())
-            result = _message('Cargo guardado y proyectado.')
-        except Exception:
-            result = _message('Cargo guardado en Source. Usa Reintentar proyección.', warning=True)
-        return (
-            _revision(new_snapshot),
-            _position_options(revised_catalog, include_inactive=True),
-            options,
-            position.id,
-            result,
-        )
+            return html.Span('Source and Projection could not be verified.')
 
     @app.callback(
         Output(ids.ASSIGNMENT_REVISION, 'data', allow_duplicate=True),
@@ -473,7 +482,8 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
             snapshot, _existing = context.service.assignment_for_edit(user_id)
             if _revision(snapshot) != revision:
                 return no_update, _message(
-                    'La asignación cambió. Selecciona de nuevo al usuario.', error=True
+                    'Assignment changed before it was saved. Select the user again.',
+                    error=True,
                 )
             assignment = OperationalAssignment(
                 user_id=user_id,
@@ -489,24 +499,18 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
             updated_snapshot, _value = context.service.assignment_for_edit(user_id)
         except Exception:
             return no_update, _message(
-                'No fue posible guardar la asignación. Recarga y reintenta.', error=True
+                'Assignment could not be saved. Reload and try again.',
+                error=True,
             )
         try:
             context.service.project_current(assignment_source_key(user_id))
             result = _message('Asignación guardada y proyectada.')
         except Exception:
             result = _message(
-                'Asignación guardada en Source. Usa Reintentar proyección.', warning=True
+                'Asignación guardada en Source. Usa Reintentar proyección.',
+                warning=True,
             )
         return _revision(updated_snapshot), result
-
-    @app.callback(
-        Output(ids.POSITION_MODAL, 'className', allow_duplicate=True),
-        Input(ids.CATALOG_REVISION, 'data'),
-        prevent_initial_call=True,
-    )
-    def close_position_after_publication(revision):
-        return modal_class(False) if revision else no_update
 
     @app.callback(
         Output(ids.ASSIGN_MODAL, 'className', allow_duplicate=True),
@@ -519,20 +523,6 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
         if kind not in {'success', 'warning'}:
             return no_update, no_update
         return modal_class(False), message if kind == 'warning' else None
-
-    @app.callback(
-        Output(ids.CATALOG_RESULT, 'children', allow_duplicate=True),
-        Input(ids.CATALOG_REPROJECT, 'n_clicks'),
-        prevent_initial_call=True,
-    )
-    def reproject_catalog(clicks):
-        if not clicks or not context.can_manage():
-            return no_update
-        try:
-            result = context.service.project_current(CATALOG_SOURCE_KEY)
-            return _message('Catálogo proyectado.' if result is not None else 'No hay publicación.')
-        except Exception:
-            return _message('No fue posible proyectar el catálogo.', error=True)
 
     @app.callback(
         Output(ids.ASSIGNMENT_RESULT, 'children', allow_duplicate=True),
@@ -549,7 +539,13 @@ def register_operational_callbacks(app: object, context: OperationalManagerConte
                 'Asignación proyectada.' if result is not None else 'No hay publicación.'
             )
         except Exception:
-            return _message('No fue posible proyectar la asignación.', error=True)
+            return _message('Assignment could not be projected.', error=True)
+
+
+def _catalog(document: dict[str, object] | None) -> OperationalCatalog:
+    if not isinstance(document, dict):
+        raise ValueError('Operational catalog editor data is invalid')
+    return OperationalCatalog.from_document(document)
 
 
 def _operation_result_kind(message: object) -> str | None:
@@ -600,3 +596,7 @@ def _message(value: str, *, error: bool = False, warning: bool = False) -> objec
         value,
         className=f'ada-operational-admin__result ada-operational-admin__result--{state}',
     )
+
+
+def _click_is_real(clicks: int | None) -> bool:
+    return isinstance(clicks, int) and not isinstance(clicks, bool) and clicks > 0

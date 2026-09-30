@@ -39,14 +39,17 @@ def test_local_dependencies_use_one_injected_principal_for_manager(tmp_path, mon
     current = ManagerPrincipal('test-user', 'Test user', access_keys=MANAGER_ACCESS_KEYS)
     visible = surface.registry.visible_items(provider(), surface.authorization)
     assert {item.key for item in visible} == {
-        'users', 'operational-identification', 'profiles', 'access',
-        'navigation', 'tools', 'kpis', 'kpi-definitions'
+        'users',
+        'operational-identification',
+        'profiles',
+        'access',
+        'navigation',
+        'tools',
+        'kpis',
+        'kpi-definitions',
     }
     assert surface.registry.require_entry('users').title == 'Usuarios'
-    assert (
-        surface.registry.require_entry('operational-identification').access_key
-        == 'operational.manage'
-    )
+    assert surface.registry.require('operational-identification').access_key == 'operational.manage'
 
 
 def test_local_factory_is_unavailable_in_production(tmp_path, monkeypatch):

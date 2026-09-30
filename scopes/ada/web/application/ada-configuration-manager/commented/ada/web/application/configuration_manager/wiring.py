@@ -1,7 +1,7 @@
-from __future__ import annotations
+# Construye servicios y stores concretos y entrega dependencias consistentes a la composición del Manager.
+# Este espejo conserva exactamente el mismo AST y comportamiento que producción.
 
-# Cada capability posee su SourceStore y ProjectionStore inyectables.
-# El provider compartido conserva un único contrato de autorización.
+from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -94,7 +94,7 @@ MANAGER_ACCESS_KEYS = (
 
 
 @dataclass(frozen=True, slots=True)
-# Contrato de estado de la frontera.
+# Clase con responsabilidad y estado explícitos dentro de esta frontera.
 class ConfigurationManagerStores:
     navigation_source: SourceStore
     tools_source: SourceStore
@@ -120,7 +120,7 @@ class ConfigurationManagerStores:
     users_snapshot_summaries: Callable[[], tuple[tuple[str, str | None], ...]] | None = None
     users_read_snapshot: Callable[[str], ApprovedUsersSnapshot] | None = None
 
-    # Verifica invariantes y deriva datos de la entrada explícita.
+    # Expone o ejecuta la responsabilidad `__post_init__` sin cambiar contratos externos.
     def __post_init__(self) -> None:
         for name, expected in (
             ('navigation_source', SourceStore),
@@ -177,7 +177,7 @@ class ConfigurationManagerStores:
             raise ValueError('Users snapshot metadata providers must be injected together')
 
 
-# Composición o lectura independiente del proveedor físico.
+# Expone o ejecuta la responsabilidad `compose_configuration_manager_dependencies` sin cambiar contratos externos.
 def compose_configuration_manager_dependencies(
     *,
     stores: ConfigurationManagerStores,
@@ -216,7 +216,6 @@ def compose_configuration_manager_dependencies(
         if stores.operational_source is not None and stores.operational is not None
         else None
     )
-    # El catálogo se compone con los mismos stores sin tocar las asignaciones.
     operational_catalog_contracts = (
         compose_operational_catalog_manager_contracts(
             service=operational_service,
@@ -267,7 +266,7 @@ def compose_configuration_manager_dependencies(
         access_key=PROFILES_MANAGER_ACCESS_KEY,
     )
 
-    # Verifica invariantes y deriva datos de la entrada explícita.
+    # Expone o ejecuta la responsabilidad `profiles_provider` sin cambiar contratos externos.
     def profiles_provider() -> ProfileCatalog:
         return (
             read_manager_projection(
@@ -292,7 +291,6 @@ def compose_configuration_manager_dependencies(
         title='Usuarios',
         access_key=USERS_MANAGER_ACCESS_KEY,
     )
-    # Registra una Entry sin simular un Source/Projection para los usuarios.
     users_projection_entry = (
         compose_users_projection_manager(
             recovery=stores.users_recovery,
@@ -334,6 +332,8 @@ def compose_configuration_manager_dependencies(
         navigation_projection_name=projection_name,
         tools_source_name=source_name,
         tools_projection_name=projection_name,
+        operational_source_name=source_name,
+        operational_projection_name=projection_name,
         access_source_name=source_name,
         access_projection_name=projection_name,
         kpi_registry_source_name=source_name,
@@ -343,8 +343,7 @@ def compose_configuration_manager_dependencies(
     )
 
 
-# La capa consumidora declara explícitamente los errores de transporte recuperables.
-# Este módulo no necesita importar un cliente físico para clasificarlos.
+# Expone o ejecuta la responsabilidad `read_manager_projection` sin cambiar contratos externos.
 def read_manager_projection(
     store: ProjectionStore[PayloadT],
     source_key: SourceKey,

@@ -1,5 +1,5 @@
-# La composición mantiene Access como un ManagerModule real entre Profiles y Navigation.
-# Users continúa siendo ManagerEntry; los demás módulos conservan sus contratos existentes.
+# Compone los módulos del Configuration Manager y conecta cada dominio con sus contratos ya existentes.
+# Este espejo conserva exactamente el mismo AST y comportamiento que producción.
 
 from __future__ import annotations
 
@@ -24,8 +24,10 @@ from ada.web.application.configuration_manager.kpis import (
     create_kpi_manager_web_module,
 )
 from ada.web.application.configuration_manager.operational import (
-    OperationalManagerContext,
-    create_operational_manager_entry,
+    OPERATIONAL_MANAGER_ACCESS_KEY,
+    OperationalAssignmentContext,
+    OperationalCatalogManagerWebContext,
+    create_operational_manager_module,
 )
 from ada.web.application.configuration_manager.operational_catalog_workflows import (
     OPERATIONAL_CATALOG_DRAFT_VALIDATION_SERVICE,
@@ -109,9 +111,11 @@ KPI_DEFINITION_PROJECTION_SERVICE = 'ada.configuration-manager.kpi-definitions.p
 KPI_DEFINITION_DRAFT_VALIDATION_SERVICE = 'ada.configuration-manager.kpi-definitions.validation'
 
 
+# Expone o ejecuta la responsabilidad `build_configuration_manager_surface` sin cambiar contratos externos.
 def build_configuration_manager_surface(
     dependencies: ConfigurationManagerDependencies,
 ) -> ManagerSurfaceDefinition:
+    # Expone o ejecuta la responsabilidad `actor_provider` sin cambiar contratos externos.
     def actor_provider() -> str:
         return dependencies.principal_provider().subject_id
 
@@ -124,8 +128,7 @@ def build_configuration_manager_surface(
         source_snapshot_provider=dependencies.tools_source.get_current,
     )
 
-    # Esta adaptación pertenece a la composición ADA: Navigation sólo recibe key + label.
-    # Si Profiles aún no tiene Projection, ProfileCatalog aporta sus perfiles de sistema.
+    # Expone o ejecuta la responsabilidad `navigation_profile_options` sin cambiar contratos externos.
     def navigation_profile_options() -> tuple[NavigationProfileOption, ...]:
         active = dependencies.profiles_projection.get_active(
             dependencies.profiles_module.source_key
@@ -181,6 +184,7 @@ def build_configuration_manager_surface(
     )
     kpi_context = _kpi_context(dependencies, actor_provider)
     kpi_definition_context = _kpi_definition_context(dependencies, actor_provider)
+    operational_module = _operational_module(dependencies, actor_provider)
     return ManagerSurfaceDefinition(
         principal_provider=dependencies.principal_provider,
         groups=(
@@ -190,6 +194,7 @@ def build_configuration_manager_surface(
         modules=(
             dependencies.profiles_module,
             access_module,
+            *((operational_module,) if operational_module is not None else ()),
             ManagerModule(
                 key='navigation',
                 group_key='configuration',
@@ -236,22 +241,6 @@ def build_configuration_manager_surface(
         entries=(
             dependencies.users_entry,
             *(
-                (
-                    create_operational_manager_entry(
-                        OperationalManagerContext(
-                            service=dependencies.operational_service,
-                            promoted_users=dependencies.operational_users,
-                            principal=dependencies.principal_provider,
-                            source_name=dependencies.tools_source_name,
-                            projection_name=dependencies.tools_projection_name,
-                        ),
-                    ),
-                )
-                if dependencies.operational_service is not None
-                and dependencies.operational_users is not None
-                else ()
-            ),
-            *(
                 (dependencies.users_projection_entry,)
                 if dependencies.users_projection_entry is not None
                 else ()
@@ -272,10 +261,57 @@ def build_configuration_manager_surface(
     )
 
 
+
+# Expone o ejecuta la responsabilidad `_operational_module` sin cambiar contratos externos.
+def _operational_module(
+    dependencies: ConfigurationManagerDependencies,
+    actor_provider: Callable[[], str],
+) -> ManagerModule | None:
+    if (
+        dependencies.operational_service is None
+        or dependencies.operational_users is None
+        or dependencies.operational_catalog_contracts is None
+    ):
+        return None
+    contracts = dependencies.operational_catalog_contracts
+    workspace = ManagerWorkspaceBridge(
+        owner_subject_id_provider=actor_provider,
+        source_snapshot_provider=contracts.source.get_source_snapshot,
+    )
+    catalog_context = OperationalCatalogManagerWebContext(
+        editor=contracts.editor,
+        current_payload_provider=lambda: contracts.source.load_current_source().payload,
+        workspace_payload_reader=workspace.read_payload,
+        workspace_payload_writer=workspace.write_payload,
+        draft_store_id=workflow_draft_id('operational-identification'),
+        saved_draft_store_id=workflow_saved_draft_id('operational-identification'),
+        draft_save_action_id=workflow_action_id('operational-identification', 'save-draft'),
+        editor_revision_store_id=workflow_editor_revision_id('operational-identification'),
+        result_id=workflow_result_id('operational-identification'),
+        can_manage=lambda: _has_access(
+            dependencies.principal_provider(),
+            OPERATIONAL_MANAGER_ACCESS_KEY,
+        ),
+    )
+    assignment_context = OperationalAssignmentContext(
+        service=dependencies.operational_service,
+        promoted_users=dependencies.operational_users,
+        principal=dependencies.principal_provider,
+    )
+    return create_operational_manager_module(
+        catalog_context=catalog_context,
+        assignment_context=assignment_context,
+        source_name=dependencies.operational_source_name,
+        projection_name=dependencies.operational_projection_name,
+    )
+
+
+# Expone o ejecuta la responsabilidad `_register_services` sin cambiar contratos externos.
 def _register_services(
     services: ServiceRegistry,
     dependencies: ConfigurationManagerDependencies,
 ) -> None:
+    # Expone o ejecuta la responsabilidad `actor_provider` sin cambiar contratos externos.
     def actor_provider() -> str:
         return dependencies.principal_provider().subject_id
 
@@ -313,7 +349,6 @@ def _register_services(
     )
     services.add(TOOLS_PROJECTION_SERVICE, dependencies.tools_projection)
 
-    # Se registran puertos genéricos sin exponer un segundo módulo ni cambiar la Web.
     if dependencies.operational_catalog_contracts is not None:
         contracts = dependencies.operational_catalog_contracts
         _register_source_workflow(
@@ -379,6 +414,7 @@ def _register_services(
         services.add(KPI_DEFINITION_PROJECTION_SERVICE, dependencies.kpi_definitions_projection)
 
 
+# Expone o ejecuta la responsabilidad `_register_source_workflow` sin cambiar contratos externos.
 def _register_source_workflow(
     services: ServiceRegistry,
     *,
@@ -392,10 +428,12 @@ def _register_source_workflow(
     services.add(source_history_service, workflow)
 
 
+# Expone o ejecuta la responsabilidad `_has_access` sin cambiar contratos externos.
 def _has_access(principal: ManagerPrincipal, access_key: str) -> bool:
     return access_key in principal.access_keys
 
 
+# Expone o ejecuta la responsabilidad `_kpi_context` sin cambiar contratos externos.
 def _kpi_context(
     dependencies: ConfigurationManagerDependencies,
     actor_provider: Callable[[], str],
@@ -424,6 +462,7 @@ def _kpi_context(
     )
 
 
+# Expone o ejecuta la responsabilidad `_kpi_modules` sin cambiar contratos externos.
 def _kpi_modules(
     context: KpiManagerWebContext | None,
     dependencies: ConfigurationManagerDependencies,
@@ -454,6 +493,7 @@ def _kpi_modules(
     )
 
 
+# Expone o ejecuta la responsabilidad `_kpi_definition_context` sin cambiar contratos externos.
 def _kpi_definition_context(
     dependencies: ConfigurationManagerDependencies,
     actor_provider: Callable[[], str],
@@ -487,6 +527,7 @@ def _kpi_definition_context(
     )
 
 
+# Expone o ejecuta la responsabilidad `_kpi_definition_modules` sin cambiar contratos externos.
 def _kpi_definition_modules(
     context: KpiDefinitionManagerWebContext | None,
     dependencies: ConfigurationManagerDependencies,

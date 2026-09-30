@@ -1,3 +1,6 @@
+# Define la frontera Web del módulo de Datos operacionales: catálogo con lifecycle Manager y asignaciones como vista complementaria.
+# Este espejo conserva exactamente el mismo AST y comportamiento que producción.
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -6,18 +9,31 @@ from dataclasses import dataclass
 from ada.web.application.configuration_manager.operational_callbacks import (
     register_operational_callbacks,
 )
+from ada.web.application.configuration_manager.operational_catalog_workflows import (
+    OPERATIONAL_CATALOG_DRAFT_VALIDATION_SERVICE,
+    OPERATIONAL_CATALOG_PROJECTION_SERVICE,
+    OPERATIONAL_CATALOG_SOURCE_HISTORY_SERVICE,
+    OPERATIONAL_CATALOG_SOURCE_READER_SERVICE,
+    OPERATIONAL_CATALOG_SOURCE_SERVICE,
+    OperationalCatalogDraftEditor,
+)
 from ada.web.application.configuration_manager.operational_layout import (
     _position_options,
-    build_operational_manager_layout,
+    build_operational_assignments,
+    build_operational_catalog_configuration,
+    build_operational_catalog_history_preview,
 )
-from ada.web.operational.identification import OperationalIdentificationService
+from ada.web.application.configuration_manager.workspace import (
+    WorkspacePayloadReader,
+    WorkspacePayloadWriter,
+)
+from ada.web.operational.identification import CATALOG_SOURCE_KEY, OperationalIdentificationService
 from atlanticus.web.assets import AssetLayer
-from atlanticus.web.manager import ManagerEntry, ManagerPrincipal
+from atlanticus.web.manager import ManagerCompanionView, ManagerModule, ManagerPrincipal
 from atlanticus.web.modules import WebModule
 from atlanticus.web.users.models import UserRecord
 
 OPERATIONAL_MANAGER_ACCESS_KEY = 'operational.manage'
-# Los estilos y assets son propiedad exclusiva de esta capacidad de ADA.
 OPERATIONAL_MANAGER_ASSETS = AssetLayer(
     name='ada_configuration_manager_operational',
     load_order=740,
@@ -27,42 +43,85 @@ OPERATIONAL_MANAGER_ASSETS = AssetLayer(
 
 
 @dataclass(frozen=True, slots=True)
-class OperationalManagerContext:
+# Clase con responsabilidad y estado explícitos dentro de esta frontera.
+class OperationalAssignmentContext:
     service: OperationalIdentificationService
     promoted_users: Callable[[], tuple[UserRecord, ...]]
     principal: Callable[[], ManagerPrincipal]
-    # Nombres de los providers resueltos por la composición anfitriona.
-    source_name: str = 'Source'
-    projection_name: str = 'Projection'
 
+    # Expone o ejecuta la responsabilidad `can_manage` sin cambiar contratos externos.
     def can_manage(self) -> bool:
         return OPERATIONAL_MANAGER_ACCESS_KEY in self.principal().access_keys
 
 
-# El entry se integra en el registro normal de Manager y exige la clave funcional.
-def create_operational_manager_entry(context: OperationalManagerContext) -> ManagerEntry:
-    return ManagerEntry(
+@dataclass(frozen=True, slots=True)
+# Clase con responsabilidad y estado explícitos dentro de esta frontera.
+class OperationalCatalogManagerWebContext:
+    editor: OperationalCatalogDraftEditor
+    current_payload_provider: Callable[[], dict[str, object] | None]
+    workspace_payload_reader: WorkspacePayloadReader
+    workspace_payload_writer: WorkspacePayloadWriter
+    draft_store_id: object
+    saved_draft_store_id: object
+    draft_save_action_id: object
+    editor_revision_store_id: object
+    result_id: object
+    can_manage: Callable[[], bool]
+
+
+# Expone o ejecuta la responsabilidad `create_operational_manager_module` sin cambiar contratos externos.
+def create_operational_manager_module(
+    *,
+    catalog_context: OperationalCatalogManagerWebContext,
+    assignment_context: OperationalAssignmentContext,
+    source_name: str = 'Source',
+    projection_name: str = 'Projection',
+) -> ManagerModule:
+    web_module = WebModule(
+        name='ada-operational-identification-manager',
+        asset_layers=(OPERATIONAL_MANAGER_ASSETS,),
+        register_callbacks=lambda app, _services: register_operational_callbacks(
+            app,
+            catalog_context,
+            assignment_context,
+        ),
+    )
+    return ManagerModule(
         key='operational-identification',
         group_key='administration',
         title='Datos operacionales',
         route='/operational-identification',
         order=15,
         description='Cargos y asignaciones operacionales de usuarios promovidos.',
-        layout=lambda _services: build_operational_manager_layout(context),
+        layout=lambda _services: build_operational_catalog_configuration(catalog_context),
+        history_preview_renderer=build_operational_catalog_history_preview,
+        source_key=CATALOG_SOURCE_KEY,
+        source_service=OPERATIONAL_CATALOG_SOURCE_SERVICE,
+        source_reader_service=OPERATIONAL_CATALOG_SOURCE_READER_SERVICE,
+        source_history_service=OPERATIONAL_CATALOG_SOURCE_HISTORY_SERVICE,
+        projection_service=OPERATIONAL_CATALOG_PROJECTION_SERVICE,
+        draft_validation_service=OPERATIONAL_CATALOG_DRAFT_VALIDATION_SERVICE,
         access_key=OPERATIONAL_MANAGER_ACCESS_KEY,
-        web_module=WebModule(
-            name='ada-operational-identification-manager',
-            asset_layers=(OPERATIONAL_MANAGER_ASSETS,),
-            register_callbacks=lambda app, _services: register_operational_callbacks(app, context),
+        web_module=web_module,
+        source_name=source_name,
+        projection_name=projection_name,
+        companion_view=ManagerCompanionView(
+            title='Asignaciones',
+            layout=lambda _services: build_operational_assignments(assignment_context),
         ),
+        primary_view_title='Catálogo de cargos',
+        default_primary_view='companion',
     )
 
 
 __all__ = [
     'OPERATIONAL_MANAGER_ACCESS_KEY',
-    'OperationalManagerContext',
+    'OperationalAssignmentContext',
+    'OperationalCatalogManagerWebContext',
     '_position_options',
-    'build_operational_manager_layout',
-    'create_operational_manager_entry',
+    'build_operational_assignments',
+    'build_operational_catalog_configuration',
+    'build_operational_catalog_history_preview',
+    'create_operational_manager_module',
     'register_operational_callbacks',
 ]
