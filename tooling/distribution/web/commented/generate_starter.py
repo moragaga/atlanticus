@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-# Genera los perfiles Web sin solicitar archivos de configuración externos.
-# El .env.detail canónico contiene el inventario y las anotaciones de distribución.
+# Espejo pedagógico: mismo comportamiento productivo con contexto explicativo en español.
 
 import argparse
 import csv
@@ -20,7 +19,7 @@ STARTER_ROOT = WEB_ROOT / 'starter'
 _PROFILES = ('generic', 'ada')
 _ENV_ASSIGNMENT = re.compile(r'^([A-Z][A-Z0-9_]*)=(.*)$')
 _DISTRIBUTION = re.compile(
-    r'^# @distribution (manual|manual-default|manual-local|key-vault)(?: (\S+))?$'
+    r'^# @distribution (manual|manual-default|manual-local|environment|key-vault)(?: (\S+))?$'
 )
 _CONFIGURATION_TEMPLATES = (
     'configuration/templates/dev.mapping-env.csv',
@@ -28,9 +27,20 @@ _CONFIGURATION_TEMPLATES = (
     'configuration/templates/prd.mapping-env.csv',
     'configuration/templates/secrets.json',
 )
+_EXCLUDED_PARTS = frozenset({
+    'commented',
+    'tests',
+    '__pycache__',
+    '.pytest_cache',
+    '.ruff_cache',
+    '.mypy_cache',
+    '.venv',
+    '.git',
+    'build',
+    'dist',
+})
 
 
-# Los registros mantienen un único origen de las variables para ambos formatos.
 @dataclass(frozen=True)
 class EnvironmentEntry:
     name: str
@@ -39,13 +49,11 @@ class EnvironmentEntry:
     secret_reference: str | None
 
 
-# Sólo se distribuyen archivos productivos; se excluyen espejos pedagógicos y pruebas.
 def _copy_product_files(source: Path, destination: Path) -> None:
     for path in sorted(source.rglob('*')):
         if (
             not path.is_file()
-            or {'commented', 'tests', '__pycache__', '.pytest_cache'}
-            & set(path.relative_to(source).parts)
+            or _EXCLUDED_PARTS & set(path.relative_to(source).parts)
             or path.suffix == '.pyc'
         ):
             continue
@@ -56,8 +64,6 @@ def _copy_product_files(source: Path, destination: Path) -> None:
             target.chmod(target.stat().st_mode | stat.S_IXUSR)
 
 
-# Un dato activo sin clasificación o con duplicados bloquea el artifact antes de crearlo.
-# Las alternativas comentadas se conservan en .env.detail, pero no se activan solas.
 def _environment_entries(contract: Path) -> tuple[EnvironmentEntry, ...]:
     entries: list[EnvironmentEntry] = []
     names: set[str] = set()
@@ -88,6 +94,8 @@ def _environment_entries(contract: Path) -> tuple[EnvironmentEntry, ...]:
         if mode == 'key-vault':
             if secret_reference is None:
                 raise ValueError(f'Key Vault reference is missing for {name}')
+            if '<' in secret_reference or '>' in secret_reference:
+                raise ValueError(f'Key Vault reference must be concrete for {name}')
             if value and not (value.startswith('<') and value.endswith('>')):
                 raise ValueError(f'Key Vault variable contains a non-placeholder value: {name}')
         elif secret_reference is not None:
@@ -96,6 +104,8 @@ def _environment_entries(contract: Path) -> tuple[EnvironmentEntry, ...]:
             not value or '<' in value or re.search(r'(KEY|SECRET|TOKEN|PASSWORD|SAS)', name)
         ):
             raise ValueError(f'Unsafe environment default for {name}')
+        if mode == 'environment' and value not in {'local', 'production'}:
+            raise ValueError(f'Environment distribution default is invalid for {name}')
         names.add(name)
         entries.append(EnvironmentEntry(name, mode, value, secret_reference))
     if pending is not None or not entries:
@@ -103,16 +113,19 @@ def _environment_entries(contract: Path) -> tuple[EnvironmentEntry, ...]:
     return tuple(entries)
 
 
-# Sólo los defaults marcados expresamente se trasladan a los archivos generados.
 def _manual_value(entry: EnvironmentEntry, environment: str | None) -> str:
     if entry.mode == 'manual-default':
         return entry.value
     if entry.mode == 'manual-local' and environment == 'dev':
         return entry.value
+    if entry.mode == 'environment':
+        if environment == 'dev':
+            return 'local'
+        if environment in {'uat', 'prd'}:
+            return 'production'
     return ''
 
 
-# Los CSV respetan exactamente las tres columnas del ejemplo del consumidor.
 def _mapping(entries: tuple[EnvironmentEntry, ...], environment: str) -> str:
     output = io.StringIO(newline='')
     writer = csv.writer(output, lineterminator='\n')
@@ -123,30 +136,26 @@ def _mapping(entries: tuple[EnvironmentEntry, ...], environment: str) -> str:
             entry.secret_reference or '',
             _manual_value(entry, environment),
         ))
-    # Marcador terminal exigido por el pipeline; no corresponde a una variable.
     output.write('END_NO_READ,,')
     return output.getvalue()
 
 
-# El JSON conserva las cuatro propiedades del ejemplo, sin cargar secretos inline.
-# exists_in_key_vault señala el modo de resolución esperado, no verifica el vault.
 def _secrets(entries: tuple[EnvironmentEntry, ...]) -> str:
     return json.dumps(
         [
             {
                 'var_name': entry.name,
                 'secret_name': entry.secret_reference,
-                'value': _manual_value(entry, None) or None,
-                'exists_in_key_vault': entry.mode == 'key-vault',
+                'required_in_key_vault': True,
             }
             for entry in entries
+            if entry.mode == 'key-vault'
         ],
         indent=2,
         ensure_ascii=False,
     ) + '\n'
 
 
-# El destino generado sigue siendo editable y se niega a sobrescribir otro existente.
 def generate_starter(*, profile: str, destination: Path) -> Path:
     if profile not in _PROFILES:
         raise ValueError('Unknown Web Starter profile')
@@ -197,7 +206,6 @@ def generate_starter(*, profile: str, destination: Path) -> Path:
     return destination
 
 
-# La CLI requiere únicamente el perfil y, opcionalmente, el destino.
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('--profile', choices=_PROFILES, required=True)

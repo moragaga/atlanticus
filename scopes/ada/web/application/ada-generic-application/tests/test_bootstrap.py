@@ -13,7 +13,6 @@ from ada.web.kpis.collector import (
 )
 from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.persistence import compose_tool_persistence
-from atlanticus.connectivity.storage import StorageClient
 from atlanticus.web.models import WebApplicationRuntime
 from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.source.models import SourceKey, SourceReleaseId
@@ -22,8 +21,6 @@ from atlanticus.web.source.models import SourceKey, SourceReleaseId
 def _local_settings(tmp_path: Path, *, with_kpi_delivery: bool = False) -> AdaGenericSettings:
     values = {
         'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
-        'ADA_TOOL_SOURCE_PROVIDER': 'local',
-        'ADA_TOOL_PROJECTION_PROVIDER': 'local',
         'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path),
     }
     if with_kpi_delivery:
@@ -35,19 +32,6 @@ def _local_settings(tmp_path: Path, *, with_kpi_delivery: bool = False) -> AdaGe
             }
         )
     return AdaGenericSettings.from_mapping(values)
-
-
-def _blob_local_settings(tmp_path: Path) -> AdaGenericSettings:
-    return AdaGenericSettings.from_mapping(
-        {
-            'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
-            'ADA_TOOL_SOURCE_PROVIDER': 'blob',
-            'ADA_TOOL_PROJECTION_PROVIDER': 'local',
-            'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path),
-            'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME': 'configuration',
-            'ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING': 'UseDevelopmentStorage=true',
-        }
-    )
 
 
 def _configuration() -> ToolConfiguration:
@@ -120,19 +104,8 @@ def _projection() -> ProjectionRecord[ToolConfiguration]:
 
 
 def _persist_projection(settings: AdaGenericSettings) -> None:
-    storage_settings = settings.storage_settings()
-    storage_client = (
-        StorageClient(settings=storage_settings) if storage_settings is not None else None
-    )
-    try:
-        composition = compose_tool_persistence(
-            settings=settings.tool_persistence_settings(),
-            storage_client=storage_client,
-        )
-        composition.projection.replace_active(_projection())
-    finally:
-        if storage_client is not None:
-            storage_client.close()
+    composition = compose_tool_persistence(settings=settings.tool_persistence_settings())
+    composition.projection.replace_active(_projection())
 
 
 def test_empty_local_persistence_keeps_base_web_runtime_available(tmp_path: Path) -> None:
@@ -172,15 +145,6 @@ def test_ready_projection_with_kpi_connection_attaches_lazy_collector(tmp_path: 
     assert collector.tool_projection_revision == 'tool-release-current'
     assert tuple(component.key for component in collector.structure.components) == ('mine', 'plant')
     assert polling_runtime.is_running is False
-
-
-def test_blob_source_is_not_read_when_local_active_projection_exists(tmp_path: Path) -> None:
-    settings = _blob_local_settings(tmp_path)
-    _persist_projection(settings)
-
-    runtime = create_operational_application_runtime(settings=settings)
-
-    assert isinstance(runtime, WebApplicationRuntime)
 
 
 def test_corrupt_projection_keeps_base_web_runtime_available_and_logs_invalid(

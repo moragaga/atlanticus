@@ -13,7 +13,7 @@ from ada.web.application.generic.manager_deployment import (
     ManagerStartupOptions,
     open_durable_manager,
 )
-from ada.web.application.generic.settings import AdaGenericSettings
+from ada.web.application.generic.settings import AdaGenericSettings, AdaPersistenceMode
 from atlanticus.web.application import run_web_application
 from atlanticus.web.identity.errors import IdentityConfigurationError
 from atlanticus.web.identity.local import LocalIdentityProvider
@@ -36,11 +36,9 @@ def run_operational_application(
     )
     settings = AdaGenericSettings()
     provider = ManagerStartupOptions().provider
-    if provider == 'auto':
-        provider = 'local' if settings.environment.is_local else 'disabled'
-    if provider == 'local':
+    if provider is AdaPersistenceMode.LOCAL:
         if not settings.environment.is_local:
-            raise IdentityConfigurationError('Local Manager is unavailable in production')
+            raise IdentityConfigurationError('Local persistence is unavailable in production')
         runtime = create_operational_application_runtime(
             settings=settings,
             manager_stores=create_local_configuration_manager_stores(),
@@ -49,28 +47,22 @@ def run_operational_application(
             manager_projection_name='Local Projection',
             **extension,
         )
-    elif provider == 'durable':
-        if not settings.environment.is_local:
-            raise IdentityConfigurationError(
-                'Production durable Manager requires an injected production identity provider'
-            )
-        with open_durable_manager(settings) as deployment:
-            runtime = create_operational_application_runtime(
-                settings=settings,
-                manager_stores=deployment.stores,
-                identity_provider=_local_identity(),
-                manager_source_name='Blob Storage',
-                manager_projection_name='Cosmos DB',
-                **extension,
-            )
-            run_web_application(runtime)
+        run_web_application(runtime)
         return
-    else:
+    if not settings.environment.is_local:
+        raise IdentityConfigurationError(
+            'Production durable Manager requires an injected production identity provider'
+        )
+    with open_durable_manager(settings) as deployment:
         runtime = create_operational_application_runtime(
             settings=settings,
+            manager_stores=deployment.stores,
+            identity_provider=_local_identity(),
+            manager_source_name='Blob Storage',
+            manager_projection_name='Cosmos DB',
             **extension,
         )
-    run_web_application(runtime)
+        run_web_application(runtime)
 
 
 def main() -> None:

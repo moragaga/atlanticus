@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+# Espejo pedagógico: mismo comportamiento productivo con contexto explicativo en español.
+
+from collections.abc import Mapping
+from enum import StrEnum
 from pathlib import Path
 from typing import Self
 
@@ -23,9 +27,8 @@ from atlanticus.connectivity.storage import (
 from atlanticus.web.configuration import WebSettings
 
 APPLICATION_NAMESPACE_VARIABLE = 'ADA_APPLICATION_NAMESPACE'
+PERSISTENCE_MODE_VARIABLE = 'ADA_PERSISTENCE_MODE'
 TOOL_NAMESPACE_VARIABLE = 'ADA_TOOL_NAMESPACE'
-TOOL_SOURCE_PROVIDER_VARIABLE = 'ADA_TOOL_SOURCE_PROVIDER'
-TOOL_PROJECTION_PROVIDER_VARIABLE = 'ADA_TOOL_PROJECTION_PROVIDER'
 TOOL_LOCAL_BASE_ROOT_VARIABLE = 'ADA_TOOL_LOCAL_BASE_ROOT'
 TOOL_SOURCE_BLOB_CONTAINER_VARIABLE = 'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME'
 TOOL_SOURCE_BLOB_CONNECTION_STRING_VARIABLE = 'ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING'
@@ -37,10 +40,14 @@ TOOL_PROJECTION_COSMOS_DATABASE_VARIABLE = 'ADA_TOOL_PROJECTION_COSMOS_DATABASE_
 KPI_DELIVERY_COSMOS_ENDPOINT_VARIABLE = 'COSMOS_CONSUMPTION_ENDPOINT'
 KPI_DELIVERY_COSMOS_KEY_VARIABLE = 'COSMOS_CONSUMPTION_KEY'
 KPI_DELIVERY_COSMOS_DATABASE_VARIABLE = 'COSMOS_CONSUMPTION_DATABASE_NAME'
-MASTER_PROJECTION_MATERIAL_PATH_VARIABLE = 'ADA_MASTER_PROJECTION_MATERIAL_PATH'
+MASTER_PROJECTION_RELATIVE_PATH = 'master-projection/material.zip'
 
 
-# Configura las conexiones sin exponer nombres físicos Cosmos al despliegue.
+class AdaPersistenceMode(StrEnum):
+    LOCAL = 'local'
+    DURABLE = 'durable'
+
+
 class AdaGenericSettings(WebSettings):
     model_config = SettingsConfigDict(
         case_sensitive=True,
@@ -56,16 +63,13 @@ class AdaGenericSettings(WebSettings):
         default='conciencia_situacional',
         validation_alias=APPLICATION_NAMESPACE_VARIABLE,
     )
-    master_projection_material_path: str = Field(
-        default='', validation_alias=MASTER_PROJECTION_MATERIAL_PATH_VARIABLE,
+    persistence_mode: AdaPersistenceMode = Field(
+        default=AdaPersistenceMode.LOCAL,
+        validation_alias=PERSISTENCE_MODE_VARIABLE,
     )
     tool_namespace: str = Field(validation_alias=TOOL_NAMESPACE_VARIABLE)
-    tool_source_provider: ToolSourceProvider = Field(validation_alias=TOOL_SOURCE_PROVIDER_VARIABLE)
-    tool_projection_provider: ToolProjectionProvider = Field(
-        validation_alias=TOOL_PROJECTION_PROVIDER_VARIABLE
-    )
-    tool_local_base_root: Path | None = Field(
-        default=None,
+    tool_local_base_root: Path = Field(
+        default=Path('.runtime/ada'),
         validation_alias=TOOL_LOCAL_BASE_ROOT_VARIABLE,
     )
     tool_source_blob_container_name: str | None = Field(
@@ -109,21 +113,45 @@ class AdaGenericSettings(WebSettings):
         validation_alias=KPI_DELIVERY_COSMOS_DATABASE_VARIABLE,
     )
 
+    @model_validator(mode='before')
+    @classmethod
+    def infer_durable_persistence(cls, values: object) -> object:
+        if not isinstance(values, Mapping) or PERSISTENCE_MODE_VARIABLE in values:
+            return values
+        durable_names = (
+            TOOL_SOURCE_BLOB_CONTAINER_VARIABLE,
+            TOOL_SOURCE_BLOB_CONNECTION_STRING_VARIABLE,
+            TOOL_SOURCE_BLOB_ACCOUNT_URL_VARIABLE,
+            TOOL_SOURCE_BLOB_SAS_TOKEN_VARIABLE,
+            TOOL_PROJECTION_COSMOS_ENDPOINT_VARIABLE,
+            TOOL_PROJECTION_COSMOS_KEY_VARIABLE,
+            TOOL_PROJECTION_COSMOS_DATABASE_VARIABLE,
+        )
+        if not any(values.get(name) not in (None, '') for name in durable_names):
+            return values
+        copied = dict(values)
+        copied[PERSISTENCE_MODE_VARIABLE] = AdaPersistenceMode.DURABLE.value
+        return copied
+
+    @property
+    def tool_source_provider(self) -> ToolSourceProvider:
+        return (
+            ToolSourceProvider.BLOB
+            if self.persistence_mode is AdaPersistenceMode.DURABLE
+            else ToolSourceProvider.LOCAL
+        )
+
+    @property
+    def tool_projection_provider(self) -> ToolProjectionProvider:
+        return (
+            ToolProjectionProvider.COSMOS
+            if self.persistence_mode is AdaPersistenceMode.DURABLE
+            else ToolProjectionProvider.LOCAL
+        )
+
     @model_validator(mode='after')
     def validate_provider_requirements(self) -> Self:
-        material_path = self.master_projection_material_path.strip()
-        if material_path and not Path(material_path).expanduser().is_absolute():
-            raise ValueError('Master Projection material path must be absolute')
-        if (
-            self.tool_source_provider is ToolSourceProvider.LOCAL
-            or self.tool_projection_provider is ToolProjectionProvider.LOCAL
-        ):
-            if self.tool_local_base_root is None:
-                raise ValueError(f'{TOOL_LOCAL_BASE_ROOT_VARIABLE} is required by a local provider')
-            if not self.tool_local_base_root.expanduser().is_absolute():
-                raise ValueError(f'{TOOL_LOCAL_BASE_ROOT_VARIABLE} must be an absolute path')
-
-        if self.tool_source_provider is ToolSourceProvider.BLOB:
+        if self.persistence_mode is AdaPersistenceMode.DURABLE:
             if self.tool_source_blob_container_name is None:
                 raise ValueError(f'{TOOL_SOURCE_BLOB_CONTAINER_VARIABLE} is required')
             has_connection_string = self.tool_source_blob_connection_string is not None
@@ -137,8 +165,6 @@ class AdaGenericSettings(WebSettings):
                 raise ValueError(
                     'Blob Source requires connection string or account URL plus SAS token'
                 )
-
-        if self.tool_projection_provider is ToolProjectionProvider.COSMOS:
             required = (
                 (TOOL_PROJECTION_COSMOS_ENDPOINT_VARIABLE, self.tool_projection_cosmos_endpoint),
                 (TOOL_PROJECTION_COSMOS_KEY_VARIABLE, self.tool_projection_cosmos_key),
@@ -163,30 +189,47 @@ class AdaGenericSettings(WebSettings):
 
         return self
 
-    # La capability Tools posee el nombre físico de su Projection Cosmos.
+    def storage_namespace(self) -> AdaStorageNamespace:
+        return AdaStorageNamespace(
+            application_namespace=self.application_namespace,
+            tool_namespace=self.tool_namespace,
+        )
+
+    def local_base_root(self) -> Path:
+        return self.tool_local_base_root.expanduser().resolve()
+
+    def master_projection_local_path(self) -> Path:
+        return self.storage_namespace().local_application_root(
+            self.local_base_root()
+        ) / MASTER_PROJECTION_RELATIVE_PATH
+
+    def master_projection_blob_name(self) -> str:
+        return self.storage_namespace().application_blob_name(MASTER_PROJECTION_RELATIVE_PATH)
+
     def tool_persistence_settings(self) -> ToolPersistenceSettings:
         return ToolPersistenceSettings(
-            namespace=AdaStorageNamespace(
-                application_namespace=self.application_namespace,
-                tool_namespace=self.tool_namespace,
-            ),
+            namespace=self.storage_namespace(),
             source_provider=self.tool_source_provider,
             projection_provider=self.tool_projection_provider,
             local_base_root=(
-                self.tool_local_base_root.expanduser()
-                if self.tool_local_base_root is not None
+                self.local_base_root()
+                if self.persistence_mode is AdaPersistenceMode.LOCAL
                 else None
             ),
-            blob_container_name=self.tool_source_blob_container_name,
+            blob_container_name=(
+                self.tool_source_blob_container_name
+                if self.persistence_mode is AdaPersistenceMode.DURABLE
+                else None
+            ),
             cosmos_container_name=(
                 TOOL_PROJECTION_STORAGE_RESOURCE.default_physical_name
-                if self.tool_projection_provider is ToolProjectionProvider.COSMOS
+                if self.persistence_mode is AdaPersistenceMode.DURABLE
                 else None
             ),
         )
 
     def storage_settings(self) -> StorageSettings | None:
-        if self.tool_source_provider is not ToolSourceProvider.BLOB:
+        if self.persistence_mode is not AdaPersistenceMode.DURABLE:
             return None
         connection_string = self.tool_source_blob_connection_string
         if connection_string is not None:
@@ -204,7 +247,7 @@ class AdaGenericSettings(WebSettings):
         return StorageSettings(credential=credential)
 
     def tool_projection_cosmos_settings(self) -> CosmosSettings | None:
-        if self.tool_projection_provider is not ToolProjectionProvider.COSMOS:
+        if self.persistence_mode is not AdaPersistenceMode.DURABLE:
             return None
         endpoint = self.tool_projection_cosmos_endpoint
         key = self.tool_projection_cosmos_key
@@ -233,6 +276,5 @@ class AdaGenericSettings(WebSettings):
             allow_insecure_http=self.environment.is_local,
         )
 
-    # El collector administra internamente ambos contenedores de Delivery.
     def kpi_delivery_reader_settings(self) -> CosmosKpiDeliveryReaderSettings:
         return CosmosKpiDeliveryReaderSettings()

@@ -1,11 +1,9 @@
 name: ada-local-full
 x-local-application-settings: &local_application_settings
   ATLANTICUS_ENVIRONMENT: local
-  ADA_MANAGER_PERSISTENCE_PROVIDER: durable
+  ADA_PERSISTENCE_MODE: durable
   ADA_APPLICATION_NAMESPACE: ${ADA_APPLICATION_NAMESPACE:-conciencia_situacional}
   ADA_TOOL_NAMESPACE: ${ADA_TOOL_NAMESPACE:?Set ADA_TOOL_NAMESPACE in the distribution .env}
-  ADA_TOOL_SOURCE_PROVIDER: blob
-  ADA_TOOL_PROJECTION_PROVIDER: cosmos
   ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME: ${ADA_LOCAL_BLOB_CONTAINER:-ada-source}
   ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING: 'DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;'
   ADA_TOOL_PROJECTION_COSMOS_ENDPOINT: http://cosmos-emulator:8081

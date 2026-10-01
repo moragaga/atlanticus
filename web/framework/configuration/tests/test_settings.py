@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
+from pydantic_settings import SettingsConfigDict
 
 from atlanticus.web.configuration import WebEnvironment, WebSettings
 
@@ -74,6 +75,36 @@ def test_from_mapping_requires_text_keys_and_values():
         WebSettings.from_mapping({1: 'value'})  # type: ignore[arg-type]
     with pytest.raises(TypeError, match="Environment variable 'VALUE' must contain text"):
         WebSettings.from_mapping({'VALUE': 1})  # type: ignore[dict-item]
+
+
+def test_from_mapping_ignores_process_environment(monkeypatch):
+    monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'production')
+    monkeypatch.setenv('APPLICATION_INSIGHTS_CONNECTION_STRING', 'InstrumentationKey=ambient')
+
+    settings = WebSettings.from_mapping({})
+
+    assert settings.environment is WebEnvironment.LOCAL
+    assert settings.application_insights_connection_string is None
+
+
+def test_from_mapping_ignores_subclass_dotenv(monkeypatch, tmp_path):
+    class DotEnvSettings(WebSettings):
+        model_config = SettingsConfigDict(
+            case_sensitive=True,
+            env_file='.env',
+            env_file_encoding='utf-8',
+            env_prefix='',
+            extra='ignore',
+            frozen=True,
+            validate_default=True,
+        )
+
+    monkeypatch.chdir(tmp_path)
+    Path('.env').write_text('ATLANTICUS_ENVIRONMENT=production\n', encoding='utf-8')
+
+    settings = DotEnvSettings.from_mapping({})
+
+    assert settings.environment is WebEnvironment.LOCAL
 
 
 def test_web_settings_do_not_implicitly_load_dotenv(monkeypatch, tmp_path):

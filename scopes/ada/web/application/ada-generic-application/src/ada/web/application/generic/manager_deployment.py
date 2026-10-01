@@ -21,9 +21,12 @@ from ada.web.application.generic.resource_preparation import (
     ResourcePreparationReport,
     prepare_manager_resources,
 )
-from ada.web.application.generic.settings import AdaGenericSettings
+from ada.web.application.generic.settings import (
+    PERSISTENCE_MODE_VARIABLE,
+    AdaGenericSettings,
+    AdaPersistenceMode,
+)
 from ada.web.storage.namespace import AdaStorageNamespace
-from ada.web.tools.persistence import ToolProjectionProvider, ToolSourceProvider
 from atlanticus.connectivity.cosmos import CosmosClient, CosmosSettings
 from atlanticus.connectivity.storage import StorageClient, StorageSettings
 from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
@@ -50,9 +53,9 @@ class ManagerStartupOptions(BaseSettings):
         frozen=True,
     )
 
-    provider: Literal['auto', 'local', 'durable', 'disabled'] = Field(
-        default='auto',
-        validation_alias='ADA_MANAGER_PERSISTENCE_PROVIDER',
+    provider: AdaPersistenceMode = Field(
+        default=AdaPersistenceMode.LOCAL,
+        validation_alias=PERSISTENCE_MODE_VARIABLE,
     )
 
 
@@ -76,10 +79,8 @@ def resolve_durable_manager_configuration(
 ) -> DurableManagerConfiguration:
     if not isinstance(settings, AdaGenericSettings):
         raise TypeError('Manager deployment requires AdaGenericSettings')
-    if settings.tool_source_provider is not ToolSourceProvider.BLOB:
-        raise ValueError('Durable Manager requires the existing Tool Blob Source connection')
-    if settings.tool_projection_provider is not ToolProjectionProvider.COSMOS:
-        raise ValueError('Durable Manager requires the existing Tool Cosmos connection')
+    if settings.persistence_mode is not AdaPersistenceMode.DURABLE:
+        raise ValueError('Durable Manager requires durable ADA persistence')
     storage_settings = settings.storage_settings()
     cosmos_settings = settings.tool_projection_cosmos_settings()
     container_name = settings.tool_source_blob_container_name
@@ -91,10 +92,7 @@ def resolve_durable_manager_configuration(
         or delivery_settings.database_name != cosmos_settings.database_name
     ):
         raise ValueError('ADA Manager and KPI delivery must share one Cosmos database')
-    namespace = AdaStorageNamespace(
-        application_namespace=settings.application_namespace,
-        tool_namespace=settings.tool_namespace,
-    )
+    namespace = settings.storage_namespace()
     resource = ManagerBlobResource(
         connection_ref=_STORAGE_CONNECTION,
         container_name=container_name,
@@ -160,6 +158,7 @@ def _attach_users_recovery(
         container_name=resource.container_name,
         prefix=namespace.application_blob_name('users/recovery/snapshots'),
     )
+
     def recovery_provider() -> UsersApprovedRecoveryService:
         issuers = {user.issuer for user in stores.users_promoted.list_users()}
         if len(issuers) != 1:

@@ -10,12 +10,16 @@ from pathlib import Path
 import pytest
 
 _ROOT = Path(__file__).resolve().parents[3] / 'distribution/web'
-_SPEC = importlib.util.spec_from_file_location('verify_starter_wheelhouse', _ROOT / 'starter/base/docker/verify_wheelhouse.py')
+_SPEC = importlib.util.spec_from_file_location(
+    'verify_starter_wheelhouse', _ROOT / 'starter/base/docker/verify_wheelhouse.py'
+)
 assert _SPEC is not None and _SPEC.loader is not None
 _verifier = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(_verifier)
 
-_GEN_SPEC = importlib.util.spec_from_file_location('generate_web_starter_for_container', _ROOT / 'generate_starter.py')
+_GEN_SPEC = importlib.util.spec_from_file_location(
+    'generate_web_starter_for_container', _ROOT / 'generate_starter.py'
+)
 assert _GEN_SPEC is not None and _GEN_SPEC.loader is not None
 _generator = importlib.util.module_from_spec(_GEN_SPEC)
 sys.modules[_GEN_SPEC.name] = _generator
@@ -28,7 +32,7 @@ def test_generated_starter_selects_its_image_contract(tmp_path, monkeypatch, pro
         path = tmp_path / 'scopes/ada/web/application/ada-generic-application/.env.detail'
         path.parent.mkdir(parents=True)
         path.write_text(
-            '# @distribution manual-default\nADA_TOOL_SOURCE_PROVIDER=blob\n',
+            '# @distribution manual-default\nADA_PERSISTENCE_MODE=durable\n',
             encoding='utf-8',
         )
         monkeypatch.setattr(_generator, 'REPOSITORY_ROOT', tmp_path)

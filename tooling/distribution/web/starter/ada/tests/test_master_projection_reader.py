@@ -1,37 +1,32 @@
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 from application.master_projection import reader as module
+from atlanticus.connectivity.storage import StorageClient
 
 
-def test_reader_with_no_material_is_safe():
-    reader = module.StarterMasterMaterialReader(None)
+def test_local_reader_reports_absent_canonical_file(tmp_path):
+    reader = module.StarterMasterMaterialReader((tmp_path / 'material.zip').resolve())
     assert reader.inspect() == 'ABSENT'
     assert reader.fingerprint() is None
-    with pytest.raises(RuntimeError, match='not configured'):
-        reader.unlock(
-            service_user='root', password='not-important',
-            application_namespace='app', environment='local',
-        )
 
 
-def test_reader_rejects_relative_path():
+def test_local_reader_rejects_relative_path():
     with pytest.raises(ValueError, match='absolute'):
-        module.StarterMasterMaterialReader(module.Path('relative.zip'))
+        module.StarterMasterMaterialReader(Path('relative.zip'))
 
 
-def test_reader_delegates_only_to_master_material(tmp_path, monkeypatch):
-    archive = tmp_path / 'protected.zip'
+def test_local_reader_delegates_unlock_and_tracks_current_fingerprint(tmp_path, monkeypatch):
+    archive = (tmp_path / 'protected.zip').resolve()
     archive.write_bytes(b'encrypted-archive-placeholder')
     monkeypatch.setattr(module, 'inspect_master_material', lambda _: 'PRESENT')
     reader = module.StarterMasterMaterialReader(archive)
     assert reader.inspect() == 'PRESENT'
-    assert reader.fingerprint() == hashlib.sha256(archive.read_bytes()).hexdigest()
-    archive.write_bytes(b'new-encrypted-archive-placeholder')
     assert reader.fingerprint() == hashlib.sha256(archive.read_bytes()).hexdigest()
     invoked = []
 
@@ -51,11 +46,32 @@ def test_reader_delegates_only_to_master_material(tmp_path, monkeypatch):
     })]
 
 
-def test_fingerprint_refuses_oversized_or_invalid_material(tmp_path, monkeypatch):
-    archive = tmp_path / 'material.zip'
-    archive.write_bytes(b'x' * 24577)
-    monkeypatch.setattr(module, 'inspect_master_material', lambda _: 'PRESENT')
-    reader = module.StarterMasterMaterialReader(archive)
+def test_blob_reader_uses_canonical_remote_content_without_local_path(monkeypatch):
+    client = object.__new__(StorageClient)
+    reader = module.BlobMasterMaterialReader(
+        client=client,
+        container_name='configuration',
+        blob_name='app/master-projection/material.zip',
+    )
+    content = b'encrypted-archive-placeholder'
+    monkeypatch.setattr(reader, '_download', lambda: content)
+    monkeypatch.setattr(module, '_inspect_content', lambda _: 'PRESENT')
+    assert reader.inspect() == 'PRESENT'
+    assert reader.fingerprint() == hashlib.sha256(content).hexdigest()
+
+
+def test_blob_reader_absent_material_is_safe(monkeypatch):
+    client = object.__new__(StorageClient)
+    reader = module.BlobMasterMaterialReader(
+        client=client,
+        container_name='configuration',
+        blob_name='app/master-projection/material.zip',
+    )
+    monkeypatch.setattr(reader, '_download', lambda: None)
+    assert reader.inspect() == 'ABSENT'
     assert reader.fingerprint() is None
-    monkeypatch.setattr(module, 'inspect_master_material', lambda _: 'INVALID')
-    assert reader.fingerprint() is None
+    with pytest.raises(RuntimeError, match='absent'):
+        reader.unlock(
+            service_user='master', password='not-important',
+            application_namespace='app', environment='local',
+        )

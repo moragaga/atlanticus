@@ -1,38 +1,58 @@
 from __future__ import annotations
 
-import pytest
-from pydantic import ValidationError
+from pathlib import Path
 
-from ada.web.application.generic.settings import AdaGenericSettings
+from ada.web.application.generic.settings import (
+    MASTER_PROJECTION_RELATIVE_PATH,
+    AdaGenericSettings,
+    AdaPersistenceMode,
+)
 
 
-def _values(tmp_path, *, master_path: str | None = None):
-    values = {
-        'ATLANTICUS_ENVIRONMENT': 'local',
+def test_local_master_material_location_is_derived_from_application_namespace(
+    tmp_path: Path,
+) -> None:
+    settings = AdaGenericSettings.from_mapping(
+        {
+            'ADA_APPLICATION_NAMESPACE': 'app',
+            'ADA_TOOL_NAMESPACE': 'tool',
+            'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path),
+        }
+    )
+
+    assert settings.persistence_mode is AdaPersistenceMode.LOCAL
+    assert settings.master_projection_local_path() == (
+        tmp_path / 'app' / MASTER_PROJECTION_RELATIVE_PATH
+    )
+
+
+def test_durable_master_material_blob_is_application_scoped_not_tool_scoped() -> None:
+    common = {
+        'ADA_PERSISTENCE_MODE': 'durable',
         'ADA_APPLICATION_NAMESPACE': 'app',
-        'ADA_TOOL_NAMESPACE': 'tool',
-        'ADA_TOOL_SOURCE_PROVIDER': 'local',
-        'ADA_TOOL_PROJECTION_PROVIDER': 'local',
-        'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path),
+        'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME': 'configuration',
+        'ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING': 'UseDevelopmentStorage=true',
+        'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT': 'http://localhost:8081',
+        'ADA_TOOL_PROJECTION_COSMOS_KEY': 'test-only',
+        'ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME': 'ada',
     }
-    if master_path is not None:
-        values['ADA_MASTER_PROJECTION_MATERIAL_PATH'] = master_path
-    return values
+    first = AdaGenericSettings.from_mapping({**common, 'ADA_TOOL_NAMESPACE': 'mine'})
+    second = AdaGenericSettings.from_mapping({**common, 'ADA_TOOL_NAMESPACE': 'plant'})
+
+    assert first.master_projection_blob_name() == f'app/{MASTER_PROJECTION_RELATIVE_PATH}'
+    assert second.master_projection_blob_name() == first.master_projection_blob_name()
 
 
-def test_absent_or_blank_master_material_path_is_allowed(tmp_path, monkeypatch):
-    monkeypatch.delenv('ADA_MASTER_PROJECTION_MATERIAL_PATH', raising=False)
-    monkeypatch.chdir(tmp_path)
-    assert AdaGenericSettings.from_mapping(_values(tmp_path)).master_projection_material_path == ''
-    assert AdaGenericSettings.from_mapping(
-        _values(tmp_path, master_path='')
-    ).master_projection_material_path == ''
+def test_legacy_master_material_path_no_longer_changes_runtime_location(tmp_path: Path) -> None:
+    settings = AdaGenericSettings.from_mapping(
+        {
+            'ADA_APPLICATION_NAMESPACE': 'app',
+            'ADA_TOOL_NAMESPACE': 'tool',
+            'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path),
+            'ADA_MASTER_PROJECTION_MATERIAL_PATH': '/legacy/manual.zip',
+        }
+    )
 
-
-def test_master_material_path_requires_absolute_location(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    absolute = str(tmp_path / 'master-projection.zip')
-    settings = AdaGenericSettings.from_mapping(_values(tmp_path, master_path=absolute))
-    assert settings.master_projection_material_path == absolute
-    with pytest.raises(ValidationError, match='absolute'):
-        AdaGenericSettings.from_mapping(_values(tmp_path, master_path='relative.zip'))
+    assert settings.master_projection_local_path() == (
+        tmp_path / 'app' / MASTER_PROJECTION_RELATIVE_PATH
+    )

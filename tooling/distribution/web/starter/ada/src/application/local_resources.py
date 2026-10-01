@@ -11,7 +11,7 @@ from ada.web.application.generic.manager_deployment import (
     open_durable_manager,
     prepare_durable_manager_resources,
 )
-from ada.web.application.generic.settings import AdaGenericSettings
+from ada.web.application.generic.settings import AdaGenericSettings, AdaPersistenceMode
 from atlanticus.web.configuration import WebEnvironment
 
 _COSMOS_READY = 'http://cosmos-emulator:8080/ready'
@@ -31,8 +31,7 @@ def _is_emulator_configuration(settings: AdaGenericSettings) -> bool:
     blob = urlsplit(parts.get('BlobEndpoint', ''))
     return (
         settings.environment.is_local
-        and settings.tool_source_provider.value == 'blob'
-        and settings.tool_projection_provider.value == 'cosmos'
+        and settings.persistence_mode is AdaPersistenceMode.DURABLE
         and endpoint.scheme == 'http'
         and endpoint.hostname == 'cosmos-emulator'
         and endpoint.port == 8081
@@ -102,6 +101,7 @@ def main() -> None:
     print(json.dumps(report.to_dict(), ensure_ascii=False))
     if report.status != 'COMPLETED':
         raise SystemExit(1)
+
 
 if __name__ == '__main__':
     main()

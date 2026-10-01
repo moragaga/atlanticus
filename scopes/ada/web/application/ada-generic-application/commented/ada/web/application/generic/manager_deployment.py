@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# Espejo pedagógico: mismo comportamiento productivo con contexto explicativo en español.
+
 from collections.abc import Iterator, Sequence
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, replace
@@ -21,9 +23,12 @@ from ada.web.application.generic.resource_preparation import (
     ResourcePreparationReport,
     prepare_manager_resources,
 )
-from ada.web.application.generic.settings import AdaGenericSettings
+from ada.web.application.generic.settings import (
+    PERSISTENCE_MODE_VARIABLE,
+    AdaGenericSettings,
+    AdaPersistenceMode,
+)
 from ada.web.storage.namespace import AdaStorageNamespace
-from ada.web.tools.persistence import ToolProjectionProvider, ToolSourceProvider
 from atlanticus.connectivity.cosmos import CosmosClient, CosmosSettings
 from atlanticus.connectivity.storage import StorageClient, StorageSettings
 from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
@@ -40,7 +45,6 @@ _STORAGE_CONNECTION = 'ada-blob'
 _COSMOS_CONNECTION = 'ada-cosmos'
 
 
-# La selección de persistencia pertenece al host y no modifica el modelo global de Tool.
 class ManagerStartupOptions(BaseSettings):
     model_config = SettingsConfigDict(
         case_sensitive=True,
@@ -51,9 +55,9 @@ class ManagerStartupOptions(BaseSettings):
         frozen=True,
     )
 
-    provider: Literal['auto', 'local', 'durable', 'disabled'] = Field(
-        default='auto',
-        validation_alias='ADA_MANAGER_PERSISTENCE_PROVIDER',
+    provider: AdaPersistenceMode = Field(
+        default=AdaPersistenceMode.LOCAL,
+        validation_alias=PERSISTENCE_MODE_VARIABLE,
     )
 
 
@@ -72,17 +76,13 @@ class DurableManagerRuntime:
     connections: ManagerPersistenceConnections
 
 
-# Reutilizamos exactamente las credenciales y la base Tool; los nombres físicos Cosmos
-# proceden de los contratos vigentes, sin copiar secretos ni crear otro account.
 def resolve_durable_manager_configuration(
     settings: AdaGenericSettings,
 ) -> DurableManagerConfiguration:
     if not isinstance(settings, AdaGenericSettings):
         raise TypeError('Manager deployment requires AdaGenericSettings')
-    if settings.tool_source_provider is not ToolSourceProvider.BLOB:
-        raise ValueError('Durable Manager requires the existing Tool Blob Source connection')
-    if settings.tool_projection_provider is not ToolProjectionProvider.COSMOS:
-        raise ValueError('Durable Manager requires the existing Tool Cosmos connection')
+    if settings.persistence_mode is not AdaPersistenceMode.DURABLE:
+        raise ValueError('Durable Manager requires durable ADA persistence')
     storage_settings = settings.storage_settings()
     cosmos_settings = settings.tool_projection_cosmos_settings()
     container_name = settings.tool_source_blob_container_name
@@ -94,10 +94,7 @@ def resolve_durable_manager_configuration(
         or delivery_settings.database_name != cosmos_settings.database_name
     ):
         raise ValueError('ADA Manager and KPI delivery must share one Cosmos database')
-    namespace = AdaStorageNamespace(
-        application_namespace=settings.application_namespace,
-        tool_namespace=settings.tool_namespace,
-    )
+    namespace = settings.storage_namespace()
     resource = ManagerBlobResource(
         connection_ref=_STORAGE_CONNECTION,
         container_name=container_name,
@@ -115,8 +112,6 @@ def resolve_durable_manager_configuration(
     )
 
 
-# El host conserva abiertos sus clientes durante todo el ciclo de vida web.
-# No hay clientes globales ni IO de red durante la construcción de adaptadores.
 @contextmanager
 def open_durable_manager(
     settings: AdaGenericSettings,
@@ -144,9 +139,6 @@ def open_durable_manager(
         )
 
 
-# La preparación es una operación explícita posterior al despliegue Web.
-# La validación no muta; ensure-local solo crea recursos Cosmos en desarrollo.
-# Construye recuperación una sola vez sobre los stores durables existentes.
 def _attach_users_recovery(
     stores: ConfigurationManagerStores,
     resolved: DurableManagerConfiguration,
@@ -168,9 +160,8 @@ def _attach_users_recovery(
         container_name=resource.container_name,
         prefix=namespace.application_blob_name('users/recovery/snapshots'),
     )
-    # No se consultan usuarios al construir Manager; el contexto se valida por operación.
+
     def recovery_provider() -> UsersApprovedRecoveryService:
-        # La identidad real procede de promovidos, nunca del namespace de la herramienta.
         issuers = {user.issuer for user in stores.users_promoted.list_users()}
         if len(issuers) != 1:
             raise UsersRecoveryConflictError(
@@ -208,7 +199,6 @@ def _attach_users_recovery(
     )
 
 
-# La preparación mantiene resultados por recurso y no modifica Blob en producción.
 def prepare_durable_manager_resources(
     deployment: DurableManagerRuntime,
     *,
@@ -227,11 +217,9 @@ def prepare_durable_manager_resources(
     )
 
 
-
-# El CLI registra errores de forma estructurada, imprime el informe y señala fallos al deploy.
 def manager_resources_main(argv: Sequence[str] | None = None) -> None:
-    from argparse import ArgumentParser
     import json
+    from argparse import ArgumentParser
 
     from atlanticus.web.observability import configure_web_observability
 

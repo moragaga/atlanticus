@@ -5,7 +5,11 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from ada.web.application.generic.settings import AdaGenericSettings
+from ada.web.application.generic.settings import (
+    MASTER_PROJECTION_RELATIVE_PATH,
+    AdaGenericSettings,
+    AdaPersistenceMode,
+)
 from ada.web.kpis.collector import (
     DEFAULT_KPI_LATEST_DELIVERY_CONTAINER,
     DEFAULT_KPI_TIMESERIES_DELIVERY_CONTAINER,
@@ -18,18 +22,29 @@ from atlanticus.connectivity.storage import (
 )
 
 
-def test_local_settings_build_tool_persistence_contract(tmp_path: Path) -> None:
+def _durable_values() -> dict[str, str]:
+    return {
+        'ADA_PERSISTENCE_MODE': 'durable',
+        'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
+        'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME': 'configuration',
+        'ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING': 'UseDevelopmentStorage=true',
+        'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT': 'https://cosmos.example.test',
+        'ADA_TOOL_PROJECTION_COSMOS_KEY': 'cosmos-key',
+        'ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME': 'configuration',
+    }
+
+
+def test_local_settings_derive_local_tool_persistence(tmp_path: Path) -> None:
     settings = AdaGenericSettings.from_mapping(
         {
             'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
-            'ADA_TOOL_SOURCE_PROVIDER': 'local',
-            'ADA_TOOL_PROJECTION_PROVIDER': 'local',
             'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path),
         }
     )
 
     persistence = settings.tool_persistence_settings()
 
+    assert settings.persistence_mode is AdaPersistenceMode.LOCAL
     assert settings.application_namespace == 'conciencia_situacional'
     assert persistence.namespace.application_namespace == 'conciencia_situacional'
     assert persistence.namespace.tool_namespace == 'operaciones_integradas'
@@ -42,42 +57,45 @@ def test_local_settings_build_tool_persistence_contract(tmp_path: Path) -> None:
     assert settings.kpi_delivery_cosmos_settings() is None
 
 
-def test_blob_connection_string_and_cosmos_settings_are_provider_scoped() -> None:
+def test_durable_mode_derives_blob_and_cosmos_providers() -> None:
     settings = AdaGenericSettings.from_mapping(
-        {
-            'ATLANTICUS_ENVIRONMENT': 'production',
-            'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
-            'ADA_TOOL_SOURCE_PROVIDER': 'blob',
-            'ADA_TOOL_PROJECTION_PROVIDER': 'cosmos',
-            'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME': 'configuration',
-            'ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING': 'UseDevelopmentStorage=true',
-            'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT': 'https://cosmos.example.test',
-            'ADA_TOOL_PROJECTION_COSMOS_KEY': 'cosmos-key',
-            'ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME': 'configuration',
-        }
+        {'ATLANTICUS_ENVIRONMENT': 'production', **_durable_values()}
     )
 
     storage = settings.storage_settings()
     cosmos = settings.tool_projection_cosmos_settings()
+    persistence = settings.tool_persistence_settings()
 
+    assert settings.persistence_mode is AdaPersistenceMode.DURABLE
+    assert settings.tool_source_provider is ToolSourceProvider.BLOB
+    assert settings.tool_projection_provider is ToolProjectionProvider.COSMOS
     assert storage is not None
     assert isinstance(storage.credential, StorageConnectionStringCredential)
     assert cosmos is not None
     assert cosmos.endpoint == 'https://cosmos.example.test'
     assert cosmos.database_name == 'configuration'
-    assert (
-        settings.tool_persistence_settings().cosmos_container_name
-        == TOOL_PROJECTION_STORAGE_RESOURCE.default_physical_name
-    )
+    assert persistence.cosmos_container_name == TOOL_PROJECTION_STORAGE_RESOURCE.default_physical_name
 
 
-def test_kpi_delivery_cosmos_connection_is_named_and_independent(tmp_path: Path) -> None:
+def test_legacy_provider_variables_do_not_select_persistence(tmp_path: Path) -> None:
     settings = AdaGenericSettings.from_mapping(
         {
-            'ATLANTICUS_ENVIRONMENT': 'production',
             'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
-            'ADA_TOOL_SOURCE_PROVIDER': 'local',
-            'ADA_TOOL_PROJECTION_PROVIDER': 'local',
+            'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path),
+            'ADA_TOOL_SOURCE_PROVIDER': 'blob',
+            'ADA_TOOL_PROJECTION_PROVIDER': 'cosmos',
+        }
+    )
+
+    assert settings.persistence_mode is AdaPersistenceMode.LOCAL
+    assert settings.tool_source_provider is ToolSourceProvider.LOCAL
+    assert settings.tool_projection_provider is ToolProjectionProvider.LOCAL
+
+
+def test_kpi_delivery_cosmos_connection_remains_independent(tmp_path: Path) -> None:
+    settings = AdaGenericSettings.from_mapping(
+        {
+            'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
             'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path),
             'COSMOS_CONSUMPTION_ENDPOINT': 'https://consumption.example.test',
             'COSMOS_CONSUMPTION_KEY': 'consumption-key',
@@ -100,8 +118,6 @@ def test_kpi_delivery_reader_uses_collector_container_defaults(tmp_path: Path) -
     settings = AdaGenericSettings.from_mapping(
         {
             'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
-            'ADA_TOOL_SOURCE_PROVIDER': 'local',
-            'ADA_TOOL_PROJECTION_PROVIDER': 'local',
             'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path),
         }
     )
@@ -113,24 +129,11 @@ def test_kpi_delivery_reader_uses_collector_container_defaults(tmp_path: Path) -
 
 
 def test_cosmos_resource_names_are_internal_not_environment_configuration() -> None:
-    settings = AdaGenericSettings.from_mapping(
-        {
-            'ATLANTICUS_ENVIRONMENT': 'production',
-            'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
-            'ADA_TOOL_SOURCE_PROVIDER': 'blob',
-            'ADA_TOOL_PROJECTION_PROVIDER': 'cosmos',
-            'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME': 'configuration',
-            'ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING': 'UseDevelopmentStorage=true',
-            'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT': 'https://cosmos.example.test',
-            'ADA_TOOL_PROJECTION_COSMOS_KEY': 'cosmos-key',
-            'ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME': 'configuration',
-        }
-    )
+    settings = AdaGenericSettings.from_mapping(_durable_values())
     persistence = settings.tool_persistence_settings()
     reader = settings.kpi_delivery_reader_settings()
-    assert (
-        persistence.cosmos_container_name == TOOL_PROJECTION_STORAGE_RESOURCE.default_physical_name
-    )
+
+    assert persistence.cosmos_container_name == TOOL_PROJECTION_STORAGE_RESOURCE.default_physical_name
     assert reader.latest_container_name == DEFAULT_KPI_LATEST_DELIVERY_CONTAINER
     assert reader.timeseries_container_name == DEFAULT_KPI_TIMESERIES_DELIVERY_CONTAINER
 
@@ -143,8 +146,6 @@ def test_partial_kpi_delivery_cosmos_connection_is_rejected(tmp_path: Path) -> N
         AdaGenericSettings.from_mapping(
             {
                 'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
-                'ADA_TOOL_SOURCE_PROVIDER': 'local',
-                'ADA_TOOL_PROJECTION_PROVIDER': 'local',
                 'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path),
                 'COSMOS_CONSUMPTION_ENDPOINT': 'https://consumption.example.test',
             }
@@ -152,17 +153,15 @@ def test_partial_kpi_delivery_cosmos_connection_is_rejected(tmp_path: Path) -> N
 
 
 def test_blob_sas_settings_preserve_supported_storage_contract() -> None:
-    settings = AdaGenericSettings.from_mapping(
+    values = _durable_values()
+    values.pop('ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING')
+    values.update(
         {
-            'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
-            'ADA_TOOL_SOURCE_PROVIDER': 'blob',
-            'ADA_TOOL_PROJECTION_PROVIDER': 'local',
-            'ADA_TOOL_LOCAL_BASE_ROOT': '/tmp/atlanticus',
-            'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME': 'configuration',
             'ADA_TOOL_SOURCE_BLOB_ACCOUNT_URL': 'http://127.0.0.1:10000/devstoreaccount1',
             'ADA_TOOL_SOURCE_BLOB_SAS_TOKEN': 'sig=local',
         }
     )
+    settings = AdaGenericSettings.from_mapping(values)
 
     storage = settings.storage_settings()
 
@@ -171,29 +170,44 @@ def test_blob_sas_settings_preserve_supported_storage_contract() -> None:
     assert storage.credential.allow_insecure_http is True
 
 
-def test_local_provider_requires_absolute_base_root() -> None:
-    with pytest.raises(ValidationError, match='ADA_TOOL_LOCAL_BASE_ROOT must be an absolute path'):
-        AdaGenericSettings.from_mapping(
-            {
-                'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
-                'ADA_TOOL_SOURCE_PROVIDER': 'local',
-                'ADA_TOOL_PROJECTION_PROVIDER': 'local',
-                'ADA_TOOL_LOCAL_BASE_ROOT': '.runtime',
-            }
-        )
+def test_local_base_root_defaults_and_relative_override_are_resolved(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    default = AdaGenericSettings.from_mapping({'ADA_TOOL_NAMESPACE': 'operaciones_integradas'})
+    overridden = AdaGenericSettings.from_mapping(
+        {
+            'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
+            'ADA_TOOL_LOCAL_BASE_ROOT': 'custom-runtime',
+        }
+    )
+
+    assert default.local_base_root() == tmp_path / '.runtime/ada'
+    assert overridden.local_base_root() == tmp_path / 'custom-runtime'
+    assert default.master_projection_local_path() == (
+        tmp_path / '.runtime/ada/conciencia_situacional' / MASTER_PROJECTION_RELATIVE_PATH
+    )
 
 
-def test_blob_provider_rejects_ambiguous_credentials() -> None:
+def test_durable_mode_rejects_ambiguous_blob_credentials() -> None:
+    values = _durable_values()
+    values.update(
+        {
+            'ADA_TOOL_SOURCE_BLOB_ACCOUNT_URL': 'http://127.0.0.1:10000/devstoreaccount1',
+            'ADA_TOOL_SOURCE_BLOB_SAS_TOKEN': 'sig=local',
+        }
+    )
     with pytest.raises(ValidationError, match='connection string or SAS credentials, not both'):
+        AdaGenericSettings.from_mapping(values)
+
+
+def test_durable_mode_requires_complete_cosmos_connection() -> None:
+    values = _durable_values()
+    values.pop('ADA_TOOL_PROJECTION_COSMOS_KEY')
+    with pytest.raises(ValidationError, match='ADA_TOOL_PROJECTION_COSMOS_KEY is required'):
+        AdaGenericSettings.from_mapping(values)
+
+
+def test_unknown_persistence_mode_is_rejected() -> None:
+    with pytest.raises(ValidationError):
         AdaGenericSettings.from_mapping(
-            {
-                'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
-                'ADA_TOOL_SOURCE_PROVIDER': 'blob',
-                'ADA_TOOL_PROJECTION_PROVIDER': 'local',
-                'ADA_TOOL_LOCAL_BASE_ROOT': '/tmp/atlanticus',
-                'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME': 'configuration',
-                'ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING': 'UseDevelopmentStorage=true',
-                'ADA_TOOL_SOURCE_BLOB_ACCOUNT_URL': 'http://127.0.0.1:10000/devstoreaccount1',
-                'ADA_TOOL_SOURCE_BLOB_SAS_TOKEN': 'sig=local',
-            }
+            {'ADA_PERSISTENCE_MODE': 'unknown', 'ADA_TOOL_NAMESPACE': 'operaciones_integradas'}
         )

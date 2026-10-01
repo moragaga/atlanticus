@@ -30,9 +30,7 @@ def _load_tool(monkeypatch, root, *, synchronized=True):
     return module
 
 
-def test_tooling_uses_the_distributed_runtime_without_password_arguments(
-    tmp_path, monkeypatch,
-):
+def test_tooling_uses_automatic_provisioner_without_location_arguments(tmp_path, monkeypatch):
     tooling = _load_tool(monkeypatch, tmp_path)
     recorded = []
 
@@ -41,19 +39,20 @@ def test_tooling_uses_the_distributed_runtime_without_password_arguments(
         return SimpleNamespace(returncode=0)
 
     monkeypatch.setattr(tooling.subprocess, 'run', execute)
-    assert tooling.main([
-        'generate', '--application', 'example', '--environment', 'production',
-        '--user', 'master-service', '--output', '/private/master-projection.zip',
-    ]) == 0
+    assert tooling.main(['generate', '--user', 'master-service']) == 0
     arguments, details = recorded[0]
-    assert arguments[:3] == [
+    assert arguments == [
         str(tmp_path / '.venv/bin/python'), '-m',
-        'application.master_projection.material',
+        'application.master_projection.provision',
+        'generate', '--user', 'master-service',
     ]
+    assert '--output' not in arguments
+    assert '--application' not in arguments
+    assert '--environment' not in arguments
     assert '--password' not in arguments
     assert details['cwd'] == tmp_path
 
 
 def test_tooling_refuses_to_run_without_project_sync(tmp_path, monkeypatch):
     tooling = _load_tool(monkeypatch, tmp_path, synchronized=False)
-    assert tooling.main(['generate']) == 2
+    assert tooling.main(['generate', '--user', 'master-service']) == 2

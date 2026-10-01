@@ -16,10 +16,9 @@ from atlanticus.web.users.recovery import UsersRecoveryConflictError
 def _settings(tool_namespace: str) -> AdaGenericSettings:
     return AdaGenericSettings.from_mapping({
         'ATLANTICUS_ENVIRONMENT': 'local',
+        'ADA_PERSISTENCE_MODE': 'durable',
         'ADA_APPLICATION_NAMESPACE': 'shared-users',
         'ADA_TOOL_NAMESPACE': tool_namespace,
-        'ADA_TOOL_SOURCE_PROVIDER': 'blob',
-        'ADA_TOOL_PROJECTION_PROVIDER': 'cosmos',
         'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME': 'configuration',
         'ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING': 'UseDevelopmentStorage=true',
         'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT': 'http://localhost:8081',

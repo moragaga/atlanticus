@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-# Puente mínimo al runtime distribuido; reutiliza el lock y el Python preparados por project.
+# Espejo pedagógico: mismo comportamiento productivo con contexto explicativo en español.
 
 import subprocess
 import sys
@@ -8,7 +8,6 @@ import sys
 from project import ProjectError, _check_environment, _locked, _python, _root
 
 
-# Nunca recibe contraseñas por línea de comandos: sólo reenvía argumentos no sensibles.
 def main(argv: list[str] | None = None) -> int:
     root = _root()
     try:
@@ -22,9 +21,10 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         result = subprocess.run(
-            [str(interpreter), '-m', 'application.master_projection.material',
+            [str(interpreter), '-m', 'application.master_projection.provision',
              *(argv if argv is not None else sys.argv[1:])],
-            cwd=root, check=False,
+            cwd=root,
+            check=False,
         )
     except OSError:
         print('BLOCKED: Master Projection material tooling is unavailable', file=sys.stderr)

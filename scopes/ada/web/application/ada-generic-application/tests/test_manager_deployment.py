@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from types import SimpleNamespace
 
 import pytest
@@ -14,28 +15,28 @@ from ada.web.application.generic.manager_deployment import (
 from ada.web.application.generic.manager_persistence import (
     resolve_manager_cosmos_plan_for_connection,
 )
-from ada.web.application.generic.settings import AdaGenericSettings
+from ada.web.application.generic.settings import AdaGenericSettings, AdaPersistenceMode
 from atlanticus.web.configuration import WebEnvironment
 
 
-def _settings(tmp_path, *, tool_provider='blob', cosmos_provider='cosmos'):
-    values = {
-        'ATLANTICUS_ENVIRONMENT': 'local',
-        'ADA_APPLICATION_NAMESPACE': 'ada-site',
-        'ADA_TOOL_NAMESPACE': 'plant',
-        'ADA_TOOL_SOURCE_PROVIDER': tool_provider,
-        'ADA_TOOL_PROJECTION_PROVIDER': cosmos_provider,
-        'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path.absolute()),
-        'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME': 'configuration',
-        'ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING': 'UseDevelopmentStorage=true',
-        'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT': 'http://localhost:8081',
-        'ADA_TOOL_PROJECTION_COSMOS_KEY': 'test-only',
-        'ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME': 'ada',
-    }
-    return AdaGenericSettings.from_mapping(values)
+def _settings(tmp_path, *, database='ada'):
+    return AdaGenericSettings.from_mapping(
+        {
+            'ATLANTICUS_ENVIRONMENT': 'local',
+            'ADA_PERSISTENCE_MODE': 'durable',
+            'ADA_APPLICATION_NAMESPACE': 'ada-site',
+            'ADA_TOOL_NAMESPACE': 'plant',
+            'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path.absolute()),
+            'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME': 'configuration',
+            'ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING': 'UseDevelopmentStorage=true',
+            'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT': 'http://localhost:8081',
+            'ADA_TOOL_PROJECTION_COSMOS_KEY': 'test-only',
+            'ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME': database,
+        }
+    )
 
 
-def test_durable_manager_reuses_tool_connections_and_namespaces(tmp_path):
+def test_durable_manager_reuses_shared_connections_and_namespaces(tmp_path):
     deployment = resolve_durable_manager_configuration(_settings(tmp_path))
     assert deployment.namespace.application_prefix == 'ada-site'
     assert deployment.namespace.tool_prefix == 'ada-site/plant'
@@ -58,18 +59,15 @@ def test_durable_manager_reuses_tool_connections_and_namespaces(tmp_path):
     }
 
 
-@pytest.mark.parametrize(
-    ('source', 'projection', 'expected'),
-    [
-        ('local', 'cosmos', 'Tool Blob Source'),
-        ('blob', 'local', 'Tool Cosmos'),
-    ],
-)
-def test_invalid_durable_bindings_fail_before_network(tmp_path, source, projection, expected):
-    with pytest.raises(ValueError, match=expected):
-        resolve_durable_manager_configuration(
-            _settings(tmp_path, tool_provider=source, cosmos_provider=projection)
-        )
+def test_local_persistence_cannot_open_durable_manager(tmp_path):
+    settings = AdaGenericSettings.from_mapping(
+        {
+            'ADA_TOOL_NAMESPACE': 'plant',
+            'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path),
+        }
+    )
+    with pytest.raises(ValueError, match='durable ADA persistence'):
+        resolve_durable_manager_configuration(settings)
 
 
 def test_kpi_consumption_cannot_silently_point_to_another_cosmos(tmp_path):
@@ -77,10 +75,9 @@ def test_kpi_consumption_cannot_silently_point_to_another_cosmos(tmp_path):
     alternate = AdaGenericSettings.from_mapping(
         {
             'ATLANTICUS_ENVIRONMENT': 'local',
+            'ADA_PERSISTENCE_MODE': 'durable',
             'ADA_APPLICATION_NAMESPACE': 'ada-site',
             'ADA_TOOL_NAMESPACE': 'plant',
-            'ADA_TOOL_SOURCE_PROVIDER': 'blob',
-            'ADA_TOOL_PROJECTION_PROVIDER': 'cosmos',
             'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME': 'configuration',
             'ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING': 'UseDevelopmentStorage=true',
             'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT': 'http://localhost:8081',
@@ -107,11 +104,13 @@ def test_cosmos_plan_derives_all_bindings_from_canonical_contracts():
     } == {'navigation-projection'}
 
 
-def test_startup_selection_contract(monkeypatch, tmp_path):
+def test_startup_selection_reads_the_single_persistence_variable(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv('ADA_MANAGER_PERSISTENCE_PROVIDER', 'durable')
-    assert ManagerStartupOptions().provider == 'durable'
-    monkeypatch.setenv('ADA_MANAGER_PERSISTENCE_PROVIDER', 'unknown')
+    monkeypatch.setenv('ADA_PERSISTENCE_MODE', 'durable')
+    assert ManagerStartupOptions().provider is AdaPersistenceMode.DURABLE
+    monkeypatch.setenv('ADA_PERSISTENCE_MODE', 'local')
+    assert ManagerStartupOptions().provider is AdaPersistenceMode.LOCAL
+    monkeypatch.setenv('ADA_PERSISTENCE_MODE', 'unknown')
     with pytest.raises(ValueError):
         ManagerStartupOptions()
 
@@ -144,7 +143,7 @@ def test_open_manager_closes_both_clients_and_is_lazy(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(
         manager_deployment,
-        '_attach_users_recovery', lambda stores, *_arguments: stores
+        '_attach_users_recovery', lambda stores, *_arguments: stores,
     )
     with open_durable_manager(_settings(tmp_path)) as runtime:
         assert len(constructed) == 2
@@ -208,19 +207,19 @@ def test_unsupported_action_rejected_before_provider_access(tmp_path):
             )
 
 
-@pytest.mark.parametrize('mode', ('auto', 'disabled'))
-def test_cli_preserves_default_local_and_explicit_disabled(tmp_path, monkeypatch, mode):
+def test_cli_local_uses_local_manager(monkeypatch):
     import importlib
 
     entrypoint = importlib.import_module('ada.web.application.generic.__main__')
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv('ADA_MANAGER_PERSISTENCE_PROVIDER', mode)
-    monkeypatch.setenv('ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID', 'local:jane-doe')
+    calls = []
+    settings = SimpleNamespace(environment=WebEnvironment.LOCAL)
+    monkeypatch.setattr(entrypoint, 'AdaGenericSettings', lambda: settings)
     monkeypatch.setattr(
-        entrypoint, 'AdaGenericSettings', lambda: SimpleNamespace(environment=WebEnvironment.LOCAL)
+        entrypoint, 'ManagerStartupOptions',
+        lambda: SimpleNamespace(provider=AdaPersistenceMode.LOCAL),
     )
     monkeypatch.setattr(entrypoint, 'create_local_configuration_manager_stores', lambda: 'local')
-    calls = []
+    monkeypatch.setattr(entrypoint, '_local_identity', lambda: 'identity')
     monkeypatch.setattr(
         entrypoint,
         'create_operational_application_runtime',
@@ -228,34 +227,31 @@ def test_cli_preserves_default_local_and_explicit_disabled(tmp_path, monkeypatch
     )
     monkeypatch.setattr(entrypoint, 'run_web_application', lambda runtime: calls.append(runtime))
     entrypoint.main()
+    assert calls[0]['manager_stores'] == 'local'
+    assert calls[0]['identity_provider'] == 'identity'
     assert calls[-1] == 'runtime'
-    if mode == 'auto':
-        assert calls[0]['manager_stores'] == 'local'
-        assert calls[0]['identity_provider'].resolve(None).subject_id == 'local:jane-doe'
-    else:
-        assert calls[0] == {'settings': entrypoint.AdaGenericSettings()}
 
 
-def test_cli_durable_keeps_open_clients_during_server(tmp_path, monkeypatch):
+def test_cli_durable_keeps_open_clients_during_server(monkeypatch):
     import importlib
-    from contextlib import contextmanager
 
     entrypoint = importlib.import_module('ada.web.application.generic.__main__')
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv('ADA_MANAGER_PERSISTENCE_PROVIDER', 'durable')
-    monkeypatch.setenv('ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID', 'local:john-doe')
+    settings = SimpleNamespace(environment=WebEnvironment.LOCAL)
+    monkeypatch.setattr(entrypoint, 'AdaGenericSettings', lambda: settings)
     monkeypatch.setattr(
-        entrypoint, 'AdaGenericSettings', lambda: SimpleNamespace(environment=WebEnvironment.LOCAL)
+        entrypoint, 'ManagerStartupOptions',
+        lambda: SimpleNamespace(provider=AdaPersistenceMode.DURABLE),
     )
     events = []
 
     @contextmanager
-    def fake_manager(settings):
+    def fake_manager(_settings):
         events.append('opened')
         yield SimpleNamespace(stores='durable')
         events.append('closed')
 
     monkeypatch.setattr(entrypoint, 'open_durable_manager', fake_manager)
+    monkeypatch.setattr(entrypoint, '_local_identity', lambda: 'identity')
     monkeypatch.setattr(
         entrypoint,
         'create_operational_application_runtime',
@@ -267,23 +263,24 @@ def test_cli_durable_keeps_open_clients_during_server(tmp_path, monkeypatch):
     entrypoint.main()
     assert events[0] == 'opened'
     assert events[1]['manager_stores'] == 'durable'
-    assert events[1]['identity_provider'].resolve(None).subject_id == 'local:john-doe'
+    assert events[1]['identity_provider'] == 'identity'
     assert events[2] == ('served', 'runtime')
     assert events[3] == 'closed'
 
 
-def test_production_cli_requires_external_identity_in_durable_mode(tmp_path, monkeypatch):
+def test_production_cli_requires_external_identity_in_durable_mode(monkeypatch):
     import importlib
 
     from atlanticus.web.identity.errors import IdentityConfigurationError
 
     entrypoint = importlib.import_module('ada.web.application.generic.__main__')
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv('ADA_MANAGER_PERSISTENCE_PROVIDER', 'durable')
     monkeypatch.setattr(
-        entrypoint,
-        'AdaGenericSettings',
+        entrypoint, 'AdaGenericSettings',
         lambda: SimpleNamespace(environment=WebEnvironment.PRODUCTION),
+    )
+    monkeypatch.setattr(
+        entrypoint, 'ManagerStartupOptions',
+        lambda: SimpleNamespace(provider=AdaPersistenceMode.DURABLE),
     )
     with pytest.raises(IdentityConfigurationError, match='injected production identity'):
         entrypoint.main()

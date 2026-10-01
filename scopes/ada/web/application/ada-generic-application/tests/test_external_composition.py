@@ -6,10 +6,10 @@ from types import SimpleNamespace
 import pytest
 from dash import html
 
-from ada.web.application.generic import bootstrap
+from ada.web.application.generic import __main__ as cli, bootstrap, host
 from ada.web.application.generic.composition import AdaApplicationComposition
 from ada.web.application.generic.layout import build_body_application_layout
-from ada.web.application.generic.settings import AdaGenericSettings
+from ada.web.application.generic.settings import AdaGenericSettings, AdaPersistenceMode
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.tools.enums import ToolConfigurationKind, ToolScope
 from ada.web.tools.persistence import ToolProjectionResolution, ToolProjectionResolutionState
@@ -22,8 +22,6 @@ def _settings(tmp_path) -> AdaGenericSettings:
     return AdaGenericSettings.from_mapping(
         {
             'ADA_TOOL_NAMESPACE': 'external-starter',
-            'ADA_TOOL_SOURCE_PROVIDER': 'local',
-            'ADA_TOOL_PROJECTION_PROVIDER': 'local',
             'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path),
         }
     )
@@ -124,9 +122,6 @@ def test_external_composition_can_remain_page_based_without_renderers(
 
 
 def test_external_runner_reuses_cli_bootstrap_without_second_manager_path(monkeypatch) -> None:
-    from ada.web.application.generic import __main__ as cli
-    from ada.web.application.generic import host
-
     forwarded = {}
     runtime = object()
     monkeypatch.setattr(
@@ -134,17 +129,24 @@ def test_external_runner_reuses_cli_bootstrap_without_second_manager_path(monkey
         lambda: SimpleNamespace(environment=SimpleNamespace(is_local=True)),
     )
     monkeypatch.setattr(
-        cli, 'ManagerStartupOptions', lambda: SimpleNamespace(provider='disabled'),
+        cli, 'ManagerStartupOptions',
+        lambda: SimpleNamespace(provider=AdaPersistenceMode.LOCAL),
     )
+    monkeypatch.setattr(cli, 'create_local_configuration_manager_stores', lambda: 'local-stores')
+    monkeypatch.setattr(cli, '_local_identity', lambda: 'local-identity')
     monkeypatch.setattr(
         cli, 'create_operational_application_runtime',
         lambda **kwargs: forwarded.update(kwargs) or runtime,
     )
     monkeypatch.setattr(cli, 'run_web_application', lambda value: forwarded.update(run=value))
-    composition_factory = lambda _binding: None
+
+    def composition_factory(_binding):
+        return None
 
     assert host.run_operational_application is cli.run_operational_application
     host.run_operational_application(composition_factory=composition_factory)
 
     assert forwarded['composition_factory'] is composition_factory
+    assert forwarded['manager_stores'] == 'local-stores'
+    assert forwarded['identity_provider'] == 'local-identity'
     assert forwarded['run'] is runtime

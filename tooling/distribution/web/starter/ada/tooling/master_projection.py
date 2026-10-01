@@ -19,9 +19,10 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         result = subprocess.run(
-            [str(interpreter), '-m', 'application.master_projection.material',
+            [str(interpreter), '-m', 'application.master_projection.provision',
              *(argv if argv is not None else sys.argv[1:])],
-            cwd=root, check=False,
+            cwd=root,
+            check=False,
         )
     except OSError:
         print('BLOCKED: Master Projection material tooling is unavailable', file=sys.stderr)

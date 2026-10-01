@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from contextvars import ContextVar
 from enum import StrEnum
 from typing import Self
 
@@ -9,6 +10,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ATLANTICUS_ENVIRONMENT_VARIABLE = 'ATLANTICUS_ENVIRONMENT'
 APPLICATION_INSIGHTS_CONNECTION_STRING_VARIABLE = 'APPLICATION_INSIGHTS_CONNECTION_STRING'
+_MAPPING_ONLY = ContextVar('atlanticus_web_settings_mapping_only', default=False)
 
 
 class WebEnvironment(StrEnum):
@@ -43,6 +45,19 @@ class WebSettings(BaseSettings):
         validation_alias=APPLICATION_INSIGHTS_CONNECTION_STRING_VARIABLE,
     )
 
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls,
+        init_settings,
+        env_settings,
+        dotenv_settings,
+        file_secret_settings,
+    ):
+        if _MAPPING_ONLY.get():
+            return (init_settings,)
+        return init_settings, env_settings, dotenv_settings, file_secret_settings
+
     @field_validator('environment', mode='before')
     @classmethod
     def normalize_environment(cls, value: object) -> object:
@@ -69,4 +84,8 @@ class WebSettings(BaseSettings):
             if not isinstance(value, str):
                 raise TypeError(f"Environment variable '{name}' must contain text")
             copied[name] = value
-        return cls.model_validate(copied)
+        token = _MAPPING_ONLY.set(True)
+        try:
+            return cls(**copied)
+        finally:
+            _MAPPING_ONLY.reset(token)

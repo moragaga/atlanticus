@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-# Bootstrap exclusivo de los emuladores locales; jamás crea infraestructura de Azure.
+# Espejo pedagógico: mismo comportamiento productivo con contexto explicativo en español.
 
 import json
 import socket
@@ -13,14 +13,13 @@ from ada.web.application.generic.manager_deployment import (
     open_durable_manager,
     prepare_durable_manager_resources,
 )
-from ada.web.application.generic.settings import AdaGenericSettings
+from ada.web.application.generic.settings import AdaGenericSettings, AdaPersistenceMode
 from atlanticus.web.configuration import WebEnvironment
 
 _COSMOS_READY = 'http://cosmos-emulator:8080/ready'
 _WAIT_SECONDS = 180
 
 
-# Limitar efectos a los dos servicios y puertos DNS conocidos del Compose.
 def _is_emulator_configuration(settings: AdaGenericSettings) -> bool:
     endpoint = urlsplit(settings.tool_projection_cosmos_endpoint or '')
     connection = settings.tool_source_blob_connection_string
@@ -34,8 +33,7 @@ def _is_emulator_configuration(settings: AdaGenericSettings) -> bool:
     blob = urlsplit(parts.get('BlobEndpoint', ''))
     return (
         settings.environment.is_local
-        and settings.tool_source_provider.value == 'blob'
-        and settings.tool_projection_provider.value == 'cosmos'
+        and settings.persistence_mode is AdaPersistenceMode.DURABLE
         and endpoint.scheme == 'http'
         and endpoint.hostname == 'cosmos-emulator'
         and endpoint.port == 8081
@@ -47,7 +45,6 @@ def _is_emulator_configuration(settings: AdaGenericSettings) -> bool:
     )
 
 
-# Esperar readiness de Cosmos y conexión Blob; no asumir que container_started es ready.
 def _wait_for_emulators() -> None:
     deadline = time.monotonic() + _WAIT_SECONDS
     while time.monotonic() < deadline:
@@ -64,7 +61,6 @@ def _wait_for_emulators() -> None:
     raise RuntimeError('Local Cosmos or Azurite was not ready before timeout')
 
 
-# La lógica común prepara local y genera el mismo informe que usará Master.
 def prepare_local_resources(*, observe_failure=None):
     settings = AdaGenericSettings()
     if not _is_emulator_configuration(settings):
@@ -107,6 +103,7 @@ def main() -> None:
     print(json.dumps(report.to_dict(), ensure_ascii=False))
     if report.status != 'COMPLETED':
         raise SystemExit(1)
+
 
 if __name__ == '__main__':
     main()

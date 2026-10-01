@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from contextvars import ContextVar
 from enum import StrEnum
 from typing import Self
 
@@ -10,6 +11,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Variables públicas que forman el contrato tipado del environment del runtime Web.
 ATLANTICUS_ENVIRONMENT_VARIABLE = 'ATLANTICUS_ENVIRONMENT'
 APPLICATION_INSIGHTS_CONNECTION_STRING_VARIABLE = 'APPLICATION_INSIGHTS_CONNECTION_STRING'
+# Contexto por ejecución que permite aislar una composición explícita de fuentes externas.
+_MAPPING_ONLY = ContextVar('atlanticus_web_settings_mapping_only', default=False)
 
 
 class WebEnvironment(StrEnum):
@@ -48,6 +51,21 @@ class WebSettings(BaseSettings):
         validation_alias=APPLICATION_INSIGHTS_CONNECTION_STRING_VARIABLE,
     )
 
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls,
+        init_settings,
+        env_settings,
+        dotenv_settings,
+        file_secret_settings,
+    ):
+        # from_mapping debe consumir únicamente los valores recibidos y no el proceso o dotenv.
+        if _MAPPING_ONLY.get():
+            return (init_settings,)
+        # La construcción normal conserva la resolución estándar definida por cada subclase.
+        return init_settings, env_settings, dotenv_settings, file_secret_settings
+
     @field_validator('environment', mode='before')
     @classmethod
     def normalize_environment(cls, value: object) -> object:
@@ -77,4 +95,11 @@ class WebSettings(BaseSettings):
             if not isinstance(value, str):
                 raise TypeError(f"Environment variable '{name}' must contain text")
             copied[name] = value
-        return cls.model_validate(copied)
+        # ContextVar evita interferencia entre ejecuciones concurrentes y anidadas.
+        token = _MAPPING_ONLY.set(True)
+        try:
+            # Se usa el constructor normal para conservar validadores y aliases de subclases.
+            return cls(**copied)
+        finally:
+            # Siempre se restaura el contexto, incluso cuando la validación falla.
+            _MAPPING_ONLY.reset(token)
