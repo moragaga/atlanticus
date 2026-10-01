@@ -19,7 +19,6 @@ from ada.web.application.configuration_manager.operational_catalog_workflows imp
     OPERATIONAL_CATALOG_SOURCE_SERVICE,
     compose_operational_catalog_manager_contracts,
 )
-from ada.web.application.configuration_manager.workspace import ManagerWorkspaceBridge
 from ada.web.operational.identification import (
     CATALOG_SOURCE_KEY,
     OperationalAssignment,
@@ -31,6 +30,7 @@ from ada.web.operational.identification import (
 )
 from atlanticus.web.manager import (
     DraftValidationWorkflow,
+    ManagerWorkspaceBinding,
     SourceHistoryWorkflow,
     SourcePublicationWorkflow,
     SourceReaderWorkflow,
@@ -90,13 +90,14 @@ def test_editor_preserves_draft_identity_without_implicit_publication(tmp_path):
     assert edited['positions'][0]['id'] == generated
     assert edited['positions'][0]['active'] is False
 
-    workspace = ManagerWorkspaceBridge(
+    workspace = ManagerWorkspaceBinding(
         owner_subject_id_provider=lambda: 'operator',
+        source_key=contracts.source.source_key,
         source_snapshot_provider=contracts.source.get_source_snapshot,
     )
-    first_draft = workspace.write_payload(None, document)
-    second_draft = workspace.write_payload(first_draft, edited)
-    assert workspace.read_payload(second_draft) == edited
+    first_draft = workspace.save_payload(None, document)
+    second_draft = workspace.save_payload(first_draft, edited)
+    assert workspace.load_payload(second_draft) == edited
     assert second_draft['source_snapshot']['source_key'] == CATALOG_SOURCE_KEY.value
     assert service.catalog_for_edit()[0].current is None
 

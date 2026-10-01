@@ -8,10 +8,6 @@ from dataclasses import dataclass
 
 from dash import ALL, Input, Output, State, ctx, dcc, html, no_update
 
-from ada.web.application.configuration_manager.workspace import (
-    WorkspacePayloadReader,
-    WorkspacePayloadWriter,
-)
 from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.configuration.web import (
     ADA_TOOL_CONFIGURATION_EDITOR_ASSET_LAYER,
@@ -80,8 +76,8 @@ TOOL_MANAGER_ASSET_LAYER = AssetLayer(
 
 @dataclass(frozen=True, slots=True)
 class ToolManagerWebContext:
-    workspace_payload_reader: WorkspacePayloadReader
-    workspace_payload_writer: WorkspacePayloadWriter
+    workspace_payload_reader: Callable[[dict[str, object] | None], dict[str, object] | None]
+    workspace_payload_writer: Callable[[dict[str, object] | None, dict[str, object]], dict[str, object]]
     draft_store_id: object
     saved_draft_store_id: object
     draft_save_action_id: object

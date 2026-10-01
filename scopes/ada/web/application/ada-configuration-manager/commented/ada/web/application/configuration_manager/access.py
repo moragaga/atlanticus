@@ -18,11 +18,11 @@ from ada.web.access.configuration.web import (
     build_ada_access_admin_configuration,
     create_ada_access_admin_web_module,
 )
-from ada.web.application.configuration_manager.workspace import ManagerWorkspaceBridge
 from atlanticus.web.manager import (
     DraftValidationResult,
     ManagerModule,
     ManagerPrincipal,
+    ManagerWorkspaceBinding,
     ProjectionAuditRecord,
     ProjectionIssue,
     ProjectionSummaryItem,
@@ -194,8 +194,9 @@ def create_access_manager_module(
         profiles_source_key=profiles_source_key,
         audit_actor_provider=audit_actor_provider,
     )
-    workspace = ManagerWorkspaceBridge(
+    workspace = ManagerWorkspaceBinding(
         owner_subject_id_provider=audit_actor_provider,
+        source_key=source.source_key,
         source_snapshot_provider=source.get_current,
     )
 
@@ -206,8 +207,8 @@ def create_access_manager_module(
         return active.payload
 
     context = AdaAccessAdminWebContext(
-        workspace_payload_reader=workspace.read_payload,
-        workspace_payload_writer=workspace.write_payload,
+        workspace_payload_reader=workspace.load_payload,
+        workspace_payload_writer=workspace.save_payload,
         profile_catalog_provider=profiles_provider,
         draft_store_id=workflow_draft_id('access'),
         saved_draft_store_id=workflow_saved_draft_id('access'),

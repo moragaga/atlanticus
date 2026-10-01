@@ -4,7 +4,7 @@ requires-python = "==3.14.2"
 
 [[package]]
 name = "ada-configuration-manager"
-version = "0.5.1"
+version = "0.6.0"
 source = { editable = "../ada-configuration-manager" }
 dependencies = [
     { name = "ada-web-access-configuration", extra = ["web"] },
@@ -64,7 +64,7 @@ dev = [
 
 [[package]]
 name = "ada-generic-application"
-version = "0.2.17"
+version = "0.2.18"
 source = { editable = "." }
 dependencies = [
     { name = "ada-configuration-manager" },
@@ -1166,7 +1166,7 @@ requires-dist = [
 
 [[package]]
 name = "atlanticus-web-composition-profiles-manager"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "../../../../../web/compositions/profiles-manager" }
 dependencies = [
     { name = "atlanticus-cosmos" },
@@ -1203,7 +1203,7 @@ requires-dist = [
 
 [[package]]
 name = "atlanticus-web-composition-users-manager"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "../../../../../web/compositions/users-manager" }
 dependencies = [
     { name = "atlanticus-web" },
@@ -1263,7 +1263,7 @@ requires-dist = [
 
 [[package]]
 name = "atlanticus-web-manager"
-version = "0.3.18"
+version = "0.3.19"
 source = { editable = "../../../../../web/capabilities/manager" }
 dependencies = [
     { name = "atlanticus-web" },

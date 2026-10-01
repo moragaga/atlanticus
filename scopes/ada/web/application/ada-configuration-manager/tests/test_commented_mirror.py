@@ -18,7 +18,6 @@ FILES = (
     'tool_kpi_registry_destinations.py',
     'tools.py',
     'workflows.py',
-    'workspace.py',
 )
 
 

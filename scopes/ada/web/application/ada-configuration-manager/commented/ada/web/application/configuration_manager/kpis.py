@@ -9,12 +9,6 @@ from dataclasses import dataclass
 
 from dash import Input, Output, State, dcc, html, no_update
 
-from ada.web.application.configuration_manager.workspace import (
-    WorkspacePayloadReader,
-    WorkspacePayloadWriter,
-)
-from ada.web.kpis.registry.errors import KpiRegistryValidationError
-from ada.web.kpis.registry.models import KpiRegistry
 from ada.web.kpis.registry.configuration import KpiDestinationCatalogProvider
 from ada.web.kpis.registry.configuration.web import (
     KpiRegistryEditorContext,
@@ -22,8 +16,14 @@ from ada.web.kpis.registry.configuration.web import (
     create_kpi_configuration_editor_module,
 )
 from ada.web.kpis.registry.configuration.web.ids import CONFIGURATION_STORE_ID
+from ada.web.kpis.registry.errors import KpiRegistryValidationError
+from ada.web.kpis.registry.models import KpiRegistry
 from atlanticus.web.assets import AssetLayer
-from atlanticus.web.manager import ManagerProjectionError, ManagerWorkspace, build_workspace_revision
+from atlanticus.web.manager import (
+    ManagerProjectionError,
+    ManagerWorkspace,
+    build_workspace_revision,
+)
 from atlanticus.web.modules import WebModule
 
 KPI_MANAGER_ROOT_ID = 'ada-configuration-manager-kpis'
@@ -45,8 +45,8 @@ KPI_MANAGER_ASSET_LAYER = AssetLayer(
 # El editor KPI recibe un bridge de payload; no conoce SourceSnapshot ni contratos de publicación.
 class KpiManagerWebContext:
     destinations: KpiDestinationCatalogProvider
-    workspace_payload_reader: WorkspacePayloadReader
-    workspace_payload_writer: WorkspacePayloadWriter
+    workspace_payload_reader: Callable[[dict[str, object] | None], dict[str, object] | None]
+    workspace_payload_writer: Callable[[dict[str, object] | None, dict[str, object]], dict[str, object]]
     draft_store_id: object
     saved_draft_store_id: object
     draft_save_action_id: object

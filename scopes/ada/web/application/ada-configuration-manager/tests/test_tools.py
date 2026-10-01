@@ -11,8 +11,11 @@ from ada.web.application.configuration_manager.tools import (
     build_tool_manager_configuration,
     register_tool_manager_callbacks,
 )
-from ada.web.application.configuration_manager.workspace import ManagerWorkspaceBridge
-from atlanticus.web.manager import ManagerWorkspace, build_workspace_revision
+from atlanticus.web.manager import (
+    ManagerWorkspace,
+    ManagerWorkspaceBinding,
+    build_workspace_revision,
+)
 from atlanticus.web.source.models import SourceKey, SourceSnapshot
 
 
@@ -70,13 +73,14 @@ def tool_document() -> dict[str, object]:
 
 def tool_context() -> ToolManagerWebContext:
     snapshot = SourceSnapshot(SourceKey('tools'), None, None)
-    bridge = ManagerWorkspaceBridge(
+    bridge = ManagerWorkspaceBinding(
         owner_subject_id_provider=lambda: 'local',
+        source_key=snapshot.source_key,
         source_snapshot_provider=lambda: snapshot,
     )
     return ToolManagerWebContext(
-        workspace_payload_reader=bridge.read_payload,
-        workspace_payload_writer=bridge.write_payload,
+        workspace_payload_reader=bridge.load_payload,
+        workspace_payload_writer=bridge.save_payload,
         draft_store_id={'type': 'draft', 'module': 'tools'},
         saved_draft_store_id={'type': 'saved', 'module': 'tools'},
         draft_save_action_id={'type': 'action', 'module': 'tools'},

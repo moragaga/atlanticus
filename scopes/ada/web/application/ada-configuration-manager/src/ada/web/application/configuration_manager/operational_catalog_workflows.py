@@ -28,7 +28,12 @@ from atlanticus.web.manager import (
 )
 from atlanticus.web.projection.service import SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
-from atlanticus.web.source.models import HistoryPage, SourceReleaseRef, SourceSnapshot
+from atlanticus.web.source.models import (
+    HistoryPage,
+    SourceKey,
+    SourceReleaseRef,
+    SourceSnapshot,
+)
 from atlanticus.web.source.store import SourceStore
 
 OPERATIONAL_CATALOG_SOURCE_SERVICE = 'ada.configuration-manager.operational-catalog.source'
@@ -97,6 +102,10 @@ class OperationalCatalogManagerSourceWorkflow:
         self._service = service
         self._source = OperationalSourceService(store=source_store)
         self._audit_actor_provider = audit_actor_provider
+
+    @property
+    def source_key(self) -> SourceKey:
+        return CATALOG_SOURCE_KEY
 
     def get_source_snapshot(self) -> SourceSnapshot:
         return self._source.snapshot(CATALOG_SOURCE_KEY)

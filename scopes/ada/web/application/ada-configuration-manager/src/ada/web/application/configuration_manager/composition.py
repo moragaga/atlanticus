@@ -49,13 +49,13 @@ from ada.web.application.configuration_manager.workflows import (
     ToolManagerDraftValidationWorkflow,
     ToolManagerSourceWorkflow,
 )
-from ada.web.application.configuration_manager.workspace import ManagerWorkspaceBridge
 from atlanticus.web.bootstrap import create_bootstrap_web_module
 from atlanticus.web.manager import (
     ManagerModule,
     ManagerModuleGroup,
     ManagerPrincipal,
     ManagerSurfaceDefinition,
+    ManagerWorkspaceBinding,
     manager_access_granted,
 )
 from atlanticus.web.manager.web.ids import (
@@ -115,12 +115,14 @@ def build_configuration_manager_surface(
     def actor_provider() -> str:
         return dependencies.principal_provider().subject_id
 
-    navigation_workspace = ManagerWorkspaceBridge(
+    navigation_workspace = ManagerWorkspaceBinding(
         owner_subject_id_provider=actor_provider,
+        source_key=dependencies.navigation_source.source_key,
         source_snapshot_provider=dependencies.navigation_source.get_current,
     )
-    tools_workspace = ManagerWorkspaceBridge(
+    tools_workspace = ManagerWorkspaceBinding(
         owner_subject_id_provider=actor_provider,
+        source_key=dependencies.tools_source.source_key,
         source_snapshot_provider=dependencies.tools_source.get_current,
     )
 
@@ -138,8 +140,8 @@ def build_configuration_manager_surface(
         )
 
     navigation_context = NavigationAdminWebContext(
-        workspace_payload_reader=navigation_workspace.read_payload,
-        workspace_payload_writer=navigation_workspace.write_payload,
+        workspace_payload_reader=navigation_workspace.load_payload,
+        workspace_payload_writer=navigation_workspace.save_payload,
         draft_store_id=workflow_draft_id('navigation'),
         saved_draft_store_id=workflow_saved_draft_id('navigation'),
         draft_save_action_id=workflow_action_id('navigation', 'save-draft'),
@@ -153,8 +155,8 @@ def build_configuration_manager_surface(
         profile_options_provider=navigation_profile_options,
     )
     tools_context = ToolManagerWebContext(
-        workspace_payload_reader=tools_workspace.read_payload,
-        workspace_payload_writer=tools_workspace.write_payload,
+        workspace_payload_reader=tools_workspace.load_payload,
+        workspace_payload_writer=tools_workspace.save_payload,
         draft_store_id=workflow_draft_id('tools'),
         saved_draft_store_id=workflow_saved_draft_id('tools'),
         draft_save_action_id=workflow_action_id('tools', 'save-draft'),
@@ -268,15 +270,16 @@ def _operational_module(
     ):
         return None
     contracts = dependencies.operational_catalog_contracts
-    workspace = ManagerWorkspaceBridge(
+    workspace = ManagerWorkspaceBinding(
         owner_subject_id_provider=actor_provider,
+        source_key=contracts.source.source_key,
         source_snapshot_provider=contracts.source.get_source_snapshot,
     )
     catalog_context = OperationalCatalogManagerWebContext(
         editor=contracts.editor,
         current_payload_provider=lambda: contracts.source.load_current_source().payload,
-        workspace_payload_reader=workspace.read_payload,
-        workspace_payload_writer=workspace.write_payload,
+        workspace_payload_reader=workspace.load_payload,
+        workspace_payload_writer=workspace.save_payload,
         draft_store_id=workflow_draft_id('operational-identification'),
         saved_draft_store_id=workflow_saved_draft_id('operational-identification'),
         draft_save_action_id=workflow_action_id('operational-identification', 'save-draft'),
@@ -429,14 +432,15 @@ def _kpi_context(
 ) -> KpiManagerWebContext | None:
     if dependencies.kpi_registry_source is None or dependencies.kpi_registry_destinations is None:
         return None
-    workspace = ManagerWorkspaceBridge(
+    workspace = ManagerWorkspaceBinding(
         owner_subject_id_provider=actor_provider,
+        source_key=dependencies.kpi_registry_source.source_key,
         source_snapshot_provider=dependencies.kpi_registry_source.get_current,
     )
     return KpiManagerWebContext(
         destinations=dependencies.kpi_registry_destinations,
-        workspace_payload_reader=workspace.read_payload,
-        workspace_payload_writer=workspace.write_payload,
+        workspace_payload_reader=workspace.load_payload,
+        workspace_payload_writer=workspace.save_payload,
         draft_store_id=workflow_draft_id('kpis'),
         saved_draft_store_id=workflow_saved_draft_id('kpis'),
         draft_save_action_id=workflow_action_id('kpis', 'save-draft'),
@@ -491,15 +495,16 @@ def _kpi_definition_context(
         or dependencies.kpi_registry_source is None
     ):
         return None
-    workspace = ManagerWorkspaceBridge(
+    workspace = ManagerWorkspaceBinding(
         owner_subject_id_provider=actor_provider,
+        source_key=dependencies.kpi_definitions_source.source_key,
         source_snapshot_provider=dependencies.kpi_definitions_source.get_current,
     )
     return KpiDefinitionManagerWebContext(
         kpi_registry_projection_store=dependencies.kpi_registry_projection_store,
         kpi_registry_source_key=dependencies.kpi_registry_source.source_key,
-        workspace_payload_reader=workspace.read_payload,
-        workspace_payload_writer=workspace.write_payload,
+        workspace_payload_reader=workspace.load_payload,
+        workspace_payload_writer=workspace.save_payload,
         draft_store_id=workflow_draft_id('kpi-definitions'),
         saved_draft_store_id=workflow_saved_draft_id('kpi-definitions'),
         draft_save_action_id=workflow_action_id('kpi-definitions', 'save-draft'),

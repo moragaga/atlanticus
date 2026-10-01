@@ -49,16 +49,15 @@ from ada.web.application.configuration_manager.dependencies import (
     ConfigurationManagerDependencies,
 )
 from ada.web.application.configuration_manager.workflows import (
-    KpiRegistryManagerDraftValidationWorkflow,
-    KpiRegistryManagerSourceWorkflow,
     KpiDefinitionManagerDraftValidationWorkflow,
     KpiDefinitionManagerSourceWorkflow,
+    KpiRegistryManagerDraftValidationWorkflow,
+    KpiRegistryManagerSourceWorkflow,
     NavigationManagerDraftValidationWorkflow,
     NavigationManagerSourceWorkflow,
     ToolManagerDraftValidationWorkflow,
     ToolManagerSourceWorkflow,
 )
-from ada.web.application.configuration_manager.workspace import ManagerWorkspaceBridge
 
 __all__ = [
     'ACCESS_DRAFT_VALIDATION_SERVICE',
@@ -86,7 +85,6 @@ __all__ = [
     'KpiDefinitionManagerDraftValidationWorkflow',
     'KpiDefinitionManagerSourceWorkflow',
     'MANAGER_ROUTE_PREFIX',
-    'ManagerWorkspaceBridge',
     'NAVIGATION_DRAFT_VALIDATION_SERVICE',
     'NAVIGATION_MANAGER_ACCESS_KEY',
     'NAVIGATION_PROJECTION_SERVICE',

@@ -20,10 +20,6 @@ from ada.web.application.configuration_manager.operational_layout import (
     build_operational_catalog_configuration,
     build_operational_catalog_history_preview,
 )
-from ada.web.application.configuration_manager.workspace import (
-    WorkspacePayloadReader,
-    WorkspacePayloadWriter,
-)
 from ada.web.operational.identification import CATALOG_SOURCE_KEY, OperationalIdentificationService
 from atlanticus.web.assets import AssetLayer
 from atlanticus.web.manager import (
@@ -58,8 +54,8 @@ class OperationalAssignmentContext:
 class OperationalCatalogManagerWebContext:
     editor: OperationalCatalogDraftEditor
     current_payload_provider: Callable[[], dict[str, object] | None]
-    workspace_payload_reader: WorkspacePayloadReader
-    workspace_payload_writer: WorkspacePayloadWriter
+    workspace_payload_reader: Callable[[dict[str, object] | None], dict[str, object] | None]
+    workspace_payload_writer: Callable[[dict[str, object] | None, dict[str, object]], dict[str, object]]
     draft_store_id: object
     saved_draft_store_id: object
     draft_save_action_id: object

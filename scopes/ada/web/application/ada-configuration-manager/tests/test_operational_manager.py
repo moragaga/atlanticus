@@ -19,7 +19,6 @@ from ada.web.application.configuration_manager.operational_catalog_workflows imp
     OPERATIONAL_CATALOG_SOURCE_SERVICE,
     compose_operational_catalog_manager_contracts,
 )
-from ada.web.application.configuration_manager.workspace import ManagerWorkspaceBridge
 from ada.web.operational.identification import (
     CATALOG_SOURCE_KEY,
     OperationalCatalog,
@@ -27,7 +26,7 @@ from ada.web.operational.identification import (
     Position,
     assignment_source_key,
 )
-from atlanticus.web.manager import ManagerPrincipal
+from atlanticus.web.manager import ManagerPrincipal, ManagerWorkspaceBinding
 from atlanticus.web.manager.web.ids import (
     workflow_action_id,
     workflow_draft_id,
@@ -94,15 +93,16 @@ def _contexts(tmp_path, *, allowed=True):
         projection_store=projection,
         audit_actor_provider=lambda: principal().subject_id,
     )
-    workspace = ManagerWorkspaceBridge(
+    workspace = ManagerWorkspaceBinding(
         owner_subject_id_provider=lambda: principal().subject_id,
+        source_key=contracts.source.source_key,
         source_snapshot_provider=contracts.source.get_source_snapshot,
     )
     catalog_context = OperationalCatalogManagerWebContext(
         editor=contracts.editor,
         current_payload_provider=lambda: contracts.source.load_current_source().payload,
-        workspace_payload_reader=workspace.read_payload,
-        workspace_payload_writer=workspace.write_payload,
+        workspace_payload_reader=workspace.load_payload,
+        workspace_payload_writer=workspace.save_payload,
         draft_store_id=workflow_draft_id(MODULE_KEY),
         saved_draft_store_id=workflow_saved_draft_id(MODULE_KEY),
         draft_save_action_id=workflow_action_id(MODULE_KEY, 'save-draft'),
