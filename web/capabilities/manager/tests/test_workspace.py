@@ -2,10 +2,12 @@ from datetime import UTC, datetime
 
 import pytest
 
+from atlanticus.web.manager.errors import ManagerProjectionError
 from atlanticus.web.manager.workspace import (
     ManagerProjectionState,
     ManagerSourceVerification,
     ManagerWorkspace,
+    ManagerWorkspaceBinding,
     prepare_conflict_overwrite,
     prepare_publication,
     rebase_workspace_document,
@@ -225,6 +227,105 @@ def test_workspace_document_accepts_browser_collapsed_integral_float() -> None:
     restored = ManagerWorkspace.from_document(document)
 
     assert restored.revision == workspace.revision
+
+
+def test_workspace_binding_creates_workspace_on_exact_source_base() -> None:
+    snapshot = _snapshot('release-1', token='etag-1')
+    binding = ManagerWorkspaceBinding(
+        owner_subject_id_provider=lambda: 'user-1',
+        source_key=SOURCE_KEY,
+        source_snapshot_provider=lambda: snapshot,
+    )
+    payload = {'tools': [{'key': 'one', 'enabled': True}]}
+
+    document = binding.save_payload(None, payload)
+    workspace = ManagerWorkspace.from_document(document)
+
+    assert workspace.owner_subject_id == 'user-1'
+    assert workspace.base == snapshot
+    assert workspace.payload == payload
+
+
+def test_workspace_binding_updates_payload_without_replacing_source_base() -> None:
+    original = _workspace(_snapshot('release-1', token='etag-1'))
+    binding = ManagerWorkspaceBinding(
+        owner_subject_id_provider=lambda: 'user-1',
+        source_key=SOURCE_KEY,
+        source_snapshot_provider=lambda: _snapshot('release-2', token='etag-2', minute=1),
+    )
+    payload = {'tools': [{'key': 'one', 'enabled': False}]}
+
+    updated = ManagerWorkspace.from_document(
+        binding.save_payload(original.to_document(), payload)
+    )
+
+    assert updated.base == original.base
+    assert updated.base_payload_revision == original.base_payload_revision
+    assert updated.payload == payload
+
+
+def test_workspace_binding_load_returns_detached_payload() -> None:
+    workspace = _workspace(_snapshot('release-1'))
+    binding = ManagerWorkspaceBinding(
+        owner_subject_id_provider=lambda: 'user-1',
+        source_key=SOURCE_KEY,
+        source_snapshot_provider=lambda: workspace.base,
+    )
+
+    payload = binding.load_payload(workspace.to_document())
+    payload['tools'][0]['enabled'] = False
+
+    assert workspace.payload['tools'][0]['enabled'] is True
+
+
+def test_workspace_binding_rejects_workspace_owned_by_another_user() -> None:
+    workspace = _workspace(_snapshot('release-1'))
+    binding = ManagerWorkspaceBinding(
+        owner_subject_id_provider=lambda: 'user-2',
+        source_key=SOURCE_KEY,
+        source_snapshot_provider=lambda: workspace.base,
+    )
+
+    with pytest.raises(ManagerProjectionError, match='another user'):
+        binding.load_payload(workspace.to_document())
+
+
+def test_workspace_binding_rejects_workspace_from_another_source() -> None:
+    workspace = _workspace(_snapshot('release-1'))
+    binding = ManagerWorkspaceBinding(
+        owner_subject_id_provider=lambda: 'user-1',
+        source_key=SourceKey('navigation'),
+        source_snapshot_provider=lambda: SourceSnapshot(
+            SourceKey('navigation'), None, None
+        ),
+    )
+
+    with pytest.raises(ManagerProjectionError, match='another source'):
+        binding.load_payload(workspace.to_document())
+
+
+def test_workspace_binding_rejects_source_provider_with_different_key() -> None:
+    binding = ManagerWorkspaceBinding(
+        owner_subject_id_provider=lambda: 'user-1',
+        source_key=SOURCE_KEY,
+        source_snapshot_provider=lambda: SourceSnapshot(
+            SourceKey('navigation'), None, None
+        ),
+    )
+
+    with pytest.raises(ManagerProjectionError, match='different source key'):
+        binding.save_payload(None, {'tools': []})
+
+
+def test_workspace_binding_rejects_empty_owner() -> None:
+    binding = ManagerWorkspaceBinding(
+        owner_subject_id_provider=lambda: '  ',
+        source_key=SOURCE_KEY,
+        source_snapshot_provider=lambda: _snapshot('release-1'),
+    )
+
+    with pytest.raises(ManagerProjectionError, match='owner must not be empty'):
+        binding.save_payload(None, {'tools': []})
 
 
 def test_same_content_republication_is_still_a_source_conflict() -> None:

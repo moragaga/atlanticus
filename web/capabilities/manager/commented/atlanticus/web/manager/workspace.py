@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -147,6 +148,81 @@ class ManagerWorkspace:
             )
         except (KeyError, TypeError, ValueError) as error:
             raise ValueError('Manager workspace document is invalid') from error
+
+
+# Adapta el payload editable del navegador al contrato ManagerWorkspace sin conocer el dominio consumidor.
+# Owner y SourceKey son invariantes del workspace y se verifican antes de reutilizar cualquier documento persistido.
+class ManagerWorkspaceBinding:
+    def __init__(
+        self,
+        *,
+        owner_subject_id_provider: Callable[[], str],
+        source_key: SourceKey,
+        source_snapshot_provider: Callable[[], SourceSnapshot],
+    ) -> None:
+        if not callable(owner_subject_id_provider):
+            raise TypeError('Manager workspace owner provider must be callable')
+        if not isinstance(source_key, SourceKey):
+            raise TypeError('Manager workspace source key must be a SourceKey')
+        if not callable(source_snapshot_provider):
+            raise TypeError('Manager workspace source snapshot provider must be callable')
+        self._owner_subject_id_provider = owner_subject_id_provider
+        self._source_key = source_key
+        self._source_snapshot_provider = source_snapshot_provider
+
+    # Devuelve una copia profunda para que el editor no pueda mutar accidentalmente el workspace ya cargado.
+    def load_payload(
+        self,
+        document: dict[str, object] | None,
+    ) -> dict[str, object] | None:
+        if document is None:
+            return None
+        return deepcopy(self._require_workspace(document).payload)
+
+    # El primer guardado fija owner y base Source; los siguientes sólo cambian el payload y preservan esa base.
+    def save_payload(
+        self,
+        document: dict[str, object] | None,
+        payload: dict[str, object],
+    ) -> dict[str, object]:
+        if document is None:
+            workspace = ManagerWorkspace.create(
+                owner_subject_id=self._owner_subject_id(),
+                payload=payload,
+                base=self._source_snapshot(),
+            )
+            return workspace.to_document()
+        workspace = self._require_workspace(document)
+        return workspace.with_payload(payload).to_document()
+
+    # Un workspace persistido sólo puede reutilizarse por el mismo owner y para el Source exacto del binding.
+    def _require_workspace(self, document: dict[str, object]) -> ManagerWorkspace:
+        try:
+            workspace = ManagerWorkspace.from_document(document)
+        except ValueError as error:
+            raise ManagerProjectionError('Browser workspace is invalid') from error
+        if workspace.owner_subject_id != self._owner_subject_id():
+            raise ManagerProjectionError('Browser workspace belongs to another user')
+        if workspace.base.source_key != self._source_key:
+            raise ManagerProjectionError('Browser workspace belongs to another source')
+        return workspace
+
+    def _owner_subject_id(self) -> str:
+        owner = self._owner_subject_id_provider()
+        if not isinstance(owner, str) or not owner.strip():
+            raise ManagerProjectionError('Manager workspace owner must not be empty')
+        return owner.strip()
+
+    # La base creada por el provider también debe pertenecer al Source declarado por el binding.
+    def _source_snapshot(self) -> SourceSnapshot:
+        snapshot = self._source_snapshot_provider()
+        if not isinstance(snapshot, SourceSnapshot):
+            raise TypeError('Manager workspace source snapshot must be a SourceSnapshot')
+        if snapshot.source_key != self._source_key:
+            raise ManagerProjectionError(
+                'Manager workspace source provider uses a different source key'
+            )
+        return snapshot
 
 
 @dataclass(frozen=True, slots=True)
