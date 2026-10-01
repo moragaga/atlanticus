@@ -4,21 +4,21 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from ada.web.kpis.registry.errors import KpiRegistryValidationError
-from ada.web.kpis.registry.models import KpiRegistry
+from ada.web.kpis.definition.configuration import (
+    KpiDefinitionSourceError,
+    KpiDefinitionSourceService,
+)
+from ada.web.kpis.definition.coverage import validate_kpi_definition_configuration
+from ada.web.kpis.definition.errors import KpiDefinitionValidationError
+from ada.web.kpis.definition.models import KpiDefinitionConfiguration
 from ada.web.kpis.registry.configuration import (
     KpiDestinationCatalogProvider,
     KpiRegistrySourceError,
     KpiRegistrySourceService,
     validate_kpi_registry_destinations,
 )
-from ada.web.kpis.definition.coverage import validate_kpi_definition_configuration
-from ada.web.kpis.definition.errors import KpiDefinitionValidationError
-from ada.web.kpis.definition.models import KpiDefinitionConfiguration
-from ada.web.kpis.definition.configuration import (
-    KpiDefinitionSourceError,
-    KpiDefinitionSourceService,
-)
+from ada.web.kpis.registry.errors import KpiRegistryValidationError
+from ada.web.kpis.registry.models import KpiRegistry
 from ada.web.tools.configuration import (
     ToolConfiguration,
     ToolConfigurationSourceError,
@@ -36,104 +36,17 @@ from atlanticus.web.manager import (
     SourceReadResult,
     build_workspace_revision,
 )
-from atlanticus.web.navigation.configuration import (
-    NavigationConfigurationCatalog,
-    NavigationSourceService,
-)
-from atlanticus.web.navigation.configuration.errors import (
-    NavigationConfigurationSourceError,
-    NavigationConfigurationValidationError,
-)
 from atlanticus.web.projection.store import ProjectionStore
-from atlanticus.web.source.models import HistoryPage, PublishResult, SourceKey, SourceReleaseRef, SourceSnapshot
+from atlanticus.web.source.models import (
+    HistoryPage,
+    PublishResult,
+    SourceKey,
+    SourceReleaseRef,
+    SourceSnapshot,
+)
 
 
 # Cada SourceWorkflow adapta únicamente el modelo de dominio al protocolo genérico del Manager.
-class NavigationManagerSourceWorkflow:
-    def __init__(
-        self,
-        *,
-        source: NavigationSourceService,
-        audit_actor_provider: Callable[[], str],
-    ) -> None:
-        self._source = source
-        self._audit_actor_provider = audit_actor_provider
-
-    def get_source_snapshot(self) -> SourceSnapshot:
-        return self._source.get_current()
-
-    def load_current_source(self) -> SourceReadResult:
-        snapshot = self._source.get_current()
-        if snapshot.current is None:
-            return SourceReadResult(snapshot=snapshot, payload=None)
-        release = self._source.load_release(snapshot.current.release_ref)
-        if self._source.get_current() != snapshot:
-            raise NavigationConfigurationSourceError(
-                'Navigation source changed while it was being loaded'
-            )
-        return SourceReadResult(snapshot=snapshot, payload=release.catalog.to_document())
-
-    def list_history(self, *, limit: int = 20) -> HistoryPage:
-        return self._source.query_history(page_size=limit)
-
-    def load_history_release(
-        self,
-        release_ref: SourceReleaseRef,
-    ) -> SourceHistoryReadResult:
-        release = self._source.load_release(release_ref)
-        return SourceHistoryReadResult(
-            release_ref=release_ref,
-            payload=release.catalog.to_document(),
-        )
-
-    def publish_draft(
-        self,
-        payload: dict[str, object],
-        expected_source_snapshot: SourceSnapshot,
-    ) -> SourcePublicationResult:
-        _require_source_key(expected_source_snapshot, self._source.source_key)
-        catalog = NavigationConfigurationCatalog.from_document(dict(payload))
-        actor = _audit_actor(self._audit_actor_provider)
-        published = self._source.publish_catalog(
-            catalog,
-            published_by=actor,
-            expected_concurrency_token=expected_source_snapshot.concurrency_token,
-            basis_release=_basis_release(expected_source_snapshot),
-        )
-        return _publication_result(published, actor)
-
-
-class NavigationManagerDraftValidationWorkflow:
-    def __init__(self, *, audit_actor_provider: Callable[[], str]) -> None:
-        self._audit_actor_provider = audit_actor_provider
-
-    def validate_draft(self, payload: dict[str, object]) -> DraftValidationResult:
-        revision = build_workspace_revision(payload)
-        audit = _audit(self._audit_actor_provider)
-        try:
-            catalog = NavigationConfigurationCatalog.from_document(dict(payload))
-        except NavigationConfigurationValidationError as error:
-            return _invalid(
-                revision,
-                audit,
-                code='navigation.configuration.invalid',
-                message=str(error),
-            )
-        return DraftValidationResult(
-            draft_revision=revision,
-            valid=True,
-            audit=audit,
-            summary=(
-                ProjectionSummaryItem('Enlaces raíz', str(len(catalog.links))),
-                ProjectionSummaryItem('Grupos', str(len(catalog.groups))),
-                ProjectionSummaryItem(
-                    'Enlaces en grupos',
-                    str(sum(len(group.links) for group in catalog.groups)),
-                ),
-            ),
-        )
-
-
 class ToolManagerSourceWorkflow:
     def __init__(
         self,

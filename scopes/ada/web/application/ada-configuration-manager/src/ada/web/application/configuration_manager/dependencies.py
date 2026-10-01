@@ -17,10 +17,6 @@ from ada.web.kpis.registry.models import KpiRegistry
 from ada.web.operational.identification import OperationalIdentificationService
 from ada.web.tools.configuration import ToolConfiguration, ToolSourceService
 from atlanticus.web.manager import ManagerEntry, ManagerModule, ManagerPrincipalProvider
-from atlanticus.web.navigation.configuration import (
-    NavigationConfigurationCatalog,
-    NavigationSourceService,
-)
 from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.projection.service import SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
@@ -29,8 +25,7 @@ from atlanticus.web.users.models import UserRecord
 
 @dataclass(frozen=True, slots=True)
 class ConfigurationManagerDependencies:
-    navigation_source: NavigationSourceService
-    navigation_projection: SourceProjectionService[NavigationConfigurationCatalog]
+    navigation_module: ManagerModule
     tools_source: ToolSourceService
     tools_projection: SourceProjectionService[ToolConfiguration]
     access_source: AdaAccessSourceService
@@ -43,15 +38,12 @@ class ConfigurationManagerDependencies:
     operational_service: OperationalIdentificationService | None = None
     operational_users: Callable[[], tuple[UserRecord, ...]] | None = None
     operational_catalog_contracts: OperationalCatalogManagerContracts | None = None
-    navigation_projection_store: ProjectionStore[NavigationConfigurationCatalog] | None = None
     kpi_registry_source: KpiRegistrySourceService | None = None
     kpi_registry_projection: SourceProjectionService[KpiRegistry] | None = None
     kpi_registry_destinations: KpiDestinationCatalogProvider | None = None
     kpi_registry_projection_store: ProjectionStore[KpiRegistry] | None = None
     kpi_definitions_source: KpiDefinitionSourceService | None = None
     kpi_definitions_projection: SourceProjectionService[KpiDefinitionCatalog] | None = None
-    navigation_source_name: str = 'Source'
-    navigation_projection_name: str = 'Projection'
     tools_source_name: str = 'Source'
     tools_projection_name: str = 'Projection'
     operational_source_name: str = 'Source'

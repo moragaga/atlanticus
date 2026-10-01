@@ -13,13 +13,19 @@ from ada.web.application.configuration_manager.local_runtime import (
 from ada.web.application.configuration_manager.wiring import (
     NAVIGATION_SOURCE_KEY,
     TOOLS_SOURCE_KEY,
+    compose_configuration_manager_dependencies,
     read_manager_projection,
+)
+from atlanticus.web.compositions.navigation_manager import (
+    NAVIGATION_MANAGER_SOURCE_SERVICE,
+    NAVIGATION_MANAGER_VALIDATION_SERVICE,
 )
 from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
 from atlanticus.web.manager import ManagerPrincipal, ManagerSurface
 from atlanticus.web.profiles.configuration.errors import ProfilesConfigurationProjectionError
 from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.projection.errors import ProjectionStoreError
+from atlanticus.web.services import ServiceRegistry
 
 
 def test_local_dependencies_use_one_injected_principal_for_manager(tmp_path, monkeypatch):
@@ -152,7 +158,11 @@ def test_manager_sources_keep_independent_application_boundaries(tmp_path):
         stores=stores,
         principal_provider=lambda: ManagerPrincipal('subject', 'Subject', access_keys=()),
     )
-    deps.navigation_source.get_current()
+    services = ServiceRegistry()
+    assert deps.navigation_module.web_module is not None
+    assert deps.navigation_module.web_module.register_services is not None
+    deps.navigation_module.web_module.register_services(services)
+    services.require(NAVIGATION_MANAGER_SOURCE_SERVICE).get_source_snapshot()
     deps.tools_source.get_current()
     deps.access_source.get_current()
     assert calls == [
@@ -194,3 +204,74 @@ def test_local_stores_are_explicitly_scoped_to_development(tmp_path, monkeypatch
     assert stores.navigation_source.get_current(NAVIGATION_SOURCE_KEY).current is None
     assert stores.tools_source.get_current(TOOLS_SOURCE_KEY).current is None
     assert stores.users_registry.load().users == ()
+
+
+def test_navigation_manager_uses_projected_profiles_for_validation(tmp_path) -> None:
+    from datetime import UTC, datetime
+
+    from atlanticus.web.navigation.configuration import (
+        NavigationConfigurationCatalog,
+        NavigationLinkConfiguration,
+    )
+    from atlanticus.web.profiles.models import ProfileDefinition
+    from atlanticus.web.projection.models import ProjectionRecord
+    from atlanticus.web.source.models import SourceReleaseId
+
+    stores = create_local_configuration_manager_stores(source_root=tmp_path)
+    instant = datetime(2026, 10, 1, 12, tzinfo=UTC)
+    stores.profiles.replace_active(
+        ProjectionRecord(
+            source_key=PROFILES_CONFIGURATION_SOURCE_KEY,
+            source_release_id=SourceReleaseId('profiles-1'),
+            source_published_at_utc=instant,
+            projected_at_utc=instant,
+            payload=ProfileCatalog(
+                profiles=(
+                    ProfileDefinition(
+                        key='operator',
+                        label='Operator',
+                        background_color='#123456',
+                    ),
+                )
+            ),
+        )
+    )
+    dependencies = compose_configuration_manager_dependencies(
+        stores=stores,
+        principal_provider=lambda: ManagerPrincipal(
+            'subject',
+            'Subject',
+            administrative_override=True,
+        ),
+    )
+    services = ServiceRegistry()
+    assert dependencies.navigation_module.web_module is not None
+    assert dependencies.navigation_module.web_module.register_services is not None
+    dependencies.navigation_module.web_module.register_services(services)
+    validation = services.require(NAVIGATION_MANAGER_VALIDATION_SERVICE)
+
+    valid = NavigationConfigurationCatalog(
+        links=(
+            NavigationLinkConfiguration(
+                key='home',
+                label='Inicio',
+                href='/',
+                allowed_profiles=('operator',),
+            ),
+        )
+    )
+    invalid = NavigationConfigurationCatalog(
+        links=(
+            NavigationLinkConfiguration(
+                key='home',
+                label='Inicio',
+                href='/',
+                allowed_profiles=('unknown',),
+            ),
+        )
+    )
+
+    assert validation.validate_draft(valid.to_document()).valid is True
+    rejected = validation.validate_draft(invalid.to_document())
+    assert rejected.valid is False
+    assert rejected.issues[0].code == 'navigation.profile.unknown'

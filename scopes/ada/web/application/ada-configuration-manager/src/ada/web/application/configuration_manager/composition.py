@@ -44,8 +44,6 @@ from ada.web.application.configuration_manager.workflows import (
     KpiDefinitionManagerSourceWorkflow,
     KpiRegistryManagerDraftValidationWorkflow,
     KpiRegistryManagerSourceWorkflow,
-    NavigationManagerDraftValidationWorkflow,
-    NavigationManagerSourceWorkflow,
     ToolManagerDraftValidationWorkflow,
     ToolManagerSourceWorkflow,
 )
@@ -66,14 +64,6 @@ from atlanticus.web.manager.web.ids import (
     workflow_saved_draft_id,
 )
 from atlanticus.web.modules import WebModule
-from atlanticus.web.navigation.configuration import NavigationProfileOption
-from atlanticus.web.navigation.configuration.web import (
-    NavigationAdminWebContext,
-    build_navigation_admin_configuration,
-    build_navigation_history_preview,
-    create_navigation_admin_web_module,
-)
-from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.services import ServiceRegistry
 
 MANAGER_ROUTE_PREFIX = '/manager'
@@ -83,12 +73,6 @@ PROFILES_MANAGER_ACCESS_KEY = 'profiles.manage'
 NAVIGATION_MANAGER_ACCESS_KEY = 'navigation.manage'
 TOOLS_MANAGER_ACCESS_KEY = 'tools.manage'
 KPI_MANAGER_ACCESS_KEY = 'kpis.manage'
-
-NAVIGATION_SOURCE_SERVICE = 'ada.configuration-manager.navigation.source'
-NAVIGATION_SOURCE_READER_SERVICE = 'ada.configuration-manager.navigation.source-reader'
-NAVIGATION_SOURCE_HISTORY_SERVICE = 'ada.configuration-manager.navigation.source-history'
-NAVIGATION_PROJECTION_SERVICE = 'ada.configuration-manager.navigation.projection'
-NAVIGATION_DRAFT_VALIDATION_SERVICE = 'ada.configuration-manager.navigation.validation'
 
 TOOLS_SOURCE_SERVICE = 'ada.configuration-manager.tools.source'
 TOOLS_SOURCE_READER_SERVICE = 'ada.configuration-manager.tools.source-reader'
@@ -115,45 +99,12 @@ def build_configuration_manager_surface(
     def actor_provider() -> str:
         return dependencies.principal_provider().subject_id
 
-    navigation_workspace = ManagerWorkspaceBinding(
-        owner_subject_id_provider=actor_provider,
-        source_key=dependencies.navigation_source.source_key,
-        source_snapshot_provider=dependencies.navigation_source.get_current,
-    )
     tools_workspace = ManagerWorkspaceBinding(
         owner_subject_id_provider=actor_provider,
         source_key=dependencies.tools_source.source_key,
         source_snapshot_provider=dependencies.tools_source.get_current,
     )
 
-    def navigation_profile_options() -> tuple[NavigationProfileOption, ...]:
-        active = dependencies.profiles_projection.get_active(
-            dependencies.profiles_module.source_key
-        )
-        catalog = active.payload if active is not None else ProfileCatalog()
-        if not isinstance(catalog, ProfileCatalog):
-            raise TypeError('Profiles projection payload must be a ProfileCatalog')
-        return tuple(
-            NavigationProfileOption(profile.key, profile.label)
-            for profile in catalog.all()
-            if profile.key not in {'root', 'local'}
-        )
-
-    navigation_context = NavigationAdminWebContext(
-        workspace_payload_reader=navigation_workspace.load_payload,
-        workspace_payload_writer=navigation_workspace.save_payload,
-        draft_store_id=workflow_draft_id('navigation'),
-        saved_draft_store_id=workflow_saved_draft_id('navigation'),
-        draft_save_action_id=workflow_action_id('navigation', 'save-draft'),
-        editor_revision_store_id=workflow_editor_revision_id('navigation'),
-        can_manage=lambda: _has_access(
-            dependencies.principal_provider(),
-            NAVIGATION_MANAGER_ACCESS_KEY,
-        ),
-        source_name=dependencies.navigation_source_name,
-        projection_name=dependencies.navigation_projection_name,
-        profile_options_provider=navigation_profile_options,
-    )
     tools_context = ToolManagerWebContext(
         workspace_payload_reader=tools_workspace.load_payload,
         workspace_payload_writer=tools_workspace.save_payload,
@@ -192,26 +143,7 @@ def build_configuration_manager_surface(
             dependencies.profiles_module,
             access_module,
             *((operational_module,) if operational_module is not None else ()),
-            ManagerModule(
-                key='navigation',
-                group_key='configuration',
-                title='Navegación',
-                route='/navigation',
-                order=20,
-                description='Rutas, secciones y perfiles habilitados en la navegación de ADA.',
-                layout=lambda _services: build_navigation_admin_configuration(navigation_context),
-                history_preview_renderer=build_navigation_history_preview,
-                source_key=dependencies.navigation_source.source_key,
-                source_service=NAVIGATION_SOURCE_SERVICE,
-                source_reader_service=NAVIGATION_SOURCE_READER_SERVICE,
-                source_history_service=NAVIGATION_SOURCE_HISTORY_SERVICE,
-                projection_service=NAVIGATION_PROJECTION_SERVICE,
-                draft_validation_service=NAVIGATION_DRAFT_VALIDATION_SERVICE,
-                access_key=NAVIGATION_MANAGER_ACCESS_KEY,
-                web_module=create_navigation_admin_web_module(navigation_context),
-                source_name=dependencies.navigation_source_name,
-                projection_name=dependencies.navigation_projection_name,
-            ),
+            dependencies.navigation_module,
             ManagerModule(
                 key='tools',
                 group_key='configuration',
@@ -309,23 +241,6 @@ def _register_services(
 ) -> None:
     def actor_provider() -> str:
         return dependencies.principal_provider().subject_id
-
-    navigation_source = NavigationManagerSourceWorkflow(
-        source=dependencies.navigation_source,
-        audit_actor_provider=actor_provider,
-    )
-    _register_source_workflow(
-        services,
-        workflow=navigation_source,
-        source_service=NAVIGATION_SOURCE_SERVICE,
-        source_reader_service=NAVIGATION_SOURCE_READER_SERVICE,
-        source_history_service=NAVIGATION_SOURCE_HISTORY_SERVICE,
-    )
-    services.add(
-        NAVIGATION_DRAFT_VALIDATION_SERVICE,
-        NavigationManagerDraftValidationWorkflow(audit_actor_provider=actor_provider),
-    )
-    services.add(NAVIGATION_PROJECTION_SERVICE, dependencies.navigation_projection)
 
     tools_source = ToolManagerSourceWorkflow(
         source=dependencies.tools_source,

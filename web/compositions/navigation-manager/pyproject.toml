@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "atlanticus-web-composition-navigation-manager"
-version = "0.2.0"
+version = "0.3.0"
 description = "Composición Navigation para Atlanticus Web Manager"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]

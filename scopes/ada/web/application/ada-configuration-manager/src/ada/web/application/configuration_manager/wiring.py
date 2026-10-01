@@ -11,6 +11,7 @@ from ada.web.access.configuration import (
 )
 from ada.web.access.configuration.errors import AdaAccessConfigurationProjectionError
 from ada.web.application.configuration_manager.composition import (
+    NAVIGATION_MANAGER_ACCESS_KEY,
     PROFILES_MANAGER_ACCESS_KEY,
     USERS_MANAGER_ACCESS_KEY,
 )
@@ -38,6 +39,7 @@ from ada.web.tools.configuration import (
     ToolSourceService,
     create_tool_projection_service,
 )
+from atlanticus.web.compositions.navigation_manager import compose_navigation_manager
 from atlanticus.web.compositions.profiles_manager import (
     PROFILES_CONFIGURATION_SOURCE_KEY,
     compose_profiles_manager,
@@ -49,8 +51,7 @@ from atlanticus.web.compositions.users_manager import (
 from atlanticus.web.manager import ManagerPrincipal
 from atlanticus.web.navigation.configuration import (
     NavigationConfigurationCatalog,
-    NavigationSourceService,
-    create_navigation_projection_service,
+    NavigationProfileOption,
 )
 from atlanticus.web.profiles.configuration.errors import ProfilesConfigurationProjectionError
 from atlanticus.web.profiles.models import ProfileCatalog
@@ -172,9 +173,6 @@ def compose_configuration_manager_dependencies(
     if not callable(principal_provider):
         raise TypeError('Configuration Manager principal provider must be callable')
 
-    navigation_source = NavigationSourceService(
-        source=stores.navigation_source, source_key=NAVIGATION_SOURCE_KEY
-    )
     tools_source = ToolSourceService(source=stores.tools_source, source_key=TOOLS_SOURCE_KEY)
     access_source = AdaAccessSourceService(
         source=stores.access_source, source_key=ADA_ACCESS_SOURCE_KEY
@@ -206,9 +204,6 @@ def compose_configuration_manager_dependencies(
         and stores.operational_source is not None
         and stores.operational is not None
         else None
-    )
-    navigation_projection = create_navigation_projection_service(
-        source=stores.navigation_source, projection=stores.navigation
     )
     tools_projection = create_tool_projection_service(
         source=stores.tools_source, projection=stores.tools
@@ -256,6 +251,28 @@ def compose_configuration_manager_dependencies(
             or ProfileCatalog()
         )
 
+    def navigation_profile_options() -> tuple[NavigationProfileOption, ...]:
+        catalog = profiles_provider()
+        return tuple(
+            NavigationProfileOption(profile.key, profile.label)
+            for profile in catalog.all()
+            if profile.key not in {'root', 'local'}
+        )
+
+    navigation_manager = compose_navigation_manager(
+        source_store=stores.navigation_source,
+        projection_store=stores.navigation,
+        principal_provider=principal_provider,
+        group_key='configuration',
+        title='Navegación',
+        description='Rutas, secciones y perfiles habilitados en la navegación de ADA.',
+        source_key=NAVIGATION_SOURCE_KEY,
+        source_name=source_name,
+        projection_name=projection_name,
+        access_key=NAVIGATION_MANAGER_ACCESS_KEY,
+        profile_options_provider=navigation_profile_options,
+    )
+
     users_administration = UsersAdministrationService(
         registry=stores.users_registry,
         promoted=stores.users_promoted,
@@ -284,9 +301,7 @@ def compose_configuration_manager_dependencies(
     )
     return ConfigurationManagerDependencies(
         users_projection_entry=users_projection_entry,
-        navigation_source=navigation_source,
-        navigation_projection=navigation_projection,
-        navigation_projection_store=stores.navigation,
+        navigation_module=navigation_manager.module,
         tools_source=tools_source,
         tools_projection=tools_projection,
         access_source=access_source,
@@ -306,8 +321,6 @@ def compose_configuration_manager_dependencies(
         kpi_registry_projection_store=stores.kpi_registry,
         kpi_definitions_source=kpi_definitions_source,
         kpi_definitions_projection=kpi_definitions_projection,
-        navigation_source_name=source_name,
-        navigation_projection_name=projection_name,
         tools_source_name=source_name,
         tools_projection_name=projection_name,
         operational_source_name=source_name,

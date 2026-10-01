@@ -5,10 +5,12 @@ from dataclasses import replace
 
 from flask import session
 
-from ada.web.application.configuration_manager.composition import (
-    NAVIGATION_DRAFT_VALIDATION_SERVICE,
-    NAVIGATION_PROJECTION_SERVICE,
-    NAVIGATION_SOURCE_SERVICE,
+from atlanticus.web.compositions.navigation_manager import (
+    NAVIGATION_MANAGER_PROJECTION_SERVICE,
+    NAVIGATION_MANAGER_SOURCE_SERVICE,
+    NAVIGATION_MANAGER_VALIDATION_SERVICE,
+    NavigationManagerDraftValidationWorkflow,
+    NavigationManagerSourceWorkflow,
 )
 from ada.web.application.configuration_manager.local_runtime import (
     create_local_configuration_manager_stores,
@@ -16,10 +18,6 @@ from ada.web.application.configuration_manager.local_runtime import (
 from ada.web.application.configuration_manager.wiring import (
     NAVIGATION_SOURCE_KEY,
     compose_configuration_manager_dependencies,
-)
-from ada.web.application.configuration_manager.workflows import (
-    NavigationManagerDraftValidationWorkflow,
-    NavigationManagerSourceWorkflow,
 )
 from ada.web.application.generic.bootstrap import create_operational_application_runtime
 from ada.web.application.generic.composition import (
@@ -94,13 +92,13 @@ def _draft(*, public_enabled: bool) -> dict[str, object]:
 
 def _publish_and_project(runtime, client, payload: dict[str, object]):
     source = runtime.services.require(
-        NAVIGATION_SOURCE_SERVICE, NavigationManagerSourceWorkflow
+        NAVIGATION_MANAGER_SOURCE_SERVICE, NavigationManagerSourceWorkflow
     )
     validation = runtime.services.require(
-        NAVIGATION_DRAFT_VALIDATION_SERVICE, NavigationManagerDraftValidationWorkflow
+        NAVIGATION_MANAGER_VALIDATION_SERVICE, NavigationManagerDraftValidationWorkflow
     )
     projector = runtime.services.require(
-        NAVIGATION_PROJECTION_SERVICE, SourceProjectionService
+        NAVIGATION_MANAGER_PROJECTION_SERVICE, SourceProjectionService
     )
     canonical_payload = NavigationConfigurationCatalog.from_document(payload).to_document()
     with client.session_transaction() as stored:
@@ -171,7 +169,7 @@ def test_local_manager_publishes_and_projects_into_live_navigation(tmp_path, mon
     assert _document(local, '/qualification-public') == 200
     assert _document(local, '/manager/navigation') == 200
     source = local_runtime.services.require(
-        NAVIGATION_SOURCE_SERVICE, NavigationManagerSourceWorkflow
+        NAVIGATION_MANAGER_SOURCE_SERVICE, NavigationManagerSourceWorkflow
     )
     assert len(source.list_history().items) == 2
 

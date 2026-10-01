@@ -5,6 +5,7 @@ from __future__ import annotations
 from atlanticus.connectivity.cosmos import CosmosClient
 from atlanticus.connectivity.storage import StorageClient
 from atlanticus.web.compositions.navigation_manager.composition import (
+    NAVIGATION_CONFIGURATION_SOURCE_KEY,
     NavigationManagerComposition,
     NavigationPrincipalProvider,
     compose_navigation_manager,
@@ -23,14 +24,13 @@ from atlanticus.web.navigation.projection.local import (
     LocalNavigationProjectionStore,
     LocalNavigationProjectionStoreSettings,
 )
-from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.source.blob import BlobSourceSettings, BlobSourceStore
 from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
+from atlanticus.web.source.models import SourceKey
 
 
 def compose_local_navigation_manager(
     *,
-    services: ServiceRegistry,
     source_settings: LocalSourceSettings,
     projection_settings: LocalNavigationProjectionStoreSettings,
     principal_provider: NavigationPrincipalProvider,
@@ -38,6 +38,11 @@ def compose_local_navigation_manager(
     module_key: str = 'navigation',
     route: str = '/navigation',
     order: int = 20,
+    title: str = 'Navigation',
+    description: str = '',
+    source_key: SourceKey = NAVIGATION_CONFIGURATION_SOURCE_KEY,
+    source_name: str = 'Navigation Source',
+    projection_name: str = 'Navigation Projection',
     access_key: str | None = None,
     authorization: ManagerAuthorizationPolicy | None = None,
     audit_actor_provider: NavigationAuditActorProvider | None = None,
@@ -45,7 +50,6 @@ def compose_local_navigation_manager(
     validators: tuple[NavigationProjectionValidator, ...] = (),
 ) -> NavigationManagerComposition:
     return compose_navigation_manager(
-        services=services,
         source_store=LocalSourceStore(source_settings),
         projection_store=LocalNavigationProjectionStore(projection_settings),
         principal_provider=principal_provider,
@@ -53,6 +57,11 @@ def compose_local_navigation_manager(
         module_key=module_key,
         route=route,
         order=order,
+        title=title,
+        description=description,
+        source_key=source_key,
+        source_name=source_name,
+        projection_name=projection_name,
         access_key=access_key,
         authorization=authorization,
         audit_actor_provider=audit_actor_provider,
@@ -63,7 +72,6 @@ def compose_local_navigation_manager(
 
 def compose_azure_navigation_manager(
     *,
-    services: ServiceRegistry,
     storage: StorageClient,
     source_settings: BlobSourceSettings,
     cosmos: CosmosClient,
@@ -73,6 +81,11 @@ def compose_azure_navigation_manager(
     module_key: str = 'navigation',
     route: str = '/navigation',
     order: int = 20,
+    title: str = 'Navigation',
+    description: str = '',
+    source_key: SourceKey = NAVIGATION_CONFIGURATION_SOURCE_KEY,
+    source_name: str = 'Navigation Source',
+    projection_name: str = 'Navigation Projection',
     access_key: str | None = None,
     authorization: ManagerAuthorizationPolicy | None = None,
     audit_actor_provider: NavigationAuditActorProvider | None = None,
@@ -80,7 +93,6 @@ def compose_azure_navigation_manager(
     validators: tuple[NavigationProjectionValidator, ...] = (),
 ) -> NavigationManagerComposition:
     return compose_navigation_manager(
-        services=services,
         source_store=BlobSourceStore(source_settings, storage=storage),
         projection_store=CosmosNavigationProjectionStore(
             client=cosmos,
@@ -91,6 +103,11 @@ def compose_azure_navigation_manager(
         module_key=module_key,
         route=route,
         order=order,
+        title=title,
+        description=description,
+        source_key=source_key,
+        source_name=source_name,
+        projection_name=projection_name,
         access_key=access_key,
         authorization=authorization,
         audit_actor_provider=audit_actor_provider,

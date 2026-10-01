@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from atlanticus.web.compositions.navigation_manager.workflows import (
     NavigationAuditActorProvider,
@@ -51,7 +51,6 @@ class NavigationManagerComposition:
 
 def compose_navigation_manager(
     *,
-    services: ServiceRegistry,
     source_store: SourceStore,
     projection_store: ProjectionStore[NavigationConfigurationCatalog],
     principal_provider: NavigationPrincipalProvider,
@@ -60,7 +59,10 @@ def compose_navigation_manager(
     route: str = '/navigation',
     order: int = 20,
     title: str = 'Navigation',
+    description: str = '',
     source_key: SourceKey = NAVIGATION_CONFIGURATION_SOURCE_KEY,
+    source_name: str = 'Navigation Source',
+    projection_name: str = 'Navigation Projection',
     access_key: str | None = None,
     authorization: ManagerAuthorizationPolicy | None = None,
     audit_actor_provider: NavigationAuditActorProvider | None = None,
@@ -108,17 +110,24 @@ def compose_navigation_manager(
         saved_draft_store_id=workflow_saved_draft_id(module_key),
         draft_save_action_id=workflow_action_id(module_key, 'save-draft'),
         editor_revision_store_id=workflow_editor_revision_id(module_key),
-        can_manage=lambda: resolved_authorization.can_access(
+        can_manage=lambda: resolved_authorization.can_view(
             principal_provider(),
             module,
         ),
-        source_name='Navigation Source',
-        projection_name='Navigation Projection',
+        source_name=source_name,
+        projection_name=projection_name,
         profile_options_provider=profile_options_provider,
     )
 
     def layout(_services: ServiceRegistry) -> object:
         return build_navigation_admin_configuration(context)
+
+    web_module = create_navigation_admin_web_module(context)
+
+    def register_services(services: ServiceRegistry) -> None:
+        services.add(NAVIGATION_MANAGER_SOURCE_SERVICE, source_workflow)
+        services.add(NAVIGATION_MANAGER_PROJECTION_SERVICE, projection_service)
+        services.add(NAVIGATION_MANAGER_VALIDATION_SERVICE, validation_workflow)
 
     module = ManagerModule(
         key=module_key,
@@ -126,6 +135,7 @@ def compose_navigation_manager(
         title=title,
         route=route,
         order=order,
+        description=description,
         layout=layout,
         source_key=source_key,
         source_service=NAVIGATION_MANAGER_SOURCE_SERVICE,
@@ -134,14 +144,11 @@ def compose_navigation_manager(
         projection_service=NAVIGATION_MANAGER_PROJECTION_SERVICE,
         draft_validation_service=NAVIGATION_MANAGER_VALIDATION_SERVICE,
         access_key=access_key,
-        web_module=create_navigation_admin_web_module(context),
+        web_module=replace(web_module, register_services=register_services),
         history_preview_renderer=build_navigation_history_preview,
-        source_name='Navigation Source',
-        projection_name='Navigation Projection',
+        source_name=source_name,
+        projection_name=projection_name,
     )
-    services.add(NAVIGATION_MANAGER_SOURCE_SERVICE, source_workflow)
-    services.add(NAVIGATION_MANAGER_PROJECTION_SERVICE, projection_service)
-    services.add(NAVIGATION_MANAGER_VALIDATION_SERVICE, validation_workflow)
     return NavigationManagerComposition(
         module=module,
         source_workflow=source_workflow,

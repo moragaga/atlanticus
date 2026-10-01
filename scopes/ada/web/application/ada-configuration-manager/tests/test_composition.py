@@ -6,11 +6,6 @@ from ada.web.application.configuration_manager import (
     ACCESS_SOURCE_READER_SERVICE,
     ACCESS_SOURCE_SERVICE,
     MANAGER_ROUTE_PREFIX,
-    NAVIGATION_DRAFT_VALIDATION_SERVICE,
-    NAVIGATION_PROJECTION_SERVICE,
-    NAVIGATION_SOURCE_HISTORY_SERVICE,
-    NAVIGATION_SOURCE_READER_SERVICE,
-    NAVIGATION_SOURCE_SERVICE,
     TOOLS_DRAFT_VALIDATION_SERVICE,
     TOOLS_PROJECTION_SERVICE,
     TOOLS_SOURCE_HISTORY_SERVICE,
@@ -19,8 +14,6 @@ from ada.web.application.configuration_manager import (
     AdaAccessManagerDraftValidationWorkflow,
     AdaAccessManagerSourceWorkflow,
     ConfigurationManagerDependencies,
-    NavigationManagerDraftValidationWorkflow,
-    NavigationManagerSourceWorkflow,
     ToolManagerDraftValidationWorkflow,
     ToolManagerSourceWorkflow,
     build_configuration_manager_surface,
@@ -29,6 +22,11 @@ from ada.web.application.configuration_manager.composition import (
     NAVIGATION_MANAGER_ACCESS_KEY,
     TOOLS_MANAGER_ACCESS_KEY,
     USERS_MANAGER_ACCESS_KEY,
+)
+from atlanticus.web.compositions.navigation_manager import (
+    NAVIGATION_MANAGER_PROJECTION_SERVICE,
+    NAVIGATION_MANAGER_SOURCE_SERVICE,
+    NAVIGATION_MANAGER_VALIDATION_SERVICE,
 )
 from atlanticus.web.manager import ManagerEntry, ManagerModule, ManagerPrincipal, ManagerSurface
 from atlanticus.web.modules import WebModule
@@ -71,6 +69,25 @@ def profiles_module() -> ManagerModule:
     )
 
 
+def navigation_module() -> ManagerModule:
+    return ManagerModule(
+        key='navigation',
+        group_key='configuration',
+        title='Navegación',
+        route='/navigation',
+        order=20,
+        layout=lambda _services: None,
+        source_key=SourceKey('navigation'),
+        source_service=NAVIGATION_MANAGER_SOURCE_SERVICE,
+        source_reader_service=NAVIGATION_MANAGER_SOURCE_SERVICE,
+        source_history_service=NAVIGATION_MANAGER_SOURCE_SERVICE,
+        projection_service=NAVIGATION_MANAGER_PROJECTION_SERVICE,
+        draft_validation_service=NAVIGATION_MANAGER_VALIDATION_SERVICE,
+        access_key=NAVIGATION_MANAGER_ACCESS_KEY,
+        web_module=WebModule(name='atlanticus-navigation-configuration'),
+    )
+
+
 def users_entry() -> ManagerEntry:
     return ManagerEntry(
         key='users',
@@ -97,8 +114,7 @@ def dependencies() -> ConfigurationManagerDependencies:
         is_local=True,
     )
     return ConfigurationManagerDependencies(
-        navigation_source=SourceStub('navigation'),
-        navigation_projection=ProjectionStub(),
+        navigation_module=navigation_module(),
         tools_source=SourceStub('tools'),
         tools_projection=ProjectionStub(),
         access_source=AccessSourceStub('ada-access'),
@@ -137,11 +153,11 @@ def test_surface_uses_generic_manager_contract_for_configuration_modules() -> No
     assert access.access_key == ACCESS_MANAGER_ACCESS_KEY
 
     assert navigation.source_key == SourceKey('navigation')
-    assert navigation.source_service == NAVIGATION_SOURCE_SERVICE
-    assert navigation.source_reader_service == NAVIGATION_SOURCE_READER_SERVICE
-    assert navigation.source_history_service == NAVIGATION_SOURCE_HISTORY_SERVICE
-    assert navigation.projection_service == NAVIGATION_PROJECTION_SERVICE
-    assert navigation.draft_validation_service == NAVIGATION_DRAFT_VALIDATION_SERVICE
+    assert navigation.source_service == NAVIGATION_MANAGER_SOURCE_SERVICE
+    assert navigation.source_reader_service == NAVIGATION_MANAGER_SOURCE_SERVICE
+    assert navigation.source_history_service == NAVIGATION_MANAGER_SOURCE_SERVICE
+    assert navigation.projection_service == NAVIGATION_MANAGER_PROJECTION_SERVICE
+    assert navigation.draft_validation_service == NAVIGATION_MANAGER_VALIDATION_SERVICE
     assert navigation.access_key == NAVIGATION_MANAGER_ACCESS_KEY
 
     assert tools.source_key == SourceKey('tools')
@@ -186,16 +202,6 @@ def test_service_module_registers_configuration_capabilities() -> None:
 
     assert service_module.register_services is not None
     service_module.register_services(services)
-
-    navigation_source = services.require(NAVIGATION_SOURCE_SERVICE)
-    assert isinstance(navigation_source, NavigationManagerSourceWorkflow)
-    assert services.require(NAVIGATION_SOURCE_READER_SERVICE) is navigation_source
-    assert services.require(NAVIGATION_SOURCE_HISTORY_SERVICE) is navigation_source
-    assert isinstance(
-        services.require(NAVIGATION_DRAFT_VALIDATION_SERVICE),
-        NavigationManagerDraftValidationWorkflow,
-    )
-    assert services.require(NAVIGATION_PROJECTION_SERVICE) is injected.navigation_projection
 
     tools_source = services.require(TOOLS_SOURCE_SERVICE)
     assert isinstance(tools_source, ToolManagerSourceWorkflow)

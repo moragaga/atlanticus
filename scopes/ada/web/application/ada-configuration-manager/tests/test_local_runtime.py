@@ -6,6 +6,11 @@ from ada.web.application.configuration_manager.local_runtime import (
     TOOLS_SOURCE_KEY,
     create_local_configuration_manager_dependencies,
 )
+from atlanticus.web.compositions.navigation_manager import (
+    NAVIGATION_MANAGER_PROJECTION_SERVICE,
+    NAVIGATION_MANAGER_SOURCE_SERVICE,
+    NAVIGATION_MANAGER_VALIDATION_SERVICE,
+)
 from atlanticus.web.compositions.profiles_manager import (
     PROFILES_MANAGER_PROJECTION_SERVICE,
     PROFILES_MANAGER_SOURCE_SERVICE,
@@ -18,7 +23,11 @@ from atlanticus.web.services import ServiceRegistry
 def test_local_runtime_composes_configuration_sources(tmp_path) -> None:
     dependencies = create_local_configuration_manager_dependencies(source_root=tmp_path)
 
-    assert dependencies.navigation_source.source_key == NAVIGATION_SOURCE_KEY
+    assert dependencies.navigation_module.key == 'navigation'
+    assert dependencies.navigation_module.title == 'Navegación'
+    assert dependencies.navigation_module.source_key == NAVIGATION_SOURCE_KEY
+    assert dependencies.navigation_module.source_name == 'Local Source'
+    assert dependencies.navigation_module.projection_name == 'In-process Projection'
     assert dependencies.tools_source.source_key == TOOLS_SOURCE_KEY
     assert dependencies.access_source.source_key == ADA_ACCESS_SOURCE_KEY
     assert dependencies.kpi_registry_source is not None
@@ -38,6 +47,13 @@ def test_local_runtime_composes_configuration_sources(tmp_path) -> None:
     assert dependencies.users_entry.route == '/users'
 
     services = ServiceRegistry()
+    assert dependencies.navigation_module.web_module is not None
+    assert dependencies.navigation_module.web_module.register_services is not None
+    dependencies.navigation_module.web_module.register_services(services)
+    assert services.contains(NAVIGATION_MANAGER_SOURCE_SERVICE)
+    assert services.contains(NAVIGATION_MANAGER_PROJECTION_SERVICE)
+    assert services.contains(NAVIGATION_MANAGER_VALIDATION_SERVICE)
+
     assert dependencies.profiles_module.web_module is not None
     assert dependencies.profiles_module.web_module.register_services is not None
     dependencies.profiles_module.web_module.register_services(services)

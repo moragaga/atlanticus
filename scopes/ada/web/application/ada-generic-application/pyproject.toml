@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-generic-application"
-version = "0.2.18"
+version = "0.2.19"
 description = "Composition root web genérico de ADA sobre Atlanticus Web"
 requires-python = "==3.14.2"
 classifiers = [
     "Private :: Do Not Upload",
 ]
 dependencies = [
-    "ada-configuration-manager==0.6.0",
+    "ada-configuration-manager==0.7.0",
     "ada-web-operational-identification==0.1.0",
     "atlanticus-web-users-cosmos==0.1.0",
     "atlanticus-web-users-blob==0.1.0",
@@ -113,6 +113,7 @@ atlanticus-web-observability = { path = "../../../../../web/framework/observabil
 atlanticus-web-identity = { path = "../../../../../web/capabilities/identity/core", editable = true }
 atlanticus-web-identity-local = { path = "../../../../../web/capabilities/identity/local", editable = true }
 atlanticus-web-manager = { path = "../../../../../web/capabilities/manager", editable = true }
+atlanticus-web-composition-navigation-manager = { path = "../../../../../web/compositions/navigation-manager", editable = true }
 atlanticus-web-composition-profiles-manager = { path = "../../../../../web/compositions/profiles-manager", editable = true }
 atlanticus-web-composition-users-manager = { path = "../../../../../web/compositions/users-manager", editable = true }
 atlanticus-web-profiles = { path = "../../../../../web/capabilities/profiles/core", editable = true }
