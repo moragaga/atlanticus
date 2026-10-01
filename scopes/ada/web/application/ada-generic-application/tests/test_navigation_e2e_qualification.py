@@ -5,13 +5,6 @@ from dataclasses import replace
 
 from flask import session
 
-from atlanticus.web.compositions.navigation_manager import (
-    NAVIGATION_MANAGER_PROJECTION_SERVICE,
-    NAVIGATION_MANAGER_SOURCE_SERVICE,
-    NAVIGATION_MANAGER_VALIDATION_SERVICE,
-    NavigationManagerDraftValidationWorkflow,
-    NavigationManagerSourceWorkflow,
-)
 from ada.web.application.configuration_manager.local_runtime import (
     create_local_configuration_manager_stores,
 )
@@ -26,6 +19,13 @@ from ada.web.application.generic.composition import (
 )
 from ada.web.application.generic.runtime import create_application_runtime
 from ada.web.application.generic.settings import AdaGenericSettings
+from atlanticus.web.compositions.navigation_manager import (
+    NAVIGATION_MANAGER_PROJECTION_SERVICE,
+    NAVIGATION_MANAGER_SOURCE_SERVICE,
+    NAVIGATION_MANAGER_VALIDATION_SERVICE,
+    NavigationManagerDraftValidationWorkflow,
+    NavigationManagerSourceWorkflow,
+)
 from atlanticus.web.identity.access import ACCESS_RUNTIME_SERVICE_KEY
 from atlanticus.web.identity.local import LocalIdentityProvider
 from atlanticus.web.manager import ManagerPrincipal

@@ -115,6 +115,7 @@ def dependencies() -> ConfigurationManagerDependencies:
     )
     return ConfigurationManagerDependencies(
         navigation_module=navigation_module(),
+        navigation_projection_store=ProjectionStub(),
         tools_source=SourceStub('tools'),
         tools_projection=ProjectionStub(),
         access_source=AccessSourceStub('ada-access'),

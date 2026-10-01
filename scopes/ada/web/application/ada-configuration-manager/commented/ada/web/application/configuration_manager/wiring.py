@@ -310,6 +310,7 @@ def compose_configuration_manager_dependencies(
     return ConfigurationManagerDependencies(
         users_projection_entry=users_projection_entry,
         navigation_module=navigation_manager.module,
+        navigation_projection_store=stores.navigation,
         tools_source=tools_source,
         tools_projection=tools_projection,
         access_source=access_source,

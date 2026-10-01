@@ -17,6 +17,7 @@ from ada.web.kpis.registry.models import KpiRegistry
 from ada.web.operational.identification import OperationalIdentificationService
 from ada.web.tools.configuration import ToolConfiguration, ToolSourceService
 from atlanticus.web.manager import ManagerEntry, ManagerModule, ManagerPrincipalProvider
+from atlanticus.web.navigation.configuration import NavigationConfigurationCatalog
 from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.projection.service import SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
@@ -26,6 +27,7 @@ from atlanticus.web.users.models import UserRecord
 @dataclass(frozen=True, slots=True)
 class ConfigurationManagerDependencies:
     navigation_module: ManagerModule
+    navigation_projection_store: ProjectionStore[NavigationConfigurationCatalog]
     tools_source: ToolSourceService
     tools_projection: SourceProjectionService[ToolConfiguration]
     access_source: AdaAccessSourceService

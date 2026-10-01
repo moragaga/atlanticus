@@ -34,6 +34,8 @@ def test_manager_uses_injected_provider_names_for_all_modules(
     )
     assert dependencies.profiles_module.source_name == source_name
     assert dependencies.profiles_module.projection_name == projection_name
-    for kind in ('navigation', 'tools', 'access', 'kpi_registry', 'kpi_definitions'):
+    assert dependencies.navigation_module.source_name == source_name
+    assert dependencies.navigation_module.projection_name == projection_name
+    for kind in ('tools', 'access', 'kpi_registry', 'kpi_definitions'):
         assert getattr(dependencies, f'{kind}_source_name') == source_name
         assert getattr(dependencies, f'{kind}_projection_name') == projection_name

@@ -158,6 +158,7 @@ def test_manager_sources_keep_independent_application_boundaries(tmp_path):
         stores=stores,
         principal_provider=lambda: ManagerPrincipal('subject', 'Subject', access_keys=()),
     )
+    assert deps.navigation_projection_store is stores.navigation
     services = ServiceRegistry()
     assert deps.navigation_module.web_module is not None
     assert deps.navigation_module.web_module.register_services is not None
