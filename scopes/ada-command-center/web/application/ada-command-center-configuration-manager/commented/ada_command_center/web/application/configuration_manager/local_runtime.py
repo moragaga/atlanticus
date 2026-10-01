@@ -1,9 +1,11 @@
-# Espejo pedagógico equivalente al código productivo.
+# Espejo pedagógico: conserva exactamente el comportamiento del archivo productivo.
+# Los comentarios explican intención y fronteras sin introducir lógica adicional.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
+from typing import Generic, TypeVar
 
 from ada_command_center.web.alarms.configuration.resources import (
     ALARM_CONFIGURATION_PROJECTION_PHYSICAL_NAME,
@@ -14,6 +16,10 @@ from ada_command_center.web.alarms.persistence import (
     AlarmConfigurationProjectionProvider,
     AlarmConfigurationSourceProvider,
     compose_alarm_configuration_persistence,
+)
+from ada_command_center.web.application.configuration_manager.administration import (
+    CommandCenterAdministrationStores,
+    compose_command_center_administration,
 )
 from ada_command_center.web.application.configuration_manager.catalog_configuration import (
     COMMAND_CENTER_CATALOG_BLOB_NAME,
@@ -30,10 +36,73 @@ from ada_command_center.web.tools.discovery_cosmos.manager import ToolCatalogMan
 from atlanticus.connectivity.storage import StorageClient
 from atlanticus.web.configuration import WebEnvironment
 from atlanticus.web.manager import ManagerPrincipal
+from atlanticus.web.navigation.configuration import NavigationConfigurationCatalog
+from atlanticus.web.profiles.models import ProfileCatalog
+from atlanticus.web.projection.models import ProjectionRecord
+from atlanticus.web.projection.store import ProjectionStore
+from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
+from atlanticus.web.source.models import SourceKey
+from atlanticus.web.users.errors import UserAlreadyPromotedError, UsersRegistryConflictError
+from atlanticus.web.users.models import UserRecord, UsersRegistrySnapshot
+from atlanticus.web.users.store import UsersAdministrationStore, UsersRegistryStore
+
+PayloadT = TypeVar('PayloadT')
+
+
+class InProcessProjectionStore(ProjectionStore[PayloadT], Generic[PayloadT]):
+    def __init__(self) -> None:
+        self._active: dict[SourceKey, ProjectionRecord[PayloadT]] = {}
+
+    def get_active(self, source_key: SourceKey) -> ProjectionRecord[PayloadT] | None:
+        return self._active.get(source_key)
+
+    def replace_active(self, projection: ProjectionRecord[PayloadT]) -> ProjectionRecord[PayloadT]:
+        self._active[projection.source_key] = projection
+        return projection
+
+
+class InProcessUsersRegistryStore(UsersRegistryStore):
+    def __init__(self) -> None:
+        self._snapshot = UsersRegistrySnapshot()
+        self._revision = 0
+
+    def load(self) -> UsersRegistrySnapshot:
+        return self._snapshot
+
+    def replace(
+        self, users: tuple[UserRecord, ...], *, expected_version: str | None
+    ) -> UsersRegistrySnapshot:
+        if self._snapshot.version != expected_version:
+            raise UsersRegistryConflictError('Users registry changed concurrently')
+        self._revision += 1
+        self._snapshot = UsersRegistrySnapshot(users=users, version=f'local-{self._revision}')
+        return self._snapshot
+
+
+class InProcessUsersAdministrationStore(UsersAdministrationStore):
+    def __init__(self) -> None:
+        self._users: dict[str, UserRecord] = {}
+
+    def get(self, user_id: str) -> UserRecord | None:
+        return self._users.get(user_id)
+
+    def list_users(self) -> tuple[UserRecord, ...]:
+        return tuple(sorted(self._users.values(), key=lambda user: user.user_id))
+
+    def create(self, user: UserRecord) -> UserRecord:
+        if user.user_id in self._users:
+            raise UserAlreadyPromotedError('User is already promoted')
+        self._users[user.user_id] = user
+        return user
+
+    def replace(self, user: UserRecord) -> UserRecord:
+        if user.user_id not in self._users:
+            raise ValueError('Promoted user does not exist')
+        self._users[user.user_id] = user
+        return user
 
 
 @contextmanager
-# El modo local conserva el mismo namespace y la misma identidad física de cada proyección.
 def open_local_configuration_manager(
     *,
     reader: ManagerConfigurationReader,
@@ -56,14 +125,27 @@ def open_local_configuration_manager(
             source_provider=AlarmConfigurationSourceProvider.LOCAL,
             projection_provider=AlarmConfigurationProjectionProvider.LOCAL,
             local_source_root=namespace.local_tool_root(root),
-            # El directorio final reutiliza la identidad física del contenedor durable.
             local_projection_root=(
-                namespace.local_projection_root(root)
-                / ALARM_CONFIGURATION_PROJECTION_PHYSICAL_NAME
+                namespace.local_projection_root(root) / ALARM_CONFIGURATION_PROJECTION_PHYSICAL_NAME
             ),
         ),
     )
-    # La conexión Storage solo vive mientras está abierto este host local.
+    administration_source = LocalSourceStore(
+        LocalSourceSettings(root=namespace.local_application_root(root))
+    )
+    administration = compose_command_center_administration(
+        stores=CommandCenterAdministrationStores(
+            profiles_source=administration_source,
+            navigation_source=administration_source,
+            profiles=InProcessProjectionStore[ProfileCatalog](),
+            navigation=InProcessProjectionStore[NavigationConfigurationCatalog](),
+            users_registry=InProcessUsersRegistryStore(),
+            users_promoted=InProcessUsersAdministrationStore(),
+        ),
+        principal_provider=principal_provider,
+        source_name='Local Source',
+        projection_name='In-process Projection',
+    )
     with ExitStack() as stack:
         storage = StorageClient(settings=catalog_storage_settings(values))
         stack.callback(storage.close)
@@ -85,4 +167,5 @@ def open_local_configuration_manager(
             ),
             source_name='Local Source',
             projection_name='Local Projection',
+            administration=administration,
         )

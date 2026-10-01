@@ -38,7 +38,7 @@ def dependencies() -> ConfigurationManagerDependencies:
     )
 
 
-def test_surface_mounts_only_alarm_configuration_manager_module() -> None:
+def test_surface_without_administration_keeps_alarm_configuration_contract() -> None:
     definition = build_configuration_manager_surface(dependencies())
     surface = ManagerSurface(definition)
 

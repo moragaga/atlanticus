@@ -1,11 +1,18 @@
+# Espejo pedagógico: conserva exactamente el comportamiento del archivo productivo.
+# Los comentarios explican intención y fronteras sin introducir lógica adicional.
 from __future__ import annotations
 
-# La identidad es del dominio, pero el host adapta el texto al tipo técnico SourceKey.
 from ada_command_center.domain.alarms import (
     ALARM_CONFIGURATION_SOURCE_KEY as ALARM_CONFIGURATION_SOURCE_KEY_VALUE,
 )
 from ada_command_center.web.alarms.configuration.manager import (
     compose_alarm_configuration_manager,
+)
+from ada_command_center.web.application.configuration_manager.administration import (
+    NAVIGATION_MANAGER_ACCESS_KEY,
+    NAVIGATION_SOURCE_KEY,
+    PROFILES_MANAGER_ACCESS_KEY,
+    USERS_MANAGER_ACCESS_KEY,
 )
 from ada_command_center.web.application.configuration_manager.dependencies import (
     ConfigurationManagerDependencies,
@@ -38,8 +45,7 @@ def build_configuration_manager_surface(
         source_name=dependencies.source_name,
         projection_name=dependencies.projection_name,
     )
-    # Tool Catalog es opcional y el host decide a qué grupo del Manager pertenece.
-    entry = (
+    tool_catalog_entry = (
         create_tool_catalog_manager_entry(
             manager=dependencies.tool_catalog_manager,
             principal_provider=dependencies.principal_provider,
@@ -48,17 +54,51 @@ def build_configuration_manager_surface(
         if dependencies.tool_catalog_manager is not None
         else None
     )
+    administration = dependencies.administration
+    groups = (
+        (
+            ManagerModuleGroup(
+                key='administration',
+                title='Administración',
+                order=5,
+            ),
+        )
+        if administration is not None
+        else ()
+    )
+    modules = (
+        (
+            administration.profiles_module,
+            administration.navigation_module,
+        )
+        if administration is not None
+        else ()
+    )
+    entries = (administration.users_entry,) if administration is not None else ()
     return ManagerSurfaceDefinition(
         principal_provider=dependencies.principal_provider,
         groups=(
+            *groups,
             ManagerModuleGroup(
                 key='configuration',
                 title='Configuraciones',
                 order=10,
             ),
         ),
-        modules=(alarm_configuration.module,),
-        entries=(entry,) if entry is not None else (),
+        modules=(*modules, alarm_configuration.module),
+        entries=(*entries, *((tool_catalog_entry,) if tool_catalog_entry is not None else ())),
         route_prefix=MANAGER_ROUTE_PREFIX,
         web_modules=(create_bootstrap_web_module(),),
     )
+
+
+__all__ = [
+    'ALARM_CONFIGURATION_MANAGER_ACCESS_KEY',
+    'ALARM_CONFIGURATION_SOURCE_KEY',
+    'MANAGER_ROUTE_PREFIX',
+    'NAVIGATION_MANAGER_ACCESS_KEY',
+    'NAVIGATION_SOURCE_KEY',
+    'PROFILES_MANAGER_ACCESS_KEY',
+    'USERS_MANAGER_ACCESS_KEY',
+    'build_configuration_manager_surface',
+]
