@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-# Espejo pedagógico. El constructor conserva inmutables los requisitos originales y publica un lock de proyecto derivado.
 import argparse
 import hashlib
 import importlib.util
@@ -22,6 +21,8 @@ wheels = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(wheels)
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
+# El CLI de proyecto se distribuye como wheel interno para no copiar su implementación en cada Tool.
+PROJECT_TOOLING_ROOT = Path(__file__).resolve().parent / 'project-tooling'
 HOST_REQUIREMENTS = ('gunicorn==23.0.0', 'pyzipper==0.4.0')
 _REQUIREMENT = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_.-]*(?:\[[A-Za-z0-9_,.-]+\])?==[^\s;\\]+(?:\s*;\s*[^\\]+)?$')
 _HASH = re.compile(r'--hash=sha256:[a-f0-9]{64}')
@@ -119,6 +120,24 @@ def _write_starter_build_requirements(*, uv: str, staging: Path,
     return output
 
 
+# Runtime y tooling comparten la misma regla de portabilidad e integridad de wheels internos.
+def _portable_internal_record(*, uv: str, source: Path, target: Path) -> dict:
+    metadata = wheels._read_toml(source / 'pyproject.toml')['project']
+    name, version = metadata['name'], str(metadata['version'])
+    identity = canonicalize_name(name)
+    filename = wheels._build_internal(uv, source, target, name, version)
+    _, _, _, tags = parse_wheel_filename(filename)
+    if Tag('py3', 'none', 'any') not in tags:
+        raise AdaDistributionError(f'Internal wheel is not portable to the image: {filename}')
+    return {
+        'name': identity,
+        'version': version,
+        'filename': filename,
+        'sha256': _sha256(target / filename),
+        'source': source.relative_to(REPOSITORY_ROOT).as_posix(),
+    }
+
+
 def _build_internal(*, uv: str, project: Path, target: Path, staging: Path) -> list[dict]:
     lock_path = staging / 'pylock.runtime.toml'
     _run([
@@ -136,27 +155,23 @@ def _build_internal(*, uv: str, project: Path, target: Path, staging: Path) -> l
     seen = set()
     for entry in local:
         source = wheels._local_directory(entry, project, REPOSITORY_ROOT)
-        metadata = wheels._read_toml(source / 'pyproject.toml')['project']
-        name, version = metadata['name'], str(metadata['version'])
-        identity = canonicalize_name(name)
-        if identity in seen:
-            raise AdaDistributionError(f'Duplicate internal package in runtime lock: {identity}')
-        seen.add(identity)
-        filename = wheels._build_internal(uv, source, target, name, version)
-        _, _, _, tags = parse_wheel_filename(filename)
-        if Tag('py3', 'none', 'any') not in tags:
-            raise AdaDistributionError(f'Internal wheel is not portable to the image: {filename}')
-        records.append({
-            'name': identity,
-            'version': version,
-            'filename': filename,
-            'sha256': _sha256(target / filename),
-            'source': source.relative_to(REPOSITORY_ROOT).as_posix(),
-        })
+        record = _portable_internal_record(uv=uv, source=source, target=target)
+        if record['name'] in seen:
+            raise AdaDistributionError(
+                f'Duplicate internal package in runtime lock: {record["name"]}'
+            )
+        seen.add(record['name'])
+        records.append(record)
     return sorted(records, key=lambda item: item['name'])
 
 
-# Emite los tres locks originales y el nuevo lock editable del consumidor.
+# Este paquete no forma parte del runtime ADA: sólo viaja en el wheelhouse para operar el proyecto.
+def _build_project_tooling(*, uv: str, target: Path) -> dict:
+    if not (PROJECT_TOOLING_ROOT / 'pyproject.toml').is_file():
+        raise AdaDistributionError('ADA project tooling package is missing')
+    return _portable_internal_record(uv=uv, source=PROJECT_TOOLING_ROOT, target=target)
+
+
 def build_ada_distribution(*, application: Path, uv: str) -> dict:
     wheels._require_python()
     application = application.expanduser().resolve()
@@ -177,6 +192,10 @@ def build_ada_distribution(*, application: Path, uv: str) -> dict:
             build_requirements=wheels._build_requirements([application]),
         )
         records = _build_internal(uv=uv, project=project, target=target, staging=staging)
+        project_tooling = _build_project_tooling(uv=uv, target=target)
+        if any(record['name'] == project_tooling['name'] for record in records):
+            raise AdaDistributionError('ADA project tooling duplicates a runtime package identity')
+        records = sorted((*records, project_tooling), key=lambda item: item['name'])
         requirements = staging / 'requirements'
         requirements.mkdir()
         for source in (external, host, starter_build):

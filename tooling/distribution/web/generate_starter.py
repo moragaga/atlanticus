@@ -37,6 +37,11 @@ _EXCLUDED_PARTS = frozenset({
     'build',
     'dist',
 })
+_ADA_BASE_EXCLUDED_ROOTS = (
+    Path('docker'),
+    Path('src/application/modules'),
+    Path('src/application/pages'),
+)
 
 
 @dataclass(frozen=True)
@@ -47,15 +52,22 @@ class EnvironmentEntry:
     secret_reference: str | None
 
 
-def _copy_product_files(source: Path, destination: Path) -> None:
+def _copy_product_files(
+    source: Path,
+    destination: Path,
+    *,
+    excluded_roots: tuple[Path, ...] = (),
+) -> None:
     for path in sorted(source.rglob('*')):
+        relative = path.relative_to(source)
         if (
             not path.is_file()
-            or _EXCLUDED_PARTS & set(path.relative_to(source).parts)
+            or _EXCLUDED_PARTS & set(relative.parts)
             or path.suffix == '.pyc'
+            or any(relative == root or root in relative.parents for root in excluded_roots)
         ):
             continue
-        target = destination / path.relative_to(source)
+        target = destination / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(path, target)
         if path.suffix == '.sh':
@@ -169,7 +181,11 @@ def generate_starter(*, profile: str, destination: Path) -> Path:
             raise FileNotFoundError('ADA Generic environment contract is missing')
         entries = _environment_entries(canonical_env_detail)
     destination.mkdir(parents=True)
-    _copy_product_files(STARTER_ROOT / 'base', destination)
+    _copy_product_files(
+        STARTER_ROOT / 'base',
+        destination,
+        excluded_roots=_ADA_BASE_EXCLUDED_ROOTS if profile == 'ada' else (),
+    )
     if profile == 'ada':
         _copy_product_files(STARTER_ROOT / 'ada', destination)
         shutil.copyfile(canonical_env_detail, destination / '.env.detail')

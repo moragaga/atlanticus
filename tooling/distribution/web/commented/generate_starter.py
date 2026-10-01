@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-# Espejo pedagógico: mismo comportamiento productivo con contexto explicativo en español.
-
 import argparse
 import csv
 import hashlib
@@ -13,6 +11,7 @@ import stat
 from dataclasses import dataclass
 from pathlib import Path
 
+# El generador vive junto a los templates y resuelve siempre rutas desde el repositorio.
 WEB_ROOT = Path(__file__).resolve().parent
 REPOSITORY_ROOT = WEB_ROOT.parents[2]
 STARTER_ROOT = WEB_ROOT / 'starter'
@@ -39,6 +38,13 @@ _EXCLUDED_PARTS = frozenset({
     'build',
     'dist',
 })
+# ADA reutiliza la infraestructura mínima del template base, pero no hereda su demo ni su
+# implementación de páginas. El perfil ADA entrega sus propios puntos de extensión.
+_ADA_BASE_EXCLUDED_ROOTS = (
+    Path('docker'),
+    Path('src/application/modules'),
+    Path('src/application/pages'),
+)
 
 
 @dataclass(frozen=True)
@@ -49,15 +55,24 @@ class EnvironmentEntry:
     secret_reference: str | None
 
 
-def _copy_product_files(source: Path, destination: Path) -> None:
+def _copy_product_files(
+    source: Path,
+    destination: Path,
+    *,
+    excluded_roots: tuple[Path, ...] = (),
+) -> None:
+    # Se copian sólo archivos de producto. Los roots excluidos permiten componer perfiles sin
+    # arrastrar código de ejemplo que pertenezca a otro starter.
     for path in sorted(source.rglob('*')):
+        relative = path.relative_to(source)
         if (
             not path.is_file()
-            or _EXCLUDED_PARTS & set(path.relative_to(source).parts)
+            or _EXCLUDED_PARTS & set(relative.parts)
             or path.suffix == '.pyc'
+            or any(relative == root or root in relative.parents for root in excluded_roots)
         ):
             continue
-        target = destination / path.relative_to(source)
+        target = destination / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(path, target)
         if path.suffix == '.sh':
@@ -65,6 +80,8 @@ def _copy_product_files(source: Path, destination: Path) -> None:
 
 
 def _environment_entries(contract: Path) -> tuple[EnvironmentEntry, ...]:
+    # Cada variable distribuible debe estar precedida por una declaración explícita. Esto evita
+    # inferir secretos, defaults o responsabilidades desde el nombre de la variable.
     entries: list[EnvironmentEntry] = []
     names: set[str] = set()
     pending: tuple[str, str | None] | None = None
@@ -171,7 +188,13 @@ def generate_starter(*, profile: str, destination: Path) -> Path:
             raise FileNotFoundError('ADA Generic environment contract is missing')
         entries = _environment_entries(canonical_env_detail)
     destination.mkdir(parents=True)
-    _copy_product_files(STARTER_ROOT / 'base', destination)
+    # Generic conserva el template base completo. ADA toma sólo la parte realmente compartida y
+    # reemplaza páginas/módulos con sus puntos de extensión propios.
+    _copy_product_files(
+        STARTER_ROOT / 'base',
+        destination,
+        excluded_roots=_ADA_BASE_EXCLUDED_ROOTS if profile == 'ada' else (),
+    )
     if profile == 'ada':
         _copy_product_files(STARTER_ROOT / 'ada', destination)
         shutil.copyfile(canonical_env_detail, destination / '.env.detail')

@@ -56,3 +56,13 @@ def test_tooling_uses_automatic_provisioner_without_location_arguments(tmp_path,
 def test_tooling_refuses_to_run_without_project_sync(tmp_path, monkeypatch):
     tooling = _load_tool(monkeypatch, tmp_path, synchronized=False)
     assert tooling.main(['generate', '--user', 'master-service']) == 2
+
+
+def test_master_projection_tooling_has_portable_launchers() -> None:
+    root = Path(__file__).resolve().parents[1] / 'tooling'
+    shell = (root / 'master_projection.sh').read_text(encoding='utf-8')
+    windows = (root / 'master_projection.cmd').read_text(encoding='utf-8')
+    assert 'uv run --python 3.14.2' in shell
+    assert 'uv run --python 3.14.2' in windows
+    assert 'master_projection.py' in shell
+    assert 'master_projection.py' in windows

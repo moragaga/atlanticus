@@ -99,10 +99,20 @@ def test_builder_packages_only_internals_and_locks_external_install_at_image_bui
             'filename': filename, 'sha256': tool._sha256(wheel),
         }]
 
+    def project_tooling(*, uv, target):
+        filename = 'ada_project_tooling-0.1.0-py3-none-any.whl'
+        wheel = target / filename
+        wheel.write_bytes(b'fake-project-tooling')
+        return {
+            'name': 'ada-project-tooling', 'version': '0.1.0',
+            'filename': filename, 'sha256': tool._sha256(wheel),
+        }
+
     monkeypatch.setattr(tool, '_write_external_requirements', export)
     monkeypatch.setattr(tool, '_write_host_requirements', host)
     monkeypatch.setattr(tool, '_write_starter_build_requirements', build_requirements)
     monkeypatch.setattr(tool, '_build_internal', internals)
+    monkeypatch.setattr(tool, '_build_project_tooling', project_tooling)
     real_run = subprocess.run
 
     def git_revision(command, **kwargs):
@@ -113,8 +123,11 @@ def test_builder_packages_only_internals_and_locks_external_install_at_image_bui
     monkeypatch.setattr(tool.subprocess, 'run', git_revision)
     result = tool.build_ada_distribution(application=app, uv='uv')
     assert result['status'] == 'BUILT_UNQUALIFIED'
-    assert result['internal_wheels'] == 1
-    assert list((app / 'wheelhouse').glob('*.whl'))[0].name.startswith('ada_generic_application')
+    assert result['internal_wheels'] == 2
+    assert {path.name for path in (app / 'wheelhouse').glob('*.whl')} == {
+        'ada_generic_application-0.2.17-py3-none-any.whl',
+        'ada_project_tooling-0.1.0-py3-none-any.whl',
+    }
     assert not (app / 'wheelhouse/external-1.0.0-py3-none-any.whl').exists()
     assert 'external==1.0.0' in (app / 'requirements/external-runtime.txt').read_text()
     assert 'gunicorn==1.0.0' in (app / 'requirements/host-runtime.txt').read_text()
@@ -127,6 +140,9 @@ def test_builder_packages_only_internals_and_locks_external_install_at_image_bui
     ).read_bytes()
     manifest = json.loads((app / 'wheelhouse/manifest.json').read_text())
     assert manifest['strategy'] == 'internal-wheels-external-image-build'
+    assert {record['name'] for record in manifest['packages']} == {
+        'ada-generic-application', 'ada-project-tooling',
+    }
     assert manifest['requirements']['host-runtime.txt'] == tool._sha256(
         app / 'requirements/host-runtime.txt'
     )
@@ -156,6 +172,33 @@ def test_internal_wheels_must_be_pure_python_for_portable_image(tmp_path, monkey
     wheels._build_internal = lambda *args: 'ada_internal-1.0.0-cp314-cp314-macosx_14_0_arm64.whl'
     with pytest.raises(tool.AdaDistributionError, match='not portable'):
         tool._build_internal(uv='uv', project=source, target=target, staging=tmp_path)
+
+
+def test_project_tooling_is_built_as_a_portable_internal_wheel(tmp_path, monkeypatch):
+    tool = _load_tool(monkeypatch)
+    repo = tmp_path / 'repo'
+    source = repo / 'tooling/distribution/web/ada/project-tooling'
+    source.mkdir(parents=True)
+    (source / 'pyproject.toml').write_text(
+        '[project]\nname="ada-project-tooling"\nversion="0.1.0"\n', encoding='utf-8'
+    )
+    target = tmp_path / 'wheelhouse'
+    target.mkdir()
+    monkeypatch.setattr(tool, 'REPOSITORY_ROOT', repo)
+    monkeypatch.setattr(tool, 'PROJECT_TOOLING_ROOT', source)
+    tool.wheels._read_toml = lambda _path: {
+        'project': {'name': 'ada-project-tooling', 'version': '0.1.0'}
+    }
+
+    def build(_uv, _source, _target, _name, _version):
+        filename = 'ada_project_tooling-0.1.0-py3-none-any.whl'
+        (_target / filename).write_bytes(b'project-tooling')
+        return filename
+
+    tool.wheels._build_internal = build
+    record = tool._build_project_tooling(uv='uv', target=target)
+    assert record['name'] == 'ada-project-tooling'
+    assert record['source'] == 'tooling/distribution/web/ada/project-tooling'
 
 
 def test_delivery_productive_and_commented_source_are_equivalent():
