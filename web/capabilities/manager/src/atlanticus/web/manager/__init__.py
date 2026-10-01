@@ -1,6 +1,7 @@
 from atlanticus.web.manager.authorization import (
     DefaultManagerAuthorizationPolicy,
     ManagerAuthorizationPolicy,
+    manager_access_granted,
 )
 from atlanticus.web.manager.coordinator import ManagerProjectionCoordinator
 from atlanticus.web.manager.errors import (
@@ -101,6 +102,7 @@ __all__ = [
     'SourceReaderWorkflow',
     'SourceReadResult',
     'build_workspace_revision',
+    'manager_access_granted',
     'prepare_conflict_overwrite',
     'prepare_publication',
     'rebase_workspace_document',

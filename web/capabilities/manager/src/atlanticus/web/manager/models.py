@@ -22,6 +22,7 @@ class ManagerPrincipal:
     profile_keys: tuple[str, ...] = ()
     access_keys: tuple[str, ...] = ()
     is_local: bool = False
+    administrative_override: bool = False
 
     def __post_init__(self) -> None:
         if not self.subject_id.strip():

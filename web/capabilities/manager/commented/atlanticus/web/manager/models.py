@@ -16,6 +16,7 @@ _PROFILE_KEY_PATTERN = re.compile(r'^[a-z0-9][a-z0-9._-]*$')
 _ROUTE_PREFIX_PATTERN = re.compile(r'^/[a-z0-9][a-z0-9/_-]*$')
 
 
+# El principal mantiene permisos granulares y una señal explícita de administración total.
 @dataclass(frozen=True, slots=True)
 class ManagerPrincipal:
     subject_id: str
@@ -23,6 +24,7 @@ class ManagerPrincipal:
     profile_keys: tuple[str, ...] = ()
     access_keys: tuple[str, ...] = ()
     is_local: bool = False
+    administrative_override: bool = False
 
     def __post_init__(self) -> None:
         if not self.subject_id.strip():
