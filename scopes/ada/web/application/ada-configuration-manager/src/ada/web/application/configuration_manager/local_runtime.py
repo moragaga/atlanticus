@@ -14,7 +14,6 @@ from ada.web.application.configuration_manager.wiring import (
     ADA_ACCESS_SOURCE_KEY,
     KPI_DEFINITION_SOURCE_KEY,
     KPI_REGISTRY_SOURCE_KEY,
-    MANAGER_ACCESS_KEYS,
     NAVIGATION_SOURCE_KEY,
     TOOLS_SOURCE_KEY,
     ConfigurationManagerStores,
@@ -159,9 +158,11 @@ def create_local_configuration_manager_dependencies(
             subject_id='local',
             display_name='Administrador local',
             profile_keys=('local',),
-            access_keys=MANAGER_ACCESS_KEYS,
+            access_keys=(),
+            administrative_override=True,
             is_local=True,
         )
+
         def local_provider() -> ManagerPrincipal:
             return local_principal
 

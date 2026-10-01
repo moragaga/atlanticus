@@ -14,7 +14,6 @@ from ada.web.application.configuration_manager.local_runtime import (
     create_local_configuration_manager_stores,
 )
 from ada.web.application.configuration_manager.wiring import (
-    MANAGER_ACCESS_KEYS,
     NAVIGATION_SOURCE_KEY,
     compose_configuration_manager_dependencies,
 )
@@ -237,7 +236,8 @@ def test_injected_profile_and_root_consume_same_live_projection(tmp_path, monkey
             subject_id='trusted-root',
             display_name='Administrador root',
             profile_keys=('root',),
-            access_keys=MANAGER_ACCESS_KEYS,
+            access_keys=(),
+            administrative_override=True,
         ),
     )
     basic_runtime = create_operational_application_runtime(

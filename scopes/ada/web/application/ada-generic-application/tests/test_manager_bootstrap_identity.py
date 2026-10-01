@@ -2,26 +2,18 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
-from datetime import UTC, datetime
 
 import pytest
 
-from ada.web.access.configuration import AdaAccessConfiguration
-from ada.web.access.models import ProfileAccessGrant
 from ada.web.application.configuration_manager.local_runtime import (
     create_local_configuration_manager_stores,
 )
-from ada.web.application.configuration_manager.wiring import ADA_ACCESS_SOURCE_KEY
 from ada.web.application.generic import bootstrap
 from ada.web.application.generic.settings import AdaGenericSettings
-from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
 from atlanticus.web.configuration import WebEnvironment
 from atlanticus.web.identity.local import LocalIdentityProvider
 from atlanticus.web.identity.models import AuthenticatedIdentity
 from atlanticus.web.identity.provider import IdentityProvider
-from atlanticus.web.profiles.models import ProfileCatalog
-from atlanticus.web.projection.models import ProjectionRecord
-from atlanticus.web.source.models import SourceReleaseId
 from atlanticus.web.users.identity import build_user_key
 from atlanticus.web.users.models import UserRecord
 from atlanticus.web.users.runtime import USERS_RUNTIME_SERVICE_KEY, UsersRuntime
@@ -37,17 +29,6 @@ def _settings(tmp_path, *, environment='local') -> AdaGenericSettings:
             'ADA_TOOL_PROJECTION_PROVIDER': 'local',
             'ADA_TOOL_LOCAL_BASE_ROOT': str(tmp_path / 'tool'),
         }
-    )
-
-
-def _record(key, payload):
-    timestamp = datetime(2026, 9, 24, tzinfo=UTC)
-    return ProjectionRecord(
-        source_key=key,
-        source_release_id=SourceReleaseId('identity-test'),
-        source_published_at_utc=timestamp,
-        projected_at_utc=timestamp,
-        payload=payload,
     )
 
 
@@ -118,22 +99,10 @@ def test_known_local_user_is_authorized_from_real_bootstrap(tmp_path, monkeypatc
     }
 
 
-def test_shared_managed_store_loads_profile_permissions(tmp_path, monkeypatch):
+def test_shared_managed_root_gets_manager_administration_without_ada_access_projection(tmp_path, monkeypatch):
     monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'local')
     monkeypatch.chdir(tmp_path)
     stores = create_local_configuration_manager_stores(source_root=tmp_path / 'sources')
-    stores.profiles.replace_active(_record(PROFILES_CONFIGURATION_SOURCE_KEY, ProfileCatalog()))
-    stores.access.replace_active(
-        _record(
-            ADA_ACCESS_SOURCE_KEY,
-            AdaAccessConfiguration(
-                access_keys=('users.manage', 'tools.manage'),
-                profile_access=(
-                    ProfileAccessGrant(profile_key='basic', access_keys=('tools.manage',)),
-                ),
-            ),
-        )
-    )
     record = UserRecord(
         user_id=build_user_key(issuer='test', subject_id='managed'),
         issuer='test',
@@ -141,7 +110,7 @@ def test_shared_managed_store_loads_profile_permissions(tmp_path, monkeypatch):
         display_name='Managed test user',
         email=None,
         enabled=True,
-        profile_key='basic',
+        profile_key='root',
     )
     shared = SharedPromotedStore((record,))
     stores = replace(stores, users_promoted=shared)

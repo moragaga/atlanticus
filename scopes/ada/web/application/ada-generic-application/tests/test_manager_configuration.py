@@ -2,14 +2,10 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
-from datetime import UTC, datetime
 
 import pytest
 from flask import Flask
 
-from ada.web.access.configuration import AdaAccessConfiguration
-from ada.web.access.configuration.errors import AdaAccessConfigurationProjectionError
-from ada.web.access.models import ProfileAccessGrant
 from ada.web.application.configuration_manager.composition import (
     build_configuration_manager_surface,
 )
@@ -18,11 +14,7 @@ from ada.web.application.configuration_manager.local_runtime import (
     InProcessUsersAdministrationStore,
     InProcessUsersRegistryStore,
 )
-from ada.web.application.configuration_manager.wiring import (
-    ADA_ACCESS_SOURCE_KEY,
-    MANAGER_ACCESS_KEYS,
-    ConfigurationManagerStores,
-)
+from ada.web.application.configuration_manager.wiring import ConfigurationManagerStores
 from ada.web.application.generic import bootstrap
 from ada.web.application.generic.manager_principal import (
     ManagerPrincipalBinding,
@@ -31,8 +23,6 @@ from ada.web.application.generic.manager_principal import (
 from ada.web.application.generic.settings import AdaGenericSettings
 from ada.web.kpis.definition.coverage import KpiDefinitionCatalog
 from ada.web.kpis.registry.models import KpiRegistry
-from atlanticus.connectivity.cosmos import CosmosOperationError
-from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
 from atlanticus.web.configuration import WebEnvironment
 from atlanticus.web.identity.access import (
     ACCESS_RUNTIME_SERVICE_KEY,
@@ -43,12 +33,7 @@ from atlanticus.web.identity.access import (
 )
 from atlanticus.web.identity.models import AuthenticatedIdentity
 from atlanticus.web.manager import ManagerSurface
-from atlanticus.web.profiles.configuration.errors import ProfilesConfigurationProjectionError
-from atlanticus.web.profiles.models import ProfileCatalog
-from atlanticus.web.projection.errors import ProjectionStoreError
-from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
-from atlanticus.web.source.models import SourceKey, SourceReleaseId
 from atlanticus.web.users.models import EffectiveUser
 from atlanticus.web.users.runtime import UsersRuntime
 
@@ -58,17 +43,6 @@ def _access(subject: str, *, issuer: str = 'atlanticus-local', provider: str = '
         load_id='load-1',
         identity=AuthenticatedIdentity(provider_key=provider, issuer=issuer, subject_id=subject),
         decision=AccessDecision(status=AccessStatus.READY),
-    )
-
-
-def _record(key: SourceKey, payload):
-    instant = datetime(2026, 9, 24, tzinfo=UTC)
-    return ProjectionRecord(
-        source_key=key,
-        source_release_id=SourceReleaseId('test-release'),
-        source_published_at_utc=instant,
-        projected_at_utc=instant,
-        payload=payload,
     )
 
 
@@ -93,7 +67,9 @@ def _stores(tmp_path):
 
 
 @pytest.mark.parametrize('subject', ['local:jane-doe', 'local:john-doe'])
-def test_known_local_users_receive_explicit_manager_permissions(tmp_path, monkeypatch, subject):
+def test_known_local_users_receive_manager_administrative_override(
+    tmp_path, monkeypatch, subject
+):
     monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'local')
     app = Flask(__name__)
     app.secret_key = 'test-only'
@@ -112,7 +88,8 @@ def test_known_local_users_receive_explicit_manager_permissions(tmp_path, monkey
 
     assert principal.is_local is True
     assert principal.profile_keys == ('local',)
-    assert set(principal.access_keys) == set(MANAGER_ACCESS_KEYS)
+    assert principal.access_keys == ()
+    assert principal.administrative_override is True
     assert {item.key for item in visible} == {
         'users',
         'profiles',
@@ -148,6 +125,7 @@ def test_untrusted_identity_does_not_inherit_local_administrator(
         access_runtime.store(_access(subject, issuer=issuer, provider=provider))
         principal = dependencies.principal_provider()
     assert principal.access_keys == ()
+    assert principal.administrative_override is False
     assert principal.is_local is False
 
 
@@ -165,29 +143,19 @@ def test_production_does_not_enable_local_users(tmp_path, monkeypatch):
         access_runtime.store(_access('local:jane-doe'))
         principal = dependencies.principal_provider()
     assert principal.access_keys == ()
+    assert principal.administrative_override is False
 
 
-def test_managed_user_consumes_active_access_and_profiles_projections(tmp_path, monkeypatch):
+def test_managed_root_receives_manager_administration_without_ada_access_projection(
+    tmp_path, monkeypatch
+):
     monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'local')
     app = Flask(__name__)
     app.secret_key = 'test-only'
-    stores = _stores(tmp_path)
-    stores.profiles.replace_active(_record(PROFILES_CONFIGURATION_SOURCE_KEY, ProfileCatalog()))
-    stores.access.replace_active(
-        _record(
-            ADA_ACCESS_SOURCE_KEY,
-            AdaAccessConfiguration(
-                access_keys=MANAGER_ACCESS_KEYS,
-                profile_access=(
-                    ProfileAccessGrant(profile_key='basic', access_keys=('tools.manage',)),
-                ),
-            ),
-        )
-    )
     access_runtime = AccessRuntime()
     users_runtime = UsersRuntime()
     dependencies = compose_integrated_manager_dependencies(
-        stores=stores, access_runtime=access_runtime, users_runtime=users_runtime
+        stores=_stores(tmp_path), access_runtime=access_runtime, users_runtime=users_runtime
     )
     with app.test_request_context('/manager'):
         access_runtime.store(_access('managed-1', issuer='test-entra', provider='entra'))
@@ -196,21 +164,33 @@ def test_managed_user_consumes_active_access_and_profiles_projections(tmp_path, 
             user=EffectiveUser(
                 user_id='user-1',
                 subject_id='managed-1',
-                display_name='Managed user',
+                display_name='Managed root',
                 email=None,
                 enabled=True,
-                avatar_text='MU',
-                profile_key='basic',
+                avatar_text='MR',
+                profile_key='root',
             ),
         )
         principal = dependencies.principal_provider()
         surface = ManagerSurface(build_configuration_manager_surface(dependencies))
         visible = surface.registry.visible_items(principal, surface.authorization)
-    assert principal.access_keys == ('tools.manage',)
-    assert {item.key for item in visible} == {'tools'}
+
+    assert principal.access_keys == ()
+    assert principal.administrative_override is True
+    assert {item.key for item in visible} == {
+        'users',
+        'profiles',
+        'access',
+        'navigation',
+        'tools',
+        'kpis',
+        'kpi-definitions',
+    }
 
 
-def test_missing_projection_denies_managed_permissions(tmp_path, monkeypatch):
+def test_managed_basic_has_no_manager_permissions_without_projection_dependency(
+    tmp_path, monkeypatch
+):
     monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'local')
     app = Flask(__name__)
     app.secret_key = 'test-only'
@@ -228,15 +208,20 @@ def test_missing_projection_denies_managed_permissions(tmp_path, monkeypatch):
             user=EffectiveUser(
                 user_id='user-1',
                 subject_id='managed-1',
-                display_name='Managed user',
+                display_name='Managed basic',
                 email=None,
                 enabled=True,
-                avatar_text='MU',
+                avatar_text='MB',
                 profile_key='basic',
             ),
         )
         principal = dependencies.principal_provider()
+        surface = ManagerSurface(build_configuration_manager_surface(dependencies))
+        visible = surface.registry.visible_items(principal, surface.authorization)
+
     assert principal.access_keys == ()
+    assert principal.administrative_override is False
+    assert visible == ()
 
 
 def test_invalid_shared_stores_fail_before_manager_composition(tmp_path):
@@ -255,8 +240,6 @@ def test_binding_does_not_override_disabled_local_snapshot(monkeypatch):
     binding = ManagerPrincipalBinding(
         access_runtime=access_runtime,
         users_runtime=users_runtime,
-        configuration_provider=lambda: None,
-        profiles_provider=lambda: None,
         trusted_local_users=True,
     )
     with app.test_request_context('/manager'):
@@ -326,28 +309,23 @@ def test_explicit_production_environment_disables_local_privileges(tmp_path, mon
         access_runtime.store(_access('local:jane-doe'))
         principal = dependencies.principal_provider()
     assert principal.access_keys == ()
+    assert principal.administrative_override is False
 
 
-@pytest.mark.parametrize(
-    ('store_name', 'projection_error'),
-    [
-        ('access', AdaAccessConfigurationProjectionError),
-        ('profiles', ProfilesConfigurationProjectionError),
-    ],
-)
-def test_injected_cosmos_failures_are_normalized_for_managed_user(
-    tmp_path, monkeypatch, store_name, projection_error
+def test_access_and_profiles_projection_failures_do_not_affect_manager_principal(
+    tmp_path, monkeypatch
 ):
     monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'local')
 
-    class UnavailableProjection(InProcessProjectionStore):
+    class ForbiddenProjectionRead(InProcessProjectionStore):
         def get_active(self, _source_key):
-            try:
-                raise CosmosOperationError('private-connection-detail')
-            except CosmosOperationError as error:
-                raise projection_error('Projection is unavailable') from error
+            raise AssertionError('Manager principal must not read ADA Access or Profiles projections')
 
-    stores = replace(_stores(tmp_path), **{store_name: UnavailableProjection()})
+    stores = replace(
+        _stores(tmp_path),
+        access=ForbiddenProjectionRead(),
+        profiles=ForbiddenProjectionRead(),
+    )
     app = Flask(__name__)
     app.secret_key = 'test-only'
     access_runtime = AccessRuntime()
@@ -364,13 +342,14 @@ def test_injected_cosmos_failures_are_normalized_for_managed_user(
             user=EffectiveUser(
                 user_id='user-1',
                 subject_id='managed-1',
-                display_name='Managed user',
+                display_name='Managed root',
                 email=None,
                 enabled=True,
-                avatar_text='MU',
-                profile_key='basic',
+                avatar_text='MR',
+                profile_key='root',
             ),
         )
-        with pytest.raises(ProjectionStoreError, match='provider is unavailable') as caught:
-            dependencies.principal_provider()
-    assert 'private-connection-detail' not in str(caught.value)
+        principal = dependencies.principal_provider()
+
+    assert principal.access_keys == ()
+    assert principal.administrative_override is True

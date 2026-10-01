@@ -17,7 +17,6 @@ from ada.web.application.configuration_manager.wiring import (
     ADA_ACCESS_SOURCE_KEY,
     KPI_DEFINITION_SOURCE_KEY,
     KPI_REGISTRY_SOURCE_KEY,
-    MANAGER_ACCESS_KEYS,
     NAVIGATION_SOURCE_KEY,
     TOOLS_SOURCE_KEY,
     ConfigurationManagerStores,
@@ -65,15 +64,12 @@ PayloadT = TypeVar('PayloadT')
 
 # Contrato de estado de la frontera.
 class InProcessProjectionStore(ProjectionStore[PayloadT], Generic[PayloadT]):
-    # Verifica invariantes y deriva datos de la entrada explícita.
     def __init__(self) -> None:
         self._active: dict[SourceKey, ProjectionRecord[PayloadT]] = {}
 
-    # Verifica invariantes y deriva datos de la entrada explícita.
     def get_active(self, source_key: SourceKey) -> ProjectionRecord[PayloadT] | None:
         return self._active.get(source_key)
 
-    # Verifica invariantes y deriva datos de la entrada explícita.
     def replace_active(self, projection: ProjectionRecord[PayloadT]) -> ProjectionRecord[PayloadT]:
         self._active[projection.source_key] = projection
         return projection
@@ -81,16 +77,13 @@ class InProcessProjectionStore(ProjectionStore[PayloadT], Generic[PayloadT]):
 
 # Contrato de estado de la frontera.
 class InProcessUsersRegistryStore(UsersRegistryStore):
-    # Verifica invariantes y deriva datos de la entrada explícita.
     def __init__(self) -> None:
         self._snapshot = UsersRegistrySnapshot()
         self._revision = 0
 
-    # Verifica invariantes y deriva datos de la entrada explícita.
     def load(self) -> UsersRegistrySnapshot:
         return self._snapshot
 
-    # Verifica invariantes y deriva datos de la entrada explícita.
     def replace(
         self, users: tuple[UserRecord, ...], *, expected_version: str | None
     ) -> UsersRegistrySnapshot:
@@ -103,26 +96,21 @@ class InProcessUsersRegistryStore(UsersRegistryStore):
 
 # Contrato de estado de la frontera.
 class InProcessUsersAdministrationStore(UsersAdministrationStore):
-    # Verifica invariantes y deriva datos de la entrada explícita.
     def __init__(self) -> None:
         self._users: dict[str, UserRecord] = {}
 
-    # Verifica invariantes y deriva datos de la entrada explícita.
     def get(self, user_id: str) -> UserRecord | None:
         return self._users.get(user_id)
 
-    # Verifica invariantes y deriva datos de la entrada explícita.
     def list_users(self) -> tuple[UserRecord, ...]:
         return tuple(sorted(self._users.values(), key=lambda user: user.user_id))
 
-    # Verifica invariantes y deriva datos de la entrada explícita.
     def create(self, user: UserRecord) -> UserRecord:
         if user.user_id in self._users:
             raise UserAlreadyPromotedError('User is already promoted')
         self._users[user.user_id] = user
         return user
 
-    # Verifica invariantes y deriva datos de la entrada explícita.
     def replace(self, user: UserRecord) -> UserRecord:
         if user.user_id not in self._users:
             raise ValueError('Promoted user does not exist')
@@ -130,7 +118,7 @@ class InProcessUsersAdministrationStore(UsersAdministrationStore):
         return user
 
 
-# Composición o lectura independiente del proveedor físico.
+# Composición local de stores para desarrollo y pruebas.
 def create_local_configuration_manager_stores(
     *, source_root: Path | None = None
 ) -> ConfigurationManagerStores:
@@ -166,7 +154,7 @@ def create_local_configuration_manager_stores(
     return stores
 
 
-# Composición o lectura independiente del proveedor físico.
+# Compone un principal local con override administrativo sin enumerar capacidades.
 def create_local_configuration_manager_dependencies(
     *,
     source_root: Path | None = None,
@@ -177,12 +165,12 @@ def create_local_configuration_manager_dependencies(
         local_principal = ManagerPrincipal(
             subject_id='local',
             display_name='Administrador local',
-            # La factory local certifica el perfil antes de delegar a Navigation.
             profile_keys=('local',),
-            access_keys=MANAGER_ACCESS_KEYS,
+            access_keys=(),
+            administrative_override=True,
             is_local=True,
         )
-        # Conserva el principal local configurado sin asignar una lambda.
+
         def local_provider() -> ManagerPrincipal:
             return local_principal
 
@@ -197,7 +185,7 @@ def create_local_configuration_manager_dependencies(
     )
 
 
-# Composición o lectura independiente del proveedor físico.
+# Expone la aplicación local del Configuration Manager.
 def create_local_configuration_manager_application(
     *, source_root: Path | None = None
 ) -> WebApplicationRuntime:
@@ -206,7 +194,7 @@ def create_local_configuration_manager_application(
     )
 
 
-# Composición o lectura independiente del proveedor físico.
+# Resuelve la raíz local de sources.
 def _source_root() -> Path:
     configured = os.getenv('ADA_CONFIGURATION_MANAGER_SOURCE_ROOT')
     if configured is not None and configured.strip():

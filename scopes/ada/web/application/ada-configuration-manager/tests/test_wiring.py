@@ -11,7 +11,6 @@ from ada.web.application.configuration_manager.local_runtime import (
     create_local_configuration_manager_stores,
 )
 from ada.web.application.configuration_manager.wiring import (
-    MANAGER_ACCESS_KEYS,
     NAVIGATION_SOURCE_KEY,
     TOOLS_SOURCE_KEY,
     read_manager_projection,
@@ -36,7 +35,12 @@ def test_local_dependencies_use_one_injected_principal_for_manager(tmp_path, mon
     surface = ManagerSurface(build_configuration_manager_surface(dependencies))
     assert surface.registry.visible_items(provider(), surface.authorization) == ()
 
-    current = ManagerPrincipal('test-user', 'Test user', access_keys=MANAGER_ACCESS_KEYS)
+    current = ManagerPrincipal(
+        'test-user',
+        'Test user',
+        access_keys=(),
+        administrative_override=True,
+    )
     visible = surface.registry.visible_items(provider(), surface.authorization)
     assert {item.key for item in visible} == {
         'users',

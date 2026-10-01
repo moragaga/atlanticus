@@ -1,11 +1,3 @@
-from ada.web.application.configuration_manager.access import ACCESS_MANAGER_ACCESS_KEY
-from ada.web.application.configuration_manager.composition import (
-    KPI_MANAGER_ACCESS_KEY,
-    NAVIGATION_MANAGER_ACCESS_KEY,
-    PROFILES_MANAGER_ACCESS_KEY,
-    TOOLS_MANAGER_ACCESS_KEY,
-    USERS_MANAGER_ACCESS_KEY,
-)
 from ada.web.application.configuration_manager.local_runtime import (
     ADA_ACCESS_SOURCE_KEY,
     KPI_DEFINITION_SOURCE_KEY,
@@ -13,9 +5,6 @@ from ada.web.application.configuration_manager.local_runtime import (
     NAVIGATION_SOURCE_KEY,
     TOOLS_SOURCE_KEY,
     create_local_configuration_manager_dependencies,
-)
-from ada.web.application.configuration_manager.operational import (
-    OPERATIONAL_MANAGER_ACCESS_KEY,
 )
 from atlanticus.web.compositions.profiles_manager import (
     PROFILES_MANAGER_PROJECTION_SERVICE,
@@ -62,18 +51,11 @@ def test_local_runtime_composes_configuration_sources(tmp_path) -> None:
     assert services.contains(USERS_ADMINISTRATION_SERVICE)
 
 
-def test_local_runtime_grants_explicit_configuration_capabilities(tmp_path) -> None:
+def test_local_runtime_uses_administrative_override_without_access_keys(tmp_path) -> None:
     dependencies = create_local_configuration_manager_dependencies(source_root=tmp_path)
     principal = dependencies.principal_provider()
 
     assert principal.is_local is True
     assert principal.profile_keys == ('local',)
-    assert principal.access_keys == (
-        USERS_MANAGER_ACCESS_KEY,
-        OPERATIONAL_MANAGER_ACCESS_KEY,
-        PROFILES_MANAGER_ACCESS_KEY,
-        ACCESS_MANAGER_ACCESS_KEY,
-        NAVIGATION_MANAGER_ACCESS_KEY,
-        TOOLS_MANAGER_ACCESS_KEY,
-        KPI_MANAGER_ACCESS_KEY,
-    )
+    assert principal.access_keys == ()
+    assert principal.administrative_override is True

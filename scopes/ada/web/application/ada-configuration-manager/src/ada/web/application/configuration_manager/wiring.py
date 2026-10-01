@@ -10,16 +10,11 @@ from ada.web.access.configuration import (
     create_ada_access_projection_service,
 )
 from ada.web.access.configuration.errors import AdaAccessConfigurationProjectionError
-from ada.web.application.configuration_manager.access import ACCESS_MANAGER_ACCESS_KEY
 from ada.web.application.configuration_manager.composition import (
-    KPI_MANAGER_ACCESS_KEY,
-    NAVIGATION_MANAGER_ACCESS_KEY,
     PROFILES_MANAGER_ACCESS_KEY,
-    TOOLS_MANAGER_ACCESS_KEY,
     USERS_MANAGER_ACCESS_KEY,
 )
 from ada.web.application.configuration_manager.dependencies import ConfigurationManagerDependencies
-from ada.web.application.configuration_manager.operational import OPERATIONAL_MANAGER_ACCESS_KEY
 from ada.web.application.configuration_manager.operational_catalog_workflows import (
     compose_operational_catalog_manager_contracts,
 )
@@ -78,16 +73,6 @@ KPI_DEFINITION_SOURCE_KEY = SourceKey('kpi-definitions')
 ADA_ACCESS_SOURCE_KEY = SourceKey('ada-access')
 
 PayloadT = TypeVar('PayloadT')
-
-MANAGER_ACCESS_KEYS = (
-    USERS_MANAGER_ACCESS_KEY,
-    OPERATIONAL_MANAGER_ACCESS_KEY,
-    PROFILES_MANAGER_ACCESS_KEY,
-    ACCESS_MANAGER_ACCESS_KEY,
-    NAVIGATION_MANAGER_ACCESS_KEY,
-    TOOLS_MANAGER_ACCESS_KEY,
-    KPI_MANAGER_ACCESS_KEY,
-)
 
 
 @dataclass(frozen=True, slots=True)
