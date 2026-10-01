@@ -56,6 +56,7 @@ from atlanticus.web.manager import (
     ManagerModuleGroup,
     ManagerPrincipal,
     ManagerSurfaceDefinition,
+    manager_access_granted,
 )
 from atlanticus.web.manager.web.ids import (
     workflow_action_id,
@@ -419,7 +420,7 @@ def _register_source_workflow(
 
 
 def _has_access(principal: ManagerPrincipal, access_key: str) -> bool:
-    return access_key in principal.access_keys
+    return manager_access_granted(principal, access_key)
 
 
 def _kpi_context(

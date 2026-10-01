@@ -59,6 +59,7 @@ from atlanticus.web.manager import (
     ManagerModuleGroup,
     ManagerPrincipal,
     ManagerSurfaceDefinition,
+    manager_access_granted,
 )
 from atlanticus.web.manager.web.ids import (
     workflow_action_id,
@@ -430,7 +431,7 @@ def _register_source_workflow(
 
 # Expone o ejecuta la responsabilidad `_has_access` sin cambiar contratos externos.
 def _has_access(principal: ManagerPrincipal, access_key: str) -> bool:
-    return access_key in principal.access_keys
+    return manager_access_granted(principal, access_key)
 
 
 # Expone o ejecuta la responsabilidad `_kpi_context` sin cambiar contratos externos.

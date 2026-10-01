@@ -26,6 +26,7 @@ from atlanticus.web.manager import (
     SourcePublicationResult,
     SourceReadResult,
     build_workspace_revision,
+    manager_access_granted,
 )
 from atlanticus.web.manager.web.ids import (
     workflow_action_id,
@@ -208,7 +209,9 @@ def create_access_manager_module(
         saved_draft_store_id=workflow_saved_draft_id('access'),
         draft_save_action_id=workflow_action_id('access', 'save-draft'),
         editor_revision_store_id=workflow_editor_revision_id('access'),
-        can_manage=lambda: ACCESS_MANAGER_ACCESS_KEY in principal_provider().access_keys,
+        can_manage=lambda: manager_access_granted(
+            principal_provider(), ACCESS_MANAGER_ACCESS_KEY
+        ),
         source_name=source_name,
         projection_name=projection_name,
     )

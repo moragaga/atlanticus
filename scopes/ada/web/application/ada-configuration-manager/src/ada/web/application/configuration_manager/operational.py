@@ -26,7 +26,12 @@ from ada.web.application.configuration_manager.workspace import (
 )
 from ada.web.operational.identification import CATALOG_SOURCE_KEY, OperationalIdentificationService
 from atlanticus.web.assets import AssetLayer
-from atlanticus.web.manager import ManagerCompanionView, ManagerModule, ManagerPrincipal
+from atlanticus.web.manager import (
+    ManagerCompanionView,
+    ManagerModule,
+    ManagerPrincipal,
+    manager_access_granted,
+)
 from atlanticus.web.modules import WebModule
 from atlanticus.web.users.models import UserRecord
 
@@ -46,7 +51,7 @@ class OperationalAssignmentContext:
     principal: Callable[[], ManagerPrincipal]
 
     def can_manage(self) -> bool:
-        return OPERATIONAL_MANAGER_ACCESS_KEY in self.principal().access_keys
+        return manager_access_granted(self.principal(), OPERATIONAL_MANAGER_ACCESS_KEY)
 
 
 @dataclass(frozen=True, slots=True)
