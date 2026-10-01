@@ -57,10 +57,6 @@ class JobDefinition:
             raise RuntimeContractError(
                 'shutdown_grace_seconds must be lower than execution_timeout_seconds'
             )
-        if self.iteration_timeout_seconds > self.safe_execution_seconds:
-            raise RuntimeContractError(
-                'iteration_timeout_seconds must not exceed the safe execution window'
-            )
         if lease_renew_seconds >= self.lease_timeout_seconds:
             raise RuntimeContractError(
                 'lease_renew_seconds must be lower than lease_timeout_seconds'

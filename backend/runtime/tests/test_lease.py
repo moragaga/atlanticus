@@ -189,6 +189,33 @@ def test_lease_renewal_extends_expiration_without_changing_owner(tmp_path) -> No
     assert lease.release()
 
 
+def test_release_cleans_up_without_completing_after_authority_deadline(tmp_path) -> None:
+    now = [datetime(2026, 10, 1, 12, 0, tzinfo=UTC)]
+    scheduled_at = now[0]
+    authority_deadline = scheduled_at + timedelta(seconds=10)
+    lease = ExecutionLease(
+        volume_path=tmp_path,
+        application='ada',
+        service_name='dispatch',
+        job_key='dispatch-materialization',
+        module_name='ada.processes.dispatch',
+        run_id='run-1',
+        lease_timeout_seconds=30,
+        renewal_seconds=10,
+        wait_seconds=0,
+        scheduled_at_utc=scheduled_at,
+        authority_deadline_utc=authority_deadline,
+        wall_clock=lambda: now[0],
+    )
+    lease.acquire()
+
+    now[0] = authority_deadline
+
+    assert lease.release(completed=True) is True
+    authority = json.loads(lease.authority_path.read_text(encoding='utf-8'))
+    assert authority['last_completed_scheduled_at_utc'] is None
+
+
 @pytest.mark.parametrize('job_key', ['job/key', 'job key', ' job', 'job '])
 def test_lease_rejects_job_keys_instead_of_sanitizing_them(tmp_path, job_key) -> None:
     with pytest.raises(ValueError):

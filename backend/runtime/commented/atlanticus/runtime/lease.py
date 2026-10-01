@@ -298,7 +298,13 @@ class ExecutionLease:
                 self._acquired = False
                 self._confirmed_expires_at_utc = None
                 return False
-            if completed and self._scheduled_at_utc is not None:
+            # Limpiar el payload propio sigue siendo seguro después del deadline, pero un slot
+            # ya sin autoridad no puede quedar registrado como completado.
+            authority_current = not self._is_expired(existing or {}) and not (
+                self._authority_deadline_utc is not None
+                and self._now() >= self._authority_deadline_utc
+            )
+            if completed and authority_current and self._scheduled_at_utc is not None:
                 state = self._authority_store.read()
                 self._authority_store.mark_completed(
                     state,

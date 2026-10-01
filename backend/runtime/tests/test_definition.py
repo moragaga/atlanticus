@@ -19,7 +19,6 @@ def test_job_definition_exposes_safe_execution_budget() -> None:
 @pytest.mark.parametrize(
     ('field', 'value'),
     [
-        ('iteration_timeout_seconds', 331),
         ('shutdown_grace_seconds', 330),
         ('lease_renew_seconds', 350),
     ],
@@ -103,12 +102,14 @@ def test_job_definition_rejects_invalid_direct_types(field, value) -> None:
         JobDefinition(**values)
 
 
-def test_iteration_timeout_must_fit_inside_safe_execution_window() -> None:
-    with pytest.raises(RuntimeContractError, match='safe execution window'):
-        JobDefinition(
-            module_name='job',
-            service_name='job-service',
-            iteration_timeout_seconds=316,
-            execution_timeout_seconds=330,
-            shutdown_grace_seconds=15,
-        )
+def test_iteration_timeout_is_capped_at_runtime_instead_of_reserved_up_front() -> None:
+    definition = JobDefinition(
+        module_name='job',
+        service_name='job-service',
+        iteration_timeout_seconds=600,
+        execution_timeout_seconds=330,
+        shutdown_grace_seconds=15,
+    )
+
+    assert definition.iteration_timeout_seconds == 600
+    assert definition.safe_execution_seconds == 315

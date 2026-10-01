@@ -61,12 +61,8 @@ class JobDefinition:
             raise RuntimeContractError(
                 'shutdown_grace_seconds must be lower than execution_timeout_seconds'
             )
-        # La iteración debe caber antes de la reserva de gracia; de otro modo el contrato
-        # permitiría consumir el tiempo que necesitamos para un cierre cooperativo.
-        if self.iteration_timeout_seconds > self.safe_execution_seconds:
-            raise RuntimeContractError(
-                'iteration_timeout_seconds must not exceed the safe execution window'
-            )
+        # El timeout limita una iteración ya iniciada. Su deadline efectivo siempre queda
+        # acotado por safe_deadline, por lo que no necesita caber completo dentro de la ventana.
         if lease_renew_seconds >= self.lease_timeout_seconds:
             raise RuntimeContractError(
                 'lease_renew_seconds must be lower than lease_timeout_seconds'

@@ -50,13 +50,15 @@ def _day_directory(tmp_path):
     return tmp_path / 'ada' / 'logs' / 'dispatch-ingestion-job' / f'day={day}'
 
 
-def test_adaptive_lease_wait_uses_safe_remaining_budget(tmp_path) -> None:
+def test_adaptive_lease_wait_uses_lease_recovery_budget(tmp_path) -> None:
     definition = JobDefinition(
         module_name='job',
         service_name='job-service',
         execution_timeout_seconds=60,
         shutdown_grace_seconds=10,
         iteration_timeout_seconds=20,
+        lease_timeout_seconds=20,
+        lease_poll_seconds=1,
         lease_wait_seconds=None,
     )
     configuration = RuntimeConfiguration.from_sources(environ=_environment(tmp_path))
@@ -68,7 +70,7 @@ def test_adaptive_lease_wait_uses_safe_remaining_budget(tmp_path) -> None:
         clock=lambda: 100.0,
     )
 
-    assert _effective_lease_wait_seconds(definition, context) == 30
+    assert _effective_lease_wait_seconds(definition, context) == 21
 
 
 def test_explicit_lease_wait_is_capped_by_safe_remaining_budget(tmp_path) -> None:
@@ -89,7 +91,7 @@ def test_explicit_lease_wait_is_capped_by_safe_remaining_budget(tmp_path) -> Non
         clock=lambda: 100.0,
     )
 
-    assert _effective_lease_wait_seconds(definition, context) == 30
+    assert _effective_lease_wait_seconds(definition, context) == 50
 
 
 def test_lease_wait_consumes_execution_budget(tmp_path, monkeypatch) -> None:
@@ -112,6 +114,7 @@ def test_lease_wait_consumes_execution_budget(tmp_path, monkeypatch) -> None:
 
     monkeypatch.setattr(runner_module.time, 'monotonic', fake_monotonic)
     monkeypatch.setattr(ExecutionLease, 'acquire', fake_acquire)
+    monkeypatch.setattr(ExecutionLease, 'assert_current', lambda self: None)
     monkeypatch.setattr(ExecutionLease, 'start_renewal', lambda self, on_lost=None: None)
     monkeypatch.setattr(ExecutionLease, 'release', lambda self, completed=False: True)
 
@@ -137,7 +140,7 @@ def test_lease_wait_consumes_execution_budget(tmp_path, monkeypatch) -> None:
         environ=_environment(tmp_path, environment='dev'),
     )
 
-    assert captured_wait == [30]
+    assert captured_wait == [50]
     assert observed_remaining == [30]
     assert result.duration_seconds == 21
 
@@ -611,7 +614,7 @@ def test_scheduled_run_once_uses_effective_window_without_changing_iteration_pol
     ]
 
 
-def test_scheduled_run_once_skips_business_work_when_effective_window_is_too_short(
+def test_scheduled_run_once_uses_available_window_without_reserving_full_iteration_timeout(
     tmp_path,
     monkeypatch,
 ) -> None:
@@ -647,18 +650,20 @@ def test_scheduled_run_once_skips_business_work_when_effective_window_is_too_sho
         environ=environ,
     )
 
-    assert calls == []
-    assert result.iteration_count == 0
-    assert result.stop_reason == 'insufficient_remaining_time'
+    assert calls == [1]
+    assert result.iteration_count == 1
+    assert result.stop_reason == 'run_once'
 
 
-def test_scheduled_lease_wait_uses_the_full_safe_window(tmp_path) -> None:
+def test_scheduled_lease_wait_uses_lease_recovery_budget(tmp_path) -> None:
     definition = JobDefinition(
         module_name='job',
         service_name='scheduled-wait-job',
         execution_timeout_seconds=600,
         shutdown_grace_seconds=20,
         iteration_timeout_seconds=60,
+        lease_timeout_seconds=30,
+        lease_poll_seconds=1,
         lease_wait_seconds=None,
     )
     environment = _environment(tmp_path)
@@ -674,7 +679,39 @@ def test_scheduled_lease_wait_uses_the_full_safe_window(tmp_path) -> None:
     )
 
     assert context.safe_remaining_seconds == 580
-    assert _effective_lease_wait_seconds(definition, context) == 580
+    assert _effective_lease_wait_seconds(definition, context) == 31
+
+
+def test_relative_execution_lease_is_capped_by_execution_deadline(tmp_path) -> None:
+    observed: list[tuple[str | None, str]] = []
+    definition = JobDefinition(
+        module_name='relative_job',
+        service_name='relative-job',
+        run_once=True,
+        iteration_timeout_seconds=5,
+        execution_timeout_seconds=10,
+        shutdown_grace_seconds=2,
+        lease_timeout_seconds=30,
+        lease_wait_seconds=0,
+        resource_sample_seconds=0.01,
+    )
+
+    def iteration(context: JobRuntimeContext) -> None:
+        lease_path = tmp_path / 'ada/.runtime/leases/relative-job.json'
+        payload = json.loads(lease_path.read_text(encoding='utf-8'))
+        observed.append((payload['authority_deadline_utc'], context.deadline_utc.isoformat()))
+
+    result = execute_job(
+        definition=definition,
+        iteration=iteration,
+        argv=[],
+        environ=_environment(tmp_path),
+    )
+
+    assert result.stop_reason == 'run_once'
+    assert len(observed) == 1
+    authority_deadline, context_deadline = observed[0]
+    assert authority_deadline == context_deadline
 
 
 def test_scheduled_slot_is_deduplicated_after_successful_execution(

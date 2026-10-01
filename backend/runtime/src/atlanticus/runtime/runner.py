@@ -44,6 +44,7 @@ from atlanticus.runtime.errors import (
 from atlanticus.runtime.lease import ExecutionLease, LeaseAcquisition, RecoveredLease
 from atlanticus.runtime.options import RuntimeOptions, parse_runtime_options
 
+_ITERATION_ESTIMATE_WINDOW = 5
 _AZURE_OBSERVABILITY_VARIABLES = (
     'ATLANTICUS_AZURE_OBSERVABILITY_MODE',
     'ATLANTICUS_AZURE_OBSERVABILITY_PROFILE',
@@ -139,7 +140,7 @@ def execute_job(
         wait_seconds=_effective_lease_wait_seconds(definition, context),
         poll_seconds=definition.lease_poll_seconds,
         scheduled_at_utc=context.scheduled_at_utc,
-        authority_deadline_utc=_effective_authority_deadline(configuration, context),
+        authority_deadline_utc=_effective_authority_deadline(context),
         wall_clock=context._utc_now,
     )
     acquisition = lease.acquire()
@@ -244,7 +245,7 @@ def _run_iterations(
 ) -> RuntimeExecutionResult:
     started = context.started_monotonic
     iteration_count = 0
-    total_iteration_duration = 0.0
+    recent_iteration_durations: list[float] = []
     work_iterations = 0
     empty_iterations = 0
     stop_reason = 'completed'
@@ -272,35 +273,33 @@ def _run_iterations(
                     if recovery is not None:
                         _run_recovery(context=context, recovery=recovery, lease=lease)
                     while True:
-                        lease.raise_if_unhealthy()
+                        lease.assert_current()
                         if context.should_stop:
                             if context.stop_reason is not None:
                                 cancellation_reason = context.stop_reason
                             else:
                                 stop_reason = 'safe_execution_window_elapsed'
                             break
-                        if (
-                            context.execution_mode == 'scheduled_external'
-                            and context.safe_remaining_seconds
-                            < definition.iteration_timeout_seconds
-                        ):
-                            stop_reason = 'insufficient_remaining_time'
-                            break
 
                         iteration_number = iteration_count + 1
                         current_iteration = iteration_number
                         context._begin_iteration(iteration_number)
                         iteration_started = time.monotonic()
-                        with iteration_scope(iteration_number) as iteration_context:
-                            with trace_span(
-                                'iteration',
-                                attributes={'atlanticus.span_kind': 'iteration'},
-                            ):
-                                iteration(context)
-                        lease.raise_if_unhealthy()
+                        try:
+                            with iteration_scope(iteration_number) as iteration_context:
+                                with trace_span(
+                                    'iteration',
+                                    attributes={'atlanticus.span_kind': 'iteration'},
+                                ):
+                                    iteration(context)
+                        finally:
+                            context._end_iteration()
+                        lease.assert_current()
                         duration_seconds = time.monotonic() - iteration_started
                         iteration_count += 1
-                        total_iteration_duration += duration_seconds
+                        recent_iteration_durations.append(duration_seconds)
+                        if len(recent_iteration_durations) > _ITERATION_ESTIMATE_WINDOW:
+                            del recent_iteration_durations[0]
                         if resources_started:
                             resources.checkpoint()
 
@@ -320,7 +319,7 @@ def _run_iterations(
                         else:
                             empty_iterations += 1
 
-                        if duration_seconds > definition.iteration_timeout_seconds:
+                        if duration_seconds >= definition.iteration_timeout_seconds:
                             emit_event(
                                 ObservabilityEvent(
                                     name='iteration.timeout_warning',
@@ -332,6 +331,8 @@ def _run_iterations(
                                     message='Iteration exceeded its configured timeout',
                                 )
                             )
+                            stop_reason = 'iteration_timeout_elapsed'
+                            break
 
                         if context.should_stop:
                             if context.stop_reason is not None:
@@ -343,14 +344,16 @@ def _run_iterations(
                             stop_reason = 'run_once'
                             break
 
-                        average_duration = total_iteration_duration / iteration_count
                         requested_delay = context._next_iteration_delay()
                         sleep_seconds = (
                             max(0.0, definition.sleep_seconds - duration_seconds)
                             if requested_delay is None
                             else requested_delay
                         )
-                        required_for_next = sleep_seconds + average_duration
+                        estimated_duration = _estimate_next_iteration_duration(
+                            recent_iteration_durations
+                        )
+                        required_for_next = sleep_seconds + estimated_duration
                         if context.safe_remaining_seconds <= required_for_next:
                             stop_reason = 'insufficient_remaining_time'
                             break
@@ -497,33 +500,27 @@ def _run_drain(
     lease.assert_current()
 
 
+def _estimate_next_iteration_duration(durations: Sequence[float]) -> float:
+    recent = tuple(durations[-_ITERATION_ESTIMATE_WINDOW:])
+    if not recent:
+        raise ValueError('durations must contain at least one value')
+    average = sum(recent) / len(recent)
+    return max(recent[-1], average)
+
+
 def _effective_lease_wait_seconds(
     definition: JobDefinition,
     context: JobRuntimeContext,
 ) -> float:
-    if context.execution_mode == 'scheduled_external':
-        available_for_wait = context.safe_remaining_seconds
-    else:
-        available_for_wait = max(
-            0.0,
-            context.safe_remaining_seconds - definition.iteration_timeout_seconds,
-        )
+    available_for_wait = context.safe_remaining_seconds
     configured = definition.lease_wait_seconds
     if configured is None:
-        return available_for_wait
+        configured = definition.lease_timeout_seconds + definition.lease_poll_seconds
     return min(configured, available_for_wait)
 
 
-def _effective_authority_deadline(
-    configuration: RuntimeConfiguration,
-    context: JobRuntimeContext,
-) -> datetime | None:
-    if (
-        context.execution_mode == 'scheduled_external'
-        or configuration.job_platform_timeout_seconds is not None
-    ):
-        return context.deadline_utc
-    return None
+def _effective_authority_deadline(context: JobRuntimeContext) -> datetime:
+    return context.deadline_utc
 
 
 def _skipped_execution_result(

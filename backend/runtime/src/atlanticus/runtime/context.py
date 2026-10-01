@@ -53,6 +53,7 @@ class JobRuntimeContext:
     _iteration_summary: OperationalSummary = field(default_factory=OperationalSummary, repr=False)
     _iteration_has_work: bool = field(default=False, repr=False)
     _next_iteration_delay_seconds: float | None = field(default=None, repr=False)
+    _iteration_deadline_monotonic: float | None = field(default=None, repr=False)
     _lease_generation: int | None = field(default=None, repr=False)
     _lease_authority_check: Callable[[], None] | None = field(default=None, repr=False)
     _lease_authority_fence: Callable[[], AbstractContextManager[None]] | None = field(
@@ -167,8 +168,15 @@ class JobRuntimeContext:
         return max(0.0, self.safe_deadline_monotonic - self.clock())
 
     @property
+    def iteration_remaining_seconds(self) -> float | None:
+        deadline = self._iteration_deadline_monotonic
+        if deadline is None:
+            return None
+        return max(0.0, deadline - self.clock())
+
+    @property
     def should_stop(self) -> bool:
-        return self._stop.is_set() or self.safe_remaining_seconds <= 0
+        return self._cancellation_reason() is not None
 
     @property
     def lease_generation(self) -> int | None:
@@ -218,8 +226,9 @@ class JobRuntimeContext:
         self._stop.set()
 
     def raise_if_cancelled(self) -> None:
-        if self.should_stop:
-            raise RuntimeCancellationRequested(self.stop_reason or 'safe_execution_window_elapsed')
+        reason = self._cancellation_reason()
+        if reason is not None:
+            raise RuntimeCancellationRequested(reason)
 
     def wait(self, seconds: float) -> bool:
         """Espera de forma interrumpible sin cruzar el límite seguro."""
@@ -228,6 +237,9 @@ class JobRuntimeContext:
         if seconds < 0:
             raise ValueError('seconds must be greater than or equal to zero')
         allowed = min(seconds, self.safe_remaining_seconds)
+        iteration_remaining = self.iteration_remaining_seconds
+        if iteration_remaining is not None:
+            allowed = min(allowed, iteration_remaining)
         if allowed > 0:
             self._stop.wait(allowed)
         return not self.should_stop
@@ -303,10 +315,29 @@ class JobRuntimeContext:
             raise TypeError('iteration must be an int')
         if iteration <= 0:
             raise ValueError('iteration must be greater than zero')
+        started = self.clock()
+        _require_finite_number(started, 'clock result')
         self.iteration = iteration
+        self._iteration_deadline_monotonic = min(
+            started + self.definition.iteration_timeout_seconds,
+            self.safe_deadline_monotonic,
+        )
         self._iteration_summary.clear()
         self._iteration_has_work = False
         self._next_iteration_delay_seconds = None
+
+    def _end_iteration(self) -> None:
+        self._iteration_deadline_monotonic = None
+
+    def _cancellation_reason(self) -> str | None:
+        if self._stop.is_set():
+            return self.stop_reason or 'requested'
+        if self.safe_remaining_seconds <= 0:
+            return 'safe_execution_window_elapsed'
+        iteration_remaining = self.iteration_remaining_seconds
+        if iteration_remaining is not None and iteration_remaining <= 0:
+            return 'iteration_timeout_elapsed'
+        return None
 
 
 def _require_non_empty_string(value: str, name: str) -> str:

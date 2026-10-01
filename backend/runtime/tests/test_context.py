@@ -50,6 +50,48 @@ def test_context_exposes_budget_memory_and_cooperative_stop(tmp_path) -> None:
         context.raise_if_cancelled()
 
 
+def test_iteration_timeout_applies_only_after_iteration_starts(tmp_path) -> None:
+    now = [10.0]
+
+    definition = JobDefinition(
+        module_name='job',
+        service_name='job-service',
+        execution_timeout_seconds=30,
+        shutdown_grace_seconds=5,
+        iteration_timeout_seconds=10,
+        lease_timeout_seconds=30,
+    )
+    configuration = RuntimeConfiguration.from_sources(
+        environ={
+            'ENVIRONMENT': 'local',
+            'APPLICATION': 'ada',
+            'VOLUMEN_PATH': str(tmp_path),
+        }
+    )
+    context = JobRuntimeContext.create(
+        definition=definition,
+        configuration=configuration,
+        run_id='run-1',
+        correlation_id='correlation-1',
+        clock=lambda: now[0],
+    )
+
+    assert context.iteration_remaining_seconds is None
+    assert context.should_stop is False
+
+    context._begin_iteration(1)
+    assert context.iteration_remaining_seconds == 10
+
+    now[0] = 20.0
+    assert context.should_stop is True
+    with pytest.raises(RuntimeCancellationRequested, match='iteration_timeout_elapsed'):
+        context.raise_if_cancelled()
+
+    context._end_iteration()
+    assert context.iteration_remaining_seconds is None
+    assert context.should_stop is False
+
+
 def test_context_accumulates_custom_facts_without_emitting_events(tmp_path) -> None:
     definition = JobDefinition(
         module_name='job',
