@@ -25,7 +25,9 @@ def main() -> None:
     principal = ManagerPrincipal(
         subject_id='local',
         display_name='Administrador local',
-        access_keys=('alarms.manage', 'tools.manage'),
+        profile_keys=('local',),
+        access_keys=(),
+        administrative_override=True,
         is_local=True,
     )
     provider = (

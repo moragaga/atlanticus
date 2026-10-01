@@ -9,7 +9,7 @@ from ada_command_center.web.tools.discovery_cosmos.manager import (
     ToolCatalogManagerConflictError,
     ToolCatalogManagerService,
 )
-from atlanticus.web.manager import ManagerEntry, ManagerPrincipal
+from atlanticus.web.manager import ManagerEntry, ManagerPrincipal, manager_access_granted
 from atlanticus.web.modules import WebModule
 
 TOOL_CATALOG_ACCESS_KEY = 'tools.manage'
@@ -23,7 +23,7 @@ _ADOPTED_RESULT = 'acc-tool-catalog-adopted-result'
 
 
 def _authorized(principal_provider: Callable[[], ManagerPrincipal]) -> bool:
-    return TOOL_CATALOG_ACCESS_KEY in principal_provider().access_keys
+    return manager_access_granted(principal_provider(), TOOL_CATALOG_ACCESS_KEY)
 
 
 def _layout(_services: object) -> object:

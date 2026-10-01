@@ -23,10 +23,14 @@ def main() -> None:
     reader = ManagerConfigurationReader(root=Path.cwd())
     if reader.environment.is_production:
         raise RuntimeError('Production Command Center requires an authenticated host')
+    # El host temporal confía explícitamente en este principal sólo fuera de producción.
+    # local no necesita una lista de *.manage: su semántica es administración total del Manager.
     principal = ManagerPrincipal(
         subject_id='local',
         display_name='Administrador local',
-        access_keys=('alarms.manage', 'tools.manage'),
+        profile_keys=('local',),
+        access_keys=(),
+        administrative_override=True,
         is_local=True,
     )
     # El ambiente Web no decide si el proveedor de persistencia es local o durable.

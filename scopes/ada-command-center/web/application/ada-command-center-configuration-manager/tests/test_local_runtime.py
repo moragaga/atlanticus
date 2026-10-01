@@ -80,7 +80,9 @@ def _principal():
     return ManagerPrincipal(
         subject_id='local',
         display_name='Administrador local',
-        access_keys=('alarms.manage', 'tools.manage'),
+        profile_keys=('local',),
+        access_keys=(),
+        administrative_override=True,
         is_local=True,
     )
 
@@ -149,7 +151,11 @@ def test_local_starts_empty_without_examples_and_closes_storage(tmp_path, monkey
         )
         assert source.load_current() is None
         assert dependencies.tool_catalog_manager is not None
-        assert dependencies.principal_provider().access_keys == ('alarms.manage', 'tools.manage')
+        principal = dependencies.principal_provider()
+        assert principal.profile_keys == ('local',)
+        assert principal.access_keys == ()
+        assert principal.administrative_override is True
+        assert principal.is_local is True
     assert not blobs
     assert len(clients) == 1 and clients[0].closed
 

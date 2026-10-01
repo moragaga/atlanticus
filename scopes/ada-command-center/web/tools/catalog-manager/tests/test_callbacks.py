@@ -61,9 +61,14 @@ class FakeManager:
         return AdoptedToolCatalog(revision='b' * 64, tools=())
 
 
-def _register(monkeypatch, access=()):
+def _register(monkeypatch, access=(), *, administrative_override=False):
     manager = FakeManager()
-    principal = ManagerPrincipal('user', 'User', access_keys=access)
+    principal = ManagerPrincipal(
+        'user',
+        'User',
+        access_keys=access,
+        administrative_override=administrative_override,
+    )
     entry = catalog_manager.create_tool_catalog_manager_entry(
         manager=manager,
         principal_provider=lambda: principal,
@@ -83,6 +88,15 @@ def test_unauthorized_callbacks_never_read_cosmos_or_blob(monkeypatch) -> None:
     assert state is None
     assert message == 'Operación no autorizada.'
     assert manager.calls == []
+
+
+def test_administrative_override_authorizes_callbacks_without_access_keys(monkeypatch) -> None:
+    handlers, manager, trigger = _register(monkeypatch, administrative_override=True)
+    trigger.triggered_id = 'acc-tool-catalog-discover'
+    state, _, _ = handlers[0](1, 0, 0, None)
+
+    assert manager.calls == ['inspect']
+    assert state['connections'][0]['tools'][0]['key'] == 'mine'
 
 
 def test_discover_and_confirm_are_distinct_authorized_actions(monkeypatch) -> None:

@@ -9,7 +9,7 @@ from ada_command_center.web.tools.discovery_cosmos.manager import (
     ToolCatalogManagerConflictError,
     ToolCatalogManagerService,
 )
-from atlanticus.web.manager import ManagerEntry, ManagerPrincipal
+from atlanticus.web.manager import ManagerEntry, ManagerPrincipal, manager_access_granted
 from atlanticus.web.modules import WebModule
 
 TOOL_CATALOG_ACCESS_KEY = 'tools.manage'
@@ -22,9 +22,10 @@ _PREVIEW = 'acc-tool-catalog-preview'
 _ADOPTED_RESULT = 'acc-tool-catalog-adopted-result'
 
 
-# Cada acción de servidor valida el permiso; ocultar la página no es suficiente.
+# Cada acción de servidor usa la autorización compartida del Manager.
+# tools.manage es un Manager access key y no pertenece a ADA Access.
 def _authorized(principal_provider: Callable[[], ManagerPrincipal]) -> bool:
-    return TOOL_CATALOG_ACCESS_KEY in principal_provider().access_keys
+    return manager_access_granted(principal_provider(), TOOL_CATALOG_ACCESS_KEY)
 
 
 # El catálogo es una entrada del Manager y no define un Source/Projection nuevo.
@@ -79,15 +80,14 @@ def _adopted_content(catalog: AdoptedToolCatalog) -> object:
     )
 
 
-# El host aporta el servicio, el proveedor de permisos y el grupo del Manager.
-# La biblioteca no conoce conexiones, proveedores de Storage ni rutas del host.
+# El host aporta servicio, principal y grupo; la biblioteca conserva su frontera.
 def create_tool_catalog_manager_entry(
     *,
     manager: ToolCatalogManagerService,
     principal_provider: Callable[[], ManagerPrincipal],
     group_key: str,
 ) -> ManagerEntry:
-    # Los callbacks pertenecen a la biblioteca y se registran al componer el Manager.
+    # Los callbacks revalidan autorización en servidor antes de leer o escribir.
     def register_callbacks(app: object, _services: object) -> None:
         @app.callback(
             Output(_STATE, 'data'),
@@ -103,7 +103,7 @@ def create_tool_catalog_manager_entry(
             if not _authorized(principal_provider):
                 return None, 'Operación no autorizada.', no_update
             action = ctx.triggered_id
-            # La inspección es una acción independiente: todavía no modifica el catálogo.
+            # Descubrir inspecciona candidatos sin modificar el catálogo confirmado.
             if action == _DISCOVER:
                 try:
                     review = manager.inspect()
@@ -135,7 +135,7 @@ def create_tool_catalog_manager_entry(
                     'Descubrimiento finalizado. Revisa los resultados antes de confirmar.',
                     no_update,
                 )
-            # La confirmación valida la huella y la revisión para evitar usar datos obsoletos.
+            # Confirmar exige una inspección vigente y protege contra conflictos.
             if action == _CONFIRM:
                 if not isinstance(state, dict) or state.get('can_confirm') is not True:
                     return None, 'Realiza nuevamente el descubrimiento.', no_update
@@ -157,7 +157,7 @@ def create_tool_catalog_manager_entry(
                         no_update,
                     )
                 return None, 'Consolidación confirmada.', _adopted_content(confirmed)
-            # El catálogo adoptado se recupera mediante el servicio inyectado.
+            # Adopted sólo lee el catálogo ya confirmado en Storage.
             if action == _ADOPTED:
                 try:
                     adopted = manager.adopted()
@@ -170,7 +170,6 @@ def create_tool_catalog_manager_entry(
                 )
             return no_update, no_update, no_update
 
-        # El segundo callback solo representa el estado de inspección en memoria.
         @app.callback(
             Output(_PREVIEW, 'children'),
             Output(_CONFIRM, 'disabled'),
@@ -226,7 +225,6 @@ def create_tool_catalog_manager_entry(
                 state.get('can_confirm') is not True,
             )
 
-    # group_key pertenece al host; esta biblioteca conserva solo la ruta relativa.
     return ManagerEntry(
         key='tool-catalog',
         group_key=group_key,
