@@ -118,7 +118,7 @@ def test_browser_draft_does_not_mask_invalid_manager_workspace() -> None:
     app, _binding = _registered_callbacks()
     callback = app.callbacks['load_browser_draft']
 
-    with pytest.raises(ManagerProjectionError, match='browser workspace is invalid'):
+    with pytest.raises(ManagerProjectionError, match='Browser workspace is invalid'):
         callback(configuration().to_document())
 
 

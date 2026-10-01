@@ -4,22 +4,22 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-command-center-configuration-manager"
-version = "0.1.0"
+version = "0.1.1"
 description = "Temporary local Manager host for ADA Command Center configuration"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "ada-command-center-alarms-domain==1.0.0",
-    "ada-command-center-web-alarm-configuration[web]==0.1.0",
+    "ada-command-center-web-alarm-configuration[web]==0.1.1",
     "ada-command-center-web-alarm-persistence==0.1.0",
     "ada-command-center-web-alarm-projection-cosmos==0.1.0",
-    "ada-command-center-web-tool-catalog-manager==0.1.0",
+    "ada-command-center-web-tool-catalog-manager==0.1.1",
     "ada-command-center-web-tool-catalog==0.1.0",
     "ada-command-center-web-tool-discovery-cosmos==0.1.0",
     "ada-web-tools==0.1.0",
     "atlanticus-web==0.1.0",
     "atlanticus-web-bootstrap==0.1.0",
-    "atlanticus-web-manager==0.3.18",
+    "atlanticus-web-manager==0.3.19",
     "atlanticus-web-projection==0.1.0",
     "atlanticus-web-source==0.1.0",
     "atlanticus-web-source-local==0.1.0",

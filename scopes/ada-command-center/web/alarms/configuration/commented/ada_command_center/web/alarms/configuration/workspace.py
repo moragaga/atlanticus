@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from copy import deepcopy
 
 from ada_command_center.web.alarms.configuration.tool_dependencies import (
     pin_workspace_tool_catalog_revision,
@@ -12,7 +11,7 @@ from ada_command_center.web.alarms.configuration.workflows import (
 )
 from atlanticus.web.manager.errors import ManagerProjectionError
 from atlanticus.web.manager.models import ManagerPrincipal
-from atlanticus.web.manager.workspace import ManagerWorkspace
+from atlanticus.web.manager.workspace import ManagerWorkspaceBinding
 
 AlarmConfigurationManagerPrincipalProvider = Callable[[], ManagerPrincipal]
 AlarmConfigurationToolReferenceProvider = Callable[[], AlarmToolReferenceCatalog | None]
@@ -27,18 +26,19 @@ class AlarmConfigurationManagerWorkspaceBinding:
         principal_provider: AlarmConfigurationManagerPrincipalProvider,
         tool_reference_provider: AlarmConfigurationToolReferenceProvider,
     ) -> None:
-        self._source = source
-        self._principal_provider = principal_provider
+        # Manager core conserva ownership, SourceKey, snapshot y serialización del workspace.
+        self._workspace = ManagerWorkspaceBinding(
+            owner_subject_id_provider=lambda: principal_provider().subject_id,
+            source_key=source.source_key,
+            source_snapshot_provider=source.get_source_snapshot,
+        )
         self._tool_reference_provider = tool_reference_provider
 
     def load_payload(
         self,
         document: dict[str, object] | None,
     ) -> dict[str, object] | None:
-        if document is None:
-            return None
-        workspace = self._require_workspace(document)
-        return deepcopy(workspace.payload)
+        return self._workspace.load_payload(document)
 
     def save_payload(
         self,
@@ -55,31 +55,5 @@ class AlarmConfigurationManagerWorkspaceBinding:
             payload,
             tool_references.catalog_revision,
         )
-        principal = self._principal_provider()
-        if document is None:
-            workspace = ManagerWorkspace.create(
-                owner_subject_id=principal.subject_id,
-                payload=pinned_payload,
-                base=self._source.get_source_snapshot(),
-            )
-            return workspace.to_document()
-        workspace = self._require_workspace(document)
-        return workspace.with_payload(pinned_payload).to_document()
-
-    def _require_workspace(self, document: dict[str, object]) -> ManagerWorkspace:
-        try:
-            workspace = ManagerWorkspace.from_document(document)
-        except ValueError as error:
-            raise ManagerProjectionError(
-                'Alarm Configuration browser workspace is invalid'
-            ) from error
-        principal = self._principal_provider()
-        if workspace.owner_subject_id != principal.subject_id:
-            raise ManagerProjectionError(
-                'Alarm Configuration browser workspace belongs to another user'
-            )
-        if workspace.base.source_key != self._source.source_key:
-            raise ManagerProjectionError(
-                'Alarm Configuration browser workspace belongs to another source'
-            )
-        return workspace
+        # Alarm sólo añade el pinning Tool antes de delegar el guardado genérico.
+        return self._workspace.save_payload(document, pinned_payload)

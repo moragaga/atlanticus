@@ -31,7 +31,7 @@ dev = [
 
 [[package]]
 name = "ada-command-center-web-tool-catalog-manager"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "ada-command-center-web-tool-discovery-cosmos" },
@@ -289,7 +289,7 @@ requires-dist = [{ name = "pydantic-settings", specifier = "==2.14.1" }]
 
 [[package]]
 name = "atlanticus-web-manager"
-version = "0.3.18"
+version = "0.3.19"
 source = { editable = "../../../../../web/capabilities/manager" }
 dependencies = [
     { name = "atlanticus-web" },

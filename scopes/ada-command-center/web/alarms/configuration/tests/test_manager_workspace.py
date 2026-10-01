@@ -29,6 +29,10 @@ class SourceWorkflowStub:
         )
 
 
+class OtherSourceWorkflowStub(SourceWorkflowStub):
+    source_key = SourceKey('other-source')
+
+
 class ToolReferenceProvider:
     def __init__(self, revision: str = 'tools-r2') -> None:
         self.revision = revision
@@ -84,6 +88,24 @@ def test_alarm_configuration_workspace_repins_revision_on_next_save() -> None:
 
     assert loaded is not None
     assert loaded[WORKSPACE_TOOL_CATALOG_REVISION_KEY] == 'tools-r3'
+
+
+def test_alarm_configuration_workspace_rejects_another_source() -> None:
+    provider = ToolReferenceProvider()
+    owner_binding = AlarmConfigurationManagerWorkspaceBinding(
+        source=SourceWorkflowStub(),
+        principal_provider=principal,
+        tool_reference_provider=provider,
+    )
+    document = owner_binding.save_payload(None, configuration().to_document())
+    foreign_source_binding = AlarmConfigurationManagerWorkspaceBinding(
+        source=OtherSourceWorkflowStub(),
+        principal_provider=principal,
+        tool_reference_provider=provider,
+    )
+
+    with pytest.raises(ManagerProjectionError, match='belongs to another source'):
+        foreign_source_binding.load_payload(document)
 
 
 def test_alarm_configuration_workspace_rejects_another_owner() -> None:

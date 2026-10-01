@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-command-center-web-tool-catalog-manager"
-version = "0.1.0"
+version = "0.1.1"
 description = "Independent Manager UI for the ADA Command Center Tool Catalog"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "ada-command-center-web-tool-discovery-cosmos==0.1.0",
     "atlanticus-web==0.1.0",
-    "atlanticus-web-manager==0.3.18",
+    "atlanticus-web-manager==0.3.19",
     "dash==4.4.1",
 ]
 
