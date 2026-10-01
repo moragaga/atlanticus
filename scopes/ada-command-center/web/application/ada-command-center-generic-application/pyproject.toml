@@ -1,0 +1,139 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ada-command-center-generic-application"
+version = "0.1.0"
+description = "Composition root web de ADA Command Center sobre Atlanticus Web"
+requires-python = "==3.14.2"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "ada-command-center-configuration-manager==0.1.2",
+    "atlanticus-web==0.1.0",
+    "atlanticus-web-identity==0.1.0",
+    "atlanticus-web-identity-local==0.1.0",
+    "atlanticus-web-manager==0.3.19",
+    "atlanticus-web-navigation==0.1.0",
+    "atlanticus-web-navigation-configuration==0.1.9",
+]
+
+[project.scripts]
+ada-command-center-generic-application = "ada_command_center.web.application.generic.__main__:main"
+
+[tool.uv]
+override-dependencies = ["atlanticus-storage==1.0.0"]
+
+[tool.uv.sources]
+ada-command-center-configuration-manager = { path = "../ada-command-center-configuration-manager", editable = true }
+ada-command-center-alarms-domain = { path = "../../../domain/alarms", editable = true }
+ada-command-center-web-alarm-configuration = { path = "../../alarms/configuration", editable = true }
+ada-command-center-web-alarm-persistence = { path = "../../alarms/persistence", editable = true }
+ada-command-center-web-alarm-projection-cosmos = { path = "../../alarms/projection-cosmos", editable = true }
+ada-command-center-web-tool-catalog-manager = { path = "../../tools/catalog-manager", editable = true }
+ada-command-center-web-tool-catalog = { path = "../../tools/catalog", editable = true }
+ada-command-center-web-tool-discovery-cosmos = { path = "../../tools/discovery-cosmos", editable = true }
+ada-web-tools = { path = "../../../../ada/web/tools/core", editable = true }
+atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
+atlanticus-web-bootstrap = { path = "../../../../../web/framework/bootstrap", editable = true }
+atlanticus-web-configuration = { path = "../../../../../web/framework/configuration", editable = true }
+atlanticus-web-identity = { path = "../../../../../web/capabilities/identity/core", editable = true }
+atlanticus-web-identity-local = { path = "../../../../../web/capabilities/identity/local", editable = true }
+atlanticus-web-manager = { path = "../../../../../web/capabilities/manager", editable = true }
+atlanticus-web-composition-navigation-manager = { path = "../../../../../web/compositions/navigation-manager", editable = true }
+atlanticus-web-composition-profiles-manager = { path = "../../../../../web/compositions/profiles-manager", editable = true }
+atlanticus-web-composition-users-manager = { path = "../../../../../web/compositions/users-manager", editable = true }
+atlanticus-web-navigation = { path = "../../../../../web/capabilities/navigation/core", editable = true }
+atlanticus-web-navigation-configuration = { path = "../../../../../web/capabilities/navigation/configuration", editable = true }
+atlanticus-web-navigation-projection-local = { path = "../../../../../web/capabilities/navigation/projection-local", editable = true }
+atlanticus-web-navigation-projection-cosmos = { path = "../../../../../web/capabilities/navigation/projection-cosmos", editable = true }
+atlanticus-web-profiles = { path = "../../../../../web/capabilities/profiles/core", editable = true }
+atlanticus-web-profiles-configuration = { path = "../../../../../web/capabilities/profiles/configuration", editable = true }
+atlanticus-web-profiles-projection-local = { path = "../../../../../web/capabilities/profiles/projection-local", editable = true }
+atlanticus-web-profiles-projection-cosmos = { path = "../../../../../web/capabilities/profiles/projection-cosmos", editable = true }
+atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
+atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
+atlanticus-web-source-local = { path = "../../../../../web/capabilities/source/local", editable = true }
+atlanticus-web-source-blob = { path = "../../../../../web/capabilities/source/blob", editable = true }
+atlanticus-web-storage-topology = { path = "../../../../../web/capabilities/storage/topology", editable = true }
+atlanticus-web-users = { path = "../../../../../web/capabilities/users/core", editable = true }
+atlanticus-cosmos = { path = "../../../../../connectivity/cosmos", editable = true }
+atlanticus-storage = { path = "../../../../../connectivity/storage" }
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.15.22",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+include = ["ada_command_center.web.application.generic*"]
+
+[tool.setuptools.package-data]
+"ada_command_center.web.application.generic" = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+target-version = "py314"
+extend-exclude = ["build", "dist", "commented"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ada_command_center", "atlanticus"]
+combine-as-imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [
+    "src",
+    "../ada-command-center-configuration-manager/src",
+    "../../alarms/configuration/src",
+    "../../alarms/projection-local/src",
+    "../../alarms/projection-cosmos/src",
+    "../../alarms/persistence/src",
+    "../../tools/catalog-manager/src",
+    "../../../domain/alarms/src",
+    "../../../domain/tools/src",
+    "../../tools/catalog/src",
+    "../../tools/discovery-cosmos/src",
+    "../../../../ada/web/tools/core/src",
+    "../../../../ada/web/tools/configuration/src",
+    "../../../../ada/web/tools/projection-cosmos/src",
+    "../../../../ada/web/storage/namespace/src",
+    "../../../../../connectivity/cosmos/src",
+    "../../../../../connectivity/storage/src",
+    "../../../../../backend/observability/src",
+    "../../../../../web/framework/configuration/src",
+    "../../../../../web/framework/core/src",
+    "../../../../../web/framework/bootstrap/src",
+    "../../../../../web/capabilities/identity/core/src",
+    "../../../../../web/capabilities/identity/local/src",
+    "../../../../../web/capabilities/manager/src",
+    "../../../../../web/compositions/navigation-manager/src",
+    "../../../../../web/compositions/profiles-manager/src",
+    "../../../../../web/compositions/users-manager/src",
+    "../../../../../web/capabilities/navigation/core/src",
+    "../../../../../web/capabilities/navigation/configuration/src",
+    "../../../../../web/capabilities/profiles/core/src",
+    "../../../../../web/capabilities/users/core/src",
+    "../../../../../web/capabilities/projection/core/src",
+    "../../../../../web/capabilities/source/core/src",
+    "../../../../../web/capabilities/source/local/src",
+    "../../../../../web/capabilities/source/blob/src",
+    "../../../../../web/capabilities/storage/topology/src",
+]
+addopts = "-q --import-mode=importlib"
