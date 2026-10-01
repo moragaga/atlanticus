@@ -113,13 +113,13 @@ class RemanentesStorageSource:
                     blob_name=blob_name,
                     target=temporary,
                 )
-            parquet = pq.ParquetFile(path)
             required = _required_source_columns(self.definition)
-            actual_columns = _resolve_columns(
-                available=parquet.schema_arrow.names,
-                required=required,
-            )
-            table = pq.read_table(path, columns=actual_columns)
+            with pq.ParquetFile(path) as parquet:
+                actual_columns = _resolve_columns(
+                    available=parquet.schema_arrow.names,
+                    required=required,
+                )
+                table = parquet.read(columns=actual_columns)
             return table.rename_columns(list(required))
         finally:
             if path is not None:

@@ -42,7 +42,7 @@ def _replace_single_artifact(
         # El tamaño y hash se calculan sobre el temporal ya persistido y validado.
         size_bytes = temporary_path.stat().st_size
         content_signature = _file_signature(temporary_path)
-        # os.replace y fsync del directorio constituyen el punto físico de confirmación.
+        # El replace ocurre sólo cuando no queda ningún handle abierto sobre el temporal.
         os.replace(temporary_path, final_path)
         _fsync_directory(target_path)
     except ParquetValidationError:
@@ -121,30 +121,32 @@ def _write_content_part(
             pass
 
 
-# Centraliza las opciones Parquet y verifica que lo escrito conserve filas y schema exactos.
+# Escribe, fuerza durabilidad y cierra el mismo handle escribible antes de validar o renombrar.
 def _write_and_validate_table(
     *,
     path: Path,
     table: pa.Table,
     write_options: ParquetWriteOptions,
 ) -> None:
-    pq.write_table(
-        table,
-        path,
-        compression=write_options.compression,
-        compression_level=write_options.compression_level,
-        use_dictionary=write_options.use_dictionary,
-        write_statistics=write_options.write_statistics,
-        row_group_size=write_options.row_group_size,
-    )
-    # El fsync del archivo ocurre antes de inspeccionar metadata y antes de cualquier rename.
-    with path.open('rb') as file_handle:
+    # PyArrow escribe sobre el stream controlado por Atlanticus; ese mismo descriptor recibe fsync.
+    with path.open('w+b') as file_handle:
+        pq.write_table(
+            table,
+            file_handle,
+            compression=write_options.compression,
+            compression_level=write_options.compression_level,
+            use_dictionary=write_options.use_dictionary,
+            write_statistics=write_options.write_statistics,
+            row_group_size=write_options.row_group_size,
+        )
+        file_handle.flush()
         os.fsync(file_handle.fileno())
-    parquet_file = pq.ParquetFile(path)
-    if parquet_file.metadata.num_rows != table.num_rows:
-        raise ParquetWriteError('written parquet row count does not match the source table')
-    if not parquet_file.schema_arrow.equals(table.schema, check_metadata=True):
-        raise ParquetSchemaError('written parquet schema does not match the source table')
+    # La validación mantiene ownership explícito y cierra el reader antes de cualquier replace/unlink.
+    with pq.ParquetFile(path) as parquet_file:
+        if parquet_file.metadata.num_rows != table.num_rows:
+            raise ParquetWriteError('written parquet row count does not match the source table')
+        if not parquet_file.schema_arrow.equals(table.schema, check_metadata=True):
+            raise ParquetSchemaError('written parquet schema does not match the source table')
 
 
 # current.json usa el mismo patrón temporal + fsync + replace que los artefactos Parquet.

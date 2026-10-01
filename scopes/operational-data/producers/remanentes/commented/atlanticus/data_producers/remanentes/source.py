@@ -106,6 +106,7 @@ class RemanentesStorageSource:
     def download_table(self, *, blob_name: str):
         path: str | None = None
         try:
+            # El temporal se cierra después de la descarga para que PyArrow lo abra con ownership propio.
             with NamedTemporaryFile(
                 prefix='atlanticus-remanentes-',
                 suffix='.parquet',
@@ -117,15 +118,17 @@ class RemanentesStorageSource:
                     blob_name=blob_name,
                     target=temporary,
                 )
-            parquet = pq.ParquetFile(path)
             required = _required_source_columns(self.definition)
-            actual_columns = _resolve_columns(
-                available=parquet.schema_arrow.names,
-                required=required,
-            )
-            table = pq.read_table(path, columns=actual_columns)
+            # Un único reader resuelve schema y columnas, y se cierra antes de eliminar el temporal.
+            with pq.ParquetFile(path) as parquet:
+                actual_columns = _resolve_columns(
+                    available=parquet.schema_arrow.names,
+                    required=required,
+                )
+                table = parquet.read(columns=actual_columns)
             return table.rename_columns(list(required))
         finally:
+            # Windows exige que no quede ningún handle abierto al remover el archivo.
             if path is not None:
                 Path(path).unlink(missing_ok=True)
 

@@ -120,22 +120,23 @@ def _write_and_validate_table(
     table: pa.Table,
     write_options: ParquetWriteOptions,
 ) -> None:
-    pq.write_table(
-        table,
-        path,
-        compression=write_options.compression,
-        compression_level=write_options.compression_level,
-        use_dictionary=write_options.use_dictionary,
-        write_statistics=write_options.write_statistics,
-        row_group_size=write_options.row_group_size,
-    )
-    with path.open('rb') as file_handle:
+    with path.open('w+b') as file_handle:
+        pq.write_table(
+            table,
+            file_handle,
+            compression=write_options.compression,
+            compression_level=write_options.compression_level,
+            use_dictionary=write_options.use_dictionary,
+            write_statistics=write_options.write_statistics,
+            row_group_size=write_options.row_group_size,
+        )
+        file_handle.flush()
         os.fsync(file_handle.fileno())
-    parquet_file = pq.ParquetFile(path)
-    if parquet_file.metadata.num_rows != table.num_rows:
-        raise ParquetWriteError('written parquet row count does not match the source table')
-    if not parquet_file.schema_arrow.equals(table.schema, check_metadata=True):
-        raise ParquetSchemaError('written parquet schema does not match the source table')
+    with pq.ParquetFile(path) as parquet_file:
+        if parquet_file.metadata.num_rows != table.num_rows:
+            raise ParquetWriteError('written parquet row count does not match the source table')
+        if not parquet_file.schema_arrow.equals(table.schema, check_metadata=True):
+            raise ParquetSchemaError('written parquet schema does not match the source table')
 
 
 def _replace_manifest(*, target_path: Path, manifest: _Manifest) -> None:
