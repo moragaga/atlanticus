@@ -8,7 +8,6 @@ from atlanticus.web.compositions.profiles_manager.workflows import (
     ProfilesManagerDraftValidationWorkflow,
     ProfilesManagerSourceWorkflow,
 )
-from atlanticus.web.compositions.profiles_manager.workspace import ProfilesManagerWorkspaceBinding
 from atlanticus.web.manager.authorization import (
     DefaultManagerAuthorizationPolicy,
     ManagerAuthorizationPolicy,
@@ -20,6 +19,7 @@ from atlanticus.web.manager.web.ids import (
     workflow_editor_revision_id,
     workflow_saved_draft_id,
 )
+from atlanticus.web.manager.workspace import ManagerWorkspaceBinding
 from atlanticus.web.profiles.configuration.source_projection import (
     create_profiles_projection_service,
 )
@@ -78,9 +78,10 @@ def compose_profiles_manager(
         source=source_store,
         projection=projection_store,
     )
-    workspace = ProfilesManagerWorkspaceBinding(
-        source=source_workflow,
-        principal_provider=principal_provider,
+    workspace = ManagerWorkspaceBinding(
+        owner_subject_id_provider=lambda: principal_provider().subject_id,
+        source_key=source_workflow.source_key,
+        source_snapshot_provider=source_workflow.get_source_snapshot,
     )
 
     from atlanticus.web.profiles.configuration.web import (

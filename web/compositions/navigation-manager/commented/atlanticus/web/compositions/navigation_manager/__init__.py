@@ -17,9 +17,6 @@ from atlanticus.web.compositions.navigation_manager.workflows import (
     NavigationManagerDraftValidationWorkflow,
     NavigationManagerSourceWorkflow,
 )
-from atlanticus.web.compositions.navigation_manager.workspace import (
-    NavigationManagerWorkspaceBinding,
-)
 
 __all__ = [
     'NAVIGATION_CONFIGURATION_SOURCE_KEY',
@@ -30,7 +27,6 @@ __all__ = [
     'NavigationManagerComposition',
     'NavigationManagerDraftValidationWorkflow',
     'NavigationManagerSourceWorkflow',
-    'NavigationManagerWorkspaceBinding',
     'compose_azure_navigation_manager',
     'compose_local_navigation_manager',
     'compose_navigation_manager',

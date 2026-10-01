@@ -8,9 +8,6 @@ from atlanticus.web.compositions.navigation_manager.workflows import (
     NavigationManagerDraftValidationWorkflow,
     NavigationManagerSourceWorkflow,
 )
-from atlanticus.web.compositions.navigation_manager.workspace import (
-    NavigationManagerWorkspaceBinding,
-)
 from atlanticus.web.manager.authorization import (
     DefaultManagerAuthorizationPolicy,
     ManagerAuthorizationPolicy,
@@ -22,6 +19,7 @@ from atlanticus.web.manager.web.ids import (
     workflow_editor_revision_id,
     workflow_saved_draft_id,
 )
+from atlanticus.web.manager.workspace import ManagerWorkspaceBinding
 from atlanticus.web.navigation.configuration.models import NavigationConfigurationCatalog
 from atlanticus.web.navigation.configuration.profiles import NavigationProfileOptionsProvider
 from atlanticus.web.navigation.configuration.source_projection import (
@@ -90,9 +88,10 @@ def compose_navigation_manager(
         projection=projection_store,
         validators=resolved_validators,
     )
-    workspace = NavigationManagerWorkspaceBinding(
-        source=source_workflow,
-        principal_provider=principal_provider,
+    workspace = ManagerWorkspaceBinding(
+        owner_subject_id_provider=lambda: principal_provider().subject_id,
+        source_key=source_workflow.source_key,
+        source_snapshot_provider=source_workflow.get_source_snapshot,
     )
 
     from atlanticus.web.navigation.configuration.web import (

@@ -149,7 +149,7 @@ requires-dist = [
 
 [[package]]
 name = "atlanticus-web-composition-navigation-manager"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "compositions/navigation-manager" }
 dependencies = [
     { name = "atlanticus-cosmos" },
@@ -182,7 +182,7 @@ requires-dist = [
 
 [[package]]
 name = "atlanticus-web-composition-profiles-manager"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "compositions/profiles-manager" }
 dependencies = [
     { name = "atlanticus-cosmos" },
@@ -219,7 +219,7 @@ requires-dist = [
 
 [[package]]
 name = "atlanticus-web-composition-users-manager"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "compositions/users-manager" }
 dependencies = [
     { name = "atlanticus-web" },
@@ -279,7 +279,7 @@ requires-dist = [
 
 [[package]]
 name = "atlanticus-web-manager"
-version = "0.3.18"
+version = "0.3.19"
 source = { editable = "capabilities/manager" }
 dependencies = [
     { name = "atlanticus-web" },

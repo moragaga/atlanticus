@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "atlanticus-web-composition-users-manager"
-version = "0.1.0"
+version = "0.1.1"
 description = "Composición Users para Atlanticus Web Manager"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "atlanticus-web==0.1.0",
-    "atlanticus-web-manager==0.3.18",
+    "atlanticus-web-manager==0.3.19",
     "atlanticus-web-users[web]==0.1.0",
 ]
 

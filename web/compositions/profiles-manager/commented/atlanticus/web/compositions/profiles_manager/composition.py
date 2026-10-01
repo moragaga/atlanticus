@@ -11,12 +11,12 @@ from atlanticus.web.compositions.profiles_manager.workflows import (
     ProfilesManagerDraftValidationWorkflow,
     ProfilesManagerSourceWorkflow,
 )
-from atlanticus.web.compositions.profiles_manager.workspace import ProfilesManagerWorkspaceBinding
 from atlanticus.web.manager.authorization import (
     DefaultManagerAuthorizationPolicy,
     ManagerAuthorizationPolicy,
 )
 from atlanticus.web.manager.models import ManagerModule, ManagerPrincipal
+from atlanticus.web.manager.workspace import ManagerWorkspaceBinding
 from atlanticus.web.manager.web.ids import (
     workflow_action_id,
     workflow_draft_id,
@@ -81,9 +81,11 @@ def compose_profiles_manager(
         source=source_store,
         projection=projection_store,
     )
-    workspace = ProfilesManagerWorkspaceBinding(
-        source=source_workflow,
-        principal_provider=principal_provider,
+    # Profiles delega el ownership y la identidad del Source al binding reutilizable de Manager.
+    workspace = ManagerWorkspaceBinding(
+        owner_subject_id_provider=lambda: principal_provider().subject_id,
+        source_key=source_workflow.source_key,
+        source_snapshot_provider=source_workflow.get_source_snapshot,
     )
 
     from atlanticus.web.profiles.configuration.web import (

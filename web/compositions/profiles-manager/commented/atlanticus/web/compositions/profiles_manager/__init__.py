@@ -16,7 +16,6 @@ from atlanticus.web.compositions.profiles_manager.workflows import (
     ProfilesManagerDraftValidationWorkflow,
     ProfilesManagerSourceWorkflow,
 )
-from atlanticus.web.compositions.profiles_manager.workspace import ProfilesManagerWorkspaceBinding
 
 __all__ = [
     'PROFILES_CONFIGURATION_SOURCE_KEY',
@@ -27,7 +26,6 @@ __all__ = [
     'ProfilesManagerComposition',
     'ProfilesManagerDraftValidationWorkflow',
     'ProfilesManagerSourceWorkflow',
-    'ProfilesManagerWorkspaceBinding',
     'compose_azure_profiles_manager',
     'compose_local_profiles_manager',
     'compose_profiles_manager',
