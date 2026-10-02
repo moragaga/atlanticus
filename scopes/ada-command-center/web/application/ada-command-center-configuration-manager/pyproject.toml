@@ -25,13 +25,17 @@ dependencies = [
     "atlanticus-web-composition-users-manager==0.1.1",
     "atlanticus-web-navigation==0.1.0",
     "atlanticus-web-navigation-configuration[web]==0.1.9",
+    "atlanticus-web-navigation-projection-cosmos==0.1.0",
     "atlanticus-web-profiles==0.1.0",
+    "atlanticus-web-profiles-projection-cosmos==0.1.0",
     "atlanticus-web-projection==0.1.0",
     "atlanticus-web-source==0.1.0",
+    "atlanticus-storage==1.0.0",
     "atlanticus-web-source-local==0.1.0",
     "atlanticus-web-users[web]==0.1.0",
+    "atlanticus-web-users-blob==0.1.0",
+    "atlanticus-web-users-cosmos==0.1.0",
     "atlanticus-cosmos==1.0.0",
-    "atlanticus-storage==1.0.0",
     "python-dotenv==1.2.2",
     "atlanticus-web-configuration==0.1.0",
 ]
@@ -56,13 +60,22 @@ atlanticus-web-composition-profiles-manager = { path = "../../../../../web/compo
 atlanticus-web-composition-users-manager = { path = "../../../../../web/compositions/users-manager", editable = true }
 atlanticus-web-navigation = { path = "../../../../../web/capabilities/navigation/core", editable = true }
 atlanticus-web-navigation-configuration = { path = "../../../../../web/capabilities/navigation/configuration", editable = true }
+atlanticus-web-navigation-projection-local = { path = "../../../../../web/capabilities/navigation/projection-local", editable = true }
+atlanticus-web-navigation-projection-cosmos = { path = "../../../../../web/capabilities/navigation/projection-cosmos", editable = true }
 atlanticus-web-profiles = { path = "../../../../../web/capabilities/profiles/core", editable = true }
+atlanticus-web-profiles-configuration = { path = "../../../../../web/capabilities/profiles/configuration", editable = true }
+atlanticus-web-profiles-projection-local = { path = "../../../../../web/capabilities/profiles/projection-local", editable = true }
+atlanticus-web-profiles-projection-cosmos = { path = "../../../../../web/capabilities/profiles/projection-cosmos", editable = true }
 atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
 atlanticus-storage = { path = "../../../../../connectivity/storage" }
 atlanticus-web-source-local = { path = "../../../../../web/capabilities/source/local", editable = true }
+atlanticus-web-source-blob = { path = "../../../../../web/capabilities/source/blob", editable = true }
 atlanticus-web-users = { path = "../../../../../web/capabilities/users/core", editable = true }
+atlanticus-web-users-blob = { path = "../../../../../web/capabilities/users/blob", editable = true }
+atlanticus-web-users-cosmos = { path = "../../../../../web/capabilities/users/cosmos", editable = true }
 atlanticus-cosmos = { path = "../../../../../connectivity/cosmos", editable = true }
+atlanticus-web-storage-topology = { path = "../../../../../web/capabilities/storage/topology", editable = true }
 atlanticus-web-configuration = { path = "../../../../../web/framework/configuration", editable = true }
 
 [dependency-groups]
@@ -130,8 +143,12 @@ pythonpath = [
     "../../../../../web/compositions/users-manager/src",
     "../../../../../web/capabilities/navigation/core/src",
     "../../../../../web/capabilities/navigation/configuration/src",
+    "../../../../../web/capabilities/navigation/projection-cosmos/src",
     "../../../../../web/capabilities/profiles/core/src",
+    "../../../../../web/capabilities/profiles/projection-cosmos/src",
     "../../../../../web/capabilities/users/core/src",
+    "../../../../../web/capabilities/users/blob/src",
+    "../../../../../web/capabilities/users/cosmos/src",
     "../../../../../web/capabilities/projection/core/src",
     "../../../../../web/capabilities/source/core/src",
     "../../../../../web/capabilities/source/local/src",

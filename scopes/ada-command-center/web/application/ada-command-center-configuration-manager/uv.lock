@@ -50,11 +50,15 @@ dependencies = [
     { name = "atlanticus-web-manager" },
     { name = "atlanticus-web-navigation" },
     { name = "atlanticus-web-navigation-configuration", extra = ["web"] },
+    { name = "atlanticus-web-navigation-projection-cosmos" },
     { name = "atlanticus-web-profiles" },
+    { name = "atlanticus-web-profiles-projection-cosmos" },
     { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
     { name = "atlanticus-web-source-local" },
     { name = "atlanticus-web-users", extra = ["web"] },
+    { name = "atlanticus-web-users-blob" },
+    { name = "atlanticus-web-users-cosmos" },
     { name = "python-dotenv" },
 ]
 
@@ -85,11 +89,15 @@ requires-dist = [
     { name = "atlanticus-web-manager", editable = "../../../../../web/capabilities/manager" },
     { name = "atlanticus-web-navigation", editable = "../../../../../web/capabilities/navigation/core" },
     { name = "atlanticus-web-navigation-configuration", extras = ["web"], editable = "../../../../../web/capabilities/navigation/configuration" },
+    { name = "atlanticus-web-navigation-projection-cosmos", editable = "../../../../../web/capabilities/navigation/projection-cosmos" },
     { name = "atlanticus-web-profiles", editable = "../../../../../web/capabilities/profiles/core" },
+    { name = "atlanticus-web-profiles-projection-cosmos", editable = "../../../../../web/capabilities/profiles/projection-cosmos" },
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
     { name = "atlanticus-web-source-local", editable = "../../../../../web/capabilities/source/local" },
     { name = "atlanticus-web-users", extras = ["web"], editable = "../../../../../web/capabilities/users/core" },
+    { name = "atlanticus-web-users-blob", editable = "../../../../../web/capabilities/users/blob" },
+    { name = "atlanticus-web-users-cosmos", editable = "../../../../../web/capabilities/users/cosmos" },
     { name = "python-dotenv", specifier = "==1.2.2" },
 ]
 
@@ -912,6 +920,36 @@ requires-dist = [
     { name = "flask", specifier = "==3.1.3" },
 ]
 provides-extras = ["web"]
+
+[[package]]
+name = "atlanticus-web-users-blob"
+version = "0.1.0"
+source = { editable = "../../../../../web/capabilities/users/blob" }
+dependencies = [
+    { name = "atlanticus-storage" },
+    { name = "atlanticus-web-users" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-storage", directory = "../../../../../connectivity/storage" },
+    { name = "atlanticus-web-users", editable = "../../../../../web/capabilities/users/core" },
+]
+
+[[package]]
+name = "atlanticus-web-users-cosmos"
+version = "0.1.0"
+source = { editable = "../../../../../web/capabilities/users/cosmos" }
+dependencies = [
+    { name = "atlanticus-cosmos" },
+    { name = "atlanticus-web-users" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
+    { name = "atlanticus-web-users", editable = "../../../../../web/capabilities/users/core" },
+]
 
 [[package]]
 name = "azure-core"

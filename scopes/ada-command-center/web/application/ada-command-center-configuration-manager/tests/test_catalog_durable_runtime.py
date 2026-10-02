@@ -11,6 +11,9 @@ from ada_command_center.web.application.configuration_manager.durable_runtime im
     resolve_durable_configuration,
 )
 from atlanticus.connectivity.storage import StorageConnectionStringCredential
+from atlanticus.web.navigation.projection.cosmos import NAVIGATION_PROJECTION_STORAGE_RESOURCE
+from atlanticus.web.profiles.projection.cosmos import PROFILES_PROJECTION_STORAGE_RESOURCE
+from atlanticus.web.users.storage import USERS_RUNTIME_STORAGE_RESOURCE
 
 
 def _values():
@@ -45,10 +48,25 @@ def test_root_and_resources_derive_from_existing_contracts() -> None:
     assert resolved.catalog_blob_name == (
         'conciencia_situacional/command-center/tool-catalog/current.json'
     )
-    assert resolved.alarm_source_root_prefix == 'conciencia_situacional/command-center'
+    assert resolved.source_root_prefix == 'conciencia_situacional/command-center'
+    assert resolved.users_registry_blob_name == (
+        'conciencia_situacional/command-center/users/users.json.gz'
+    )
     assert (
         resolved.alarm_projection_container_name
         == ALARM_CONFIGURATION_PROJECTION_STORAGE_RESOURCE.default_physical_name
+    )
+    assert (
+        resolved.profiles_projection_container_name
+        == PROFILES_PROJECTION_STORAGE_RESOURCE.default_physical_name
+    )
+    assert (
+        resolved.navigation_projection_container_name
+        == NAVIGATION_PROJECTION_STORAGE_RESOURCE.default_physical_name
+    )
+    assert (
+        resolved.users_runtime_container_name
+        == USERS_RUNTIME_STORAGE_RESOURCE.default_physical_name
     )
     assert ALARM_CONFIGURATION_PROJECTION_STORAGE_RESOURCE.topology.partition_key_path == (
         '/partition_key'

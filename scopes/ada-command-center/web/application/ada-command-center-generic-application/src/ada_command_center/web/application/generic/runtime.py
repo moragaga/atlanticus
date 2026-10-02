@@ -9,6 +9,9 @@ from pathlib import Path
 from ada_command_center.web.application.configuration_manager.catalog_configuration import (
     ManagerConfigurationReader,
 )
+from ada_command_center.web.application.configuration_manager.durable_runtime import (
+    open_durable_configuration_manager,
+)
 from ada_command_center.web.application.configuration_manager.local_runtime import (
     open_local_configuration_manager,
 )
@@ -32,8 +35,6 @@ def open_local_application(
         raise IdentityConfigurationError(
             'Production Command Center requires an injected production identity provider'
         )
-    if reader.manager_provider != 'local':
-        raise RuntimeError('Command Center Generic Application 0.1.0 requires local Manager')
     resolved_subject = _resolve_local_subject_id(subject_id)
     principal = ManagerPrincipal(
         subject_id=resolved_subject,
@@ -44,11 +45,19 @@ def open_local_application(
         is_local=True,
     )
     identity = LocalIdentityProvider(subject_id=resolved_subject)
-    with open_local_configuration_manager(
-        reader=reader,
-        principal_provider=lambda: principal,
-        base_root=base_root,
-    ) as dependencies:
+    manager = (
+        open_local_configuration_manager(
+            reader=reader,
+            principal_provider=lambda: principal,
+            base_root=base_root,
+        )
+        if reader.manager_provider == 'local'
+        else open_durable_configuration_manager(
+            reader=reader,
+            principal_provider=lambda: principal,
+        )
+    )
+    with manager as dependencies:
         yield create_application(dependencies, identity_provider=identity)
 
 

@@ -40,7 +40,6 @@ from atlanticus.web.navigation.configuration import NavigationConfigurationCatal
 from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.projection.store import ProjectionStore
-from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
 from atlanticus.web.source.models import SourceKey
 from atlanticus.web.users.errors import UserAlreadyPromotedError, UsersRegistryConflictError
 from atlanticus.web.users.models import UserRecord, UsersRegistrySnapshot
@@ -120,6 +119,7 @@ def open_local_configuration_manager(
     if not root.is_absolute():
         raise ValueError('Local Manager base root must be absolute')
     namespace = COMMAND_CENTER_NAMESPACE
+    # Alarm Configuration y la administración comparten el SourceStore del producto.
     persistence = compose_alarm_configuration_persistence(
         settings=AlarmConfigurationPersistenceSettings(
             source_provider=AlarmConfigurationSourceProvider.LOCAL,
@@ -130,13 +130,10 @@ def open_local_configuration_manager(
             ),
         ),
     )
-    administration_source = LocalSourceStore(
-        LocalSourceSettings(root=namespace.local_application_root(root))
-    )
     administration = compose_command_center_administration(
         stores=CommandCenterAdministrationStores(
-            profiles_source=administration_source,
-            navigation_source=administration_source,
+            profiles_source=persistence.source,
+            navigation_source=persistence.source,
             profiles=InProcessProjectionStore[ProfileCatalog](),
             navigation=InProcessProjectionStore[NavigationConfigurationCatalog](),
             users_registry=InProcessUsersRegistryStore(),
