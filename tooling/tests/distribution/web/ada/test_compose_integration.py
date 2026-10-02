@@ -216,9 +216,12 @@ def _load_local_resources(
         def get_secret_value(self):
             return "DefaultEndpointsProtocol=http;BlobEndpoint=http://azurite:10000/devstoreaccount1;"
 
+    ada_persistence_mode = SimpleNamespace(DURABLE=object())
+
     class Settings:
         def __init__(self):
             self.environment = SimpleNamespace(is_local=environment == "local")
+            self.persistence_mode = ada_persistence_mode.DURABLE
             self.tool_source_provider = SimpleNamespace(value="blob")
             self.tool_projection_provider = SimpleNamespace(value="cosmos")
             self.tool_projection_cosmos_endpoint = endpoint
@@ -242,7 +245,11 @@ def _load_local_resources(
         open_durable_manager=manager,
         prepare_durable_manager_resources=prepare,
     )
-    module("ada.web.application.generic.settings", AdaGenericSettings=Settings)
+    module(
+        "ada.web.application.generic.settings",
+        AdaGenericSettings=Settings,
+        AdaPersistenceMode=ada_persistence_mode,
+    )
     module(
         "atlanticus.web.configuration", WebEnvironment=SimpleNamespace(LOCAL="local")
     )

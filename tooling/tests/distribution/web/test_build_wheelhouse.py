@@ -22,10 +22,14 @@ _spec.loader.exec_module(_tool)
 
 
 def _package(
-    name: str = "example", version: str = "1.0", *, data: bytes = b"example"
+    name: str = "example",
+    version: str = "1.0",
+    *,
+    data: bytes = b"example",
+    with_sdist: bool = False,
 ) -> dict:
     filename = f"{name}-{version}-py3-none-any.whl"
-    return {
+    package = {
         "name": name,
         "version": version,
         "wheels": [
@@ -37,6 +41,15 @@ def _package(
             }
         ],
     }
+    if with_sdist:
+        source = f"{name}-{version}.tar.gz"
+        package["sdist"] = {
+            "name": source,
+            "url": f"https://packages.example.invalid/{source}",
+            "hashes": {"sha256": hashlib.sha256(b"source").hexdigest()},
+            "size": len(b"source"),
+        }
+    return package
 
 
 def test_compatible_wheels_are_selected_from_locked_sha256() -> None:
@@ -48,16 +61,87 @@ def test_compatible_wheels_are_selected_from_locked_sha256() -> None:
     assert size == len(b"example")
 
 
-def test_wheel_without_integrity_data_or_compatible_tags_is_rejected() -> None:
+def test_locked_sdist_is_fallback_when_platform_has_no_compatible_wheel() -> None:
+    supported = {tag: rank for rank, tag in enumerate(sys_tags())}
+    package = _package(with_sdist=True)
+    package["wheels"][0]["name"] = "example-1.0-cp39-cp39-win_amd64.whl"
+
+    kind, filename, url, digest, size = _tool._choose_registry_artifact(
+        package, supported
+    )
+
+    assert kind == "sdist"
+    assert filename == "example-1.0.tar.gz"
+    assert url.endswith(filename)
+    assert digest == hashlib.sha256(b"source").hexdigest()
+    assert size == len(b"source")
+
+
+def test_unlocked_or_unavailable_registry_artifact_is_rejected() -> None:
     supported = {tag: rank for rank, tag in enumerate(sys_tags())}
     unlocked = _package()
     unlocked["wheels"][0]["hashes"].clear()
     with pytest.raises(_tool.WheelhouseBuildError, match="No SHA256-locked compatible"):
-        _tool._choose_wheel(unlocked, supported)
+        _tool._choose_registry_artifact(unlocked, supported)
+
     incompatible = _package()
     incompatible["wheels"][0]["name"] = "example-1.0-cp39-cp39-win_amd64.whl"
     with pytest.raises(_tool.WheelhouseBuildError, match="No SHA256-locked compatible"):
-        _tool._choose_wheel(incompatible, supported)
+        _tool._choose_registry_artifact(incompatible, supported)
+
+
+def test_build_constraints_include_exact_versions_and_locked_hashes(tmp_path) -> None:
+    package = _package(name="setuptools", version="83.0.0", with_sdist=True)
+    path = _tool._write_build_constraints(
+        {"packages": [package]},
+        tmp_path / "constraints.txt",
+    )
+
+    content = path.read_text()
+    assert content.startswith("setuptools==83.0.0 ")
+    assert f"--hash=sha256:{hashlib.sha256(b'example').hexdigest()}" in content
+    assert f"--hash=sha256:{hashlib.sha256(b'source').hexdigest()}" in content
+
+
+def test_locked_sdist_build_uses_hash_constrained_build_environment(
+    tmp_path, monkeypatch
+) -> None:
+    archive = tmp_path / "example-1.0.tar.gz"
+    archive.write_bytes(b"source")
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "pyproject.toml").write_text(
+        '[build-system]\nrequires=["setuptools"]\nbuild-backend="setuptools.build_meta"\n'
+        '[project]\nname="example"\nversion="1.0"\n'
+    )
+    target = tmp_path / "wheelhouse"
+    target.mkdir()
+    constraints = tmp_path / "constraints.txt"
+    constraints.write_text("setuptools==83.0.0 --hash=sha256:" + "a" * 64 + "\n")
+
+    monkeypatch.setattr(_tool, "_extract_sdist", lambda *_args: source)
+
+    def run(command, *, cwd):
+        assert "--build-constraint" in command
+        assert command[command.index("--build-constraint") + 1] == str(constraints)
+        assert "--require-hashes" in command
+        assert "--no-sources" in command
+        assert cwd == _tool.REPOSITORY_ROOT
+        (target / "example-1.0-py3-none-any.whl").write_bytes(b"wheel")
+
+    monkeypatch.setattr(_tool, "_run", run)
+
+    filename = _tool._build_locked_sdist(
+        "uv",
+        archive,
+        tmp_path / "staging",
+        target,
+        constraints,
+        "example",
+        "1.0",
+    )
+
+    assert filename == "example-1.0-py3-none-any.whl"
 
 
 def test_runtime_lock_rejects_ambiguous_versions_and_unresolved_extras() -> None:
@@ -166,7 +250,7 @@ def _fixture(tmp_path, monkeypatch):
     monkeypatch.setattr(_tool, "_export_runtime_lock", export)
     monkeypatch.setattr(_tool, "_lock_build_dependencies", build_requirements)
     monkeypatch.setattr(_tool, "_build_internal", build_internal)
-    monkeypatch.setattr(_tool, "_download_wheel", download)
+    monkeypatch.setattr(_tool, "_download_locked_artifact", download)
     monkeypatch.setattr(_tool.subprocess, "run", fake_run)
     return app
 
@@ -202,7 +286,7 @@ def test_download_failure_leaves_starter_unchanged(tmp_path, monkeypatch) -> Non
     def fail(*_args):
         raise _tool.WheelhouseBuildError("Network failure")
 
-    monkeypatch.setattr(_tool, "_download_wheel", fail)
+    monkeypatch.setattr(_tool, "_download_locked_artifact", fail)
     with pytest.raises(_tool.WheelhouseBuildError, match="Network failure"):
         _tool.build_wheelhouse(profile="generic", application=app, uv="uv")
     assert not (app / "wheelhouse").exists()

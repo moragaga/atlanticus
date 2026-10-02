@@ -28,7 +28,7 @@ services:
   resources:
     profiles: ['setup']
     image: ${ADA_WEB_IMAGE:-ada-generic:compose-local}
-    entrypoint: ['python', '-m', 'application.local_resources']
+    entrypoint: ['python', '-m', 'ada.web.application.generic.local_resources']
     env_file:
       - .env
     networks:

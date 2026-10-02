@@ -7,10 +7,12 @@ import platform
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import tomllib
 import urllib.parse
 import urllib.request
+import zipfile
 from pathlib import Path
 
 from packaging.markers import Marker
@@ -204,7 +206,7 @@ def _choose_wheel(
         raise WheelhouseBuildError(
             f"No SHA256-locked compatible wheel: {name}=={package['version']}"
         )
-    rank, filename, url, sha, size = min(candidates)
+    _, filename, url, sha, size = min(candidates)
     if urllib.parse.urlsplit(url).scheme not in ("https", "file"):
         raise WheelhouseBuildError(
             f"Locked wheel uses an unsupported URL scheme: {name}"
@@ -212,7 +214,52 @@ def _choose_wheel(
     return filename, url, sha, size
 
 
-def _download_wheel(
+def _choose_sdist(package: dict) -> tuple[str, str, str, int | None]:
+    name = canonicalize_name(package["name"])
+    artifact = package.get("sdist")
+    if not isinstance(artifact, dict):
+        raise WheelhouseBuildError(
+            f"No SHA256-locked compatible artifact: {name}=={package['version']}"
+        )
+    url = artifact.get("url", "")
+    filename = artifact.get("name") or urllib.parse.unquote(
+        urllib.parse.urlsplit(url).path.rsplit("/", 1)[-1]
+    )
+    hashes = artifact.get("hashes", {})
+    sha = hashes.get("sha256") if isinstance(hashes, dict) else None
+    if (
+        not filename
+        or Path(filename).name != filename
+        or not isinstance(sha, str)
+        or len(sha) != 64
+    ):
+        raise WheelhouseBuildError(
+            f"No SHA256-locked compatible artifact: {name}=={package['version']}"
+        )
+    if not filename.endswith((".tar.gz", ".zip")):
+        raise WheelhouseBuildError(f"Unsupported locked sdist format: {name}")
+    if urllib.parse.urlsplit(url).scheme not in ("https", "file"):
+        raise WheelhouseBuildError(
+            f"Locked sdist uses an unsupported URL scheme: {name}"
+        )
+    return filename, url, sha, artifact.get("size")
+
+
+def _choose_registry_artifact(
+    package: dict, compatibility: dict
+) -> tuple[str, str, str, str, int | None]:
+    try:
+        filename, url, sha, size = _choose_wheel(package, compatibility)
+        return "wheel", filename, url, sha, size
+    except WheelhouseBuildError as wheel_error:
+        try:
+            filename, url, sha, size = _choose_sdist(package)
+        except WheelhouseBuildError:
+            raise wheel_error
+        return "sdist", filename, url, sha, size
+
+
+def _download_locked_artifact(
     url: str, destination: Path, expected: str, expected_size: int | None
 ) -> None:
     digest = hashlib.sha256()
@@ -228,7 +275,9 @@ def _download_wheel(
     if digest.hexdigest() != expected or (
         expected_size is not None and length != expected_size
     ):
-        raise WheelhouseBuildError(f"Locked wheel integrity failed: {destination.name}")
+        raise WheelhouseBuildError(
+            f"Locked artifact integrity failed: {destination.name}"
+        )
 
 
 def _build_internal(
@@ -301,32 +350,176 @@ def _lock_build_dependencies(uv: str, requirements: list[str], staging: Path) ->
     return lock
 
 
+def _artifact_hashes(package: dict) -> tuple[str, ...]:
+    hashes: set[str] = set()
+    artifacts = list(package.get("wheels", []))
+    sdist = package.get("sdist")
+    if isinstance(sdist, dict):
+        artifacts.append(sdist)
+    for artifact in artifacts:
+        values = artifact.get("hashes", {})
+        sha = values.get("sha256") if isinstance(values, dict) else None
+        if isinstance(sha, str) and len(sha) == 64:
+            hashes.add(sha)
+    return tuple(sorted(hashes))
+
+
+def _write_build_constraints(build_lock: dict, destination: Path) -> Path:
+    lines: list[str] = []
+    for package in _active_packages(build_lock):
+        if "directory" in package or not package.get("version"):
+            raise WheelhouseBuildError(
+                f"Unsupported build constraint source: {package['name']}"
+            )
+        hashes = _artifact_hashes(package)
+        if not hashes:
+            raise WheelhouseBuildError(
+                f"Build constraint has no SHA256 artifacts: {package['name']}"
+            )
+        requirement = (
+            f"{canonicalize_name(package['name'])}=={package['version']}"
+            + "".join(f" --hash=sha256:{value}" for value in hashes)
+        )
+        lines.append(requirement)
+    destination.write_text("\n".join(sorted(lines)) + "\n", encoding="utf-8")
+    return destination
+
+
+def _extract_sdist(archive: Path, destination: Path) -> Path:
+    destination.mkdir()
+    if archive.name.endswith(".tar.gz"):
+        with tarfile.open(archive, "r:gz") as source:
+            source.extractall(destination, filter="data")
+    elif archive.suffix == ".zip":
+        with zipfile.ZipFile(archive) as source:
+            for item in source.infolist():
+                path = Path(item.filename)
+                if path.is_absolute() or ".." in path.parts:
+                    raise WheelhouseBuildError(
+                        f"Unsafe locked sdist member: {archive.name}"
+                    )
+            source.extractall(destination)
+    else:
+        raise WheelhouseBuildError(f"Unsupported locked sdist format: {archive.name}")
+    roots = [path for path in destination.iterdir() if path.is_dir()]
+    if len(roots) == 1:
+        source_root = roots[0]
+    else:
+        source_root = destination
+    if not (
+        (source_root / "pyproject.toml").is_file()
+        or (source_root / "setup.py").is_file()
+        or (source_root / "setup.cfg").is_file()
+    ):
+        raise WheelhouseBuildError(
+            f"Locked sdist has no buildable project: {archive.name}"
+        )
+    return source_root
+
+
+def _build_locked_sdist(
+    uv: str,
+    archive: Path,
+    staging: Path,
+    target: Path,
+    constraints: Path,
+    expected_name: str,
+    expected_version: str,
+) -> str:
+    source_root = _extract_sdist(
+        archive, staging / f"source-{canonicalize_name(expected_name)}"
+    )
+    before = set(target.glob("*.whl"))
+    _run(
+        [
+            uv,
+            "build",
+            "--wheel",
+            "--no-sources",
+            "--python",
+            sys.executable,
+            "--build-constraint",
+            str(constraints),
+            "--require-hashes",
+            "--out-dir",
+            str(target),
+            str(source_root),
+        ],
+        cwd=REPOSITORY_ROOT,
+    )
+    new = set(target.glob("*.whl")) - before
+    if len(new) != 1:
+        raise WheelhouseBuildError(
+            f"Unexpected locked sdist build output: {expected_name}"
+        )
+    wheel = next(iter(new))
+    name, version, _, _ = parse_wheel_filename(wheel.name)
+    if name != canonicalize_name(expected_name) or str(version) != expected_version:
+        raise WheelhouseBuildError(
+            f"Locked sdist wheel identity mismatch: {expected_name}"
+        )
+    return wheel.name
+
+
 def _registry_wheels(
+    uv: str,
     packages: list[dict],
+    staging: Path,
     target: Path,
     compatibility: dict,
     origins: dict[tuple[str, str], set[str]],
+    build_constraints: Path,
 ) -> list[dict]:
     records: list[dict] = []
+    sources = staging / "locked-sources"
+    sources.mkdir()
     for package in packages:
         name = canonicalize_name(package["name"])
         version = str(package["version"])
-        filename, url, sha, size = _choose_wheel(package, compatibility)
-        wheel = target / filename
-        if wheel.exists():
-            if _sha256(wheel) != sha:
-                raise WheelhouseBuildError(
-                    f"Conflicting locked wheel for {name}=={version}"
-                )
-        else:
-            _download_wheel(url, wheel, sha, size)
+        kind, filename, url, sha, size = _choose_registry_artifact(
+            package, compatibility
+        )
+        if kind == "wheel":
+            wheel = target / filename
+            if wheel.exists():
+                if _sha256(wheel) != sha:
+                    raise WheelhouseBuildError(
+                        f"Conflicting locked wheel for {name}=={version}"
+                    )
+            else:
+                _download_locked_artifact(url, wheel, sha, size)
+            records.append(
+                {
+                    "name": name,
+                    "version": version,
+                    "filename": filename,
+                    "sha256": sha,
+                    "origin": sorted(origins[(name, version)]),
+                }
+            )
+            continue
+        archive = sources / filename
+        if not archive.exists():
+            _download_locked_artifact(url, archive, sha, size)
+        wheel_name = _build_locked_sdist(
+            uv,
+            archive,
+            staging,
+            target,
+            build_constraints,
+            name,
+            version,
+        )
         records.append(
             {
                 "name": name,
                 "version": version,
-                "filename": filename,
-                "sha256": sha,
+                "filename": wheel_name,
+                "sha256": _sha256(target / wheel_name),
                 "origin": sorted(origins[(name, version)]),
+                "built_from": "sdist",
+                "source_filename": filename,
+                "source_sha256": sha,
             }
         )
     return records
@@ -360,7 +553,7 @@ def build_wheelhouse(*, profile: str, application: Path, uv: str) -> dict:
         for entry in selected:
             if "directory" in entry:
                 local.append((entry, _local_directory(entry, project, REPOSITORY_ROOT)))
-            elif "wheels" in entry and entry.get("version"):
+            elif (entry.get("wheels") or entry.get("sdist")) and entry.get("version"):
                 registry.append(entry)
             else:
                 raise WheelhouseBuildError(
@@ -377,31 +570,39 @@ def build_wheelhouse(*, profile: str, application: Path, uv: str) -> dict:
         build_reqs = _build_requirements([path for _, path in local] + [application])
         build_lock = _lock_build_dependencies(uv, build_reqs, staging)
         build_registry = _active_packages(build_lock)
+        build_constraints = _write_build_constraints(
+            build_lock, staging / "build-constraints.txt"
+        )
         origins: dict[tuple[str, str], set[str]] = {}
         merged: dict[tuple[str, str], dict] = {}
         for origin, entries in [("runtime", registry), ("build", build_registry)]:
             for entry in entries:
                 if (
                     "directory" in entry
-                    or "wheels" not in entry
+                    or not (entry.get("wheels") or entry.get("sdist"))
                     or not entry.get("version")
                 ):
                     raise WheelhouseBuildError(
                         f"Unsupported {origin} dependency: {entry['name']}"
                     )
                 key = canonicalize_name(entry["name"]), str(entry["version"])
-                if (
-                    key in merged
-                    and _choose_wheel(merged[key], compatibility)[:2]
-                    != _choose_wheel(entry, compatibility)[:2]
-                ):
-                    raise WheelhouseBuildError(
-                        f"Conflicting locked artifacts for {key[0]}"
-                    )
+                if key in merged:
+                    current = _choose_registry_artifact(merged[key], compatibility)
+                    incoming = _choose_registry_artifact(entry, compatibility)
+                    if current[:4] != incoming[:4]:
+                        raise WheelhouseBuildError(
+                            f"Conflicting locked artifacts for {key[0]}"
+                        )
                 merged[key] = entry
                 origins.setdefault(key, set()).add(origin)
         records = _registry_wheels(
-            list(merged.values()), target, compatibility, origins
+            uv,
+            list(merged.values()),
+            staging,
+            target,
+            compatibility,
+            origins,
+            build_constraints,
         )
         for entry, path in local:
             name = canonicalize_name(entry["name"])
