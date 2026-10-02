@@ -10,7 +10,6 @@ from ada.web.application.generic.operational_tool import (
     resolve_operational_tool_projection,
 )
 from ada.web.kpis.collector import CosmosKpiDeliveryReaderSettings
-from ada.web.storage.namespace import AdaStorageNamespace
 from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.persistence import (
     ToolPersistenceSettings,
@@ -22,6 +21,7 @@ from ada.web.tools.persistence import (
 )
 from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.source.models import SourceKey, SourceReleaseId
+from atlanticus.web.storage.namespace import StorageNamespace
 
 
 class CosmosClientStub:
@@ -122,9 +122,9 @@ def _projection(*, operational: bool = True) -> ProjectionRecord[ToolConfigurati
 def _local_composition(tmp_path: Path):
     return compose_tool_persistence(
         settings=ToolPersistenceSettings(
-            namespace=AdaStorageNamespace(
+            namespace=StorageNamespace(
                 application_namespace='conciencia_situacional',
-                tool_namespace='operaciones_integradas',
+                scope_namespace='operaciones_integradas',
             ),
             source_provider=ToolSourceProvider.LOCAL,
             projection_provider=ToolProjectionProvider.LOCAL,

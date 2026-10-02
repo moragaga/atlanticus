@@ -36,7 +36,7 @@ def _settings(tmp_path, *, database='ada'):
 def test_durable_manager_reuses_shared_connections_and_namespaces(tmp_path):
     deployment = resolve_durable_manager_configuration(_settings(tmp_path))
     assert deployment.namespace.application_prefix == 'ada-site'
-    assert deployment.namespace.tool_prefix == 'ada-site/plant'
+    assert deployment.namespace.scope_prefix == 'ada-site/plant'
     assert deployment.resources.application_source == deployment.resources.tool_source
     assert deployment.resources.tool_source == deployment.resources.users_registry
     assert deployment.resources.application_source.container_name == 'configuration'
@@ -146,7 +146,7 @@ def test_open_manager_closes_both_clients_and_is_lazy(tmp_path, monkeypatch):
     with open_durable_manager(_settings(tmp_path)) as runtime:
         assert len(constructed) == 2
         assert not any(client.closed for client in constructed)
-        assert runtime.stores['namespace'].tool_prefix == 'ada-site/plant'
+        assert runtime.stores['namespace'].scope_prefix == 'ada-site/plant'
     assert all(client.closed for client in constructed)
 
 

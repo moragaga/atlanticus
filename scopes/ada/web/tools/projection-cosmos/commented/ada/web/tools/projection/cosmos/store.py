@@ -6,7 +6,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 
-from ada.web.storage.namespace import AdaStorageNamespace
+from atlanticus.web.storage.namespace import StorageNamespace
 from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.configuration.errors import ToolConfigurationProjectionError
 from ada.web.tools.configuration.projection_record import (
@@ -44,14 +44,14 @@ class CosmosToolProjectionStoreSettings:
         cls,
         *,
         container_name: str,
-        namespace: AdaStorageNamespace,
+        namespace: StorageNamespace,
     ) -> CosmosToolProjectionStoreSettings:
-        if not isinstance(namespace, AdaStorageNamespace):
-            raise TypeError('namespace must be AdaStorageNamespace')
+        if not isinstance(namespace, StorageNamespace):
+            raise TypeError('namespace must be StorageNamespace')
         # El namespace completo evita colisiones entre Tools y entre aplicaciones.
         return cls(
             container_name=container_name,
-            namespace_key=namespace.tool_prefix,
+            namespace_key=namespace.scope_prefix,
         )
 
 

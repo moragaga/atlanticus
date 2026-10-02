@@ -121,7 +121,7 @@ def open_local_configuration_manager(
         settings=AlarmConfigurationPersistenceSettings(
             source_provider=AlarmConfigurationSourceProvider.LOCAL,
             projection_provider=AlarmConfigurationProjectionProvider.LOCAL,
-            local_source_root=namespace.local_tool_root(root),
+            local_source_root=namespace.local_scope_root(root),
             local_projection_root=(
                 namespace.local_projection_root(root) / ALARM_CONFIGURATION_PROJECTION_PHYSICAL_NAME
             ),

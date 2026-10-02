@@ -3,9 +3,9 @@ requires = ["setuptools==83.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ada-web-storage-namespace"
+name = "atlanticus-web-storage-namespace"
 version = "0.1.0"
-description = "Logical application and Tool storage namespace contracts for ADA Web"
+description = "Logical storage namespace contracts for Atlanticus Web"
 requires-python = "==3.14.2"
 classifiers = [
     "Private :: Do Not Upload",
@@ -24,10 +24,10 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 namespaces = true
-include = ["ada.web.storage.namespace*"]
+include = ["atlanticus.web.storage.namespace*"]
 
 [tool.setuptools.package-data]
-"ada.web.storage.namespace" = ["py.typed"]
+"atlanticus.web.storage.namespace" = ["py.typed"]
 
 [tool.ruff]
 line-length = 100
@@ -49,7 +49,7 @@ select = ["E", "W", "F", "I", "B"]
 ignore = ["E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["ada"]
+known-first-party = ["atlanticus"]
 combine-as-imports = true
 
 [tool.pytest.ini_options]

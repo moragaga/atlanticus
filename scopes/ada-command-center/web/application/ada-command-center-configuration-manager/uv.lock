@@ -28,7 +28,7 @@ dev = [
 
 [[package]]
 name = "ada-command-center-configuration-manager"
-version = "0.1.2"
+version = "0.1.3"
 source = { editable = "." }
 dependencies = [
     { name = "ada-command-center-alarms-domain" },
@@ -41,6 +41,7 @@ dependencies = [
     { name = "ada-web-tools" },
     { name = "atlanticus-cosmos" },
     { name = "atlanticus-storage" },
+    { name = "atlanticus-web-storage-namespace" },
     { name = "atlanticus-web" },
     { name = "atlanticus-web-bootstrap" },
     { name = "atlanticus-web-composition-navigation-manager" },
@@ -80,6 +81,7 @@ requires-dist = [
     { name = "ada-web-tools", editable = "../../../../ada/web/tools/core" },
     { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
     { name = "atlanticus-storage", directory = "../../../../../connectivity/storage" },
+    { name = "atlanticus-web-storage-namespace", editable = "../../../../../web/capabilities/storage/namespace" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "atlanticus-web-bootstrap", editable = "../../../../../web/framework/bootstrap" },
     { name = "atlanticus-web-composition-navigation-manager", editable = "../../../../../web/compositions/navigation-manager" },
@@ -287,7 +289,7 @@ dev = [
 
 [[package]]
 name = "ada-command-center-web-tool-catalog-manager"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "../../tools/catalog-manager" }
 dependencies = [
     { name = "ada-command-center-web-tool-discovery-cosmos" },
@@ -312,11 +314,11 @@ dev = [
 
 [[package]]
 name = "ada-command-center-web-tool-discovery-cosmos"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "../../tools/discovery-cosmos" }
 dependencies = [
     { name = "ada-command-center-web-tool-catalog" },
-    { name = "ada-web-storage-namespace" },
+    { name = "atlanticus-web-storage-namespace" },
     { name = "ada-web-tools-configuration" },
     { name = "ada-web-tools-projection-cosmos" },
     { name = "atlanticus-cosmos" },
@@ -327,7 +329,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "ada-command-center-web-tool-catalog", editable = "../../tools/catalog" },
-    { name = "ada-web-storage-namespace", editable = "../../../../ada/web/storage/namespace" },
+    { name = "atlanticus-web-storage-namespace", editable = "../../../../../web/capabilities/storage/namespace" },
     { name = "ada-web-tools-configuration", editable = "../../../../ada/web/tools/configuration" },
     { name = "ada-web-tools-projection-cosmos", editable = "../../../../ada/web/tools/projection-cosmos" },
     { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
@@ -364,9 +366,9 @@ dev = [
 ]
 
 [[package]]
-name = "ada-web-storage-namespace"
+name = "atlanticus-web-storage-namespace"
 version = "0.1.0"
-source = { editable = "../../../../ada/web/storage/namespace" }
+source = { editable = "../../../../../web/capabilities/storage/namespace" }
 
 [package.metadata]
 
@@ -421,10 +423,10 @@ dev = [
 
 [[package]]
 name = "ada-web-tools-projection-cosmos"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "../../../../ada/web/tools/projection-cosmos" }
 dependencies = [
-    { name = "ada-web-storage-namespace" },
+    { name = "atlanticus-web-storage-namespace" },
     { name = "ada-web-tools-configuration" },
     { name = "atlanticus-cosmos" },
     { name = "atlanticus-web-projection" },
@@ -434,7 +436,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-web-storage-namespace", editable = "../../../../ada/web/storage/namespace" },
+    { name = "atlanticus-web-storage-namespace", editable = "../../../../../web/capabilities/storage/namespace" },
     { name = "ada-web-tools-configuration", editable = "../../../../ada/web/tools/configuration" },
     { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },

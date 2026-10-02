@@ -9,7 +9,6 @@ from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import SettingsConfigDict
 
 from ada.web.kpis.collector import CosmosKpiDeliveryReaderSettings
-from ada.web.storage.namespace import AdaStorageNamespace
 from ada.web.tools.persistence import (
     ToolPersistenceSettings,
     ToolProjectionProvider,
@@ -23,6 +22,7 @@ from atlanticus.connectivity.storage import (
     StorageSettings,
 )
 from atlanticus.web.configuration import WebSettings
+from atlanticus.web.storage.namespace import StorageNamespace
 
 APPLICATION_NAMESPACE_VARIABLE = 'ADA_APPLICATION_NAMESPACE'
 PERSISTENCE_MODE_VARIABLE = 'ADA_PERSISTENCE_MODE'
@@ -187,10 +187,10 @@ class AdaGenericSettings(WebSettings):
 
         return self
 
-    def storage_namespace(self) -> AdaStorageNamespace:
-        return AdaStorageNamespace(
+    def storage_namespace(self) -> StorageNamespace:
+        return StorageNamespace(
             application_namespace=self.application_namespace,
-            tool_namespace=self.tool_namespace,
+            scope_namespace=self.tool_namespace,
         )
 
     def local_base_root(self) -> Path:

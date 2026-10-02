@@ -11,11 +11,11 @@ from ada.web.application.generic.manager_persistence import (
     compose_durable_manager_stores,
     resolve_manager_cosmos_plan,
 )
-from ada.web.storage.namespace import AdaStorageNamespace
 from atlanticus.connectivity.storage import StorageBlobNotFoundError
 from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
 from atlanticus.web.identity.models import AuthenticatedIdentity
 from atlanticus.web.source.models import SourceKey
+from atlanticus.web.storage.namespace import StorageNamespace
 from atlanticus.web.storage.topology import (
     MissingStorageConnectionBindingError,
     ResolvedStoragePlan,
@@ -81,8 +81,8 @@ def _connections():
     )
 
 
-def _namespace() -> AdaStorageNamespace:
-    return AdaStorageNamespace(application_namespace='ada-site', tool_namespace='plant')
+def _namespace() -> StorageNamespace:
+    return StorageNamespace(application_namespace='ada-site', scope_namespace='plant')
 
 
 def test_factory_is_lazy_and_preserves_independent_source_namespaces():
@@ -190,7 +190,7 @@ def test_different_tool_namespaces_produce_distinct_source_paths():
         namespace=_namespace(), resources=_resources(), connections=connections
     )
     second = compose_durable_manager_stores(
-        namespace=AdaStorageNamespace('ada-site', 'mine'),
+        namespace=StorageNamespace('ada-site', 'mine'),
         resources=_resources(),
         connections=connections,
     )
@@ -208,7 +208,7 @@ def test_tool_projection_addresses_are_namespaced_independently():
         namespace=_namespace(), resources=_resources(), connections=connections
     )
     mine = compose_durable_manager_stores(
-        namespace=AdaStorageNamespace('ada-site', 'mine'),
+        namespace=StorageNamespace('ada-site', 'mine'),
         resources=_resources(),
         connections=connections,
     )

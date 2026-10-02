@@ -32,7 +32,7 @@ def _settings(tool_namespace: str) -> AdaGenericSettings:
 def test_two_tools_share_global_users_under_one_existing_application_namespace():
     first = resolve_durable_manager_configuration(_settings('mine'))
     second = resolve_durable_manager_configuration(_settings('flotation'))
-    assert first.namespace.tool_prefix != second.namespace.tool_prefix
+    assert first.namespace.scope_prefix != second.namespace.scope_prefix
     assert first.namespace.application_prefix == second.namespace.application_prefix
     assert first.namespace.application_blob_name('users/users.json.gz') == (
         second.namespace.application_blob_name('users/users.json.gz')

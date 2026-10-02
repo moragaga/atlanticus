@@ -2,18 +2,18 @@ from pathlib import Path
 
 import pytest
 
-from ada.web.storage.namespace import AdaStorageNamespace
 from ada.web.tools.persistence import (
     ToolPersistenceSettings,
     ToolProjectionProvider,
     ToolSourceProvider,
 )
+from atlanticus.web.storage.namespace import StorageNamespace
 
 
-def _namespace() -> AdaStorageNamespace:
-    return AdaStorageNamespace(
+def _namespace() -> StorageNamespace:
+    return StorageNamespace(
         application_namespace='conciencia_situacional',
-        tool_namespace='mina',
+        scope_namespace='mina',
     )
 
 

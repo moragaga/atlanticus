@@ -1,5 +1,5 @@
-# Modela únicamente la jerarquía lógica ADA; no conoce SourceStore, Blob, Cosmos ni providers.
-# La composición entrega el root/prefix derivado a cada capability según su ownership.
+# Modela una jerarquía lógica reutilizable de aplicación + scope.
+# No conoce SourceStore, Blob, Cosmos ni el significado de negocio del segundo segmento.
 
 from __future__ import annotations
 
@@ -8,12 +8,12 @@ from pathlib import Path, PurePosixPath
 
 
 @dataclass(frozen=True, slots=True)
-class AdaStorageNamespace:
+class StorageNamespace:
     application_namespace: str
-    tool_namespace: str
+    scope_namespace: str
 
     def __post_init__(self) -> None:
-        # Ambos nombres son segmentos lógicos, no rutas suministradas por el caller.
+        # Ambos nombres son segmentos lógicos y se validan antes de derivar rutas o prefijos.
         object.__setattr__(
             self,
             'application_namespace',
@@ -24,43 +24,42 @@ class AdaStorageNamespace:
         )
         object.__setattr__(
             self,
-            'tool_namespace',
+            'scope_namespace',
             _require_namespace_segment(
-                self.tool_namespace,
-                'tool_namespace',
+                self.scope_namespace,
+                'scope_namespace',
             ),
         )
 
     @property
     def application_prefix(self) -> str:
-        # Nivel global: users y cualquier capability con ownership de aplicación.
+        # Nivel compartido por recursos cuyo ownership corresponde a toda la aplicación.
         return self.application_namespace
 
     @property
-    def tool_prefix(self) -> str:
-        # Nivel Tool: Source, Projection y otros estados propios de la Tool.
-        return f'{self.application_namespace}/{self.tool_namespace}'
+    def scope_prefix(self) -> str:
+        # Nivel subordinado reutilizable; cada producto decide si representa Tool u otro scope.
+        return f'{self.application_namespace}/{self.scope_namespace}'
 
     def local_application_root(self, base_root: str | Path) -> Path:
-        # Ejemplo: /data + conciencia_situacional.
+        # Deriva el root local de aplicación desde un root físico absoluto provisto por composición.
         return _require_absolute_root(base_root) / self.application_namespace
 
-    def local_tool_root(self, base_root: str | Path) -> Path:
-        # Ejemplo: /data/conciencia_situacional/operaciones_integradas.
-        # LocalSourceStore recibe este root y agrega internamente sources/<SourceKey>.
-        return self.local_application_root(base_root) / self.tool_namespace
+    def local_scope_root(self, base_root: str | Path) -> Path:
+        # Agrega el scope lógico sin imponer semántica de producto sobre ese segundo nivel.
+        return self.local_application_root(base_root) / self.scope_namespace
 
     def local_projection_root(self, base_root: str | Path) -> Path:
-        # Las projections locales comparten la frontera explícita projections/.
-        return self.local_tool_root(base_root) / 'projections'
+        # Las projections locales conservan la frontera física projections/ existente.
+        return self.local_scope_root(base_root) / 'projections'
 
     def application_blob_name(self, relative_path: str) -> str:
-        # Permite ubicar recursos globales sin retroceder desde el namespace Tool.
+        # Deriva nombres Blob application-scoped sin conocer containers ni credenciales.
         return _join_prefix(self.application_prefix, relative_path)
 
-    def tool_blob_name(self, relative_path: str) -> str:
-        # Permite ubicar recursos propios de Tool bajo el mismo namespace global.
-        return _join_prefix(self.tool_prefix, relative_path)
+    def scope_blob_name(self, relative_path: str) -> str:
+        # Deriva nombres Blob scope-scoped preservando la misma identidad lógica local/durable.
+        return _join_prefix(self.scope_prefix, relative_path)
 
 
 def _require_namespace_segment(value: object, field_name: str) -> str:

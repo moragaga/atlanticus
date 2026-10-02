@@ -47,7 +47,7 @@ def test_local_settings_derive_local_tool_persistence(tmp_path: Path) -> None:
     assert settings.persistence_mode is AdaPersistenceMode.LOCAL
     assert settings.application_namespace == 'conciencia_situacional'
     assert persistence.namespace.application_namespace == 'conciencia_situacional'
-    assert persistence.namespace.tool_namespace == 'operaciones_integradas'
+    assert persistence.namespace.scope_namespace == 'operaciones_integradas'
     assert persistence.source_provider is ToolSourceProvider.LOCAL
     assert persistence.projection_provider is ToolProjectionProvider.LOCAL
     assert persistence.local_base_root == tmp_path

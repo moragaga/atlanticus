@@ -66,7 +66,7 @@ dev = [
 
 [[package]]
 name = "ada-generic-application"
-version = "0.2.22"
+version = "0.2.23"
 source = { editable = "." }
 dependencies = [
     { name = "ada-configuration-manager" },
@@ -85,7 +85,7 @@ dependencies = [
     { name = "ada-web-runtime-experience" },
     { name = "ada-web-shell-header" },
     { name = "ada-web-shell-navigation" },
-    { name = "ada-web-storage-namespace" },
+    { name = "atlanticus-web-storage-namespace" },
     { name = "ada-web-time-status-store-adapter" },
     { name = "ada-web-tools" },
     { name = "ada-web-tools-configuration" },
@@ -145,7 +145,7 @@ requires-dist = [
     { name = "ada-web-runtime-experience", editable = "../../runtime-experience" },
     { name = "ada-web-shell-header", editable = "../../shell/header" },
     { name = "ada-web-shell-navigation", editable = "../../shell/navigation" },
-    { name = "ada-web-storage-namespace", editable = "../../storage/namespace" },
+    { name = "atlanticus-web-storage-namespace", editable = "../../../../../web/capabilities/storage/namespace" },
     { name = "ada-web-time-status-store-adapter", editable = "../../time-status/store-adapter" },
     { name = "ada-web-tools", editable = "../../tools/core" },
     { name = "ada-web-tools-configuration", editable = "../../tools/configuration" },
@@ -776,9 +776,9 @@ dev = [
 ]
 
 [[package]]
-name = "ada-web-storage-namespace"
+name = "atlanticus-web-storage-namespace"
 version = "0.1.0"
-source = { editable = "../../storage/namespace" }
+source = { editable = "../../../../../web/capabilities/storage/namespace" }
 
 [package.metadata]
 
@@ -852,10 +852,10 @@ dev = [
 
 [[package]]
 name = "ada-web-tools-persistence"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "../../tools/persistence" }
 dependencies = [
-    { name = "ada-web-storage-namespace" },
+    { name = "atlanticus-web-storage-namespace" },
     { name = "ada-web-tools-configuration" },
     { name = "ada-web-tools-projection-cosmos" },
     { name = "ada-web-tools-projection-local" },
@@ -869,7 +869,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-web-storage-namespace", editable = "../../storage/namespace" },
+    { name = "atlanticus-web-storage-namespace", editable = "../../../../../web/capabilities/storage/namespace" },
     { name = "ada-web-tools-configuration", editable = "../../tools/configuration" },
     { name = "ada-web-tools-projection-cosmos", editable = "../../tools/projection-cosmos" },
     { name = "ada-web-tools-projection-local", editable = "../../tools/projection-local" },
@@ -889,10 +889,10 @@ dev = [
 
 [[package]]
 name = "ada-web-tools-projection-cosmos"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "../../tools/projection-cosmos" }
 dependencies = [
-    { name = "ada-web-storage-namespace" },
+    { name = "atlanticus-web-storage-namespace" },
     { name = "ada-web-tools-configuration" },
     { name = "atlanticus-cosmos" },
     { name = "atlanticus-web-projection" },
@@ -902,7 +902,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-web-storage-namespace", editable = "../../storage/namespace" },
+    { name = "atlanticus-web-storage-namespace", editable = "../../../../../web/capabilities/storage/namespace" },
     { name = "ada-web-tools-configuration", editable = "../../tools/configuration" },
     { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
@@ -918,10 +918,10 @@ dev = [
 
 [[package]]
 name = "ada-web-tools-projection-local"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "../../tools/projection-local" }
 dependencies = [
-    { name = "ada-web-storage-namespace" },
+    { name = "atlanticus-web-storage-namespace" },
     { name = "ada-web-tools-configuration" },
     { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
@@ -929,7 +929,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-web-storage-namespace", editable = "../../storage/namespace" },
+    { name = "atlanticus-web-storage-namespace", editable = "../../../../../web/capabilities/storage/namespace" },
     { name = "ada-web-tools-configuration", editable = "../../tools/configuration" },
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },

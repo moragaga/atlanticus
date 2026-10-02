@@ -4,19 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-web-tools-projection-local"
-version = "0.1.0"
+version = "0.1.1"
 description = "Persistencia local de Tool Projection para ADA"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
-    "ada-web-storage-namespace==0.1.0",
+    "atlanticus-web-storage-namespace==0.1.0",
     "ada-web-tools-configuration==0.1.0",
     "atlanticus-web-projection==0.1.0",
     "atlanticus-web-source==0.1.0",
 ]
 
 [tool.uv.sources]
-ada-web-storage-namespace = { path = "../../storage/namespace", editable = true }
+atlanticus-web-storage-namespace = { path = "../../../../../web/capabilities/storage/namespace", editable = true }
 ada-web-tools-configuration = { path = "../configuration", editable = true }
 atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }

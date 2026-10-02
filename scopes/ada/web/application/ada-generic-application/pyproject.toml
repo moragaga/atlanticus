@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-generic-application"
-version = "0.2.22"
+version = "0.2.23"
 description = "Composition root web genérico de ADA sobre Atlanticus Web"
 requires-python = "==3.14.2"
 classifiers = [
@@ -20,17 +20,17 @@ dependencies = [
     "atlanticus-web-storage-cosmos==0.1.0",
     "atlanticus-web-profiles-projection-cosmos==0.1.0",
     "atlanticus-web-navigation-projection-cosmos==0.1.0",
-    "ada-web-tools-projection-cosmos==0.1.0",
+    "ada-web-tools-projection-cosmos==0.1.1",
     "ada-web-kpi-registry-projection-cosmos==0.1.0",
     "ada-web-kpi-definition-projection-cosmos==0.1.0",
     "ada-web-access-projection-cosmos==0.1.0",
     "ada-web-access-configuration==0.1.0",
     "ada-web-operational-state==0.1.0",
     "ada-web-operational-render-binding==0.1.0",
-    "ada-web-storage-namespace==0.1.0",
+    "atlanticus-web-storage-namespace==0.1.0",
     "ada-web-tools==0.1.0",
     "ada-web-tools-configuration==0.1.0",
-    "ada-web-tools-persistence==0.1.0",
+    "ada-web-tools-persistence==0.1.1",
     "ada-web-time-status-store-adapter==0.1.0",
     "ada-web-content-state==0.1.0",
     "ada-web-alarm-management-summary==0.1.5",
@@ -127,7 +127,7 @@ atlanticus-web-users = { path = "../../../../../web/capabilities/users/core", ed
 atlanticus-web-navigation = { path = "../../../../../web/capabilities/navigation/core", editable = true }
 atlanticus-web-navigation-configuration = { path = "../../../../../web/capabilities/navigation/configuration", editable = true }
 ada-web-ui-page-readiness = { path = "../../ui/page-readiness", editable = true }
-ada-web-storage-namespace = { path = "../../storage/namespace", editable = true }
+atlanticus-web-storage-namespace = { path = "../../../../../web/capabilities/storage/namespace", editable = true }
 ada-web-tools = { path = "../../tools/core", editable = true }
 ada-web-tools-configuration = { path = "../../tools/configuration", editable = true }
 ada-web-tools-persistence = { path = "../../tools/persistence", editable = true }

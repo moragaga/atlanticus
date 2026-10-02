@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from ada.web.storage.namespace import AdaStorageNamespace
 from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.configuration.errors import ToolConfigurationProjectionError
 from ada.web.tools.configuration.projection_record import (
@@ -17,6 +16,7 @@ from ada.web.tools.configuration.projection_record import (
 from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.models import SourceKey
+from atlanticus.web.storage.namespace import StorageNamespace
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,11 +27,11 @@ class LocalToolProjectionStoreSettings:
     def from_namespace(
         cls,
         *,
-        namespace: AdaStorageNamespace,
+        namespace: StorageNamespace,
         base_root: str | Path,
     ) -> LocalToolProjectionStoreSettings:
-        if not isinstance(namespace, AdaStorageNamespace):
-            raise TypeError('namespace must be AdaStorageNamespace')
+        if not isinstance(namespace, StorageNamespace):
+            raise TypeError('namespace must be StorageNamespace')
         return cls(root=namespace.local_projection_root(base_root))
 
 

@@ -7,7 +7,6 @@ from types import MappingProxyType
 
 from dotenv import dotenv_values
 
-from ada.web.storage.namespace import AdaStorageNamespace
 from ada_command_center.web.tools.discovery_cosmos import ToolCosmosConnectionDeclarations
 from atlanticus.connectivity.cosmos import CosmosSettings
 from atlanticus.connectivity.storage import (
@@ -19,11 +18,12 @@ from atlanticus.web.configuration import (
     WebEnvironment,
     WebSettings,
 )
+from atlanticus.web.storage.namespace import StorageNamespace
 
 STORAGE_CONNECTION_STRING_VARIABLE = 'ADA_COMMAND_CENTER_STORAGE_CONNECTION_STRING'
 STORAGE_CONTAINER_VARIABLE = 'ADA_COMMAND_CENTER_STORAGE_CONTAINER_NAME'
-COMMAND_CENTER_NAMESPACE = AdaStorageNamespace('conciencia_situacional', 'command-center')
-COMMAND_CENTER_CATALOG_BLOB_NAME = COMMAND_CENTER_NAMESPACE.tool_blob_name(
+COMMAND_CENTER_NAMESPACE = StorageNamespace('conciencia_situacional', 'command-center')
+COMMAND_CENTER_CATALOG_BLOB_NAME = COMMAND_CENTER_NAMESPACE.scope_blob_name(
     'tool-catalog/current.json'
 )
 _STORAGE_NAMES = (STORAGE_CONNECTION_STRING_VARIABLE, STORAGE_CONTAINER_VARIABLE)

@@ -21,7 +21,7 @@ from ada.web.kpis.registry.projection.cosmos import (
     CosmosKpiRegistryProjectionStoreSettings,
 )
 from ada.web.operational.identification import CosmosOperationalProjectionStore
-from ada.web.storage.namespace import AdaStorageNamespace
+from atlanticus.web.storage.namespace import StorageNamespace
 from ada.web.tools.projection.cosmos import (
     TOOL_PROJECTION_STORAGE_RESOURCE,
     CosmosToolProjectionStore,
@@ -140,12 +140,12 @@ def resolve_manager_cosmos_plan_for_connection(connection_ref: str) -> ResolvedS
 
 def compose_durable_manager_stores(
     *,
-    namespace: AdaStorageNamespace,
+    namespace: StorageNamespace,
     resources: ManagerPersistenceResources,
     connections: ManagerPersistenceConnections,
 ) -> ConfigurationManagerStores:
-    if not isinstance(namespace, AdaStorageNamespace):
-        raise TypeError('Manager namespace must be AdaStorageNamespace')
+    if not isinstance(namespace, StorageNamespace):
+        raise TypeError('Manager namespace must be StorageNamespace')
     if not isinstance(resources, ManagerPersistenceResources):
         raise TypeError('Manager resources must be ManagerPersistenceResources')
     if not isinstance(connections, ManagerPersistenceConnections):
@@ -171,7 +171,7 @@ def compose_durable_manager_stores(
     tool_source = BlobSourceStore(
         BlobSourceSettings(
             container_name=resources.tool_source.container_name,
-            root_prefix=namespace.tool_prefix,
+            root_prefix=namespace.scope_prefix,
         ),
         storage=storage['tool_source'],
     )

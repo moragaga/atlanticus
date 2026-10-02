@@ -5,7 +5,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from ada.web.storage.namespace import AdaStorageNamespace
 from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.configuration.errors import ToolConfigurationProjectionError
 from ada.web.tools.configuration.projection_record import TOOL_PROJECTION_DOCUMENT_TYPE
@@ -30,6 +29,7 @@ from atlanticus.connectivity.cosmos import (
 from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.models import SourceKey, SourceReleaseId
+from atlanticus.web.storage.namespace import StorageNamespace
 
 _CONNECTION_NAME = re.compile(r'[a-z][a-z0-9_-]{0,63}\Z')
 _DISCOVERY_QUERY = (
@@ -190,9 +190,9 @@ class ToolCatalogDiscovery:
             namespace = _parse_namespace(namespace_key)
             if namespace is None:
                 return _error(name, ToolCatalogDiscoveryIssue.INVALID_NAMESPACE)
-            if namespace.tool_prefix in seen:
+            if namespace.scope_prefix in seen:
                 return _error(name, ToolCatalogDiscoveryIssue.DUPLICATE_NAMESPACE)
-            seen.add(namespace.tool_prefix)
+            seen.add(namespace.scope_prefix)
             store = CosmosToolProjectionStore(
                 client=client,
                 settings=CosmosToolProjectionStoreSettings.from_namespace(
@@ -214,7 +214,7 @@ class ToolCatalogDiscovery:
             tools.append(
                 DiscoveredTool(
                     connection_name=name,
-                    namespace_key=namespace.tool_prefix,
+                    namespace_key=namespace.scope_prefix,
                     tool_key=configuration.tool_key,
                     display_name=configuration.display_name,
                     kind=configuration.kind.value,
@@ -230,12 +230,12 @@ class ToolCatalogDiscovery:
         )
 
 
-def _parse_namespace(value: object) -> AdaStorageNamespace | None:
+def _parse_namespace(value: object) -> StorageNamespace | None:
     if not isinstance(value, str) or value.count('/') != 1:
         return None
     application, tool = value.split('/')
     try:
-        return AdaStorageNamespace(application_namespace=application, tool_namespace=tool)
+        return StorageNamespace(application_namespace=application, scope_namespace=tool)
     except TypeError, ValueError:
         return None
 

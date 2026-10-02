@@ -44,7 +44,7 @@ def test_root_and_resources_derive_from_existing_contracts() -> None:
     )
     resolved = resolve_durable_configuration(values, local=False)
     assert resolved.storage_container_name == 'configurations'
-    assert resolved.namespace.tool_prefix == 'conciencia_situacional/command-center'
+    assert resolved.namespace.scope_prefix == 'conciencia_situacional/command-center'
     assert resolved.catalog_blob_name == (
         'conciencia_situacional/command-center/tool-catalog/current.json'
     )

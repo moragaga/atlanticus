@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 
-from ada.web.storage.namespace import AdaStorageNamespace
 from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.configuration.errors import ToolConfigurationProjectionError
 from ada.web.tools.configuration.projection_record import (
@@ -14,6 +13,7 @@ from atlanticus.connectivity.cosmos import CosmosClient, CosmosError
 from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.models import SourceKey
+from atlanticus.web.storage.namespace import StorageNamespace
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,13 +41,13 @@ class CosmosToolProjectionStoreSettings:
         cls,
         *,
         container_name: str,
-        namespace: AdaStorageNamespace,
+        namespace: StorageNamespace,
     ) -> CosmosToolProjectionStoreSettings:
-        if not isinstance(namespace, AdaStorageNamespace):
-            raise TypeError('namespace must be AdaStorageNamespace')
+        if not isinstance(namespace, StorageNamespace):
+            raise TypeError('namespace must be StorageNamespace')
         return cls(
             container_name=container_name,
-            namespace_key=namespace.tool_prefix,
+            namespace_key=namespace.scope_prefix,
         )
 
 

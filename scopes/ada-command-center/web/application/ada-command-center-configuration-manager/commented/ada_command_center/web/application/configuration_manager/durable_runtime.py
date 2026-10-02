@@ -5,7 +5,6 @@ from collections.abc import Callable, Iterator, Mapping
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 
-from ada.web.storage.namespace import AdaStorageNamespace
 from ada_command_center.web.alarms.configuration.tool_references import AlarmToolReferenceReader
 from ada_command_center.web.alarms.persistence import (
     AlarmConfigurationPersistenceSettings,
@@ -46,6 +45,7 @@ from atlanticus.web.profiles.projection.cosmos import (
     CosmosProfilesProjectionStore,
     CosmosProfilesProjectionStoreSettings,
 )
+from atlanticus.web.storage.namespace import StorageNamespace
 from atlanticus.web.storage.topology import StorageResourceOverride, resolve_storage_plan
 from atlanticus.web.users.blob import BlobUsersRegistryStore
 from atlanticus.web.users.cosmos import CosmosUsersStore
@@ -64,7 +64,7 @@ _COSMOS_RESOURCES = (
 
 @dataclass(frozen=True, slots=True)
 class CommandCenterDurableConfiguration:
-    namespace: AdaStorageNamespace
+    namespace: StorageNamespace
     storage_settings: StorageSettings
     cosmos_settings: CosmosSettings
     storage_container_name: str
@@ -123,8 +123,8 @@ def resolve_durable_configuration(
         ),
         storage_container_name=_require(values, STORAGE_CONTAINER_VARIABLE),
         catalog_blob_name=COMMAND_CENTER_CATALOG_BLOB_NAME,
-        source_root_prefix=namespace.tool_prefix,
-        users_registry_blob_name=namespace.tool_blob_name('users/users.json.gz'),
+        source_root_prefix=namespace.scope_prefix,
+        users_registry_blob_name=namespace.scope_blob_name('users/users.json.gz'),
         alarm_projection_container_name=resources[
             ALARM_CONFIGURATION_PROJECTION_STORAGE_RESOURCE.logical_id
         ].physical_name,

@@ -75,7 +75,7 @@ def _compose_source(
             raise RuntimeError('Local Source provider has no local base root')
         return LocalSourceStore(
             LocalSourceSettings(
-                root=settings.namespace.local_tool_root(base_root),
+                root=settings.namespace.local_scope_root(base_root),
             )
         )
 
@@ -89,7 +89,7 @@ def _compose_source(
     return BlobSourceStore(
         BlobSourceSettings(
             container_name=container_name,
-            root_prefix=settings.namespace.tool_prefix,
+            root_prefix=settings.namespace.scope_prefix,
         ),
         storage=storage_client,
     )

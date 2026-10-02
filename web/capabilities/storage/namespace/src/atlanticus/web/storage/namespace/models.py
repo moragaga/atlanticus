@@ -5,9 +5,9 @@ from pathlib import Path, PurePosixPath
 
 
 @dataclass(frozen=True, slots=True)
-class AdaStorageNamespace:
+class StorageNamespace:
     application_namespace: str
-    tool_namespace: str
+    scope_namespace: str
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -20,10 +20,10 @@ class AdaStorageNamespace:
         )
         object.__setattr__(
             self,
-            'tool_namespace',
+            'scope_namespace',
             _require_namespace_segment(
-                self.tool_namespace,
-                'tool_namespace',
+                self.scope_namespace,
+                'scope_namespace',
             ),
         )
 
@@ -32,23 +32,23 @@ class AdaStorageNamespace:
         return self.application_namespace
 
     @property
-    def tool_prefix(self) -> str:
-        return f'{self.application_namespace}/{self.tool_namespace}'
+    def scope_prefix(self) -> str:
+        return f'{self.application_namespace}/{self.scope_namespace}'
 
     def local_application_root(self, base_root: str | Path) -> Path:
         return _require_absolute_root(base_root) / self.application_namespace
 
-    def local_tool_root(self, base_root: str | Path) -> Path:
-        return self.local_application_root(base_root) / self.tool_namespace
+    def local_scope_root(self, base_root: str | Path) -> Path:
+        return self.local_application_root(base_root) / self.scope_namespace
 
     def local_projection_root(self, base_root: str | Path) -> Path:
-        return self.local_tool_root(base_root) / 'projections'
+        return self.local_scope_root(base_root) / 'projections'
 
     def application_blob_name(self, relative_path: str) -> str:
         return _join_prefix(self.application_prefix, relative_path)
 
-    def tool_blob_name(self, relative_path: str) -> str:
-        return _join_prefix(self.tool_prefix, relative_path)
+    def scope_blob_name(self, relative_path: str) -> str:
+        return _join_prefix(self.scope_prefix, relative_path)
 
 
 def _require_namespace_segment(value: object, field_name: str) -> str:

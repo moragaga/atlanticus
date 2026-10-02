@@ -25,9 +25,9 @@ dev = [
 ]
 
 [[package]]
-name = "ada-web-storage-namespace"
+name = "atlanticus-web-storage-namespace"
 version = "0.1.0"
-source = { editable = "../../storage/namespace" }
+source = { editable = "../../../../../web/capabilities/storage/namespace" }
 
 [package.metadata]
 
@@ -82,10 +82,10 @@ dev = [
 
 [[package]]
 name = "ada-web-tools-projection-local"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
-    { name = "ada-web-storage-namespace" },
+    { name = "atlanticus-web-storage-namespace" },
     { name = "ada-web-tools-configuration" },
     { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
@@ -99,7 +99,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-web-storage-namespace", editable = "../../storage/namespace" },
+    { name = "atlanticus-web-storage-namespace", editable = "../../../../../web/capabilities/storage/namespace" },
     { name = "ada-web-tools-configuration", editable = "../configuration" },
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },

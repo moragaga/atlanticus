@@ -28,7 +28,7 @@ from ada.web.application.generic.settings import (
     AdaGenericSettings,
     AdaPersistenceMode,
 )
-from ada.web.storage.namespace import AdaStorageNamespace
+from atlanticus.web.storage.namespace import StorageNamespace
 from atlanticus.connectivity.cosmos import CosmosClient, CosmosSettings
 from atlanticus.connectivity.storage import StorageClient, StorageSettings
 from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
@@ -63,7 +63,7 @@ class ManagerStartupOptions(BaseSettings):
 
 @dataclass(frozen=True, slots=True)
 class DurableManagerConfiguration:
-    namespace: AdaStorageNamespace
+    namespace: StorageNamespace
     resources: ManagerPersistenceResources
     storage_settings: StorageSettings
     cosmos_settings: CosmosSettings

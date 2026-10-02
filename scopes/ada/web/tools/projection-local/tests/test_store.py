@@ -1,7 +1,6 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
-from ada.web.storage.namespace import AdaStorageNamespace
 from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.projection.local import (
     LocalToolProjectionStore,
@@ -9,6 +8,7 @@ from ada.web.tools.projection.local import (
 )
 from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.source.models import SourceKey, SourceReleaseId
+from atlanticus.web.storage.namespace import StorageNamespace
 
 
 def _configuration(tool_key: str) -> ToolConfiguration:
@@ -71,9 +71,9 @@ def _record(
 def test_local_settings_derive_tool_projection_root_from_namespace(
     tmp_path: Path,
 ) -> None:
-    namespace = AdaStorageNamespace(
+    namespace = StorageNamespace(
         application_namespace='conciencia_situacional',
-        tool_namespace='operaciones_integradas',
+        scope_namespace='operaciones_integradas',
     )
 
     settings = LocalToolProjectionStoreSettings.from_namespace(
@@ -88,9 +88,9 @@ def test_local_settings_derive_tool_projection_root_from_namespace(
 
 def test_local_tool_projection_survives_restart(tmp_path: Path) -> None:
     settings = LocalToolProjectionStoreSettings.from_namespace(
-        namespace=AdaStorageNamespace(
+        namespace=StorageNamespace(
             application_namespace='conciencia_situacional',
-            tool_namespace='mina',
+            scope_namespace='mina',
         ),
         base_root=tmp_path,
     )
@@ -109,18 +109,18 @@ def test_local_tool_projection_survives_restart(tmp_path: Path) -> None:
 def test_local_tool_namespaces_do_not_collide(tmp_path: Path) -> None:
     operations = LocalToolProjectionStore(
         LocalToolProjectionStoreSettings.from_namespace(
-            namespace=AdaStorageNamespace(
+            namespace=StorageNamespace(
                 application_namespace='conciencia_situacional',
-                tool_namespace='operaciones_integradas',
+                scope_namespace='operaciones_integradas',
             ),
             base_root=tmp_path,
         )
     )
     mine = LocalToolProjectionStore(
         LocalToolProjectionStoreSettings.from_namespace(
-            namespace=AdaStorageNamespace(
+            namespace=StorageNamespace(
                 application_namespace='conciencia_situacional',
-                tool_namespace='mina',
+                scope_namespace='mina',
             ),
             base_root=tmp_path,
         )

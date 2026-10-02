@@ -5,7 +5,6 @@ from datetime import UTC, datetime
 
 import pytest
 
-from ada.web.storage.namespace import AdaStorageNamespace
 from ada.web.tools.projection.cosmos import (
     TOOL_PROJECTION_STORAGE_RESOURCE,
     CosmosToolProjectionStore,
@@ -30,6 +29,7 @@ from atlanticus.connectivity.cosmos import (
     CosmosResultLimitError,
 )
 from atlanticus.web.source.models import SourceKey
+from atlanticus.web.storage.namespace import StorageNamespace
 
 from .helpers import tool_projection
 
@@ -98,7 +98,7 @@ def _seed(
         client=client,
         settings=CosmosToolProjectionStoreSettings.from_namespace(
             container_name=TOOL_PROJECTION_STORAGE_RESOURCE.default_physical_name,
-            namespace=AdaStorageNamespace('ada', namespace),
+            namespace=StorageNamespace('ada', namespace),
         ),
     )
     store.replace_active(tool_projection(tool_key=tool_key, release_id=release_id))

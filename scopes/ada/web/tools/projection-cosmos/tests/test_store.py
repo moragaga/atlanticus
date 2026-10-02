@@ -2,7 +2,6 @@ from datetime import UTC, datetime
 
 import pytest
 
-from ada.web.storage.namespace import AdaStorageNamespace
 from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.projection.cosmos import (
     CosmosToolProjectionStore,
@@ -11,6 +10,7 @@ from ada.web.tools.projection.cosmos import (
 from atlanticus.connectivity.cosmos import CosmosError
 from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.source.models import SourceKey, SourceReleaseId
+from atlanticus.web.storage.namespace import StorageNamespace
 
 
 class _CosmosClient:
@@ -105,9 +105,9 @@ def _settings(
 ) -> CosmosToolProjectionStoreSettings:
     return CosmosToolProjectionStoreSettings.from_namespace(
         container_name='ada-tool-projection',
-        namespace=AdaStorageNamespace(
+        namespace=StorageNamespace(
             application_namespace='conciencia_situacional',
-            tool_namespace=tool_namespace,
+            scope_namespace=tool_namespace,
         ),
     )
 

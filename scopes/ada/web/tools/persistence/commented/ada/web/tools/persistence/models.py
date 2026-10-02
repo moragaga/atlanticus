@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
-from ada.web.storage.namespace import AdaStorageNamespace
+from atlanticus.web.storage.namespace import StorageNamespace
 
 
 class ToolSourceProvider(StrEnum):
@@ -29,7 +29,7 @@ class ToolProjectionResolutionState(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class ToolPersistenceSettings:
-    namespace: AdaStorageNamespace
+    namespace: StorageNamespace
     source_provider: ToolSourceProvider
     projection_provider: ToolProjectionProvider
     local_base_root: Path | None = None
@@ -38,8 +38,8 @@ class ToolPersistenceSettings:
 
     def __post_init__(self) -> None:
         # Provider y namespace se resuelven antes de crear los stores.
-        if not isinstance(self.namespace, AdaStorageNamespace):
-            raise TypeError('namespace must be AdaStorageNamespace')
+        if not isinstance(self.namespace, StorageNamespace):
+            raise TypeError('namespace must be StorageNamespace')
         if not isinstance(self.source_provider, ToolSourceProvider):
             raise TypeError('source_provider must be ToolSourceProvider')
         if not isinstance(self.projection_provider, ToolProjectionProvider):

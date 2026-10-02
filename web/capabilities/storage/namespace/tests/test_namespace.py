@@ -2,36 +2,36 @@ from pathlib import Path
 
 import pytest
 
-from ada.web.storage.namespace import AdaStorageNamespace
+from atlanticus.web.storage.namespace import StorageNamespace
 
 
-def test_namespace_derives_global_and_tool_prefixes() -> None:
-    namespace = AdaStorageNamespace(
+def test_namespace_derives_application_and_scope_prefixes() -> None:
+    namespace = StorageNamespace(
         application_namespace='conciencia_situacional',
-        tool_namespace='operaciones_integradas',
+        scope_namespace='operaciones_integradas',
     )
 
     assert namespace.application_prefix == 'conciencia_situacional'
-    assert namespace.tool_prefix == 'conciencia_situacional/operaciones_integradas'
+    assert namespace.scope_prefix == 'conciencia_situacional/operaciones_integradas'
 
 
-def test_namespace_derives_local_application_tool_and_projection_roots() -> None:
-    namespace = AdaStorageNamespace(
+def test_namespace_derives_local_application_scope_and_projection_roots() -> None:
+    namespace = StorageNamespace(
         application_namespace='conciencia_situacional',
-        tool_namespace='mina',
+        scope_namespace='mina',
     )
 
     assert namespace.local_application_root('/data') == Path('/data/conciencia_situacional')
-    assert namespace.local_tool_root('/data') == Path('/data/conciencia_situacional/mina')
+    assert namespace.local_scope_root('/data') == Path('/data/conciencia_situacional/mina')
     assert namespace.local_projection_root('/data') == Path(
         '/data/conciencia_situacional/mina/projections'
     )
 
 
-def test_namespace_keeps_global_and_tool_blob_paths_independent() -> None:
-    namespace = AdaStorageNamespace(
+def test_namespace_keeps_application_and_scope_blob_paths_independent() -> None:
+    namespace = StorageNamespace(
         application_namespace='conciencia_situacional',
-        tool_namespace='chancado',
+        scope_namespace='chancado',
     )
 
     assert (
@@ -39,22 +39,22 @@ def test_namespace_keeps_global_and_tool_blob_paths_independent() -> None:
         == 'conciencia_situacional/users/users.json.gz'
     )
     assert (
-        namespace.tool_blob_name('runtime/checkpoint.json')
+        namespace.scope_blob_name('runtime/checkpoint.json')
         == 'conciencia_situacional/chancado/runtime/checkpoint.json'
     )
 
 
-def test_source_store_root_stops_at_tool_namespace() -> None:
-    namespace = AdaStorageNamespace(
+def test_source_store_root_stops_at_scope_namespace() -> None:
+    namespace = StorageNamespace(
         application_namespace='conciencia_situacional',
-        tool_namespace='flotacion_selectiva',
+        scope_namespace='flotacion_selectiva',
     )
 
-    assert namespace.local_tool_root('/data') == Path(
+    assert namespace.local_scope_root('/data') == Path(
         '/data/conciencia_situacional/flotacion_selectiva'
     )
-    assert namespace.tool_prefix == 'conciencia_situacional/flotacion_selectiva'
-    assert 'sources' not in namespace.tool_prefix
+    assert namespace.scope_prefix == 'conciencia_situacional/flotacion_selectiva'
+    assert 'sources' not in namespace.scope_prefix
 
 
 @pytest.mark.parametrize(
@@ -63,30 +63,30 @@ def test_source_store_root_stops_at_tool_namespace() -> None:
         ('application_namespace', ''),
         ('application_namespace', ' conciencia_situacional'),
         ('application_namespace', 'conciencia/situacional'),
-        ('tool_namespace', ''),
-        ('tool_namespace', '..'),
-        ('tool_namespace', 'mina/chancado'),
+        ('scope_namespace', ''),
+        ('scope_namespace', '..'),
+        ('scope_namespace', 'mina/chancado'),
     ],
 )
 def test_namespace_rejects_invalid_segments(field: str, value: str) -> None:
     values = {
         'application_namespace': 'conciencia_situacional',
-        'tool_namespace': 'mina',
+        'scope_namespace': 'mina',
     }
     values[field] = value
 
     with pytest.raises((TypeError, ValueError)):
-        AdaStorageNamespace(**values)
+        StorageNamespace(**values)
 
 
 def test_local_roots_require_absolute_base_path() -> None:
-    namespace = AdaStorageNamespace(
+    namespace = StorageNamespace(
         application_namespace='conciencia_situacional',
-        tool_namespace='mina',
+        scope_namespace='mina',
     )
 
     with pytest.raises(ValueError, match='absolute'):
-        namespace.local_tool_root('relative-data')
+        namespace.local_scope_root('relative-data')
 
 
 @pytest.mark.parametrize(
@@ -94,9 +94,9 @@ def test_local_roots_require_absolute_base_path() -> None:
     ('', '/users/users.json.gz', '../users/users.json.gz', 'users/../users.json.gz'),
 )
 def test_blob_paths_reject_unsafe_relative_paths(relative_path: str) -> None:
-    namespace = AdaStorageNamespace(
+    namespace = StorageNamespace(
         application_namespace='conciencia_situacional',
-        tool_namespace='mina',
+        scope_namespace='mina',
     )
 
     with pytest.raises(ValueError, match='safe relative path'):

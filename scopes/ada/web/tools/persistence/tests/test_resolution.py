@@ -1,7 +1,6 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
-from ada.web.storage.namespace import AdaStorageNamespace
 from ada.web.tools.configuration import (
     ToolConfiguration,
     create_tool_projection_service,
@@ -32,12 +31,13 @@ from atlanticus.web.source.models import (
     SourceSnapshot,
 )
 from atlanticus.web.source.store import SourceStore
+from atlanticus.web.storage.namespace import StorageNamespace
 
 
-def _namespace() -> AdaStorageNamespace:
-    return AdaStorageNamespace(
+def _namespace() -> StorageNamespace:
+    return StorageNamespace(
         application_namespace='conciencia_situacional',
-        tool_namespace='operaciones_integradas',
+        scope_namespace='operaciones_integradas',
     )
 
 

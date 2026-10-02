@@ -1,6 +1,5 @@
 from pathlib import Path
 
-from ada.web.storage.namespace import AdaStorageNamespace
 from ada.web.tools.persistence import (
     ToolPersistenceSettings,
     ToolProjectionProvider,
@@ -17,12 +16,13 @@ from atlanticus.connectivity.storage import (
 )
 from atlanticus.web.source.blob import BlobSourceStore
 from atlanticus.web.source.local import LocalSourceStore
+from atlanticus.web.storage.namespace import StorageNamespace
 
 
-def _namespace(tool: str = 'operaciones_integradas') -> AdaStorageNamespace:
-    return AdaStorageNamespace(
+def _namespace(tool: str = 'operaciones_integradas') -> StorageNamespace:
+    return StorageNamespace(
         application_namespace='conciencia_situacional',
-        tool_namespace=tool,
+        scope_namespace=tool,
     )
 
 

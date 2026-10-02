@@ -31,7 +31,7 @@ dev = [
 
 [[package]]
 name = "ada-command-center-web-tool-catalog-manager"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "." }
 dependencies = [
     { name = "ada-command-center-web-tool-discovery-cosmos" },
@@ -62,11 +62,11 @@ dev = [
 
 [[package]]
 name = "ada-command-center-web-tool-discovery-cosmos"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "../discovery-cosmos" }
 dependencies = [
     { name = "ada-command-center-web-tool-catalog" },
-    { name = "ada-web-storage-namespace" },
+    { name = "atlanticus-web-storage-namespace" },
     { name = "ada-web-tools-configuration" },
     { name = "ada-web-tools-projection-cosmos" },
     { name = "atlanticus-cosmos" },
@@ -77,7 +77,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "ada-command-center-web-tool-catalog", editable = "../catalog" },
-    { name = "ada-web-storage-namespace", editable = "../../../../ada/web/storage/namespace" },
+    { name = "atlanticus-web-storage-namespace", editable = "../../../../../web/capabilities/storage/namespace" },
     { name = "ada-web-tools-configuration", editable = "../../../../ada/web/tools/configuration" },
     { name = "ada-web-tools-projection-cosmos", editable = "../../../../ada/web/tools/projection-cosmos" },
     { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
@@ -114,9 +114,9 @@ dev = [
 ]
 
 [[package]]
-name = "ada-web-storage-namespace"
+name = "atlanticus-web-storage-namespace"
 version = "0.1.0"
-source = { editable = "../../../../ada/web/storage/namespace" }
+source = { editable = "../../../../../web/capabilities/storage/namespace" }
 
 [package.metadata]
 
@@ -171,10 +171,10 @@ dev = [
 
 [[package]]
 name = "ada-web-tools-projection-cosmos"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "../../../../ada/web/tools/projection-cosmos" }
 dependencies = [
-    { name = "ada-web-storage-namespace" },
+    { name = "atlanticus-web-storage-namespace" },
     { name = "ada-web-tools-configuration" },
     { name = "atlanticus-cosmos" },
     { name = "atlanticus-web-projection" },
@@ -184,7 +184,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-web-storage-namespace", editable = "../../../../ada/web/storage/namespace" },
+    { name = "atlanticus-web-storage-namespace", editable = "../../../../../web/capabilities/storage/namespace" },
     { name = "ada-web-tools-configuration", editable = "../../../../ada/web/tools/configuration" },
     { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
