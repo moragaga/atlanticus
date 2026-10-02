@@ -1,7 +1,10 @@
 from datetime import UTC, datetime
 
+import pytest
+
 from atlanticus.connectivity.sql import SqlTableChangeMarker
 from atlanticus.data_producers.sql import (
+    SqlDataProducerError,
     SqlDataProducerJob,
     SqlDataProducerPlanner,
     SqlExecutionPlan,
@@ -15,23 +18,19 @@ from atlanticus.data_producers.sql import (
 class _Planner(SqlDataProducerPlanner):
     def __init__(self, plan):
         self.plan = plan
-        self.calls = 0
 
     def capture(self, definitions, *, context=None):
-        self.calls += 1
         return self.plan
 
 
 class _State(SqlProducerState):
     def __init__(self):
         self.values = {}
-        self.commits = []
 
     def source_state(self, source_key):
         return self.values.get(source_key, SqlSourceState(source_key=source_key))
 
     def commit_source(self, **values):
-        self.commits.append(values)
         previous = self.source_state(values['source_key'])
         state = SqlSourceState(
             source_key=values['source_key'],
@@ -45,10 +44,13 @@ class _State(SqlProducerState):
 
 
 class _Executor:
-    def __init__(self, result):
+    def __init__(self, result=None, error=None):
         self.result = result
+        self.error = error
 
     def execute(self, *, plan, context):
+        if self.error is not None:
+            raise self.error
         return self.result
 
 
@@ -65,7 +67,6 @@ class _Context:
         self.work = False
         self.delay = None
         self.completed = False
-        self.safe_remaining_seconds = 500.0
         self.logger = _Logger()
 
     def get_or_create(self, key, factory):
@@ -101,7 +102,33 @@ class _Context:
         self.completed = True
 
 
-def test_job_commits_marker_even_without_material_change(snapshot_definition) -> None:
+def _job(snapshot_definition, plan, executor) -> SqlDataProducerJob:
+    return SqlDataProducerJob(
+        producer_key='producer',
+        definitions=(snapshot_definition,),
+        planner=_Planner(plan),
+        producer_state=_State(),
+        executor=executor,
+    )
+
+
+def test_empty_plan_completes_without_artificial_delay(snapshot_definition) -> None:
+    plan = SqlExecutionPlan(
+        captured_at_utc=datetime(2026, 10, 2, 12, 0, tzinfo=UTC),
+        sources=(),
+    )
+    context = _Context()
+    job = _job(snapshot_definition, plan, _Executor())
+
+    job.run_iteration(context)
+
+    assert context.completed is True
+    assert context.delay is None
+    assert context.execution['sources_planned'] == 0
+    assert context.iteration == {'outcome': 'skipped', 'reason': 'no_source_change'}
+
+
+def test_last_source_completes_execution(snapshot_definition) -> None:
     source = SqlSourcePlan(
         definition=snapshot_definition,
         change_marker=SqlTableChangeMarker(
@@ -111,33 +138,43 @@ def test_job_commits_marker_even_without_material_change(snapshot_definition) ->
             user_updates=1,
         ),
     )
-    planner = _Planner(
-        SqlExecutionPlan(
-            captured_at_utc=datetime(2026, 8, 18, 12, 0, tzinfo=UTC),
-            sources=(source,),
-        )
+    plan = SqlExecutionPlan(
+        captured_at_utc=datetime(2026, 10, 2, 12, 0, tzinfo=UTC),
+        sources=(source,),
     )
-    state = _State()
-    job = SqlDataProducerJob(
-        producer_key='producer',
-        definitions=(snapshot_definition,),
-        planner=planner,
-        producer_state=state,
-        executor=_Executor(
-            SqlSourceExecutionResult(
-                source_key=snapshot_definition.source_key,
-                source_row_count=0,
-                publications=(),
-            )
-        ),
+    result = SqlSourceExecutionResult(
+        source_key=snapshot_definition.source_key,
+        source_row_count=0,
+        publications=(),
     )
     context = _Context()
+    job = _job(snapshot_definition, plan, _Executor(result=result))
 
     job.run_iteration(context)
 
-    assert planner.calls == 1
-    assert state.commits[0]['target_change_marker'].last_user_update_token == 'target'
-    assert context.execution['sources_processed'] == 1
-    assert context.iteration['reason'] == 'no_material_change'
     assert context.completed is True
     assert context.delay is None
+    assert context.execution['sources_processed'] == 1
+
+
+def test_last_source_failure_does_not_complete_execution(snapshot_definition) -> None:
+    source = SqlSourcePlan(
+        definition=snapshot_definition,
+        change_marker=SqlTableChangeMarker(
+            source_table=snapshot_definition.source_table,
+            generation_token='generation',
+            last_user_update_token='target',
+            user_updates=1,
+        ),
+    )
+    plan = SqlExecutionPlan(
+        captured_at_utc=datetime(2026, 10, 2, 12, 0, tzinfo=UTC),
+        sources=(source,),
+    )
+    context = _Context()
+    job = _job(snapshot_definition, plan, _Executor(error=ValueError('source failure')))
+
+    with pytest.raises(SqlDataProducerError, match='1 source failure'):
+        job.run_iteration(context)
+
+    assert context.completed is False

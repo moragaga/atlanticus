@@ -59,7 +59,7 @@ class SqlDataProducerJob:
                 self._raise_execution_failure(context, failures)
             context.set_iteration_fact('outcome', 'skipped')
             context.set_iteration_fact('reason', 'no_source_change')
-            context.set_next_iteration_delay(context.safe_remaining_seconds)
+            context.complete_execution()
             return
 
         source_plan = plan.sources[cursor]
@@ -134,7 +134,7 @@ class SqlDataProducerJob:
             failures = int(context.get_memory(self._failures_memory_key, 0) or 0)
             if failures:
                 self._raise_execution_failure(context, failures)
-            context.set_next_iteration_delay(context.safe_remaining_seconds)
+            context.complete_execution()
 
     def _raise_execution_failure(self, context: JobRuntimeContext, failures: int) -> None:
         error = SqlDataProducerError(

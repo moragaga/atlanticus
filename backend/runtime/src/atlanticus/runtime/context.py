@@ -53,6 +53,7 @@ class JobRuntimeContext:
     _iteration_summary: OperationalSummary = field(default_factory=OperationalSummary, repr=False)
     _iteration_has_work: bool = field(default=False, repr=False)
     _next_iteration_delay_seconds: float | None = field(default=None, repr=False)
+    _execution_completed: bool = field(default=False, repr=False)
     _iteration_deadline_monotonic: float | None = field(default=None, repr=False)
     _lease_generation: int | None = field(default=None, repr=False)
     _lease_authority_check: Callable[[], None] | None = field(default=None, repr=False)
@@ -290,6 +291,13 @@ class JobRuntimeContext:
 
     def mark_iteration_work(self) -> None:
         self._iteration_has_work = True
+
+    @property
+    def execution_completed(self) -> bool:
+        return self._execution_completed
+
+    def complete_execution(self) -> None:
+        self._execution_completed = True
 
     def set_next_iteration_delay(self, seconds: float) -> None:
         _require_finite_number(seconds, 'seconds')
