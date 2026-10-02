@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from ada.web.application.generic.master_projection.plan import (
+from atlanticus.web.master_projection.plan import (
     MasterProjectionPlanner,
     ProjectionDomain,
     ProjectionPlanState,

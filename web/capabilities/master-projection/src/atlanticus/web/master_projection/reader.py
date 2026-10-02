@@ -6,15 +6,15 @@ import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 
-from ada.web.application.generic.master_projection.material import (
-    MasterMaterialIdentity,
-    inspect_master_material,
-    unlock_master_material,
-)
 from atlanticus.connectivity.storage import (
     StorageBlobNotFoundError,
     StorageClient,
     StorageError,
+)
+from atlanticus.web.master_projection.material import (
+    MasterMaterialIdentity,
+    inspect_master_material,
+    unlock_master_material,
 )
 
 _ARCHIVE_LIMIT = 24576

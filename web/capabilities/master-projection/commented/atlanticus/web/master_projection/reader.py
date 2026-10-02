@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 # Espejo pedagógico: mismo comportamiento productivo con contexto explicativo en español.
-
 import hashlib
 import os
 import tempfile
@@ -14,7 +13,7 @@ from atlanticus.connectivity.storage import (
     StorageError,
 )
 
-from ada.web.application.generic.master_projection.material import (
+from atlanticus.web.master_projection.material import (
     MasterMaterialIdentity,
     inspect_master_material,
     unlock_master_material,

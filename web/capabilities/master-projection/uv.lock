@@ -2,493 +2,6 @@ version = 1
 revision = 3
 requires-python = "==3.14.2"
 
-[manifest]
-overrides = [{ name = "atlanticus-storage", directory = "../../../../../connectivity/storage" }]
-
-[[package]]
-name = "ada-command-center-alarms-domain"
-version = "1.0.0"
-source = { editable = "../../../domain/alarms" }
-dependencies = [
-    { name = "ada-command-center-tools-domain" },
-    { name = "ada-web-tools" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-command-center-tools-domain", editable = "../../../domain/tools" },
-    { name = "ada-web-tools", editable = "../../../../ada/web/tools/core" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-command-center-configuration-manager"
-version = "0.1.2"
-source = { editable = "../ada-command-center-configuration-manager" }
-dependencies = [
-    { name = "ada-command-center-alarms-domain" },
-    { name = "ada-command-center-web-alarm-configuration", extra = ["web"] },
-    { name = "ada-command-center-web-alarm-persistence" },
-    { name = "ada-command-center-web-alarm-projection-cosmos" },
-    { name = "ada-command-center-web-tool-catalog" },
-    { name = "ada-command-center-web-tool-catalog-manager" },
-    { name = "ada-command-center-web-tool-discovery-cosmos" },
-    { name = "ada-web-tools" },
-    { name = "atlanticus-cosmos" },
-    { name = "atlanticus-storage" },
-    { name = "atlanticus-web" },
-    { name = "atlanticus-web-bootstrap" },
-    { name = "atlanticus-web-composition-navigation-manager" },
-    { name = "atlanticus-web-composition-profiles-manager" },
-    { name = "atlanticus-web-composition-users-manager" },
-    { name = "atlanticus-web-configuration" },
-    { name = "atlanticus-web-manager" },
-    { name = "atlanticus-web-navigation" },
-    { name = "atlanticus-web-navigation-configuration", extra = ["web"] },
-    { name = "atlanticus-web-navigation-projection-cosmos" },
-    { name = "atlanticus-web-profiles" },
-    { name = "atlanticus-web-profiles-projection-cosmos" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-    { name = "atlanticus-web-source-local" },
-    { name = "atlanticus-web-users", extra = ["web"] },
-    { name = "atlanticus-web-users-blob" },
-    { name = "atlanticus-web-users-cosmos" },
-    { name = "python-dotenv" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-command-center-alarms-domain", editable = "../../../domain/alarms" },
-    { name = "ada-command-center-web-alarm-configuration", extras = ["web"], editable = "../../alarms/configuration" },
-    { name = "ada-command-center-web-alarm-persistence", editable = "../../alarms/persistence" },
-    { name = "ada-command-center-web-alarm-projection-cosmos", editable = "../../alarms/projection-cosmos" },
-    { name = "ada-command-center-web-tool-catalog", editable = "../../tools/catalog" },
-    { name = "ada-command-center-web-tool-catalog-manager", editable = "../../tools/catalog-manager" },
-    { name = "ada-command-center-web-tool-discovery-cosmos", editable = "../../tools/discovery-cosmos" },
-    { name = "ada-web-tools", editable = "../../../../ada/web/tools/core" },
-    { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
-    { name = "atlanticus-storage", directory = "../../../../../connectivity/storage" },
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "atlanticus-web-bootstrap", editable = "../../../../../web/framework/bootstrap" },
-    { name = "atlanticus-web-composition-navigation-manager", editable = "../../../../../web/compositions/navigation-manager" },
-    { name = "atlanticus-web-composition-profiles-manager", editable = "../../../../../web/compositions/profiles-manager" },
-    { name = "atlanticus-web-composition-users-manager", editable = "../../../../../web/compositions/users-manager" },
-    { name = "atlanticus-web-configuration", editable = "../../../../../web/framework/configuration" },
-    { name = "atlanticus-web-manager", editable = "../../../../../web/capabilities/manager" },
-    { name = "atlanticus-web-navigation", editable = "../../../../../web/capabilities/navigation/core" },
-    { name = "atlanticus-web-navigation-configuration", extras = ["web"], editable = "../../../../../web/capabilities/navigation/configuration" },
-    { name = "atlanticus-web-navigation-projection-cosmos", editable = "../../../../../web/capabilities/navigation/projection-cosmos" },
-    { name = "atlanticus-web-profiles", editable = "../../../../../web/capabilities/profiles/core" },
-    { name = "atlanticus-web-profiles-projection-cosmos", editable = "../../../../../web/capabilities/profiles/projection-cosmos" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
-    { name = "atlanticus-web-source-local", editable = "../../../../../web/capabilities/source/local" },
-    { name = "atlanticus-web-users", extras = ["web"], editable = "../../../../../web/capabilities/users/core" },
-    { name = "atlanticus-web-users-blob", editable = "../../../../../web/capabilities/users/blob" },
-    { name = "atlanticus-web-users-cosmos", editable = "../../../../../web/capabilities/users/cosmos" },
-    { name = "python-dotenv", specifier = "==1.2.2" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-command-center-generic-application"
-version = "0.1.1"
-source = { editable = "." }
-dependencies = [
-    { name = "ada-command-center-configuration-manager" },
-    { name = "ada-command-center-web-alarm-configuration" },
-    { name = "atlanticus-storage" },
-    { name = "atlanticus-web" },
-    { name = "atlanticus-web-composition-profiles-manager" },
-    { name = "atlanticus-web-identity" },
-    { name = "atlanticus-web-identity-local" },
-    { name = "atlanticus-web-manager" },
-    { name = "atlanticus-web-master-projection" },
-    { name = "atlanticus-web-navigation" },
-    { name = "atlanticus-web-navigation-configuration" },
-    { name = "atlanticus-web-profiles-configuration" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-command-center-configuration-manager", editable = "../ada-command-center-configuration-manager" },
-    { name = "ada-command-center-web-alarm-configuration", editable = "../../alarms/configuration" },
-    { name = "atlanticus-storage", directory = "../../../../../connectivity/storage" },
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "atlanticus-web-composition-profiles-manager", editable = "../../../../../web/compositions/profiles-manager" },
-    { name = "atlanticus-web-identity", editable = "../../../../../web/capabilities/identity/core" },
-    { name = "atlanticus-web-identity-local", editable = "../../../../../web/capabilities/identity/local" },
-    { name = "atlanticus-web-manager", editable = "../../../../../web/capabilities/manager" },
-    { name = "atlanticus-web-master-projection", editable = "../../../../../web/capabilities/master-projection" },
-    { name = "atlanticus-web-navigation", editable = "../../../../../web/capabilities/navigation/core" },
-    { name = "atlanticus-web-navigation-configuration", editable = "../../../../../web/capabilities/navigation/configuration" },
-    { name = "atlanticus-web-profiles-configuration", editable = "../../../../../web/capabilities/profiles/configuration" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-command-center-tools-domain"
-version = "1.0.0"
-source = { editable = "../../../domain/tools" }
-dependencies = [
-    { name = "ada-web-tools" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "ada-web-tools", editable = "../../../../ada/web/tools/core" }]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-command-center-web-alarm-configuration"
-version = "0.1.1"
-source = { editable = "../../alarms/configuration" }
-dependencies = [
-    { name = "ada-command-center-alarms-domain" },
-    { name = "ada-command-center-tools-domain" },
-    { name = "ada-command-center-web-tool-catalog" },
-    { name = "ada-web-tools" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-]
-
-[package.optional-dependencies]
-web = [
-    { name = "atlanticus-web" },
-    { name = "atlanticus-web-manager" },
-    { name = "dash" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-command-center-alarms-domain", editable = "../../../domain/alarms" },
-    { name = "ada-command-center-tools-domain", editable = "../../../domain/tools" },
-    { name = "ada-command-center-web-tool-catalog", editable = "../../tools/catalog" },
-    { name = "ada-web-tools", editable = "../../../../ada/web/tools/core" },
-    { name = "atlanticus-web", marker = "extra == 'web'", editable = "../../../../../web/framework/core" },
-    { name = "atlanticus-web-manager", marker = "extra == 'web'", editable = "../../../../../web/capabilities/manager" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
-    { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
-]
-provides-extras = ["web"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "atlanticus-web-manager", editable = "../../../../../web/capabilities/manager" },
-    { name = "dash", specifier = "==4.4.1" },
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-command-center-web-alarm-persistence"
-version = "0.1.0"
-source = { editable = "../../alarms/persistence" }
-dependencies = [
-    { name = "ada-command-center-alarms-domain" },
-    { name = "ada-command-center-web-alarm-configuration" },
-    { name = "ada-command-center-web-alarm-projection-cosmos" },
-    { name = "ada-command-center-web-alarm-projection-local" },
-    { name = "atlanticus-cosmos" },
-    { name = "atlanticus-storage" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-    { name = "atlanticus-web-source-blob" },
-    { name = "atlanticus-web-source-local" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-command-center-alarms-domain", editable = "../../../domain/alarms" },
-    { name = "ada-command-center-web-alarm-configuration", editable = "../../alarms/configuration" },
-    { name = "ada-command-center-web-alarm-projection-cosmos", editable = "../../alarms/projection-cosmos" },
-    { name = "ada-command-center-web-alarm-projection-local", editable = "../../alarms/projection-local" },
-    { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
-    { name = "atlanticus-storage", directory = "../../../../../connectivity/storage" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
-    { name = "atlanticus-web-source-blob", editable = "../../../../../web/capabilities/source/blob" },
-    { name = "atlanticus-web-source-local", editable = "../../../../../web/capabilities/source/local" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-command-center-web-alarm-projection-cosmos"
-version = "0.1.0"
-source = { editable = "../../alarms/projection-cosmos" }
-dependencies = [
-    { name = "ada-command-center-alarms-domain" },
-    { name = "ada-command-center-web-alarm-configuration" },
-    { name = "atlanticus-cosmos" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-    { name = "atlanticus-web-storage-topology" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-command-center-alarms-domain", editable = "../../../domain/alarms" },
-    { name = "ada-command-center-web-alarm-configuration", editable = "../../alarms/configuration" },
-    { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
-    { name = "atlanticus-web-storage-topology", editable = "../../../../../web/capabilities/storage/topology" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-command-center-web-alarm-projection-local"
-version = "0.1.0"
-source = { editable = "../../alarms/projection-local" }
-dependencies = [
-    { name = "ada-command-center-alarms-domain" },
-    { name = "ada-command-center-web-alarm-configuration" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-command-center-alarms-domain", editable = "../../../domain/alarms" },
-    { name = "ada-command-center-web-alarm-configuration", editable = "../../alarms/configuration" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-command-center-web-tool-catalog"
-version = "0.1.0"
-source = { editable = "../../tools/catalog" }
-dependencies = [
-    { name = "ada-web-tools" },
-    { name = "ada-web-tools-configuration" },
-    { name = "atlanticus-storage" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-web-tools", editable = "../../../../ada/web/tools/core" },
-    { name = "ada-web-tools-configuration", editable = "../../../../ada/web/tools/configuration" },
-    { name = "atlanticus-storage", editable = "../../../../../connectivity/storage" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-command-center-web-tool-catalog-manager"
-version = "0.1.1"
-source = { editable = "../../tools/catalog-manager" }
-dependencies = [
-    { name = "ada-command-center-web-tool-discovery-cosmos" },
-    { name = "atlanticus-web" },
-    { name = "atlanticus-web-manager" },
-    { name = "dash" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-command-center-web-tool-discovery-cosmos", editable = "../../tools/discovery-cosmos" },
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "atlanticus-web-manager", editable = "../../../../../web/capabilities/manager" },
-    { name = "dash", specifier = "==4.4.1" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-command-center-web-tool-discovery-cosmos"
-version = "0.1.0"
-source = { editable = "../../tools/discovery-cosmos" }
-dependencies = [
-    { name = "ada-command-center-web-tool-catalog" },
-    { name = "ada-web-storage-namespace" },
-    { name = "ada-web-tools-configuration" },
-    { name = "ada-web-tools-projection-cosmos" },
-    { name = "atlanticus-cosmos" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-command-center-web-tool-catalog", editable = "../../tools/catalog" },
-    { name = "ada-web-storage-namespace", editable = "../../../../ada/web/storage/namespace" },
-    { name = "ada-web-tools-configuration", editable = "../../../../ada/web/tools/configuration" },
-    { name = "ada-web-tools-projection-cosmos", editable = "../../../../ada/web/tools/projection-cosmos" },
-    { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-branding"
-version = "0.1.0"
-source = { editable = "../../../../ada/web/branding" }
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-web-ui-core", marker = "extra == 'web'", editable = "../../../../ada/web/ui/core" },
-    { name = "atlanticus-web", marker = "extra == 'web'", editable = "../../../../../web/framework/core" },
-    { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
-]
-provides-extras = ["web"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "ada-web-ui-core", editable = "../../../../ada/web/ui/core" },
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "dash", specifier = "==4.4.1" },
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-storage-namespace"
-version = "0.1.0"
-source = { editable = "../../../../ada/web/storage/namespace" }
-
-[package.metadata]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-tools"
-version = "0.1.0"
-source = { editable = "../../../../ada/web/tools/core" }
-
-[package.metadata]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-tools-configuration"
-version = "0.1.0"
-source = { editable = "../../../../ada/web/tools/configuration" }
-dependencies = [
-    { name = "ada-web-branding" },
-    { name = "ada-web-tools" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-web-branding", editable = "../../../../ada/web/branding" },
-    { name = "ada-web-tools", editable = "../../../../ada/web/tools/core" },
-    { name = "atlanticus-web", marker = "extra == 'web'", editable = "../../../../../web/framework/core" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
-    { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
-]
-provides-extras = ["web"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "dash", specifier = "==4.4.1" },
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-tools-projection-cosmos"
-version = "0.1.0"
-source = { editable = "../../../../ada/web/tools/projection-cosmos" }
-dependencies = [
-    { name = "ada-web-storage-namespace" },
-    { name = "ada-web-tools-configuration" },
-    { name = "atlanticus-cosmos" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-    { name = "atlanticus-web-storage-topology" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ada-web-storage-namespace", editable = "../../../../ada/web/storage/namespace" },
-    { name = "ada-web-tools-configuration", editable = "../../../../ada/web/tools/configuration" },
-    { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
-    { name = "atlanticus-web-storage-topology", editable = "../../../../../web/capabilities/storage/topology" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
 [[package]]
 name = "annotated-types"
 version = "0.8.0"
@@ -499,40 +12,25 @@ wheels = [
 ]
 
 [[package]]
-name = "atlanticus-cosmos"
-version = "1.0.0"
-source = { editable = "../../../../../connectivity/cosmos" }
-dependencies = [
-    { name = "atlanticus-observability" },
-    { name = "azure-cosmos" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-observability", editable = "../../../../../backend/observability" },
-    { name = "azure-cosmos", specifier = "==4.16.3" },
-]
-
-[[package]]
 name = "atlanticus-kernel"
 version = "1.0.0"
-source = { editable = "../../../../../backend/kernel" }
+source = { editable = "../../../backend/kernel" }
 
 [[package]]
 name = "atlanticus-observability"
 version = "1.0.0"
-source = { editable = "../../../../../backend/observability" }
+source = { editable = "../../../backend/observability" }
 dependencies = [
     { name = "atlanticus-kernel" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "atlanticus-kernel", editable = "../../../../../backend/kernel" }]
+requires-dist = [{ name = "atlanticus-kernel", editable = "../../../backend/kernel" }]
 
 [[package]]
 name = "atlanticus-storage"
 version = "1.0.0"
-source = { directory = "../../../../../connectivity/storage" }
+source = { directory = "../../../connectivity/storage" }
 dependencies = [
     { name = "atlanticus-observability" },
     { name = "azure-storage-blob" },
@@ -540,14 +38,14 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-observability", editable = "../../../../../backend/observability" },
+    { name = "atlanticus-observability", editable = "../../../backend/observability" },
     { name = "azure-storage-blob", specifier = "==12.30.0" },
 ]
 
 [[package]]
 name = "atlanticus-web"
 version = "0.1.0"
-source = { editable = "../../../../../web/framework/core" }
+source = { editable = "../../framework/core" }
 dependencies = [
     { name = "atlanticus-web-configuration" },
     { name = "atlanticus-web-observability" },
@@ -559,8 +57,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-web-configuration", editable = "../../../../../web/framework/configuration" },
-    { name = "atlanticus-web-observability", editable = "../../../../../web/framework/observability" },
+    { name = "atlanticus-web-configuration", editable = "../../framework/configuration" },
+    { name = "atlanticus-web-observability", editable = "../../framework/observability" },
     { name = "dash", specifier = "==4.4.1" },
     { name = "flask", specifier = "==3.1.3" },
     { name = "rcssmin", specifier = "==1.2.2" },
@@ -568,111 +66,9 @@ requires-dist = [
 ]
 
 [[package]]
-name = "atlanticus-web-bootstrap"
-version = "0.1.0"
-source = { editable = "../../../../../web/framework/bootstrap" }
-dependencies = [
-    { name = "atlanticus-web" },
-    { name = "dash-bootstrap-components" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "dash-bootstrap-components", specifier = "==2.0.4" },
-]
-
-[[package]]
-name = "atlanticus-web-composition-navigation-manager"
-version = "0.3.0"
-source = { editable = "../../../../../web/compositions/navigation-manager" }
-dependencies = [
-    { name = "atlanticus-cosmos" },
-    { name = "atlanticus-storage" },
-    { name = "atlanticus-web" },
-    { name = "atlanticus-web-manager" },
-    { name = "atlanticus-web-navigation-configuration" },
-    { name = "atlanticus-web-navigation-projection-cosmos" },
-    { name = "atlanticus-web-navigation-projection-local" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-    { name = "atlanticus-web-source-blob" },
-    { name = "atlanticus-web-source-local" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
-    { name = "atlanticus-storage", directory = "../../../../../connectivity/storage" },
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "atlanticus-web-manager", editable = "../../../../../web/capabilities/manager" },
-    { name = "atlanticus-web-navigation-configuration", editable = "../../../../../web/capabilities/navigation/configuration" },
-    { name = "atlanticus-web-navigation-projection-cosmos", editable = "../../../../../web/capabilities/navigation/projection-cosmos" },
-    { name = "atlanticus-web-navigation-projection-local", editable = "../../../../../web/capabilities/navigation/projection-local" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
-    { name = "atlanticus-web-source-blob", editable = "../../../../../web/capabilities/source/blob" },
-    { name = "atlanticus-web-source-local", editable = "../../../../../web/capabilities/source/local" },
-]
-
-[[package]]
-name = "atlanticus-web-composition-profiles-manager"
-version = "0.2.0"
-source = { editable = "../../../../../web/compositions/profiles-manager" }
-dependencies = [
-    { name = "atlanticus-cosmos" },
-    { name = "atlanticus-storage" },
-    { name = "atlanticus-web" },
-    { name = "atlanticus-web-manager" },
-    { name = "atlanticus-web-profiles" },
-    { name = "atlanticus-web-profiles-configuration", extra = ["web"] },
-    { name = "atlanticus-web-profiles-projection-cosmos" },
-    { name = "atlanticus-web-profiles-projection-local" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-    { name = "atlanticus-web-source-blob" },
-    { name = "atlanticus-web-source-local" },
-    { name = "atlanticus-web-users" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
-    { name = "atlanticus-storage", directory = "../../../../../connectivity/storage" },
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "atlanticus-web-manager", editable = "../../../../../web/capabilities/manager" },
-    { name = "atlanticus-web-profiles", editable = "../../../../../web/capabilities/profiles/core" },
-    { name = "atlanticus-web-profiles-configuration", extras = ["web"], editable = "../../../../../web/capabilities/profiles/configuration" },
-    { name = "atlanticus-web-profiles-projection-cosmos", editable = "../../../../../web/capabilities/profiles/projection-cosmos" },
-    { name = "atlanticus-web-profiles-projection-local", editable = "../../../../../web/capabilities/profiles/projection-local" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
-    { name = "atlanticus-web-source-blob", editable = "../../../../../web/capabilities/source/blob" },
-    { name = "atlanticus-web-source-local", editable = "../../../../../web/capabilities/source/local" },
-    { name = "atlanticus-web-users", editable = "../../../../../web/capabilities/users/core" },
-]
-
-[[package]]
-name = "atlanticus-web-composition-users-manager"
-version = "0.1.1"
-source = { editable = "../../../../../web/compositions/users-manager" }
-dependencies = [
-    { name = "atlanticus-web" },
-    { name = "atlanticus-web-manager" },
-    { name = "atlanticus-web-users", extra = ["web"] },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "atlanticus-web-manager", editable = "../../../../../web/capabilities/manager" },
-    { name = "atlanticus-web-users", extras = ["web"], editable = "../../../../../web/capabilities/users/core" },
-]
-
-[[package]]
 name = "atlanticus-web-configuration"
 version = "0.1.0"
-source = { editable = "../../../../../web/framework/configuration" }
+source = { editable = "../../framework/configuration" }
 dependencies = [
     { name = "pydantic-settings" },
 ]
@@ -683,7 +79,7 @@ requires-dist = [{ name = "pydantic-settings", specifier = "==2.14.1" }]
 [[package]]
 name = "atlanticus-web-identity"
 version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/identity/core" }
+source = { editable = "../identity/core" }
 dependencies = [
     { name = "atlanticus-web" },
     { name = "atlanticus-web-configuration" },
@@ -692,49 +88,15 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "atlanticus-web-configuration", editable = "../../../../../web/framework/configuration" },
+    { name = "atlanticus-web", editable = "../../framework/core" },
+    { name = "atlanticus-web-configuration", editable = "../../framework/configuration" },
     { name = "flask", specifier = "==3.1.3" },
-]
-
-[[package]]
-name = "atlanticus-web-identity-local"
-version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/identity/local" }
-dependencies = [
-    { name = "atlanticus-web-identity" },
-    { name = "flask" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-web-identity", editable = "../../../../../web/capabilities/identity/core" },
-    { name = "flask", specifier = "==3.1.3" },
-]
-
-[[package]]
-name = "atlanticus-web-manager"
-version = "0.3.19"
-source = { editable = "../../../../../web/capabilities/manager" }
-dependencies = [
-    { name = "atlanticus-web" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-    { name = "dash" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
-    { name = "dash", specifier = "==4.4.1" },
 ]
 
 [[package]]
 name = "atlanticus-web-master-projection"
 version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/master-projection" }
+source = { editable = "." }
 dependencies = [
     { name = "atlanticus-storage" },
     { name = "atlanticus-web" },
@@ -745,13 +107,19 @@ dependencies = [
     { name = "pyzipper" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-storage", directory = "../../../../../connectivity/storage" },
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "atlanticus-web-identity", editable = "../../../../../web/capabilities/identity/core" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
+    { name = "atlanticus-storage", directory = "../../../connectivity/storage" },
+    { name = "atlanticus-web", editable = "../../framework/core" },
+    { name = "atlanticus-web-identity", editable = "../identity/core" },
+    { name = "atlanticus-web-projection", editable = "../projection/core" },
+    { name = "atlanticus-web-source", editable = "../source/core" },
     { name = "flask", specifier = "==3.1.3" },
     { name = "pyzipper", specifier = "==0.4.0" },
 ]
@@ -763,88 +131,9 @@ dev = [
 ]
 
 [[package]]
-name = "atlanticus-web-navigation"
-version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/navigation/core" }
-dependencies = [
-    { name = "atlanticus-web" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "atlanticus-web", editable = "../../../../../web/framework/core" }]
-
-[[package]]
-name = "atlanticus-web-navigation-configuration"
-version = "0.1.9"
-source = { editable = "../../../../../web/capabilities/navigation/configuration" }
-dependencies = [
-    { name = "atlanticus-web-navigation" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-]
-
-[package.optional-dependencies]
-web = [
-    { name = "atlanticus-web" },
-    { name = "atlanticus-web-bootstrap" },
-    { name = "dash" },
-    { name = "dash-bootstrap-components" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-web", marker = "extra == 'web'", editable = "../../../../../web/framework/core" },
-    { name = "atlanticus-web-bootstrap", marker = "extra == 'web'", editable = "../../../../../web/framework/bootstrap" },
-    { name = "atlanticus-web-navigation", editable = "../../../../../web/capabilities/navigation/core" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
-    { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
-    { name = "dash-bootstrap-components", marker = "extra == 'web'", specifier = "==2.0.4" },
-]
-provides-extras = ["web"]
-
-[[package]]
-name = "atlanticus-web-navigation-projection-cosmos"
-version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/navigation/projection-cosmos" }
-dependencies = [
-    { name = "atlanticus-cosmos" },
-    { name = "atlanticus-web-navigation-configuration" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-    { name = "atlanticus-web-storage-topology" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
-    { name = "atlanticus-web-navigation-configuration", editable = "../../../../../web/capabilities/navigation/configuration" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
-    { name = "atlanticus-web-storage-topology", editable = "../../../../../web/capabilities/storage/topology" },
-]
-
-[[package]]
-name = "atlanticus-web-navigation-projection-local"
-version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/navigation/projection-local" }
-dependencies = [
-    { name = "atlanticus-web-navigation-configuration" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-web-navigation-configuration", editable = "../../../../../web/capabilities/navigation/configuration" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
-]
-
-[[package]]
 name = "atlanticus-web-observability"
 version = "0.3.0"
-source = { editable = "../../../../../web/framework/observability" }
+source = { editable = "../../framework/observability" }
 dependencies = [
     { name = "flask" },
 ]
@@ -853,190 +142,20 @@ dependencies = [
 requires-dist = [{ name = "flask", specifier = "==3.1.3" }]
 
 [[package]]
-name = "atlanticus-web-profiles"
-version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/profiles/core" }
-
-[[package]]
-name = "atlanticus-web-profiles-configuration"
-version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/profiles/configuration" }
-dependencies = [
-    { name = "atlanticus-web-profiles" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-]
-
-[package.optional-dependencies]
-web = [
-    { name = "atlanticus-web" },
-    { name = "atlanticus-web-bootstrap" },
-    { name = "dash" },
-    { name = "dash-bootstrap-components" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-web", marker = "extra == 'web'", editable = "../../../../../web/framework/core" },
-    { name = "atlanticus-web-bootstrap", marker = "extra == 'web'", editable = "../../../../../web/framework/bootstrap" },
-    { name = "atlanticus-web-profiles", editable = "../../../../../web/capabilities/profiles/core" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
-    { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
-    { name = "dash-bootstrap-components", marker = "extra == 'web'", specifier = "==2.0.4" },
-]
-provides-extras = ["web"]
-
-[[package]]
-name = "atlanticus-web-profiles-projection-cosmos"
-version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/profiles/projection-cosmos" }
-dependencies = [
-    { name = "atlanticus-cosmos" },
-    { name = "atlanticus-web-profiles" },
-    { name = "atlanticus-web-profiles-configuration" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-    { name = "atlanticus-web-storage-topology" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
-    { name = "atlanticus-web-profiles", editable = "../../../../../web/capabilities/profiles/core" },
-    { name = "atlanticus-web-profiles-configuration", editable = "../../../../../web/capabilities/profiles/configuration" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
-    { name = "atlanticus-web-storage-topology", editable = "../../../../../web/capabilities/storage/topology" },
-]
-
-[[package]]
-name = "atlanticus-web-profiles-projection-local"
-version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/profiles/projection-local" }
-dependencies = [
-    { name = "atlanticus-web-profiles" },
-    { name = "atlanticus-web-profiles-configuration" },
-    { name = "atlanticus-web-projection" },
-    { name = "atlanticus-web-source" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-web-profiles", editable = "../../../../../web/capabilities/profiles/core" },
-    { name = "atlanticus-web-profiles-configuration", editable = "../../../../../web/capabilities/profiles/configuration" },
-    { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
-]
-
-[[package]]
 name = "atlanticus-web-projection"
 version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/projection/core" }
+source = { editable = "../projection/core" }
 dependencies = [
     { name = "atlanticus-web-source" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" }]
+requires-dist = [{ name = "atlanticus-web-source", editable = "../source/core" }]
 
 [[package]]
 name = "atlanticus-web-source"
 version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/source/core" }
-
-[[package]]
-name = "atlanticus-web-source-blob"
-version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/source/blob" }
-dependencies = [
-    { name = "atlanticus-storage" },
-    { name = "atlanticus-web-source" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-storage", directory = "../../../../../connectivity/storage" },
-    { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
-]
-
-[[package]]
-name = "atlanticus-web-source-local"
-version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/source/local" }
-dependencies = [
-    { name = "atlanticus-web-source" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" }]
-
-[[package]]
-name = "atlanticus-web-storage-topology"
-version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/storage/topology" }
-
-[[package]]
-name = "atlanticus-web-users"
-version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/users/core" }
-dependencies = [
-    { name = "atlanticus-web" },
-    { name = "atlanticus-web-identity" },
-    { name = "atlanticus-web-profiles" },
-    { name = "atlanticus-web-storage-topology" },
-    { name = "flask" },
-]
-
-[package.optional-dependencies]
-web = [
-    { name = "atlanticus-web-bootstrap" },
-    { name = "dash" },
-    { name = "dash-bootstrap-components" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
-    { name = "atlanticus-web-bootstrap", marker = "extra == 'web'", editable = "../../../../../web/framework/bootstrap" },
-    { name = "atlanticus-web-identity", editable = "../../../../../web/capabilities/identity/core" },
-    { name = "atlanticus-web-profiles", editable = "../../../../../web/capabilities/profiles/core" },
-    { name = "atlanticus-web-storage-topology", editable = "../../../../../web/capabilities/storage/topology" },
-    { name = "dash", marker = "extra == 'web'", specifier = "==4.4.1" },
-    { name = "dash-bootstrap-components", marker = "extra == 'web'", specifier = "==2.0.4" },
-    { name = "flask", specifier = "==3.1.3" },
-]
-provides-extras = ["web"]
-
-[[package]]
-name = "atlanticus-web-users-blob"
-version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/users/blob" }
-dependencies = [
-    { name = "atlanticus-storage" },
-    { name = "atlanticus-web-users" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-storage", directory = "../../../../../connectivity/storage" },
-    { name = "atlanticus-web-users", editable = "../../../../../web/capabilities/users/core" },
-]
-
-[[package]]
-name = "atlanticus-web-users-cosmos"
-version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/users/cosmos" }
-dependencies = [
-    { name = "atlanticus-cosmos" },
-    { name = "atlanticus-web-users" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
-    { name = "atlanticus-web-users", editable = "../../../../../web/capabilities/users/core" },
-]
+source = { editable = "../source/core" }
 
 [[package]]
 name = "azure-core"
@@ -1049,19 +168,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a6/f3/b416179e408990df5db0d516283022dde0f5d0111d98c1a848e41853e81c/azure_core-1.41.0.tar.gz", hash = "sha256:f46ff5dfcd230f25cf1c19e8a34b8dc08a337b2503e268bb600a16c00db8ad5a", size = 381042, upload-time = "2026-05-07T23:30:54.302Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/5b/db/325c6d7312d2200251c52323878281045aaffcb5586612296484e4280eaa/azure_core-1.41.0-py3-none-any.whl", hash = "sha256:522b4011e8180b1a3dcd2024396a4e7fe9ac37fb8597db47163d230b5efe892d", size = 220920, upload-time = "2026-05-07T23:30:56.357Z" },
-]
-
-[[package]]
-name = "azure-cosmos"
-version = "4.16.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "azure-core" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/35/21/59863ec67ff0284e6783fef67e2a03e17c3504a3ce0561d525ffb0caccec/azure_cosmos-4.16.3.tar.gz", hash = "sha256:da0a4d9957de7b3f018b2ebb728b7e0494623d4db58639eb92ccd140eddc12d3", size = 2459773, upload-time = "2026-07-29T22:39:46.757Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/17/f6/bf580f67645dcf4d2b4e9a6f7d5e1e3809bbe0c882519aedad647efcb8db/azure_cosmos-4.16.3-py3-none-any.whl", hash = "sha256:666fa5d40227bc233d0e49d8e6342998603a8ef57780d1986af1b23b6d08e987", size = 501516, upload-time = "2026-07-29T22:39:49.435Z" },
 ]
 
 [[package]]
@@ -1305,18 +411,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/5a/67/d5cea6dedfbfde4165436fb58154480ea6358a9e71a739d3366575b5b724/dash-4.4.1.tar.gz", hash = "sha256:9356ca7856bc496c12c5b6de5978aaf783e090d07450ee395ade1c0c2cbdf816", size = 8536482, upload-time = "2026-07-21T18:58:19.72Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9a/29/498125538103a11eab9cfbbde41bacf93e14ab3ac92ae9fb4ac0ac4dd61b/dash-4.4.1-py3-none-any.whl", hash = "sha256:72120a91b10ee4d73f9446efd5d6a4ec218086feed7b1b479d2259844d1f658f", size = 8945027, upload-time = "2026-07-21T18:58:11.405Z" },
-]
-
-[[package]]
-name = "dash-bootstrap-components"
-version = "2.0.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "dash" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/cc/d4/5b7da808ff5acb3a6ca702f504d8ef05bc7d4c475b18dadefd783b1120c3/dash_bootstrap_components-2.0.4.tar.gz", hash = "sha256:c3206c0923774bbc6a6ddaa7822b8d9aa5326b0d3c1e7cd795cc975025fe2484", size = 115599, upload-time = "2025-08-20T19:42:09.449Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d6/38/1efeec8b4d741c09ccd169baf8a00c07a0176b58e418d4cd0c30dffedd22/dash_bootstrap_components-2.0.4-py3-none-any.whl", hash = "sha256:767cf0084586c1b2b614ccf50f79fe4525fdbbf8e3a161ed60016e584a14f5d1", size = 204044, upload-time = "2025-08-20T19:42:07.928Z" },
 ]
 
 [[package]]
@@ -1609,11 +703,11 @@ wheels = [
 
 [[package]]
 name = "python-dotenv"
-version = "1.2.2"
+version = "1.2.4"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/82/ed/0301aeeac3e5353ef3d94b6ec08bbcabd04a72018415dcb29e588514bba8/python_dotenv-1.2.2.tar.gz", hash = "sha256:2c371a91fbd7ba082c2c1dc1f8bf89ca22564a087c2c287cd9b662adde799cf3", size = 50135, upload-time = "2026-03-01T16:00:26.196Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/74/26/2fbeedb218a787a5eea551c7532cac4e009f83d689dd2faa0d0353473f86/python_dotenv-1.2.4.tar.gz", hash = "sha256:f0d53e69935a851c0dcc78f3ab7aaccd8cabef0b92382b576b824212902873c0", size = 60824, upload-time = "2026-10-01T05:36:10Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/d7/1959b9648791274998a9c3526f6d0ec8fd2233e4d4acce81bbae76b44b2a/python_dotenv-1.2.2-py3-none-any.whl", hash = "sha256:1d8214789a24de455a8b8bd8ae6fe3c6b69a5e3d64aa8a8e5d68e694bbcb285a", size = 22101, upload-time = "2026-03-01T16:00:25.09Z" },
+    { url = "https://files.pythonhosted.org/packages/60/d1/38f3a3405989a89ac18390803e70c6ad7c7760da4f9b83cbeca0c44a0c72/python_dotenv-1.2.4-py3-none-any.whl", hash = "sha256:42269a8a5b3fd54ffa6f3d84b18abed50064717576b4ecf03dc4a55d8aa04fdc", size = 23266, upload-time = "2026-10-01T05:36:08.633Z" },
 ]
 
 [[package]]

@@ -8,40 +8,17 @@ from ada.web.application.configuration_manager.composition import (
     MANAGER_ROUTE_PREFIX,
     build_configuration_manager_surface,
 )
-from ada.web.application.configuration_manager.dependencies import ConfigurationManagerDependencies
-from ada.web.application.configuration_manager.pages import __name__ as _manager_pages_package
+from ada.web.application.configuration_manager.dependencies import (
+    ConfigurationManagerDependencies,
+)
+from ada.web.application.configuration_manager.pages import (
+    __name__ as _manager_pages_package,
+)
 from ada.web.application.configuration_manager.wiring import (
     NAVIGATION_SOURCE_KEY,
     ConfigurationManagerStores,
     read_manager_projection,
 )
-from ada.web.application.generic.composition import (
-    AdaApplicationComposition,
-    create_operational_navigation_modules,
-)
-from ada.web.application.generic.manager_integration import integrate_manager_surface
-from ada.web.application.generic.manager_principal import (
-    ManagerPrincipalBinding,
-    compose_integrated_manager_dependencies,
-)
-from ada.web.application.generic.master_projection.composition import (
-    compose_master_projection_backend,
-)
-from ada.web.application.generic.master_projection.web import (
-    MASTER_PROJECTION_INDEPENDENT_ROUTES,
-    MasterMaterialReader,
-    MasterProjectionWebBinding,
-)
-from ada.web.application.generic.navigation_binding import (
-    manager_navigation_principal,
-    public_navigation_principal,
-)
-from ada.web.application.generic.operational_collector import attach_operational_kpi_collector
-from ada.web.application.generic.operational_tool import (
-    create_definition_from_tool_resolution,
-    resolve_operational_tool_projection,
-)
-from ada.web.application.generic.settings import AdaGenericSettings
 from ada.web.operational_render_binding import (
     OperationalRenderBinding,
     bind_operational_render,
@@ -51,7 +28,11 @@ from ada.web.tools.persistence import (
     ToolProjectionResolutionState,
     compose_tool_persistence,
 )
-from atlanticus.connectivity.cosmos import CosmosClient, CosmosError, CosmosOperationError
+from atlanticus.connectivity.cosmos import (
+    CosmosClient,
+    CosmosError,
+    CosmosOperationError,
+)
 from atlanticus.connectivity.storage import (
     StorageAuthenticationError,
     StorageAuthorizationError,
@@ -62,7 +43,9 @@ from atlanticus.connectivity.storage import (
     StorageOperationError,
 )
 from atlanticus.web.application import create_web_application
-from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
+from atlanticus.web.compositions.profiles_manager import (
+    PROFILES_CONFIGURATION_SOURCE_KEY,
+)
 from atlanticus.web.configuration import WebSettings
 from atlanticus.web.identity.access import (
     AccessResolver,
@@ -75,6 +58,11 @@ from atlanticus.web.identity.module import create_identity_module
 from atlanticus.web.identity.provider import IdentityProvider
 from atlanticus.web.manager import ManagerPrincipal, ManagerSurface
 from atlanticus.web.manager.web.ids import LOCATION_ID
+from atlanticus.web.master_projection.web import (
+    MASTER_PROJECTION_INDEPENDENT_ROUTES,
+    MasterMaterialReader,
+    MasterProjectionWebBinding,
+)
 from atlanticus.web.models import WebApplicationDefinition, WebApplicationRuntime
 from atlanticus.web.navigation.api import (
     NavigationDefinition,
@@ -94,6 +82,31 @@ from atlanticus.web.users.module import create_users_module
 from atlanticus.web.users.resolver import UsersAccessResolver
 from atlanticus.web.users.runtime import UsersRuntime
 from atlanticus.web.users.store import UsersRuntimeStore
+
+from ada.web.application.generic.composition import (
+    AdaApplicationComposition,
+    create_operational_navigation_modules,
+)
+from ada.web.application.generic.manager_integration import integrate_manager_surface
+from ada.web.application.generic.manager_principal import (
+    ManagerPrincipalBinding,
+    compose_integrated_manager_dependencies,
+)
+from ada.web.application.generic.master_projection.composition import (
+    compose_master_projection_backend,
+)
+from ada.web.application.generic.navigation_binding import (
+    manager_navigation_principal,
+    public_navigation_principal,
+)
+from ada.web.application.generic.operational_collector import (
+    attach_operational_kpi_collector,
+)
+from ada.web.application.generic.operational_tool import (
+    create_definition_from_tool_resolution,
+    resolve_operational_tool_projection,
+)
+from ada.web.application.generic.settings import AdaGenericSettings
 
 _LOGGER = logging.getLogger(__name__)
 # Excepciones de infraestructura que degradan solamente la vista administrativa.

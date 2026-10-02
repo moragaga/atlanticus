@@ -9,7 +9,7 @@ from ada.web.application.configuration_manager.wiring import ConfigurationManage
 from ada.web.application.generic.master_projection.composition import (
     compose_master_projection_planner,
 )
-from ada.web.application.generic.master_projection.plan import (
+from atlanticus.web.master_projection.plan import (
     ProjectionPlanState,
     UsersPlanState,
 )

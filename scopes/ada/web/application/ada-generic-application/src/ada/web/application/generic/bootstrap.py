@@ -27,11 +27,6 @@ from ada.web.application.generic.manager_principal import (
 from ada.web.application.generic.master_projection.composition import (
     compose_master_projection_backend,
 )
-from ada.web.application.generic.master_projection.web import (
-    MASTER_PROJECTION_INDEPENDENT_ROUTES,
-    MasterMaterialReader,
-    MasterProjectionWebBinding,
-)
 from ada.web.application.generic.navigation_binding import (
     manager_navigation_principal,
     public_navigation_principal,
@@ -75,6 +70,11 @@ from atlanticus.web.identity.module import create_identity_module
 from atlanticus.web.identity.provider import IdentityProvider
 from atlanticus.web.manager import ManagerPrincipal, ManagerSurface
 from atlanticus.web.manager.web.ids import LOCATION_ID
+from atlanticus.web.master_projection.web import (
+    MASTER_PROJECTION_INDEPENDENT_ROUTES,
+    MasterMaterialReader,
+    MasterProjectionWebBinding,
+)
 from atlanticus.web.models import WebApplicationDefinition, WebApplicationRuntime
 from atlanticus.web.navigation.api import (
     NavigationDefinition,

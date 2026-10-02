@@ -7,16 +7,16 @@ from types import SimpleNamespace
 import pytest
 from flask import Flask
 
-from ada.web.application.generic.master_projection.apply import (
+from atlanticus.web.master_projection.apply import (
     MasterApplyError,
     MasterApplyOutcome,
     MasterApplyResult,
 )
-from ada.web.application.generic.master_projection.plan import (
+from atlanticus.web.master_projection.plan import (
     ProjectionPlanEntry,
     ProjectionPlanState,
 )
-from ada.web.application.generic.master_projection.web import MasterProjectionWebBinding
+from atlanticus.web.master_projection.web import MasterProjectionWebBinding
 from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.source.models import SourceKey, SourceReleaseId, SourceReleaseRef
 
@@ -337,7 +337,7 @@ def test_material_rotation_revokes_prepared_confirmation(surface):
 
 
 def test_expired_session_cannot_confirm(surface, monkeypatch):
-    import ada.web.application.generic.master_projection.web as web
+    import atlanticus.web.master_projection.web as web
 
     server, _, _, executor = surface
     now = 100_000

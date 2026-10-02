@@ -6,7 +6,7 @@ import zipfile
 
 import pytest
 
-from ada.web.application.generic.master_projection.material import (
+from atlanticus.web.master_projection.material import (
     MasterMaterialAvailability,
     MasterMaterialError,
     _hash_password,

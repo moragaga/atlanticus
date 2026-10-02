@@ -7,12 +7,12 @@ import sys
 import tempfile
 from pathlib import Path
 
-from ada.web.application.generic.master_projection.material import (
+from ada.web.application.generic.settings import AdaGenericSettings, AdaPersistenceMode
+from atlanticus.connectivity.storage import StorageClient, StorageConflictError, StorageError
+from atlanticus.web.master_projection.material import (
     MasterMaterialError,
     generate_master_material,
 )
-from ada.web.application.generic.settings import AdaGenericSettings, AdaPersistenceMode
-from atlanticus.connectivity.storage import StorageClient, StorageConflictError, StorageError
 
 
 def _password() -> str:
@@ -51,7 +51,7 @@ def _generate_durable(settings: AdaGenericSettings, *, service_user: str, passwo
     if storage_settings is None or container_name is None:
         raise MasterMaterialError('Durable Master Projection storage is not configured')
     blob_name = settings.master_projection_blob_name()
-    with tempfile.TemporaryDirectory(prefix='ada-master-projection-') as directory:
+    with tempfile.TemporaryDirectory(prefix='atlanticus-master-projection-') as directory:
         target = Path(directory) / 'material.zip'
         identity = generate_master_material(
             target,

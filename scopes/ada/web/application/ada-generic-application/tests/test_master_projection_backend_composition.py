@@ -10,12 +10,12 @@ from ada.web.application.configuration_manager.local_runtime import (
     InProcessUsersRegistryStore,
 )
 from ada.web.application.configuration_manager.wiring import ConfigurationManagerStores
-from ada.web.application.generic.master_projection.apply import MasterApplyError
 from ada.web.application.generic.master_projection.composition import (
     compose_master_projection_backend,
     compose_master_projection_planner,
 )
-from ada.web.application.generic.master_projection.plan import ProjectionPlanState
+from atlanticus.web.master_projection.apply import MasterApplyError
+from atlanticus.web.master_projection.plan import ProjectionPlanState
 from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
 from atlanticus.web.source.models import SourceKey, SourceReleaseId, SourceReleaseRef

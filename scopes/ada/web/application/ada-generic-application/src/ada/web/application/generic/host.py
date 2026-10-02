@@ -12,16 +12,16 @@ from ada.web.application.generic.bootstrap import (
     create_operational_application_runtime,
 )
 from ada.web.application.generic.manager_deployment import open_durable_manager
-from ada.web.application.generic.master_projection.reader import (
-    BlobMasterMaterialReader,
-    LocalMasterMaterialReader,
-)
 from ada.web.application.generic.settings import AdaGenericSettings, AdaPersistenceMode
 from atlanticus.web.application import run_web_application
 from atlanticus.web.dash_worker import prepare_dash_worker
 from atlanticus.web.identity.errors import IdentityConfigurationError
 from atlanticus.web.identity.local import LocalIdentityProvider
 from atlanticus.web.identity.provider import IdentityProvider
+from atlanticus.web.master_projection.reader import (
+    BlobMasterMaterialReader,
+    LocalMasterMaterialReader,
+)
 from atlanticus.web.models import WebApplicationRuntime
 from atlanticus.web.users.local import select_local_user
 

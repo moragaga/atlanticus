@@ -7,21 +7,29 @@ import time
 from dataclasses import dataclass
 from typing import Protocol
 
-from flask import Flask, abort, make_response, redirect, render_template_string, request, session
-
-from ada.web.application.generic.master_projection.apply import (
-    MasterApplyError,
-    MasterApplyOutcome,
-    MasterProjectionExecutor,
-)
-from ada.web.application.generic.master_projection.plan import (
-    MasterProjectionPlanner,
-    ProjectionPlanState,
-)
 from atlanticus.web.identity.session import configure_identity_session
 from atlanticus.web.modules import WebModule
 from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.source.models import SourceKey
+from flask import (
+    Flask,
+    abort,
+    make_response,
+    redirect,
+    render_template_string,
+    request,
+    session,
+)
+
+from atlanticus.web.master_projection.apply import (
+    MasterApplyError,
+    MasterApplyOutcome,
+    MasterProjectionExecutor,
+)
+from atlanticus.web.master_projection.plan import (
+    MasterProjectionPlanner,
+    ProjectionPlanState,
+)
 
 MASTER_PROJECTION_ROUTE = '/master-projection'
 MASTER_PROJECTION_LOGOUT_ROUTE = '/master-projection/logout'
@@ -29,10 +37,10 @@ MASTER_PROJECTION_INDEPENDENT_ROUTES = (
     MASTER_PROJECTION_ROUTE,
     MASTER_PROJECTION_LOGOUT_ROUTE,
 )
-_SESSION_KEY = '_ada_master_projection_access'
-_CSRF_KEY = '_ada_master_projection_csrf'
-_PENDING_KEY = '_ada_master_projection_pending'
-_RESULT_KEY = '_ada_master_projection_result'
+_SESSION_KEY = '_atlanticus_master_projection_access'
+_CSRF_KEY = '_atlanticus_master_projection_csrf'
+_PENDING_KEY = '_atlanticus_master_projection_pending'
+_RESULT_KEY = '_atlanticus_master_projection_result'
 _SESSION_SECONDS = 900
 _MAX_LOGIN_BYTES = 4096
 _READY = (ProjectionPlanState.NEVER_PROJECTED, ProjectionPlanState.OUTDATED)
@@ -441,16 +449,16 @@ class MasterProjectionWebBinding:
 
         def register_routes(server: Flask, _services: ServiceRegistry) -> None:
             server.add_url_rule(
-                MASTER_PROJECTION_ROUTE, 'ada_master_projection',
+                MASTER_PROJECTION_ROUTE, 'atlanticus_master_projection',
                 dispatch, methods=['GET', 'POST'],
             )
             server.add_url_rule(
-                MASTER_PROJECTION_LOGOUT_ROUTE, 'ada_master_projection_logout',
+                MASTER_PROJECTION_LOGOUT_ROUTE, 'atlanticus_master_projection_logout',
                 dispatch, methods=['POST'],
             )
 
         return WebModule(
-            name='ada-master-projection',
+            name='atlanticus-master-projection',
             register_middlewares=register_middlewares,
             register_routes=register_routes,
         )

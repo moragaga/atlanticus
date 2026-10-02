@@ -5,12 +5,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from ada.web.application.generic.master_projection.apply import (
+from atlanticus.web.master_projection.apply import (
     MasterApplyError,
     MasterApplyOutcome,
     MasterProjectionExecutor,
 )
-from ada.web.application.generic.master_projection.plan import (
+from atlanticus.web.master_projection.plan import (
     MasterProjectionPlanner,
     ProjectionDomain,
     ProjectionPlanState,

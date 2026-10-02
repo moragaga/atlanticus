@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from ada.web.application.generic.master_projection import reader as module
 from atlanticus.connectivity.storage import StorageClient
+from atlanticus.web.master_projection import reader as module
 
 
 def test_local_reader_reports_absent_canonical_file(tmp_path):

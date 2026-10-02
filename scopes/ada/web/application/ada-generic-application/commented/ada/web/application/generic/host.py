@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# Espejo pedagógico: conserva exactamente el runtime productivo; los comentarios explican su composición.
+
 import os
 from collections.abc import Callable
 from contextlib import ExitStack
@@ -12,23 +14,22 @@ from ada.web.application.generic.bootstrap import (
     create_operational_application_runtime,
 )
 from ada.web.application.generic.manager_deployment import open_durable_manager
-from ada.web.application.generic.master_projection.reader import (
-    BlobMasterMaterialReader,
-    LocalMasterMaterialReader,
-)
 from ada.web.application.generic.settings import AdaGenericSettings, AdaPersistenceMode
 from atlanticus.web.application import run_web_application
 from atlanticus.web.dash_worker import prepare_dash_worker
 from atlanticus.web.identity.errors import IdentityConfigurationError
 from atlanticus.web.identity.local import LocalIdentityProvider
 from atlanticus.web.identity.provider import IdentityProvider
+from atlanticus.web.master_projection.reader import (
+    BlobMasterMaterialReader,
+    LocalMasterMaterialReader,
+)
 from atlanticus.web.models import WebApplicationRuntime
 from atlanticus.web.users.local import select_local_user
 
 ProductionIdentityFactory = Callable[[], IdentityProvider]
 
 
-# El lifecycle del worker pertenece al composition root ADA.
 class AdaWorkerRuntime:
     def __init__(self, application: WebApplicationRuntime, resources: ExitStack) -> None:
         self.application = application
@@ -40,10 +41,7 @@ class AdaWorkerRuntime:
 
 
 def _local_identity() -> LocalIdentityProvider:
-    selected = (
-        os.getenv('ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID')
-        or select_local_user().subject_id
-    )
+    selected = os.getenv('ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID') or select_local_user().subject_id
     return LocalIdentityProvider(subject_id=selected)
 
 
@@ -54,14 +52,11 @@ def _production_identity(factory: ProductionIdentityFactory | None) -> IdentityP
         )
     provider = factory()
     if not isinstance(provider, IdentityProvider) or not provider.production_ready:
-        raise IdentityConfigurationError(
-            'The host must supply a production-ready IdentityProvider'
-        )
+        raise IdentityConfigurationError('The host must supply a production-ready IdentityProvider')
     provider.validate_configuration()
     return provider
 
 
-# El host resuelve persistencia, identidad, Master Projection y preparación de Dash.
 def create_worker_runtime(
     *,
     composition_factory: AdaOperationalCompositionFactory | None = None,
@@ -72,12 +67,8 @@ def create_worker_runtime(
     try:
         if settings.persistence_mode is AdaPersistenceMode.LOCAL:
             if not settings.environment.is_local:
-                raise IdentityConfigurationError(
-                    'Local persistence is unavailable in production'
-                )
-            material_reader = LocalMasterMaterialReader(
-                settings.master_projection_local_path()
-            )
+                raise IdentityConfigurationError('Local persistence is unavailable in production')
+            material_reader = LocalMasterMaterialReader(settings.master_projection_local_path())
             application = create_operational_application_runtime(
                 settings=settings,
                 manager_stores=create_local_configuration_manager_stores(),
@@ -116,7 +107,6 @@ def create_worker_runtime(
         raise
 
 
-# El Starter aporta extensiones, pero no reconstruye el runtime.
 def run_operational_application(
     *,
     composition_factory: AdaOperationalCompositionFactory | None = None,

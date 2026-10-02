@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-generic-application"
-version = "0.2.21"
+version = "0.2.22"
 description = "Composition root web genérico de ADA sobre Atlanticus Web"
 requires-python = "==3.14.2"
 classifiers = [
@@ -57,10 +57,10 @@ dependencies = [
     "atlanticus-web-profiles==0.1.0",
     "atlanticus-web-users==0.1.0",
     "atlanticus-web-projection==0.1.0",
+    "atlanticus-web-master-projection==0.1.0",
     "ada-web-ui-page-readiness==0.1.0",
     "pydantic==2.13.5",
     "pydantic-settings==2.14.1",
-    "pyzipper==0.4.0",
 ]
 
 [dependency-groups]
@@ -136,6 +136,7 @@ ada-web-tools-projection-local = { path = "../../tools/projection-local", editab
 ada-web-components = { path = "../../components/core", editable = true }
 ada-web-kpi-collector = { path = "../../kpis/collector", editable = true }
 atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
+atlanticus-web-master-projection = { path = "../../../../../web/capabilities/master-projection", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
 atlanticus-web-source-blob = { path = "../../../../../web/capabilities/source/blob", editable = true }
 atlanticus-web-source-local = { path = "../../../../../web/capabilities/source/local", editable = true }

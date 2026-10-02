@@ -50,9 +50,17 @@ def test_local_launcher_selects_durable_manager_without_changing_identity_mode(
         observed['principal'] = principal_provider()
         yield dependencies
 
-    def create_application(current, *, identity_provider):
+    def create_application(
+        current,
+        *,
+        identity_provider,
+        master_material_reader,
+        environment,
+    ):
         observed['dependencies'] = current
         observed['identity'] = identity_provider
+        observed['master_material_reader'] = master_material_reader
+        observed['environment'] = environment
         return application
 
     monkeypatch.setattr(runtime, 'open_durable_configuration_manager', open_durable)
@@ -67,3 +75,5 @@ def test_local_launcher_selects_durable_manager_without_changing_identity_mode(
     assert observed['principal'].administrative_override is True
     assert observed['principal'].is_local is True
     assert observed['identity'].resolve(None).subject_id == 'local:test'
+    assert observed['environment'] is reader.environment
+    assert observed['master_material_reader'] is not None

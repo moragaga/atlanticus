@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from ada.web.application.generic.master_projection.plan import (
+from atlanticus.web.master_projection.plan import (
     MasterProjectionPlanner,
     ProjectionDomain,
     ProjectionPlanState,

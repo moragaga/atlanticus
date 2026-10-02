@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 from flask import Flask
 
-from ada.web.application.generic.master_projection.web import (
+from atlanticus.web.master_projection.web import (
     MASTER_PROJECTION_ROUTE,
     MasterProjectionWebBinding,
 )
@@ -188,7 +188,7 @@ def test_removed_material_revokes_existing_session(surface):
 
 def test_session_expires_without_sliding_extension(surface, monkeypatch):
     server, _, planner = surface
-    import ada.web.application.generic.master_projection.web as web
+    import atlanticus.web.master_projection.web as web
 
     now = 100_000
     monkeypatch.setattr(web.time, 'time', lambda: now)
