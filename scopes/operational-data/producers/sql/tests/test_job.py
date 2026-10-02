@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 from atlanticus.connectivity.sql import SqlTableChangeMarker
 from atlanticus.data_producers.sql import (
@@ -64,14 +65,8 @@ class _Context:
         self.iteration = {}
         self.work = False
         self.delay = None
-        self.completed = False
-        self.safe_remaining_seconds = 500.0
+        self.definition = SimpleNamespace(sleep_seconds=4.5)
         self.logger = _Logger()
-
-    def get_or_create(self, key, factory):
-        if key not in self.memory:
-            self.memory[key] = factory()
-        return self.memory[key]
 
     def get_memory(self, key, default=None):
         return self.memory.get(key, default)
@@ -96,9 +91,6 @@ class _Context:
 
     def set_next_iteration_delay(self, seconds):
         self.delay = seconds
-
-    def complete_execution(self):
-        self.completed = True
 
 
 def test_job_commits_marker_even_without_material_change(snapshot_definition) -> None:
@@ -137,7 +129,11 @@ def test_job_commits_marker_even_without_material_change(snapshot_definition) ->
 
     assert planner.calls == 1
     assert state.commits[0]['target_change_marker'].last_user_update_token == 'target'
+    assert context.execution['cycles_planned'] == 1
+    assert context.execution['cycles_completed'] == 1
+    assert context.execution['sources_planned'] == 1
     assert context.execution['sources_processed'] == 1
     assert context.iteration['reason'] == 'no_material_change'
-    assert context.completed is True
-    assert context.delay is None
+    assert context.iteration['cycle_completed'] is True
+    assert context.delay == 4.5
+    assert context.memory['producer.execution_plan'] is None

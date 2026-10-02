@@ -105,3 +105,51 @@ def test_planner_does_not_require_scope_provider_for_snapshot(snapshot_definitio
     )
 
     assert plan.sources[0].scope is None
+
+
+def test_planner_prioritizes_least_recently_synced_changed_source(snapshot_definition) -> None:
+    from dataclasses import replace
+
+    recent_definition = replace(
+        snapshot_definition,
+        source_key='source_recent',
+        source_table='dbo.source_recent',
+    )
+    overdue_definition = replace(
+        snapshot_definition,
+        source_key='source_overdue',
+        source_table='dbo.source_overdue',
+    )
+    now = datetime(2026, 10, 2, 12, 0, tzinfo=UTC)
+    planner = SqlDataProducerPlanner(
+        reader=_Reader(
+            {
+                'source_recent': _marker('dbo.source_recent', 'current-recent'),
+                'source_overdue': _marker('dbo.source_overdue', 'current-overdue'),
+            }
+        ),
+        producer_state=_State(
+            {
+                'source_recent': SqlSourceState(
+                    source_key='source_recent',
+                    source_change_marker=_marker('dbo.source_recent', 'previous-recent'),
+                    last_synced_at_utc=datetime(2026, 10, 2, 11, 59, tzinfo=UTC),
+                ),
+                'source_overdue': SqlSourceState(
+                    source_key='source_overdue',
+                    source_change_marker=_marker('dbo.source_overdue', 'previous-overdue'),
+                    last_synced_at_utc=datetime(2026, 10, 2, 11, 0, tzinfo=UTC),
+                ),
+            }
+        ),
+    )
+
+    plan = planner.capture(
+        (recent_definition, overdue_definition),
+        captured_at_utc=now,
+    )
+
+    assert tuple(item.definition.source_key for item in plan.sources) == (
+        'source_overdue',
+        'source_recent',
+    )

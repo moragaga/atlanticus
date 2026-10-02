@@ -340,9 +340,6 @@ def _run_iterations(
                             else:
                                 stop_reason = 'safe_execution_window_elapsed'
                             break
-                        if context.execution_completed:
-                            stop_reason = 'completed'
-                            break
                         if options.run_once:
                             stop_reason = 'run_once'
                             break

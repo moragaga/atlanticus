@@ -352,11 +352,6 @@ def _run_iterations(
                             else:
                                 stop_reason = 'safe_execution_window_elapsed'
                             break
-                        # Completion termina con éxito antes de evaluar una espera o una nueva
-                        # admisión temporal.
-                        if context.execution_completed:
-                            stop_reason = 'completed'
-                            break
                         if options.run_once:
                             stop_reason = 'run_once'
                             break

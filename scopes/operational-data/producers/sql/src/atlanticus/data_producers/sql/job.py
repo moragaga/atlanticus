@@ -47,19 +47,14 @@ class SqlDataProducerJob:
 
     def run_iteration(self, context: JobRuntimeContext) -> None:
         self._initialize_execution_facts(context)
-        plan = context.get_or_create(
-            self._plan_memory_key,
-            lambda: self._planner.capture(self._definitions, context=context),
-        )
-        self._initialize_plan_facts(context, plan)
+        plan = context.get_memory(self._plan_memory_key)
+        if plan is None:
+            plan = self._start_cycle(context)
         cursor = int(context.get_memory(self._cursor_memory_key, 0) or 0)
         if cursor >= len(plan.sources):
-            failures = int(context.get_memory(self._failures_memory_key, 0) or 0)
-            if failures:
-                self._raise_execution_failure(context, failures)
             context.set_iteration_fact('outcome', 'skipped')
             context.set_iteration_fact('reason', 'no_source_change')
-            context.complete_execution()
+            self._complete_cycle(context, empty=True)
             return
 
         source_plan = plan.sources[cursor]
@@ -93,6 +88,7 @@ class SqlDataProducerJob:
             )
             if cursor + 1 >= len(plan.sources):
                 self._raise_execution_failure(context, failures)
+            context.set_next_iteration_delay(0)
             return
 
         if result.source_key != source_plan.definition.source_key:
@@ -134,7 +130,34 @@ class SqlDataProducerJob:
             failures = int(context.get_memory(self._failures_memory_key, 0) or 0)
             if failures:
                 self._raise_execution_failure(context, failures)
-            context.complete_execution()
+            self._complete_cycle(context, empty=False)
+            return
+        context.set_next_iteration_delay(0)
+
+    def _start_cycle(self, context: JobRuntimeContext) -> SqlExecutionPlan:
+        plan = self._planner.capture(self._definitions, context=context)
+        context.set_memory(self._plan_memory_key, plan)
+        context.set_memory(self._cursor_memory_key, 0)
+        context.set_memory(self._failures_memory_key, 0)
+        context.set_memory(self._first_failure_memory_key, None)
+        context.increment_execution_counter('cycles_planned')
+        context.increment_execution_counter('sources_planned', len(plan.sources))
+        context.set_execution_fact('plan_captured_at_utc', plan.captured_at_utc)
+        context.set_iteration_fact('cycle_sources_planned', len(plan.sources))
+        return plan
+
+    def _complete_cycle(self, context: JobRuntimeContext, *, empty: bool) -> None:
+        context.increment_execution_counter('cycles_completed')
+        if empty:
+            context.increment_execution_counter('empty_cycles')
+        context.set_memory(self._plan_memory_key, None)
+        context.set_memory(self._cursor_memory_key, 0)
+        context.set_memory(self._failures_memory_key, 0)
+        context.set_memory(self._first_failure_memory_key, None)
+        poll_seconds = context.definition.sleep_seconds
+        context.set_next_iteration_delay(poll_seconds)
+        context.set_iteration_fact('cycle_completed', True)
+        context.set_iteration_fact('next_cycle_delay_seconds', poll_seconds)
 
     def _raise_execution_failure(self, context: JobRuntimeContext, failures: int) -> None:
         error = SqlDataProducerError(
@@ -148,6 +171,9 @@ class SqlDataProducerJob:
     @staticmethod
     def _initialize_execution_facts(context: JobRuntimeContext) -> None:
         for key in (
+            'cycles_planned',
+            'cycles_completed',
+            'empty_cycles',
             'sources_planned',
             'sources_processed',
             'sources_changed',
@@ -159,10 +185,3 @@ class SqlDataProducerJob:
         ):
             if context.get_execution_fact(key) is None:
                 context.set_execution_fact(key, 0)
-
-    @staticmethod
-    def _initialize_plan_facts(context: JobRuntimeContext, plan: SqlExecutionPlan) -> None:
-        if context.get_execution_fact('plan_captured_at_utc') is not None:
-            return
-        context.set_execution_fact('plan_captured_at_utc', plan.captured_at_utc)
-        context.set_execution_fact('sources_planned', len(plan.sources))
