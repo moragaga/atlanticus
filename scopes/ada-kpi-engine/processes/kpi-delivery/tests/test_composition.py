@@ -1,29 +1,56 @@
-from __future__ import annotations
-
-from contextlib import nullcontext
-from types import SimpleNamespace
-
-import ada.processes.kpi_delivery.composition as composition_module
-from ada.kpis.delivery import KpiDeliveryConfiguration
-from ada.processes.kpi_delivery.composition import KpiDeliveryComposition, build_composition
-from ada.processes.kpi_delivery.storage import (
-    KPI_LATEST_DELIVERY_CONTAINER_SPEC,
-    KPI_REGISTRY_CONTAINER_SPEC,
+from ada.kpis.materialization import (
+    LocalKpiRegistryStore,
+    materialization_root,
+    materialize_registry,
 )
+from ada.processes.kpi_delivery.composition import build_composition
 from atlanticus.configuration import ConfigurationSource, ResolvedConfiguration
+from atlanticus.connectivity.cosmos import CosmosSettings
 from atlanticus.kernel import Environment
 
 
-def _configuration(tmp_path) -> ResolvedConfiguration:
+def _projection():
+    from ada.kpis.materialization import KPI_REGISTRY_ITEM_ID
+
+    return {
+        'id': KPI_REGISTRY_ITEM_ID,
+        'partition_key': 'kpis',
+        'document_type': 'ada_kpi_registry_projection_record',
+        'schema_version': 1,
+        'source_key': 'kpis',
+        'source_release_id': 'registry-r1',
+        'source_published_at_utc': '2026-10-02T12:00:00+00:00',
+        'projected_at_utc': '2026-10-02T12:00:01+00:00',
+        'dependencies': [
+            {
+                'source_key': 'tools',
+                'source_release_id': 'tools-r1',
+                'source_published_at_utc': '2026-10-02T11:59:00+00:00',
+                'dependencies': [],
+            }
+        ],
+        'payload': {
+            'bindings': [
+                {
+                    'kpi_key': 'produccion_total',
+                    'destination_keys': ['global_indicators'],
+                    'latest_enabled': True,
+                    'series_enabled': False,
+                    'series_hours': None,
+                }
+            ]
+        },
+    }
+
+
+def _configuration(tmp_path):
     values = {
         'ENVIRONMENT': 'local',
         'APPLICATION': 'ada-kpi-delivery-local',
-        'VOLUMEN_PATH': str(tmp_path),
+        'VOLUMEN_PATH': str(tmp_path.resolve()),
         'KPI_RUNTIME_APPLICATION': 'ada-kpi-runtime-local',
-        'COSMOS_CONSUMPTION_ENDPOINT': 'http://localhost:8081',
-        'COSMOS_CONSUMPTION_KEY': 'local-key',
-        'COSMOS_CONSUMPTION_DATABASE_NAME': 'ada',
-        'KPI_DELIVERY_POLL_INTERVAL_SECONDS': '1',
+        'POLL_INTERVAL_SECONDS': '1',
+        'KPI_DELIVERY_MAX_WORKERS': '2',
         'ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED': 'true',
         'ATLANTICUS_AZURE_OBSERVABILITY_MODE': 'off',
     }
@@ -34,78 +61,36 @@ def _configuration(tmp_path) -> ResolvedConfiguration:
     )
 
 
-class ProvisionerStub:
-    def __init__(self) -> None:
-        self.validated = []
-        self.ensured = []
-
-    def validate_containers(self, specs) -> None:
-        self.validated.append(tuple(specs))
-
-    def ensure_containers(self, specs):
-        normalized = tuple(specs)
-        self.ensured.append(normalized)
-        return tuple(spec.name for spec in normalized)
-
-
-class RegistryStub:
-    def __init__(self, configuration) -> None:
-        self.configuration = configuration
-        self.calls = 0
-
-    def read(self):
-        self.calls += 1
-        return self.configuration
-
-
-class ReaderStub:
-    def read(self, *_args, **_kwargs):
-        return None
-
-
-class CheckpointStub(ReaderStub):
-    def commit(self, value):
-        return value
-
-
-class PublisherStub:
-    def publish(self, value):
-        return value
-
-
-def test_composition_separates_own_runtime_from_kpi_runtime_authority(tmp_path) -> None:
-    composition = build_composition(configuration=_configuration(tmp_path))
-
-    assert composition.definition.module_name == 'ada.processes.kpi_delivery'
-    assert composition.definition.service_name == 'kpi-delivery'
-    assert composition.definition.job_key == 'kpi-delivery'
-    assert composition.definition.sleep_seconds == 1
-    assert composition.evaluations.paths.application_root == tmp_path / 'ada-kpi-runtime-local'
-    assert composition.runtime_configuration.application == 'ada-kpi-delivery-local'
-    assert composition.snapshots.container_name == KPI_LATEST_DELIVERY_CONTAINER_SPEC.name
-
-
-def test_execute_validates_registry_and_ensures_only_owned_output_before_job(monkeypatch) -> None:
-    configuration = KpiDeliveryConfiguration(revision='r1', bindings=())
-    provisioner = ProvisionerStub()
-    registry = RegistryStub(configuration)
-    result = object()
-    monkeypatch.setattr(composition_module, 'execute_job', lambda **_kwargs: result)
-    composition = KpiDeliveryComposition(
-        configuration=SimpleNamespace(values={}),
-        runtime_configuration=SimpleNamespace(values={}),
-        settings=object(),
-        registry_repository=registry,
-        kpi_state=ReaderStub(),
-        evaluations=ReaderStub(),
-        checkpoint=CheckpointStub(),
-        snapshots=PublisherStub(),
-        definition=object(),
-        cosmos_client=nullcontext(),
-        cosmos_provisioner=provisioner,
+def test_composition_freezes_local_registries_and_builds_parallel_tool_publishers(tmp_path):
+    store = LocalKpiRegistryStore(root=materialization_root(tmp_path.resolve()))
+    store.replace(
+        tool_key='tool_a',
+        document=materialize_registry(
+            tool_key='tool_a',
+            projection=_projection(),
+        ),
     )
+    connections = {
+        'tool_a': CosmosSettings(
+            endpoint='http://localhost:8081',
+            database_name='ada-a',
+            key='local-key',
+            allow_insecure_http=True,
+        )
+    }
 
-    assert composition.execute() is result
-    assert provisioner.validated == [(KPI_REGISTRY_CONTAINER_SPEC,)]
-    assert provisioner.ensured == [(KPI_LATEST_DELIVERY_CONTAINER_SPEC,)]
-    assert registry.calls == 1
+    composition = build_composition(
+        configuration=_configuration(tmp_path),
+        connections=connections,
+    )
+    try:
+        assert tuple(composition.frozen_configurations) == ('tool_a',)
+        assert tuple(composition.publishers) == ('tool_a',)
+        assert tuple(composition.clients) == ('tool_a',)
+        assert composition.parallel_publisher is not None
+        assert composition.definition.sleep_seconds == 1
+        assert composition.evaluations.paths.application_root == (
+            tmp_path / 'ada-kpi-runtime-local'
+        )
+    finally:
+        composition.parallel_publisher.close()

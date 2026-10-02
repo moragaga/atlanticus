@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import pytest
 
 from ada.processes.kpi_delivery.errors import KpiDeliveryRepositoryError
@@ -9,23 +7,37 @@ from atlanticus.state import AtomicStateStore
 from tests.support import watermark
 
 
-def test_checkpoint_round_trip_and_idempotence(tmp_path) -> None:
+def test_checkpoint_is_independent_per_tool(tmp_path):
     store = KpiLatestDeliveryCheckpointStore(
-        store=AtomicStateStore(volume_path=tmp_path, application='ada-kpi-delivery-test')
+        store=AtomicStateStore(
+            volume_path=tmp_path,
+            application='ada-kpi-delivery-test',
+        )
     )
-    checkpoint = KpiDeliveryCheckpoint(watermark(), 'config-r1')
+    a = KpiDeliveryCheckpoint(watermark(1), 'r1', 'a' * 64)
+    b = KpiDeliveryCheckpoint(watermark(2), 'r2', 'b' * 64)
 
-    assert store.read() is None
-    assert store.commit(checkpoint) == checkpoint
-    assert store.read() == checkpoint
-    assert store.commit(checkpoint) == checkpoint
+    store.commit('tool_a', a)
+    store.commit('tool_b', b)
+
+    assert store.read('tool_a') == a
+    assert store.read('tool_b') == b
 
 
-def test_checkpoint_rejects_watermark_regression(tmp_path) -> None:
+def test_checkpoint_rejects_watermark_regression_per_tool(tmp_path):
     store = KpiLatestDeliveryCheckpointStore(
-        store=AtomicStateStore(volume_path=tmp_path, application='ada-kpi-delivery-test')
+        store=AtomicStateStore(
+            volume_path=tmp_path,
+            application='ada-kpi-delivery-test',
+        )
     )
-    store.commit(KpiDeliveryCheckpoint(watermark(2), 'config-r1'))
+    store.commit(
+        'tool_a',
+        KpiDeliveryCheckpoint(watermark(2), 'r1', 'a' * 64),
+    )
 
     with pytest.raises(KpiDeliveryRepositoryError, match='must not regress'):
-        store.commit(KpiDeliveryCheckpoint(watermark(1), 'config-r1'))
+        store.commit(
+            'tool_a',
+            KpiDeliveryCheckpoint(watermark(1), 'r1', 'a' * 64),
+        )

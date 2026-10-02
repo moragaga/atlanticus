@@ -1,0 +1,2 @@
+class KpiConnectionsError(ValueError):
+    pass

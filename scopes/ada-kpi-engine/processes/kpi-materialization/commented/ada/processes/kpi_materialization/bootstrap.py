@@ -1,15 +1,12 @@
-# Espejo pedagógico del proceso KPI Materialization: bootstrap.py.
+# Espejo pedagógico de KPI Materialization migrado al contrato compartido: bootstrap.py.
 from __future__ import annotations
 
 import os
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from ada.kpis.connections import KpiConnectionRegistry, read_connection_registry
 from ada.processes.kpi_materialization.composition import build_composition
-from ada.processes.kpi_materialization.connections import (
-    KpiMaterializationConnectionRegistry,
-    read_connection_registry,
-)
 from ada.processes.kpi_materialization.errors import KpiMaterializationSettingsError
 from ada.processes.kpi_materialization.settings import configuration_specs
 from atlanticus.configuration import (
@@ -25,11 +22,11 @@ from atlanticus.connectivity.key_vault import (
 from atlanticus.runtime import RuntimeExecutionResult
 
 
-# Expone una operación del contrato manteniendo validación explícita.
+# Expone una operación manteniendo validación explícita.
 def load_configuration(
     *,
     process_root: str | Path,
-    registry: KpiMaterializationConnectionRegistry | None = None,
+    registry: KpiConnectionRegistry | None = None,
     environ: Mapping[str, str] | None = None,
 ) -> ResolvedConfiguration:
     values = os.environ if environ is None else environ
@@ -85,17 +82,15 @@ def load_configuration(
     return resolved
 
 
-# Expone una operación del contrato manteniendo validación explícita.
+# Expone una operación manteniendo validación explícita.
 def _required_bootstrap_value(values: Mapping[str, str], name: str) -> str:
     value = values.get(name)
     if not isinstance(value, str) or not value or value != value.strip():
-        raise KpiMaterializationSettingsError(
-            f'{name} is required to resolve Key Vault'
-        )
+        raise KpiMaterializationSettingsError(f'{name} is required to resolve Key Vault')
     return value
 
 
-# Expone una operación del contrato manteniendo validación explícita.
+# Expone una operación manteniendo validación explícita.
 def run(
     *,
     argv: Sequence[str] | None = None,
@@ -120,6 +115,6 @@ def run(
     ).execute(argv=argv)
 
 
-# Expone una operación del contrato manteniendo validación explícita.
+# Expone una operación manteniendo validación explícita.
 def main() -> None:
     run()

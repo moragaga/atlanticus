@@ -9,8 +9,10 @@ description = "KPI latest delivery process composition for the ADA backend."
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
+    "ada-kpis-connections==1.0.0",
     "ada-kpis-core==1.0.0",
     "ada-kpis-delivery==1.0.0",
+    "ada-kpis-materialization==1.0.0",
     "ada-kpis-persistence==1.0.0",
     "atlanticus-configuration==1.0.0",
     "atlanticus-cosmos==1.0.0",
@@ -46,6 +48,7 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py314"
+extend-exclude = ["commented"]
 
 [tool.ruff.format]
 quote-style = "single"

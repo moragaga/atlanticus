@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import StrEnum
 
 from ada.kpis.core import KpiWatermark
 from ada.processes.kpi_delivery.errors import KpiDeliveryRepositoryError
+
+_DIGEST = re.compile(r'[0-9a-f]{64}\Z')
 
 
 class KpiLatestPublicationStatus(StrEnum):
@@ -35,19 +38,25 @@ class KpiLatestPublication:
 @dataclass(frozen=True, slots=True)
 class KpiDeliveryCheckpoint:
     watermark: KpiWatermark
-    configuration_revision: str
+    registry_revision: str
+    registry_digest: str
 
     def __post_init__(self) -> None:
         if not isinstance(self.watermark, KpiWatermark):
             raise KpiDeliveryRepositoryError('checkpoint watermark must be KpiWatermark')
-        if not isinstance(self.configuration_revision, str) or not self.configuration_revision:
+        if (
+            not isinstance(self.registry_revision, str)
+            or not self.registry_revision
+            or self.registry_revision != self.registry_revision.strip()
+        ):
             raise KpiDeliveryRepositoryError(
-                'checkpoint configuration_revision must be a non-empty string'
+                'checkpoint registry_revision must be non-empty trimmed text'
             )
-        if self.configuration_revision != self.configuration_revision.strip():
-            raise KpiDeliveryRepositoryError(
-                'checkpoint configuration_revision must not contain surrounding whitespace'
-            )
+        if (
+            not isinstance(self.registry_digest, str)
+            or _DIGEST.fullmatch(self.registry_digest) is None
+        ):
+            raise KpiDeliveryRepositoryError('checkpoint registry_digest must be a sha256 digest')
 
 
 class KpiLatestDeliveryIterationStatus(StrEnum):
@@ -60,10 +69,9 @@ class KpiLatestDeliveryIterationStatus(StrEnum):
 @dataclass(frozen=True, slots=True)
 class KpiLatestDeliveryIterationResult:
     status: KpiLatestDeliveryIterationStatus
-    configuration_revision: str
     watermark_utc: str | None = None
-    delivery_revision: str | None = None
-    destination_count: int = 0
-    value_count: int = 0
-    missing_count: int = 0
-    error_count: int = 0
+    tool_count: int = 0
+    pending_tool_count: int = 0
+    published_tool_count: int = 0
+    unchanged_tool_count: int = 0
+    failed_tool_count: int = 0

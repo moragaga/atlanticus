@@ -73,6 +73,17 @@ CAPABILITIES = {
             'atlanticus-state==1.0.0',
         ),
     ),
+    'kpi-connections': Capability(
+        'kpi-connections',
+        'ada-kpis-connections',
+        'ada.kpis.connections',
+        'kpis/connections',
+        (
+            'atlanticus-configuration==1.0.0',
+            'atlanticus-cosmos==1.0.0',
+            'atlanticus-kernel==1.0.0',
+        ),
+    ),
     'kpi-delivery': Capability(
         'kpi-delivery',
         'ada-kpis-delivery',
@@ -86,8 +97,10 @@ CAPABILITIES = {
         'ada.processes.kpi_delivery',
         'processes/kpi-delivery',
         (
+            'ada-kpis-connections==1.0.0',
             'ada-kpis-core==1.0.0',
             'ada-kpis-delivery==1.0.0',
+            'ada-kpis-materialization==1.0.0',
             'ada-kpis-persistence==1.0.0',
             'atlanticus-configuration==1.0.0',
             'atlanticus-cosmos==1.0.0',
@@ -111,6 +124,7 @@ CAPABILITIES = {
         'ada.processes.kpi_materialization',
         'processes/kpi-materialization',
         (
+            'ada-kpis-connections==1.0.0',
             'ada-kpis-materialization==1.0.0',
             'atlanticus-configuration==1.0.0',
             'atlanticus-cosmos==1.0.0',
@@ -178,6 +192,7 @@ EXPECTED_MEMBERS = [
     'kpis/history',
     'processes/kpi-historian',
     'processes/kpi-timeseries-delivery',
+    'kpis/connections',
     'kpis/materialization',
     'processes/kpi-materialization',
 ]
@@ -191,6 +206,7 @@ EXPECTED_SOURCES = {
     'ada-kpis-persistence': {'workspace': True},
     'ada-kpis-delivery': {'workspace': True},
     'ada-kpis-history': {'workspace': True},
+    'ada-kpis-connections': {'workspace': True},
     'ada-kpis-materialization': {'workspace': True},
     'ada-kpi-materialization-process': {'workspace': True},
     'atlanticus-configuration': {'path': '../../backend/configuration', 'editable': True},
@@ -490,6 +506,10 @@ def _validate_delivery_process_contract(scope: Path) -> None:
     if container != {'command': 'ada-kpi-delivery', 'system-profile': 'base'}:
         raise SystemExit('KPI Delivery container contract is not canonical')
     _validate_process_contract_files(root, 'KPI Delivery')
+    if not (root / 'config/connections.detail.json').is_file():
+        raise SystemExit(
+            'KPI Delivery process contract file is missing: config/connections.detail.json'
+        )
 
 
 def _validate_historian_process_contract(scope: Path) -> None:
@@ -624,6 +644,9 @@ def _build_wheels(selected: tuple[Capability, ...], scope: Path) -> None:
         shutil.rmtree(dist)
     dist.mkdir(parents=True)
     for capability in selected:
+        build_root = scope / capability.root / 'build'
+        if build_root.exists():
+            shutil.rmtree(build_root)
         expected_version = _validate_project(scope / capability.root, capability.distribution)
         before = set(dist.glob('*.whl'))
         _run(['uv', 'build', capability.root, '--wheel', '--out-dir', str(dist)], cwd=scope)

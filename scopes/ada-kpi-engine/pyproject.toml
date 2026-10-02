@@ -24,6 +24,7 @@ ada-kpis-evaluation = { workspace = true }
 ada-kpis-persistence = { workspace = true }
 ada-kpis-delivery = { workspace = true }
 ada-kpis-history = { workspace = true }
+ada-kpis-connections = { workspace = true }
 ada-kpis-materialization = { workspace = true }
 ada-kpi-materialization-process = { workspace = true }
 atlanticus-configuration = { path = "../../backend/configuration", editable = true }
@@ -54,6 +55,7 @@ members = [
     "kpis/history",
     "processes/kpi-historian",
     "processes/kpi-timeseries-delivery",
+    "kpis/connections",
     "kpis/materialization",
     "processes/kpi-materialization",
 ]

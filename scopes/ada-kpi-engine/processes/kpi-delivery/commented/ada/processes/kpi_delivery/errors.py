@@ -1,15 +1,19 @@
-# Define errores públicos sanitizados del proceso.
-
-# Mantiene aislada la responsabilidad de KpiDeliveryProcessError.
+# Espejo pedagógico de KPI Latest Delivery paralelo por Tool: errors.py.
+# Define una responsabilidad con estado o contrato propio.
 class KpiDeliveryProcessError(RuntimeError):
     pass
 
 
-# Mantiene aislada la responsabilidad de KpiDeliveryConfigurationError.
+# Define una responsabilidad con estado o contrato propio.
 class KpiDeliveryConfigurationError(KpiDeliveryProcessError, ValueError):
     pass
 
 
-# Mantiene aislada la responsabilidad de KpiDeliveryRepositoryError.
+# Define una responsabilidad con estado o contrato propio.
 class KpiDeliveryRepositoryError(KpiDeliveryProcessError):
+    pass
+
+
+# Define una responsabilidad con estado o contrato propio.
+class KpiDeliveryPublicationError(KpiDeliveryProcessError):
     pass

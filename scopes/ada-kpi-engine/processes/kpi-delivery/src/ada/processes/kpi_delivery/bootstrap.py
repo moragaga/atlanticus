@@ -4,10 +4,15 @@ import os
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from ada.kpis.connections import KpiConnectionRegistry, read_connection_registry
 from ada.processes.kpi_delivery.composition import build_composition
 from ada.processes.kpi_delivery.errors import KpiDeliveryConfigurationError
 from ada.processes.kpi_delivery.settings import configuration_specs
-from atlanticus.configuration import ConfigurationBootstrap, ResolvedConfiguration, SecretsManifest
+from atlanticus.configuration import (
+    ConfigurationBootstrap,
+    ResolvedConfiguration,
+    SecretsManifest,
+)
 from atlanticus.connectivity.key_vault import (
     KeyVaultClient,
     KeyVaultConfigurationError,
@@ -23,11 +28,13 @@ _PRODUCT_VARIABLE = 'PRODUCT_ABREV'
 def load_configuration(
     *,
     process_root: str | Path,
+    registry: KpiConnectionRegistry | None = None,
     environ: Mapping[str, str] | None = None,
 ) -> ResolvedConfiguration:
     source_values = os.environ if environ is None else environ
     root = Path(process_root)
-    specs = configuration_specs()
+    active_registry = registry if registry is not None else read_connection_registry(root)
+    specs = (*configuration_specs(), *active_registry.configuration_specs())
     bootstrap = ConfigurationBootstrap.from_process(
         specs=specs,
         process_values=source_values,
@@ -93,7 +100,9 @@ def _required_bootstrap_value(values: Mapping[str, str], key: str) -> str:
     return value
 
 
-def _require_absolute_volume_path(configuration: ResolvedConfiguration) -> ResolvedConfiguration:
+def _require_absolute_volume_path(
+    configuration: ResolvedConfiguration,
+) -> ResolvedConfiguration:
     configured_path = Path(configuration.require('VOLUMEN_PATH')).expanduser()
     if not configured_path.is_absolute():
         raise KpiDeliveryConfigurationError('VOLUMEN_PATH must be an absolute path')
@@ -108,8 +117,20 @@ def run(
 ) -> RuntimeExecutionResult:
     root = Path.cwd() if process_root is None else Path(process_root)
     source_values = os.environ if environ is None else environ
-    configuration = load_configuration(process_root=root, environ=source_values)
-    return build_composition(configuration=configuration).execute(argv=argv)
+    registry = read_connection_registry(root)
+    configuration = load_configuration(
+        process_root=root,
+        registry=registry,
+        environ=source_values,
+    )
+    connections = registry.resolve(
+        values=configuration.values,
+        environment=configuration.environment,
+    )
+    return build_composition(
+        configuration=configuration,
+        connections=connections,
+    ).execute(argv=argv)
 
 
 def main() -> None:

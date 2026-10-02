@@ -4,11 +4,8 @@ import os
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from ada.kpis.connections import KpiConnectionRegistry, read_connection_registry
 from ada.processes.kpi_materialization.composition import build_composition
-from ada.processes.kpi_materialization.connections import (
-    KpiMaterializationConnectionRegistry,
-    read_connection_registry,
-)
 from ada.processes.kpi_materialization.errors import KpiMaterializationSettingsError
 from ada.processes.kpi_materialization.settings import configuration_specs
 from atlanticus.configuration import (
@@ -27,7 +24,7 @@ from atlanticus.runtime import RuntimeExecutionResult
 def load_configuration(
     *,
     process_root: str | Path,
-    registry: KpiMaterializationConnectionRegistry | None = None,
+    registry: KpiConnectionRegistry | None = None,
     environ: Mapping[str, str] | None = None,
 ) -> ResolvedConfiguration:
     values = os.environ if environ is None else environ

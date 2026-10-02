@@ -1,4 +1,4 @@
-# Espejo pedagógico del proceso KPI Materialization: settings.py.
+# Espejo pedagógico de KPI Materialization migrado al contrato compartido: settings.py.
 from __future__ import annotations
 
 import math
@@ -7,11 +7,11 @@ from dataclasses import dataclass
 from ada.processes.kpi_materialization.errors import KpiMaterializationSettingsError
 from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfiguration
 
-POLL_INTERVAL_VARIABLE = 'KPI_MATERIALIZATION_POLL_SECONDS'
+POLL_INTERVAL_VARIABLE = 'POLL_INTERVAL_SECONDS'
 
 
 @dataclass(frozen=True, slots=True)
-# Agrupa una responsabilidad con estado o ciclo de vida propio.
+# Agrupa una responsabilidad con estado o contrato propio.
 class KpiMaterializationSettings:
     poll_interval_seconds: float
 
@@ -35,7 +35,7 @@ class KpiMaterializationSettings:
         return cls(poll_interval_seconds=interval)
 
 
-# Expone una operación del contrato manteniendo validación explícita.
+# Expone una operación manteniendo validación explícita.
 def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
     return (
         ConfigurationVariableSpec(key='APPLICATION'),

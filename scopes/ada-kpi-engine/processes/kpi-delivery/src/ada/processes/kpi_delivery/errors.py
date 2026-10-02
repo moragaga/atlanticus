@@ -8,3 +8,7 @@ class KpiDeliveryConfigurationError(KpiDeliveryProcessError, ValueError):
 
 class KpiDeliveryRepositoryError(KpiDeliveryProcessError):
     pass
+
+
+class KpiDeliveryPublicationError(KpiDeliveryProcessError):
+    pass

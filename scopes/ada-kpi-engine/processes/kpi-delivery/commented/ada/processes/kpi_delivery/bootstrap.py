@@ -1,14 +1,19 @@
-# Resuelve configuración y secretos antes de componer el proceso.
+# Espejo pedagógico de Latest Delivery multi-Tool: bootstrap.py.
 from __future__ import annotations
 
 import os
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from ada.kpis.connections import KpiConnectionRegistry, read_connection_registry
 from ada.processes.kpi_delivery.composition import build_composition
 from ada.processes.kpi_delivery.errors import KpiDeliveryConfigurationError
 from ada.processes.kpi_delivery.settings import configuration_specs
-from atlanticus.configuration import ConfigurationBootstrap, ResolvedConfiguration, SecretsManifest
+from atlanticus.configuration import (
+    ConfigurationBootstrap,
+    ResolvedConfiguration,
+    SecretsManifest,
+)
 from atlanticus.connectivity.key_vault import (
     KeyVaultClient,
     KeyVaultConfigurationError,
@@ -21,15 +26,17 @@ _COMPANY_VARIABLE = 'COMPANY_ABREV'
 _PRODUCT_VARIABLE = 'PRODUCT_ABREV'
 
 
-# Usa el bootstrap canónico y Key Vault fuera de local.
+# Expone una operación manteniendo validación explícita.
 def load_configuration(
     *,
     process_root: str | Path,
+    registry: KpiConnectionRegistry | None = None,
     environ: Mapping[str, str] | None = None,
 ) -> ResolvedConfiguration:
     source_values = os.environ if environ is None else environ
     root = Path(process_root)
-    specs = configuration_specs()
+    active_registry = registry if registry is not None else read_connection_registry(root)
+    specs = (*configuration_specs(), *active_registry.configuration_specs())
     bootstrap = ConfigurationBootstrap.from_process(
         specs=specs,
         process_values=source_values,
@@ -37,7 +44,9 @@ def load_configuration(
     )
     environment = bootstrap.environment
     if environment.is_local:
-        return _require_absolute_volume_path(bootstrap.load(process_values=source_values))
+        return _require_absolute_volume_path(
+            bootstrap.load(process_values=source_values)
+        )
 
     manifest = SecretsManifest.from_path(root / 'secrets.json')
     configured_keys = frozenset(spec.key for spec in specs)
@@ -72,7 +81,7 @@ def load_configuration(
     return _require_absolute_volume_path(configuration)
 
 
-# Mantiene aislada la responsabilidad de _key_vault_settings.
+# Expone una operación manteniendo validación explícita.
 def _key_vault_settings(
     *,
     environment: Environment,
@@ -87,25 +96,31 @@ def _key_vault_settings(
     )
 
 
-# Mantiene aislada la responsabilidad de _required_bootstrap_value.
+# Expone una operación manteniendo validación explícita.
 def _required_bootstrap_value(values: Mapping[str, str], key: str) -> str:
     value = values.get(key)
     if not isinstance(value, str) or not value:
-        raise KpiDeliveryConfigurationError(f'{key} is required to resolve Key Vault')
+        raise KpiDeliveryConfigurationError(
+            f'{key} is required to resolve Key Vault'
+        )
     if value != value.strip():
-        raise KpiDeliveryConfigurationError(f'{key} must not contain surrounding whitespace')
+        raise KpiDeliveryConfigurationError(
+            f'{key} must not contain surrounding whitespace'
+        )
     return value
 
 
-# Mantiene aislada la responsabilidad de _require_absolute_volume_path.
-def _require_absolute_volume_path(configuration: ResolvedConfiguration) -> ResolvedConfiguration:
+# Expone una operación manteniendo validación explícita.
+def _require_absolute_volume_path(
+    configuration: ResolvedConfiguration,
+) -> ResolvedConfiguration:
     configured_path = Path(configuration.require('VOLUMEN_PATH')).expanduser()
     if not configured_path.is_absolute():
         raise KpiDeliveryConfigurationError('VOLUMEN_PATH must be an absolute path')
     return configuration
 
 
-# Mantiene aislada la responsabilidad de run.
+# Expone una operación manteniendo validación explícita.
 def run(
     *,
     argv: Sequence[str] | None = None,
@@ -114,10 +129,22 @@ def run(
 ) -> RuntimeExecutionResult:
     root = Path.cwd() if process_root is None else Path(process_root)
     source_values = os.environ if environ is None else environ
-    configuration = load_configuration(process_root=root, environ=source_values)
-    return build_composition(configuration=configuration).execute(argv=argv)
+    registry = read_connection_registry(root)
+    configuration = load_configuration(
+        process_root=root,
+        registry=registry,
+        environ=source_values,
+    )
+    connections = registry.resolve(
+        values=configuration.values,
+        environment=configuration.environment,
+    )
+    return build_composition(
+        configuration=configuration,
+        connections=connections,
+    ).execute(argv=argv)
 
 
-# Mantiene aislada la responsabilidad de main.
+# Expone una operación manteniendo validación explícita.
 def main() -> None:
     run()

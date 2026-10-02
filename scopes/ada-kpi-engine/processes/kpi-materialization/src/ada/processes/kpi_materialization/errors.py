@@ -1,7 +1,3 @@
-class KpiMaterializationConnectionsError(ValueError):
-    pass
-
-
 class KpiMaterializationAcquisitionError(RuntimeError):
     pass
 

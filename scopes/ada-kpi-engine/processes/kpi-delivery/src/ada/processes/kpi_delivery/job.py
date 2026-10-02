@@ -1,24 +1,30 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from typing import Protocol
 
 from ada.kpis.core import KpiWatermark
-from ada.kpis.delivery import KpiDeliveryConfiguration, KpiDeliveryStatus, project_kpi_latest
+from ada.kpis.delivery import project_kpi_latest
 from ada.kpis.persistence import KpiCommitState, KpiEvaluationBatch
 from ada.processes.kpi_delivery.adapter import delivery_values_from_batch
-from ada.processes.kpi_delivery.errors import KpiDeliveryRepositoryError
+from ada.processes.kpi_delivery.configuration import FrozenKpiDeliveryConfiguration
+from ada.processes.kpi_delivery.errors import (
+    KpiDeliveryConfigurationError,
+    KpiDeliveryPublicationError,
+    KpiDeliveryRepositoryError,
+)
 from ada.processes.kpi_delivery.models import (
     KpiDeliveryCheckpoint,
     KpiLatestDeliveryIterationResult,
     KpiLatestDeliveryIterationStatus,
-    KpiLatestPublication,
     KpiLatestPublicationStatus,
 )
+from ada.processes.kpi_delivery.parallel import (
+    KpiLatestPublicationTask,
+    KpiLatestToolPublicationResult,
+)
 from atlanticus.runtime import JobRuntimeContext
-
-_UNSET = object()
 
 
 class _CommitStateReader(Protocol):
@@ -30,73 +36,77 @@ class _EvaluationReader(Protocol):
 
 
 class _CheckpointStore(Protocol):
-    def read(self) -> KpiDeliveryCheckpoint | None: ...
+    def read(self, tool_key: str) -> KpiDeliveryCheckpoint | None: ...
 
-    def commit(self, checkpoint: KpiDeliveryCheckpoint) -> KpiDeliveryCheckpoint: ...
+    def commit(
+        self,
+        tool_key: str,
+        checkpoint: KpiDeliveryCheckpoint,
+    ) -> KpiDeliveryCheckpoint: ...
 
 
-class _SnapshotPublisher(Protocol):
-    def publish(self, snapshot) -> KpiLatestPublication: ...
+class _ParallelPublisher(Protocol):
+    def publish(
+        self,
+        tasks: tuple[KpiLatestPublicationTask, ...],
+    ) -> tuple[KpiLatestToolPublicationResult, ...]: ...
 
 
 class KpiLatestDeliveryJob:
     def __init__(
         self,
         *,
-        configuration: KpiDeliveryConfiguration,
+        configurations: Mapping[str, FrozenKpiDeliveryConfiguration],
         kpi_state: _CommitStateReader,
         evaluations: _EvaluationReader,
-        checkpoint: _CheckpointStore,
-        snapshots: _SnapshotPublisher,
+        checkpoints: _CheckpointStore,
+        publisher: _ParallelPublisher,
         now: Callable[[], datetime] | None = None,
     ) -> None:
-        if not isinstance(configuration, KpiDeliveryConfiguration):
-            raise TypeError('configuration must be KpiDeliveryConfiguration')
+        if not isinstance(configurations, Mapping) or not configurations:
+            raise ValueError('configurations must contain at least one tool')
         for value, method_name, field_name in (
             (kpi_state, 'read', 'kpi_state'),
             (evaluations, 'read', 'evaluations'),
-            (checkpoint, 'read', 'checkpoint'),
-            (checkpoint, 'commit', 'checkpoint'),
-            (snapshots, 'publish', 'snapshots'),
+            (checkpoints, 'read', 'checkpoints'),
+            (checkpoints, 'commit', 'checkpoints'),
+            (publisher, 'publish', 'publisher'),
         ):
             if not callable(getattr(value, method_name, None)):
                 raise TypeError(f'{field_name} must provide a callable {method_name} method')
         if now is not None and not callable(now):
             raise TypeError('now must be callable or None')
-        self._configuration = configuration
+        self._configurations = dict(sorted(configurations.items()))
         self._kpi_state = kpi_state
         self._evaluations = evaluations
-        self._checkpoint_store = checkpoint
-        self._snapshots = snapshots
+        self._checkpoint_store = checkpoints
+        self._publisher = publisher
         self._now = now or _utc_now
-        self._checkpoint: KpiDeliveryCheckpoint | None | object = _UNSET
+        self._checkpoints: dict[str, KpiDeliveryCheckpoint | None] | None = None
 
     def run_iteration(self, context: JobRuntimeContext) -> KpiLatestDeliveryIterationResult:
         context.raise_if_cancelled()
-        checkpoint = self._current_checkpoint()
         committed = self._kpi_state.read().watermark
-        _validate_authority(checkpoint=checkpoint, committed=committed)
         if committed is None:
-            return _record_result(
+            return self._record(
                 context,
                 KpiLatestDeliveryIterationResult(
                     status=KpiLatestDeliveryIterationStatus.KPI_WATERMARK_MISSING,
-                    configuration_revision=self._configuration.revision,
+                    tool_count=len(self._configurations),
                 ),
             )
-        if _is_current(
-            checkpoint=checkpoint,
-            committed=committed,
-            configuration_revision=self._configuration.revision,
-        ):
-            return _record_result(
+
+        pending = self._pending_tools(committed)
+        if not pending:
+            return self._record(
                 context,
                 KpiLatestDeliveryIterationResult(
                     status=KpiLatestDeliveryIterationStatus.SKIPPED_CURRENT,
                     watermark_utc=committed.to_text(),
-                    configuration_revision=self._configuration.revision,
+                    tool_count=len(self._configurations),
                 ),
             )
+
         batch = self._evaluations.read(committed)
         if batch is None:
             raise KpiDeliveryRepositoryError(
@@ -106,119 +116,143 @@ class KpiLatestDeliveryJob:
             raise KpiDeliveryRepositoryError(
                 'KPI evaluation batch does not match the committed watermark'
             )
+
         values = delivery_values_from_batch(batch)
-        snapshot = project_kpi_latest(
-            configuration=self._configuration,
-            values=values,
-            watermark_utc=committed.timestamp_utc,
-            published_at_utc=self._now(),
+        published_at = self._now()
+        tasks = tuple(
+            KpiLatestPublicationTask(
+                tool_key=tool_key,
+                snapshot=project_kpi_latest(
+                    configuration=self._configurations[tool_key].configuration,
+                    values=values,
+                    watermark_utc=committed.timestamp_utc,
+                    published_at_utc=published_at,
+                ),
+            )
+            for tool_key in pending
         )
+
         context.raise_if_cancelled()
         context.assert_lease_current()
-        publication = self._snapshots.publish(snapshot)
+        results = self._publisher.publish(tasks)
         context.raise_if_cancelled()
         context.assert_lease_current()
-        new_checkpoint = KpiDeliveryCheckpoint(
-            watermark=committed,
-            configuration_revision=self._configuration.revision,
+
+        published = 0
+        unchanged = 0
+        failures: list[tuple[str, Exception]] = []
+        for result in results:
+            if not result.successful:
+                if result.error is None:
+                    raise RuntimeError('Failed publication result is missing its error')
+                failures.append((result.tool_key, result.error))
+                continue
+            if result.publication is None:
+                raise RuntimeError('Successful publication result is missing its publication')
+            target = self._configurations[result.tool_key]
+            checkpoint = KpiDeliveryCheckpoint(
+                watermark=committed,
+                registry_revision=target.registry_revision,
+                registry_digest=target.registry_digest,
+            )
+            try:
+                with context.fenced_mutation():
+                    committed_checkpoint = self._checkpoint_store.commit(
+                        result.tool_key,
+                        checkpoint,
+                    )
+                self._current_checkpoints()[result.tool_key] = committed_checkpoint
+            except KpiDeliveryRepositoryError as error:
+                failures.append((result.tool_key, error))
+                continue
+            context.mark_iteration_work()
+            if result.publication.status is KpiLatestPublicationStatus.PUBLISHED:
+                published += 1
+                context.increment_execution_counter('snapshots_published')
+            else:
+                unchanged += 1
+
+        result = KpiLatestDeliveryIterationResult(
+            status=(
+                KpiLatestDeliveryIterationStatus.PUBLISHED
+                if published
+                else KpiLatestDeliveryIterationStatus.UNCHANGED
+            ),
+            watermark_utc=committed.to_text(),
+            tool_count=len(self._configurations),
+            pending_tool_count=len(pending),
+            published_tool_count=published,
+            unchanged_tool_count=unchanged,
+            failed_tool_count=len(failures),
         )
-        with context.fenced_mutation():
-            committed_checkpoint = self._checkpoint_store.commit(new_checkpoint)
-        self._checkpoint = committed_checkpoint
-        return _record_result(
-            context,
-            _publication_result(publication=publication, snapshot=snapshot),
-        )
+        self._record(context, result)
+        if failures:
+            failed = ', '.join(tool_key for tool_key, _ in failures)
+            raise KpiDeliveryPublicationError(
+                f'KPI latest publication failed for tools: {failed}'
+            ) from failures[0][1]
+        return result
 
-    def _current_checkpoint(self) -> KpiDeliveryCheckpoint | None:
-        if self._checkpoint is _UNSET:
-            self._checkpoint = self._checkpoint_store.read()
-        if self._checkpoint is None:
-            return None
-        return self._checkpoint
+    def _pending_tools(self, committed: KpiWatermark) -> tuple[str, ...]:
+        pending: list[str] = []
+        checkpoints = self._current_checkpoints()
+        for tool_key, target in self._configurations.items():
+            checkpoint = checkpoints[tool_key]
+            if checkpoint is not None:
+                if committed < checkpoint.watermark:
+                    raise KpiDeliveryRepositoryError(
+                        f'KPI committed watermark regressed behind {tool_key} checkpoint'
+                    )
+                if (
+                    checkpoint.registry_revision == target.registry_revision
+                    and checkpoint.registry_digest != target.registry_digest
+                ):
+                    raise KpiDeliveryConfigurationError(
+                        f'KPI Registry content changed without a new revision for {tool_key}'
+                    )
+            if (
+                checkpoint is None
+                or checkpoint.watermark != committed
+                or checkpoint.registry_revision != target.registry_revision
+            ):
+                pending.append(tool_key)
+        return tuple(pending)
 
+    def _current_checkpoints(self) -> dict[str, KpiDeliveryCheckpoint | None]:
+        if self._checkpoints is None:
+            self._checkpoints = {
+                tool_key: self._checkpoint_store.read(tool_key) for tool_key in self._configurations
+            }
+        return self._checkpoints
 
-def _validate_authority(
-    *,
-    checkpoint: KpiDeliveryCheckpoint | None,
-    committed: KpiWatermark | None,
-) -> None:
-    if checkpoint is None:
-        return
-    if committed is None:
-        raise KpiDeliveryRepositoryError(
-            'KPI committed watermark is missing after delivery progress'
-        )
-    if committed < checkpoint.watermark:
-        raise KpiDeliveryRepositoryError(
-            'KPI committed watermark must not regress behind delivery checkpoint'
-        )
-
-
-def _is_current(
-    *,
-    checkpoint: KpiDeliveryCheckpoint | None,
-    committed: KpiWatermark,
-    configuration_revision: str,
-) -> bool:
-    return (
-        checkpoint is not None
-        and checkpoint.watermark == committed
-        and checkpoint.configuration_revision == configuration_revision
-    )
-
-
-def _publication_result(
-    *, publication: KpiLatestPublication, snapshot
-) -> KpiLatestDeliveryIterationResult:
-    values = tuple(
-        value for destination in snapshot.destinations.values() for value in destination.values()
-    )
-    status = (
-        KpiLatestDeliveryIterationStatus.PUBLISHED
-        if publication.status is KpiLatestPublicationStatus.PUBLISHED
-        else KpiLatestDeliveryIterationStatus.UNCHANGED
-    )
-    return KpiLatestDeliveryIterationResult(
-        status=status,
-        watermark_utc=snapshot.manifest.watermark_utc,
-        configuration_revision=snapshot.manifest.configuration_revision,
-        delivery_revision=publication.revision,
-        destination_count=len(snapshot.destinations),
-        value_count=len(values),
-        missing_count=sum(value.status is KpiDeliveryStatus.MISSING for value in values),
-        error_count=sum(value.status is KpiDeliveryStatus.ERROR for value in values),
-    )
-
-
-def _record_result(
-    context: JobRuntimeContext,
-    result: KpiLatestDeliveryIterationResult,
-) -> KpiLatestDeliveryIterationResult:
-    if result.status is KpiLatestDeliveryIterationStatus.KPI_WATERMARK_MISSING:
-        outcome = 'empty'
-    elif result.status is KpiLatestDeliveryIterationStatus.SKIPPED_CURRENT:
-        outcome = 'skipped'
-    else:
-        outcome = 'completed'
-    context.set_iteration_fact('outcome', outcome)
-    context.set_iteration_fact('reason', result.status.value)
-    context.set_iteration_fact('configuration_revision', result.configuration_revision)
-    if result.watermark_utc is not None:
-        context.set_iteration_fact('kpi_committed_watermark_utc', result.watermark_utc)
-        context.set_execution_fact('kpi_committed_watermark_utc', result.watermark_utc)
-    if result.delivery_revision is not None:
-        context.set_iteration_fact('delivery_revision', result.delivery_revision)
-        context.set_execution_fact('delivery_revision', result.delivery_revision)
-    context.set_iteration_fact('destination_count', result.destination_count)
-    context.set_iteration_fact('value_count', result.value_count)
-    context.set_iteration_fact('missing_count', result.missing_count)
-    context.set_iteration_fact('error_count', result.error_count)
-    if outcome == 'completed':
-        context.mark_iteration_work()
-        if result.status is KpiLatestDeliveryIterationStatus.PUBLISHED:
-            context.increment_execution_counter('snapshots_published')
-    return result
+    @staticmethod
+    def _record(
+        context: JobRuntimeContext,
+        result: KpiLatestDeliveryIterationResult,
+    ) -> KpiLatestDeliveryIterationResult:
+        if result.status is KpiLatestDeliveryIterationStatus.KPI_WATERMARK_MISSING:
+            outcome = 'empty'
+        elif result.status is KpiLatestDeliveryIterationStatus.SKIPPED_CURRENT:
+            outcome = 'skipped'
+        else:
+            outcome = 'completed'
+        context.set_iteration_fact('outcome', outcome)
+        context.set_iteration_fact('reason', result.status.value)
+        context.set_iteration_fact('tool_count', result.tool_count)
+        context.set_iteration_fact('pending_tool_count', result.pending_tool_count)
+        context.set_iteration_fact('published_tool_count', result.published_tool_count)
+        context.set_iteration_fact('unchanged_tool_count', result.unchanged_tool_count)
+        context.set_iteration_fact('failed_tool_count', result.failed_tool_count)
+        if result.watermark_utc is not None:
+            context.set_iteration_fact(
+                'kpi_committed_watermark_utc',
+                result.watermark_utc,
+            )
+            context.set_execution_fact(
+                'kpi_committed_watermark_utc',
+                result.watermark_utc,
+            )
+        return result
 
 
 def _utc_now() -> datetime:

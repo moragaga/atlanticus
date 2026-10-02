@@ -1,21 +1,24 @@
-# Define checkpoint, publicación y resultado de iteración.
+# Espejo pedagógico de Latest Delivery multi-Tool: models.py.
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import StrEnum
 
 from ada.kpis.core import KpiWatermark
 from ada.processes.kpi_delivery.errors import KpiDeliveryRepositoryError
 
+_DIGEST = re.compile(r'[0-9a-f]{64}\Z')
 
-# Mantiene aislada la responsabilidad de KpiLatestPublicationStatus.
+
+# Agrupa una responsabilidad con estado o contrato propio.
 class KpiLatestPublicationStatus(StrEnum):
     PUBLISHED = 'published'
     UNCHANGED = 'unchanged'
 
 
-# Mantiene aislada la responsabilidad de KpiLatestPublication.
 @dataclass(frozen=True, slots=True)
+# Agrupa una responsabilidad con estado o contrato propio.
 class KpiLatestPublication:
     status: KpiLatestPublicationStatus
     revision: str
@@ -35,26 +38,33 @@ class KpiLatestPublication:
         return self.status is KpiLatestPublicationStatus.PUBLISHED
 
 
-# Mantiene aislada la responsabilidad de KpiDeliveryCheckpoint.
 @dataclass(frozen=True, slots=True)
+# Agrupa una responsabilidad con estado o contrato propio.
 class KpiDeliveryCheckpoint:
     watermark: KpiWatermark
-    configuration_revision: str
+    registry_revision: str
+    registry_digest: str
 
     def __post_init__(self) -> None:
         if not isinstance(self.watermark, KpiWatermark):
             raise KpiDeliveryRepositoryError('checkpoint watermark must be KpiWatermark')
-        if not isinstance(self.configuration_revision, str) or not self.configuration_revision:
+        if (
+            not isinstance(self.registry_revision, str)
+            or not self.registry_revision
+            or self.registry_revision != self.registry_revision.strip()
+        ):
             raise KpiDeliveryRepositoryError(
-                'checkpoint configuration_revision must be a non-empty string'
+                'checkpoint registry_revision must be non-empty trimmed text'
             )
-        if self.configuration_revision != self.configuration_revision.strip():
+        if not isinstance(self.registry_digest, str) or _DIGEST.fullmatch(
+            self.registry_digest
+        ) is None:
             raise KpiDeliveryRepositoryError(
-                'checkpoint configuration_revision must not contain surrounding whitespace'
+                'checkpoint registry_digest must be a sha256 digest'
             )
 
 
-# Mantiene aislada la responsabilidad de KpiLatestDeliveryIterationStatus.
+# Agrupa una responsabilidad con estado o contrato propio.
 class KpiLatestDeliveryIterationStatus(StrEnum):
     PUBLISHED = 'published'
     UNCHANGED = 'unchanged'
@@ -62,14 +72,13 @@ class KpiLatestDeliveryIterationStatus(StrEnum):
     KPI_WATERMARK_MISSING = 'kpi_watermark_missing'
 
 
-# Mantiene aislada la responsabilidad de KpiLatestDeliveryIterationResult.
 @dataclass(frozen=True, slots=True)
+# Agrupa una responsabilidad con estado o contrato propio.
 class KpiLatestDeliveryIterationResult:
     status: KpiLatestDeliveryIterationStatus
-    configuration_revision: str
     watermark_utc: str | None = None
-    delivery_revision: str | None = None
-    destination_count: int = 0
-    value_count: int = 0
-    missing_count: int = 0
-    error_count: int = 0
+    tool_count: int = 0
+    pending_tool_count: int = 0
+    published_tool_count: int = 0
+    unchanged_tool_count: int = 0
+    failed_tool_count: int = 0

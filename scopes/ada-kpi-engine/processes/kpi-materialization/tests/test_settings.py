@@ -12,7 +12,7 @@ from atlanticus.kernel import Environment
 def _configuration(interval='30'):
     values = {
         'ENVIRONMENT': 'local',
-        'KPI_MATERIALIZATION_POLL_SECONDS': interval,
+        'POLL_INTERVAL_SECONDS': interval,
     }
     return ResolvedConfiguration(
         environment=Environment.from_value('local'),
@@ -21,7 +21,7 @@ def _configuration(interval='30'):
     )
 
 
-def test_settings_resolve_positive_poll_interval():
+def test_settings_resolve_generic_poll_interval():
     assert (
         KpiMaterializationSettings.from_configuration(_configuration('2.5')).poll_interval_seconds
         == 2.5
@@ -35,6 +35,5 @@ def test_settings_reject_non_positive_poll_interval():
 
 def test_configuration_specs_leave_cosmos_variables_dynamic():
     keys = {item.key for item in configuration_specs()}
-
-    assert 'KPI_MATERIALIZATION_POLL_SECONDS' in keys
+    assert 'POLL_INTERVAL_SECONDS' in keys
     assert all('COSMOS' not in key for key in keys)

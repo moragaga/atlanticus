@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from ada.processes.kpi_materialization.errors import KpiMaterializationSettingsError
 from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfiguration
 
-POLL_INTERVAL_VARIABLE = 'KPI_MATERIALIZATION_POLL_SECONDS'
+POLL_INTERVAL_VARIABLE = 'POLL_INTERVAL_SECONDS'
 
 
 @dataclass(frozen=True, slots=True)

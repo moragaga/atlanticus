@@ -9,6 +9,7 @@ description = "KPI Registry materialization process for ADA."
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
+    "ada-kpis-connections==1.0.0",
     "ada-kpis-materialization==1.0.0",
     "atlanticus-configuration==1.0.0",
     "atlanticus-cosmos==1.0.0",

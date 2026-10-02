@@ -1,22 +1,27 @@
-from __future__ import annotations
-
 from pathlib import Path
 
 
-def test_process_boundary_has_no_web_historian_or_timeseries_runtime_imports() -> None:
+def test_latest_delivery_has_no_web_timeseries_or_materialization_process_dependency():
     root = Path(__file__).resolve().parents[1] / 'src'
     source = '\n'.join(path.read_text(encoding='utf-8') for path in root.rglob('*.py'))
 
     assert 'ada.web' not in source
-    assert 'ada.processes.kpis_delivery' not in source
-    assert 'ada.processes.kpis_timeseries_delivery' not in source
+    assert 'ada.processes.kpi_materialization' not in source
     assert 'ada.processes.kpi_timeseries_delivery' not in source
 
 
-def test_registry_consumption_is_owned_by_composition_not_job_reader() -> None:
+def test_latest_delivery_owns_parallel_publication_without_dispatch_terminology():
     root = Path(__file__).resolve().parents[1] / 'src/ada/processes/kpi_delivery'
-    job = (root / 'job.py').read_text(encoding='utf-8')
-    composition = (root / 'composition.py').read_text(encoding='utf-8')
+    parallel = (root / 'parallel.py').read_text(encoding='utf-8')
+    source = '\n'.join(path.read_text(encoding='utf-8') for path in root.rglob('*.py'))
 
-    assert 'KpiDeliveryRegistryRepository' not in job
-    assert 'registry_repository.read()' in composition
+    assert 'ThreadPoolExecutor' in parallel
+    assert 'dispatch' not in source.casefold()
+
+
+def test_latest_delivery_no_longer_reads_registry_from_cosmos():
+    root = Path(__file__).resolve().parents[1] / 'src/ada/processes/kpi_delivery'
+    source = '\n'.join(path.read_text(encoding='utf-8') for path in root.rglob('*.py'))
+
+    assert 'ada-kpi-registry-projection' not in source
+    assert 'KPI_REGISTRY_CONTAINER_SPEC' not in source

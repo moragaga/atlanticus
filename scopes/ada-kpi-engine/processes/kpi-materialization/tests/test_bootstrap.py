@@ -1,7 +1,7 @@
 import json
 
+from ada.kpis.connections import read_connection_registry
 from ada.processes.kpi_materialization.bootstrap import load_configuration
-from ada.processes.kpi_materialization.connections import read_connection_registry
 
 
 def test_local_configuration_resolves_dynamic_connection_variables(tmp_path):
@@ -30,7 +30,7 @@ def test_local_configuration_resolves_dynamic_connection_variables(tmp_path):
             'ENVIRONMENT': 'local',
             'APPLICATION': 'ada-kpi-materialization-local',
             'VOLUMEN_PATH': str(tmp_path.resolve()),
-            'KPI_MATERIALIZATION_POLL_SECONDS': '30',
+            'POLL_INTERVAL_SECONDS': '30',
             'TOOL_A_ENDPOINT': 'http://localhost:8081',
             'TOOL_A_DATABASE': 'ada',
             'TOOL_A_KEY': 'local-key',

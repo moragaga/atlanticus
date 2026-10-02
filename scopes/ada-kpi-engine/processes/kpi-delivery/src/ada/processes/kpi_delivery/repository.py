@@ -13,19 +13,43 @@ from ada.processes.kpi_delivery.models import (
 from atlanticus.connectivity.cosmos import (
     CosmosClient,
     CosmosConflictError,
+    CosmosContainerSpec,
+    CosmosError,
     CosmosPatchOperation,
     CosmosPreconditionFailedError,
+    CosmosProvisioner,
 )
 
 
 @dataclass(slots=True)
 class KpiLatestSnapshotRepository:
     client: CosmosClient
-    container_name: str
+    provisioner: CosmosProvisioner
+    container_spec: CosmosContainerSpec
+    _ready: bool = False
+
+    @property
+    def container_name(self) -> str:
+        return self.container_spec.name
 
     def publish(self, snapshot: KpiLatestSnapshot) -> KpiLatestPublication:
         if not isinstance(snapshot, KpiLatestSnapshot):
             raise TypeError('snapshot must be KpiLatestSnapshot')
+        try:
+            self._ensure_container()
+            return self._publish(snapshot)
+        except KpiDeliveryRepositoryError:
+            raise
+        except CosmosError as error:
+            raise KpiDeliveryRepositoryError('Could not publish KPI latest snapshot') from error
+
+    def _ensure_container(self) -> None:
+        if self._ready:
+            return
+        self.provisioner.ensure_containers((self.container_spec,))
+        self._ready = True
+
+    def _publish(self, snapshot: KpiLatestSnapshot) -> KpiLatestPublication:
         payload = snapshot.to_payload()
         item_id = _required_text(payload.get('id'), 'snapshot id')
         partition_key = _required_text(payload.get('partition_id'), 'snapshot partition_id')

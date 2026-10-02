@@ -13,10 +13,15 @@ from ada.kpis.core import (
 )
 from ada.kpis.delivery import KpiDeliveryBinding, KpiDeliveryConfiguration
 from ada.kpis.persistence import KpiCommitState, KpiEvaluationBatch
+from ada.processes.kpi_delivery.configuration import FrozenKpiDeliveryConfiguration
 from ada.processes.kpi_delivery.models import (
     KpiDeliveryCheckpoint,
     KpiLatestPublication,
     KpiLatestPublicationStatus,
+)
+from ada.processes.kpi_delivery.parallel import (
+    KpiLatestPublicationTask,
+    KpiLatestToolPublicationResult,
 )
 
 
@@ -55,8 +60,8 @@ class RuntimeContextStub:
 
 
 class CommitStateReader:
-    def __init__(self, watermark: KpiWatermark | None) -> None:
-        self.watermark = watermark
+    def __init__(self, watermark_value: KpiWatermark | None) -> None:
+        self.watermark = watermark_value
         self.calls = 0
 
     def read(self) -> KpiCommitState:
@@ -65,35 +70,48 @@ class CommitStateReader:
 
 
 class EvaluationReader:
-    def __init__(self, batch: KpiEvaluationBatch | None) -> None:
-        self.batch = batch
+    def __init__(self, source_batch: KpiEvaluationBatch | None) -> None:
+        self.batch = source_batch
         self.calls = 0
+        self.watermarks = []
 
-    def read(self, _watermark: KpiWatermark) -> KpiEvaluationBatch | None:
+    def read(self, watermark_value: KpiWatermark) -> KpiEvaluationBatch | None:
         self.calls += 1
+        self.watermarks.append(watermark_value)
         return self.batch
 
 
 class CheckpointStore:
-    def __init__(self, checkpoint: KpiDeliveryCheckpoint | None = None, events=None) -> None:
-        self.value = checkpoint
-        self.read_calls = 0
-        self.commit_calls = 0
+    def __init__(self, values=None, events=None) -> None:
+        self.values = {} if values is None else dict(values)
+        self.read_calls = []
+        self.commit_calls = []
         self.events = [] if events is None else events
 
-    def read(self) -> KpiDeliveryCheckpoint | None:
-        self.read_calls += 1
-        return self.value
+    def read(self, tool_key: str) -> KpiDeliveryCheckpoint | None:
+        self.read_calls.append(tool_key)
+        return self.values.get(tool_key)
 
-    def commit(self, checkpoint: KpiDeliveryCheckpoint) -> KpiDeliveryCheckpoint:
-        self.commit_calls += 1
-        self.events.append('checkpoint')
-        self.value = checkpoint
+    def commit(
+        self,
+        tool_key: str,
+        checkpoint: KpiDeliveryCheckpoint,
+    ) -> KpiDeliveryCheckpoint:
+        self.commit_calls.append((tool_key, checkpoint))
+        self.events.append(f'checkpoint:{tool_key}')
+        self.values[tool_key] = checkpoint
         return checkpoint
 
 
 class SnapshotPublisher:
-    def __init__(self, *, status=KpiLatestPublicationStatus.PUBLISHED, events=None) -> None:
+    def __init__(
+        self,
+        tool_key: str = 'tool',
+        *,
+        status=KpiLatestPublicationStatus.PUBLISHED,
+        events=None,
+    ) -> None:
+        self.tool_key = tool_key
         self.status = status
         self.calls = 0
         self.snapshots = []
@@ -103,10 +121,49 @@ class SnapshotPublisher:
     def publish(self, snapshot) -> KpiLatestPublication:
         self.calls += 1
         self.snapshots.append(snapshot)
-        self.events.append('publish')
+        label = 'publish' if self.tool_key == 'tool' else f'publish:{self.tool_key}'
+        self.events.append(label)
         if self.error is not None:
             raise self.error
-        return KpiLatestPublication(status=self.status, revision=snapshot.manifest.revision)
+        return KpiLatestPublication(
+            status=self.status,
+            revision=snapshot.manifest.revision,
+        )
+
+
+class ParallelPublisherStub:
+    def __init__(self, publishers) -> None:
+        self.publishers = publishers
+        self.calls = 0
+        self.tasks = []
+
+    def publish(
+        self,
+        tasks: tuple[KpiLatestPublicationTask, ...],
+    ) -> tuple[KpiLatestToolPublicationResult, ...]:
+        self.calls += 1
+        self.tasks.append(tasks)
+        results = []
+        for task in tasks:
+            publisher = self.publishers[task.tool_key]
+            try:
+                publication = publisher.publish(task.snapshot)
+                results.append(
+                    KpiLatestToolPublicationResult(
+                        tool_key=task.tool_key,
+                        publication=publication,
+                        error=None,
+                    )
+                )
+            except Exception as error:
+                results.append(
+                    KpiLatestToolPublicationResult(
+                        tool_key=task.tool_key,
+                        publication=None,
+                        error=error,
+                    )
+                )
+        return tuple(results)
 
 
 def watermark(minute: int = 0) -> KpiWatermark:
@@ -142,7 +199,11 @@ def evaluation(
             value_type=value_type,
         )
     elif status is KpiStatus.MISSING:
-        result = KpiResult(status=status, value_kind=value_kind, value_type=value_type)
+        result = KpiResult(
+            status=status,
+            value_kind=value_kind,
+            value_type=value_type,
+        )
     else:
         result = KpiResult(
             status=status,
@@ -160,25 +221,60 @@ def evaluation(
 
 
 def batch(*evaluations: KpiEvaluation) -> KpiEvaluationBatch:
-    return KpiEvaluationBatch(watermark=evaluations[0].watermark, evaluations=evaluations)
+    return KpiEvaluationBatch(
+        watermark=evaluations[0].watermark,
+        evaluations=evaluations,
+    )
 
 
 def configuration(
-    revision: str = 'config-r1',
+    revision: str = 'registry-r1',
     *,
+    key: str = 'produccion_total',
+    destination: str = 'global_indicators',
     latest_enabled: bool = True,
-    destinations: tuple[str, ...] = ('global_indicators',),
+    destinations: tuple[str, ...] | None = None,
 ) -> KpiDeliveryConfiguration:
+    resolved_destinations = (destination,) if destinations is None else destinations
     return KpiDeliveryConfiguration(
         revision=revision,
         tool_projection_revision='tools-r1',
         bindings=(
             KpiDeliveryBinding(
-                key='produccion_total',
-                destination_keys=destinations,
+                key=key,
+                destination_keys=resolved_destinations,
                 latest_enabled=latest_enabled,
                 series_enabled=False,
                 series_hours=None,
             ),
         ),
+    )
+
+
+def frozen(
+    tool_key: str,
+    *,
+    revision: str = 'registry-r1',
+    digest: str | None = None,
+    key: str = 'produccion_total',
+) -> FrozenKpiDeliveryConfiguration:
+    resolved_digest = digest or (tool_key[0] * 64)
+    return FrozenKpiDeliveryConfiguration(
+        tool_key=tool_key,
+        registry_revision=revision,
+        registry_digest=resolved_digest,
+        configuration=configuration(revision, key=key),
+    )
+
+
+def checkpoint(
+    minute: int,
+    *,
+    revision: str = 'registry-r1',
+    digest: str = 'a' * 64,
+) -> KpiDeliveryCheckpoint:
+    return KpiDeliveryCheckpoint(
+        watermark=watermark(minute),
+        registry_revision=revision,
+        registry_digest=digest,
     )
