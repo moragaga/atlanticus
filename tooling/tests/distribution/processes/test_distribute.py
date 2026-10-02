@@ -161,7 +161,7 @@ def test_distribution_rebuilds_source_and_never_copies_mutable_qa_artifact(
     _write_transport(tmp_path)
     runtime = _write_source(
         tmp_path,
-        "scopes/ada/backend/processes/kpi-runtime",
+        "scopes/ada-kpi-engine/processes/kpi-runtime",
         "ada-kpi-runtime",
     )
     qa_source = tmp_path / "artifacts/processes/ada-kpi-runtime/src"
@@ -194,7 +194,7 @@ def test_distribution_blocks_stale_source_before_rebuild(
     _write_transport(tmp_path)
     runtime = _write_source(
         tmp_path,
-        "scopes/ada/backend/processes/kpi-runtime",
+        "scopes/ada-kpi-engine/processes/kpi-runtime",
         "ada-kpi-runtime",
     )
     _patch_generation_context(monkeypatch, tmp_path)
@@ -234,12 +234,12 @@ def test_mixed_source_scopes_keep_deployment_order(tmp_path: Path, monkeypatch) 
     )
     runtime = _write_source(
         tmp_path,
-        "scopes/ada/backend/processes/kpi-runtime",
+        "scopes/ada-kpi-engine/processes/kpi-runtime",
         "ada-kpi-runtime",
     )
     delivery = _write_source(
         tmp_path,
-        "scopes/ada/backend/processes/kpi-delivery",
+        "scopes/ada-kpi-engine/processes/kpi-delivery",
         "ada-kpi-delivery",
     )
     _patch_generation_context(monkeypatch, tmp_path)
@@ -286,7 +286,7 @@ def test_regeneration_preserves_retained_consumer_configuration(
     )
     runtime = _write_source(
         tmp_path,
-        "scopes/ada/backend/processes/kpi-runtime",
+        "scopes/ada-kpi-engine/processes/kpi-runtime",
         "ada-kpi-runtime",
     )
     _patch_generation_context(monkeypatch, tmp_path)
@@ -330,7 +330,7 @@ def test_distribution_keeps_local_deployment_assets_out_of_root(
     _write_transport(tmp_path)
     runtime = _write_source(
         tmp_path,
-        "scopes/ada/backend/processes/kpi-runtime",
+        "scopes/ada-kpi-engine/processes/kpi-runtime",
         "ada-kpi-runtime",
     )
     _patch_generation_context(monkeypatch, tmp_path)

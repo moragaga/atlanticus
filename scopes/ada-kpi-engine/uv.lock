@@ -9,7 +9,7 @@ resolution-markers = [
 
 [manifest]
 members = [
-    "ada-backend-workspace",
+    "ada-kpi-engine-workspace",
     "ada-kpi-delivery-process",
     "ada-kpi-historian-process",
     "ada-kpi-runtime-process",
@@ -22,7 +22,7 @@ members = [
 ]
 
 [[package]]
-name = "ada-backend-workspace"
+name = "ada-kpi-engine-workspace"
 version = "1.0.0"
 source = { virtual = "." }
 
@@ -68,13 +68,13 @@ requires-dist = [
     { name = "ada-kpis-core", editable = "kpis/core" },
     { name = "ada-kpis-delivery", editable = "kpis/delivery" },
     { name = "ada-kpis-persistence", editable = "kpis/persistence" },
-    { name = "atlanticus-configuration", editable = "../../../backend/configuration" },
-    { name = "atlanticus-cosmos", editable = "../../../connectivity/cosmos" },
-    { name = "atlanticus-job-runtime", editable = "../../../backend/runtime" },
-    { name = "atlanticus-kernel", editable = "../../../backend/kernel" },
-    { name = "atlanticus-key-vault", editable = "../../../connectivity/key-vault" },
-    { name = "atlanticus-observability-azure", editable = "../../../backend/observability-azure" },
-    { name = "atlanticus-state", editable = "../../../backend/state" },
+    { name = "atlanticus-configuration", editable = "../../backend/configuration" },
+    { name = "atlanticus-cosmos", editable = "../../connectivity/cosmos" },
+    { name = "atlanticus-job-runtime", editable = "../../backend/runtime" },
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
+    { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
+    { name = "atlanticus-observability-azure", editable = "../../backend/observability-azure" },
+    { name = "atlanticus-state", editable = "../../backend/state" },
 ]
 
 [package.metadata.requires-dev]
@@ -113,14 +113,14 @@ requires-dist = [
     { name = "ada-kpis-core", editable = "kpis/core" },
     { name = "ada-kpis-history", editable = "kpis/history" },
     { name = "ada-kpis-persistence", editable = "kpis/persistence" },
-    { name = "atlanticus-configuration", editable = "../../../backend/configuration" },
-    { name = "atlanticus-datasets-parquet", editable = "../../../backend/datasets-parquet" },
-    { name = "atlanticus-datasets-runtime", editable = "../../../backend/datasets-runtime" },
-    { name = "atlanticus-job-runtime", editable = "../../../backend/runtime" },
-    { name = "atlanticus-kernel", editable = "../../../backend/kernel" },
-    { name = "atlanticus-key-vault", editable = "../../../connectivity/key-vault" },
-    { name = "atlanticus-observability-azure", editable = "../../../backend/observability-azure" },
-    { name = "atlanticus-state", editable = "../../../backend/state" },
+    { name = "atlanticus-configuration", editable = "../../backend/configuration" },
+    { name = "atlanticus-datasets-parquet", editable = "../../backend/datasets-parquet" },
+    { name = "atlanticus-datasets-runtime", editable = "../../backend/datasets-runtime" },
+    { name = "atlanticus-job-runtime", editable = "../../backend/runtime" },
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
+    { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
+    { name = "atlanticus-observability-azure", editable = "../../backend/observability-azure" },
+    { name = "atlanticus-state", editable = "../../backend/state" },
     { name = "pyarrow", specifier = "==25.0.0" },
 ]
 
@@ -162,17 +162,17 @@ requires-dist = [
     { name = "ada-kpis-core", editable = "kpis/core" },
     { name = "ada-kpis-evaluation", editable = "kpis/evaluation" },
     { name = "ada-kpis-persistence", editable = "kpis/persistence" },
-    { name = "atlanticus-configuration", editable = "../../../backend/configuration" },
-    { name = "atlanticus-datasets-parquet", editable = "../../../backend/datasets-parquet" },
-    { name = "atlanticus-datasets-runtime", editable = "../../../backend/datasets-runtime" },
-    { name = "atlanticus-job-runtime", editable = "../../../backend/runtime" },
-    { name = "atlanticus-kernel", editable = "../../../backend/kernel" },
-    { name = "atlanticus-key-vault", editable = "../../../connectivity/key-vault" },
-    { name = "atlanticus-observability-azure", editable = "../../../backend/observability-azure" },
-    { name = "atlanticus-operational-data-core", editable = "../../operational-data/core" },
-    { name = "atlanticus-operational-data-planner", editable = "../../operational-data/planner" },
-    { name = "atlanticus-operational-data-sources", editable = "../../operational-data/sources" },
-    { name = "atlanticus-state", editable = "../../../backend/state" },
+    { name = "atlanticus-configuration", editable = "../../backend/configuration" },
+    { name = "atlanticus-datasets-parquet", editable = "../../backend/datasets-parquet" },
+    { name = "atlanticus-datasets-runtime", editable = "../../backend/datasets-runtime" },
+    { name = "atlanticus-job-runtime", editable = "../../backend/runtime" },
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
+    { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
+    { name = "atlanticus-observability-azure", editable = "../../backend/observability-azure" },
+    { name = "atlanticus-operational-data-core", editable = "../operational-data/core" },
+    { name = "atlanticus-operational-data-planner", editable = "../operational-data/planner" },
+    { name = "atlanticus-operational-data-sources", editable = "../operational-data/sources" },
+    { name = "atlanticus-state", editable = "../../backend/state" },
 ]
 
 [package.metadata.requires-dev]
@@ -211,15 +211,15 @@ requires-dist = [
     { name = "ada-kpis-core", editable = "kpis/core" },
     { name = "ada-kpis-delivery", editable = "kpis/delivery" },
     { name = "ada-kpis-history", editable = "kpis/history" },
-    { name = "atlanticus-configuration", editable = "../../../backend/configuration" },
-    { name = "atlanticus-cosmos", editable = "../../../connectivity/cosmos" },
-    { name = "atlanticus-datasets-parquet", editable = "../../../backend/datasets-parquet" },
-    { name = "atlanticus-datasets-runtime", editable = "../../../backend/datasets-runtime" },
-    { name = "atlanticus-job-runtime", editable = "../../../backend/runtime" },
-    { name = "atlanticus-kernel", editable = "../../../backend/kernel" },
-    { name = "atlanticus-key-vault", editable = "../../../connectivity/key-vault" },
-    { name = "atlanticus-observability-azure", editable = "../../../backend/observability-azure" },
-    { name = "atlanticus-state", editable = "../../../backend/state" },
+    { name = "atlanticus-configuration", editable = "../../backend/configuration" },
+    { name = "atlanticus-cosmos", editable = "../../connectivity/cosmos" },
+    { name = "atlanticus-datasets-parquet", editable = "../../backend/datasets-parquet" },
+    { name = "atlanticus-datasets-runtime", editable = "../../backend/datasets-runtime" },
+    { name = "atlanticus-job-runtime", editable = "../../backend/runtime" },
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
+    { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
+    { name = "atlanticus-observability-azure", editable = "../../backend/observability-azure" },
+    { name = "atlanticus-state", editable = "../../backend/state" },
 ]
 
 [package.metadata.requires-dev]
@@ -243,7 +243,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "atlanticus-operational-data-core", editable = "../../operational-data/core" }]
+requires-dist = [{ name = "atlanticus-operational-data-core", editable = "../operational-data/core" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -288,7 +288,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "ada-kpis-core", editable = "kpis/core" },
-    { name = "atlanticus-operational-data-core", editable = "../../operational-data/core" },
+    { name = "atlanticus-operational-data-core", editable = "../operational-data/core" },
 ]
 
 [package.metadata.requires-dev]
@@ -314,7 +314,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-datasets", editable = "../../../backend/datasets" },
+    { name = "atlanticus-datasets", editable = "../../backend/datasets" },
     { name = "pyarrow", specifier = "==25.0.0" },
 ]
 
@@ -343,8 +343,8 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "ada-kpis-core", editable = "kpis/core" },
-    { name = "atlanticus-json", editable = "../../../backend/json" },
-    { name = "atlanticus-state", editable = "../../../backend/state" },
+    { name = "atlanticus-json", editable = "../../backend/json" },
+    { name = "atlanticus-state", editable = "../../backend/state" },
 ]
 
 [package.metadata.requires-dev]
@@ -356,7 +356,7 @@ dev = [
 [[package]]
 name = "atlanticus-configuration"
 version = "1.0.0"
-source = { editable = "../../../backend/configuration" }
+source = { editable = "../../backend/configuration" }
 dependencies = [
     { name = "atlanticus-kernel" },
     { name = "python-dotenv" },
@@ -364,14 +364,14 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-kernel", editable = "../../../backend/kernel" },
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
     { name = "python-dotenv", specifier = "==1.2.2" },
 ]
 
 [[package]]
 name = "atlanticus-cosmos"
 version = "1.0.0"
-source = { editable = "../../../connectivity/cosmos" }
+source = { editable = "../../connectivity/cosmos" }
 dependencies = [
     { name = "atlanticus-observability" },
     { name = "azure-cosmos" },
@@ -379,19 +379,19 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-observability", editable = "../../../backend/observability" },
+    { name = "atlanticus-observability", editable = "../../backend/observability" },
     { name = "azure-cosmos", specifier = "==4.16.3" },
 ]
 
 [[package]]
 name = "atlanticus-datasets"
 version = "1.0.0"
-source = { editable = "../../../backend/datasets" }
+source = { editable = "../../backend/datasets" }
 
 [[package]]
 name = "atlanticus-datasets-parquet"
 version = "1.0.0"
-source = { editable = "../../../backend/datasets-parquet" }
+source = { editable = "../../backend/datasets-parquet" }
 dependencies = [
     { name = "atlanticus-datasets" },
     { name = "pyarrow" },
@@ -399,14 +399,14 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-datasets", editable = "../../../backend/datasets" },
+    { name = "atlanticus-datasets", editable = "../../backend/datasets" },
     { name = "pyarrow", specifier = "==25.0.0" },
 ]
 
 [[package]]
 name = "atlanticus-datasets-runtime"
 version = "1.0.0"
-source = { editable = "../../../backend/datasets-runtime" }
+source = { editable = "../../backend/datasets-runtime" }
 dependencies = [
     { name = "atlanticus-datasets" },
     { name = "atlanticus-datasets-parquet" },
@@ -416,8 +416,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-datasets", editable = "../../../backend/datasets" },
-    { name = "atlanticus-datasets-parquet", editable = "../../../backend/datasets-parquet" },
+    { name = "atlanticus-datasets", editable = "../../backend/datasets" },
+    { name = "atlanticus-datasets-parquet", editable = "../../backend/datasets-parquet" },
     { name = "pandas", specifier = "==3.0.3" },
     { name = "pyarrow", specifier = "==25.0.0" },
 ]
@@ -425,7 +425,7 @@ requires-dist = [
 [[package]]
 name = "atlanticus-job-runtime"
 version = "1.0.0"
-source = { editable = "../../../backend/runtime" }
+source = { editable = "../../backend/runtime" }
 dependencies = [
     { name = "atlanticus-kernel" },
     { name = "atlanticus-observability" },
@@ -434,9 +434,9 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-kernel", editable = "../../../backend/kernel" },
-    { name = "atlanticus-observability", editable = "../../../backend/observability" },
-    { name = "atlanticus-observability-azure", marker = "extra == 'azure'", editable = "../../../backend/observability-azure" },
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
+    { name = "atlanticus-observability", editable = "../../backend/observability" },
+    { name = "atlanticus-observability-azure", marker = "extra == 'azure'", editable = "../../backend/observability-azure" },
     { name = "psutil", specifier = "==7.2.2" },
 ]
 provides-extras = ["azure"]
@@ -444,17 +444,17 @@ provides-extras = ["azure"]
 [[package]]
 name = "atlanticus-json"
 version = "1.0.0"
-source = { editable = "../../../backend/json" }
+source = { editable = "../../backend/json" }
 
 [[package]]
 name = "atlanticus-kernel"
 version = "1.0.0"
-source = { editable = "../../../backend/kernel" }
+source = { editable = "../../backend/kernel" }
 
 [[package]]
 name = "atlanticus-key-vault"
 version = "1.0.0"
-source = { editable = "../../../connectivity/key-vault" }
+source = { editable = "../../connectivity/key-vault" }
 dependencies = [
     { name = "atlanticus-kernel" },
     { name = "azure-identity" },
@@ -463,7 +463,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-kernel", editable = "../../../backend/kernel" },
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
     { name = "azure-identity", specifier = "==1.25.3" },
     { name = "azure-keyvault-secrets", specifier = "==4.11.0" },
 ]
@@ -471,18 +471,18 @@ requires-dist = [
 [[package]]
 name = "atlanticus-observability"
 version = "1.0.0"
-source = { editable = "../../../backend/observability" }
+source = { editable = "../../backend/observability" }
 dependencies = [
     { name = "atlanticus-kernel" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "atlanticus-kernel", editable = "../../../backend/kernel" }]
+requires-dist = [{ name = "atlanticus-kernel", editable = "../../backend/kernel" }]
 
 [[package]]
 name = "atlanticus-observability-azure"
 version = "1.0.0"
-source = { editable = "../../../backend/observability-azure" }
+source = { editable = "../../backend/observability-azure" }
 dependencies = [
     { name = "atlanticus-observability" },
     { name = "azure-monitor-opentelemetry-exporter" },
@@ -491,7 +491,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-observability", editable = "../../../backend/observability" },
+    { name = "atlanticus-observability", editable = "../../backend/observability" },
     { name = "azure-monitor-opentelemetry-exporter", specifier = "==1.0.0b55" },
     { name = "opentelemetry-sdk", specifier = "==1.43.0" },
 ]
@@ -499,7 +499,7 @@ requires-dist = [
 [[package]]
 name = "atlanticus-operational-data-calendar"
 version = "1.0.0"
-source = { editable = "../../operational-data/calendar" }
+source = { editable = "../operational-data/calendar" }
 
 [package.metadata]
 
@@ -512,7 +512,7 @@ dev = [
 [[package]]
 name = "atlanticus-operational-data-core"
 version = "1.0.0"
-source = { editable = "../../operational-data/core" }
+source = { editable = "../operational-data/core" }
 
 [package.metadata]
 
@@ -525,13 +525,13 @@ dev = [
 [[package]]
 name = "atlanticus-operational-data-planner"
 version = "1.0.0"
-source = { editable = "../../operational-data/planner" }
+source = { editable = "../operational-data/planner" }
 dependencies = [
     { name = "atlanticus-operational-data-core" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "atlanticus-operational-data-core", editable = "../../operational-data/core" }]
+requires-dist = [{ name = "atlanticus-operational-data-core", editable = "../operational-data/core" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -542,7 +542,7 @@ dev = [
 [[package]]
 name = "atlanticus-operational-data-sources"
 version = "1.0.0"
-source = { editable = "../../operational-data/sources" }
+source = { editable = "../operational-data/sources" }
 dependencies = [
     { name = "atlanticus-datasets" },
     { name = "atlanticus-operational-data-calendar" },
@@ -554,10 +554,10 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-datasets", editable = "../../../backend/datasets" },
-    { name = "atlanticus-operational-data-calendar", editable = "../../operational-data/calendar" },
-    { name = "atlanticus-operational-data-core", editable = "../../operational-data/core" },
-    { name = "atlanticus-operational-data-planner", editable = "../../operational-data/planner" },
+    { name = "atlanticus-datasets", editable = "../../backend/datasets" },
+    { name = "atlanticus-operational-data-calendar", editable = "../operational-data/calendar" },
+    { name = "atlanticus-operational-data-core", editable = "../operational-data/core" },
+    { name = "atlanticus-operational-data-planner", editable = "../operational-data/planner" },
     { name = "pandas", specifier = "==3.0.3" },
     { name = "pyarrow", specifier = "==25.0.0" },
 ]
@@ -571,13 +571,13 @@ dev = [
 [[package]]
 name = "atlanticus-state"
 version = "1.0.0"
-source = { editable = "../../../backend/state" }
+source = { editable = "../../backend/state" }
 dependencies = [
     { name = "atlanticus-observability" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "atlanticus-observability", editable = "../../../backend/observability" }]
+requires-dist = [{ name = "atlanticus-observability", editable = "../../backend/observability" }]
 
 [[package]]
 name = "azure-core"

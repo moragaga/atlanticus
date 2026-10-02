@@ -54,16 +54,16 @@ class BundleStub:
         return repository_root / "resolved" / value
 
 
-def test_ada_backend_target_resolves_backend_layout(tmp_path: Path) -> None:
+def test_ada_kpi_engine_target_resolves_scope_layout(tmp_path: Path) -> None:
     expected = _write_process(
         tmp_path,
-        "scopes/ada/backend/processes/kpi-runtime",
+        "scopes/ada-kpi-engine/processes/kpi-runtime",
         command="ada-kpi-runtime",
         project_name="ada-kpi-runtime-process",
     )
 
     roots = process_tool._resolve_target_processes(
-        tmp_path, "ada-backend", BundleStub()
+        tmp_path, "ada-kpi-engine", BundleStub()
     )
 
     assert roots == (expected,)
@@ -90,7 +90,7 @@ def test_prepare_all_requires_one_logical_target(tmp_path: Path) -> None:
     try:
         process_tool._resolve_prepare_processes(
             tmp_path,
-            ("ada-backend", "operational-data"),
+            ("ada-kpi-engine", "operational-data"),
             all_target=True,
             bundle=BundleStub(),
         )
@@ -112,10 +112,10 @@ def test_individual_prepare_delegates_process_resolution(tmp_path: Path) -> None
 
 
 def test_public_parser_uses_target_selection_instead_of_scope_flag() -> None:
-    arguments = process_tool._parser().parse_args(["prepare", "ada-backend", "--all"])
+    arguments = process_tool._parser().parse_args(["prepare", "ada-kpi-engine", "--all"])
 
     assert arguments.action == "prepare"
-    assert arguments.selections == ["ada-backend"]
+    assert arguments.selections == ["ada-kpi-engine"]
     assert arguments.all is True
 
 

@@ -170,43 +170,43 @@ EXPECTED_SOURCES = {
     'ada-kpis-persistence': {'workspace': True},
     'ada-kpis-delivery': {'workspace': True},
     'ada-kpis-history': {'workspace': True},
-    'atlanticus-configuration': {'path': '../../../backend/configuration', 'editable': True},
-    'atlanticus-cosmos': {'path': '../../../connectivity/cosmos', 'editable': True},
-    'atlanticus-datasets': {'path': '../../../backend/datasets', 'editable': True},
+    'atlanticus-configuration': {'path': '../../backend/configuration', 'editable': True},
+    'atlanticus-cosmos': {'path': '../../connectivity/cosmos', 'editable': True},
+    'atlanticus-datasets': {'path': '../../backend/datasets', 'editable': True},
     'atlanticus-datasets-parquet': {
-        'path': '../../../backend/datasets-parquet',
+        'path': '../../backend/datasets-parquet',
         'editable': True,
     },
     'atlanticus-datasets-runtime': {
-        'path': '../../../backend/datasets-runtime',
+        'path': '../../backend/datasets-runtime',
         'editable': True,
     },
-    'atlanticus-job-runtime': {'path': '../../../backend/runtime', 'editable': True},
-    'atlanticus-json': {'path': '../../../backend/json', 'editable': True},
-    'atlanticus-kernel': {'path': '../../../backend/kernel', 'editable': True},
-    'atlanticus-key-vault': {'path': '../../../connectivity/key-vault', 'editable': True},
-    'atlanticus-observability': {'path': '../../../backend/observability', 'editable': True},
+    'atlanticus-job-runtime': {'path': '../../backend/runtime', 'editable': True},
+    'atlanticus-json': {'path': '../../backend/json', 'editable': True},
+    'atlanticus-kernel': {'path': '../../backend/kernel', 'editable': True},
+    'atlanticus-key-vault': {'path': '../../connectivity/key-vault', 'editable': True},
+    'atlanticus-observability': {'path': '../../backend/observability', 'editable': True},
     'atlanticus-observability-azure': {
-        'path': '../../../backend/observability-azure',
+        'path': '../../backend/observability-azure',
         'editable': True,
     },
     'atlanticus-operational-data-calendar': {
-        'path': '../../operational-data/calendar',
+        'path': '../operational-data/calendar',
         'editable': True,
     },
     'atlanticus-operational-data-core': {
-        'path': '../../operational-data/core',
+        'path': '../operational-data/core',
         'editable': True,
     },
     'atlanticus-operational-data-planner': {
-        'path': '../../operational-data/planner',
+        'path': '../operational-data/planner',
         'editable': True,
     },
     'atlanticus-operational-data-sources': {
-        'path': '../../operational-data/sources',
+        'path': '../operational-data/sources',
         'editable': True,
     },
-    'atlanticus-state': {'path': '../../../backend/state', 'editable': True},
+    'atlanticus-state': {'path': '../../backend/state', 'editable': True},
     'ada-kpi-timeseries-delivery-process': {'workspace': True},
 }
 
@@ -231,11 +231,14 @@ LOCAL_BASELINES = {
 
 
 def _repo() -> Path:
-    return Path(__file__).resolve().parents[4]
+    for candidate in Path(__file__).resolve().parents:
+        if (candidate / 'scopes/ada-kpi-engine/pyproject.toml').is_file():
+            return candidate
+    raise SystemExit('Repository root could not be resolved')
 
 
 def _scope() -> Path:
-    return _repo() / 'scopes/ada/backend'
+    return _repo() / 'scopes/ada-kpi-engine'
 
 
 def _run(command: list[str], *, cwd: Path) -> None:
@@ -256,7 +259,7 @@ def _project(path: Path) -> dict[str, object]:
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description='Validate Atlanticus ADA backend capabilities.')
+    parser = argparse.ArgumentParser(description='Validate Atlanticus ADA KPI Engine capabilities.')
     parser.add_argument('capabilities', nargs='*')
     parser.add_argument('--all', action='store_true')
     parser.add_argument('--list', action='store_true')
@@ -274,7 +277,7 @@ def _selected(arguments: argparse.Namespace) -> tuple[Capability, ...]:
         requested = list(CAPABILITIES)
     unknown = [item for item in requested if item not in CAPABILITIES]
     if unknown:
-        raise SystemExit(f'Unknown ADA backend capabilities: {", ".join(unknown)}')
+        raise SystemExit(f'Unknown ADA KPI Engine capabilities: {", ".join(unknown)}')
     return tuple(dict.fromkeys(CAPABILITIES[item] for item in requested))
 
 
@@ -308,18 +311,18 @@ def _validate_workspace(repository: Path, scope: Path) -> None:
     document = _read(scope / 'pyproject.toml')
     project = document.get('project')
     if not isinstance(project, dict):
-        raise SystemExit('Missing ADA backend workspace project')
-    if project.get('name') != 'ada-backend-workspace' or project.get('version') != '1.0.0':
-        raise SystemExit('Unexpected ADA backend workspace identity')
+        raise SystemExit('Missing ADA KPI Engine workspace project')
+    if project.get('name') != 'ada-kpi-engine-workspace' or project.get('version') != '1.0.0':
+        raise SystemExit('Unexpected ADA KPI Engine workspace identity')
     uv = document.get('tool', {}).get('uv') if isinstance(document.get('tool'), dict) else None
     if not isinstance(uv, dict):
         raise SystemExit('Missing ADA backend UV workspace configuration')
     workspace = uv.get('workspace')
     if not isinstance(workspace, dict) or workspace.get('members') != EXPECTED_MEMBERS:
-        raise SystemExit('ADA backend workspace members are not canonical')
+        raise SystemExit('ADA KPI Engine workspace members are not canonical')
     sources = uv.get('sources')
     if sources != EXPECTED_SOURCES:
-        raise SystemExit('ADA backend workspace UV sources are not canonical')
+        raise SystemExit('ADA KPI Engine workspace UV sources are not canonical')
     for distribution, value in EXPECTED_SOURCES.items():
         if not isinstance(value, dict) or 'path' not in value:
             continue
@@ -469,8 +472,8 @@ def _validate_mirrors(scope: Path, repository: Path) -> None:
         for relative in productive_files:
             if _semantic_tree(productive / relative) != _semantic_tree(commented / relative):
                 raise SystemExit(f'Commented mirror semantic mismatch: {relative}')
-    productive_script = repository / 'scripts/scopes/ada/backend/check.py'
-    commented_script = repository / 'scripts/commented/scopes/ada/backend/check.py'
+    productive_script = repository / 'scripts/scopes/ada-kpi-engine/check.py'
+    commented_script = repository / 'scripts/commented/scopes/ada-kpi-engine/check.py'
     if _semantic_tree(productive_script) != _semantic_tree(commented_script):
         raise SystemExit('ADA backend gate Python mirror is not semantically equivalent')
 
@@ -515,7 +518,7 @@ def main() -> int:
     selected = _selected(arguments)
     repository = _repo()
     scope = _scope()
-    print('Atlanticus ADA backend capabilities:', ', '.join(item.key for item in selected))
+    print('Atlanticus ADA KPI Engine capabilities:', ', '.join(item.key for item in selected))
     print('[1/10] Validating Python runtime')
     _validate_python()
     print('[2/10] Validating workspace and dependency correlation')
@@ -529,8 +532,8 @@ def main() -> int:
     targets = [item.root for item in selected]
     targets.extend(
         [
-            str(repository / 'scripts/scopes/ada/backend/check.py'),
-            str(repository / 'scripts/commented/scopes/ada/backend/check.py'),
+            str(repository / 'scripts/scopes/ada-kpi-engine/check.py'),
+            str(repository / 'scripts/commented/scopes/ada-kpi-engine/check.py'),
         ]
     )
     print('[6/10] Applying safe Ruff fixes and validating formatting')

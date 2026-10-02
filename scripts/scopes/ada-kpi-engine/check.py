@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import argparse
 import ast
-import json
-import os
 import platform
 import re
 import shutil
@@ -15,7 +13,10 @@ from pathlib import Path
 from zipfile import ZipFile
 
 EXPECTED_PYTHON_VERSION = '3.14.2'
-BOOTSTRAP_ENVIRONMENT_VARIABLE = 'ATLANTICUS_ADA_BACKEND_GATE_BOOTSTRAPPED'
+DEFAULT_PROJECT_VERSION = '1.0.0'
+PROJECT_VERSION_OVERRIDES = {
+    'ada-kpi-runtime-process': '1.0.1',
+}
 LEGACY_PATTERN = re.compile(r'\b(?:KpiSource|KpiPartition|SourceRequirement)\b|ada\.data\.')
 PROCESS_FORBIDDEN_IMPORTS = ('ada.web', 'atlanticus.data_producers')
 
@@ -168,43 +169,43 @@ EXPECTED_SOURCES = {
     'ada-kpis-persistence': {'workspace': True},
     'ada-kpis-delivery': {'workspace': True},
     'ada-kpis-history': {'workspace': True},
-    'atlanticus-configuration': {'path': '../../../backend/configuration', 'editable': True},
-    'atlanticus-cosmos': {'path': '../../../connectivity/cosmos', 'editable': True},
-    'atlanticus-datasets': {'path': '../../../backend/datasets', 'editable': True},
+    'atlanticus-configuration': {'path': '../../backend/configuration', 'editable': True},
+    'atlanticus-cosmos': {'path': '../../connectivity/cosmos', 'editable': True},
+    'atlanticus-datasets': {'path': '../../backend/datasets', 'editable': True},
     'atlanticus-datasets-parquet': {
-        'path': '../../../backend/datasets-parquet',
+        'path': '../../backend/datasets-parquet',
         'editable': True,
     },
     'atlanticus-datasets-runtime': {
-        'path': '../../../backend/datasets-runtime',
+        'path': '../../backend/datasets-runtime',
         'editable': True,
     },
-    'atlanticus-job-runtime': {'path': '../../../backend/runtime', 'editable': True},
-    'atlanticus-json': {'path': '../../../backend/json', 'editable': True},
-    'atlanticus-kernel': {'path': '../../../backend/kernel', 'editable': True},
-    'atlanticus-key-vault': {'path': '../../../connectivity/key-vault', 'editable': True},
-    'atlanticus-observability': {'path': '../../../backend/observability', 'editable': True},
+    'atlanticus-job-runtime': {'path': '../../backend/runtime', 'editable': True},
+    'atlanticus-json': {'path': '../../backend/json', 'editable': True},
+    'atlanticus-kernel': {'path': '../../backend/kernel', 'editable': True},
+    'atlanticus-key-vault': {'path': '../../connectivity/key-vault', 'editable': True},
+    'atlanticus-observability': {'path': '../../backend/observability', 'editable': True},
     'atlanticus-observability-azure': {
-        'path': '../../../backend/observability-azure',
+        'path': '../../backend/observability-azure',
         'editable': True,
     },
     'atlanticus-operational-data-calendar': {
-        'path': '../../operational-data/calendar',
+        'path': '../operational-data/calendar',
         'editable': True,
     },
     'atlanticus-operational-data-core': {
-        'path': '../../operational-data/core',
+        'path': '../operational-data/core',
         'editable': True,
     },
     'atlanticus-operational-data-planner': {
-        'path': '../../operational-data/planner',
+        'path': '../operational-data/planner',
         'editable': True,
     },
     'atlanticus-operational-data-sources': {
-        'path': '../../operational-data/sources',
+        'path': '../operational-data/sources',
         'editable': True,
     },
-    'atlanticus-state': {'path': '../../../backend/state', 'editable': True},
+    'atlanticus-state': {'path': '../../backend/state', 'editable': True},
     'ada-kpi-timeseries-delivery-process': {'workspace': True},
 }
 
@@ -230,13 +231,13 @@ LOCAL_BASELINES = {
 
 def _repo() -> Path:
     for candidate in Path(__file__).resolve().parents:
-        if (candidate / 'scopes/ada/backend/pyproject.toml').is_file():
+        if (candidate / 'scopes/ada-kpi-engine/pyproject.toml').is_file():
             return candidate
     raise SystemExit('Repository root could not be resolved')
 
 
 def _scope() -> Path:
-    return _repo() / 'scopes/ada/backend'
+    return _repo() / 'scopes/ada-kpi-engine'
 
 
 def _run(command: list[str], *, cwd: Path) -> None:
@@ -257,7 +258,7 @@ def _project(path: Path) -> dict[str, object]:
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description='Validate Atlanticus ADA backend capabilities.')
+    parser = argparse.ArgumentParser(description='Validate Atlanticus ADA KPI Engine capabilities.')
     parser.add_argument('capabilities', nargs='*')
     parser.add_argument('--all', action='store_true')
     parser.add_argument('--list', action='store_true')
@@ -275,33 +276,8 @@ def _selected(arguments: argparse.Namespace) -> tuple[Capability, ...]:
         requested = list(CAPABILITIES)
     unknown = [item for item in requested if item not in CAPABILITIES]
     if unknown:
-        raise SystemExit(f'Unknown ADA backend capabilities: {", ".join(unknown)}')
+        raise SystemExit(f'Unknown ADA KPI Engine capabilities: {", ".join(unknown)}')
     return tuple(dict.fromkeys(CAPABILITIES[item] for item in requested))
-
-
-def _bootstrap(argv: list[str]) -> None:
-    if os.environ.get(BOOTSTRAP_ENVIRONMENT_VARIABLE) == '1':
-        return
-    scope = _scope()
-    print('[bootstrap] Validating locked dependency graph', flush=True)
-    _run(['uv', 'lock', '--check'], cwd=scope)
-    print('[bootstrap] Synchronizing frozen ADA backend workspace', flush=True)
-    _run(['uv', 'sync', '--frozen', '--all-packages'], cwd=scope)
-    environment = os.environ.copy()
-    environment[BOOTSTRAP_ENVIRONMENT_VARIABLE] = '1'
-    command = [
-        'uv',
-        'run',
-        '--python',
-        EXPECTED_PYTHON_VERSION,
-        '--no-python-downloads',
-        '--no-sync',
-        'python',
-        str(Path(__file__).resolve()),
-        *argv,
-    ]
-    completed = subprocess.run(command, cwd=scope, env=environment, check=False)
-    raise SystemExit(completed.returncode)
 
 
 def _validate_python() -> None:
@@ -311,80 +287,39 @@ def _validate_python() -> None:
         )
 
 
-def _validate_project(path: Path, distribution: str) -> str:
+def _expected_project_version(distribution: str) -> str:
+    return PROJECT_VERSION_OVERRIDES.get(distribution, DEFAULT_PROJECT_VERSION)
+
+
+def _validate_project(path: Path, distribution: str) -> None:
     project = _project(path / 'pyproject.toml')
+    expected_version = _expected_project_version(distribution)
     actual_name = project.get('name')
     actual_version = project.get('version')
-    if actual_name != distribution:
+    if actual_name != distribution or actual_version != expected_version:
         raise SystemExit(
-            f'Unexpected project identity at {path}: expected {distribution}, found {actual_name}'
+            f'Unexpected project identity at {path}: '
+            f'expected {distribution}=={expected_version}, '
+            f'found {actual_name}=={actual_version}'
         )
-    if not isinstance(actual_version, str) or not actual_version.strip():
-        raise SystemExit(f'Missing project version for {distribution}: {path}')
-    return actual_version
-
-
-def _validate_secret_manifest(root: Path, label: str) -> None:
-    path = root / 'secrets.detail.json'
-    try:
-        document = json.loads(path.read_text(encoding='utf-8'))
-    except (OSError, json.JSONDecodeError) as error:
-        raise SystemExit(f'{label} secrets manifest is invalid: {path}') from error
-    if not isinstance(document, list):
-        raise SystemExit(f'{label} secrets manifest must contain a list')
-    for item in document:
-        if not isinstance(item, dict):
-            raise SystemExit(f'{label} secrets manifest entries must be objects')
-        var_name = item.get('var_name')
-        if not isinstance(var_name, str) or not var_name.strip():
-            raise SystemExit(f'{label} secrets manifest contains an invalid var_name')
-        exists_in_key_vault = item.get('exists_in_key_vault')
-        if not isinstance(exists_in_key_vault, bool):
-            raise SystemExit(
-                f'{label} secrets manifest has invalid exists_in_key_vault for {var_name}'
-            )
-        if not exists_in_key_vault:
-            continue
-        secret_name = item.get('secret_name')
-        if not isinstance(secret_name, str) or not secret_name.strip():
-            raise SystemExit(f'{label} Key Vault secret is missing secret_name: {var_name}')
-        if item.get('value') is not None:
-            raise SystemExit(f'{label} Key Vault secret must not contain a value: {var_name}')
-
-
-def _validate_process_contract_files(root: Path, label: str) -> None:
-    for name in ('.python-version', '.env.detail', 'config.detail.json', 'secrets.detail.json'):
-        if not (root / name).is_file():
-            raise SystemExit(f'{label} process contract file is missing: {name}')
-    python_version = (root / '.python-version').read_text(encoding='utf-8').strip()
-    if python_version != EXPECTED_PYTHON_VERSION:
-        raise SystemExit(
-            f'{label} .python-version must be {EXPECTED_PYTHON_VERSION}, found {python_version}'
-        )
-    _validate_secret_manifest(root, label)
 
 
 def _validate_workspace(repository: Path, scope: Path) -> None:
     document = _read(scope / 'pyproject.toml')
     project = document.get('project')
     if not isinstance(project, dict):
-        raise SystemExit('Missing ADA backend workspace project')
-    if project.get('name') != 'ada-backend-workspace':
-        raise SystemExit('Unexpected ADA backend workspace identity')
-    workspace_version = project.get('version')
-    if not isinstance(workspace_version, str) or not workspace_version.strip():
-        raise SystemExit('Missing ADA backend workspace version')
-    if project.get('dependencies') != []:
-        raise SystemExit('ADA backend workspace must not pin member versions as root dependencies')
+        raise SystemExit('Missing ADA KPI Engine workspace project')
+    if project.get('name') != 'ada-kpi-engine-workspace' or project.get('version') != '1.0.0':
+        raise SystemExit('Unexpected ADA KPI Engine workspace identity')
     uv = document.get('tool', {}).get('uv') if isinstance(document.get('tool'), dict) else None
     if not isinstance(uv, dict):
         raise SystemExit('Missing ADA backend UV workspace configuration')
     workspace = uv.get('workspace')
     if not isinstance(workspace, dict) or workspace.get('members') != EXPECTED_MEMBERS:
-        raise SystemExit('ADA backend workspace members are not canonical')
+        raise SystemExit('ADA KPI Engine workspace members are not canonical')
     sources = uv.get('sources')
     if sources != EXPECTED_SOURCES:
-        raise SystemExit('ADA backend workspace UV sources are not canonical')
+        raise SystemExit('ADA KPI Engine workspace UV sources are not canonical')
     for distribution, value in EXPECTED_SOURCES.items():
         if not isinstance(value, dict) or 'path' not in value:
             continue
@@ -421,7 +356,9 @@ def _validate_runtime_process_contract(scope: Path) -> None:
     container = atlanticus.get('container') if isinstance(atlanticus, dict) else None
     if container != {'command': 'ada-kpi-runtime', 'system-profile': 'base'}:
         raise SystemExit('KPI Runtime container contract is not canonical')
-    _validate_process_contract_files(root, 'KPI Runtime')
+    for name in ('.python-version', '.env.detail', 'config.detail.json', 'secrets.detail.json'):
+        if not (root / name).is_file():
+            raise SystemExit(f'KPI Runtime process contract file is missing: {name}')
 
 
 def _validate_delivery_process_contract(scope: Path) -> None:
@@ -431,14 +368,16 @@ def _validate_delivery_process_contract(scope: Path) -> None:
     tool = document.get('tool')
     if not isinstance(project, dict) or not isinstance(tool, dict):
         raise SystemExit('KPI Delivery project metadata is incomplete')
-    expected_entrypoints = {'ada-kpi-delivery': 'ada.processes.kpi_delivery.bootstrap:main'}
-    if project.get('scripts') != expected_entrypoints:
+    expected_script = {'ada-kpi-delivery': 'ada.processes.kpi_delivery.bootstrap:main'}
+    if project.get('scripts') != expected_script:
         raise SystemExit('KPI Delivery entrypoint is not canonical')
     atlanticus = tool.get('atlanticus')
     container = atlanticus.get('container') if isinstance(atlanticus, dict) else None
     if container != {'command': 'ada-kpi-delivery', 'system-profile': 'base'}:
         raise SystemExit('KPI Delivery container contract is not canonical')
-    _validate_process_contract_files(root, 'KPI Delivery')
+    for name in ('.python-version', '.env.detail', 'config.detail.json', 'secrets.detail.json'):
+        if not (root / name).is_file():
+            raise SystemExit(f'KPI Delivery process contract file is missing: {name}')
 
 
 def _validate_historian_process_contract(scope: Path) -> None:
@@ -448,14 +387,16 @@ def _validate_historian_process_contract(scope: Path) -> None:
     tool = document.get('tool')
     if not isinstance(project, dict) or not isinstance(tool, dict):
         raise SystemExit('KPI Historian project metadata is incomplete')
-    expected_entrypoints = {'ada-kpi-historian': 'ada.processes.kpi_historian.bootstrap:main'}
-    if project.get('scripts') != expected_entrypoints:
+    expected_script = {'ada-kpi-historian': 'ada.processes.kpi_historian.bootstrap:main'}
+    if project.get('scripts') != expected_script:
         raise SystemExit('KPI Historian entrypoint is not canonical')
     atlanticus = tool.get('atlanticus')
     container = atlanticus.get('container') if isinstance(atlanticus, dict) else None
     if container != {'command': 'ada-kpi-historian', 'system-profile': 'base'}:
         raise SystemExit('KPI Historian container contract is not canonical')
-    _validate_process_contract_files(root, 'KPI Historian')
+    for name in ('.python-version', '.env.detail', 'config.detail.json', 'secrets.detail.json'):
+        if not (root / name).is_file():
+            raise SystemExit(f'KPI Historian process contract file is missing: {name}')
 
 
 def _validate_timeseries_delivery_process_contract(scope: Path) -> None:
@@ -465,10 +406,10 @@ def _validate_timeseries_delivery_process_contract(scope: Path) -> None:
     tool = document.get('tool')
     if not isinstance(project, dict) or not isinstance(tool, dict):
         raise SystemExit('KPI Timeseries Delivery project metadata is incomplete')
-    expected_entrypoints = {
+    expected_script = {
         'ada-kpi-timeseries-delivery': 'ada.processes.kpi_timeseries_delivery.bootstrap:main'
     }
-    if project.get('scripts') != expected_entrypoints:
+    if project.get('scripts') != expected_script:
         raise SystemExit('KPI Timeseries Delivery entrypoint is not canonical')
     atlanticus = tool.get('atlanticus')
     container = atlanticus.get('container') if isinstance(atlanticus, dict) else None
@@ -477,7 +418,9 @@ def _validate_timeseries_delivery_process_contract(scope: Path) -> None:
         'system-profile': 'base',
     }:
         raise SystemExit('KPI Timeseries Delivery container contract is not canonical')
-    _validate_process_contract_files(root, 'KPI Timeseries Delivery')
+    for name in ('.python-version', '.env.detail', 'config.detail.json', 'secrets.detail.json'):
+        if not (root / name).is_file():
+            raise SystemExit(f'KPI Timeseries Delivery process contract file is missing: {name}')
 
 
 def _validate_ownership(repository: Path, scope: Path) -> None:
@@ -526,9 +469,9 @@ def _validate_mirrors(scope: Path, repository: Path) -> None:
         for relative in productive_files:
             if _semantic_tree(productive / relative) != _semantic_tree(commented / relative):
                 raise SystemExit(f'Commented mirror semantic mismatch: {relative}')
-    productive_gate = repository / 'tooling/gates/ada-backend/check.py'
-    commented_gate = repository / 'tooling/gates/ada-backend/commented/check.py'
-    if _semantic_tree(productive_gate) != _semantic_tree(commented_gate):
+    productive_script = repository / 'scripts/scopes/ada-kpi-engine/check.py'
+    commented_script = repository / 'scripts/commented/scopes/ada-kpi-engine/check.py'
+    if _semantic_tree(productive_script) != _semantic_tree(commented_script):
         raise SystemExit('ADA backend gate Python mirror is not semantically equivalent')
 
 
@@ -543,97 +486,64 @@ def _validate_imports(selected: tuple[Capability, ...], scope: Path) -> None:
         _run([sys.executable, '-c', f'import {capability.import_name}'], cwd=scope)
 
 
-def _canonical_distribution_name(value: str) -> str:
-    return re.sub(r'[-_.]+', '-', value).lower()
-
-
-def _wheel_metadata(archive: ZipFile) -> tuple[str, str]:
-    metadata_files = [name for name in archive.namelist() if name.endswith('.dist-info/METADATA')]
-    if len(metadata_files) != 1:
-        raise SystemExit('Expected exactly one METADATA file in wheel')
-    metadata = archive.read(metadata_files[0]).decode('utf-8')
-    name = None
-    version = None
-    for line in metadata.splitlines():
-        if line.startswith('Name: '):
-            name = line.removeprefix('Name: ').strip()
-        elif line.startswith('Version: '):
-            version = line.removeprefix('Version: ').strip()
-        if name is not None and version is not None:
-            break
-    if not name or not version:
-        raise SystemExit('Wheel METADATA is missing Name or Version')
-    return name, version
-
-
 def _build_wheels(selected: tuple[Capability, ...], scope: Path) -> None:
     dist = scope / 'dist'
     if dist.exists():
         shutil.rmtree(dist)
     dist.mkdir(parents=True)
     for capability in selected:
-        expected_version = _validate_project(scope / capability.root, capability.distribution)
-        before = set(dist.glob('*.whl'))
         _run(['uv', 'build', capability.root, '--wheel', '--out-dir', str(dist)], cwd=scope)
-        wheels = tuple(set(dist.glob('*.whl')) - before)
+        expected_version = _expected_project_version(capability.distribution)
+        prefix = capability.distribution.replace('-', '_') + f'-{expected_version}-'
+        wheels = tuple(path for path in dist.glob('*.whl') if path.name.startswith(prefix))
         if len(wheels) != 1:
-            raise SystemExit(f'Expected exactly one new wheel for {capability.distribution}')
-        wheel = wheels[0]
+            raise SystemExit(
+                f'Expected exactly one wheel for {capability.distribution}=={expected_version}'
+            )
         typed = capability.import_name.replace('.', '/') + '/py.typed'
-        with ZipFile(wheel) as archive:
+        with ZipFile(wheels[0]) as archive:
             names = set(archive.namelist())
-            metadata_name, metadata_version = _wheel_metadata(archive)
-        if _canonical_distribution_name(metadata_name) != _canonical_distribution_name(
-            capability.distribution
-        ):
-            raise SystemExit(
-                f'Unexpected wheel distribution: '
-                f'expected {capability.distribution}, found {metadata_name}'
-            )
-        if metadata_version != expected_version:
-            raise SystemExit(
-                f'Unexpected wheel version for {capability.distribution}: '
-                f'expected {expected_version}, found {metadata_version}'
-            )
         if typed not in names:
             raise SystemExit(f'Missing py.typed in {capability.distribution} wheel')
         if any('/tests/' in name or '/commented/' in name for name in names):
             raise SystemExit(f'Non-productive files found in {capability.distribution} wheel')
 
 
-def main(argv: list[str] | None = None) -> int:
-    raw_argv = list(sys.argv[1:] if argv is None else argv)
-    arguments = _parser().parse_args(raw_argv)
+def main() -> int:
+    arguments = _parser().parse_args()
     selected = _selected(arguments)
-    _bootstrap(raw_argv)
     repository = _repo()
     scope = _scope()
-    print('Atlanticus ADA backend capabilities:', ', '.join(item.key for item in selected))
-    print('[1/8] Validating Python runtime')
+    print('Atlanticus ADA KPI Engine capabilities:', ', '.join(item.key for item in selected))
+    print('[1/10] Validating Python runtime')
     _validate_python()
-    print('[2/8] Validating workspace and dependency correlation')
+    print('[2/10] Validating workspace and dependency correlation')
     _validate_workspace(repository, scope)
-    print('[3/8] Validating ownership boundary')
+    print('[3/10] Validating ownership boundary')
     _validate_ownership(repository, scope)
+    print('[4/10] Validating locked dependency graph')
+    _run(['uv', 'lock', '--check'], cwd=scope)
+    print('[5/10] Installing frozen workspace')
+    _run(['uv', 'sync', '--frozen'], cwd=scope)
     targets = [item.root for item in selected]
     targets.extend(
         [
-            str(repository / 'tooling/gates/ada-backend/check.py'),
-            str(repository / 'tooling/gates/ada-backend/commented/check.py'),
+            str(repository / 'scripts/scopes/ada-kpi-engine/check.py'),
+            str(repository / 'scripts/commented/scopes/ada-kpi-engine/check.py'),
         ]
     )
-    print('[4/8] Applying safe Ruff fixes and validating formatting')
+    print('[6/10] Applying safe Ruff fixes and validating formatting')
     _run([sys.executable, '-m', 'ruff', 'check', '--fix', *targets], cwd=scope)
     _run([sys.executable, '-m', 'ruff', 'format', *targets], cwd=scope)
     _run([sys.executable, '-m', 'ruff', 'check', *targets], cwd=scope)
     _run([sys.executable, '-m', 'ruff', 'format', '--check', *targets], cwd=scope)
-    print('[5/8] Running capability tests')
+    print('[7/10] Running capability tests')
     _run_tests(selected, scope)
-    print('[6/8] Validating productive/commented semantic mirrors')
+    print('[8/10] Validating productive/commented semantic mirrors')
     _validate_mirrors(scope, repository)
-    print('[7/8] Validating public imports')
+    print('[9/10] Validating public imports')
     _validate_imports(selected, scope)
-    print('[8/8] Building wheels')
+    print('[10/10] Building wheels')
     _build_wheels(selected, scope)
     print('Atlanticus ADA backend validated:', ', '.join(item.key for item in selected))
     return 0
