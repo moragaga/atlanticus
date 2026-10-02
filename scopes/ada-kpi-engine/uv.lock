@@ -9,35 +9,18 @@ resolution-markers = [
 
 [manifest]
 members = [
-    "ada-kpi-engine-workspace",
     "ada-kpi-delivery-process",
+    "ada-kpi-engine-workspace",
     "ada-kpi-historian-process",
+    "ada-kpi-materialization-process",
     "ada-kpi-runtime-process",
     "ada-kpi-timeseries-delivery-process",
     "ada-kpis-core",
     "ada-kpis-delivery",
     "ada-kpis-evaluation",
     "ada-kpis-history",
+    "ada-kpis-materialization",
     "ada-kpis-persistence",
-]
-
-[[package]]
-name = "ada-kpi-engine-workspace"
-version = "1.0.0"
-source = { virtual = "." }
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
 ]
 
 [[package]]
@@ -84,6 +67,25 @@ dev = [
 ]
 
 [[package]]
+name = "ada-kpi-engine-workspace"
+version = "1.0.0"
+source = { virtual = "." }
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
 name = "ada-kpi-historian-process"
 version = "1.0.0"
 source = { editable = "processes/kpi-historian" }
@@ -122,6 +124,41 @@ requires-dist = [
     { name = "atlanticus-observability-azure", editable = "../../backend/observability-azure" },
     { name = "atlanticus-state", editable = "../../backend/state" },
     { name = "pyarrow", specifier = "==25.0.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-kpi-materialization-process"
+version = "1.0.0"
+source = { editable = "processes/kpi-materialization" }
+dependencies = [
+    { name = "ada-kpis-materialization" },
+    { name = "atlanticus-configuration" },
+    { name = "atlanticus-cosmos" },
+    { name = "atlanticus-job-runtime" },
+    { name = "atlanticus-kernel" },
+    { name = "atlanticus-key-vault" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-kpis-materialization", editable = "kpis/materialization" },
+    { name = "atlanticus-configuration", editable = "../../backend/configuration" },
+    { name = "atlanticus-cosmos", editable = "../../connectivity/cosmos" },
+    { name = "atlanticus-job-runtime", editable = "../../backend/runtime" },
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
+    { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
 ]
 
 [package.metadata.requires-dev]
@@ -317,6 +354,29 @@ requires-dist = [
     { name = "atlanticus-datasets", editable = "../../backend/datasets" },
     { name = "pyarrow", specifier = "==25.0.0" },
 ]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-kpis-materialization"
+version = "1.0.0"
+source = { editable = "kpis/materialization" }
+dependencies = [
+    { name = "atlanticus-state" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "atlanticus-state", editable = "../../backend/state" }]
 
 [package.metadata.requires-dev]
 dev = [

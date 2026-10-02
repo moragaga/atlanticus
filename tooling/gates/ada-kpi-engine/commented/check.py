@@ -100,6 +100,27 @@ CAPABILITIES = {
             'atlanticus-state==1.0.0',
         ),
     ),
+    'kpi-materialization': Capability(
+        'kpi-materialization',
+        'ada-kpis-materialization',
+        'ada.kpis.materialization',
+        'kpis/materialization',
+        ('atlanticus-state==1.0.0',),
+    ),
+    'kpi-materialization-runtime': Capability(
+        'kpi-materialization-runtime',
+        'ada-kpi-materialization-process',
+        'ada.processes.kpi_materialization',
+        'processes/kpi-materialization',
+        (
+            'ada-kpis-materialization==1.0.0',
+            'atlanticus-configuration==1.0.0',
+            'atlanticus-cosmos==1.0.0',
+            'atlanticus-job-runtime==1.0.0',
+            'atlanticus-key-vault==1.0.0',
+            'atlanticus-kernel==1.0.0',
+        ),
+    ),
     'kpi-history': Capability(
         'kpi-history',
         'ada-kpis-history',
@@ -159,6 +180,8 @@ EXPECTED_MEMBERS = [
     'kpis/history',
     'processes/kpi-historian',
     'processes/kpi-timeseries-delivery',
+    'kpis/materialization',
+    'processes/kpi-materialization',
 ]
 
 EXPECTED_SOURCES = {
@@ -170,6 +193,8 @@ EXPECTED_SOURCES = {
     'ada-kpis-persistence': {'workspace': True},
     'ada-kpis-delivery': {'workspace': True},
     'ada-kpis-history': {'workspace': True},
+    'ada-kpis-materialization': {'workspace': True},
+    'ada-kpi-materialization-process': {'workspace': True},
     'atlanticus-configuration': {'path': '../../backend/configuration', 'editable': True},
     'atlanticus-cosmos': {'path': '../../connectivity/cosmos', 'editable': True},
     'atlanticus-datasets': {'path': '../../backend/datasets', 'editable': True},
@@ -385,7 +410,9 @@ def _validate_workspace(repository: Path, scope: Path) -> None:
     if not isinstance(workspace_version, str) or not workspace_version.strip():
         raise SystemExit('Missing ADA KPI Engine workspace version')
     if project.get('dependencies') != []:
-        raise SystemExit('ADA KPI Engine workspace must not pin member versions as root dependencies')
+        raise SystemExit(
+            'ADA KPI Engine workspace must not pin member versions as root dependencies'
+        )
     uv = document.get('tool', {}).get('uv') if isinstance(document.get('tool'), dict) else None
     if not isinstance(uv, dict):
         raise SystemExit('Missing ADA backend UV workspace configuration')
@@ -413,6 +440,7 @@ def _validate_workspace(repository: Path, scope: Path) -> None:
     for distribution, relative in LOCAL_BASELINES.items():
         _validate_project(repository / relative, distribution)
     _validate_runtime_process_contract(scope)
+    _validate_materialization_process_contract(scope)
     _validate_delivery_process_contract(scope)
     _validate_historian_process_contract(scope)
     _validate_timeseries_delivery_process_contract(scope)
@@ -432,6 +460,30 @@ def _validate_runtime_process_contract(scope: Path) -> None:
     if container != {'command': 'ada-kpi-runtime', 'system-profile': 'base'}:
         raise SystemExit('KPI Runtime container contract is not canonical')
     _validate_process_contract_files(root, 'KPI Runtime')
+
+
+# Valida que el proceso de materialización mantenga su entrypoint, contenedor y archivos operacionales.
+def _validate_materialization_process_contract(scope: Path) -> None:
+    root = scope / 'processes/kpi-materialization'
+    document = _read(root / 'pyproject.toml')
+    project = document.get('project')
+    tool = document.get('tool')
+    if not isinstance(project, dict) or not isinstance(tool, dict):
+        raise SystemExit('KPI Materialization project metadata is incomplete')
+    expected_entrypoints = {
+        'ada-kpi-materialization': 'ada.processes.kpi_materialization.bootstrap:main'
+    }
+    if project.get('scripts') != expected_entrypoints:
+        raise SystemExit('KPI Materialization entrypoint is not canonical')
+    atlanticus = tool.get('atlanticus')
+    container = atlanticus.get('container') if isinstance(atlanticus, dict) else None
+    if container != {'command': 'ada-kpi-materialization', 'system-profile': 'base'}:
+        raise SystemExit('KPI Materialization container contract is not canonical')
+    _validate_process_contract_files(root, 'KPI Materialization')
+    if not (root / 'config/connections.detail.json').is_file():
+        raise SystemExit(
+            'KPI Materialization process contract file is missing: config/connections.detail.json'
+        )
 
 
 def _validate_delivery_process_contract(scope: Path) -> None:
@@ -513,6 +565,7 @@ def _validate_ownership(repository: Path, scope: Path) -> None:
                 raise SystemExit(f'Legacy KPI data ownership found in {path}')
             if capability.key in {
                 'kpi-runtime',
+                'kpi-materialization-runtime',
                 'kpi-delivery-runtime',
                 'kpi-historian-runtime',
                 'kpi-timeseries-delivery-runtime',
