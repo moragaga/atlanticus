@@ -45,7 +45,11 @@ from atlanticus.web.profiles.projection.cosmos import (
     CosmosProfilesProjectionStoreSettings,
 )
 from atlanticus.web.storage.namespace import StorageNamespace
-from atlanticus.web.storage.topology import StorageResourceOverride, resolve_storage_plan
+from atlanticus.web.storage.topology import (
+    ResolvedStoragePlan,
+    StorageResourceOverride,
+    resolve_storage_plan,
+)
 from atlanticus.web.users.blob import BlobUsersRegistryStore
 from atlanticus.web.users.cosmos import CosmosUsersStore
 from atlanticus.web.users.storage import USERS_RUNTIME_STORAGE_RESOURCE
@@ -64,6 +68,7 @@ class CommandCenterDurableConfiguration:
     namespace: StorageNamespace
     storage_settings: StorageSettings
     cosmos_settings: CosmosSettings
+    cosmos_plan: ResolvedStoragePlan
     storage_container_name: str
     catalog_blob_name: str
     source_root_prefix: str
@@ -72,6 +77,13 @@ class CommandCenterDurableConfiguration:
     profiles_projection_container_name: str
     navigation_projection_container_name: str
     users_runtime_container_name: str
+
+
+@dataclass(frozen=True, slots=True)
+class CommandCenterDurableRuntime:
+    configuration: CommandCenterDurableConfiguration
+    storage: StorageClient
+    cosmos: CosmosClient
 
 
 def _require(values: Mapping[str, str], name: str) -> str:
@@ -116,6 +128,7 @@ def resolve_durable_configuration(
             key=_require(values, 'ADA_COMMAND_CENTER_COSMOS_KEY'),
             allow_insecure_http=local,
         ),
+        cosmos_plan=plan,
         storage_container_name=_require(values, STORAGE_CONTAINER_VARIABLE),
         catalog_blob_name=COMMAND_CENTER_CATALOG_BLOB_NAME,
         source_root_prefix=namespace.scope_prefix,
@@ -136,16 +149,12 @@ def resolve_durable_configuration(
 
 
 @contextmanager
-def open_durable_configuration_manager(
+def open_command_center_durable_runtime(
     *,
     reader: ManagerConfigurationReader,
-    principal_provider: Callable[[], ManagerPrincipal],
-    production_identity_bound: bool = False,
-) -> Iterator[ConfigurationManagerDependencies]:
-    if not callable(principal_provider):
-        raise TypeError('principal_provider must be callable')
-    if reader.environment == WebEnvironment.PRODUCTION and production_identity_bound is not True:
-        raise ValueError('Production Command Center requires an authenticated host binding')
+) -> Iterator[CommandCenterDurableRuntime]:
+    if not isinstance(reader, ManagerConfigurationReader):
+        raise TypeError('Command Center durable runtime requires ManagerConfigurationReader')
     if reader.manager_provider != 'durable':
         raise ValueError('Durable Manager requires durable provider')
     resolved = resolve_durable_configuration(
@@ -156,6 +165,28 @@ def open_durable_configuration_manager(
         stack.callback(storage.close)
         cosmos = CosmosClient(settings=resolved.cosmos_settings)
         stack.callback(cosmos.close)
+        yield CommandCenterDurableRuntime(
+            configuration=resolved,
+            storage=storage,
+            cosmos=cosmos,
+        )
+
+
+@contextmanager
+def open_durable_configuration_manager(
+    *,
+    reader: ManagerConfigurationReader,
+    principal_provider: Callable[[], ManagerPrincipal],
+    production_identity_bound: bool = False,
+) -> Iterator[ConfigurationManagerDependencies]:
+    if not callable(principal_provider):
+        raise TypeError('principal_provider must be callable')
+    if reader.environment == WebEnvironment.PRODUCTION and production_identity_bound is not True:
+        raise ValueError('Production Command Center requires an authenticated host binding')
+    with open_command_center_durable_runtime(reader=reader) as runtime:
+        resolved = runtime.configuration
+        storage = runtime.storage
+        cosmos = runtime.cosmos
         catalog = BlobToolCatalogStore(
             storage=storage,
             settings=BlobToolCatalogStoreSettings(

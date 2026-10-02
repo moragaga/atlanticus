@@ -174,7 +174,7 @@ def test_failed_composition_closes_clients(tmp_path, monkeypatch):
     assert len(closed) == 2
 
 
-def test_preparation_wrapper_reuses_shared_resource_coordinator(tmp_path, monkeypatch):
+def test_preparation_wrapper_adapts_ada_resources_to_shared_coordinator(tmp_path, monkeypatch):
     calls = []
     expected = object()
 
@@ -182,7 +182,7 @@ def test_preparation_wrapper_reuses_shared_resource_coordinator(tmp_path, monkey
         calls.append(kwargs)
         return expected
 
-    monkeypatch.setattr(manager_deployment, 'prepare_manager_resources', fake_prepare)
+    monkeypatch.setattr(manager_deployment, 'prepare_resources', fake_prepare)
     with open_durable_manager(_settings(tmp_path)) as runtime:
         actual = prepare_durable_manager_resources(
             runtime,
@@ -190,15 +190,18 @@ def test_preparation_wrapper_reuses_shared_resource_coordinator(tmp_path, monkey
             environment=WebEnvironment.PRODUCTION,
         )
         assert actual is expected
-        assert calls == [
-            {
-                'resources': runtime.resources,
-                'connections': runtime.connections,
-                'action': 'prepare',
-                'environment': WebEnvironment.PRODUCTION,
-                'observe_failure': None,
-            }
-        ]
+        assert len(calls) == 1
+        call = calls[0]
+        assert [
+            (item.logical_id, item.connection_ref, item.container_name)
+            for item in call['resources'].blob_containers
+        ] == [('ada-blob', 'ada-blob', 'configuration')]
+        assert call['resources'].cosmos_plan is runtime.resources.cosmos_plan
+        assert call['connections'].storage is runtime.connections.storage
+        assert call['connections'].cosmos is runtime.connections.cosmos
+        assert call['action'] == 'prepare'
+        assert call['environment'] is WebEnvironment.PRODUCTION
+        assert call['observe_failure'] is None
 
 
 def test_unsupported_action_rejected_before_provider_access(tmp_path):

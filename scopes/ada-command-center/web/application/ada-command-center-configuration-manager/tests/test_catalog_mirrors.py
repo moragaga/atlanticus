@@ -9,6 +9,7 @@ def test_new_commented_mirrors_match_productive_ast() -> None:
     for name in (
         'catalog_configuration.py',
         'durable_runtime.py',
+        'deployment.py',
         'composition.py',
         'dependencies.py',
         '__main__.py',

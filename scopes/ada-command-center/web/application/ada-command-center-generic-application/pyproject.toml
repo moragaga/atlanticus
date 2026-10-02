@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-command-center-generic-application"
-version = "0.1.2"
+version = "0.1.3"
 description = "Composition root web de ADA Command Center sobre Atlanticus Web"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
-    "ada-command-center-configuration-manager==0.1.3",
+    "ada-command-center-configuration-manager==0.1.4",
     "ada-command-center-web-alarm-configuration==0.1.1",
     "atlanticus-web==0.1.0",
     "atlanticus-web-identity==0.1.0",

@@ -46,14 +46,17 @@ from atlanticus.web.profiles.projection.cosmos import (
     CosmosProfilesProjectionStoreSettings,
 )
 from atlanticus.web.storage.namespace import StorageNamespace
-from atlanticus.web.storage.topology import StorageResourceOverride, resolve_storage_plan
+from atlanticus.web.storage.topology import (
+    ResolvedStoragePlan,
+    StorageResourceOverride,
+    resolve_storage_plan,
+)
 from atlanticus.web.users.blob import BlobUsersRegistryStore
 from atlanticus.web.users.cosmos import CosmosUsersStore
 from atlanticus.web.users.storage import USERS_RUNTIME_STORAGE_RESOURCE
 
 _COSMOS_CONNECTION_REF = 'command-center-cosmos'
-# Todos los recursos usan la conexión/base propia de Command Center.
-# No distinguen Azure de emulador.
+# Los cuatro contratos físicos siguen siendo la única autoridad de topología Cosmos.
 _COSMOS_RESOURCES = (
     ALARM_CONFIGURATION_PROJECTION_STORAGE_RESOURCE,
     PROFILES_PROJECTION_STORAGE_RESOURCE,
@@ -67,6 +70,7 @@ class CommandCenterDurableConfiguration:
     namespace: StorageNamespace
     storage_settings: StorageSettings
     cosmos_settings: CosmosSettings
+    cosmos_plan: ResolvedStoragePlan
     storage_container_name: str
     catalog_blob_name: str
     source_root_prefix: str
@@ -77,6 +81,14 @@ class CommandCenterDurableConfiguration:
     users_runtime_container_name: str
 
 
+# Runtime mínimo compartido por el host y la operación explícita de deployment.
+@dataclass(frozen=True, slots=True)
+class CommandCenterDurableRuntime:
+    configuration: CommandCenterDurableConfiguration
+    storage: StorageClient
+    cosmos: CosmosClient
+
+
 def _require(values: Mapping[str, str], name: str) -> str:
     value = values.get(name)
     if not isinstance(value, str) or not value or value.strip() != value:
@@ -84,8 +96,6 @@ def _require(values: Mapping[str, str], name: str) -> str:
     return value
 
 
-# La topología durable se deriva de contratos Atlanticus.
-# Se aísla bajo el namespace del producto.
 def resolve_durable_configuration(
     values: Mapping[str, str], *, local: bool
 ) -> CommandCenterDurableConfiguration:
@@ -121,6 +131,7 @@ def resolve_durable_configuration(
             key=_require(values, 'ADA_COMMAND_CENTER_COSMOS_KEY'),
             allow_insecure_http=local,
         ),
+        cosmos_plan=plan,
         storage_container_name=_require(values, STORAGE_CONTAINER_VARIABLE),
         catalog_blob_name=COMMAND_CENTER_CATALOG_BLOB_NAME,
         source_root_prefix=namespace.scope_prefix,
@@ -141,6 +152,31 @@ def resolve_durable_configuration(
 
 
 @contextmanager
+# Un solo lifecycle abre y cierra los clientes durables para todos sus consumidores.
+def open_command_center_durable_runtime(
+    *,
+    reader: ManagerConfigurationReader,
+) -> Iterator[CommandCenterDurableRuntime]:
+    if not isinstance(reader, ManagerConfigurationReader):
+        raise TypeError('Command Center durable runtime requires ManagerConfigurationReader')
+    if reader.manager_provider != 'durable':
+        raise ValueError('Durable Manager requires durable provider')
+    resolved = resolve_durable_configuration(
+        reader.own(), local=reader.environment is WebEnvironment.LOCAL
+    )
+    with ExitStack() as stack:
+        storage = StorageClient(settings=resolved.storage_settings)
+        stack.callback(storage.close)
+        cosmos = CosmosClient(settings=resolved.cosmos_settings)
+        stack.callback(cosmos.close)
+        yield CommandCenterDurableRuntime(
+            configuration=resolved,
+            storage=storage,
+            cosmos=cosmos,
+        )
+
+
+@contextmanager
 def open_durable_configuration_manager(
     *,
     reader: ManagerConfigurationReader,
@@ -151,18 +187,11 @@ def open_durable_configuration_manager(
         raise TypeError('principal_provider must be callable')
     if reader.environment == WebEnvironment.PRODUCTION and production_identity_bound is not True:
         raise ValueError('Production Command Center requires an authenticated host binding')
-    if reader.manager_provider != 'durable':
-        raise ValueError('Durable Manager requires durable provider')
-    resolved = resolve_durable_configuration(
-        reader.own(), local=reader.environment is WebEnvironment.LOCAL
-    )
-    # El host posee ambos clientes y conserva un único lifecycle.
-    # Ese lifecycle cubre todas las superficies durables.
-    with ExitStack() as stack:
-        storage = StorageClient(settings=resolved.storage_settings)
-        stack.callback(storage.close)
-        cosmos = CosmosClient(settings=resolved.cosmos_settings)
-        stack.callback(cosmos.close)
+    # El Manager reutiliza exactamente el mismo contexto que usa resource preparation.
+    with open_command_center_durable_runtime(reader=reader) as runtime:
+        resolved = runtime.configuration
+        storage = runtime.storage
+        cosmos = runtime.cosmos
         catalog = BlobToolCatalogStore(
             storage=storage,
             settings=BlobToolCatalogStoreSettings(
@@ -170,8 +199,6 @@ def open_durable_configuration_manager(
                 blob_name=resolved.catalog_blob_name,
             ),
         )
-        # Alarm Configuration y administración reutilizan el mismo SourceStore Blob.
-        # El namespace del producto mantiene el aislamiento físico.
         persistence = compose_alarm_configuration_persistence(
             settings=AlarmConfigurationPersistenceSettings(
                 source_provider=AlarmConfigurationSourceProvider.BLOB,

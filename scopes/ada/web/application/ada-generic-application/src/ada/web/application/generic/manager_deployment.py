@@ -16,11 +16,6 @@ from ada.web.application.generic.manager_persistence import (
     compose_durable_manager_stores,
     resolve_manager_cosmos_plan_for_connection,
 )
-from ada.web.application.generic.resource_preparation import (
-    ResourceObserver,
-    ResourcePreparationReport,
-    prepare_manager_resources,
-)
 from ada.web.application.generic.settings import (
     PERSISTENCE_MODE_VARIABLE,
     AdaGenericSettings,
@@ -32,6 +27,14 @@ from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_
 from atlanticus.web.configuration import WebEnvironment
 from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.storage.namespace import StorageNamespace
+from atlanticus.web.storage.preparation import (
+    BlobContainerResource,
+    ResourceObserver,
+    ResourcePreparationConnections,
+    ResourcePreparationReport,
+    ResourcePreparationResources,
+    prepare_resources,
+)
 from atlanticus.web.users.blob.recovery import (
     BlobApprovedUsersSnapshotStore,
     BlobUsersRecoveryAuditStore,
@@ -204,9 +207,30 @@ def prepare_durable_manager_resources(
 ) -> ResourcePreparationReport:
     if not isinstance(deployment, DurableManagerRuntime):
         raise TypeError('Resource preparation requires a durable Manager runtime')
-    return prepare_manager_resources(
-        resources=deployment.resources,
-        connections=deployment.connections,
+    blobs = {
+        (resource.connection_ref, resource.container_name)
+        for resource in (
+            deployment.resources.application_source,
+            deployment.resources.tool_source,
+            deployment.resources.users_registry,
+        )
+    }
+    return prepare_resources(
+        resources=ResourcePreparationResources(
+            blob_containers=tuple(
+                BlobContainerResource(
+                    logical_id=connection_ref,
+                    connection_ref=connection_ref,
+                    container_name=container_name,
+                )
+                for connection_ref, container_name in sorted(blobs)
+            ),
+            cosmos_plan=deployment.resources.cosmos_plan,
+        ),
+        connections=ResourcePreparationConnections(
+            storage=deployment.connections.storage,
+            cosmos=deployment.connections.cosmos,
+        ),
         action=action,
         environment=environment,
         observe_failure=observe_failure,

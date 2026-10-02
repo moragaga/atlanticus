@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 # Espejo pedagógico: mismo comportamiento productivo con contexto explicativo en español.
+from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
 from contextlib import ExitStack, contextmanager
@@ -18,22 +17,25 @@ from ada.web.application.generic.manager_persistence import (
     compose_durable_manager_stores,
     resolve_manager_cosmos_plan_for_connection,
 )
-from ada.web.application.generic.resource_preparation import (
-    ResourceObserver,
-    ResourcePreparationReport,
-    prepare_manager_resources,
-)
 from ada.web.application.generic.settings import (
     PERSISTENCE_MODE_VARIABLE,
     AdaGenericSettings,
     AdaPersistenceMode,
 )
-from atlanticus.web.storage.namespace import StorageNamespace
 from atlanticus.connectivity.cosmos import CosmosClient, CosmosSettings
 from atlanticus.connectivity.storage import StorageClient, StorageSettings
 from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
 from atlanticus.web.configuration import WebEnvironment
 from atlanticus.web.profiles.models import ProfileCatalog
+from atlanticus.web.storage.namespace import StorageNamespace
+from atlanticus.web.storage.preparation import (
+    BlobContainerResource,
+    ResourceObserver,
+    ResourcePreparationConnections,
+    ResourcePreparationReport,
+    ResourcePreparationResources,
+    prepare_resources,
+)
 from atlanticus.web.users.blob.recovery import (
     BlobApprovedUsersSnapshotStore,
     BlobUsersRecoveryAuditStore,
@@ -185,9 +187,7 @@ def _attach_users_recovery(
             ),
             application_key=namespace.application_namespace,
             identity_realm=next(iter(issuers)),
-            environment=(
-                f'{settings.environment.value}:{resolved.cosmos_settings.database_name}'
-            ),
+            environment=(f'{settings.environment.value}:{resolved.cosmos_settings.database_name}'),
         )
 
     return replace(
@@ -199,6 +199,7 @@ def _attach_users_recovery(
     )
 
 
+# ADA adapta sus recursos concretos al coordinador genérico de Atlanticus.
 def prepare_durable_manager_resources(
     deployment: DurableManagerRuntime,
     *,
@@ -208,9 +209,32 @@ def prepare_durable_manager_resources(
 ) -> ResourcePreparationReport:
     if not isinstance(deployment, DurableManagerRuntime):
         raise TypeError('Resource preparation requires a durable Manager runtime')
-    return prepare_manager_resources(
-        resources=deployment.resources,
-        connections=deployment.connections,
+    # Las tres superficies Blob CURRENT comparten el mismo contenedor y se deduplican aquí.
+    blobs = {
+        (resource.connection_ref, resource.container_name)
+        for resource in (
+            deployment.resources.application_source,
+            deployment.resources.tool_source,
+            deployment.resources.users_registry,
+        )
+    }
+    # Desde este punto, prepare/validate no contienen semántica específica de ADA.
+    return prepare_resources(
+        resources=ResourcePreparationResources(
+            blob_containers=tuple(
+                BlobContainerResource(
+                    logical_id=connection_ref,
+                    connection_ref=connection_ref,
+                    container_name=container_name,
+                )
+                for connection_ref, container_name in sorted(blobs)
+            ),
+            cosmos_plan=deployment.resources.cosmos_plan,
+        ),
+        connections=ResourcePreparationConnections(
+            storage=deployment.connections.storage,
+            cosmos=deployment.connections.cosmos,
+        ),
         action=action,
         environment=environment,
         observe_failure=observe_failure,

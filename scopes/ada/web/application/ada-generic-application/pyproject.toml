@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-generic-application"
-version = "0.2.23"
+version = "0.2.24"
 description = "Composition root web genérico de ADA sobre Atlanticus Web"
 requires-python = "==3.14.2"
 classifiers = [
@@ -17,7 +17,7 @@ dependencies = [
     "atlanticus-web-users-blob==0.1.0",
     "atlanticus-web-source-blob==0.1.0",
     "atlanticus-web-storage-topology==0.1.0",
-    "atlanticus-web-storage-cosmos==0.1.0",
+    "atlanticus-web-storage-preparation==0.1.0",
     "atlanticus-web-profiles-projection-cosmos==0.1.0",
     "atlanticus-web-navigation-projection-cosmos==0.1.0",
     "ada-web-tools-projection-cosmos==0.1.1",
@@ -76,7 +76,7 @@ ada-generic-local-resources = "ada.web.application.generic.local_resources:main"
 ada-generic-application = "ada.web.application.generic.__main__:main"
 
 [tool.uv.sources]
-atlanticus-web-storage-cosmos = { path = "../../../../../web/capabilities/storage/cosmos", editable = true }
+atlanticus-web-storage-preparation = { path = "../../../../../web/capabilities/storage/preparation", editable = true }
 atlanticus-web-users-cosmos = { path = "../../../../../web/capabilities/users/cosmos", editable = true }
 atlanticus-web-users-blob = { path = "../../../../../web/capabilities/users/blob", editable = true }
 atlanticus-web-navigation-projection-cosmos = { path = "../../../../../web/capabilities/navigation/projection-cosmos", editable = true }

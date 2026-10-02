@@ -1,22 +1,20 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass
 from enum import StrEnum
 from typing import Literal
 
-from ada.web.application.generic.manager_persistence import (
-    ManagerPersistenceConnections,
-    ManagerPersistenceResources,
-)
 from atlanticus.connectivity.cosmos import (
+    CosmosClient,
     CosmosContainerDefinitionMismatchError,
     CosmosContainerNotFoundError,
     CosmosDatabaseNotFoundError,
     CosmosProvisioner,
 )
 from atlanticus.connectivity.storage import (
+    StorageClient,
     StorageConnectionStringCredential,
     StorageContainerNotFoundError,
     StorageSasCredential,
@@ -24,6 +22,7 @@ from atlanticus.connectivity.storage import (
 )
 from atlanticus.web.configuration import WebEnvironment
 from atlanticus.web.storage.cosmos import to_cosmos_container_spec
+from atlanticus.web.storage.topology import ResolvedStoragePlan
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,7 +31,6 @@ ResourceAction = Literal['validate', 'prepare']
 ResourceObserver = Callable[['ResourcePreparationResult'], None]
 
 
-# Los estados son resultados operativos; no sustituyen los estados de ProjectionTarget.
 class ResourcePreparationStatus(StrEnum):
     READY = 'READY'
     CREATED = 'CREATED'
@@ -44,7 +42,53 @@ class ResourcePreparationStatus(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
-# Resultado inmutable y seguro: no guarda errores crudos ni secretos de conexión.
+class BlobContainerResource:
+    logical_id: str
+    connection_ref: str
+    container_name: str
+
+    def __post_init__(self) -> None:
+        _require_text(self.logical_id, 'Blob logical id')
+        _require_text(self.connection_ref, 'Blob connection reference')
+        _require_text(self.container_name, 'Blob container name')
+
+
+@dataclass(frozen=True, slots=True)
+class ResourcePreparationResources:
+    blob_containers: tuple[BlobContainerResource, ...]
+    cosmos_plan: ResolvedStoragePlan
+
+    def __post_init__(self) -> None:
+        try:
+            blobs = tuple(self.blob_containers)
+        except TypeError:
+            raise TypeError('Blob resources must be an iterable') from None
+        if any(not isinstance(resource, BlobContainerResource) for resource in blobs):
+            raise TypeError('Blob resources must contain BlobContainerResource values')
+        physical = [(resource.connection_ref, resource.container_name) for resource in blobs]
+        if len(physical) != len(set(physical)):
+            raise ValueError('Blob resources must not repeat a physical container binding')
+        if not isinstance(self.cosmos_plan, ResolvedStoragePlan):
+            raise TypeError('Cosmos resources must use a resolved storage plan')
+        object.__setattr__(self, 'blob_containers', blobs)
+
+
+@dataclass(frozen=True, slots=True)
+class ResourcePreparationConnections:
+    storage: Mapping[str, StorageClient]
+    cosmos: Mapping[str, CosmosClient]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.storage, Mapping) or not isinstance(self.cosmos, Mapping):
+            raise TypeError('Resource connections must be named mappings')
+        for clients in (self.storage, self.cosmos):
+            if any(
+                not isinstance(name, str) or not name or name != name.strip() for name in clients
+            ):
+                raise ValueError('Resource connection names must be nonempty normalized strings')
+
+
+@dataclass(frozen=True, slots=True)
 class ResourcePreparationResult:
     kind: ResourceKind
     logical_id: str
@@ -57,7 +101,6 @@ class ResourcePreparationResult:
 
 
 @dataclass(frozen=True, slots=True)
-# Un informe agrupa éxitos y fallos sin transacciones distribuidas.
 class ResourcePreparationReport:
     action: ResourceAction
     environment: WebEnvironment
@@ -66,7 +109,8 @@ class ResourcePreparationReport:
     @property
     def status(self) -> str:
         failed = any(
-            item.status in (
+            item.status
+            in (
                 ResourcePreparationStatus.MISSING,
                 ResourcePreparationStatus.INCOMPATIBLE,
                 ResourcePreparationStatus.FAILED,
@@ -91,7 +135,6 @@ class ResourcePreparationReport:
         }
 
 
-# Crear Blob es una excepción exclusiva del ambiente local; producción nunca llama aquí.
 def ensure_local_blob_container(settings: StorageSettings, container_name: str) -> bool:
     from azure.core.exceptions import ResourceExistsError
     from azure.storage.blob import BlobServiceClient
@@ -119,20 +162,18 @@ def ensure_local_blob_container(settings: StorageSettings, container_name: str) 
     return True
 
 
-# La misma operación sirve al job de despliegue y al diagnóstico posterior de Master.
-# La base productiva se comprueba sin intentar crearla.
-def prepare_manager_resources(
+def prepare_resources(
     *,
-    resources: ManagerPersistenceResources,
-    connections: ManagerPersistenceConnections,
+    resources: ResourcePreparationResources,
+    connections: ResourcePreparationConnections,
     action: ResourceAction,
     environment: WebEnvironment,
     observe_failure: ResourceObserver | None = None,
 ) -> ResourcePreparationReport:
-    if not isinstance(resources, ManagerPersistenceResources):
-        raise TypeError('Resource preparation requires ManagerPersistenceResources')
-    if not isinstance(connections, ManagerPersistenceConnections):
-        raise TypeError('Resource preparation requires ManagerPersistenceConnections')
+    if not isinstance(resources, ResourcePreparationResources):
+        raise TypeError('Resource preparation requires ResourcePreparationResources')
+    if not isinstance(connections, ResourcePreparationConnections):
+        raise TypeError('Resource preparation requires ResourcePreparationConnections')
     if not isinstance(environment, WebEnvironment):
         raise TypeError('Resource preparation requires WebEnvironment')
     if action not in ('validate', 'prepare'):
@@ -147,8 +188,11 @@ def prepare_manager_resources(
             return ResourcePreparationStatus.INCOMPATIBLE
         if isinstance(
             error,
-            (CosmosContainerNotFoundError, CosmosDatabaseNotFoundError,
-             StorageContainerNotFoundError),
+            (
+                CosmosContainerNotFoundError,
+                CosmosDatabaseNotFoundError,
+                StorageContainerNotFoundError,
+            ),
         ):
             return ResourcePreparationStatus.MISSING
         return ResourcePreparationStatus.FAILED
@@ -171,8 +215,12 @@ def prepare_manager_resources(
         if error is not None:
             if observe_failure is None:
                 _LOGGER.error(
-                    'event=resource.preparation.failed kind=%s logical_id=%s status=%s error_type=%s',
-                    kind, logical_id, status.value, type(error).__name__,
+                    'event=resource.preparation.failed kind=%s logical_id=%s '
+                    'status=%s error_type=%s',
+                    kind,
+                    logical_id,
+                    status.value,
+                    type(error).__name__,
                 )
             else:
                 try:
@@ -183,37 +231,49 @@ def prepare_manager_resources(
                         type(observer_error).__name__,
                     )
 
-    # Deduplicamos recursos físicos Blob compartidos por varios Sources.
-    blobs = {
-        (resource.connection_ref, resource.container_name)
-        for resource in (
-            resources.application_source,
-            resources.tool_source,
-            resources.users_registry,
-        )
-    }
-    for connection_ref, name in sorted(blobs):
+    for resource in sorted(
+        resources.blob_containers,
+        key=lambda value: (value.connection_ref, value.container_name, value.logical_id),
+    ):
         if environment.is_production:
-            add('blob-container', connection_ref, name, ResourcePreparationStatus.SKIPPED)
+            add(
+                'blob-container',
+                resource.logical_id,
+                resource.container_name,
+                ResourcePreparationStatus.SKIPPED,
+            )
             continue
         try:
-            storage = connections.storage[connection_ref]
+            storage = connections.storage[resource.connection_ref]
             if action == 'prepare':
-                created = ensure_local_blob_container(storage.settings, name)
-                status = ResourcePreparationStatus.CREATED if created else ResourcePreparationStatus.READY
+                created = ensure_local_blob_container(storage.settings, resource.container_name)
+                status = (
+                    ResourcePreparationStatus.CREATED
+                    if created
+                    else ResourcePreparationStatus.READY
+                )
             else:
-                storage.health_check(container_name=name)
+                storage.health_check(container_name=resource.container_name)
                 status = ResourcePreparationStatus.READY
-            add('blob-container', connection_ref, name, status)
+            add('blob-container', resource.logical_id, resource.container_name, status)
         except Exception as error:
-            add('blob-container', connection_ref, name, failure_status(error), error)
+            add(
+                'blob-container',
+                resource.logical_id,
+                resource.container_name,
+                failure_status(error),
+                error,
+            )
 
-    plan = resources.cosmos_plan
-    ordered = tuple(sorted(plan.resources, key=lambda value: (value.connection_ref, value.logical_id)))
+    ordered = tuple(
+        sorted(
+            resources.cosmos_plan.resources,
+            key=lambda value: (value.connection_ref, value.logical_id),
+        )
+    )
     refs = sorted({resource.connection_ref for resource in ordered})
     provisioners: dict[str, CosmosProvisioner] = {}
     ready_refs: set[str] = set()
-    # Una base indisponible bloquea sólo sus contenedores dependientes.
     for connection_ref in refs:
         database_name = '<unavailable>'
         try:
@@ -223,7 +283,11 @@ def prepare_manager_resources(
             provisioners[connection_ref] = provisioner
             if action == 'prepare' and environment.is_local:
                 created = provisioner.ensure_database()
-                status = ResourcePreparationStatus.CREATED if created else ResourcePreparationStatus.READY
+                status = (
+                    ResourcePreparationStatus.CREATED
+                    if created
+                    else ResourcePreparationStatus.READY
+                )
             else:
                 cosmos.health_check()
                 status = ResourcePreparationStatus.READY
@@ -231,15 +295,19 @@ def prepare_manager_resources(
             add('cosmos-database', connection_ref, database_name, status)
         except Exception as error:
             add(
-                'cosmos-database', connection_ref, database_name,
-                failure_status(error), error,
+                'cosmos-database',
+                connection_ref,
+                database_name,
+                failure_status(error),
+                error,
             )
 
-    # Cada contenedor se prepara aisladamente para no ocultar éxitos parciales.
     for resource in ordered:
         if resource.connection_ref not in ready_refs:
             add(
-                'cosmos-container', resource.logical_id, resource.physical_name,
+                'cosmos-container',
+                resource.logical_id,
+                resource.physical_name,
                 ResourcePreparationStatus.BLOCKED,
             )
             continue
@@ -249,7 +317,9 @@ def prepare_manager_resources(
             if action == 'prepare':
                 created = provisioner.ensure_containers((spec,))
                 status = (
-                    ResourcePreparationStatus.CREATED if created else ResourcePreparationStatus.READY
+                    ResourcePreparationStatus.CREATED
+                    if created
+                    else ResourcePreparationStatus.READY
                 )
             else:
                 provisioner.validate_containers((spec,))
@@ -257,8 +327,16 @@ def prepare_manager_resources(
             add('cosmos-container', resource.logical_id, resource.physical_name, status)
         except Exception as error:
             add(
-                'cosmos-container', resource.logical_id, resource.physical_name,
-                failure_status(error), error,
+                'cosmos-container',
+                resource.logical_id,
+                resource.physical_name,
+                failure_status(error),
+                error,
             )
 
     return ResourcePreparationReport(action=action, environment=environment, results=tuple(results))
+
+
+def _require_text(value: object, description: str) -> None:
+    if not isinstance(value, str) or not value or value != value.strip():
+        raise ValueError(f'{description} must be nonempty normalized text')

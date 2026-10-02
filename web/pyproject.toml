@@ -25,6 +25,7 @@ dependencies = [
     "atlanticus-web-source-blob==0.1.0",
     "atlanticus-web-storage-topology==0.1.0",
     "atlanticus-web-storage-cosmos==0.1.0",
+    "atlanticus-web-storage-preparation==0.1.0",
     "atlanticus-web-configuration==0.1.0",
     "atlanticus-web-pwa==0.1.0",
     "atlanticus-web-users==0.1.0",
@@ -67,6 +68,7 @@ atlanticus-web-source-local = { workspace = true }
 atlanticus-web-source-blob = { workspace = true }
 atlanticus-web-storage-topology = { workspace = true }
 atlanticus-web-storage-cosmos = { workspace = true }
+atlanticus-web-storage-preparation = { workspace = true }
 atlanticus-cosmos = { path = "../connectivity/cosmos", editable = true }
 atlanticus-storage = { path = "../connectivity/storage" }
 atlanticus-observability = { path = "../backend/observability" }
@@ -105,6 +107,7 @@ members = [
     "capabilities/source/blob",
     "capabilities/storage/topology",
     "capabilities/storage/cosmos",
+    "capabilities/storage/preparation",
     "framework/configuration",
     "framework/pwa",
     "capabilities/users/core",
@@ -162,6 +165,7 @@ testpaths = [
     "capabilities/source/blob/tests",
     "capabilities/storage/topology/tests",
     "capabilities/storage/cosmos/tests",
+    "capabilities/storage/preparation/tests",
     "framework/configuration/tests",
     "framework/pwa/tests",
     "capabilities/users/core/tests",
