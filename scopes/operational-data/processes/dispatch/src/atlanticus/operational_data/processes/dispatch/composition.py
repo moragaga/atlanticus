@@ -47,7 +47,7 @@ class DispatchComposition:
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
         return execute_job(
             definition=self.definition,
-            iteration=self.producer.job.run_iteration,
+            iteration=self.producer.job.run_cycle,
             argv=argv,
             environ=self.configuration.values,
         )

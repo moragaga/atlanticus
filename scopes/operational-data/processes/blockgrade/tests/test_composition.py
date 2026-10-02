@@ -67,3 +67,34 @@ def test_composition_passes_process_identity_to_sql_producer(monkeypatch, tmp_pa
     assert type(captured['scope_provider']).__name__ == 'BlockgradeShiftScopeProvider'
     assert captured['retry_policy'].attempts == 10
     assert captured['retry_policy'].delay_seconds == 5.0
+
+
+def test_execute_uses_complete_sql_cycle(monkeypatch, tmp_path):
+    import atlanticus.operational_data.processes.blockgrade.composition as module
+
+    captured = {}
+
+    def run_cycle(context):
+        return None
+
+    sentinel = SimpleNamespace(job=SimpleNamespace(run_cycle=run_cycle))
+    expected_result = object()
+
+    def fake_builder(**kwargs):
+        return sentinel
+
+    def fake_execute_job(**kwargs):
+        captured.update(kwargs)
+        return expected_result
+
+    monkeypatch.setattr(module, 'build_sql_data_producer', fake_builder)
+    monkeypatch.setattr(module, 'execute_job', fake_execute_job)
+    composition = build_composition(configuration=_configuration(tmp_path), catalog=_catalog())
+
+    result = composition.execute(argv=('--run-once',))
+
+    assert result is expected_result
+    assert captured['definition'] is composition.definition
+    assert captured['iteration'] is run_cycle
+    assert captured['argv'] == ('--run-once',)
+    assert captured['environ'] is composition.configuration.values

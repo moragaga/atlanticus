@@ -45,10 +45,13 @@ class DispatchComposition:
     definition: JobDefinition
     producer: SqlDataProducerComponents
 
+    # Una iteración del Runtime corresponde a un ciclo SQL completo. De esta forma --run-once
+    # procesa todas las fuentes del plan capturado. run_cycle conserva la cancelación
+    # entre fuentes.
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
         return execute_job(
             definition=self.definition,
-            iteration=self.producer.job.run_iteration,
+            iteration=self.producer.job.run_cycle,
             argv=argv,
             environ=self.configuration.values,
         )
