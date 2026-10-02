@@ -25,9 +25,33 @@ def test_catalog_starts_empty_and_requires_configuration() -> None:
         build_catalog()
 
 
-def test_scoped_example_preserves_real_blockgrade_source() -> None:
-    assert len(EXAMPLE_DEFINITIONS) == 1
+def test_examples_preserve_real_blockgrade_sources_in_stable_order() -> None:
+    assert tuple(item.source_key for item in EXAMPLE_DEFINITIONS) == (
+        'mms_blockgradebybucket_4hours_d6',
+        'mms_new_blockgrade_details_bucket',
+    )
+
+
+def test_timestamp_window_example_preserves_unmapped_real_contract() -> None:
     definition = EXAMPLE_DEFINITIONS[0]
+
+    assert definition.source_key == 'mms_blockgradebybucket_4hours_d6'
+    assert definition.source_table == 'dbo.mms_BlockgradebyBucket_4hours_D6'
+    assert definition.storage_mode is SqlStorageMode.LATEST
+    assert definition.load_strategy is SqlLoadStrategy.FULL_SNAPSHOT
+    assert definition.source_last_update_output_column == 'hra_fin_descarga'
+    assert definition.enabled is False
+    assert len(definition.columns) == 90
+    assert timestamp_reference.TIMESTAMP_COLUMN == 'Hra_FinDescarga'
+    assert timestamp_reference.TIMESTAMP_OUTPUT_COLUMN == 'hra_fin_descarga'
+    assert timestamp_reference.LOOKBACK_MINUTES == 1500
+    assert timestamp_reference.DEDUPE_COLUMNS == ('ddbkey', 'bucket_pk')
+    assert timestamp_reference.DEDUPE_ORDER_COLUMNS == ('hra_fin_descarga',)
+
+
+def test_scoped_example_preserves_real_blockgrade_source() -> None:
+    definition = EXAMPLE_DEFINITIONS[1]
+
     assert definition.source_key == 'mms_new_blockgrade_details_bucket'
     assert definition.source_table == 'dbo.mms_new_blockgradedetailsbucket'
     assert definition.storage_mode is SqlStorageMode.PARTITIONED
@@ -46,17 +70,6 @@ def test_scoped_example_preserves_real_blockgrade_source() -> None:
 
     assert module.REFERENCE_DEDUPE_COLUMNS == ('shiftindex', 'ddbkey', 'bucket')
     assert module.REFERENCE_DEDUPE_ORDER_COLUMNS == ('shiftindex',)
-
-
-def test_timestamp_window_reference_preserves_unmapped_real_contract() -> None:
-    assert timestamp_reference.SOURCE_KEY == 'mms_blockgradebybucket_4hours_d6'
-    assert timestamp_reference.SOURCE_TABLE == 'dbo.mms_BlockgradebyBucket_4hours_D6'
-    assert timestamp_reference.TIMESTAMP_COLUMN == 'Hra_FinDescarga'
-    assert timestamp_reference.TIMESTAMP_OUTPUT_COLUMN == 'hra_fin_descarga'
-    assert timestamp_reference.LOOKBACK_MINUTES == 1500
-    assert timestamp_reference.DEDUPE_COLUMNS == ('ddbkey', 'bucket_pk')
-    assert timestamp_reference.DEDUPE_ORDER_COLUMNS == ('hra_fin_descarga',)
-    assert len(timestamp_reference.COLUMNS) == 90
 
 
 def test_catalog_excludes_disabled_sources(monkeypatch) -> None:
@@ -107,9 +120,15 @@ def test_example_tables_use_canonical_named_column_helper() -> None:
         if path.name == '__init__.py':
             continue
         tree = ast.parse(path.read_text())
+        source_definitions = 0
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
                 continue
             if isinstance(node.func, ast.Name) and node.func.id == 'column':
                 assert not node.args, path.name
                 assert {item.arg for item in node.keywords} == expected_column_keywords, path.name
+            if isinstance(node.func, ast.Name) and node.func.id == 'SqlSourceDefinition':
+                source_definitions += 1
+                assert not node.args, path.name
+                assert 'enabled' in {item.arg for item in node.keywords}, path.name
+        assert source_definitions == 1, path.name

@@ -1,4 +1,9 @@
-from atlanticus.data_producers.sql import DataValueKind
+from atlanticus.data_producers.sql import (
+    DataValueKind,
+    SqlLoadStrategy,
+    SqlSourceDefinition,
+    SqlStorageMode,
+)
 from atlanticus.operational_data.processes.blockgrade.catalog.columns import column
 
 SOURCE_KEY = 'mms_blockgradebybucket_4hours_d6'
@@ -550,4 +555,14 @@ COLUMNS = (
         value_kind=DataValueKind.INTEGER,
         required=False,
     ),
+)
+
+DEFINITION = SqlSourceDefinition(
+    source_key=SOURCE_KEY,
+    source_table=SOURCE_TABLE,
+    enabled=False,
+    storage_mode=SqlStorageMode.LATEST,
+    load_strategy=SqlLoadStrategy.FULL_SNAPSHOT,
+    source_last_update_output_column=TIMESTAMP_OUTPUT_COLUMN,
+    columns=COLUMNS,
 )
