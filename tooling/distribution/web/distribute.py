@@ -11,7 +11,6 @@ from pathlib import Path
 
 WEB_ROOT = Path(__file__).resolve().parent
 REPOSITORY_ROOT = WEB_ROOT.parents[2]
-ADA_ROOT = WEB_ROOT / "ada"
 _PRODUCTS = tomllib.loads((WEB_ROOT / "products.toml").read_text(encoding="utf-8"))[
     "products"
 ]
@@ -26,6 +25,13 @@ def _load_module(name: str, path: Path):
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def _repository_path(value: object) -> Path:
+    relative = Path(str(value))
+    if relative.is_absolute() or ".." in relative.parts:
+        raise ValueError("Web product path must be repository-relative")
+    return REPOSITORY_ROOT / relative
 
 
 _wheels = _load_module(
@@ -43,21 +49,30 @@ generate_starter = _generator.generate_starter
 qualify = _qualifier.qualify
 
 
-def _load_ada_builder():
-    return _load_module(
-        "atlanticus_ada_web_distribution", ADA_ROOT / "build_distribution.py"
+def _load_distribution_handler(profile: str, product: dict[str, object]):
+    path = _repository_path(product["distribution_handler"])
+    module = _load_module(
+        f"atlanticus_web_distribution_{profile.replace('-', '_')}",
+        path,
     )
+    name = str(product["distribution_callable"])
+    handler = getattr(module, name, None)
+    if not callable(handler):
+        raise RuntimeError("Web product distribution handler is unavailable")
+    return handler
 
 
-def _qualify_ada_distribution(*, application: Path, timeout: int) -> dict[str, object]:
+def _run_qualification_handler(
+    *,
+    profile: str,
+    product: dict[str, object],
+    application: Path,
+    timeout: int,
+) -> dict[str, object]:
+    path = _repository_path(product["qualification_handler"])
     process = subprocess.run(
-        [
-            sys.executable,
-            str(ADA_ROOT / "qualify_distribution.py"),
-            "--application",
-            str(application),
-        ],
-        cwd=ADA_ROOT,
+        [sys.executable, str(path), "--application", str(application)],
+        cwd=path.parent,
         capture_output=True,
         text=True,
         timeout=timeout,
@@ -66,13 +81,13 @@ def _qualify_ada_distribution(*, application: Path, timeout: int) -> dict[str, o
     try:
         result = json.loads(process.stdout)
     except ValueError as error:
-        raise RuntimeError(
-            "ADA distribution qualification returned invalid JSON"
-        ) from error
+        raise RuntimeError("Web product qualification returned invalid JSON") from error
     if not isinstance(result, dict) or not isinstance(result.get("status"), str):
-        raise RuntimeError("ADA distribution qualification returned an invalid result")
+        raise RuntimeError("Web product qualification returned an invalid result")
     if process.returncode not in (0, 2):
-        raise RuntimeError("ADA distribution qualification process failed unexpectedly")
+        raise RuntimeError("Web product qualification process failed unexpectedly")
+    if result.get("profile") != profile:
+        raise RuntimeError("Web product qualification returned a different profile")
     return result
 
 
@@ -94,24 +109,20 @@ def build_web_distribution(
         application = generate_starter(profile=profile, destination=destination)
         stages["starter"] = {"status": "PASS", "application": str(application)}
         stage = "distribution"
-        if product["distribution_strategy"] == "ada":
-            builder = _load_ada_builder()
-            distribution = builder.build_ada_distribution(
-                application=application, uv=uv
-            )
-        elif product["distribution_strategy"] == "wheelhouse":
+        strategy = product["distribution_strategy"]
+        if strategy == "wheelhouse":
             distribution = build_wheelhouse(
                 profile=profile, application=application, uv=uv
             )
+        elif strategy == "handler":
+            handler = _load_distribution_handler(profile, product)
+            distribution = handler(application=application, uv=uv)
         else:
             raise ValueError("Unsupported Web distribution strategy")
         stages["distribution"] = distribution
         stage = "qualification"
-        if product["qualification_strategy"] == "ada-precheck":
-            qualification = _qualify_ada_distribution(
-                application=application, timeout=timeout
-            )
-        elif product["qualification_strategy"] == "runtime":
+        strategy = product["qualification_strategy"]
+        if strategy == "runtime":
             qualification = qualify(
                 application=application,
                 profile=profile,
@@ -120,7 +131,7 @@ def build_web_distribution(
                 portable=True,
                 inspect_only=False,
             )
-        elif product["qualification_strategy"] == "artifact-precheck":
+        elif strategy == "artifact-precheck":
             qualification = qualify(
                 application=application,
                 profile=profile,
@@ -135,6 +146,13 @@ def build_web_distribution(
                     "status": "PRECHECK_PASS",
                     "runtime": "UNVERIFIED",
                 }
+        elif strategy == "handler":
+            qualification = _run_qualification_handler(
+                profile=profile,
+                product=product,
+                application=application,
+                timeout=timeout,
+            )
         else:
             raise ValueError("Unsupported Web qualification strategy")
         stages["qualification"] = qualification

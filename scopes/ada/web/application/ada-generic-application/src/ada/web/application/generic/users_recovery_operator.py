@@ -220,10 +220,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 maintenance_confirmed=True,
                 revocations_reviewed=True,
             )
-            _output({
-                'stage': 'completed', 'mode': 'replace',
-                'operation_id': operation_id, **_replacement_document(after),
-            })
+            _output(
+                {
+                    'stage': 'completed',
+                    'mode': 'replace',
+                    'operation_id': operation_id,
+                    **_replacement_document(after),
+                }
+            )
             return 0
         if deployment.stores.access.get_active(ADA_ACCESS_SOURCE_KEY) is None:
             raise UsersRecoveryConflictError('An active Access projection is required')

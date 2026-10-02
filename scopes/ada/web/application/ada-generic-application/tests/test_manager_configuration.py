@@ -67,9 +67,7 @@ def _stores(tmp_path):
 
 
 @pytest.mark.parametrize('subject', ['local:jane-doe', 'local:john-doe'])
-def test_known_local_users_receive_manager_administrative_override(
-    tmp_path, monkeypatch, subject
-):
+def test_known_local_users_receive_manager_administrative_override(tmp_path, monkeypatch, subject):
     monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'local')
     app = Flask(__name__)
     app.secret_key = 'test-only'
@@ -319,7 +317,9 @@ def test_access_and_profiles_projection_failures_do_not_affect_manager_principal
 
     class ForbiddenProjectionRead(InProcessProjectionStore):
         def get_active(self, _source_key):
-            raise AssertionError('Manager principal must not read ADA Access or Profiles projections')
+            raise AssertionError(
+                'Manager principal must not read ADA Access or Profiles projections'
+            )
 
     stores = replace(
         _stores(tmp_path),

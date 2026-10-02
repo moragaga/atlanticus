@@ -5,7 +5,6 @@ import importlib.util
 import sys
 import tomllib
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -54,9 +53,7 @@ def test_generic_distribution_runs_shared_pipeline_in_order(
     assert calls == ["starter", "distribution", "qualification"]
 
 
-def test_ada_distribution_uses_existing_specialized_builder(
-    tmp_path, monkeypatch
-) -> None:
+def test_ada_distribution_uses_scope_owned_handlers(tmp_path, monkeypatch) -> None:
     calls: list[str] = []
     destination = tmp_path / "ada"
 
@@ -65,27 +62,21 @@ def test_ada_distribution_uses_existing_specialized_builder(
         destination.mkdir()
         return destination
 
-    builder = SimpleNamespace(
-        build_ada_distribution=lambda **kwargs: (
-            calls.append("distribution")
-            or {
-                "status": "BUILT_UNQUALIFIED",
-                "profile": "ada",
-            }
-        )
-    )
+    def build(**kwargs):
+        calls.append("distribution")
+        return {"status": "BUILT_UNQUALIFIED", "profile": "ada"}
 
-    def qualify(*, application, timeout):
+    def qualify(**kwargs):
         calls.append("qualification")
         return {"status": "PRECHECK_PASS", "profile": "ada"}
 
     monkeypatch.setattr(_module, "generate_starter", generate)
-    monkeypatch.setattr(_module, "_load_ada_builder", lambda: builder)
-    monkeypatch.setattr(_module, "_qualify_ada_distribution", qualify)
+    monkeypatch.setattr(_module, "_load_distribution_handler", lambda *_args: build)
+    monkeypatch.setattr(_module, "_run_qualification_handler", qualify)
     monkeypatch.setattr(
         _module,
         "build_wheelhouse",
-        lambda **kwargs: pytest.fail("ADA must not use the generic wheelhouse builder"),
+        lambda **kwargs: pytest.fail("Handler products must not use shared wheelhouse"),
     )
 
     result = _module.build_web_distribution(
@@ -164,7 +155,9 @@ def test_qualification_failure_is_preserved(tmp_path, monkeypatch) -> None:
 def test_ada_starter_root_dependency_matches_current_application() -> None:
     repository = _TOOL.parents[3]
     starter = tomllib.loads(
-        (repository / "tooling/distribution/web/starter/ada/pyproject.toml").read_text()
+        (
+            repository / "scopes/ada/tooling/distribution/web/starter/pyproject.toml"
+        ).read_text()
     )
     application = tomllib.loads(
         (

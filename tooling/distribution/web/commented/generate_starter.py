@@ -223,7 +223,7 @@ def generate_starter(*, profile: str, destination: Path) -> Path:
     )
     overlay = product.get("starter_overlay")
     if overlay:
-        _copy_product_files(STARTER_ROOT / str(overlay), destination)
+        _copy_product_files(REPOSITORY_ROOT / str(overlay), destination)
     if canonical_env_detail is not None:
         shutil.copyfile(canonical_env_detail, destination / ".env.detail")
     if configuration_templates:

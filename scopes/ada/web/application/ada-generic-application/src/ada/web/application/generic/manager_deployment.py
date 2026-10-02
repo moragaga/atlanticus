@@ -183,9 +183,7 @@ def _attach_users_recovery(
             ),
             application_key=namespace.application_namespace,
             identity_realm=next(iter(issuers)),
-            environment=(
-                f'{settings.environment.value}:{resolved.cosmos_settings.database_name}'
-            ),
+            environment=(f'{settings.environment.value}:{resolved.cosmos_settings.database_name}'),
         )
 
     return replace(

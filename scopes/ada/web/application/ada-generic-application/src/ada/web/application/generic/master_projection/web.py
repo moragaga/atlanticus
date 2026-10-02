@@ -52,8 +52,12 @@ class MasterMaterialReader(Protocol):
     def fingerprint(self) -> str | None: ...
 
     def unlock(
-        self, *, service_user: str, password: str,
-        application_namespace: str, environment: str,
+        self,
+        *,
+        service_user: str,
+        password: str,
+        application_namespace: str,
+        environment: str,
     ) -> MasterMaterialIdentity: ...
 
 
@@ -65,13 +69,17 @@ class _AbsentMaterialReader:
         return None
 
     def unlock(
-        self, *, service_user: str, password: str,
-        application_namespace: str, environment: str,
+        self,
+        *,
+        service_user: str,
+        password: str,
+        application_namespace: str,
+        environment: str,
     ) -> MasterMaterialIdentity:
         raise RuntimeError('Master Projection material is absent')
 
 
-_PAGE = '''<!doctype html>
+_PAGE = """<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Master Projection</title>
 <style>
@@ -141,7 +149,7 @@ button{margin-top:1rem;padding:.65rem 1rem}pre{white-space:pre-wrap;overflow-wra
 <label for="master-password">Contraseña</label><input id="master-password" type="password" name="password" maxlength="1024" required>
 <button type="submit">Acceder</button></form>
 {% endif %}
-</main></body></html>'''
+</main></body></html>"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -169,7 +177,11 @@ class MasterProjectionWebBinding:
         def fingerprint() -> str | None:
             try:
                 digest = reader.fingerprint()
-                return digest if isinstance(digest, str) and re.fullmatch(r'[a-f0-9]{64}', digest) else None
+                return (
+                    digest
+                    if isinstance(digest, str) and re.fullmatch(r'[a-f0-9]{64}', digest)
+                    else None
+                )
             except Exception:
                 return None
 
@@ -198,15 +210,19 @@ class MasterProjectionWebBinding:
                 forget()
                 return False
             issued = authorization.get('issued')
-            if (type(issued) is not int or issued > now or now - issued >= _SESSION_SECONDS
-                    or authorization.get('application') != self.application_namespace
-                    or authorization.get('environment') != self.environment
-                    or not isinstance(authorization.get('material_id'), str)
-                    or not isinstance(authorization.get('actions'), list)
-                    or 'projection.preview' not in authorization['actions']
-                    or not hmac.compare_digest(
-                        str(authorization.get('fingerprint', '')), current_fingerprint
-                    )):
+            if (
+                type(issued) is not int
+                or issued > now
+                or now - issued >= _SESSION_SECONDS
+                or authorization.get('application') != self.application_namespace
+                or authorization.get('environment') != self.environment
+                or not isinstance(authorization.get('material_id'), str)
+                or not isinstance(authorization.get('actions'), list)
+                or 'projection.preview' not in authorization['actions']
+                or not hmac.compare_digest(
+                    str(authorization.get('fingerprint', '')), current_fingerprint
+                )
+            ):
                 forget()
                 return False
             return True
@@ -256,14 +272,20 @@ class MasterProjectionWebBinding:
             if authorized and notice is None:
                 notice = session.pop(_RESULT_KEY, None)
             rendered = render_template_string(
-                _PAGE, status=status, error=error, authenticated=authorized,
+                _PAGE,
+                status=status,
+                error=error,
+                authenticated=authorized,
                 csrf=csrf_token() if status == 'PRESENT' else '',
-                plan=plan, planner_error=planner_error,
-                can_apply=can_apply, pending=pending, notice=notice,
-                route=MASTER_PROJECTION_ROUTE, logout_route=MASTER_PROJECTION_LOGOUT_ROUTE,
+                plan=plan,
+                planner_error=planner_error,
+                can_apply=can_apply,
+                pending=pending,
+                notice=notice,
+                route=MASTER_PROJECTION_ROUTE,
+                logout_route=MASTER_PROJECTION_LOGOUT_ROUTE,
             )
-            result_code = (503 if status == 'INVALID' or (authorized and planner_error)
-                           else code)
+            result_code = 503 if status == 'INVALID' or (authorized and planner_error) else code
             return make_response(rendered, result_code)
 
         def execute_action():
@@ -285,8 +307,11 @@ class MasterProjectionWebBinding:
                 selected = request.form.get('source_key', '')
                 try:
                     entry = next(
-                        (entry for entry in self.planner.inspect().entries
-                         if entry.key.value == selected),
+                        (
+                            entry
+                            for entry in self.planner.inspect().entries
+                            if entry.key.value == selected
+                        ),
                         None,
                     )
                 except Exception:
@@ -302,36 +327,49 @@ class MasterProjectionWebBinding:
             if intent != 'confirm':
                 abort(400)
             pending = session.pop(_PENDING_KEY, None)
-            if (not isinstance(pending, dict)
-                    or set(pending) != {'source_key', 'target', 'nonce'}
-                    or not isinstance(pending['nonce'], str)
-                    or not hmac.compare_digest(pending['nonce'], request.form.get('nonce', ''))):
+            if (
+                not isinstance(pending, dict)
+                or set(pending) != {'source_key', 'target', 'nonce'}
+                or not isinstance(pending['nonce'], str)
+                or not hmac.compare_digest(pending['nonce'], request.form.get('nonce', ''))
+            ):
                 return page(notice='No existe una selección válida para confirmar.', code=409)
             try:
                 entry = next(
-                    (entry for entry in self.planner.inspect().entries
-                     if entry.key.value == pending['source_key']),
+                    (
+                        entry
+                        for entry in self.planner.inspect().entries
+                        if entry.key.value == pending['source_key']
+                    ),
                     None,
                 )
             except Exception:
                 return page(notice='No fue posible consultar el plan.', code=503)
-            if (entry is None or entry.state not in _READY
-                    or entry.current_target is None
-                    or entry.to_dict()['current_target'] != pending['target']):
-                return page(notice='La selección cambió. Prepara nuevamente el despliegue.', code=409)
+            if (
+                entry is None
+                or entry.state not in _READY
+                or entry.current_target is None
+                or entry.to_dict()['current_target'] != pending['target']
+            ):
+                return page(
+                    notice='La selección cambió. Prepara nuevamente el despliegue.', code=409
+                )
             try:
                 result = self.executor.apply(
                     source_key=SourceKey(pending['source_key']),
                     expected_target=entry.current_target,
                 )
             except MasterApplyError as error:
-                code = 409 if error.reason in (
-                    'STALE_SELECTION', 'SOURCE_MISSING', 'BLOCKED', 'INVALID_SELECTION'
-                ) else 503
+                code = (
+                    409
+                    if error.reason
+                    in ('STALE_SELECTION', 'SOURCE_MISSING', 'BLOCKED', 'INVALID_SELECTION')
+                    else 503
+                )
                 notice = (
                     'La proyección cambió o quedó bloqueada. Revisa su estado.'
-                    if code == 409 else
-                    'No fue posible verificar el despliegue. Consulta el estado antes de reintentar.'
+                    if code == 409
+                    else 'No fue posible verificar el despliegue. Consulta el estado antes de reintentar.'
                 )
                 return page(notice=notice, code=code)
             except Exception:
@@ -375,18 +413,22 @@ class MasterProjectionWebBinding:
                 return page(error=True)
             try:
                 identity = reader.unlock(
-                    service_user=user, password=password,
+                    service_user=user,
+                    password=password,
                     application_namespace=self.application_namespace,
                     environment=self.environment,
                 )
                 after = fingerprint()
-                if (after is None or not hmac.compare_digest(before, after)
-                        or identity.application_namespace != self.application_namespace
-                        or identity.environment != self.environment
-                        or not isinstance(identity.material_id, str)
-                        or not identity.material_id
-                        or not isinstance(identity.allowed_actions, tuple)
-                        or 'projection.preview' not in identity.allowed_actions):
+                if (
+                    after is None
+                    or not hmac.compare_digest(before, after)
+                    or identity.application_namespace != self.application_namespace
+                    or identity.environment != self.environment
+                    or not isinstance(identity.material_id, str)
+                    or not identity.material_id
+                    or not isinstance(identity.allowed_actions, tuple)
+                    or 'projection.preview' not in identity.allowed_actions
+                ):
                     raise ValueError('Master Projection material changed or is unauthorized')
             except Exception:
                 forget()
@@ -430,12 +472,16 @@ class MasterProjectionWebBinding:
 
         def register_routes(server: Flask, _services: ServiceRegistry) -> None:
             server.add_url_rule(
-                MASTER_PROJECTION_ROUTE, 'ada_master_projection',
-                dispatch, methods=['GET', 'POST'],
+                MASTER_PROJECTION_ROUTE,
+                'ada_master_projection',
+                dispatch,
+                methods=['GET', 'POST'],
             )
             server.add_url_rule(
-                MASTER_PROJECTION_LOGOUT_ROUTE, 'ada_master_projection_logout',
-                dispatch, methods=['POST'],
+                MASTER_PROJECTION_LOGOUT_ROUTE,
+                'ada_master_projection_logout',
+                dispatch,
+                methods=['POST'],
             )
 
         return WebModule(

@@ -37,19 +37,22 @@ def _projection():
         payload=NavigationConfigurationCatalog(
             links=(
                 NavigationLinkConfiguration(
-                    key='public', label='Public', href='/public',
+                    key='public',
+                    label='Public',
+                    href='/public',
                 ),
                 NavigationLinkConfiguration(
-                    key='disabled', label='Disabled', href='/disabled', enabled=False,
+                    key='disabled',
+                    label='Disabled',
+                    href='/disabled',
+                    enabled=False,
                 ),
             ),
         ),
     )
 
 
-def test_local_bootstrap_can_recover_manager_then_consume_new_projection(
-    tmp_path, monkeypatch
-):
+def test_local_bootstrap_can_recover_manager_then_consume_new_projection(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'local')
     stores = create_local_configuration_manager_stores(source_root=tmp_path / 'source')

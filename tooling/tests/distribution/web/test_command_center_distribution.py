@@ -103,11 +103,6 @@ def test_command_center_distribution_uses_shared_wheelhouse_and_artifact_prechec
     monkeypatch.setattr(distributor, "generate_starter", generate)
     monkeypatch.setattr(distributor, "build_wheelhouse", build)
     monkeypatch.setattr(distributor, "qualify", qualify)
-    monkeypatch.setattr(
-        distributor,
-        "_load_ada_builder",
-        lambda: pytest.fail("Command Center must not use the ADA builder"),
-    )
 
     result = distributor.build_web_distribution(
         profile="command-center",
@@ -173,7 +168,9 @@ def test_command_center_artifact_probe_checks_metadata_entrypoint_and_portabilit
 
 
 def test_command_center_starter_commented_mirror_is_ast_equivalent() -> None:
-    root = _WEB_ROOT / "starter/command-center"
+    root = (
+        _REPOSITORY_ROOT / "scopes/ada-command-center/tooling/distribution/web/starter"
+    )
     productive = ast.dump(
         ast.parse((root / "src/application/__main__.py").read_text(encoding="utf-8")),
         include_attributes=False,

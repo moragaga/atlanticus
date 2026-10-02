@@ -192,9 +192,7 @@ def test_validation_reports_differences_without_restore(wiring, capsys):
     result = json.loads(capsys.readouterr().out)
     assert result['can_restore'] is True
     assert result['registry_state'] == 'empty'
-    assert result['differences'] == [
-        {'user_id': 'approved', 'kind': 'missing', 'fields': []}
-    ]
+    assert result['differences'] == [{'user_id': 'approved', 'kind': 'missing', 'fields': []}]
     assert wiring.service.events == [('validate', 'snap-one')]
 
 
@@ -211,34 +209,57 @@ def test_restore_requires_every_confirmation_before_connections(wiring, flag):
 def test_restore_refuses_unpublished_access(wiring):
     wiring.runtime.stores.access.get_active = lambda key: None
     with pytest.raises(UsersRecoveryConflictError, match='Access'):
-        operator.main([
-            *restore_args(), '--confirm-restore', '--confirm-maintenance', '--reviewed-revocations'
-        ])
+        operator.main(
+            [
+                *restore_args(),
+                '--confirm-restore',
+                '--confirm-maintenance',
+                '--reviewed-revocations',
+            ]
+        )
     assert wiring.service.events == []
 
 
 def test_restore_refuses_conflicted_target(wiring):
     wiring.service.validation.can_restore = False
     with pytest.raises(UsersRecoveryConflictError, match='not empty'):
-        operator.main([
-            *restore_args(), '--confirm-restore', '--confirm-maintenance', '--reviewed-revocations'
-        ])
+        operator.main(
+            [
+                *restore_args(),
+                '--confirm-restore',
+                '--confirm-maintenance',
+                '--reviewed-revocations',
+            ]
+        )
     assert not any(event[0] == 'restore' for event in wiring.service.events)
 
 
 def test_restore_refuses_changed_snapshot_digest(wiring):
     wiring.service.validation.snapshot.content_digest = 'different'
     with pytest.raises(UsersRecoveryConflictError, match='digest'):
-        operator.main([
-            *restore_args(), '--confirm-restore', '--confirm-maintenance', '--reviewed-revocations'
-        ])
+        operator.main(
+            [
+                *restore_args(),
+                '--confirm-restore',
+                '--confirm-maintenance',
+                '--reviewed-revocations',
+            ]
+        )
     assert not any(event[0] == 'restore' for event in wiring.service.events)
 
 
 def test_restore_audits_distinct_operation_and_returns_validation(wiring, capsys):
-    assert operator.main([
-        *restore_args(), '--confirm-restore', '--confirm-maintenance', '--reviewed-revocations'
-    ]) == 0
+    assert (
+        operator.main(
+            [
+                *restore_args(),
+                '--confirm-restore',
+                '--confirm-maintenance',
+                '--reviewed-revocations',
+            ]
+        )
+        == 0
+    )
     started, completed = (json.loads(line) for line in capsys.readouterr().out.splitlines())
     assert started['operation_id'] == completed['operation_id']
     assert started['stage'] == 'starting'
@@ -294,9 +315,9 @@ def test_composition_reuses_application_namespace_and_recovery_prefixes(monkeypa
     stores = SimpleNamespace(users_registry=object(), users_promoted=object(), profiles=profiles)
     deployment = SimpleNamespace(
         stores=stores,
-        resources=SimpleNamespace(users_registry=SimpleNamespace(
-            connection_ref='storage', container_name='configuration'
-        )),
+        resources=SimpleNamespace(
+            users_registry=SimpleNamespace(connection_ref='storage', container_name='configuration')
+        ),
         connections=SimpleNamespace(storage={'storage': client}),
     )
     operator._service(
@@ -328,10 +349,14 @@ def test_operator_pedagogical_mirror_preserves_behavior():
 def replacement_args():
     return [
         *common('replace'),
-        '--snapshot-id', 'snap-one',
-        '--expected-digest', 'digest-one',
-        '--operator-id', 'operator',
-        '--approval-reference', 'manual-approval',
+        '--snapshot-id',
+        'snap-one',
+        '--expected-digest',
+        'digest-one',
+        '--operator-id',
+        'operator',
+        '--approval-reference',
+        'manual-approval',
     ]
 
 
@@ -347,7 +372,8 @@ def test_inspect_replace_does_not_require_access_projection(wiring, capsys):
 
 
 @pytest.mark.parametrize(
-    'missing', ('--confirm-replace', '--confirm-maintenance', '--reviewed-revocations'),
+    'missing',
+    ('--confirm-replace', '--confirm-maintenance', '--reviewed-revocations'),
 )
 def test_replace_requires_every_confirmation_before_connections(wiring, missing):
     flags = {'--confirm-replace', '--confirm-maintenance', '--reviewed-revocations'}
@@ -358,10 +384,17 @@ def test_replace_requires_every_confirmation_before_connections(wiring, missing)
 
 def test_replace_uses_separate_authorized_operation_and_returns_result(wiring, capsys):
     wiring.runtime.stores.access.get_active = lambda _key: None
-    assert operator.main([
-        *replacement_args(), '--confirm-replace', '--confirm-maintenance',
-        '--reviewed-revocations',
-    ]) == 0
+    assert (
+        operator.main(
+            [
+                *replacement_args(),
+                '--confirm-replace',
+                '--confirm-maintenance',
+                '--reviewed-revocations',
+            ]
+        )
+        == 0
+    )
     started, completed = (json.loads(line) for line in capsys.readouterr().out.splitlines())
     assert started['operation_id'] == completed['operation_id']
     assert completed['mode'] == 'replace'

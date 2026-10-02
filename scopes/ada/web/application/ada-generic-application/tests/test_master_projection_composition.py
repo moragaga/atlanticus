@@ -39,11 +39,17 @@ def test_web_backend_reuses_six_projectors_and_does_not_require_manager_permissi
     planner = compose_master_projection_planner(stores)
     report = planner.inspect()
     assert {item.key.value for item in report.entries} == {
-        'navigation', 'profiles-configuration', 'tools', 'ada-access',
-        'kpis', 'kpi-definitions',
+        'navigation',
+        'profiles-configuration',
+        'tools',
+        'ada-access',
+        'kpis',
+        'kpi-definitions',
     }
     assert {item.key.value for item in report.entries if item.prerequisites} == {
-        'ada-access', 'kpis', 'kpi-definitions',
+        'ada-access',
+        'kpis',
+        'kpi-definitions',
     }
     assert all(item.state is ProjectionPlanState.SOURCE_MISSING for item in report.entries)
     assert report.users.state is UsersPlanState.PROFILES_PENDING

@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from contextlib import contextmanager
-from types import SimpleNamespace
-
 import pytest
 
 from ada.web.application.generic import manager_deployment
@@ -143,7 +140,8 @@ def test_open_manager_closes_both_clients_and_is_lazy(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(
         manager_deployment,
-        '_attach_users_recovery', lambda stores, *_arguments: stores,
+        '_attach_users_recovery',
+        lambda stores, *_arguments: stores,
     )
     with open_durable_manager(_settings(tmp_path)) as runtime:
         assert len(constructed) == 2
@@ -187,16 +185,20 @@ def test_preparation_wrapper_reuses_shared_resource_coordinator(tmp_path, monkey
     monkeypatch.setattr(manager_deployment, 'prepare_manager_resources', fake_prepare)
     with open_durable_manager(_settings(tmp_path)) as runtime:
         actual = prepare_durable_manager_resources(
-            runtime, action='prepare', environment=WebEnvironment.PRODUCTION,
+            runtime,
+            action='prepare',
+            environment=WebEnvironment.PRODUCTION,
         )
         assert actual is expected
-        assert calls == [{
-            'resources': runtime.resources,
-            'connections': runtime.connections,
-            'action': 'prepare',
-            'environment': WebEnvironment.PRODUCTION,
-            'observe_failure': None,
-        }]
+        assert calls == [
+            {
+                'resources': runtime.resources,
+                'connections': runtime.connections,
+                'action': 'prepare',
+                'environment': WebEnvironment.PRODUCTION,
+                'observe_failure': None,
+            }
+        ]
 
 
 def test_unsupported_action_rejected_before_provider_access(tmp_path):
@@ -205,82 +207,3 @@ def test_unsupported_action_rejected_before_provider_access(tmp_path):
             prepare_durable_manager_resources(
                 runtime, action='repair', environment=WebEnvironment.LOCAL
             )
-
-
-def test_cli_local_uses_local_manager(monkeypatch):
-    import importlib
-
-    entrypoint = importlib.import_module('ada.web.application.generic.__main__')
-    calls = []
-    settings = SimpleNamespace(environment=WebEnvironment.LOCAL)
-    monkeypatch.setattr(entrypoint, 'AdaGenericSettings', lambda: settings)
-    monkeypatch.setattr(
-        entrypoint, 'ManagerStartupOptions',
-        lambda: SimpleNamespace(provider=AdaPersistenceMode.LOCAL),
-    )
-    monkeypatch.setattr(entrypoint, 'create_local_configuration_manager_stores', lambda: 'local')
-    monkeypatch.setattr(entrypoint, '_local_identity', lambda: 'identity')
-    monkeypatch.setattr(
-        entrypoint,
-        'create_operational_application_runtime',
-        lambda **kwargs: calls.append(kwargs) or 'runtime',
-    )
-    monkeypatch.setattr(entrypoint, 'run_web_application', lambda runtime: calls.append(runtime))
-    entrypoint.main()
-    assert calls[0]['manager_stores'] == 'local'
-    assert calls[0]['identity_provider'] == 'identity'
-    assert calls[-1] == 'runtime'
-
-
-def test_cli_durable_keeps_open_clients_during_server(monkeypatch):
-    import importlib
-
-    entrypoint = importlib.import_module('ada.web.application.generic.__main__')
-    settings = SimpleNamespace(environment=WebEnvironment.LOCAL)
-    monkeypatch.setattr(entrypoint, 'AdaGenericSettings', lambda: settings)
-    monkeypatch.setattr(
-        entrypoint, 'ManagerStartupOptions',
-        lambda: SimpleNamespace(provider=AdaPersistenceMode.DURABLE),
-    )
-    events = []
-
-    @contextmanager
-    def fake_manager(_settings):
-        events.append('opened')
-        yield SimpleNamespace(stores='durable')
-        events.append('closed')
-
-    monkeypatch.setattr(entrypoint, 'open_durable_manager', fake_manager)
-    monkeypatch.setattr(entrypoint, '_local_identity', lambda: 'identity')
-    monkeypatch.setattr(
-        entrypoint,
-        'create_operational_application_runtime',
-        lambda **kwargs: events.append(kwargs) or 'runtime',
-    )
-    monkeypatch.setattr(
-        entrypoint, 'run_web_application', lambda runtime: events.append(('served', runtime))
-    )
-    entrypoint.main()
-    assert events[0] == 'opened'
-    assert events[1]['manager_stores'] == 'durable'
-    assert events[1]['identity_provider'] == 'identity'
-    assert events[2] == ('served', 'runtime')
-    assert events[3] == 'closed'
-
-
-def test_production_cli_requires_external_identity_in_durable_mode(monkeypatch):
-    import importlib
-
-    from atlanticus.web.identity.errors import IdentityConfigurationError
-
-    entrypoint = importlib.import_module('ada.web.application.generic.__main__')
-    monkeypatch.setattr(
-        entrypoint, 'AdaGenericSettings',
-        lambda: SimpleNamespace(environment=WebEnvironment.PRODUCTION),
-    )
-    monkeypatch.setattr(
-        entrypoint, 'ManagerStartupOptions',
-        lambda: SimpleNamespace(provider=AdaPersistenceMode.DURABLE),
-    )
-    with pytest.raises(IdentityConfigurationError, match='injected production identity'):
-        entrypoint.main()

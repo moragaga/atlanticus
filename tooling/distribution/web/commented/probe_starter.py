@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import tomllib
 from importlib import metadata
@@ -18,7 +17,6 @@ _STARTER_PACKAGES = frozenset(
 )
 
 
-# Un wheel interno instalado en editable invalida una calificación portable.
 def _verify_dependencies(portable: bool) -> list[str]:
     errors: list[str] = []
     for distribution in metadata.distributions():
@@ -42,7 +40,7 @@ def _verify_dependencies(portable: bool) -> list[str]:
     return errors
 
 
-# Valida la instalación portable sin ejecutar el runtime ni requerir Storage.
+# Los productos con composition root propio se validan como artefactos.
 def _probe_artifact(*, product: dict[str, object], portable: bool) -> dict[str, object]:
     starter_package = str(product["starter_package"])
     root_package = str(product["root_package"])
@@ -58,20 +56,12 @@ def _probe_artifact(*, product: dict[str, object], portable: bool) -> dict[str, 
     entrypoint = matches[0].load()
     if not callable(entrypoint):
         raise AssertionError("Starter console entrypoint is not callable")
-    checks = [
-        "starter.metadata",
-        "root.metadata",
-        "starter.entrypoint",
-    ]
+    checks = ["starter.metadata", "root.metadata", "starter.entrypoint"]
     errors = _verify_dependencies(portable)
     if errors:
         return {"status": "FAIL", "checks": checks, "errors": errors}
     checks.append("dependencies.portable")
-    return {
-        "status": "PASS",
-        "checks": checks,
-        "python": sys.version.split()[0],
-    }
+    return {"status": "PASS", "checks": checks, "python": sys.version.split()[0]}
 
 
 def _check_response(client: object, path: str, *, status: int = 200) -> object:
@@ -83,44 +73,13 @@ def _check_response(client: object, path: str, *, status: int = 200) -> object:
     return response
 
 
-# La estrategia decide si se valida sólo el artefacto o se compone un runtime Web real.
-def probe(*, profile: str, application: Path, portable: bool) -> dict[str, object]:
-    product = _PRODUCTS[profile]
-    strategy = product["probe_strategy"]
-    if strategy == "artifact":
-        return _probe_artifact(product=product, portable=portable)
-    metadata.version(str(product["starter_package"]))
+# Sólo el Starter genérico se compone dentro del probe compartido.
+def _probe_generic(*, portable: bool) -> dict[str, object]:
+    metadata.version("application-starter")
+    from application.composition import create_application_definition
     from atlanticus.web.application import create_web_application
-    from dash import page_registry
 
-    if strategy == "generic":
-        from application.composition import create_application_definition
-
-        runtime = create_web_application(create_application_definition())
-    elif strategy == "ada":
-        from ada.web.application.generic.bootstrap import (
-            create_operational_application_runtime,
-        )
-        from ada.web.application.generic.settings import AdaGenericSettings
-        from application.composition import create_composition
-
-        settings = AdaGenericSettings.from_mapping(
-            {
-                "ATLANTICUS_ENVIRONMENT": "local",
-                "ADA_TOOL_NAMESPACE": "qualification",
-                "ADA_TOOL_SOURCE_PROVIDER": "local",
-                "ADA_TOOL_PROJECTION_PROVIDER": "local",
-                "ADA_TOOL_LOCAL_BASE_ROOT": os.environ[
-                    "STARTER_QUALIFICATION_LOCAL_ROOT"
-                ],
-            }
-        )
-        runtime = create_operational_application_runtime(
-            settings=settings,
-            composition_factory=create_composition,
-        )
-    else:
-        raise ValueError("Unsupported Web Starter probe strategy")
+    runtime = create_web_application(create_application_definition())
     checks: list[str] = []
     client = runtime.server.test_client()
     live = _check_response(client, "/health/live").get_json()
@@ -136,54 +95,10 @@ def probe(*, profile: str, application: Path, portable: bool) -> dict[str, objec
     checks.append("health.ready.diagnostic")
     _check_response(client, "/")
     checks.append("home.http")
-    _check_response(client, "/example")
-    checks.append("example.http")
     layout = _check_response(client, "/_dash-layout").get_json()
-    expected_root = (
-        "application-content" if strategy == "generic" else "ada-generic-application"
-    )
-    if expected_root not in json.dumps(layout):
+    if "application-content" not in json.dumps(layout):
         raise AssertionError("Dash application layout is missing the expected root")
     checks.append("dash.layout")
-    expected_page = "application.modules.example.pages.overview"
-    if expected_page not in runtime.page_modules or expected_page not in page_registry:
-        raise AssertionError("Example module page is not registered")
-    checks.append("module.page.registration")
-    dependencies = _check_response(client, "/_dash-dependencies").get_json()
-    if not isinstance(dependencies, list) or not any(
-        "starter-example-result.children" in str(entry.get("output"))
-        for entry in dependencies
-    ):
-        raise AssertionError("Example callback is missing from Dash dependencies")
-    checks.append("module.callback.registration")
-    response = client.post(
-        "/_dash-update-component",
-        json={
-            "output": "starter-example-result.children",
-            "outputs": {"id": "starter-example-result", "property": "children"},
-            "inputs": [
-                {"id": "starter-example-button", "property": "n_clicks", "value": 3}
-            ],
-            "state": [],
-            "changedPropIds": ["starter-example-button.n_clicks"],
-        },
-    )
-    if response.status_code != 200 or "Activations: 3" not in response.get_data(
-        as_text=True
-    ):
-        raise AssertionError("Example callback did not return the expected result")
-    checks.append("module.callback.http")
-    css_entries = [
-        entry
-        for entry in runtime.assets.css_entries
-        if "starter_example" in entry and entry.endswith(".css")
-    ]
-    if len(css_entries) != 1:
-        raise AssertionError("Expected one published example module stylesheet")
-    css_response = _check_response(client, "/assets/" + css_entries[0])
-    if b"#starter-example-page" not in css_response.data:
-        raise AssertionError("Published example stylesheet contents are invalid")
-    checks.append("module.assets.http")
     errors = _verify_dependencies(portable)
     if errors:
         return {"status": "FAIL", "checks": checks, "errors": errors}
@@ -195,7 +110,17 @@ def probe(*, profile: str, application: Path, portable: bool) -> dict[str, objec
     }
 
 
-# El proceso auxiliar expone un resultado estructurado al orquestador.
+def probe(*, profile: str, application: Path, portable: bool) -> dict[str, object]:
+    del application
+    product = _PRODUCTS[profile]
+    strategy = product["probe_strategy"]
+    if strategy == "artifact":
+        return _probe_artifact(product=product, portable=portable)
+    if strategy == "generic":
+        return _probe_generic(portable=portable)
+    raise ValueError("Unsupported Web Starter probe strategy")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--profile", choices=_PROFILES, required=True)

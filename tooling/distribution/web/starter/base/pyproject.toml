@@ -20,8 +20,6 @@ package-dir = {"" = "src"}
 where = ["src"]
 include = ["application*"]
 
-[tool.setuptools.package-data]
-"application.modules.example" = ["resources/css/*.css", "resources/css/css.list"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

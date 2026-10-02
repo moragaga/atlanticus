@@ -47,7 +47,8 @@ class Sources:
             source_key=source_key,
             current=(
                 SourceReleaseSummary(current, Digest('sha256', 'current'))
-                if current is not None else None
+                if current is not None
+                else None
             ),
             concurrency_token=ConcurrencyToken('current') if current is not None else None,
         )
@@ -110,13 +111,15 @@ def backend():
     for name, required in specs.items():
         service = Projector(sources, projections, tuple(key(item) for item in required))
         services[name] = service
-        domains.append(ProjectionDomain(
-            key=key(name),
-            source=sources,
-            projection=projections,
-            service=service,
-            requires=tuple(key(item) for item in required),
-        ))
+        domains.append(
+            ProjectionDomain(
+                key=key(name),
+                source=sources,
+                projection=projections,
+                service=service,
+                requires=tuple(key(item) for item in required),
+            )
+        )
     planner = MasterProjectionPlanner(
         domains=tuple(domains),
         profiles_key=key('profiles-configuration'),

@@ -128,6 +128,3 @@ def create_local_operational_composition(
         layout=create_ada_operational_layout(navigation_enabled=True),
         operational_body_factory=operational_body_factory,
     )
-
-
-

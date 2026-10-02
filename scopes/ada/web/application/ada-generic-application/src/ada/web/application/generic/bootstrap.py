@@ -172,20 +172,20 @@ def create_operational_application_runtime(
             resolution,
             composition=composition,
             operational_render_binding=(
-                operational_binding
-                if composition.operational_body_factory is not None
-                else None
+                operational_binding if composition.operational_body_factory is not None else None
             ),
         )
     if manager_identity is not None:
         provider, users_runtime, _dependencies, resolver = manager_identity
         definition = _bind_manager_identity(
-            definition, provider, users_runtime, resolver,
+            definition,
+            provider,
+            users_runtime,
+            resolver,
             master_routes=master_material_reader is not None,
         )
-    elif (
-        manager_dependencies is not None
-        and isinstance(manager_dependencies.principal_provider, ManagerPrincipalBinding)
+    elif manager_dependencies is not None and isinstance(
+        manager_dependencies.principal_provider, ManagerPrincipalBinding
     ):
         if not resolved_settings.environment.is_local:
             raise IdentityConfigurationError(
@@ -198,7 +198,8 @@ def create_operational_application_runtime(
                     LocalIdentityProvider(),
                     independent_routes=(
                         MASTER_PROJECTION_INDEPENDENT_ROUTES
-                        if master_material_reader is not None else ()
+                        if master_material_reader is not None
+                        else ()
                     ),
                 ),
                 *definition.modules,
@@ -236,7 +237,8 @@ def create_operational_application_runtime(
         if master_material_reader is not None:
             backend = (
                 compose_master_projection_backend(manager_stores)
-                if manager_stores is not None else None
+                if manager_stores is not None
+                else None
             )
             master_module = MasterProjectionWebBinding(
                 application_namespace=resolved_settings.application_namespace,
@@ -320,7 +322,8 @@ def _bind_manager_identity(
     master_routes: bool = False,
 ) -> WebApplicationDefinition:
     identity = create_identity_module(
-        provider, access_resolver=resolver,
+        provider,
+        access_resolver=resolver,
         independent_routes=MASTER_PROJECTION_INDEPENDENT_ROUTES if master_routes else (),
     )
     identity_count = sum(module.name == identity.name for module in definition.modules)
@@ -375,8 +378,7 @@ def _bind_manager_navigation(
     return replace(
         definition,
         modules=tuple(
-            navigation if module.name == 'navigation' else module
-            for module in definition.modules
+            navigation if module.name == 'navigation' else module for module in definition.modules
         ),
     )
 

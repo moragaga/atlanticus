@@ -17,30 +17,36 @@ from atlanticus.web.configuration import WebEnvironment
 
 
 def _configuration():
-    settings = AdaGenericSettings.from_mapping({
-        'ATLANTICUS_ENVIRONMENT': 'local',
-        'ADA_APPLICATION_NAMESPACE': 'ada-site',
-        'ADA_TOOL_NAMESPACE': 'plant',
-        'ADA_TOOL_SOURCE_PROVIDER': 'blob',
-        'ADA_TOOL_PROJECTION_PROVIDER': 'cosmos',
-        'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME': 'configuration',
-        'ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING': 'UseDevelopmentStorage=true',
-        'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT': 'http://localhost:8081',
-        'ADA_TOOL_PROJECTION_COSMOS_KEY': 'test-only',
-        'ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME': 'ada',
-    })
+    settings = AdaGenericSettings.from_mapping(
+        {
+            'ATLANTICUS_ENVIRONMENT': 'local',
+            'ADA_APPLICATION_NAMESPACE': 'ada-site',
+            'ADA_TOOL_NAMESPACE': 'plant',
+            'ADA_TOOL_SOURCE_PROVIDER': 'blob',
+            'ADA_TOOL_PROJECTION_PROVIDER': 'cosmos',
+            'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME': 'configuration',
+            'ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING': 'UseDevelopmentStorage=true',
+            'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT': 'http://localhost:8081',
+            'ADA_TOOL_PROJECTION_COSMOS_KEY': 'test-only',
+            'ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME': 'ada',
+        }
+    )
     return resolve_durable_manager_configuration(settings)
 
 
-def _deployment(monkeypatch, *, database_created=False, created=(), failures=(),
-                database_failure=False):
+def _deployment(
+    monkeypatch, *, database_created=False, created=(), failures=(), database_failure=False
+):
     events = []
-    storage = SimpleNamespace(settings=SimpleNamespace(), health_check=lambda **kwargs:
-                              events.append(('blob-check', kwargs['container_name'])))
+    storage = SimpleNamespace(
+        settings=SimpleNamespace(),
+        health_check=lambda **kwargs: events.append(('blob-check', kwargs['container_name'])),
+    )
     cosmos = SimpleNamespace(
         settings=SimpleNamespace(database_name='ada'),
-        health_check=lambda: events.append(('database-check',)) or (
-            _raise(RuntimeError('no-database')) if database_failure else True
+        health_check=lambda: (
+            events.append(('database-check',))
+            or (_raise(RuntimeError('no-database')) if database_failure else True)
         ),
     )
 
@@ -71,7 +77,8 @@ def _deployment(monkeypatch, *, database_created=False, created=(), failures=(),
 
     monkeypatch.setattr(resource_preparation, 'CosmosProvisioner', Provisioner)
     monkeypatch.setattr(
-        resource_preparation, 'ensure_local_blob_container',
+        resource_preparation,
+        'ensure_local_blob_container',
         lambda settings, name: events.append(('blob-ensure', name)) or True,
     )
     config = _configuration()
@@ -79,7 +86,8 @@ def _deployment(monkeypatch, *, database_created=False, created=(), failures=(),
         stores=None,
         resources=config.resources,
         connections=ManagerPersistenceConnections(
-            storage={'ada-blob': storage}, cosmos={'ada-cosmos': cosmos},
+            storage={'ada-blob': storage},
+            cosmos={'ada-cosmos': cosmos},
         ),
     )
     return deployment, events
@@ -100,14 +108,17 @@ def test_local_prepare_creates_missing_database_blob_and_each_container(monkeypa
         created={'users-support', 'users-runtime'},
     )
     report = prepare_durable_manager_resources(
-        deployment, action='prepare', environment=WebEnvironment.LOCAL,
+        deployment,
+        action='prepare',
+        environment=WebEnvironment.LOCAL,
     )
     assert report.status == 'COMPLETED'
     assert len(_cosmos(report)) == 6
     assert report.results[0].status is Status.CREATED
     assert report.results[1].status is Status.CREATED
     assert {x.physical_name for x in _cosmos(report) if x.status is Status.CREATED} == {
-        'users-support', 'users-runtime',
+        'users-support',
+        'users-runtime',
     }
     assert events[0] == ('blob-ensure', 'configuration')
     assert events[1] == ('database-ensure',)
@@ -119,21 +130,24 @@ def test_production_prepares_only_cosmos_containers_and_never_touches_blob_or_da
 ):
     deployment, events = _deployment(monkeypatch, created={'users-support'})
     report = prepare_durable_manager_resources(
-        deployment, action='prepare', environment=WebEnvironment.PRODUCTION,
+        deployment,
+        action='prepare',
+        environment=WebEnvironment.PRODUCTION,
     )
     assert report.status == 'COMPLETED'
     assert report.results[0].status is Status.SKIPPED
     assert ('database-check',) in events
     assert ('container-ensure', 'users-support') in events
-    assert not any(item[0].startswith('blob') or item[0] == 'database-ensure'
-                   for item in events)
+    assert not any(item[0].startswith('blob') or item[0] == 'database-ensure' for item in events)
 
 
 def test_validate_is_read_only_in_both_environments(monkeypatch):
     for environment in (WebEnvironment.LOCAL, WebEnvironment.PRODUCTION):
         deployment, events = _deployment(monkeypatch)
         report = prepare_durable_manager_resources(
-            deployment, action='validate', environment=environment,
+            deployment,
+            action='validate',
+            environment=environment,
         )
         assert report.status == 'COMPLETED'
         assert all(item.status is Status.READY for item in _cosmos(report))
@@ -151,7 +165,9 @@ def test_container_failure_is_isolated_and_reported_without_leaking_exception_me
     deployment, events = _deployment(monkeypatch, failures={'users-runtime'})
     failures = []
     report = prepare_durable_manager_resources(
-        deployment, action='prepare', environment=WebEnvironment.PRODUCTION,
+        deployment,
+        action='prepare',
+        environment=WebEnvironment.PRODUCTION,
         observe_failure=failures.append,
     )
     assert report.status == 'PARTIAL'
@@ -160,15 +176,20 @@ def test_container_failure_is_isolated_and_reported_without_leaking_exception_me
     assert failures[0].error_type == 'RuntimeError'
     assert 'provisioning-failure' not in str(report.to_dict())
     assert len(_cosmos(report)) == 6
-    assert all(item.status is Status.READY for item in _cosmos(report)
-               if item.physical_name != 'users-runtime')
+    assert all(
+        item.status is Status.READY
+        for item in _cosmos(report)
+        if item.physical_name != 'users-runtime'
+    )
     assert events.index(('container-ensure', 'users-runtime')) < len(events) - 1
 
 
 def test_database_failure_blocks_all_cosmos_containers_without_mutations(monkeypatch):
     deployment, events = _deployment(monkeypatch, database_failure=True)
     report = prepare_durable_manager_resources(
-        deployment, action='prepare', environment=WebEnvironment.PRODUCTION,
+        deployment,
+        action='prepare',
+        environment=WebEnvironment.PRODUCTION,
     )
     assert report.status == 'FAILED'
     assert report.results[0].status is Status.SKIPPED
@@ -180,12 +201,16 @@ def test_database_failure_blocks_all_cosmos_containers_without_mutations(monkeyp
 def test_subsequent_invocation_rechecks_failed_resource(monkeypatch):
     deployment, events = _deployment(monkeypatch, failures={'users-runtime'})
     first = prepare_durable_manager_resources(
-        deployment, action='prepare', environment=WebEnvironment.PRODUCTION,
+        deployment,
+        action='prepare',
+        environment=WebEnvironment.PRODUCTION,
     )
     assert first.status == 'PARTIAL'
     deployment, second_events = _deployment(monkeypatch)
     second = prepare_durable_manager_resources(
-        deployment, action='prepare', environment=WebEnvironment.PRODUCTION,
+        deployment,
+        action='prepare',
+        environment=WebEnvironment.PRODUCTION,
     )
     assert second.status == 'COMPLETED'
     assert ('container-ensure', 'users-runtime') in second_events
@@ -195,7 +220,9 @@ def test_contract_rejects_unsupported_action_without_touching_resources(monkeypa
     deployment, events = _deployment(monkeypatch)
     with pytest.raises(ValueError, match='Unknown'):
         prepare_durable_manager_resources(
-            deployment, action='ensure-local', environment=WebEnvironment.LOCAL,
+            deployment,
+            action='ensure-local',
+            environment=WebEnvironment.LOCAL,
         )
     assert events == []
 
@@ -207,19 +234,27 @@ def test_observer_failure_does_not_mask_preparation_result(monkeypatch):
         raise RuntimeError('observer-down')
 
     report = prepare_durable_manager_resources(
-        deployment, action='prepare', environment=WebEnvironment.PRODUCTION,
+        deployment,
+        action='prepare',
+        environment=WebEnvironment.PRODUCTION,
         observe_failure=broken_observer,
     )
     assert report.status == 'PARTIAL'
 
 
-@pytest.mark.parametrize(('existing', 'race', 'expected_created'), [
-    (True, False, False),
-    (False, False, True),
-    (False, True, False),
-])
+@pytest.mark.parametrize(
+    ('existing', 'race', 'expected_created'),
+    [
+        (True, False, False),
+        (False, False, True),
+        (False, True, False),
+    ],
+)
 def test_local_blob_creation_is_idempotent_and_rechecks_races(
-    monkeypatch, existing, race, expected_created,
+    monkeypatch,
+    existing,
+    race,
+    expected_created,
 ):
     import sys
     from types import ModuleType
@@ -282,7 +317,9 @@ def test_production_never_attempts_blob_access_even_if_connection_missing(monkey
     deployment, events = _deployment(monkeypatch)
     deployment.connections.storage.clear()
     report = prepare_durable_manager_resources(
-        deployment, action='prepare', environment=WebEnvironment.PRODUCTION,
+        deployment,
+        action='prepare',
+        environment=WebEnvironment.PRODUCTION,
     )
     assert report.status == 'COMPLETED'
     assert report.results[0].status is Status.SKIPPED
@@ -296,7 +333,9 @@ def test_container_topology_mismatch_is_reported_without_repairing_it(monkeypatc
         pass
 
     monkeypatch.setattr(
-        resource_preparation, 'CosmosContainerDefinitionMismatchError', DefinitionMismatch,
+        resource_preparation,
+        'CosmosContainerDefinitionMismatchError',
+        DefinitionMismatch,
     )
     provisioner = resource_preparation.CosmosProvisioner
     original = provisioner.ensure_containers
@@ -308,7 +347,9 @@ def test_container_topology_mismatch_is_reported_without_repairing_it(monkeypatc
 
     monkeypatch.setattr(provisioner, 'ensure_containers', with_mismatch)
     report = prepare_durable_manager_resources(
-        deployment, action='prepare', environment=WebEnvironment.PRODUCTION,
+        deployment,
+        action='prepare',
+        environment=WebEnvironment.PRODUCTION,
     )
     assert report.status == 'PARTIAL'
     incompatible = [item for item in report.results if item.status is Status.INCOMPATIBLE]
@@ -325,11 +366,13 @@ def test_missing_local_blob_is_reported_without_blocking_independent_cosmos(monk
         pass
 
     monkeypatch.setattr(resource_preparation, 'StorageContainerNotFoundError', MissingBlob)
-    deployment.connections.storage['ada-blob'].health_check = (
-        lambda **_kwargs: _raise(MissingBlob('missing-blob'))
+    deployment.connections.storage['ada-blob'].health_check = lambda **_kwargs: _raise(
+        MissingBlob('missing-blob')
     )
     report = prepare_durable_manager_resources(
-        deployment, action='validate', environment=WebEnvironment.LOCAL,
+        deployment,
+        action='validate',
+        environment=WebEnvironment.LOCAL,
     )
     assert report.status == 'PARTIAL'
     assert report.results[0].status is Status.MISSING
@@ -343,11 +386,13 @@ def test_missing_productive_database_is_not_created(monkeypatch):
         pass
 
     monkeypatch.setattr(resource_preparation, 'CosmosDatabaseNotFoundError', MissingDatabase)
-    deployment.connections.cosmos['ada-cosmos'].health_check = (
-        lambda: _raise(MissingDatabase('missing-db'))
+    deployment.connections.cosmos['ada-cosmos'].health_check = lambda: _raise(
+        MissingDatabase('missing-db')
     )
     report = prepare_durable_manager_resources(
-        deployment, action='prepare', environment=WebEnvironment.PRODUCTION,
+        deployment,
+        action='prepare',
+        environment=WebEnvironment.PRODUCTION,
     )
     assert report.status == 'FAILED'
     assert report.results[1].status is Status.MISSING
@@ -360,7 +405,9 @@ def test_report_is_json_serializable_and_never_includes_exception_messages(monke
 
     deployment, _ = _deployment(monkeypatch, failures={'users-runtime'})
     report = prepare_durable_manager_resources(
-        deployment, action='prepare', environment=WebEnvironment.PRODUCTION,
+        deployment,
+        action='prepare',
+        environment=WebEnvironment.PRODUCTION,
     )
     payload = json.dumps(report.to_dict(), sort_keys=True)
     assert 'users-runtime' in payload
@@ -371,7 +418,9 @@ def test_report_is_json_serializable_and_never_includes_exception_messages(monke
 def test_local_database_failure_does_not_hide_blob_result(monkeypatch):
     deployment, events = _deployment(monkeypatch, database_failure=True)
     report = prepare_durable_manager_resources(
-        deployment, action='prepare', environment=WebEnvironment.LOCAL,
+        deployment,
+        action='prepare',
+        environment=WebEnvironment.LOCAL,
     )
     assert report.status == 'PARTIAL'
     assert report.results[0].status is Status.CREATED
@@ -419,9 +468,12 @@ def test_local_blob_preparer_supports_sas_credentials(monkeypatch):
     monkeypatch.setitem(sys.modules, 'azure.core.exceptions', errors)
     monkeypatch.setitem(sys.modules, 'azure.storage.blob', blob)
 
-    settings = StorageSettings(credential=StorageSasCredential(
-        account_url='https://storage.example.com', sas_token='test-sas',
-    ))
+    settings = StorageSettings(
+        credential=StorageSasCredential(
+            account_url='https://storage.example.com',
+            sas_token='test-sas',
+        )
+    )
     created = resource_preparation.ensure_local_blob_container(settings, 'example-container')
     assert created is False
     assert calls == [('https://storage.example.com', 'test-sas')]

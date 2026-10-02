@@ -197,9 +197,10 @@ class AdaGenericSettings(WebSettings):
         return self.tool_local_base_root.expanduser().resolve()
 
     def master_projection_local_path(self) -> Path:
-        return self.storage_namespace().local_application_root(
-            self.local_base_root()
-        ) / MASTER_PROJECTION_RELATIVE_PATH
+        return (
+            self.storage_namespace().local_application_root(self.local_base_root())
+            / MASTER_PROJECTION_RELATIVE_PATH
+        )
 
     def master_projection_blob_name(self) -> str:
         return self.storage_namespace().application_blob_name(MASTER_PROJECTION_RELATIVE_PATH)

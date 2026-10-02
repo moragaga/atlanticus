@@ -63,7 +63,8 @@ class ResourcePreparationReport:
     @property
     def status(self) -> str:
         failed = any(
-            item.status in (
+            item.status
+            in (
                 ResourcePreparationStatus.MISSING,
                 ResourcePreparationStatus.INCOMPATIBLE,
                 ResourcePreparationStatus.FAILED,
@@ -141,8 +142,11 @@ def prepare_manager_resources(
             return ResourcePreparationStatus.INCOMPATIBLE
         if isinstance(
             error,
-            (CosmosContainerNotFoundError, CosmosDatabaseNotFoundError,
-             StorageContainerNotFoundError),
+            (
+                CosmosContainerNotFoundError,
+                CosmosDatabaseNotFoundError,
+                StorageContainerNotFoundError,
+            ),
         ):
             return ResourcePreparationStatus.MISSING
         return ResourcePreparationStatus.FAILED
@@ -166,7 +170,10 @@ def prepare_manager_resources(
             if observe_failure is None:
                 _LOGGER.error(
                     'event=resource.preparation.failed kind=%s logical_id=%s status=%s error_type=%s',
-                    kind, logical_id, status.value, type(error).__name__,
+                    kind,
+                    logical_id,
+                    status.value,
+                    type(error).__name__,
                 )
             else:
                 try:
@@ -193,7 +200,11 @@ def prepare_manager_resources(
             storage = connections.storage[connection_ref]
             if action == 'prepare':
                 created = ensure_local_blob_container(storage.settings, name)
-                status = ResourcePreparationStatus.CREATED if created else ResourcePreparationStatus.READY
+                status = (
+                    ResourcePreparationStatus.CREATED
+                    if created
+                    else ResourcePreparationStatus.READY
+                )
             else:
                 storage.health_check(container_name=name)
                 status = ResourcePreparationStatus.READY
@@ -202,7 +213,9 @@ def prepare_manager_resources(
             add('blob-container', connection_ref, name, failure_status(error), error)
 
     plan = resources.cosmos_plan
-    ordered = tuple(sorted(plan.resources, key=lambda value: (value.connection_ref, value.logical_id)))
+    ordered = tuple(
+        sorted(plan.resources, key=lambda value: (value.connection_ref, value.logical_id))
+    )
     refs = sorted({resource.connection_ref for resource in ordered})
     provisioners: dict[str, CosmosProvisioner] = {}
     ready_refs: set[str] = set()
@@ -215,7 +228,11 @@ def prepare_manager_resources(
             provisioners[connection_ref] = provisioner
             if action == 'prepare' and environment.is_local:
                 created = provisioner.ensure_database()
-                status = ResourcePreparationStatus.CREATED if created else ResourcePreparationStatus.READY
+                status = (
+                    ResourcePreparationStatus.CREATED
+                    if created
+                    else ResourcePreparationStatus.READY
+                )
             else:
                 cosmos.health_check()
                 status = ResourcePreparationStatus.READY
@@ -223,14 +240,19 @@ def prepare_manager_resources(
             add('cosmos-database', connection_ref, database_name, status)
         except Exception as error:
             add(
-                'cosmos-database', connection_ref, database_name,
-                failure_status(error), error,
+                'cosmos-database',
+                connection_ref,
+                database_name,
+                failure_status(error),
+                error,
             )
 
     for resource in ordered:
         if resource.connection_ref not in ready_refs:
             add(
-                'cosmos-container', resource.logical_id, resource.physical_name,
+                'cosmos-container',
+                resource.logical_id,
+                resource.physical_name,
                 ResourcePreparationStatus.BLOCKED,
             )
             continue
@@ -240,7 +262,9 @@ def prepare_manager_resources(
             if action == 'prepare':
                 created = provisioner.ensure_containers((spec,))
                 status = (
-                    ResourcePreparationStatus.CREATED if created else ResourcePreparationStatus.READY
+                    ResourcePreparationStatus.CREATED
+                    if created
+                    else ResourcePreparationStatus.READY
                 )
             else:
                 provisioner.validate_containers((spec,))
@@ -248,8 +272,11 @@ def prepare_manager_resources(
             add('cosmos-container', resource.logical_id, resource.physical_name, status)
         except Exception as error:
             add(
-                'cosmos-container', resource.logical_id, resource.physical_name,
-                failure_status(error), error,
+                'cosmos-container',
+                resource.logical_id,
+                resource.physical_name,
+                failure_status(error),
+                error,
             )
 
     return ResourcePreparationReport(action=action, environment=environment, results=tuple(results))

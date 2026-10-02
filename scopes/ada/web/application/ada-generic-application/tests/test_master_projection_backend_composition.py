@@ -41,13 +41,19 @@ def test_backend_composes_six_existing_services_without_replacing_preview(tmp_pa
     )
     backend = compose_master_projection_backend(stores)
     expected = {
-        'navigation', 'profiles-configuration', 'tools',
-        'ada-access', 'kpis', 'kpi-definitions',
+        'navigation',
+        'profiles-configuration',
+        'tools',
+        'ada-access',
+        'kpis',
+        'kpi-definitions',
     }
     plan = backend.planner.inspect()
     assert {item.key.value for item in plan.entries} == expected
     assert all(item.state is ProjectionPlanState.SOURCE_MISSING for item in plan.entries)
-    assert {item.key.value for item in compose_master_projection_planner(stores).inspect().entries} == expected
+    assert {
+        item.key.value for item in compose_master_projection_planner(stores).inspect().entries
+    } == expected
     users_key = SourceKey('users')
     fake_target = ProjectionTarget(
         users_key,

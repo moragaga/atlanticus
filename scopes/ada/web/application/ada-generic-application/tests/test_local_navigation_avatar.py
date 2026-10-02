@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import importlib
-
 import pytest
 
 from ada.web.application.generic.navigation_binding import (
@@ -81,19 +79,3 @@ def test_public_navigation_is_unchanged() -> None:
     assert result.user.display_name == 'Visitante'
     assert result.user.avatar_background_color == result.user.profile_background_color
     assert result.administrative_override is False
-
-
-@pytest.mark.parametrize('local_user', LOCAL_USERS, ids=('jane', 'john'))
-def test_cli_uses_automatic_local_selector_when_identity_is_unset(monkeypatch, local_user) -> None:
-    entrypoint = importlib.import_module('ada.web.application.generic.__main__')
-    calls: list[str] = []
-
-    def select():
-        calls.append('selected')
-        return local_user.to_effective_user()
-
-    monkeypatch.delenv('ATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID', raising=False)
-    monkeypatch.setattr(entrypoint, 'select_local_user', select)
-
-    assert entrypoint._local_identity().resolve(None).subject_id == local_user.subject_id
-    assert calls == ['selected']

@@ -9,16 +9,16 @@ from pathlib import Path
 
 import pytest
 
-_ROOT = Path(__file__).resolve().parents[3] / 'distribution/web'
+_ROOT = Path(__file__).resolve().parents[3] / "distribution/web"
 _SPEC = importlib.util.spec_from_file_location(
-    'verify_starter_wheelhouse', _ROOT / 'starter/base/docker/verify_wheelhouse.py'
+    "verify_starter_wheelhouse", _ROOT / "starter/base/docker/verify_wheelhouse.py"
 )
 assert _SPEC is not None and _SPEC.loader is not None
 _verifier = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(_verifier)
 
 _GEN_SPEC = importlib.util.spec_from_file_location(
-    'generate_web_starter_for_container', _ROOT / 'generate_starter.py'
+    "generate_web_starter_for_container", _ROOT / "generate_starter.py"
 )
 assert _GEN_SPEC is not None and _GEN_SPEC.loader is not None
 _generator = importlib.util.module_from_spec(_GEN_SPEC)
@@ -26,66 +26,93 @@ sys.modules[_GEN_SPEC.name] = _generator
 _GEN_SPEC.loader.exec_module(_generator)
 
 
-@pytest.mark.parametrize('profile', ('generic', 'ada'))
+@pytest.mark.parametrize("profile", ("generic", "ada"))
 def test_generated_starter_selects_its_image_contract(tmp_path, monkeypatch, profile):
-    if profile == 'ada':
-        path = tmp_path / 'scopes/ada/web/application/ada-generic-application/.env.detail'
+    if profile == "ada":
+        path = (
+            tmp_path / "scopes/ada/web/application/ada-generic-application/.env.detail"
+        )
         path.parent.mkdir(parents=True)
         path.write_text(
-            '# @distribution manual-default\nADA_PERSISTENCE_MODE=durable\n',
-            encoding='utf-8',
+            "# @distribution manual-default\nADA_PERSISTENCE_MODE=durable\n",
+            encoding="utf-8",
         )
-        monkeypatch.setattr(_generator, 'REPOSITORY_ROOT', tmp_path)
-    output = _generator.generate_starter(profile=profile, destination=tmp_path / 'generated')
-    dockerfile = (output / 'Dockerfile').read_text(encoding='utf-8')
-    ignored = (output / '.dockerignore').read_text(encoding='utf-8')
-    manifest = json.loads((output / 'manifest.json').read_text(encoding='utf-8'))
-    required = ['Dockerfile', '.dockerignore']
-    if profile == 'ada':
-        required.append('docker/verify_delivery.py')
+        monkeypatch.setitem(
+            _generator._PRODUCTS["ada"],
+            "starter_overlay",
+            str(_ROOT.parents[2] / "scopes/ada/tooling/distribution/web/starter"),
+        )
+        monkeypatch.setattr(_generator, "REPOSITORY_ROOT", tmp_path)
+    output = _generator.generate_starter(
+        profile=profile, destination=tmp_path / "generated"
+    )
+    dockerfile = (output / "Dockerfile").read_text(encoding="utf-8")
+    ignored = (output / ".dockerignore").read_text(encoding="utf-8")
+    manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+    required = ["Dockerfile", ".dockerignore"]
+    if profile == "ada":
+        required.append("docker/verify_delivery.py")
     else:
-        required.append('docker/verify_wheelhouse.py')
+        required.append("docker/verify_wheelhouse.py")
     for path in required:
-        assert manifest['files'][path] == hashlib.sha256((output / path).read_bytes()).hexdigest()
-    assert 'python:3.14.2-slim-bookworm' in dockerfile
-    assert 'USER app' in dockerfile
-    assert 'secrets.json' in ignored
-    assert 'mapping-env.csv' in ignored
-    assert 'wheelhouse/*.whl' in ignored
-    if profile == 'generic':
-        assert 'UV_OFFLINE=1' in dockerfile
-        assert '--no-index --find-links /build/wheelhouse' in dockerfile
-        assert 'exec python -m application' in dockerfile
-        assert 'EXPOSE 8050' in dockerfile
-        assert 'cannot run in production' in dockerfile
+        assert (
+            manifest["files"][path]
+            == hashlib.sha256((output / path).read_bytes()).hexdigest()
+        )
+    assert "python:3.14.2-slim-bookworm" in dockerfile
+    assert "USER app" in dockerfile
+    assert "secrets.json" in ignored
+    assert "mapping-env.csv" in ignored
+    assert "wheelhouse/*.whl" in ignored
+    if profile == "generic":
+        assert "UV_OFFLINE=1" in dockerfile
+        assert "--no-index --find-links /build/wheelhouse" in dockerfile
+        assert "exec python -m application" in dockerfile
+        assert "EXPOSE 8050" in dockerfile
+        assert "cannot run in production" in dockerfile
     else:
-        assert 'UV_OFFLINE=1' not in dockerfile
-        assert '--require-hashes' in dockerfile
-        assert 'requirements/project-runtime.txt' in dockerfile
-        assert 'requirements/project.lock.json' in ignored
-        assert 'tooling/' not in ignored
-        assert 'EXPOSE 8000' in dockerfile
-        assert 'HEALTHCHECK' not in dockerfile
-        assert 'gunicorn' in dockerfile
-        assert 'cannot run in production' not in dockerfile
-        assert 'requirements/*.txt' in ignored
+        assert "UV_OFFLINE=1" not in dockerfile
+        assert "--require-hashes" in dockerfile
+        assert "requirements/project-runtime.txt" in dockerfile
+        assert "requirements/project.lock.json" in ignored
+        assert "tooling/" not in ignored
+        assert "EXPOSE 8000" in dockerfile
+        assert "HEALTHCHECK" not in dockerfile
+        assert "gunicorn" in dockerfile
+        assert "cannot run in production" not in dockerfile
+        assert "requirements/*.txt" in ignored
 
 
 def _candidate(tmp_path: Path):
-    root = tmp_path / 'starter'
-    wheelhouse = root / 'wheelhouse'
+    root = tmp_path / "starter"
+    wheelhouse = root / "wheelhouse"
     wheelhouse.mkdir(parents=True)
-    wheel = wheelhouse / 'dummy-1.0.0-py3-none-any.whl'
-    wheel.write_bytes(b'example wheel bytes')
-    (root / 'manifest.json').write_text(
-        json.dumps({'artifact_kind': 'web-application-starter', 'wheelhouse_included': True,
-                    'profile': 'generic'}), encoding='utf-8'
+    wheel = wheelhouse / "dummy-1.0.0-py3-none-any.whl"
+    wheel.write_bytes(b"example wheel bytes")
+    (root / "manifest.json").write_text(
+        json.dumps(
+            {
+                "artifact_kind": "web-application-starter",
+                "wheelhouse_included": True,
+                "profile": "generic",
+            }
+        ),
+        encoding="utf-8",
     )
-    payload = {'schema_version': 1, 'profile': 'generic', 'python': platform.python_version(),
-               'platform': sys.platform, 'machine': platform.machine(),
-               'packages': [{'filename': wheel.name,
-                            'sha256': hashlib.sha256(wheel.read_bytes()).hexdigest()}]}
-    (wheelhouse / 'manifest.json').write_text(json.dumps(payload), encoding='utf-8')
+    payload = {
+        "schema_version": 1,
+        "profile": "generic",
+        "python": platform.python_version(),
+        "platform": sys.platform,
+        "machine": platform.machine(),
+        "packages": [
+            {
+                "filename": wheel.name,
+                "sha256": hashlib.sha256(wheel.read_bytes()).hexdigest(),
+            }
+        ],
+    }
+    (wheelhouse / "manifest.json").write_text(json.dumps(payload), encoding="utf-8")
     return root, wheel
 
 
@@ -96,16 +123,16 @@ def test_image_preflight_verifies_offline_wheel_inventory(tmp_path):
 
 def test_image_preflight_detects_changed_wheels(tmp_path):
     application, wheel = _candidate(tmp_path)
-    wheel.write_bytes(b'tampered')
-    with pytest.raises(_verifier.WheelhouseValidationError, match='integrity'):
+    wheel.write_bytes(b"tampered")
+    with pytest.raises(_verifier.WheelhouseValidationError, match="integrity"):
         _verifier.verify_wheelhouse(application)
 
 
 def test_image_preflight_rejects_mismatched_platform(tmp_path):
     application, _wheel = _candidate(tmp_path)
-    manifest_path = application / 'wheelhouse/manifest.json'
-    manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
-    manifest['machine'] = 'unsupported-platform'
-    manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
-    with pytest.raises(_verifier.WheelhouseValidationError, match='platform'):
+    manifest_path = application / "wheelhouse/manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["machine"] = "unsupported-platform"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(_verifier.WheelhouseValidationError, match="platform"):
         _verifier.verify_wheelhouse(application)

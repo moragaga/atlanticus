@@ -42,8 +42,10 @@ class MaterialReader:
         if service_user != 'operator' or password != 'valid-long-password':
             raise ValueError('Invalid credentials')
         return SimpleNamespace(
-            material_id='material-1', service_user=service_user,
-            application_namespace=application_namespace, environment=environment,
+            material_id='material-1',
+            service_user=service_user,
+            application_namespace=application_namespace,
+            environment=environment,
             allowed_actions=self.actions,
         )
 
@@ -61,13 +63,22 @@ class Planner:
             raise ConnectionError('private-storage-endpoint')
         target = ProjectionTarget(KEY, SourceReleaseRef(SourceReleaseId(self.release), NOW))
         entry = ProjectionPlanEntry(
-            key=KEY, state=self.state, source_release=target.source_release,
-            current_target=target if self.state in (
-                ProjectionPlanState.NEVER_PROJECTED, ProjectionPlanState.OUTDATED,
+            key=KEY,
+            state=self.state,
+            source_release=target.source_release,
+            current_target=target
+            if self.state
+            in (
+                ProjectionPlanState.NEVER_PROJECTED,
+                ProjectionPlanState.OUTDATED,
                 ProjectionPlanState.CURRENT,
-            ) else None,
-            projected_target=None, prerequisites=(),
-            blocked_by=() if self.state is not ProjectionPlanState.BLOCKED else (SourceKey('tools'),),
+            )
+            else None,
+            projected_target=None,
+            prerequisites=(),
+            blocked_by=()
+            if self.state is not ProjectionPlanState.BLOCKED
+            else (SourceKey('tools'),),
         )
         return SimpleNamespace(
             entries=(entry,),
@@ -104,8 +115,11 @@ def surface(tmp_path, monkeypatch):
     server = Flask(__name__)
     server.testing = True
     module = MasterProjectionWebBinding(
-        application_namespace='test-app', environment='local', planner=planner,
-        reader=reader, executor=executor,
+        application_namespace='test-app',
+        environment='local',
+        planner=planner,
+        reader=reader,
+        executor=executor,
     ).module()
     module.register_middlewares(server, None)
     module.register_routes(server, None)
@@ -120,27 +134,42 @@ def _field(html, field):
 
 def _login(client):
     token = _field(client.get('/master-projection').get_data(as_text=True), 'csrf')
-    result = client.post('/master-projection', data={
-        'csrf': token, 'service_user': 'operator', 'password': 'valid-long-password',
-    })
+    result = client.post(
+        '/master-projection',
+        data={
+            'csrf': token,
+            'service_user': 'operator',
+            'password': 'valid-long-password',
+        },
+    )
     assert result.status_code == 303
 
 
 def _prepare(client, key='profiles-configuration', csrf=None):
     page = client.get('/master-projection').get_data(as_text=True)
     token = csrf if csrf is not None else _field(page, 'csrf')
-    return client.post('/master-projection', data={
-        'csrf': token, 'intent': 'prepare', 'source_key': key,
-    })
+    return client.post(
+        '/master-projection',
+        data={
+            'csrf': token,
+            'intent': 'prepare',
+            'source_key': key,
+        },
+    )
 
 
 def _confirm(client, nonce=None, csrf=None):
     page = client.get('/master-projection').get_data(as_text=True)
     token = csrf if csrf is not None else _field(page, 'csrf')
     selected = nonce if nonce is not None else _field(page, 'nonce')
-    return client.post('/master-projection', data={
-        'csrf': token, 'intent': 'confirm', 'nonce': selected,
-    })
+    return client.post(
+        '/master-projection',
+        data={
+            'csrf': token,
+            'intent': 'confirm',
+            'nonce': selected,
+        },
+    )
 
 
 def test_individual_confirmation_executes_one_selection_and_refreshes_plan(surface):
@@ -171,9 +200,16 @@ def test_anonymous_requests_never_inspect_or_write(surface):
     server, _, planner, executor = surface
     client = server.test_client()
     assert client.get('/master-projection').status_code == 200
-    assert client.post('/master-projection', data={
-        'intent': 'prepare', 'source_key': KEY.value,
-    }).status_code == 403
+    assert (
+        client.post(
+            '/master-projection',
+            data={
+                'intent': 'prepare',
+                'source_key': KEY.value,
+            },
+        ).status_code
+        == 403
+    )
     assert planner.calls == 0
     assert executor.calls == []
 
@@ -195,7 +231,9 @@ def test_unwired_executor_never_enables_write(surface):
     alternative = Flask(__name__)
     alternative.testing = True
     module = MasterProjectionWebBinding(
-        application_namespace='test-app', environment='local', planner=planner,
+        application_namespace='test-app',
+        environment='local',
+        planner=planner,
         reader=reader,
     ).module()
     module.register_middlewares(alternative, None)
@@ -227,9 +265,17 @@ def test_confirmation_nonce_is_required_and_cannot_be_reused(surface):
     assert _confirm(client, nonce='forged-nonce').status_code == 409
     assert executor.calls == []
     token = _field(client.get('/master-projection').get_data(as_text=True), 'csrf')
-    assert client.post('/master-projection', data={
-        'csrf': token, 'intent': 'confirm', 'nonce': 'forged-nonce',
-    }).status_code == 409
+    assert (
+        client.post(
+            '/master-projection',
+            data={
+                'csrf': token,
+                'intent': 'confirm',
+                'nonce': 'forged-nonce',
+            },
+        ).status_code
+        == 409
+    )
     assert executor.calls == []
 
 
@@ -242,9 +288,14 @@ def test_source_change_during_confirmation_does_not_write(surface):
     token = _field(prepared, 'csrf')
     nonce = _field(prepared, 'nonce')
     planner.release = 'release-2'
-    attempt = client.post('/master-projection', data={
-        'csrf': token, 'intent': 'confirm', 'nonce': nonce,
-    })
+    attempt = client.post(
+        '/master-projection',
+        data={
+            'csrf': token,
+            'intent': 'confirm',
+            'nonce': nonce,
+        },
+    )
     assert attempt.status_code == 409
     assert executor.calls == []
     assert 'private' not in attempt.get_data(as_text=True)
@@ -270,9 +321,17 @@ def test_material_rotation_revokes_prepared_confirmation(surface):
     prepared = client.get('/master-projection').get_data(as_text=True)
     token, nonce = _field(prepared, 'csrf'), _field(prepared, 'nonce')
     reader.digest = 'b' * 64
-    assert client.post('/master-projection', data={
-        'csrf': token, 'intent': 'confirm', 'nonce': nonce,
-    }).status_code == 403
+    assert (
+        client.post(
+            '/master-projection',
+            data={
+                'csrf': token,
+                'intent': 'confirm',
+                'nonce': nonce,
+            },
+        ).status_code
+        == 403
+    )
     assert executor.calls == []
     assert 'Contraseña' in client.get('/master-projection').get_data(as_text=True)
 
@@ -289,9 +348,17 @@ def test_expired_session_cannot_confirm(surface, monkeypatch):
     prepared = client.get('/master-projection').get_data(as_text=True)
     token, nonce = _field(prepared, 'csrf'), _field(prepared, 'nonce')
     now += 901
-    assert client.post('/master-projection', data={
-        'csrf': token, 'intent': 'confirm', 'nonce': nonce,
-    }).status_code == 403
+    assert (
+        client.post(
+            '/master-projection',
+            data={
+                'csrf': token,
+                'intent': 'confirm',
+                'nonce': nonce,
+            },
+        ).status_code
+        == 403
+    )
     assert executor.calls == []
 
 
@@ -316,9 +383,16 @@ def test_cancel_discards_selection_without_writing(surface):
     _login(client)
     assert _prepare(client).status_code == 303
     token = _field(client.get('/master-projection').get_data(as_text=True), 'csrf')
-    assert client.post('/master-projection', data={
-        'csrf': token, 'intent': 'cancel',
-    }).status_code == 303
+    assert (
+        client.post(
+            '/master-projection',
+            data={
+                'csrf': token,
+                'intent': 'cancel',
+            },
+        ).status_code
+        == 303
+    )
     page = client.get('/master-projection').get_data(as_text=True)
     assert 'Confirmar despliegue' not in page
     assert executor.calls == []
@@ -329,9 +403,16 @@ def test_unknown_action_is_rejected_without_writing(surface):
     client = server.test_client()
     _login(client)
     token = _field(client.get('/master-projection').get_data(as_text=True), 'csrf')
-    assert client.post('/master-projection', data={
-        'csrf': token, 'intent': 'users.replace',
-    }).status_code == 400
+    assert (
+        client.post(
+            '/master-projection',
+            data={
+                'csrf': token,
+                'intent': 'users.replace',
+            },
+        ).status_code
+        == 400
+    )
     assert executor.calls == []
 
 

@@ -9,7 +9,7 @@ from dash import html
 from ada.web.application.generic import __main__ as cli, bootstrap, host
 from ada.web.application.generic.composition import AdaApplicationComposition
 from ada.web.application.generic.layout import build_body_application_layout
-from ada.web.application.generic.settings import AdaGenericSettings, AdaPersistenceMode
+from ada.web.application.generic.settings import AdaGenericSettings
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.tools.enums import ToolConfigurationKind, ToolScope
 from ada.web.tools.persistence import ToolProjectionResolution, ToolProjectionResolutionState
@@ -48,7 +48,9 @@ def _ready_resolution() -> ToolProjectionResolution:
         projected_at_utc=timestamp,
         payload=SimpleNamespace(structure=structure),
     )
-    return ToolProjectionResolution(state=ToolProjectionResolutionState.READY, projection=projection)
+    return ToolProjectionResolution(
+        state=ToolProjectionResolutionState.READY, projection=projection
+    )
 
 
 @pytest.mark.parametrize('configured', [False, True])
@@ -72,7 +74,8 @@ def test_external_composition_is_resolved_after_tool_projection(
 
     monkeypatch.setattr(bootstrap, 'create_definition_from_tool_resolution', create_definition)
     monkeypatch.setattr(
-        bootstrap, 'create_web_application',
+        bootstrap,
+        'create_web_application',
         lambda definition: expected_runtime if definition is expected_definition else None,
     )
 
@@ -102,7 +105,9 @@ def test_external_composition_is_resolved_after_tool_projection(
 def test_external_composition_can_remain_page_based_without_renderers(
     monkeypatch, tmp_path
 ) -> None:
-    monkeypatch.setattr(bootstrap, '_resolve_tool_projection', lambda _settings: _ready_resolution())
+    monkeypatch.setattr(
+        bootstrap, '_resolve_tool_projection', lambda _settings: _ready_resolution()
+    )
     captured = {}
     expected_runtime = object()
     monkeypatch.setattr(
@@ -121,32 +126,34 @@ def test_external_composition_can_remain_page_based_without_renderers(
     assert captured['operational_render_binding'] is None
 
 
-def test_external_runner_reuses_cli_bootstrap_without_second_manager_path(monkeypatch) -> None:
+def test_external_runner_reuses_host_bootstrap_without_second_manager_path(
+    monkeypatch,
+) -> None:
     forwarded = {}
     runtime = object()
-    monkeypatch.setattr(
-        cli, 'AdaGenericSettings',
-        lambda: SimpleNamespace(environment=SimpleNamespace(is_local=True)),
+    worker = SimpleNamespace(
+        application=runtime,
+        close=lambda: forwarded.update(closed=True),
     )
+
+    def create_worker_runtime(**kwargs):
+        forwarded.update(kwargs)
+        return worker
+
+    monkeypatch.setattr(host, 'create_worker_runtime', create_worker_runtime)
     monkeypatch.setattr(
-        cli, 'ManagerStartupOptions',
-        lambda: SimpleNamespace(provider=AdaPersistenceMode.LOCAL),
+        host,
+        'run_web_application',
+        lambda application: forwarded.update(run=application),
     )
-    monkeypatch.setattr(cli, 'create_local_configuration_manager_stores', lambda: 'local-stores')
-    monkeypatch.setattr(cli, '_local_identity', lambda: 'local-identity')
-    monkeypatch.setattr(
-        cli, 'create_operational_application_runtime',
-        lambda **kwargs: forwarded.update(kwargs) or runtime,
-    )
-    monkeypatch.setattr(cli, 'run_web_application', lambda value: forwarded.update(run=value))
 
     def composition_factory(_binding):
         return None
 
-    assert host.run_operational_application is cli.run_operational_application
-    host.run_operational_application(composition_factory=composition_factory)
+    assert cli.run_operational_application is host.run_operational_application
+    cli.run_operational_application(composition_factory=composition_factory)
 
     assert forwarded['composition_factory'] is composition_factory
-    assert forwarded['manager_stores'] == 'local-stores'
-    assert forwarded['identity_provider'] == 'local-identity'
+    assert forwarded['production_identity_provider_factory'] is None
     assert forwarded['run'] is runtime
+    assert forwarded['closed'] is True

@@ -49,7 +49,8 @@ class Sources:
             source_key=source_key,
             current=(
                 SourceReleaseSummary(release_ref=current, content_hash=Digest('sha256', 'f'))
-                if current is not None else None
+                if current is not None
+                else None
             ),
             concurrency_token=ConcurrencyToken('etag') if current is not None else None,
         )
@@ -86,8 +87,7 @@ class Selector:
         if snapshot.current is None:
             return None
         dependencies = tuple(
-            self.projection.get_active(required).target
-            for required in self.dependencies
+            self.projection.get_active(required).target for required in self.dependencies
         )
         return ProjectionTarget(
             source_key=source_key,
@@ -127,12 +127,18 @@ def setup(domains=None, snapshots=None):
         required = tuple(key(value) for value in prerequisite_names)
         selector = Selector(sources, projections, required)
         selectors[name] = selector
-        entries.append(ProjectionDomain(
-            key=key(name), source=sources, projection=projections,
-            service=selector, requires=required,
-        ))
+        entries.append(
+            ProjectionDomain(
+                key=key(name),
+                source=sources,
+                projection=projections,
+                service=selector,
+                requires=required,
+            )
+        )
     planner = MasterProjectionPlanner(
-        domains=tuple(entries), profiles_key=key('profiles'),
+        domains=tuple(entries),
+        profiles_key=key('profiles'),
         users_snapshot_ids=snapshots,
     )
     return planner, sources, projections, selectors
@@ -149,7 +155,8 @@ def publish(sources, *names):
 
 def activate(sources, projections, name, *dependencies):
     target = ProjectionTarget(
-        key(name), sources.releases[key(name)],
+        key(name),
+        sources.releases[key(name)],
         tuple(projections.active[key(item)].target for item in dependencies),
     )
     projections.active[key(name)] = projected(target)
@@ -267,22 +274,30 @@ def test_invalid_graph_rejected_before_any_provider_reads():
     roots = {'profiles': (), 'access': ('profiles',)}
     _planner, sources, projections, selectors = setup(domains=roots)
     domains = (
-        ProjectionDomain(key('profiles'), sources, projections, selectors['profiles'], (key('access'),)),
-        ProjectionDomain(key('access'), sources, projections, selectors['access'], (key('profiles'),)),
+        ProjectionDomain(
+            key('profiles'), sources, projections, selectors['profiles'], (key('access'),)
+        ),
+        ProjectionDomain(
+            key('access'), sources, projections, selectors['access'], (key('profiles'),)
+        ),
     )
     with pytest.raises(ValueError, match='cycle'):
         MasterProjectionPlanner(domains=domains, profiles_key=key('profiles'))
     with pytest.raises(ValueError, match='unique'):
         MasterProjectionPlanner(domains=(domains[0], domains[0]), profiles_key=key('profiles'))
-    unknown = ProjectionDomain(key('profiles'), sources, projections, selectors['profiles'],
-                               (key('missing'),))
+    unknown = ProjectionDomain(
+        key('profiles'), sources, projections, selectors['profiles'], (key('missing'),)
+    )
     with pytest.raises(ValueError, match='not registered'):
         MasterProjectionPlanner(domains=(unknown,), profiles_key=key('profiles'))
 
 
 def test_invalid_or_unavailable_snapshot_catalog_cannot_enable_users():
-    for catalog in (lambda: ('duplicate', 'duplicate'), lambda: ['not-a-tuple'],
-                    lambda: (_ for _ in ()).throw(OSError('private location'))):
+    for catalog in (
+        lambda: ('duplicate', 'duplicate'),
+        lambda: ['not-a-tuple'],
+        lambda: (_ for _ in ()).throw(OSError('private location')),
+    ):
         planner, sources, projections, _ = setup(snapshots=catalog)
         publish(sources, 'profiles')
         activate(sources, projections, 'profiles')

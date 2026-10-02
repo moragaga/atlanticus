@@ -151,9 +151,12 @@ def test_local_manager_publishes_and_projects_into_live_navigation(tmp_path, mon
 
     first = _publish_and_project(local_runtime, local, _draft(public_enabled=True))
     assert len(provider.current().links) == 4
-    assert local_runtime.services.require(
-        NAVIGATION_DEFINITION_PROVIDER_SERVICE_KEY, NavigationDefinitionProvider
-    ) is provider
+    assert (
+        local_runtime.services.require(
+            NAVIGATION_DEFINITION_PROVIDER_SERVICE_KEY, NavigationDefinitionProvider
+        )
+        is provider
+    )
     assert _document(unpromoted, '/qualification-public') == 200
     assert _document(unpromoted, '/qualification-basic') == 403
     assert _document(unpromoted, '/qualification-disabled') == 403
@@ -191,9 +194,7 @@ def test_anonymous_operational_shell_reads_shared_projection_without_identity(
     anonymous_runtime = create_application_runtime(
         composition=replace(
             baseline,
-            modules=tuple(
-                replacements.get(module.name, module) for module in baseline.modules
-            ),
+            modules=tuple(replacements.get(module.name, module) for module in baseline.modules),
         )
     )
     anonymous = anonymous_runtime.server.test_client()

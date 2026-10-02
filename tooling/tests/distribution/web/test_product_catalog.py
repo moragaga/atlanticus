@@ -19,8 +19,8 @@ def test_catalog_preserves_current_web_products() -> None:
     assert tuple(products) == ("generic", "ada", "command-center")
     assert products["generic"]["distribution_strategy"] == "wheelhouse"
     assert products["generic"]["qualification_strategy"] == "runtime"
-    assert products["ada"]["distribution_strategy"] == "ada"
-    assert products["ada"]["qualification_strategy"] == "ada-precheck"
+    assert products["ada"]["distribution_strategy"] == "handler"
+    assert products["ada"]["qualification_strategy"] == "handler"
     assert products["command-center"]["distribution_strategy"] == "wheelhouse"
     assert products["command-center"]["qualification_strategy"] == "artifact-precheck"
 
@@ -34,11 +34,10 @@ def test_catalog_root_packages_match_current_projects() -> None:
 
 
 def test_catalog_starter_inputs_exist() -> None:
-    starter_root = _REPOSITORY_ROOT / "tooling/distribution/web/starter"
     for product in _products().values():
         overlay = product.get("starter_overlay")
         if overlay:
-            assert (starter_root / str(overlay)).is_dir()
+            assert (_REPOSITORY_ROOT / str(overlay)).is_dir()
         contract = product.get("environment_contract")
         if contract:
             assert (_REPOSITORY_ROOT / str(contract)).is_file()
@@ -46,19 +45,29 @@ def test_catalog_starter_inputs_exist() -> None:
             assert isinstance(relative, str) and relative
 
 
+def test_catalog_handlers_are_repository_owned() -> None:
+    for product in _products().values():
+        for key in ("distribution_handler", "qualification_handler"):
+            value = product.get(key)
+            if value:
+                path = Path(str(value))
+                assert not path.is_absolute()
+                assert ".." not in path.parts
+                assert (_REPOSITORY_ROOT / path).is_file()
+
+
 def test_catalog_strategies_are_supported_by_current_tooling() -> None:
     products = _products().values()
     assert {product["distribution_strategy"] for product in products} <= {
         "wheelhouse",
-        "ada",
+        "handler",
     }
     assert {product["qualification_strategy"] for product in products} <= {
         "runtime",
-        "ada-precheck",
+        "handler",
         "artifact-precheck",
     }
     assert {product["probe_strategy"] for product in products} <= {
         "generic",
-        "ada",
         "artifact",
     }

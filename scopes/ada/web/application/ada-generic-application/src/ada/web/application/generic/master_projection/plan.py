@@ -95,7 +95,8 @@ class MasterProjectionPlan:
     @property
     def ready(self) -> tuple[ProjectionPlanEntry, ...]:
         return tuple(
-            entry for entry in self.entries
+            entry
+            for entry in self.entries
             if entry.state in (ProjectionPlanState.NEVER_PROJECTED, ProjectionPlanState.OUTDATED)
         )
 
@@ -165,7 +166,8 @@ class MasterProjectionPlanner:
                 )
             else:
                 blockers = tuple(
-                    required for required in domain.requires
+                    required
+                    for required in domain.requires
                     if planned[required].state is not ProjectionPlanState.CURRENT
                 )
                 if blockers:
@@ -222,9 +224,8 @@ class MasterProjectionPlanner:
                 target is None
                 or target.source_key != domain.key
                 or target.source_release != observed.source_release
-                or target.dependencies != tuple(
-                    sorted(expected, key=lambda item: item.source_key.value)
-                )
+                or target.dependencies
+                != tuple(sorted(expected, key=lambda item: item.source_key.value))
             ):
                 return ProjectionPlanEntry(
                     state=ProjectionPlanState.UNAVAILABLE,
@@ -240,8 +241,10 @@ class MasterProjectionPlanner:
                 **common,
             )
         state = (
-            ProjectionPlanState.CURRENT if projected_target == target
-            else ProjectionPlanState.NEVER_PROJECTED if projected_target is None
+            ProjectionPlanState.CURRENT
+            if projected_target == target
+            else ProjectionPlanState.NEVER_PROJECTED
+            if projected_target is None
             else ProjectionPlanState.OUTDATED
         )
         return ProjectionPlanEntry(state=state, current_target=target, **common)

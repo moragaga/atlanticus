@@ -46,9 +46,7 @@ def resolve_manager_principal(
         profile_keys=(() if user is None else (user.profile_key,)),
         access_keys=(),
         administrative_override=(
-            user is not None
-            and not user.is_local
-            and user.profile_key == ROOT_PROFILE_KEY
+            user is not None and not user.is_local and user.profile_key == ROOT_PROFILE_KEY
         ),
         is_local=(user.is_local if user is not None else False),
     )

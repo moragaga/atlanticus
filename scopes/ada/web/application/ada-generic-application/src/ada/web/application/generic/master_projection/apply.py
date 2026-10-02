@@ -49,7 +49,9 @@ class MasterProjectionExecutor:
         source_key: SourceKey,
         expected_target: ProjectionTarget,
     ) -> MasterApplyResult:
-        if not isinstance(source_key, SourceKey) or not isinstance(expected_target, ProjectionTarget):
+        if not isinstance(source_key, SourceKey) or not isinstance(
+            expected_target, ProjectionTarget
+        ):
             raise MasterApplyError('Invalid projection selection', reason='INVALID_SELECTION')
         domain = self._domains.get(source_key)
         if domain is None or expected_target.source_key != source_key:
@@ -68,29 +70,43 @@ class MasterProjectionExecutor:
         if entry.current_target != expected_target:
             raise MasterApplyError('Projection selection is outdated', reason='STALE_SELECTION')
         if entry.state is ProjectionPlanState.CURRENT:
-            return MasterApplyResult(source_key, expected_target, MasterApplyOutcome.ALREADY_CURRENT)
+            return MasterApplyResult(
+                source_key, expected_target, MasterApplyOutcome.ALREADY_CURRENT
+            )
 
         try:
             current_target = domain.service.select_current_target(source_key)
             active = domain.projection.get_active(source_key)
         except Exception as error:
-            raise MasterApplyError('Projection state is unavailable', reason='UNAVAILABLE') from error
+            raise MasterApplyError(
+                'Projection state is unavailable', reason='UNAVAILABLE'
+            ) from error
         if current_target != expected_target:
             raise MasterApplyError('Projection selection is outdated', reason='STALE_SELECTION')
         if active is not None and active.target == expected_target:
-            return MasterApplyResult(source_key, expected_target, MasterApplyOutcome.ALREADY_CURRENT)
+            return MasterApplyResult(
+                source_key, expected_target, MasterApplyOutcome.ALREADY_CURRENT
+            )
 
         try:
             executed = domain.service.project(expected_target)
         except Exception as error:
-            raise MasterApplyError('Projection execution failed', reason='EXECUTION_FAILED') from error
+            raise MasterApplyError(
+                'Projection execution failed', reason='EXECUTION_FAILED'
+            ) from error
         if executed.target != expected_target or executed.projection.target != expected_target:
-            raise MasterApplyError('Projection result does not match selection', reason='VERIFICATION_FAILED')
+            raise MasterApplyError(
+                'Projection result does not match selection', reason='VERIFICATION_FAILED'
+            )
         try:
             persisted = domain.projection.get_active(source_key)
             current = domain.service.select_current_target(source_key)
         except Exception as error:
-            raise MasterApplyError('Projection result could not be verified', reason='VERIFICATION_FAILED') from error
+            raise MasterApplyError(
+                'Projection result could not be verified', reason='VERIFICATION_FAILED'
+            ) from error
         if persisted is None or persisted.target != expected_target or current != expected_target:
-            raise MasterApplyError('Projection result could not be verified', reason='VERIFICATION_FAILED')
+            raise MasterApplyError(
+                'Projection result could not be verified', reason='VERIFICATION_FAILED'
+            )
         return MasterApplyResult(source_key, expected_target, MasterApplyOutcome.APPLIED)

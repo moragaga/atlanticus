@@ -74,7 +74,9 @@ def test_durable_mode_derives_blob_and_cosmos_providers() -> None:
     assert cosmos is not None
     assert cosmos.endpoint == 'https://cosmos.example.test'
     assert cosmos.database_name == 'configuration'
-    assert persistence.cosmos_container_name == TOOL_PROJECTION_STORAGE_RESOURCE.default_physical_name
+    assert (
+        persistence.cosmos_container_name == TOOL_PROJECTION_STORAGE_RESOURCE.default_physical_name
+    )
 
 
 def test_legacy_provider_variables_do_not_select_persistence(tmp_path: Path) -> None:
@@ -133,7 +135,9 @@ def test_cosmos_resource_names_are_internal_not_environment_configuration() -> N
     persistence = settings.tool_persistence_settings()
     reader = settings.kpi_delivery_reader_settings()
 
-    assert persistence.cosmos_container_name == TOOL_PROJECTION_STORAGE_RESOURCE.default_physical_name
+    assert (
+        persistence.cosmos_container_name == TOOL_PROJECTION_STORAGE_RESOURCE.default_physical_name
+    )
     assert reader.latest_container_name == DEFAULT_KPI_LATEST_DELIVERY_CONTAINER
     assert reader.timeseries_container_name == DEFAULT_KPI_TIMESERIES_DELIVERY_CONTAINER
 
@@ -170,7 +174,9 @@ def test_blob_sas_settings_preserve_supported_storage_contract() -> None:
     assert storage.credential.allow_insecure_http is True
 
 
-def test_local_base_root_defaults_and_relative_override_are_resolved(tmp_path: Path, monkeypatch) -> None:
+def test_local_base_root_defaults_and_relative_override_are_resolved(
+    tmp_path: Path, monkeypatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     default = AdaGenericSettings.from_mapping({'ADA_TOOL_NAMESPACE': 'operaciones_integradas'})
     overridden = AdaGenericSettings.from_mapping(

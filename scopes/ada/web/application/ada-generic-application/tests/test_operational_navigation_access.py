@@ -37,11 +37,16 @@ def _definition() -> NavigationDefinition:
         links=(
             NavigationLinkDefinition(key='public', label='Public', href='/public'),
             NavigationLinkDefinition(
-                key='restricted', label='Restricted', href='/restricted',
+                key='restricted',
+                label='Restricted',
+                href='/restricted',
                 allowed_profiles=('basic',),
             ),
             NavigationLinkDefinition(
-                key='disabled', label='Disabled', href='/disabled', enabled=False,
+                key='disabled',
+                label='Disabled',
+                href='/disabled',
+                enabled=False,
             ),
         )
     )
@@ -64,12 +69,14 @@ def test_manager_navigation_requires_an_attested_privileged_context(
     principal = manager_navigation_principal(_manager(profile, local=local), allow_local=True)
 
     assert principal.administrative_override is expected
-    assert can_access_navigation_path(
-        _definition(), principal=principal, pathname='/disabled'
-    ) is expected
-    assert can_access_navigation_path(
-        _definition(), principal=principal, pathname='/manager'
-    ) is expected
+    assert (
+        can_access_navigation_path(_definition(), principal=principal, pathname='/disabled')
+        is expected
+    )
+    assert (
+        can_access_navigation_path(_definition(), principal=principal, pathname='/manager')
+        is expected
+    )
 
 
 def test_local_recovery_is_never_implicit() -> None:
@@ -85,7 +92,9 @@ def test_anonymous_navigation_is_independent_of_identity() -> None:
     assert not principal.administrative_override
     assert tuple(link.key for link in menu.links) == ('public',)
     assert can_access_navigation_path(_definition(), principal=principal, pathname='/')
-    assert not can_access_navigation_path(_definition(), principal=principal, pathname='/restricted')
+    assert not can_access_navigation_path(
+        _definition(), principal=principal, pathname='/restricted'
+    )
 
 
 def test_operational_application_can_mount_navigation_without_identity(
@@ -98,9 +107,7 @@ def test_operational_application_can_mount_navigation_without_identity(
 
     assert not runtime.services.contains(ACCESS_RUNTIME_SERVICE_KEY)
     assert runtime.server.test_client().get('/', headers={'Accept': 'text/html'}).status_code == 200
-    denied = runtime.server.test_client().get(
-        '/not-published', headers={'Accept': 'text/html'}
-    )
+    denied = runtime.server.test_client().get('/not-published', headers={'Accept': 'text/html'})
     assert denied.status_code == 403
 
 
@@ -128,11 +135,13 @@ def test_operational_authorization_consumes_injected_profiles_without_identity(
     assert response.status_code == 200
     application_children = response.get_json()['props']['children']
     controller = next(
-        node for node in application_children
+        node
+        for node in application_children
         if node['props'].get('id') == 'ada-navigation-controller'
     )
     offcanvas = next(
-        node for node in application_children
+        node
+        for node in application_children
         if node['props'].get('id') == 'ada-navigation-offcanvas'
     )
     assert {node['props']['id'] for node in controller['props']['children']} == {
