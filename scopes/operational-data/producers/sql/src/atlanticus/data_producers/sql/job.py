@@ -45,6 +45,13 @@ class SqlDataProducerJob:
         self._failures_memory_key = f'{prefix}_failures'
         self._first_failure_memory_key = f'{prefix}_first_failure'
 
+    def run_cycle(self, context: JobRuntimeContext) -> None:
+        while True:
+            context.raise_if_cancelled()
+            self.run_iteration(context)
+            if context.get_memory(self._plan_memory_key) is None:
+                return
+
     def run_iteration(self, context: JobRuntimeContext) -> None:
         self._initialize_execution_facts(context)
         plan = context.get_memory(self._plan_memory_key)

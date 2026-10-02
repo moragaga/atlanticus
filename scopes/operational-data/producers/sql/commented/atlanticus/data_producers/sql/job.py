@@ -52,6 +52,17 @@ class SqlDataProducerJob:
         self._failures_memory_key = f'{prefix}_failures'
         self._first_failure_memory_key = f'{prefix}_first_failure'
 
+    # Esta fachada permite que un consumidor trate el plan SQL completo como una sola unidad.
+    # Reutiliza run_iteration para conservar planner, estado, métricas y manejo de errores.
+    # Antes de cada fuente consulta al Runtime para no iniciar trabajo nuevo después de una
+    # cancelación o del vencimiento del presupuesto temporal. Plan None significa ciclo cerrado.
+    def run_cycle(self, context: JobRuntimeContext) -> None:
+        while True:
+            context.raise_if_cancelled()
+            self.run_iteration(context)
+            if context.get_memory(self._plan_memory_key) is None:
+                return
+
     def run_iteration(self, context: JobRuntimeContext) -> None:
         self._initialize_execution_facts(context)
         plan = context.get_memory(self._plan_memory_key)
