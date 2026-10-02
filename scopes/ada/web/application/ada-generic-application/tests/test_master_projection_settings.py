@@ -30,11 +30,11 @@ def test_durable_master_material_blob_is_application_scoped_not_tool_scoped() ->
     common = {
         'ADA_PERSISTENCE_MODE': 'durable',
         'ADA_APPLICATION_NAMESPACE': 'app',
-        'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME': 'configuration',
-        'ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING': 'UseDevelopmentStorage=true',
-        'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT': 'http://localhost:8081',
-        'ADA_TOOL_PROJECTION_COSMOS_KEY': 'test-only',
-        'ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME': 'ada',
+        'ADA_STORAGE_CONTAINER_NAME': 'configuration',
+        'ADA_STORAGE_CONNECTION_STRING': 'UseDevelopmentStorage=true',
+        'ADA_COSMOS_ENDPOINT': 'http://localhost:8081',
+        'ADA_COSMOS_KEY': 'test-only',
+        'ADA_COSMOS_DATABASE_NAME': 'ada',
     }
     first = AdaGenericSettings.from_mapping({**common, 'ADA_TOOL_NAMESPACE': 'mine'})
     second = AdaGenericSettings.from_mapping({**common, 'ADA_TOOL_NAMESPACE': 'plant'})

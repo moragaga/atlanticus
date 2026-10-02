@@ -49,12 +49,13 @@ def source(tmp_path, monkeypatch):
         "# @distribution environment\nATLANTICUS_ENVIRONMENT=local\n"
         "# @distribution manual-default\nADA_PERSISTENCE_MODE=durable\n"
         "# @distribution manual\nADA_TOOL_NAMESPACE=<tool-namespace>\n"
+        "# @distribution manual-default\nADA_STORAGE_CONTAINER_NAME=dataproduct\n"
         "# @distribution key-vault secret-cosmos-primary-key\n"
-        "ADA_TOOL_PROJECTION_COSMOS_KEY=<cosmos-key>\n"
+        "ADA_COSMOS_KEY=<cosmos-key>\n"
         "# @distribution key-vault secret-ada-storage-connection-string\n"
-        "ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING=<connection-string>\n"
+        "ADA_STORAGE_CONNECTION_STRING=<connection-string>\n"
         "# Optional alternative is not activated.\n"
-        "# ADA_TOOL_SOURCE_BLOB_ACCOUNT_URL=<account-url>\n",
+        "# ADA_STORAGE_ACCOUNT_URL=<account-url>\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(_module, "STARTER_ROOT", starter)
@@ -150,6 +151,7 @@ def test_environment_and_persistence_are_generated_for_every_stage(source, tmp_p
     for entries in (dev, uat, prd):
         assert entries["ADA_PERSISTENCE_MODE"]["explicitValue"] == "durable"
         assert entries["ADA_TOOL_NAMESPACE"]["explicitValue"] == ""
+        assert entries["ADA_STORAGE_CONTAINER_NAME"]["explicitValue"] == "dataproduct"
 
 
 def test_secrets_contract_contains_only_concrete_key_vault_requirements(
@@ -159,12 +161,12 @@ def test_secrets_contract_contains_only_concrete_key_vault_requirements(
     records = json.loads((app / "configuration/templates/secrets.json").read_text())
     assert records == [
         {
-            "var_name": "ADA_TOOL_PROJECTION_COSMOS_KEY",
+            "var_name": "ADA_COSMOS_KEY",
             "secret_name": "secret-cosmos-primary-key",
             "required_in_key_vault": True,
         },
         {
-            "var_name": "ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING",
+            "var_name": "ADA_STORAGE_CONNECTION_STRING",
             "secret_name": "secret-ada-storage-connection-string",
             "required_in_key_vault": True,
         },
@@ -178,7 +180,7 @@ def test_mappings_and_json_do_not_publish_inactive_alternatives(source, tmp_path
     for env in ("dev", "uat", "prd"):
         records = _csv(app / f"configuration/templates/{env}.mapping-env.csv")
         assert [row["envName"] for row in records] == names
-    assert "ADA_TOOL_SOURCE_BLOB_ACCOUNT_URL" not in names
+    assert "ADA_STORAGE_ACCOUNT_URL" not in names
 
 
 @pytest.mark.parametrize(
@@ -190,11 +192,11 @@ def test_mappings_and_json_do_not_publish_inactive_alternatives(source, tmp_path
             "Unsafe environment default",
         ),
         (
-            "# @distribution key-vault secret-cosmos-primary-key\nADA_TOOL_PROJECTION_COSMOS_KEY=plaintext",
+            "# @distribution key-vault secret-cosmos-primary-key\nADA_COSMOS_KEY=plaintext",
             "exposes a credential",
         ),
         (
-            "# @distribution key-vault <placeholder>\nADA_TOOL_PROJECTION_COSMOS_KEY=<cosmos-key>",
+            "# @distribution key-vault <placeholder>\nADA_COSMOS_KEY=<cosmos-key>",
             "must be concrete",
         ),
     ),
@@ -217,7 +219,7 @@ def test_invalid_contract_blocks_before_creating_distribution(
     else:
         text = text.replace(
             "# @distribution key-vault secret-cosmos-primary-key\n"
-            "ADA_TOOL_PROJECTION_COSMOS_KEY=<cosmos-key>",
+            "ADA_COSMOS_KEY=<cosmos-key>",
             replacement,
         )
     source.write_text(text, encoding="utf-8")
@@ -245,9 +247,19 @@ def test_real_ada_contract_uses_one_persistence_decision_and_no_manual_master_pa
     entries = _module._environment_entries(real)
     names = {entry.name for entry in entries}
     assert "ADA_PERSISTENCE_MODE" in names
+    assert "ADA_STORAGE_CONTAINER_NAME" in names
+    assert "ADA_STORAGE_CONNECTION_STRING" in names
+    assert "ADA_COSMOS_ENDPOINT" in names
+    assert "ADA_COSMOS_KEY" in names
+    assert "ADA_COSMOS_DATABASE_NAME" in names
     assert "ADA_TOOL_SOURCE_PROVIDER" not in names
     assert "ADA_TOOL_PROJECTION_PROVIDER" not in names
     assert "ADA_MASTER_PROJECTION_MATERIAL_PATH" not in names
+    assert "ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME" not in names
+    assert "ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING" not in names
+    assert "ADA_TOOL_PROJECTION_COSMOS_ENDPOINT" not in names
+    assert "ADA_TOOL_PROJECTION_COSMOS_KEY" not in names
+    assert "ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME" not in names
 
 
 def test_generator_commented_mirror_is_ast_equivalent():

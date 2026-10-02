@@ -47,7 +47,7 @@ def _generate_local(settings: AdaGenericSettings, *, service_user: str, password
 
 def _generate_durable(settings: AdaGenericSettings, *, service_user: str, password: str) -> dict:
     storage_settings = settings.storage_settings()
-    container_name = settings.tool_source_blob_container_name
+    container_name = settings.storage_container_name
     if storage_settings is None or container_name is None:
         raise MasterMaterialError('Durable Master Projection storage is not configured')
     blob_name = settings.master_projection_blob_name()

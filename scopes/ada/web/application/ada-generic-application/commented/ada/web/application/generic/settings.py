@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 # Espejo pedagógico: mismo comportamiento productivo con contexto explicativo en español.
-
 from collections.abc import Mapping
 from enum import StrEnum
 from pathlib import Path
@@ -11,7 +10,6 @@ from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import SettingsConfigDict
 
 from ada.web.kpis.collector import CosmosKpiDeliveryReaderSettings
-from atlanticus.web.storage.namespace import StorageNamespace
 from ada.web.tools.persistence import (
     ToolPersistenceSettings,
     ToolProjectionProvider,
@@ -25,18 +23,19 @@ from atlanticus.connectivity.storage import (
     StorageSettings,
 )
 from atlanticus.web.configuration import WebSettings
+from atlanticus.web.storage.namespace import StorageNamespace
 
 APPLICATION_NAMESPACE_VARIABLE = 'ADA_APPLICATION_NAMESPACE'
 PERSISTENCE_MODE_VARIABLE = 'ADA_PERSISTENCE_MODE'
 TOOL_NAMESPACE_VARIABLE = 'ADA_TOOL_NAMESPACE'
 TOOL_LOCAL_BASE_ROOT_VARIABLE = 'ADA_TOOL_LOCAL_BASE_ROOT'
-TOOL_SOURCE_BLOB_CONTAINER_VARIABLE = 'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME'
-TOOL_SOURCE_BLOB_CONNECTION_STRING_VARIABLE = 'ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING'
-TOOL_SOURCE_BLOB_ACCOUNT_URL_VARIABLE = 'ADA_TOOL_SOURCE_BLOB_ACCOUNT_URL'
-TOOL_SOURCE_BLOB_SAS_TOKEN_VARIABLE = 'ADA_TOOL_SOURCE_BLOB_SAS_TOKEN'
-TOOL_PROJECTION_COSMOS_ENDPOINT_VARIABLE = 'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT'
-TOOL_PROJECTION_COSMOS_KEY_VARIABLE = 'ADA_TOOL_PROJECTION_COSMOS_KEY'
-TOOL_PROJECTION_COSMOS_DATABASE_VARIABLE = 'ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME'
+STORAGE_CONTAINER_VARIABLE = 'ADA_STORAGE_CONTAINER_NAME'
+STORAGE_CONNECTION_STRING_VARIABLE = 'ADA_STORAGE_CONNECTION_STRING'
+STORAGE_ACCOUNT_URL_VARIABLE = 'ADA_STORAGE_ACCOUNT_URL'
+STORAGE_SAS_TOKEN_VARIABLE = 'ADA_STORAGE_SAS_TOKEN'
+COSMOS_ENDPOINT_VARIABLE = 'ADA_COSMOS_ENDPOINT'
+COSMOS_KEY_VARIABLE = 'ADA_COSMOS_KEY'
+COSMOS_DATABASE_VARIABLE = 'ADA_COSMOS_DATABASE_NAME'
 KPI_DELIVERY_COSMOS_ENDPOINT_VARIABLE = 'COSMOS_CONSUMPTION_ENDPOINT'
 KPI_DELIVERY_COSMOS_KEY_VARIABLE = 'COSMOS_CONSUMPTION_KEY'
 KPI_DELIVERY_COSMOS_DATABASE_VARIABLE = 'COSMOS_CONSUMPTION_DATABASE_NAME'
@@ -72,33 +71,33 @@ class AdaGenericSettings(WebSettings):
         default=Path('.runtime/ada'),
         validation_alias=TOOL_LOCAL_BASE_ROOT_VARIABLE,
     )
-    tool_source_blob_container_name: str | None = Field(
-        default=None,
-        validation_alias=TOOL_SOURCE_BLOB_CONTAINER_VARIABLE,
+    storage_container_name: str = Field(
+        default='dataproduct',
+        validation_alias=STORAGE_CONTAINER_VARIABLE,
     )
-    tool_source_blob_connection_string: SecretStr | None = Field(
+    storage_connection_string: SecretStr | None = Field(
         default=None,
-        validation_alias=TOOL_SOURCE_BLOB_CONNECTION_STRING_VARIABLE,
+        validation_alias=STORAGE_CONNECTION_STRING_VARIABLE,
     )
-    tool_source_blob_account_url: str | None = Field(
+    storage_account_url: str | None = Field(
         default=None,
-        validation_alias=TOOL_SOURCE_BLOB_ACCOUNT_URL_VARIABLE,
+        validation_alias=STORAGE_ACCOUNT_URL_VARIABLE,
     )
-    tool_source_blob_sas_token: SecretStr | None = Field(
+    storage_sas_token: SecretStr | None = Field(
         default=None,
-        validation_alias=TOOL_SOURCE_BLOB_SAS_TOKEN_VARIABLE,
+        validation_alias=STORAGE_SAS_TOKEN_VARIABLE,
     )
-    tool_projection_cosmos_endpoint: str | None = Field(
+    cosmos_endpoint: str | None = Field(
         default=None,
-        validation_alias=TOOL_PROJECTION_COSMOS_ENDPOINT_VARIABLE,
+        validation_alias=COSMOS_ENDPOINT_VARIABLE,
     )
-    tool_projection_cosmos_key: SecretStr | None = Field(
+    cosmos_key: SecretStr | None = Field(
         default=None,
-        validation_alias=TOOL_PROJECTION_COSMOS_KEY_VARIABLE,
+        validation_alias=COSMOS_KEY_VARIABLE,
     )
-    tool_projection_cosmos_database_name: str | None = Field(
+    cosmos_database_name: str | None = Field(
         default=None,
-        validation_alias=TOOL_PROJECTION_COSMOS_DATABASE_VARIABLE,
+        validation_alias=COSMOS_DATABASE_VARIABLE,
     )
     kpi_delivery_cosmos_endpoint: str | None = Field(
         default=None,
@@ -119,13 +118,13 @@ class AdaGenericSettings(WebSettings):
         if not isinstance(values, Mapping) or PERSISTENCE_MODE_VARIABLE in values:
             return values
         durable_names = (
-            TOOL_SOURCE_BLOB_CONTAINER_VARIABLE,
-            TOOL_SOURCE_BLOB_CONNECTION_STRING_VARIABLE,
-            TOOL_SOURCE_BLOB_ACCOUNT_URL_VARIABLE,
-            TOOL_SOURCE_BLOB_SAS_TOKEN_VARIABLE,
-            TOOL_PROJECTION_COSMOS_ENDPOINT_VARIABLE,
-            TOOL_PROJECTION_COSMOS_KEY_VARIABLE,
-            TOOL_PROJECTION_COSMOS_DATABASE_VARIABLE,
+            STORAGE_CONTAINER_VARIABLE,
+            STORAGE_CONNECTION_STRING_VARIABLE,
+            STORAGE_ACCOUNT_URL_VARIABLE,
+            STORAGE_SAS_TOKEN_VARIABLE,
+            COSMOS_ENDPOINT_VARIABLE,
+            COSMOS_KEY_VARIABLE,
+            COSMOS_DATABASE_VARIABLE,
         )
         if not any(values.get(name) not in (None, '') for name in durable_names):
             return values
@@ -152,25 +151,23 @@ class AdaGenericSettings(WebSettings):
     @model_validator(mode='after')
     def validate_provider_requirements(self) -> Self:
         if self.persistence_mode is AdaPersistenceMode.DURABLE:
-            if self.tool_source_blob_container_name is None:
-                raise ValueError(f'{TOOL_SOURCE_BLOB_CONTAINER_VARIABLE} is required')
-            has_connection_string = self.tool_source_blob_connection_string is not None
-            has_account_url = self.tool_source_blob_account_url is not None
-            has_sas_token = self.tool_source_blob_sas_token is not None
+            has_connection_string = self.storage_connection_string is not None
+            has_account_url = self.storage_account_url is not None
+            has_sas_token = self.storage_sas_token is not None
             if has_connection_string and (has_account_url or has_sas_token):
                 raise ValueError(
-                    'Blob Source must use connection string or SAS credentials, not both'
+                    'ADA Storage must use connection string or SAS credentials, not both'
                 )
             if not has_connection_string and not (has_account_url and has_sas_token):
                 raise ValueError(
-                    'Blob Source requires connection string or account URL plus SAS token'
+                    'ADA Storage requires connection string or account URL plus SAS token'
                 )
             required = (
-                (TOOL_PROJECTION_COSMOS_ENDPOINT_VARIABLE, self.tool_projection_cosmos_endpoint),
-                (TOOL_PROJECTION_COSMOS_KEY_VARIABLE, self.tool_projection_cosmos_key),
+                (COSMOS_ENDPOINT_VARIABLE, self.cosmos_endpoint),
+                (COSMOS_KEY_VARIABLE, self.cosmos_key),
                 (
-                    TOOL_PROJECTION_COSMOS_DATABASE_VARIABLE,
-                    self.tool_projection_cosmos_database_name,
+                    COSMOS_DATABASE_VARIABLE,
+                    self.cosmos_database_name,
                 ),
             )
             missing = next((name for name, value in required if value is None), None)
@@ -199,9 +196,10 @@ class AdaGenericSettings(WebSettings):
         return self.tool_local_base_root.expanduser().resolve()
 
     def master_projection_local_path(self) -> Path:
-        return self.storage_namespace().local_application_root(
-            self.local_base_root()
-        ) / MASTER_PROJECTION_RELATIVE_PATH
+        return (
+            self.storage_namespace().local_application_root(self.local_base_root())
+            / MASTER_PROJECTION_RELATIVE_PATH
+        )
 
     def master_projection_blob_name(self) -> str:
         return self.storage_namespace().application_blob_name(MASTER_PROJECTION_RELATIVE_PATH)
@@ -217,7 +215,7 @@ class AdaGenericSettings(WebSettings):
                 else None
             ),
             blob_container_name=(
-                self.tool_source_blob_container_name
+                self.storage_container_name
                 if self.persistence_mode is AdaPersistenceMode.DURABLE
                 else None
             ),
@@ -231,14 +229,14 @@ class AdaGenericSettings(WebSettings):
     def storage_settings(self) -> StorageSettings | None:
         if self.persistence_mode is not AdaPersistenceMode.DURABLE:
             return None
-        connection_string = self.tool_source_blob_connection_string
+        connection_string = self.storage_connection_string
         if connection_string is not None:
             credential = StorageConnectionStringCredential(connection_string.get_secret_value())
         else:
-            account_url = self.tool_source_blob_account_url
-            sas_token = self.tool_source_blob_sas_token
+            account_url = self.storage_account_url
+            sas_token = self.storage_sas_token
             if account_url is None or sas_token is None:
-                raise RuntimeError('Blob Source credentials were not resolved')
+                raise RuntimeError('ADA Storage credentials were not resolved')
             credential = StorageSasCredential(
                 account_url=account_url,
                 sas_token=sas_token.get_secret_value(),
@@ -246,14 +244,14 @@ class AdaGenericSettings(WebSettings):
             )
         return StorageSettings(credential=credential)
 
-    def tool_projection_cosmos_settings(self) -> CosmosSettings | None:
+    def cosmos_settings(self) -> CosmosSettings | None:
         if self.persistence_mode is not AdaPersistenceMode.DURABLE:
             return None
-        endpoint = self.tool_projection_cosmos_endpoint
-        key = self.tool_projection_cosmos_key
-        database_name = self.tool_projection_cosmos_database_name
+        endpoint = self.cosmos_endpoint
+        key = self.cosmos_key
+        database_name = self.cosmos_database_name
         if endpoint is None or key is None or database_name is None:
-            raise RuntimeError('Cosmos Projection settings were not resolved')
+            raise RuntimeError('ADA Cosmos settings were not resolved')
         return CosmosSettings(
             endpoint=endpoint,
             key=key.get_secret_value(),

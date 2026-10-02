@@ -8,6 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+from ada.web.application.generic.settings import AdaGenericSettings, AdaPersistenceMode
 from atlanticus.connectivity.storage import (
     StorageClient,
     StorageConflictError,
@@ -18,12 +19,12 @@ from atlanticus.web.master_projection.material import (
     generate_master_material,
 )
 
-from ada.web.application.generic.settings import AdaGenericSettings, AdaPersistenceMode
-
 
 def _password() -> str:
     if not sys.stdin.isatty():
-        raise MasterMaterialError('Master Projection material generation requires an interactive terminal')
+        raise MasterMaterialError(
+            'Master Projection material generation requires an interactive terminal'
+        )
     password = getpass.getpass('Master Projection password: ')
     repeated = getpass.getpass('Repeat Master Projection password: ')
     if password != repeated:
@@ -51,7 +52,7 @@ def _generate_local(settings: AdaGenericSettings, *, service_user: str, password
 
 def _generate_durable(settings: AdaGenericSettings, *, service_user: str, password: str) -> dict:
     storage_settings = settings.storage_settings()
-    container_name = settings.tool_source_blob_container_name
+    container_name = settings.storage_container_name
     if storage_settings is None or container_name is None:
         raise MasterMaterialError('Durable Master Projection storage is not configured')
     blob_name = settings.master_projection_blob_name()

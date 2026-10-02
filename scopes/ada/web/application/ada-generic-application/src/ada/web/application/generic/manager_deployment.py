@@ -85,9 +85,9 @@ def resolve_durable_manager_configuration(
     if settings.persistence_mode is not AdaPersistenceMode.DURABLE:
         raise ValueError('Durable Manager requires durable ADA persistence')
     storage_settings = settings.storage_settings()
-    cosmos_settings = settings.tool_projection_cosmos_settings()
-    container_name = settings.tool_source_blob_container_name
-    if storage_settings is None or cosmos_settings is None or container_name is None:
+    cosmos_settings = settings.cosmos_settings()
+    container_name = settings.storage_container_name
+    if storage_settings is None or cosmos_settings is None:
         raise ValueError('Durable Manager provider settings are incomplete')
     delivery_settings = settings.kpi_delivery_cosmos_settings()
     if delivery_settings is not None and (

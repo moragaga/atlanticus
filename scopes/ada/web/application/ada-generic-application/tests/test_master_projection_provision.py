@@ -43,11 +43,11 @@ def test_durable_provision_uploads_to_canonical_blob(tmp_path, monkeypatch):
             'ADA_PERSISTENCE_MODE': 'durable',
             'ADA_APPLICATION_NAMESPACE': 'app',
             'ADA_TOOL_NAMESPACE': 'tool',
-            'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME': 'configuration',
-            'ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING': 'UseDevelopmentStorage=true',
-            'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT': 'http://localhost:8081',
-            'ADA_TOOL_PROJECTION_COSMOS_KEY': 'test-only',
-            'ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME': 'ada',
+            'ADA_STORAGE_CONTAINER_NAME': 'configuration',
+            'ADA_STORAGE_CONNECTION_STRING': 'UseDevelopmentStorage=true',
+            'ADA_COSMOS_ENDPOINT': 'http://localhost:8081',
+            'ADA_COSMOS_KEY': 'test-only',
+            'ADA_COSMOS_DATABASE_NAME': 'ada',
         }
     )
     captured = {}

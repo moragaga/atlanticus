@@ -23,6 +23,9 @@ def test_catalog_preserves_current_web_products() -> None:
     assert products["ada"]["qualification_strategy"] == "handler"
     assert products["command-center"]["distribution_strategy"] == "wheelhouse"
     assert products["command-center"]["qualification_strategy"] == "artifact-precheck"
+    assert products["generic"]["configuration_templates"] is False
+    assert products["ada"]["configuration_templates"] is True
+    assert products["command-center"]["configuration_templates"] is True
 
 
 def test_catalog_root_packages_match_current_projects() -> None:

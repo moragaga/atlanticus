@@ -402,7 +402,7 @@ def _integrate_manager(
 
 def _resolve_tool_projection(settings: AdaGenericSettings) -> ToolProjectionResolution:
     storage_client = _create_storage_client(settings)
-    cosmos_client = _create_tool_projection_cosmos_client(settings)
+    cosmos_client = _create_cosmos_client(settings)
     try:
         persistence = compose_tool_persistence(
             settings=settings.tool_persistence_settings(),
@@ -412,7 +412,7 @@ def _resolve_tool_projection(settings: AdaGenericSettings) -> ToolProjectionReso
         return resolve_operational_tool_projection(persistence)
     finally:
         _close_client(storage_client, 'Storage')
-        _close_client(cosmos_client, 'Tool Projection Cosmos')
+        _close_client(cosmos_client, 'ADA Cosmos')
 
 
 def _create_storage_client(settings: AdaGenericSettings) -> StorageClient | None:
@@ -422,10 +422,10 @@ def _create_storage_client(settings: AdaGenericSettings) -> StorageClient | None
     return StorageClient(settings=storage_settings)
 
 
-def _create_tool_projection_cosmos_client(
+def _create_cosmos_client(
     settings: AdaGenericSettings,
 ) -> CosmosClient | None:
-    cosmos_settings = settings.tool_projection_cosmos_settings()
+    cosmos_settings = settings.cosmos_settings()
     if cosmos_settings is None:
         return None
     return CosmosClient(settings=cosmos_settings)

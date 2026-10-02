@@ -60,7 +60,43 @@ def test_command_center_starter_is_minimal_and_pinned_to_current_product(
 
     manifest = json.loads((destination / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["profile"] == "command-center"
-    assert manifest["configuration_templates"] == []
+    assert set(manifest["configuration_templates"]) == {
+        "configuration/templates/dev.mapping-env.csv",
+        "configuration/templates/uat.mapping-env.csv",
+        "configuration/templates/prd.mapping-env.csv",
+        "configuration/templates/secrets.json",
+    }
+    prd = (destination / "configuration/templates/prd.mapping-env.csv").read_text(
+        encoding="utf-8"
+    )
+    assert "ATLANTICUS_ENVIRONMENT,,production" in prd
+    assert "ADA_MANAGER_PERSISTENCE_PROVIDER,,durable" in prd
+    assert "ADA_COMMAND_CENTER_STORAGE_CONTAINER_NAME,,dataproduct" in prd
+    secrets = json.loads(
+        (destination / "configuration/templates/secrets.json").read_text(encoding="utf-8")
+    )
+    assert secrets == [
+        {
+            "var_name": "ADA_COMMAND_CENTER_STORAGE_CONNECTION_STRING",
+            "secret_name": "secret-ada-command-center-storage-connection-string",
+            "required_in_key_vault": True,
+        },
+        {
+            "var_name": "ADA_COMMAND_CENTER_COSMOS_ENDPOINT",
+            "secret_name": "secret-ada-command-center-cosmos-endpoint",
+            "required_in_key_vault": True,
+        },
+        {
+            "var_name": "ADA_COMMAND_CENTER_COSMOS_DATABASE_NAME",
+            "secret_name": "secret-ada-command-center-cosmos-database-name",
+            "required_in_key_vault": True,
+        },
+        {
+            "var_name": "ADA_COMMAND_CENTER_COSMOS_KEY",
+            "secret_name": "secret-ada-command-center-cosmos-primary-key",
+            "required_in_key_vault": True,
+        },
+    ]
 
     env_detail = (destination / ".env.detail").read_text(encoding="utf-8")
     assert "\nATLANTICUS_LOCAL_IDENTITY_SUBJECT_ID=" not in "\n" + env_detail

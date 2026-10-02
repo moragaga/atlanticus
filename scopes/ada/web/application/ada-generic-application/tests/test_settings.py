@@ -26,12 +26,25 @@ def _durable_values() -> dict[str, str]:
     return {
         'ADA_PERSISTENCE_MODE': 'durable',
         'ADA_TOOL_NAMESPACE': 'operaciones_integradas',
-        'ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME': 'configuration',
-        'ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING': 'UseDevelopmentStorage=true',
-        'ADA_TOOL_PROJECTION_COSMOS_ENDPOINT': 'https://cosmos.example.test',
-        'ADA_TOOL_PROJECTION_COSMOS_KEY': 'cosmos-key',
-        'ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME': 'configuration',
+        'ADA_STORAGE_CONTAINER_NAME': 'configuration',
+        'ADA_STORAGE_CONNECTION_STRING': 'UseDevelopmentStorage=true',
+        'ADA_COSMOS_ENDPOINT': 'https://cosmos.example.test',
+        'ADA_COSMOS_KEY': 'cosmos-key',
+        'ADA_COSMOS_DATABASE_NAME': 'configuration',
     }
+
+
+def test_storage_container_defaults_to_dataproduct_and_allows_override() -> None:
+    values = _durable_values()
+    values.pop('ADA_STORAGE_CONTAINER_NAME')
+
+    default = AdaGenericSettings.from_mapping(values)
+    overridden = AdaGenericSettings.from_mapping(
+        {**values, 'ADA_STORAGE_CONTAINER_NAME': 'ada-smoke'}
+    )
+
+    assert default.storage_container_name == 'dataproduct'
+    assert overridden.storage_container_name == 'ada-smoke'
 
 
 def test_local_settings_derive_local_tool_persistence(tmp_path: Path) -> None:
@@ -53,7 +66,7 @@ def test_local_settings_derive_local_tool_persistence(tmp_path: Path) -> None:
     assert persistence.local_base_root == tmp_path
     assert persistence.cosmos_container_name is None
     assert settings.storage_settings() is None
-    assert settings.tool_projection_cosmos_settings() is None
+    assert settings.cosmos_settings() is None
     assert settings.kpi_delivery_cosmos_settings() is None
 
 
@@ -63,7 +76,7 @@ def test_durable_mode_derives_blob_and_cosmos_providers() -> None:
     )
 
     storage = settings.storage_settings()
-    cosmos = settings.tool_projection_cosmos_settings()
+    cosmos = settings.cosmos_settings()
     persistence = settings.tool_persistence_settings()
 
     assert settings.persistence_mode is AdaPersistenceMode.DURABLE
@@ -108,7 +121,7 @@ def test_kpi_delivery_cosmos_connection_remains_independent(tmp_path: Path) -> N
     cosmos = settings.kpi_delivery_cosmos_settings()
     reader = settings.kpi_delivery_reader_settings()
 
-    assert settings.tool_projection_cosmos_settings() is None
+    assert settings.cosmos_settings() is None
     assert cosmos is not None
     assert cosmos.endpoint == 'https://consumption.example.test'
     assert cosmos.database_name == 'consumption'
@@ -158,11 +171,11 @@ def test_partial_kpi_delivery_cosmos_connection_is_rejected(tmp_path: Path) -> N
 
 def test_blob_sas_settings_preserve_supported_storage_contract() -> None:
     values = _durable_values()
-    values.pop('ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING')
+    values.pop('ADA_STORAGE_CONNECTION_STRING')
     values.update(
         {
-            'ADA_TOOL_SOURCE_BLOB_ACCOUNT_URL': 'http://127.0.0.1:10000/devstoreaccount1',
-            'ADA_TOOL_SOURCE_BLOB_SAS_TOKEN': 'sig=local',
+            'ADA_STORAGE_ACCOUNT_URL': 'http://127.0.0.1:10000/devstoreaccount1',
+            'ADA_STORAGE_SAS_TOKEN': 'sig=local',
         }
     )
     settings = AdaGenericSettings.from_mapping(values)
@@ -197,8 +210,8 @@ def test_durable_mode_rejects_ambiguous_blob_credentials() -> None:
     values = _durable_values()
     values.update(
         {
-            'ADA_TOOL_SOURCE_BLOB_ACCOUNT_URL': 'http://127.0.0.1:10000/devstoreaccount1',
-            'ADA_TOOL_SOURCE_BLOB_SAS_TOKEN': 'sig=local',
+            'ADA_STORAGE_ACCOUNT_URL': 'http://127.0.0.1:10000/devstoreaccount1',
+            'ADA_STORAGE_SAS_TOKEN': 'sig=local',
         }
     )
     with pytest.raises(ValidationError, match='connection string or SAS credentials, not both'):
@@ -207,8 +220,8 @@ def test_durable_mode_rejects_ambiguous_blob_credentials() -> None:
 
 def test_durable_mode_requires_complete_cosmos_connection() -> None:
     values = _durable_values()
-    values.pop('ADA_TOOL_PROJECTION_COSMOS_KEY')
-    with pytest.raises(ValidationError, match='ADA_TOOL_PROJECTION_COSMOS_KEY is required'):
+    values.pop('ADA_COSMOS_KEY')
+    with pytest.raises(ValidationError, match='ADA_COSMOS_KEY is required'):
         AdaGenericSettings.from_mapping(values)
 
 
