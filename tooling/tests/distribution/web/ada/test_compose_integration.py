@@ -50,9 +50,7 @@ def test_compose_full_accepts_existing_local_env_without_requiring_azure_secrets
     project = _load_source(_PROJECT, "compose_project_full_test")
     root = _compose_fixture(tmp_path)
     (root / ".env").write_text(
-        "ADA_TOOL_NAMESPACE=operaciones_integradas\n"
-        "ADA_MANAGER_PERSISTENCE_PROVIDER=local\n"
-        "ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING=<unset-in-local-mode>\n",
+        "ADA_PERSISTENCE_MODE=durable\nADA_TOOL_NAMESPACE=operaciones_integradas\n",
         encoding="utf-8",
     )
     for key in ("ADA_TOOL_NAMESPACE", "ADA_COMPOSE_NETWORK"):
@@ -93,28 +91,28 @@ def test_compose_rejects_placeholder_and_conflicting_full_stack(tmp_path, monkey
         project.compose(root, "up", "full")
 
 
-def test_compose_web_requires_durable_provider_and_prepares_only_explicitly(
+def test_compose_web_requires_durable_mode_and_prepares_only_explicitly(
     tmp_path,
     monkeypatch,
 ):
     project = _load_source(_PROJECT, "compose_project_web_test")
     root = _compose_fixture(tmp_path)
-    monkeypatch.delenv("ADA_MANAGER_PERSISTENCE_PROVIDER", raising=False)
-    monkeypatch.delenv("ADA_TOOL_SOURCE_PROVIDER", raising=False)
-    monkeypatch.delenv("ADA_TOOL_PROJECTION_PROVIDER", raising=False)
+    monkeypatch.delenv("ADA_PERSISTENCE_MODE", raising=False)
+    monkeypatch.delenv("ADA_TOOL_NAMESPACE", raising=False)
     (root / ".env").write_text(
-        "ADA_MANAGER_PERSISTENCE_PROVIDER=local\n"
-        "ADA_TOOL_SOURCE_PROVIDER=local\n"
-        "ADA_TOOL_PROJECTION_PROVIDER=local\n",
+        "ADA_PERSISTENCE_MODE=local\nADA_TOOL_NAMESPACE=operaciones_integradas\n",
         encoding="utf-8",
     )
     with pytest.raises(project.ProjectError, match="durable"):
         project.compose(root, "up", "web")
     (root / ".env").write_text(
-        "ADA_MANAGER_PERSISTENCE_PROVIDER=durable\n"
-        "ADA_TOOL_SOURCE_PROVIDER=blob\n"
-        "ADA_TOOL_PROJECTION_PROVIDER=cosmos\n"
-        "ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING=emulator-test-value\n",
+        "ADA_PERSISTENCE_MODE=durable\n"
+        "ADA_TOOL_NAMESPACE=operaciones_integradas\n"
+        "ADA_STORAGE_CONTAINER_NAME=dataproduct\n"
+        "ADA_STORAGE_CONNECTION_STRING=emulator-test-value\n"
+        "ADA_COSMOS_ENDPOINT=http://cosmos-emulator:8081\n"
+        "ADA_COSMOS_KEY=emulator-test-key\n"
+        "ADA_COSMOS_DATABASE_NAME=ada-local\n",
         encoding="utf-8",
     )
     executed = []
@@ -222,11 +220,9 @@ def _load_local_resources(
         def __init__(self):
             self.environment = SimpleNamespace(is_local=environment == "local")
             self.persistence_mode = ada_persistence_mode.DURABLE
-            self.tool_source_provider = SimpleNamespace(value="blob")
-            self.tool_projection_provider = SimpleNamespace(value="cosmos")
-            self.tool_projection_cosmos_endpoint = endpoint
-            self.tool_source_blob_connection_string = Secret()
-            self.tool_source_blob_container_name = "ada-source"
+            self.cosmos_endpoint = endpoint
+            self.storage_connection_string = Secret()
+            self.storage_container_name = "dataproduct"
 
     @contextmanager
     def manager(settings):
@@ -305,7 +301,7 @@ def test_ada_compose_templates_ship_with_generator_and_unchanged_source_inventor
         tmp_path / "repo/scopes/ada/web/application/ada-generic-application/.env.detail"
     )
     env.parent.mkdir(parents=True)
-    env.write_text("# @distribution manual-default\nADA_TOOL_SOURCE_PROVIDER=blob\n")
+    env.write_text("# @distribution manual-default\nADA_PERSISTENCE_MODE=durable\n")
     monkeypatch.setitem(generator._PRODUCTS["ada"], "starter_overlay", str(_STARTER))
     monkeypatch.setattr(generator, "REPOSITORY_ROOT", tmp_path / "repo")
     target = generator.generate_starter(
@@ -376,10 +372,13 @@ def _docker_compose_available() -> bool:
 def test_docker_compose_accepts_generated_service_graph(tmp_path, profile):
     root = _compose_fixture(tmp_path)
     (root / ".env").write_text(
+        "ADA_PERSISTENCE_MODE=durable\n"
         "ADA_TOOL_NAMESPACE=operaciones_integradas\n"
-        "ADA_MANAGER_PERSISTENCE_PROVIDER=durable\n"
-        "ADA_TOOL_SOURCE_PROVIDER=blob\n"
-        "ADA_TOOL_PROJECTION_PROVIDER=cosmos\n",
+        "ADA_STORAGE_CONTAINER_NAME=dataproduct\n"
+        "ADA_STORAGE_CONNECTION_STRING=emulator-test-value\n"
+        "ADA_COSMOS_ENDPOINT=http://cosmos-emulator:8081\n"
+        "ADA_COSMOS_KEY=emulator-test-key\n"
+        "ADA_COSMOS_DATABASE_NAME=ada-local\n",
         encoding="utf-8",
     )
     result = subprocess.run(
@@ -407,8 +406,12 @@ def test_docker_compose_accepts_generated_service_graph(tmp_path, profile):
         assert Path(resolved["services"]["web"]["build"]["context"]) == root.resolve()
     if profile == "web":
         assert (
-            resolved["services"]["web"]["environment"]["ADA_TOOL_SOURCE_PROVIDER"]
-            == "blob"
+            resolved["services"]["web"]["environment"]["ADA_PERSISTENCE_MODE"]
+            == "durable"
+        )
+        assert (
+            resolved["services"]["web"]["environment"]["ADA_STORAGE_CONTAINER_NAME"]
+            == "dataproduct"
         )
         assert "resources" not in resolved["services"]
         setup = subprocess.run(
@@ -434,7 +437,7 @@ def test_docker_compose_accepts_generated_service_graph(tmp_path, profile):
         assert setup.returncode == 0, setup.stderr
         assert (
             json.loads(setup.stdout)["services"]["resources"]["environment"][
-                "ADA_MANAGER_PERSISTENCE_PROVIDER"
+                "ADA_PERSISTENCE_MODE"
             ]
             == "durable"
         )

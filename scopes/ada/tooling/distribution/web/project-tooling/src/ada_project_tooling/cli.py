@@ -662,22 +662,11 @@ def _validate_compose_start(root: Path, profile: str) -> None:
         if not namespace or re.search(r"<[^>]+>", namespace):
             raise ProjectError("Set ADA_TOOL_NAMESPACE in .env before starting full Compose")
     if profile == "web":
-        values = {
-            key: _compose_setting(root, key)
-            for key in (
-                "ADA_MANAGER_PERSISTENCE_PROVIDER",
-                "ADA_TOOL_SOURCE_PROVIDER",
-                "ADA_TOOL_PROJECTION_PROVIDER",
-            )
-        }
-        if values != {
-            "ADA_MANAGER_PERSISTENCE_PROVIDER": "durable",
-            "ADA_TOOL_SOURCE_PROVIDER": "blob",
-            "ADA_TOOL_PROJECTION_PROVIDER": "cosmos",
-        }:
-            raise ProjectError(
-                "Web Compose requires durable Manager, Blob Source and Cosmos Projection"
-            )
+        if _compose_setting(root, "ADA_PERSISTENCE_MODE") != "durable":
+            raise ProjectError("Web Compose requires ADA_PERSISTENCE_MODE=durable")
+        namespace = _compose_setting(root, "ADA_TOOL_NAMESPACE")
+        if not namespace or re.search(r"<[^>]+>", namespace):
+            raise ProjectError("Set ADA_TOOL_NAMESPACE in .env before starting web Compose")
         unresolved = _unresolved_environment(root)
         if unresolved:
             raise ProjectError(f"Unresolved environment placeholders: {', '.join(unresolved)}")

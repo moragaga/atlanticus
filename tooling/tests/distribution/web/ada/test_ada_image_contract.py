@@ -215,3 +215,25 @@ def test_generated_ada_tooling_is_executable_and_stays_out_of_docker_context(
     rules = (app / ".dockerignore").read_text()
     assert rules.splitlines()[0] == "*"
     assert "!tooling/" not in rules
+
+
+def test_local_full_compose_uses_current_ada_durable_environment_contract():
+    compose = (_ROOT / "deployment/compose/full.yaml").read_text(encoding="utf-8")
+
+    assert (
+        "ADA_STORAGE_CONTAINER_NAME: ${ADA_LOCAL_BLOB_CONTAINER:-dataproduct}"
+        in compose
+    )
+    assert "ADA_STORAGE_CONNECTION_STRING:" in compose
+    assert "ADA_COSMOS_ENDPOINT:" in compose
+    assert "ADA_COSMOS_KEY:" in compose
+    assert "ADA_COSMOS_DATABASE_NAME:" in compose
+
+    for legacy in (
+        "ADA_TOOL_SOURCE_BLOB_CONTAINER_NAME",
+        "ADA_TOOL_SOURCE_BLOB_CONNECTION_STRING",
+        "ADA_TOOL_PROJECTION_COSMOS_ENDPOINT",
+        "ADA_TOOL_PROJECTION_COSMOS_KEY",
+        "ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME",
+    ):
+        assert legacy not in compose

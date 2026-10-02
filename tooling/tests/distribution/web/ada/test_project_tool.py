@@ -490,3 +490,34 @@ def test_signed_but_unhashed_mutable_lock_is_not_accepted(distribution):
     )
     with pytest.raises(project.ProjectError, match="unhashed"):
         project._locked(distribution)
+
+
+def test_web_compose_validates_current_durable_contract(distribution, monkeypatch):
+    directory = distribution / "deployment/compose"
+    directory.mkdir(parents=True)
+    (directory / "web.yaml").write_text("services: {}\n")
+    monkeypatch.setattr(project, "_docker_network", lambda *_args, **_kw: None)
+    monkeypatch.setattr(project, "_command", lambda *_args, **_kw: None)
+
+    (distribution / ".env").write_text(
+        "ADA_PERSISTENCE_MODE=local\nADA_TOOL_NAMESPACE=operaciones_integradas\n"
+    )
+    with pytest.raises(project.ProjectError, match="ADA_PERSISTENCE_MODE=durable"):
+        project.compose(distribution, "up", "web")
+
+    (distribution / ".env").write_text(
+        "ADA_PERSISTENCE_MODE=durable\nADA_TOOL_NAMESPACE=<tool-namespace>\n"
+    )
+    with pytest.raises(project.ProjectError, match="ADA_TOOL_NAMESPACE"):
+        project.compose(distribution, "up", "web")
+
+    (distribution / ".env").write_text(
+        "ADA_PERSISTENCE_MODE=durable\n"
+        "ADA_TOOL_NAMESPACE=operaciones_integradas\n"
+        "ADA_STORAGE_CONTAINER_NAME=dataproduct\n"
+        "ADA_STORAGE_CONNECTION_STRING=UseDevelopmentStorage=true\n"
+        "ADA_COSMOS_ENDPOINT=http://cosmos-emulator:8081\n"
+        "ADA_COSMOS_KEY=test-key\n"
+        "ADA_COSMOS_DATABASE_NAME=ada-local\n"
+    )
+    project.compose(distribution, "up", "web")

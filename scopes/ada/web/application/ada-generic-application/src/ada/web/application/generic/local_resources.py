@@ -19,8 +19,8 @@ _WAIT_SECONDS = 180
 
 
 def _is_emulator_configuration(settings: AdaGenericSettings) -> bool:
-    endpoint = urlsplit(settings.tool_projection_cosmos_endpoint or '')
-    connection = settings.tool_source_blob_connection_string
+    endpoint = urlsplit(settings.cosmos_endpoint or '')
+    connection = settings.storage_connection_string
     if connection is None:
         return False
     parts = dict(
@@ -37,7 +37,7 @@ def _is_emulator_configuration(settings: AdaGenericSettings) -> bool:
         and blob.hostname == 'azurite'
         and blob.port == 10000
         and blob.path.rstrip('/') == '/devstoreaccount1'
-        and settings.tool_source_blob_container_name is not None
+        and settings.storage_container_name is not None
     )
 
 
