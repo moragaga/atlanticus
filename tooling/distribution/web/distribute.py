@@ -6,12 +6,16 @@ import json
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 WEB_ROOT = Path(__file__).resolve().parent
 REPOSITORY_ROOT = WEB_ROOT.parents[2]
 ADA_ROOT = WEB_ROOT / "ada"
-_PROFILES = ("generic", "ada")
+_PRODUCTS = tomllib.loads((WEB_ROOT / "products.toml").read_text(encoding="utf-8"))[
+    "products"
+]
+_PROFILES = tuple(_PRODUCTS)
 
 
 def _load_module(name: str, path: Path):
@@ -82,6 +86,7 @@ def build_web_distribution(
 ) -> dict[str, object]:
     if profile not in _PROFILES:
         raise ValueError("Unknown Web distribution profile")
+    product = _PRODUCTS[profile]
     destination = destination.expanduser().resolve()
     stages: dict[str, object] = {}
     stage = "starter"
@@ -89,22 +94,24 @@ def build_web_distribution(
         application = generate_starter(profile=profile, destination=destination)
         stages["starter"] = {"status": "PASS", "application": str(application)}
         stage = "distribution"
-        if profile == "ada":
+        if product["distribution_strategy"] == "ada":
             builder = _load_ada_builder()
             distribution = builder.build_ada_distribution(
                 application=application, uv=uv
             )
-        else:
+        elif product["distribution_strategy"] == "wheelhouse":
             distribution = build_wheelhouse(
                 profile=profile, application=application, uv=uv
             )
+        else:
+            raise ValueError("Unsupported Web distribution strategy")
         stages["distribution"] = distribution
         stage = "qualification"
-        if profile == "ada":
+        if product["qualification_strategy"] == "ada-precheck":
             qualification = _qualify_ada_distribution(
                 application=application, timeout=timeout
             )
-        else:
+        elif product["qualification_strategy"] == "runtime":
             qualification = qualify(
                 application=application,
                 profile=profile,
@@ -113,6 +120,8 @@ def build_web_distribution(
                 portable=True,
                 inspect_only=False,
             )
+        else:
+            raise ValueError("Unsupported Web qualification strategy")
         stages["qualification"] = qualification
     except (
         FileExistsError,
@@ -132,7 +141,7 @@ def build_web_distribution(
             "error": str(error),
             "stages": stages,
         }
-    expected = "PRECHECK_PASS" if profile == "ada" else "PASS"
+    expected = product["qualification_expected_status"]
     status = qualification.get("status")
     if status != expected:
         return {
