@@ -1,6 +1,8 @@
 import ast
 from pathlib import Path
 
+import pytest
+
 from atlanticus.data_producers.sql import (
     DataValueKind,
     SqlColumnDefinition,
@@ -9,64 +11,68 @@ from atlanticus.data_producers.sql import (
     SqlStorageMode,
 )
 from atlanticus.operational_data.processes.dispatch.catalog import build_catalog
+from atlanticus.operational_data.processes.dispatch.catalog.definitions import DEFINITIONS
+from atlanticus.operational_data.processes.dispatch.catalog.examples import EXAMPLE_DEFINITIONS
+from atlanticus.operational_data.processes.dispatch.errors import DispatchCatalogError
 
 
-def test_catalog_contains_current_dispatch_sources_in_stable_order() -> None:
-    catalog = build_catalog()
+def test_catalog_starts_empty_and_requires_configuration() -> None:
+    assert DEFINITIONS == ()
+    with pytest.raises(DispatchCatalogError, match='at least one source'):
+        build_catalog()
 
-    assert tuple(item.source_key for item in catalog) == (
+
+def test_examples_preserve_real_dispatch_sources_in_stable_order() -> None:
+    assert tuple(item.source_key for item in EXAMPLE_DEFINITIONS) == (
         'tiempos_mlp',
+        'shift_info',
         'std_shift_state',
         'std_shift_loads',
-        'std_shift_dumps',
-        'std_shift_grade',
         'std_shift_loads_2',
+        'std_shift_dumps',
+        'std_shift_dumps_nodica',
+        'std_shift_loads_2_nodica',
+        'std_shift_grade',
         'std_truck',
     )
 
 
-def test_tiempos_mlp_declares_functional_last_update() -> None:
-    definition = build_catalog()[0]
-
-    assert definition.source_table == 'dbo.tiempos_mlp'
-    assert definition.storage_mode is SqlStorageMode.PARTITIONED
-    assert definition.load_strategy is SqlLoadStrategy.SCOPED
-    assert definition.scope_column == 'ShiftId'
-    assert definition.scope_output_column == 'shift_id'
-    assert definition.materialization_name == 'shift'
-    assert definition.partition_dimensions == ('year', 'month', 'day', 'turn')
-    assert definition.source_last_update_output_column == 'moment'
-
-
-def test_all_shift_sources_share_partition_contract() -> None:
-    definitions = tuple(item for item in build_catalog() if item.source_key != 'std_truck')
-
-    assert len(definitions) == 6
-    assert all(item.storage_mode is SqlStorageMode.PARTITIONED for item in definitions)
-    assert all(item.load_strategy is SqlLoadStrategy.SCOPED for item in definitions)
-    assert all(item.scope_column == 'ShiftId' for item in definitions)
-    assert all(item.scope_output_column == 'shift_id' for item in definitions)
-    assert all(item.materialization_name == 'shift' for item in definitions)
-    assert all(
-        item.partition_dimensions == ('year', 'month', 'day', 'turn') for item in definitions
+def test_examples_preserve_partition_and_latest_contracts() -> None:
+    shift_sources = tuple(
+        item for item in EXAMPLE_DEFINITIONS if item.storage_mode is SqlStorageMode.PARTITIONED
     )
+    latest = next(item for item in EXAMPLE_DEFINITIONS if item.source_key == 'std_truck')
+
+    assert len(shift_sources) == 9
+    assert all(item.load_strategy is SqlLoadStrategy.SCOPED for item in shift_sources)
+    assert all(item.scope_output_column == 'shift_id' for item in shift_sources)
+    assert all(item.materialization_name == 'shift' for item in shift_sources)
+    assert all(
+        item.partition_dimensions == ('year', 'month', 'day', 'turn') for item in shift_sources
+    )
+    assert latest.source_table == 'std.StdTruck'
+    assert latest.storage_mode is SqlStorageMode.LATEST
+    assert latest.load_strategy is SqlLoadStrategy.FULL_SNAPSHOT
 
 
-def test_std_truck_is_latest_full_snapshot() -> None:
-    definition = next(item for item in build_catalog() if item.source_key == 'std_truck')
+def test_shift_info_example_preserves_unmapped_dedupe_contract() -> None:
+    from atlanticus.operational_data.processes.dispatch.catalog.examples.tables import shift_info
 
-    assert definition.storage_mode is SqlStorageMode.LATEST
-    assert definition.load_strategy is SqlLoadStrategy.FULL_SNAPSHOT
-    assert definition.scope_column is None
-    assert definition.scope_output_column is None
-    assert definition.materialization_name == 'latest'
-    assert definition.partition_dimensions == ()
+    assert shift_info.REFERENCE_DEDUPE_COLUMNS == ('shift_id',)
+    assert shift_info.DEFINITION.enabled is False
+
+
+def test_tiempos_example_preserves_functional_last_update() -> None:
+    definition = next(item for item in EXAMPLE_DEFINITIONS if item.source_key == 'tiempos_mlp')
+    assert definition.source_last_update_output_column == 'moment'
+    by_source = {item.source_name: item for item in definition.columns}
+    assert by_source['shiftdate'].value_kind is DataValueKind.DATE
 
 
 def test_catalog_excludes_disabled_sources(monkeypatch) -> None:
     from atlanticus.operational_data.processes.dispatch.catalog import provider
 
-    column = SqlColumnDefinition(
+    sql_column = SqlColumnDefinition(
         source_name='Id',
         output_name='id',
         value_kind=DataValueKind.INTEGER,
@@ -77,7 +83,7 @@ def test_catalog_excludes_disabled_sources(monkeypatch) -> None:
         source_table='dbo.enabled_source',
         storage_mode=SqlStorageMode.LATEST,
         load_strategy=SqlLoadStrategy.FULL_SNAPSHOT,
-        columns=(column,),
+        columns=(sql_column,),
         enabled=True,
     )
     disabled = SqlSourceDefinition(
@@ -85,7 +91,7 @@ def test_catalog_excludes_disabled_sources(monkeypatch) -> None:
         source_table='dbo.disabled_source',
         storage_mode=SqlStorageMode.LATEST,
         load_strategy=SqlLoadStrategy.FULL_SNAPSHOT,
-        columns=(column,),
+        columns=(sql_column,),
         enabled=False,
     )
     monkeypatch.setattr(provider, 'DEFINITIONS', (enabled, disabled))
@@ -93,7 +99,7 @@ def test_catalog_excludes_disabled_sources(monkeypatch) -> None:
     assert provider.build_catalog() == (enabled,)
 
 
-def test_table_catalog_uses_explicit_named_column_parameters() -> None:
+def test_example_tables_use_canonical_named_column_helper() -> None:
     tables_root = (
         Path(__file__).parents[1]
         / 'src'
@@ -102,6 +108,7 @@ def test_table_catalog_uses_explicit_named_column_parameters() -> None:
         / 'processes'
         / 'dispatch'
         / 'catalog'
+        / 'examples'
         / 'tables'
     )
     expected_column_keywords = {'source_name', 'output_name', 'value_kind', 'required'}

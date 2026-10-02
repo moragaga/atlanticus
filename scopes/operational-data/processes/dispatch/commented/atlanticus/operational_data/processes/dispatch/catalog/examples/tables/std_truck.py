@@ -1,4 +1,4 @@
-# Declara el contrato SQL y de materialización de std.StdTruck.
+# Espejo pedagógico: misma ejecución y contratos que el archivo productivo.
 from atlanticus.data_producers.sql import (
     DataValueKind,
     SqlLoadStrategy,

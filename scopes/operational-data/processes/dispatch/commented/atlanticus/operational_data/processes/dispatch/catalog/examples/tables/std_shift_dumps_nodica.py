@@ -1,4 +1,4 @@
-# Declara el contrato SQL y de materialización de std.StdShiftDumps.
+# Espejo pedagógico: misma ejecución y contratos que el archivo productivo.
 from atlanticus.data_producers.sql import (
     DataValueKind,
     SqlLoadStrategy,
@@ -8,8 +8,8 @@ from atlanticus.data_producers.sql import (
 from atlanticus.operational_data.processes.dispatch.catalog.columns import column
 
 DEFINITION = SqlSourceDefinition(
-    source_key='std_shift_dumps',
-    source_table='std.StdShiftDumps',
+    source_key='std_shift_dumps_nodica',
+    source_table='std.StdShiftDumpsNodica',
     enabled=True,
     storage_mode=SqlStorageMode.PARTITIONED,
     load_strategy=SqlLoadStrategy.SCOPED,
@@ -267,6 +267,12 @@ DEFINITION = SqlSourceDefinition(
         column(
             source_name='IsExtraload',
             output_name='is_extraload',
+            value_kind=DataValueKind.INTEGER,
+            required=False,
+        ),
+        column(
+            source_name='TotalDistanceNodica',
+            output_name='total_distance_nodica',
             value_kind=DataValueKind.INTEGER,
             required=False,
         ),

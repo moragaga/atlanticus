@@ -18,14 +18,14 @@ DEFINITION = SqlSourceDefinition(
     partition_dimensions=('year', 'month', 'day', 'turn'),
     columns=(
         column(
-            source_name='ShiftId',
-            output_name='shift_id',
+            source_name='Id',
+            output_name='id',
             value_kind=DataValueKind.INTEGER,
             required=True,
         ),
         column(
-            source_name='Id',
-            output_name='id',
+            source_name='ShiftId',
+            output_name='shift_id',
             value_kind=DataValueKind.INTEGER,
             required=True,
         ),

@@ -1,5 +1,3 @@
-from atlanticus.operational_data.processes.blockgrade.catalog.tables.mms_blockgrade_details_bucket import (
-    DEFINITION as MMS_BLOCKGRADE_DETAILS_BUCKET,
-)
+from atlanticus.data_producers.sql import SqlSourceDefinition
 
-DEFINITIONS = (MMS_BLOCKGRADE_DETAILS_BUCKET,)
+DEFINITIONS: tuple[SqlSourceDefinition, ...] = ()

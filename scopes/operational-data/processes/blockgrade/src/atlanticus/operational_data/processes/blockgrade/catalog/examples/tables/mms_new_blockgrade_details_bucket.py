@@ -1,4 +1,3 @@
-# Declara la tabla real Blockgrade usando el contrato SQL global y el scope de turnos.
 from atlanticus.data_producers.sql import (
     DataValueKind,
     SqlLoadStrategy,
@@ -7,12 +6,15 @@ from atlanticus.data_producers.sql import (
 )
 from atlanticus.operational_data.processes.blockgrade.catalog.columns import column
 
+REFERENCE_DEDUPE_COLUMNS = ('shiftindex', 'ddbkey', 'bucket')
+REFERENCE_DEDUPE_ORDER_COLUMNS = ('shiftindex',)
+
 DEFINITION = SqlSourceDefinition(
-    source_key='mms_blockgrade_details_bucket',
-    source_table='dbo.mms_blockgradedetailsbucket',
+    source_key='mms_new_blockgrade_details_bucket',
+    source_table='dbo.mms_new_blockgradedetailsbucket',
+    enabled=False,
     storage_mode=SqlStorageMode.PARTITIONED,
     load_strategy=SqlLoadStrategy.SCOPED,
-    enabled=True,
     scope_column='shiftindex',
     scope_output_column='shift_id',
     materialization_name='shift',

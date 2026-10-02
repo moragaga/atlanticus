@@ -1,4 +1,4 @@
-# Declara el contrato SQL y de materialización de std.StdShiftgrade.
+# Espejo pedagógico: misma ejecución y contratos que el archivo productivo.
 from atlanticus.data_producers.sql import (
     DataValueKind,
     SqlLoadStrategy,
@@ -19,14 +19,14 @@ DEFINITION = SqlSourceDefinition(
     partition_dimensions=('year', 'month', 'day', 'turn'),
     columns=(
         column(
-            source_name='ShiftId',
-            output_name='shift_id',
+            source_name='Id',
+            output_name='id',
             value_kind=DataValueKind.INTEGER,
             required=True,
         ),
         column(
-            source_name='Id',
-            output_name='id',
+            source_name='ShiftId',
+            output_name='shift_id',
             value_kind=DataValueKind.INTEGER,
             required=True,
         ),

@@ -1,0 +1,81 @@
+from atlanticus.data_producers.sql import (
+    DataValueKind,
+    SqlLoadStrategy,
+    SqlSourceDefinition,
+    SqlStorageMode,
+)
+from atlanticus.operational_data.processes.dispatch.catalog.columns import column
+
+DEFINITION = SqlSourceDefinition(
+    source_key='std_shift_loads_2',
+    source_table='std.StdShiftLoads2',
+    enabled=True,
+    storage_mode=SqlStorageMode.PARTITIONED,
+    load_strategy=SqlLoadStrategy.SCOPED,
+    scope_column='ShiftId',
+    scope_output_column='shift_id',
+    materialization_name='shift',
+    partition_dimensions=('year', 'month', 'day', 'turn'),
+    columns=(
+        column(
+            source_name='Id',
+            output_name='id',
+            value_kind=DataValueKind.INTEGER,
+            required=True,
+        ),
+        column(
+            source_name='ShiftId',
+            output_name='shift_id',
+            value_kind=DataValueKind.INTEGER,
+            required=True,
+        ),
+        column(
+            source_name='NextShiftDumpId',
+            output_name='next_shift_dump_id',
+            value_kind=DataValueKind.INTEGER,
+            required=False,
+        ),
+        column(
+            source_name='QueueTime',
+            output_name='queue_time',
+            value_kind=DataValueKind.INTEGER,
+            required=False,
+        ),
+        column(
+            source_name='Tonnage',
+            output_name='tonnage',
+            value_kind=DataValueKind.FLOAT,
+            required=False,
+        ),
+        column(
+            source_name='SpotTime',
+            output_name='spot_time',
+            value_kind=DataValueKind.INTEGER,
+            required=False,
+        ),
+        column(
+            source_name='LoadingTime',
+            output_name='loading_time',
+            value_kind=DataValueKind.INTEGER,
+            required=False,
+        ),
+        column(
+            source_name='Excav',
+            output_name='excav',
+            value_kind=DataValueKind.TEXT,
+            required=False,
+        ),
+        column(
+            source_name='EmptyTravelDuration',
+            output_name='empty_travel_duration',
+            value_kind=DataValueKind.INTEGER,
+            required=True,
+        ),
+        column(
+            source_name='EquivalentFlatHaulDistance',
+            output_name='equivalent_flat_haul_distance',
+            value_kind=DataValueKind.FLOAT,
+            required=False,
+        ),
+    ),
+)

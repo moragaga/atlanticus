@@ -1,6 +1,13 @@
 from types import SimpleNamespace
 
 from atlanticus.configuration import ConfigurationSource, ResolvedConfiguration
+from atlanticus.data_producers.sql import (
+    DataValueKind,
+    SqlColumnDefinition,
+    SqlLoadStrategy,
+    SqlSourceDefinition,
+    SqlStorageMode,
+)
 from atlanticus.kernel import Environment
 from atlanticus.operational_data.processes.blockgrade.composition import build_composition
 
@@ -20,6 +27,25 @@ def _configuration(tmp_path):
     )
 
 
+def _catalog() -> tuple[SqlSourceDefinition, ...]:
+    return (
+        SqlSourceDefinition(
+            source_key='test_source',
+            source_table='dbo.test_source',
+            storage_mode=SqlStorageMode.LATEST,
+            load_strategy=SqlLoadStrategy.FULL_SNAPSHOT,
+            columns=(
+                SqlColumnDefinition(
+                    source_name='Id',
+                    output_name='id',
+                    value_kind=DataValueKind.INTEGER,
+                    required=True,
+                ),
+            ),
+        ),
+    )
+
+
 def test_composition_passes_process_identity_to_sql_producer(monkeypatch, tmp_path):
     import atlanticus.operational_data.processes.blockgrade.composition as module
 
@@ -31,7 +57,7 @@ def test_composition_passes_process_identity_to_sql_producer(monkeypatch, tmp_pa
         return sentinel
 
     monkeypatch.setattr(module, 'build_sql_data_producer', fake_builder)
-    composition = build_composition(configuration=_configuration(tmp_path))
+    composition = build_composition(configuration=_configuration(tmp_path), catalog=_catalog())
 
     assert composition.definition.sleep_seconds == 6.5
     assert composition.producer is sentinel

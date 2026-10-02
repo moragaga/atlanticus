@@ -1,7 +1,4 @@
-# Centraliza las tablas concretas que esta implementación de Blockgrade puede consumir.
-from atlanticus.operational_data.processes.blockgrade.catalog.tables.mms_blockgrade_details_bucket import (
-    DEFINITION as MMS_BLOCKGRADE_DETAILS_BUCKET,
-)
+# Espejo pedagógico: misma ejecución y contratos que el archivo productivo.
+from atlanticus.data_producers.sql import SqlSourceDefinition
 
-# El provider conserva todas las definiciones y filtra solamente las que tienen enabled=True.
-DEFINITIONS = (MMS_BLOCKGRADE_DETAILS_BUCKET,)
+DEFINITIONS: tuple[SqlSourceDefinition, ...] = ()
