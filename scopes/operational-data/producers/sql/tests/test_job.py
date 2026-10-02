@@ -1,7 +1,6 @@
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
-from atlanticus.connectivity.sql import SqlTableChangeMarker
 from atlanticus.data_producers.sql import (
     SqlDataProducerJob,
     SqlDataProducerPlanner,
@@ -18,7 +17,7 @@ class _Planner(SqlDataProducerPlanner):
         self.plan = plan
         self.calls = 0
 
-    def capture(self, definitions, *, context=None):
+    def capture(self, definitions, *, captured_at_utc=None, context=None):
         self.calls += 1
         return self.plan
 
@@ -37,7 +36,6 @@ class _State(SqlProducerState):
         state = SqlSourceState(
             source_key=values['source_key'],
             revision=previous.revision + (1 if values['changed'] else 0),
-            source_change_marker=values['target_change_marker'],
             source_scope_token=values['target_scope_token'],
             publication_signatures=values['publication_signatures'],
         )
@@ -93,19 +91,11 @@ class _Context:
         self.delay = seconds
 
 
-def test_job_commits_marker_even_without_material_change(snapshot_definition) -> None:
-    source = SqlSourcePlan(
-        definition=snapshot_definition,
-        change_marker=SqlTableChangeMarker(
-            source_table=snapshot_definition.source_table,
-            generation_token='generation',
-            last_user_update_token='target',
-            user_updates=1,
-        ),
-    )
+def test_job_commits_our_sync_state_even_without_material_change(snapshot_definition) -> None:
+    source = SqlSourcePlan(definition=snapshot_definition)
     planner = _Planner(
         SqlExecutionPlan(
-            captured_at_utc=datetime(2026, 8, 18, 12, 0, tzinfo=UTC),
+            captured_at_utc=datetime(2026, 10, 2, 12, 0, tzinfo=UTC),
             sources=(source,),
         )
     )
@@ -128,7 +118,7 @@ def test_job_commits_marker_even_without_material_change(snapshot_definition) ->
     job.run_iteration(context)
 
     assert planner.calls == 1
-    assert state.commits[0]['target_change_marker'].last_user_update_token == 'target'
+    assert 'target_change_marker' not in state.commits[0]
     assert context.execution['cycles_planned'] == 1
     assert context.execution['cycles_completed'] == 1
     assert context.execution['sources_planned'] == 1

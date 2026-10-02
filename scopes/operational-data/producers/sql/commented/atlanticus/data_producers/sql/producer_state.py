@@ -1,4 +1,5 @@
-# Persiste state independiente por fuente bajo el producer_key entregado por el consumidor.
+# El state recuerda sincronizaciones y cambios producidos por Atlanticus.
+# La metadata DML histórica del motor ya no forma parte del contrato.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
@@ -6,7 +7,6 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from types import MappingProxyType
 
-from atlanticus.connectivity.sql.models import SqlTableChangeMarker
 from atlanticus.state.models import StateKey
 from atlanticus.state.store import AtomicStateStore
 
@@ -15,7 +15,6 @@ from atlanticus.state.store import AtomicStateStore
 class SqlSourceState:
     source_key: str
     revision: int = 0
-    source_change_marker: SqlTableChangeMarker | None = None
     source_scope_token: str | None = None
     source_last_update_utc: datetime | None = None
     last_synced_at_utc: datetime | None = None
@@ -56,15 +55,12 @@ class SqlProducerState:
         self,
         *,
         source_key: str,
-        target_change_marker: SqlTableChangeMarker,
         target_scope_token: str | None,
         changed: bool,
         source_last_update_utc: datetime | None,
         publication_signatures: Mapping[str, str],
     ) -> SqlSourceState:
         normalized_key = _source_key(source_key)
-        if not isinstance(target_change_marker, SqlTableChangeMarker):
-            raise TypeError('target_change_marker must be a SqlTableChangeMarker')
         if not isinstance(changed, bool):
             raise ValueError('changed must be a boolean')
         previous = self.source_state(normalized_key)
@@ -78,7 +74,6 @@ class SqlProducerState:
         next_state = SqlSourceState(
             source_key=normalized_key,
             revision=previous.revision + (1 if effective_change else 0),
-            source_change_marker=target_change_marker,
             source_scope_token=_optional_text(target_scope_token),
             source_last_update_utc=_max_datetime(
                 previous.source_last_update_utc,
@@ -105,7 +100,6 @@ class SqlProducerState:
         return SqlSourceState(
             source_key=source_key,
             revision=_revision(value.get('revision')),
-            source_change_marker=_optional_marker(value.get('source_change_marker')),
             source_scope_token=_optional_text(value.get('source_scope_token')),
             source_last_update_utc=_optional_datetime(value.get('source_last_update_utc')),
             last_synced_at_utc=_optional_datetime(value.get('last_synced_at_utc')),
@@ -120,51 +114,12 @@ class SqlProducerState:
             'producer': self._producer_key,
             'source_key': state.source_key,
             'revision': state.revision,
-            'source_change_marker': _marker_value(state.source_change_marker),
             'source_scope_token': state.source_scope_token,
             'source_last_update_utc': _format_datetime(state.source_last_update_utc),
             'last_synced_at_utc': _format_datetime(state.last_synced_at_utc),
             'last_change_at_utc': _format_datetime(state.last_change_at_utc),
             'publication_signatures': dict(state.publication_signatures),
         }
-
-
-def marker_changed(previous: SqlTableChangeMarker | None, current: SqlTableChangeMarker) -> bool:
-    if not isinstance(current, SqlTableChangeMarker):
-        raise TypeError('current must be a SqlTableChangeMarker')
-    if previous is None:
-        return True
-    if previous.source_table.lower() != current.source_table.lower():
-        return True
-    return (
-        previous.generation_token != current.generation_token
-        or previous.last_user_update_token != current.last_user_update_token
-        or previous.user_updates != current.user_updates
-    )
-
-
-def _marker_value(marker: SqlTableChangeMarker | None) -> dict[str, object] | None:
-    if marker is None:
-        return None
-    return {
-        'source_table': marker.source_table,
-        'generation_token': marker.generation_token,
-        'last_user_update_token': marker.last_user_update_token,
-        'user_updates': marker.user_updates,
-    }
-
-
-def _optional_marker(value: object) -> SqlTableChangeMarker | None:
-    if value is None:
-        return None
-    if not isinstance(value, Mapping):
-        raise ValueError('SQL producer state source_change_marker must be a mapping or null')
-    return SqlTableChangeMarker(
-        source_table=_required_text(value.get('source_table'), 'source_table'),
-        generation_token=_required_text(value.get('generation_token'), 'generation_token'),
-        last_user_update_token=_optional_text(value.get('last_user_update_token')),
-        user_updates=_non_negative_integer(value.get('user_updates'), 'user_updates'),
-    )
 
 
 def _signatures(value: object) -> dict[str, str]:

@@ -54,7 +54,6 @@ def build_sql_data_producer(
         producer_key=producer_key,
     )
     planner = SqlDataProducerPlanner(
-        reader=reader,
         producer_state=producer_state,
         scope_provider=scope_provider,
     )

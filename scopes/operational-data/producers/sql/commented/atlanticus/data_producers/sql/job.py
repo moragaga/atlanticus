@@ -1,10 +1,5 @@
-# El job SQL modela un ciclo como una captura completa de markers/scope y un plan de fuentes.
-# Cada fuente del plan ocupa una iteración del Runtime para que la admisión temporal pueda
-# decidir entre tablas sin reiniciar el barrido.
-# Al cerrar el ciclo se descarta plan/cursor, se espera el poll del proceso y se captura uno nuevo.
-# La continuidad entre invocaciones no necesita cursor durable: SqlProducerState.last_synced_at_utc
-# mantiene fairness y prioriza las fuentes que llevan más tiempo sin sincronizarse.
-
+# El job recorre el plan completo y actualiza state después de cada fuente.
+# El poll se conserva al cierre del ciclo completo.
 from __future__ import annotations
 
 from atlanticus.data_producers.sql.contracts import SqlSourceExecutor
@@ -52,10 +47,6 @@ class SqlDataProducerJob:
         self._failures_memory_key = f'{prefix}_failures'
         self._first_failure_memory_key = f'{prefix}_first_failure'
 
-    # Esta fachada permite que un consumidor trate el plan SQL completo como una sola unidad.
-    # Reutiliza run_iteration para conservar planner, estado, métricas y manejo de errores.
-    # Antes de cada fuente consulta al Runtime para no iniciar trabajo nuevo después de una
-    # cancelación o del vencimiento del presupuesto temporal. Plan None significa ciclo cerrado.
     def run_cycle(self, context: JobRuntimeContext) -> None:
         while True:
             context.raise_if_cancelled()
@@ -71,7 +62,7 @@ class SqlDataProducerJob:
         cursor = int(context.get_memory(self._cursor_memory_key, 0) or 0)
         if cursor >= len(plan.sources):
             context.set_iteration_fact('outcome', 'skipped')
-            context.set_iteration_fact('reason', 'no_source_change')
+            context.set_iteration_fact('reason', 'no_sources_planned')
             self._complete_cycle(context, empty=True)
             return
 
@@ -80,11 +71,6 @@ class SqlDataProducerJob:
         context.set_iteration_fact('source', source_plan.definition.source_key)
         if source_plan.scope_token is not None:
             context.set_iteration_fact('target_scope', source_plan.scope_token)
-        if source_plan.change_marker.last_user_update_token is not None:
-            context.set_iteration_fact(
-                'target_last_user_update',
-                source_plan.change_marker.last_user_update_token,
-            )
         previous_state = self._producer_state.source_state(source_plan.definition.source_key)
         try:
             result = self._executor.execute(plan=source_plan, context=context)
@@ -113,7 +99,6 @@ class SqlDataProducerJob:
             raise SqlDataProducerError('SQL source executor returned an unexpected source_key')
         state = self._producer_state.commit_source(
             source_key=result.source_key,
-            target_change_marker=source_plan.change_marker,
             target_scope_token=source_plan.scope_token,
             changed=result.changed,
             source_last_update_utc=result.source_last_update_utc,

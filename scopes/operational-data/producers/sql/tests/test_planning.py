@@ -1,23 +1,8 @@
+from dataclasses import replace
 from datetime import UTC, datetime
 
-from atlanticus.connectivity.sql import SqlTableChangeMarker
 from atlanticus.data_producers.core import SourceScope, SourceScopeItem
-from atlanticus.data_producers.sql import (
-    SqlDataProducerPlanner,
-    SqlDataProducerReader,
-    SqlProducerState,
-    SqlSourceState,
-)
-
-
-class _Reader(SqlDataProducerReader):
-    def __init__(self, markers):
-        self.markers = markers
-        self.calls = 0
-
-    def read_change_markers(self, definitions, *, context=None):
-        self.calls += 1
-        return dict(self.markers)
+from atlanticus.data_producers.sql import SqlDataProducerPlanner, SqlProducerState, SqlSourceState
 
 
 class _State(SqlProducerState):
@@ -43,73 +28,44 @@ class _ScopeProvider:
         )
 
 
-def _marker(table: str, token: str) -> SqlTableChangeMarker:
-    return SqlTableChangeMarker(
-        source_table=table,
-        generation_token='generation',
-        last_user_update_token=token,
-        user_updates=1,
-    )
-
-
-def test_planner_captures_marker_and_scope_once(scoped_definition) -> None:
-    reader = _Reader({'source_scoped': _marker('dbo.source_scoped', 'new')})
+def test_planner_captures_scope_once_and_always_plans_scoped_source(scoped_definition) -> None:
     scope_provider = _ScopeProvider()
     planner = SqlDataProducerPlanner(
-        reader=reader,
-        producer_state=_State({}),
+        producer_state=_State(
+            {
+                'source_scoped': SqlSourceState(
+                    source_key='source_scoped',
+                    source_scope_token='1|2',
+                    last_synced_at_utc=datetime(2026, 10, 2, 11, 59, tzinfo=UTC),
+                )
+            }
+        ),
         scope_provider=scope_provider,
     )
 
     plan = planner.capture(
         (scoped_definition,),
-        captured_at_utc=datetime(2026, 8, 18, 12, 0, tzinfo=UTC),
+        captured_at_utc=datetime(2026, 10, 2, 12, 0, tzinfo=UTC),
     )
 
-    assert reader.calls == 1
     assert scope_provider.calls == 1
+    assert len(plan.sources) == 1
     assert plan.sources[0].scope_token == '1|2'
     assert plan.sources[0].scope.values == (1, 2)
 
 
-def test_planner_skips_committed_marker_and_scope(scoped_definition) -> None:
-    marker = _marker('dbo.source_scoped', 'same')
-    state = SqlSourceState(
-        source_key='source_scoped',
-        source_change_marker=marker,
-        source_scope_token='1|2',
-    )
-    planner = SqlDataProducerPlanner(
-        reader=_Reader({'source_scoped': marker}),
-        producer_state=_State({'source_scoped': state}),
-        scope_provider=_ScopeProvider(),
-    )
-
-    plan = planner.capture(
-        (scoped_definition,),
-        captured_at_utc=datetime(2026, 8, 18, 12, 0, tzinfo=UTC),
-    )
-
-    assert plan.sources == ()
-
-
 def test_planner_does_not_require_scope_provider_for_snapshot(snapshot_definition) -> None:
-    planner = SqlDataProducerPlanner(
-        reader=_Reader({'source_latest': _marker('dbo.source_latest', 'new')}),
-        producer_state=_State({}),
-    )
+    planner = SqlDataProducerPlanner(producer_state=_State({}))
 
     plan = planner.capture(
         (snapshot_definition,),
-        captured_at_utc=datetime(2026, 8, 18, 12, 0, tzinfo=UTC),
+        captured_at_utc=datetime(2026, 10, 2, 12, 0, tzinfo=UTC),
     )
 
     assert plan.sources[0].scope is None
 
 
-def test_planner_prioritizes_least_recently_synced_changed_source(snapshot_definition) -> None:
-    from dataclasses import replace
-
+def test_planner_prioritizes_least_recently_synced_source(snapshot_definition) -> None:
     recent_definition = replace(
         snapshot_definition,
         source_key='source_recent',
@@ -120,33 +76,24 @@ def test_planner_prioritizes_least_recently_synced_changed_source(snapshot_defin
         source_key='source_overdue',
         source_table='dbo.source_overdue',
     )
-    now = datetime(2026, 10, 2, 12, 0, tzinfo=UTC)
     planner = SqlDataProducerPlanner(
-        reader=_Reader(
-            {
-                'source_recent': _marker('dbo.source_recent', 'current-recent'),
-                'source_overdue': _marker('dbo.source_overdue', 'current-overdue'),
-            }
-        ),
         producer_state=_State(
             {
                 'source_recent': SqlSourceState(
                     source_key='source_recent',
-                    source_change_marker=_marker('dbo.source_recent', 'previous-recent'),
                     last_synced_at_utc=datetime(2026, 10, 2, 11, 59, tzinfo=UTC),
                 ),
                 'source_overdue': SqlSourceState(
                     source_key='source_overdue',
-                    source_change_marker=_marker('dbo.source_overdue', 'previous-overdue'),
                     last_synced_at_utc=datetime(2026, 10, 2, 11, 0, tzinfo=UTC),
                 ),
             }
-        ),
+        )
     )
 
     plan = planner.capture(
         (recent_definition, overdue_definition),
-        captured_at_utc=now,
+        captured_at_utc=datetime(2026, 10, 2, 12, 0, tzinfo=UTC),
     )
 
     assert tuple(item.definition.source_key for item in plan.sources) == (

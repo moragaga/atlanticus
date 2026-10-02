@@ -1,21 +1,16 @@
-# Lee markers y datos SQL por batches, con retry y salida Arrow.
+# El reader descarga datos reales y aplica retry.
+# La detección de cambio queda en la publicación durable.
 from __future__ import annotations
 
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from typing import TypeVar
 
 import pyarrow as pa
 
-from atlanticus.connectivity.sql import (
-    SqlBatch,
-    SqlClient,
-    SqlConnectionError,
-    SqlTableChangeMarker,
-    SqlTimeoutError,
-)
+from atlanticus.connectivity.sql import SqlBatch, SqlClient, SqlConnectionError, SqlTimeoutError
 from atlanticus.data_producers.sql.errors import SqlDataProducerReadError
-from atlanticus.data_producers.sql.models import SqlLoadStrategy, SqlSourceDefinition, SqlSourcePlan
+from atlanticus.data_producers.sql.models import SqlLoadStrategy, SqlSourcePlan
 from atlanticus.data_producers.sql.settings import SqlRetryPolicy
 from atlanticus.runtime import JobRuntimeContext
 
@@ -43,32 +38,6 @@ class SqlDataProducerReader:
         self._sql = sql
         self._retry_policy = retry_policy or SqlRetryPolicy()
         self._max_rows = resolved_max_rows
-
-    def read_change_markers(
-        self,
-        definitions: Sequence[SqlSourceDefinition],
-        *,
-        context: JobRuntimeContext | None = None,
-    ) -> dict[str, SqlTableChangeMarker]:
-        normalized = tuple(definitions)
-        if not normalized:
-            return {}
-        markers = self._run_with_retry(
-            lambda: self._sql.table_change_markers(
-                tuple(definition.source_table for definition in normalized)
-            ),
-            context=context,
-        )
-        by_table = {marker.source_table.lower(): marker for marker in markers}
-        resolved: dict[str, SqlTableChangeMarker] = {}
-        for definition in normalized:
-            marker = by_table.get(definition.source_table.lower())
-            if marker is None:
-                raise SqlDataProducerReadError(
-                    f'SQL change marker is missing for source table: {definition.source_table}'
-                )
-            resolved[definition.source_key] = marker
-        return resolved
 
     def read_source(
         self,

@@ -26,11 +26,7 @@ from atlanticus.data_producers.sql.models import (
 )
 from atlanticus.data_producers.sql.planning import SqlDataProducerPlanner
 from atlanticus.data_producers.sql.processor import SqlDataProducerProcessor
-from atlanticus.data_producers.sql.producer_state import (
-    SqlProducerState,
-    SqlSourceState,
-    marker_changed,
-)
+from atlanticus.data_producers.sql.producer_state import SqlProducerState, SqlSourceState
 from atlanticus.data_producers.sql.settings import SqlRetryPolicy
 
 __version__ = '1.0.0'
@@ -63,6 +59,5 @@ __all__ = [
     'build_select',
     'build_sql_data_producer',
     'curate_table',
-    'marker_changed',
     'source_last_update_utc',
 ]

@@ -16,36 +16,6 @@ class SqlTimeoutPhase(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
-class SqlTableChangeMarker:
-    """Marca volátil de cambios DML observada para una tabla SQL Server."""
-
-    source_table: str
-    generation_token: str
-    last_user_update_token: str | None
-    user_updates: int
-
-    def __post_init__(self) -> None:
-        source_table = str(self.source_table).strip()
-        generation_token = str(self.generation_token).strip()
-        last_user_update_token = (
-            None
-            if self.last_user_update_token is None
-            else str(self.last_user_update_token).strip() or None
-        )
-        if not source_table:
-            raise ValueError('source_table must not be empty')
-        if not generation_token:
-            raise ValueError('generation_token must not be empty')
-        if not isinstance(self.user_updates, int) or isinstance(self.user_updates, bool):
-            raise ValueError('user_updates must be a non-negative integer')
-        if self.user_updates < 0:
-            raise ValueError('user_updates must be a non-negative integer')
-        object.__setattr__(self, 'source_table', source_table)
-        object.__setattr__(self, 'generation_token', generation_token)
-        object.__setattr__(self, 'last_user_update_token', last_user_update_token)
-
-
-@dataclass(frozen=True, slots=True)
 class SqlResult:
     """Resultado pequeño y acotado cargado completamente en memoria."""
 

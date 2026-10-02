@@ -18,12 +18,7 @@ from atlanticus.connectivity.sql.errors import (
     SqlResultLimitError,
     SqlTimeoutError,
 )
-from atlanticus.connectivity.sql.models import (
-    SqlBatch,
-    SqlResult,
-    SqlTableChangeMarker,
-    SqlTimeoutPhase,
-)
+from atlanticus.connectivity.sql.models import SqlBatch, SqlResult, SqlTimeoutPhase
 from atlanticus.connectivity.sql.settings import (
     SqlSettings,
     _prepare_mssql_connection,
@@ -48,12 +43,6 @@ def _safe_parameters(args: tuple[Any, ...], values: Mapping[str, Any]) -> Mappin
             safe['parameter_count'] = len(parameters)
         except TypeError:
             pass
-    source_tables = values.get('source_tables')
-    if source_tables is not None and not isinstance(source_tables, str | bytes | Mapping):
-        try:
-            safe['source_table_count'] = len(source_tables)
-        except TypeError:
-            pass
     for name in ('batch_size', 'max_rows'):
         value = values.get(name)
         if value is not None:
@@ -73,14 +62,6 @@ def _query_result(value: Any) -> ResultSummary:
         attributes={'column_count': len(value.columns)},
         metrics={'row_count': value.row_count},
     )
-
-
-def _change_marker_result(value: Any) -> ResultSummary:
-    if not isinstance(value, tuple) or not all(
-        isinstance(item, SqlTableChangeMarker) for item in value
-    ):
-        return ResultSummary()
-    return ResultSummary(metrics={'source_table_count': len(value)})
 
 
 class SqlBatchStream(Iterator[SqlBatch]):
@@ -226,54 +207,6 @@ class SqlClient:
         )
 
     @runtime_guard(
-        operation='sql.table_change_markers',
-        component=_COMPONENT,
-        parameter_mapper=_safe_parameters,
-        result_mapper=_change_marker_result,
-        error_mapper=_safe_error,
-    )
-    def table_change_markers(
-        self,
-        source_tables: Sequence[str],
-    ) -> tuple[SqlTableChangeMarker, ...]:
-        """Lee marcas DML de varias tablas mediante una sola consulta de sistema."""
-
-        normalized_tables = _normalize_source_tables(source_tables)
-        statement, parameters = _build_table_change_statement(normalized_tables)
-        result = self._query_impl(
-            statement=statement,
-            parameters=parameters,
-            max_rows=len(normalized_tables),
-        )
-        expected_columns = (
-            'source_table',
-            'generation_token',
-            'last_user_update_token',
-            'user_updates',
-            'auto_close_enabled',
-        )
-        if result.columns != expected_columns or result.row_count != len(normalized_tables):
-            raise SqlQueryContractError('SQL table change marker result is incomplete')
-        if any(bool(row[4]) for row in result.rows):
-            raise SqlQueryContractError(
-                'SQL table change detection is unsafe when AUTO_CLOSE is enabled'
-            )
-        markers = tuple(
-            SqlTableChangeMarker(
-                source_table=str(row[0]),
-                generation_token=str(row[1]),
-                last_user_update_token=None if row[2] is None else str(row[2]),
-                user_updates=int(row[3]),
-            )
-            for row in result.rows
-        )
-        if {item.source_table.lower() for item in markers} != {
-            item.lower() for item in normalized_tables
-        }:
-            raise SqlQueryContractError('SQL table change marker result does not match request')
-        return markers
-
-    @runtime_guard(
         operation='sql.iter_batches',
         component=_COMPONENT,
         parameter_mapper=_safe_parameters,
@@ -389,76 +322,6 @@ class SqlClient:
             raise SqlConnectionError('Could not open SQL connection') from None
 
 
-def _normalize_source_tables(values: Sequence[str]) -> tuple[str, ...]:
-    if isinstance(values, str | bytes | bytearray | memoryview | Mapping):
-        raise SqlQueryContractError('source_tables must be a sequence of schema.table names')
-    try:
-        normalized = tuple(_normalize_source_table(value) for value in values)
-    except TypeError:
-        raise SqlQueryContractError(
-            'source_tables must be a sequence of schema.table names'
-        ) from None
-    if not normalized:
-        raise SqlQueryContractError('source_tables must not be empty')
-    if len({item.lower() for item in normalized}) != len(normalized):
-        raise SqlQueryContractError('source_tables must not contain duplicates')
-    return normalized
-
-
-def _normalize_source_table(value: str) -> str:
-    if not isinstance(value, str):
-        raise SqlQueryContractError('source table names must be strings')
-    parts = tuple(part.strip() for part in value.split('.'))
-    if len(parts) != 2 or any(not part for part in parts):
-        raise SqlQueryContractError('source table names must use schema.table format')
-    if any(re.fullmatch(r'[A-Za-z0-9_]+', part) is None for part in parts):
-        raise SqlQueryContractError('source table names contain unsupported characters')
-    return '.'.join(parts)
-
-
-def _build_table_change_statement(
-    source_tables: tuple[str, ...],
-) -> tuple[str, tuple[str, ...]]:
-    requested_rows = ', '.join('(?, ?)' for _ in source_tables)
-    parameters = tuple(part for table in source_tables for part in table.split('.', 1))
-    statement = f"""WITH requested(schema_name, table_name) AS (
-    SELECT schema_name, table_name
-    FROM (VALUES {requested_rows}) AS requested_values(schema_name, table_name)
-),
-usage_stats AS (
-    SELECT
-        object_id,
-        MAX(last_user_update) AS last_user_update,
-        SUM(CONVERT(bigint, user_updates)) AS user_updates
-    FROM sys.dm_db_index_usage_stats
-    WHERE database_id = DB_ID()
-    GROUP BY object_id
-)
-SELECT
-    requested.schema_name + '.' + requested.table_name AS source_table,
-    CONCAT(
-        CONVERT(varchar(33), server_generation.sqlserver_start_time, 126),
-        '|', database_info.database_id,
-        '|', CONVERT(varchar(33), database_info.create_date, 126)
-    ) AS generation_token,
-    CONVERT(varchar(33), usage_stats.last_user_update, 126) AS last_user_update_token,
-    COALESCE(usage_stats.user_updates, 0) AS user_updates,
-    CONVERT(int, database_info.is_auto_close_on) AS auto_close_enabled
-FROM requested
-JOIN sys.schemas AS schemas
-    ON schemas.name = requested.schema_name
-JOIN sys.tables AS tables
-    ON tables.schema_id = schemas.schema_id
-    AND tables.name = requested.table_name
-JOIN sys.databases AS database_info
-    ON database_info.database_id = DB_ID()
-CROSS JOIN sys.dm_os_sys_info AS server_generation
-LEFT JOIN usage_stats
-    ON usage_stats.object_id = tables.object_id
-ORDER BY requested.schema_name, requested.table_name"""
-    return statement, parameters
-
-
 def _normalize_statement(value: str) -> str:
     if not isinstance(value, str):
         raise SqlQueryContractError('statement must be a string')
@@ -545,5 +408,5 @@ def _load_mssql_driver() -> Any:
                 category=SyntaxWarning,
             )
             return import_module('mssql_python')
-    except ImportError, OSError:
+    except (ImportError, OSError):
         raise SqlConnectionError('SQL driver runtime is unavailable') from None

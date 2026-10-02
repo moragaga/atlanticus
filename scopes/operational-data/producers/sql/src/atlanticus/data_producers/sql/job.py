@@ -60,7 +60,7 @@ class SqlDataProducerJob:
         cursor = int(context.get_memory(self._cursor_memory_key, 0) or 0)
         if cursor >= len(plan.sources):
             context.set_iteration_fact('outcome', 'skipped')
-            context.set_iteration_fact('reason', 'no_source_change')
+            context.set_iteration_fact('reason', 'no_sources_planned')
             self._complete_cycle(context, empty=True)
             return
 
@@ -69,11 +69,6 @@ class SqlDataProducerJob:
         context.set_iteration_fact('source', source_plan.definition.source_key)
         if source_plan.scope_token is not None:
             context.set_iteration_fact('target_scope', source_plan.scope_token)
-        if source_plan.change_marker.last_user_update_token is not None:
-            context.set_iteration_fact(
-                'target_last_user_update',
-                source_plan.change_marker.last_user_update_token,
-            )
         previous_state = self._producer_state.source_state(source_plan.definition.source_key)
         try:
             result = self._executor.execute(plan=source_plan, context=context)
@@ -102,7 +97,6 @@ class SqlDataProducerJob:
             raise SqlDataProducerError('SQL source executor returned an unexpected source_key')
         state = self._producer_state.commit_source(
             source_key=result.source_key,
-            target_change_marker=source_plan.change_marker,
             target_scope_token=source_plan.scope_token,
             changed=result.changed,
             source_last_update_utc=result.source_last_update_utc,

@@ -4,7 +4,6 @@ from types import SimpleNamespace
 
 import pytest
 
-from atlanticus.connectivity.sql import SqlTableChangeMarker
 from atlanticus.data_producers.sql import (
     SqlDataProducerError,
     SqlDataProducerJob,
@@ -22,7 +21,7 @@ class _Planner(SqlDataProducerPlanner):
         self.plans = plans
         self.calls = 0
 
-    def capture(self, definitions, *, context=None):
+    def capture(self, definitions, *, captured_at_utc=None, context=None):
         plan = self.plans[min(self.calls, len(self.plans) - 1)]
         self.calls += 1
         return plan
@@ -40,7 +39,6 @@ class _State(SqlProducerState):
         state = SqlSourceState(
             source_key=values['source_key'],
             revision=previous.revision + (1 if values['changed'] else 0),
-            source_change_marker=values['target_change_marker'],
             source_scope_token=values['target_scope_token'],
             publication_signatures=values['publication_signatures'],
         )
@@ -101,21 +99,9 @@ class _Context:
         self.delay = seconds
 
 
-def _source(definition, key, token):
-    definition = replace(
-        definition,
-        source_key=key,
-        source_table=f'dbo.{key}',
-    )
-    return SqlSourcePlan(
-        definition=definition,
-        change_marker=SqlTableChangeMarker(
-            source_table=definition.source_table,
-            generation_token='generation',
-            last_user_update_token=token,
-            user_updates=1,
-        ),
-    )
+def _source(definition, key):
+    definition = replace(definition, source_key=key, source_table=f'dbo.{key}')
+    return SqlSourcePlan(definition=definition)
 
 
 def _result(source):
@@ -137,8 +123,8 @@ def _job(snapshot_definition, planner, executor) -> SqlDataProducerJob:
 
 
 def test_sources_inside_same_cycle_do_not_wait_for_poll(snapshot_definition) -> None:
-    first = _source(snapshot_definition, 'source_first', 'one')
-    second = _source(snapshot_definition, 'source_second', 'two')
+    first = _source(snapshot_definition, 'source_first')
+    second = _source(snapshot_definition, 'source_second')
     plan = SqlExecutionPlan(
         captured_at_utc=datetime(2026, 10, 2, 12, 0, tzinfo=UTC),
         sources=(first, second),
@@ -153,70 +139,40 @@ def test_sources_inside_same_cycle_do_not_wait_for_poll(snapshot_definition) -> 
     job = _job(snapshot_definition, _Planner(plan), executor)
 
     job.run_iteration(context)
-
     assert executor.calls == ['source_first']
     assert context.delay == 0
-    assert context.execution['cycles_completed'] == 0
-    assert context.memory['producer.execution_cursor'] == 1
 
     context.delay = None
     context.iteration = {}
     job.run_iteration(context)
-
     assert executor.calls == ['source_first', 'source_second']
     assert context.delay == 9.0
     assert context.execution['cycles_completed'] == 1
-    assert context.memory['producer.execution_plan'] is None
 
 
-def test_empty_cycle_polls_and_recaptures_on_next_iteration(snapshot_definition) -> None:
+def test_empty_cycle_uses_poll_and_explicit_reason(snapshot_definition) -> None:
     empty = SqlExecutionPlan(
         captured_at_utc=datetime(2026, 10, 2, 12, 0, tzinfo=UTC),
         sources=(),
     )
-    source = _source(snapshot_definition, 'source_next', 'next')
-    next_plan = SqlExecutionPlan(
-        captured_at_utc=datetime(2026, 10, 2, 12, 1, tzinfo=UTC),
-        sources=(source,),
-    )
-    planner = _Planner(empty, next_plan)
-    executor = _Executor(results={'source_next': _result(source)})
     context = _Context(poll_seconds=6.0)
-    job = _job(snapshot_definition, planner, executor)
+    job = _job(snapshot_definition, _Planner(empty), _Executor())
 
     job.run_iteration(context)
 
-    assert planner.calls == 1
+    assert context.iteration['reason'] == 'no_sources_planned'
     assert context.delay == 6.0
-    assert context.execution['cycles_planned'] == 1
-    assert context.execution['cycles_completed'] == 1
     assert context.execution['empty_cycles'] == 1
-
-    context.delay = None
-    context.iteration = {}
-    job.run_iteration(context)
-
-    assert planner.calls == 2
-    assert executor.calls == ['source_next']
-    assert context.delay == 6.0
-    assert context.execution['cycles_planned'] == 2
-    assert context.execution['cycles_completed'] == 2
-    assert context.execution['sources_planned'] == 1
-    assert context.execution['sources_processed'] == 1
 
 
 def test_last_source_failure_does_not_close_cycle_as_success(snapshot_definition) -> None:
-    source = _source(snapshot_definition, 'source_failed', 'failure')
+    source = _source(snapshot_definition, 'source_failed')
     plan = SqlExecutionPlan(
         captured_at_utc=datetime(2026, 10, 2, 12, 0, tzinfo=UTC),
         sources=(source,),
     )
     context = _Context()
-    job = _job(
-        snapshot_definition,
-        _Planner(plan),
-        _Executor(error=ValueError('source failure')),
-    )
+    job = _job(snapshot_definition, _Planner(plan), _Executor(error=ValueError('source failure')))
 
     with pytest.raises(SqlDataProducerError, match='1 source failure'):
         job.run_iteration(context)

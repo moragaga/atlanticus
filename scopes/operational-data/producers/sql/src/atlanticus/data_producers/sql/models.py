@@ -7,7 +7,6 @@ from enum import StrEnum
 from types import MappingProxyType
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from atlanticus.connectivity.sql.models import SqlTableChangeMarker
 from atlanticus.data_producers.core import ScopeValue, SourceScope
 from atlanticus.datasets.results import DatasetPublicationResult, PublicationStatus
 
@@ -146,14 +145,11 @@ class SqlSourceDefinition:
 @dataclass(frozen=True, slots=True)
 class SqlSourcePlan:
     definition: SqlSourceDefinition
-    change_marker: SqlTableChangeMarker
     scope: SourceScope | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.definition, SqlSourceDefinition):
             raise TypeError('definition must be a SqlSourceDefinition')
-        if not isinstance(self.change_marker, SqlTableChangeMarker):
-            raise TypeError('change_marker must be a SqlTableChangeMarker')
         if self.definition.load_strategy is SqlLoadStrategy.SCOPED:
             if not isinstance(self.scope, SourceScope):
                 raise ValueError('scoped plans require a SourceScope')

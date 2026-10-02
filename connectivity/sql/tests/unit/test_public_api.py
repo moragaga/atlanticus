@@ -21,10 +21,10 @@ def test_public_api_and_version_are_stable() -> None:
         'SqlResult',
         'SqlResultLimitError',
         'SqlSettings',
-        'SqlTableChangeMarker',
         'SqlTimeoutError',
         'SqlTimeoutPhase',
         '__version__',
         'build_sql_configuration_keys',
         'normalize_configuration_suffix',
     ]
+    assert not hasattr(sql, 'SqlTableChangeMarker')

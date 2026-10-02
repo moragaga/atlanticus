@@ -1,5 +1,4 @@
-# Espejo comentado del contrato público del conector SQL.
-# Mantiene exactamente el mismo código ejecutable que producción.
+# Expone únicamente los contratos vigentes del módulo; se retiraron las marcas DML sin consumidores.
 """Conectividad SQL neutral, síncrona y orientada a lectura para Atlanticus."""
 
 from pkgutil import extend_path
@@ -14,12 +13,7 @@ from atlanticus.connectivity.sql.errors import (
     SqlResultLimitError,
     SqlTimeoutError,
 )
-from atlanticus.connectivity.sql.models import (
-    SqlBatch,
-    SqlResult,
-    SqlTableChangeMarker,
-    SqlTimeoutPhase,
-)
+from atlanticus.connectivity.sql.models import SqlBatch, SqlResult, SqlTimeoutPhase
 from atlanticus.connectivity.sql.settings import (
     DEFAULT_SQL_BATCH_SIZE,
     DEFAULT_SQL_MAX_QUERY_ROWS,
@@ -50,7 +44,6 @@ __all__ = [
     'SqlResult',
     'SqlResultLimitError',
     'SqlSettings',
-    'SqlTableChangeMarker',
     'SqlTimeoutError',
     'SqlTimeoutPhase',
     '__version__',

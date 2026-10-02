@@ -3,7 +3,6 @@ from datetime import UTC, datetime
 import pyarrow as pa
 import pytest
 
-from atlanticus.connectivity.sql import SqlTableChangeMarker
 from atlanticus.data_producers.core import SourceScope, SourceScopeItem
 from atlanticus.data_producers.sql import (
     SqlDataProducerMaterializer,
@@ -26,16 +25,7 @@ def _scope() -> SourceScope:
 
 
 def _plan(definition) -> SqlSourcePlan:
-    return SqlSourcePlan(
-        definition=definition,
-        change_marker=SqlTableChangeMarker(
-            source_table=definition.source_table,
-            generation_token='generation',
-            last_user_update_token='token',
-            user_updates=1,
-        ),
-        scope=_scope(),
-    )
+    return SqlSourcePlan(definition=definition, scope=_scope())
 
 
 def test_partitioned_materialization_is_idempotent(tmp_path, scoped_definition) -> None:

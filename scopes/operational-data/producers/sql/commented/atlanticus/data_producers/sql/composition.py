@@ -1,4 +1,5 @@
-# Compone el productor SQL sobre runtime, state, datasets y connectivity sin depender de ADA.
+# La composición comparte un reader entre ejecución y materialización.
+# El planner depende únicamente del state y del scope.
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -55,7 +56,6 @@ def build_sql_data_producer(
         producer_key=producer_key,
     )
     planner = SqlDataProducerPlanner(
-        reader=reader,
         producer_state=producer_state,
         scope_provider=scope_provider,
     )

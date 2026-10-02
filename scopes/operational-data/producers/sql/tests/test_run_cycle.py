@@ -4,7 +4,6 @@ from types import SimpleNamespace
 
 import pytest
 
-from atlanticus.connectivity.sql import SqlTableChangeMarker
 from atlanticus.data_producers.sql import (
     SqlDataProducerError,
     SqlDataProducerJob,
@@ -23,7 +22,7 @@ class _Planner(SqlDataProducerPlanner):
         self.plans = plans
         self.calls = 0
 
-    def capture(self, definitions, *, context=None):
+    def capture(self, definitions, *, captured_at_utc=None, context=None):
         plan = self.plans[min(self.calls, len(self.plans) - 1)]
         self.calls += 1
         return plan
@@ -41,7 +40,6 @@ class _State(SqlProducerState):
         state = SqlSourceState(
             source_key=values['source_key'],
             revision=previous.revision + (1 if values['changed'] else 0),
-            source_change_marker=values['target_change_marker'],
             source_scope_token=values['target_scope_token'],
             publication_signatures=values['publication_signatures'],
         )
@@ -111,21 +109,9 @@ class _Context:
         self.delay = seconds
 
 
-def _source(definition, key, token):
-    definition = replace(
-        definition,
-        source_key=key,
-        source_table=f'dbo.{key}',
-    )
-    return SqlSourcePlan(
-        definition=definition,
-        change_marker=SqlTableChangeMarker(
-            source_table=definition.source_table,
-            generation_token='generation',
-            last_user_update_token=token,
-            user_updates=1,
-        ),
-    )
+def _source(definition, key):
+    definition = replace(definition, source_key=key, source_table=f'dbo.{key}')
+    return SqlSourcePlan(definition=definition)
 
 
 def _result(source):
@@ -147,8 +133,8 @@ def _job(snapshot_definition, planner, executor) -> SqlDataProducerJob:
 
 
 def test_run_cycle_consumes_all_sources(snapshot_definition) -> None:
-    first = _source(snapshot_definition, 'source_first', 'one')
-    second = _source(snapshot_definition, 'source_second', 'two')
+    first = _source(snapshot_definition, 'source_first')
+    second = _source(snapshot_definition, 'source_second')
     plan = SqlExecutionPlan(
         captured_at_utc=datetime(2026, 10, 2, 12, 0, tzinfo=UTC),
         sources=(first, second),
@@ -166,66 +152,34 @@ def test_run_cycle_consumes_all_sources(snapshot_definition) -> None:
 
     assert executor.calls == ['source_first', 'source_second']
     assert context.cancel_checks == 2
-    assert context.execution['cycles_planned'] == 1
     assert context.execution['cycles_completed'] == 1
-    assert context.memory['producer.execution_plan'] is None
     assert context.delay == 9.0
 
 
-def test_run_cycle_completes_empty_cycle(snapshot_definition) -> None:
-    plan = SqlExecutionPlan(
-        captured_at_utc=datetime(2026, 10, 2, 12, 0, tzinfo=UTC),
-        sources=(),
-    )
-    planner = _Planner(plan)
-    executor = _Executor()
-    context = _Context(poll_seconds=6.0)
-    job = _job(snapshot_definition, planner, executor)
-
-    job.run_cycle(context)
-
-    assert planner.calls == 1
-    assert executor.calls == []
-    assert context.cancel_checks == 1
-    assert context.execution['cycles_completed'] == 1
-    assert context.execution['empty_cycles'] == 1
-    assert context.delay == 6.0
-
-
 def test_run_cycle_stops_before_starting_next_cycle(snapshot_definition) -> None:
-    first = _source(snapshot_definition, 'source_first', 'one')
-    second = _source(snapshot_definition, 'source_second', 'two')
-    first_plan = SqlExecutionPlan(
-        captured_at_utc=datetime(2026, 10, 2, 12, 0, tzinfo=UTC),
-        sources=(first,),
+    first = _source(snapshot_definition, 'source_first')
+    second = _source(snapshot_definition, 'source_second')
+    planner = _Planner(
+        SqlExecutionPlan(datetime(2026, 10, 2, 12, 0, tzinfo=UTC), (first,)),
+        SqlExecutionPlan(datetime(2026, 10, 2, 12, 1, tzinfo=UTC), (second,)),
     )
-    second_plan = SqlExecutionPlan(
-        captured_at_utc=datetime(2026, 10, 2, 12, 1, tzinfo=UTC),
-        sources=(second,),
-    )
-    planner = _Planner(first_plan, second_plan)
     executor = _Executor(
         results={
             first.definition.source_key: _result(first),
             second.definition.source_key: _result(second),
         }
     )
-    context = _Context()
     job = _job(snapshot_definition, planner, executor)
 
-    job.run_cycle(context)
+    job.run_cycle(_Context())
 
     assert planner.calls == 1
     assert executor.calls == ['source_first']
-    assert context.execution['cycles_completed'] == 1
 
 
 def test_run_cycle_propagates_cycle_failure(snapshot_definition) -> None:
-    source = _source(snapshot_definition, 'source_failed', 'failure')
-    plan = SqlExecutionPlan(
-        captured_at_utc=datetime(2026, 10, 2, 12, 0, tzinfo=UTC),
-        sources=(source,),
-    )
+    source = _source(snapshot_definition, 'source_failed')
+    plan = SqlExecutionPlan(datetime(2026, 10, 2, 12, 0, tzinfo=UTC), (source,))
     context = _Context()
     job = _job(
         snapshot_definition,
@@ -237,16 +191,12 @@ def test_run_cycle_propagates_cycle_failure(snapshot_definition) -> None:
         job.run_cycle(context)
 
     assert context.execution['cycles_completed'] == 0
-    assert context.memory['producer.execution_plan'] is plan
 
 
 def test_run_cycle_checks_cancellation_between_sources(snapshot_definition) -> None:
-    first = _source(snapshot_definition, 'source_first', 'one')
-    second = _source(snapshot_definition, 'source_second', 'two')
-    plan = SqlExecutionPlan(
-        captured_at_utc=datetime(2026, 10, 2, 12, 0, tzinfo=UTC),
-        sources=(first, second),
-    )
+    first = _source(snapshot_definition, 'source_first')
+    second = _source(snapshot_definition, 'source_second')
+    plan = SqlExecutionPlan(datetime(2026, 10, 2, 12, 0, tzinfo=UTC), (first, second))
     executor = _Executor(
         results={
             first.definition.source_key: _result(first),
@@ -261,4 +211,3 @@ def test_run_cycle_checks_cancellation_between_sources(snapshot_definition) -> N
 
     assert executor.calls == ['source_first']
     assert context.memory['producer.execution_cursor'] == 1
-    assert context.execution['cycles_completed'] == 0

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from atlanticus.connectivity.sql import SqlBatch, SqlResult, SqlTableChangeMarker
+from atlanticus.connectivity.sql import SqlBatch, SqlResult
 
 
 def test_result_and_batch_are_neutral_immutable_tuples() -> None:
@@ -44,23 +44,3 @@ def test_result_and_batch_are_neutral_immutable_tuples() -> None:
 def test_invalid_result_shapes_are_rejected(result) -> None:
     with pytest.raises(ValueError):
         result()
-
-
-def test_table_change_marker_validates_durable_comparison_fields() -> None:
-    marker = SqlTableChangeMarker(
-        source_table='std.StdShiftDumps',
-        generation_token='generation-1',
-        last_user_update_token='update-1',
-        user_updates=12,
-    )
-
-    assert marker.source_table == 'std.StdShiftDumps'
-    assert marker.user_updates == 12
-
-    with pytest.raises(ValueError):
-        SqlTableChangeMarker(
-            source_table='std.StdShiftDumps',
-            generation_token='',
-            last_user_update_token=None,
-            user_updates=0,
-        )
