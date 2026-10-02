@@ -41,6 +41,37 @@ def _verify_dependencies(portable: bool) -> list[str]:
     return errors
 
 
+def _probe_artifact(*, product: dict[str, object], portable: bool) -> dict[str, object]:
+    starter_package = str(product["starter_package"])
+    root_package = str(product["root_package"])
+    metadata.version(starter_package)
+    metadata.version(root_package)
+    matches = tuple(
+        entry
+        for entry in metadata.entry_points(group="console_scripts")
+        if entry.name == starter_package
+    )
+    if len(matches) != 1:
+        raise AssertionError("Starter console entrypoint is missing or ambiguous")
+    entrypoint = matches[0].load()
+    if not callable(entrypoint):
+        raise AssertionError("Starter console entrypoint is not callable")
+    checks = [
+        "starter.metadata",
+        "root.metadata",
+        "starter.entrypoint",
+    ]
+    errors = _verify_dependencies(portable)
+    if errors:
+        return {"status": "FAIL", "checks": checks, "errors": errors}
+    checks.append("dependencies.portable")
+    return {
+        "status": "PASS",
+        "checks": checks,
+        "python": sys.version.split()[0],
+    }
+
+
 def _check_response(client: object, path: str, *, status: int = 200) -> object:
     response = client.get(path)
     if response.status_code != status:
@@ -53,6 +84,8 @@ def _check_response(client: object, path: str, *, status: int = 200) -> object:
 def probe(*, profile: str, application: Path, portable: bool) -> dict[str, object]:
     product = _PRODUCTS[profile]
     strategy = product["probe_strategy"]
+    if strategy == "artifact":
+        return _probe_artifact(product=product, portable=portable)
     metadata.version(str(product["starter_package"]))
     from atlanticus.web.application import create_web_application
     from dash import page_registry

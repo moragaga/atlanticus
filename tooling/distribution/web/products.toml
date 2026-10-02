@@ -24,3 +24,17 @@ qualification_expected_status = "PRECHECK_PASS"
 probe_strategy = "ada"
 configuration_templates = true
 base_excluded_roots = ["docker", "src/application/modules", "src/application/pages"]
+
+[products.command-center]
+project_root = "scopes/ada-command-center/web/application/ada-command-center-generic-application"
+root_project = "scopes/ada-command-center/web/application/ada-command-center-generic-application"
+root_package = "ada-command-center-generic-application"
+starter_package = "ada-command-center-application-starter"
+starter_overlay = "command-center"
+environment_contract = "scopes/ada-command-center/web/application/ada-command-center-generic-application/.env.detail"
+distribution_strategy = "wheelhouse"
+qualification_strategy = "artifact-precheck"
+qualification_expected_status = "PRECHECK_PASS"
+probe_strategy = "artifact"
+configuration_templates = false
+base_excluded_roots = ["Dockerfile", ".dockerignore", "docker", "pyproject.toml", "src/application"]

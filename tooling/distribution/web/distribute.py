@@ -120,6 +120,21 @@ def build_web_distribution(
                 portable=True,
                 inspect_only=False,
             )
+        elif product["qualification_strategy"] == "artifact-precheck":
+            qualification = qualify(
+                application=application,
+                profile=profile,
+                python=python,
+                timeout=timeout,
+                portable=True,
+                inspect_only=False,
+            )
+            if qualification.get("status") == "PASS":
+                qualification = {
+                    **qualification,
+                    "status": "PRECHECK_PASS",
+                    "runtime": "UNVERIFIED",
+                }
         else:
             raise ValueError("Unsupported Web qualification strategy")
         stages["qualification"] = qualification

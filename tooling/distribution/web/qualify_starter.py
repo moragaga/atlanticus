@@ -121,6 +121,7 @@ def run_probe(
     for key in ("SYSTEMROOT", "WINDIR", "LD_LIBRARY_PATH"):
         if key in os.environ:
             environment[key] = os.environ[key]
+    dependency_check: str | None = None
     with tempfile.TemporaryDirectory(
         prefix="atlanticus-web-qualification-"
     ) as runtime_dir:
@@ -187,6 +188,29 @@ def run_probe(
                     "errors": ["Offline wheelhouse install failed"],
                     "stderr_tail": installed.stderr[-1500:],
                 }
+            if _PRODUCTS[profile]["probe_strategy"] == "artifact":
+                checked = subprocess.run(
+                    [
+                        uv,
+                        "pip",
+                        "check",
+                        "--python",
+                        str(installed_python),
+                    ],
+                    cwd=application,
+                    env=environment,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                    check=False,
+                )
+                if checked.returncode != 0:
+                    return {
+                        "status": "FAIL",
+                        "errors": ["Installed artifact dependency check failed"],
+                        "stderr_tail": checked.stderr[-1500:],
+                    }
+                dependency_check = "PASS"
             python = installed_python
         process = subprocess.run(
             [
@@ -225,6 +249,8 @@ def run_probe(
         return {"status": "FAIL", "errors": ["Starter runtime result is invalid JSON"]}
     if process.returncode != 0:
         result["status"] = "FAIL"
+    if dependency_check is not None:
+        result["dependency_check"] = dependency_check
     return result
 
 

@@ -16,11 +16,13 @@ def _products() -> dict[str, dict[str, object]]:
 
 def test_catalog_preserves_current_web_products() -> None:
     products = _products()
-    assert tuple(products) == ("generic", "ada")
+    assert tuple(products) == ("generic", "ada", "command-center")
     assert products["generic"]["distribution_strategy"] == "wheelhouse"
     assert products["generic"]["qualification_strategy"] == "runtime"
     assert products["ada"]["distribution_strategy"] == "ada"
     assert products["ada"]["qualification_strategy"] == "ada-precheck"
+    assert products["command-center"]["distribution_strategy"] == "wheelhouse"
+    assert products["command-center"]["qualification_strategy"] == "artifact-precheck"
 
 
 def test_catalog_root_packages_match_current_projects() -> None:
@@ -53,5 +55,10 @@ def test_catalog_strategies_are_supported_by_current_tooling() -> None:
     assert {product["qualification_strategy"] for product in products} <= {
         "runtime",
         "ada-precheck",
+        "artifact-precheck",
     }
-    assert {product["probe_strategy"] for product in products} <= {"generic", "ada"}
+    assert {product["probe_strategy"] for product in products} <= {
+        "generic",
+        "ada",
+        "artifact",
+    }

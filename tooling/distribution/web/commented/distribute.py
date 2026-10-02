@@ -128,6 +128,22 @@ def build_web_distribution(
                 portable=True,
                 inspect_only=False,
             )
+        # El precheck instala y valida el artefacto, pero no inicia dependencias externas.
+        elif product["qualification_strategy"] == "artifact-precheck":
+            qualification = qualify(
+                application=application,
+                profile=profile,
+                python=python,
+                timeout=timeout,
+                portable=True,
+                inspect_only=False,
+            )
+            if qualification.get("status") == "PASS":
+                qualification = {
+                    **qualification,
+                    "status": "PRECHECK_PASS",
+                    "runtime": "UNVERIFIED",
+                }
         else:
             raise ValueError("Unsupported Web qualification strategy")
         stages["qualification"] = qualification
