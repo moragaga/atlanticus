@@ -1,4 +1,4 @@
-# Espejo pedagógico de Latest Delivery multi-Tool: configuration.py.
+# Espejo pedagógico de readiness de KPI Latest Delivery: configuration.py.
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
@@ -18,11 +18,14 @@ from ada.kpis.materialization import (
     require_tool_key,
     validate_materialized_registry,
 )
-from ada.processes.kpi_delivery.errors import KpiDeliveryConfigurationError
+from ada.processes.kpi_delivery.errors import (
+    KpiDeliveryConfigurationError,
+    KpiDeliveryReadinessPending,
+)
 
 
 @dataclass(frozen=True, slots=True)
-# Agrupa una responsabilidad con estado o contrato propio.
+# Define una responsabilidad con estado o contrato propio.
 class FrozenKpiDeliveryConfiguration:
     tool_key: str
     registry_revision: str
@@ -50,16 +53,16 @@ def load_frozen_delivery_configurations(
             details.append(f'missing={",".join(missing)}')
         if unexpected:
             details.append(f'unexpected={",".join(unexpected)}')
-        raise KpiDeliveryConfigurationError(
-            'Materialized KPI Registry set does not match configured connections'
+        raise KpiDeliveryReadinessPending(
+            'Materialized KPI Registry set is not ready'
             + (f' ({"; ".join(details)})' if details else '')
         )
     frozen: dict[str, FrozenKpiDeliveryConfiguration] = {}
     for tool_key in expected:
         document = store.read(tool_key)
         if document is None:
-            raise KpiDeliveryConfigurationError(
-                f'Materialized KPI Registry is missing for {tool_key}'
+            raise KpiDeliveryReadinessPending(
+                f'Materialized KPI Registry is not ready for {tool_key}'
             )
         try:
             validated = validate_materialized_registry(

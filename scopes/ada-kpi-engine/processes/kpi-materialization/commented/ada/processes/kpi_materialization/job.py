@@ -1,4 +1,4 @@
-# Espejo pedagógico del proceso KPI Materialization: job.py.
+# Espejo pedagógico de readiness de KPI Materialization: job.py.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -14,21 +14,25 @@ from ada.kpis.materialization import (
 from ada.processes.kpi_materialization.errors import (
     KpiMaterializationAcquisitionError,
     KpiMaterializationIterationError,
+    KpiMaterializationRegistryPending,
 )
 from ada.processes.kpi_materialization.repository import KpiRegistryReader
 from atlanticus.runtime import JobRuntimeContext
 
+READINESS_RETRY_SECONDS = 30.0
+
 
 @dataclass(frozen=True, slots=True)
-# Agrupa una responsabilidad con estado o ciclo de vida propio.
+# Define una responsabilidad con estado o contrato propio.
 class KpiMaterializationIterationResult:
     configured_tools: int
     updated_tools: int
     unchanged_tools: int
     removed_tools: int
+    pending_tools: int
 
 
-# Agrupa una responsabilidad con estado o ciclo de vida propio.
+# Define una responsabilidad con estado o contrato propio.
 class KpiMaterializationJob:
     def __init__(
         self,
@@ -50,6 +54,7 @@ class KpiMaterializationJob:
     ) -> KpiMaterializationIterationResult:
         updated = 0
         unchanged = 0
+        pending = 0
         failures: list[tuple[str, Exception]] = []
 
         for tool_key, repository in self._repositories.items():
@@ -73,6 +78,8 @@ class KpiMaterializationJob:
                     )
                 context.mark_iteration_work()
                 updated += 1
+            except KpiMaterializationRegistryPending:
+                pending += 1
             except (
                 KpiMaterializationAcquisitionError,
                 KpiMaterializationContractError,
@@ -92,6 +99,7 @@ class KpiMaterializationJob:
             updated_tools=updated,
             unchanged_tools=unchanged,
             removed_tools=len(removed),
+            pending_tools=pending,
         )
         self._record(context, result, failures)
 
@@ -100,6 +108,8 @@ class KpiMaterializationJob:
             raise KpiMaterializationIterationError(
                 f'KPI materialization failed for tools: {failed_tools}'
             ) from failures[0][1]
+        if pending:
+            context.set_next_iteration_delay(READINESS_RETRY_SECONDS)
         return result
 
     @staticmethod
@@ -112,4 +122,5 @@ class KpiMaterializationJob:
         context.set_iteration_fact('updated_tools', result.updated_tools)
         context.set_iteration_fact('unchanged_tools', result.unchanged_tools)
         context.set_iteration_fact('removed_tools', result.removed_tools)
+        context.set_iteration_fact('pending_tools', result.pending_tools)
         context.set_iteration_fact('failed_tools', len(failures))

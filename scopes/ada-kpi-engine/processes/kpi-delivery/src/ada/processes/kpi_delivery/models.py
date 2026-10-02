@@ -60,6 +60,7 @@ class KpiDeliveryCheckpoint:
 
 
 class KpiLatestDeliveryIterationStatus(StrEnum):
+    MATERIALIZATION_PENDING = 'materialization_pending'
     PUBLISHED = 'published'
     UNCHANGED = 'unchanged'
     SKIPPED_CURRENT = 'skipped_current'

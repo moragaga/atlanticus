@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from ada.kpis.materialization import KPI_REGISTRY_ITEM_ID
 from ada.processes.kpi_materialization.errors import (
     KpiMaterializationAcquisitionError,
+    KpiMaterializationRegistryPending,
 )
 
 
@@ -54,6 +55,7 @@ class Context:
         self.work = 0
         self.facts = {}
         self.fences = 0
+        self.next_delay = None
 
     def raise_if_cancelled(self):
         return None
@@ -72,6 +74,13 @@ class Context:
     def set_iteration_fact(self, key, value):
         self.facts[key] = value
 
+    def set_next_iteration_delay(self, seconds):
+        self.next_delay = seconds
+
 
 def acquisition_error() -> KpiMaterializationAcquisitionError:
     return KpiMaterializationAcquisitionError('unavailable')
+
+
+def pending_error() -> KpiMaterializationRegistryPending:
+    return KpiMaterializationRegistryPending('not ready')

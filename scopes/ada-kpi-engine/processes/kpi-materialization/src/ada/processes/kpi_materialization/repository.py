@@ -12,6 +12,7 @@ from ada.kpis.materialization import (
 )
 from ada.processes.kpi_materialization.errors import (
     KpiMaterializationAcquisitionError,
+    KpiMaterializationRegistryPending,
 )
 from atlanticus.connectivity.cosmos import CosmosClient, CosmosError
 
@@ -40,7 +41,7 @@ class CosmosKpiRegistryRepository:
                 f'Could not read KPI Registry projection for {self.tool_key}'
             ) from error
         if document is None:
-            raise KpiMaterializationAcquisitionError(
-                f'KPI Registry projection was not found for {self.tool_key}'
+            raise KpiMaterializationRegistryPending(
+                f'KPI Registry projection is not available yet for {self.tool_key}'
             )
         return document

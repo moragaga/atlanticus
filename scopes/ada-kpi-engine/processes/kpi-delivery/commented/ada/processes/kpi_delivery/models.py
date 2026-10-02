@@ -1,4 +1,4 @@
-# Espejo pedagógico de Latest Delivery multi-Tool: models.py.
+# Espejo pedagógico de readiness de KPI Latest Delivery: models.py.
 from __future__ import annotations
 
 import re
@@ -11,14 +11,14 @@ from ada.processes.kpi_delivery.errors import KpiDeliveryRepositoryError
 _DIGEST = re.compile(r'[0-9a-f]{64}\Z')
 
 
-# Agrupa una responsabilidad con estado o contrato propio.
+# Define una responsabilidad con estado o contrato propio.
 class KpiLatestPublicationStatus(StrEnum):
     PUBLISHED = 'published'
     UNCHANGED = 'unchanged'
 
 
 @dataclass(frozen=True, slots=True)
-# Agrupa una responsabilidad con estado o contrato propio.
+# Define una responsabilidad con estado o contrato propio.
 class KpiLatestPublication:
     status: KpiLatestPublicationStatus
     revision: str
@@ -39,7 +39,7 @@ class KpiLatestPublication:
 
 
 @dataclass(frozen=True, slots=True)
-# Agrupa una responsabilidad con estado o contrato propio.
+# Define una responsabilidad con estado o contrato propio.
 class KpiDeliveryCheckpoint:
     watermark: KpiWatermark
     registry_revision: str
@@ -56,16 +56,18 @@ class KpiDeliveryCheckpoint:
             raise KpiDeliveryRepositoryError(
                 'checkpoint registry_revision must be non-empty trimmed text'
             )
-        if not isinstance(self.registry_digest, str) or _DIGEST.fullmatch(
-            self.registry_digest
-        ) is None:
+        if (
+            not isinstance(self.registry_digest, str)
+            or _DIGEST.fullmatch(self.registry_digest) is None
+        ):
             raise KpiDeliveryRepositoryError(
                 'checkpoint registry_digest must be a sha256 digest'
             )
 
 
-# Agrupa una responsabilidad con estado o contrato propio.
+# Define una responsabilidad con estado o contrato propio.
 class KpiLatestDeliveryIterationStatus(StrEnum):
+    MATERIALIZATION_PENDING = 'materialization_pending'
     PUBLISHED = 'published'
     UNCHANGED = 'unchanged'
     SKIPPED_CURRENT = 'skipped_current'
@@ -73,7 +75,7 @@ class KpiLatestDeliveryIterationStatus(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
-# Agrupa una responsabilidad con estado o contrato propio.
+# Define una responsabilidad con estado o contrato propio.
 class KpiLatestDeliveryIterationResult:
     status: KpiLatestDeliveryIterationStatus
     watermark_utc: str | None = None

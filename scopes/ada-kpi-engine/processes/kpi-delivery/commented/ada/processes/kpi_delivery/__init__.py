@@ -1,4 +1,4 @@
-# Espejo pedagógico de KPI Latest Delivery paralelo por Tool: __init__.py.
+# Espejo pedagógico de readiness de KPI Latest Delivery: __init__.py.
 from ada.processes.kpi_delivery.adapter import delivery_values_from_batch
 from ada.processes.kpi_delivery.composition import (
     KpiDeliveryComposition,
@@ -12,9 +12,13 @@ from ada.processes.kpi_delivery.errors import (
     KpiDeliveryConfigurationError,
     KpiDeliveryProcessError,
     KpiDeliveryPublicationError,
+    KpiDeliveryReadinessPending,
     KpiDeliveryRepositoryError,
 )
-from ada.processes.kpi_delivery.job import KpiLatestDeliveryJob
+from ada.processes.kpi_delivery.job import (
+    KpiLatestDeliveryJob,
+    KpiLatestDeliveryRuntimeJob,
+)
 from ada.processes.kpi_delivery.models import (
     KpiDeliveryCheckpoint,
     KpiLatestDeliveryIterationResult,
@@ -41,11 +45,13 @@ __all__ = [
     'KpiDeliveryProcessError',
     'KpiDeliveryProcessSettings',
     'KpiDeliveryPublicationError',
+    'KpiDeliveryReadinessPending',
     'KpiDeliveryRepositoryError',
     'KpiLatestDeliveryCheckpointStore',
     'KpiLatestDeliveryIterationResult',
     'KpiLatestDeliveryIterationStatus',
     'KpiLatestDeliveryJob',
+    'KpiLatestDeliveryRuntimeJob',
     'KpiLatestPublication',
     'KpiLatestPublicationStatus',
     'KpiLatestPublicationTask',

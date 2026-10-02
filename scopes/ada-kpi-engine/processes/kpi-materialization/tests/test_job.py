@@ -8,8 +8,17 @@ from ada.kpis.materialization import (
 from ada.processes.kpi_materialization.errors import (
     KpiMaterializationIterationError,
 )
-from ada.processes.kpi_materialization.job import KpiMaterializationJob
-from tests.support import Context, Reader, acquisition_error, projection
+from ada.processes.kpi_materialization.job import (
+    READINESS_RETRY_SECONDS,
+    KpiMaterializationJob,
+)
+from tests.support import (
+    Context,
+    Reader,
+    acquisition_error,
+    pending_error,
+    projection,
+)
 
 
 def _store(tmp_path):
@@ -33,15 +42,40 @@ def test_job_materializes_each_tool_independently(tmp_path):
     assert result.updated_tools == 2
     assert result.unchanged_tools == 0
     assert result.removed_tools == 0
+    assert result.pending_tools == 0
     assert store.read('tool_a')['tool_key'] == 'tool_a'
     assert store.read('tool_b')['source_release_id'] == 'r2'
     assert context.work == 2
     assert context.facts['failed_tools'] == 0
 
 
+def test_pending_registry_retries_after_readiness_interval_without_failing_other_tools(tmp_path):
+    store = _store(tmp_path)
+    context = Context()
+    job = KpiMaterializationJob(
+        repositories={
+            'tool_a': Reader(projection(revision='new-a')),
+            'tool_b': Reader(error=pending_error()),
+        },
+        store=store,
+    )
+
+    result = job.run_iteration(context)
+
+    assert result.updated_tools == 1
+    assert result.pending_tools == 1
+    assert context.facts['failed_tools'] == 0
+    assert context.next_delay == READINESS_RETRY_SECONDS
+    assert store.read('tool_a')['source_release_id'] == 'new-a'
+    assert store.read('tool_b') is None
+
+
 def test_failed_tool_keeps_previous_authority_and_does_not_block_other_updates(tmp_path):
     store = _store(tmp_path)
-    old = materialize_registry(tool_key='tool_b', projection=projection(revision='old'))
+    old = materialize_registry(
+        tool_key='tool_b',
+        projection=projection(revision='old'),
+    )
     store.replace(tool_key='tool_b', document=old)
     job = KpiMaterializationJob(
         repositories={

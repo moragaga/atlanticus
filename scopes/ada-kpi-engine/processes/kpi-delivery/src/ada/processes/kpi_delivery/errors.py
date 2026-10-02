@@ -6,6 +6,10 @@ class KpiDeliveryConfigurationError(KpiDeliveryProcessError, ValueError):
     pass
 
 
+class KpiDeliveryReadinessPending(KpiDeliveryProcessError):
+    pass
+
+
 class KpiDeliveryRepositoryError(KpiDeliveryProcessError):
     pass
 

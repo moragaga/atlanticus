@@ -1,18 +1,23 @@
-# Espejo pedagógico de KPI Latest Delivery paralelo por Tool: job.py.
+# Espejo pedagógico de readiness de KPI Latest Delivery: job.py.
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from datetime import UTC, datetime
 from typing import Protocol
 
 from ada.kpis.core import KpiWatermark
 from ada.kpis.delivery import project_kpi_latest
+from ada.kpis.materialization import LocalKpiRegistryStore, require_tool_key
 from ada.kpis.persistence import KpiCommitState, KpiEvaluationBatch
 from ada.processes.kpi_delivery.adapter import delivery_values_from_batch
-from ada.processes.kpi_delivery.configuration import FrozenKpiDeliveryConfiguration
+from ada.processes.kpi_delivery.configuration import (
+    FrozenKpiDeliveryConfiguration,
+    load_frozen_delivery_configurations,
+)
 from ada.processes.kpi_delivery.errors import (
     KpiDeliveryConfigurationError,
     KpiDeliveryPublicationError,
+    KpiDeliveryReadinessPending,
     KpiDeliveryRepositoryError,
 )
 from ada.processes.kpi_delivery.models import (
@@ -26,6 +31,8 @@ from ada.processes.kpi_delivery.parallel import (
     KpiLatestToolPublicationResult,
 )
 from atlanticus.runtime import JobRuntimeContext
+
+READINESS_RETRY_SECONDS = 30.0
 
 
 # Define una responsabilidad con estado o contrato propio.
@@ -55,6 +62,66 @@ class _ParallelPublisher(Protocol):
         self,
         tasks: tuple[KpiLatestPublicationTask, ...],
     ) -> tuple[KpiLatestToolPublicationResult, ...]: ...
+
+
+# Define una responsabilidad con estado o contrato propio.
+class KpiLatestDeliveryRuntimeJob:
+    def __init__(
+        self,
+        *,
+        store: LocalKpiRegistryStore,
+        expected_tool_keys: Iterable[str],
+        kpi_state: _CommitStateReader,
+        evaluations: _EvaluationReader,
+        checkpoints: _CheckpointStore,
+        publisher: _ParallelPublisher,
+        now: Callable[[], datetime] | None = None,
+    ) -> None:
+        if not isinstance(store, LocalKpiRegistryStore):
+            raise TypeError('store must be LocalKpiRegistryStore')
+        expected = tuple(sorted({require_tool_key(value) for value in expected_tool_keys}))
+        if not expected:
+            raise ValueError('expected_tool_keys must contain at least one tool')
+        self._store = store
+        self._expected_tool_keys = expected
+        self._kpi_state = kpi_state
+        self._evaluations = evaluations
+        self._checkpoints = checkpoints
+        self._publisher = publisher
+        self._now = now
+        self._job: KpiLatestDeliveryJob | None = None
+
+    def run_iteration(
+        self,
+        context: JobRuntimeContext,
+    ) -> KpiLatestDeliveryIterationResult:
+        if self._job is None:
+            try:
+                configurations = load_frozen_delivery_configurations(
+                    store=self._store,
+                    expected_tool_keys=self._expected_tool_keys,
+                )
+            except KpiDeliveryReadinessPending:
+                context.set_iteration_fact('outcome', 'waiting')
+                context.set_iteration_fact(
+                    'reason',
+                    KpiLatestDeliveryIterationStatus.MATERIALIZATION_PENDING.value,
+                )
+                context.set_iteration_fact('tool_count', len(self._expected_tool_keys))
+                context.set_next_iteration_delay(READINESS_RETRY_SECONDS)
+                return KpiLatestDeliveryIterationResult(
+                    status=KpiLatestDeliveryIterationStatus.MATERIALIZATION_PENDING,
+                    tool_count=len(self._expected_tool_keys),
+                )
+            self._job = KpiLatestDeliveryJob(
+                configurations=configurations,
+                kpi_state=self._kpi_state,
+                evaluations=self._evaluations,
+                checkpoints=self._checkpoints,
+                publisher=self._publisher,
+                now=self._now,
+            )
+        return self._job.run_iteration(context)
 
 
 # Define una responsabilidad con estado o contrato propio.

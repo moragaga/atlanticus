@@ -6,7 +6,7 @@ from ada.kpis.materialization import (
     KPI_REGISTRY_PARTITION_VALUE,
 )
 from ada.processes.kpi_materialization.errors import (
-    KpiMaterializationAcquisitionError,
+    KpiMaterializationRegistryPending,
 )
 from ada.processes.kpi_materialization.repository import (
     CosmosKpiRegistryRepository,
@@ -38,8 +38,8 @@ def test_repository_reads_fixed_registry_identity():
     ]
 
 
-def test_repository_missing_registry_is_tool_scoped_error():
+def test_repository_missing_registry_is_readiness_pending():
     repository = CosmosKpiRegistryRepository(tool_key='tool_a', client=Client(None))
 
-    with pytest.raises(KpiMaterializationAcquisitionError, match='tool_a'):
+    with pytest.raises(KpiMaterializationRegistryPending, match='tool_a'):
         repository.read()

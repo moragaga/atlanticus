@@ -34,6 +34,7 @@ class RuntimeContextStub:
         self.cancel_checks = 0
         self.lease_checks = 0
         self.fences = 0
+        self.next_delay: float | None = None
 
     def raise_if_cancelled(self) -> None:
         self.cancel_checks += 1
@@ -57,6 +58,9 @@ class RuntimeContextStub:
 
     def increment_execution_counter(self, key: str, amount: int | float = 1) -> None:
         self.execution_counters[key] = self.execution_counters.get(key, 0) + amount
+
+    def set_next_iteration_delay(self, seconds: float) -> None:
+        self.next_delay = seconds
 
 
 class CommitStateReader:

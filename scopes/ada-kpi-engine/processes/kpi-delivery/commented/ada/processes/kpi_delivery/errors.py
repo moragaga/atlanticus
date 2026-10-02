@@ -1,4 +1,4 @@
-# Espejo pedagógico de KPI Latest Delivery paralelo por Tool: errors.py.
+# Espejo pedagógico de readiness de KPI Latest Delivery: errors.py.
 # Define una responsabilidad con estado o contrato propio.
 class KpiDeliveryProcessError(RuntimeError):
     pass
@@ -6,6 +6,11 @@ class KpiDeliveryProcessError(RuntimeError):
 
 # Define una responsabilidad con estado o contrato propio.
 class KpiDeliveryConfigurationError(KpiDeliveryProcessError, ValueError):
+    pass
+
+
+# Define una responsabilidad con estado o contrato propio.
+class KpiDeliveryReadinessPending(KpiDeliveryProcessError):
     pass
 
 

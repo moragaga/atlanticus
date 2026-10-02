@@ -1,4 +1,4 @@
-# Espejo pedagógico de KPI Latest Delivery paralelo por Tool: composition.py.
+# Espejo pedagógico de readiness de KPI Latest Delivery: composition.py.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -12,11 +12,7 @@ from ada.kpis.persistence import (
     KpiEvaluationRepository,
     KpiPersistencePaths,
 )
-from ada.processes.kpi_delivery.configuration import (
-    FrozenKpiDeliveryConfiguration,
-    load_frozen_delivery_configurations,
-)
-from ada.processes.kpi_delivery.job import KpiLatestDeliveryJob
+from ada.processes.kpi_delivery.job import KpiLatestDeliveryRuntimeJob
 from ada.processes.kpi_delivery.parallel import ParallelKpiLatestPublisher
 from ada.processes.kpi_delivery.repository import KpiLatestSnapshotRepository
 from ada.processes.kpi_delivery.settings import KpiDeliveryProcessSettings
@@ -43,10 +39,7 @@ class KpiDeliveryComposition:
     configuration: ResolvedConfiguration
     runtime_configuration: RuntimeConfiguration
     settings: KpiDeliveryProcessSettings
-    frozen_configurations: Mapping[str, FrozenKpiDeliveryConfiguration]
-    kpi_state: KpiCommitStateRepository
-    evaluations: KpiEvaluationRepository
-    checkpoints: KpiLatestDeliveryCheckpointStore
+    job: KpiLatestDeliveryRuntimeJob
     publishers: Mapping[str, KpiLatestSnapshotRepository]
     parallel_publisher: ParallelKpiLatestPublisher
     definition: JobDefinition
@@ -57,16 +50,9 @@ class KpiDeliveryComposition:
             for client in self.clients.values():
                 stack.callback(client.close)
             stack.callback(self.parallel_publisher.close)
-            job = KpiLatestDeliveryJob(
-                configurations=self.frozen_configurations,
-                kpi_state=self.kpi_state,
-                evaluations=self.evaluations,
-                checkpoints=self.checkpoints,
-                publisher=self.parallel_publisher,
-            )
             return execute_job(
                 definition=self.definition,
-                iteration=job.run_iteration,
+                iteration=self.job.run_iteration,
                 argv=argv,
                 environ=self.configuration.values,
             )
@@ -95,13 +81,6 @@ def build_composition(
         volume_path=runtime_configuration.volume_path,
         application=runtime_configuration.application,
     )
-    local_registries = LocalKpiRegistryStore(
-        root=materialization_root(runtime_configuration.volume_path)
-    )
-    frozen = load_frozen_delivery_configurations(
-        store=local_registries,
-        expected_tool_keys=connections,
-    )
     clients: dict[str, CosmosClient] = {}
     publishers: dict[str, KpiLatestSnapshotRepository] = {}
     for tool_key, cosmos_settings in sorted(connections.items()):
@@ -113,21 +92,29 @@ def build_composition(
             container_spec=KPI_LATEST_DELIVERY_CONTAINER_SPEC,
         )
     frozen_publishers = MappingProxyType(publishers)
-    return KpiDeliveryComposition(
-        configuration=configuration,
-        runtime_configuration=runtime_configuration,
-        settings=settings,
-        frozen_configurations=frozen,
+    parallel_publisher = ParallelKpiLatestPublisher(
+        publishers=frozen_publishers,
+        max_workers=settings.max_workers,
+    )
+    job = KpiLatestDeliveryRuntimeJob(
+        store=LocalKpiRegistryStore(
+            root=materialization_root(runtime_configuration.volume_path),
+        ),
+        expected_tool_keys=connections,
         kpi_state=KpiCommitStateRepository(upstream_store),
         evaluations=KpiEvaluationRepository(
             paths=KpiPersistencePaths(upstream_store.application_root),
         ),
         checkpoints=KpiLatestDeliveryCheckpointStore(store=own_store),
+        publisher=parallel_publisher,
+    )
+    return KpiDeliveryComposition(
+        configuration=configuration,
+        runtime_configuration=runtime_configuration,
+        settings=settings,
+        job=job,
         publishers=frozen_publishers,
-        parallel_publisher=ParallelKpiLatestPublisher(
-            publishers=frozen_publishers,
-            max_workers=settings.max_workers,
-        ),
+        parallel_publisher=parallel_publisher,
         definition=_job_definition(
             poll_interval_seconds=settings.poll_interval_seconds,
         ),

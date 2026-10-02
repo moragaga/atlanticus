@@ -8,7 +8,7 @@ from ada.kpis.materialization import (
 from ada.processes.kpi_delivery.configuration import (
     load_frozen_delivery_configurations,
 )
-from ada.processes.kpi_delivery.errors import KpiDeliveryConfigurationError
+from ada.processes.kpi_delivery.errors import KpiDeliveryReadinessPending
 
 
 def _projection(revision='registry-r1'):
@@ -72,7 +72,7 @@ def test_frozen_configuration_reads_all_registries_once_at_start(tmp_path):
     assert frozen['tool_a'].configuration.bindings[0].key == 'produccion_total'
 
 
-def test_materialized_tool_set_must_match_connections_exactly(tmp_path):
+def test_incomplete_materialized_tool_set_is_readiness_pending(tmp_path):
     store = _store(tmp_path)
     store.replace(
         tool_key='tool_a',
@@ -82,7 +82,7 @@ def test_materialized_tool_set_must_match_connections_exactly(tmp_path):
         ),
     )
 
-    with pytest.raises(KpiDeliveryConfigurationError, match='does not match'):
+    with pytest.raises(KpiDeliveryReadinessPending, match='not ready'):
         load_frozen_delivery_configurations(
             store=store,
             expected_tool_keys=('tool_a', 'tool_b'),
