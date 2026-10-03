@@ -55,16 +55,22 @@ def test_cyclic_values_are_rejected() -> None:
         encode_json_document({'value': value})
 
 
-@pytest.mark.parametrize(
-    'content',
-    [
-        b'{"a":1,"a":2}',
-        b'{"value":NaN}',
-        b'{"value":Infinity}',
-        b'[]',
-        b'\xff',
-    ],
-)
-def test_decode_rejects_ambiguous_or_invalid_documents(content: bytes) -> None:
+def test_decode_rejects_duplicate_object_keys() -> None:
+    with pytest.raises(JsonCorruptionError):
+        decode_json_document(b'{"a":1,"a":2}')
+
+
+@pytest.mark.parametrize('content', [b'{"value":NaN}', b'{"value":Infinity}'])
+def test_decode_rejects_non_finite_constants(content: bytes) -> None:
     with pytest.raises(JsonCorruptionError):
         decode_json_document(content)
+
+
+def test_decode_rejects_non_object_root() -> None:
+    with pytest.raises(JsonCorruptionError):
+        decode_json_document(b'[]')
+
+
+def test_decode_rejects_invalid_utf8() -> None:
+    with pytest.raises(JsonCorruptionError):
+        decode_json_document(b'\xff')

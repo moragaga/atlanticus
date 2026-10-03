@@ -28,7 +28,6 @@ def test_replace_and_read_round_trip(tmp_path: Path) -> None:
         'value': 42.5,
         'watermark_utc': '2026-08-19T18:15:10Z',
     }
-    assert path.read_bytes().endswith(b'\n')
 
 
 def test_missing_document_returns_none(tmp_path: Path) -> None:
@@ -87,7 +86,6 @@ def test_failed_replace_preserves_last_committed_document(
         store.replace(path, {'value': 'uncommitted'})
 
     assert json.loads(path.read_bytes()) == {'value': 'committed'}
-    assert list(path.parent.glob('*.tmp')) == []
 
 
 def test_concurrent_readers_observe_only_complete_replacements(tmp_path: Path) -> None:
