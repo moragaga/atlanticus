@@ -8,52 +8,69 @@ from pathlib import Path
 import pytest
 from flask import Flask
 
-from ada.web.kpis.definition import (
+from ada.web.kpis.definition.coverage import KpiDefinitionCatalog
+from ada.web.kpis.definition.models import (
     KpiDefinition as ConfigurationKpiDefinition,
     KpiDefinitionConfiguration,
-    KpiDefinitionProjection,
 )
 from ada.web.inspection.api import create_kpi_inspection_api_module
 from ada.web.inspection.core import KpiDefinitionSnapshotStore
 from ada.web.inspection.providers.kpi_definition import KpiDefinitionProjectionProvider
 from ada.web.inspection.runtime import KpiDefinitionRefresh, KpiDefinitionWarmup
+from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.services import ServiceRegistry
+from atlanticus.web.source.models import SourceKey, SourceReleaseId
+
+_SOURCE_KEY = SourceKey('kpi-definitions')
 
 
-class InMemoryProjectionRepository:
-    def __init__(self, projection: KpiDefinitionProjection | None) -> None:
+class InMemoryProjectionStore:
+    def __init__(self, projection: ProjectionRecord[KpiDefinitionCatalog] | None) -> None:
         self.projection = projection
-        self.load_calls = 0
-        self.save_calls = 0
-        self.health_calls = 0
+        self.requested_keys: list[SourceKey] = []
+        self.replace_calls = 0
         self.failure: RuntimeError | None = None
 
-    def load(self) -> KpiDefinitionProjection | None:
-        self.load_calls += 1
+    def get_active(
+        self,
+        source_key: SourceKey,
+    ) -> ProjectionRecord[KpiDefinitionCatalog] | None:
+        self.requested_keys.append(source_key)
         if self.failure is not None:
             raise self.failure
         return self.projection
 
-    def save(self, projection: KpiDefinitionProjection) -> KpiDefinitionProjection:
-        self.save_calls += 1
+    def replace_active(
+        self,
+        projection: ProjectionRecord[KpiDefinitionCatalog],
+    ) -> ProjectionRecord[KpiDefinitionCatalog]:
+        self.replace_calls += 1
         self.projection = projection
         return projection
-
-    def health_check(self) -> bool:
-        self.health_calls += 1
-        return True
 
 
 def _definition(kpi_key: str, **fields: str | None) -> ConfigurationKpiDefinition:
     return ConfigurationKpiDefinition(kpi_key=kpi_key, fields=fields)
 
 
-def _projection(*definitions: ConfigurationKpiDefinition) -> KpiDefinitionProjection:
-    return KpiDefinitionProjection.create(
-        configuration=KpiDefinitionConfiguration(definitions=definitions),
-        source_revision='source-revision',
-        projected_by='portability-gate',
-        projected_at_utc=datetime(2026, 8, 27, 19, 30, tzinfo=UTC),
+def _projection(*definitions: ConfigurationKpiDefinition) -> ProjectionRecord[KpiDefinitionCatalog]:
+    projected_at = datetime(2026, 8, 27, 19, 30, tzinfo=UTC)
+    return ProjectionRecord(
+        source_key=_SOURCE_KEY,
+        source_release_id=SourceReleaseId('source-revision'),
+        source_published_at_utc=projected_at,
+        projected_at_utc=projected_at,
+        payload=KpiDefinitionCatalog(
+            configuration=KpiDefinitionConfiguration(definitions=definitions),
+            coverage=(),
+        ),
+    )
+
+
+def _provider(store: InMemoryProjectionStore) -> KpiDefinitionProjectionProvider:
+    return KpiDefinitionProjectionProvider(
+        projection_store=store,
+        source_key=_SOURCE_KEY,
     )
 
 
@@ -68,7 +85,7 @@ def _server(store: KpiDefinitionSnapshotStore) -> Flask:
 
 
 def test_full_stack_warmup_serves_projection_without_external_infrastructure() -> None:
-    repository = InMemoryProjectionRepository(
+    projection_store = InMemoryProjectionStore(
         _projection(
             _definition(
                 'transported_total',
@@ -78,7 +95,7 @@ def test_full_stack_warmup_serves_projection_without_external_infrastructure() -
             _definition('recovery'),
         )
     )
-    provider = KpiDefinitionProjectionProvider(repository)
+    provider = _provider(projection_store)
     store = KpiDefinitionSnapshotStore()
 
     KpiDefinitionWarmup(provider, store).run()
@@ -104,16 +121,15 @@ def test_full_stack_warmup_serves_projection_without_external_infrastructure() -
         'definition': None,
         'kpi_key': 'not_defined',
     }
-    assert repository.load_calls == 1
-    assert repository.save_calls == 0
-    assert repository.health_calls == 0
+    assert projection_store.requested_keys == [_SOURCE_KEY]
+    assert projection_store.replace_calls == 0
 
 
 def test_empty_projection_warmup_is_valid_and_api_reports_unavailable() -> None:
-    repository = InMemoryProjectionRepository(None)
+    projection_store = InMemoryProjectionStore(None)
     store = KpiDefinitionSnapshotStore()
 
-    KpiDefinitionWarmup(KpiDefinitionProjectionProvider(repository), store).run()
+    KpiDefinitionWarmup(_provider(projection_store), store).run()
     response = _server(store).test_client().get('/api/inspection/kpis/transported_total')
 
     assert response.status_code == 200
@@ -122,14 +138,14 @@ def test_empty_projection_warmup_is_valid_and_api_reports_unavailable() -> None:
         'definition': None,
         'kpi_key': 'transported_total',
     }
-    assert repository.load_calls == 1
+    assert projection_store.requested_keys == [_SOURCE_KEY]
 
 
-def test_api_click_path_never_reads_repository_after_warmup() -> None:
-    repository = InMemoryProjectionRepository(
+def test_api_click_path_never_reads_projection_store_after_warmup() -> None:
+    projection_store = InMemoryProjectionStore(
         _projection(_definition('transported_total', description='Transported material'))
     )
-    provider = KpiDefinitionProjectionProvider(repository)
+    provider = _provider(projection_store)
     store = KpiDefinitionSnapshotStore()
     KpiDefinitionWarmup(provider, store).run()
     client = _server(store).test_client()
@@ -138,23 +154,24 @@ def test_api_click_path_never_reads_repository_after_warmup() -> None:
         response = client.get(f'/api/inspection/kpis/{kpi_key}')
         assert response.status_code == 200
 
-    assert repository.load_calls == 1
-    assert repository.save_calls == 0
-    assert repository.health_calls == 0
+    assert projection_store.requested_keys == [_SOURCE_KEY]
+    assert projection_store.replace_calls == 0
 
 
 def test_explicit_refresh_updates_live_api_without_rebuilding_server() -> None:
-    repository = InMemoryProjectionRepository(
+    projection_store = InMemoryProjectionStore(
         _projection(_definition('transported_total', description='Old definition'))
     )
-    provider = KpiDefinitionProjectionProvider(repository)
+    provider = _provider(projection_store)
     store = KpiDefinitionSnapshotStore()
     KpiDefinitionWarmup(provider, store).run()
     server = _server(store)
     client = server.test_client()
 
     before = client.get('/api/inspection/kpis/transported_total')
-    repository.projection = _projection(_definition('availability', description='New definition'))
+    projection_store.projection = _projection(
+        _definition('availability', description='New definition')
+    )
     KpiDefinitionRefresh(provider, store).run()
     previous = client.get('/api/inspection/kpis/transported_total')
     current = client.get('/api/inspection/kpis/availability')
@@ -166,18 +183,18 @@ def test_explicit_refresh_updates_live_api_without_rebuilding_server() -> None:
         'kpi_key': 'transported_total',
     }
     assert current.get_json()['definition'] == {'description': 'New definition'}
-    assert repository.load_calls == 2
+    assert projection_store.requested_keys == [_SOURCE_KEY, _SOURCE_KEY]
 
 
 def test_failed_refresh_preserves_last_valid_snapshot_served_by_api() -> None:
-    repository = InMemoryProjectionRepository(
+    projection_store = InMemoryProjectionStore(
         _projection(_definition('transported_total', description='Last valid definition'))
     )
-    provider = KpiDefinitionProjectionProvider(repository)
+    provider = _provider(projection_store)
     store = KpiDefinitionSnapshotStore()
     KpiDefinitionWarmup(provider, store).run()
     client = _server(store).test_client()
-    repository.failure = RuntimeError('Projection unavailable')
+    projection_store.failure = RuntimeError('Projection unavailable')
 
     with pytest.raises(RuntimeError, match='Projection unavailable'):
         KpiDefinitionRefresh(provider, store).run()
@@ -185,13 +202,13 @@ def test_failed_refresh_preserves_last_valid_snapshot_served_by_api() -> None:
     response = client.get('/api/inspection/kpis/transported_total')
     assert response.status_code == 200
     assert response.get_json()['definition'] == {'description': 'Last valid definition'}
-    assert repository.load_calls == 2
+    assert projection_store.requested_keys == [_SOURCE_KEY, _SOURCE_KEY]
 
 
 def test_portability_dependency_graph_has_no_direct_azure_or_cosmos_imports() -> None:
     root = Path(__file__).resolve().parents[1]
     capability_roots = (
-        root / '../../kpis/definition',
+        root / '../../kpis/definition/core',
         root / '../core',
         root / '../providers/kpi-definition',
         root / '../runtime',

@@ -11,8 +11,10 @@ classifiers = [
     "Private :: Do Not Upload",
 ]
 dependencies = [
-    "ada-web-kpi-definition==0.1.0",
+    "ada-web-kpi-definition==0.6.0",
     "ada-web-kpi-inspection-core==0.2.0",
+    "atlanticus-web-projection==0.1.0",
+    "atlanticus-web-source==0.1.0",
 ]
 
 [dependency-groups]
@@ -22,8 +24,10 @@ dev = [
 ]
 
 [tool.uv.sources]
-ada-web-kpi-definition = { path = "../../../kpis/definition", editable = true }
+ada-web-kpi-definition = { path = "../../../kpis/definition/core", editable = true }
 ada-web-kpi-inspection-core = { path = "../../core", editable = true }
+atlanticus-web-projection = { path = "../../../../../../web/capabilities/projection/core", editable = true }
+atlanticus-web-source = { path = "../../../../../../web/capabilities/source/core", editable = true }
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -61,5 +65,11 @@ combine-as-imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src", "../../core/src", "../../../kpis/definition/src"]
+pythonpath = [
+    "src",
+    "../../core/src",
+    "../../../kpis/definition/core/src",
+    "../../../../../../web/capabilities/projection/core/src",
+    "../../../../../../web/capabilities/source/core/src",
+]
 addopts = "-q --import-mode=importlib"

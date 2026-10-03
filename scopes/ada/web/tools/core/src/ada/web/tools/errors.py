@@ -1,2 +1,0 @@
-class ToolConfigurationValidationError(ValueError):
-    pass
