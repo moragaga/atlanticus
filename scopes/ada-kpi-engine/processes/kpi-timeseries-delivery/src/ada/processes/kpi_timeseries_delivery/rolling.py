@@ -12,29 +12,37 @@ from ada.kpis.history import (
     KpiHistorianAuthority,
     KpiHistoryContractError,
 )
-from ada.kpis.history.rolling_dataset import (
+from ada.kpis.history.dataset import (
     rolling_definition,
     rolling_metadata_from_schema,
     rolling_projection_from_table,
+    rolling_schema_token,
+    rolling_table_schema_token,
     rolling_target,
 )
 from ada.processes.kpi_timeseries_delivery.errors import (
     KpiTimeseriesDeliveryRepositoryError,
 )
-from atlanticus.datasets.parquet import (
+from atlanticus.datasets.runtime import (
     ColumnFilter,
+    DatasetRuntimeNotFoundError,
+    DatasetRuntimeReadError,
+    DatasetRuntimeValidationError,
     FilterOperator,
-    ParquetPublicationNotFoundError,
-    ParquetReadError,
-    ParquetSchemaError,
-    ParquetValidationError,
 )
 
 
-class _RollingStore(Protocol):
+class _RollingRuntime(Protocol):
     def read_schema(self, *, definition, target): ...
 
-    def scan(self, *, definition, targets, columns=None, filters=()): ...
+    def scan_table(
+        self,
+        *,
+        definition,
+        targets,
+        columns=None,
+        filters=(),
+    ): ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,16 +60,24 @@ class KpiTimeseriesRollingSlice:
             raise ValueError('historian_revision must be non-empty text')
         if not isinstance(self.histories, Mapping):
             raise TypeError('histories must be a mapping')
-        object.__setattr__(self, 'watermark_utc', self.watermark_utc.astimezone(UTC))
-        object.__setattr__(self, 'histories', MappingProxyType(dict(self.histories)))
+        object.__setattr__(
+            self,
+            'watermark_utc',
+            self.watermark_utc.astimezone(UTC),
+        )
+        object.__setattr__(
+            self,
+            'histories',
+            MappingProxyType(dict(self.histories)),
+        )
 
 
 class KpiTimeseriesRollingRepository:
-    def __init__(self, *, store: _RollingStore) -> None:
-        for method_name in ('read_schema', 'scan'):
-            if not callable(getattr(store, method_name, None)):
-                raise TypeError(f'store must provide a callable {method_name} method')
-        self._store = store
+    def __init__(self, *, runtime: _RollingRuntime) -> None:
+        for method_name in ('read_schema', 'scan_table'):
+            if not callable(getattr(runtime, method_name, None)):
+                raise TypeError(f'runtime must provide a callable {method_name} method')
+        self._runtime = runtime
 
     def read(
         self,
@@ -88,17 +104,20 @@ class KpiTimeseriesRollingRepository:
         definition = rolling_definition()
         target = rolling_target()
         try:
-            schema = self._store.read_schema(definition=definition, target=target)
+            schema = self._runtime.read_schema(
+                definition=definition,
+                target=target,
+            )
+            schema_token = rolling_schema_token(schema)
             metadata = rolling_metadata_from_schema(schema)
-        except ParquetPublicationNotFoundError as error:
+        except DatasetRuntimeNotFoundError as error:
             raise KpiTimeseriesDeliveryRepositoryError(
                 'KPI historian rolling file was not found'
             ) from error
         except (
             KpiHistoryContractError,
-            ParquetReadError,
-            ParquetSchemaError,
-            ParquetValidationError,
+            DatasetRuntimeReadError,
+            DatasetRuntimeValidationError,
         ) as error:
             raise KpiTimeseriesDeliveryRepositoryError(
                 'KPI historian rolling file is invalid'
@@ -121,10 +140,13 @@ class KpiTimeseriesRollingRepository:
             )
 
         try:
-            result = self._store.scan(
+            result = self._runtime.scan_table(
                 definition=definition,
                 targets=(target,),
-                columns=(ROLLING_TIMESTAMP_COLUMN, *existing_keys),
+                columns=(
+                    ROLLING_TIMESTAMP_COLUMN,
+                    *existing_keys,
+                ),
                 filters=(
                     ColumnFilter(
                         column=ROLLING_TIMESTAMP_COLUMN,
@@ -138,7 +160,7 @@ class KpiTimeseriesRollingRepository:
                     ),
                 ),
             )
-            if result.table.schema.metadata != schema.metadata:
+            if rolling_table_schema_token(result.table) != schema_token:
                 raise KpiTimeseriesDeliveryRepositoryError(
                     'KPI historian rolling changed during read'
                 )
@@ -149,9 +171,9 @@ class KpiTimeseriesRollingRepository:
             )
         except (
             KpiHistoryContractError,
-            ParquetReadError,
-            ParquetSchemaError,
-            ParquetValidationError,
+            DatasetRuntimeNotFoundError,
+            DatasetRuntimeReadError,
+            DatasetRuntimeValidationError,
         ) as error:
             raise KpiTimeseriesDeliveryRepositoryError(
                 'Could not read KPI historian rolling data'
@@ -179,7 +201,10 @@ def _keys(values: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(values))
 
 
-def _utc_datetime(value: datetime, field_name: str) -> datetime:
+def _utc_datetime(
+    value: datetime,
+    field_name: str,
+) -> datetime:
     if not isinstance(value, datetime):
         raise TypeError(f'{field_name} must be datetime')
     if value.tzinfo is None or value.utcoffset() is None:

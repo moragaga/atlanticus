@@ -1,16 +1,15 @@
-# Contrato durable KPI sin dependencias hacia el rolling.
+# Contrato lógico durable KPI; no conoce PyArrow, Runtime ni transporte.
+
 from __future__ import annotations
 
 from datetime import date, datetime
 
-import pyarrow as pa
-
-from atlanticus.datasets.layouts import SingleArtifactLayout
-from atlanticus.datasets.models import (
+from atlanticus.datasets import (
     DatasetDefinition,
     DatasetKey,
     DatasetTarget,
     MaterializationDefinition,
+    SingleArtifactLayout,
 )
 
 HISTORY_SCHEMA_VERSION = 2
@@ -41,57 +40,29 @@ _ERROR_HISTORY_DEFINITION = DatasetDefinition(
         ),
     ),
 )
-_HISTORY_SCHEMA = pa.schema(
-    (
-        pa.field('timestamp_utc', pa.timestamp('us', tz='UTC'), nullable=False),
-        pa.field('key', pa.string(), nullable=False),
-        pa.field('status', pa.string(), nullable=False),
-        pa.field('value_kind', pa.string(), nullable=False),
-        pa.field('value_type', pa.string(), nullable=True),
-        pa.field('value', pa.string(), nullable=True),
-        pa.field('parsed_value', pa.string(), nullable=True),
-    )
-)
-_ERROR_HISTORY_SCHEMA = pa.schema(
-    (
-        pa.field('timestamp_utc', pa.timestamp('us', tz='UTC'), nullable=False),
-        pa.field('key', pa.string(), nullable=False),
-        pa.field('error', pa.string(), nullable=False),
-    )
-)
 
 
-# Esta función expone una parte del contrato compartido.
+# Esta función mantiene la representación KPI fuera de la capa process.
 def history_definition() -> DatasetDefinition:
     return _HISTORY_DEFINITION
 
 
-# Esta función expone una parte del contrato compartido.
+# Esta función mantiene la representación KPI fuera de la capa process.
 def error_history_definition() -> DatasetDefinition:
     return _ERROR_HISTORY_DEFINITION
 
 
-# Esta función expone una parte del contrato compartido.
-def history_schema() -> pa.Schema:
-    return _HISTORY_SCHEMA
-
-
-# Esta función expone una parte del contrato compartido.
-def error_history_schema() -> pa.Schema:
-    return _ERROR_HISTORY_SCHEMA
-
-
-# Esta función expone una parte del contrato compartido.
+# Esta función mantiene la representación KPI fuera de la capa process.
 def history_target(day: date) -> DatasetTarget:
     return _daily_target(_HISTORY_DEFINITION, day)
 
 
-# Esta función expone una parte del contrato compartido.
+# Esta función mantiene la representación KPI fuera de la capa process.
 def error_history_target(day: date) -> DatasetTarget:
     return _daily_target(_ERROR_HISTORY_DEFINITION, day)
 
 
-# Esta función expone una parte del contrato compartido.
+# Esta función mantiene la representación KPI fuera de la capa process.
 def _daily_target(definition: DatasetDefinition, day: date) -> DatasetTarget:
     if not isinstance(day, date) or isinstance(day, datetime):
         raise TypeError('day must be a date')

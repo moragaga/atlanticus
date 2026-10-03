@@ -4,20 +4,17 @@ from collections.abc import Callable, Iterable
 from datetime import date
 from typing import Protocol
 
-import pyarrow as pa
-
 from ada.kpis.core import KpiEvaluation, KpiStatus, KpiValueKind, KpiWatermark
 from ada.kpis.history import (
     HISTORY_KEY_COLUMNS,
     HISTORY_ORDER_COLUMNS,
     encode_history_value,
     error_history_definition,
-    error_history_schema,
     error_history_target,
     history_definition,
-    history_schema,
     history_target,
 )
+from ada.kpis.history.dataset import error_history_table, history_table
 from ada.kpis.persistence import KpiEvaluationBatch
 from ada.processes.kpi_historian.errors import KpiHistorianHistoryError
 from ada.processes.kpi_historian.models import KpiHistorianWriteResult
@@ -141,11 +138,10 @@ class KpiHistorianMaterializer:
         if not records:
             return 0
         _check_current(check_current)
-        table = pa.Table.from_pylist(records, schema=history_schema())
         self._runtime.merge(
             definition=history_definition(),
             target=history_target(day),
-            data=table,
+            data=history_table(records),
             key_columns=HISTORY_KEY_COLUMNS,
             order_by=HISTORY_ORDER_COLUMNS,
         )
@@ -161,11 +157,10 @@ class KpiHistorianMaterializer:
         if not records:
             return 0
         _check_current(check_current)
-        table = pa.Table.from_pylist(records, schema=error_history_schema())
         self._runtime.merge(
             definition=error_history_definition(),
             target=error_history_target(day),
-            data=table,
+            data=error_history_table(records),
             key_columns=HISTORY_KEY_COLUMNS,
             order_by=HISTORY_ORDER_COLUMNS,
         )

@@ -1,4 +1,3 @@
-# Contrato físico del rolling aislado para evitar ciclos de imports.
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
@@ -16,17 +15,34 @@ from ada.kpis.history.rolling import (
     ROLLING_TIMESTAMP_COLUMN,
     KpiRollingMetadata,
 )
-from atlanticus.datasets.layouts import SingleArtifactLayout
-from atlanticus.datasets.models import (
+from atlanticus.datasets import (
     DatasetDefinition,
     DatasetKey,
     DatasetTarget,
     MaterializationDefinition,
+    SingleArtifactLayout,
 )
 
 ROLLING_MATERIALIZATION = 'current'
 
-# La definición física del rolling queda aislada del contrato durable.
+_HISTORY_SCHEMA = pa.schema(
+    (
+        pa.field('timestamp_utc', pa.timestamp('us', tz='UTC'), nullable=False),
+        pa.field('key', pa.string(), nullable=False),
+        pa.field('status', pa.string(), nullable=False),
+        pa.field('value_kind', pa.string(), nullable=False),
+        pa.field('value_type', pa.string(), nullable=True),
+        pa.field('value', pa.string(), nullable=True),
+        pa.field('parsed_value', pa.string(), nullable=True),
+    )
+)
+_ERROR_HISTORY_SCHEMA = pa.schema(
+    (
+        pa.field('timestamp_utc', pa.timestamp('us', tz='UTC'), nullable=False),
+        pa.field('key', pa.string(), nullable=False),
+        pa.field('error', pa.string(), nullable=False),
+    )
+)
 _ROLLING_DEFINITION = DatasetDefinition(
     key=DatasetKey(namespace=('kpis',), name='rolling'),
     materializations=(
@@ -43,18 +59,64 @@ _ROLLING_DEFINITION = DatasetDefinition(
 )
 
 
-# Esta función expone una parte del contrato compartido.
+def history_schema() -> pa.Schema:
+    return _HISTORY_SCHEMA
+
+
+def error_history_schema() -> pa.Schema:
+    return _ERROR_HISTORY_SCHEMA
+
+
+def history_table(records: Iterable[Mapping[str, object]]) -> pa.Table:
+    return _records_table(
+        records,
+        schema=_HISTORY_SCHEMA,
+        field_name='history records',
+    )
+
+
+def error_history_table(records: Iterable[Mapping[str, object]]) -> pa.Table:
+    return _records_table(
+        records,
+        schema=_ERROR_HISTORY_SCHEMA,
+        field_name='error history records',
+    )
+
+
+def history_records_from_table(table: pa.Table) -> tuple[dict[str, object], ...]:
+    if not isinstance(table, pa.Table):
+        raise TypeError('table must be pyarrow.Table')
+    allowed = set(_HISTORY_SCHEMA.names)
+    if not table.column_names or any(name not in allowed for name in table.column_names):
+        raise KpiHistoryContractError('KPI history projection columns are invalid')
+    required = {
+        'timestamp_utc',
+        'key',
+        'status',
+        'value_kind',
+        'value_type',
+        'value',
+    }
+    if not required.issubset(table.column_names):
+        raise KpiHistoryContractError('KPI history projection is missing required columns')
+    for name in table.column_names:
+        expected = _HISTORY_SCHEMA.field(name)
+        actual = table.schema.field(name)
+        if actual.type != expected.type or actual.nullable != expected.nullable:
+            raise KpiHistoryContractError(f'KPI history projection schema is invalid for {name}')
+    return tuple(dict(row) for row in table.to_pylist())
+
+
 def rolling_definition() -> DatasetDefinition:
     return _ROLLING_DEFINITION
 
 
-# Esta función expone una parte del contrato compartido.
 def rolling_target() -> DatasetTarget:
     return _ROLLING_DEFINITION.resolve_target(
         materialization=ROLLING_MATERIALIZATION,
     )
 
-# Esta función expone una parte del contrato compartido.
+
 def rolling_table(
     *,
     metadata: KpiRollingMetadata,
@@ -68,31 +130,20 @@ def rolling_table(
     for timestamp, row in points.items():
         resolved_timestamp = _rolling_timestamp(timestamp)
         if not isinstance(row, Mapping) or not row:
-            raise KpiHistoryContractError(
-                'KPI rolling physical row must contain observed values'
-            )
+            raise KpiHistoryContractError('KPI rolling physical row must contain observed values')
         values: dict[str, str] = {}
         for key, value in row.items():
             if key not in metadata.value_types:
-                raise KpiHistoryContractError(
-                    'KPI rolling physical row contains an unknown key'
-                )
+                raise KpiHistoryContractError('KPI rolling physical row contains an unknown key')
             if not isinstance(value, str):
-                raise KpiHistoryContractError(
-                    'KPI rolling physical value must be text'
-                )
+                raise KpiHistoryContractError('KPI rolling physical value must be text')
             values[key] = value
         normalized[resolved_timestamp] = values
     timestamps = sorted(normalized)
     actual_start = None if not timestamps else timestamps[0]
     actual_end = None if not timestamps else timestamps[-1]
-    if (
-        metadata.coverage_start_utc != actual_start
-        or metadata.coverage_end_utc != actual_end
-    ):
-        raise KpiHistoryContractError(
-            'KPI rolling coverage metadata does not match points'
-        )
+    if metadata.coverage_start_utc != actual_start or metadata.coverage_end_utc != actual_end:
+        raise KpiHistoryContractError('KPI rolling coverage metadata does not match points')
     keys = tuple(metadata.value_types)
     arrays = [pa.array(timestamps, type=pa.timestamp('us', tz='UTC'))]
     arrays.extend(
@@ -116,16 +167,23 @@ def rolling_table(
     return pa.Table.from_arrays(arrays, schema=schema)
 
 
-# Esta función expone una parte del contrato compartido.
-def rolling_metadata_from_schema(schema: pa.Schema) -> KpiRollingMetadata:
+def rolling_schema_token(schema: pa.Schema) -> bytes:
     if not isinstance(schema, pa.Schema):
         raise TypeError('schema must be pyarrow.Schema')
-    metadata_bytes = (schema.metadata or {}).get(
-        ROLLING_METADATA_KEY.encode('utf-8')
-    )
+    metadata_bytes = (schema.metadata or {}).get(ROLLING_METADATA_KEY.encode('utf-8'))
     if metadata_bytes is None:
         raise KpiHistoryContractError('KPI rolling metadata is missing')
-    metadata = KpiRollingMetadata.from_bytes(metadata_bytes)
+    return metadata_bytes
+
+
+def rolling_table_schema_token(table: pa.Table) -> bytes:
+    if not isinstance(table, pa.Table):
+        raise TypeError('table must be pyarrow.Table')
+    return rolling_schema_token(table.schema)
+
+
+def rolling_metadata_from_schema(schema: pa.Schema) -> KpiRollingMetadata:
+    metadata = KpiRollingMetadata.from_bytes(rolling_schema_token(schema))
     _validate_rolling_schema(
         schema=schema,
         keys=tuple(metadata.value_types),
@@ -133,7 +191,6 @@ def rolling_metadata_from_schema(schema: pa.Schema) -> KpiRollingMetadata:
     return metadata
 
 
-# Esta función expone una parte del contrato compartido.
 def rolling_state_from_table(
     table: pa.Table,
 ) -> tuple[KpiRollingMetadata, dict[datetime, dict[str, str]]]:
@@ -145,46 +202,31 @@ def rolling_state_from_table(
     for row in table.to_pylist():
         timestamp = _rolling_timestamp(row.get(ROLLING_TIMESTAMP_COLUMN))
         if previous is not None and timestamp <= previous:
-            raise KpiHistoryContractError(
-                'KPI rolling timestamps must be strictly increasing'
-            )
+            raise KpiHistoryContractError('KPI rolling timestamps must be strictly increasing')
         values: dict[str, str] = {}
         for key in metadata.value_types:
             value = row.get(key)
             if value is not None and not isinstance(value, str):
-                raise KpiHistoryContractError(
-                    'KPI rolling physical value is invalid'
-                )
+                raise KpiHistoryContractError('KPI rolling physical value is invalid')
             if value is not None:
                 values[key] = value
         if not values:
-            raise KpiHistoryContractError(
-                'KPI rolling must not persist empty physical rows'
-            )
+            raise KpiHistoryContractError('KPI rolling must not persist empty physical rows')
         points[timestamp] = values
         previous = timestamp
     actual_start = None if not points else min(points)
     actual_end = None if not points else max(points)
-    if (
-        metadata.coverage_start_utc != actual_start
-        or metadata.coverage_end_utc != actual_end
-    ):
-        raise KpiHistoryContractError(
-            'KPI rolling coverage metadata is invalid'
-        )
+    if metadata.coverage_start_utc != actual_start or metadata.coverage_end_utc != actual_end:
+        raise KpiHistoryContractError('KPI rolling coverage metadata is invalid')
     cutoff = metadata.watermark_utc.timestamp() - (ROLLING_MAX_HOURS * 3600)
     if any(
-        timestamp.timestamp() <= cutoff
-        or timestamp > metadata.watermark_utc
+        timestamp.timestamp() <= cutoff or timestamp > metadata.watermark_utc
         for timestamp in points
     ):
-        raise KpiHistoryContractError(
-            'KPI rolling coverage is outside its horizon'
-        )
+        raise KpiHistoryContractError('KPI rolling coverage is outside its horizon')
     return metadata, points
 
 
-# Esta función expone una parte del contrato compartido.
 def rolling_projection_from_table(
     table: pa.Table,
     *,
@@ -202,26 +244,17 @@ def rolling_projection_from_table(
     except TypeError as error:
         raise TypeError('keys must be an iterable of KPI keys') from error
     if len(set(resolved_keys)) != len(resolved_keys):
-        raise KpiHistoryContractError(
-            'KPI rolling projection keys must be unique'
-        )
+        raise KpiHistoryContractError('KPI rolling projection keys must be unique')
     if any(
-        not isinstance(key, str)
-        or not key
-        or key != key.strip()
-        or key not in metadata.value_types
+        not isinstance(key, str) or not key or key != key.strip() or key not in metadata.value_types
         for key in resolved_keys
     ):
-        raise KpiHistoryContractError(
-            'KPI rolling projection key is invalid'
-        )
+        raise KpiHistoryContractError('KPI rolling projection key is invalid')
     _validate_rolling_schema(
         schema=table.schema,
         keys=resolved_keys,
     )
-    values_by_key: dict[str, dict[datetime, str]] = {
-        key: {} for key in resolved_keys
-    }
+    values_by_key: dict[str, dict[datetime, str]] = {key: {} for key in resolved_keys}
     previous: datetime | None = None
     for row in table.to_pylist():
         timestamp = _rolling_timestamp(row.get(ROLLING_TIMESTAMP_COLUMN))
@@ -234,15 +267,34 @@ def rolling_projection_from_table(
             if value is None:
                 continue
             if not isinstance(value, str):
-                raise KpiHistoryContractError(
-                    'KPI rolling projection value is invalid'
-                )
+                raise KpiHistoryContractError('KPI rolling projection value is invalid')
             values_by_key[key][timestamp] = value
         previous = timestamp
     return values_by_key
 
 
-# Esta función expone una parte del contrato compartido.
+def _records_table(
+    records: Iterable[Mapping[str, object]],
+    *,
+    schema: pa.Schema,
+    field_name: str,
+) -> pa.Table:
+    if isinstance(records, Mapping | str | bytes):
+        raise TypeError(f'{field_name} must be an iterable of mappings')
+    try:
+        resolved = tuple(records)
+    except TypeError as error:
+        raise TypeError(f'{field_name} must be an iterable of mappings') from error
+    if not all(isinstance(record, Mapping) for record in resolved):
+        raise TypeError(f'{field_name} must contain only mappings')
+    try:
+        return pa.Table.from_pylist([dict(record) for record in resolved], schema=schema)
+    except (pa.ArrowException, TypeError, ValueError) as error:
+        raise KpiHistoryContractError(
+            f'{field_name} could not be converted to the KPI dataset schema'
+        ) from error
+
+
 def _validate_rolling_schema(
     *,
     schema: pa.Schema,
@@ -252,22 +304,14 @@ def _validate_rolling_schema(
     if schema.names != expected:
         raise KpiHistoryContractError('KPI rolling columns are invalid')
     timestamp_field = schema.field(ROLLING_TIMESTAMP_COLUMN)
-    if (
-        timestamp_field.type != pa.timestamp('us', tz='UTC')
-        or timestamp_field.nullable
-    ):
-        raise KpiHistoryContractError(
-            'KPI rolling timestamp schema is invalid'
-        )
+    if timestamp_field.type != pa.timestamp('us', tz='UTC') or timestamp_field.nullable:
+        raise KpiHistoryContractError('KPI rolling timestamp schema is invalid')
     for key in keys:
         field = schema.field(key)
         if field.type != pa.string() or not field.nullable:
-            raise KpiHistoryContractError(
-                f'KPI rolling value schema is invalid for {key}'
-            )
+            raise KpiHistoryContractError(f'KPI rolling value schema is invalid for {key}')
 
 
-# Esta función expone una parte del contrato compartido.
 def _rolling_timestamp(value: object) -> datetime:
     if (
         not isinstance(value, datetime)
@@ -277,7 +321,6 @@ def _rolling_timestamp(value: object) -> datetime:
         or int(value.timestamp()) % ROLLING_GRID_SECONDS != 0
     ):
         raise KpiHistoryContractError(
-            f'KPI rolling timestamp must align to '
-            f'the {ROLLING_GRID_SECONDS}-second grid'
+            f'KPI rolling timestamp must align to the {ROLLING_GRID_SECONDS}-second grid'
         )
     return value

@@ -2,14 +2,12 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-import pyarrow as pa
-
-from atlanticus.datasets.layouts import SingleArtifactLayout
-from atlanticus.datasets.models import (
+from atlanticus.datasets import (
     DatasetDefinition,
     DatasetKey,
     DatasetTarget,
     MaterializationDefinition,
+    SingleArtifactLayout,
 )
 
 HISTORY_SCHEMA_VERSION = 2
@@ -40,24 +38,6 @@ _ERROR_HISTORY_DEFINITION = DatasetDefinition(
         ),
     ),
 )
-_HISTORY_SCHEMA = pa.schema(
-    (
-        pa.field('timestamp_utc', pa.timestamp('us', tz='UTC'), nullable=False),
-        pa.field('key', pa.string(), nullable=False),
-        pa.field('status', pa.string(), nullable=False),
-        pa.field('value_kind', pa.string(), nullable=False),
-        pa.field('value_type', pa.string(), nullable=True),
-        pa.field('value', pa.string(), nullable=True),
-        pa.field('parsed_value', pa.string(), nullable=True),
-    )
-)
-_ERROR_HISTORY_SCHEMA = pa.schema(
-    (
-        pa.field('timestamp_utc', pa.timestamp('us', tz='UTC'), nullable=False),
-        pa.field('key', pa.string(), nullable=False),
-        pa.field('error', pa.string(), nullable=False),
-    )
-)
 
 
 def history_definition() -> DatasetDefinition:
@@ -66,14 +46,6 @@ def history_definition() -> DatasetDefinition:
 
 def error_history_definition() -> DatasetDefinition:
     return _ERROR_HISTORY_DEFINITION
-
-
-def history_schema() -> pa.Schema:
-    return _HISTORY_SCHEMA
-
-
-def error_history_schema() -> pa.Schema:
-    return _ERROR_HISTORY_SCHEMA
 
 
 def history_target(day: date) -> DatasetTarget:

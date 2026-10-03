@@ -19,7 +19,8 @@ from ada.kpis.history import (
     history_definition,
     history_target,
 )
-from ada.kpis.history.rolling_dataset import (
+from ada.kpis.history.dataset import (
+    history_records_from_table,
     rolling_definition,
     rolling_state_from_table,
     rolling_table,
@@ -27,12 +28,13 @@ from ada.kpis.history.rolling_dataset import (
 )
 from ada.kpis.persistence import KpiEvaluationBatch
 from ada.processes.kpi_historian.errors import KpiHistorianRollingError
-from atlanticus.datasets.parquet import ColumnFilter, FilterOperator
 from atlanticus.datasets.runtime import (
+    ColumnFilter,
     DatasetRuntimeNotFoundError,
     DatasetRuntimeReadError,
     DatasetRuntimeValidationError,
     DatasetRuntimeWriteError,
+    FilterOperator,
 )
 
 
@@ -110,7 +112,8 @@ class KpiHistorianRollingMaterializer:
         if isinstance(batches, KpiEvaluationBatch | str | bytes):
             raise TypeError('batches must be an iterable of KpiEvaluationBatch values')
         if previous_authority is not None and not isinstance(
-            previous_authority, KpiHistorianAuthority
+            previous_authority,
+            KpiHistorianAuthority,
         ):
             raise TypeError('previous_authority must be KpiHistorianAuthority or None')
         if not isinstance(authority, KpiHistorianAuthority):
@@ -258,12 +261,20 @@ class KpiHistorianRollingMaterializer:
                 )
             except DatasetRuntimeNotFoundError:
                 continue
-            records.extend(result.table.to_pylist())
+            records.extend(history_records_from_table(result.table))
         points: dict[datetime, dict[str, str]] = {}
         value_types: dict[str, str] = {}
         for row in sorted(records, key=_history_sort_key):
-            _apply_history_row(points=points, value_types=value_types, row=row)
-        _trim(points=points, value_types=value_types, watermark_utc=end_utc)
+            _apply_history_row(
+                points=points,
+                value_types=value_types,
+                row=row,
+            )
+        _trim(
+            points=points,
+            value_types=value_types,
+            watermark_utc=end_utc,
+        )
         return points, value_types
 
     def _write(
@@ -286,7 +297,10 @@ class KpiHistorianRollingMaterializer:
             self._rolling_runtime.replace(
                 definition=rolling_definition(),
                 target=rolling_target(),
-                data=rolling_table(metadata=metadata, points=points),
+                data=rolling_table(
+                    metadata=metadata,
+                    points=points,
+                ),
             )
         except (
             DatasetRuntimeValidationError,
@@ -335,7 +349,11 @@ def _apply_batches(
             if evaluation.status is not KpiStatus.OK:
                 continue
             if evaluation.value_kind is KpiValueKind.JSON:
-                _clear_series(points=points, value_types=value_types, key=evaluation.key)
+                _clear_series(
+                    points=points,
+                    value_types=value_types,
+                    key=evaluation.key,
+                )
                 continue
             value_type = None if evaluation.value_type is None else evaluation.value_type.value
             if value_type not in ROLLING_VALUE_TYPES or not isinstance(evaluation.value, str):
@@ -373,11 +391,20 @@ def _apply_history_row(
     if status != 'ok':
         return
     if value_kind == 'json':
-        _clear_series(points=points, value_types=value_types, key=key)
+        _clear_series(
+            points=points,
+            value_types=value_types,
+            key=key,
+        )
         return
     if value_type not in ROLLING_VALUE_TYPES or not isinstance(value, str):
         raise KpiHistorianRollingError('KPI durable history scalar value is invalid')
-    _accept_type(points=points, value_types=value_types, key=key, value_type=value_type)
+    _accept_type(
+        points=points,
+        value_types=value_types,
+        key=key,
+        value_type=value_type,
+    )
     points.setdefault(timestamp, {})[key] = value
 
 
@@ -390,7 +417,11 @@ def _accept_type(
 ) -> None:
     previous = value_types.get(key)
     if previous is not None and previous != value_type:
-        _clear_series(points=points, value_types=value_types, key=key)
+        _clear_series(
+            points=points,
+            value_types=value_types,
+            key=key,
+        )
     value_types[key] = value_type
 
 
@@ -432,11 +463,15 @@ def _prune(
             del value_types[key]
 
 
-def _copy_points(points: dict[datetime, dict[str, str]]) -> dict[datetime, dict[str, str]]:
+def _copy_points(
+    points: dict[datetime, dict[str, str]],
+) -> dict[datetime, dict[str, str]]:
     return {timestamp: dict(values) for timestamp, values in points.items()}
 
 
-def _history_sort_key(row: dict[str, object]) -> tuple[datetime, str]:
+def _history_sort_key(
+    row: dict[str, object],
+) -> tuple[datetime, str]:
     timestamp = row.get('timestamp_utc')
     key = row.get('key')
     if not isinstance(timestamp, datetime) or not isinstance(key, str):
@@ -460,6 +495,8 @@ def _require_grid_aligned(value: datetime) -> None:
         )
 
 
-def _check_current(check_current: Callable[[], None] | None) -> None:
+def _check_current(
+    check_current: Callable[[], None] | None,
+) -> None:
     if check_current is not None:
         check_current()

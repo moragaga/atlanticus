@@ -1,4 +1,5 @@
-# API pública de KPI History.
+# API pública de KPI History; conserva compatibilidad y delega schemas a dataset.py.
+
 from ada.kpis.history.authority import (
     HISTORIAN_AUTHORITY_NAME,
     HISTORIAN_AUTHORITY_NAMESPACE,
@@ -12,12 +13,11 @@ from ada.kpis.history.contract import (
     HISTORY_PARTITION_DIMENSIONS,
     HISTORY_SCHEMA_VERSION,
     error_history_definition,
-    error_history_schema,
     error_history_target,
     history_definition,
-    history_schema,
     history_target,
 )
+from ada.kpis.history.dataset import error_history_schema, history_schema
 from ada.kpis.history.encoding import decode_history_value, encode_history_value
 from ada.kpis.history.errors import KpiHistoryContractError
 from ada.kpis.history.revision import historian_revision, historian_watermark_text

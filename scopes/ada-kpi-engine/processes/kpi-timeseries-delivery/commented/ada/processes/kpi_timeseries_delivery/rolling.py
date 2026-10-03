@@ -1,5 +1,5 @@
-# Lectura rolling Timeseries mediante datasets-parquet.
-# Espejo pedagógico; los comentarios no alteran el AST productivo.
+# Timeseries consume DatasetRuntime y el contrato dataset de KPI History; no conoce Parquet ni PyArrow.
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -14,66 +14,86 @@ from ada.kpis.history import (
     KpiHistorianAuthority,
     KpiHistoryContractError,
 )
-from ada.kpis.history.rolling_dataset import (
+from ada.kpis.history.dataset import (
     rolling_definition,
     rolling_metadata_from_schema,
     rolling_projection_from_table,
+    rolling_schema_token,
+    rolling_table_schema_token,
     rolling_target,
 )
 from ada.processes.kpi_timeseries_delivery.errors import (
     KpiTimeseriesDeliveryRepositoryError,
 )
-from atlanticus.datasets.parquet import (
+from atlanticus.datasets.runtime import (
     ColumnFilter,
+    DatasetRuntimeNotFoundError,
+    DatasetRuntimeReadError,
+    DatasetRuntimeValidationError,
     FilterOperator,
-    ParquetPublicationNotFoundError,
-    ParquetReadError,
-    ParquetSchemaError,
-    ParquetValidationError,
 )
 
 
-# Esta clase conserva una responsabilidad explícita.
-class _RollingStore(Protocol):
-# Esta función aplica el contrato antes de delegar.
+# Esta clase mantiene la representación KPI fuera de la capa process.
+class _RollingRuntime(Protocol):
     def read_schema(self, *, definition, target): ...
 
-# Esta función aplica el contrato antes de delegar.
-    def scan(self, *, definition, targets, columns=None, filters=()): ...
+    def scan_table(
+        self,
+        *,
+        definition,
+        targets,
+        columns=None,
+        filters=(),
+    ): ...
 
 
-# El dataclass siguiente representa un contrato de datos.
 @dataclass(frozen=True, slots=True)
-# Esta clase conserva una responsabilidad explícita.
+# Esta clase mantiene la representación KPI fuera de la capa process.
 class KpiTimeseriesRollingSlice:
     watermark_utc: datetime
     historian_revision: str
     histories: Mapping[str, KpiTimeseriesHistory]
 
-# Esta función aplica el contrato antes de delegar.
     def __post_init__(self) -> None:
         if not isinstance(self.watermark_utc, datetime):
             raise TypeError('watermark_utc must be datetime')
-        if self.watermark_utc.tzinfo is None or self.watermark_utc.utcoffset() is None:
+        if (
+            self.watermark_utc.tzinfo is None
+            or self.watermark_utc.utcoffset() is None
+        ):
             raise ValueError('watermark_utc must be timezone-aware')
-        if not isinstance(self.historian_revision, str) or not self.historian_revision:
-            raise ValueError('historian_revision must be non-empty text')
+        if (
+            not isinstance(self.historian_revision, str)
+            or not self.historian_revision
+        ):
+            raise ValueError(
+                'historian_revision must be non-empty text'
+            )
         if not isinstance(self.histories, Mapping):
             raise TypeError('histories must be a mapping')
-        object.__setattr__(self, 'watermark_utc', self.watermark_utc.astimezone(UTC))
-        object.__setattr__(self, 'histories', MappingProxyType(dict(self.histories)))
+        object.__setattr__(
+            self,
+            'watermark_utc',
+            self.watermark_utc.astimezone(UTC),
+        )
+        object.__setattr__(
+            self,
+            'histories',
+            MappingProxyType(dict(self.histories)),
+        )
 
 
-# Esta clase conserva una responsabilidad explícita.
+# Esta clase mantiene la representación KPI fuera de la capa process.
 class KpiTimeseriesRollingRepository:
-# Esta función aplica el contrato antes de delegar.
-    def __init__(self, *, store: _RollingStore) -> None:
-        for method_name in ('read_schema', 'scan'):
-            if not callable(getattr(store, method_name, None)):
-                raise TypeError(f'store must provide a callable {method_name} method')
-        self._store = store
+    def __init__(self, *, runtime: _RollingRuntime) -> None:
+        for method_name in ('read_schema', 'scan_table'):
+            if not callable(getattr(runtime, method_name, None)):
+                raise TypeError(
+                    f'runtime must provide a callable {method_name} method'
+                )
+        self._runtime = runtime
 
-# Esta función aplica el contrato antes de delegar.
     def read(
         self,
         *,
@@ -83,7 +103,9 @@ class KpiTimeseriesRollingRepository:
         end_utc: datetime,
     ) -> KpiTimeseriesRollingSlice:
         if not isinstance(authority, KpiHistorianAuthority):
-            raise TypeError('authority must be KpiHistorianAuthority')
+            raise TypeError(
+                'authority must be KpiHistorianAuthority'
+            )
         normalized_keys = _keys(keys)
         start = _utc_datetime(start_utc, 'start_utc')
         end = _utc_datetime(end_utc, 'end_utc')
@@ -99,17 +121,20 @@ class KpiTimeseriesRollingRepository:
         definition = rolling_definition()
         target = rolling_target()
         try:
-            schema = self._store.read_schema(definition=definition, target=target)
+            schema = self._runtime.read_schema(
+                definition=definition,
+                target=target,
+            )
+            schema_token = rolling_schema_token(schema)
             metadata = rolling_metadata_from_schema(schema)
-        except ParquetPublicationNotFoundError as error:
+        except DatasetRuntimeNotFoundError as error:
             raise KpiTimeseriesDeliveryRepositoryError(
                 'KPI historian rolling file was not found'
             ) from error
         except (
             KpiHistoryContractError,
-            ParquetReadError,
-            ParquetSchemaError,
-            ParquetValidationError,
+            DatasetRuntimeReadError,
+            DatasetRuntimeValidationError,
         ) as error:
             raise KpiTimeseriesDeliveryRepositoryError(
                 'KPI historian rolling file is invalid'
@@ -123,7 +148,11 @@ class KpiTimeseriesRollingRepository:
                 'KPI historian rolling is not coherent with historian authority'
             )
 
-        existing_keys = tuple(key for key in normalized_keys if key in metadata.value_types)
+        existing_keys = tuple(
+            key
+            for key in normalized_keys
+            if key in metadata.value_types
+        )
         if not existing_keys:
             return KpiTimeseriesRollingSlice(
                 watermark_utc=metadata.watermark_utc,
@@ -132,10 +161,13 @@ class KpiTimeseriesRollingRepository:
             )
 
         try:
-            result = self._store.scan(
+            result = self._runtime.scan_table(
                 definition=definition,
                 targets=(target,),
-                columns=(ROLLING_TIMESTAMP_COLUMN, *existing_keys),
+                columns=(
+                    ROLLING_TIMESTAMP_COLUMN,
+                    *existing_keys,
+                ),
                 filters=(
                     ColumnFilter(
                         column=ROLLING_TIMESTAMP_COLUMN,
@@ -149,7 +181,7 @@ class KpiTimeseriesRollingRepository:
                     ),
                 ),
             )
-            if result.table.schema.metadata != schema.metadata:
+            if rolling_table_schema_token(result.table) != schema_token:
                 raise KpiTimeseriesDeliveryRepositoryError(
                     'KPI historian rolling changed during read'
                 )
@@ -160,9 +192,9 @@ class KpiTimeseriesRollingRepository:
             )
         except (
             KpiHistoryContractError,
-            ParquetReadError,
-            ParquetSchemaError,
-            ParquetValidationError,
+            DatasetRuntimeNotFoundError,
+            DatasetRuntimeReadError,
+            DatasetRuntimeValidationError,
         ) as error:
             raise KpiTimeseriesDeliveryRepositoryError(
                 'Could not read KPI historian rolling data'
@@ -182,20 +214,27 @@ class KpiTimeseriesRollingRepository:
         )
 
 
-# Esta función aplica el contrato antes de delegar.
+# Esta función mantiene la representación KPI fuera de la capa process.
 def _keys(values: tuple[str, ...]) -> tuple[str, ...]:
     if not isinstance(values, tuple):
         raise TypeError('keys must be tuple')
     if any(
-        not isinstance(value, str) or not value or value != value.strip()
+        not isinstance(value, str)
+        or not value
+        or value != value.strip()
         for value in values
     ):
-        raise ValueError('keys must contain non-empty trimmed strings')
+        raise ValueError(
+            'keys must contain non-empty trimmed strings'
+        )
     return tuple(dict.fromkeys(values))
 
 
-# Esta función aplica el contrato antes de delegar.
-def _utc_datetime(value: datetime, field_name: str) -> datetime:
+# Esta función mantiene la representación KPI fuera de la capa process.
+def _utc_datetime(
+    value: datetime,
+    field_name: str,
+) -> datetime:
     if not isinstance(value, datetime):
         raise TypeError(f'{field_name} must be datetime')
     if value.tzinfo is None or value.utcoffset() is None:

@@ -25,6 +25,7 @@ from atlanticus.connectivity.cosmos import (
     CosmosSettings,
 )
 from atlanticus.datasets.parquet import ParquetDatasetStore
+from atlanticus.datasets.runtime import DatasetRuntime
 from atlanticus.runtime import (
     JobDefinition,
     RuntimeConfiguration,
@@ -45,7 +46,11 @@ class KpiTimeseriesDeliveryComposition:
     definition: JobDefinition
     clients: Mapping[str, CosmosClient]
 
-    def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
+    def execute(
+        self,
+        *,
+        argv: Sequence[str] | None = None,
+    ) -> RuntimeExecutionResult:
         with ExitStack() as stack:
             for client in self.clients.values():
                 stack.callback(client.close)
@@ -94,6 +99,9 @@ def build_composition(
         publishers=frozen_publishers,
         max_workers=settings.max_workers,
     )
+    rolling_runtime = DatasetRuntime(
+        store=ParquetDatasetStore(root=historian_store.application_root)
+    )
 
     job = KpiTimeseriesDeliveryRuntimeJob(
         store=LocalKpiRegistryStore(
@@ -101,9 +109,7 @@ def build_composition(
         ),
         expected_tool_keys=connections,
         historian=KpiHistorianAuthorityReader(store=historian_store),
-        rolling=KpiTimeseriesRollingRepository(
-            store=ParquetDatasetStore(root=historian_store.application_root),
-        ),
+        rolling=KpiTimeseriesRollingRepository(runtime=rolling_runtime),
         checkpoints=KpiTimeseriesDeliveryCheckpointStore(store=own_store),
         publisher=parallel_publisher,
     )
@@ -119,7 +125,10 @@ def build_composition(
     )
 
 
-def _job_definition(*, poll_interval_seconds: float) -> JobDefinition:
+def _job_definition(
+    *,
+    poll_interval_seconds: float,
+) -> JobDefinition:
     return JobDefinition(
         module_name='ada.processes.kpi_timeseries_delivery',
         service_name='kpi-timeseries-delivery',

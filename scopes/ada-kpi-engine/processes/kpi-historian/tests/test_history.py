@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-import pyarrow as pa
 import pytest
 
 from ada.kpis.core import KpiStatus, KpiValueKind, KpiValueType
@@ -42,9 +41,7 @@ def test_materializer_persists_scalar_contract_without_json_quoting() -> None:
     )
     result = materializer.materialize(batches=(batch(*evaluations),))
     assert result.history_rows == 2
-    table = runtime.calls[0]['data']
-    assert isinstance(table, pa.Table)
-    rows = {row['key']: row for row in table.to_pylist()}
+    rows = {row['key']: row for row in runtime.calls[0]['data'].to_pylist()}
     assert rows['text-state']['value_type'] == 'text'
     assert rows['text-state']['value'] == '1'
     assert rows['text-state']['parsed_value'] == '1'
@@ -90,7 +87,11 @@ def test_materializer_routes_errors_even_without_history_flag() -> None:
             persist_history=False,
             error='CalculationError',
         ),
-        evaluation('ignored', watermark_value=current, persist_history=False),
+        evaluation(
+            'ignored',
+            watermark_value=current,
+            persist_history=False,
+        ),
     )
     result = materializer.materialize(batches=(batch(*evaluations),))
     assert result.history_rows == 0
@@ -133,7 +134,15 @@ def test_materializer_can_advance_without_historical_rows() -> None:
     materializer = KpiHistorianMaterializer(runtime=runtime)
     current = watermark()
     result = materializer.materialize(
-        batches=(batch(evaluation('a', watermark_value=current, persist_history=False)),)
+        batches=(
+            batch(
+                evaluation(
+                    'a',
+                    watermark_value=current,
+                    persist_history=False,
+                )
+            ),
+        )
     )
     assert result.last_watermark_utc == current.to_text()
     assert result.history_rows == 0

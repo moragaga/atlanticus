@@ -30,3 +30,15 @@ def test_history_package_does_not_own_runtime_or_transport() -> None:
     for path in root.rglob('*.py'):
         text = path.read_text(encoding='utf-8')
         assert all(token not in text for token in forbidden), path
+
+
+def test_pyarrow_is_isolated_to_dataset_representation() -> None:
+    root = Path(__file__).resolve().parents[1] / 'src/ada/kpis/history'
+
+    for path in root.glob('*.py'):
+        text = path.read_text(encoding='utf-8')
+        if path.name == 'dataset.py':
+            assert 'import pyarrow as pa' in text
+        else:
+            assert 'import pyarrow' not in text
+            assert 'from pyarrow' not in text

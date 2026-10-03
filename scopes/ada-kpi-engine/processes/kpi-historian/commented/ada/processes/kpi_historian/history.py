@@ -1,11 +1,10 @@
-# Materializador Historian; escalares se guardan como texto contractual y sólo JSON usa encoding canónico.
+# Historian consume el contrato KPI y delega la representación tabular a ada.kpis.history.dataset.
+
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 from datetime import date
 from typing import Protocol
-
-import pyarrow as pa
 
 from ada.kpis.core import KpiEvaluation, KpiStatus, KpiValueKind, KpiWatermark
 from ada.kpis.history import (
@@ -13,21 +12,22 @@ from ada.kpis.history import (
     HISTORY_ORDER_COLUMNS,
     encode_history_value,
     error_history_definition,
-    error_history_schema,
     error_history_target,
     history_definition,
-    history_schema,
     history_target,
 )
+from ada.kpis.history.dataset import error_history_table, history_table
 from ada.kpis.persistence import KpiEvaluationBatch
 from ada.processes.kpi_historian.errors import KpiHistorianHistoryError
 from ada.processes.kpi_historian.models import KpiHistorianWriteResult
 
 
+# Esta clase mantiene la representación KPI fuera de la capa process.
 class _DatasetMerger(Protocol):
     def merge(self, **kwargs): ...
 
 
+# Esta clase mantiene la representación KPI fuera de la capa process.
 class KpiHistorianMaterializer:
     def __init__(self, *, runtime: _DatasetMerger) -> None:
         if not callable(getattr(runtime, 'merge', None)):
@@ -65,7 +65,9 @@ class KpiHistorianMaterializer:
             if not isinstance(batch, KpiEvaluationBatch):
                 raise TypeError('batches must contain KpiEvaluationBatch values')
             if previous is not None and batch.watermark <= previous:
-                raise KpiHistorianHistoryError('KPI evaluation batches must be strictly ordered')
+                raise KpiHistorianHistoryError(
+                    'KPI evaluation batches must be strictly ordered'
+                )
 
             batch_day = batch.watermark.timestamp_utc.date()
             if current_day is not None and batch_day != current_day:
@@ -142,11 +144,10 @@ class KpiHistorianMaterializer:
         if not records:
             return 0
         _check_current(check_current)
-        table = pa.Table.from_pylist(records, schema=history_schema())
         self._runtime.merge(
             definition=history_definition(),
             target=history_target(day),
-            data=table,
+            data=history_table(records),
             key_columns=HISTORY_KEY_COLUMNS,
             order_by=HISTORY_ORDER_COLUMNS,
         )
@@ -162,17 +163,17 @@ class KpiHistorianMaterializer:
         if not records:
             return 0
         _check_current(check_current)
-        table = pa.Table.from_pylist(records, schema=error_history_schema())
         self._runtime.merge(
             definition=error_history_definition(),
             target=error_history_target(day),
-            data=table,
+            data=error_history_table(records),
             key_columns=HISTORY_KEY_COLUMNS,
             order_by=HISTORY_ORDER_COLUMNS,
         )
         return 1
 
 
+# Esta función mantiene la representación KPI fuera de la capa process.
 def _history_record(evaluation: KpiEvaluation) -> dict[str, object]:
     value = evaluation.value
     parsed_value = evaluation.parsed_value
@@ -190,9 +191,12 @@ def _history_record(evaluation: KpiEvaluation) -> dict[str, object]:
     }
 
 
+# Esta función mantiene la representación KPI fuera de la capa process.
 def _error_record(evaluation: KpiEvaluation) -> dict[str, object]:
     if evaluation.status is not KpiStatus.ERROR or evaluation.error is None:
-        raise KpiHistorianHistoryError('KPI error history requires an ERROR evaluation')
+        raise KpiHistorianHistoryError(
+            'KPI error history requires an ERROR evaluation'
+        )
     return {
         'timestamp_utc': evaluation.watermark.timestamp_utc,
         'key': evaluation.key,
@@ -200,6 +204,7 @@ def _error_record(evaluation: KpiEvaluation) -> dict[str, object]:
     }
 
 
+# Esta función mantiene la representación KPI fuera de la capa process.
 def _check_current(check_current: Callable[[], None] | None) -> None:
     if check_current is not None:
         check_current()

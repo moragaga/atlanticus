@@ -17,6 +17,7 @@ dependencies = [
     "atlanticus-configuration==1.0.0",
     "atlanticus-cosmos==1.0.0",
     "atlanticus-datasets-parquet==1.0.0",
+    "atlanticus-datasets-runtime==1.0.0",
     "atlanticus-job-runtime==1.0.0",
     "atlanticus-key-vault==1.0.0",
     "atlanticus-kernel==1.0.0",

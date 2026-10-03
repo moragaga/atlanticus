@@ -11,3 +11,14 @@ def test_timeseries_process_does_not_use_pyarrow_or_raw_parquet_io() -> None:
     assert 'from pyarrow' not in content
     assert 'pq.read_table' not in content
     assert 'pq.write_table' not in content
+
+
+def test_rolling_repository_uses_dataset_runtime_boundary() -> None:
+    content = (SOURCE / 'rolling.py').read_text(encoding='utf-8')
+
+    assert 'atlanticus.datasets.parquet' not in content
+    assert 'ParquetDatasetStore' not in content
+    assert 'ParquetReadError' not in content
+    assert 'ParquetValidationError' not in content
+    assert 'atlanticus.datasets.runtime' in content
+    assert 'scan_table' in content

@@ -1,7 +1,5 @@
 from datetime import date
 
-import pyarrow as pa
-
 from ada.kpis.history import (
     HISTORY_KEY_COLUMNS,
     HISTORY_MATERIALIZATION,
@@ -9,10 +7,8 @@ from ada.kpis.history import (
     HISTORY_PARTITION_DIMENSIONS,
     HISTORY_SCHEMA_VERSION,
     error_history_definition,
-    error_history_schema,
     error_history_target,
     history_definition,
-    history_schema,
     history_target,
 )
 
@@ -46,31 +42,3 @@ def test_error_history_dataset_contract_is_canonical() -> None:
         'month=09',
         'day=01',
     )
-
-
-def test_history_schema_carries_scalar_type_and_text_representations() -> None:
-    schema = history_schema()
-    assert schema.names == [
-        'timestamp_utc',
-        'key',
-        'status',
-        'value_kind',
-        'value_type',
-        'value',
-        'parsed_value',
-    ]
-    assert schema.field('timestamp_utc').type == pa.timestamp('us', tz='UTC')
-    assert schema.field('timestamp_utc').nullable is False
-    assert schema.field('key').nullable is False
-    assert schema.field('status').nullable is False
-    assert schema.field('value_kind').nullable is False
-    assert schema.field('value_type').nullable is True
-    assert schema.field('value').nullable is True
-    assert schema.field('parsed_value').nullable is True
-
-
-def test_error_history_schema_is_shared_and_explicit() -> None:
-    schema = error_history_schema()
-    assert schema.names == ['timestamp_utc', 'key', 'error']
-    assert schema.field('timestamp_utc').type == pa.timestamp('us', tz='UTC')
-    assert all(schema.field(name).nullable is False for name in schema.names)

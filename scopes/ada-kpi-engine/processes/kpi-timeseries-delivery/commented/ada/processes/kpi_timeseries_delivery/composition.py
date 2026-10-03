@@ -1,5 +1,5 @@
-# Composición Timeseries sin PyArrow directo.
-# Espejo pedagógico; los comentarios no alteran el AST productivo.
+# Composition conecta el backend Parquet bajo DatasetRuntime; la lógica Timeseries sólo recibe Runtime.
+
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -27,6 +27,7 @@ from atlanticus.connectivity.cosmos import (
     CosmosSettings,
 )
 from atlanticus.datasets.parquet import ParquetDatasetStore
+from atlanticus.datasets.runtime import DatasetRuntime
 from atlanticus.runtime import (
     JobDefinition,
     RuntimeConfiguration,
@@ -36,9 +37,8 @@ from atlanticus.runtime import (
 from atlanticus.state import AtomicStateStore
 
 
-# El dataclass siguiente representa un contrato de datos.
 @dataclass(slots=True)
-# Esta clase conserva una responsabilidad explícita.
+# Esta clase mantiene la representación KPI fuera de la capa process.
 class KpiTimeseriesDeliveryComposition:
     configuration: ResolvedConfiguration
     runtime_configuration: RuntimeConfiguration
@@ -49,8 +49,11 @@ class KpiTimeseriesDeliveryComposition:
     definition: JobDefinition
     clients: Mapping[str, CosmosClient]
 
-# Esta función aplica el contrato antes de delegar.
-    def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
+    def execute(
+        self,
+        *,
+        argv: Sequence[str] | None = None,
+    ) -> RuntimeExecutionResult:
         with ExitStack() as stack:
             for client in self.clients.values():
                 stack.callback(client.close)
@@ -63,19 +66,27 @@ class KpiTimeseriesDeliveryComposition:
             )
 
 
-# Esta función aplica el contrato antes de delegar.
+# Esta función mantiene la representación KPI fuera de la capa process.
 def build_composition(
     *,
     configuration: ResolvedConfiguration,
     connections: Mapping[str, CosmosSettings],
 ) -> KpiTimeseriesDeliveryComposition:
     if not isinstance(configuration, ResolvedConfiguration):
-        raise TypeError('configuration must be a ResolvedConfiguration')
+        raise TypeError(
+            'configuration must be a ResolvedConfiguration'
+        )
     if not isinstance(connections, Mapping) or not connections:
-        raise ValueError('connections must contain at least one tool')
+        raise ValueError(
+            'connections must contain at least one tool'
+        )
 
-    settings = KpiTimeseriesDeliveryProcessSettings.from_configuration(configuration)
-    runtime_configuration = RuntimeConfiguration.from_sources(environ=configuration.values)
+    settings = KpiTimeseriesDeliveryProcessSettings.from_configuration(
+        configuration
+    )
+    runtime_configuration = RuntimeConfiguration.from_sources(
+        environ=configuration.values
+    )
     historian_store = AtomicStateStore(
         volume_path=runtime_configuration.volume_path,
         application=settings.historian_application,
@@ -100,17 +111,28 @@ def build_composition(
         publishers=frozen_publishers,
         max_workers=settings.max_workers,
     )
+    rolling_runtime = DatasetRuntime(
+        store=ParquetDatasetStore(
+            root=historian_store.application_root
+        )
+    )
 
     job = KpiTimeseriesDeliveryRuntimeJob(
         store=LocalKpiRegistryStore(
-            root=materialization_root(runtime_configuration.volume_path),
+            root=materialization_root(
+                runtime_configuration.volume_path
+            ),
         ),
         expected_tool_keys=connections,
-        historian=KpiHistorianAuthorityReader(store=historian_store),
-        rolling=KpiTimeseriesRollingRepository(
-            store=ParquetDatasetStore(root=historian_store.application_root),
+        historian=KpiHistorianAuthorityReader(
+            store=historian_store
         ),
-        checkpoints=KpiTimeseriesDeliveryCheckpointStore(store=own_store),
+        rolling=KpiTimeseriesRollingRepository(
+            runtime=rolling_runtime
+        ),
+        checkpoints=KpiTimeseriesDeliveryCheckpointStore(
+            store=own_store
+        ),
         publisher=parallel_publisher,
     )
     return KpiTimeseriesDeliveryComposition(
@@ -120,13 +142,18 @@ def build_composition(
         job=job,
         publishers=frozen_publishers,
         parallel_publisher=parallel_publisher,
-        definition=_job_definition(poll_interval_seconds=settings.poll_interval_seconds),
+        definition=_job_definition(
+            poll_interval_seconds=settings.poll_interval_seconds
+        ),
         clients=MappingProxyType(clients),
     )
 
 
-# Esta función aplica el contrato antes de delegar.
-def _job_definition(*, poll_interval_seconds: float) -> JobDefinition:
+# Esta función mantiene la representación KPI fuera de la capa process.
+def _job_definition(
+    *,
+    poll_interval_seconds: float,
+) -> JobDefinition:
     return JobDefinition(
         module_name='ada.processes.kpi_timeseries_delivery',
         service_name='kpi-timeseries-delivery',
