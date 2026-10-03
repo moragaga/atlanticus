@@ -54,8 +54,6 @@ def test_navigation_manager_registers_one_generic_source_route(tmp_path) -> None
     assert module.draft_validation_service == NAVIGATION_MANAGER_VALIDATION_SERVICE
     assert module.access_key == 'navigation.manage'
     services = ServiceRegistry()
-    assert module.web_module is not None
-    assert module.web_module.register_services is not None
     module.web_module.register_services(services)
     assert services.require(NAVIGATION_MANAGER_SOURCE_SERVICE) is composition.source_workflow
     assert services.require(NAVIGATION_MANAGER_PROJECTION_SERVICE) is composition.projection_service
@@ -84,6 +82,7 @@ def test_navigation_manager_uses_profile_options_for_draft_validation(tmp_path) 
                 key='home',
                 label='Home',
                 href='/',
+                access_mode='restricted',
                 allowed_profiles=('operator',),
             ),
         )
@@ -145,8 +144,6 @@ def test_navigation_manager_exposes_product_specific_contract_without_eager_serv
             return register
 
     app = FakeApp()
-    assert module.web_module is not None
-    assert module.web_module.register_callbacks is not None
     module.web_module.register_callbacks(app, ServiceRegistry())
 
     app.registered['save_group'](

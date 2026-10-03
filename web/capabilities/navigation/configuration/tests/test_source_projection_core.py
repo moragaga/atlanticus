@@ -50,6 +50,7 @@ def _catalog(label: str = 'Dashboard') -> NavigationConfigurationCatalog:
                 key='dashboard',
                 label=label,
                 href='/',
+                access_mode='restricted',
                 allowed_profiles=('guest',),
             ),
         ),

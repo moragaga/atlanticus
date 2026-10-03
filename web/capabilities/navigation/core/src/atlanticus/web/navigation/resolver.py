@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from atlanticus.web.navigation.access import can_open_navigation_access
 from atlanticus.web.navigation.definition import (
     NAVIGATION_DEFINITION_PROVIDER_SERVICE_KEY,
     NavigationDefinitionProvider,
@@ -27,7 +28,7 @@ def resolve_navigation(
     links = tuple(
         link.to_resolved()
         for link in sorted(definition.links, key=_link_sort_key)
-        if link.enabled and _can_open(link.effective_profiles(None), principal)
+        if link.enabled and _can_open(link, principal)
     )
     groups: list[NavigationGroup] = []
     for group in sorted(definition.groups, key=_group_sort_key):
@@ -36,7 +37,7 @@ def resolve_navigation(
         children = tuple(
             link.to_resolved()
             for link in sorted(group.links, key=_link_sort_key)
-            if link.enabled and _can_open(link.effective_profiles(group), principal)
+            if link.enabled and _can_open(link, principal)
         )
         if children:
             groups.append(group.to_resolved(links=children))
@@ -62,13 +63,12 @@ def resolve_navigation_from_services(services: ServiceRegistry) -> NavigationMen
     )
 
 
-def _can_open(
-    allowed_profiles: tuple[str, ...],
-    principal: NavigationPrincipal,
-) -> bool:
-    if principal.administrative_override or principal.unrestricted or not allowed_profiles:
-        return True
-    return principal.access_key in allowed_profiles
+def _can_open(link: NavigationLinkDefinition, principal: NavigationPrincipal) -> bool:
+    return can_open_navigation_access(
+        access_mode=link.access_mode,
+        allowed_profiles=link.allowed_profiles,
+        principal=principal,
+    )
 
 
 def _link_sort_key(link: NavigationLinkDefinition) -> tuple[int, str, str]:

@@ -39,12 +39,14 @@ def _definition() -> NavigationDefinition:
                 key='guest',
                 label='Guest',
                 href='/guest',
+                access_mode='restricted',
                 allowed_profiles=('guest',),
             ),
             NavigationLinkDefinition(
                 key='admin-only',
                 label='Admin only',
                 href='/admin',
+                access_mode='restricted',
                 allowed_profiles=('administrator',),
             ),
             NavigationLinkDefinition(
@@ -57,6 +59,7 @@ def _definition() -> NavigationDefinition:
                 label='Disabled',
                 href='/disabled',
                 enabled=False,
+                access_mode='restricted',
                 allowed_profiles=('guest',),
             ),
         ),
@@ -70,6 +73,7 @@ def _definition() -> NavigationDefinition:
                         key='disabled-child',
                         label='Disabled child',
                         href='/disabled-child',
+                        access_mode='restricted',
                         allowed_profiles=('guest',),
                     ),
                 ),
@@ -166,12 +170,10 @@ def test_authorization_middleware_returns_access_denied_with_home_action() -> No
         _definition(),
         principal_provider=NavigationPrincipalProvider(lambda: _principal('guest')),
     )
-    assert navigation.register_services is not None
     navigation.register_services(services)
     services.freeze()
     server = Flask(__name__)
     authorization = create_navigation_authorization_module()
-    assert authorization.register_middlewares is not None
     authorization.register_middlewares(server, services)
 
     @server.get('/')
@@ -217,12 +219,10 @@ def test_platform_auth_route_bypasses_navigation_authorization() -> None:
         _definition(),
         principal_provider=NavigationPrincipalProvider(current_principal),
     )
-    assert navigation.register_services is not None
     navigation.register_services(services)
     services.freeze()
     server = Flask(__name__)
     authorization = create_navigation_authorization_module()
-    assert authorization.register_middlewares is not None
     authorization.register_middlewares(server, services)
 
     @server.get('/.auth/logout')

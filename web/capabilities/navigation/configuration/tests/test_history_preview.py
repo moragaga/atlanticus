@@ -20,6 +20,7 @@ def test_navigation_history_preview_shows_routes_sections_and_permissions() -> N
                     'key': 'home',
                     'label': 'Inicio',
                     'href': '/',
+                    'access_mode': 'public',
                     'order': 0,
                     'enabled': True,
                     'new_tab': False,
@@ -38,6 +39,7 @@ def test_navigation_history_preview_shows_routes_sections_and_permissions() -> N
                             'key': 'alarms',
                             'label': 'Alarmas',
                             'href': '/alarms',
+                            'access_mode': 'restricted',
                             'order': 20,
                             'enabled': True,
                             'new_tab': True,
@@ -57,5 +59,7 @@ def test_navigation_history_preview_shows_routes_sections_and_permissions() -> N
     assert 'Inicio home /' in text
     assert 'Operaciones operations' in text
     assert 'Alarmas alarms /alarms' in text
+    assert 'Acceso: Público' in text
+    assert 'Acceso: Restringido' in text
     assert 'Perfiles: guest' in text
     assert 'Nueva pestaña' in text

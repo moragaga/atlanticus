@@ -1,4 +1,7 @@
-# Los ids de paginación y expansión son locales a Navigation; no reutilizan ids de otras UI.
+# Espejo pedagógico del módulo productivo equivalente.
+# Navigation separa autorización funcional (public/restricted) de recovery administrativo.
+# Los perfiles root/local nunca son grants explícitos; llegan como administrative_override confiable.
+
 CATALOG_STORE_ID = 'atlanticus-navigation-admin-catalog'
 MOUNT_STORE_ID = 'atlanticus-navigation-admin-mounted'
 LINK_EDITOR_STORE_ID = 'atlanticus-navigation-admin-link-editor'
@@ -27,6 +30,7 @@ LINK_SECTION_ID = 'atlanticus-navigation-admin-link-section'
 LINK_ENABLED_ID = 'atlanticus-navigation-admin-link-enabled'
 LINK_NEW_TAB_ID = 'atlanticus-navigation-admin-link-new-tab'
 LINK_FORCE_RELOAD_ID = 'atlanticus-navigation-admin-link-force-reload'
+LINK_ACCESS_MODE_ID = 'atlanticus-navigation-admin-link-access-mode'
 LINK_PROFILES_ID = 'atlanticus-navigation-admin-link-profiles'
 LINK_CANCEL_ID = 'atlanticus-navigation-admin-link-cancel'
 LINK_SAVE_ID = 'atlanticus-navigation-admin-link-save'

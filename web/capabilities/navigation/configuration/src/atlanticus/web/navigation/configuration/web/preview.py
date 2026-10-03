@@ -77,12 +77,15 @@ def _group(group: NavigationGroupConfiguration) -> object:
 
 
 def _link(link: NavigationLinkConfiguration) -> object:
-    profiles = ', '.join(link.allowed_profiles) if link.allowed_profiles else 'Acceso total'
+    access = 'Público' if link.access_mode == 'public' else 'Restringido'
+    profiles = ', '.join(link.allowed_profiles) if link.allowed_profiles else 'Sin perfiles ordinarios'
     badges = [
         _badge(f'Orden {link.order}'),
         _badge('Habilitado' if link.enabled else 'Deshabilitado'),
-        _badge(f'Perfiles: {profiles}'),
+        _badge(f'Acceso: {access}'),
     ]
+    if link.access_mode == 'restricted':
+        badges.append(_badge(f'Perfiles: {profiles}'))
     if link.new_tab:
         badges.append(_badge('Nueva pestaña'))
     if link.force_reload:

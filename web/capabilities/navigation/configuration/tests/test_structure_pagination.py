@@ -20,6 +20,7 @@ def _link(index: int) -> NavigationLinkConfiguration:
         key=f'link-{index}',
         label=f'Link {index}',
         href=f'/link-{index}',
+        access_mode='public',
         order=index * 10,
     )
 

@@ -160,6 +160,7 @@ def _link_card(link: NavigationLinkConfiguration, *, parent_key: str | None) -> 
                 link.key,
                 link.href,
                 flags,
+                access_mode=link.access_mode,
                 profiles=link.allowed_profiles,
             ),
             html.Div(
@@ -185,6 +186,7 @@ def _card_copy(
     href: str | None,
     flags: list[str],
     *,
+    access_mode: str | None = None,
     profiles: tuple[str, ...] | None = None,
     detail: str | None = None,
 ) -> object:
@@ -193,10 +195,14 @@ def _card_copy(
         metadata.append(html.Span(href))
     if detail is not None:
         metadata.append(html.Small(detail))
-    if profiles is not None:
+    if access_mode == 'public':
+        metadata.append(html.Small('Acceso: Público'))
+    elif access_mode == 'restricted':
         metadata.append(
             html.Small(
-                f'Perfiles: {_profiles_text(profiles)}' if profiles else 'Acceso: Público'
+                f'Acceso: Restringido · Perfiles: {_profiles_text(profiles or ())}'
+                if profiles
+                else 'Acceso: Restringido · Sin perfiles ordinarios'
             )
         )
     if flags:

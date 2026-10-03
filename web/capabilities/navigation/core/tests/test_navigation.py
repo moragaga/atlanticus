@@ -52,6 +52,7 @@ def _definition() -> NavigationDefinition:
                 key='viewer-home',
                 label='Viewer',
                 href='/viewer',
+                access_mode='restricted',
                 allowed_profiles=('viewer',),
             ),
         ),
@@ -59,17 +60,19 @@ def _definition() -> NavigationDefinition:
             NavigationGroupDefinition(
                 key='main',
                 label='Main',
-                allowed_profiles=('viewer',),
                 links=(
                     NavigationLinkDefinition(
                         key='inherited',
                         label='Inherited',
                         href='/inherited',
+                        access_mode='restricted',
+                        allowed_profiles=('viewer',),
                     ),
                     NavigationLinkDefinition(
                         key='override',
                         label='Override',
                         href='/override',
+                        access_mode='restricted',
                         allowed_profiles=('analyst',),
                     ),
                 ),
@@ -88,7 +91,7 @@ def test_unrestricted_principal_receives_all_navigation_without_profile_assignme
     assert tuple(link.key for link in menu.groups[0].links) == ('inherited', 'override')
 
 
-def test_restricted_principal_filters_links_and_child_can_override_group_profiles() -> None:
+def test_restricted_principal_filters_links_without_group_access_inheritance() -> None:
     viewer = resolve_navigation(_definition(), principal=_principal('viewer'))
     analyst = resolve_navigation(_definition(), principal=_principal('analyst'))
 
@@ -105,6 +108,7 @@ def test_guest_is_just_a_manual_profile_key_for_navigation_core() -> None:
                 key='guest-home',
                 label='Guest',
                 href='/guest',
+                access_mode='restricted',
                 allowed_profiles=('guest',),
             ),
         )
@@ -122,6 +126,7 @@ def test_navigation_core_does_not_reserve_users_profile_keys() -> None:
                 key='manual-administrator',
                 label='Administrator',
                 href='/administrator',
+                access_mode='restricted',
                 allowed_profiles=('administrator',),
             ),
         )
@@ -212,7 +217,6 @@ def test_navigation_module_registers_definition_without_principal_provider() -> 
     services = ServiceRegistry()
 
     assert module.name == 'navigation'
-    assert module.register_services is not None
     module.register_services(services)
     provider = services.require(
         NAVIGATION_DEFINITION_PROVIDER_SERVICE_KEY,
@@ -228,7 +232,6 @@ def test_navigation_resolves_from_manual_provider_without_users() -> None:
     module = create_navigation_module(definition, principal_provider=provider)
     services = ServiceRegistry()
 
-    assert module.register_services is not None
     module.register_services(services)
     menu = resolve_navigation_from_services(services)
 
@@ -239,7 +242,6 @@ def test_navigation_resolves_from_manual_provider_without_users() -> None:
 def test_service_resolution_requires_principal_provider_only_when_menu_is_requested() -> None:
     module = create_navigation_module(_definition())
     services = ServiceRegistry()
-    assert module.register_services is not None
     module.register_services(services)
 
     with pytest.raises(ServiceRegistryError, match='principal-provider'):
@@ -252,6 +254,7 @@ def test_invalid_profile_key_is_rejected_without_external_catalog() -> None:
             key='invalid-profile',
             label='Invalid',
             href='/invalid',
+            access_mode='restricted',
             allowed_profiles=('not valid',),
         )
 
@@ -275,6 +278,7 @@ def test_resolver_omits_disabled_links_and_groups() -> None:
                 label='Hidden',
                 href='/hidden',
                 enabled=False,
+                access_mode='restricted',
                 allowed_profiles=('guest',),
             ),
         ),
@@ -283,12 +287,13 @@ def test_resolver_omits_disabled_links_and_groups() -> None:
                 key='disabled-group',
                 label='Disabled group',
                 enabled=False,
-                allowed_profiles=('guest',),
                 links=(
                     NavigationLinkDefinition(
                         key='child',
                         label='Child',
                         href='/child',
+                        access_mode='restricted',
+                        allowed_profiles=('guest',),
                     ),
                 ),
             ),
@@ -310,3 +315,30 @@ def test_resolver_omits_disabled_links_and_groups() -> None:
 
     assert menu.links == ()
     assert menu.groups == ()
+
+
+def test_restricted_link_with_no_ordinary_grants_is_not_public() -> None:
+    definition = NavigationDefinition(
+        links=(
+            NavigationLinkDefinition(
+                key='private',
+                label='Private',
+                href='/private',
+                access_mode='restricted',
+            ),
+        )
+    )
+
+    assert resolve_navigation(definition, principal=_principal('viewer')).links == ()
+
+
+@pytest.mark.parametrize('profile_key', ('root', 'local'))
+def test_root_and_local_cannot_be_explicit_navigation_grants(profile_key: str) -> None:
+    with pytest.raises(WebDefinitionError, match='cannot be explicit grants'):
+        NavigationLinkDefinition(
+            key='invalid',
+            label='Invalid',
+            href='/invalid',
+            access_mode='restricted',
+            allowed_profiles=(profile_key,),
+        )

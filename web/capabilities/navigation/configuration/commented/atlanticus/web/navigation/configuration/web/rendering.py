@@ -1,6 +1,9 @@
-# Esta presentación pagina únicamente los nodos de primer nivel.
-# Los enlaces internos pertenecen a su sección y sólo aparecen cuando la sección se expande.
 from __future__ import annotations
+
+# Espejo pedagógico del módulo productivo equivalente.
+# Navigation separa autorización funcional (public/restricted) de recovery administrativo.
+# Los perfiles root/local nunca son grants explícitos; llegan como administrative_override confiable.
+
 
 import dash_bootstrap_components as dbc
 from dash import dcc, html
@@ -162,6 +165,7 @@ def _link_card(link: NavigationLinkConfiguration, *, parent_key: str | None) -> 
                 link.key,
                 link.href,
                 flags,
+                access_mode=link.access_mode,
                 profiles=link.allowed_profiles,
             ),
             html.Div(
@@ -187,6 +191,7 @@ def _card_copy(
     href: str | None,
     flags: list[str],
     *,
+    access_mode: str | None = None,
     profiles: tuple[str, ...] | None = None,
     detail: str | None = None,
 ) -> object:
@@ -195,10 +200,14 @@ def _card_copy(
         metadata.append(html.Span(href))
     if detail is not None:
         metadata.append(html.Small(detail))
-    if profiles is not None:
+    if access_mode == 'public':
+        metadata.append(html.Small('Acceso: Público'))
+    elif access_mode == 'restricted':
         metadata.append(
             html.Small(
-                f'Perfiles: {_profiles_text(profiles)}' if profiles else 'Acceso: Público'
+                f'Acceso: Restringido · Perfiles: {_profiles_text(profiles or ())}'
+                if profiles
+                else 'Acceso: Restringido · Sin perfiles ordinarios'
             )
         )
     if flags:

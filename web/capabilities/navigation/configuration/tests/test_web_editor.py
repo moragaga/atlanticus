@@ -63,6 +63,7 @@ def test_link_can_move_between_root_and_sections_without_losing_access() -> None
         enabled=True,
         new_tab=False,
         force_reload=False,
+        access_mode='restricted',
         allowed_profiles=('guest', 'operador'),
     )
     key = catalog.links[0].key
@@ -77,6 +78,7 @@ def test_link_can_move_between_root_and_sections_without_losing_access() -> None
         enabled=True,
         new_tab=False,
         force_reload=False,
+        access_mode='restricted',
         allowed_profiles=('guest', 'operador'),
     )
 
@@ -93,6 +95,7 @@ def test_link_can_move_between_root_and_sections_without_losing_access() -> None
         enabled=True,
         new_tab=False,
         force_reload=False,
+        access_mode='restricted',
         allowed_profiles=('guest', 'operador'),
     )
 
@@ -117,6 +120,7 @@ def test_removing_section_moves_its_links_to_root() -> None:
         enabled=True,
         new_tab=False,
         force_reload=False,
+        access_mode='restricted',
         allowed_profiles=('guest',),
     )
 
@@ -139,6 +143,7 @@ def test_top_level_and_section_links_have_independent_ordering() -> None:
         enabled=True,
         new_tab=False,
         force_reload=False,
+        access_mode='restricted',
         allowed_profiles=('guest',),
     )
     catalog = create_group(catalog, label='Grupo', icon=None, enabled=True)
@@ -157,6 +162,7 @@ def test_top_level_and_section_links_have_independent_ordering() -> None:
         enabled=True,
         new_tab=False,
         force_reload=False,
+        access_mode='restricted',
         allowed_profiles=('guest',),
     )
     catalog = upsert_link(
@@ -169,6 +175,7 @@ def test_top_level_and_section_links_have_independent_ordering() -> None:
         enabled=True,
         new_tab=False,
         force_reload=False,
+        access_mode='restricted',
         allowed_profiles=('guest',),
     )
     catalog = reorder_link(catalog, key='dos', direction=-1)

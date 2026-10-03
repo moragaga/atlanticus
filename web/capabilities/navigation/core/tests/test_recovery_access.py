@@ -43,12 +43,14 @@ def _definition() -> NavigationDefinition:
             NavigationLinkDefinition(key='home', label='Home', href='/'),
             NavigationLinkDefinition(key='public', label='Public', href='/public'),
             NavigationLinkDefinition(
+                access_mode='restricted',
                 key='guest', label='Guest', href='/guest', allowed_profiles=('guest',)
             ),
             NavigationLinkDefinition(
                 key='restricted',
                 label='Restricted',
                 href='/restricted',
+                access_mode='restricted',
                 allowed_profiles=('operator',),
             ),
             NavigationLinkDefinition(key='disabled', label='Disabled', href='/disabled', enabled=False),

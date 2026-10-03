@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+# Espejo pedagógico del módulo productivo equivalente.
+# Navigation separa autorización funcional (public/restricted) de recovery administrativo.
+# Los perfiles root/local nunca son grants explícitos; llegan como administrative_override confiable.
+
+
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
 from flask import Flask, Response, request
 
 from atlanticus.web.errors import WebDefinitionError
+from atlanticus.web.navigation.access import can_open_navigation_access
 from atlanticus.web.modules import WebModule
 from atlanticus.web.navigation.definition import (
     NAVIGATION_DEFINITION_PROVIDER_SERVICE_KEY,
@@ -25,16 +31,15 @@ from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.status_pages import StatusPageAction, status_page_response
 
 
-# Identidad estable de una ruta interna junto con la política que le aplica.
 @dataclass(frozen=True, slots=True)
 class NavigationRouteMatch:
     key: str
     pathname: str
     enabled: bool
+    access_mode: str
     allowed_profiles: tuple[str, ...]
 
 
-# Resuelve una URL interna hacia el enlace configurado que representa esa página.
 def resolve_navigation_route(
     definition: NavigationDefinition,
     pathname: str,
@@ -57,7 +62,6 @@ def resolve_navigation_route(
     return matches[0] if matches else None
 
 
-# Usa la misma política que el menú para decidir si una URL directa puede abrirse.
 def can_access_navigation_path(
     definition: NavigationDefinition,
     *,
@@ -66,24 +70,20 @@ def can_access_navigation_path(
     home_path: str = '/',
 ) -> bool:
     normalized = normalize_navigation_path(pathname)
-    # Resuelve la definición antes de considerar home: un home deshabilitado también se deniega.
     match = resolve_navigation_route(definition, normalized)
-    # El bypass no se infiere del nombre del perfil ni de unrestricted.
-    # La composición debe concederlo sólo a un contexto root/local verificado.
     if principal.administrative_override:
         return True
-    # Home es la única ruta no registrada accesible sin bypass, para arrancar sin Navigation.
     if match is None:
         return normalized == normalize_navigation_path(home_path)
     if not match.enabled:
         return False
-    # Unrestricted sólo elimina restricciones de perfil en rutas habilitadas y registradas.
-    if principal.unrestricted or not match.allowed_profiles:
-        return True
-    return principal.access_key in match.allowed_profiles
+    return can_open_navigation_access(
+        access_mode=match.access_mode,
+        allowed_profiles=match.allowed_profiles,
+        principal=principal,
+    )
 
 
-# Añade el guard HTTP de Navigation sin acoplarlo a Users ni a una aplicación concreta.
 def create_navigation_authorization_module(*, home_path: str = '/') -> WebModule:
     normalized_home = normalize_navigation_path(home_path)
 
@@ -118,7 +118,6 @@ def create_navigation_authorization_module(*, home_path: str = '/') -> WebModule
     )
 
 
-# Página Atlanticus que explica el rechazo y ofrece el retorno seguro a la raíz.
 def access_denied_response(*, home_path: str = '/') -> Response:
     return status_page_response(
         status_code=403,
@@ -131,7 +130,6 @@ def access_denied_response(*, home_path: str = '/') -> Response:
     )
 
 
-# Normaliza rutas para que `/ruta` y `/ruta/` representen la misma página.
 def normalize_navigation_path(value: str) -> str:
     raw = value.strip()
     if not raw.startswith('/') or raw.startswith('//'):
@@ -154,7 +152,8 @@ def _route_match(
         key=link.key,
         pathname=normalize_navigation_path(link.href),
         enabled=enabled,
-        allowed_profiles=link.effective_profiles(parent),
+        access_mode=link.access_mode,
+        allowed_profiles=link.allowed_profiles,
     )
 
 

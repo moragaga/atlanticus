@@ -40,6 +40,7 @@ def _definition() -> NavigationDefinition:
                 key='restricted',
                 label='Restricted',
                 href='/restricted',
+                access_mode='restricted',
                 allowed_profiles=('basic',),
             ),
             NavigationLinkDefinition(

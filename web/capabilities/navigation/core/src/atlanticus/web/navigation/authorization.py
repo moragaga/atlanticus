@@ -6,6 +6,7 @@ from urllib.parse import urlsplit
 from flask import Flask, Response, request
 
 from atlanticus.web.errors import WebDefinitionError
+from atlanticus.web.navigation.access import can_open_navigation_access
 from atlanticus.web.modules import WebModule
 from atlanticus.web.navigation.definition import (
     NAVIGATION_DEFINITION_PROVIDER_SERVICE_KEY,
@@ -30,6 +31,7 @@ class NavigationRouteMatch:
     key: str
     pathname: str
     enabled: bool
+    access_mode: str
     allowed_profiles: tuple[str, ...]
 
 
@@ -70,9 +72,11 @@ def can_access_navigation_path(
         return normalized == normalize_navigation_path(home_path)
     if not match.enabled:
         return False
-    if principal.unrestricted or not match.allowed_profiles:
-        return True
-    return principal.access_key in match.allowed_profiles
+    return can_open_navigation_access(
+        access_mode=match.access_mode,
+        allowed_profiles=match.allowed_profiles,
+        principal=principal,
+    )
 
 
 def create_navigation_authorization_module(*, home_path: str = '/') -> WebModule:
@@ -143,7 +147,8 @@ def _route_match(
         key=link.key,
         pathname=normalize_navigation_path(link.href),
         enabled=enabled,
-        allowed_profiles=link.effective_profiles(parent),
+        access_mode=link.access_mode,
+        allowed_profiles=link.allowed_profiles,
     )
 
 

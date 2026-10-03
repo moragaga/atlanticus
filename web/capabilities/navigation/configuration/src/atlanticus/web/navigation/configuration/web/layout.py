@@ -21,6 +21,7 @@ from atlanticus.web.navigation.configuration.web.ids import (
     GROUP_SAVE_ID,
     IMPORT_RESULT_ID,
     IMPORT_UPLOAD_ID,
+    LINK_ACCESS_MODE_ID,
     LINK_CANCEL_ID,
     LINK_EDITOR_STORE_ID,
     LINK_ENABLED_ID,
@@ -243,14 +244,27 @@ def _link_modal() -> object:
                                     ),
                                 ),
                                 _field(
-                                    'Perfiles con acceso · opcional',
+                                    'Acceso',
+                                    dbc.RadioItems(
+                                        id=LINK_ACCESS_MODE_ID,
+                                        options=[
+                                            {'label': 'Público', 'value': 'public'},
+                                            {'label': 'Restringido', 'value': 'restricted'},
+                                        ],
+                                        value='public',
+                                        inline=True,
+                                    ),
+                                ),
+                                _field(
+                                    'Perfiles con acceso',
                                     html.Div(
                                         dcc.Dropdown(
                                             id=LINK_PROFILES_ID,
                                             className='atlanticus-navigation-admin__profiles-select',
                                             multi=True,
                                             searchable=True,
-                                            placeholder='Público · sin perfiles',
+                                            disabled=True,
+                                            placeholder='Selecciona perfiles',
                                             style=_dash_select_style(),
                                             labels={
                                                 'search': 'Buscar perfil',

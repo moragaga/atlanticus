@@ -1,7 +1,9 @@
-# Representa una revisión histórica de Navigation como árbol de secciones, enlaces, URLs y perfiles.
-# La vista muestra atributos operativos relevantes sin cargar la revisión en el editor.
-
 from __future__ import annotations
+
+# Espejo pedagógico del módulo productivo equivalente.
+# Navigation separa autorización funcional (public/restricted) de recovery administrativo.
+# Los perfiles root/local nunca son grants explícitos; llegan como administrative_override confiable.
+
 
 from dash import html
 
@@ -80,12 +82,15 @@ def _group(group: NavigationGroupConfiguration) -> object:
 
 
 def _link(link: NavigationLinkConfiguration) -> object:
-    profiles = ', '.join(link.allowed_profiles) if link.allowed_profiles else 'Acceso total'
+    access = 'Público' if link.access_mode == 'public' else 'Restringido'
+    profiles = ', '.join(link.allowed_profiles) if link.allowed_profiles else 'Sin perfiles ordinarios'
     badges = [
         _badge(f'Orden {link.order}'),
         _badge('Habilitado' if link.enabled else 'Deshabilitado'),
-        _badge(f'Perfiles: {profiles}'),
+        _badge(f'Acceso: {access}'),
     ]
+    if link.access_mode == 'restricted':
+        badges.append(_badge(f'Perfiles: {profiles}'))
     if link.new_tab:
         badges.append(_badge('Nueva pestaña'))
     if link.force_reload:

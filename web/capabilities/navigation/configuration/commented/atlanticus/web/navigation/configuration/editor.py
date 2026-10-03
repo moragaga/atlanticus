@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-# El editor mantiene keys estables y permite mover enlaces entre raíz y secciones sin recrearlos.
-# El orden superior combina enlaces raíz y secciones; cada sección mantiene su propio orden interno.
+# Espejo pedagógico del módulo productivo equivalente.
+# Navigation separa autorización funcional (public/restricted) de recovery administrativo.
+# Los perfiles root/local nunca son grants explícitos; llegan como administrative_override confiable.
 
 
 import re
@@ -39,6 +40,7 @@ def upsert_link(
     parent_group_key: str | None,
     label: str,
     href: str,
+    access_mode: str,
     icon: str | None,
     enabled: bool,
     new_tab: bool,
@@ -49,15 +51,12 @@ def upsert_link(
     existing = _find_link(catalog, key)
     current_parent = link_parent_key(catalog, key) if existing is not None else None
     same_parent = existing is not None and current_parent == parent_group_key
-    order = (
-        existing.order
-        if same_parent
-        else _next_link_order(catalog, parent_group_key)
-    )
+    order = existing.order if same_parent else _next_link_order(catalog, parent_group_key)
     link = NavigationLinkConfiguration(
         key=key,
         label=label,
         href=href,
+        access_mode=access_mode,
         order=order,
         icon=icon,
         enabled=enabled,
@@ -120,7 +119,7 @@ def remove_group(
     if kind != 'group':
         raise ValueError('Navigation group does not exist')
     replacement = [('link', link) for link in sorted(group.links, key=_sort_key)]
-    nodes[index:index + 1] = replacement
+    nodes[index : index + 1] = replacement
     return _catalog_from_top_level_nodes(catalog, nodes)
 
 

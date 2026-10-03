@@ -11,6 +11,7 @@ from atlanticus.web.navigation.configuration.web import (
 )
 from atlanticus.web.navigation.configuration.web.ids import (
     CATALOG_STORE_ID,
+    LINK_ACCESS_MODE_ID,
     LINK_PROFILES_ID,
     LINK_SECTION_ID,
     PROJECTION_NAME_ID,
@@ -87,6 +88,7 @@ def test_navigation_admin_exposes_functional_section_and_profile_selectors() -> 
     layout = build_navigation_admin_configuration(_context())
 
     section = _component(layout, LINK_SECTION_ID)
+    access = _component(layout, LINK_ACCESS_MODE_ID)
     profiles = _component(layout, LINK_PROFILES_ID)
 
     assert section.searchable is True
@@ -94,7 +96,9 @@ def test_navigation_admin_exposes_functional_section_and_profile_selectors() -> 
     assert section.placeholder == 'Sin sección / raíz'
     assert profiles.searchable is True
     assert profiles.multi is True
-    assert profiles.placeholder == 'Público · sin perfiles'
+    assert access.value == 'public'
+    assert profiles.disabled is True
+    assert profiles.placeholder == 'Selecciona perfiles'
 
 
 def test_navigation_admin_web_module_owns_its_asset_layer() -> None:

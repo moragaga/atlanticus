@@ -47,6 +47,7 @@ def _projection(
                     key='one',
                     label='One',
                     href=href,
+                    access_mode='restricted',
                     allowed_profiles=('guest',),
                 ),
             )
@@ -87,6 +88,7 @@ def test_projected_definition_provider_reads_active_projection() -> None:
             key='one',
             label='One',
             href='/one',
+            access_mode='restricted',
             allowed_profiles=('guest',),
         ),
     )
@@ -115,7 +117,6 @@ def test_projected_navigation_module_registers_dynamic_provider() -> None:
     module = create_projected_navigation_module(store, source_key=_SOURCE_KEY)
     services = ServiceRegistry()
 
-    assert module.register_services is not None
     module.register_services(services)
     provider = services.require(
         NAVIGATION_DEFINITION_PROVIDER_SERVICE_KEY,
@@ -145,11 +146,9 @@ def test_projected_navigation_updates_authorization_without_recomposing_applicat
     )
     authorization = create_navigation_authorization_module()
     services = ServiceRegistry()
-    assert navigation.register_services is not None
     navigation.register_services(services)
     services.freeze()
     server = Flask(__name__)
-    assert authorization.register_middlewares is not None
     authorization.register_middlewares(server, services)
 
     @server.get('/one')

@@ -11,6 +11,7 @@ from atlanticus.web.navigation.definition import (
     NavigationDefinitionProvider,
 )
 from atlanticus.web.navigation.models import (
+    NavigationAccessMode,
     NavigationDefinition,
     NavigationGroup,
     NavigationGroupDefinition,
@@ -33,6 +34,7 @@ from atlanticus.web.navigation.resolver import (
 __all__ = [
     'NAVIGATION_DEFINITION_PROVIDER_SERVICE_KEY',
     'NAVIGATION_PRINCIPAL_PROVIDER_SERVICE_KEY',
+    'NavigationAccessMode',
     'NavigationDefinition',
     'NavigationDefinitionProvider',
     'NavigationGroup',

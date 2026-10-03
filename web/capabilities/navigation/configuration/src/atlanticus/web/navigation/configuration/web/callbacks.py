@@ -37,6 +37,7 @@ from atlanticus.web.navigation.configuration.web.ids import (
     GROUP_SAVE_ID,
     IMPORT_RESULT_ID,
     IMPORT_UPLOAD_ID,
+    LINK_ACCESS_MODE_ID,
     LINK_CANCEL_ID,
     LINK_EDITOR_STORE_ID,
     LINK_ENABLED_ID,
@@ -190,6 +191,8 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         Output(LINK_ENABLED_ID, 'value'),
         Output(LINK_NEW_TAB_ID, 'value'),
         Output(LINK_FORCE_RELOAD_ID, 'value'),
+        Output(LINK_ACCESS_MODE_ID, 'value'),
+        Output(LINK_PROFILES_ID, 'disabled'),
         Output(LINK_PROFILES_ID, 'options'),
         Output(LINK_PROFILES_ID, 'value'),
         Output(LINK_RESULT_ID, 'children'),
@@ -227,7 +230,7 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
             key = str(trigger['key'])
             link = _find_link(catalog, key)
             if link is None:
-                return (no_update,) * 15
+                return (no_update,) * 17
             return _link_editor_response(
                 context=context,
                 catalog=catalog,
@@ -235,7 +238,7 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
                 parent_group_key=link_parent_key(catalog, key),
                 link=link,
             )
-        return (no_update,) * 15
+        return (no_update,) * 17
 
     @app.callback(
         Output(LINK_MODAL_ID, 'className', allow_duplicate=True),
@@ -247,6 +250,22 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         if _click_is_real(clicks) or _click_is_real(header_clicks):
             return _MODAL_CLOSED
         return no_update
+
+    @app.callback(
+        Output(LINK_PROFILES_ID, 'disabled', allow_duplicate=True),
+        Output(LINK_PROFILES_ID, 'value', allow_duplicate=True),
+        Input(LINK_ACCESS_MODE_ID, 'value'),
+        State(LINK_PROFILES_ID, 'value'),
+        prevent_initial_call=True,
+    )
+    def sync_link_access_mode(
+        access_mode: str | None,
+        profiles: list[str] | None,
+    ):
+        mode = _access_mode(access_mode)
+        if mode == 'public':
+            return True, []
+        return False, profiles or []
 
     @app.callback(
         Output(CATALOG_STORE_ID, 'data', allow_duplicate=True),
@@ -261,6 +280,7 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         State(LINK_ENABLED_ID, 'value'),
         State(LINK_NEW_TAB_ID, 'value'),
         State(LINK_FORCE_RELOAD_ID, 'value'),
+        State(LINK_ACCESS_MODE_ID, 'value'),
         State(LINK_PROFILES_ID, 'value'),
         State(CATALOG_STORE_ID, 'data'),
         prevent_initial_call=True,
@@ -275,6 +295,7 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
         enabled: bool | None,
         new_tab: bool | None,
         force_reload: bool | None,
+        access_mode: str | None,
         profiles: list[str] | None,
         catalog_data: dict[str, object] | None,
     ):
@@ -289,6 +310,7 @@ def register_navigation_admin_callbacks(app: object, context: NavigationAdminWeb
                 parent_group_key=_section_key(section),
                 label=str(name or ''),
                 href=str(href or ''),
+                access_mode=_access_mode(access_mode),
                 icon=_optional_text(icon),
                 enabled=bool(enabled),
                 new_tab=bool(new_tab),
@@ -549,6 +571,8 @@ def _link_editor_response(
         bool(link is None or link.enabled),
         bool(link is not None and link.new_tab),
         bool(link is not None and link.force_reload),
+        link.access_mode if link is not None else 'public',
+        bool(link is None or link.access_mode == 'public'),
         profile_options,
         selected_profiles,
         None,
@@ -597,6 +621,13 @@ def _find_link(catalog: NavigationConfigurationCatalog, key: str):
             if link.key == key:
                 return link
     return None
+
+
+def _access_mode(value: str | None) -> str:
+    normalized = str(value or '').strip().casefold()
+    if normalized not in {'public', 'restricted'}:
+        raise ValueError('Navigation access mode is invalid')
+    return normalized
 
 
 def _profile_keys(selected: list[str] | None) -> tuple[str, ...]:

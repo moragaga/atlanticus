@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+# Espejo pedagógico del módulo productivo equivalente.
+# Navigation separa autorización funcional (public/restricted) de recovery administrativo.
+# Los perfiles root/local nunca son grants explícitos; llegan como administrative_override confiable.
+
+
+from atlanticus.web.navigation.access import can_open_navigation_access
 from atlanticus.web.navigation.definition import (
     NAVIGATION_DEFINITION_PROVIDER_SERVICE_KEY,
     NavigationDefinitionProvider,
@@ -19,7 +25,6 @@ from atlanticus.web.navigation.principal import (
 from atlanticus.web.services import ServiceRegistry
 
 
-# Filtra la definición completa según el principal efectivo y produce el menú visible.
 def resolve_navigation(
     definition: NavigationDefinition,
     *,
@@ -28,7 +33,7 @@ def resolve_navigation(
     links = tuple(
         link.to_resolved()
         for link in sorted(definition.links, key=_link_sort_key)
-        if link.enabled and _can_open(link.effective_profiles(None), principal)
+        if link.enabled and _can_open(link, principal)
     )
     groups: list[NavigationGroup] = []
     for group in sorted(definition.groups, key=_group_sort_key):
@@ -37,7 +42,7 @@ def resolve_navigation(
         children = tuple(
             link.to_resolved()
             for link in sorted(group.links, key=_link_sort_key)
-            if link.enabled and _can_open(link.effective_profiles(group), principal)
+            if link.enabled and _can_open(link, principal)
         )
         if children:
             groups.append(group.to_resolved(links=children))
@@ -48,7 +53,6 @@ def resolve_navigation(
     )
 
 
-# Resuelve definición y principal desde servicios para permitir fuentes manuales o proyectadas.
 def resolve_navigation_from_services(services: ServiceRegistry) -> NavigationMenu:
     definition_provider = services.require(
         NAVIGATION_DEFINITION_PROVIDER_SERVICE_KEY,
@@ -64,15 +68,12 @@ def resolve_navigation_from_services(services: ServiceRegistry) -> NavigationMen
     )
 
 
-def _can_open(
-    allowed_profiles: tuple[str, ...],
-    principal: NavigationPrincipal,
-) -> bool:
-    # Se incluyen enlaces habilitados para administración, pero nunca enlaces deshabilitados.
-    # Sin perfiles configurados, el enlace es público dentro de Navigation.
-    if principal.administrative_override or principal.unrestricted or not allowed_profiles:
-        return True
-    return principal.access_key in allowed_profiles
+def _can_open(link: NavigationLinkDefinition, principal: NavigationPrincipal) -> bool:
+    return can_open_navigation_access(
+        access_mode=link.access_mode,
+        allowed_profiles=link.allowed_profiles,
+        principal=principal,
+    )
 
 
 def _link_sort_key(link: NavigationLinkDefinition) -> tuple[int, str, str]:

@@ -40,11 +40,13 @@ def _projection():
                     key='public',
                     label='Public',
                     href='/public',
+                    access_mode='public',
                 ),
                 NavigationLinkConfiguration(
                     key='disabled',
                     label='Disabled',
                     href='/disabled',
+                    access_mode='public',
                     enabled=False,
                 ),
             ),

@@ -1,17 +1,22 @@
 from __future__ import annotations
 
-# El core acepta secciones vacías para construir la configuración incrementalmente.
-# El resolver materializa una sección solo cuando contiene enlaces visibles.
+# Espejo pedagógico del módulo productivo equivalente.
+# Navigation separa autorización funcional (public/restricted) de recovery administrativo.
+# Los perfiles root/local nunca son grants explícitos; llegan como administrative_override confiable.
 
 
 import re
 from dataclasses import dataclass
+from typing import Literal
 from urllib.parse import urlparse
 
 from atlanticus.web.errors import WebDefinitionError
 
 _KEY_PATTERN = re.compile(r'^[a-z0-9][a-z0-9._-]*$')
 _HEX_COLOR = re.compile(r'^#[0-9A-Fa-f]{6}$')
+NavigationAccessMode = Literal['public', 'restricted']
+_ACCESS_MODES = {'public', 'restricted'}
+_RESERVED_PROFILE_GRANTS = {'root', 'local'}
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,8 +39,8 @@ class NavigationUser:
         profile_background_color = self.profile_background_color.strip().upper()
         profile_text_color = self.profile_text_color.strip().upper()
         avatar_background_color = (
-            self.avatar_background_color or profile_background_color
-        ).strip().upper()
+            (self.avatar_background_color or profile_background_color).strip().upper()
+        )
         avatar_text_color = (self.avatar_text_color or profile_text_color).strip().upper()
         avatar_text = self.avatar_text.strip()
         if not display_name:
@@ -47,17 +52,13 @@ class NavigationUser:
                 'Navigation user profile background color must use #RRGGBB format'
             )
         if not _HEX_COLOR.fullmatch(profile_text_color):
-            raise WebDefinitionError(
-                'Navigation user profile text color must use #RRGGBB format'
-            )
+            raise WebDefinitionError('Navigation user profile text color must use #RRGGBB format')
         if not _HEX_COLOR.fullmatch(avatar_background_color):
             raise WebDefinitionError(
                 'Navigation user avatar background color must use #RRGGBB format'
             )
         if not _HEX_COLOR.fullmatch(avatar_text_color):
-            raise WebDefinitionError(
-                'Navigation user avatar text color must use #RRGGBB format'
-            )
+            raise WebDefinitionError('Navigation user avatar text color must use #RRGGBB format')
         if not avatar_text or len(avatar_text) > 4:
             raise WebDefinitionError(
                 'Navigation user avatar text must contain between 1 and 4 characters'
@@ -83,14 +84,11 @@ class NavigationPrincipal:
     access_key: str | None
     user: NavigationUser
     unrestricted: bool = False
-    # Sólo la composición confiable de la aplicación puede conceder esta excepción.
     administrative_override: bool = False
 
     def __post_init__(self) -> None:
-        # None representa ausencia de perfil; nunca equivale implícitamente a guest.
         if self.access_key is not None:
             object.__setattr__(self, 'access_key', _normalize_profile_key(self.access_key))
-        # Rechaza cadenas u otros valores truthy que concederían un bypass accidental.
         if not isinstance(self.administrative_override, bool):
             raise WebDefinitionError('Navigation administrative override must be boolean')
 
@@ -100,12 +98,13 @@ class NavigationLinkDefinition:
     key: str
     label: str
     href: str
+    access_mode: NavigationAccessMode = 'public'
     order: int = 0
     icon: str | None = None
     enabled: bool = True
     new_tab: bool = False
     force_reload: bool = False
-    allowed_profiles: tuple[str, ...] | None = None
+    allowed_profiles: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         _validate_key(self.key, label='Navigation link key')
@@ -114,23 +113,20 @@ class NavigationLinkDefinition:
         _validate_href(self.href)
         if self.icon is not None and not self.icon.strip():
             raise WebDefinitionError('Navigation link icon must not be empty when provided')
-        if self.allowed_profiles is not None:
-            object.__setattr__(
-                self,
-                'allowed_profiles',
-                _normalize_allowed_profiles(self.allowed_profiles),
-            )
+        access_mode = str(self.access_mode).strip().casefold()
+        if access_mode not in _ACCESS_MODES:
+            raise WebDefinitionError('Navigation link access mode is invalid')
+        allowed_profiles = _normalize_allowed_profiles(self.allowed_profiles)
+        if access_mode == 'public' and allowed_profiles:
+            raise WebDefinitionError('Public navigation link must not define profile grants')
+        if any(profile in _RESERVED_PROFILE_GRANTS for profile in allowed_profiles):
+            raise WebDefinitionError('Navigation root/local profiles cannot be explicit grants')
+        object.__setattr__(self, 'access_mode', access_mode)
+        object.__setattr__(self, 'allowed_profiles', allowed_profiles)
 
     @property
     def is_external(self) -> bool:
         return not self.href.startswith('/')
-
-    def effective_profiles(self, parent: NavigationGroupDefinition | None) -> tuple[str, ...]:
-        if self.allowed_profiles is not None:
-            return self.allowed_profiles
-        if parent is not None:
-            return parent.allowed_profiles
-        return ()
 
     def to_resolved(self) -> NavigationLink:
         return NavigationLink(
@@ -154,7 +150,6 @@ class NavigationGroupDefinition:
     icon: str | None = None
     enabled: bool = True
     expanded: bool = False
-    allowed_profiles: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         _validate_key(self.key, label='Navigation group key')
@@ -162,11 +157,6 @@ class NavigationGroupDefinition:
             raise WebDefinitionError('Navigation group label must not be empty')
         if self.icon is not None and not self.icon.strip():
             raise WebDefinitionError('Navigation group icon must not be empty when provided')
-        object.__setattr__(
-            self,
-            'allowed_profiles',
-            _normalize_allowed_profiles(self.allowed_profiles),
-        )
         link_keys = [link.key for link in self.links]
         if len(link_keys) != len(set(link_keys)):
             raise WebDefinitionError(f'Navigation group contains duplicated link keys: {self.key}')
@@ -294,13 +284,10 @@ class NavigationMenu:
 
 def _iter_allowed_profiles(definition: NavigationDefinition):
     for link in definition.links:
-        if link.allowed_profiles is not None:
-            yield from link.allowed_profiles
+        yield from link.allowed_profiles
     for group in definition.groups:
-        yield from group.allowed_profiles
         for link in group.links:
-            if link.allowed_profiles is not None:
-                yield from link.allowed_profiles
+            yield from link.allowed_profiles
 
 
 def _normalize_allowed_profiles(values: tuple[str, ...]) -> tuple[str, ...]:

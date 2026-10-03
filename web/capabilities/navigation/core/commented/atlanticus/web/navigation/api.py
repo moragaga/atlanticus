@@ -1,3 +1,7 @@
+# Espejo pedagógico del módulo productivo equivalente.
+# Navigation separa autorización funcional (public/restricted) de recovery administrativo.
+# Los perfiles root/local nunca son grants explícitos; llegan como administrative_override confiable.
+
 from atlanticus.web.navigation.authorization import (
     NavigationRouteMatch,
     access_denied_response,
@@ -11,6 +15,7 @@ from atlanticus.web.navigation.definition import (
     NavigationDefinitionProvider,
 )
 from atlanticus.web.navigation.models import (
+    NavigationAccessMode,
     NavigationDefinition,
     NavigationGroup,
     NavigationGroupDefinition,
@@ -30,10 +35,10 @@ from atlanticus.web.navigation.resolver import (
     resolve_navigation_from_services,
 )
 
-# Superficie pública explícita del core Navigation.
 __all__ = [
     'NAVIGATION_DEFINITION_PROVIDER_SERVICE_KEY',
     'NAVIGATION_PRINCIPAL_PROVIDER_SERVICE_KEY',
+    'NavigationAccessMode',
     'NavigationDefinition',
     'NavigationDefinitionProvider',
     'NavigationGroup',

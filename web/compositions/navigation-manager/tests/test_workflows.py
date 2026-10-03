@@ -32,6 +32,7 @@ def _catalog() -> NavigationConfigurationCatalog:
                 key='home',
                 label='Inicio',
                 href='/',
+                access_mode='public',
                 enabled=True,
             ),
         )

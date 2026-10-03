@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-# La configuración persiste secciones puramente organizativas.
-# Los permisos pertenecen únicamente a los enlaces.
-# El home no forma parte de este contrato.
-# La aplicación decide su ruta de entrada fuera de Navigation Configuration.
+# Espejo pedagógico del módulo productivo equivalente.
+# Navigation separa autorización funcional (public/restricted) de recovery administrativo.
+# Los perfiles root/local nunca son grants explícitos; llegan como administrative_override confiable.
 
 
 from dataclasses import dataclass
@@ -11,6 +10,7 @@ from typing import Any
 
 from atlanticus.web.errors import WebDefinitionError
 from atlanticus.web.navigation.api import (
+    NavigationAccessMode,
     NavigationDefinition,
     NavigationGroupDefinition,
     NavigationLinkDefinition,
@@ -37,6 +37,7 @@ class NavigationLinkConfiguration:
     key: str
     label: str
     href: str
+    access_mode: NavigationAccessMode
     order: int = 0
     icon: str | None = None
     enabled: bool = True
@@ -50,7 +51,8 @@ class NavigationLinkConfiguration:
         object.__setattr__(self, 'label', _required(self.label, label='Navigation link label'))
         object.__setattr__(self, 'href', _required(self.href, label='Navigation link href'))
         object.__setattr__(self, 'icon', _optional(self.icon))
-        object.__setattr__(self, 'allowed_profiles', definition.allowed_profiles or ())
+        object.__setattr__(self, 'access_mode', definition.access_mode)
+        object.__setattr__(self, 'allowed_profiles', definition.allowed_profiles)
 
     def to_definition(self) -> NavigationLinkDefinition:
         try:
@@ -58,6 +60,7 @@ class NavigationLinkConfiguration:
                 key=self.key.strip(),
                 label=self.label.strip(),
                 href=self.href.strip(),
+                access_mode=self.access_mode,
                 order=self.order,
                 icon=_optional(self.icon),
                 enabled=self.enabled,
@@ -73,6 +76,7 @@ class NavigationLinkConfiguration:
             'key': self.key,
             'label': self.label,
             'href': self.href,
+            'access_mode': self.access_mode,
             'order': self.order,
             'icon': self.icon,
             'enabled': self.enabled,
@@ -84,13 +88,14 @@ class NavigationLinkConfiguration:
     @classmethod
     def from_document(cls, document: dict[str, Any]) -> NavigationLinkConfiguration:
         try:
-            raw_profiles = document.get('allowed_profiles', [])
+            raw_profiles = document['allowed_profiles']
             if not isinstance(raw_profiles, list):
                 raise TypeError
             return cls(
                 key=str(document['key']),
                 label=str(document['label']),
                 href=str(document['href']),
+                access_mode=str(document['access_mode']),
                 order=int(document.get('order', 0)),
                 icon=(str(document['icon']) if document.get('icon') is not None else None),
                 enabled=_require_bool(document.get('enabled', True)),
@@ -129,7 +134,6 @@ class NavigationGroupConfiguration:
                 icon=_optional(self.icon),
                 enabled=self.enabled,
                 expanded=False,
-                allowed_profiles=(),
             )
         except WebDefinitionError as error:
             raise NavigationConfigurationValidationError(str(error)) from error

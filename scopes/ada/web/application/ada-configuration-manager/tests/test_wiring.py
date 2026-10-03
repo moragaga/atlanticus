@@ -145,8 +145,6 @@ def test_manager_sources_are_tool_scoped_and_users_stores_are_explicit(tmp_path)
     )
     assert deps.navigation_projection_store is stores.navigation
     services = ServiceRegistry()
-    assert deps.navigation_module.web_module is not None
-    assert deps.navigation_module.web_module.register_services is not None
     deps.navigation_module.web_module.register_services(services)
     services.require(NAVIGATION_MANAGER_SOURCE_SERVICE).get_source_snapshot()
     deps.tools_source.get_current()
@@ -227,8 +225,6 @@ def test_navigation_manager_uses_projected_profiles_for_validation(tmp_path) -> 
         ),
     )
     services = ServiceRegistry()
-    assert dependencies.navigation_module.web_module is not None
-    assert dependencies.navigation_module.web_module.register_services is not None
     dependencies.navigation_module.web_module.register_services(services)
     validation = services.require(NAVIGATION_MANAGER_VALIDATION_SERVICE)
 
@@ -238,6 +234,7 @@ def test_navigation_manager_uses_projected_profiles_for_validation(tmp_path) -> 
                 key='home',
                 label='Inicio',
                 href='/',
+                access_mode='restricted',
                 allowed_profiles=('operator',),
             ),
         )
@@ -248,6 +245,7 @@ def test_navigation_manager_uses_projected_profiles_for_validation(tmp_path) -> 
                 key='home',
                 label='Inicio',
                 href='/',
+                access_mode='restricted',
                 allowed_profiles=('unknown',),
             ),
         )
