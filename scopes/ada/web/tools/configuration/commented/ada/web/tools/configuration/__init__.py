@@ -21,8 +21,13 @@ from ada.web.tools.configuration.source_release import (
     ToolSourceRelease,
     ToolSourceService,
 )
+from atlanticus.web.source.models import SourceKey
+
+# Identidad canónica del Source durable de Tool Configuration.
+TOOLS_SOURCE_KEY = SourceKey('tools')
 
 __all__ = [
+    'TOOLS_SOURCE_KEY',
     'TOOL_SOURCE_DOCUMENT_TYPE',
     'TOOL_SOURCE_RESOURCE_PATH',
     'TOOL_SOURCE_SCHEMA_VERSION',

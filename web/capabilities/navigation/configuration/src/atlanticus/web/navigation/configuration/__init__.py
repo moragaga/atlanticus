@@ -38,10 +38,14 @@ from atlanticus.web.navigation.configuration.source_release import (
     NavigationSourceRelease,
     NavigationSourceService,
 )
+from atlanticus.web.source.models import SourceKey
+
+NAVIGATION_SOURCE_KEY = SourceKey('navigation')
 
 __all__ = [
     'NAVIGATION_PROJECTION_DOCUMENT_TYPE',
     'NAVIGATION_PROJECTION_SCHEMA_VERSION',
+    'NAVIGATION_SOURCE_KEY',
     'NAVIGATION_SOURCE_DOCUMENT_TYPE',
     'NAVIGATION_SOURCE_RESOURCE_PATH',
     'NAVIGATION_SOURCE_SCHEMA_VERSION',

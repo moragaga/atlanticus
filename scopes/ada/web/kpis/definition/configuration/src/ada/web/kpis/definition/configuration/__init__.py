@@ -34,12 +34,16 @@ from ada.web.kpis.definition.configuration.source_release import (
     KpiDefinitionSourceRelease,
     KpiDefinitionSourceService,
 )
+from atlanticus.web.source.models import SourceKey
+
+KPI_DEFINITION_SOURCE_KEY = SourceKey('kpi-definitions')
 
 __version__ = '0.1.0'
 
 __all__ = [
     'KPI_DEFINITION_PROJECTION_DOCUMENT_TYPE',
     'KPI_DEFINITION_PROJECTION_SCHEMA_VERSION',
+    'KPI_DEFINITION_SOURCE_KEY',
     'KPI_DEFINITION_SOURCE_DOCUMENT_TYPE',
     'KPI_DEFINITION_SOURCE_RESOURCE_PATH',
     'KPI_DEFINITION_SOURCE_SCHEMA_VERSION',

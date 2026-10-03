@@ -31,12 +31,16 @@ from ada.web.kpis.registry.configuration.source_release import (
     KpiRegistrySourceRelease,
     KpiRegistrySourceService,
 )
+from atlanticus.web.source.models import SourceKey
+
+KPI_REGISTRY_SOURCE_KEY = SourceKey('kpi-registry')
 
 __version__ = '0.1.0'
 
 __all__ = [
     'KPI_REGISTRY_PROJECTION_DOCUMENT_TYPE',
     'KPI_REGISTRY_PROJECTION_SCHEMA_VERSION',
+    'KPI_REGISTRY_SOURCE_KEY',
     'KPI_REGISTRY_SOURCE_DOCUMENT_TYPE',
     'KPI_REGISTRY_SOURCE_RESOURCE_PATH',
     'KPI_REGISTRY_SOURCE_SCHEMA_VERSION',

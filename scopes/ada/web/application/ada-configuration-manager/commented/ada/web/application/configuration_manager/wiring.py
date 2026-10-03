@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import TypeVar
 
 from ada.web.access.configuration import (
+    ADA_ACCESS_SOURCE_KEY,
     AdaAccessConfiguration,
     AdaAccessSourceService,
     create_ada_access_projection_service,
@@ -26,11 +27,13 @@ from ada.web.application.configuration_manager.tool_kpi_registry_destinations im
     ToolConfigurationKpiDestinationCatalogProvider,
 )
 from ada.web.kpis.definition.configuration import (
+    KPI_DEFINITION_SOURCE_KEY,
     KpiDefinitionSourceService,
     create_kpi_definition_projection_service,
 )
 from ada.web.kpis.definition.coverage import KpiDefinitionCatalog
 from ada.web.kpis.registry.configuration import (
+    KPI_REGISTRY_SOURCE_KEY,
     KpiRegistrySourceService,
     create_kpi_registry_projection_service,
 )
@@ -38,6 +41,7 @@ from ada.web.kpis.registry.models import KpiRegistry
 from ada.web.operational.identification import OperationalIdentificationService
 from ada.web.operational.identification.models import OperationalDocument
 from ada.web.tools.configuration import (
+    TOOLS_SOURCE_KEY,
     ToolConfiguration,
     ToolSourceService,
     create_tool_projection_service,
@@ -53,6 +57,7 @@ from atlanticus.web.compositions.users_manager import (
 )
 from atlanticus.web.manager import ManagerPrincipal
 from atlanticus.web.navigation.configuration import (
+    NAVIGATION_SOURCE_KEY,
     NavigationConfigurationCatalog,
     NavigationProfileOption,
 )
@@ -70,11 +75,6 @@ from atlanticus.web.users.store import (
     UsersRegistryStore,
 )
 
-NAVIGATION_SOURCE_KEY = SourceKey('navigation')
-TOOLS_SOURCE_KEY = SourceKey('tools')
-KPI_REGISTRY_SOURCE_KEY = SourceKey('kpis')
-KPI_DEFINITION_SOURCE_KEY = SourceKey('kpi-definitions')
-ADA_ACCESS_SOURCE_KEY = SourceKey('ada-access')
 
 PayloadT = TypeVar('PayloadT')
 

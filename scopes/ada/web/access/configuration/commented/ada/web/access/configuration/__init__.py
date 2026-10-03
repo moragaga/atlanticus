@@ -17,8 +17,13 @@ from ada.web.access.configuration.source_release import (
     AdaAccessSourceRelease,
     AdaAccessSourceService,
 )
+from atlanticus.web.source.models import SourceKey
+
+# Identidad canónica del Source durable de ADA Access.
+ADA_ACCESS_SOURCE_KEY = SourceKey('ada-access')
 
 __all__ = [
+    'ADA_ACCESS_SOURCE_KEY',
     'ADA_ACCESS_SOURCE_DOCUMENT_TYPE',
     'ADA_ACCESS_SOURCE_RESOURCE_PATH',
     'ADA_ACCESS_SOURCE_SCHEMA_VERSION',

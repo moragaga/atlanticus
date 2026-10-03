@@ -24,7 +24,7 @@ def test_kpi_and_definition_are_optional_direct_generic_modules() -> None:
     kpi_store = EmptyProjectionStore()
     injected = replace(
         dependencies(),
-        kpi_registry_source=SourceStub('kpis'),
+        kpi_registry_source=SourceStub('kpi-registry'),
         kpi_registry_projection=ProjectionStub(),
         kpi_registry_destinations=DestinationProviderStub(),
         kpi_registry_projection_store=kpi_store,
@@ -44,7 +44,7 @@ def test_kpi_and_definition_are_optional_direct_generic_modules() -> None:
     )
     kpis = definition.modules[4]
     definitions = definition.modules[5]
-    assert kpis.source_key == SourceKey('kpis')
+    assert kpis.source_key == SourceKey('kpi-registry')
     assert definitions.source_key == SourceKey('kpi-definitions')
     assert kpis.source_service.endswith('.kpis.source')
     assert definitions.source_service.endswith('.kpi-definitions.source')
