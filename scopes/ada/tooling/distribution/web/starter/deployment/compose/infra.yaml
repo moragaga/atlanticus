@@ -6,7 +6,7 @@ services:
     environment:
       PROTOCOL: http
       GATEWAY_PUBLIC_ENDPOINT: cosmos-emulator
-      ENABLE_EXPLORER: 'false'
+      ENABLE_EXPLORER: 'true'
       ENABLE_TELEMETRY: 'false'
       LOG_LEVEL: warn
     volumes:
@@ -14,6 +14,7 @@ services:
     ports:
       - '127.0.0.1:${ADA_COSMOS_PORT:-8081}:8081'
       - '127.0.0.1:${ADA_COSMOS_READY_PORT:-8080}:8080'
+      - '127.0.0.1:${ADA_COSMOS_EXPLORER_PORT:-1234}:1234'
     networks:
       - support
     restart: unless-stopped
