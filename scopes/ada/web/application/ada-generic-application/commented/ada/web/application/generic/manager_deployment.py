@@ -64,21 +64,25 @@ class ManagerStartupOptions(BaseSettings):
 
 
 @dataclass(frozen=True, slots=True)
+# Los artifacts application-scoped son un binding físico separado de los Sources Tool-scoped.
 class DurableManagerConfiguration:
     namespace: StorageNamespace
+    application_artifacts: ManagerBlobResource
     resources: ManagerPersistenceResources
     storage_settings: StorageSettings
     cosmos_settings: CosmosSettings
 
 
 @dataclass(frozen=True, slots=True)
+# El runtime conserva el binding de artifacts para consumidores del host sin reintroducir application_source.
 class DurableManagerRuntime:
     stores: ConfigurationManagerStores
+    application_artifacts: ManagerBlobResource
     resources: ManagerPersistenceResources
     connections: ManagerPersistenceConnections
 
 
-# Resuelve un único binding Blob para configuración Tool-scoped y otro contrato lógico para Users global.
+# Resuelve bindings físicos explícitos; hoy comparten contenedor, pero mantienen ownership lógico distinto.
 def resolve_durable_manager_configuration(
     settings: AdaGenericSettings,
 ) -> DurableManagerConfiguration:
@@ -104,6 +108,7 @@ def resolve_durable_manager_configuration(
     )
     return DurableManagerConfiguration(
         namespace=namespace,
+        application_artifacts=resource,
         resources=ManagerPersistenceResources(
             tool_source=resource,
             users_registry=resource,
@@ -136,12 +141,12 @@ def open_durable_manager(
         stores = _attach_users_recovery(stores, resolved, connections, settings)
         yield DurableManagerRuntime(
             stores=stores,
+            application_artifacts=resolved.application_artifacts,
             resources=resolved.resources,
             connections=connections,
         )
 
 
-# Users Recovery permanece application-scoped; no participa del corte de Sources de configuración.
 def _attach_users_recovery(
     stores: ConfigurationManagerStores,
     resolved: DurableManagerConfiguration,
@@ -200,7 +205,7 @@ def _attach_users_recovery(
     )
 
 
-# Prepara los recursos físicos vigentes; Tool Source y Users pueden deduplicarse si comparten contenedor.
+# La preparación deduplica recursos físicos aunque artifacts, Tool Source y Users Registry sean contratos distintos.
 def prepare_durable_manager_resources(
     deployment: DurableManagerRuntime,
     *,
@@ -213,6 +218,7 @@ def prepare_durable_manager_resources(
     blobs = {
         (resource.connection_ref, resource.container_name)
         for resource in (
+            deployment.application_artifacts,
             deployment.resources.tool_source,
             deployment.resources.users_registry,
         )

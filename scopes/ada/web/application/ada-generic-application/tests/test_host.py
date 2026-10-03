@@ -107,7 +107,7 @@ def test_local_host_uses_explicit_identity_override(tmp_path, monkeypatch) -> No
     worker.close()
 
 
-def test_durable_local_host_keeps_resources_open_and_uses_durable_names(
+def test_durable_local_host_keeps_resources_open_and_uses_application_artifacts(
     monkeypatch,
 ) -> None:
     settings = SimpleNamespace(
@@ -118,11 +118,12 @@ def test_durable_local_host_keeps_resources_open_and_uses_durable_names(
     resource = SimpleNamespace(connection_ref='storage', container_name='configuration')
     deployment = SimpleNamespace(
         stores='durable-stores',
-        resources=SimpleNamespace(application_source=resource),
+        application_artifacts=resource,
         connections=SimpleNamespace(storage={'storage': object()}),
     )
     events = []
     captured = {}
+    reader_calls = []
     reader = object()
     application = SimpleNamespace(dash='dash', server='server')
 
@@ -137,7 +138,12 @@ def test_durable_local_host_keeps_resources_open_and_uses_durable_names(
     monkeypatch.setattr(host, 'AdaGenericSettings', lambda: settings)
     monkeypatch.setattr(host, 'open_durable_manager', opened)
     monkeypatch.setattr(host, '_local_identity', lambda: 'local-identity')
-    monkeypatch.setattr(host, 'BlobMasterMaterialReader', lambda **_kwargs: reader)
+
+    def open_reader(**kwargs):
+        reader_calls.append(kwargs)
+        return reader
+
+    monkeypatch.setattr(host, 'BlobMasterMaterialReader', open_reader)
     monkeypatch.setattr(
         host,
         'create_operational_application_runtime',
@@ -148,6 +154,13 @@ def test_durable_local_host_keeps_resources_open_and_uses_durable_names(
     worker = host.create_worker_runtime()
 
     assert events == ['opened']
+    assert reader_calls == [
+        {
+            'client': deployment.connections.storage['storage'],
+            'container_name': 'configuration',
+            'blob_name': 'app/master-projection/material.zip',
+        }
+    ]
     assert captured['manager_stores'] == 'durable-stores'
     assert captured['identity_provider'] == 'local-identity'
     assert captured['manager_source_name'] == 'Blob Storage'
@@ -166,7 +179,7 @@ def test_production_host_requires_injected_identity(monkeypatch) -> None:
     resource = SimpleNamespace(connection_ref='storage', container_name='configuration')
     deployment = SimpleNamespace(
         stores='stores',
-        resources=SimpleNamespace(application_source=resource),
+        application_artifacts=resource,
         connections=SimpleNamespace(storage={'storage': object()}),
     )
 

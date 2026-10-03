@@ -65,6 +65,7 @@ class ManagerStartupOptions(BaseSettings):
 @dataclass(frozen=True, slots=True)
 class DurableManagerConfiguration:
     namespace: StorageNamespace
+    application_artifacts: ManagerBlobResource
     resources: ManagerPersistenceResources
     storage_settings: StorageSettings
     cosmos_settings: CosmosSettings
@@ -73,6 +74,7 @@ class DurableManagerConfiguration:
 @dataclass(frozen=True, slots=True)
 class DurableManagerRuntime:
     stores: ConfigurationManagerStores
+    application_artifacts: ManagerBlobResource
     resources: ManagerPersistenceResources
     connections: ManagerPersistenceConnections
 
@@ -102,6 +104,7 @@ def resolve_durable_manager_configuration(
     )
     return DurableManagerConfiguration(
         namespace=namespace,
+        application_artifacts=resource,
         resources=ManagerPersistenceResources(
             tool_source=resource,
             users_registry=resource,
@@ -134,6 +137,7 @@ def open_durable_manager(
         stores = _attach_users_recovery(stores, resolved, connections, settings)
         yield DurableManagerRuntime(
             stores=stores,
+            application_artifacts=resolved.application_artifacts,
             resources=resolved.resources,
             connections=connections,
         )
@@ -209,6 +213,7 @@ def prepare_durable_manager_resources(
     blobs = {
         (resource.connection_ref, resource.container_name)
         for resource in (
+            deployment.application_artifacts,
             deployment.resources.tool_source,
             deployment.resources.users_registry,
         )

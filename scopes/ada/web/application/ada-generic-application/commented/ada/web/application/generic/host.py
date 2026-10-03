@@ -80,7 +80,8 @@ def create_worker_runtime(
             )
         else:
             deployment = resources.enter_context(open_durable_manager(settings))
-            resource = deployment.resources.application_source
+            # Master Projection es application-scoped, pero no es un Source de configuración.
+            resource = deployment.application_artifacts
             material_reader = BlobMasterMaterialReader(
                 client=deployment.connections.storage[resource.connection_ref],
                 container_name=resource.container_name,

@@ -37,8 +37,9 @@ def test_durable_manager_reuses_shared_connections_and_namespaces(tmp_path):
     deployment = resolve_durable_manager_configuration(_settings(tmp_path))
     assert deployment.namespace.application_prefix == 'ada-site'
     assert deployment.namespace.scope_prefix == 'ada-site/plant'
+    assert deployment.application_artifacts == deployment.resources.tool_source
     assert deployment.resources.tool_source == deployment.resources.users_registry
-    assert deployment.resources.tool_source.container_name == 'configuration'
+    assert deployment.application_artifacts.container_name == 'configuration'
     assert deployment.cosmos_settings.database_name == 'ada'
     assert deployment.storage_settings.credential.connection_string == 'UseDevelopmentStorage=true'
     expected = {resource.physical_name for resource in deployment.resources.cosmos_plan.resources}
@@ -113,6 +114,7 @@ def test_startup_selection_reads_the_single_persistence_variable(monkeypatch, tm
 
 def test_real_durable_composition_requires_no_network_during_startup(tmp_path):
     with open_durable_manager(_settings(tmp_path)) as runtime:
+        assert runtime.application_artifacts == runtime.resources.tool_source
         assert runtime.stores.navigation_source is runtime.stores.profiles_source
         assert runtime.stores.navigation_source is runtime.stores.access_source
         assert runtime.stores.navigation_source is runtime.stores.tools_source
@@ -148,6 +150,7 @@ def test_open_manager_closes_both_clients_and_is_lazy(tmp_path, monkeypatch):
     with open_durable_manager(_settings(tmp_path)) as runtime:
         assert len(constructed) == 2
         assert not any(client.closed for client in constructed)
+        assert runtime.application_artifacts.connection_ref == 'ada-blob'
         assert runtime.stores['namespace'].scope_prefix == 'ada-site/plant'
     assert all(client.closed for client in constructed)
 
