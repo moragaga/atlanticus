@@ -9,6 +9,7 @@ from types import MappingProxyType
 from typing import Any
 
 _VALUE_TYPES = frozenset({'text', 'integer', 'float', 'boolean'})
+_VALUE_KINDS = frozenset({'value', 'json'})
 
 
 class KpiDeliveryStatus(StrEnum):
@@ -18,6 +19,7 @@ class KpiDeliveryStatus(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+# Latest admite estructura JSON también en estados degradados para conservar construcción UI.
 class KpiLatestValue:
     status: KpiDeliveryStatus
     value_kind: str | None
@@ -31,16 +33,20 @@ class KpiLatestValue:
                 raise TypeError('value_kind must be str or None')
             if not self.value_kind or self.value_kind != self.value_kind.strip():
                 raise ValueError('value_kind must be a non-empty trimmed string')
+            if self.value_kind not in _VALUE_KINDS:
+                raise ValueError('value_kind must be value or json')
         if self.status is KpiDeliveryStatus.OK:
             if self.value_kind is None:
                 raise ValueError('value_kind is required for ok delivery values')
             if self.value is None:
                 raise ValueError('value is required for ok delivery values')
-        elif self.status is KpiDeliveryStatus.MISSING:
-            if self.value_kind is not None or self.value is not None:
-                raise ValueError('missing delivery values must not carry value_kind or value')
+            if self.value_kind == 'json' and not isinstance(self.value, list | dict):
+                raise TypeError('json delivery values must contain a list or dict')
+        elif self.value_kind == 'json':
+            if self.value is not None and not isinstance(self.value, list | dict):
+                raise TypeError('degraded json delivery values must contain a list or dict')
         elif self.value is not None:
-            raise ValueError('error delivery values must not carry a value')
+            raise ValueError(f'{self.status.value} delivery values must not carry a value')
 
     @classmethod
     def missing(cls) -> KpiLatestValue:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dash import html
+from dash.development.base_component import Component
 
 from ada.web.application.generic.operational_latest import (
     OPERATIONAL_LATEST_HOST_TYPE,
@@ -13,7 +14,6 @@ from ada.web.kpis.collector import component_kpi_store_id
 from ada.web.operational_render_binding import bind_operational_render
 from ada.web.tools.enums import ToolConfigurationKind, ToolScope
 from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
-from ada.web.ui.display_status import DisplayStatus
 from atlanticus.web.services import ServiceRegistry
 
 
@@ -48,36 +48,20 @@ def _binding():
                     key='plant',
                     display_name='Planta',
                     scope=ToolScope.PLANT,
-                    subcomponents=(
-                        ToolSubcomponent(key='plant_phase', display_name='Fase Planta'),
-                    ),
+                    subcomponents=(ToolSubcomponent(key='plant_phase', display_name='Fase Planta'),),
                 ),
             ),
         )
     )
 
 
-def _store(
-    *,
-    component_key: str = 'mine',
-    values: dict[str, object] | None = None,
-    latest: object = ...,
-    timeseries: object = None,
-):
+def _store(*, values=None, component_key='mine', latest=..., timeseries=None):
     resolved_latest = (
         {
             'manifest': {'revision': 'latest-r1'},
-            'values': (
-                values
-                if values is not None
-                else {
-                    'crusher_rate': {
-                        'status': 'ok',
-                        'value_kind': 'float',
-                        'value': 42.0,
-                    }
-                }
-            ),
+            'values': values if values is not None else {
+                'crusher_rate': {'status': 'ok', 'value_kind': 'value', 'value': '42,0'}
+            },
         }
         if latest is ...
         else latest
@@ -96,9 +80,7 @@ def _prop(component, name: str):
 
 def test_body_materializes_one_output_host_per_tool_component() -> None:
     binding = _binding()
-
     body = build_operational_latest_body(binding)
-
     assert body.id == 'ada-operational-body'
     assert tuple(child.id for child in body.children) == (
         operational_latest_host_id('integrated_operations', 'mine'),
@@ -107,173 +89,107 @@ def test_body_materializes_one_output_host_per_tool_component() -> None:
     assert body.children[0].id['type'] == OPERATIONAL_LATEST_HOST_TYPE
 
 
-def test_render_module_binds_each_host_to_the_matching_component_store() -> None:
+def test_render_module_binds_matching_store_and_exposes_ready_presentation() -> None:
     binding = _binding()
-    observed = []
 
-    def renderer(_binding, component_binding, presentation):
-        observed.append((component_binding.component.key, presentation))
-        return html.Div(component_binding.component.display_name)
+    def renderer(_binding, _component_binding, presentation):
+        return html.P(presentation['crusher_rate'])
 
     module = create_operational_latest_render_module(
         binding,
-        renderers={
-            'mine': renderer,
-            'plant': renderer,
-        },
+        renderers={'mine': renderer, 'plant': renderer},
     )
     dash_app = DashStub()
-
     module.register_callbacks(dash_app, ServiceRegistry())
 
-    assert len(dash_app.callback_args) == 2
     first_output, first_input = dash_app.callback_args[0]
-    assert first_output.component_id == operational_latest_host_id(
-        'integrated_operations',
-        'mine',
-    )
-    assert first_output.component_property == 'children'
-    assert first_input.component_id == component_kpi_store_id(
-        'integrated_operations',
-        'mine',
-    )
-    assert first_input.component_property == 'data'
-
+    assert first_output.component_id == operational_latest_host_id('integrated_operations', 'mine')
+    assert first_input.component_id == component_kpi_store_id('integrated_operations', 'mine')
     rendered = dash_app.callback_functions[0](_store())
-
-    assert rendered.children == 'Mina'
-    assert observed[0][0] == 'mine'
-    assert isinstance(observed[0][1], OperationalLatestPresentation)
+    assert rendered.children == '42,0'
 
 
-def test_ok_delivery_value_builds_dash_only_after_store_boundary() -> None:
+def test_value_ok_is_returned_directly_without_consumer_inference() -> None:
+    presentation = OperationalLatestPresentation('integrated_operations', 'mine', _store())
+    assert presentation['crusher_rate'] == '42,0'
+    assert presentation.resolve_many(('crusher_rate',)) == {'crusher_rate': '42,0'}
+
+
+def test_value_missing_and_error_are_returned_as_status_components() -> None:
+    missing = OperationalLatestPresentation(
+        'integrated_operations',
+        'mine',
+        _store(values={'kpi': {'status': 'missing', 'value_kind': None, 'value': None}}),
+    )['kpi']
+    error = OperationalLatestPresentation(
+        'integrated_operations',
+        'mine',
+        _store(values={'kpi': {'status': 'error', 'value_kind': 'value', 'value': None}}),
+    )['kpi']
+    assert isinstance(missing, Component)
+    assert isinstance(error, Component)
+    assert _prop(missing, 'src').endswith('/img/status/empty-data.svg')
+    assert _prop(error, 'src').endswith('/img/status/internal-error.svg')
+
+
+def test_json_ok_missing_and_error_all_preserve_structural_payload() -> None:
+    for status in ('ok', 'missing', 'error'):
+        payload = {'rows': [], 'columns': ['name', 'value']}
+        presentation = OperationalLatestPresentation(
+            'integrated_operations',
+            'mine',
+            _store(values={'table': {'status': status, 'value_kind': 'json', 'value': payload}}),
+        )
+        assert presentation['table'] == payload
+
+
+def test_json_degraded_without_structural_payload_falls_back_to_status_icon() -> None:
     presentation = OperationalLatestPresentation(
-        tool_key='integrated_operations',
-        component_key='mine',
-        store_data=_store(),
+        'integrated_operations',
+        'mine',
+        _store(values={'table': {'status': 'missing', 'value_kind': 'json', 'value': None}}),
     )
-
-    display = presentation.resolve('crusher_rate')
-    rendered = presentation.render(
-        'crusher_rate',
-        lambda value: html.Span(f'{value:.1f}', id='crusher-rate'),
-    )
-
-    assert display.status is DisplayStatus.OK
-    assert display.value == 42.0
-    assert rendered.id == 'crusher-rate'
-    assert rendered.children == '42.0'
+    resolved = presentation['table']
+    assert isinstance(resolved, Component)
+    assert _prop(resolved, 'src').endswith('/img/status/empty-data.svg')
 
 
-def test_missing_delivery_value_uses_shared_empty_icon() -> None:
+def test_absent_key_and_invalid_payload_are_normalized_to_icons() -> None:
+    absent = OperationalLatestPresentation(
+        'integrated_operations', 'mine', _store(values={})
+    )['unknown']
+    invalid = OperationalLatestPresentation(
+        'integrated_operations',
+        'mine',
+        _store(values={'kpi': {'status': 'ok', 'value_kind': 'value', 'value': None}}),
+    )['kpi']
+    assert _prop(absent, 'src').endswith('/img/status/not-mapped.svg')
+    assert _prop(invalid, 'src').endswith('/img/status/invalid-data.svg')
+
+
+def test_timeseries_remains_outside_latest_normalization() -> None:
     presentation = OperationalLatestPresentation(
-        tool_key='integrated_operations',
-        component_key='mine',
-        store_data=_store(
-            values={
-                'crusher_rate': {
-                    'status': 'missing',
-                    'value_kind': None,
-                    'value': None,
-                }
-            }
-        ),
+        'integrated_operations',
+        'mine',
+        _store(timeseries={'malformed': object()}),
     )
-
-    display = presentation.resolve('crusher_rate')
-    rendered = presentation.render('crusher_rate', lambda value: html.Span(value))
-
-    assert display.status is DisplayStatus.EMPTY
-    assert _prop(rendered, 'src').endswith('/img/status/empty-data.svg')
-
-
-def test_error_delivery_value_uses_shared_internal_error_icon() -> None:
-    presentation = OperationalLatestPresentation(
-        tool_key='integrated_operations',
-        component_key='mine',
-        store_data=_store(
-            values={
-                'crusher_rate': {
-                    'status': 'error',
-                    'value_kind': 'float',
-                    'value': None,
-                }
-            }
-        ),
-    )
-
-    assert presentation.resolve('crusher_rate').status is DisplayStatus.ERROR
-    rendered = presentation.render('crusher_rate', lambda value: html.Span(value))
-
-    assert _prop(rendered, 'src').endswith('/img/status/internal-error.svg')
-
-
-def test_absent_expected_kpi_uses_shared_not_mapped_icon() -> None:
-    presentation = OperationalLatestPresentation(
-        tool_key='integrated_operations',
-        component_key='mine',
-        store_data=_store(values={}),
-    )
-
-    assert presentation.resolve('crusher_rate').status is DisplayStatus.NOT_MAPPED
-    rendered = presentation.render('crusher_rate', lambda value: html.Span(value))
-
-    assert _prop(rendered, 'src').endswith('/img/status/not-mapped.svg')
-
-
-def test_invalid_browser_payload_uses_shared_invalid_icon() -> None:
-    presentation = OperationalLatestPresentation(
-        tool_key='integrated_operations',
-        component_key='mine',
-        store_data=_store(
-            values={
-                'crusher_rate': {
-                    'status': 'ok',
-                    'value_kind': 'float',
-                    'value': None,
-                }
-            }
-        ),
-    )
-
-    assert presentation.resolve('crusher_rate').status is DisplayStatus.INVALID
-    rendered = presentation.render('crusher_rate', lambda value: html.Span(value))
-
-    assert _prop(rendered, 'src').endswith('/img/status/invalid-data.svg')
-
-
-def test_latest_absence_is_empty_and_timeseries_is_ignored() -> None:
-    without_latest = OperationalLatestPresentation(
-        tool_key='integrated_operations',
-        component_key='mine',
-        store_data=_store(latest=None, timeseries={'any': 'future-contract'}),
-    )
-    with_latest_and_timeseries = OperationalLatestPresentation(
-        tool_key='integrated_operations',
-        component_key='mine',
-        store_data=_store(timeseries={'malformed': object()}),
-    )
-
-    assert without_latest.resolve('crusher_rate').status is DisplayStatus.EMPTY
-    assert with_latest_and_timeseries.resolve('crusher_rate').status is DisplayStatus.OK
+    assert presentation['crusher_rate'] == '42,0'
 
 
 def test_store_identity_mismatch_is_invalid() -> None:
     presentation = OperationalLatestPresentation(
-        tool_key='integrated_operations',
-        component_key='mine',
-        store_data=_store(component_key='plant'),
+        'integrated_operations',
+        'mine',
+        _store(component_key='plant'),
     )
+    resolved = presentation['crusher_rate']
+    assert _prop(resolved, 'src').endswith('/img/status/invalid-data.svg')
 
-    assert presentation.resolve('crusher_rate').status is DisplayStatus.INVALID
 
-
-def test_render_module_requires_one_renderer_per_component() -> None:
-    binding = _binding()
-
+def test_render_module_requires_renderer_for_every_component() -> None:
     try:
         create_operational_latest_render_module(
-            binding,
+            _binding(),
             renderers={'mine': lambda *_args: html.Div()},
         )
     except ValueError as error:

@@ -46,6 +46,7 @@ def evaluate_kpi(
         result = KpiResult(
             status=KpiStatus.ERROR,
             value_kind=spec.value_kind,
+            value=_degraded_json_value(spec),
             value_type=spec.value_type,
             error=type(error).__name__,
         )
@@ -78,6 +79,7 @@ def evaluate_over_kpi(
         result = KpiResult(
             status=KpiStatus.ERROR,
             value_kind=spec.value_kind,
+            value=_degraded_json_value(spec),
             value_type=spec.value_type,
             error=KpiDependencyError.__name__,
         )
@@ -92,6 +94,7 @@ def evaluate_over_kpi(
             result = KpiResult(
                 status=KpiStatus.ERROR,
                 value_kind=spec.value_kind,
+                value=_degraded_json_value(spec),
                 value_type=spec.value_type,
                 error=type(error).__name__,
             )
@@ -104,6 +107,13 @@ def evaluate_over_kpi(
         persist_history=spec.persist_history,
         sources=traces,
     )
+
+
+# Sólo JSON reutiliza su estructura vacía; VALUE mantiene None al degradarse.
+def _degraded_json_value(spec: KpiSpec | OverKpiSpec):
+    if spec.value_kind is KpiValueKind.JSON:
+        return spec.empty_json
+    return None
 
 
 def _source_traces(
@@ -158,6 +168,7 @@ def _result(spec: KpiSpec, value: object) -> KpiResult:
         return KpiResult(
             status=KpiStatus.MISSING,
             value_kind=spec.value_kind,
+            value=_degraded_json_value(spec),
             value_type=spec.value_type,
         )
     if spec.value_kind is KpiValueKind.JSON:
@@ -190,6 +201,7 @@ def _over_result(spec: OverKpiSpec, value: object) -> KpiResult:
         return KpiResult(
             status=KpiStatus.MISSING,
             value_kind=spec.value_kind,
+            value=_degraded_json_value(spec),
             value_type=spec.value_type,
         )
     if spec.value_kind is KpiValueKind.JSON:

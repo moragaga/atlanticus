@@ -8,7 +8,7 @@ from numbers import Real
 from typing import TypeAlias
 
 from ada.kpis.core.enums import KpiArea, KpiMode, KpiValueKind, KpiValueType
-from ada.kpis.core.values import KpiNativeValue
+from ada.kpis.core.values import KpiNativeValue, normalize_kpi_value
 from atlanticus.operational_data.core import (
     DataColumn,
     DataColumnType,
@@ -46,6 +46,7 @@ class KpiSpec:
     constant_value: object | None = None
     value_kind: KpiValueKind = KpiValueKind.VALUE
     value_type: KpiValueType | None = None
+    empty_json: KpiNativeValue = None
     decimals: int = 0
     is_truncated: bool = True
     persist_history: bool = True
@@ -63,6 +64,11 @@ class KpiSpec:
             raise TypeError('KPI value_kind must be KpiValueKind')
         if self.value_type is not None and not isinstance(self.value_type, KpiValueType):
             raise TypeError('KPI value_type must be KpiValueType or None')
+        object.__setattr__(
+            self,
+            'empty_json',
+            _normalize_empty_json(self.value_kind, self.empty_json, prefix='KPI'),
+        )
         _validate_precision(self.decimals, self.is_truncated, prefix='KPI')
         if not isinstance(self.persist_history, bool):
             raise TypeError('persist_history must be bool')
@@ -205,6 +211,7 @@ class OverKpiSpec:
     resolver: OverKpiResolver
     value_kind: KpiValueKind = KpiValueKind.VALUE
     value_type: KpiValueType | None = None
+    empty_json: KpiNativeValue = None
     decimals: int = 0
     is_truncated: bool = True
     persist_history: bool = False
@@ -234,6 +241,11 @@ class OverKpiSpec:
             raise TypeError('Over KPI value_kind must be KpiValueKind')
         if self.value_type is not None and not isinstance(self.value_type, KpiValueType):
             raise TypeError('Over KPI value_type must be KpiValueType or None')
+        object.__setattr__(
+            self,
+            'empty_json',
+            _normalize_empty_json(self.value_kind, self.empty_json, prefix='Over KPI'),
+        )
         _validate_output_contract(self.value_kind, self.value_type, prefix='Over KPI')
         _validate_precision(self.decimals, self.is_truncated, prefix='Over KPI')
         if not isinstance(self.persist_history, bool):
@@ -253,6 +265,24 @@ def _validate_output_contract(
         return
     if value_type is None:
         raise ValueError(f'{prefix} VALUE output requires value_type')
+
+
+def _normalize_empty_json(
+    value_kind: KpiValueKind,
+    value: KpiNativeValue,
+    *,
+    prefix: str,
+) -> KpiNativeValue:
+    if value_kind is KpiValueKind.VALUE:
+        if value is not None:
+            raise ValueError(f'{prefix} VALUE output must not declare empty_json')
+        return None
+    if value is None:
+        return None
+    normalized = normalize_kpi_value(value)
+    if not isinstance(normalized, list | dict):
+        raise TypeError(f'{prefix} empty_json must be a list or dict')
+    return normalized
 
 
 def _validate_precision(decimals: int, is_truncated: bool, *, prefix: str) -> None:

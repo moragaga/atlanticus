@@ -8,7 +8,6 @@ from datetime import datetime
 
 from ada.kpis.delivery.configuration import KpiDeliveryConfiguration
 from ada.kpis.delivery.models import (
-    KpiDeliveryStatus,
     KpiLatestManifest,
     KpiLatestSnapshot,
     KpiLatestValue,
@@ -16,18 +15,12 @@ from ada.kpis.delivery.models import (
 from ada.kpis.delivery.revision import canonical_revision, utc_iso
 
 
+# La normalización valida serialización sin borrar el payload JSON degradado.
 def _normalized_latest_value(value: KpiLatestValue) -> KpiLatestValue:
     if not isinstance(value, KpiLatestValue):
         raise TypeError('latest values must contain KpiLatestValue values')
-    if value.status is KpiDeliveryStatus.ERROR:
-        return KpiLatestValue(
-            status=KpiDeliveryStatus.ERROR,
-            value_kind=value.value_kind,
-            value=None,
-        )
-    if value.status is KpiDeliveryStatus.MISSING:
-        return KpiLatestValue.missing()
-    canonical_revision({'value': value.value})
+    if value.value is not None:
+        canonical_revision({'value': value.value})
     return value
 
 

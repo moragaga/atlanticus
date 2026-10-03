@@ -53,13 +53,15 @@ class KpiResult:
             if value is not None and not isinstance(value, list | dict):
                 raise TypeError('JSON KPI result value must be a list, dict or None')
         if self.status is KpiStatus.ERROR:
-            if value is not None or parsed is not None:
-                raise ValueError('error KPI result must not expose value or parsed_value')
+            if self.value_kind is KpiValueKind.VALUE and (value is not None or parsed is not None):
+                raise ValueError('error VALUE KPI result must not expose value or parsed_value')
             if not isinstance(self.error, str) or not self.error:
                 raise ValueError('error KPI result requires a sanitized error type')
         elif self.status is KpiStatus.MISSING:
-            if value is not None or parsed is not None or self.error is not None:
-                raise ValueError('missing KPI result must contain only null value fields')
+            if self.value_kind is KpiValueKind.VALUE and (value is not None or parsed is not None):
+                raise ValueError('missing VALUE KPI result must not expose value or parsed_value')
+            if self.error is not None:
+                raise ValueError('missing KPI result must not expose error')
         else:
             if value is None or self.error is not None:
                 raise ValueError('ok KPI result requires a value and no error')

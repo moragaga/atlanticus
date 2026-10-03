@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 
 from dash import Input, Output, html
@@ -11,17 +11,10 @@ from ada.web.operational_render_binding import (
     OperationalComponentBinding,
     OperationalRenderBinding,
 )
-from ada.web.ui.display_status import (
-    DisplayStatus,
-    DisplayValue,
-    build_display_status_icon,
-)
+from ada.web.ui.display_status import DisplayStatus, build_display_status_icon
 from atlanticus.web.modules import WebModule
 
 OPERATIONAL_LATEST_HOST_TYPE = 'ada-operational-latest-host'
-
-AdaOperationalKpiValueFactory = Callable[[object], Component]
-
 
 @dataclass(frozen=True, slots=True)
 class OperationalLatestPresentation:
@@ -34,27 +27,21 @@ class OperationalLatestPresentation:
         object.__setattr__(self, 'tool_key', address['tool'])
         object.__setattr__(self, 'component_key', address['component'])
 
-    def resolve(self, kpi_key: str) -> DisplayValue:
-        return resolve_operational_latest_display_value(
+    def resolve(self, kpi_key: str) -> object:
+        return resolve_operational_latest_value(
             self.store_data,
             tool_key=self.tool_key,
             component_key=self.component_key,
             kpi_key=kpi_key,
         )
 
-    def render(
-        self,
-        kpi_key: str,
-        value_factory: AdaOperationalKpiValueFactory,
-        *,
-        status_class_name: str | None = None,
-    ) -> Component:
-        return build_operational_latest_kpi(
-            self,
-            kpi_key=kpi_key,
-            value_factory=value_factory,
-            status_class_name=status_class_name,
-        )
+    def resolve_many(self, kpi_keys: Iterable[str]) -> dict[str, object]:
+        if isinstance(kpi_keys, str | bytes):
+            raise TypeError('kpi_keys must be an iterable of KPI keys')
+        return {kpi_key: self.resolve(kpi_key) for kpi_key in kpi_keys}
+
+    def __getitem__(self, kpi_key: str) -> object:
+        return self.resolve(kpi_key)
 
 
 AdaOperationalLatestRenderer = Callable[
@@ -118,73 +105,81 @@ def create_operational_latest_render_module(
     )
 
 
-def resolve_operational_latest_display_value(
+def resolve_operational_latest_value(
     store_data: object,
     *,
     tool_key: str,
     component_key: str,
     kpi_key: str,
-) -> DisplayValue:
+) -> object:
     expected = component_kpi_store_id(tool_key, component_key)
     resolved_kpi_key = _required_text(kpi_key, 'kpi_key')
 
     if store_data is None:
-        return DisplayValue.empty()
+        return _status_icon(DisplayStatus.EMPTY)
     if not isinstance(store_data, Mapping):
-        return DisplayValue.invalid()
+        return _status_icon(DisplayStatus.INVALID)
     if store_data.get('tool_key') != expected['tool']:
-        return DisplayValue.invalid()
+        return _status_icon(DisplayStatus.INVALID)
     if store_data.get('component_key') != expected['component']:
-        return DisplayValue.invalid()
+        return _status_icon(DisplayStatus.INVALID)
     if 'latest' not in store_data:
-        return DisplayValue.invalid()
+        return _status_icon(DisplayStatus.INVALID)
 
     latest = store_data['latest']
     if latest is None:
-        return DisplayValue.empty()
+        return _status_icon(DisplayStatus.EMPTY)
     if not isinstance(latest, Mapping) or set(latest) != {'manifest', 'values'}:
-        return DisplayValue.invalid()
+        return _status_icon(DisplayStatus.INVALID)
     if not isinstance(latest['manifest'], Mapping):
-        return DisplayValue.invalid()
+        return _status_icon(DisplayStatus.INVALID)
 
     values = latest['values']
     if not isinstance(values, Mapping):
-        return DisplayValue.invalid()
+        return _status_icon(DisplayStatus.INVALID)
     if resolved_kpi_key not in values:
-        return DisplayValue.not_mapped()
+        return _status_icon(DisplayStatus.NOT_MAPPED)
 
-    value = values[resolved_kpi_key]
-    if not isinstance(value, Mapping) or set(value) != {'status', 'value_kind', 'value'}:
-        return DisplayValue.invalid()
-    return _resolve_delivery_value(value)
+    entry = values[resolved_kpi_key]
+    if not isinstance(entry, Mapping) or set(entry) != {'status', 'value_kind', 'value'}:
+        return _status_icon(DisplayStatus.INVALID)
+    return _resolve_delivery_entry(entry)
 
 
-def build_operational_latest_kpi(
-    presentation: OperationalLatestPresentation,
-    *,
-    kpi_key: str,
-    value_factory: AdaOperationalKpiValueFactory,
-    status_class_name: str | None = None,
-) -> Component:
-    if not isinstance(presentation, OperationalLatestPresentation):
-        raise TypeError('presentation must be OperationalLatestPresentation')
-    if not callable(value_factory):
-        raise TypeError('value_factory must be callable')
+def _resolve_delivery_entry(entry: Mapping[str, object]) -> object:
+    status = entry['status']
+    value_kind = entry['value_kind']
+    payload = entry['value']
 
-    display = presentation.resolve(kpi_key)
-    if display.status is DisplayStatus.OK:
-        value = display.value
-        if value is None:
-            raise RuntimeError('OK operational KPI presentation has no value')
-        rendered = value_factory(value)
-        if not isinstance(rendered, Component):
-            raise TypeError('Operational KPI value factory must return a Dash Component')
-        return rendered
+    if value_kind == 'json':
+        if isinstance(payload, list | dict) and status in {'ok', 'missing', 'error'}:
+            return payload
+        if payload is not None:
+            return _status_icon(DisplayStatus.INVALID)
+        if status == 'missing':
+            return _status_icon(DisplayStatus.EMPTY)
+        if status == 'error':
+            return _status_icon(DisplayStatus.ERROR)
+        return _status_icon(DisplayStatus.INVALID)
 
-    icon = build_display_status_icon(
-        display.status,
-        class_name=status_class_name,
-    )
+    if value_kind == 'value':
+        if status == 'ok' and payload is not None:
+            return payload
+        if payload is not None:
+            return _status_icon(DisplayStatus.INVALID)
+        if status == 'missing':
+            return _status_icon(DisplayStatus.EMPTY)
+        if status == 'error':
+            return _status_icon(DisplayStatus.ERROR)
+        return _status_icon(DisplayStatus.INVALID)
+
+    if value_kind is None and status == 'missing' and payload is None:
+        return _status_icon(DisplayStatus.EMPTY)
+    return _status_icon(DisplayStatus.INVALID)
+
+
+def _status_icon(status: DisplayStatus) -> Component:
+    icon = build_display_status_icon(status)
     if icon is None:
         raise RuntimeError('Degraded operational KPI presentation requires a status icon')
     return icon
@@ -240,33 +235,6 @@ def _validate_renderers(
     missing_key = next((key for key in expected_keys if key not in renderers), None)
     if missing_key is not None:
         raise ValueError(f'Missing operational latest renderer: {missing_key!r}')
-
-
-def _resolve_delivery_value(value: Mapping[str, object]) -> DisplayValue:
-    status = value['status']
-    value_kind = value['value_kind']
-    payload = value['value']
-
-    if status == 'ok':
-        if not _optional_value_kind_is_valid(value_kind) or value_kind is None or payload is None:
-            return DisplayValue.invalid()
-        return DisplayValue.ok(payload)
-
-    if status == 'missing':
-        if value_kind is not None or payload is not None:
-            return DisplayValue.invalid()
-        return DisplayValue.empty()
-
-    if status == 'error':
-        if payload is not None or not _optional_value_kind_is_valid(value_kind):
-            return DisplayValue.invalid()
-        return DisplayValue.error()
-
-    return DisplayValue.invalid()
-
-
-def _optional_value_kind_is_valid(value: object) -> bool:
-    return value is None or (isinstance(value, str) and bool(value) and value == value.strip())
 
 
 def _required_text(value: object, field_name: str) -> str:

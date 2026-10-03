@@ -1,7 +1,7 @@
-# Espejo pedagógico: la frontera Store -> Dash conserva datos serializables hasta el callback.
+# Espejo pedagógico: normaliza Store.latest antes de entregarlo a modeladores y builders.
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 
 from dash import Input, Output, html
@@ -12,19 +12,12 @@ from ada.web.operational_render_binding import (
     OperationalComponentBinding,
     OperationalRenderBinding,
 )
-from ada.web.ui.display_status import (
-    DisplayStatus,
-    DisplayValue,
-    build_display_status_icon,
-)
+from ada.web.ui.display_status import DisplayStatus, build_display_status_icon
 from atlanticus.web.modules import WebModule
 
 OPERATIONAL_LATEST_HOST_TYPE = 'ada-operational-latest-host'
 
-AdaOperationalKpiValueFactory = Callable[[object], Component]
-
-
-# Encapsula el JSON recibido desde dcc.Store y resuelve estados visuales por KPI.
+# Encapsula el Store ya serializado y expone valores listos para consumo de presentación.
 @dataclass(frozen=True, slots=True)
 class OperationalLatestPresentation:
     tool_key: str
@@ -36,27 +29,24 @@ class OperationalLatestPresentation:
         object.__setattr__(self, 'tool_key', address['tool'])
         object.__setattr__(self, 'component_key', address['component'])
 
-    def resolve(self, kpi_key: str) -> DisplayValue:
-        return resolve_operational_latest_display_value(
+    # Devuelve directamente valor, JSON estructural o componente Dash de estado.
+    def resolve(self, kpi_key: str) -> object:
+        return resolve_operational_latest_value(
             self.store_data,
             tool_key=self.tool_key,
             component_key=self.component_key,
             kpi_key=kpi_key,
         )
 
-    def render(
-        self,
-        kpi_key: str,
-        value_factory: AdaOperationalKpiValueFactory,
-        *,
-        status_class_name: str | None = None,
-    ) -> Component:
-        return build_operational_latest_kpi(
-            self,
-            kpi_key=kpi_key,
-            value_factory=value_factory,
-            status_class_name=status_class_name,
-        )
+    # Permite normalizar de una vez el conjunto de claves que consumirá un modelador.
+    def resolve_many(self, kpi_keys: Iterable[str]) -> dict[str, object]:
+        if isinstance(kpi_keys, str | bytes):
+            raise TypeError('kpi_keys must be an iterable of KPI keys')
+        return {kpi_key: self.resolve(kpi_key) for kpi_key in kpi_keys}
+
+    # Hace posible usar presentation['kpi'] sin repetir lógica de status/value_kind aguas abajo.
+    def __getitem__(self, kpi_key: str) -> object:
+        return self.resolve(kpi_key)
 
 
 AdaOperationalLatestRenderer = Callable[
@@ -65,7 +55,7 @@ AdaOperationalLatestRenderer = Callable[
 ]
 
 
-# Usa la misma identidad tool/component del Store, con un tipo distinto para el host de salida.
+# El host comparte dirección Tool/Component con el Store, pero conserva identidad Dash propia.
 def operational_latest_host_id(tool_key: str, component_key: str) -> dict[str, str]:
     address = component_kpi_store_id(tool_key, component_key)
     return {
@@ -75,7 +65,7 @@ def operational_latest_host_id(tool_key: str, component_key: str) -> dict[str, s
     }
 
 
-# Materializa un host Dash por componente, respetando el orden de Tool Structure.
+# Materializa un host por componente según el orden de Tool Structure.
 def materialize_operational_latest_hosts(
     binding: OperationalRenderBinding,
 ) -> tuple[Component, ...]:
@@ -93,7 +83,7 @@ def materialize_operational_latest_hosts(
     )
 
 
-# Construye el cuerpo operacional mínimo donde los callbacks depositan la UI concreta.
+# Construye el cuerpo donde los callbacks depositarán la UI concreta.
 def build_operational_latest_body(binding: OperationalRenderBinding) -> Component:
     return html.Div(
         materialize_operational_latest_hosts(binding),
@@ -101,7 +91,7 @@ def build_operational_latest_body(binding: OperationalRenderBinding) -> Componen
     )
 
 
-# Registra un callback Store.data -> host.children por cada componente configurado.
+# Registra el enlace reactivo Store.data -> host.children por componente.
 def create_operational_latest_render_module(
     binding: OperationalRenderBinding,
     *,
@@ -124,81 +114,90 @@ def create_operational_latest_render_module(
     )
 
 
-# Valida sólo Delivery.latest y lo traduce a DisplayStatus compartido por ADA UI.
-def resolve_operational_latest_display_value(
+# Valida el contrato Store.latest una sola vez y entrega el objeto final de presentación.
+def resolve_operational_latest_value(
     store_data: object,
     *,
     tool_key: str,
     component_key: str,
     kpi_key: str,
-) -> DisplayValue:
+) -> object:
     expected = component_kpi_store_id(tool_key, component_key)
     resolved_kpi_key = _required_text(kpi_key, 'kpi_key')
 
     if store_data is None:
-        return DisplayValue.empty()
+        return _status_icon(DisplayStatus.EMPTY)
     if not isinstance(store_data, Mapping):
-        return DisplayValue.invalid()
+        return _status_icon(DisplayStatus.INVALID)
     if store_data.get('tool_key') != expected['tool']:
-        return DisplayValue.invalid()
+        return _status_icon(DisplayStatus.INVALID)
     if store_data.get('component_key') != expected['component']:
-        return DisplayValue.invalid()
+        return _status_icon(DisplayStatus.INVALID)
     if 'latest' not in store_data:
-        return DisplayValue.invalid()
+        return _status_icon(DisplayStatus.INVALID)
 
     latest = store_data['latest']
     if latest is None:
-        return DisplayValue.empty()
+        return _status_icon(DisplayStatus.EMPTY)
     if not isinstance(latest, Mapping) or set(latest) != {'manifest', 'values'}:
-        return DisplayValue.invalid()
+        return _status_icon(DisplayStatus.INVALID)
     if not isinstance(latest['manifest'], Mapping):
-        return DisplayValue.invalid()
+        return _status_icon(DisplayStatus.INVALID)
 
     values = latest['values']
     if not isinstance(values, Mapping):
-        return DisplayValue.invalid()
+        return _status_icon(DisplayStatus.INVALID)
     if resolved_kpi_key not in values:
-        return DisplayValue.not_mapped()
+        return _status_icon(DisplayStatus.NOT_MAPPED)
 
-    value = values[resolved_kpi_key]
-    if not isinstance(value, Mapping) or set(value) != {'status', 'value_kind', 'value'}:
-        return DisplayValue.invalid()
-    return _resolve_delivery_value(value)
+    entry = values[resolved_kpi_key]
+    if not isinstance(entry, Mapping) or set(entry) != {'status', 'value_kind', 'value'}:
+        return _status_icon(DisplayStatus.INVALID)
+    return _resolve_delivery_entry(entry)
 
 
-# Crea componentes Dash sólo después del Store: valor normal o icono degradado compartido.
-def build_operational_latest_kpi(
-    presentation: OperationalLatestPresentation,
-    *,
-    kpi_key: str,
-    value_factory: AdaOperationalKpiValueFactory,
-    status_class_name: str | None = None,
-) -> Component:
-    if not isinstance(presentation, OperationalLatestPresentation):
-        raise TypeError('presentation must be OperationalLatestPresentation')
-    if not callable(value_factory):
-        raise TypeError('value_factory must be callable')
+# JSON estructural siempre conserva su forma; VALUE degradado se convierte en icono compartido.
+def _resolve_delivery_entry(entry: Mapping[str, object]) -> object:
+    status = entry['status']
+    value_kind = entry['value_kind']
+    payload = entry['value']
 
-    display = presentation.resolve(kpi_key)
-    if display.status is DisplayStatus.OK:
-        value = display.value
-        if value is None:
-            raise RuntimeError('OK operational KPI presentation has no value')
-        rendered = value_factory(value)
-        if not isinstance(rendered, Component):
-            raise TypeError('Operational KPI value factory must return a Dash Component')
-        return rendered
+    if value_kind == 'json':
+        if isinstance(payload, list | dict) and status in {'ok', 'missing', 'error'}:
+            return payload
+        if payload is not None:
+            return _status_icon(DisplayStatus.INVALID)
+        if status == 'missing':
+            return _status_icon(DisplayStatus.EMPTY)
+        if status == 'error':
+            return _status_icon(DisplayStatus.ERROR)
+        return _status_icon(DisplayStatus.INVALID)
 
-    icon = build_display_status_icon(
-        display.status,
-        class_name=status_class_name,
-    )
+    if value_kind == 'value':
+        if status == 'ok' and payload is not None:
+            return payload
+        if payload is not None:
+            return _status_icon(DisplayStatus.INVALID)
+        if status == 'missing':
+            return _status_icon(DisplayStatus.EMPTY)
+        if status == 'error':
+            return _status_icon(DisplayStatus.ERROR)
+        return _status_icon(DisplayStatus.INVALID)
+
+    if value_kind is None and status == 'missing' and payload is None:
+        return _status_icon(DisplayStatus.EMPTY)
+    return _status_icon(DisplayStatus.INVALID)
+
+
+# Centraliza la construcción de iconos para que los consumidores no inspeccionen estados.
+def _status_icon(status: DisplayStatus) -> Component:
+    icon = build_display_status_icon(status)
     if icon is None:
         raise RuntimeError('Degraded operational KPI presentation requires a status icon')
     return icon
 
 
-# Cada callback conserva exactamente la dirección tool/component entre Input y Output.
+# Conserva exactamente la dirección Tool/Component entre Input y Output.
 def _register_component_callback(
     dash_app,
     *,
@@ -227,7 +226,7 @@ def _register_component_callback(
         return rendered
 
 
-# Exige un renderer explícito por cada componente estructural y rechaza extras.
+# Mantiene el contrato de un renderer por componente estructural.
 def _validate_renderers(
     binding: OperationalRenderBinding,
     renderers: Mapping[str, AdaOperationalLatestRenderer],
@@ -252,36 +251,7 @@ def _validate_renderers(
         raise ValueError(f'Missing operational latest renderer: {missing_key!r}')
 
 
-# Traduce los estados del contrato Delivery: ok, missing y error.
-def _resolve_delivery_value(value: Mapping[str, object]) -> DisplayValue:
-    status = value['status']
-    value_kind = value['value_kind']
-    payload = value['value']
-
-    if status == 'ok':
-        if not _optional_value_kind_is_valid(value_kind) or value_kind is None or payload is None:
-            return DisplayValue.invalid()
-        return DisplayValue.ok(payload)
-
-    if status == 'missing':
-        if value_kind is not None or payload is not None:
-            return DisplayValue.invalid()
-        return DisplayValue.empty()
-
-    if status == 'error':
-        if payload is not None or not _optional_value_kind_is_valid(value_kind):
-            return DisplayValue.invalid()
-        return DisplayValue.error()
-
-    return DisplayValue.invalid()
-
-
-# No inventa un catálogo de tipos nuevo; sólo valida el contrato textual de value_kind.
-def _optional_value_kind_is_valid(value: object) -> bool:
-    return value is None or (isinstance(value, str) and bool(value) and value == value.strip())
-
-
-# Los KPI keys pueden tener convención propia; aquí sólo se exige texto limpio no vacío.
+# KPI key sigue siendo la identidad externa del modelador.
 def _required_text(value: object, field_name: str) -> str:
     if not isinstance(value, str) or not value or value != value.strip():
         raise ValueError(f'{field_name} must be a non-empty trimmed string')

@@ -1,4 +1,4 @@
-# Espejo comentado: API pública de la composición ADA y sus fronteras de render operacional.
+# Espejo comentado: API pública de la composición ADA y su normalización operacional latest.
 from ada.web.application.generic.application import create_application_definition
 from ada.web.application.generic.composition import (
     AdaApplicationComposition,
@@ -17,15 +17,13 @@ from ada.web.application.generic.layout import (
 )
 from ada.web.application.generic.operational_latest import (
     OPERATIONAL_LATEST_HOST_TYPE,
-    AdaOperationalKpiValueFactory,
     AdaOperationalLatestRenderer,
     OperationalLatestPresentation,
     build_operational_latest_body,
-    build_operational_latest_kpi,
     create_operational_latest_render_module,
     materialize_operational_latest_hosts,
     operational_latest_host_id,
-    resolve_operational_latest_display_value,
+    resolve_operational_latest_value,
 )
 from ada.web.application.generic.operational_render import (
     AdaOperationalBodyFactory,
@@ -40,13 +38,11 @@ __all__ = [
     'AdaApplicationComposition',
     'AdaOperationalBodyFactory',
     'AdaOperationalComponentRenderer',
-    'AdaOperationalKpiValueFactory',
     'AdaOperationalLatestRenderer',
     'ContentStatePresentationMode',
     'OperationalLatestPresentation',
     'build_body_application_layout',
     'build_operational_latest_body',
-    'build_operational_latest_kpi',
     'create_ada_alarm_surface_modules',
     'create_ada_branding_modules',
     'create_ada_operational_layout',
@@ -62,5 +58,5 @@ __all__ = [
     'materialize_operational_components',
     'materialize_operational_latest_hosts',
     'operational_latest_host_id',
-    'resolve_operational_latest_display_value',
+    'resolve_operational_latest_value',
 ]
