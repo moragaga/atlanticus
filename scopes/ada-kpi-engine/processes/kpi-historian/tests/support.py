@@ -111,8 +111,55 @@ class HistoryMaterializer:
         return self.result
 
 
-def watermark(minute: int = 0) -> KpiWatermark:
-    return KpiWatermark(datetime(2026, 9, 1, 5, minute, tzinfo=UTC))
+class RollingMaterializer:
+    def __init__(self, *, coherent: bool = True, events=None) -> None:
+        self.coherent = coherent
+        self.events = [] if events is None else events
+        self.coherence_calls = 0
+        self.materialize_calls = 0
+        self.rebuild_calls = 0
+        self.batches = ()
+        self.previous_authority = None
+        self.authority = None
+        self.error: Exception | None = None
+
+    def is_coherent(self, authority: KpiHistorianAuthority) -> bool:
+        self.coherence_calls += 1
+        self.authority = authority
+        if self.error is not None:
+            raise self.error
+        return self.coherent
+
+    def materialize(
+        self,
+        *,
+        batches,
+        previous_authority,
+        authority,
+        check_current=None,
+    ) -> None:
+        self.materialize_calls += 1
+        self.batches = tuple(batches)
+        self.previous_authority = previous_authority
+        self.authority = authority
+        self.events.append('rolling')
+        if check_current is not None:
+            check_current()
+        if self.error is not None:
+            raise self.error
+
+    def rebuild(self, *, authority, check_current=None) -> None:
+        self.rebuild_calls += 1
+        self.authority = authority
+        self.events.append('rolling-rebuild')
+        if check_current is not None:
+            check_current()
+        if self.error is not None:
+            raise self.error
+
+
+def watermark(minute: int = 0, *, second: int = 0) -> KpiWatermark:
+    return KpiWatermark(datetime(2026, 9, 1, 5, minute, second, tzinfo=UTC))
 
 
 def evaluation(

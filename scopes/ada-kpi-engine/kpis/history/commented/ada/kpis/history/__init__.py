@@ -1,3 +1,4 @@
+# API pública de historia durable y del contrato compartido del rolling Timeseries.
 from ada.kpis.history.authority import (
     HISTORIAN_AUTHORITY_NAME,
     HISTORIAN_AUTHORITY_NAMESPACE,
@@ -20,6 +21,17 @@ from ada.kpis.history.contract import (
 from ada.kpis.history.encoding import decode_history_value, encode_history_value
 from ada.kpis.history.errors import KpiHistoryContractError
 from ada.kpis.history.revision import historian_revision, historian_watermark_text
+from ada.kpis.history.rolling import (
+    ROLLING_DIRECTORY,
+    ROLLING_FILENAME,
+    ROLLING_GRID_SECONDS,
+    ROLLING_MAX_HOURS,
+    ROLLING_METADATA_KEY,
+    ROLLING_SCHEMA_VERSION,
+    ROLLING_TIMESTAMP_COLUMN,
+    ROLLING_VALUE_TYPES,
+    KpiRollingMetadata,
+)
 
 __version__ = '1.0.0'
 
@@ -34,6 +46,15 @@ __all__ = [
     'HISTORY_SCHEMA_VERSION',
     'KpiHistorianAuthority',
     'KpiHistoryContractError',
+    'KpiRollingMetadata',
+    'ROLLING_DIRECTORY',
+    'ROLLING_FILENAME',
+    'ROLLING_GRID_SECONDS',
+    'ROLLING_MAX_HOURS',
+    'ROLLING_METADATA_KEY',
+    'ROLLING_SCHEMA_VERSION',
+    'ROLLING_TIMESTAMP_COLUMN',
+    'ROLLING_VALUE_TYPES',
     '__version__',
     'decode_history_value',
     'encode_history_value',

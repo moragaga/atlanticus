@@ -1,4 +1,4 @@
-# Errores explícitos del proceso Historian, separados por configuración, repositorio y materialización.
+# Errores explícitos del proceso Historian.
 class KpiHistorianError(RuntimeError):
     pass
 
@@ -12,4 +12,8 @@ class KpiHistorianRepositoryError(KpiHistorianError):
 
 
 class KpiHistorianHistoryError(KpiHistorianError):
+    pass
+
+
+class KpiHistorianRollingError(KpiHistorianError):
     pass

@@ -39,6 +39,21 @@ class _HistoryMaterializer(Protocol):
     def materialize(self, *, batches, check_current=None) -> KpiHistorianWriteResult: ...
 
 
+class _RollingMaterializer(Protocol):
+    def is_coherent(self, authority: KpiHistorianAuthority) -> bool: ...
+
+    def materialize(
+        self,
+        *,
+        batches,
+        previous_authority: KpiHistorianAuthority | None,
+        authority: KpiHistorianAuthority,
+        check_current=None,
+    ) -> None: ...
+
+    def rebuild(self, *, authority: KpiHistorianAuthority, check_current=None) -> None: ...
+
+
 class KpiHistorianJob:
     def __init__(
         self,
@@ -47,6 +62,7 @@ class KpiHistorianJob:
         evaluations: _EvaluationReader,
         authority: _AuthorityStore,
         history: _HistoryMaterializer,
+        rolling: _RollingMaterializer,
         reprocess_current: bool = False,
     ) -> None:
         for value, method_name, field_name in (
@@ -55,6 +71,9 @@ class KpiHistorianJob:
             (authority, 'read', 'authority'),
             (authority, 'commit', 'authority'),
             (history, 'materialize', 'history'),
+            (rolling, 'is_coherent', 'rolling'),
+            (rolling, 'materialize', 'rolling'),
+            (rolling, 'rebuild', 'rolling'),
         ):
             if not callable(getattr(value, method_name, None)):
                 raise TypeError(f'{field_name} must provide a callable {method_name} method')
@@ -64,6 +83,7 @@ class KpiHistorianJob:
         self._evaluations = evaluations
         self._authority_store = authority
         self._history = history
+        self._rolling = rolling
         self._reprocess_current = reprocess_current
         self._authority: KpiHistorianAuthority | None | object = _UNSET
 
@@ -81,15 +101,34 @@ class KpiHistorianJob:
                 ),
             )
 
+        def check_current() -> None:
+            context.raise_if_cancelled()
+            context.assert_lease_current()
+
         is_current = (
             historian_before is not None
             and historian_before.watermark_utc == committed.timestamp_utc
         )
         if is_current and not self._reprocess_current:
+            if self._rolling.is_coherent(historian_before):
+                return _record_result(
+                    context,
+                    KpiHistorianIterationResult(
+                        status=KpiHistorianIterationStatus.SKIPPED_CURRENT,
+                        kpi_committed_watermark_utc=committed.to_text(),
+                        historian_before_watermark_utc=committed.to_text(),
+                        historian_after_watermark_utc=committed.to_text(),
+                        historian_revision=historian_before.revision,
+                    ),
+                )
+            self._rolling.rebuild(
+                authority=historian_before,
+                check_current=check_current,
+            )
             return _record_result(
                 context,
                 KpiHistorianIterationResult(
-                    status=KpiHistorianIterationStatus.SKIPPED_CURRENT,
+                    status=KpiHistorianIterationStatus.PROCESSED,
                     kpi_committed_watermark_utc=committed.to_text(),
                     historian_before_watermark_utc=committed.to_text(),
                     historian_after_watermark_utc=committed.to_text(),
@@ -113,10 +152,6 @@ class KpiHistorianJob:
                 'KPI historian evaluation range does not reach the committed watermark'
             )
 
-        def check_current() -> None:
-            context.raise_if_cancelled()
-            context.assert_lease_current()
-
         write_result = self._history.materialize(
             batches=batches,
             check_current=check_current,
@@ -126,8 +161,15 @@ class KpiHistorianJob:
                 'KPI historian materialization does not reach the committed watermark'
             )
 
-        check_current()
         new_authority = KpiHistorianAuthority(watermark_utc=committed.timestamp_utc)
+        self._rolling.materialize(
+            batches=batches,
+            previous_authority=historian_before,
+            authority=new_authority,
+            check_current=check_current,
+        )
+
+        check_current()
         with context.fenced_mutation():
             historian_after = self._authority_store.commit(new_authority)
         self._authority = historian_after

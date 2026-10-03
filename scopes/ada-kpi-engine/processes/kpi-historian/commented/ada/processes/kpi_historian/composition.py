@@ -1,5 +1,6 @@
-# Espejo pedagógico del módulo productivo.
-# Los comentarios explican intención sin alterar comportamiento ni contratos.
+# Espejo pedagógico de la composición KPI Historian.
+# datasets/ conserva autoridad durable.
+# timeseries/current.parquet es el read model regenerable hermano.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -12,6 +13,10 @@ from ada.kpis.persistence import (
 )
 from ada.processes.kpi_historian.history import KpiHistorianMaterializer
 from ada.processes.kpi_historian.job import KpiHistorianJob
+from ada.processes.kpi_historian.rolling import (
+    KpiHistorianRollingMaterializer,
+    rolling_path,
+)
 from ada.processes.kpi_historian.settings import KpiHistorianSettings
 from ada.processes.kpi_historian.state import KpiHistorianAuthorityStore
 from atlanticus.configuration import ResolvedConfiguration
@@ -35,6 +40,7 @@ class KpiHistorianComposition:
     evaluations: KpiEvaluationRepository
     authority: KpiHistorianAuthorityStore
     history: KpiHistorianMaterializer
+    rolling: KpiHistorianRollingMaterializer
     job: KpiHistorianJob
     definition: JobDefinition
 
@@ -69,12 +75,16 @@ def build_composition(*, configuration: ResolvedConfiguration) -> KpiHistorianCo
     kpi_state = KpiCommitStateRepository(upstream_store)
     authority = KpiHistorianAuthorityStore(store=own_store)
     history = KpiHistorianMaterializer(runtime=dataset_runtime)
-    # La composición resuelve configuración una vez y la entrega explícitamente al job.
+    rolling = KpiHistorianRollingMaterializer(
+        runtime=dataset_runtime,
+        path=rolling_path(runtime_configuration.application_root),
+    )
     job = KpiHistorianJob(
         kpi_state=kpi_state,
         evaluations=evaluations,
         authority=authority,
         history=history,
+        rolling=rolling,
         reprocess_current=settings.reprocess_current,
     )
     definition = _job_definition(poll_interval_seconds=settings.poll_interval_seconds)
@@ -86,6 +96,7 @@ def build_composition(*, configuration: ResolvedConfiguration) -> KpiHistorianCo
         evaluations=evaluations,
         authority=authority,
         history=history,
+        rolling=rolling,
         job=job,
         definition=definition,
     )

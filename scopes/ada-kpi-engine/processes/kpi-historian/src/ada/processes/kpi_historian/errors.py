@@ -12,3 +12,7 @@ class KpiHistorianRepositoryError(KpiHistorianError):
 
 class KpiHistorianHistoryError(KpiHistorianError):
     pass
+
+
+class KpiHistorianRollingError(KpiHistorianError):
+    pass

@@ -33,6 +33,9 @@ def test_composition_separates_historian_from_kpi_runtime_authority(tmp_path) ->
     assert composition.evaluations.paths.application_root == tmp_path / 'ada-kpi-runtime-local'
     assert composition.runtime_configuration.application == 'ada-kpi-historian-local'
     assert composition.settings.reprocess_current is False
+    assert composition.rolling.path == (
+        tmp_path / 'ada-kpi-historian-local' / 'timeseries' / 'current.parquet'
+    )
 
 
 def test_composition_propagates_reprocess_current(tmp_path) -> None:
