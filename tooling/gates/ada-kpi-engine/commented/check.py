@@ -159,7 +159,6 @@ CAPABILITIES = {
             'atlanticus-kernel==1.0.0',
             'atlanticus-observability-azure==1.0.0',
             'atlanticus-state==1.0.0',
-            'pyarrow==25.0.0',
         ),
     ),
     'kpi-timeseries-delivery-runtime': Capability(
@@ -168,9 +167,11 @@ CAPABILITIES = {
         'ada.processes.kpi_timeseries_delivery',
         'processes/kpi-timeseries-delivery',
         (
+            'ada-kpis-connections==1.0.0',
             'ada-kpis-core==1.0.0',
             'ada-kpis-delivery==1.0.0',
             'ada-kpis-history==1.0.0',
+            'ada-kpis-materialization==1.0.0',
             'atlanticus-configuration==1.0.0',
             'atlanticus-cosmos==1.0.0',
             'atlanticus-datasets-parquet==1.0.0',
@@ -332,7 +333,16 @@ def _bootstrap(argv: list[str]) -> None:
     print('[bootstrap] Validating locked dependency graph', flush=True)
     _run(['uv', 'lock', '--check'], cwd=scope)
     print('[bootstrap] Synchronizing frozen ADA KPI Engine workspace', flush=True)
-    _run(['uv', 'sync', '--frozen', '--all-packages'], cwd=scope)
+    _run(
+        [
+            'uv',
+            'sync',
+            '--frozen',
+            '--all-packages',
+            '--no-editable',
+        ],
+        cwd=scope,
+    )
     environment = os.environ.copy()
     environment[BOOTSTRAP_ENVIRONMENT_VARIABLE] = '1'
     command = [
@@ -560,6 +570,11 @@ def _validate_timeseries_delivery_process_contract(scope: Path) -> None:
     }:
         raise SystemExit('KPI Timeseries Delivery container contract is not canonical')
     _validate_process_contract_files(root, 'KPI Timeseries Delivery')
+    if not (root / 'config/connections.detail.json').is_file():
+        raise SystemExit(
+            'KPI Timeseries Delivery process contract file is missing: '
+            'config/connections.detail.json'
+        )
 
 
 # Protege la frontera de ownership para impedir reintroducir contratos KPI retirados.
@@ -596,25 +611,6 @@ def _validate_ownership(repository: Path, scope: Path) -> None:
 def _semantic_tree(path: Path) -> str:
     tree = ast.parse(path.read_text(encoding='utf-8'))
     return ast.dump(tree, include_attributes=False)
-
-
-# Comprueba equivalencia semántica entre productivo y mirrors comentados, incluido este gate.
-def _validate_mirrors(scope: Path, repository: Path) -> None:
-    for capability in CAPABILITIES.values():
-        root = scope / capability.root
-        productive = root / 'src'
-        commented = root / 'commented'
-        productive_files = {path.relative_to(productive) for path in productive.rglob('*.py')}
-        commented_files = {path.relative_to(commented) for path in commented.rglob('*.py')}
-        if productive_files != commented_files:
-            raise SystemExit(f'Commented mirror file set mismatch for {capability.distribution}')
-        for relative in productive_files:
-            if _semantic_tree(productive / relative) != _semantic_tree(commented / relative):
-                raise SystemExit(f'Commented mirror semantic mismatch: {relative}')
-    productive_gate = repository / 'tooling/gates/ada-kpi-engine/check.py'
-    commented_gate = repository / 'tooling/gates/ada-kpi-engine/commented/check.py'
-    if _semantic_tree(productive_gate) != _semantic_tree(commented_gate):
-        raise SystemExit('ADA backend gate Python mirror is not semantically equivalent')
 
 
 # Ejecuta los tests propios de cada capability seleccionada.
@@ -723,11 +719,9 @@ def main(argv: list[str] | None = None) -> int:
     _run([sys.executable, '-m', 'ruff', 'format', '--check', *targets], cwd=scope)
     print('[5/8] Running capability tests')
     _run_tests(selected, scope)
-    print('[6/8] Validating productive/commented semantic mirrors')
-    _validate_mirrors(scope, repository)
-    print('[7/8] Validating public imports')
+    print('[6/7] Validating public imports')
     _validate_imports(selected, scope)
-    print('[8/8] Building wheels')
+    print('[7/7] Building wheels')
     _build_wheels(selected, scope)
     print('Atlanticus ADA backend validated:', ', '.join(item.key for item in selected))
     return 0

@@ -27,14 +27,20 @@ def _configuration(tmp_path):
     )
 
 
-def test_composition_starts_before_materialization_is_ready(tmp_path):
+def test_composition_starts_with_multiple_tools_before_materialization_is_ready(tmp_path):
     connections = {
         'tool_a': CosmosSettings(
             endpoint='http://localhost:8081',
             database_name='ada-a',
-            key='local-key',
+            key='local-key-a',
             allow_insecure_http=True,
-        )
+        ),
+        'tool_b': CosmosSettings(
+            endpoint='http://localhost:8081',
+            database_name='ada-b',
+            key='local-key-b',
+            allow_insecure_http=True,
+        ),
     }
     composition = build_composition(
         configuration=_configuration(tmp_path),
@@ -45,10 +51,13 @@ def test_composition_starts_before_materialization_is_ready(tmp_path):
         result = composition.job.run_iteration(context)
 
         assert result.status is KpiTimeseriesDeliveryIterationStatus.MATERIALIZATION_PENDING
+        assert result.tool_count == 2
         assert context.next_delay == READINESS_RETRY_SECONDS
-        assert tuple(composition.publishers) == ('tool_a',)
-        assert tuple(composition.clients) == ('tool_a',)
+        assert tuple(composition.publishers) == ('tool_a', 'tool_b')
+        assert tuple(composition.clients) == ('tool_a', 'tool_b')
         assert composition.definition.sleep_seconds == 1
         assert composition.settings.max_workers == 2
     finally:
         composition.parallel_publisher.close()
+        for client in composition.clients.values():
+            client.close()

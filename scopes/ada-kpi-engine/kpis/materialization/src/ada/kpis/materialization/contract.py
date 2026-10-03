@@ -9,10 +9,10 @@ from typing import Any
 from ada.kpis.materialization.errors import KpiMaterializationContractError
 
 KPI_REGISTRY_CONTAINER_NAME = 'ada-kpi-registry-projection'
-KPI_REGISTRY_PARTITION_VALUE = 'kpis'
+KPI_REGISTRY_PARTITION_VALUE = 'kpi-registry'
 KPI_REGISTRY_DOCUMENT_TYPE = 'ada_kpi_registry_projection_record'
 KPI_REGISTRY_SCHEMA_VERSION = 1
-KPI_REGISTRY_SOURCE_KEY = 'kpis'
+KPI_REGISTRY_SOURCE_KEY = 'kpi-registry'
 _TOOL_KEY_PATTERN = re.compile(r'[a-z][a-z0-9_]*\Z')
 
 

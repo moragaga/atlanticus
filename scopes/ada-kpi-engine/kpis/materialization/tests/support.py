@@ -4,10 +4,10 @@ from ada.kpis.materialization import KPI_REGISTRY_ITEM_ID
 def projection(*, revision: str = 'registry-r1') -> dict[str, object]:
     return {
         'id': KPI_REGISTRY_ITEM_ID,
-        'partition_key': 'kpis',
+        'partition_key': 'kpi-registry',
         'document_type': 'ada_kpi_registry_projection_record',
         'schema_version': 1,
-        'source_key': 'kpis',
+        'source_key': 'kpi-registry',
         'source_release_id': revision,
         'source_published_at_utc': '2026-10-02T12:00:00+00:00',
         'projected_at_utc': '2026-10-02T12:00:01+00:00',
@@ -28,6 +28,7 @@ def projection(*, revision: str = 'registry-r1') -> dict[str, object]:
                     'series_enabled': True,
                     'series_hours': 8,
                 }
-            ]
+            ],
+            "tool_key": "tool_operaciones_integradas_af1b7d9983bd"
         },
     }
