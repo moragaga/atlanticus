@@ -96,8 +96,12 @@ def _configuration_from_materialized(
     revision = _required_text(document['source_release_id'], 'source_release_id')
     tool_revision = _tool_projection_revision(document['dependencies'])
     payload = document['payload']
-    if not isinstance(payload, Mapping) or set(payload) != {'bindings'}:
+    if not isinstance(payload, Mapping) or set(payload) != {'bindings', 'tool_key'}:
         raise KpiDeliveryConfigurationError('KPI Registry projection payload is invalid')
+    if payload['tool_key'] != document['tool_key']:
+        raise KpiDeliveryConfigurationError(
+            'KPI Registry payload tool_key does not match materialized tool_key'
+        )
     raw_bindings = payload['bindings']
     if not isinstance(raw_bindings, list):
         raise KpiDeliveryConfigurationError('KPI Registry bindings must be an array')

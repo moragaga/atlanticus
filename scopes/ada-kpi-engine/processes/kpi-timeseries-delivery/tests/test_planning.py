@@ -11,6 +11,7 @@ from ada.kpis.materialization import (
     materialize_registry,
 )
 from ada.processes.kpi_timeseries_delivery.errors import (
+    KpiTimeseriesDeliveryConfigurationError,
     KpiTimeseriesDeliveryReadinessPending,
 )
 from ada.processes.kpi_timeseries_delivery.planning import (
@@ -21,15 +22,16 @@ from ada.processes.kpi_timeseries_delivery.planning import (
 
 def _projection(
     *,
+    tool_key: str,
     revision: str,
     bindings: list[dict[str, object]],
 ) -> dict[str, object]:
     return {
         'id': KPI_REGISTRY_ITEM_ID,
-        'partition_key': 'kpis',
+        'partition_key': 'kpi-registry',
         'document_type': 'ada_kpi_registry_projection_record',
         'schema_version': 1,
-        'source_key': 'kpis',
+        'source_key': 'kpi-registry',
         'source_release_id': revision,
         'source_published_at_utc': '2026-10-02T20:00:00Z',
         'projected_at_utc': '2026-10-02T20:00:01Z',
@@ -41,7 +43,7 @@ def _projection(
                 'dependencies': [],
             }
         ],
-        'payload': {'bindings': bindings},
+        'payload': {'bindings': bindings, 'tool_key': tool_key},
     }
 
 
@@ -71,6 +73,7 @@ def test_frozen_configurations_require_exact_materialized_tool_set(tmp_path: Pat
         document=materialize_registry(
             tool_key='tool_a',
             projection=_projection(
+                tool_key='tool_a',
                 revision='registry-a',
                 bindings=[_binding('kpi_a', hours=6)],
             ),
@@ -92,6 +95,7 @@ def test_frozen_configurations_preserve_registry_identity_and_digest(tmp_path: P
     document = materialize_registry(
         tool_key='tool_a',
         projection=_projection(
+            tool_key='tool_a',
             revision='registry-a',
             bindings=[_binding('kpi_a', hours=6)],
         ),
@@ -112,12 +116,35 @@ def test_frozen_configurations_preserve_registry_identity_and_digest(tmp_path: P
     assert target.configuration.bindings[0].series_hours == 6
 
 
+def test_payload_tool_key_must_match_materialized_tool(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    document = materialize_registry(
+        tool_key='tool_a',
+        projection=_projection(
+            tool_key='tool_b',
+            revision='registry-a',
+            bindings=[_binding('kpi_a', hours=6)],
+        ),
+    )
+    store.replace(tool_key='tool_a', document=document)
+
+    with pytest.raises(
+        KpiTimeseriesDeliveryConfigurationError,
+        match='payload tool_key',
+    ):
+        load_frozen_timeseries_configurations(
+            store=store,
+            expected_tool_keys=('tool_a',),
+        )
+
+
 def test_read_plan_unions_enabled_kpis_and_uses_largest_window(tmp_path: Path) -> None:
     store = _store(tmp_path)
     documents = {
         'tool_a': materialize_registry(
             tool_key='tool_a',
             projection=_projection(
+                tool_key='tool_a',
                 revision='registry-a',
                 bindings=[
                     _binding('shared', hours=4),
@@ -129,6 +156,7 @@ def test_read_plan_unions_enabled_kpis_and_uses_largest_window(tmp_path: Path) -
         'tool_b': materialize_registry(
             tool_key='tool_b',
             projection=_projection(
+                tool_key='tool_b',
                 revision='registry-b',
                 bindings=[
                     _binding('shared', hours=8),
@@ -157,6 +185,7 @@ def test_read_plan_can_be_empty_when_no_tool_requests_series(tmp_path: Path) -> 
         document=materialize_registry(
             tool_key='tool_a',
             projection=_projection(
+                tool_key='tool_a',
                 revision='registry-a',
                 bindings=[_binding('latest_only', hours=None, series_enabled=False)],
             ),

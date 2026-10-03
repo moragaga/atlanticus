@@ -8,18 +8,21 @@ from ada.kpis.materialization import (
 from ada.processes.kpi_delivery.configuration import (
     load_frozen_delivery_configurations,
 )
-from ada.processes.kpi_delivery.errors import KpiDeliveryReadinessPending
+from ada.processes.kpi_delivery.errors import (
+    KpiDeliveryConfigurationError,
+    KpiDeliveryReadinessPending,
+)
 
 
-def _projection(revision='registry-r1'):
+def _projection(revision='registry-r1', *, tool_key='tool_a'):
     from ada.kpis.materialization import KPI_REGISTRY_ITEM_ID
 
     return {
         'id': KPI_REGISTRY_ITEM_ID,
-        'partition_key': 'kpis',
+        'partition_key': 'kpi-registry',
         'document_type': 'ada_kpi_registry_projection_record',
         'schema_version': 1,
-        'source_key': 'kpis',
+        'source_key': 'kpi-registry',
         'source_release_id': revision,
         'source_published_at_utc': '2026-10-02T12:00:00+00:00',
         'projected_at_utc': '2026-10-02T12:00:01+00:00',
@@ -40,7 +43,8 @@ def _projection(revision='registry-r1'):
                     'series_enabled': False,
                     'series_hours': None,
                 }
-            ]
+            ],
+            'tool_key': tool_key
         },
     }
 
@@ -56,7 +60,7 @@ def test_frozen_configuration_reads_all_registries_once_at_start(tmp_path):
             tool_key=tool_key,
             document=materialize_registry(
                 tool_key=tool_key,
-                projection=_projection(revision),
+                projection=_projection(revision, tool_key=tool_key),
             ),
         )
 
@@ -72,13 +76,30 @@ def test_frozen_configuration_reads_all_registries_once_at_start(tmp_path):
     assert frozen['tool_a'].configuration.bindings[0].key == 'produccion_total'
 
 
+def test_payload_tool_key_must_match_materialized_tool(tmp_path):
+    store = _store(tmp_path)
+    store.replace(
+        tool_key='tool_a',
+        document=materialize_registry(
+            tool_key='tool_a',
+            projection=_projection(tool_key='tool_b'),
+        ),
+    )
+
+    with pytest.raises(KpiDeliveryConfigurationError, match='payload tool_key'):
+        load_frozen_delivery_configurations(
+            store=store,
+            expected_tool_keys=('tool_a',),
+        )
+
+
 def test_incomplete_materialized_tool_set_is_readiness_pending(tmp_path):
     store = _store(tmp_path)
     store.replace(
         tool_key='tool_a',
         document=materialize_registry(
             tool_key='tool_a',
-            projection=_projection(),
+            projection=_projection(tool_key='tool_a'),
         ),
     )
 
