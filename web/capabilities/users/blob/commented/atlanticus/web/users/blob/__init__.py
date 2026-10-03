@@ -1,4 +1,15 @@
-# Espejo pedagógico: conserva exactamente el contrato productivo y explica su intención.
-from atlanticus.web.users.blob.store import BlobUsersRegistryStore
+# Exporta únicamente los stores vigentes del cutover Users.
+from atlanticus.web.users.blob.recovery import (
+    BlobToolUsersRecoverySnapshotStore,
+    BlobUsersRecoveryAuditStore,
+    BlobUsersReplaceBeforeImageStore,
+)
+from atlanticus.web.users.blob.store import BlobToolMembershipStore, BlobUsersRegistryStore
 
-__all__ = ['BlobUsersRegistryStore']
+__all__ = [
+    'BlobToolMembershipStore',
+    'BlobToolUsersRecoverySnapshotStore',
+    'BlobUsersRecoveryAuditStore',
+    'BlobUsersRegistryStore',
+    'BlobUsersReplaceBeforeImageStore',
+]

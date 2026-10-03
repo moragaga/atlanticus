@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# Master Projection conserva seis dominios Source y agrega Users como operación especial de recovery.
+
 from dataclasses import dataclass
 
 from ada.web.access.configuration import create_ada_access_projection_service
@@ -14,33 +16,22 @@ from ada.web.application.configuration_manager.wiring import (
     TOOLS_SOURCE_KEY,
     ConfigurationManagerStores,
 )
-from ada.web.kpis.definition.configuration import (
-    create_kpi_definition_projection_service,
-)
+from ada.web.kpis.definition.configuration import create_kpi_definition_projection_service
 from ada.web.kpis.registry.configuration import create_kpi_registry_projection_service
 from ada.web.tools.configuration import create_tool_projection_service
-from atlanticus.web.compositions.profiles_manager import (
-    PROFILES_CONFIGURATION_SOURCE_KEY,
-)
+from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
 from atlanticus.web.master_projection.apply import MasterProjectionExecutor
-from atlanticus.web.master_projection.plan import (
-    MasterProjectionPlanner,
-    ProjectionDomain,
-)
+from atlanticus.web.master_projection.plan import MasterProjectionPlanner, ProjectionDomain
 from atlanticus.web.navigation.configuration import create_navigation_projection_service
-from atlanticus.web.profiles.configuration.source_projection import (
-    create_profiles_projection_service,
-)
+from atlanticus.web.profiles.configuration.source_projection import create_profiles_projection_service
 
 
-# Agrupa lectura y escritura en la misma composición sin crear otro Manager.
 @dataclass(frozen=True, slots=True)
 class MasterProjectionBackend:
     planner: MasterProjectionPlanner
     executor: MasterProjectionExecutor
 
 
-# Se conserva la fábrica original para no alterar los consumidores existentes.
 def compose_master_projection_planner(
     stores: ConfigurationManagerStores,
 ) -> MasterProjectionPlanner:
@@ -48,19 +39,29 @@ def compose_master_projection_planner(
     return _create_planner(stores, domains)
 
 
-# El nuevo punto de composición crea una sola colección de dominios compartida.
 def compose_master_projection_backend(
     stores: ConfigurationManagerStores,
 ) -> MasterProjectionBackend:
     domains = _compose_domains(stores)
     planner = _create_planner(stores, domains)
+
+    def replace_users(snapshot_id: str):
+        recovery = stores.users_recovery
+        if recovery is None:
+            raise RuntimeError('Users recovery is not configured')
+        service = recovery() if callable(recovery) else recovery
+        return service.apply_snapshot(snapshot_id)
+
     return MasterProjectionBackend(
         planner=planner,
-        executor=MasterProjectionExecutor(planner=planner, domains=domains),
+        executor=MasterProjectionExecutor(
+            planner=planner,
+            domains=domains,
+            users_replace=replace_users if stores.users_recovery is not None else None,
+        ),
     )
 
 
-# Users continúa siendo un inventario informativo separado de los seis dominios.
 def _create_planner(
     stores: ConfigurationManagerStores,
     domains: tuple[ProjectionDomain, ...],
@@ -72,7 +73,6 @@ def _create_planner(
     )
 
 
-# Se reutilizan exactamente los servicios y Stores ya utilizados por el Manager.
 def _compose_domains(stores: ConfigurationManagerStores) -> tuple[ProjectionDomain, ...]:
     if not isinstance(stores, ConfigurationManagerStores):
         raise TypeError('Master Projection requires configuration stores')
@@ -80,7 +80,6 @@ def _compose_domains(stores: ConfigurationManagerStores) -> tuple[ProjectionDoma
         projection=stores.tools,
         source_key=TOOLS_SOURCE_KEY,
     )
-    # No se impone un orden global: el planner determina las dependencias reales.
     return (
         ProjectionDomain(
             key=NAVIGATION_SOURCE_KEY,

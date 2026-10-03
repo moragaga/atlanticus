@@ -14,6 +14,14 @@ class UsersRegistryConflictError(RuntimeError):
     pass
 
 
+class UsersMembershipUnavailableError(RuntimeError):
+    pass
+
+
+class UsersMembershipConflictError(RuntimeError):
+    pass
+
+
 class UsersIdentityConflictError(RuntimeError):
     pass
 

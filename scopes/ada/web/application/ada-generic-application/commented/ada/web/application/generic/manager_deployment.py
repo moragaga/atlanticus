@@ -1,5 +1,6 @@
-# Espejo pedagógico: mismo comportamiento productivo con contexto explicativo en español.
 from __future__ import annotations
+
+# Membership y recovery se scopean por rutas Blob; users-runtime usa el Cosmos propio de la Tool.
 
 from collections.abc import Iterator, Sequence
 from contextlib import ExitStack, contextmanager
@@ -22,6 +23,7 @@ from ada.web.application.generic.settings import (
     AdaGenericSettings,
     AdaPersistenceMode,
 )
+from ada.web.operational.identification import OperationalIdentificationService
 from atlanticus.connectivity.cosmos import CosmosClient, CosmosSettings
 from atlanticus.connectivity.storage import StorageClient, StorageSettings
 from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
@@ -36,12 +38,14 @@ from atlanticus.web.storage.preparation import (
     ResourcePreparationResources,
     prepare_resources,
 )
-from atlanticus.web.users.blob.recovery import (
-    BlobApprovedUsersSnapshotStore,
+from atlanticus.web.users.blob import (
+    BlobToolUsersRecoverySnapshotStore,
     BlobUsersRecoveryAuditStore,
     BlobUsersReplaceBeforeImageStore,
 )
-from atlanticus.web.users.recovery import UsersApprovedRecoveryService, UsersRecoveryConflictError
+from atlanticus.web.users.models import build_runtime_user
+from atlanticus.web.users.profiles import require_managed_profile
+from atlanticus.web.users.recovery import ToolUsersRecoveryService, UsersRecoveryConflictError
 
 _STORAGE_CONNECTION = 'ada-blob'
 _COSMOS_CONNECTION = 'ada-cosmos'
@@ -64,7 +68,6 @@ class ManagerStartupOptions(BaseSettings):
 
 
 @dataclass(frozen=True, slots=True)
-# Los artifacts application-scoped son un binding físico separado de los Sources Tool-scoped.
 class DurableManagerConfiguration:
     namespace: StorageNamespace
     application_artifacts: ManagerBlobResource
@@ -74,7 +77,6 @@ class DurableManagerConfiguration:
 
 
 @dataclass(frozen=True, slots=True)
-# El runtime conserva el binding de artifacts para consumidores del host sin reintroducir application_source.
 class DurableManagerRuntime:
     stores: ConfigurationManagerStores
     application_artifacts: ManagerBlobResource
@@ -82,7 +84,6 @@ class DurableManagerRuntime:
     connections: ManagerPersistenceConnections
 
 
-# Resuelve bindings físicos explícitos; hoy comparten contenedor, pero mantienen ownership lógico distinto.
 def resolve_durable_manager_configuration(
     settings: AdaGenericSettings,
 ) -> DurableManagerConfiguration:
@@ -153,7 +154,7 @@ def _attach_users_recovery(
     connections: ManagerPersistenceConnections,
     settings: AdaGenericSettings,
 ) -> ConfigurationManagerStores:
-    resource = resolved.resources.users_registry
+    resource = resolved.resources.tool_source
     client = connections.storage[resource.connection_ref]
     namespace = resolved.namespace
 
@@ -163,37 +164,60 @@ def _attach_users_recovery(
             raise UsersRecoveryConflictError('An active Profiles projection is required')
         return active.payload
 
-    snapshots = BlobApprovedUsersSnapshotStore(
-        client=client,
-        container_name=resource.container_name,
-        prefix=namespace.application_blob_name('users/recovery/snapshots'),
+    if stores.operational_source is None or stores.operational is None:
+        raise UsersRecoveryConflictError(
+            'Operational source and projection are required for Users snapshot capture'
+        )
+    operational = OperationalIdentificationService(
+        source_store=stores.operational_source,
+        projections=stores.operational,
+        memberships=stores.users_memberships,
     )
 
-    def recovery_provider() -> UsersApprovedRecoveryService:
-        issuers = {user.issuer for user in stores.users_promoted.list_users()}
-        if len(issuers) != 1:
-            raise UsersRecoveryConflictError(
-                'Users Projection requires one identifiable issuer among promoted users'
+    def materialize_runtime_users():
+        registry = stores.users_registry.load()
+        memberships = stores.users_memberships.load()
+        profiles = profiles_provider()
+        users = []
+        for membership in memberships.memberships:
+            identity = registry.get(membership.user_id)
+            if identity is None:
+                raise UsersRecoveryConflictError(
+                    'Tool membership user is missing from global Users registry'
+                )
+            profile = require_managed_profile(membership.profile_key, profiles=profiles)
+            users.append(
+                build_runtime_user(
+                    identity=identity,
+                    membership=membership,
+                    profile=profile,
+                    operational=operational.runtime_snapshot_for_user(identity.user_id),
+                )
             )
-        return UsersApprovedRecoveryService(
-            registry=stores.users_registry,
-            promoted=stores.users_promoted,
-            replace_store=stores.users_promoted,
-            profiles=profiles_provider,
+        return tuple(sorted(users, key=lambda user: user.user_id))
+
+    snapshots = BlobToolUsersRecoverySnapshotStore(
+        client=client,
+        container_name=resource.container_name,
+        prefix=namespace.scope_blob_name('users/recovery/snapshots'),
+    )
+
+    def recovery_provider() -> ToolUsersRecoveryService:
+        return ToolUsersRecoveryService(
+            runtime=stores.users_runtime,
+            materialize=materialize_runtime_users,
             snapshots=snapshots,
             audit=BlobUsersRecoveryAuditStore(
                 client=client,
                 container_name=resource.container_name,
-                prefix=namespace.application_blob_name('users/recovery/audit'),
+                prefix=namespace.scope_blob_name('users/recovery/audit'),
             ),
             before_images=BlobUsersReplaceBeforeImageStore(
                 client=client,
                 container_name=resource.container_name,
-                prefix=namespace.application_blob_name('users/recovery/replace-before'),
+                prefix=namespace.scope_blob_name('users/recovery/replace-before'),
             ),
-            application_key=namespace.application_namespace,
-            identity_realm=next(iter(issuers)),
-            environment=(f'{settings.environment.value}:{resolved.cosmos_settings.database_name}'),
+            environment=f'{settings.environment.value}:{resolved.cosmos_settings.database_name}',
         )
 
     return replace(
@@ -205,7 +229,6 @@ def _attach_users_recovery(
     )
 
 
-# La preparación deduplica recursos físicos aunque artifacts, Tool Source y Users Registry sean contratos distintos.
 def prepare_durable_manager_resources(
     deployment: DurableManagerRuntime,
     *,

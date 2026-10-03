@@ -1,53 +1,32 @@
-from __future__ import annotations
-
-import gzip
-import json
-
-import pytest
+from datetime import UTC, datetime
 
 from atlanticus.connectivity.storage import StorageBlobNotFoundError, StorageConflictError
 from atlanticus.connectivity.storage.models import StorageBlobProperties
-from atlanticus.web.users.blob import BlobUsersRegistryStore
-from atlanticus.web.users.errors import UsersDefinitionError, UsersRegistryConflictError
-from atlanticus.web.users.identity import build_user_key
-from atlanticus.web.users.models import UserRecord
 
 
-def user(subject: str) -> UserRecord:
-    return UserRecord(
-        user_id=build_user_key(issuer='entra', subject_id=subject),
-        issuer='entra',
-        subject_id=subject,
-        display_name=f'User {subject}',
-        email=None,
-        enabled=True,
-        profile_key='basic',
-    )
-
-
-class FakeStorage:
+class MemoryStorage:
     def __init__(self):
-        self.data = None
-        self.etag = None
-        self.sequence = 0
+        self.data = {}
+        self.etags = {}
+        self.revision = 0
 
-    def _props(self):
-        if self.data is None:
-            raise StorageBlobNotFoundError
-        return StorageBlobProperties(
-            name='users/users.json.gz',
-            size=len(self.data),
-            etag=self.etag,
-        )
+    def _etag(self, blob_name):
+        return self.etags[blob_name]
 
     def get_properties(self, *, container_name, blob_name):
-        assert container_name == 'container'
-        assert blob_name == 'users/users.json.gz'
-        return self._props()
+        if blob_name not in self.data:
+            raise StorageBlobNotFoundError(blob_name)
+        return StorageBlobProperties(
+            name=blob_name,
+            size=len(self.data[blob_name]),
+            etag=self.etags[blob_name],
+            last_modified=datetime.now(UTC),
+        )
 
     def download(self, *, container_name, blob_name):
-        self._props()
-        return self.data
+        if blob_name not in self.data:
+            raise StorageBlobNotFoundError(blob_name)
+        return self.data[blob_name]
 
     def upload(
         self,
@@ -59,12 +38,11 @@ class FakeStorage:
         metadata=None,
         content_type=None,
     ):
-        if self.data is not None and not overwrite:
-            raise StorageConflictError
-        self.data = bytes(data)
-        self.sequence += 1
-        self.etag = f'e{self.sequence}'
-        assert content_type == 'application/gzip'
+        if not overwrite and blob_name in self.data:
+            raise StorageConflictError(blob_name)
+        self.revision += 1
+        self.data[blob_name] = bytes(data)
+        self.etags[blob_name] = f'e{self.revision}'
 
     def upload_if_match(
         self,
@@ -76,51 +54,61 @@ class FakeStorage:
         metadata=None,
         content_type=None,
     ):
-        if self.etag != etag:
-            raise StorageConflictError
-        self.data = bytes(data)
-        self.sequence += 1
-        self.etag = f'e{self.sequence}'
-        assert content_type == 'application/gzip'
+        if blob_name not in self.data or self.etags[blob_name] != etag:
+            raise StorageConflictError(blob_name)
+        self.revision += 1
+        self.data[blob_name] = bytes(data)
+        self.etags[blob_name] = f'e{self.revision}'
+
+    def list_blobs(self, *, container_name, prefix=None, max_items=None):
+        names = sorted(
+            name for name in self.data if prefix is None or name.startswith(prefix)
+        )
+        if max_items is not None:
+            names = names[:max_items]
+        return tuple(self.get_properties(container_name=container_name, blob_name=name) for name in names)
+
+from atlanticus.web.users.blob.store import BlobToolMembershipStore, BlobUsersRegistryStore
+from atlanticus.web.users.identity import build_user_key
+from atlanticus.web.users.models import ToolUserMembership, UserIdentity
 
 
-def test_blob_registry_roundtrip_and_etag_concurrency():
-    client = FakeStorage()
-    store = BlobUsersRegistryStore(client=client, container_name='container')
-    empty = store.load()
-    assert empty.users == ()
-    assert empty.version is None
-    first = store.replace((user('1'),), expected_version=None)
-    assert first.version == 'e1'
-    document = json.loads(gzip.decompress(client.data).decode('utf-8'))
-    assert document['schema_version'] == 2
-    assert document['users'][0]['profile_key'] == 'basic'
-    assert 'authority_key' not in document['users'][0]
-    loaded = store.load()
-    assert loaded == first
-    second = store.replace((user('1'), user('2')), expected_version='e1')
-    assert second.version == 'e2'
-    with pytest.raises(UsersRegistryConflictError):
-        store.replace((user('1'),), expected_version='e1')
+def identity():
+    return UserIdentity(
+        user_id=build_user_key(issuer='issuer', subject_id='subject'),
+        issuer='issuer',
+        subject_id='subject',
+        display_name='User',
+        email='user@example.com',
+    )
 
 
-def test_blob_registry_rejects_previous_authority_schema():
-    client = FakeStorage()
-    legacy_user = user('1')
-    document = {
-        'document_type': 'atlanticus_users_registry',
-        'schema_version': 1,
-        'users': [
-            {
-                **legacy_user.to_document(),
-                'authority_key': 'basic',
-            }
-        ],
-    }
-    document['users'][0].pop('profile_key')
-    client.data = gzip.compress(json.dumps(document).encode('utf-8'))
-    client.etag = 'e1'
+def test_global_registry_persists_identity_only():
+    storage = MemoryStorage()
+    store = BlobUsersRegistryStore(
+        client=storage,
+        container_name='configuration',
+        blob_name='app/users/users.json.gz',
+    )
+    assert store.load().users == ()
+    user = identity()
+    saved = store.replace((user,), expected_version=None)
+    assert saved.users == (user,)
+    assert saved.version is not None
+    assert store.load().users == (user,)
 
-    store = BlobUsersRegistryStore(client=client, container_name='container')
-    with pytest.raises(UsersDefinitionError, match='registry document is invalid'):
-        store.load()
+
+def test_tool_membership_is_separate_blob_and_uses_etag():
+    storage = MemoryStorage()
+    store = BlobToolMembershipStore(
+        client=storage,
+        container_name='configuration',
+        blob_name='app/tool/users/memberships.json.gz',
+    )
+    user = identity()
+    membership = ToolUserMembership(user_id=user.user_id, profile_key='root')
+    saved = store.replace((membership,), expected_version=None)
+    assert saved.memberships == (membership,)
+    updated = ToolUserMembership(user_id=user.user_id, profile_key='basic', enabled=False)
+    saved2 = store.replace((updated,), expected_version=saved.version)
+    assert saved2.memberships == (updated,)

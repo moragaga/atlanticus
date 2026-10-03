@@ -37,7 +37,10 @@ class MemoryProjection(ProjectionStore):
         return projection
 
 
-class NoUsers:
+class NoMemberships:
+    def load(self):
+        return self
+
     def get(self, user_id):
         return None
 
@@ -60,7 +63,7 @@ def _contexts(tmp_path):
     service = OperationalIdentificationService(
         source_store=source,
         projections=projection,
-        users=NoUsers(),
+        memberships=NoMemberships(),
     )
 
     def principal() -> ManagerPrincipal:

@@ -16,18 +16,20 @@ from atlanticus.web.identity.access import (
     AccessStatus,
 )
 from atlanticus.web.identity.models import AuthenticatedIdentity
+from atlanticus.web.profiles.models import BASIC_PROFILE, LOCAL_PROFILE, ROOT_PROFILE, ProfileDefinition
+from atlanticus.web.users.identity import build_user_key
 from atlanticus.web.users.local import LOCAL_ISSUER
-from atlanticus.web.users.models import EffectiveUser
+from atlanticus.web.users.models import RuntimeProfile, RuntimeUser, UserIdentity
 from atlanticus.web.users.runtime import UsersRuntime
 
 
 def _access(
     *,
-    bootstrap_root: bool = False,
-    provider_key: str = 'local',
-    issuer: str = 'issuer-1',
-    subject_id: str = 'subject-1',
-) -> AccessSnapshot:
+    bootstrap_root=False,
+    provider_key='local',
+    issuer='issuer-1',
+    subject_id='subject-1',
+):
     return AccessSnapshot.resolved(
         load_id='load-1',
         identity=AuthenticatedIdentity(
@@ -40,128 +42,80 @@ def _access(
     )
 
 
-def _user(*, profile_key: str = 'basic', is_local: bool = False) -> EffectiveUser:
-    return EffectiveUser(
-        user_id='user-1',
-        subject_id='subject-1',
+def _user(*, profile='basic', enabled=True, issuer='issuer-1', subject_id='subject-1'):
+    profiles = {
+        'basic': BASIC_PROFILE,
+        'root': ROOT_PROFILE,
+        'local': LOCAL_PROFILE,
+        'custom': ProfileDefinition(
+            key='custom',
+            label='Custom',
+            background_color='#123456',
+        ),
+    }
+    identity = UserIdentity(
+        user_id=build_user_key(issuer=issuer, subject_id=subject_id),
+        issuer=issuer,
+        subject_id=subject_id,
         display_name='Managed user',
-        email=None,
-        enabled=True,
-        avatar_text='MU',
-        profile_key=profile_key,
-        is_local=is_local,
+    )
+    return RuntimeUser(
+        identity=identity,
+        enabled=enabled,
+        profile=RuntimeProfile.from_profile(profiles[profile]),
     )
 
 
-def test_managed_root_uses_administrative_override_without_access_keys() -> None:
-    principal = resolve_manager_principal(
-        access=_access(),
-        user=_user(profile_key='root'),
-    )
-
-    assert principal.subject_id == 'subject-1'
+def test_root_runtime_user_gets_administrative_override_and_profile_presentation():
+    principal = resolve_manager_principal(access=_access(), user=_user(profile='root'))
     assert principal.profile_keys == ('root',)
-    assert principal.access_keys == ()
     assert principal.administrative_override is True
-    assert principal.is_local is False
+    assert principal.profile_label == ROOT_PROFILE.label
+    assert principal.profile_background_color == ROOT_PROFILE.background_color
 
 
-@pytest.mark.parametrize('profile_key', ['basic', 'guest', 'custom'])
-def test_non_administrative_managed_profiles_have_no_manager_access(profile_key: str) -> None:
-    principal = resolve_manager_principal(
-        access=_access(),
-        user=_user(profile_key=profile_key),
-    )
-
-    assert principal.profile_keys == (profile_key,)
-    assert principal.access_keys == ()
+@pytest.mark.parametrize('profile', ['basic', 'custom'])
+def test_non_root_runtime_profiles_do_not_get_administrative_override(profile):
+    principal = resolve_manager_principal(access=_access(), user=_user(profile=profile))
+    assert principal.profile_keys == (profile,)
     assert principal.administrative_override is False
 
 
-def test_authenticated_identity_without_managed_user_has_no_manager_access() -> None:
-    principal = resolve_manager_principal(
-        access=_access(),
-        user=None,
-    )
-
-    assert principal.display_name == 'Authenticated identity'
+def test_authenticated_identity_without_runtime_user_has_no_manager_profile():
+    principal = resolve_manager_principal(access=_access(), user=None)
     assert principal.profile_keys == ()
-    assert principal.access_keys == ()
     assert principal.administrative_override is False
-    assert principal.is_local is False
 
 
-def test_bootstrap_root_does_not_implicitly_grant_manager_permissions() -> None:
-    principal = resolve_manager_principal(
-        access=_access(bootstrap_root=True),
-        user=None,
-    )
-
-    assert principal.access_keys == ()
-    assert principal.administrative_override is False
-    with pytest.raises(ValueError, match='Bootstrap root'):
+def test_disabled_or_mismatched_runtime_user_is_rejected():
+    with pytest.raises(ValueError, match='Disabled user'):
+        resolve_manager_principal(access=_access(), user=_user(enabled=False))
+    with pytest.raises(ValueError, match='does not match'):
         resolve_manager_principal(
-            access=_access(bootstrap_root=True),
-            user=_user(profile_key='root'),
+            access=_access(),
+            user=_user(subject_id='different'),
         )
 
 
-def test_local_effective_user_requires_trusted_local_binding_for_override() -> None:
-    local_user = _user(profile_key='local', is_local=True)
-
-    principal = resolve_manager_principal(
-        access=_access(),
-        user=local_user,
-    )
-
-    assert principal.profile_keys == ('local',)
-    assert principal.access_keys == ()
-    assert principal.administrative_override is False
-    assert principal.is_local is True
-
-
-def test_mismatched_or_disabled_user_is_rejected() -> None:
-    for user, message in (
-        (replace(_user(), subject_id='different'), 'does not match'),
-        (replace(_user(), enabled=False), 'Disabled user'),
-    ):
-        with pytest.raises(ValueError, match=message):
-            resolve_manager_principal(
-                access=_access(),
-                user=user,
-            )
-
-
-def test_non_ready_identity_is_rejected() -> None:
-    with pytest.raises(ValueError, match='ready authenticated access'):
-        resolve_manager_principal(
-            access=AccessSnapshot.invalid_identity(),
-            user=None,
-        )
-
-
-def test_binding_reads_shared_access_and_users_snapshots_inside_request() -> None:
+def test_binding_reads_runtime_user_snapshot_inside_request():
     app = Flask(__name__)
-    app.secret_key = 'test-only-secret'
+    app.secret_key = 'test'
     access_runtime = AccessRuntime()
     users_runtime = UsersRuntime()
     binding = ManagerPrincipalBinding(
         access_runtime=access_runtime,
         users_runtime=users_runtime,
     )
-
     with app.test_request_context('/manager'):
         access_runtime.store(_access())
-        users_runtime.store(load_id='load-1', user=_user(profile_key='root'))
+        users_runtime.store(load_id='load-1', user=_user(profile='root'))
         principal = binding()
-
-    assert principal.access_keys == ()
     assert principal.administrative_override is True
 
 
-def test_binding_grants_override_to_known_trusted_local_identity() -> None:
+def test_trusted_local_identity_can_bootstrap_local_principal_without_persisted_runtime_user():
     app = Flask(__name__)
-    app.secret_key = 'test-only-secret'
+    app.secret_key = 'test'
     access_runtime = AccessRuntime()
     users_runtime = UsersRuntime()
     binding = ManagerPrincipalBinding(
@@ -169,7 +123,6 @@ def test_binding_grants_override_to_known_trusted_local_identity() -> None:
         users_runtime=users_runtime,
         trusted_local_users=True,
     )
-
     with app.test_request_context('/manager'):
         access_runtime.store(
             _access(
@@ -179,33 +132,6 @@ def test_binding_grants_override_to_known_trusted_local_identity() -> None:
             )
         )
         principal = binding()
-
-    assert principal.profile_keys == ('local',)
-    assert principal.access_keys == ()
-    assert principal.administrative_override is True
     assert principal.is_local is True
-
-
-def test_binding_does_not_trust_local_identity_without_explicit_flag() -> None:
-    app = Flask(__name__)
-    app.secret_key = 'test-only-secret'
-    access_runtime = AccessRuntime()
-    users_runtime = UsersRuntime()
-    binding = ManagerPrincipalBinding(
-        access_runtime=access_runtime,
-        users_runtime=users_runtime,
-    )
-
-    with app.test_request_context('/manager'):
-        access_runtime.store(
-            _access(
-                provider_key='local',
-                issuer=LOCAL_ISSUER,
-                subject_id='local:jane-doe',
-            )
-        )
-        principal = binding()
-
-    assert principal.profile_keys == ()
-    assert principal.access_keys == ()
-    assert principal.administrative_override is False
+    assert principal.profile_keys == ('local',)
+    assert principal.administrative_override is True

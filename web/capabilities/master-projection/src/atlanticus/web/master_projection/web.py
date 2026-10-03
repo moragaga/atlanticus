@@ -15,10 +15,7 @@ from atlanticus.web.master_projection.apply import (
     MasterApplyOutcome,
     MasterProjectionExecutor,
 )
-from atlanticus.web.master_projection.plan import (
-    MasterProjectionPlanner,
-    ProjectionPlanState,
-)
+from atlanticus.web.master_projection.plan import MasterProjectionPlanner, ProjectionPlanState
 from atlanticus.web.modules import WebModule
 from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.source.models import SourceKey
@@ -48,9 +45,7 @@ class MasterMaterialIdentity(Protocol):
 
 class MasterMaterialReader(Protocol):
     def inspect(self) -> str: ...
-
     def fingerprint(self) -> str | None: ...
-
     def unlock(
         self,
         *,
@@ -119,24 +114,48 @@ button{margin-top:1rem;padding:.65rem 1rem}pre{white-space:pre-wrap;overflow-wra
 </td>{% endif %}
 </tr>{% endfor %}
 </tbody></table>
+
+<h2>Users</h2>
+<p>Estado: {{ plan.users.state.value }}</p>
+{% if plan.users.snapshot_ids %}
+<table><thead><tr><th>Snapshot</th>{% if can_apply %}<th>Operación</th>{% endif %}</tr></thead><tbody>
+{% for snapshot_id in plan.users.snapshot_ids %}
+<tr><td>{{ snapshot_id }}</td>
+{% if can_apply %}<td>
+{% if plan.users.executable %}
+<form method="post" action="{{ route }}">
+<input type="hidden" name="csrf" value="{{ csrf }}">
+<input type="hidden" name="intent" value="prepare_users">
+<input type="hidden" name="snapshot_id" value="{{ snapshot_id }}">
+<button type="submit">Preparar reemplazo users-runtime</button></form>
+{% else %}—{% endif %}
+</td>{% endif %}
+</tr>
+{% endfor %}
+</tbody></table>
+{% else %}<p>No hay snapshots Users disponibles.</p>{% endif %}
+
 {% if can_apply and pending %}
-<section class="notice"><h2>Confirmar proyección individual</h2>
+<section class="notice"><h2>Confirmar operación</h2>
+{% if pending.kind == 'source' %}
 <p>Se ejecutará únicamente <strong>{{ pending.source_key }}</strong> desde su Source current.</p>
 <p>Target seleccionado:</p><pre>{{ pending.target | tojson(indent=2) }}</pre>
+{% elif pending.kind == 'users' %}
+<p>Se reemplazará el conjunto completo de <strong>users-runtime</strong> usando el snapshot:</p>
+<pre>{{ pending.snapshot_id }}</pre>
+<p>Global Users Registry y Tool Membership no serán modificados.</p>
+{% endif %}
 <form method="post" action="{{ route }}">
 <input type="hidden" name="csrf" value="{{ csrf }}">
 <input type="hidden" name="intent" value="confirm">
 <input type="hidden" name="nonce" value="{{ pending.nonce }}">
-<button type="submit">Confirmar despliegue</button></form>
+<button type="submit">{% if pending.kind == 'source' %}Confirmar despliegue{% else %}Confirmar reemplazo users-runtime{% endif %}</button></form>
 <form method="post" action="{{ route }}">
 <input type="hidden" name="csrf" value="{{ csrf }}">
 <input type="hidden" name="intent" value="cancel">
 <button type="submit">Cancelar</button></form>
 </section>
 {% endif %}
-<h2>Users</h2><p>{{ plan.users.state.value }}</p>
-{% if plan.users.snapshot_ids %}<p>Snapshots disponibles: {{ plan.users.snapshot_ids | join(', ') }}</p>{% endif %}
-<p>Users REPLACE no está habilitado en esta etapa.</p>
 {% else %}<p role="status">El backend de planificación no está configurado para este runtime.</p>{% endif %}
 <form method="post" action="{{ logout_route }}"><input type="hidden" name="csrf" value="{{ csrf }}">
 <button type="submit">Cerrar sesión Master</button></form>
@@ -237,6 +256,27 @@ class MasterProjectionWebBinding:
                 and self.planner is not None
             )
 
+        def pending_valid(plan, pending: object) -> bool:
+            if not isinstance(pending, dict) or not isinstance(pending.get('nonce'), str):
+                return False
+            if pending.get('kind') == 'source':
+                if set(pending) != {'kind', 'source_key', 'target', 'nonce'}:
+                    return False
+                return any(
+                    entry.key.value == pending['source_key']
+                    and entry.state in _READY
+                    and entry.to_dict()['current_target'] == pending['target']
+                    for entry in plan.entries
+                )
+            if pending.get('kind') == 'users':
+                if set(pending) != {'kind', 'snapshot_id', 'nonce'}:
+                    return False
+                return (
+                    plan.users.executable
+                    and pending['snapshot_id'] in plan.users.snapshot_ids
+                )
+            return False
+
         def page(*, error: bool = False, notice: str | None = None, code: int = 200):
             status = current_status()
             if status != 'PRESENT':
@@ -255,20 +295,10 @@ class MasterProjectionWebBinding:
                 except Exception:
                     planner_error = True
             pending = session.get(_PENDING_KEY) if can_apply and plan is not None else None
-            if pending is not None and (
-                not isinstance(pending, dict)
-                or set(pending) != {'source_key', 'target', 'nonce'}
-                or not isinstance(pending.get('nonce'), str)
-                or not any(
-                    entry.key.value == pending['source_key']
-                    and entry.state in _READY
-                    and entry.to_dict()['current_target'] == pending['target']
-                    for entry in plan.entries
-                )
-            ):
+            if pending is not None and not pending_valid(plan, pending):
                 session.pop(_PENDING_KEY, None)
                 pending = None
-                notice = notice or 'La selección cambió. Prepara nuevamente el despliegue.'
+                notice = notice or 'La selección cambió. Prepara nuevamente la operación.'
             if authorized and notice is None:
                 notice = session.pop(_RESULT_KEY, None)
             rendered = render_template_string(
@@ -302,6 +332,7 @@ class MasterProjectionWebBinding:
             if intent == 'cancel':
                 session.pop(_PENDING_KEY, None)
                 return redirect(MASTER_PROJECTION_ROUTE, code=303)
+
             if intent == 'prepare':
                 session.pop(_PENDING_KEY, None)
                 selected = request.form.get('source_key', '')
@@ -319,68 +350,90 @@ class MasterProjectionWebBinding:
                 if entry is None or entry.state not in _READY or entry.current_target is None:
                     return page(notice='La proyección no está disponible para ejecución.', code=409)
                 session[_PENDING_KEY] = {
+                    'kind': 'source',
                     'source_key': entry.key.value,
                     'target': entry.to_dict()['current_target'],
                     'nonce': secrets.token_urlsafe(24),
                 }
                 return redirect(MASTER_PROJECTION_ROUTE, code=303)
+
+            if intent == 'prepare_users':
+                session.pop(_PENDING_KEY, None)
+                selected = request.form.get('snapshot_id', '')
+                try:
+                    users = self.planner.inspect().users
+                except Exception:
+                    return page(notice='No fue posible consultar el plan Users.', code=503)
+                if not users.executable or selected not in users.snapshot_ids:
+                    return page(notice='El snapshot Users no está disponible.', code=409)
+                session[_PENDING_KEY] = {
+                    'kind': 'users',
+                    'snapshot_id': selected,
+                    'nonce': secrets.token_urlsafe(24),
+                }
+                return redirect(MASTER_PROJECTION_ROUTE, code=303)
+
             if intent != 'confirm':
                 abort(400)
+
             pending = session.pop(_PENDING_KEY, None)
             if (
                 not isinstance(pending, dict)
-                or set(pending) != {'source_key', 'target', 'nonce'}
-                or not isinstance(pending['nonce'], str)
+                or not isinstance(pending.get('nonce'), str)
                 or not hmac.compare_digest(pending['nonce'], request.form.get('nonce', ''))
             ):
                 return page(notice='No existe una selección válida para confirmar.', code=409)
             try:
-                entry = next(
-                    (
-                        entry
-                        for entry in self.planner.inspect().entries
-                        if entry.key.value == pending['source_key']
-                    ),
-                    None,
-                )
+                plan = self.planner.inspect()
             except Exception:
                 return page(notice='No fue posible consultar el plan.', code=503)
-            if (
-                entry is None
-                or entry.state not in _READY
-                or entry.current_target is None
-                or entry.to_dict()['current_target'] != pending['target']
-            ):
-                return page(
-                    notice='La selección cambió. Prepara nuevamente el despliegue.', code=409
-                )
+            if not pending_valid(plan, pending):
+                return page(notice='La selección cambió. Prepara nuevamente la operación.', code=409)
+
             try:
-                result = self.executor.apply(
-                    source_key=SourceKey(pending['source_key']),
-                    expected_target=entry.current_target,
-                )
+                if pending['kind'] == 'source':
+                    entry = next(
+                        entry
+                        for entry in plan.entries
+                        if entry.key.value == pending['source_key']
+                    )
+                    result = self.executor.apply(
+                        source_key=SourceKey(pending['source_key']),
+                        expected_target=entry.current_target,
+                    )
+                    session[_RESULT_KEY] = (
+                        f'Proyección aplicada: {result.source_key.value}.'
+                        if result.outcome is MasterApplyOutcome.APPLIED
+                        else f'Proyección ya actualizada: {result.source_key.value}.'
+                    )
+                else:
+                    result = self.executor.apply_users(snapshot_id=pending['snapshot_id'])
+                    session[_RESULT_KEY] = (
+                        f'users-runtime reemplazado desde snapshot {result.snapshot_id}.'
+                    )
             except MasterApplyError as error:
                 code = (
                     409
                     if error.reason
-                    in ('STALE_SELECTION', 'SOURCE_MISSING', 'BLOCKED', 'INVALID_SELECTION')
+                    in (
+                        'STALE_SELECTION',
+                        'SOURCE_MISSING',
+                        'BLOCKED',
+                        'INVALID_SELECTION',
+                    )
                     else 503
                 )
                 notice = (
-                    'La proyección cambió o quedó bloqueada. Revisa su estado.'
+                    'La selección cambió o quedó bloqueada. Revisa su estado.'
                     if code == 409
-                    else 'No fue posible verificar el despliegue. Consulta el estado antes de reintentar.'
+                    else 'No fue posible verificar el despliegue o reemplazo. Consulta el estado antes de reintentar.'
                 )
                 return page(notice=notice, code=code)
             except Exception:
                 return page(
-                    notice='No fue posible verificar el despliegue. Consulta el estado antes de reintentar.',
+                    notice='No fue posible verificar el despliegue o reemplazo. Consulta el estado antes de reintentar.',
                     code=503,
                 )
-            if result.outcome is MasterApplyOutcome.APPLIED:
-                session[_RESULT_KEY] = f'Proyección aplicada: {result.source_key.value}.'
-            else:
-                session[_RESULT_KEY] = f'Proyección ya actualizada: {result.source_key.value}.'
             return redirect(MASTER_PROJECTION_ROUTE, code=303)
 
         def dispatch():

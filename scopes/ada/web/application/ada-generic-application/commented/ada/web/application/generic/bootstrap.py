@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# Login/session consumen users-runtime como única autoridad y no vuelven a consultar Profiles.
+
 import logging
 from collections.abc import Callable
 from dataclasses import replace
@@ -8,16 +10,11 @@ from ada.web.application.configuration_manager.composition import (
     MANAGER_ROUTE_PREFIX,
     build_configuration_manager_surface,
 )
-from ada.web.application.configuration_manager.dependencies import (
-    ConfigurationManagerDependencies,
-)
-from ada.web.application.configuration_manager.pages import (
-    __name__ as _manager_pages_package,
-)
+from ada.web.application.configuration_manager.dependencies import ConfigurationManagerDependencies
+from ada.web.application.configuration_manager.pages import __name__ as _manager_pages_package
 from ada.web.application.configuration_manager.wiring import (
     NAVIGATION_SOURCE_KEY,
     ConfigurationManagerStores,
-    read_manager_projection,
 )
 from ada.web.application.generic.composition import (
     AdaApplicationComposition,
@@ -28,35 +25,24 @@ from ada.web.application.generic.manager_principal import (
     ManagerPrincipalBinding,
     compose_integrated_manager_dependencies,
 )
-from ada.web.application.generic.master_projection.composition import (
-    compose_master_projection_backend,
-)
+from ada.web.application.generic.master_projection.composition import compose_master_projection_backend
 from ada.web.application.generic.navigation_binding import (
     manager_navigation_principal,
     public_navigation_principal,
 )
-from ada.web.application.generic.operational_collector import (
-    attach_operational_kpi_collector,
-)
+from ada.web.application.generic.operational_collector import attach_operational_kpi_collector
 from ada.web.application.generic.operational_tool import (
     create_definition_from_tool_resolution,
     resolve_operational_tool_projection,
 )
 from ada.web.application.generic.settings import AdaGenericSettings
-from ada.web.operational_render_binding import (
-    OperationalRenderBinding,
-    bind_operational_render,
-)
+from ada.web.operational_render_binding import OperationalRenderBinding, bind_operational_render
 from ada.web.tools.persistence import (
     ToolProjectionResolution,
     ToolProjectionResolutionState,
     compose_tool_persistence,
 )
-from atlanticus.connectivity.cosmos import (
-    CosmosClient,
-    CosmosError,
-    CosmosOperationError,
-)
+from atlanticus.connectivity.cosmos import CosmosClient, CosmosError, CosmosOperationError
 from atlanticus.connectivity.storage import (
     StorageAuthenticationError,
     StorageAuthorizationError,
@@ -67,15 +53,8 @@ from atlanticus.connectivity.storage import (
     StorageOperationError,
 )
 from atlanticus.web.application import create_web_application
-from atlanticus.web.compositions.profiles_manager import (
-    PROFILES_CONFIGURATION_SOURCE_KEY,
-)
 from atlanticus.web.configuration import WebSettings
-from atlanticus.web.identity.access import (
-    AccessResolver,
-    AccessRuntime,
-    AuthenticatedAccessResolver,
-)
+from atlanticus.web.identity.access import AccessResolver, AccessRuntime
 from atlanticus.web.identity.errors import IdentityConfigurationError
 from atlanticus.web.identity.local import LocalIdentityProvider
 from atlanticus.web.identity.module import create_identity_module
@@ -97,7 +76,6 @@ from atlanticus.web.navigation.configuration import (
     NavigationConfigurationCatalog,
     create_projected_navigation_definition_provider,
 )
-from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.projection.errors import ProjectionStoreError
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.errors import SourceUnavailableError
@@ -108,7 +86,6 @@ from atlanticus.web.users.runtime import UsersRuntime
 from atlanticus.web.users.store import UsersRuntimeStore
 
 _LOGGER = logging.getLogger(__name__)
-# Excepciones de infraestructura que degradan solamente la vista administrativa.
 _MANAGER_UNAVAILABLE_ERRORS = (
     CosmosOperationError,
     StorageAuthenticationError,
@@ -121,14 +98,11 @@ _MANAGER_UNAVAILABLE_ERRORS = (
     UsersStoreUnavailableError,
 )
 
-
-# El arranque de ADA y del Collector conserva su ciclo de vida actual.
 AdaOperationalCompositionFactory = Callable[
     [OperationalRenderBinding | None], AdaApplicationComposition
 ]
 
 
-# Cada proyecto consumidor puede aportar su composición, sin modificar ADA Generic.
 def create_operational_application_runtime(
     *,
     settings: AdaGenericSettings | None = None,
@@ -146,7 +120,6 @@ def create_operational_application_runtime(
         manager_dependencies, ConfigurationManagerDependencies
     ):
         raise TypeError('manager_dependencies must be ConfigurationManagerDependencies')
-
     if manager_stores is not None and not isinstance(manager_stores, ConfigurationManagerStores):
         raise TypeError('manager_stores must be ConfigurationManagerStores')
     if identity_provider is not None and not isinstance(identity_provider, IdentityProvider):
@@ -170,7 +143,6 @@ def create_operational_application_runtime(
         )
         manager_dependencies = manager_identity[2]
     resolution = _resolve_tool_projection(resolved_settings)
-    # La Tool Projection se resuelve una vez; el consumidor recibe sólo su estructura.
     if composition_factory is None:
         definition = create_definition_from_tool_resolution(resolution)
     else:
@@ -200,8 +172,6 @@ def create_operational_application_runtime(
             resolver,
             master_routes=master_material_reader is not None,
         )
-    # La composición directa con ManagerPrincipalBinding requiere un snapshot Access.
-    # Solo el entorno local puede instalar de forma controlada su proveedor local.
     elif manager_dependencies is not None and isinstance(
         manager_dependencies.principal_provider, ManagerPrincipalBinding
     ):
@@ -265,8 +235,6 @@ def create_operational_application_runtime(
                 reader=master_material_reader,
                 executor=backend.executor if backend is not None else None,
             ).module()
-            # Atender Master antes de Identity y Navigation: no necesita el snapshot del Manager.
-            # El propio módulo Master limita las rutas exactas y valida su sesión.
             definition = replace(definition, modules=(master_module, *definition.modules))
         return create_web_application(definition)
     except Exception:
@@ -274,9 +242,6 @@ def create_operational_application_runtime(
         raise
 
 
-# El composition root decide qué fallas son recuperables; el núcleo Web es neutral.
-# Prepara identidad y dependencias una sola vez, antes de construir la aplicación.
-# La misma instancia de UsersRuntime alimenta autorización del Manager y bootstrap de acceso.
 def _prepare_manager_identity(
     *,
     stores: ConfigurationManagerStores,
@@ -292,13 +257,8 @@ def _prepare_manager_identity(
         raise IdentityConfigurationError(
             'Production Manager requires a production identity provider'
         )
-    shared_store = (
-        stores.users_promoted if isinstance(stores.users_promoted, UsersRuntimeStore) else None
-    )
-    if shared_store is None and not isinstance(resolved_provider, LocalIdentityProvider):
-        raise ValueError('Non-local Manager identity requires a shared Users runtime store')
-    if shared_store is None and settings.environment.is_production:
-        raise ValueError('Production Manager requires a shared Users runtime store')
+    if not isinstance(stores.users_runtime, UsersRuntimeStore):
+        raise ValueError('Manager requires a shared Users runtime store')
 
     access_runtime = AccessRuntime()
     users_runtime = UsersRuntime()
@@ -310,34 +270,13 @@ def _prepare_manager_identity(
         source_name=source_name,
         projection_name=projection_name,
     )
-    if shared_store is None:
-        resolver = AuthenticatedAccessResolver()
-    else:
-
-        def profiles_provider() -> ProfileCatalog:
-            try:
-                active = read_manager_projection(
-                    stores.profiles,
-                    PROFILES_CONFIGURATION_SOURCE_KEY,
-                    ProfileCatalog,
-                    unavailable_causes=(CosmosOperationError,),
-                )
-            except ProjectionStoreError as error:
-                raise UsersStoreUnavailableError(
-                    'Users profiles projection is unavailable'
-                ) from error
-            return active if active is not None else ProfileCatalog()
-
-        resolver = UsersAccessResolver(
-            store=shared_store,
-            runtime=users_runtime,
-            profiles=profiles_provider,
-        )
+    resolver = UsersAccessResolver(
+        store=stores.users_runtime,
+        runtime=users_runtime,
+    )
     return resolved_provider, users_runtime, dependencies, resolver
 
 
-# Sustituye la identidad local por la identidad explícita en el composition root.
-# El módulo Users comparte con el resolver el mismo runtime de sesión por request.
 def _bind_manager_identity(
     definition: WebApplicationDefinition,
     provider: IdentityProvider,
@@ -346,7 +285,6 @@ def _bind_manager_identity(
     *,
     master_routes: bool = False,
 ) -> WebApplicationDefinition:
-    # Añade Identity sólo cuando la composición Manager lo necesita.
     identity = create_identity_module(
         provider,
         access_resolver=resolver,
@@ -381,7 +319,6 @@ def _bind_manager_navigation(
         raise ValueError('Operational definition must contain exactly one navigation module')
     if sum(module.name == 'navigation-authorization' for module in definition.modules) != 1:
         raise ValueError('Operational definition must contain navigation authorization')
-    # Navigation lee la proyección publicada; sin Store permanece vacío.
     definition_provider = (
         NavigationDefinitionProvider(lambda: NavigationDefinition())
         if projection is None
@@ -390,7 +327,6 @@ def _bind_manager_navigation(
             source_key=NAVIGATION_SOURCE_KEY,
         )
     )
-    # El principal administrativo ya fue verificado por la composición de Manager.
 
     def resolve_principal():
         try:
@@ -415,7 +351,6 @@ def _integrate_manager(
     definition: WebApplicationDefinition,
     dependencies: ConfigurationManagerDependencies,
 ) -> WebApplicationDefinition:
-    # Solo el anfitrión integrado aporta el retorno a la aplicación operacional.
     surface = ManagerSurface(
         replace(build_configuration_manager_surface(dependencies), application_home_href='/')
     )
@@ -425,12 +360,10 @@ def _integrate_manager(
         page_packages=(_manager_pages_package,),
         route_prefix=MANAGER_ROUTE_PREFIX,
         location_id=LOCATION_ID,
-        # Errores de validación/programación no se incluyen para evitar ocultarlos.
         unavailable_errors=_MANAGER_UNAVAILABLE_ERRORS,
     )
 
 
-# Las conexiones transitorias de Storage/Cosmos se cierran al terminar la resolución.
 def _resolve_tool_projection(settings: AdaGenericSettings) -> ToolProjectionResolution:
     storage_client = _create_storage_client(settings)
     cosmos_client = _create_cosmos_client(settings)
@@ -453,16 +386,13 @@ def _create_storage_client(settings: AdaGenericSettings) -> StorageClient | None
     return StorageClient(settings=storage_settings)
 
 
-def _create_cosmos_client(
-    settings: AdaGenericSettings,
-) -> CosmosClient | None:
+def _create_cosmos_client(settings: AdaGenericSettings) -> CosmosClient | None:
     cosmos_settings = settings.cosmos_settings()
     if cosmos_settings is None:
         return None
     return CosmosClient(settings=cosmos_settings)
 
 
-# Se intenta cerrar siempre el cliente antes de devolver o propagar.
 def _close_client(client: StorageClient | CosmosClient | None, provider_name: str) -> None:
     if client is None:
         return

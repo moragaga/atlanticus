@@ -137,7 +137,7 @@ def test_one_cosmos_connection_keeps_navigation_outside_shared_users_support():
     assert stores.kpi_registry.get_active(KPI_REGISTRY_SOURCE_KEY) is None
     assert stores.kpi_definitions.get_active(KPI_DEFINITION_SOURCE_KEY) is None
     assert (
-        stores.users_promoted.resolve(
+        stores.users_runtime.resolve(
             AuthenticatedIdentity(provider_key='entra', issuer='issuer', subject_id='subject')
         )
         is None
@@ -152,6 +152,9 @@ def test_one_cosmos_connection_keeps_navigation_outside_shared_users_support():
         'ada-kpi-definition-projection',
         'users-runtime',
     ]
+    runtime_call = ada_cosmos.calls[-1]
+    assert runtime_call['item_id'] == runtime_call['partition_key']
+    assert runtime_call['partition_key'] != 'ada-site/plant'
     navigation = ada_cosmos.calls[0]
     support = ada_cosmos.calls[1:3]
     assert navigation['container_name'] != support[0]['container_name']

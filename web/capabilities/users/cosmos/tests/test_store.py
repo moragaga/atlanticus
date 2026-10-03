@@ -1,57 +1,34 @@
-from __future__ import annotations
-
-from dataclasses import replace
-
-import pytest
-
-from atlanticus.connectivity.cosmos import CosmosConflictError, CosmosPatchOperation
-from atlanticus.web.identity.models import AuthenticatedIdentity
-from atlanticus.web.users.cosmos import CosmosUsersStore
-from atlanticus.web.users.errors import UsersDefinitionError
-from atlanticus.web.users.identity import build_user_key
-from atlanticus.web.users.models import UserRecord
+from atlanticus.connectivity.cosmos import CosmosConflictError, CosmosItemNotFoundError
 
 
-def user(subject: str) -> UserRecord:
-    return UserRecord(
-        user_id=build_user_key(issuer='entra', subject_id=subject),
-        issuer='entra',
-        subject_id=subject,
-        display_name=f'User {subject}',
-        email=None,
-        enabled=True,
-        profile_key='basic',
-    )
-
-
-class FakeCosmos:
+class MemoryCosmos:
     def __init__(self):
         self.items = {}
-        self.query_result = None
-        self.etag_sequence = 0
+        self.revision = 0
 
-    def find_item(self, *, container_name, item_id, partition_key, include_metadata=False):
-        value = self.items.get(item_id)
-        if value is None:
-            return None
-        result = dict(value)
-        if include_metadata:
-            result['_etag'] = result.get('_etag', 'etag')
-        else:
-            result.pop('_etag', None)
+    def _with_etag(self, document):
+        result = dict(document)
+        result['_etag'] = f'e{self.revision}'
         return result
+
+    def find_item(
+        self,
+        *,
+        container_name,
+        item_id,
+        partition_key,
+        include_metadata=False,
+    ):
+        value = self.items.get(item_id)
+        return None if value is None else dict(value)
 
     def create_item(self, *, container_name, item, include_metadata=False):
-        if item['id'] in self.items:
-            raise CosmosConflictError
-        self.etag_sequence += 1
-        value = dict(item)
-        value['_etag'] = f'e{self.etag_sequence}'
-        self.items[item['id']] = value
-        result = dict(value)
-        if not include_metadata:
-            result.pop('_etag', None)
-        return result
+        item_id = item['id']
+        if item_id in self.items:
+            raise CosmosConflictError(item_id)
+        self.revision += 1
+        self.items[item_id] = self._with_etag(item)
+        return dict(self.items[item_id])
 
     def patch_item(
         self,
@@ -63,59 +40,103 @@ class FakeCosmos:
         if_match_etag=None,
         include_metadata=False,
     ):
+        if item_id not in self.items:
+            raise CosmosItemNotFoundError(item_id)
         current = self.items[item_id]
-        if current['_etag'] != if_match_etag:
-            raise AssertionError('unexpected etag')
+        if if_match_etag is not None and current.get('_etag') != if_match_etag:
+            raise CosmosConflictError(item_id)
+        updated = dict(current)
         for operation in operations:
-            assert isinstance(operation, CosmosPatchOperation)
-            current[operation.path[1:]] = operation.value
-        self.etag_sequence += 1
-        current['_etag'] = f'e{self.etag_sequence}'
-        result = dict(current)
-        if not include_metadata:
-            result.pop('_etag', None)
-        return result
+            assert operation.operation == 'set'
+            updated[operation.path.removeprefix('/')] = operation.value
+        self.revision += 1
+        updated['_etag'] = f'e{self.revision}'
+        self.items[item_id] = updated
+        return dict(updated)
 
-    def query_items(self, *, container_name, query, parameters=None, cross_partition=False):
-        return tuple(
-            {key: value for key, value in item.items() if key != '_etag'}
-            for item in self.items.values()
-        )
+    def query_items(
+        self,
+        *,
+        container_name,
+        query,
+        parameters=None,
+        cross_partition=False,
+        include_metadata=False,
+    ):
+        values = {}
+        for parameter in parameters or ():
+            values[parameter.name] = parameter.value
+        result = []
+        for item in self.items.values():
+            if (
+                item.get('document_type') == values.get('@document_type')
+            ):
+                result.append(dict(item))
+        return tuple(result)
+
+    def delete_item(
+        self,
+        *,
+        container_name,
+        item_id,
+        partition_key,
+        if_match_etag=None,
+    ):
+        if item_id not in self.items:
+            raise CosmosItemNotFoundError(item_id)
+        current = self.items[item_id]
+        if if_match_etag is not None and current.get('_etag') != if_match_etag:
+            raise CosmosConflictError(item_id)
+        del self.items[item_id]
+
+from atlanticus.web.identity.models import AuthenticatedIdentity
+from atlanticus.web.profiles.models import BASIC_PROFILE, ROOT_PROFILE
+from atlanticus.web.users.identity import build_user_key
+from atlanticus.web.users.models import RuntimeProfile, RuntimeUser, UserIdentity
 
 
-def test_cosmos_store_contains_only_promoted_user_contract():
-    client = FakeCosmos()
-    store = CosmosUsersStore(client=client, container_name='users-runtime')
-    managed = user('1')
-    assert store.get(managed.user_id) is None
-    assert store.create(managed) == managed
-    identity = AuthenticatedIdentity(provider_key='entra', issuer='entra', subject_id='1')
-    assert store.resolve(identity) == managed
-    assert store.list_users() == (managed,)
-    updated = replace(managed, enabled=False, profile_key='root')
-    assert store.replace(updated) == updated
-    assert store.resolve(identity) == updated
-    persisted = client.items[managed.user_id]
-    assert persisted['schema_version'] == 2
-    assert persisted['profile_key'] == 'root'
-    assert 'authority_key' not in persisted
+def identity(subject='subject'):
+    return AuthenticatedIdentity(
+        provider_key='entra',
+        issuer='issuer',
+        subject_id=subject,
+    )
 
 
-def test_cosmos_store_rejects_previous_authority_schema():
-    client = FakeCosmos()
-    managed = user('1')
-    client.items[managed.user_id] = {
-        'id': managed.user_id,
-        'document_type': 'atlanticus_user',
-        'schema_version': 1,
-        'issuer': managed.issuer,
-        'subject_id': managed.subject_id,
-        'display_name': managed.display_name,
-        'email': managed.email,
-        'enabled': True,
-        'authority_key': 'basic',
-        '_etag': 'e1',
-    }
-    store = CosmosUsersStore(client=client, container_name='users-runtime')
-    with pytest.raises(UsersDefinitionError, match='schema version'):
-        store.get(managed.user_id)
+def runtime_user(subject='subject', *, root=False):
+    user_identity = UserIdentity(
+        user_id=build_user_key(issuer='issuer', subject_id=subject),
+        issuer='issuer',
+        subject_id=subject,
+        display_name=f'User {subject}',
+    )
+    return RuntimeUser(
+        identity=user_identity,
+        enabled=True,
+        profile=RuntimeProfile.from_profile(ROOT_PROFILE if root else BASIC_PROFILE),
+    )
+
+from atlanticus.web.users.cosmos import CosmosUsersRuntimeStore
+
+
+def test_runtime_store_resolves_directly_from_the_tool_cosmos():
+    cosmos = MemoryCosmos()
+    store = CosmosUsersRuntimeStore(
+        client=cosmos,
+        container_name='users-runtime',
+    )
+    user = runtime_user()
+    assert store.replace_all((user,)) == (user,)
+    assert store.resolve(identity()) == user
+    stored = next(iter(cosmos.items.values()))
+    assert stored['id'] == user.user_id
+    assert 'application_key' not in stored
+    assert 'tool_key' not in stored
+
+
+def test_unknown_identity_returns_none():
+    store = CosmosUsersRuntimeStore(
+        client=MemoryCosmos(),
+        container_name='users-runtime',
+    )
+    assert store.resolve(identity()) is None

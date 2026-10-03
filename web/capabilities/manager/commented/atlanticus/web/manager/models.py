@@ -1,4 +1,4 @@
-# Espejo pedagógico: mantiene el mismo AST que producción y documenta el contrato Manager en español.
+# La presentación del perfil viaja en el principal desde RuntimeUser; Manager no vuelve a leer Profiles.
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -14,9 +14,9 @@ ManagerPrincipalProvider = Callable[[], 'ManagerPrincipal']
 
 _PROFILE_KEY_PATTERN = re.compile(r'^[a-z0-9][a-z0-9._-]*$')
 _ROUTE_PREFIX_PATTERN = re.compile(r'^/[a-z0-9][a-z0-9/_-]*$')
+_HEX_COLOR = re.compile(r'^#[0-9A-F]{6}$')
 
 
-# El principal mantiene permisos granulares y una señal explícita de administración total.
 @dataclass(frozen=True, slots=True)
 class ManagerPrincipal:
     subject_id: str
@@ -25,6 +25,10 @@ class ManagerPrincipal:
     access_keys: tuple[str, ...] = ()
     is_local: bool = False
     administrative_override: bool = False
+    profile_label: str | None = None
+    profile_background_color: str | None = None
+    profile_text_color: str | None = None
+    avatar_text: str | None = None
 
     def __post_init__(self) -> None:
         if not self.subject_id.strip():
@@ -34,9 +38,15 @@ class ManagerPrincipal:
         for key in self.profile_keys + self.access_keys:
             if not _PROFILE_KEY_PATTERN.fullmatch(key):
                 raise ManagerDefinitionError('Manager principal key has an invalid format')
+        if self.profile_label is not None and not self.profile_label.strip():
+            raise ManagerDefinitionError('Manager principal profile label must not be empty')
+        for value in (self.profile_background_color, self.profile_text_color):
+            if value is not None and _HEX_COLOR.fullmatch(value) is None:
+                raise ManagerDefinitionError('Manager principal profile color must use #RRGGBB')
+        if self.avatar_text is not None and not self.avatar_text.strip():
+            raise ManagerDefinitionError('Manager principal avatar text must not be empty')
 
 
-# El consumidor define marcas opcionales; ninguna marca es obligatoria para Manager.
 @dataclass(frozen=True, slots=True)
 class ManagerHeaderBrandMark:
     role: str
@@ -83,7 +93,6 @@ class ManagerEntry:
     web_module: WebModule | None = None
 
 
-# La vista complementaria no participa del ciclo de vida del módulo.
 @dataclass(frozen=True, slots=True)
 class ManagerCompanionView:
     title: str
@@ -152,7 +161,6 @@ class ManagerSurfaceDefinition:
     route_prefix: str = ''
     web_modules: tuple[WebModule, ...] = ()
     entries: tuple[ManagerEntry, ...] = ()
-    # El retorno a una aplicación es opt-in: Manager no conoce rutas operacionales.
     application_home_href: str | None = None
     header_brand_marks: tuple[ManagerHeaderBrandMark, ...] = ()
     header_title: str = 'Manager'
@@ -163,9 +171,10 @@ class ManagerSurfaceDefinition:
         if prefix and (not _ROUTE_PREFIX_PATTERN.fullmatch(prefix) or prefix.endswith('/')):
             raise ManagerDefinitionError('Manager route prefix has an invalid format')
         href = self.application_home_href
-        if href is not None and href != '/' and (not _ROUTE_PREFIX_PATTERN.fullmatch(href) or href.endswith('/')):
+        if href is not None and href != '/' and (
+            not _ROUTE_PREFIX_PATTERN.fullmatch(href) or href.endswith('/')
+        ):
             raise ManagerDefinitionError('Manager application return route must be an internal path')
-        # El header no permite dos marcas del mismo tipo ni logos no publicados.
         if not self.header_title.strip():
             raise ManagerDefinitionError('Manager header title must not be empty')
         if self.header_subtitle is not None and not self.header_subtitle.strip():

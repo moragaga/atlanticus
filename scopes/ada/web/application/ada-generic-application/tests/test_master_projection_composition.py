@@ -1,43 +1,23 @@
-from __future__ import annotations
+from dataclasses import replace
 
 from ada.web.application.configuration_manager.local_runtime import (
-    InProcessProjectionStore,
-    InProcessUsersAdministrationStore,
-    InProcessUsersRegistryStore,
+    create_local_configuration_manager_stores,
 )
-from ada.web.application.configuration_manager.wiring import ConfigurationManagerStores
 from ada.web.application.generic.master_projection.composition import (
     compose_master_projection_planner,
 )
-from atlanticus.web.master_projection.plan import (
-    ProjectionPlanState,
-    UsersPlanState,
-)
-from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
+from atlanticus.web.master_projection.plan import ProjectionPlanState, UsersPlanState
 
 
-def test_web_backend_reuses_six_projectors_and_does_not_require_manager_permissions(tmp_path):
-    source = LocalSourceStore(LocalSourceSettings(root=tmp_path / 'sources'))
-    stores = ConfigurationManagerStores(
-        navigation_source=source,
-        tools_source=source,
-        access_source=source,
-        profiles_source=source,
-        kpi_registry_source=source,
-        kpi_definitions_source=source,
-        navigation=InProcessProjectionStore(),
-        tools=InProcessProjectionStore(),
-        access=InProcessProjectionStore(),
-        profiles=InProcessProjectionStore(),
-        kpi_registry=InProcessProjectionStore(),
-        kpi_definitions=InProcessProjectionStore(),
-        users_registry=InProcessUsersRegistryStore(),
-        users_promoted=InProcessUsersAdministrationStore(),
+def test_master_projection_keeps_six_source_domains_and_users_is_independent(tmp_path, monkeypatch):
+    monkeypatch.setenv('ATLANTICUS_ENVIRONMENT', 'local')
+    stores = create_local_configuration_manager_stores(source_root=tmp_path / 'source')
+    stores = replace(
+        stores,
         users_recovery=lambda: None,
-        users_snapshot_ids=lambda: ('approved-1',),
+        users_snapshot_ids=lambda: ('snapshot-1',),
     )
-    planner = compose_master_projection_planner(stores)
-    report = planner.inspect()
+    report = compose_master_projection_planner(stores).inspect()
     assert {item.key.value for item in report.entries} == {
         'navigation',
         'profiles-configuration',
@@ -46,11 +26,6 @@ def test_web_backend_reuses_six_projectors_and_does_not_require_manager_permissi
         'kpi-registry',
         'kpi-definitions',
     }
-    assert {item.key.value for item in report.entries if item.prerequisites} == {
-        'ada-access',
-        'kpi-registry',
-        'kpi-definitions',
-    }
     assert all(item.state is ProjectionPlanState.SOURCE_MISSING for item in report.entries)
-    assert report.users.state is UsersPlanState.PROFILES_PENDING
-    assert report.ready == ()
+    assert report.users.state is UsersPlanState.SNAPSHOT_SELECTION_REQUIRED
+    assert report.users.executable is True

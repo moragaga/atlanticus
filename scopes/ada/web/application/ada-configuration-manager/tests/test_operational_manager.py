@@ -53,7 +53,10 @@ class MemoryProjectionStore(ProjectionStore):
         return projection
 
 
-class FakeUsers:
+class FakeMemberships:
+    def load(self):
+        return self
+
     def get(self, user_id):
         return SimpleNamespace(user_id=user_id) if user_id == USER_ID else None
 
@@ -76,7 +79,7 @@ def _contexts(tmp_path, *, allowed=True):
     service = OperationalIdentificationService(
         source_store=store,
         projections=projection,
-        users=FakeUsers(),
+        memberships=FakeMemberships(),
     )
 
     def principal() -> ManagerPrincipal:
@@ -231,7 +234,6 @@ def test_assignment_remains_immediate_and_uses_individual_source(tmp_path):
     assert status.projected_source_release is not None
 
 
-
 def test_catalog_draft_rejects_stale_editor_revision(tmp_path):
     catalog_context, assignment_context, _contracts, service = _contexts(tmp_path)
     app = FakeApp()
@@ -278,6 +280,7 @@ def test_assignment_callback_rejects_stale_source_revision(tmp_path):
     assert revision is no_update
     assert result is not None
     assert service.assignment_for_read(USER_ID).area_id is None
+
 
 def test_assignment_callbacks_enforce_permission(tmp_path):
     catalog_context, assignment_context, _contracts, service = _contexts(tmp_path, allowed=False)

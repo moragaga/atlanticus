@@ -1,7 +1,6 @@
-# Construye servicios y stores concretos y entrega dependencias consistentes a la composición del Manager.
-# Este espejo conserva exactamente el mismo AST y comportamiento que producción.
-
 from __future__ import annotations
+
+# El Manager recibe stores explícitos para Global Users, Membership Tool y users-runtime.
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -68,19 +67,18 @@ from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.models import SourceKey
 from atlanticus.web.source.store import SourceStore
 from atlanticus.web.users.administration import UsersAdministrationService
-from atlanticus.web.users.recovery import ApprovedUsersSnapshot, UsersApprovedRecoveryService
+from atlanticus.web.users.recovery import ToolUsersRecoveryService, ToolUsersRecoverySnapshot
 from atlanticus.web.users.store import (
-    UsersAdministrationStore,
+    ToolMembershipStore,
     UsersDirectoryReader,
     UsersRegistryStore,
+    UsersRuntimeStore,
 )
-
 
 PayloadT = TypeVar('PayloadT')
 
 
 @dataclass(frozen=True, slots=True)
-# Clase con responsabilidad y estado explícitos dentro de esta frontera.
 class ConfigurationManagerStores:
     navigation_source: SourceStore
     tools_source: SourceStore
@@ -95,18 +93,16 @@ class ConfigurationManagerStores:
     kpi_registry: ProjectionStore[KpiRegistry]
     kpi_definitions: ProjectionStore[KpiDefinitionCatalog]
     users_registry: UsersRegistryStore
-    users_promoted: UsersAdministrationStore
+    users_memberships: ToolMembershipStore
+    users_runtime: UsersRuntimeStore
     users_directory: UsersDirectoryReader | None = None
     operational_source: SourceStore | None = None
     operational: ProjectionStore[OperationalDocument] | None = None
-    users_recovery: (
-        UsersApprovedRecoveryService | Callable[[], UsersApprovedRecoveryService] | None
-    ) = None
+    users_recovery: ToolUsersRecoveryService | Callable[[], ToolUsersRecoveryService] | None = None
     users_snapshot_ids: Callable[[], tuple[str, ...]] | None = None
     users_snapshot_summaries: Callable[[], tuple[tuple[str, str | None], ...]] | None = None
-    users_read_snapshot: Callable[[str], ApprovedUsersSnapshot] | None = None
+    users_read_snapshot: Callable[[str], ToolUsersRecoverySnapshot] | None = None
 
-    # Expone o ejecuta la responsabilidad `__post_init__` sin cambiar contratos externos.
     def __post_init__(self) -> None:
         for name, expected in (
             ('navigation_source', SourceStore),
@@ -122,15 +118,14 @@ class ConfigurationManagerStores:
             ('kpi_registry', ProjectionStore),
             ('kpi_definitions', ProjectionStore),
             ('users_registry', UsersRegistryStore),
-            ('users_promoted', UsersAdministrationStore),
+            ('users_memberships', ToolMembershipStore),
+            ('users_runtime', UsersRuntimeStore),
         ):
             if not isinstance(getattr(self, name), expected):
                 raise TypeError(f'Configuration Manager {name} must implement {expected.__name__}')
         if (self.operational_source is None) != (self.operational is None):
             raise ValueError('Operational source and projection must be injected together')
-        if self.operational_source is not None and not isinstance(
-            self.operational_source, SourceStore
-        ):
+        if self.operational_source is not None and not isinstance(self.operational_source, SourceStore):
             raise TypeError('Operational source must implement SourceStore')
         if self.operational is not None and not isinstance(self.operational, ProjectionStore):
             raise TypeError('Operational projection must implement ProjectionStore')
@@ -142,28 +137,12 @@ class ConfigurationManagerStores:
             raise ValueError('Users recovery and snapshot catalog must be injected together')
         if (
             self.users_recovery is not None
-            and not isinstance(self.users_recovery, UsersApprovedRecoveryService)
+            and not isinstance(self.users_recovery, ToolUsersRecoveryService)
             and not callable(self.users_recovery)
         ):
             raise TypeError('Users recovery service has an invalid type')
-        if self.users_snapshot_ids is not None and not callable(self.users_snapshot_ids):
-            raise TypeError('Users snapshot catalog must be callable')
-        if any(
-            provider is not None
-            for provider in (
-                self.users_snapshot_summaries,
-                self.users_read_snapshot,
-            )
-        ) and (
-            self.users_recovery is None
-            or self.users_snapshot_ids is None
-            or not callable(self.users_snapshot_summaries)
-            or not callable(self.users_read_snapshot)
-        ):
-            raise ValueError('Users snapshot metadata providers must be injected together')
 
 
-# Expone o ejecuta la responsabilidad `compose_configuration_manager_dependencies` sin cambiar contratos externos.
 def compose_configuration_manager_dependencies(
     *,
     stores: ConfigurationManagerStores,
@@ -194,7 +173,7 @@ def compose_configuration_manager_dependencies(
         OperationalIdentificationService(
             source_store=stores.operational_source,
             projections=stores.operational,
-            users=stores.users_promoted,
+            memberships=stores.users_memberships,
         )
         if stores.operational_source is not None and stores.operational is not None
         else None
@@ -246,7 +225,6 @@ def compose_configuration_manager_dependencies(
         access_key=PROFILES_MANAGER_ACCESS_KEY,
     )
 
-    # Expone o ejecuta la responsabilidad `profiles_provider` sin cambiar contratos externos.
     def profiles_provider() -> ProfileCatalog:
         return (
             read_manager_projection(
@@ -258,12 +236,10 @@ def compose_configuration_manager_dependencies(
             or ProfileCatalog()
         )
 
-    # Convierte Profiles al contrato neutral de Navigation sin crear dependencia inversa.
     def navigation_profile_options() -> tuple[NavigationProfileOption, ...]:
-        catalog = profiles_provider()
         return tuple(
             NavigationProfileOption(profile.key, profile.label)
-            for profile in catalog.all()
+            for profile in profiles_provider().all()
             if profile.key not in {'root', 'local'}
         )
 
@@ -283,7 +259,7 @@ def compose_configuration_manager_dependencies(
 
     users_administration = UsersAdministrationService(
         registry=stores.users_registry,
-        promoted=stores.users_promoted,
+        memberships=stores.users_memberships,
         profiles=profiles_provider,
         directory=stores.users_directory,
     )
@@ -321,9 +297,7 @@ def compose_configuration_manager_dependencies(
         users_entry=users_manager.entry,
         operational_service=operational_service,
         operational_catalog_contracts=operational_catalog_contracts,
-        operational_users=stores.users_promoted.list_users
-        if operational_service is not None
-        else None,
+        operational_users=users_administration.managed_users if operational_service is not None else None,
         kpi_registry_source=kpi_registry_source,
         kpi_registry_projection=kpi_registry_projection,
         kpi_registry_destinations=kpi_destinations,
@@ -343,7 +317,6 @@ def compose_configuration_manager_dependencies(
     )
 
 
-# Expone o ejecuta la responsabilidad `read_manager_projection` sin cambiar contratos externos.
 def read_manager_projection(
     store: ProjectionStore[PayloadT],
     source_key: SourceKey,

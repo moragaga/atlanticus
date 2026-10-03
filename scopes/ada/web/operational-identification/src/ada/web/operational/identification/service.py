@@ -3,11 +3,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 from ada.web.operational.identification.errors import OperationalReferenceError
-from ada.web.operational.identification.keys import (
-    CATALOG_SOURCE_KEY,
-    assignment_source_key,
-    source_kind,
-)
+from ada.web.operational.identification.keys import CATALOG_SOURCE_KEY, assignment_source_key, source_kind
 from ada.web.operational.identification.models import (
     OperationalAssignment,
     OperationalCatalog,
@@ -21,8 +17,12 @@ from atlanticus.web.projection.service import SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.models import PublishResult, SourceKey, SourceSnapshot
 from atlanticus.web.source.store import SourceStore
-from atlanticus.web.users.models import EffectiveUser
-from atlanticus.web.users.store import UsersAdministrationStore
+from atlanticus.web.users.models import (
+    RuntimeOperational,
+    RuntimeOperationalReference,
+    RuntimeUser,
+)
+from atlanticus.web.users.store import ToolMembershipStore
 
 
 class OperationalIdentificationService:
@@ -31,11 +31,11 @@ class OperationalIdentificationService:
         *,
         source_store: SourceStore,
         projections: ProjectionStore[OperationalDocument],
-        users: UsersAdministrationStore,
+        memberships: ToolMembershipStore,
     ) -> None:
         self._source = OperationalSourceService(store=source_store)
         self._projections = projections
-        self._users = users
+        self._memberships = memberships
         self._projection: SourceProjectionService[OperationalDocument] = (
             create_operational_projection_service(
                 source=source_store,
@@ -149,20 +149,59 @@ class OperationalIdentificationService:
 
     def assignment_for_read(self, user_id: str) -> OperationalAssignment:
         self._require_user(user_id)
-        return self._read_projected_assignment(user_id)
+        return self._projected_assignment(user_id)
 
-    def assignment_for_resolved_user(self, user: EffectiveUser) -> OperationalAssignment:
-        if not isinstance(user, EffectiveUser):
-            raise TypeError('A resolved effective user is required')
-        if not user.enabled or user.profile_key == 'guest':
+    def assignment_for_resolved_user(self, user: RuntimeUser) -> OperationalAssignment:
+        if not isinstance(user, RuntimeUser):
+            raise TypeError('A resolved RuntimeUser is required')
+        if not user.enabled:
             raise OperationalReferenceError('Operational user is not authorized')
-        if user.is_local:
-            return OperationalAssignment(user_id=user.user_id)
-        return self._read_projected_assignment(user.user_id)
+        return OperationalAssignment(
+            user_id=user.user_id,
+            area_id=None if user.operational.area is None else str(user.operational.area.id),
+            position_id=(
+                None if user.operational.position is None else str(user.operational.position.id)
+            ),
+            group_id=(
+                None if user.operational.group is None else int(user.operational.group.id)
+            ),
+        )
 
-    def _read_projected_assignment(self, user_id: str) -> OperationalAssignment:
-        source_key = assignment_source_key(user_id)
-        active = self._projections.get_active(source_key)
+    def runtime_snapshot_for_user(self, user_id: str) -> RuntimeOperational:
+        self._require_user(user_id)
+        assignment = self._projected_assignment(user_id)
+        catalog = self.catalog_for_read()
+        document = catalog.to_document()
+        areas = {item['id']: item['label'] for item in document['areas']}
+        groups = {item['id']: item['label'] for item in document['groups']}
+        area = (
+            None
+            if assignment.area_id is None
+            else RuntimeOperationalReference(
+                id=assignment.area_id,
+                label=areas[assignment.area_id],
+            )
+        )
+        position = None
+        if assignment.position_id is not None:
+            resolved = catalog.position(assignment.position_id)
+            if resolved is None:
+                raise OperationalReferenceError(
+                    'Projected Operational assignment references an unavailable position'
+                )
+            position = RuntimeOperationalReference(id=resolved.id, label=resolved.label)
+        group = (
+            None
+            if assignment.group_id is None
+            else RuntimeOperationalReference(
+                id=assignment.group_id,
+                label=groups[assignment.group_id],
+            )
+        )
+        return RuntimeOperational(area=area, position=position, group=group)
+
+    def _projected_assignment(self, user_id: str) -> OperationalAssignment:
+        active = self._projections.get_active(assignment_source_key(user_id))
         if active is None:
             return OperationalAssignment(user_id=user_id)
         if (
@@ -174,6 +213,6 @@ class OperationalIdentificationService:
 
     def _require_user(self, user_id: str) -> None:
         assignment_source_key(user_id)
-        user = self._users.get(user_id)
-        if user is None or user.user_id != user_id:
-            raise OperationalReferenceError('User must already be promoted')
+        membership = self._memberships.load().get(user_id)
+        if membership is None:
+            raise OperationalReferenceError('User must already have a Tool membership')

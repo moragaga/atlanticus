@@ -24,7 +24,6 @@ class ProjectionPlanState(StrEnum):
 class UsersPlanState(StrEnum):
     CATALOG_UNAVAILABLE = 'CATALOG_UNAVAILABLE'
     SNAPSHOT_MISSING = 'SNAPSHOT_MISSING'
-    PROFILES_PENDING = 'PROFILES_PENDING'
     SNAPSHOT_SELECTION_REQUIRED = 'SNAPSHOT_SELECTION_REQUIRED'
 
 
@@ -77,13 +76,20 @@ class UsersPlan:
     snapshot_ids: tuple[str, ...] = ()
     error_type: str | None = None
 
+    @property
+    def executable(self) -> bool:
+        return (
+            self.state is UsersPlanState.SNAPSHOT_SELECTION_REQUIRED
+            and bool(self.snapshot_ids)
+        )
+
     def to_dict(self) -> dict[str, object]:
         return {
             'state': self.state.value,
             'snapshot_ids': list(self.snapshot_ids),
             'error_type': self.error_type,
             'operation': 'users.replace',
-            'executable': False,
+            'executable': self.executable,
         }
 
 
@@ -102,7 +108,7 @@ class MasterProjectionPlan:
 
     def to_dict(self) -> dict[str, object]:
         return {
-            'mode': 'READ_ONLY',
+            'mode': 'MANUAL',
             'entries': [entry.to_dict() for entry in self.entries],
             'ready_source_keys': [entry.key.value for entry in self.ready],
             'users': self.users.to_dict(),
@@ -135,7 +141,6 @@ class MasterProjectionPlanner:
             raise TypeError('Users snapshot catalog must be callable')
         self._domains = {domain.key: domain for domain in domains}
         self._order = _dependency_order(self._domains)
-        self._profiles_key = profiles_key
         self._users_snapshot_ids = users_snapshot_ids
 
     def inspect(self) -> MasterProjectionPlan:
@@ -182,7 +187,7 @@ class MasterProjectionPlanner:
             planned[key] = entry
         return MasterProjectionPlan(
             entries=tuple(planned[key] for key in self._order),
-            users=self._inspect_users(planned[self._profiles_key]),
+            users=self._inspect_users(),
         )
 
     @staticmethod
@@ -201,7 +206,9 @@ class MasterProjectionPlanner:
             )
         except Exception as error:
             return _Observed(
-                source_release=None, projected_target=None, error_type=type(error).__name__
+                source_release=None,
+                projected_target=None,
+                error_type=type(error).__name__,
             )
 
     @staticmethod
@@ -249,7 +256,7 @@ class MasterProjectionPlanner:
         )
         return ProjectionPlanEntry(state=state, current_target=target, **common)
 
-    def _inspect_users(self, profiles: ProjectionPlanEntry) -> UsersPlan:
+    def _inspect_users(self) -> UsersPlan:
         if self._users_snapshot_ids is None:
             return UsersPlan(state=UsersPlanState.CATALOG_UNAVAILABLE)
         try:
@@ -269,13 +276,14 @@ class MasterProjectionPlanner:
                 state=UsersPlanState.CATALOG_UNAVAILABLE,
                 error_type=type(error).__name__,
             )
-        if not snapshot_ids:
-            state = UsersPlanState.SNAPSHOT_MISSING
-        elif profiles.state is not ProjectionPlanState.CURRENT:
-            state = UsersPlanState.PROFILES_PENDING
-        else:
-            state = UsersPlanState.SNAPSHOT_SELECTION_REQUIRED
-        return UsersPlan(state=state, snapshot_ids=snapshot_ids)
+        return UsersPlan(
+            state=(
+                UsersPlanState.SNAPSHOT_SELECTION_REQUIRED
+                if snapshot_ids
+                else UsersPlanState.SNAPSHOT_MISSING
+            ),
+            snapshot_ids=snapshot_ids,
+        )
 
 
 def _dependency_order(domains: dict[SourceKey, ProjectionDomain]) -> tuple[SourceKey, ...]:

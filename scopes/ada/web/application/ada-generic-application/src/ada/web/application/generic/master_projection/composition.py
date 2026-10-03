@@ -19,14 +19,9 @@ from ada.web.kpis.registry.configuration import create_kpi_registry_projection_s
 from ada.web.tools.configuration import create_tool_projection_service
 from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
 from atlanticus.web.master_projection.apply import MasterProjectionExecutor
-from atlanticus.web.master_projection.plan import (
-    MasterProjectionPlanner,
-    ProjectionDomain,
-)
+from atlanticus.web.master_projection.plan import MasterProjectionPlanner, ProjectionDomain
 from atlanticus.web.navigation.configuration import create_navigation_projection_service
-from atlanticus.web.profiles.configuration.source_projection import (
-    create_profiles_projection_service,
-)
+from atlanticus.web.profiles.configuration.source_projection import create_profiles_projection_service
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,9 +42,21 @@ def compose_master_projection_backend(
 ) -> MasterProjectionBackend:
     domains = _compose_domains(stores)
     planner = _create_planner(stores, domains)
+
+    def replace_users(snapshot_id: str):
+        recovery = stores.users_recovery
+        if recovery is None:
+            raise RuntimeError('Users recovery is not configured')
+        service = recovery() if callable(recovery) else recovery
+        return service.apply_snapshot(snapshot_id)
+
     return MasterProjectionBackend(
         planner=planner,
-        executor=MasterProjectionExecutor(planner=planner, domains=domains),
+        executor=MasterProjectionExecutor(
+            planner=planner,
+            domains=domains,
+            users_replace=replace_users if stores.users_recovery is not None else None,
+        ),
     )
 
 

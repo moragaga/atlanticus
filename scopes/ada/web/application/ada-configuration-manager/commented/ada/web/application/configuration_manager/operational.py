@@ -1,7 +1,6 @@
-# Define la frontera Web del módulo de Datos operacionales: catálogo con lifecycle Manager y asignaciones como vista complementaria.
-# Este espejo conserva exactamente el mismo AST y comportamiento que producción.
-
 from __future__ import annotations
+
+# Operational consume ManagedUser de authoring; UserRecord dejó de existir.
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -32,7 +31,7 @@ from atlanticus.web.manager import (
     manager_access_granted,
 )
 from atlanticus.web.modules import WebModule
-from atlanticus.web.users.models import UserRecord
+from atlanticus.web.users.models import ManagedUser
 
 OPERATIONAL_MANAGER_ACCESS_KEY = 'operational.manage'
 OPERATIONAL_MANAGER_ASSETS = AssetLayer(
@@ -44,19 +43,16 @@ OPERATIONAL_MANAGER_ASSETS = AssetLayer(
 
 
 @dataclass(frozen=True, slots=True)
-# Clase con responsabilidad y estado explícitos dentro de esta frontera.
 class OperationalAssignmentContext:
     service: OperationalIdentificationService
-    promoted_users: Callable[[], tuple[UserRecord, ...]]
+    promoted_users: Callable[[], tuple[ManagedUser, ...]]
     principal: Callable[[], ManagerPrincipal]
 
-    # Expone o ejecuta la responsabilidad `can_manage` sin cambiar contratos externos.
     def can_manage(self) -> bool:
         return manager_access_granted(self.principal(), OPERATIONAL_MANAGER_ACCESS_KEY)
 
 
 @dataclass(frozen=True, slots=True)
-# Clase con responsabilidad y estado explícitos dentro de esta frontera.
 class OperationalCatalogManagerWebContext:
     editor: OperationalCatalogDraftEditor
     current_payload_provider: Callable[[], dict[str, object] | None]
@@ -70,7 +66,6 @@ class OperationalCatalogManagerWebContext:
     can_manage: Callable[[], bool]
 
 
-# Expone o ejecuta la responsabilidad `create_operational_manager_module` sin cambiar contratos externos.
 def create_operational_manager_module(
     *,
     catalog_context: OperationalCatalogManagerWebContext,
@@ -93,7 +88,7 @@ def create_operational_manager_module(
         title='Datos operacionales',
         route='/operational-identification',
         order=15,
-        description='Cargos y asignaciones operacionales de usuarios promovidos.',
+        description='Cargos y asignaciones operacionales de usuarios de la Tool.',
         layout=lambda _services: build_operational_catalog_configuration(catalog_context),
         history_preview_renderer=build_operational_catalog_history_preview,
         source_key=CATALOG_SOURCE_KEY,

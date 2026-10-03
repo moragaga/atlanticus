@@ -1,7 +1,8 @@
-# Espejo pedagógico: Users Administration conserva identidad de origen y limita edición a profile y enabled.
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+# La administración compone identidad global con membership Tool sin duplicar ownership.
+
+from dataclasses import dataclass
 from enum import StrEnum
 
 from atlanticus.web.profiles.models import ProfileDefinition
@@ -11,18 +12,21 @@ from atlanticus.web.users.errors import (
     UsersIdentityConflictError,
     UsersRegistryConflictError,
 )
-from atlanticus.web.users.models import DiscoveredUser, UserRecord, UsersRegistrySnapshot
+from atlanticus.web.users.models import (
+    DiscoveredUser,
+    ManagedUser,
+    ToolMembershipSnapshot,
+    ToolUserMembership,
+    UserIdentity,
+    UsersRegistrySnapshot,
+)
 from atlanticus.web.users.profiles import (
     UsersProfileCatalogProvider,
     available_managed_profiles,
     require_managed_profile,
     resolve_profile_catalog,
 )
-from atlanticus.web.users.store import (
-    UsersAdministrationStore,
-    UsersDirectoryReader,
-    UsersRegistryStore,
-)
+from atlanticus.web.users.store import ToolMembershipStore, UsersDirectoryReader, UsersRegistryStore
 
 
 class UserCandidateState(StrEnum):
@@ -35,9 +39,9 @@ class UserCandidateState(StrEnum):
 class UserCandidate:
     user_id: str
     state: UserCandidateState
-    registry_user: UserRecord | None = None
+    registry_user: UserIdentity | None = None
     directory_user: DiscoveredUser | None = None
-    promoted_user: UserRecord | None = None
+    promoted_user: ManagedUser | None = None
     issues: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
@@ -51,6 +55,7 @@ class UserCandidate:
 @dataclass(frozen=True, slots=True)
 class UsersAdministrationSnapshot:
     registry: UsersRegistrySnapshot
+    memberships: ToolMembershipSnapshot
     candidates: tuple[UserCandidate, ...]
     profiles: tuple[ProfileDefinition, ...]
 
@@ -60,12 +65,12 @@ class UsersAdministrationService:
         self,
         *,
         registry: UsersRegistryStore,
-        promoted: UsersAdministrationStore,
+        memberships: ToolMembershipStore,
         profiles: UsersProfileCatalogProvider,
         directory: UsersDirectoryReader | None = None,
     ) -> None:
         self._registry = registry
-        self._promoted = promoted
+        self._memberships = memberships
         self._profiles = profiles
         self._directory = directory
 
@@ -74,16 +79,25 @@ class UsersAdministrationService:
 
     def discover(self) -> UsersAdministrationSnapshot:
         registry = self._registry.load()
-        promoted_users = self._promoted.list_users()
+        memberships = self._memberships.load()
         directory_users = self._directory.list_discovered() if self._directory is not None else ()
         return UsersAdministrationSnapshot(
             registry=registry,
+            memberships=memberships,
             candidates=_resolve_candidates(
-                registry_users=registry.users,
-                promoted_users=promoted_users,
+                registry=registry,
+                memberships=memberships,
                 directory_users=directory_users,
             ),
             profiles=self.available_profiles(),
+        )
+
+    def managed_users(self) -> tuple[ManagedUser, ...]:
+        snapshot = self.discover()
+        return tuple(
+            candidate.promoted_user
+            for candidate in snapshot.candidates
+            if candidate.promoted_user is not None
         )
 
     def promote(
@@ -93,16 +107,12 @@ class UsersAdministrationService:
         profile_key: str,
         enabled: bool = True,
         expected_registry_version: str | None,
-    ) -> UserRecord:
+        expected_membership_version: str | None = None,
+    ) -> ManagedUser:
         normalized_user_id = _required_user_id(user_id)
-        profile = require_managed_profile(
-            profile_key,
-            profiles=resolve_profile_catalog(self._profiles),
-        )
+        profile = require_managed_profile(profile_key, profiles=resolve_profile_catalog(self._profiles))
         if not isinstance(enabled, bool):
             raise TypeError('enabled must be boolean')
-        if self._promoted.get(normalized_user_id) is not None:
-            raise UserAlreadyPromotedError('User is already promoted')
 
         snapshot = self.discover()
         candidate = next(
@@ -111,49 +121,52 @@ class UsersAdministrationService:
         )
         if candidate is None:
             raise UserPromotionError('User is not available from storage or directory discovery')
+        if candidate.state is UserCandidateState.PROMOTED:
+            raise UserAlreadyPromotedError('User is already promoted')
         if candidate.state is UserCandidateState.CONFLICT:
             raise UserPromotionError('User candidate has unresolved conflicts')
 
-        registry_user = candidate.registry_user
-        directory_user = candidate.directory_user
-        if registry_user is not None:
-            user = replace(
-                registry_user,
-                profile_key=profile.key,
-                enabled=enabled,
-            )
-        elif directory_user is not None:
-            user = directory_user.promote_as(
-                profile_key=profile.key,
-                enabled=enabled,
-            )
-        else:
-            raise UserPromotionError('User is not available from storage or directory discovery')
-
-        _require_no_cross_identity_email_conflict(user, snapshot.candidates)
-        if registry_user is not None:
-            _require_promotion_identity(
-                user=user,
-                registry_user=registry_user,
-                directory_user=directory_user,
-            )
-
-        registry = snapshot.registry
-        if registry_user != user:
-            if registry.version != expected_registry_version:
+        identity = candidate.registry_user
+        if identity is None:
+            if candidate.directory_user is None:
+                raise UserPromotionError('User identity is not available')
+            identity = candidate.directory_user.to_identity()
+            if snapshot.registry.version != expected_registry_version:
                 raise UsersRegistryConflictError('Users registry changed before promotion')
-            users = _replace_registry_user(registry.users, user)
-            registry = self._registry.replace(
-                users,
+            updated_registry = self._registry.replace(
+                (*snapshot.registry.users, identity),
                 expected_version=expected_registry_version,
             )
-            persisted = registry.get(user.user_id)
-            if persisted != user:
-                raise UserPromotionError('Users registry persisted a different user')
+            persisted = updated_registry.get(identity.user_id)
+            if persisted != identity:
+                raise UserPromotionError('Users registry persisted a different identity')
+            snapshot = self.discover()
+        elif candidate.directory_user is not None:
+            _require_directory_identity(candidate.directory_user, identity)
 
-        if self._promoted.get(user.user_id) is not None:
+        memberships = snapshot.memberships
+        expected_membership_version = (
+            memberships.version
+            if expected_membership_version is None
+            else expected_membership_version
+        )
+        if memberships.version != expected_membership_version:
+            raise UsersRegistryConflictError('Tool membership changed before promotion')
+        if memberships.get(identity.user_id) is not None:
             raise UserAlreadyPromotedError('User was promoted concurrently')
-        return self._promoted.create(user)
+        membership = ToolUserMembership(
+            user_id=identity.user_id,
+            profile_key=profile.key,
+            enabled=enabled,
+        )
+        saved = self._memberships.replace(
+            (*memberships.memberships, membership),
+            expected_version=expected_membership_version,
+        )
+        persisted_membership = saved.get(identity.user_id)
+        if persisted_membership != membership:
+            raise UserPromotionError('Tool membership persisted a different user')
+        return ManagedUser(identity=identity, membership=membership)
 
     def update(
         self,
@@ -161,179 +174,103 @@ class UsersAdministrationService:
         *,
         profile_key: str,
         enabled: bool,
-        expected_registry_version: str,
-    ) -> UserRecord:
+        expected_registry_version: str | None = None,
+        expected_membership_version: str | None = None,
+    ) -> ManagedUser:
+        del expected_registry_version
         normalized_user_id = _required_user_id(user_id)
-        profile = require_managed_profile(
-            profile_key,
-            profiles=resolve_profile_catalog(self._profiles),
-        )
+        profile = require_managed_profile(profile_key, profiles=resolve_profile_catalog(self._profiles))
         if not isinstance(enabled, bool):
             raise TypeError('enabled must be boolean')
 
-        current = self._promoted.get(normalized_user_id)
-        if current is None:
-            raise UserPromotionError('Promoted user does not exist')
         registry = self._registry.load()
-        registry_user = registry.get(normalized_user_id)
-        if registry_user is None:
-            raise UserPromotionError('Promoted user is missing from users registry')
-        if (current.issuer, current.subject_id) != (
-            registry_user.issuer,
-            registry_user.subject_id,
-        ):
-            raise UsersIdentityConflictError('Promoted user identity conflicts with users registry')
-        if registry.version != expected_registry_version:
-            raise UsersRegistryConflictError('Users registry changed before user update')
-
-        registry_update = replace(
-            registry_user,
+        identity = registry.get(normalized_user_id)
+        if identity is None:
+            raise UserPromotionError('Managed user is missing from users registry')
+        memberships = self._memberships.load()
+        current = memberships.get(normalized_user_id)
+        if current is None:
+            raise UserPromotionError('Managed user does not exist')
+        expected = memberships.version if expected_membership_version is None else expected_membership_version
+        if memberships.version != expected:
+            raise UsersRegistryConflictError('Tool membership changed before user update')
+        updated = ToolUserMembership(
+            user_id=normalized_user_id,
             profile_key=profile.key,
             enabled=enabled,
         )
-        promoted_update = replace(
-            current,
-            profile_key=profile.key,
-            enabled=enabled,
+        saved = self._memberships.replace(
+            tuple(
+                updated if item.user_id == normalized_user_id else item
+                for item in memberships.memberships
+            ),
+            expected_version=expected,
         )
-        updated_registry = self._registry.replace(
-            _replace_registry_user(registry.users, registry_update),
-            expected_version=expected_registry_version,
-        )
-        if updated_registry.get(normalized_user_id) != registry_update:
-            raise UserPromotionError('Users registry persisted a different user')
-        return self._promoted.replace(promoted_update)
+        if saved.get(normalized_user_id) != updated:
+            raise UserPromotionError('Tool membership persisted a different user')
+        return ManagedUser(identity=identity, membership=updated)
 
 
 def _resolve_candidates(
     *,
-    registry_users: tuple[UserRecord, ...],
-    promoted_users: tuple[UserRecord, ...],
+    registry: UsersRegistrySnapshot,
+    memberships: ToolMembershipSnapshot,
     directory_users: tuple[DiscoveredUser, ...],
 ) -> tuple[UserCandidate, ...]:
-    registry_by_id = {user.user_id: user for user in registry_users}
-    promoted_by_id = {user.user_id: user for user in promoted_users}
+    registry_by_id = {user.user_id: user for user in registry.users}
+    membership_by_id = {item.user_id: item for item in memberships.memberships}
     directory_by_id = {user.user_id: user for user in directory_users}
-    user_ids = sorted(set(registry_by_id) | set(promoted_by_id) | set(directory_by_id))
-    candidates: dict[str, UserCandidate] = {}
+    user_ids = sorted(set(registry_by_id) | set(membership_by_id) | set(directory_by_id))
+    candidates: list[UserCandidate] = []
 
     for user_id in user_ids:
-        registry_user = registry_by_id.get(user_id)
-        promoted_user = promoted_by_id.get(user_id)
-        directory_user = directory_by_id.get(user_id)
+        identity = registry_by_id.get(user_id)
+        membership = membership_by_id.get(user_id)
+        directory = directory_by_id.get(user_id)
         issues: list[str] = []
-        if promoted_user is not None:
-            state = UserCandidateState.PROMOTED
-            if registry_user is None:
-                issues.append('Promoted user is missing from durable registry')
-            elif registry_user != promoted_user:
-                issues.append('Promoted user differs from durable registry')
-            if directory_user is not None and not _directory_matches_user(directory_user, promoted_user):
-                issues.append('Directory data differs from promoted user')
+        state = UserCandidateState.PROMOTABLE
+
+        if membership is not None:
+            if identity is None:
+                state = UserCandidateState.CONFLICT
+                issues.append('Tool membership is missing global identity')
+                promoted = None
+            else:
+                promoted = ManagedUser(identity=identity, membership=membership)
+                state = UserCandidateState.PROMOTED
         else:
-            state = UserCandidateState.PROMOTABLE
-            if registry_user is not None and directory_user is not None:
-                if not _directory_matches_user(directory_user, registry_user):
-                    state = UserCandidateState.CONFLICT
-                    issues.append('Directory data differs from durable registry')
-        candidates[user_id] = UserCandidate(
-            user_id=user_id,
-            state=state,
-            registry_user=registry_user,
-            directory_user=directory_user,
-            promoted_user=promoted_user,
-            issues=tuple(issues),
+            promoted = None
+
+        if identity is not None and directory is not None:
+            if not _directory_matches_identity(directory, identity):
+                state = UserCandidateState.CONFLICT
+                issues.append('Directory data differs from durable identity')
+
+        candidates.append(
+            UserCandidate(
+                user_id=user_id,
+                state=state,
+                registry_user=identity,
+                directory_user=directory,
+                promoted_user=promoted,
+                issues=tuple(issues),
+            )
         )
-
-    email_index: dict[str, set[str]] = {}
-    for user_id, candidate in candidates.items():
-        for email in _candidate_emails(candidate):
-            email_index.setdefault(email, set()).add(user_id)
-    conflicting_ids = {
-        user_id
-        for user_ids_for_email in email_index.values()
-        if len(user_ids_for_email) > 1
-        for user_id in user_ids_for_email
-    }
-    for user_id in conflicting_ids:
-        candidate = candidates[user_id]
-        issues = (*candidate.issues, 'Email matches a different user identity')
-        state = (
-            candidate.state
-            if candidate.state is UserCandidateState.PROMOTED
-            else UserCandidateState.CONFLICT
-        )
-        candidates[user_id] = replace(candidate, state=state, issues=issues)
-
-    return tuple(candidates[user_id] for user_id in sorted(candidates))
+    return tuple(candidates)
 
 
-def _candidate_emails(candidate: UserCandidate) -> tuple[str, ...]:
-    values = {
-        email
-        for email in (
-            candidate.registry_user.email if candidate.registry_user is not None else None,
-            candidate.directory_user.email if candidate.directory_user is not None else None,
-            candidate.promoted_user.email if candidate.promoted_user is not None else None,
-        )
-        if email is not None
-    }
-    return tuple(values)
-
-
-def _directory_matches_user(directory: DiscoveredUser, user: UserRecord) -> bool:
+def _directory_matches_identity(directory: DiscoveredUser, identity: UserIdentity) -> bool:
     return (
-        directory.issuer == user.issuer
-        and directory.subject_id == user.subject_id
-        and directory.display_name == user.display_name
-        and directory.email == user.email
+        directory.issuer == identity.issuer
+        and directory.subject_id == identity.subject_id
+        and (directory.display_name is None or directory.display_name == identity.display_name)
+        and (directory.email is None or directory.email == identity.email)
     )
 
 
-def _require_promotion_identity(
-    *,
-    user: UserRecord,
-    registry_user: UserRecord | None,
-    directory_user: DiscoveredUser | None,
-) -> None:
-    if registry_user is not None and (
-        registry_user.issuer != user.issuer or registry_user.subject_id != user.subject_id
-    ):
-        raise UsersIdentityConflictError('User identity conflicts with durable registry')
-    if directory_user is not None and (
-        directory_user.issuer != user.issuer or directory_user.subject_id != user.subject_id
-    ):
+def _require_directory_identity(directory: DiscoveredUser, identity: UserIdentity) -> None:
+    if directory.issuer != identity.issuer or directory.subject_id != identity.subject_id:
         raise UsersIdentityConflictError('User identity conflicts with directory discovery')
-
-
-def _replace_registry_user(
-    users: tuple[UserRecord, ...],
-    user: UserRecord,
-) -> tuple[UserRecord, ...]:
-    replaced = False
-    result: list[UserRecord] = []
-    for current in users:
-        if current.user_id == user.user_id:
-            result.append(user)
-            replaced = True
-        else:
-            result.append(current)
-    if not replaced:
-        result.append(user)
-    return tuple(result)
-
-
-def _require_no_cross_identity_email_conflict(
-    user: UserRecord,
-    candidates: tuple[UserCandidate, ...],
-) -> None:
-    if user.email is None:
-        return
-    for candidate in candidates:
-        if candidate.user_id == user.user_id:
-            continue
-        if user.email in _candidate_emails(candidate):
-            raise UserPromotionError('User email conflicts with a different identity')
 
 
 def _required_user_id(value: str) -> str:

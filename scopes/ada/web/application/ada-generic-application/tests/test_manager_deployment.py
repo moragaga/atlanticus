@@ -121,7 +121,8 @@ def test_real_durable_composition_requires_no_network_during_startup(tmp_path):
         assert runtime.stores.navigation_source is runtime.stores.kpi_registry_source
         assert runtime.stores.navigation_source is runtime.stores.kpi_definitions_source
         assert runtime.stores.navigation_source is runtime.stores.operational_source
-        assert runtime.stores.users_promoted is not None
+        assert runtime.stores.users_memberships is not None
+        assert runtime.stores.users_runtime is not None
         assert runtime.resources.cosmos_plan.resources
 
 

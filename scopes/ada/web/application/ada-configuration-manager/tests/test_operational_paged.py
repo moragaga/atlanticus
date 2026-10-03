@@ -53,6 +53,9 @@ class PromotedUsers:
     def list_users(self):
         return self.users
 
+    def load(self):
+        return self
+
     def get(self, user_id):
         self.reads.append(user_id)
         return next((user for user in self.users if user.user_id == user_id), None)
@@ -63,7 +66,7 @@ def make_context(tmp_path, count=23):
     service = OperationalIdentificationService(
         source_store=LocalSourceStore(LocalSourceSettings(root=tmp_path / 'source')),
         projections=MemoryProjectionStore(),
-        users=users,
+        memberships=users,
     )
 
     def principal():

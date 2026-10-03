@@ -3,30 +3,27 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from atlanticus.web.identity.models import AuthenticatedIdentity
-from atlanticus.web.users.models import DiscoveredUser, UserRecord, UsersRegistrySnapshot
+from atlanticus.web.users.models import (
+    DiscoveredUser,
+    RuntimeUser,
+    ToolMembershipSnapshot,
+    ToolUserMembership,
+    UserIdentity,
+    UsersRegistrySnapshot,
+)
 
 
 class UsersRuntimeStore(ABC):
     @abstractmethod
-    def resolve(self, identity: AuthenticatedIdentity) -> UserRecord | None:
-        raise NotImplementedError
-
-
-class UsersAdministrationStore(ABC):
-    @abstractmethod
-    def get(self, user_id: str) -> UserRecord | None:
+    def resolve(self, identity: AuthenticatedIdentity) -> RuntimeUser | None:
         raise NotImplementedError
 
     @abstractmethod
-    def list_users(self) -> tuple[UserRecord, ...]:
+    def list_users(self) -> tuple[RuntimeUser, ...]:
         raise NotImplementedError
 
     @abstractmethod
-    def create(self, user: UserRecord) -> UserRecord:
-        raise NotImplementedError
-
-    @abstractmethod
-    def replace(self, user: UserRecord) -> UserRecord:
+    def replace_all(self, users: tuple[RuntimeUser, ...]) -> tuple[RuntimeUser, ...]:
         raise NotImplementedError
 
 
@@ -38,10 +35,25 @@ class UsersRegistryStore(ABC):
     @abstractmethod
     def replace(
         self,
-        users: tuple[UserRecord, ...],
+        users: tuple[UserIdentity, ...],
         *,
         expected_version: str | None,
     ) -> UsersRegistrySnapshot:
+        raise NotImplementedError
+
+
+class ToolMembershipStore(ABC):
+    @abstractmethod
+    def load(self) -> ToolMembershipSnapshot:
+        raise NotImplementedError
+
+    @abstractmethod
+    def replace(
+        self,
+        memberships: tuple[ToolUserMembership, ...],
+        *,
+        expected_version: str | None,
+    ) -> ToolMembershipSnapshot:
         raise NotImplementedError
 
 

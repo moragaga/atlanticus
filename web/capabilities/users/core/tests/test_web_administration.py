@@ -1,166 +1,54 @@
 from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.users.administration import UsersAdministrationService
 from atlanticus.web.users.identity import build_user_key
-from atlanticus.web.users.models import UserRecord, UsersRegistrySnapshot
-from atlanticus.web.users.store import UsersAdministrationStore, UsersRegistryStore
-from atlanticus.web.users.web.layout import render_managed_rows, render_promotion_rows
-from atlanticus.web.users.web.serialization import preserve_profiles, snapshot_to_document
+from atlanticus.web.users.models import (
+    ToolMembershipSnapshot,
+    ToolUserMembership,
+    UserIdentity,
+    UsersRegistrySnapshot,
+)
+from atlanticus.web.users.store import ToolMembershipStore, UsersRegistryStore
+from atlanticus.web.users.web.serialization import snapshot_to_document
 
 
 class Registry(UsersRegistryStore):
-    def __init__(self, users):
-        self.snapshot = UsersRegistrySnapshot(users=tuple(users), version='v1')
+    def __init__(self, snapshot):
+        self.snapshot = snapshot
 
     def load(self):
         return self.snapshot
 
     def replace(self, users, *, expected_version):
-        self.snapshot = UsersRegistrySnapshot(users=tuple(users), version='v2')
+        raise AssertionError
+
+
+class Memberships(ToolMembershipStore):
+    def __init__(self, snapshot):
+        self.snapshot = snapshot
+
+    def load(self):
         return self.snapshot
 
-
-class Promoted(UsersAdministrationStore):
-    def __init__(self, users=()):
-        self.users = {user.user_id: user for user in users}
-
-    def get(self, user_id):
-        return self.users.get(user_id)
-
-    def list_users(self):
-        return tuple(self.users.values())
-
-    def create(self, user):
-        self.users[user.user_id] = user
-        return user
-
-    def replace(self, user):
-        self.users[user.user_id] = user
-        return user
+    def replace(self, memberships, *, expected_version):
+        raise AssertionError
 
 
-def _user(index: int, *, enabled: bool = True) -> UserRecord:
-    subject = f'user-{index}'
-    return UserRecord(
-        user_id=build_user_key(issuer='entra', subject_id=subject),
-        issuer='entra',
-        subject_id=subject,
-        display_name=f'User {index:02d}',
-        email=f'user{index:02d}@example.com',
-        enabled=enabled,
-        profile_key='basic',
+def test_administration_serialization_exposes_identity_and_membership_versions():
+    identity = UserIdentity(
+        user_id=build_user_key(issuer='issuer', subject_id='subject'),
+        issuer='issuer',
+        subject_id='subject',
+        display_name='User',
     )
-
-
-def test_users_ui_reuses_shared_10_20_pagination_contract() -> None:
-    users = tuple(_user(index) for index in range(1, 22))
-    document = snapshot_to_document(
-        UsersAdministrationService(
-            registry=Registry(users),
-            promoted=Promoted(),
-            profiles=ProfileCatalog,
-        ).discover()
+    membership = ToolUserMembership(user_id=identity.user_id, profile_key='root')
+    service = UsersAdministrationService(
+        registry=Registry(UsersRegistrySnapshot((identity,), 'r1')),
+        memberships=Memberships(ToolMembershipSnapshot((membership,), 'm1')),
+        profiles=lambda: ProfileCatalog(),
     )
-
-    _rows, page = render_promotion_rows(
-        document,
-        query=None,
-        state_filter='all',
-        page_number=2,
-        page_size=10,
-        can_manage=True,
-    )
-
-    assert page.start_index == 11
-    assert page.end_index == 20
-    assert page.total_count == 21
-
-
-def test_managed_filters_use_profile_and_enabled_state() -> None:
-    active = _user(1, enabled=True)
-    disabled = _user(2, enabled=False)
-    document = snapshot_to_document(
-        UsersAdministrationService(
-            registry=Registry((active, disabled)),
-            promoted=Promoted((active, disabled)),
-            profiles=ProfileCatalog,
-        ).discover()
-    )
-
-    _rows, page = render_managed_rows(
-        document,
-        query='user',
-        profile_filter='basic',
-        enabled_filter='disabled',
-        page_number=1,
-        page_size=10,
-        can_manage=True,
-    )
-
-    assert page.total_count == 1
-
-
-def test_promotion_page_clamps_when_a_promotion_removes_the_last_page() -> None:
-    users = tuple(_user(index) for index in range(1, 12))
-    promoted = Promoted((users[-1],))
-    document = snapshot_to_document(
-        UsersAdministrationService(
-            registry=Registry(users),
-            promoted=promoted,
-            profiles=ProfileCatalog,
-        ).discover()
-    )
-
-    _rows, page = render_promotion_rows(
-        document,
-        query=None,
-        state_filter='all',
-        page_number=2,
-        page_size=10,
-        can_manage=True,
-    )
-
-    assert page.total_count == 10
-    assert page.request.page_number == 1
-
-
-def test_promoted_users_are_visible_only_in_managed_view() -> None:
-    promoted_user = _user(1)
-    pending_user = _user(2)
-    document = snapshot_to_document(
-        UsersAdministrationService(
-            registry=Registry((promoted_user, pending_user)),
-            promoted=Promoted((promoted_user,)),
-            profiles=ProfileCatalog,
-        ).discover()
-    )
-
-    _promotion_rows, promotion_page = render_promotion_rows(
-        document,
-        query=None,
-        state_filter='all',
-        page_number=1,
-        page_size=10,
-        can_manage=True,
-    )
-    _managed_rows, managed_page = render_managed_rows(
-        document,
-        query=None,
-        profile_filter='all',
-        enabled_filter='all',
-        page_number=1,
-        page_size=10,
-        can_manage=True,
-    )
-
-    assert promotion_page.total_count == 1
-    assert managed_page.total_count == 1
-
-
-def test_mutation_refresh_preserves_loaded_profiles_snapshot() -> None:
-    previous = {'profiles': [{'key': 'basic', 'label': 'Basic'}], 'candidates': []}
-    fresh = {'profiles': [{'key': 'new', 'label': 'New'}], 'candidates': [{'user_id': '1'}]}
-
-    preserved = preserve_profiles(fresh, previous)
-
-    assert preserved['profiles'] == previous['profiles']
-    assert preserved['candidates'] == fresh['candidates']
+    document = snapshot_to_document(service.discover())
+    assert document['registry_version'] == 'r1'
+    assert document['membership_version'] == 'm1'
+    candidate = document['candidates'][0]
+    assert candidate['promoted_user']['profile_key'] == 'root'
+    assert 'avatar_background_color' not in candidate['promoted_user']

@@ -43,7 +43,10 @@ class _Projection(ProjectionStore):
         return projection
 
 
-class _Users:
+class _Memberships:
+    def load(self):
+        return self
+
     def get(self, user_id):
         return None
 
@@ -63,7 +66,7 @@ def _contexts(tmp_path):
     service = OperationalIdentificationService(
         source_store=source,
         projections=projection,
-        users=_Users(),
+        memberships=_Memberships(),
     )
 
     def principal() -> ManagerPrincipal:

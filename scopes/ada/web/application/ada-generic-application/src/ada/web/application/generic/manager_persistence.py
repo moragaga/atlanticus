@@ -47,12 +47,9 @@ from atlanticus.web.storage.topology import (
     StorageResourceOverride,
     resolve_storage_plan,
 )
-from atlanticus.web.users.blob import BlobUsersRegistryStore
-from atlanticus.web.users.cosmos import CosmosUsersStore
-from atlanticus.web.users.storage import (
-    USERS_RUNTIME_STORAGE_RESOURCE,
-    USERS_SUPPORT_STORAGE_RESOURCE,
-)
+from atlanticus.web.users.blob import BlobToolMembershipStore, BlobUsersRegistryStore
+from atlanticus.web.users.cosmos import CosmosUsersRuntimeStore
+from atlanticus.web.users.storage import USERS_RUNTIME_STORAGE_RESOURCE, USERS_SUPPORT_STORAGE_RESOURCE
 
 ClientT = TypeVar('ClientT')
 
@@ -133,11 +130,6 @@ def compose_durable_manager_stores(
 ) -> ConfigurationManagerStores:
     if not isinstance(namespace, StorageNamespace):
         raise TypeError('Manager namespace must be StorageNamespace')
-    if not isinstance(resources, ManagerPersistenceResources):
-        raise TypeError('Manager resources must be ManagerPersistenceResources')
-    if not isinstance(connections, ManagerPersistenceConnections):
-        raise TypeError('Manager connections must be ManagerPersistenceConnections')
-
     physical = _validate_cosmos_resources(resources.cosmos_plan)
     storage = {
         name: _require_connection(connections.storage, getattr(resources, name).connection_ref)
@@ -155,7 +147,7 @@ def compose_durable_manager_stores(
         ),
         storage=storage['tool_source'],
     )
-    users = CosmosUsersStore(
+    users_runtime = CosmosUsersRuntimeStore(
         client=cosmos['users_runtime'],
         container_name=physical['users_runtime'].physical_name,
     )
@@ -204,7 +196,12 @@ def compose_durable_manager_stores(
             container_name=resources.users_registry.container_name,
             blob_name=namespace.application_blob_name('users/users.json.gz'),
         ),
-        users_promoted=users,
+        users_memberships=BlobToolMembershipStore(
+            client=storage['tool_source'],
+            container_name=resources.tool_source.container_name,
+            blob_name=namespace.scope_blob_name('users/memberships.json.gz'),
+        ),
+        users_runtime=users_runtime,
         operational_source=tool_source,
         operational=CosmosOperationalProjectionStore(
             client=cosmos['users_support'],

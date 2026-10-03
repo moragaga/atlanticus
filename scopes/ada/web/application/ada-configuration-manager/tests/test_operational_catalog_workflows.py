@@ -41,7 +41,10 @@ from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
 USER_ID = 'user:' + 'a' * 24
 
 
-class _Users:
+class _Memberships:
+    def load(self):
+        return self
+
     def get(self, user_id):
         return SimpleNamespace(user_id=user_id) if user_id == USER_ID else None
 
@@ -52,7 +55,7 @@ def _contracts(tmp_path):
     service = OperationalIdentificationService(
         source_store=source_store,
         projections=projections,
-        users=_Users(),
+        memberships=_Memberships(),
     )
     contracts = compose_operational_catalog_manager_contracts(
         service=service,

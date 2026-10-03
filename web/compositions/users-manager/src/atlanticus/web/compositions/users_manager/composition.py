@@ -11,7 +11,7 @@ from atlanticus.web.manager import (
 )
 from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.users.administration import UsersAdministrationService
-from atlanticus.web.users.recovery import ApprovedUsersSnapshot, UsersApprovedRecoveryService
+from atlanticus.web.users.recovery import ToolUsersRecoveryService, ToolUsersRecoverySnapshot
 from atlanticus.web.users.web import (
     UsersAdminWebContext,
     build_users_admin_configuration,
@@ -66,7 +66,7 @@ def compose_users_manager(
         title=title,
         route=route,
         order=order,
-        description='Promoción, perfiles y estado de usuarios administrados.',
+        description='Identidad global y membership de usuarios para esta Tool.',
         layout=layout,
         access_key=access_key,
         web_module=replace(web_module, register_services=register_services),
@@ -76,11 +76,11 @@ def compose_users_manager(
 
 def compose_users_projection_manager(
     *,
-    recovery: UsersApprovedRecoveryService | Callable[[], UsersApprovedRecoveryService],
+    recovery: ToolUsersRecoveryService | Callable[[], ToolUsersRecoveryService],
     snapshot_ids: Callable[[], tuple[str, ...]],
     principal_provider: UsersPrincipalProvider,
     snapshot_summaries: Callable[[], tuple[tuple[str, str | None], ...]] | None = None,
-    read_snapshot: Callable[[str], ApprovedUsersSnapshot] | None = None,
+    read_snapshot: Callable[[str], ToolUsersRecoverySnapshot] | None = None,
     group_key: str,
     access_key: str,
     authorization: ManagerAuthorizationPolicy | None = None,
@@ -102,7 +102,7 @@ def compose_users_projection_manager(
         title='Proyección de usuarios',
         route='/users-projection',
         order=11,
-        description='Respaldos aprobados, comparación y aplicación controlada de usuarios.',
+        description='Snapshots RuntimeUser y reemplazo controlado de users-runtime.',
         layout=lambda _services: build_users_projection_configuration(context),
         access_key=access_key,
         web_module=create_users_projection_web_module(context),

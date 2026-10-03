@@ -1,42 +1,99 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
-from atlanticus.connectivity.storage.models import StorageBlobProperties
-from atlanticus.web.users.blob.recovery import BlobApprovedUsersSnapshotStore
+from atlanticus.web.users.blob.recovery import BlobToolUsersRecoverySnapshotStore
+from atlanticus.web.users.recovery import ToolUsersRecoverySnapshot
 
 
-class Storage:
+class MemoryStorage:
     def __init__(self):
-        self.requests = []
+        self.data = {}
+        self.etags = {}
+        self.revision = 0
 
-    def list_blobs(self, *, container_name, prefix, max_items):
-        self.requests.append((container_name, prefix, max_items))
-        now = datetime.now(UTC)
-        return (
-            StorageBlobProperties('app/users/recovery/snapshots/old.json', 1, last_modified=now),
-            StorageBlobProperties('app/users/recovery/snapshots/new.json', 1,
-                                  last_modified=now + timedelta(minutes=1)),
-            StorageBlobProperties('app/users/recovery/snapshots/nested/skip.json', 1),
-            StorageBlobProperties('app/users/recovery/snapshots/_invalid.json', 1),
+    def get_properties(self, *, container_name, blob_name):
+        from atlanticus.connectivity.storage import StorageBlobNotFoundError
+        from atlanticus.connectivity.storage.models import StorageBlobProperties
+
+        if blob_name not in self.data:
+            raise StorageBlobNotFoundError(blob_name)
+        return StorageBlobProperties(
+            name=blob_name,
+            size=len(self.data[blob_name]),
+            etag=self.etags[blob_name],
+            last_modified=datetime.now(UTC),
+        )
+
+    def download(self, *, container_name, blob_name):
+        from atlanticus.connectivity.storage import StorageBlobNotFoundError
+
+        if blob_name not in self.data:
+            raise StorageBlobNotFoundError(blob_name)
+        return self.data[blob_name]
+
+    def upload(
+        self,
+        *,
+        container_name,
+        blob_name,
+        data,
+        overwrite=True,
+        metadata=None,
+        content_type=None,
+    ):
+        from atlanticus.connectivity.storage import StorageConflictError
+
+        if not overwrite and blob_name in self.data:
+            raise StorageConflictError(blob_name)
+        self.revision += 1
+        self.data[blob_name] = bytes(data)
+        self.etags[blob_name] = f'e{self.revision}'
+
+    def upload_if_match(
+        self,
+        *,
+        container_name,
+        blob_name,
+        data,
+        etag,
+        metadata=None,
+        content_type=None,
+    ):
+        from atlanticus.connectivity.storage import StorageConflictError
+
+        if blob_name not in self.data or self.etags[blob_name] != etag:
+            raise StorageConflictError(blob_name)
+        self.revision += 1
+        self.data[blob_name] = bytes(data)
+        self.etags[blob_name] = f'e{self.revision}'
+
+    def list_blobs(self, *, container_name, prefix=None, max_items=None):
+        names = sorted(
+            name for name in self.data if prefix is None or name.startswith(prefix)
+        )
+        if max_items is not None:
+            names = names[:max_items]
+        return tuple(
+            self.get_properties(container_name=container_name, blob_name=name)
+            for name in names
         )
 
 
-def test_catalog_lists_only_snapshot_artifacts_in_recency_order():
-    storage = Storage()
-    snapshots = BlobApprovedUsersSnapshotStore(
+def test_snapshot_catalog_lists_saved_tool_snapshots():
+    storage = MemoryStorage()
+    store = BlobToolUsersRecoverySnapshotStore(
         client=storage,
-        container_name='lab',
-        prefix='app/users/recovery/snapshots',
+        container_name='configuration',
+        prefix='app/tool/users/recovery/snapshots',
     )
-    assert snapshots.list_snapshot_ids(max_items=20) == ('new', 'old')
-    assert storage.requests == [('lab', 'app/users/recovery/snapshots/', 20)]
-
-
-def test_history_uses_blob_save_date_without_downloading_snapshots():
-    storage = Storage()
-    snapshots = BlobApprovedUsersSnapshotStore(
-        client=storage, container_name='lab', prefix='app/users/recovery/snapshots',
-    )
-    entries = snapshots.list_snapshot_summaries(max_items=20)
-    assert tuple(entry[0] for entry in entries) == ('new', 'old')
-    assert all(datetime.fromisoformat(entry[1]).tzinfo is not None for entry in entries)
-    assert storage.requests == [('lab', 'app/users/recovery/snapshots/', 20)]
+    for snapshot_id in ('one', 'two'):
+        store.save(
+            ToolUsersRecoverySnapshot(
+                snapshot_id=snapshot_id,
+                origin_environment='local:test',
+                captured_at_utc=datetime.now(UTC).isoformat(),
+                operator_id='operator',
+                approval_reference='ticket',
+                users=(),
+            )
+        )
+    assert set(store.list_snapshot_ids()) == {'one', 'two'}

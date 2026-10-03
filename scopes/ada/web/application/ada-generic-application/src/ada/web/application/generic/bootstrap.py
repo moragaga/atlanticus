@@ -13,7 +13,6 @@ from ada.web.application.configuration_manager.pages import __name__ as _manager
 from ada.web.application.configuration_manager.wiring import (
     NAVIGATION_SOURCE_KEY,
     ConfigurationManagerStores,
-    read_manager_projection,
 )
 from ada.web.application.generic.composition import (
     AdaApplicationComposition,
@@ -24,9 +23,7 @@ from ada.web.application.generic.manager_principal import (
     ManagerPrincipalBinding,
     compose_integrated_manager_dependencies,
 )
-from ada.web.application.generic.master_projection.composition import (
-    compose_master_projection_backend,
-)
+from ada.web.application.generic.master_projection.composition import compose_master_projection_backend
 from ada.web.application.generic.navigation_binding import (
     manager_navigation_principal,
     public_navigation_principal,
@@ -37,10 +34,7 @@ from ada.web.application.generic.operational_tool import (
     resolve_operational_tool_projection,
 )
 from ada.web.application.generic.settings import AdaGenericSettings
-from ada.web.operational_render_binding import (
-    OperationalRenderBinding,
-    bind_operational_render,
-)
+from ada.web.operational_render_binding import OperationalRenderBinding, bind_operational_render
 from ada.web.tools.persistence import (
     ToolProjectionResolution,
     ToolProjectionResolutionState,
@@ -57,13 +51,8 @@ from atlanticus.connectivity.storage import (
     StorageOperationError,
 )
 from atlanticus.web.application import create_web_application
-from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
 from atlanticus.web.configuration import WebSettings
-from atlanticus.web.identity.access import (
-    AccessResolver,
-    AccessRuntime,
-    AuthenticatedAccessResolver,
-)
+from atlanticus.web.identity.access import AccessResolver, AccessRuntime
 from atlanticus.web.identity.errors import IdentityConfigurationError
 from atlanticus.web.identity.local import LocalIdentityProvider
 from atlanticus.web.identity.module import create_identity_module
@@ -85,7 +74,6 @@ from atlanticus.web.navigation.configuration import (
     NavigationConfigurationCatalog,
     create_projected_navigation_definition_provider,
 )
-from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.projection.errors import ProjectionStoreError
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.errors import SourceUnavailableError
@@ -107,7 +95,6 @@ _MANAGER_UNAVAILABLE_ERRORS = (
     SourceUnavailableError,
     UsersStoreUnavailableError,
 )
-
 
 AdaOperationalCompositionFactory = Callable[
     [OperationalRenderBinding | None], AdaApplicationComposition
@@ -131,7 +118,6 @@ def create_operational_application_runtime(
         manager_dependencies, ConfigurationManagerDependencies
     ):
         raise TypeError('manager_dependencies must be ConfigurationManagerDependencies')
-
     if manager_stores is not None and not isinstance(manager_stores, ConfigurationManagerStores):
         raise TypeError('manager_stores must be ConfigurationManagerStores')
     if identity_provider is not None and not isinstance(identity_provider, IdentityProvider):
@@ -269,13 +255,8 @@ def _prepare_manager_identity(
         raise IdentityConfigurationError(
             'Production Manager requires a production identity provider'
         )
-    shared_store = (
-        stores.users_promoted if isinstance(stores.users_promoted, UsersRuntimeStore) else None
-    )
-    if shared_store is None and not isinstance(resolved_provider, LocalIdentityProvider):
-        raise ValueError('Non-local Manager identity requires a shared Users runtime store')
-    if shared_store is None and settings.environment.is_production:
-        raise ValueError('Production Manager requires a shared Users runtime store')
+    if not isinstance(stores.users_runtime, UsersRuntimeStore):
+        raise ValueError('Manager requires a shared Users runtime store')
 
     access_runtime = AccessRuntime()
     users_runtime = UsersRuntime()
@@ -287,29 +268,10 @@ def _prepare_manager_identity(
         source_name=source_name,
         projection_name=projection_name,
     )
-    if shared_store is None:
-        resolver = AuthenticatedAccessResolver()
-    else:
-
-        def profiles_provider() -> ProfileCatalog:
-            try:
-                active = read_manager_projection(
-                    stores.profiles,
-                    PROFILES_CONFIGURATION_SOURCE_KEY,
-                    ProfileCatalog,
-                    unavailable_causes=(CosmosOperationError,),
-                )
-            except ProjectionStoreError as error:
-                raise UsersStoreUnavailableError(
-                    'Users profiles projection is unavailable'
-                ) from error
-            return active if active is not None else ProfileCatalog()
-
-        resolver = UsersAccessResolver(
-            store=shared_store,
-            runtime=users_runtime,
-            profiles=profiles_provider,
-        )
+    resolver = UsersAccessResolver(
+        store=stores.users_runtime,
+        runtime=users_runtime,
+    )
     return resolved_provider, users_runtime, dependencies, resolver
 
 
@@ -422,9 +384,7 @@ def _create_storage_client(settings: AdaGenericSettings) -> StorageClient | None
     return StorageClient(settings=storage_settings)
 
 
-def _create_cosmos_client(
-    settings: AdaGenericSettings,
-) -> CosmosClient | None:
+def _create_cosmos_client(settings: AdaGenericSettings) -> CosmosClient | None:
     cosmos_settings = settings.cosmos_settings()
     if cosmos_settings is None:
         return None

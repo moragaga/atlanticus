@@ -46,7 +46,10 @@ class ProjectionMemory(ProjectionStore):
         return projection
 
 
-class FakeUsers:
+class FakeMemberships:
+    def load(self):
+        return self
+
     def get(self, user_id):
         return SimpleNamespace(user_id=user_id) if user_id == USER_ID else None
 
@@ -69,7 +72,7 @@ def contexts_for(tmp_path):
     service = OperationalIdentificationService(
         source_store=source,
         projections=projection,
-        users=FakeUsers(),
+        memberships=FakeMemberships(),
     )
 
     def principal() -> ManagerPrincipal:

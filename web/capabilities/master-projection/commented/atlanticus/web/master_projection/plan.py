@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# Users snapshots son autosuficientes; su ejecución no depende del estado CURRENT de Profiles.
+
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
@@ -12,7 +14,6 @@ from atlanticus.web.source.models import SourceKey, SourceReleaseRef
 from atlanticus.web.source.store import SourceStore
 
 
-# Los estados indican lectura y disponibilidad; no autorizan ejecutar ninguna proyección.
 class ProjectionPlanState(StrEnum):
     SOURCE_MISSING = 'SOURCE_MISSING'
     CURRENT = 'CURRENT'
@@ -25,12 +26,10 @@ class ProjectionPlanState(StrEnum):
 class UsersPlanState(StrEnum):
     CATALOG_UNAVAILABLE = 'CATALOG_UNAVAILABLE'
     SNAPSHOT_MISSING = 'SNAPSHOT_MISSING'
-    PROFILES_PENDING = 'PROFILES_PENDING'
     SNAPSHOT_SELECTION_REQUIRED = 'SNAPSHOT_SELECTION_REQUIRED'
 
 
 @dataclass(frozen=True, slots=True)
-# Cada dominio declara únicamente sus precondiciones reales de selector, sin orden global fijo.
 class ProjectionDomain:
     key: SourceKey
     source: SourceStore
@@ -50,7 +49,6 @@ class ProjectionDomain:
 
 
 @dataclass(frozen=True, slots=True)
-# Se conserva el ProjectionTarget completo para comparar identidades exactas.
 class ProjectionPlanEntry:
     key: SourceKey
     state: ProjectionPlanState
@@ -75,11 +73,17 @@ class ProjectionPlanEntry:
 
 
 @dataclass(frozen=True, slots=True)
-# Users es especial: este hito solo inventaría snapshots; nunca valida ni ejecuta REPLACE.
 class UsersPlan:
     state: UsersPlanState
     snapshot_ids: tuple[str, ...] = ()
     error_type: str | None = None
+
+    @property
+    def executable(self) -> bool:
+        return (
+            self.state is UsersPlanState.SNAPSHOT_SELECTION_REQUIRED
+            and bool(self.snapshot_ids)
+        )
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -87,12 +91,11 @@ class UsersPlan:
             'snapshot_ids': list(self.snapshot_ids),
             'error_type': self.error_type,
             'operation': 'users.replace',
-            'executable': False,
+            'executable': self.executable,
         }
 
 
 @dataclass(frozen=True, slots=True)
-# El conjunto ready contiene acciones inmediatas que aún deben revalidarse antes de escribir.
 class MasterProjectionPlan:
     entries: tuple[ProjectionPlanEntry, ...]
     users: UsersPlan
@@ -100,13 +103,14 @@ class MasterProjectionPlan:
     @property
     def ready(self) -> tuple[ProjectionPlanEntry, ...]:
         return tuple(
-            entry for entry in self.entries
+            entry
+            for entry in self.entries
             if entry.state in (ProjectionPlanState.NEVER_PROJECTED, ProjectionPlanState.OUTDATED)
         )
 
     def to_dict(self) -> dict[str, object]:
         return {
-            'mode': 'READ_ONLY',
+            'mode': 'MANUAL',
             'entries': [entry.to_dict() for entry in self.entries],
             'ready_source_keys': [entry.key.value for entry in self.ready],
             'users': self.users.to_dict(),
@@ -120,7 +124,6 @@ class _Observed:
     error_type: str | None = None
 
 
-# El planificador pertenece al backend Web; no depende de la UI ni de permisos Manager.
 class MasterProjectionPlanner:
     def __init__(
         self,
@@ -140,10 +143,8 @@ class MasterProjectionPlanner:
             raise TypeError('Users snapshot catalog must be callable')
         self._domains = {domain.key: domain for domain in domains}
         self._order = _dependency_order(self._domains)
-        self._profiles_key = profiles_key
         self._users_snapshot_ids = users_snapshot_ids
 
-    # Captura un inventario parcial aunque una de las conexiones no esté disponible.
     def inspect(self) -> MasterProjectionPlan:
         observed = {key: self._observe(self._domains[key]) for key in self._order}
         planned: dict[SourceKey, ProjectionPlanEntry] = {}
@@ -172,7 +173,8 @@ class MasterProjectionPlanner:
                 )
             else:
                 blockers = tuple(
-                    required for required in domain.requires
+                    required
+                    for required in domain.requires
                     if planned[required].state is not ProjectionPlanState.CURRENT
                 )
                 if blockers:
@@ -187,11 +189,10 @@ class MasterProjectionPlanner:
             planned[key] = entry
         return MasterProjectionPlan(
             entries=tuple(planned[key] for key in self._order),
-            users=self._inspect_users(planned[self._profiles_key]),
+            users=self._inspect_users(),
         )
 
     @staticmethod
-    # No conserva el payload y no expone mensajes de error con posibles secretos.
     def _observe(domain: ProjectionDomain) -> _Observed:
         try:
             snapshot = domain.source.get_current(domain.key)
@@ -207,11 +208,12 @@ class MasterProjectionPlanner:
             )
         except Exception as error:
             return _Observed(
-                source_release=None, projected_target=None, error_type=type(error).__name__
+                source_release=None,
+                projected_target=None,
+                error_type=type(error).__name__,
             )
 
     @staticmethod
-    # Se usa el selector existente y se compara su target exacto con las precondiciones.
     def _resolve(
         domain: ProjectionDomain,
         observed: _Observed,
@@ -231,9 +233,8 @@ class MasterProjectionPlanner:
                 target is None
                 or target.source_key != domain.key
                 or target.source_release != observed.source_release
-                or target.dependencies != tuple(
-                    sorted(expected, key=lambda item: item.source_key.value)
-                )
+                or target.dependencies
+                != tuple(sorted(expected, key=lambda item: item.source_key.value))
             ):
                 return ProjectionPlanEntry(
                     state=ProjectionPlanState.UNAVAILABLE,
@@ -249,14 +250,15 @@ class MasterProjectionPlanner:
                 **common,
             )
         state = (
-            ProjectionPlanState.CURRENT if projected_target == target
-            else ProjectionPlanState.NEVER_PROJECTED if projected_target is None
+            ProjectionPlanState.CURRENT
+            if projected_target == target
+            else ProjectionPlanState.NEVER_PROJECTED
+            if projected_target is None
             else ProjectionPlanState.OUTDATED
         )
         return ProjectionPlanEntry(state=state, current_target=target, **common)
 
-    # La disponibilidad en el catálogo no equivale a aprobación para el ambiente destino.
-    def _inspect_users(self, profiles: ProjectionPlanEntry) -> UsersPlan:
+    def _inspect_users(self) -> UsersPlan:
         if self._users_snapshot_ids is None:
             return UsersPlan(state=UsersPlanState.CATALOG_UNAVAILABLE)
         try:
@@ -276,16 +278,16 @@ class MasterProjectionPlanner:
                 state=UsersPlanState.CATALOG_UNAVAILABLE,
                 error_type=type(error).__name__,
             )
-        if not snapshot_ids:
-            state = UsersPlanState.SNAPSHOT_MISSING
-        elif profiles.state is not ProjectionPlanState.CURRENT:
-            state = UsersPlanState.PROFILES_PENDING
-        else:
-            state = UsersPlanState.SNAPSHOT_SELECTION_REQUIRED
-        return UsersPlan(state=state, snapshot_ids=snapshot_ids)
+        return UsersPlan(
+            state=(
+                UsersPlanState.SNAPSHOT_SELECTION_REQUIRED
+                if snapshot_ids
+                else UsersPlanState.SNAPSHOT_MISSING
+            ),
+            snapshot_ids=snapshot_ids,
+        )
 
 
-# El recorrido topológico deriva el orden a partir de las precondiciones declaradas.
 def _dependency_order(domains: dict[SourceKey, ProjectionDomain]) -> tuple[SourceKey, ...]:
     ordered: list[SourceKey] = []
     visiting: set[SourceKey] = set()
@@ -319,7 +321,6 @@ def _release_dict(release: SourceReleaseRef | None) -> dict[str, str] | None:
     }
 
 
-# Serialización de identidades anidadas sin incluir contenidos de Source o Projection.
 def _target_dict(target: ProjectionTarget | None) -> dict[str, object] | None:
     if target is None:
         return None

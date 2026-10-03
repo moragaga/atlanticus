@@ -29,7 +29,7 @@ from atlanticus.web.manager import (
     manager_access_granted,
 )
 from atlanticus.web.modules import WebModule
-from atlanticus.web.users.models import UserRecord
+from atlanticus.web.users.models import ManagedUser
 
 OPERATIONAL_MANAGER_ACCESS_KEY = 'operational.manage'
 OPERATIONAL_MANAGER_ASSETS = AssetLayer(
@@ -43,7 +43,7 @@ OPERATIONAL_MANAGER_ASSETS = AssetLayer(
 @dataclass(frozen=True, slots=True)
 class OperationalAssignmentContext:
     service: OperationalIdentificationService
-    promoted_users: Callable[[], tuple[UserRecord, ...]]
+    promoted_users: Callable[[], tuple[ManagedUser, ...]]
     principal: Callable[[], ManagerPrincipal]
 
     def can_manage(self) -> bool:
@@ -86,7 +86,7 @@ def create_operational_manager_module(
         title='Datos operacionales',
         route='/operational-identification',
         order=15,
-        description='Cargos y asignaciones operacionales de usuarios promovidos.',
+        description='Cargos y asignaciones operacionales de usuarios de la Tool.',
         layout=lambda _services: build_operational_catalog_configuration(catalog_context),
         history_preview_renderer=build_operational_catalog_history_preview,
         source_key=CATALOG_SOURCE_KEY,

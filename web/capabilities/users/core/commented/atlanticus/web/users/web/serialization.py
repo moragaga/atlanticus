@@ -1,14 +1,16 @@
-# Espejo pedagógico: Users Administration conserva identidad de origen y limita edición a profile y enabled.
 from __future__ import annotations
+
+# La UI recibe una vista plana; identity y membership continúan siendo contratos durables separados.
 
 from atlanticus.web.profiles.models import ProfileDefinition
 from atlanticus.web.users.administration import UserCandidate, UsersAdministrationSnapshot
-from atlanticus.web.users.models import DiscoveredUser, UserRecord
+from atlanticus.web.users.models import DiscoveredUser, ManagedUser, UserIdentity
 
 
 def snapshot_to_document(snapshot: UsersAdministrationSnapshot) -> dict[str, object]:
     return {
         'registry_version': snapshot.registry.version,
+        'membership_version': snapshot.memberships.version,
         'profiles': [_profile_to_document(profile) for profile in snapshot.profiles],
         'candidates': [_candidate_to_document(candidate) for candidate in snapshot.candidates],
     }
@@ -31,14 +33,18 @@ def _candidate_to_document(candidate: UserCandidate) -> dict[str, object]:
     return {
         'user_id': candidate.user_id,
         'state': candidate.state.value,
-        'registry_user': _record_to_document(candidate.registry_user),
+        'registry_user': _identity_to_document(candidate.registry_user),
         'directory_user': _directory_to_document(candidate.directory_user),
-        'promoted_user': _record_to_document(candidate.promoted_user),
+        'promoted_user': _managed_to_document(candidate.promoted_user),
         'issues': list(candidate.issues),
     }
 
 
-def _record_to_document(user: UserRecord | None) -> dict[str, object] | None:
+def _identity_to_document(user: UserIdentity | None) -> dict[str, object] | None:
+    return None if user is None else user.to_document()
+
+
+def _managed_to_document(user: ManagedUser | None) -> dict[str, object] | None:
     return None if user is None else user.to_document()
 
 

@@ -1,4 +1,4 @@
-# Espejo pedagógico: conserva exactamente el contrato productivo y explica su intención.
-from atlanticus.web.users.cosmos.store import CosmosUsersStore
+# El store Cosmos ya no expone administración/promoted; sólo runtime.
+from atlanticus.web.users.cosmos.store import CosmosUsersRuntimeStore
 
-__all__ = ['CosmosUsersStore']
+__all__ = ['CosmosUsersRuntimeStore']

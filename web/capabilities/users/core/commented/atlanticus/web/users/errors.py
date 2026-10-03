@@ -1,4 +1,4 @@
-# Espejo pedagógico: conserva exactamente el contrato productivo y explica su intención.
+# Errores separados para Registry global, Membership Tool y Runtime.
 class UsersDefinitionError(ValueError):
     pass
 
@@ -12,6 +12,14 @@ class UsersRegistryUnavailableError(RuntimeError):
 
 
 class UsersRegistryConflictError(RuntimeError):
+    pass
+
+
+class UsersMembershipUnavailableError(RuntimeError):
+    pass
+
+
+class UsersMembershipConflictError(RuntimeError):
     pass
 
 

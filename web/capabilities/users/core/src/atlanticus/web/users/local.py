@@ -4,10 +4,15 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from secrets import choice
 
-from atlanticus.web.profiles.models import LOCAL_PROFILE_KEY
+from atlanticus.web.profiles.models import LOCAL_PROFILE, normalize_profile_color
 from atlanticus.web.users.errors import UsersDefinitionError
 from atlanticus.web.users.identity import build_user_key
-from atlanticus.web.users.models import EffectiveUser, build_avatar_text, normalize_user_color
+from atlanticus.web.users.models import (
+    RuntimeOperational,
+    RuntimeProfile,
+    RuntimeUser,
+    UserIdentity,
+)
 
 LOCAL_ISSUER = 'atlanticus-local'
 LOCAL_JANE_BACKGROUND_COLOR = '#C85D91'
@@ -35,26 +40,33 @@ class LocalUserDefinition:
         object.__setattr__(
             self,
             'avatar_background_color',
-            normalize_user_color(self.avatar_background_color),
+            normalize_profile_color(self.avatar_background_color),
         )
         object.__setattr__(
             self,
             'avatar_text_color',
-            normalize_user_color(self.avatar_text_color),
+            normalize_profile_color(self.avatar_text_color),
         )
 
-    def to_effective_user(self) -> EffectiveUser:
-        return EffectiveUser(
-            user_id=build_user_key(issuer=LOCAL_ISSUER, subject_id=self.subject_id),
+    @property
+    def user_id(self) -> str:
+        return build_user_key(issuer=LOCAL_ISSUER, subject_id=self.subject_id)
+
+    def to_identity(self) -> UserIdentity:
+        return UserIdentity(
+            user_id=self.user_id,
+            issuer=LOCAL_ISSUER,
             subject_id=self.subject_id,
             display_name=self.display_name,
             email=None,
+        )
+
+    def to_runtime_user(self) -> RuntimeUser:
+        return RuntimeUser(
+            identity=self.to_identity(),
             enabled=True,
-            avatar_text=build_avatar_text(self.display_name),
-            profile_key=LOCAL_PROFILE_KEY,
-            avatar_background_color=self.avatar_background_color,
-            avatar_text_color=self.avatar_text_color,
-            is_local=True,
+            profile=RuntimeProfile.from_profile(LOCAL_PROFILE),
+            operational=RuntimeOperational(),
         )
 
 
@@ -76,8 +88,8 @@ LOCAL_USERS = (LOCAL_JANE, LOCAL_JOHN)
 def select_local_user(
     *,
     selector: Callable[[tuple[LocalUserDefinition, ...]], LocalUserDefinition] | None = None,
-) -> EffectiveUser:
+) -> LocalUserDefinition:
     selected = (selector or choice)(LOCAL_USERS)
     if selected not in LOCAL_USERS:
         raise UsersDefinitionError('Local user selector returned an unknown identity')
-    return selected.to_effective_user()
+    return selected

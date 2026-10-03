@@ -7,6 +7,8 @@ from ada.web.application.configuration_manager.composition import (
 )
 from ada.web.application.configuration_manager.local_runtime import (
     InProcessProjectionStore,
+    InProcessToolMembershipStore,
+    InProcessUsersRuntimeStore,
     create_local_configuration_manager_dependencies,
     create_local_configuration_manager_stores,
 )
@@ -95,25 +97,21 @@ def test_invalid_projection_is_not_misreported_as_provider_outage():
         read_manager_projection(Invalid(), PROFILES_CONFIGURATION_SOURCE_KEY, ProfileCatalog)
 
 
-def test_manager_sources_keep_independent_application_boundaries(tmp_path):
+def test_manager_sources_are_tool_scoped_and_users_stores_are_explicit(tmp_path):
     from ada.web.access.configuration import AdaAccessConfiguration
-    from ada.web.application.configuration_manager.wiring import (
-        ConfigurationManagerStores,
-        compose_configuration_manager_dependencies,
-    )
+    from ada.web.application.configuration_manager.wiring import ConfigurationManagerStores
     from atlanticus.web.source.local import LocalSourceSettings, LocalSourceStore
     from atlanticus.web.users.models import UsersRegistrySnapshot
-    from atlanticus.web.users.store import UsersAdministrationStore, UsersRegistryStore
+    from atlanticus.web.users.store import UsersRegistryStore
 
     calls = []
 
     class TrackingSource(LocalSourceStore):
-        def __init__(self, key):
-            super().__init__(LocalSourceSettings(root=tmp_path / key))
-            self.key = key
+        def __init__(self):
+            super().__init__(LocalSourceSettings(root=tmp_path / 'tool'))
 
         def get_current(self, source_key):
-            calls.append((self.key, source_key.value))
+            calls.append(source_key.value)
             return super().get_current(source_key)
 
     class Registry(UsersRegistryStore):
@@ -123,28 +121,14 @@ def test_manager_sources_keep_independent_application_boundaries(tmp_path):
         def replace(self, users, *, expected_version):
             return UsersRegistrySnapshot(users=users, version='test')
 
-    class Promoted(UsersAdministrationStore):
-        def get(self, user_id):
-            return None
-
-        def list_users(self):
-            return ()
-
-        def create(self, user):
-            return user
-
-        def replace(self, user):
-            return user
-
-    source_a = TrackingSource('application')
-    source_b = TrackingSource('tool')
+    tool_source = TrackingSource()
     stores = ConfigurationManagerStores(
-        navigation_source=source_a,
-        tools_source=source_b,
-        access_source=source_a,
-        profiles_source=source_a,
-        kpi_registry_source=source_b,
-        kpi_definitions_source=source_b,
+        navigation_source=tool_source,
+        tools_source=tool_source,
+        access_source=tool_source,
+        profiles_source=tool_source,
+        kpi_registry_source=tool_source,
+        kpi_definitions_source=tool_source,
         navigation=InProcessProjectionStore(),
         tools=InProcessProjectionStore(),
         access=InProcessProjectionStore[AdaAccessConfiguration](),
@@ -152,7 +136,8 @@ def test_manager_sources_keep_independent_application_boundaries(tmp_path):
         kpi_registry=InProcessProjectionStore(),
         kpi_definitions=InProcessProjectionStore(),
         users_registry=Registry(),
-        users_promoted=Promoted(),
+        users_memberships=InProcessToolMembershipStore(),
+        users_runtime=InProcessUsersRuntimeStore(),
     )
     deps = compose_configuration_manager_dependencies(
         stores=stores,
@@ -166,11 +151,7 @@ def test_manager_sources_keep_independent_application_boundaries(tmp_path):
     services.require(NAVIGATION_MANAGER_SOURCE_SERVICE).get_source_snapshot()
     deps.tools_source.get_current()
     deps.access_source.get_current()
-    assert calls == [
-        ('application', 'navigation'),
-        ('tool', 'tools'),
-        ('application', 'ada-access'),
-    ]
+    assert calls == ['navigation', 'tools', 'ada-access']
 
 
 def test_projection_source_mismatch_is_an_invalid_contract():

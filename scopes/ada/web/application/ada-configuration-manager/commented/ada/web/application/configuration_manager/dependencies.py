@@ -1,7 +1,6 @@
-# Declara dependencias explícitas del Configuration Manager y valida combinaciones que deben inyectarse juntas.
-# Este espejo conserva exactamente el mismo AST y comportamiento que producción.
-
 from __future__ import annotations
+
+# Operational recibe ManagedUser de authoring; RuntimeUser pertenece al runtime de sesión.
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -12,10 +11,7 @@ from ada.web.application.configuration_manager.operational_catalog_workflows imp
 )
 from ada.web.kpis.definition.configuration import KpiDefinitionSourceService
 from ada.web.kpis.definition.coverage import KpiDefinitionCatalog
-from ada.web.kpis.registry.configuration import (
-    KpiDestinationCatalogProvider,
-    KpiRegistrySourceService,
-)
+from ada.web.kpis.registry.configuration import KpiDestinationCatalogProvider, KpiRegistrySourceService
 from ada.web.kpis.registry.models import KpiRegistry
 from ada.web.operational.identification import OperationalIdentificationService
 from ada.web.tools.configuration import ToolConfiguration, ToolSourceService
@@ -24,11 +20,10 @@ from atlanticus.web.navigation.configuration import NavigationConfigurationCatal
 from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.projection.service import SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
-from atlanticus.web.users.models import UserRecord
+from atlanticus.web.users.models import ManagedUser
 
 
 @dataclass(frozen=True, slots=True)
-# Clase con responsabilidad y estado explícitos dentro de esta frontera.
 class ConfigurationManagerDependencies:
     navigation_module: ManagerModule
     navigation_projection_store: ProjectionStore[NavigationConfigurationCatalog]
@@ -42,7 +37,7 @@ class ConfigurationManagerDependencies:
     users_entry: ManagerEntry
     users_projection_entry: ManagerEntry | None = None
     operational_service: OperationalIdentificationService | None = None
-    operational_users: Callable[[], tuple[UserRecord, ...]] | None = None
+    operational_users: Callable[[], tuple[ManagedUser, ...]] | None = None
     operational_catalog_contracts: OperationalCatalogManagerContracts | None = None
     kpi_registry_source: KpiRegistrySourceService | None = None
     kpi_registry_projection: SourceProjectionService[KpiRegistry] | None = None
@@ -61,10 +56,9 @@ class ConfigurationManagerDependencies:
     kpi_definitions_source_name: str = 'Source'
     kpi_definitions_projection_name: str = 'Projection'
 
-    # Expone o ejecuta la responsabilidad `__post_init__` sin cambiar contratos externos.
     def __post_init__(self) -> None:
         if (self.operational_service is None) != (self.operational_users is None):
-            raise ValueError('Operational service and promoted users must be injected together')
+            raise ValueError('Operational service and managed users must be injected together')
         if self.operational_catalog_contracts is not None and self.operational_service is None:
             raise ValueError('Operational catalog contracts require operational service')
         if self.operational_service is not None and self.operational_catalog_contracts is None:

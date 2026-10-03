@@ -11,23 +11,23 @@ from atlanticus.connectivity.cosmos import CosmosOperationError
 from atlanticus.web.configuration import WebEnvironment, WebSettings
 from atlanticus.web.identity.access import AccessRuntime, AccessSnapshot, AccessStatus
 from atlanticus.web.manager import ManagerPrincipal
-from atlanticus.web.profiles.models import LOCAL_PROFILE_KEY, ROOT_PROFILE_KEY
+from atlanticus.web.profiles.models import LOCAL_PROFILE, LOCAL_PROFILE_KEY, ROOT_PROFILE_KEY
 from atlanticus.web.users.local import LOCAL_ISSUER, LOCAL_USERS
-from atlanticus.web.users.models import EffectiveUser
+from atlanticus.web.users.models import RuntimeProfile, RuntimeUser, build_avatar_text
 from atlanticus.web.users.runtime import UsersRuntime
 
 
 def resolve_manager_principal(
     *,
     access: AccessSnapshot,
-    user: EffectiveUser | None,
+    user: RuntimeUser | None,
 ) -> ManagerPrincipal:
     if not isinstance(access, AccessSnapshot):
         raise TypeError('Manager principal requires an access snapshot')
     if access.status is not AccessStatus.READY or access.identity is None:
         raise ValueError('Manager principal requires ready authenticated access')
-    if user is not None and not isinstance(user, EffectiveUser):
-        raise TypeError('Manager user must be an EffectiveUser')
+    if user is not None and not isinstance(user, RuntimeUser):
+        raise TypeError('Manager user must be a RuntimeUser')
     if access.bootstrap_root and user is not None:
         raise ValueError('Bootstrap root cannot use a managed user snapshot')
     if user is not None:
@@ -36,6 +36,12 @@ def resolve_manager_principal(
         if not user.enabled:
             raise ValueError('Disabled user cannot resolve Manager principal')
 
+    profile = None if user is None else user.profile
+    is_local = (
+        user is not None
+        and user.issuer == LOCAL_ISSUER
+        and user.profile.id == LOCAL_PROFILE_KEY
+    )
     return ManagerPrincipal(
         subject_id=access.identity.subject_id,
         display_name=(
@@ -43,12 +49,16 @@ def resolve_manager_principal(
             if user is not None
             else access.identity.display_name or access.identity.subject_id
         ),
-        profile_keys=(() if user is None else (user.profile_key,)),
+        profile_keys=(() if profile is None else (profile.id,)),
         access_keys=(),
         administrative_override=(
-            user is not None and not user.is_local and user.profile_key == ROOT_PROFILE_KEY
+            user is not None and not is_local and user.profile.id == ROOT_PROFILE_KEY
         ),
-        is_local=(user.is_local if user is not None else False),
+        is_local=is_local,
+        profile_label=None if profile is None else profile.label,
+        profile_background_color=None if profile is None else profile.background_color,
+        profile_text_color=None if profile is None else profile.text_color,
+        avatar_text=None if user is None else build_avatar_text(user.display_name),
     )
 
 
@@ -72,7 +82,8 @@ class ManagerPrincipalBinding:
         if self.trusted_local_users and (
             user is None
             or (
-                user.is_local
+                user.issuer == LOCAL_ISSUER
+                and user.profile.id == LOCAL_PROFILE_KEY
                 and user.enabled
                 and access.identity is not None
                 and user.subject_id == access.identity.subject_id
@@ -127,11 +138,16 @@ def _resolve_trusted_local_principal(access: AccessSnapshot) -> ManagerPrincipal
     local = next((user for user in LOCAL_USERS if user.subject_id == identity.subject_id), None)
     if local is None:
         return None
+    profile = RuntimeProfile.from_profile(LOCAL_PROFILE)
     return ManagerPrincipal(
         subject_id=local.subject_id,
         display_name=local.display_name,
-        profile_keys=(LOCAL_PROFILE_KEY,),
+        profile_keys=(profile.id,),
         access_keys=(),
         administrative_override=True,
         is_local=True,
+        profile_label=profile.label,
+        profile_background_color=profile.background_color,
+        profile_text_color=profile.text_color,
+        avatar_text=build_avatar_text(local.display_name),
     )

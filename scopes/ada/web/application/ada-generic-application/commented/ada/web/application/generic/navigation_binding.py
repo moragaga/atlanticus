@@ -1,7 +1,6 @@
-# Adaptador de presentación y autorización entre la composición ADA y Navigation genérico.
-# Identity no se consulta aquí; la composición determina quién es un ManagerPrincipal válido.
-
 from __future__ import annotations
+
+# Local mantiene paleta por subject; usuarios administrados usan la presentación materializada del perfil.
 
 from atlanticus.web.manager import ManagerPrincipal
 from atlanticus.web.navigation.api import NavigationPrincipal, NavigationUser
@@ -9,7 +8,6 @@ from atlanticus.web.profiles.models import LOCAL_PROFILE_KEY
 from atlanticus.web.users.local import LOCAL_USERS
 
 
-# Un visitante sin perfil puede consumir solamente enlaces públicos.
 def public_navigation_principal() -> NavigationPrincipal:
     return NavigationPrincipal(
         access_key=None,
@@ -24,16 +22,15 @@ def public_navigation_principal() -> NavigationPrincipal:
     )
 
 
-# Sólo root administrado o local verificado pueden recuperar rutas sin publicar.
 def manager_navigation_principal(
-    principal: ManagerPrincipal, *, allow_local: bool = False
+    principal: ManagerPrincipal,
+    *,
+    allow_local: bool = False,
 ) -> NavigationPrincipal:
     profile_key = principal.profile_keys[0] if len(principal.profile_keys) == 1 else None
     administrative_override = (profile_key == 'root' and not principal.is_local) or (
         profile_key == 'local' and principal.is_local and allow_local
     )
-    # Sólo los sujetos locales conocidos reciben su avatar: nunca se decide por nombre visible.
-    # En identidades locales reconocidas, la insignia Local y el avatar comparten la paleta del usuario.
     local_user = next(
         (
             user
@@ -44,22 +41,30 @@ def manager_navigation_principal(
         ),
         None,
     )
-    display_name = principal.display_name
-    initials = ''.join(word[0] for word in display_name.split()[:2]).upper() or 'U'
+    background_color = (
+        local_user.avatar_background_color
+        if local_user is not None
+        else principal.profile_background_color or '#3778C2'
+    )
+    text_color = (
+        local_user.avatar_text_color
+        if local_user is not None
+        else principal.profile_text_color or '#FFFFFF'
+    )
     return NavigationPrincipal(
         access_key=profile_key,
         administrative_override=administrative_override,
         user=NavigationUser(
-            display_name=display_name,
+            display_name=principal.display_name,
             profile_key=profile_key or 'public',
-            profile_label=profile_key.title() if profile_key is not None else 'Sin perfil',
-            profile_background_color=(
-                local_user.avatar_background_color if local_user is not None else '#3778C2'
+            profile_label=principal.profile_label or (
+                profile_key.title() if profile_key is not None else 'Sin perfil'
             ),
-            profile_text_color=(
-                local_user.avatar_text_color if local_user is not None else '#FFFFFF'
-            ),
-            avatar_text=initials,
+            profile_background_color=background_color,
+            profile_text_color=text_color,
+            avatar_text=principal.avatar_text or ''.join(
+                word[0] for word in principal.display_name.split()[:2]
+            ).upper() or 'U',
             avatar_background_color=(
                 local_user.avatar_background_color if local_user is not None else None
             ),

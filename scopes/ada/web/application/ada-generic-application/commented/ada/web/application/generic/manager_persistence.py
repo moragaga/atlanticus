@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# users-runtime no lleva scope lógico adicional: el Cosmos seleccionado ya pertenece a la Tool.
+
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, TypeVar
@@ -47,16 +49,12 @@ from atlanticus.web.storage.topology import (
     StorageResourceOverride,
     resolve_storage_plan,
 )
-from atlanticus.web.users.blob import BlobUsersRegistryStore
-from atlanticus.web.users.cosmos import CosmosUsersStore
-from atlanticus.web.users.storage import (
-    USERS_RUNTIME_STORAGE_RESOURCE,
-    USERS_SUPPORT_STORAGE_RESOURCE,
-)
+from atlanticus.web.users.blob import BlobToolMembershipStore, BlobUsersRegistryStore
+from atlanticus.web.users.cosmos import CosmosUsersRuntimeStore
+from atlanticus.web.users.storage import USERS_RUNTIME_STORAGE_RESOURCE, USERS_SUPPORT_STORAGE_RESOURCE
 
 ClientT = TypeVar('ClientT')
 
-# Las proyecciones conservan su topología actual; este incremento sólo cambia ownership Blob.
 _COSMOS_CONTRACTS: dict[str, StorageResourceContract[Any]] = {
     'navigation': NAVIGATION_PROJECTION_STORAGE_RESOURCE,
     'users_support': USERS_SUPPORT_STORAGE_RESOURCE,
@@ -73,7 +71,6 @@ _SUPPORT_CONSUMER_CONTRACTS = (
 
 
 @dataclass(frozen=True, slots=True)
-# Binding físico de un contenedor Blob inyectado por el composition root.
 class ManagerBlobResource:
     connection_ref: str
     container_name: str
@@ -84,7 +81,6 @@ class ManagerBlobResource:
 
 
 @dataclass(frozen=True, slots=True)
-# La configuración Tool-scoped comparte un único Source; Users global mantiene binding separado.
 class ManagerPersistenceResources:
     tool_source: ManagerBlobResource
     users_registry: ManagerBlobResource
@@ -100,7 +96,6 @@ class ManagerPersistenceResources:
 
 
 @dataclass(frozen=True, slots=True)
-# Los clientes siguen siendo nombrados y su ciclo de vida pertenece al composition root.
 class ManagerPersistenceConnections:
     storage: Mapping[str, StorageClient]
     cosmos: Mapping[str, CosmosClient]
@@ -129,7 +124,6 @@ def resolve_manager_cosmos_plan_for_connection(connection_ref: str) -> ResolvedS
     )
 
 
-# Compone todos los Sources de configuración sobre el namespace de la Tool.
 def compose_durable_manager_stores(
     *,
     namespace: StorageNamespace,
@@ -138,11 +132,6 @@ def compose_durable_manager_stores(
 ) -> ConfigurationManagerStores:
     if not isinstance(namespace, StorageNamespace):
         raise TypeError('Manager namespace must be StorageNamespace')
-    if not isinstance(resources, ManagerPersistenceResources):
-        raise TypeError('Manager resources must be ManagerPersistenceResources')
-    if not isinstance(connections, ManagerPersistenceConnections):
-        raise TypeError('Manager connections must be ManagerPersistenceConnections')
-
     physical = _validate_cosmos_resources(resources.cosmos_plan)
     storage = {
         name: _require_connection(connections.storage, getattr(resources, name).connection_ref)
@@ -153,7 +142,6 @@ def compose_durable_manager_stores(
         for name, resolved in physical.items()
     }
 
-    # Navigation, Profiles, Access, Tools, KPI y Operational reutilizan este mismo store Tool-scoped.
     tool_source = BlobSourceStore(
         BlobSourceSettings(
             container_name=resources.tool_source.container_name,
@@ -161,7 +149,7 @@ def compose_durable_manager_stores(
         ),
         storage=storage['tool_source'],
     )
-    users = CosmosUsersStore(
+    users_runtime = CosmosUsersRuntimeStore(
         client=cosmos['users_runtime'],
         container_name=physical['users_runtime'].physical_name,
     )
@@ -205,13 +193,17 @@ def compose_durable_manager_stores(
                 physical['kpi_definitions'].physical_name
             ),
         ),
-        # Users Registry sigue siendo global a la aplicación y no se mueve al namespace de la Tool.
         users_registry=BlobUsersRegistryStore(
             client=storage['users_registry'],
             container_name=resources.users_registry.container_name,
             blob_name=namespace.application_blob_name('users/users.json.gz'),
         ),
-        users_promoted=users,
+        users_memberships=BlobToolMembershipStore(
+            client=storage['tool_source'],
+            container_name=resources.tool_source.container_name,
+            blob_name=namespace.scope_blob_name('users/memberships.json.gz'),
+        ),
+        users_runtime=users_runtime,
         operational_source=tool_source,
         operational=CosmosOperationalProjectionStore(
             client=cosmos['users_support'],
@@ -220,7 +212,6 @@ def compose_durable_manager_stores(
     )
 
 
-# La topología Cosmos no cambia en este incremento.
 def _validate_cosmos_resources(
     plan: ResolvedStoragePlan,
 ) -> dict[str, ResolvedStorageResource[Any]]:
@@ -260,13 +251,11 @@ def _validate_cosmos_resources(
     return result
 
 
-# Rechaza bindings físicos ambiguos antes de abrir proveedores.
 def _require_name(value: str, description: str) -> None:
     if not isinstance(value, str) or not value or value != value.strip():
         raise ValueError(f'{description} must be nonempty and normalized')
 
 
-# Resuelve referencias nombradas sin crear clientes globales ni fallbacks implícitos.
 def _require_connection(clients: Mapping[str, ClientT], name: str) -> ClientT:
     if name not in clients or clients[name] is None:
         raise ValueError(f'Manager connection reference is not registered: {name}')

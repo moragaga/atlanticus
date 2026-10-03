@@ -1,110 +1,146 @@
-from __future__ import annotations
+from atlanticus.connectivity.cosmos import CosmosConflictError, CosmosItemNotFoundError
 
-from dataclasses import replace
 
-import pytest
+class MemoryCosmos:
+    def __init__(self):
+        self.items = {}
+        self.revision = 0
 
-from atlanticus.web.users.cosmos.store import CosmosUsersStore
-from atlanticus.web.users.errors import UsersStoreUnavailableError
+    def _with_etag(self, document):
+        result = dict(document)
+        result['_etag'] = f'e{self.revision}'
+        return result
+
+    def find_item(
+        self,
+        *,
+        container_name,
+        item_id,
+        partition_key,
+        include_metadata=False,
+    ):
+        value = self.items.get(item_id)
+        return None if value is None else dict(value)
+
+    def create_item(self, *, container_name, item, include_metadata=False):
+        item_id = item['id']
+        if item_id in self.items:
+            raise CosmosConflictError(item_id)
+        self.revision += 1
+        self.items[item_id] = self._with_etag(item)
+        return dict(self.items[item_id])
+
+    def patch_item(
+        self,
+        *,
+        container_name,
+        item_id,
+        partition_key,
+        operations,
+        if_match_etag=None,
+        include_metadata=False,
+    ):
+        if item_id not in self.items:
+            raise CosmosItemNotFoundError(item_id)
+        current = self.items[item_id]
+        if if_match_etag is not None and current.get('_etag') != if_match_etag:
+            raise CosmosConflictError(item_id)
+        updated = dict(current)
+        for operation in operations:
+            assert operation.operation == 'set'
+            updated[operation.path.removeprefix('/')] = operation.value
+        self.revision += 1
+        updated['_etag'] = f'e{self.revision}'
+        self.items[item_id] = updated
+        return dict(updated)
+
+    def query_items(
+        self,
+        *,
+        container_name,
+        query,
+        parameters=None,
+        cross_partition=False,
+        include_metadata=False,
+    ):
+        values = {}
+        for parameter in parameters or ():
+            values[parameter.name] = parameter.value
+        result = []
+        for item in self.items.values():
+            if (
+                item.get('document_type') == values.get('@document_type')
+            ):
+                result.append(dict(item))
+        return tuple(result)
+
+    def delete_item(
+        self,
+        *,
+        container_name,
+        item_id,
+        partition_key,
+        if_match_etag=None,
+    ):
+        if item_id not in self.items:
+            raise CosmosItemNotFoundError(item_id)
+        current = self.items[item_id]
+        if if_match_etag is not None and current.get('_etag') != if_match_etag:
+            raise CosmosConflictError(item_id)
+        del self.items[item_id]
+
+from atlanticus.web.identity.models import AuthenticatedIdentity
+from atlanticus.web.profiles.models import BASIC_PROFILE, ROOT_PROFILE
 from atlanticus.web.users.identity import build_user_key
-from atlanticus.web.users.models import UserRecord
+from atlanticus.web.users.models import RuntimeProfile, RuntimeUser, UserIdentity
 
 
-def user(subject: str, *, profile_key: str = 'basic') -> UserRecord:
-    return UserRecord(
-        user_id=build_user_key(issuer='entra', subject_id=subject),
-        issuer='entra',
+def identity(subject='subject'):
+    return AuthenticatedIdentity(
+        provider_key='entra',
+        issuer='issuer',
         subject_id=subject,
-        display_name=f'User {subject}',
-        email=None,
-        enabled=True,
-        profile_key=profile_key,
     )
 
 
-class FakeCosmos:
-    def __init__(self):
-        self.documents = {}
-        self.sequence = 0
-        self.deleted = []
+def runtime_user(subject='subject', *, root=False):
+    user_identity = UserIdentity(
+        user_id=build_user_key(issuer='issuer', subject_id=subject),
+        issuer='issuer',
+        subject_id=subject,
+        display_name=f'User {subject}',
+    )
+    return RuntimeUser(
+        identity=user_identity,
+        enabled=True,
+        profile=RuntimeProfile.from_profile(ROOT_PROFILE if root else BASIC_PROFILE),
+    )
 
-    def _next_version(self):
-        self.sequence += 1
-        return f'version-{self.sequence}'
-
-    def find_item(self, *, container_name, item_id, partition_key, include_metadata=False):
-        assert partition_key == item_id
-        value = self.documents.get(item_id)
-        return None if value is None else self._copy(value, include_metadata)
-
-    def create_item(self, *, container_name, item, include_metadata=False):
-        assert item['id'] not in self.documents
-        value = {**item, '_etag': self._next_version()}
-        self.documents[item['id']] = value
-        return self._copy(value, include_metadata)
-
-    def patch_item(
-        self, *, container_name, item_id, partition_key, operations,
-        if_match_etag=None, include_metadata=False,
-    ):
-        document = self.documents[item_id]
-        assert document['_etag'] == if_match_etag
-        for operation in operations:
-            document[operation.path[1:]] = operation.value
-        document['_etag'] = self._next_version()
-        return self._copy(document, include_metadata)
-
-    def query_items(
-        self, *, container_name, query, parameters=None,
-        cross_partition=False, include_metadata=False,
-    ):
-        assert cross_partition is True
-        assert parameters[0].value == 'atlanticus_user'
-        return tuple(
-            self._copy(document, include_metadata)
-            for document in self.documents.values()
-            if document['document_type'] == 'atlanticus_user'
-        )
-
-    def delete_item(self, *, container_name, item_id, partition_key, if_match_etag=None):
-        assert item_id == partition_key
-        assert self.documents[item_id]['_etag'] == if_match_etag
-        self.deleted.append((item_id, if_match_etag))
-        del self.documents[item_id]
-
-    @staticmethod
-    def _copy(document, include_metadata):
-        return {
-            key: value for key, value in document.items()
-            if include_metadata or key != '_etag'
-        }
+from atlanticus.web.users.cosmos import CosmosUsersRuntimeStore
 
 
-def test_cosmos_replacement_uses_real_item_versions_and_preserves_container():
-    client = FakeCosmos()
-    store = CosmosUsersStore(client=client, container_name='users-runtime')
-    old, extra = user('old'), user('extra')
-    store.create(old)
-    store.create(extra)
-    versions = {entry.user.user_id: entry.version for entry in store.list_versioned_users()}
-    updated = replace(old, profile_key='root')
-    assert store.replace_if_version(updated, expected_version=versions[old.user_id]) == updated
-    store.delete_if_version(extra.user_id, expected_version=versions[extra.user_id])
-    assert [entry.user for entry in store.list_versioned_users()] == [updated]
-    assert client.deleted == [(extra.user_id, versions[extra.user_id])]
-    assert set(client.documents) == {old.user_id}
+def test_replace_all_creates_updates_and_deletes_until_runtime_matches():
+    cosmos = MemoryCosmos()
+    store = CosmosUsersRuntimeStore(
+        client=cosmos,
+        container_name='users-runtime',
+    )
+    original = (runtime_user('a'), runtime_user('obsolete'))
+    assert store.replace_all(original) == tuple(sorted(original, key=lambda user: user.user_id))
+    desired = (runtime_user('a', root=True), runtime_user('b'))
+    persisted = store.replace_all(desired)
+    assert persisted == tuple(sorted(desired, key=lambda user: user.user_id))
+    assert store.list_users() == persisted
+    assert store.resolve(identity('obsolete')) is None
 
 
-def test_cosmos_replacement_rejects_stale_versions_without_mutating():
-    client = FakeCosmos()
-    store = CosmosUsersStore(client=client, container_name='users-runtime')
-    saved = user('selected')
-    store.create(saved)
-    version = store.list_versioned_users()[0].version
-    client.documents[saved.user_id]['_etag'] = 'concurrent-version'
-    with pytest.raises(UsersStoreUnavailableError, match='changed'):
-        store.replace_if_version(replace(saved, profile_key='root'), expected_version=version)
-    with pytest.raises(UsersStoreUnavailableError, match='changed'):
-        store.delete_if_version(saved.user_id, expected_version=version)
-    assert store.get(saved.user_id) == saved
-    assert not client.deleted
+def test_replace_all_is_idempotent_for_same_runtime_snapshot():
+    cosmos = MemoryCosmos()
+    store = CosmosUsersRuntimeStore(
+        client=cosmos,
+        container_name='users-runtime',
+    )
+    desired = (runtime_user('a'),)
+    first = store.replace_all(desired)
+    second = store.replace_all(desired)
+    assert first == second == desired
