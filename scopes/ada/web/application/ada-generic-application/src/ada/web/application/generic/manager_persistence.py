@@ -83,13 +83,12 @@ class ManagerBlobResource:
 
 @dataclass(frozen=True, slots=True)
 class ManagerPersistenceResources:
-    application_source: ManagerBlobResource
     tool_source: ManagerBlobResource
     users_registry: ManagerBlobResource
     cosmos_plan: ResolvedStoragePlan
 
     def __post_init__(self) -> None:
-        for name in ('application_source', 'tool_source', 'users_registry'):
+        for name in ('tool_source', 'users_registry'):
             if not isinstance(getattr(self, name), ManagerBlobResource):
                 raise TypeError(f'Manager {name} must be a Blob resource')
         if not isinstance(self.cosmos_plan, ResolvedStoragePlan):
@@ -142,20 +141,13 @@ def compose_durable_manager_stores(
     physical = _validate_cosmos_resources(resources.cosmos_plan)
     storage = {
         name: _require_connection(connections.storage, getattr(resources, name).connection_ref)
-        for name in ('application_source', 'tool_source', 'users_registry')
+        for name in ('tool_source', 'users_registry')
     }
     cosmos = {
         name: _require_connection(connections.cosmos, resolved.connection_ref)
         for name, resolved in physical.items()
     }
 
-    application_source = BlobSourceStore(
-        BlobSourceSettings(
-            container_name=resources.application_source.container_name,
-            root_prefix=namespace.application_prefix,
-        ),
-        storage=storage['application_source'],
-    )
     tool_source = BlobSourceStore(
         BlobSourceSettings(
             container_name=resources.tool_source.container_name,
@@ -168,10 +160,10 @@ def compose_durable_manager_stores(
         container_name=physical['users_runtime'].physical_name,
     )
     return ConfigurationManagerStores(
-        navigation_source=application_source,
+        navigation_source=tool_source,
         tools_source=tool_source,
-        access_source=application_source,
-        profiles_source=application_source,
+        access_source=tool_source,
+        profiles_source=tool_source,
         kpi_registry_source=tool_source,
         kpi_definitions_source=tool_source,
         navigation=CosmosNavigationProjectionStore(
@@ -213,7 +205,7 @@ def compose_durable_manager_stores(
             blob_name=namespace.application_blob_name('users/users.json.gz'),
         ),
         users_promoted=users,
-        operational_source=application_source,
+        operational_source=tool_source,
         operational=CosmosOperationalProjectionStore(
             client=cosmos['users_support'],
             container_name=physical['users_support'].physical_name,

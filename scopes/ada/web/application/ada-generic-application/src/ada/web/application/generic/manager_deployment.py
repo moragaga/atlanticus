@@ -103,7 +103,6 @@ def resolve_durable_manager_configuration(
     return DurableManagerConfiguration(
         namespace=namespace,
         resources=ManagerPersistenceResources(
-            application_source=resource,
             tool_source=resource,
             users_registry=resource,
             cosmos_plan=resolve_manager_cosmos_plan_for_connection(_COSMOS_CONNECTION),
@@ -210,7 +209,6 @@ def prepare_durable_manager_resources(
     blobs = {
         (resource.connection_ref, resource.container_name)
         for resource in (
-            deployment.resources.application_source,
             deployment.resources.tool_source,
             deployment.resources.users_registry,
         )

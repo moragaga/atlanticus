@@ -78,6 +78,7 @@ class DurableManagerRuntime:
     connections: ManagerPersistenceConnections
 
 
+# Resuelve un único binding Blob para configuración Tool-scoped y otro contrato lógico para Users global.
 def resolve_durable_manager_configuration(
     settings: AdaGenericSettings,
 ) -> DurableManagerConfiguration:
@@ -104,7 +105,6 @@ def resolve_durable_manager_configuration(
     return DurableManagerConfiguration(
         namespace=namespace,
         resources=ManagerPersistenceResources(
-            application_source=resource,
             tool_source=resource,
             users_registry=resource,
             cosmos_plan=resolve_manager_cosmos_plan_for_connection(_COSMOS_CONNECTION),
@@ -141,6 +141,7 @@ def open_durable_manager(
         )
 
 
+# Users Recovery permanece application-scoped; no participa del corte de Sources de configuración.
 def _attach_users_recovery(
     stores: ConfigurationManagerStores,
     resolved: DurableManagerConfiguration,
@@ -199,7 +200,7 @@ def _attach_users_recovery(
     )
 
 
-# ADA adapta sus recursos concretos al coordinador genérico de Atlanticus.
+# Prepara los recursos físicos vigentes; Tool Source y Users pueden deduplicarse si comparten contenedor.
 def prepare_durable_manager_resources(
     deployment: DurableManagerRuntime,
     *,
@@ -209,16 +210,13 @@ def prepare_durable_manager_resources(
 ) -> ResourcePreparationReport:
     if not isinstance(deployment, DurableManagerRuntime):
         raise TypeError('Resource preparation requires a durable Manager runtime')
-    # Las tres superficies Blob CURRENT comparten el mismo contenedor y se deduplican aquí.
     blobs = {
         (resource.connection_ref, resource.container_name)
         for resource in (
-            deployment.resources.application_source,
             deployment.resources.tool_source,
             deployment.resources.users_registry,
         )
     }
-    # Desde este punto, prepare/validate no contienen semántica específica de ADA.
     return prepare_resources(
         resources=ResourcePreparationResources(
             blob_containers=tuple(

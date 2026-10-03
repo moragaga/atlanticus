@@ -21,7 +21,6 @@ from ada.web.kpis.registry.projection.cosmos import (
     CosmosKpiRegistryProjectionStoreSettings,
 )
 from ada.web.operational.identification import CosmosOperationalProjectionStore
-from atlanticus.web.storage.namespace import StorageNamespace
 from ada.web.tools.projection.cosmos import (
     TOOL_PROJECTION_STORAGE_RESOURCE,
     CosmosToolProjectionStore,
@@ -40,6 +39,7 @@ from atlanticus.web.profiles.projection.cosmos import (
     CosmosProfilesProjectionStoreSettings,
 )
 from atlanticus.web.source.blob import BlobSourceSettings, BlobSourceStore
+from atlanticus.web.storage.namespace import StorageNamespace
 from atlanticus.web.storage.topology import (
     ResolvedStoragePlan,
     ResolvedStorageResource,
@@ -56,9 +56,7 @@ from atlanticus.web.users.storage import (
 
 ClientT = TypeVar('ClientT')
 
-# La aplicación ADA mantiene Navigation como recurso propio; Users conserva sus dos
-# recursos y Profiles/Access comparten users-support por compatibilidad de topología.
-# Tool/KPI permanecen independientes mientras no tengan namespace propio en sus claves.
+# Las proyecciones conservan su topología actual; este incremento sólo cambia ownership Blob.
 _COSMOS_CONTRACTS: dict[str, StorageResourceContract[Any]] = {
     'navigation': NAVIGATION_PROJECTION_STORAGE_RESOURCE,
     'users_support': USERS_SUPPORT_STORAGE_RESOURCE,
@@ -68,8 +66,6 @@ _COSMOS_CONTRACTS: dict[str, StorageResourceContract[Any]] = {
     'users_runtime': USERS_RUNTIME_STORAGE_RESOURCE,
 }
 
-# Las capabilities Profiles y ADA Access siguen declarando sus defaults independientes.
-# Sólo estas dos comparten físicamente users-support, previa validación de topología.
 _SUPPORT_CONSUMER_CONTRACTS = (
     PROFILES_PROJECTION_STORAGE_RESOURCE,
     ADA_ACCESS_PROJECTION_STORAGE_RESOURCE,
@@ -77,7 +73,7 @@ _SUPPORT_CONSUMER_CONTRACTS = (
 
 
 @dataclass(frozen=True, slots=True)
-# Los recursos Blob carecen aquí de contratos físicos genéricos; reciben bindings explícitos.
+# Binding físico de un contenedor Blob inyectado por el composition root.
 class ManagerBlobResource:
     connection_ref: str
     container_name: str
@@ -88,15 +84,14 @@ class ManagerBlobResource:
 
 
 @dataclass(frozen=True, slots=True)
-# Cosmos se resuelve por topología vigente; Blob mantiene selección física inyectada.
+# La configuración Tool-scoped comparte un único Source; Users global mantiene binding separado.
 class ManagerPersistenceResources:
-    application_source: ManagerBlobResource
     tool_source: ManagerBlobResource
     users_registry: ManagerBlobResource
     cosmos_plan: ResolvedStoragePlan
 
     def __post_init__(self) -> None:
-        for name in ('application_source', 'tool_source', 'users_registry'):
+        for name in ('tool_source', 'users_registry'):
             if not isinstance(getattr(self, name), ManagerBlobResource):
                 raise TypeError(f'Manager {name} must be a Blob resource')
         if not isinstance(self.cosmos_plan, ResolvedStoragePlan):
@@ -105,7 +100,7 @@ class ManagerPersistenceResources:
 
 
 @dataclass(frozen=True, slots=True)
-# La vida de los clientes pertenece al composition root y no a los stores.
+# Los clientes siguen siendo nombrados y su ciclo de vida pertenece al composition root.
 class ManagerPersistenceConnections:
     storage: Mapping[str, StorageClient]
     cosmos: Mapping[str, CosmosClient]
@@ -118,16 +113,12 @@ class ManagerPersistenceConnections:
                 raise ValueError('Manager connection names must be nonempty strings')
 
 
-# La selección de conexión respeta los overrides permitidos por el contrato original.
 def resolve_manager_cosmos_plan(
     overrides: Sequence[StorageResourceOverride],
 ) -> ResolvedStoragePlan:
     return resolve_storage_plan(tuple(_COSMOS_CONTRACTS.values()), overrides)
 
 
-# Composición lazy que no consulta ni aprovisiona infraestructura al construirla.
-
-# Reutiliza las mismas declaraciones de recursos para un único account/base Cosmos.
 def resolve_manager_cosmos_plan_for_connection(connection_ref: str) -> ResolvedStoragePlan:
     _require_name(connection_ref, 'Cosmos connection reference')
     return resolve_manager_cosmos_plan(
@@ -138,6 +129,7 @@ def resolve_manager_cosmos_plan_for_connection(connection_ref: str) -> ResolvedS
     )
 
 
+# Compone todos los Sources de configuración sobre el namespace de la Tool.
 def compose_durable_manager_stores(
     *,
     namespace: StorageNamespace,
@@ -154,20 +146,14 @@ def compose_durable_manager_stores(
     physical = _validate_cosmos_resources(resources.cosmos_plan)
     storage = {
         name: _require_connection(connections.storage, getattr(resources, name).connection_ref)
-        for name in ('application_source', 'tool_source', 'users_registry')
+        for name in ('tool_source', 'users_registry')
     }
     cosmos = {
         name: _require_connection(connections.cosmos, resolved.connection_ref)
         for name, resolved in physical.items()
     }
 
-    application_source = BlobSourceStore(
-        BlobSourceSettings(
-            container_name=resources.application_source.container_name,
-            root_prefix=namespace.application_prefix,
-        ),
-        storage=storage['application_source'],
-    )
+    # Navigation, Profiles, Access, Tools, KPI y Operational reutilizan este mismo store Tool-scoped.
     tool_source = BlobSourceStore(
         BlobSourceSettings(
             container_name=resources.tool_source.container_name,
@@ -175,24 +161,20 @@ def compose_durable_manager_stores(
         ),
         storage=storage['tool_source'],
     )
-    # Una única conexión Cosmos sirve contenedores distintos. Navigation es independiente;
-    # Profiles y ADA Access comparten users.support con partición /partition_key.
     users = CosmosUsersStore(
         client=cosmos['users_runtime'],
         container_name=physical['users_runtime'].physical_name,
     )
     return ConfigurationManagerStores(
-        navigation_source=application_source,
+        navigation_source=tool_source,
         tools_source=tool_source,
-        access_source=application_source,
-        profiles_source=application_source,
+        access_source=tool_source,
+        profiles_source=tool_source,
         kpi_registry_source=tool_source,
         kpi_definitions_source=tool_source,
         navigation=CosmosNavigationProjectionStore(
             client=cosmos['navigation'],
-            settings=CosmosNavigationProjectionStoreSettings(
-                physical['navigation'].physical_name
-            ),
+            settings=CosmosNavigationProjectionStoreSettings(physical['navigation'].physical_name),
         ),
         profiles=CosmosProfilesProjectionStore(
             client=cosmos['users_support'],
@@ -223,13 +205,14 @@ def compose_durable_manager_stores(
                 physical['kpi_definitions'].physical_name
             ),
         ),
+        # Users Registry sigue siendo global a la aplicación y no se mueve al namespace de la Tool.
         users_registry=BlobUsersRegistryStore(
             client=storage['users_registry'],
             container_name=resources.users_registry.container_name,
             blob_name=namespace.application_blob_name('users/users.json.gz'),
         ),
         users_promoted=users,
-        operational_source=application_source,
+        operational_source=tool_source,
         operational=CosmosOperationalProjectionStore(
             client=cosmos['users_support'],
             container_name=physical['users_support'].physical_name,
@@ -237,8 +220,7 @@ def compose_durable_manager_stores(
     )
 
 
-# Se revalida el plan y se exige una única conexión Cosmos para ADA.
-# El soporte compartido se declara una sola vez, sin absorber Navigation.
+# La topología Cosmos no cambia en este incremento.
 def _validate_cosmos_resources(
     plan: ResolvedStoragePlan,
 ) -> dict[str, ResolvedStorageResource[Any]]:
@@ -278,13 +260,13 @@ def _validate_cosmos_resources(
     return result
 
 
-# Se impiden referencias vacías y nombres con espacios ambiguos.
+# Rechaza bindings físicos ambiguos antes de abrir proveedores.
 def _require_name(value: str, description: str) -> None:
     if not isinstance(value, str) or not value or value != value.strip():
         raise ValueError(f'{description} must be nonempty and normalized')
 
 
-# Se comprueba la totalidad de las referencias antes de construir stores parciales.
+# Resuelve referencias nombradas sin crear clientes globales ni fallbacks implícitos.
 def _require_connection(clients: Mapping[str, ClientT], name: str) -> ClientT:
     if name not in clients or clients[name] is None:
         raise ValueError(f'Manager connection reference is not registered: {name}')

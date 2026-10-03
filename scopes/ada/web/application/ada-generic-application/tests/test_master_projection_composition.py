@@ -43,12 +43,12 @@ def test_web_backend_reuses_six_projectors_and_does_not_require_manager_permissi
         'profiles-configuration',
         'tools',
         'ada-access',
-        'kpis',
+        'kpi-registry',
         'kpi-definitions',
     }
     assert {item.key.value for item in report.entries if item.prerequisites} == {
         'ada-access',
-        'kpis',
+        'kpi-registry',
         'kpi-definitions',
     }
     assert all(item.state is ProjectionPlanState.SOURCE_MISSING for item in report.entries)

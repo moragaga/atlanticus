@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from ada.web.access.configuration import ADA_ACCESS_SOURCE_KEY
 from ada.web.application.generic.manager_persistence import (
     ManagerBlobResource,
     ManagerPersistenceConnections,
@@ -11,10 +12,14 @@ from ada.web.application.generic.manager_persistence import (
     compose_durable_manager_stores,
     resolve_manager_cosmos_plan,
 )
+from ada.web.kpis.definition.configuration import KPI_DEFINITION_SOURCE_KEY
+from ada.web.kpis.registry.configuration import KPI_REGISTRY_SOURCE_KEY
+from ada.web.operational.identification import CATALOG_SOURCE_KEY
+from ada.web.tools.configuration import TOOLS_SOURCE_KEY
 from atlanticus.connectivity.storage import StorageBlobNotFoundError
 from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
 from atlanticus.web.identity.models import AuthenticatedIdentity
-from atlanticus.web.source.models import SourceKey
+from atlanticus.web.navigation.configuration import NAVIGATION_SOURCE_KEY
 from atlanticus.web.storage.namespace import StorageNamespace
 from atlanticus.web.storage.topology import (
     MissingStorageConnectionBindingError,
@@ -43,7 +48,6 @@ class EmptyCosmos:
 
 def _resources() -> ManagerPersistenceResources:
     return ManagerPersistenceResources(
-        application_source=ManagerBlobResource('application-storage', 'configuration'),
         tool_source=ManagerBlobResource('tool-storage', 'configuration'),
         users_registry=ManagerBlobResource('users-storage', 'users'),
         cosmos_plan=resolve_manager_cosmos_plan(
@@ -64,20 +68,18 @@ def _resources() -> ManagerPersistenceResources:
 
 
 def _connections():
-    app = MissingStorage()
     tool = MissingStorage()
     users = MissingStorage()
     ada_cosmos = EmptyCosmos()
     return (
         ManagerPersistenceConnections(
             storage={
-                'application-storage': app,
                 'tool-storage': tool,
                 'users-storage': users,
             },
             cosmos={'ada-cosmos': ada_cosmos},
         ),
-        (app, tool, users, ada_cosmos),
+        (tool, users, ada_cosmos),
     )
 
 
@@ -85,45 +87,55 @@ def _namespace() -> StorageNamespace:
     return StorageNamespace(application_namespace='ada-site', scope_namespace='plant')
 
 
-def test_factory_is_lazy_and_preserves_independent_source_namespaces():
-    connections, (app, tool, users, ada_cosmos) = _connections()
+def test_factory_is_lazy_and_scopes_all_configuration_sources_to_the_tool():
+    connections, (tool, users, ada_cosmos) = _connections()
     stores = compose_durable_manager_stores(
         namespace=_namespace(), resources=_resources(), connections=connections
     )
-    assert all(not storage.calls for storage in (app, tool, users))
+    assert all(not storage.calls for storage in (tool, users))
     assert not ada_cosmos.calls
 
-    assert stores.navigation_source.get_current(SourceKey('navigation')).current is None
-    assert stores.profiles_source.get_current(SourceKey('profiles-configuration')).current is None
-    assert stores.access_source.get_current(SourceKey('ada-access')).current is None
-    assert stores.tools_source.get_current(SourceKey('tools')).current is None
-    assert stores.kpi_registry_source.get_current(SourceKey('kpis')).current is None
-    assert stores.kpi_definitions_source.get_current(SourceKey('kpi-definitions')).current is None
+    assert stores.navigation_source is stores.tools_source
+    assert stores.navigation_source is stores.access_source
+    assert stores.navigation_source is stores.profiles_source
+    assert stores.navigation_source is stores.kpi_registry_source
+    assert stores.navigation_source is stores.kpi_definitions_source
+    assert stores.navigation_source is stores.operational_source
 
-    assert app.calls == [
-        ('configuration', 'ada-site/sources/bmF2aWdhdGlvbg/manifest.json'),
-        ('configuration', 'ada-site/sources/cHJvZmlsZXMtY29uZmlndXJhdGlvbg/manifest.json'),
-        ('configuration', 'ada-site/sources/YWRhLWFjY2Vzcw/manifest.json'),
-    ]
+    assert stores.navigation_source.get_current(NAVIGATION_SOURCE_KEY).current is None
+    assert stores.profiles_source.get_current(PROFILES_CONFIGURATION_SOURCE_KEY).current is None
+    assert stores.access_source.get_current(ADA_ACCESS_SOURCE_KEY).current is None
+    assert stores.tools_source.get_current(TOOLS_SOURCE_KEY).current is None
+    assert stores.kpi_registry_source.get_current(KPI_REGISTRY_SOURCE_KEY).current is None
+    assert stores.kpi_definitions_source.get_current(KPI_DEFINITION_SOURCE_KEY).current is None
+    assert stores.operational_source.get_current(CATALOG_SOURCE_KEY).current is None
+
     assert tool.calls == [
+        ('configuration', 'ada-site/plant/sources/bmF2aWdhdGlvbg/manifest.json'),
+        ('configuration', 'ada-site/plant/sources/cHJvZmlsZXMtY29uZmlndXJhdGlvbg/manifest.json'),
+        ('configuration', 'ada-site/plant/sources/YWRhLWFjY2Vzcw/manifest.json'),
         ('configuration', 'ada-site/plant/sources/dG9vbHM/manifest.json'),
-        ('configuration', 'ada-site/plant/sources/a3Bpcw/manifest.json'),
+        ('configuration', 'ada-site/plant/sources/a3BpLXJlZ2lzdHJ5/manifest.json'),
         ('configuration', 'ada-site/plant/sources/a3BpLWRlZmluaXRpb25z/manifest.json'),
+        (
+            'configuration',
+            'ada-site/plant/sources/YWRhLW9wZXJhdGlvbmFsLWNhdGFsb2c/manifest.json',
+        ),
     ]
     assert not users.calls
 
 
 def test_one_cosmos_connection_keeps_navigation_outside_shared_users_support():
-    connections, (_app, _tool, _users, ada_cosmos) = _connections()
+    connections, (_tool, _users, ada_cosmos) = _connections()
     stores = compose_durable_manager_stores(
         namespace=_namespace(), resources=_resources(), connections=connections
     )
-    assert stores.navigation.get_active(SourceKey('navigation')) is None
+    assert stores.navigation.get_active(NAVIGATION_SOURCE_KEY) is None
     assert stores.profiles.get_active(PROFILES_CONFIGURATION_SOURCE_KEY) is None
-    assert stores.access.get_active(SourceKey('ada-access')) is None
-    assert stores.tools.get_active(SourceKey('tools')) is None
-    assert stores.kpi_registry.get_active(SourceKey('kpis')) is None
-    assert stores.kpi_definitions.get_active(SourceKey('kpi-definitions')) is None
+    assert stores.access.get_active(ADA_ACCESS_SOURCE_KEY) is None
+    assert stores.tools.get_active(TOOLS_SOURCE_KEY) is None
+    assert stores.kpi_registry.get_active(KPI_REGISTRY_SOURCE_KEY) is None
+    assert stores.kpi_definitions.get_active(KPI_DEFINITION_SOURCE_KEY) is None
     assert (
         stores.users_promoted.resolve(
             AuthenticatedIdentity(provider_key='entra', issuer='issuer', subject_id='subject')
@@ -157,7 +169,7 @@ def test_one_cosmos_connection_keeps_navigation_outside_shared_users_support():
 
 
 def test_users_registry_is_application_global_not_tool_scoped():
-    connections, (_app, _tool, users, _ada_cosmos) = _connections()
+    connections, (_tool, users, _ada_cosmos) = _connections()
     stores = compose_durable_manager_stores(
         namespace=_namespace(), resources=_resources(), connections=connections
     )
@@ -166,13 +178,13 @@ def test_users_registry_is_application_global_not_tool_scoped():
 
 
 def test_missing_named_connection_fails_before_any_provider_io():
-    connections, (app, tool, users, ada_cosmos) = _connections()
+    connections, (tool, users, ada_cosmos) = _connections()
     connections = replace(connections, cosmos={})
     with pytest.raises(ValueError, match='ada-cosmos'):
         compose_durable_manager_stores(
             namespace=_namespace(), resources=_resources(), connections=connections
         )
-    assert all(not client.calls for client in (app, tool, users, ada_cosmos))
+    assert all(not client.calls for client in (tool, users, ada_cosmos))
 
 
 def test_invalid_resource_bindings_are_rejected_explicitly():
@@ -185,7 +197,7 @@ def test_invalid_resource_bindings_are_rejected_explicitly():
 
 
 def test_different_tool_namespaces_produce_distinct_source_paths():
-    connections, (_app, tool, _users, _ada_cosmos) = _connections()
+    connections, (tool, _users, _ada_cosmos) = _connections()
     first = compose_durable_manager_stores(
         namespace=_namespace(), resources=_resources(), connections=connections
     )
@@ -194,16 +206,26 @@ def test_different_tool_namespaces_produce_distinct_source_paths():
         resources=_resources(),
         connections=connections,
     )
-    first.tools_source.get_current(SourceKey('tools'))
-    second.tools_source.get_current(SourceKey('tools'))
+    first.navigation_source.get_current(NAVIGATION_SOURCE_KEY)
+    second.navigation_source.get_current(NAVIGATION_SOURCE_KEY)
+    first.operational_source.get_current(CATALOG_SOURCE_KEY)
+    second.operational_source.get_current(CATALOG_SOURCE_KEY)
     assert tool.calls == [
-        ('configuration', 'ada-site/plant/sources/dG9vbHM/manifest.json'),
-        ('configuration', 'ada-site/mine/sources/dG9vbHM/manifest.json'),
+        ('configuration', 'ada-site/plant/sources/bmF2aWdhdGlvbg/manifest.json'),
+        ('configuration', 'ada-site/mine/sources/bmF2aWdhdGlvbg/manifest.json'),
+        (
+            'configuration',
+            'ada-site/plant/sources/YWRhLW9wZXJhdGlvbmFsLWNhdGFsb2c/manifest.json',
+        ),
+        (
+            'configuration',
+            'ada-site/mine/sources/YWRhLW9wZXJhdGlvbmFsLWNhdGFsb2c/manifest.json',
+        ),
     ]
 
 
 def test_tool_projection_addresses_are_namespaced_independently():
-    connections, (_app, _tool, _users, ada_cosmos) = _connections()
+    connections, (_tool, _users, ada_cosmos) = _connections()
     plant = compose_durable_manager_stores(
         namespace=_namespace(), resources=_resources(), connections=connections
     )
@@ -212,8 +234,8 @@ def test_tool_projection_addresses_are_namespaced_independently():
         resources=_resources(),
         connections=connections,
     )
-    plant.tools.get_active(SourceKey('tools'))
-    mine.tools.get_active(SourceKey('tools'))
+    plant.tools.get_active(TOOLS_SOURCE_KEY)
+    mine.tools.get_active(TOOLS_SOURCE_KEY)
     assert ada_cosmos.calls[0]['item_id'] != ada_cosmos.calls[1]['item_id']
     assert ada_cosmos.calls[0]['partition_key'] != ada_cosmos.calls[1]['partition_key']
 

@@ -45,7 +45,7 @@ def test_backend_composes_six_existing_services_without_replacing_preview(tmp_pa
         'profiles-configuration',
         'tools',
         'ada-access',
-        'kpis',
+        'kpi-registry',
         'kpi-definitions',
     }
     plan = backend.planner.inspect()
