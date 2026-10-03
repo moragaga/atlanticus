@@ -51,7 +51,7 @@ def test_read_table_and_dataframe_preserve_physical_metadata(
     assert table_result.size_bytes == dataframe_result.size_bytes
 
 
-def test_each_dataframe_read_is_independent_and_the_runtime_has_no_cache(
+def test_each_dataframe_read_is_independent(
     dataset_runtime: DatasetRuntime,
     pi_definition: DatasetDefinition,
 ) -> None:
@@ -307,7 +307,7 @@ def test_scan_rejects_columns_and_projection_schema_together_at_runtime_boundary
         )
 
 
-def test_scan_legacy_columns_remain_strict_for_never_published_column(
+def test_scan_columns_remain_strict_for_never_published_column(
     dataset_runtime: DatasetRuntime,
     pi_definition: DatasetDefinition,
 ) -> None:

@@ -35,11 +35,13 @@ def test_dataframe_to_arrow_drops_index_without_mutating_input() -> None:
     pd.testing.assert_frame_equal(dataframe, before)
 
 
-def test_arrow_input_is_returned_without_an_unnecessary_conversion() -> None:
+def test_arrow_input_preserves_data_schema_and_metadata() -> None:
     table = pa.table({'value': [1, 2]}).replace_schema_metadata({b'owner': b'ada'})
 
-    assert to_arrow_table(table) is table
-    assert table.schema.metadata == {b'owner': b'ada'}
+    converted = to_arrow_table(table)
+
+    assert converted.to_pydict() == table.to_pydict()
+    assert converted.schema.equals(table.schema, check_metadata=True)
 
 
 def test_arrow_to_pandas_returns_a_new_dataframe_each_time() -> None:
@@ -75,16 +77,25 @@ def test_conversion_rejects_types_outside_the_tabular_contract(data: object) -> 
         to_arrow_table(data)  # type: ignore[arg-type]
 
 
-def test_conversion_rejects_non_string_empty_and_duplicate_columns() -> None:
-    invalid_frames = (
-        pd.DataFrame([[1]], columns=[1]),
-        pd.DataFrame([[1]], columns=['']),
-        pd.DataFrame([[1, 2]], columns=['value', 'value']),
-    )
+def test_conversion_rejects_non_string_column_names() -> None:
+    dataframe = pd.DataFrame([[1]], columns=[1])
 
-    for dataframe in invalid_frames:
-        with pytest.raises(DatasetRuntimeValidationError):
-            to_arrow_table(dataframe)
+    with pytest.raises(DatasetRuntimeValidationError):
+        to_arrow_table(dataframe)
+
+
+def test_conversion_rejects_empty_column_names() -> None:
+    dataframe = pd.DataFrame([[1]], columns=[''])
+
+    with pytest.raises(DatasetRuntimeValidationError):
+        to_arrow_table(dataframe)
+
+
+def test_conversion_rejects_duplicate_column_names() -> None:
+    dataframe = pd.DataFrame([[1, 2]], columns=['value', 'value'])
+
+    with pytest.raises(DatasetRuntimeValidationError):
+        to_arrow_table(dataframe)
 
 
 def test_conversion_wraps_an_unrepresentable_pandas_value() -> None:

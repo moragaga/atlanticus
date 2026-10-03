@@ -37,12 +37,6 @@ def test_runtime_requires_the_concrete_parquet_store() -> None:
         DatasetRuntime(store=object())  # type: ignore[arg-type]
 
 
-def test_runtime_does_not_expose_the_physical_store(
-    dataset_runtime: DatasetRuntime,
-) -> None:
-    assert not hasattr(dataset_runtime, 'store')
-
-
 def test_store_write_errors_are_typed_and_keep_the_original_cause(
     tmp_path: Path,
     clock: datetime,

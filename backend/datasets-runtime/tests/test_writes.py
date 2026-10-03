@@ -4,7 +4,14 @@ import pandas as pd
 import pyarrow as pa
 import pytest
 
-from atlanticus.datasets import DatasetDefinition, DatasetPartKey, PublicationStatus
+from atlanticus.datasets import (
+    DatasetDefinition,
+    DatasetKey,
+    DatasetPartKey,
+    MaterializationDefinition,
+    PublicationStatus,
+    SingleArtifactLayout,
+)
 from atlanticus.datasets.parquet import ParquetDatasetStore
 from atlanticus.datasets.runtime import (
     DatasetRuntime,
@@ -101,7 +108,7 @@ def test_pi_poc_merges_pandas_and_incoming_nulls_replace_previous_values(
     assert pd.isna(merged['tk12_nivel_inst'].iloc[0])
 
 
-def test_merge_validates_keys_before_the_store(
+def test_merge_rejects_missing_key_columns(
     dataset_runtime: DatasetRuntime,
     pi_definition: DatasetDefinition,
 ) -> None:
@@ -114,6 +121,13 @@ def test_merge_validates_keys_before_the_store(
             data=pd.DataFrame({'value': [1]}),
             key_columns=('timestamp',),
         )
+
+
+def test_merge_rejects_null_key_values(
+    dataset_runtime: DatasetRuntime,
+    pi_definition: DatasetDefinition,
+) -> None:
+    target = _pi_target(pi_definition)
 
     with pytest.raises(DatasetRuntimeValidationError, match='contain nulls'):
         dataset_runtime.merge(
@@ -205,6 +219,29 @@ def test_dispatch_poc_publishes_mixed_pandas_and_arrow_parts_atomically(
     assert result.status is PublicationStatus.COMMITTED
     assert sorted(table['shift_id'].to_pylist()) == [26199001, 26199002]
 
+
+def test_dispatch_removes_only_the_explicit_part(
+    dataset_runtime: DatasetRuntime,
+    dispatch_definition: DatasetDefinition,
+) -> None:
+    target = _dispatch_target(dispatch_definition)
+    part_001 = dispatch_definition.resolve_part(target=target, value='26199001')
+    part_002 = dispatch_definition.resolve_part(target=target, value='26199002')
+    dataset_runtime.publish_parts(
+        definition=dispatch_definition,
+        target=target,
+        parts=(
+            RuntimeDatasetPart(
+                key=part_001,
+                data=pa.table({'shift_id': [26199001], 'tonnage': [100.0]}),
+            ),
+            RuntimeDatasetPart(
+                key=part_002,
+                data=pa.table({'shift_id': [26199002], 'tonnage': [200.0]}),
+            ),
+        ),
+    )
+
     removed = dataset_runtime.publish_parts(
         definition=dispatch_definition,
         target=target,
@@ -217,6 +254,31 @@ def test_dispatch_poc_publishes_mixed_pandas_and_arrow_parts_atomically(
 
     assert removed.status is PublicationStatus.COMMITTED
     assert remaining['shift_id'].to_pylist() == [26199002]
+
+
+def test_runtime_honors_allow_empty_single_artifact(tmp_path) -> None:
+    definition = DatasetDefinition(
+        key=DatasetKey(namespace=('tests',), name='rolling'),
+        materializations=(
+            MaterializationDefinition(
+                name='current',
+                layout=SingleArtifactLayout(artifact_name='current', allow_empty=True),
+                route_segments=(),
+            ),
+        ),
+        route_segments=('timeseries',),
+    )
+    target = definition.resolve_target(materialization='current')
+    runtime = DatasetRuntime(store=ParquetDatasetStore(root=tmp_path))
+
+    result = runtime.replace(
+        definition=definition,
+        target=target,
+        data=pa.table({'value': pa.array([], type=pa.string())}),
+    )
+
+    assert result.status is PublicationStatus.COMMITTED
+    assert (tmp_path / 'timeseries' / 'current.parquet').is_file()
 
 
 def test_empty_part_skips_the_whole_composition_and_preserves_publication(
