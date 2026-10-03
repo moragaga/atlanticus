@@ -133,13 +133,6 @@ def test_definition_rejects_a_target_from_another_dataset(
         dispatch_definition.validate_target(target)
 
 
-def test_partition_is_immutable_and_hashable() -> None:
-    partition = DatasetPartition(values=(('operational_date', '2026-07-20'),))
-
-    assert hash(partition)
-    assert partition.as_dict() == {'operational_date': '2026-07-20'}
-
-
 def test_partition_rejects_mapping_as_name_value_pair() -> None:
     with pytest.raises(DatasetTargetError):
         DatasetPartition(

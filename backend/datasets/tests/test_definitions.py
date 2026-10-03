@@ -36,6 +36,31 @@ def test_dataset_key_rejects_ambiguous_or_unsafe_identity(
         DatasetKey(namespace=namespace, name=name)
 
 
+@pytest.mark.parametrize(
+    ('kwargs', 'artifact_name', 'allow_empty'),
+    [
+        ({}, 'data', False),
+        ({'artifact_name': 'current', 'allow_empty': True}, 'current', True),
+    ],
+    ids=['defaults', 'explicit'],
+)
+def test_single_artifact_layout_preserves_configuration(
+    kwargs: dict[str, object],
+    artifact_name: str,
+    allow_empty: bool,
+) -> None:
+    layout = SingleArtifactLayout(**kwargs)  # type: ignore[arg-type]
+
+    assert layout.artifact_name == artifact_name
+    assert layout.allow_empty is allow_empty
+
+
+@pytest.mark.parametrize('value', ('', '.', '..', '../current', 'nested/current'))
+def test_single_artifact_layout_rejects_unsafe_names(value: str) -> None:
+    with pytest.raises(DatasetDefinitionError):
+        SingleArtifactLayout(artifact_name=value)
+
+
 def test_definition_accepts_single_artifact_and_file_set_materializations() -> None:
     definition = DatasetDefinition(
         key=DatasetKey(namespace=('dispatch',), name='truck-events'),
