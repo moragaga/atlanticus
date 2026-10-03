@@ -10,8 +10,9 @@ from ada_command_center.web.application.configuration_manager import (
 )
 from ada_command_center.web.application.configuration_manager.local_runtime import (
     InProcessProjectionStore,
-    InProcessUsersAdministrationStore,
+    InProcessToolMembershipStore,
     InProcessUsersRegistryStore,
+    InProcessUsersRuntimeStore,
 )
 from atlanticus.web.manager import ManagerPrincipal
 from atlanticus.web.navigation.configuration import NavigationConfigurationCatalog
@@ -29,6 +30,7 @@ def test_administration_composes_generic_users_profiles_and_navigation(tmp_path:
         administrative_override=True,
         is_local=True,
     )
+    runtime = InProcessUsersRuntimeStore()
     administration = compose_command_center_administration(
         stores=CommandCenterAdministrationStores(
             profiles_source=source,
@@ -36,7 +38,8 @@ def test_administration_composes_generic_users_profiles_and_navigation(tmp_path:
             profiles=InProcessProjectionStore[ProfileCatalog](),
             navigation=InProcessProjectionStore[NavigationConfigurationCatalog](),
             users_registry=InProcessUsersRegistryStore(),
-            users_promoted=InProcessUsersAdministrationStore(),
+            users_memberships=InProcessToolMembershipStore(),
+            users_runtime=runtime,
         ),
         principal_provider=lambda: principal,
         source_name='Local Source',
@@ -44,9 +47,14 @@ def test_administration_composes_generic_users_profiles_and_navigation(tmp_path:
     )
 
     assert administration.users_entry.key == 'users'
+    assert administration.users_entry.route == '/users'
     assert administration.users_entry.access_key == USERS_MANAGER_ACCESS_KEY
     assert administration.profiles_module.key == 'profiles'
+    assert administration.profiles_module.route == '/profiles'
     assert administration.profiles_module.access_key == PROFILES_MANAGER_ACCESS_KEY
     assert administration.navigation_module.key == 'navigation'
+    assert administration.navigation_module.route == '/navigation'
     assert administration.navigation_module.access_key == NAVIGATION_MANAGER_ACCESS_KEY
     assert administration.navigation_module.source_key == NAVIGATION_SOURCE_KEY
+    assert administration.users_runtime_store is runtime
+    assert administration.users_projection_entry is None

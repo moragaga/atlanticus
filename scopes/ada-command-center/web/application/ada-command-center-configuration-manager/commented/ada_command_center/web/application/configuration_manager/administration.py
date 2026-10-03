@@ -1,7 +1,8 @@
 # Espejo pedagógico: conserva exactamente el comportamiento del archivo productivo.
-# Los comentarios explican intención y fronteras sin introducir lógica adicional.
+# Los comentarios documentan intención, ownership y flujo sin agregar compatibilidad ni lógica alternativa.
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from ada_command_center.web.application.configuration_manager.dependencies import (
@@ -12,27 +13,31 @@ from atlanticus.web.compositions.profiles_manager import (
     PROFILES_CONFIGURATION_SOURCE_KEY,
     compose_profiles_manager,
 )
-from atlanticus.web.compositions.users_manager import compose_users_manager
+from atlanticus.web.compositions.users_manager import (
+    compose_users_manager,
+    compose_users_projection_manager,
+)
 from atlanticus.web.manager import ManagerPrincipalProvider
 from atlanticus.web.navigation.configuration import (
+    NAVIGATION_SOURCE_KEY,
     NavigationConfigurationCatalog,
     NavigationProfileOption,
 )
 from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.projection.store import ProjectionStore
-from atlanticus.web.source.models import SourceKey
 from atlanticus.web.source.store import SourceStore
 from atlanticus.web.users.administration import UsersAdministrationService
+from atlanticus.web.users.recovery import ToolUsersRecoveryService, ToolUsersRecoverySnapshot
 from atlanticus.web.users.store import (
-    UsersAdministrationStore,
+    ToolMembershipStore,
     UsersDirectoryReader,
     UsersRegistryStore,
+    UsersRuntimeStore,
 )
 
 USERS_MANAGER_ACCESS_KEY = 'users.manage'
 PROFILES_MANAGER_ACCESS_KEY = 'profiles.manage'
 NAVIGATION_MANAGER_ACCESS_KEY = 'navigation.manage'
-NAVIGATION_SOURCE_KEY = SourceKey('navigation')
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,8 +47,13 @@ class CommandCenterAdministrationStores:
     profiles: ProjectionStore[ProfileCatalog]
     navigation: ProjectionStore[NavigationConfigurationCatalog]
     users_registry: UsersRegistryStore
-    users_promoted: UsersAdministrationStore
+    users_memberships: ToolMembershipStore
+    users_runtime: UsersRuntimeStore
     users_directory: UsersDirectoryReader | None = None
+    users_recovery: ToolUsersRecoveryService | Callable[[], ToolUsersRecoveryService] | None = None
+    users_snapshot_ids: Callable[[], tuple[str, ...]] | None = None
+    users_snapshot_summaries: Callable[[], tuple[tuple[str, str | None], ...]] | None = None
+    users_read_snapshot: Callable[[str], ToolUsersRecoverySnapshot] | None = None
 
     def __post_init__(self) -> None:
         for name, expected in (
@@ -52,7 +62,8 @@ class CommandCenterAdministrationStores:
             ('profiles', ProjectionStore),
             ('navigation', ProjectionStore),
             ('users_registry', UsersRegistryStore),
-            ('users_promoted', UsersAdministrationStore),
+            ('users_memberships', ToolMembershipStore),
+            ('users_runtime', UsersRuntimeStore),
         ):
             if not isinstance(getattr(self, name), expected):
                 raise TypeError(f'Command Center {name} must implement {expected.__name__}')
@@ -60,6 +71,14 @@ class CommandCenterAdministrationStores:
             self.users_directory, UsersDirectoryReader
         ):
             raise TypeError('Command Center users_directory must implement UsersDirectoryReader')
+        if (self.users_recovery is None) != (self.users_snapshot_ids is None):
+            raise ValueError('Users recovery and snapshot catalog must be injected together')
+        if (
+            self.users_recovery is not None
+            and not isinstance(self.users_recovery, ToolUsersRecoveryService)
+            and not callable(self.users_recovery)
+        ):
+            raise TypeError('Command Center users recovery service has an invalid type')
 
 
 def compose_command_center_administration(
@@ -116,17 +135,31 @@ def compose_command_center_administration(
         access_key=NAVIGATION_MANAGER_ACCESS_KEY,
         profile_options_provider=navigation_profile_options,
     )
+    users_administration = UsersAdministrationService(
+        registry=stores.users_registry,
+        memberships=stores.users_memberships,
+        profiles=profiles_provider,
+        directory=stores.users_directory,
+    )
     users = compose_users_manager(
-        administration=UsersAdministrationService(
-            registry=stores.users_registry,
-            promoted=stores.users_promoted,
-            profiles=profiles_provider,
-            directory=stores.users_directory,
-        ),
+        administration=users_administration,
         principal_provider=principal_provider,
         group_key='administration',
         title='Usuarios',
         access_key=USERS_MANAGER_ACCESS_KEY,
+    )
+    users_projection = (
+        compose_users_projection_manager(
+            recovery=stores.users_recovery,
+            snapshot_ids=stores.users_snapshot_ids,
+            snapshot_summaries=stores.users_snapshot_summaries,
+            read_snapshot=stores.users_read_snapshot,
+            principal_provider=principal_provider,
+            group_key='administration',
+            access_key=USERS_MANAGER_ACCESS_KEY,
+        )
+        if stores.users_recovery is not None and stores.users_snapshot_ids is not None
+        else None
     )
     return CommandCenterAdministrationDependencies(
         profiles_module=profiles.module,
@@ -134,4 +167,8 @@ def compose_command_center_administration(
         users_entry=users.entry,
         profiles_projection_store=stores.profiles,
         navigation_projection_store=stores.navigation,
+        users_runtime_store=stores.users_runtime,
+        users_projection_entry=users_projection,
+        users_recovery=stores.users_recovery,
+        users_snapshot_ids=stores.users_snapshot_ids,
     )

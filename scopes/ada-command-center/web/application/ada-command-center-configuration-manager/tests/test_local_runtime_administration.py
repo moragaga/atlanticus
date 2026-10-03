@@ -11,6 +11,7 @@ from ada_command_center.web.application.configuration_manager.local_runtime impo
 )
 from atlanticus.connectivity.storage import StorageClient
 from atlanticus.web.manager import ManagerPrincipal
+from atlanticus.web.users.local import LOCAL_USERS
 
 
 class StorageStub(StorageClient):
@@ -57,6 +58,7 @@ def test_local_runtime_mounts_administration_with_command_center_configuration(
         base_root=tmp_path,
     ) as dependencies:
         definition = build_configuration_manager_surface(dependencies)
+        runtime_users = dependencies.administration.users_runtime_store.list_users()
 
     assert dependencies.administration is not None
     assert tuple(group.key for group in definition.groups) == ('administration', 'configuration')
@@ -66,3 +68,6 @@ def test_local_runtime_mounts_administration_with_command_center_configuration(
         'alarm-configuration',
     )
     assert tuple(entry.key for entry in definition.entries) == ('users', 'tool-catalog')
+    assert tuple(user.subject_id for user in runtime_users) == tuple(
+        user.subject_id for user in LOCAL_USERS
+    )

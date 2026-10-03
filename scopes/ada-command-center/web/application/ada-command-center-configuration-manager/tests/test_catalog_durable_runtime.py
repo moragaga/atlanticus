@@ -34,23 +34,16 @@ def test_storage_uses_only_shared_connection_string() -> None:
 
 
 def test_root_and_resources_derive_from_existing_contracts() -> None:
-    values = _values()
-    values.update(
-        {
-            'ADA_COMMAND_CENTER_CATALOG_BLOB_NAME': 'must-not-be-used',
-            'ADA_COMMAND_CENTER_ALARM_BLOB_CONTAINER': 'must-not-be-used',
-            'ADA_COMMAND_CENTER_CATALOG_BLOB_CONTAINER': 'must-not-be-used',
-        }
-    )
-    resolved = resolve_durable_configuration(values, local=False)
+    resolved = resolve_durable_configuration(_values(), local=False)
     assert resolved.storage_container_name == 'configurations'
     assert resolved.namespace.scope_prefix == 'conciencia_situacional/command-center'
     assert resolved.catalog_blob_name == (
         'conciencia_situacional/command-center/tool-catalog/current.json'
     )
     assert resolved.source_root_prefix == 'conciencia_situacional/command-center'
-    assert resolved.users_registry_blob_name == (
-        'conciencia_situacional/command-center/users/users.json.gz'
+    assert resolved.users_registry_blob_name == 'conciencia_situacional/users/users.json.gz'
+    assert resolved.users_membership_blob_name == (
+        'conciencia_situacional/command-center/users/memberships.json.gz'
     )
     assert (
         resolved.alarm_projection_container_name
@@ -67,9 +60,6 @@ def test_root_and_resources_derive_from_existing_contracts() -> None:
     assert (
         resolved.users_runtime_container_name
         == USERS_RUNTIME_STORAGE_RESOURCE.default_physical_name
-    )
-    assert ALARM_CONFIGURATION_PROJECTION_STORAGE_RESOURCE.topology.partition_key_path == (
-        '/partition_key'
     )
     assert resolved.cosmos_settings.database_name == 'command_center'
 

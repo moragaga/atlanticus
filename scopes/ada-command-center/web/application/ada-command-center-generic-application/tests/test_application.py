@@ -2,6 +2,9 @@ from ada_command_center.web.application.configuration_manager.dependencies impor
     CommandCenterAdministrationDependencies,
     ConfigurationManagerDependencies,
 )
+from ada_command_center.web.application.configuration_manager.local_runtime import (
+    InProcessUsersRuntimeStore,
+)
 from ada_command_center.web.application.generic import application
 from atlanticus.web.identity.local import LocalIdentityProvider
 from atlanticus.web.manager import (
@@ -10,6 +13,7 @@ from atlanticus.web.manager import (
     ManagerPrincipal,
     ManagerSurfaceDefinition,
 )
+from atlanticus.web.users.runtime import UsersRuntime
 
 
 class ProjectionStoreStub:
@@ -23,8 +27,8 @@ class StoreStub:
 
 def _dependencies() -> ConfigurationManagerDependencies:
     principal = ManagerPrincipal(
-        subject_id='local:test',
-        display_name='Administrador local',
+        subject_id='local:jane-doe',
+        display_name='Jane Doe',
         profile_keys=('local',),
         administrative_override=True,
         is_local=True,
@@ -35,6 +39,7 @@ def _dependencies() -> ConfigurationManagerDependencies:
         users_entry=None,
         profiles_projection_store=ProjectionStoreStub(),
         navigation_projection_store=ProjectionStoreStub(),
+        users_runtime_store=InProcessUsersRuntimeStore(),
     )
     return ConfigurationManagerDependencies(
         source_store=StoreStub(),
@@ -65,7 +70,7 @@ def _manager_surface_definition(
     )
 
 
-def test_definition_composes_identity_navigation_manager_and_pages(monkeypatch) -> None:
+def test_definition_composes_identity_users_navigation_manager_and_pages(monkeypatch) -> None:
     dependencies = _dependencies()
     monkeypatch.setattr(application, 'version', lambda _distribution: '0.1.0')
     monkeypatch.setattr(
@@ -76,7 +81,8 @@ def test_definition_composes_identity_navigation_manager_and_pages(monkeypatch) 
 
     definition = application.create_application_definition(
         dependencies,
-        identity_provider=LocalIdentityProvider(subject_id='local:test'),
+        identity_provider=LocalIdentityProvider(subject_id='local:jane-doe'),
+        users_runtime=UsersRuntime(),
     )
 
     assert definition.metadata.application_id == 'ada-command-center-generic-application'
@@ -88,6 +94,7 @@ def test_definition_composes_identity_navigation_manager_and_pages(monkeypatch) 
     )
     assert tuple(module.name for module in definition.modules) == (
         'identity',
+        'users',
         'navigation',
         'navigation-authorization',
         'manager-surface',

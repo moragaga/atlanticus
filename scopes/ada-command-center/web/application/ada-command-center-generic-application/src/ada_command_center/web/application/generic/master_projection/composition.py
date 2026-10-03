@@ -5,9 +5,6 @@ from dataclasses import dataclass
 from ada_command_center.web.alarms.configuration import (
     create_alarm_configuration_projection_service,
 )
-from ada_command_center.web.application.configuration_manager.administration import (
-    NAVIGATION_SOURCE_KEY,
-)
 from ada_command_center.web.application.configuration_manager.composition import (
     ALARM_CONFIGURATION_SOURCE_KEY,
 )
@@ -17,7 +14,10 @@ from ada_command_center.web.application.configuration_manager.dependencies impor
 from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
 from atlanticus.web.master_projection.apply import MasterProjectionExecutor
 from atlanticus.web.master_projection.plan import MasterProjectionPlanner, ProjectionDomain
-from atlanticus.web.navigation.configuration import create_navigation_projection_service
+from atlanticus.web.navigation.configuration import (
+    NAVIGATION_SOURCE_KEY,
+    create_navigation_projection_service,
+)
 from atlanticus.web.profiles.configuration.source_projection import (
     create_profiles_projection_service,
 )
@@ -69,8 +69,21 @@ def compose_command_center_master_projection_backend(
     planner = MasterProjectionPlanner(
         domains=domains,
         profiles_key=PROFILES_CONFIGURATION_SOURCE_KEY,
+        users_snapshot_ids=administration.users_snapshot_ids,
     )
+
+    def replace_users(snapshot_id: str):
+        recovery = administration.users_recovery
+        if recovery is None:
+            raise RuntimeError('Users recovery is not configured')
+        service = recovery() if callable(recovery) else recovery
+        return service.apply_snapshot(snapshot_id)
+
     return CommandCenterMasterProjectionBackend(
         planner=planner,
-        executor=MasterProjectionExecutor(planner=planner, domains=domains),
+        executor=MasterProjectionExecutor(
+            planner=planner,
+            domains=domains,
+            users_replace=replace_users if administration.users_recovery is not None else None,
+        ),
     )

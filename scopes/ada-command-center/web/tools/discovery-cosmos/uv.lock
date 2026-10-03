@@ -7,7 +7,7 @@ name = "ada-command-center-web-tool-catalog"
 version = "0.1.0"
 source = { editable = "../catalog" }
 dependencies = [
-    { name = "ada-web-tools" },
+    { name = "ada-contracts-tools" },
     { name = "ada-web-tools-configuration" },
     { name = "atlanticus-storage" },
     { name = "atlanticus-web-projection" },
@@ -16,7 +16,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-web-tools", editable = "../../../../ada/web/tools/core" },
+    { name = "ada-contracts-tools", editable = "../../../../ada-contracts/tools" },
     { name = "ada-web-tools-configuration", editable = "../../../../ada/web/tools/configuration" },
     { name = "atlanticus-storage", editable = "../../../../../connectivity/storage" },
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
@@ -35,12 +35,12 @@ version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "ada-command-center-web-tool-catalog" },
-    { name = "atlanticus-web-storage-namespace" },
     { name = "ada-web-tools-configuration" },
     { name = "ada-web-tools-projection-cosmos" },
     { name = "atlanticus-cosmos" },
     { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
+    { name = "atlanticus-web-storage-namespace" },
 ]
 
 [package.dev-dependencies]
@@ -52,13 +52,26 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "ada-command-center-web-tool-catalog", editable = "../catalog" },
-    { name = "atlanticus-web-storage-namespace", editable = "../../../../../web/capabilities/storage/namespace" },
     { name = "ada-web-tools-configuration", editable = "../../../../ada/web/tools/configuration" },
     { name = "ada-web-tools-projection-cosmos", editable = "../../../../ada/web/tools/projection-cosmos" },
     { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
+    { name = "atlanticus-web-storage-namespace", editable = "../../../../../web/capabilities/storage/namespace" },
 ]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-contracts-tools"
+version = "1.0.0"
+source = { editable = "../../../../ada-contracts/tools" }
+
+[package.metadata]
 
 [package.metadata.requires-dev]
 dev = [
@@ -84,19 +97,6 @@ dev = [
     { name = "ada-web-ui-core", editable = "../../../../ada/web/ui/core" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "dash", specifier = "==4.4.1" },
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "atlanticus-web-storage-namespace"
-version = "0.1.0"
-source = { editable = "../../../../../web/capabilities/storage/namespace" }
-
-[package.metadata]
-
-[package.metadata.requires-dev]
-dev = [
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]
@@ -149,21 +149,21 @@ name = "ada-web-tools-projection-cosmos"
 version = "0.1.1"
 source = { editable = "../../../../ada/web/tools/projection-cosmos" }
 dependencies = [
-    { name = "atlanticus-web-storage-namespace" },
     { name = "ada-web-tools-configuration" },
     { name = "atlanticus-cosmos" },
     { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
+    { name = "atlanticus-web-storage-namespace" },
     { name = "atlanticus-web-storage-topology" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "atlanticus-web-storage-namespace", editable = "../../../../../web/capabilities/storage/namespace" },
     { name = "ada-web-tools-configuration", editable = "../../../../ada/web/tools/configuration" },
     { name = "atlanticus-cosmos", editable = "../../../../../connectivity/cosmos" },
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
+    { name = "atlanticus-web-storage-namespace", editable = "../../../../../web/capabilities/storage/namespace" },
     { name = "atlanticus-web-storage-topology", editable = "../../../../../web/capabilities/storage/topology" },
 ]
 
@@ -234,6 +234,19 @@ requires-dist = [{ name = "atlanticus-web-source", editable = "../../../../../we
 name = "atlanticus-web-source"
 version = "0.1.0"
 source = { editable = "../../../../../web/capabilities/source/core" }
+
+[[package]]
+name = "atlanticus-web-storage-namespace"
+version = "0.1.0"
+source = { editable = "../../../../../web/capabilities/storage/namespace" }
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
 
 [[package]]
 name = "atlanticus-web-storage-topology"

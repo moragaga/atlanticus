@@ -10,6 +10,7 @@ from ada_command_center.web.application.configuration_manager.durable_runtime im
 from atlanticus.connectivity.cosmos import CosmosClient
 from atlanticus.connectivity.storage import StorageClient
 from atlanticus.web.manager import ManagerPrincipal
+from atlanticus.web.users.store import UsersRuntimeStore
 
 
 class StorageStub(StorageClient):
@@ -63,12 +64,17 @@ def test_durable_runtime_mounts_administration_with_command_center_topology(
         definition = build_configuration_manager_surface(dependencies)
 
     assert dependencies.administration is not None
+    assert isinstance(dependencies.administration.users_runtime_store, UsersRuntimeStore)
     assert tuple(group.key for group in definition.groups) == ('administration', 'configuration')
     assert tuple(module.key for module in definition.modules) == (
         'profiles',
         'navigation',
         'alarm-configuration',
     )
-    assert tuple(entry.key for entry in definition.entries) == ('users', 'tool-catalog')
+    assert tuple(entry.key for entry in definition.entries) == (
+        'users',
+        'users-projection',
+        'tool-catalog',
+    )
     assert dependencies.source_name == 'Blob Storage'
     assert dependencies.projection_name == 'Cosmos DB'

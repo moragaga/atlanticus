@@ -8,7 +8,6 @@ from pathlib import Path
 
 from ada_command_center.web.application.configuration_manager import (
     MANAGER_ROUTE_PREFIX,
-    NAVIGATION_SOURCE_KEY,
     ConfigurationManagerDependencies,
     build_configuration_manager_surface,
 )
@@ -39,7 +38,13 @@ from atlanticus.web.models import (
     WebApplicationRuntime,
 )
 from atlanticus.web.navigation.api import create_navigation_authorization_module
-from atlanticus.web.navigation.configuration import create_projected_navigation_module
+from atlanticus.web.navigation.configuration import (
+    NAVIGATION_SOURCE_KEY,
+    create_projected_navigation_module,
+)
+from atlanticus.web.users.module import create_users_module
+from atlanticus.web.users.resolver import UsersAccessResolver
+from atlanticus.web.users.runtime import UsersRuntime
 
 _APPLICATION_ROOT = Path(__file__).resolve().parents[5]
 _APPLICATION_DISTRIBUTION = 'ada-command-center-generic-application'
@@ -51,6 +56,7 @@ def create_application_definition(
     dependencies: ConfigurationManagerDependencies,
     *,
     identity_provider: IdentityProvider,
+    users_runtime: UsersRuntime,
     master_material_reader: MasterMaterialReader | None = None,
     environment: WebEnvironment | None = None,
 ) -> WebApplicationDefinition:
@@ -58,6 +64,8 @@ def create_application_definition(
         raise TypeError('Command Center dependencies are invalid')
     if not isinstance(identity_provider, IdentityProvider):
         raise TypeError('Command Center identity provider is invalid')
+    if not isinstance(users_runtime, UsersRuntime):
+        raise TypeError('Command Center Users runtime is invalid')
     if dependencies.administration is None:
         raise ValueError('Command Center Generic Application requires administration dependencies')
     resolved_environment = environment or WebSettings().environment
@@ -65,12 +73,12 @@ def create_application_definition(
         raise TypeError('Command Center Web environment is invalid')
 
     manager = ManagerSurface(
-        replace(
-            build_configuration_manager_surface(dependencies),
-            application_home_href='/',
-        )
+        replace(build_configuration_manager_surface(dependencies), application_home_href='/')
     )
-    principal_provider = create_navigation_principal_provider(dependencies.principal_provider)
+    principal_provider = create_navigation_principal_provider(
+        dependencies.principal_provider,
+        allow_local=resolved_environment.is_local,
+    )
     navigation = create_projected_navigation_module(
         dependencies.administration.navigation_projection_store,
         source_key=NAVIGATION_SOURCE_KEY,
@@ -92,6 +100,10 @@ def create_application_definition(
         independent_routes = MASTER_PROJECTION_INDEPENDENT_ROUTES
 
     application_version = version(_APPLICATION_DISTRIBUTION)
+    resolver = UsersAccessResolver(
+        store=dependencies.administration.users_runtime_store,
+        runtime=users_runtime,
+    )
     return WebApplicationDefinition(
         import_name='ada_command_center.web.application.generic',
         metadata=ApplicationMetadata(
@@ -105,8 +117,10 @@ def create_application_definition(
             *master_modules,
             create_identity_module(
                 identity_provider,
+                access_resolver=resolver,
                 independent_routes=independent_routes,
             ),
+            create_users_module(users_runtime),
             navigation,
             create_navigation_authorization_module(),
             *manager.web_modules,
@@ -120,6 +134,7 @@ def create_application(
     dependencies: ConfigurationManagerDependencies,
     *,
     identity_provider: IdentityProvider,
+    users_runtime: UsersRuntime,
     master_material_reader: MasterMaterialReader | None = None,
     environment: WebEnvironment | None = None,
 ) -> WebApplicationRuntime:
@@ -127,6 +142,7 @@ def create_application(
         create_application_definition(
             dependencies,
             identity_provider=identity_provider,
+            users_runtime=users_runtime,
             master_material_reader=master_material_reader,
             environment=environment,
         )

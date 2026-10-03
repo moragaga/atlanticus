@@ -1,5 +1,5 @@
 # Espejo pedagógico: conserva exactamente el comportamiento del archivo productivo.
-# Los comentarios explican intención y fronteras sin introducir lógica adicional.
+# Los comentarios documentan intención, ownership y flujo sin agregar compatibilidad ni lógica alternativa.
 from __future__ import annotations
 
 from ada_command_center.domain.alarms.identity import (
@@ -10,18 +10,16 @@ from ada_command_center.web.alarms.configuration.manager import (
 )
 from ada_command_center.web.application.configuration_manager.administration import (
     NAVIGATION_MANAGER_ACCESS_KEY,
-    NAVIGATION_SOURCE_KEY,
     PROFILES_MANAGER_ACCESS_KEY,
     USERS_MANAGER_ACCESS_KEY,
 )
 from ada_command_center.web.application.configuration_manager.dependencies import (
     ConfigurationManagerDependencies,
 )
-from ada_command_center.web.tools.catalog_manager import (
-    create_tool_catalog_manager_entry,
-)
+from ada_command_center.web.tools.catalog_manager import create_tool_catalog_manager_entry
 from atlanticus.web.bootstrap import create_bootstrap_web_module
 from atlanticus.web.manager import ManagerModuleGroup, ManagerSurfaceDefinition
+from atlanticus.web.navigation.configuration import NAVIGATION_SOURCE_KEY
 from atlanticus.web.source.models import SourceKey
 
 MANAGER_ROUTE_PREFIX = '/manager'
@@ -56,37 +54,31 @@ def build_configuration_manager_surface(
     )
     administration = dependencies.administration
     groups = (
-        (
-            ManagerModuleGroup(
-                key='administration',
-                title='Administración',
-                order=5,
-            ),
-        )
+        (ManagerModuleGroup(key='administration', title='Administración', order=5),)
         if administration is not None
         else ()
     )
     modules = (
+        (administration.profiles_module, administration.navigation_module)
+        if administration is not None
+        else ()
+    )
+    administration_entries = (
         (
-            administration.profiles_module,
-            administration.navigation_module,
+            administration.users_entry,
+            *((administration.users_projection_entry,) if administration.users_projection_entry else ()),
         )
         if administration is not None
         else ()
     )
-    entries = (administration.users_entry,) if administration is not None else ()
     return ManagerSurfaceDefinition(
         principal_provider=dependencies.principal_provider,
-        groups=(
-            *groups,
-            ManagerModuleGroup(
-                key='configuration',
-                title='Configuraciones',
-                order=10,
-            ),
-        ),
+        groups=(*groups, ManagerModuleGroup(key='configuration', title='Configuraciones', order=10)),
         modules=(*modules, alarm_configuration.module),
-        entries=(*entries, *((tool_catalog_entry,) if tool_catalog_entry is not None else ())),
+        entries=(
+            *administration_entries,
+            *((tool_catalog_entry,) if tool_catalog_entry is not None else ()),
+        ),
         route_prefix=MANAGER_ROUTE_PREFIX,
         web_modules=(create_bootstrap_web_module(),),
     )

@@ -1,4 +1,5 @@
-# Espejo pedagógico equivalente al código productivo.
+# Espejo pedagógico: conserva exactamente el comportamiento del archivo productivo.
+# Los comentarios documentan intención, ownership y flujo sin agregar compatibilidad ni lógica alternativa.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Mapping
@@ -33,6 +34,7 @@ from ada_command_center.web.tools.catalog import BlobToolCatalogStore, BlobToolC
 from ada_command_center.web.tools.discovery_cosmos.manager import ToolCatalogManagerService
 from atlanticus.connectivity.cosmos import CosmosClient, CosmosSettings
 from atlanticus.connectivity.storage import StorageClient, StorageSettings
+from atlanticus.web.compositions.profiles_manager import PROFILES_CONFIGURATION_SOURCE_KEY
 from atlanticus.web.configuration import WebEnvironment
 from atlanticus.web.manager import ManagerPrincipal
 from atlanticus.web.navigation.projection.cosmos import (
@@ -40,6 +42,7 @@ from atlanticus.web.navigation.projection.cosmos import (
     CosmosNavigationProjectionStore,
     CosmosNavigationProjectionStoreSettings,
 )
+from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.profiles.projection.cosmos import (
     PROFILES_PROJECTION_STORAGE_RESOURCE,
     CosmosProfilesProjectionStore,
@@ -51,12 +54,20 @@ from atlanticus.web.storage.topology import (
     StorageResourceOverride,
     resolve_storage_plan,
 )
-from atlanticus.web.users.blob import BlobUsersRegistryStore
-from atlanticus.web.users.cosmos import CosmosUsersStore
+from atlanticus.web.users.blob import (
+    BlobToolMembershipStore,
+    BlobToolUsersRecoverySnapshotStore,
+    BlobUsersRecoveryAuditStore,
+    BlobUsersRegistryStore,
+    BlobUsersReplaceBeforeImageStore,
+)
+from atlanticus.web.users.cosmos import CosmosUsersRuntimeStore
+from atlanticus.web.users.models import build_runtime_user
+from atlanticus.web.users.profiles import require_managed_profile
+from atlanticus.web.users.recovery import ToolUsersRecoveryService, UsersRecoveryConflictError
 from atlanticus.web.users.storage import USERS_RUNTIME_STORAGE_RESOURCE
 
 _COSMOS_CONNECTION_REF = 'command-center-cosmos'
-# Los cuatro contratos físicos siguen siendo la única autoridad de topología Cosmos.
 _COSMOS_RESOURCES = (
     ALARM_CONFIGURATION_PROJECTION_STORAGE_RESOURCE,
     PROFILES_PROJECTION_STORAGE_RESOURCE,
@@ -75,13 +86,13 @@ class CommandCenterDurableConfiguration:
     catalog_blob_name: str
     source_root_prefix: str
     users_registry_blob_name: str
+    users_membership_blob_name: str
     alarm_projection_container_name: str
     profiles_projection_container_name: str
     navigation_projection_container_name: str
     users_runtime_container_name: str
 
 
-# Runtime mínimo compartido por el host y la operación explícita de deployment.
 @dataclass(frozen=True, slots=True)
 class CommandCenterDurableRuntime:
     configuration: CommandCenterDurableConfiguration
@@ -135,7 +146,8 @@ def resolve_durable_configuration(
         storage_container_name=_require(values, STORAGE_CONTAINER_VARIABLE),
         catalog_blob_name=COMMAND_CENTER_CATALOG_BLOB_NAME,
         source_root_prefix=namespace.scope_prefix,
-        users_registry_blob_name=namespace.scope_blob_name('users/users.json.gz'),
+        users_registry_blob_name=namespace.application_blob_name('users/users.json.gz'),
+        users_membership_blob_name=namespace.scope_blob_name('users/memberships.json.gz'),
         alarm_projection_container_name=resources[
             ALARM_CONFIGURATION_PROJECTION_STORAGE_RESOURCE.logical_id
         ].physical_name,
@@ -152,7 +164,6 @@ def resolve_durable_configuration(
 
 
 @contextmanager
-# Un solo lifecycle abre y cierra los clientes durables para todos sus consumidores.
 def open_command_center_durable_runtime(
     *,
     reader: ManagerConfigurationReader,
@@ -187,7 +198,6 @@ def open_durable_configuration_manager(
         raise TypeError('principal_provider must be callable')
     if reader.environment == WebEnvironment.PRODUCTION and production_identity_bound is not True:
         raise ValueError('Production Command Center requires an authenticated host binding')
-    # El Manager reutiliza exactamente el mismo contexto que usa resource preparation.
     with open_command_center_durable_runtime(reader=reader) as runtime:
         resolved = runtime.configuration
         storage = runtime.storage
@@ -210,31 +220,100 @@ def open_durable_configuration_manager(
             storage_client=storage,
             cosmos_client=cosmos,
         )
+        profiles = CosmosProfilesProjectionStore(
+            client=cosmos,
+            settings=CosmosProfilesProjectionStoreSettings(
+                resolved.profiles_projection_container_name
+            ),
+        )
+        navigation = CosmosNavigationProjectionStore(
+            client=cosmos,
+            settings=CosmosNavigationProjectionStoreSettings(
+                resolved.navigation_projection_container_name
+            ),
+        )
+        users_registry = BlobUsersRegistryStore(
+            client=storage,
+            container_name=resolved.storage_container_name,
+            blob_name=resolved.users_registry_blob_name,
+        )
+        users_memberships = BlobToolMembershipStore(
+            client=storage,
+            container_name=resolved.storage_container_name,
+            blob_name=resolved.users_membership_blob_name,
+        )
+        users_runtime = CosmosUsersRuntimeStore(
+            client=cosmos,
+            container_name=resolved.users_runtime_container_name,
+        )
+
+        def profiles_provider() -> ProfileCatalog:
+            active = profiles.get_active(PROFILES_CONFIGURATION_SOURCE_KEY)
+            if active is None or not isinstance(active.payload, ProfileCatalog):
+                raise UsersRecoveryConflictError('An active Profiles projection is required')
+            return active.payload
+
+        def materialize_runtime_users():
+            registry = users_registry.load()
+            memberships = users_memberships.load()
+            profile_catalog = profiles_provider()
+            users = []
+            for membership in memberships.memberships:
+                identity = registry.get(membership.user_id)
+                if identity is None:
+                    raise UsersRecoveryConflictError(
+                        'Tool membership user is missing from global Users registry'
+                    )
+                profile = require_managed_profile(
+                    membership.profile_key,
+                    profiles=profile_catalog,
+                )
+                users.append(
+                    build_runtime_user(
+                        identity=identity,
+                        membership=membership,
+                        profile=profile,
+                    )
+                )
+            return tuple(sorted(users, key=lambda user: user.user_id))
+
+        snapshots = BlobToolUsersRecoverySnapshotStore(
+            client=storage,
+            container_name=resolved.storage_container_name,
+            prefix=resolved.namespace.scope_blob_name('users/recovery/snapshots'),
+        )
+
+        def recovery_provider() -> ToolUsersRecoveryService:
+            return ToolUsersRecoveryService(
+                runtime=users_runtime,
+                materialize=materialize_runtime_users,
+                snapshots=snapshots,
+                audit=BlobUsersRecoveryAuditStore(
+                    client=storage,
+                    container_name=resolved.storage_container_name,
+                    prefix=resolved.namespace.scope_blob_name('users/recovery/audit'),
+                ),
+                before_images=BlobUsersReplaceBeforeImageStore(
+                    client=storage,
+                    container_name=resolved.storage_container_name,
+                    prefix=resolved.namespace.scope_blob_name('users/recovery/replace-before'),
+                ),
+                environment=f'{reader.environment.value}:{resolved.cosmos_settings.database_name}',
+            )
+
         administration = compose_command_center_administration(
             stores=CommandCenterAdministrationStores(
                 profiles_source=persistence.source,
                 navigation_source=persistence.source,
-                profiles=CosmosProfilesProjectionStore(
-                    client=cosmos,
-                    settings=CosmosProfilesProjectionStoreSettings(
-                        resolved.profiles_projection_container_name
-                    ),
-                ),
-                navigation=CosmosNavigationProjectionStore(
-                    client=cosmos,
-                    settings=CosmosNavigationProjectionStoreSettings(
-                        resolved.navigation_projection_container_name
-                    ),
-                ),
-                users_registry=BlobUsersRegistryStore(
-                    client=storage,
-                    container_name=resolved.storage_container_name,
-                    blob_name=resolved.users_registry_blob_name,
-                ),
-                users_promoted=CosmosUsersStore(
-                    client=cosmos,
-                    container_name=resolved.users_runtime_container_name,
-                ),
+                profiles=profiles,
+                navigation=navigation,
+                users_registry=users_registry,
+                users_memberships=users_memberships,
+                users_runtime=users_runtime,
+                users_recovery=recovery_provider,
+                users_snapshot_ids=snapshots.list_snapshot_ids,
+                users_snapshot_summaries=snapshots.list_snapshot_summaries,
+                users_read_snapshot=snapshots.load,
             ),
             principal_provider=principal_provider,
             source_name='Blob Storage',

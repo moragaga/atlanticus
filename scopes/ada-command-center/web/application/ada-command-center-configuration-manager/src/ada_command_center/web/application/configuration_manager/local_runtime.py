@@ -33,15 +33,26 @@ from ada_command_center.web.tools.catalog import BlobToolCatalogStore, BlobToolC
 from ada_command_center.web.tools.discovery_cosmos.manager import ToolCatalogManagerService
 from atlanticus.connectivity.storage import StorageClient
 from atlanticus.web.configuration import WebEnvironment
+from atlanticus.web.identity.models import AuthenticatedIdentity
 from atlanticus.web.manager import ManagerPrincipal
 from atlanticus.web.navigation.configuration import NavigationConfigurationCatalog
 from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.models import SourceKey
-from atlanticus.web.users.errors import UserAlreadyPromotedError, UsersRegistryConflictError
-from atlanticus.web.users.models import UserRecord, UsersRegistrySnapshot
-from atlanticus.web.users.store import UsersAdministrationStore, UsersRegistryStore
+from atlanticus.web.users.errors import (
+    UsersMembershipConflictError,
+    UsersRegistryConflictError,
+)
+from atlanticus.web.users.local import LOCAL_USERS
+from atlanticus.web.users.models import (
+    RuntimeUser,
+    ToolMembershipSnapshot,
+    ToolUserMembership,
+    UserIdentity,
+    UsersRegistrySnapshot,
+)
+from atlanticus.web.users.store import ToolMembershipStore, UsersRegistryStore, UsersRuntimeStore
 
 PayloadT = TypeVar('PayloadT')
 
@@ -67,7 +78,10 @@ class InProcessUsersRegistryStore(UsersRegistryStore):
         return self._snapshot
 
     def replace(
-        self, users: tuple[UserRecord, ...], *, expected_version: str | None
+        self,
+        users: tuple[UserIdentity, ...],
+        *,
+        expected_version: str | None,
     ) -> UsersRegistrySnapshot:
         if self._snapshot.version != expected_version:
             raise UsersRegistryConflictError('Users registry changed concurrently')
@@ -76,27 +90,50 @@ class InProcessUsersRegistryStore(UsersRegistryStore):
         return self._snapshot
 
 
-class InProcessUsersAdministrationStore(UsersAdministrationStore):
+class InProcessToolMembershipStore(ToolMembershipStore):
     def __init__(self) -> None:
-        self._users: dict[str, UserRecord] = {}
+        self._snapshot = ToolMembershipSnapshot()
+        self._revision = 0
 
-    def get(self, user_id: str) -> UserRecord | None:
-        return self._users.get(user_id)
+    def load(self) -> ToolMembershipSnapshot:
+        return self._snapshot
 
-    def list_users(self) -> tuple[UserRecord, ...]:
+    def replace(
+        self,
+        memberships: tuple[ToolUserMembership, ...],
+        *,
+        expected_version: str | None,
+    ) -> ToolMembershipSnapshot:
+        if self._snapshot.version != expected_version:
+            raise UsersMembershipConflictError('Tool memberships changed concurrently')
+        self._revision += 1
+        self._snapshot = ToolMembershipSnapshot(
+            memberships=memberships,
+            version=f'local-{self._revision}',
+        )
+        return self._snapshot
+
+
+class InProcessUsersRuntimeStore(UsersRuntimeStore):
+    def __init__(self, users: tuple[RuntimeUser, ...] = ()) -> None:
+        self._users = {user.user_id: user for user in users}
+
+    def resolve(self, identity: AuthenticatedIdentity) -> RuntimeUser | None:
+        return next(
+            (
+                user
+                for user in self._users.values()
+                if user.issuer == identity.issuer and user.subject_id == identity.subject_id
+            ),
+            None,
+        )
+
+    def list_users(self) -> tuple[RuntimeUser, ...]:
         return tuple(sorted(self._users.values(), key=lambda user: user.user_id))
 
-    def create(self, user: UserRecord) -> UserRecord:
-        if user.user_id in self._users:
-            raise UserAlreadyPromotedError('User is already promoted')
-        self._users[user.user_id] = user
-        return user
-
-    def replace(self, user: UserRecord) -> UserRecord:
-        if user.user_id not in self._users:
-            raise ValueError('Promoted user does not exist')
-        self._users[user.user_id] = user
-        return user
+    def replace_all(self, users: tuple[RuntimeUser, ...]) -> tuple[RuntimeUser, ...]:
+        self._users = {user.user_id: user for user in users}
+        return self.list_users()
 
 
 @contextmanager
@@ -134,7 +171,10 @@ def open_local_configuration_manager(
             profiles=InProcessProjectionStore[ProfileCatalog](),
             navigation=InProcessProjectionStore[NavigationConfigurationCatalog](),
             users_registry=InProcessUsersRegistryStore(),
-            users_promoted=InProcessUsersAdministrationStore(),
+            users_memberships=InProcessToolMembershipStore(),
+            users_runtime=InProcessUsersRuntimeStore(
+                tuple(user.to_runtime_user() for user in LOCAL_USERS)
+            ),
         ),
         principal_provider=principal_provider,
         source_name='Local Source',
