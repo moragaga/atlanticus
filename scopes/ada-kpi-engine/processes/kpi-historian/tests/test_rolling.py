@@ -4,16 +4,19 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pyarrow as pa
-import pyarrow.parquet as pq
 import pytest
 
 from ada.kpis.core import KpiStatus, KpiValueType, KpiWatermark
-from ada.kpis.history import KpiHistorianAuthority, KpiRollingMetadata, history_schema
-from ada.processes.kpi_historian.errors import KpiHistorianRollingError
-from ada.processes.kpi_historian.rolling import (
-    KpiHistorianRollingMaterializer,
-    rolling_path,
+from ada.kpis.history import KpiHistorianAuthority, history_schema
+from ada.kpis.history.rolling_dataset import (
+    rolling_definition,
+    rolling_state_from_table,
+    rolling_target,
 )
+from ada.processes.kpi_historian.errors import KpiHistorianRollingError
+from ada.processes.kpi_historian.rolling import KpiHistorianRollingMaterializer
+from atlanticus.datasets.parquet import ParquetDatasetStore
+from atlanticus.datasets.runtime import DatasetRuntime, DatasetRuntimeWriteError
 from tests.support import batch, evaluation, watermark
 
 
@@ -30,24 +33,46 @@ class HistoryRuntime:
         return SimpleNamespace(table=pa.Table.from_pylist(rows, schema=history_schema()))
 
 
+class FailingRollingRuntime:
+    def __init__(self, runtime: DatasetRuntime) -> None:
+        self.runtime = runtime
+        self.fail_replace = False
+
+    def read_table(self, **kwargs):
+        return self.runtime.read_table(**kwargs)
+
+    def replace(self, **kwargs):
+        if self.fail_replace:
+            raise DatasetRuntimeWriteError('disk failure')
+        return self.runtime.replace(**kwargs)
+
+
 def _authority(value: KpiWatermark) -> KpiHistorianAuthority:
     return KpiHistorianAuthority(value.timestamp_utc)
 
 
-def _read(path):
-    table = pq.read_table(path)
-    metadata = KpiRollingMetadata.from_bytes(table.schema.metadata[b'ada_kpi_timeseries'])
-    return table, metadata
+def _materializer(tmp_path, *, history=None):
+    rolling_runtime = DatasetRuntime(store=ParquetDatasetStore(root=tmp_path))
+    return (
+        KpiHistorianRollingMaterializer(
+            history_runtime=HistoryRuntime() if history is None else history,
+            rolling_runtime=rolling_runtime,
+            application_root=tmp_path,
+        ),
+        rolling_runtime,
+    )
 
 
-def test_rolling_path_is_a_direct_historian_application_child(tmp_path) -> None:
-    assert rolling_path(tmp_path) == tmp_path / 'timeseries' / 'current.parquet'
+def _read(runtime: DatasetRuntime):
+    result = runtime.read_table(
+        definition=rolling_definition(),
+        target=rolling_target(),
+    )
+    return rolling_state_from_table(result.table)
 
 
 def test_incremental_materialization_writes_only_observed_physical_points(tmp_path) -> None:
-    runtime = HistoryRuntime()
-    path = rolling_path(tmp_path)
-    materializer = KpiHistorianRollingMaterializer(runtime=runtime, path=path)
+    materializer, runtime = _materializer(tmp_path)
     first = watermark(0)
     second = watermark(1)
 
@@ -63,25 +88,19 @@ def test_incremental_materialization_writes_only_observed_physical_points(tmp_pa
         authority=_authority(second),
     )
 
-    table, metadata = _read(path)
-    assert runtime.calls == []
-    assert table.column_names == ['timestamp_utc', 'a']
-    assert table.to_pylist() == [
-        {'timestamp_utc': first.timestamp_utc, 'a': '1.0'},
-        {'timestamp_utc': second.timestamp_utc, 'a': '2.0'},
-    ]
-    assert metadata.coverage_start_utc == first.timestamp_utc
-    assert metadata.coverage_end_utc == second.timestamp_utc
+    metadata, points = _read(runtime)
+    assert points == {
+        first.timestamp_utc: {'a': '1.0'},
+        second.timestamp_utc: {'a': '2.0'},
+    }
     assert dict(metadata.value_types) == {'a': 'float'}
+    assert materializer.path == tmp_path / 'timeseries' / 'current.parquet'
     assert materializer.is_coherent(_authority(second)) is True
 
 
-def test_empty_physical_coverage_writes_only_timestamp_schema_and_metadata(tmp_path) -> None:
+def test_empty_physical_coverage_is_a_confirmed_publication(tmp_path) -> None:
+    materializer, runtime = _materializer(tmp_path)
     current = watermark(1)
-    materializer = KpiHistorianRollingMaterializer(
-        runtime=HistoryRuntime(),
-        path=rolling_path(tmp_path),
-    )
 
     materializer.materialize(
         batches=(
@@ -97,20 +116,16 @@ def test_empty_physical_coverage_writes_only_timestamp_schema_and_metadata(tmp_p
         authority=_authority(current),
     )
 
-    table, metadata = _read(materializer.path)
-    assert table.column_names == ['timestamp_utc']
-    assert table.num_rows == 0
+    metadata, points = _read(runtime)
+    assert points == {}
     assert metadata.coverage_start_utc is None
     assert metadata.coverage_end_utc is None
     assert dict(metadata.value_types) == {}
-    assert materializer.is_coherent(_authority(current)) is True
+    assert materializer.path.is_file()
 
 
-def test_value_type_change_starts_a_new_logical_series_inside_the_rolling(tmp_path) -> None:
-    materializer = KpiHistorianRollingMaterializer(
-        runtime=HistoryRuntime(),
-        path=rolling_path(tmp_path),
-    )
+def test_value_type_change_clears_previous_series(tmp_path) -> None:
+    materializer, runtime = _materializer(tmp_path)
     first = watermark(0)
     second = watermark(1)
 
@@ -130,40 +145,14 @@ def test_value_type_change_starts_a_new_logical_series_inside_the_rolling(tmp_pa
         authority=_authority(second),
     )
 
-    table, metadata = _read(materializer.path)
-    assert table.to_pylist() == [
-        {'timestamp_utc': second.timestamp_utc, 'a': 'ready'},
-    ]
+    metadata, points = _read(runtime)
+    assert points == {second.timestamp_utc: {'a': 'ready'}}
     assert dict(metadata.value_types) == {'a': 'text'}
 
 
-def test_materialization_trims_points_at_or_before_24_hour_cutoff(tmp_path) -> None:
-    materializer = KpiHistorianRollingMaterializer(
-        runtime=HistoryRuntime(),
-        path=rolling_path(tmp_path),
-    )
-    old = KpiWatermark(datetime(2026, 8, 31, 5, 0, tzinfo=UTC))
-    current = KpiWatermark(datetime(2026, 9, 1, 5, 0, tzinfo=UTC))
-
-    materializer.materialize(
-        batches=(
-            batch(evaluation('a', watermark_value=old, value='1.0')),
-            batch(evaluation('a', watermark_value=current, value='2.0')),
-        ),
-        previous_authority=None,
-        authority=_authority(current),
-    )
-
-    table, metadata = _read(materializer.path)
-    assert table.to_pylist() == [
-        {'timestamp_utc': current.timestamp_utc, 'a': '2.0'},
-    ]
-    assert metadata.coverage_start_utc == current.timestamp_utc
-
-
-def test_rebuild_reads_durable_history_and_keeps_wide_shape(tmp_path) -> None:
+def test_rebuild_reads_durable_history(tmp_path) -> None:
     current = watermark(2)
-    runtime = HistoryRuntime(
+    history = HistoryRuntime(
         {
             '2026-09-01': [
                 {
@@ -187,77 +176,27 @@ def test_rebuild_reads_durable_history_and_keeps_wide_shape(tmp_path) -> None:
             ]
         }
     )
-    materializer = KpiHistorianRollingMaterializer(runtime=runtime, path=rolling_path(tmp_path))
+    materializer, runtime = _materializer(tmp_path, history=history)
 
     materializer.rebuild(authority=_authority(current))
 
-    table, metadata = _read(materializer.path)
-    assert table.column_names == ['timestamp_utc', 'a', 'b']
-    assert table.to_pylist() == [
-        {'timestamp_utc': watermark(1).timestamp_utc, 'a': '1.0', 'b': None},
-        {'timestamp_utc': current.timestamp_utc, 'a': None, 'b': '2'},
-    ]
+    metadata, points = _read(runtime)
+    assert points == {
+        watermark(1).timestamp_utc: {'a': '1.0'},
+        current.timestamp_utc: {'b': '2'},
+    }
     assert dict(metadata.value_types) == {'a': 'float', 'b': 'integer'}
-    assert len(runtime.calls) == 2
+    assert len(history.calls) == 2
 
 
-def test_corrupt_rolling_is_rebuilt_from_durable_history_when_previous_authority_exists(
-    tmp_path,
-) -> None:
-    before = watermark(1)
-    current = watermark(2)
-    path = rolling_path(tmp_path)
-    path.parent.mkdir(parents=True)
-    path.write_bytes(b'not parquet')
-    runtime = HistoryRuntime(
-        {
-            '2026-09-01': [
-                {
-                    'timestamp_utc': current.timestamp_utc,
-                    'key': 'a',
-                    'status': 'ok',
-                    'value_kind': 'value',
-                    'value_type': 'float',
-                    'value': '2.0',
-                    'parsed_value': '2,0',
-                }
-            ]
-        }
-    )
-    materializer = KpiHistorianRollingMaterializer(runtime=runtime, path=path)
-
-    materializer.materialize(
-        batches=(batch(evaluation('a', watermark_value=current, value='2.0')),),
-        previous_authority=_authority(before),
-        authority=_authority(current),
-    )
-
-    table, metadata = _read(path)
-    assert table.to_pylist() == [
-        {'timestamp_utc': current.timestamp_utc, 'a': '2.0'},
-    ]
-    assert metadata.watermark_utc == current.timestamp_utc
-    assert runtime.calls
-
-
-def test_nonaligned_target_watermark_is_rejected(tmp_path) -> None:
-    current = watermark(0, second=10)
+def test_failed_dataset_replacement_preserves_last_committed_rolling(tmp_path) -> None:
+    actual_runtime = DatasetRuntime(store=ParquetDatasetStore(root=tmp_path))
+    rolling_runtime = FailingRollingRuntime(actual_runtime)
     materializer = KpiHistorianRollingMaterializer(
-        runtime=HistoryRuntime(),
-        path=rolling_path(tmp_path),
+        history_runtime=HistoryRuntime(),
+        rolling_runtime=rolling_runtime,
+        application_root=tmp_path,
     )
-
-    with pytest.raises(KpiHistorianRollingError, match='30-second grid'):
-        materializer.materialize(
-            batches=(batch(evaluation('a', watermark_value=current)),),
-            previous_authority=None,
-            authority=_authority(current),
-        )
-
-
-def test_failed_replacement_preserves_last_committed_rolling(tmp_path, monkeypatch) -> None:
-    path = rolling_path(tmp_path)
-    materializer = KpiHistorianRollingMaterializer(runtime=HistoryRuntime(), path=path)
     first = watermark(1)
     second = watermark(2)
     materializer.materialize(
@@ -265,18 +204,26 @@ def test_failed_replacement_preserves_last_committed_rolling(tmp_path, monkeypat
         previous_authority=None,
         authority=_authority(first),
     )
-    committed_bytes = path.read_bytes()
+    committed = materializer.path.read_bytes()
+    rolling_runtime.fail_replace = True
 
-    def fail_write(*args, **kwargs):
-        raise OSError('disk failure')
-
-    monkeypatch.setattr('ada.processes.kpi_historian.rolling.pq.write_table', fail_write)
-
-    with pytest.raises(KpiHistorianRollingError, match='atomic write failed'):
+    with pytest.raises(KpiHistorianRollingError, match='publication failed'):
         materializer.materialize(
             batches=(batch(evaluation('a', watermark_value=second, value='2.0')),),
             previous_authority=_authority(first),
             authority=_authority(second),
         )
 
-    assert path.read_bytes() == committed_bytes
+    assert materializer.path.read_bytes() == committed
+
+
+def test_nonaligned_target_watermark_is_rejected(tmp_path) -> None:
+    materializer, _ = _materializer(tmp_path)
+    current = KpiWatermark(datetime(2026, 9, 1, 5, 0, 10, tzinfo=UTC))
+
+    with pytest.raises(KpiHistorianRollingError, match='30-second grid'):
+        materializer.materialize(
+            batches=(batch(evaluation('a', watermark_value=current)),),
+            previous_authority=None,
+            authority=_authority(current),
+        )

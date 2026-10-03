@@ -52,7 +52,7 @@ class DatasetPublicationResult:
     quality: PublicationQuality
     finished_at_utc: datetime
     duration_ms: float
-    # `item_count` es la medida neutral que impide confirmar contenido vacío.
+    # `item_count` puede ser cero cuando existe un artefacto físico confirmado.
     item_count: int
     artifact_count: int
     size_bytes: int | None = None
@@ -125,9 +125,7 @@ class DatasetPublicationResult:
     def _validate_confirmed(self) -> None:
         if self.skip_reason is not None:
             raise DatasetValidationError('confirmed publications must not contain a skip reason')
-        # `unchanged` también se apoya en una publicación previa no vacía y confirmada.
-        if self.item_count < 1:
-            raise DatasetValidationError('committed or unchanged publications must contain items')
+        # La existencia física confirmada se expresa mediante artifact_count, no item_count.
         if self.artifact_count < 1:
             raise DatasetValidationError(
                 'committed or unchanged publications must contain artifacts'

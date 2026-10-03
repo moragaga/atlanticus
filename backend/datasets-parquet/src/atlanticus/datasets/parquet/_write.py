@@ -26,12 +26,13 @@ def _replace_single_artifact(
     target_identifier: str,
     table: pa.Table,
     write_options: ParquetWriteOptions,
+    artifact_name: str,
 ) -> _Artifact:
-    final_path = target_path / 'data.parquet'
+    final_path = target_path / f'{artifact_name}.parquet'
     temporary_path: Path | None = None
     try:
         target_path.mkdir(parents=True, exist_ok=True)
-        temporary_path = target_path / f'.data.parquet.{uuid4().hex}.tmp'
+        temporary_path = target_path / f'.{artifact_name}.parquet.{uuid4().hex}.tmp'
         _write_and_validate_table(
             path=temporary_path,
             table=table,

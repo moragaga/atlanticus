@@ -73,16 +73,36 @@ def test_confirmed_result_normalizes_time_to_utc(targets) -> None:
 
 
 @pytest.mark.parametrize('status', [PublicationStatus.COMMITTED, PublicationStatus.UNCHANGED])
-def test_empty_content_can_never_be_confirmed(targets, status: PublicationStatus) -> None:
+def test_confirmed_artifact_may_contain_zero_items(
+    targets,
+    status: PublicationStatus,
+) -> None:
+    result = DatasetPublicationResult(
+        target=targets[0],
+        status=status,
+        quality=PublicationQuality.SUCCESS,
+        finished_at_utc=datetime(2026, 7, 21, 12, 0, tzinfo=UTC),
+        duration_ms=0,
+        item_count=0,
+        artifact_count=1,
+        size_bytes=128,
+        content_signature='sha256:empty',
+    )
+
+    assert result.item_count == 0
+    assert result.artifact_count == 1
+
+
+def test_confirmed_result_still_requires_a_physical_artifact(targets) -> None:
     with pytest.raises(DatasetValidationError):
         DatasetPublicationResult(
             target=targets[0],
-            status=status,
+            status=PublicationStatus.COMMITTED,
             quality=PublicationQuality.SUCCESS,
             finished_at_utc=datetime(2026, 7, 21, 12, 0, tzinfo=UTC),
             duration_ms=0,
             item_count=0,
-            artifact_count=1,
+            artifact_count=0,
         )
 
 

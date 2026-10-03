@@ -1,18 +1,12 @@
-# Materializador del read model Timeseries de KPI Historian.
-# Mantiene un único Parquet wide, atómico y regenerable bajo timeseries/current.parquet.
-# La historia daily sigue siendo autoridad; este archivo nunca reemplaza ese contrato durable.
+# Materialización rolling Historian mediante DatasetRuntime.
+# Espejo pedagógico; los comentarios no alteran el AST productivo.
 from __future__ import annotations
 
-import os
-import tempfile
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Protocol
-
-import pyarrow as pa
-import pyarrow.parquet as pq
 
 from ada.kpis.core import KpiStatus, KpiValueKind, KpiWatermark
 from ada.kpis.history import (
@@ -20,72 +14,106 @@ from ada.kpis.history import (
     ROLLING_FILENAME,
     ROLLING_GRID_SECONDS,
     ROLLING_MAX_HOURS,
-    ROLLING_METADATA_KEY,
-    ROLLING_TIMESTAMP_COLUMN,
     ROLLING_VALUE_TYPES,
     KpiHistorianAuthority,
+    KpiHistoryContractError,
     KpiRollingMetadata,
     history_definition,
     history_target,
 )
+from ada.kpis.history.rolling_dataset import (
+    rolling_definition,
+    rolling_state_from_table,
+    rolling_table,
+    rolling_target,
+)
 from ada.kpis.persistence import KpiEvaluationBatch
 from ada.processes.kpi_historian.errors import KpiHistorianRollingError
 from atlanticus.datasets.parquet import ColumnFilter, FilterOperator
-from atlanticus.datasets.runtime import DatasetRuntimeNotFoundError
+from atlanticus.datasets.runtime import (
+    DatasetRuntimeNotFoundError,
+    DatasetRuntimeReadError,
+    DatasetRuntimeValidationError,
+    DatasetRuntimeWriteError,
+)
 
 
+# Esta clase conserva una responsabilidad explícita.
 class _HistoryRuntime(Protocol):
+# Esta función aplica el contrato antes de delegar.
     def scan_table(self, **kwargs): ...
 
 
+# Esta clase conserva una responsabilidad explícita.
+class _RollingRuntime(Protocol):
+# Esta función aplica el contrato antes de delegar.
+    def read_table(self, **kwargs): ...
+
+# Esta función aplica el contrato antes de delegar.
+    def replace(self, **kwargs): ...
+
+
+# El dataclass siguiente representa un contrato de datos.
 @dataclass(slots=True)
+# Esta clase conserva una responsabilidad explícita.
 class _RollingState:
     metadata: KpiRollingMetadata
     points: dict[datetime, dict[str, str]]
     value_types: dict[str, str]
 
 
+# Esta función mantiene el ownership del filesystem dentro del proceso Historian.
+def rolling_path(application_root: Path) -> Path:
+    if not isinstance(application_root, Path):
+        raise TypeError('application_root must be Path')
+    return application_root / ROLLING_DIRECTORY / ROLLING_FILENAME
+
+
+# Esta clase conserva una responsabilidad explícita.
 class KpiHistorianRollingMaterializer:
-    def __init__(self, *, runtime: _HistoryRuntime, path: Path) -> None:
-        if not callable(getattr(runtime, 'scan_table', None)):
-            raise TypeError('runtime must provide a callable scan_table method')
-        if not isinstance(path, Path):
-            raise TypeError('path must be Path')
-        self._runtime = runtime
-        self._path = path
-        self._validated_signature: tuple[int, int, str] | None = None
+# Esta función aplica el contrato antes de delegar.
+    def __init__(
+        self,
+        *,
+        history_runtime: _HistoryRuntime,
+        rolling_runtime: _RollingRuntime,
+        application_root: Path,
+    ) -> None:
+        if not callable(getattr(history_runtime, 'scan_table', None)):
+            raise TypeError('history_runtime must provide a callable scan_table method')
+        if not callable(getattr(rolling_runtime, 'read_table', None)):
+            raise TypeError('rolling_runtime must provide a callable read_table method')
+        if not callable(getattr(rolling_runtime, 'replace', None)):
+            raise TypeError('rolling_runtime must provide a callable replace method')
+        if not isinstance(application_root, Path):
+            raise TypeError('application_root must be Path')
+        self._history_runtime = history_runtime
+        self._rolling_runtime = rolling_runtime
+        self._path = rolling_path(application_root)
 
     @property
+# Esta función aplica el contrato antes de delegar.
     def path(self) -> Path:
         return self._path
 
+# Esta función aplica el contrato antes de delegar.
     def is_coherent(self, authority: KpiHistorianAuthority) -> bool:
         if not isinstance(authority, KpiHistorianAuthority):
             raise TypeError('authority must be KpiHistorianAuthority')
         _require_grid_aligned(authority.watermark_utc)
-        signature = self._file_signature()
-        if signature is None:
-            self._validated_signature = None
-            return False
-        cached = (*signature, authority.revision)
-        if self._validated_signature == cached:
-            return True
-        try:
-            current = self._read_current()
-        except KpiHistorianRollingError:
-            self._validated_signature = None
+        current, corrupted = self._read_optional()
+        if corrupted or current is None:
             return False
         if current.metadata.watermark_utc > authority.watermark_utc:
             raise KpiHistorianRollingError(
                 'KPI historian rolling watermark must not be ahead of historian authority'
             )
-        coherent = (
+        return (
             current.metadata.watermark_utc == authority.watermark_utc
             and current.metadata.historian_revision == authority.revision
         )
-        self._validated_signature = cached if coherent else None
-        return coherent
 
+# Esta función aplica el contrato antes de delegar.
     def materialize(
         self,
         *,
@@ -105,7 +133,10 @@ class KpiHistorianRollingMaterializer:
         if check_current is not None and not callable(check_current):
             raise TypeError('check_current must be callable or None')
         _require_grid_aligned(authority.watermark_utc)
-        batch_values = _batches(batches, through=KpiWatermark(authority.watermark_utc))
+        batch_values = _batches(
+            batches,
+            through=KpiWatermark(authority.watermark_utc),
+        )
         _check_current(check_current)
 
         current, corrupted = self._read_optional()
@@ -131,8 +162,16 @@ class KpiHistorianRollingMaterializer:
         else:
             points = {} if current is None else _copy_points(current.points)
             value_types = {} if current is None else dict(current.value_types)
-            _apply_batches(points=points, value_types=value_types, batches=batch_values)
-            _trim(points=points, value_types=value_types, watermark_utc=authority.watermark_utc)
+            _apply_batches(
+                points=points,
+                value_types=value_types,
+                batches=batch_values,
+            )
+            _trim(
+                points=points,
+                value_types=value_types,
+                watermark_utc=authority.watermark_utc,
+            )
 
         _check_current(check_current)
         self._write(
@@ -141,6 +180,7 @@ class KpiHistorianRollingMaterializer:
             value_types=value_types,
         )
 
+# Esta función aplica el contrato antes de delegar.
     def rebuild(
         self,
         *,
@@ -164,75 +204,40 @@ class KpiHistorianRollingMaterializer:
             value_types=value_types,
         )
 
+# Esta función aplica el contrato antes de delegar.
     def _read_optional(self) -> tuple[_RollingState | None, bool]:
-        if not self._path.exists():
-            return None, False
         try:
             return self._read_current(), False
+        except DatasetRuntimeNotFoundError:
+            return None, False
         except KpiHistorianRollingError:
             return None, True
 
+# Esta función aplica el contrato antes de delegar.
     def _read_current(self) -> _RollingState:
         try:
-            table = pq.read_table(self._path)
-            metadata_bytes = (table.schema.metadata or {}).get(ROLLING_METADATA_KEY.encode('utf-8'))
-            if metadata_bytes is None:
-                raise KpiHistorianRollingError('KPI historian rolling metadata is missing')
-            metadata = KpiRollingMetadata.from_bytes(metadata_bytes)
-        except KpiHistorianRollingError:
+            result = self._rolling_runtime.read_table(
+                definition=rolling_definition(),
+                target=rolling_target(),
+            )
+            metadata, points = rolling_state_from_table(result.table)
+        except DatasetRuntimeNotFoundError:
             raise
-        except Exception as error:
-            raise KpiHistorianRollingError('KPI historian rolling file is invalid') from error
-
-        expected_columns = [ROLLING_TIMESTAMP_COLUMN, *metadata.value_types]
-        if table.column_names != expected_columns:
-            raise KpiHistorianRollingError('KPI historian rolling columns are invalid')
-        timestamp_field = table.schema.field(ROLLING_TIMESTAMP_COLUMN)
-        if timestamp_field.type != pa.timestamp('us', tz='UTC') or timestamp_field.nullable:
-            raise KpiHistorianRollingError('KPI historian rolling timestamp schema is invalid')
-        for key in metadata.value_types:
-            field = table.schema.field(key)
-            if field.type != pa.string() or not field.nullable:
-                raise KpiHistorianRollingError('KPI historian rolling value schema is invalid')
-
-        points: dict[datetime, dict[str, str]] = {}
-        previous: datetime | None = None
-        for row in table.to_pylist():
-            timestamp = row.get(ROLLING_TIMESTAMP_COLUMN)
-            if not isinstance(timestamp, datetime):
-                raise KpiHistorianRollingError('KPI historian rolling timestamp is invalid')
-            _require_grid_aligned(timestamp)
-            if previous is not None and timestamp <= previous:
-                raise KpiHistorianRollingError(
-                    'KPI historian rolling timestamps must be strictly increasing'
-                )
-            values: dict[str, str] = {}
-            for key in metadata.value_types:
-                value = row.get(key)
-                if value is not None and not isinstance(value, str):
-                    raise KpiHistorianRollingError('KPI historian rolling value is invalid')
-                if value is not None:
-                    values[key] = value
-            if not values:
-                raise KpiHistorianRollingError(
-                    'KPI historian rolling must not persist empty physical rows'
-                )
-            points[timestamp] = values
-            previous = timestamp
-
-        actual_start = None if not points else min(points)
-        actual_end = None if not points else max(points)
-        if metadata.coverage_start_utc != actual_start or metadata.coverage_end_utc != actual_end:
-            raise KpiHistorianRollingError('KPI historian rolling coverage metadata is invalid')
-        cutoff = metadata.watermark_utc - timedelta(hours=ROLLING_MAX_HOURS)
-        if any(timestamp <= cutoff or timestamp > metadata.watermark_utc for timestamp in points):
-            raise KpiHistorianRollingError('KPI historian rolling coverage is outside its horizon')
+        except (
+            DatasetRuntimeReadError,
+            DatasetRuntimeValidationError,
+            KpiHistoryContractError,
+        ) as error:
+            raise KpiHistorianRollingError(
+                'KPI historian rolling publication is invalid'
+            ) from error
         return _RollingState(
             metadata=metadata,
             points=points,
             value_types=dict(metadata.value_types),
         )
 
+# Esta función aplica el contrato antes de delegar.
     def _read_durable(
         self,
         *,
@@ -257,7 +262,7 @@ class KpiHistorianRollingMaterializer:
         for day in _days(start_utc.date(), end_utc.date()):
             _check_current(check_current)
             try:
-                result = self._runtime.scan_table(
+                result = self._history_runtime.scan_table(
                     definition=history_definition(),
                     targets=(history_target(day),),
                     columns=(
@@ -280,6 +285,7 @@ class KpiHistorianRollingMaterializer:
         _trim(points=points, value_types=value_types, watermark_utc=end_utc)
         return points, value_types
 
+# Esta función aplica el contrato antes de delegar.
     def _write(
         self,
         *,
@@ -296,56 +302,23 @@ class KpiHistorianRollingMaterializer:
             coverage_end_utc=None if not timestamps else timestamps[-1],
             value_types=value_types,
         )
-        keys = list(metadata.value_types)
-        arrays = [pa.array(timestamps, type=pa.timestamp('us', tz='UTC'))]
-        for key in keys:
-            arrays.append(
-                pa.array(
-                    [points[timestamp].get(key) for timestamp in timestamps],
-                    type=pa.string(),
-                )
-            )
-        fields = [pa.field(ROLLING_TIMESTAMP_COLUMN, pa.timestamp('us', tz='UTC'), nullable=False)]
-        fields.extend(pa.field(key, pa.string(), nullable=True) for key in keys)
-        schema = pa.schema(fields).with_metadata(
-            {ROLLING_METADATA_KEY.encode('utf-8'): metadata.to_bytes()}
-        )
-        table = pa.Table.from_arrays(arrays, schema=schema)
-
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        descriptor, temporary = tempfile.mkstemp(
-            dir=self._path.parent,
-            prefix=f'.{self._path.name}.',
-            suffix='.tmp',
-        )
-        os.close(descriptor)
-        temporary_path = Path(temporary)
         try:
-            pq.write_table(table, temporary_path)
-            os.replace(temporary_path, self._path)
-            signature = self._file_signature()
-            self._validated_signature = (
-                None if signature is None else (*signature, authority.revision)
+            self._rolling_runtime.replace(
+                definition=rolling_definition(),
+                target=rolling_target(),
+                data=rolling_table(metadata=metadata, points=points),
             )
-        except Exception as error:
-            raise KpiHistorianRollingError('KPI historian rolling atomic write failed') from error
-        finally:
-            temporary_path.unlink(missing_ok=True)
-
-    def _file_signature(self) -> tuple[int, int] | None:
-        try:
-            stat = self._path.stat()
-        except OSError:
-            return None
-        return stat.st_size, stat.st_mtime_ns
+        except (
+            DatasetRuntimeValidationError,
+            DatasetRuntimeWriteError,
+            KpiHistoryContractError,
+        ) as error:
+            raise KpiHistorianRollingError(
+                'KPI historian rolling publication failed'
+            ) from error
 
 
-def rolling_path(application_root: Path) -> Path:
-    if not isinstance(application_root, Path):
-        raise TypeError('application_root must be Path')
-    return application_root / ROLLING_DIRECTORY / ROLLING_FILENAME
-
-
+# Esta función aplica el contrato antes de delegar.
 def _batches(
     values: Iterable[KpiEvaluationBatch],
     *,
@@ -368,6 +341,7 @@ def _batches(
     return resolved
 
 
+# Esta función aplica el contrato antes de delegar.
 def _apply_batches(
     *,
     points: dict[datetime, dict[str, str]],
@@ -399,6 +373,7 @@ def _apply_batches(
             points.setdefault(timestamp, {})[evaluation.key] = evaluation.value
 
 
+# Esta función aplica el contrato antes de delegar.
 def _apply_history_row(
     *,
     points: dict[datetime, dict[str, str]],
@@ -431,6 +406,7 @@ def _apply_history_row(
     points.setdefault(timestamp, {})[key] = value
 
 
+# Esta función aplica el contrato antes de delegar.
 def _accept_type(
     *,
     points: dict[datetime, dict[str, str]],
@@ -444,6 +420,7 @@ def _accept_type(
     value_types[key] = value_type
 
 
+# Esta función aplica el contrato antes de delegar.
 def _clear_series(
     *,
     points: dict[datetime, dict[str, str]],
@@ -455,6 +432,7 @@ def _clear_series(
     value_types.pop(key, None)
 
 
+# Esta función aplica el contrato antes de delegar.
 def _trim(
     *,
     points: dict[datetime, dict[str, str]],
@@ -468,6 +446,7 @@ def _trim(
     _prune(points=points, value_types=value_types)
 
 
+# Esta función aplica el contrato antes de delegar.
 def _prune(
     *,
     points: dict[datetime, dict[str, str]],
@@ -482,10 +461,12 @@ def _prune(
             del value_types[key]
 
 
+# Esta función aplica el contrato antes de delegar.
 def _copy_points(points: dict[datetime, dict[str, str]]) -> dict[datetime, dict[str, str]]:
     return {timestamp: dict(values) for timestamp, values in points.items()}
 
 
+# Esta función aplica el contrato antes de delegar.
 def _history_sort_key(row: dict[str, object]) -> tuple[datetime, str]:
     timestamp = row.get('timestamp_utc')
     key = row.get('key')
@@ -494,6 +475,7 @@ def _history_sort_key(row: dict[str, object]) -> tuple[datetime, str]:
     return timestamp, key
 
 
+# Esta función aplica el contrato antes de delegar.
 def _days(start: date, end: date) -> tuple[date, ...]:
     if end < start:
         return ()
@@ -501,6 +483,7 @@ def _days(start: date, end: date) -> tuple[date, ...]:
     return tuple(start + timedelta(days=index) for index in range(count + 1))
 
 
+# Esta función aplica el contrato antes de delegar.
 def _require_grid_aligned(value: datetime) -> None:
     if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
         raise KpiHistorianRollingError('KPI historian rolling timestamp must be timezone-aware')
@@ -510,6 +493,7 @@ def _require_grid_aligned(value: datetime) -> None:
         )
 
 
+# Esta función aplica el contrato antes de delegar.
 def _check_current(check_current: Callable[[], None] | None) -> None:
     if check_current is not None:
         check_current()

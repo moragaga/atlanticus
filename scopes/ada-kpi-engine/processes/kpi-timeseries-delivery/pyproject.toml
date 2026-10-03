@@ -9,13 +9,14 @@ description = "KPI timeseries delivery process composition for the ADA backend."
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
+    "ada-kpis-connections==1.0.0",
     "ada-kpis-core==1.0.0",
     "ada-kpis-delivery==1.0.0",
     "ada-kpis-history==1.0.0",
+    "ada-kpis-materialization==1.0.0",
     "atlanticus-configuration==1.0.0",
     "atlanticus-cosmos==1.0.0",
     "atlanticus-datasets-parquet==1.0.0",
-    "atlanticus-datasets-runtime==1.0.0",
     "atlanticus-job-runtime==1.0.0",
     "atlanticus-key-vault==1.0.0",
     "atlanticus-kernel==1.0.0",

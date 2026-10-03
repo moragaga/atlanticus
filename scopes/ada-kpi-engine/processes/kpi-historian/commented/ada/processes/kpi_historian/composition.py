@@ -1,6 +1,5 @@
-# Espejo pedagógico de la composición KPI Historian.
-# datasets/ conserva autoridad durable.
-# timeseries/current.parquet es el read model regenerable hermano.
+# Composición Historian con runtimes Dataset explícitos.
+# Espejo pedagógico; los comentarios no alteran el AST productivo.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -13,10 +12,7 @@ from ada.kpis.persistence import (
 )
 from ada.processes.kpi_historian.history import KpiHistorianMaterializer
 from ada.processes.kpi_historian.job import KpiHistorianJob
-from ada.processes.kpi_historian.rolling import (
-    KpiHistorianRollingMaterializer,
-    rolling_path,
-)
+from ada.processes.kpi_historian.rolling import KpiHistorianRollingMaterializer
 from ada.processes.kpi_historian.settings import KpiHistorianSettings
 from ada.processes.kpi_historian.state import KpiHistorianAuthorityStore
 from atlanticus.configuration import ResolvedConfiguration
@@ -31,7 +27,9 @@ from atlanticus.runtime import (
 from atlanticus.state import AtomicStateStore
 
 
+# El dataclass siguiente representa un contrato de datos.
 @dataclass(slots=True)
+# Esta clase conserva una responsabilidad explícita.
 class KpiHistorianComposition:
     configuration: ResolvedConfiguration
     runtime_configuration: RuntimeConfiguration
@@ -44,6 +42,7 @@ class KpiHistorianComposition:
     job: KpiHistorianJob
     definition: JobDefinition
 
+# Esta función aplica el contrato antes de delegar.
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
         return execute_job(
             definition=self.definition,
@@ -53,6 +52,7 @@ class KpiHistorianComposition:
         )
 
 
+# Esta función aplica el contrato antes de delegar.
 def build_composition(*, configuration: ResolvedConfiguration) -> KpiHistorianComposition:
     if not isinstance(configuration, ResolvedConfiguration):
         raise TypeError('configuration must be a ResolvedConfiguration')
@@ -69,15 +69,19 @@ def build_composition(*, configuration: ResolvedConfiguration) -> KpiHistorianCo
     evaluations = KpiEvaluationRepository(
         paths=KpiPersistencePaths(upstream_store.application_root),
     )
-    dataset_runtime = DatasetRuntime(
+    history_runtime = DatasetRuntime(
         store=ParquetDatasetStore(root=runtime_configuration.application_root / 'datasets')
+    )
+    rolling_runtime = DatasetRuntime(
+        store=ParquetDatasetStore(root=runtime_configuration.application_root)
     )
     kpi_state = KpiCommitStateRepository(upstream_store)
     authority = KpiHistorianAuthorityStore(store=own_store)
-    history = KpiHistorianMaterializer(runtime=dataset_runtime)
+    history = KpiHistorianMaterializer(runtime=history_runtime)
     rolling = KpiHistorianRollingMaterializer(
-        runtime=dataset_runtime,
-        path=rolling_path(runtime_configuration.application_root),
+        history_runtime=history_runtime,
+        rolling_runtime=rolling_runtime,
+        application_root=runtime_configuration.application_root,
     )
     job = KpiHistorianJob(
         kpi_state=kpi_state,
@@ -102,6 +106,7 @@ def build_composition(*, configuration: ResolvedConfiguration) -> KpiHistorianCo
     )
 
 
+# Esta función aplica el contrato antes de delegar.
 def _job_definition(*, poll_interval_seconds: float) -> JobDefinition:
     return JobDefinition(
         module_name='ada.processes.kpi_historian',

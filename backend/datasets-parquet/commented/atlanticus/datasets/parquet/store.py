@@ -120,14 +120,14 @@ class ParquetDatasetStore:
         """Reemplaza un artefacto completo mediante un commit atómico."""
 
         started = monotonic()
-        self._require_layout(
+        layout = self._require_layout(
             definition=definition,
             target=target,
             layout_type=SingleArtifactLayout,
             operation='replace',
         )
         self._validate_table(table)
-        if table.num_rows == 0:
+        if table.num_rows == 0 and not layout.allow_empty:
             return DatasetPublicationResult.skipped_empty(
                 target=target,
                 finished_at_utc=self._resolve_now(),
@@ -487,6 +487,12 @@ class ParquetDatasetStore:
     ) -> _Artifact:
         # El Store conserva lock y cleanup porque coordinan la operación completa, no la escritura física.
         target_path = self.path_for(definition=definition, target=target)
+        layout = self._require_layout(
+            definition=definition,
+            target=target,
+            layout_type=SingleArtifactLayout,
+            operation='replace',
+        )
         with self._write_lock:
             self._cleanup_locked(
                 target_path=target_path,
@@ -500,6 +506,7 @@ class ParquetDatasetStore:
                 target_identifier=target.identifier,
                 table=table,
                 write_options=self._write_options,
+                artifact_name=layout.artifact_name,
             )
         return artifact
 

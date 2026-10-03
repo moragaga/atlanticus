@@ -1,4 +1,4 @@
-# Contrato histórico KPI schema v2; agrega value_type y mantiene value/parsed_value como columnas textuales.
+# Contrato durable KPI sin dependencias hacia el rolling.
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -61,30 +61,37 @@ _ERROR_HISTORY_SCHEMA = pa.schema(
 )
 
 
+# Esta función expone una parte del contrato compartido.
 def history_definition() -> DatasetDefinition:
     return _HISTORY_DEFINITION
 
 
+# Esta función expone una parte del contrato compartido.
 def error_history_definition() -> DatasetDefinition:
     return _ERROR_HISTORY_DEFINITION
 
 
+# Esta función expone una parte del contrato compartido.
 def history_schema() -> pa.Schema:
     return _HISTORY_SCHEMA
 
 
+# Esta función expone una parte del contrato compartido.
 def error_history_schema() -> pa.Schema:
     return _ERROR_HISTORY_SCHEMA
 
 
+# Esta función expone una parte del contrato compartido.
 def history_target(day: date) -> DatasetTarget:
     return _daily_target(_HISTORY_DEFINITION, day)
 
 
+# Esta función expone una parte del contrato compartido.
 def error_history_target(day: date) -> DatasetTarget:
     return _daily_target(_ERROR_HISTORY_DEFINITION, day)
 
 
+# Esta función expone una parte del contrato compartido.
 def _daily_target(definition: DatasetDefinition, day: date) -> DatasetTarget:
     if not isinstance(day, date) or isinstance(day, datetime):
         raise TypeError('day must be a date')

@@ -67,6 +67,7 @@ class DatasetRuntime:
     ) -> DatasetPublicationResult:
         """Publica un artefacto completo desde Pandas o PyArrow."""
 
+        # Runtime conserva el contrato legacy de omitir entradas vacías por defecto.
         started = monotonic()
         _validate_request(
             definition=definition,
@@ -74,8 +75,11 @@ class DatasetRuntime:
             layout_type=SingleArtifactLayout,
             operation='replace',
         )
+        # El layout ya fue validado por _validate_request; no se duplica con asserts.
+        layout = definition.get_materialization(target.materialization).layout
         table = to_arrow_table(data)
-        if table.num_rows == 0:
+        # allow_empty=True es la excepción explícita que delega el vacío al store.
+        if table.num_rows == 0 and not layout.allow_empty:
             return self._skipped_empty(target=target, started=started)
         try:
             return self._store.replace(definition=definition, target=target, table=table)

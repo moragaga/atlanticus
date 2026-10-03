@@ -10,10 +10,7 @@ from ada.kpis.persistence import (
 )
 from ada.processes.kpi_historian.history import KpiHistorianMaterializer
 from ada.processes.kpi_historian.job import KpiHistorianJob
-from ada.processes.kpi_historian.rolling import (
-    KpiHistorianRollingMaterializer,
-    rolling_path,
-)
+from ada.processes.kpi_historian.rolling import KpiHistorianRollingMaterializer
 from ada.processes.kpi_historian.settings import KpiHistorianSettings
 from ada.processes.kpi_historian.state import KpiHistorianAuthorityStore
 from atlanticus.configuration import ResolvedConfiguration
@@ -66,15 +63,19 @@ def build_composition(*, configuration: ResolvedConfiguration) -> KpiHistorianCo
     evaluations = KpiEvaluationRepository(
         paths=KpiPersistencePaths(upstream_store.application_root),
     )
-    dataset_runtime = DatasetRuntime(
+    history_runtime = DatasetRuntime(
         store=ParquetDatasetStore(root=runtime_configuration.application_root / 'datasets')
+    )
+    rolling_runtime = DatasetRuntime(
+        store=ParquetDatasetStore(root=runtime_configuration.application_root)
     )
     kpi_state = KpiCommitStateRepository(upstream_store)
     authority = KpiHistorianAuthorityStore(store=own_store)
-    history = KpiHistorianMaterializer(runtime=dataset_runtime)
+    history = KpiHistorianMaterializer(runtime=history_runtime)
     rolling = KpiHistorianRollingMaterializer(
-        runtime=dataset_runtime,
-        path=rolling_path(runtime_configuration.application_root),
+        history_runtime=history_runtime,
+        rolling_runtime=rolling_runtime,
+        application_root=runtime_configuration.application_root,
     )
     job = KpiHistorianJob(
         kpi_state=kpi_state,

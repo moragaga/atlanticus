@@ -5,9 +5,14 @@ from ada.processes.kpi_timeseries_delivery.composition import (
 from ada.processes.kpi_timeseries_delivery.errors import (
     KpiTimeseriesDeliveryConfigurationError,
     KpiTimeseriesDeliveryError,
+    KpiTimeseriesDeliveryPublicationError,
+    KpiTimeseriesDeliveryReadinessPending,
     KpiTimeseriesDeliveryRepositoryError,
 )
-from ada.processes.kpi_timeseries_delivery.job import KpiTimeseriesDeliveryJob
+from ada.processes.kpi_timeseries_delivery.job import (
+    KpiTimeseriesDeliveryJob,
+    KpiTimeseriesDeliveryRuntimeJob,
+)
 from ada.processes.kpi_timeseries_delivery.models import (
     KpiTimeseriesCheckpoint,
     KpiTimeseriesDeliveryIterationResult,
@@ -26,7 +31,10 @@ __all__ = [
     'KpiTimeseriesDeliveryIterationResult',
     'KpiTimeseriesDeliveryIterationStatus',
     'KpiTimeseriesDeliveryJob',
+    'KpiTimeseriesDeliveryPublicationError',
+    'KpiTimeseriesDeliveryReadinessPending',
     'KpiTimeseriesDeliveryRepositoryError',
+    'KpiTimeseriesDeliveryRuntimeJob',
     'KpiTimeseriesPublication',
     'KpiTimeseriesPublicationStatus',
     '__version__',

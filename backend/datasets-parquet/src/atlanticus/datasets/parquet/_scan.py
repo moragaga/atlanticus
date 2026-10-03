@@ -111,6 +111,10 @@ def _scan_artifact(
         )
     except (OSError, pa.ArrowException) as error:
         raise ParquetReadError(f'could not scan parquet artifact: {artifact.path.name}') from error
+    if table.schema.metadata != artifact.schema.metadata:
+        raise ParquetCorruptionError(
+            f'parquet artifact metadata changed while scanning: {artifact.path.name}'
+        )
     if sentinel is not None:
         table = table.drop((sentinel,))
     arrays: list[pa.ChunkedArray | pa.Array] = []
@@ -151,7 +155,8 @@ def _resolve_scan_schema(
         _resolve_field(publications=publications, column=column, required=True)
         for column in columns
     ]
-    return pa.schema(fields)
+    metadata = publications[0].schema.metadata if len(publications) == 1 else None
+    return pa.schema(fields, metadata=metadata)
 
 
 def _resolve_projected_field(

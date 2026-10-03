@@ -46,8 +46,12 @@ def _resolve_publication(
     definition.validate_target(target)
     # Un artefacto único no usa manifest: data.parquet es la publicación confirmada.
     if isinstance(materialization.layout, SingleArtifactLayout):
-        path = target_path / 'data.parquet'
-        artifact = _inspect_artifact(path=path, missing_is_publication=True)
+        path = target_path / f'{materialization.layout.artifact_name}.parquet'
+        artifact = _inspect_artifact(
+            path=path,
+            missing_is_publication=True,
+            allow_empty=materialization.layout.allow_empty,
+        )
         return _ResolvedPublication(
             target=target,
             schema=artifact.schema,
@@ -109,6 +113,7 @@ def _inspect_artifact(
     expected_size_bytes: int | None = None,
     content_signature: str | None = None,
     part_value: str | None = None,
+    allow_empty: bool = False,
 ) -> _Artifact:
     # Primero verificamos la identidad física antes de abrir metadata Parquet.
     try:
@@ -138,7 +143,7 @@ def _inspect_artifact(
         item_count = parquet_file.metadata.num_rows
     except (OSError, pa.ArrowException) as error:
         raise ParquetCorruptionError(f'parquet artifact cannot be opened: {path.name}') from error
-    if item_count < 1:
+    if item_count < 1 and not allow_empty:
         raise ParquetCorruptionError(f'confirmed parquet artifact is empty: {path.name}')
     if expected_item_count is not None and item_count != expected_item_count:
         raise ParquetCorruptionError(

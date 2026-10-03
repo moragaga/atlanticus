@@ -73,8 +73,9 @@ class DatasetRuntime:
             layout_type=SingleArtifactLayout,
             operation='replace',
         )
+        layout = definition.get_materialization(target.materialization).layout
         table = to_arrow_table(data)
-        if table.num_rows == 0:
+        if table.num_rows == 0 and not layout.allow_empty:
             return self._skipped_empty(target=target, started=started)
         try:
             return self._store.replace(definition=definition, target=target, table=table)

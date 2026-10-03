@@ -4,12 +4,20 @@ import os
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from ada.kpis.connections import (
+    KpiConnectionRegistry,
+    read_connection_registry,
+)
 from ada.processes.kpi_timeseries_delivery.composition import build_composition
 from ada.processes.kpi_timeseries_delivery.errors import (
     KpiTimeseriesDeliveryConfigurationError,
 )
 from ada.processes.kpi_timeseries_delivery.settings import configuration_specs
-from atlanticus.configuration import ConfigurationBootstrap, ResolvedConfiguration, SecretsManifest
+from atlanticus.configuration import (
+    ConfigurationBootstrap,
+    ResolvedConfiguration,
+    SecretsManifest,
+)
 from atlanticus.connectivity.key_vault import (
     KeyVaultClient,
     KeyVaultConfigurationError,
@@ -25,11 +33,13 @@ _PRODUCT_VARIABLE = 'PRODUCT_ABREV'
 def load_configuration(
     *,
     process_root: str | Path,
+    registry: KpiConnectionRegistry | None = None,
     environ: Mapping[str, str] | None = None,
 ) -> ResolvedConfiguration:
     source_values = os.environ if environ is None else environ
     root = Path(process_root)
-    specs = configuration_specs()
+    active_registry = registry if registry is not None else read_connection_registry(root)
+    specs = (*configuration_specs(), *active_registry.configuration_specs())
     bootstrap = ConfigurationBootstrap.from_process(
         specs=specs,
         process_values=source_values,
@@ -38,6 +48,7 @@ def load_configuration(
     environment = bootstrap.environment
     if environment.is_local:
         return _require_absolute_volume_path(bootstrap.load(process_values=source_values))
+
     manifest = SecretsManifest.from_path(root / 'secrets.json')
     configured_keys = frozenset(spec.key for spec in specs)
     secret_entries = tuple(
@@ -52,6 +63,7 @@ def load_configuration(
             secrets_manifest=manifest,
         ).load(process_values=source_values)
         return _require_absolute_volume_path(configuration)
+
     try:
         vault_settings = _key_vault_settings(
             environment=environment,
@@ -112,8 +124,20 @@ def run(
 ) -> RuntimeExecutionResult:
     root = Path.cwd() if process_root is None else Path(process_root)
     source_values = os.environ if environ is None else environ
-    configuration = load_configuration(process_root=root, environ=source_values)
-    return build_composition(configuration=configuration).execute(argv=argv)
+    registry = read_connection_registry(root)
+    configuration = load_configuration(
+        process_root=root,
+        registry=registry,
+        environ=source_values,
+    )
+    connections = registry.resolve(
+        values=configuration.values,
+        environment=configuration.environment,
+    )
+    return build_composition(
+        configuration=configuration,
+        connections=connections,
+    ).execute(argv=argv)
 
 
 def main() -> None:

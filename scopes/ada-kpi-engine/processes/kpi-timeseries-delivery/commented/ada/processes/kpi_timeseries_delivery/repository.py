@@ -1,4 +1,5 @@
-# Espejo comentado de la implementación productiva.
+# Persistencia de snapshots Timeseries en Cosmos.
+# Espejo pedagógico; los comentarios no alteran el AST productivo.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -16,19 +17,51 @@ from ada.processes.kpi_timeseries_delivery.models import (
 from atlanticus.connectivity.cosmos import (
     CosmosClient,
     CosmosConflictError,
+    CosmosContainerSpec,
+    CosmosError,
     CosmosPatchOperation,
     CosmosPreconditionFailedError,
+    CosmosProvisioner,
 )
 
 
+# El dataclass siguiente representa un contrato de datos explícito.
 @dataclass(slots=True)
+# Esta clase delimita una responsabilidad concreta del proceso.
 class KpiTimeseriesSnapshotRepository:
     client: CosmosClient
-    container_name: str
+    provisioner: CosmosProvisioner
+    container_spec: CosmosContainerSpec
+    _ready: bool = False
 
+    @property
+# Esta función conserva los contratos e invariantes declarados por el módulo.
+    def container_name(self) -> str:
+        return self.container_spec.name
+
+# Esta función conserva los contratos e invariantes declarados por el módulo.
     def publish(self, snapshot: KpiTimeseriesSnapshot) -> KpiTimeseriesPublication:
         if not isinstance(snapshot, KpiTimeseriesSnapshot):
             raise TypeError('snapshot must be KpiTimeseriesSnapshot')
+        try:
+            self._ensure_container()
+            return self._publish(snapshot)
+        except KpiTimeseriesDeliveryRepositoryError:
+            raise
+        except CosmosError as error:
+            raise KpiTimeseriesDeliveryRepositoryError(
+                'Could not publish KPI timeseries snapshot'
+            ) from error
+
+# Esta función conserva los contratos e invariantes declarados por el módulo.
+    def _ensure_container(self) -> None:
+        if self._ready:
+            return
+        self.provisioner.ensure_containers((self.container_spec,))
+        self._ready = True
+
+# Esta función conserva los contratos e invariantes declarados por el módulo.
+    def _publish(self, snapshot: KpiTimeseriesSnapshot) -> KpiTimeseriesPublication:
         payload = snapshot.to_payload()
         item_id = _required_text(payload.get('id'), 'snapshot id')
         partition_key = _required_text(payload.get('partition_id'), 'snapshot partition_id')
@@ -81,6 +114,7 @@ class KpiTimeseriesSnapshotRepository:
             revision=desired_revision,
         )
 
+# Esta función conserva los contratos e invariantes declarados por el módulo.
     def _create_or_resolve_conflict(
         self,
         *,
@@ -102,6 +136,7 @@ class KpiTimeseriesSnapshotRepository:
             revision=desired_revision,
         )
 
+# Esta función conserva los contratos e invariantes declarados por el módulo.
     def _resolve_concurrent_write(
         self,
         *,
@@ -134,6 +169,7 @@ class KpiTimeseriesSnapshotRepository:
         )
 
 
+# Esta función conserva los contratos e invariantes declarados por el módulo.
 def _current_identity(
     document: Mapping[str, Any],
     *,
@@ -170,6 +206,7 @@ def _current_identity(
     return revision, etag
 
 
+# Esta función conserva los contratos e invariantes declarados por el módulo.
 def _required_text(value: object, field_name: str) -> str:
     if not isinstance(value, str) or not value:
         raise KpiTimeseriesDeliveryRepositoryError(

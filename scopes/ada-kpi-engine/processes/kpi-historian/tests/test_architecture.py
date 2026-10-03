@@ -25,3 +25,14 @@ def test_history_contract_is_consumed_instead_of_redeclared() -> None:
     assert 'DatasetDefinition(' not in content
     assert 'pa.schema(' not in content
     assert "DatasetKey(namespace=('kpis',), name='history')" not in content
+
+
+def test_historian_rolling_does_not_use_raw_parquet_io() -> None:
+    content = (SOURCE / 'rolling.py').read_text(encoding='utf-8')
+
+    assert 'import pyarrow' not in content
+    assert 'from pyarrow' not in content
+    assert 'pq.read_table' not in content
+    assert 'pq.write_table' not in content
+    assert 'os.replace' not in content
+    assert 'tempfile' not in content

@@ -1,4 +1,4 @@
-# API pública de historia durable y del contrato compartido del rolling Timeseries.
+# API pública de KPI History.
 from ada.kpis.history.authority import (
     HISTORIAN_AUTHORITY_NAME,
     HISTORIAN_AUTHORITY_NAMESPACE,

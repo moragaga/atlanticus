@@ -1,16 +1,25 @@
-# Espejo comentado de la implementación productiva.
+# Bootstrap con named connections.
+# Espejo pedagógico; los comentarios no alteran el AST productivo.
 from __future__ import annotations
 
 import os
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from ada.kpis.connections import (
+    KpiConnectionRegistry,
+    read_connection_registry,
+)
 from ada.processes.kpi_timeseries_delivery.composition import build_composition
 from ada.processes.kpi_timeseries_delivery.errors import (
     KpiTimeseriesDeliveryConfigurationError,
 )
 from ada.processes.kpi_timeseries_delivery.settings import configuration_specs
-from atlanticus.configuration import ConfigurationBootstrap, ResolvedConfiguration, SecretsManifest
+from atlanticus.configuration import (
+    ConfigurationBootstrap,
+    ResolvedConfiguration,
+    SecretsManifest,
+)
 from atlanticus.connectivity.key_vault import (
     KeyVaultClient,
     KeyVaultConfigurationError,
@@ -23,14 +32,17 @@ _COMPANY_VARIABLE = 'COMPANY_ABREV'
 _PRODUCT_VARIABLE = 'PRODUCT_ABREV'
 
 
+# Esta función conserva los contratos e invariantes declarados por el módulo.
 def load_configuration(
     *,
     process_root: str | Path,
+    registry: KpiConnectionRegistry | None = None,
     environ: Mapping[str, str] | None = None,
 ) -> ResolvedConfiguration:
     source_values = os.environ if environ is None else environ
     root = Path(process_root)
-    specs = configuration_specs()
+    active_registry = registry if registry is not None else read_connection_registry(root)
+    specs = (*configuration_specs(), *active_registry.configuration_specs())
     bootstrap = ConfigurationBootstrap.from_process(
         specs=specs,
         process_values=source_values,
@@ -41,6 +53,7 @@ def load_configuration(
         return _require_absolute_volume_path(
             bootstrap.load(process_values=source_values)
         )
+
     manifest = SecretsManifest.from_path(root / 'secrets.json')
     configured_keys = frozenset(spec.key for spec in specs)
     secret_entries = tuple(
@@ -55,6 +68,7 @@ def load_configuration(
             secrets_manifest=manifest,
         ).load(process_values=source_values)
         return _require_absolute_volume_path(configuration)
+
     try:
         vault_settings = _key_vault_settings(
             environment=environment,
@@ -73,6 +87,7 @@ def load_configuration(
     return _require_absolute_volume_path(configuration)
 
 
+# Esta función conserva los contratos e invariantes declarados por el módulo.
 def _key_vault_settings(
     *,
     environment: Environment,
@@ -87,6 +102,7 @@ def _key_vault_settings(
     )
 
 
+# Esta función conserva los contratos e invariantes declarados por el módulo.
 def _required_bootstrap_value(values: Mapping[str, str], key: str) -> str:
     value = values.get(key)
     if not isinstance(value, str) or not value:
@@ -100,6 +116,7 @@ def _required_bootstrap_value(values: Mapping[str, str], key: str) -> str:
     return value
 
 
+# Esta función conserva los contratos e invariantes declarados por el módulo.
 def _require_absolute_volume_path(
     configuration: ResolvedConfiguration,
 ) -> ResolvedConfiguration:
@@ -111,6 +128,7 @@ def _require_absolute_volume_path(
     return configuration
 
 
+# Esta función conserva los contratos e invariantes declarados por el módulo.
 def run(
     *,
     argv: Sequence[str] | None = None,
@@ -119,9 +137,22 @@ def run(
 ) -> RuntimeExecutionResult:
     root = Path.cwd() if process_root is None else Path(process_root)
     source_values = os.environ if environ is None else environ
-    configuration = load_configuration(process_root=root, environ=source_values)
-    return build_composition(configuration=configuration).execute(argv=argv)
+    registry = read_connection_registry(root)
+    configuration = load_configuration(
+        process_root=root,
+        registry=registry,
+        environ=source_values,
+    )
+    connections = registry.resolve(
+        values=configuration.values,
+        environment=configuration.environment,
+    )
+    return build_composition(
+        configuration=configuration,
+        connections=connections,
+    ).execute(argv=argv)
 
 
+# Esta función conserva los contratos e invariantes declarados por el módulo.
 def main() -> None:
     run()

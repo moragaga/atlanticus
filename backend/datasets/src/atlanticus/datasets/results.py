@@ -121,8 +121,6 @@ class DatasetPublicationResult:
     def _validate_confirmed(self) -> None:
         if self.skip_reason is not None:
             raise DatasetValidationError('confirmed publications must not contain a skip reason')
-        if self.item_count < 1:
-            raise DatasetValidationError('committed or unchanged publications must contain items')
         if self.artifact_count < 1:
             raise DatasetValidationError(
                 'committed or unchanged publications must contain artifacts'

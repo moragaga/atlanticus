@@ -7,17 +7,17 @@ from ada.processes.kpi_timeseries_delivery.errors import (
     KpiTimeseriesDeliveryConfigurationError,
 )
 from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfiguration
-from atlanticus.connectivity.cosmos import CosmosConfigurationError, CosmosSettings
 
 HISTORIAN_APPLICATION_VARIABLE = 'KPI_HISTORIAN_APPLICATION'
 POLL_INTERVAL_VARIABLE = 'KPI_TIMESERIES_DELIVERY_POLL_INTERVAL_SECONDS'
+MAX_WORKERS_VARIABLE = 'KPI_TIMESERIES_DELIVERY_MAX_WORKERS'
 
 
 @dataclass(frozen=True, slots=True)
 class KpiTimeseriesDeliveryProcessSettings:
-    cosmos: CosmosSettings
     historian_application: str
     poll_interval_seconds: float
+    max_workers: int
 
     @classmethod
     def from_configuration(
@@ -26,24 +26,18 @@ class KpiTimeseriesDeliveryProcessSettings:
     ) -> KpiTimeseriesDeliveryProcessSettings:
         if not isinstance(configuration, ResolvedConfiguration):
             raise TypeError('configuration must be a ResolvedConfiguration')
-        try:
-            cosmos = CosmosSettings(
-                endpoint=configuration.require('COSMOS_CONSUMPTION_ENDPOINT'),
-                key=configuration.require('COSMOS_CONSUMPTION_KEY'),
-                database_name=configuration.require('COSMOS_CONSUMPTION_DATABASE_NAME'),
-                allow_insecure_http=configuration.environment.is_local,
-            )
-        except CosmosConfigurationError as error:
-            raise KpiTimeseriesDeliveryConfigurationError(str(error)) from error
         return cls(
-            cosmos=cosmos,
             historian_application=_required_text(
                 configuration.require(HISTORIAN_APPLICATION_VARIABLE),
                 HISTORIAN_APPLICATION_VARIABLE,
             ),
-            poll_interval_seconds=_positive_float(
+            poll_interval_seconds=_non_negative_float(
                 configuration.require(POLL_INTERVAL_VARIABLE),
                 POLL_INTERVAL_VARIABLE,
+            ),
+            max_workers=_positive_int(
+                configuration.require(MAX_WORKERS_VARIABLE),
+                MAX_WORKERS_VARIABLE,
             ),
         )
 
@@ -52,16 +46,17 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
     return (
         ConfigurationVariableSpec(key='APPLICATION'),
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
-        ConfigurationVariableSpec(key='COSMOS_CONSUMPTION_ENDPOINT'),
-        ConfigurationVariableSpec(key='COSMOS_CONSUMPTION_KEY', sensitive=True),
-        ConfigurationVariableSpec(key='COSMOS_CONSUMPTION_DATABASE_NAME'),
         ConfigurationVariableSpec(key=HISTORIAN_APPLICATION_VARIABLE),
         ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='1'),
+        ConfigurationVariableSpec(key=MAX_WORKERS_VARIABLE, default='2'),
         ConfigurationVariableSpec(
             key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED',
             default='true',
         ),
-        ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_MODE', default='off'),
+        ConfigurationVariableSpec(
+            key='ATLANTICUS_AZURE_OBSERVABILITY_MODE',
+            default='off',
+        ),
         ConfigurationVariableSpec(
             key='ATLANTICUS_AZURE_OBSERVABILITY_PROFILE',
             required=False,
@@ -84,15 +79,29 @@ def _required_text(value: str, field_name: str) -> str:
     return value
 
 
-def _positive_float(value: str, field_name: str) -> float:
+def _non_negative_float(value: str, field_name: str) -> float:
     try:
         resolved = float(value)
     except ValueError as error:
         raise KpiTimeseriesDeliveryConfigurationError(
-            f'{field_name} must contain a positive number'
+            f'{field_name} must contain a non-negative number'
         ) from error
-    if not math.isfinite(resolved) or resolved <= 0:
+    if not math.isfinite(resolved) or resolved < 0:
         raise KpiTimeseriesDeliveryConfigurationError(
-            f'{field_name} must contain a positive number'
+            f'{field_name} must contain a non-negative number'
+        )
+    return resolved
+
+
+def _positive_int(value: str, field_name: str) -> int:
+    try:
+        resolved = int(value)
+    except ValueError as error:
+        raise KpiTimeseriesDeliveryConfigurationError(
+            f'{field_name} must contain a positive integer'
+        ) from error
+    if resolved <= 0:
+        raise KpiTimeseriesDeliveryConfigurationError(
+            f'{field_name} must contain a positive integer'
         )
     return resolved
