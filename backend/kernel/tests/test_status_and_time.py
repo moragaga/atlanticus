@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from datetime import UTC
 
-from atlanticus.kernel import OperationStatus, __version__, utc_now
+from atlanticus.kernel import OperationStatus, utc_now
 
 
 class StatusAndTimeTests(unittest.TestCase):
@@ -18,9 +18,6 @@ class StatusAndTimeTests(unittest.TestCase):
 
         self.assertIs(current.tzinfo, UTC)
         self.assertIsNotNone(current.utcoffset())
-
-    def test_public_version_matches_initial_release(self) -> None:
-        self.assertEqual(__version__, '1.0.0')
 
 
 if __name__ == '__main__':

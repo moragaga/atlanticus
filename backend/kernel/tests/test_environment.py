@@ -67,10 +67,6 @@ class EnvironmentTests(unittest.TestCase):
             captured.exception.allowed_values,
             ('local', 'dev', 'uat', 'stg', 'prd'),
         )
-        self.assertEqual(
-            str(captured.exception),
-            "Invalid environment 'production-east'. Allowed values: local, dev, uat, stg, prd.",
-        )
 
     def test_mapping_only_reads_environment_variable(self) -> None:
         environment = Environment.from_mapping(

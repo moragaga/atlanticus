@@ -80,7 +80,7 @@ class DataSanitizerTests(unittest.TestCase):
         self.assertEqual(payload['content'], {'type': 'bytes', 'size_bytes': 3})
         json.dumps(payload, allow_nan=False)
 
-    def test_non_finite_floats_are_valid_json_values(self) -> None:
+    def test_non_finite_floats_are_sanitized_as_json_safe_strings(self) -> None:
         payload = self.sanitizer.sanitize(
             {
                 'nan': math.nan,
