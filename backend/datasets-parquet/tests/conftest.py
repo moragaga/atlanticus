@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import pyarrow as pa
 import pytest
 
 from atlanticus.datasets import (
@@ -11,6 +12,7 @@ from atlanticus.datasets import (
     MaterializationDefinition,
     SingleArtifactLayout,
 )
+from atlanticus.datasets.parquet import ParquetPart
 
 
 @pytest.fixture
@@ -44,3 +46,37 @@ def dispatch_definition() -> DatasetDefinition:
             ),
         ),
     )
+
+
+@pytest.fixture
+def timestamp_array():
+    def build(*values: str) -> pa.Array:
+        parsed = tuple(datetime.fromisoformat(value.replace('Z', '+00:00')) for value in values)
+        return pa.array(parsed, type=pa.timestamp('us', tz='UTC'))
+
+    return build
+
+
+@pytest.fixture
+def dispatch_target(dispatch_definition: DatasetDefinition):
+    return dispatch_definition.resolve_target(
+        materialization='operational-day',
+        partition={'year': '2026', 'month': '07', 'day': '21'},
+    )
+
+
+@pytest.fixture
+def dispatch_part(dispatch_definition: DatasetDefinition, dispatch_target):
+    def build(*, shift_id: str, tonnage: tuple[float, ...]) -> ParquetPart:
+        return ParquetPart(
+            key=dispatch_definition.resolve_part(target=dispatch_target, value=shift_id),
+            table=pa.table(
+                {
+                    'shift_id': pa.array([int(shift_id)] * len(tonnage), type=pa.int64()),
+                    'equipment': pa.array([f'TRUCK-{index + 1}' for index in range(len(tonnage))]),
+                    'tonnage': pa.array(tonnage, type=pa.float64()),
+                }
+            ),
+        )
+
+    return build

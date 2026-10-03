@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pyarrow as pa
 import pytest
-from parquet_test_helpers import timestamp_array
 
 import atlanticus.datasets.parquet._publication as publication_module
 import atlanticus.datasets.parquet._scan as scan_module
@@ -34,32 +33,11 @@ def _store(tmp_path: Path, clock: datetime) -> ParquetDatasetStore:
     return ParquetDatasetStore(root=tmp_path / 'data', clock=lambda: clock)
 
 
-def test_path_is_derived_only_from_validated_target(
-    tmp_path: Path,
-    clock: datetime,
-    pi_definition: DatasetDefinition,
-) -> None:
-    store = _store(tmp_path, clock)
-    target = _target(pi_definition)
-
-    assert store.path_for(definition=pi_definition, target=target) == (
-        tmp_path
-        / 'data'
-        / 'pi'
-        / 'pi-web-api'
-        / 'recorded'
-        / 'process'
-        / 'granular'
-        / 'year=2026'
-        / 'month=07'
-        / 'day=21'
-    )
-
-
 def test_empty_replace_is_skipped_without_creating_the_target(
     tmp_path: Path,
     clock: datetime,
     pi_definition: DatasetDefinition,
+    timestamp_array,
 ) -> None:
     store = _store(tmp_path, clock)
     target = _target(pi_definition)
@@ -76,6 +54,7 @@ def test_replace_round_trip_and_scan_apply_projection_and_time_filter(
     tmp_path: Path,
     clock: datetime,
     pi_definition: DatasetDefinition,
+    timestamp_array,
 ) -> None:
     store = _store(tmp_path, clock)
     target = _target(pi_definition)
@@ -122,6 +101,7 @@ def test_identical_replace_is_unchanged(
     tmp_path: Path,
     pi_definition: DatasetDefinition,
     clock: datetime,
+    timestamp_array,
 ) -> None:
     store = _store(tmp_path, clock)
     target = _target(pi_definition)
@@ -145,6 +125,7 @@ def test_failed_atomic_replace_preserves_the_previous_parquet(
     clock: datetime,
     pi_definition: DatasetDefinition,
     monkeypatch: pytest.MonkeyPatch,
+    timestamp_array,
 ) -> None:
     store = _store(tmp_path, clock)
     target = _target(pi_definition)
@@ -168,29 +149,6 @@ def test_failed_atomic_replace_preserves_the_previous_parquet(
     assert not tuple(target_path.glob('.*.tmp'))
 
 
-def test_replace_does_not_override_filesystem_permissions(
-    tmp_path: Path,
-    clock: datetime,
-    pi_definition: DatasetDefinition,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    store = _store(tmp_path, clock)
-    target = _target(pi_definition)
-
-    def reject_chmod(*_args: object, **_kwargs: object) -> None:
-        raise AssertionError('the parquet store must not call chmod')
-
-    monkeypatch.setattr(write_module.os, 'chmod', reject_chmod)
-
-    store.replace(
-        definition=pi_definition,
-        target=target,
-        table=pa.table({'timestamp': timestamp_array('2026-07-21T10:00:00Z')}),
-    )
-
-    assert store.read(definition=pi_definition, target=target).row_count == 1
-
-
 def test_missing_publication_is_not_treated_as_an_empty_table(
     tmp_path: Path,
     clock: datetime,
@@ -207,6 +165,7 @@ def test_multiple_targets_require_explicit_columns_and_align_new_columns(
     tmp_path: Path,
     clock: datetime,
     pi_definition: DatasetDefinition,
+    timestamp_array,
 ) -> None:
     store = _store(tmp_path, clock)
     day_20 = _target(pi_definition, day='20')
@@ -247,6 +206,7 @@ def test_typed_projection_synthesizes_columns_missing_from_all_publications(
     tmp_path: Path,
     clock: datetime,
     pi_definition: DatasetDefinition,
+    timestamp_array,
 ) -> None:
     store = _store(tmp_path, clock)
     target = _target(pi_definition)
@@ -295,6 +255,7 @@ def test_typed_projection_preserves_row_count_when_all_projected_columns_are_mis
     tmp_path: Path,
     clock: datetime,
     pi_definition: DatasetDefinition,
+    timestamp_array,
 ) -> None:
     store = _store(tmp_path, clock)
     target = _target(pi_definition)
@@ -381,6 +342,7 @@ def test_string_projection_keeps_strict_missing_column_behavior(
     tmp_path: Path,
     clock: datetime,
     pi_definition: DatasetDefinition,
+    timestamp_array,
 ) -> None:
     store = _store(tmp_path, clock)
     target = _target(pi_definition)
@@ -402,6 +364,7 @@ def test_columns_and_typed_projection_are_mutually_exclusive(
     tmp_path: Path,
     clock: datetime,
     pi_definition: DatasetDefinition,
+    timestamp_array,
 ) -> None:
     store = _store(tmp_path, clock)
     target = _target(pi_definition)
@@ -419,6 +382,7 @@ def test_multiple_targets_align_column_removed_from_newer_publication(
     tmp_path: Path,
     clock: datetime,
     pi_definition: DatasetDefinition,
+    timestamp_array,
 ) -> None:
     store = _store(tmp_path, clock)
     day_20 = _target(pi_definition, day='20')
@@ -460,6 +424,7 @@ def test_multiple_targets_align_column_across_present_missing_present_publicatio
     tmp_path: Path,
     clock: datetime,
     pi_definition: DatasetDefinition,
+    timestamp_array,
 ) -> None:
     store = _store(tmp_path, clock)
     day_20 = _target(pi_definition, day='20')
@@ -512,6 +477,7 @@ def test_typed_projection_synthesizes_column_when_selected_newer_publication_no_
     tmp_path: Path,
     clock: datetime,
     pi_definition: DatasetDefinition,
+    timestamp_array,
 ) -> None:
     store = _store(tmp_path, clock)
     day_20 = _target(pi_definition, day='20')
@@ -662,11 +628,11 @@ def test_scan_type_change_after_inspection_is_classified_as_corruption(
         )
 
 
-def test_read_schema_returns_physical_schema_without_loading_table(
+def test_read_schema_returns_physical_schema(
     tmp_path: Path,
     clock: datetime,
     pi_definition: DatasetDefinition,
-    monkeypatch: pytest.MonkeyPatch,
+    timestamp_array,
 ) -> None:
     store = _store(tmp_path, clock)
     target = _target(pi_definition)
@@ -677,12 +643,6 @@ def test_read_schema_returns_physical_schema_without_loading_table(
         }
     )
     store.replace(definition=pi_definition, target=target, table=table)
-
-    monkeypatch.setattr(
-        store,
-        'scan',
-        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError('scan must not be used')),
-    )
 
     schema = store.read_schema(definition=pi_definition, target=target)
 

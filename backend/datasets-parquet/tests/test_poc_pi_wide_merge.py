@@ -7,7 +7,6 @@ from threading import Barrier, BrokenBarrierError
 
 import pyarrow as pa
 import pytest
-from parquet_test_helpers import timestamp_array
 
 from atlanticus.datasets import DatasetDefinition, PublicationStatus
 from atlanticus.datasets.parquet import (
@@ -28,6 +27,7 @@ def test_poc_pi_wide_merge_uses_incoming_schema_and_nulls_win(
     tmp_path: Path,
     clock: datetime,
     pi_definition: DatasetDefinition,
+    timestamp_array,
 ) -> None:
     store = ParquetDatasetStore(root=tmp_path, clock=lambda: clock)
     target = _target(pi_definition)

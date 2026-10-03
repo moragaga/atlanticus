@@ -5,8 +5,6 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from test_poc_dispatch_operational_day import _part, _target
-
 from atlanticus.datasets import DatasetDefinition
 from atlanticus.datasets.parquet import ParquetDatasetStore
 
@@ -15,20 +13,20 @@ def test_cleanup_removes_only_owned_artifacts_older_than_grace(
     tmp_path: Path,
     clock: datetime,
     dispatch_definition: DatasetDefinition,
+    dispatch_target,
+    dispatch_part,
 ) -> None:
     store = ParquetDatasetStore(
         root=tmp_path,
         clock=lambda: clock,
         orphan_grace=timedelta(minutes=10),
     )
-    target = _target(dispatch_definition)
+    target = dispatch_target
     store.publish_parts(
         definition=dispatch_definition,
         target=target,
         incoming_parts=(
-            _part(
-                dispatch_definition,
-                target,
+            dispatch_part(
                 shift_id='26199001',
                 tonnage=(100.0,),
             ),
@@ -41,9 +39,7 @@ def test_cleanup_removes_only_owned_artifacts_older_than_grace(
         definition=dispatch_definition,
         target=target,
         incoming_parts=(
-            _part(
-                dispatch_definition,
-                target,
+            dispatch_part(
                 shift_id='26199001',
                 tonnage=(150.0,),
             ),

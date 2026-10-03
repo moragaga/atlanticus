@@ -11,7 +11,7 @@ from atlanticus.datasets import (
 from atlanticus.datasets.parquet import ParquetReadResult
 
 
-def test_read_result_normalizes_collection_inputs_to_immutable_tuples() -> None:
+def test_read_result_is_isolated_from_mutable_collection_inputs() -> None:
     definition = DatasetDefinition(
         key=DatasetKey(namespace=('test',), name='dataset'),
         materializations=(
@@ -26,19 +26,23 @@ def test_read_result_normalizes_collection_inputs_to_immutable_tuples() -> None:
         materialization='daily',
         partition={'day': '2026-08-12'},
     )
+    targets = [target]
+    publication_tokens = ['token-1']
+    warnings = ['warning-1']
 
     result = ParquetReadResult(
         table=pa.table({'value': [1]}),
-        targets=[target],
+        targets=targets,
         artifact_count=1,
         size_bytes=1,
-        publication_tokens=['token-1'],
-        warnings=['warning-1'],
+        publication_tokens=publication_tokens,
+        warnings=warnings,
     )
 
-    assert result.targets == (target,)
-    assert result.publication_tokens == ('token-1',)
-    assert result.warnings == ('warning-1',)
-    assert isinstance(result.targets, tuple)
-    assert isinstance(result.publication_tokens, tuple)
-    assert isinstance(result.warnings, tuple)
+    targets.clear()
+    publication_tokens.append('token-2')
+    warnings.clear()
+
+    assert list(result.targets) == [target]
+    assert list(result.publication_tokens) == ['token-1']
+    assert list(result.warnings) == ['warning-1']

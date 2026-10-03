@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 from atlanticus.datasets import (
@@ -9,6 +10,31 @@ from atlanticus.datasets import (
     SingleArtifactLayout,
 )
 from atlanticus.datasets.parquet import ParquetDatasetStore
+
+
+def test_store_uses_default_definition_route_for_partitioned_target(
+    tmp_path: Path,
+    clock: datetime,
+    pi_definition: DatasetDefinition,
+) -> None:
+    target = pi_definition.resolve_target(
+        materialization='granular',
+        partition={'year': '2026', 'month': '07', 'day': '21'},
+    )
+    store = ParquetDatasetStore(root=tmp_path / 'data', clock=lambda: clock)
+
+    assert store.path_for(definition=pi_definition, target=target) == (
+        tmp_path
+        / 'data'
+        / 'pi'
+        / 'pi-web-api'
+        / 'recorded'
+        / 'process'
+        / 'granular'
+        / 'year=2026'
+        / 'month=07'
+        / 'day=21'
+    )
 
 
 def test_store_uses_definition_route_instead_of_target_identity(tmp_path: Path) -> None:
