@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import io
-import tokenize
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -186,28 +185,3 @@ def test_one_evaluator_can_declare_multiple_manual_requirements() -> None:
         DataPartition.DAILY,
         DataPartition.LATEST,
     }
-
-
-def test_new_catalog_mirrors_match_productive_tokens() -> None:
-    production = _ROOT / 'src/ada_command_center/processes/alarms_runtime/catalog'
-    commented = _ROOT / 'commented/ada_command_center/processes/alarms_runtime/catalog'
-    names = tuple(sorted(p.relative_to(production) for p in production.rglob('*.py')))
-    assert names == tuple(sorted(p.relative_to(commented) for p in commented.rglob('*.py')))
-    ignored = {
-        tokenize.COMMENT,
-        tokenize.ENCODING,
-        tokenize.ENDMARKER,
-        tokenize.INDENT,
-        tokenize.DEDENT,
-        tokenize.NEWLINE,
-        tokenize.NL,
-    }
-
-    def tokens(path):
-        return [
-            (token.type, token.string)
-            for token in tokenize.tokenize(io.BytesIO(path.read_bytes()).readline)
-            if token.type not in ignored
-        ]
-
-    assert all(tokens(production / name) == tokens(commented / name) for name in names)

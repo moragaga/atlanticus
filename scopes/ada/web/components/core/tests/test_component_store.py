@@ -8,12 +8,12 @@ from ada.web.components import (
     ComponentStoreValidationError,
     build_empty_component_stores,
 )
-from ada.web.tools.enums import (
+from ada.contracts.tools.enums import (
     ProcessLayoutRole,
     ToolConfigurationKind,
     ToolScope,
 )
-from ada.web.tools.structure import (
+from ada.contracts.tools.structure import (
     ToolComponent,
     ToolStructure,
     ToolSubcomponent,

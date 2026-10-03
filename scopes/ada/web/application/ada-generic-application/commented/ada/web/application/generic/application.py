@@ -24,7 +24,7 @@ from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.operational_state import resolve_ada_operational_state
 from ada.web.shell.navigation import AdaNavigationView
 from ada.web.time_status.store_adapter import TimeStatusStoreSnapshot
-from ada.web.tools.sources import (
+from ada.contracts.tools.sources import (
     ToolSourceConsumption,
     ToolSourceOperationalParticipation,
 )

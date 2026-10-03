@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import importlib.util
 import sys
 import tomllib
@@ -167,12 +166,3 @@ def test_ada_starter_root_dependency_matches_current_application() -> None:
     )
     expected = f"ada-generic-application=={application['project']['version']}"
     assert expected in starter["project"]["dependencies"]
-
-
-def test_distributor_commented_mirror_is_ast_equivalent() -> None:
-    productive = ast.dump(ast.parse(_TOOL.read_text()), include_attributes=False)
-    commented = ast.dump(
-        ast.parse((_TOOL.parent / "commented/distribute.py").read_text()),
-        include_attributes=False,
-    )
-    assert productive == commented

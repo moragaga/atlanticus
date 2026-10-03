@@ -19,7 +19,7 @@ dependencies = [
     "ada-web-kpi-definition==0.6.0",
     "ada-web-kpi-definition-configuration[web]==0.1.0",
     "ada-web-kpi-definition-projection-local==0.1.0",
-    "ada-web-tools==0.1.0",
+    "ada-contracts-tools==1.0.0",
     "ada-web-tools-configuration[web]==0.1.0",
     "atlanticus-web==0.1.0",
     "atlanticus-web-bootstrap==0.1.0",
@@ -59,7 +59,7 @@ atlanticus-web-source-local = { path = "../../../../../web/capabilities/source/l
 atlanticus-web-users = { path = "../../../../../web/capabilities/users/core", editable = true }
 atlanticus-web-navigation = { path = "../../../../../web/capabilities/navigation/core", editable = true }
 atlanticus-web-navigation-configuration = { path = "../../../../../web/capabilities/navigation/configuration", editable = true }
-ada-web-tools = { path = "../../tools/core", editable = true }
+ada-contracts-tools = { path = "../../../../ada-contracts/tools", editable = true }
 ada-web-tools-configuration = { path = "../../tools/configuration", editable = true }
 
 [dependency-groups]
@@ -123,7 +123,7 @@ pythonpath = [
     "../../kpis/definition/core/src",
     "../../kpis/definition/configuration/src",
     "../../kpis/definition/projection-local/src",
-    "../../tools/core/src",
+    "../../../../ada-contracts/tools/src",
     "../../tools/configuration/src",
     "../../../../../web/framework/core/src",
     "../../../../../web/framework/bootstrap/src",

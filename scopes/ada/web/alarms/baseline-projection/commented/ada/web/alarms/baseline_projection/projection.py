@@ -4,11 +4,11 @@ from ada.web.alarms.baseline_projection.models import (
     AlarmBaselinePoint,
     AlarmBaselineProjection,
 )
-from ada.web.tools.enums import (
+from ada.contracts.tools.enums import (
     ProcessLayoutRole,
     ToolConfigurationKind,
 )
-from ada.web.tools.structure import ToolStructure
+from ada.contracts.tools.structure import ToolStructure
 
 
 def project_alarm_baseline(structure: ToolStructure) -> AlarmBaselineProjection:

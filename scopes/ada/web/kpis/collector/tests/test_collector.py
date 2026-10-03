@@ -12,8 +12,8 @@ from ada.web.kpis.collector import (
     KpiCollectorContractError,
     KpiCollectorRefreshStatus,
 )
-from ada.web.tools.enums import ToolConfigurationKind, ToolScope
-from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
+from ada.contracts.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 
 
 class CosmosClientStub:

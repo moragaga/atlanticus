@@ -1,5 +1,5 @@
+from ada.contracts.tools.errors import ToolConfigurationValidationError
 from ada.web.tools.configuration.models import ToolConfiguration
-from ada.web.tools.errors import ToolConfigurationValidationError
 
 _SUPPORTED_ADA_CONTROL_SOURCE_KEYS = frozenset({'pi', 'dispatch'})
 

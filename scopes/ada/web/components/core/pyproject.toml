@@ -9,12 +9,11 @@ description = "Contratos de Component Store y delivery para ADA Web"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
-    "ada-web-tools==0.1.0",
+    "ada-contracts-tools==1.0.0",
 ]
 
 [tool.uv.sources]
-ada-web-tools = { path = "../../tools/core", editable = true }
-
+ada-contracts-tools = { path = "../../../../ada-contracts/tools", editable = true }
 [dependency-groups]
 dev = [
     "pytest==9.1.1",

@@ -6,12 +6,12 @@ from ada.web.operational_render_binding import (
     OperationalRenderBindingError,
     bind_operational_render,
 )
-from ada.web.tools.enums import (
+from ada.contracts.tools.enums import (
     ProcessLayoutRole,
     ToolConfigurationKind,
     ToolScope,
 )
-from ada.web.tools.structure import (
+from ada.contracts.tools.structure import (
     ToolComponent,
     ToolStructure,
     ToolSubcomponent,

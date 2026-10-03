@@ -1,3 +1,9 @@
+from ada.contracts.tools.enums import ToolConfigurationKind
+from ada.contracts.tools.sources import (
+    SourceControlPolicy,
+    ToolSourceConsumption,
+    ToolSourceOperationalParticipation,
+)
 from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.configuration.web import build_tool_structure_editor
 from ada.web.tools.configuration.web.structure_ids import (
@@ -9,12 +15,6 @@ from ada.web.tools.configuration.web.structure_ids import (
     SUBCOMPONENT_KEY_TYPE,
     SUBCOMPONENT_LINKED_TYPE,
     SUBCOMPONENT_ROW_TYPE,
-)
-from ada.web.tools.enums import ToolConfigurationKind
-from ada.web.tools.sources import (
-    SourceControlPolicy,
-    ToolSourceConsumption,
-    ToolSourceOperationalParticipation,
 )
 
 
@@ -164,6 +164,7 @@ def test_structure_exposes_stable_internal_keys() -> None:
         'index': 0,
         'owner_index': 0,
     } in ids
+
 
 def test_process_component_scope_is_optional_editable_override() -> None:
     from ada.web.tools.configuration.web.structure_ids import (

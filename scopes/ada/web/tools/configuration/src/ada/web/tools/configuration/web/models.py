@@ -5,6 +5,12 @@ from dataclasses import dataclass
 from secrets import token_hex
 from unicodedata import normalize
 
+from ada.contracts.tools.enums import ToolConfigurationKind
+from ada.contracts.tools.sources import (
+    SourceControlPolicy,
+    ToolSourceConsumption,
+    ToolSourceOperationalParticipation,
+)
 from ada.web.branding import (
     BrandingConfiguration,
     BrandingVariant,
@@ -15,12 +21,6 @@ from ada.web.tools.configuration import (
 )
 from ada.web.tools.configuration.web.errors import (
     ToolSourceEditorValidationError,
-)
-from ada.web.tools.enums import ToolConfigurationKind
-from ada.web.tools.sources import (
-    SourceControlPolicy,
-    ToolSourceConsumption,
-    ToolSourceOperationalParticipation,
 )
 
 _CONTROL_SOURCE_KEYS = frozenset({'pi', 'dispatch'})

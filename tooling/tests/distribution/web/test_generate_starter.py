@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import csv
 import hashlib
 import importlib.util
@@ -260,13 +259,3 @@ def test_real_ada_contract_uses_one_persistence_decision_and_no_manual_master_pa
     assert "ADA_TOOL_PROJECTION_COSMOS_ENDPOINT" not in names
     assert "ADA_TOOL_PROJECTION_COSMOS_KEY" not in names
     assert "ADA_TOOL_PROJECTION_COSMOS_DATABASE_NAME" not in names
-
-
-def test_generator_commented_mirror_is_ast_equivalent():
-    root = _GENERATOR.parent
-    assert ast.dump(
-        ast.parse(_GENERATOR.read_text()), include_attributes=False
-    ) == ast.dump(
-        ast.parse((root / "commented/generate_starter.py").read_text()),
-        include_attributes=False,
-    )

@@ -85,9 +85,12 @@ def test_integrated_operations_visible_linked_subcomponent_is_preserved():
         ),
     )
 
-    assert structure.subcomponent_address(
-        component_key='plant', subcomponent_key='shared'
-    ).owner_component_key == 'mine'
+    assert (
+        structure.subcomponent_address(
+            component_key='plant', subcomponent_key='shared'
+        ).owner_component_key
+        == 'mine'
+    )
 
 
 def test_manifest_roundtrip_and_order_are_stable():

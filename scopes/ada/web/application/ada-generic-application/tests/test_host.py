@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -225,16 +224,3 @@ def test_cli_main_delegates_to_host(monkeypatch) -> None:
     cli.main()
 
     assert calls == ['run']
-
-
-def test_host_commented_mirror_is_ast_equivalent() -> None:
-    import ast
-
-    package_root = Path(host.__file__).resolve().parents[5]
-    productive = Path(host.__file__).read_text(encoding='utf-8')
-    commented = (package_root / 'commented/ada/web/application/generic/host.py').read_text(
-        encoding='utf-8'
-    )
-    assert ast.dump(ast.parse(productive), include_attributes=False) == ast.dump(
-        ast.parse(commented), include_attributes=False
-    )

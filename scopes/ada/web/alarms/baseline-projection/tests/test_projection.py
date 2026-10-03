@@ -5,12 +5,12 @@ from ada.web.alarms.baseline_projection import (
     AlarmBaselineProjectionError,
     project_alarm_baseline,
 )
-from ada.web.tools.enums import (
+from ada.contracts.tools.enums import (
     ProcessLayoutRole,
     ToolConfigurationKind,
     ToolScope,
 )
-from ada.web.tools.structure import (
+from ada.contracts.tools.structure import (
     ToolComponent,
     ToolStructure,
     ToolSubcomponent,

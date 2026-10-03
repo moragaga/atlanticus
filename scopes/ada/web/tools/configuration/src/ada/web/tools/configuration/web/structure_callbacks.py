@@ -13,6 +13,7 @@ from dash import (
     no_update,
 )
 
+from ada.contracts.tools.enums import ToolConfigurationKind
 from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.configuration.web.ids import (
     CONFIGURATION_STORE_ID,
@@ -59,7 +60,6 @@ from ada.web.tools.configuration.web.structure_presentation import (
     build_component_editor_row,
     build_subcomponent_editor_row,
 )
-from ada.web.tools.enums import ToolConfigurationKind
 
 
 def register_tool_structure_editor_callbacks(app: object) -> None:

@@ -1,16 +1,16 @@
 import pytest
 
+from ada.contracts.tools.enums import ToolConfigurationKind
+from ada.contracts.tools.sources import (
+    SourceControlPolicy,
+    ToolSourceConsumption,
+    ToolSourceOperationalParticipation,
+)
 from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.configuration.web import (
     ToolStructureEditorValidationError,
     build_structure_from_editor_tables,
     structure_editor_coverage_from_configuration,
-)
-from ada.web.tools.enums import ToolConfigurationKind
-from ada.web.tools.sources import (
-    SourceControlPolicy,
-    ToolSourceConsumption,
-    ToolSourceOperationalParticipation,
 )
 
 

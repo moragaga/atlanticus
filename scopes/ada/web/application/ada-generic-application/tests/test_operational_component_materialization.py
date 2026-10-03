@@ -2,18 +2,18 @@ from __future__ import annotations
 
 from dash import html
 
-from ada.web.application.generic.operational_render import materialize_operational_components
-from ada.web.operational_render_binding import bind_operational_render
-from ada.web.tools.enums import (
+from ada.contracts.tools.enums import (
     ToolConfigurationKind,
     ToolScope,
 )
-from ada.web.tools.structure import (
+from ada.contracts.tools.structure import (
     ToolComponent,
     ToolStructure,
     ToolSubcomponent,
     ToolSubcomponentAddress,
 )
+from ada.web.application.generic.operational_render import materialize_operational_components
+from ada.web.operational_render_binding import bind_operational_render
 
 
 def _structure() -> ToolStructure:

@@ -1,8 +1,8 @@
 def test_tools_namespace_composes_core_and_configuration_at_runtime() -> None:
     import ada.web.tools
+    from ada.contracts.tools.errors import ToolConfigurationValidationError
+    from ada.contracts.tools.structure import ToolStructure
     from ada.web.tools.configuration import ToolConfiguration, ToolSourceService
-    from ada.web.tools.errors import ToolConfigurationValidationError
-    from ada.web.tools.structure import ToolStructure
 
     assert ada.web.tools.__spec__ is not None
     assert ada.web.tools.__spec__.submodule_search_locations is not None

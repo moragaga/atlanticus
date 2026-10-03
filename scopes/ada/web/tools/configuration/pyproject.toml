@@ -10,7 +10,7 @@ requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "ada-web-branding==0.1.0",
-    "ada-web-tools==0.1.0",
+    "ada-contracts-tools==1.0.0",
     "atlanticus-web-projection==0.1.0",
     "atlanticus-web-source==0.1.0",
 ]
@@ -23,7 +23,7 @@ web = [
 
 [tool.uv.sources]
 ada-web-branding = { path = "../../branding", editable = true }
-ada-web-tools = { path = "../core", editable = true }
+ada-contracts-tools = { path = "../../../../ada-contracts/tools", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
 atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
@@ -75,7 +75,7 @@ combine-as-imports = true
 testpaths = ["tests"]
 pythonpath = [
     "src",
-    "../core/src",
+    "../../../../ada-contracts/tools/src",
     "../../branding/src",
     "../../../../../web/framework/core/src",
     "../../../../../web/capabilities/projection/core/src",

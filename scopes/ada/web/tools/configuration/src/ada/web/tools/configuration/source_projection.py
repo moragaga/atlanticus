@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+from ada.contracts.tools.errors import ToolConfigurationValidationError
 from ada.web.tools.configuration.errors import ToolConfigurationProjectionError
 from ada.web.tools.configuration.models import ToolConfiguration
 from ada.web.tools.configuration.operational import validate_ada_operational_tool_configuration
 from ada.web.tools.configuration.source_release import ToolSourceCodec
-from ada.web.tools.errors import ToolConfigurationValidationError
 from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.projection.service import ProjectionBuilder, SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore

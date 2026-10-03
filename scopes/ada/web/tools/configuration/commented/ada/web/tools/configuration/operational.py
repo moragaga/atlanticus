@@ -1,6 +1,6 @@
 # Estas validaciones separan la validez de un draft de los requisitos necesarios para publicar una Tool operacional ADA.
 from ada.web.tools.configuration.models import ToolConfiguration
-from ada.web.tools.errors import ToolConfigurationValidationError
+from ada.contracts.tools.errors import ToolConfigurationValidationError
 
 _SUPPORTED_ADA_CONTROL_SOURCE_KEYS = frozenset({'pi', 'dispatch'})
 

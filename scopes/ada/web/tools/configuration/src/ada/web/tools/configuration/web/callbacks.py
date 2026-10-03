@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dash import Input, Output, State
 
+from ada.contracts.tools.enums import ToolConfigurationKind
 from ada.web.branding import BrandingVariant
 from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.configuration.web.ids import (
@@ -31,7 +32,6 @@ from ada.web.tools.configuration.web.models import (
 from ada.web.tools.configuration.web.structure import (
     structure_editor_coverage_from_configuration,
 )
-from ada.web.tools.enums import ToolConfigurationKind
 
 _COVERAGE_MINE = 'mine'
 _COVERAGE_PLANT = 'plant'

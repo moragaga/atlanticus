@@ -42,7 +42,7 @@ from ada.web.tools.configuration.web.structure_ids import (
     nested_row_id,
     row_id,
 )
-from ada.web.tools.enums import (
+from ada.contracts.tools.enums import (
     ToolConfigurationKind,
     ToolScope,
 )

@@ -6,14 +6,14 @@ from types import SimpleNamespace
 import pytest
 from dash import html
 
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
+from ada.contracts.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 from ada.web.application.generic import __main__ as cli, bootstrap, host
 from ada.web.application.generic.composition import AdaApplicationComposition
 from ada.web.application.generic.layout import build_body_application_layout
 from ada.web.application.generic.settings import AdaGenericSettings
 from ada.web.operational_render_binding import OperationalRenderBinding
-from ada.web.tools.enums import ToolConfigurationKind, ToolScope
 from ada.web.tools.persistence import ToolProjectionResolution, ToolProjectionResolutionState
-from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.source.models import SourceKey, SourceReleaseId
 

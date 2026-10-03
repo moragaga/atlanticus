@@ -10,7 +10,7 @@ from dash import no_update
 
 from ada.web.components import ComponentStoreSnapshot
 from ada.web.kpis.collector.models import ComponentKpiData, KpiCollectorSnapshot
-from ada.web.tools.structure import ToolStructure
+from ada.contracts.tools.structure import ToolStructure
 
 KPI_COMPONENT_STORE_TYPE = 'ada-kpi-component-store'
 DEFAULT_KPI_BROWSER_REFRESH_INTERVAL_SECONDS = 10.0

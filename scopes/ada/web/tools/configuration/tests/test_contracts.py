@@ -2,26 +2,26 @@ import inspect
 
 import pytest
 
-from ada.web.tools.configuration import (
-    ToolConfiguration,
-    validate_ada_operational_tool_configuration,
-    validate_ada_operational_tool_sources,
-)
-from ada.web.tools.enums import (
+from ada.contracts.tools.enums import (
     ProcessLayoutRole,
     ToolConfigurationKind,
     ToolScope,
 )
-from ada.web.tools.errors import ToolConfigurationValidationError
-from ada.web.tools.sources import (
+from ada.contracts.tools.errors import ToolConfigurationValidationError
+from ada.contracts.tools.sources import (
     SourceControlPolicy,
     ToolSourceConsumption,
     ToolSourceOperationalParticipation,
 )
-from ada.web.tools.structure import (
+from ada.contracts.tools.structure import (
     ToolComponent,
     ToolStructure,
     ToolSubcomponent,
+)
+from ada.web.tools.configuration import (
+    ToolConfiguration,
+    validate_ada_operational_tool_configuration,
+    validate_ada_operational_tool_sources,
 )
 
 

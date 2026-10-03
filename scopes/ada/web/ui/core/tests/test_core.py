@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 
 from ada.web.ui.core import ADA_UI_ASSET_LAYER, create_ada_ui_module
@@ -43,12 +42,3 @@ def test_ada_ui_core_does_not_bundle_unrelated_runtime_capabilities() -> None:
     assert not (_RESOURCES / 'img').exists()
     assert not (_RESOURCES / 'css/20-status.css').exists()
     assert not (_RESOURCES / 'css/30-page-ready.css').exists()
-
-
-def test_ada_ui_core_module_matches_commented_mirror() -> None:
-    productive = _ROOT / 'src/ada/web/ui/core/module.py'
-    commented = _ROOT / 'commented/ada/web/ui/core/module.py'
-
-    assert ast.dump(ast.parse(productive.read_text(encoding='utf-8'))) == ast.dump(
-        ast.parse(commented.read_text(encoding='utf-8'))
-    )

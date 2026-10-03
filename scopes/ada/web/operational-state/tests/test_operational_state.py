@@ -11,7 +11,7 @@ from ada.web.time_status.store_adapter import (
     TimeStatusStoreSnapshot,
     TimeStatusTimestampQuality,
 )
-from ada.web.tools.sources import (
+from ada.contracts.tools.sources import (
     SourceControlPolicy,
     ToolSourceConsumption,
     ToolSourceConsumptionValidationError,

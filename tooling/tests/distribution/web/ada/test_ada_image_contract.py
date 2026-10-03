@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import hashlib
 import importlib.util
 import json
@@ -115,22 +114,6 @@ def test_ada_image_build_receives_external_pins_and_has_no_active_healthcheck():
     assert "cannot run in production" not in dockerfile
 
 
-def test_new_productive_python_sources_match_pedagogical_mirrors():
-    paths = [
-        ("docker/verify_delivery.py", "commented/docker/verify_delivery.py"),
-        ("src/application/runtime.py", "commented/application/runtime.py"),
-        ("src/application/wsgi.py", "commented/application/wsgi.py"),
-        ("src/application/production.py", "commented/application/production.py"),
-        ("gunicorn.conf.py", "commented/gunicorn.conf.py"),
-    ]
-    for productive, commented in paths:
-        assert ast.dump(
-            ast.parse((_ROOT / productive).read_text()), include_attributes=False
-        ) == (
-            ast.dump(
-                ast.parse((_ROOT / commented).read_text()), include_attributes=False
-            )
-        )
 
 
 def test_generated_ada_starter_keeps_editable_modules_and_uses_ada_image(

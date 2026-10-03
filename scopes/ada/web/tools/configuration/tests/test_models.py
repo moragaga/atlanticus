@@ -2,27 +2,27 @@ from types import MappingProxyType
 
 import pytest
 
+from ada.contracts.tools.enums import (
+    ProcessLayoutRole,
+    ToolConfigurationKind,
+    ToolScope,
+)
+from ada.contracts.tools.errors import ToolConfigurationValidationError
+from ada.contracts.tools.sources import (
+    SourceControlPolicy,
+    ToolSourceConsumption,
+    ToolSourceOperationalParticipation,
+)
+from ada.contracts.tools.structure import (
+    ToolComponent,
+    ToolStructure,
+    ToolSubcomponent,
+)
 from ada.web.branding import (
     BrandingConfiguration,
     BrandingVariant,
 )
 from ada.web.tools.configuration import ToolConfiguration
-from ada.web.tools.enums import (
-    ProcessLayoutRole,
-    ToolConfigurationKind,
-    ToolScope,
-)
-from ada.web.tools.errors import ToolConfigurationValidationError
-from ada.web.tools.sources import (
-    SourceControlPolicy,
-    ToolSourceConsumption,
-    ToolSourceOperationalParticipation,
-)
-from ada.web.tools.structure import (
-    ToolComponent,
-    ToolStructure,
-    ToolSubcomponent,
-)
 
 
 def _configuration(

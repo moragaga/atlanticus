@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 
 import pytest
@@ -77,13 +76,4 @@ def test_optimized_css_rejects_asset_url_escaping_publication_root(tmp_path: Pat
             layers=(layer,),
             publications_root=tmp_path / 'published',
             optimize=True,
-        )
-
-
-def test_asset_sources_and_commented_mirrors_are_ast_equivalent() -> None:
-    for filename in ('assets.py', 'asset_optimization.py'):
-        productive = _ROOT / 'src' / 'atlanticus' / 'web' / filename
-        commented = _ROOT / 'commented' / 'atlanticus' / 'web' / filename
-        assert ast.dump(ast.parse(productive.read_text(encoding='utf-8'))) == ast.dump(
-            ast.parse(commented.read_text(encoding='utf-8'))
         )

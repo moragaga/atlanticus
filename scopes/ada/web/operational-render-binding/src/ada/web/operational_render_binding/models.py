@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ada.web.operational_render_binding.errors import OperationalRenderBindingError
-from ada.web.tools.structure import ToolComponent, ToolStructure
+from ada.contracts.tools.structure import ToolComponent, ToolStructure
 
 
 @dataclass(frozen=True, slots=True)

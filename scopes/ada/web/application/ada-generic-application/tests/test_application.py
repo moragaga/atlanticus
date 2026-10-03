@@ -7,6 +7,13 @@ from importlib.metadata import version as distribution_version
 
 import pytest
 
+from ada.contracts.tools.sources import (
+    SourceControlPolicy,
+    ToolSourceConsumption,
+    ToolSourceConsumptionValidationError,
+    ToolSourceOperationalParticipation,
+    ToolSourceOperationalParticipationValidationError,
+)
 from ada.web.alarms.management_summary import (
     ADA_ALARM_MANAGEMENT_SUMMARY_ASSET_LAYER,
     AlarmManagementSummaryArea,
@@ -30,13 +37,6 @@ from ada.web.time_status.store_adapter import (
     TimeStatusSourceTimestamp,
     TimeStatusStoreSnapshot,
     TimeStatusTimestampQuality,
-)
-from ada.web.tools.sources import (
-    SourceControlPolicy,
-    ToolSourceConsumption,
-    ToolSourceConsumptionValidationError,
-    ToolSourceOperationalParticipation,
-    ToolSourceOperationalParticipationValidationError,
 )
 from ada.web.ui.content_state import (
     ADA_CONTENT_STATE_ASSET_LAYER,

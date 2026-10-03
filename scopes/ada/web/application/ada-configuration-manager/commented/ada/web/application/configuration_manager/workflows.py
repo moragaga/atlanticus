@@ -25,7 +25,7 @@ from ada.web.tools.configuration import (
     ToolSourceService,
     validate_ada_operational_tool_configuration,
 )
-from ada.web.tools.errors import ToolConfigurationValidationError
+from ada.contracts.tools.errors import ToolConfigurationValidationError
 from atlanticus.web.manager import (
     DraftValidationResult,
     ProjectionAuditRecord,

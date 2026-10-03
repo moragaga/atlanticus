@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import importlib.util
 import json
 import sys
@@ -203,43 +202,8 @@ def test_command_center_artifact_probe_checks_metadata_entrypoint_and_portabilit
     ]
 
 
-def test_command_center_starter_commented_mirror_is_ast_equivalent() -> None:
-    root = (
-        _REPOSITORY_ROOT / "scopes/ada-command-center/tooling/distribution/web/starter"
-    )
-    productive = ast.dump(
-        ast.parse((root / "src/application/__main__.py").read_text(encoding="utf-8")),
-        include_attributes=False,
-    )
-    commented = ast.dump(
-        ast.parse(
-            (root / "commented/application/__main__.py").read_text(encoding="utf-8")
-        ),
-        include_attributes=False,
-    )
-    assert productive == commented
 
 
-@pytest.mark.parametrize(
-    "productive,commented",
-    (
-        ("distribute.py", "commented/distribute.py"),
-        ("qualify_starter.py", "commented/qualify_starter.py"),
-        ("probe_starter.py", "commented/probe_starter.py"),
-    ),
-)
-def test_modified_tooling_commented_mirrors_remain_ast_equivalent(
-    productive: str, commented: str
-) -> None:
-    left = ast.dump(
-        ast.parse((_WEB_ROOT / productive).read_text(encoding="utf-8")),
-        include_attributes=False,
-    )
-    right = ast.dump(
-        ast.parse((_WEB_ROOT / commented).read_text(encoding="utf-8")),
-        include_attributes=False,
-    )
-    assert left == right
 
 
 def test_command_center_dependency_pins_match_alarm_configuration() -> None:

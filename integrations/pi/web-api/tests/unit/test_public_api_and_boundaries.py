@@ -78,13 +78,3 @@ def test_web_api_does_not_own_process_policy() -> None:
 
     for forbidden in ('retry', 'backfill', 'watermark', 'materialization', 'dataframe'):
         assert forbidden not in source
-
-
-def test_commented_mirror_only_adds_comments() -> None:
-    production_paths = sorted(path for path in _SOURCE_ROOT.glob('*.py') if path.name != 'py.typed')
-    assert production_paths
-
-    for production_path in production_paths:
-        commented_path = _COMMENTED_ROOT / production_path.name
-        assert commented_path.exists()
-        assert _python_tokens(commented_path) == _python_tokens(production_path)

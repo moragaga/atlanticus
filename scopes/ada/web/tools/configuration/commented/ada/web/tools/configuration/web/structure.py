@@ -6,8 +6,8 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from ada.web.tools.configuration import ToolConfiguration
-from ada.web.tools.enums import ToolConfigurationKind
-from ada.web.tools.structure import ToolStructure
+from ada.contracts.tools.enums import ToolConfigurationKind
+from ada.contracts.tools.structure import ToolStructure
 
 _COVERAGE_MINE = 'mine'
 _COVERAGE_PLANT = 'plant'

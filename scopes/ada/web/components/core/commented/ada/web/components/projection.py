@@ -1,6 +1,6 @@
 from ada.web.components.errors import ComponentStoreValidationError
 from ada.web.components.models import ComponentStoreSnapshot
-from ada.web.tools.structure import ToolStructure
+from ada.contracts.tools.structure import ToolStructure
 
 
 def build_empty_component_stores(

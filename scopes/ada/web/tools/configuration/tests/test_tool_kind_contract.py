@@ -2,18 +2,18 @@ from types import MappingProxyType
 
 import pytest
 
-from ada.web.tools.configuration import ToolConfiguration
-from ada.web.tools.enums import ToolConfigurationKind
-from ada.web.tools.errors import ToolConfigurationValidationError
-from ada.web.tools.sources import (
+from ada.contracts.tools.enums import ToolConfigurationKind
+from ada.contracts.tools.errors import ToolConfigurationValidationError
+from ada.contracts.tools.sources import (
     SourceControlPolicy,
     ToolSourceConsumption,
     ToolSourceOperationalParticipation,
 )
-from ada.web.tools.structure import (
+from ada.contracts.tools.structure import (
     ToolComponent,
     ToolStructure,
 )
+from ada.web.tools.configuration import ToolConfiguration
 
 
 def _strategic_structure() -> ToolStructure:

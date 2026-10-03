@@ -23,7 +23,7 @@ from ada.web.kpis.collector.runtime import (
     AdaKpiCollectorPollingRuntime,
     KpiCollectorPollingSettings,
 )
-from ada.web.tools.structure import ToolStructure
+from ada.contracts.tools.structure import ToolStructure
 from atlanticus.web.models import WebApplicationDefinition
 from atlanticus.web.modules import CallbackRegistrar, WebModule
 from atlanticus.web.observability import WEB_OBSERVABILITY_SERVICE_KEY, WebObservability

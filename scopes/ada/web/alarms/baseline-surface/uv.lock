@@ -3,15 +3,28 @@ revision = 3
 requires-python = "==3.14.2"
 
 [[package]]
+name = "ada-contracts-tools"
+version = "1.0.0"
+source = { editable = "../../../../ada-contracts/tools" }
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
 name = "ada-web-alarm-baseline-projection"
 version = "0.1.0"
 source = { editable = "../baseline-projection" }
 dependencies = [
-    { name = "ada-web-tools" },
+    { name = "ada-contracts-tools" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "ada-web-tools", editable = "../../tools/core" }]
+requires-dist = [{ name = "ada-contracts-tools", editable = "../../../../ada-contracts/tools" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -24,6 +37,7 @@ name = "ada-web-alarm-baseline-surface"
 version = "0.1.1"
 source = { editable = "." }
 dependencies = [
+    { name = "ada-contracts-tools" },
     { name = "ada-web-alarm-baseline-projection" },
     { name = "ada-web-ui-core" },
     { name = "atlanticus-web" },
@@ -38,24 +52,12 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "ada-contracts-tools", editable = "../../../../ada-contracts/tools" },
     { name = "ada-web-alarm-baseline-projection", editable = "../baseline-projection" },
     { name = "ada-web-ui-core", editable = "../../ui/core" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "dash", specifier = "==4.4.1" },
 ]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-tools"
-version = "0.1.0"
-source = { editable = "../../tools/core" }
-
-[package.metadata]
 
 [package.metadata.requires-dev]
 dev = [

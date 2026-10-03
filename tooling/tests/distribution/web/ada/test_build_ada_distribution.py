@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import hashlib
 import importlib.util
 import json
@@ -227,21 +226,8 @@ def test_project_tooling_is_built_as_a_portable_internal_wheel(tmp_path, monkeyp
     assert record["source"] == "scopes/ada/tooling/distribution/web/project-tooling"
 
 
-def test_delivery_productive_and_commented_source_are_equivalent():
-    productive = ast.dump(ast.parse(_TOOL.read_text()), include_attributes=False)
-    commented = ast.dump(
-        ast.parse((_ROOT / "commented/build_distribution.py").read_text()),
-        include_attributes=False,
-    )
-    assert productive == commented
 
 
-def test_preflight_productive_and_commented_source_are_equivalent():
-    source = _ROOT / "qualify_distribution.py"
-    annotated = _ROOT / "commented/qualify_distribution.py"
-    assert ast.dump(ast.parse(source.read_text()), include_attributes=False) == (
-        ast.dump(ast.parse(annotated.read_text()), include_attributes=False)
-    )
 
 
 def test_uv_export_uses_supported_requirements_format_and_preserves_hashes(

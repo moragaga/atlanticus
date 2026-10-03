@@ -6,7 +6,7 @@ from ada.web.application.generic.application import create_application_definitio
 from ada.web.application.generic.composition import AdaApplicationComposition
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.tools.configuration import validate_ada_operational_tool_configuration
-from ada.web.tools.errors import ToolConfigurationValidationError
+from ada.contracts.tools.errors import ToolConfigurationValidationError
 from ada.web.tools.persistence import (
     ToolPersistenceComposition,
     ToolProjectionResolution,

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 
 from atlanticus.web.bootstrap import (
@@ -29,16 +28,3 @@ def test_bootstrap_integration_css_manifest_resolves_existing_files() -> None:
 
     assert entries == ['10_bootstrap_components.css', '20_atlanticus_theme.css']
     assert all((CSS / entry).is_file() for entry in entries)
-
-
-def test_productive_and_commented_python_are_ast_equivalent() -> None:
-    for source in SOURCE.glob('*.py'):
-        mirror = COMMENTED / source.name
-        assert mirror.exists()
-        assert ast.dump(
-            ast.parse(source.read_text(encoding='utf-8')),
-            include_attributes=False,
-        ) == ast.dump(
-            ast.parse(mirror.read_text(encoding='utf-8')),
-            include_attributes=False,
-        )

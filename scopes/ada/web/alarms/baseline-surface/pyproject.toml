@@ -15,6 +15,7 @@ dependencies = [
     "ada-web-alarm-baseline-projection==0.1.0",
     "atlanticus-web==0.1.0",
     "dash==4.4.1",
+    "ada-contracts-tools==1.0.0",
 ]
 
 [dependency-groups]
@@ -27,8 +28,7 @@ dev = [
 ada-web-ui-core = { path = "../../ui/core", editable = true }
 ada-web-alarm-baseline-projection = { path = "../baseline-projection", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
-ada-web-tools = { path = "../../tools/core", editable = true }
-
+ada-contracts-tools = { path = "../../../../ada-contracts/tools", editable = true }
 [tool.setuptools]
 package-dir = {"" = "src"}
 

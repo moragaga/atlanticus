@@ -19,8 +19,8 @@ from ada.web.kpis.collector import (
     project_component_store_data,
     resolve_kpi_collector_browser_update,
 )
-from ada.web.tools.enums import ToolConfigurationKind, ToolScope
-from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
+from ada.contracts.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 from atlanticus.web.observability import WEB_OBSERVABILITY_SERVICE_KEY, WebObservability
 from atlanticus.web.services import ServiceRegistry
 

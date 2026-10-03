@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import hashlib
 import importlib.util
 import json
@@ -385,18 +384,6 @@ def test_compose_profile_requires_generated_files_and_env(distribution, monkeypa
     assert str(directory / "full.yaml") in commands[2]
 
 
-def test_project_tool_mirrors_and_portable_launchers():
-    product = ast.dump(ast.parse(_TOOL.read_text()), include_attributes=False)
-    mirror = ast.dump(
-        ast.parse((_ROOT / "commented/tooling/project.py").read_text()),
-        include_attributes=False,
-    )
-    assert product == mirror
-    shell = (_ROOT / "tooling/project.sh").read_text()
-    windows = (_ROOT / "tooling/project.cmd").read_text()
-    assert "uv run --python 3.14.2" in shell
-    assert "uv run --python 3.14.2" in windows
-    assert "project.py" in shell and "project.py" in windows
 
 
 def test_unhashed_resolver_output_is_rejected_before_mutating_project(

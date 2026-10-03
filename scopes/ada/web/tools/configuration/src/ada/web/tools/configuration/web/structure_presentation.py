@@ -5,6 +5,10 @@ from collections.abc import Mapping, Sequence
 from dash import dcc, html
 from dash.development.base_component import Component
 
+from ada.contracts.tools.enums import (
+    ToolConfigurationKind,
+    ToolScope,
+)
 from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.configuration.web.structure import (
     structure_editor_table_data_from_configuration,
@@ -39,10 +43,6 @@ from ada.web.tools.configuration.web.structure_ids import (
     component_nested_id,
     nested_row_id,
     row_id,
-)
-from ada.web.tools.enums import (
-    ToolConfigurationKind,
-    ToolScope,
 )
 
 

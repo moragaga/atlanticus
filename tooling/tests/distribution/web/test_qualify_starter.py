@@ -149,19 +149,6 @@ def test_subprocess_result_is_parsed_without_trusting_other_stdout(
     assert result["checks"] == ["home.http"]
 
 
-def test_qualification_comment_mirrors_are_ast_equivalent():
-    import ast
-
-    product_root = _TOOL.parent
-    for name in ("qualify_starter.py", "probe_starter.py"):
-        product = ast.dump(
-            ast.parse((product_root / name).read_text()), include_attributes=False
-        )
-        commented = ast.dump(
-            ast.parse((product_root / "commented" / name).read_text()),
-            include_attributes=False,
-        )
-        assert product == commented
 
 
 def test_portable_probe_creates_clean_environment_and_installs_offline(

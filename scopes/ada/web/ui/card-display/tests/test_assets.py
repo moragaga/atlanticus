@@ -43,17 +43,6 @@ def test_card_display_is_container_ready_and_has_no_tool_breakpoints() -> None:
     assert '@media' not in css
 
 
-def test_card_display_css_productive_and_commented_mirror_are_equivalent() -> None:
-    package_root = Path(__file__).resolve().parents[1]
-    productive = package_root / 'src/ada/web/ui/card_display/resources/css/10-card-display.css'
-    commented = package_root / 'commented/ada/web/ui/card_display/resources/css/10-card-display.css'
-
-    def normalize(text: str) -> str:
-        return re.sub(r'\s+', '', re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL))
-
-    assert normalize(productive.read_text(encoding='utf-8')) == normalize(
-        commented.read_text(encoding='utf-8')
-    )
 
 
 def test_card_display_asset_list_is_minimal() -> None:

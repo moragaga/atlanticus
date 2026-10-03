@@ -11,7 +11,7 @@ classifiers = [
     "Private :: Do Not Upload",
 ]
 dependencies = [
-    "ada-web-tools==0.1.0",
+    "ada-contracts-tools==1.0.0",
     "ada-web-content-state==0.1.0",
     "ada-web-time-status-store-adapter==0.1.0",
     "ada-web-ui-time-status==0.1.15",
@@ -27,8 +27,7 @@ dev = [
 ada-web-content-state = { path = "../content-state/core", editable = true }
 ada-web-time-status-store-adapter = { path = "../time-status/store-adapter", editable = true }
 ada-web-ui-time-status = { path = "../ui/time-status", editable = true }
-ada-web-tools = { path = "../tools/core", editable = true }
-
+ada-contracts-tools = { path = "../../../ada-contracts/tools", editable = true }
 [tool.setuptools]
 package-dir = {"" = "src"}
 

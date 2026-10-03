@@ -28,7 +28,7 @@ dependencies = [
     "ada-web-operational-state==0.1.0",
     "ada-web-operational-render-binding==0.1.0",
     "atlanticus-web-storage-namespace==0.1.0",
-    "ada-web-tools==0.1.0",
+    "ada-contracts-tools==1.0.0",
     "ada-web-tools-configuration==0.1.0",
     "ada-web-tools-persistence==0.1.1",
     "ada-web-time-status-store-adapter==0.1.0",
@@ -128,7 +128,7 @@ atlanticus-web-navigation = { path = "../../../../../web/capabilities/navigation
 atlanticus-web-navigation-configuration = { path = "../../../../../web/capabilities/navigation/configuration", editable = true }
 ada-web-ui-page-readiness = { path = "../../ui/page-readiness", editable = true }
 atlanticus-web-storage-namespace = { path = "../../../../../web/capabilities/storage/namespace", editable = true }
-ada-web-tools = { path = "../../tools/core", editable = true }
+ada-contracts-tools = { path = "../../../../ada-contracts/tools", editable = true }
 ada-web-tools-configuration = { path = "../../tools/configuration", editable = true }
 ada-web-tools-persistence = { path = "../../tools/persistence", editable = true }
 ada-web-tools-projection-cosmos = { path = "../../tools/projection-cosmos", editable = true }

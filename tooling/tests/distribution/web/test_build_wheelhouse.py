@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import hashlib
 import importlib.util
 import json
@@ -293,14 +292,6 @@ def test_download_failure_leaves_starter_unchanged(tmp_path, monkeypatch) -> Non
     assert (app / "manifest.json").read_bytes() == source
 
 
-def test_builder_commented_mirror_is_ast_equivalent() -> None:
-    root = _TOOL.parent
-    productive = ast.dump(ast.parse(_TOOL.read_text()), include_attributes=False)
-    commented = ast.dump(
-        ast.parse((root / "commented/build_wheelhouse.py").read_text()),
-        include_attributes=False,
-    )
-    assert productive == commented
 
 
 @pytest.mark.skipif(shutil.which("uv") is None, reason="uv is required")

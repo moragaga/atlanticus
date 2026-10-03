@@ -6,7 +6,7 @@ from ada.web.alarms.baseline_projection import (
     AlarmBaselineProjection,
     AlarmBaselineProjectionError,
 )
-from ada.web.tools.enums import (
+from ada.contracts.tools.enums import (
     ToolConfigurationKind,
     ToolScope,
 )

@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from dash import dcc, html
 from dash.development.base_component import Component
 
+from ada.contracts.tools.enums import ToolConfigurationKind
 from ada.web.branding import BrandingVariant
 from ada.web.tools.configuration.web.ids import (
     BRANDING_ID,
@@ -25,7 +26,6 @@ from ada.web.tools.configuration.web.ids import (
     VALIDATION_MESSAGE_ID,
     VALIDITY_STORE_ID,
 )
-from ada.web.tools.enums import ToolConfigurationKind
 
 
 def build_tool_source_editor(

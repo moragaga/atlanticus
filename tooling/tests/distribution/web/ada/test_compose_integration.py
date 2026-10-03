@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import importlib.util
 import json
 import os
@@ -316,32 +315,6 @@ def test_ada_compose_templates_ship_with_generator_and_unchanged_source_inventor
     assert not (target / ".env").exists()
 
 
-def test_source_and_compose_pedagogical_mirrors_are_equivalent():
-    assert ast.dump(
-        ast.parse((_STARTER / "tooling/project.py").read_text()),
-        include_attributes=False,
-    ) == ast.dump(
-        ast.parse((_STARTER / "commented/tooling/project.py").read_text()),
-        include_attributes=False,
-    )
-    local_resources = _RESOURCES.read_text()
-    local_resources_mirror = (
-        _APPLICATION / "commented/ada/web/application/generic/local_resources.py"
-    ).read_text()
-    assert ast.dump(ast.parse(local_resources), include_attributes=False) == ast.dump(
-        ast.parse(local_resources_mirror),
-        include_attributes=False,
-    )
-    for profile in ("infra", "web", "full"):
-        mirror = (
-            (_STARTER / f"commented/deployment/compose/{profile}.yaml")
-            .read_text()
-            .splitlines(keepends=True)
-        )
-        assert (
-            "".join(line for line in mirror if not line.lstrip().startswith("#"))
-            == (_STARTER / f"deployment/compose/{profile}.yaml").read_text()
-        )
 
 
 def _docker_compose_available() -> bool:

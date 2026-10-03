@@ -3,6 +3,8 @@ from __future__ import annotations
 from dash import html
 from dash.development.base_component import Component
 
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
+from ada.contracts.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 from ada.web.application.generic.operational_latest import (
     OPERATIONAL_LATEST_HOST_TYPE,
     OperationalLatestPresentation,
@@ -12,8 +14,6 @@ from ada.web.application.generic.operational_latest import (
 )
 from ada.web.kpis.collector import component_kpi_store_id
 from ada.web.operational_render_binding import bind_operational_render
-from ada.web.tools.enums import ToolConfigurationKind, ToolScope
-from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 from atlanticus.web.services import ServiceRegistry
 
 
@@ -48,7 +48,9 @@ def _binding():
                     key='plant',
                     display_name='Planta',
                     scope=ToolScope.PLANT,
-                    subcomponents=(ToolSubcomponent(key='plant_phase', display_name='Fase Planta'),),
+                    subcomponents=(
+                        ToolSubcomponent(key='plant_phase', display_name='Fase Planta'),
+                    ),
                 ),
             ),
         )
@@ -59,9 +61,9 @@ def _store(*, values=None, component_key='mine', latest=..., timeseries=None):
     resolved_latest = (
         {
             'manifest': {'revision': 'latest-r1'},
-            'values': values if values is not None else {
-                'crusher_rate': {'status': 'ok', 'value_kind': 'value', 'value': '42,0'}
-            },
+            'values': values
+            if values is not None
+            else {'crusher_rate': {'status': 'ok', 'value_kind': 'value', 'value': '42,0'}},
         }
         if latest is ...
         else latest
@@ -155,9 +157,9 @@ def test_json_degraded_without_structural_payload_falls_back_to_status_icon() ->
 
 
 def test_absent_key_and_invalid_payload_are_normalized_to_icons() -> None:
-    absent = OperationalLatestPresentation(
-        'integrated_operations', 'mine', _store(values={})
-    )['unknown']
+    absent = OperationalLatestPresentation('integrated_operations', 'mine', _store(values={}))[
+        'unknown'
+    ]
     invalid = OperationalLatestPresentation(
         'integrated_operations',
         'mine',

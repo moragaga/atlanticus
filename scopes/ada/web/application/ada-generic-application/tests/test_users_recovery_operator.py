@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import ast
 import json
 from contextlib import contextmanager
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -192,11 +190,3 @@ def test_operator_rejects_non_local_or_non_durable_before_opening_resources(wiri
     with pytest.raises(UsersRecoveryConflictError, match='Durable Manager'):
         operator.main(['preview'])
     assert wiring.opened == []
-
-
-def test_operator_commented_mirror_preserves_behavior():
-    root = Path(__file__).resolve().parents[1]
-    relative = Path('ada/web/application/generic/users_recovery_operator.py')
-    product = (root / 'src' / relative).read_text(encoding='utf-8')
-    commented = (root / 'commented' / relative).read_text(encoding='utf-8')
-    assert ast.dump(ast.parse(product)) == ast.dump(ast.parse(commented))

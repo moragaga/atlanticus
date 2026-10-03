@@ -4,16 +4,16 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from ada.web.branding import BrandingConfiguration
-from ada.web.tools.enums import ToolConfigurationKind
-from ada.web.tools.errors import ToolConfigurationValidationError
-from ada.web.tools.sources import (
+from ada.contracts.tools.enums import ToolConfigurationKind
+from ada.contracts.tools.errors import ToolConfigurationValidationError
+from ada.contracts.tools.sources import (
     ToolSourceConsumption,
     ToolSourceOperationalParticipation,
     validate_operational_participation_against_consumption,
 )
-from ada.web.tools.structure import ToolStructure
-from ada.web.tools.validation import require_display_name, require_key
+from ada.contracts.tools.structure import ToolStructure
+from ada.contracts.tools.validation import require_display_name, require_key
+from ada.web.branding import BrandingConfiguration
 
 
 @dataclass(frozen=True, slots=True)

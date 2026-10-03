@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime
 
+from ada.contracts.tools.errors import ToolConfigurationValidationError
 from ada.web.kpis.definition.configuration import (
     KpiDefinitionSourceError,
     KpiDefinitionSourceService,
@@ -24,7 +25,6 @@ from ada.web.tools.configuration import (
     ToolSourceService,
     validate_ada_operational_tool_configuration,
 )
-from ada.web.tools.errors import ToolConfigurationValidationError
 from atlanticus.web.manager import (
     DraftValidationResult,
     ProjectionAuditRecord,

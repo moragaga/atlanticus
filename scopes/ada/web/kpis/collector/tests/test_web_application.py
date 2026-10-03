@@ -17,8 +17,8 @@ from ada.web.kpis.collector import (
     KpiDeliveryReadError,
     attach_ada_kpi_collector,
 )
-from ada.web.tools.enums import ToolConfigurationKind, ToolScope
-from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
+from ada.contracts.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 from atlanticus.web.application import create_web_application
 from atlanticus.web.models import ApplicationMetadata, WebApplicationDefinition
 from atlanticus.web.observability import (

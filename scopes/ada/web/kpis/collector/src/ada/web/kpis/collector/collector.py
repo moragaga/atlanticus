@@ -33,7 +33,7 @@ from ada.web.kpis.collector.models import (
     KpiCollectorSnapshot,
     KpiDeliveryReader,
 )
-from ada.web.tools.structure import ToolStructure
+from ada.contracts.tools.structure import ToolStructure
 
 _LATEST_DOCUMENT_FIELDS = frozenset(
     {'id', 'partition_id', 'document_type', 'manifest', 'destinations'}

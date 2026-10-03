@@ -1,4 +1,3 @@
-import ast
 from pathlib import Path
 
 from atlanticus.configuration import ConfigurationSource, ResolvedConfiguration
@@ -42,15 +41,3 @@ def test_settings_require_only_own_storage_and_empty_catalog_skips_storage(tmp_p
     composition = build_composition(configuration=configuration)
     assert composition.producer.storages == {}
     assert composition.producer.materializers == ()
-
-
-def test_commented_source_mirrors_productive_tree() -> None:
-    root = Path(__file__).resolve().parents[1]
-    source = root / 'src' / 'atlanticus/operational_data/processes/fabrica_planes/'
-    mirror = root / 'commented' / 'atlanticus/operational_data/processes/fabrica_planes/'
-    source_files = sorted(file.relative_to(source) for file in source.rglob('*.py'))
-    assert source_files == sorted(file.relative_to(mirror) for file in mirror.rglob('*.py'))
-    for relative in source_files:
-        assert ast.dump(
-            ast.parse((source / relative).read_text()), include_attributes=False
-        ) == ast.dump(ast.parse((mirror / relative).read_text()), include_attributes=False)

@@ -3,7 +3,7 @@ from ada.web.operational_render_binding.models import (
     OperationalComponentBinding,
     OperationalRenderBinding,
 )
-from ada.web.tools.structure import ToolStructure
+from ada.contracts.tools.structure import ToolStructure
 
 
 def bind_operational_render(structure: ToolStructure) -> OperationalRenderBinding:

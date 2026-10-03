@@ -3,11 +3,24 @@ revision = 3
 requires-python = "==3.14.2"
 
 [[package]]
+name = "ada-contracts-tools"
+version = "1.0.0"
+source = { editable = "../../../ada-contracts/tools" }
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
 name = "ada-web-operational-render-binding"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "ada-web-tools" },
+    { name = "ada-contracts-tools" },
 ]
 
 [package.dev-dependencies]
@@ -17,20 +30,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "ada-web-tools", editable = "../tools/core" }]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
-name = "ada-web-tools"
-version = "0.1.0"
-source = { editable = "../tools/core" }
-
-[package.metadata]
+requires-dist = [{ name = "ada-contracts-tools", editable = "../../../ada-contracts/tools" }]
 
 [package.metadata.requires-dev]
 dev = [

@@ -10,7 +10,7 @@ requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "ada-web-components==0.1.0",
-    "ada-web-tools==0.1.0",
+    "ada-contracts-tools==1.0.0",
     "atlanticus-cosmos==1.0.0",
     "atlanticus-web==0.1.0",
     "atlanticus-web-observability==0.3.0",
@@ -19,7 +19,7 @@ dependencies = [
 
 [tool.uv.sources]
 ada-web-components = { path = "../../components/core", editable = true }
-ada-web-tools = { path = "../../tools/core", editable = true }
+ada-contracts-tools = { path = "../../../../ada-contracts/tools", editable = true }
 atlanticus-cosmos = { path = "../../../../../connectivity/cosmos", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
 atlanticus-web-observability = { path = "../../../../../web/framework/observability", editable = true }
@@ -65,7 +65,7 @@ testpaths = ["tests"]
 pythonpath = [
     "src",
     "../../components/core/src",
-    "../../tools/core/src",
+    "../../../../ada-contracts/tools/src",
     "../../../../../connectivity/cosmos/src",
     "../../../../../backend/observability/src",
     "../../../../../backend/kernel/src",

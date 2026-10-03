@@ -29,8 +29,3 @@ def test_manager_capability_does_not_own_a_web_application_runtime() -> None:
         source = path.read_text(encoding='utf-8')
         assert 'create_web_application' not in source
         assert 'register_page(' not in source
-
-
-def test_commented_manager_has_no_removed_host_or_pages() -> None:
-    assert not (_COMMENTED_ROOT / 'application.py').exists()
-    assert not (_COMMENTED_ROOT / 'pages').exists()

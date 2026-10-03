@@ -1,3 +1,9 @@
+from ada.contracts.tools.enums import ToolConfigurationKind
+from ada.contracts.tools.sources import (
+    SourceControlPolicy,
+    ToolSourceConsumption,
+    ToolSourceOperationalParticipation,
+)
 from ada.web.branding import BrandingVariant
 from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.configuration.web import (
@@ -8,12 +14,6 @@ from ada.web.tools.configuration.web import (
 from ada.web.tools.configuration.web.models import (
     generate_named_key,
     generate_tool_key,
-)
-from ada.web.tools.enums import ToolConfigurationKind
-from ada.web.tools.sources import (
-    SourceControlPolicy,
-    ToolSourceConsumption,
-    ToolSourceOperationalParticipation,
 )
 
 

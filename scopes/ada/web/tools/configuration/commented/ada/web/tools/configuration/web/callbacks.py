@@ -33,7 +33,7 @@ from ada.web.tools.configuration.web.models import (
 from ada.web.tools.configuration.web.structure import (
     structure_editor_coverage_from_configuration,
 )
-from ada.web.tools.enums import ToolConfigurationKind
+from ada.contracts.tools.enums import ToolConfigurationKind
 
 _COVERAGE_MINE = 'mine'
 _COVERAGE_PLANT = 'plant'

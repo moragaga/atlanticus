@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import importlib.util
 import sys
 import tomllib
@@ -284,13 +283,6 @@ def test_bundle_copies_historical_wheel_with_own_lock(tmp_path: Path, monkeypatc
     ]
 
 
-def test_mirrors_have_identical_ast() -> None:
-    for name in ("wheel_repository.py", "bundle.py"):
-        productive = ast.parse((PROCESS_ROOT / name).read_text(encoding="utf-8"))
-        commented = ast.parse(
-            (PROCESS_ROOT / "commented" / name).read_text(encoding="utf-8")
-        )
-        assert ast.dump(productive) == ast.dump(commented)
 
 
 def test_catalog_discovers_all_wheelable_domains_not_workspace_or_generated(

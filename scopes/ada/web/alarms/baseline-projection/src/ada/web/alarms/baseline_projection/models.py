@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from ada.web.alarms.baseline_projection.errors import AlarmBaselineProjectionError
-from ada.web.tools.enums import (
+from ada.contracts.tools.enums import (
     ToolConfigurationKind,
     ToolScope,
 )
