@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
+from ada.contracts.alarms import AlarmIdentity
 
-from ada_command_center.domain.alarms import AlarmIdentity
 from ada_command_center.processes.alarms_runtime import (
     AlarmDataSourceAdapter,
     AlarmExecutionIterationError,

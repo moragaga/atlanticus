@@ -2,6 +2,7 @@ from dataclasses import replace
 from datetime import timedelta
 
 import pytest
+from ada.contracts.alarms import AlarmKind, Criticality
 
 from ada_command_center.alarms.core import (
     AlarmContractError,
@@ -14,10 +15,6 @@ from ada_command_center.alarms.core import (
     RoutingDestination,
     reconcile_group_configuration,
     reduce_group_cycle,
-)
-from ada_command_center.domain.alarms import (
-    AlarmKind,
-    Criticality,
 )
 
 from .support import NOW, Ids, management_action, physical, plan

@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
-from ada_command_center.domain.alarms import AlarmIdentity
+from ada.contracts.alarms import AlarmIdentity
 from ada_command_center.processes.alarms_runtime.iteration import (
     AlarmExecutionIterationError,
     AlarmIterationDataError,

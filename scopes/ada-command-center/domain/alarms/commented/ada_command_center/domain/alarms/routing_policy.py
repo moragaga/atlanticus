@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ada.web.tools.enums import ToolConfigurationKind
+from ada.contracts.tools.enums import ToolConfigurationKind
 
 
 # Establece la transición estricta entre niveles usando el enum canónico del catálogo Tool.

@@ -1,7 +1,7 @@
 import pytest
-from ada.web.tools.enums import ToolConfigurationKind as Kind
+from ada.contracts.tools.enums import ToolConfigurationKind as Kind
 
-from ada_command_center.domain.alarms import next_routing_tool_kind
+from ada_command_center.domain.alarms.routing_policy import next_routing_tool_kind
 
 
 @pytest.mark.parametrize(

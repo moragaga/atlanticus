@@ -10,7 +10,7 @@ from enum import StrEnum
 from ada_command_center.alarms.core import AlarmResolutionKey
 from ada_command_center.alarms.materialization.delivery import DeliveryAlarmConfiguration
 from ada_command_center.alarms.materialization.runtime import RuntimeAlarmConfiguration
-from ada_command_center.domain.alarms import AlarmIdentity
+from ada.contracts.alarms import AlarmIdentity
 
 
 class AlarmResolutionStatus(StrEnum):

@@ -1,11 +1,11 @@
 import pytest
 
-from ada_command_center.domain.alarms import (
+from ada.contracts.alarms import (
     AlarmConfiguration,
     AlarmConfigurationSnapshot,
     AlarmConfigurationValidationError,
 )
-from ada_command_center.domain.tools import ToolDependencyManifest
+from ada.contracts.tools import ToolDependencyManifest
 
 
 def _manifest(revision: str = 'tools-r2') -> ToolDependencyManifest:

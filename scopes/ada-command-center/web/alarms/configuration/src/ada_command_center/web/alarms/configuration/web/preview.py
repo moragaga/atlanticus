@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dash import html
 
-from ada_command_center.domain.alarms import AlarmConfiguration
+from ada.contracts.alarms import AlarmConfiguration
 
 
 def build_alarm_configuration_history_preview(payload: dict[str, object]) -> object:

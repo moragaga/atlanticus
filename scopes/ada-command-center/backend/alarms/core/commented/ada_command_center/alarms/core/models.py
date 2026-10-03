@@ -11,7 +11,7 @@ from types import MappingProxyType
 from typing import Any
 
 from ada_command_center.alarms.core.errors import AlarmContractError
-from ada_command_center.domain.alarms import AlarmIdentity, AlarmKind, Criticality
+from ada.contracts.alarms import AlarmIdentity, AlarmKind, Criticality
 
 TECHNICAL_HOLD_GRACE_SECONDS = 300
 

@@ -2,9 +2,17 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from ada.web.tools.enums import ToolConfigurationKind
-from ada.web.tools.errors import ToolConfigurationValidationError
-from ada.web.tools.structure import ToolStructure
+from ada.contracts.alarms import (
+    AlarmConfiguration,
+    AlarmDefinition,
+    AlarmVisualTarget,
+    Criticality,
+    DeactivationLimit,
+    MessageDefinition,
+)
+from ada.contracts.tools.enums import ToolConfigurationKind
+from ada.contracts.tools.errors import ToolConfigurationValidationError
+from ada.contracts.tools.structure import ToolStructure
 from ada_command_center.alarms.core import (
     AlarmResolutionKey,
     AlarmRouting,
@@ -31,15 +39,7 @@ from ada_command_center.alarms.materialization.resolution import (
     AlarmResolutionStatus,
 )
 from ada_command_center.alarms.materialization.runtime import RuntimeAlarmConfiguration
-from ada_command_center.domain.alarms import (
-    AlarmConfiguration,
-    AlarmDefinition,
-    AlarmVisualTarget,
-    Criticality,
-    DeactivationLimit,
-    MessageDefinition,
-    next_routing_tool_kind,
-)
+from ada_command_center.domain.alarms.routing_policy import next_routing_tool_kind
 
 
 class _ToolCatalogEntry(Protocol):

@@ -9,12 +9,12 @@ description = "Alarm Configuration Source contract for ADA Command Center Web"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
-    "ada-command-center-alarms-domain==1.0.0",
     "ada-command-center-web-tool-catalog==0.1.0",
-    "ada-command-center-tools-domain==1.0.0",
-    "ada-web-tools==0.1.0",
     "atlanticus-web-projection==0.1.0",
     "atlanticus-web-source==0.1.0",
+    "ada-contracts-tools==1.0.0",
+    "ada-contracts-alarms==1.0.0",
+    "ada-command-center-alarms-domain==1.0.0",
 ]
 
 [project.optional-dependencies]
@@ -25,15 +25,14 @@ web = [
 ]
 
 [tool.uv.sources]
+ada-contracts-tools = { path = "../../../../ada-contracts/tools", editable = true }
+ada-contracts-alarms = { path = "../../../../ada-contracts/alarms", editable = true }
 ada-command-center-alarms-domain = { path = "../../../domain/alarms", editable = true }
 ada-command-center-web-tool-catalog = { path = "../../tools/catalog", editable = true }
-ada-command-center-tools-domain = { path = "../../../domain/tools", editable = true }
-ada-web-tools = { path = "../../../../ada/web/tools/core", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
 atlanticus-web-manager = { path = "../../../../../web/capabilities/manager", editable = true }
 atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
-
 [dependency-groups]
 dev = [
     "atlanticus-web==0.1.0",
@@ -82,7 +81,6 @@ testpaths = ["tests"]
 pythonpath = [
     "src",
     "../../../domain/alarms/src",
-    "../../../domain/tools/src",
     "../../tools/catalog/src",
     "../../../../ada/web/tools/core/src",
     "../../../../../web/framework/core/src",

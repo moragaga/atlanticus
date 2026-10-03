@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import fields, is_dataclass
 from enum import Enum
 
-from ada.web.tools.enums import ToolConfigurationKind
+from ada.contracts.tools.enums import ToolConfigurationKind
 from ada_command_center.alarms.core import (
     AlarmResolutionKey,
     AlarmRouting,
@@ -23,7 +23,7 @@ from ada_command_center.alarms.materialization.delivery import (
     ResolvedVisualTarget,
 )
 from ada_command_center.alarms.materialization.runtime import RuntimeAlarmConfiguration
-from ada_command_center.domain.alarms import (
+from ada.contracts.alarms import (
     AlarmColor,
     AlarmIdentity,
     AlarmKind,

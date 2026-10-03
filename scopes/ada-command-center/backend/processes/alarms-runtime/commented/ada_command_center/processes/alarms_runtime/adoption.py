@@ -11,10 +11,7 @@ from ada_command_center.alarms.core import PlannedAlarm
 from ada_command_center.alarms.materialization.artifact_reference import (
     AlarmConfigurationArtifactRef,
 )
-from ada_command_center.domain.alarms import (
-    AlarmIdentity,
-    Criticality,
-)
+from ada.contracts.alarms import AlarmIdentity, Criticality
 from ada_command_center.processes.alarms_runtime.session import AlarmExecutionSession
 
 

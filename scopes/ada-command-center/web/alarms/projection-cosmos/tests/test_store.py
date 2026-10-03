@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from ada_command_center.domain.alarms import AlarmConfiguration, AlarmConfigurationSnapshot
-from ada_command_center.domain.tools import ToolDependencyManifest
+from ada.contracts.alarms import AlarmConfiguration, AlarmConfigurationSnapshot
+from ada.contracts.tools import ToolDependencyManifest
 from ada_command_center.web.alarms.configuration.errors import AlarmConfigurationProjectionError
 from ada_command_center.web.alarms.projection.cosmos import (
     ALARM_CONFIGURATION_PROJECTION_STORAGE_RESOURCE,

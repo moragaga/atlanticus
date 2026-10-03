@@ -1,4 +1,13 @@
-from ada.web.tools.enums import ToolConfigurationKind
+from ada.contracts.alarms import (
+    AlarmColor,
+    AlarmIdentity,
+    AlarmKind,
+    BusinessCategory,
+    Criticality,
+    OperationalArea,
+    VisibilityMode,
+)
+from ada.contracts.tools.enums import ToolConfigurationKind
 from ada_command_center.alarms.core import (
     AlarmResolutionKey,
     AlarmRouting,
@@ -10,15 +19,6 @@ from ada_command_center.alarms.materialization import (
     ResolvedDeliveryAlarm,
     ResolvedVisualTarget,
     RuntimeAlarmConfiguration,
-)
-from ada_command_center.domain.alarms import (
-    AlarmColor,
-    AlarmIdentity,
-    AlarmKind,
-    BusinessCategory,
-    Criticality,
-    OperationalArea,
-    VisibilityMode,
 )
 
 

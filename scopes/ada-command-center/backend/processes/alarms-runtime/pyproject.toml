@@ -9,7 +9,6 @@ description = "Executable Alarm Runtime process for ADA Command Center."
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
-    "ada-command-center-alarms-domain==1.0.0",
     "ada-command-center-alarms-core==1.0.0",
     "ada-command-center-alarms-materialization==1.0.0",
     "ada-command-center-alarms-persistence==1.0.0",
@@ -23,6 +22,8 @@ dependencies = [
     "atlanticus-operational-data-planner==1.0.0",
     "atlanticus-operational-data-sources==1.0.0",
     "atlanticus-state==1.0.0",
+    "ada-contracts-alarms==1.0.0",
+    "ada-command-center-alarms-domain==1.0.0",
 ]
 
 [project.scripts]
@@ -33,13 +34,12 @@ command = "ada-command-center-alarms-runtime"
 system-profile = "base"
 
 [tool.uv.sources]
+ada-contracts-alarms = { path = "../../../../ada-contracts/alarms", editable = true }
 ada-command-center-alarms-domain = { path = "../../../domain/alarms", editable = true }
 ada-command-center-alarms-core = { workspace = true }
 ada-command-center-alarms-materialization = { workspace = true }
 ada-command-center-alarms-materialization-process = { workspace = true }
 ada-command-center-alarms-persistence = { workspace = true }
-ada-command-center-tools-domain = { path = "../../../domain/tools", editable = true }
-ada-web-tools = { path = "../../../../ada/web/tools/core", editable = true }
 atlanticus-configuration = { path = "../../../../../backend/configuration", editable = true }
 atlanticus-datasets-runtime = { path = "../../../../../backend/datasets-runtime", editable = true }
 atlanticus-datasets = { path = "../../../../../backend/datasets", editable = true }
@@ -55,7 +55,6 @@ atlanticus-operational-data-core = { path = "../../../../operational-data/core",
 atlanticus-operational-data-planner = { path = "../../../../operational-data/planner", editable = true }
 atlanticus-operational-data-sources = { path = "../../../../operational-data/sources", editable = true }
 atlanticus-operational-data-calendar = { path = "../../../../operational-data/calendar", editable = true }
-
 [dependency-groups]
 dev = [
     "pytest==9.1.1",

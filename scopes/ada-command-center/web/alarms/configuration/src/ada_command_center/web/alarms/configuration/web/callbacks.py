@@ -13,11 +13,8 @@ from dash import (
     no_update,
 )
 
-from ada_command_center.domain.alarms import (
-    AlarmConfiguration,
-    AlarmConfigurationValidationError,
-)
-from ada_command_center.domain.tools import ToolDependencyManifest
+from ada.contracts.alarms import AlarmConfiguration, AlarmConfigurationValidationError
+from ada.contracts.tools import ToolDependencyManifest
 from ada_command_center.web.alarms.configuration.web.authoring import (
     add_escalation_step,
     empty_authoring_document,

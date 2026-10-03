@@ -19,7 +19,6 @@ dependencies = [
 ada-command-center-web-tool-discovery-cosmos = { path = "../discovery-cosmos", editable = true }
 atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
 atlanticus-web-manager = { path = "../../../../../web/capabilities/manager", editable = true }
-
 [dependency-groups]
 dev = [
     "pytest==9.1.1",

@@ -8,6 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from ada.contracts.tools import ToolConfigurationKind, ToolStructure
 from ada.web.tools.configuration import ToolConfiguration
 from ada_command_center.web.tools.catalog.errors import ToolCatalogConsolidationError
 from ada_command_center.web.tools.catalog.models import (
@@ -96,9 +97,11 @@ class ToolCatalogConsolidator:
                 ToolCatalogEntry(
                     tool_key=configuration.tool_key,
                     display_name=configuration.display_name,
-                    kind=configuration.kind,
+                    kind=ToolConfigurationKind(configuration.kind.value),
                     source_release_id=projection.source_release_id,
-                    structure=configuration.structure,
+                    structure=ToolStructure.from_document(
+                        configuration.structure.to_document()
+                    ),
                 )
             )
         snapshot = create_tool_catalog_snapshot(

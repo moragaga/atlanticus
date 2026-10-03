@@ -6,6 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pandas as pd
+from ada.contracts.alarms import AlarmIdentity, AlarmKind, Criticality
 
 from ada_command_center.alarms.core import (
     AlarmRouting,
@@ -13,7 +14,6 @@ from ada_command_center.alarms.core import (
     EvidenceContractRef,
     PlannedAlarm,
 )
-from ada_command_center.domain.alarms import AlarmIdentity, AlarmKind, Criticality
 from ada_command_center.processes.alarms_runtime import (
     AlarmEvaluatorRegistry,
     AlarmIterationLoader,

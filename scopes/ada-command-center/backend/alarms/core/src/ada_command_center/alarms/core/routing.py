@@ -4,6 +4,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
+from ada.contracts.alarms import AlarmIdentity, Criticality
+
 from ada_command_center.alarms.core.errors import AlarmContractError
 from ada_command_center.alarms.core.models import (
     AlarmRuntimeState,
@@ -13,10 +15,6 @@ from ada_command_center.alarms.core.models import (
     PendingToolAssignment,
     PlannedAlarm,
     ToolAssignment,
-)
-from ada_command_center.domain.alarms import (
-    AlarmIdentity,
-    Criticality,
 )
 
 

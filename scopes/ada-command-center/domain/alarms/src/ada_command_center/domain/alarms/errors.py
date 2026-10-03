@@ -1,2 +1,0 @@
-class AlarmConfigurationValidationError(ValueError):
-    pass

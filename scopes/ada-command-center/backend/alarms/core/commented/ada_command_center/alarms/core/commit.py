@@ -32,7 +32,7 @@ from ada_command_center.alarms.core.models import (
     OccurrenceChange,
     OccurrenceChangeKind,
 )
-from ada_command_center.domain.alarms import AlarmIdentity
+from ada.contracts.alarms import AlarmIdentity
 
 
 # Clase InputKind: contrato tipado con invariantes explícitas para evitar estados ambiguos.

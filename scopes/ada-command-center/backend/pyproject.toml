@@ -4,7 +4,6 @@ version = "1.0.0"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
-    "ada-command-center-alarms-domain==1.0.0",
     "ada-command-center-alarms-core==1.0.0",
     "ada-command-center-alarms-persistence==1.0.0",
     "ada-command-center-alarms-runtime-process==1.0.0",
@@ -21,7 +20,6 @@ dev = [
 package = false
 
 [tool.uv.sources]
-ada-command-center-alarms-domain = { path = "../domain/alarms", editable = true }
 ada-command-center-alarms-core = { workspace = true }
 ada-command-center-alarms-persistence = { workspace = true }
 ada-command-center-alarms-materialization = { workspace = true }
@@ -40,7 +38,6 @@ atlanticus-operational-data-core = { path = "../../operational-data/core", edita
 atlanticus-operational-data-planner = { path = "../../operational-data/planner", editable = true }
 atlanticus-operational-data-calendar = { path = "../../operational-data/calendar", editable = true }
 atlanticus-operational-data-sources = { path = "../../operational-data/sources", editable = true }
-
 [tool.uv.workspace]
 members = [
     "alarms/core",

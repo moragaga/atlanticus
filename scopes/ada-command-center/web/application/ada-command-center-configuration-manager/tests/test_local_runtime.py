@@ -4,10 +4,10 @@ from datetime import UTC, datetime
 
 import pytest
 
-from ada.web.tools.enums import ToolConfigurationKind, ToolScope
-from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
-from ada_command_center.domain.alarms import AlarmConfiguration, AlarmConfigurationSnapshot
-from ada_command_center.domain.tools import ToolDependencyManifest
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
+from ada.contracts.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
+from ada.contracts.alarms import AlarmConfiguration, AlarmConfigurationSnapshot
+from ada.contracts.tools import ToolDependencyManifest
 from ada_command_center.web.alarms.configuration.source_release import (
     AlarmConfigurationSourceService,
 )

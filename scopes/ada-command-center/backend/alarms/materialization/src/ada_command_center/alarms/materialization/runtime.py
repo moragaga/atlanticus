@@ -4,8 +4,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
+from ada.contracts.alarms import AlarmIdentity
 from ada_command_center.alarms.core import AlarmResolutionKey, PlannedAlarm
-from ada_command_center.domain.alarms import AlarmIdentity
 
 AlarmParameterValue = str | float | bool
 

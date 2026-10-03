@@ -2,15 +2,15 @@ from dataclasses import replace
 
 import pytest
 
-from ada.web.tools.enums import ToolConfigurationKind, ToolScope
-from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
-from ada_command_center.domain.alarms import (
+from ada.contracts.alarms import (
     AlarmConfiguration,
     AlarmEscalationDefinition,
     AlarmEscalationStepDefinition,
     AlarmVisualTarget,
 )
-from ada_command_center.domain.tools import ToolDependencyEntry, ToolDependencyManifest
+from ada.contracts.tools import ToolDependencyEntry, ToolDependencyManifest
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
+from ada.contracts.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 from ada_command_center.web.alarms.configuration.errors import (
     AlarmConfigurationToolDependencyError,
 )

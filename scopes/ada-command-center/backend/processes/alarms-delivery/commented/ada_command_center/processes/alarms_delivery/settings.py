@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from ada_command_center.domain.alarms import ALARM_CONFIGURATION_SOURCE_KEY
+from ada_command_center.domain.alarms.identity import ALARM_CONFIGURATION_SOURCE_KEY
 from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfiguration
 
 

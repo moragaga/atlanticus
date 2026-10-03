@@ -7,8 +7,24 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from ada.web.tools.enums import ToolConfigurationKind, ToolScope
-from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
+from ada.contracts.alarms import (
+    AlarmColor,
+    AlarmConfiguration,
+    AlarmConfigurationSnapshot,
+    AlarmDeactivationDefinition,
+    AlarmDefinition,
+    AlarmEscalationDefinition,
+    AlarmIdentity,
+    AlarmKind,
+    BusinessCategory,
+    Criticality,
+    OperationalArea,
+    ReappearanceDefinition,
+    VisibilityMode,
+)
+from ada.contracts.tools import ToolDependencyEntry, ToolDependencyManifest
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
+from ada.contracts.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 
 from ada_command_center.alarms.core import (
     AlarmEvaluation,
@@ -25,22 +41,6 @@ from ada_command_center.alarms.materialization import (
     materialization_root,
 )
 from ada_command_center.alarms.persistence import ConfigurationAdoptionRecordV2
-from ada_command_center.domain.alarms import (
-    AlarmColor,
-    AlarmConfiguration,
-    AlarmConfigurationSnapshot,
-    AlarmDeactivationDefinition,
-    AlarmDefinition,
-    AlarmEscalationDefinition,
-    AlarmIdentity,
-    AlarmKind,
-    BusinessCategory,
-    Criticality,
-    OperationalArea,
-    ReappearanceDefinition,
-    VisibilityMode,
-)
-from ada_command_center.domain.tools import ToolDependencyEntry, ToolDependencyManifest
 from ada_command_center.processes.alarms_materialization.acquisition import AlarmCandidateAcquirer
 from ada_command_center.processes.alarms_materialization.job import (
     AlarmMaterializationJob,

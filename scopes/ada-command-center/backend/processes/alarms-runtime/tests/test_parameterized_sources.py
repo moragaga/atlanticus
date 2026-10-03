@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import pytest
+from ada.contracts.alarms import AlarmIdentity, AlarmKind, Criticality
 
 from ada_command_center.alarms.core import AlarmRouting, PlannedAlarm
-from ada_command_center.domain.alarms import AlarmIdentity, AlarmKind, Criticality
 from ada_command_center.processes.alarms_runtime import (
     AlarmEvaluatorContract,
     AlarmEvaluatorRegistry,

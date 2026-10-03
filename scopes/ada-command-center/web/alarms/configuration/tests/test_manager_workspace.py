@@ -1,7 +1,7 @@
 import pytest
 
-from ada_command_center.domain.alarms import AlarmConfiguration
-from ada_command_center.domain.tools import ToolDependencyManifest
+from ada.contracts.alarms import AlarmConfiguration
+from ada.contracts.tools import ToolDependencyManifest
 from ada_command_center.web.alarms.configuration.tool_dependencies import (
     WORKSPACE_TOOL_CATALOG_REVISION_KEY,
 )

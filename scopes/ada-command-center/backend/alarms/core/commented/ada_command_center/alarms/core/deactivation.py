@@ -23,7 +23,7 @@ from ada_command_center.alarms.core.models import (
     ManagementActionResult,
     PlannedAlarm,
 )
-from ada_command_center.domain.alarms import AlarmIdentity
+from ada.contracts.alarms import AlarmIdentity
 
 DeactivationRequestIdFactory = Callable[[ManagementAction], str]
 DeactivationEffectIdFactory = Callable[[DeactivationRequest], str]

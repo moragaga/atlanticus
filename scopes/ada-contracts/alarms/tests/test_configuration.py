@@ -2,13 +2,13 @@ from dataclasses import replace
 
 import pytest
 
-from ada_command_center.domain.alarms import (
+from ada.contracts.alarms import (
     AlarmConfiguration,
     AlarmConfigurationValidationError,
     AlarmDeactivationDefinition,
-    MessageDeactivationDefinition,
     AlarmIdentity,
     AlarmKind,
+    MessageDeactivationDefinition,
     MessageScope,
 )
 

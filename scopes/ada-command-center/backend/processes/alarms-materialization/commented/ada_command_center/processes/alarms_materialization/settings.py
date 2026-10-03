@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 # Source Key viene de un contrato estable; no de configuración del desarrollador.
-from ada_command_center.domain.alarms import ALARM_CONFIGURATION_SOURCE_KEY
+from ada_command_center.domain.alarms.identity import ALARM_CONFIGURATION_SOURCE_KEY
 from ada_command_center.web.alarms.projection.cosmos import (
     ALARM_CONFIGURATION_PROJECTION_STORAGE_RESOURCE,
 )

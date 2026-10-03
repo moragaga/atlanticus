@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from ada_command_center.alarms.core import EvidenceContractRef
 # El identificador compartido no puede ser cambiado mediante .env del proceso.
-from ada_command_center.domain.alarms import ALARM_CONFIGURATION_SOURCE_KEY
+from ada_command_center.domain.alarms.identity import ALARM_CONFIGURATION_SOURCE_KEY
 from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfiguration
 
 

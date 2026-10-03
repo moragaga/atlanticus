@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
-from ada_command_center.domain.alarms import AlarmConfigurationSnapshot
-from ada_command_center.domain.tools import ToolDependencyManifest
+from ada.contracts.alarms import AlarmConfigurationSnapshot
+from ada.contracts.tools import ToolDependencyManifest
 from ada_command_center.web.alarms.configuration import (
     ALARM_CONFIGURATION_SOURCE_RESOURCE_PATH,
     ALARM_CONFIGURATION_SOURCE_SCHEMA_VERSION,

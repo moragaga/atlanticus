@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Protocol, runtime_checkable
 
+from ada.contracts.alarms import AlarmIdentity
+
 from ada_command_center.alarms.core import (
     DEFAULT_EVIDENCE_SAMPLING_INTERVAL_SECONDS,
     AffectedInputIssue,
@@ -30,7 +32,6 @@ from ada_command_center.alarms.core import (
     resolve_management_cascades,
 )
 from ada_command_center.alarms.persistence import CommitBatchResult, GroupRuntimeSnapshot
-from ada_command_center.domain.alarms import AlarmIdentity
 from ada_command_center.processes.alarms_runtime.composition import (
     AlarmRuntimeComposition,
     AlarmRuntimeGroup,

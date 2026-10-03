@@ -2,11 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ada.web.tools.enums import ToolConfigurationKind
-from ada_command_center.domain.tools import (
-    ToolDependencyEntry,
-    ToolDependencyManifest,
-)
+from ada.contracts.tools import ToolDependencyEntry, ToolDependencyManifest
+from ada.contracts.tools.enums import ToolConfigurationKind
 from ada_command_center.web.tools.catalog import ToolCatalogEntry, ToolCatalogStore
 from atlanticus.web.source.models import SourceReleaseId
 

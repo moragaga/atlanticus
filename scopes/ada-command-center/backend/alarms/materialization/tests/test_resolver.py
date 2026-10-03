@@ -4,16 +4,7 @@ from dataclasses import dataclass, replace
 
 import pytest
 
-from ada.web.tools.enums import ToolConfigurationKind, ToolScope
-from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
-from ada_command_center.alarms.materialization import (
-    AlarmResolutionStatus,
-    EvaluatorQualificationCatalog,
-    EvaluatorQualificationKey,
-    ToolReconciliationQualification,
-    resolve_alarm_configuration,
-)
-from ada_command_center.domain.alarms import (
+from ada.contracts.alarms import (
     AlarmColor,
     AlarmConfiguration,
     AlarmDeactivationDefinition,
@@ -33,6 +24,15 @@ from ada_command_center.domain.alarms import (
     ProcessAlarmProjectionMode,
     ReappearanceDefinition,
     VisibilityMode,
+)
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
+from ada.contracts.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
+from ada_command_center.alarms.materialization import (
+    AlarmResolutionStatus,
+    EvaluatorQualificationCatalog,
+    EvaluatorQualificationKey,
+    ToolReconciliationQualification,
+    resolve_alarm_configuration,
 )
 
 

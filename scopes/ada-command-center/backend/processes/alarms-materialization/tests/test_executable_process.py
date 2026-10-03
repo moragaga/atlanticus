@@ -4,7 +4,19 @@ from types import SimpleNamespace
 
 import pytest
 
-from ada.web.tools.enums import ToolConfigurationKind
+from ada.contracts.alarms import (
+    AlarmColor,
+    AlarmConfiguration,
+    AlarmConfigurationSnapshot,
+    AlarmIdentity,
+    AlarmKind,
+    BusinessCategory,
+    Criticality,
+    OperationalArea,
+    VisibilityMode,
+)
+from ada.contracts.tools import ToolDependencyManifest
+from ada.contracts.tools.enums import ToolConfigurationKind
 from ada_command_center.alarms.core import (
     AlarmResolutionKey,
     AlarmRouting,
@@ -33,18 +45,6 @@ from ada_command_center.alarms.materialization.codec import (
     runtime_from_document,
     runtime_to_document,
 )
-from ada_command_center.domain.alarms import (
-    AlarmColor,
-    AlarmConfiguration,
-    AlarmConfigurationSnapshot,
-    AlarmIdentity,
-    AlarmKind,
-    BusinessCategory,
-    Criticality,
-    OperationalArea,
-    VisibilityMode,
-)
-from ada_command_center.domain.tools import ToolDependencyManifest
 from ada_command_center.processes.alarms_materialization.acquisition import AlarmCandidateAcquirer
 from ada_command_center.processes.alarms_materialization.errors import AlarmCandidateMismatchError
 from ada_command_center.processes.alarms_materialization.job import (

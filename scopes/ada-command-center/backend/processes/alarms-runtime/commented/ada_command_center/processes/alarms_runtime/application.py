@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from ada_command_center.domain.alarms import AlarmIdentity
+from ada.contracts.alarms import AlarmIdentity
 from ada_command_center.processes.alarms_runtime import (
     AlarmRuntimeProcessComposition,
     __version__,

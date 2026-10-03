@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from ada.contracts.alarms import AlarmKind, Criticality
 
 from ada_command_center.alarms.core import (
     AffectedInputIssue,
@@ -28,10 +29,6 @@ from ada_command_center.alarms.core import (
     TechnicalHoldChange,
     TechnicalHoldChangeKind,
     ToolAssignment,
-)
-from ada_command_center.domain.alarms import (
-    AlarmKind,
-    Criticality,
 )
 
 from .support import NOW, identity, physical, plan

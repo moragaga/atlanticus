@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 
-from ada_command_center.domain.alarms import AlarmConfigurationSnapshot
+from ada.contracts.alarms import AlarmConfigurationSnapshot
 from ada_command_center.web.alarms.configuration.errors import AlarmConfigurationProjectionError
 from ada_command_center.web.alarms.configuration.projection_record import (
     alarm_configuration_projection_from_document,

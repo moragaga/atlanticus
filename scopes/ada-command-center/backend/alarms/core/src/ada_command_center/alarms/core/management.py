@@ -4,6 +4,8 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime
 
+from ada.contracts.alarms import AlarmIdentity, AlarmKind
+
 from ada_command_center.alarms.core.deactivation import (
     DeactivationEffectIdFactory,
     DeactivationRequestIdFactory,
@@ -36,10 +38,6 @@ from ada_command_center.alarms.core.models import (
     OccurrenceChangeKind,
     PlannedAlarm,
     ReappearanceChange,
-)
-from ada_command_center.domain.alarms import (
-    AlarmIdentity,
-    AlarmKind,
 )
 
 ManagementEffectIdFactory = Callable[[ManagementAction], str]

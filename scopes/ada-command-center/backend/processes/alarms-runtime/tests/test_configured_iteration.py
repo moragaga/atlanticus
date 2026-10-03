@@ -8,13 +8,13 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from ada.contracts.alarms import AlarmIdentity
 
 from ada_command_center.alarms.materialization.local_reader import (
     materialization_result_id,
     materialization_root,
 )
 from ada_command_center.alarms.persistence import AlarmRecoveryRequiredError
-from ada_command_center.domain.alarms import AlarmIdentity
 from ada_command_center.processes.alarms_runtime import (
     AlarmConfigurationAdoptionExecutor,
     AlarmConfiguredIterationExecutor,

@@ -2,7 +2,8 @@ from dataclasses import replace
 
 import pytest
 
-from ada.web.tools.enums import ToolConfigurationKind
+from ada.contracts.alarms import ProcessAlarmProjectionMode, VisibilityMode
+from ada.contracts.tools.enums import ToolConfigurationKind
 from ada_command_center.alarms.materialization import (
     DeliveryAlarmConfiguration,
     ResolvedDeactivationPolicy,
@@ -10,7 +11,6 @@ from ada_command_center.alarms.materialization import (
     ResolvedVisualSubcomponentTarget,
     ResolvedVisualTarget,
 )
-from ada_command_center.domain.alarms import ProcessAlarmProjectionMode, VisibilityMode
 
 from .support import delivery_alarm, resolution_key
 

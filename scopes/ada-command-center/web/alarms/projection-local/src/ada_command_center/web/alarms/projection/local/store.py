@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from ada_command_center.domain.alarms import AlarmConfigurationSnapshot
+from ada.contracts.alarms import AlarmConfigurationSnapshot
 from ada_command_center.web.alarms.configuration.errors import AlarmConfigurationProjectionError
 from ada_command_center.web.alarms.configuration.projection_record import (
     alarm_configuration_projection_from_document,

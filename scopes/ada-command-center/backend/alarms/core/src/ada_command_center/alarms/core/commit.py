@@ -7,6 +7,8 @@ from enum import StrEnum
 from types import MappingProxyType
 from typing import Any
 
+from ada.contracts.alarms import AlarmIdentity
+
 from ada_command_center.alarms.core.errors import AlarmContractError
 from ada_command_center.alarms.core.evidence import (
     DEFAULT_EVIDENCE_SAMPLING_INTERVAL_SECONDS,
@@ -30,7 +32,6 @@ from ada_command_center.alarms.core.models import (
     OccurrenceChange,
     OccurrenceChangeKind,
 )
-from ada_command_center.domain.alarms import AlarmIdentity
 
 
 class InputKind(StrEnum):

@@ -26,7 +26,6 @@ ada-web-tools-projection-cosmos = { path = "../../../../ada/web/tools/projection
 atlanticus-cosmos = { path = "../../../../../connectivity/cosmos", editable = true }
 atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
-
 [dependency-groups]
 dev = [
     "pytest==9.1.1",

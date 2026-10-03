@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+from ada.contracts.alarms import AlarmIdentity, AlarmKind, Criticality
+
 from ada_command_center.alarms.core import (
     AlarmEvaluation,
     AlarmRouting,
@@ -17,11 +19,6 @@ from ada_command_center.alarms.core import (
     ManagementAction,
     PlannedAlarm,
     RoutingDestination,
-)
-from ada_command_center.domain.alarms import (
-    AlarmIdentity,
-    AlarmKind,
-    Criticality,
 )
 
 NOW = datetime(2026, 8, 24, 14, 0, tzinfo=UTC)

@@ -7,9 +7,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ada.web.tools.enums import ToolConfigurationKind
+from ada.contracts.tools.enums import ToolConfigurationKind
 from ada_command_center.alarms.core import AlarmResolutionKey
-from ada_command_center.domain.alarms import (
+from ada.contracts.alarms import (
     DEACTIVATION_MAX_HOURS,
     END_OF_SHIFT,
     AlarmColor,

@@ -9,7 +9,6 @@ description = "Independent Alarm Delivery input receiver for ADA Command Center.
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
-    "ada-command-center-alarms-domain==1.0.0",
     "ada-command-center-alarms-materialization==1.0.0",
     "ada-command-center-alarms-persistence==1.0.0",
     "atlanticus-configuration==1.0.0",
@@ -18,6 +17,7 @@ dependencies = [
     "atlanticus-key-vault==1.0.0",
     "atlanticus-kernel==1.0.0",
     "atlanticus-state==1.0.0",
+    "ada-command-center-alarms-domain==1.0.0",
 ]
 
 [project.scripts]
@@ -31,15 +31,20 @@ system-profile = "base"
 ada-command-center-alarms-domain = { path = "../../../domain/alarms", editable = true }
 ada-command-center-alarms-materialization = { workspace = true }
 ada-command-center-alarms-persistence = { workspace = true }
+ada-command-center-alarms-runtime-process = { workspace = true }
 atlanticus-configuration = { path = "../../../../../backend/configuration", editable = true }
 atlanticus-cosmos = { path = "../../../../../connectivity/cosmos", editable = true }
 atlanticus-job-runtime = { path = "../../../../../backend/runtime", editable = true }
 atlanticus-key-vault = { path = "../../../../../connectivity/key-vault", editable = true }
 atlanticus-kernel = { path = "../../../../../backend/kernel", editable = true }
 atlanticus-state = { path = "../../../../../backend/state", editable = true }
-
 [dependency-groups]
-dev = ["pytest==9.1.1", "ruff==0.15.22"]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.15.22",
+    "pandas==3.0.3",
+    "ada-command-center-alarms-runtime-process==1.0.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

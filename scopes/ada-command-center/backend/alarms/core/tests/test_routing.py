@@ -1,5 +1,7 @@
 from datetime import timedelta
 
+from ada.contracts.alarms import AlarmKind, Criticality
+
 from ada_command_center.alarms.core import (
     AlarmStatus,
     AssignmentChangeKind,
@@ -9,10 +11,6 @@ from ada_command_center.alarms.core import (
     ToolAssignment,
     reduce_group_cycle,
     resolve_alarm_routing,
-)
-from ada_command_center.domain.alarms import (
-    AlarmKind,
-    Criticality,
 )
 
 from .support import NOW, Ids, physical, plan

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ada.web.tools.enums import ToolConfigurationKind
+from ada.contracts.tools.enums import ToolConfigurationKind
 
 
 def next_routing_tool_kind(current_kind: ToolConfigurationKind) -> ToolConfigurationKind | None:

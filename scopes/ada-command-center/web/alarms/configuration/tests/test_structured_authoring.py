@@ -1,5 +1,5 @@
-from ada.web.tools.enums import ToolConfigurationKind
-from ada_command_center.domain.tools import ToolDependencyManifest
+from ada.contracts.tools import ToolDependencyManifest
+from ada.contracts.tools.enums import ToolConfigurationKind
 from ada_command_center.web.alarms.configuration.tool_references import (
     AlarmToolComponentReference,
     AlarmToolReference,

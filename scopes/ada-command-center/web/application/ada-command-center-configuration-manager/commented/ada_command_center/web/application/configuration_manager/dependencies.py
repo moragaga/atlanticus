@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ada_command_center.domain.alarms import AlarmConfigurationSnapshot
+from ada.contracts.alarms import AlarmConfigurationSnapshot
 from ada_command_center.web.alarms.configuration.tool_references import AlarmToolReferenceReader
 from ada_command_center.web.tools.discovery_cosmos.manager import ToolCatalogManagerService
 from atlanticus.web.manager import ManagerEntry, ManagerModule, ManagerPrincipalProvider

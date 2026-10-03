@@ -1,12 +1,12 @@
 import pytest
 
-from ada.web.tools.enums import ToolConfigurationKind, ToolScope
-from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
-from ada_command_center.domain.tools import (
+from ada.contracts.tools import (
     ToolDependencyEntry,
     ToolDependencyManifest,
     ToolDependencyManifestValidationError,
 )
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
+from ada.contracts.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 
 
 def _structure(tool_key: str = 'operations') -> ToolStructure:

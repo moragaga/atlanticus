@@ -46,10 +46,7 @@ from ada_command_center.alarms.core.models import (
 )
 from ada_command_center.alarms.core.priority import resolve_group_priority
 from ada_command_center.alarms.core.routing import resolve_group_routing
-from ada_command_center.domain.alarms import (
-    AlarmIdentity,
-    AlarmKind,
-)
+from ada.contracts.alarms import AlarmIdentity, AlarmKind
 
 OccurrenceIdFactory = Callable[[AlarmIdentity, datetime], str]
 EpisodeIdFactory = Callable[[str, datetime], str]

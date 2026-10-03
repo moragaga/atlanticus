@@ -9,8 +9,8 @@ from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
-from ada.web.tools.enums import ToolConfigurationKind
-from ada.web.tools.structure import ToolStructure
+from ada.contracts.tools.enums import ToolConfigurationKind
+from ada.contracts.tools.structure import ToolStructure
 from ada_command_center.web.tools.catalog.errors import (
     ToolCatalogCodecError,
     ToolCatalogValidationError,

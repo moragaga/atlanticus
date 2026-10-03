@@ -2,7 +2,7 @@
 # El candidato se captura por serialización para evitar mutaciones posteriores.
 from __future__ import annotations
 
-from ada_command_center.domain.alarms import AlarmConfigurationSnapshot
+from ada.contracts.alarms import AlarmConfigurationSnapshot
 from ada_command_center.processes.alarms_materialization.candidate import (
     AlarmMaterializationCandidate,
 )

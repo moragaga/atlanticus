@@ -23,7 +23,7 @@ name = "ada-command-center-alarms-core"
 version = "1.0.0"
 source = { editable = "alarms/core" }
 dependencies = [
-    { name = "ada-command-center-alarms-domain" },
+    { name = "ada-contracts-alarms" },
 ]
 
 [package.dev-dependencies]
@@ -33,7 +33,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "ada-command-center-alarms-domain", editable = "../domain/alarms" }]
+requires-dist = [{ name = "ada-contracts-alarms", specifier = "==1.0.0" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -59,6 +59,8 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "ada-command-center-alarms-runtime-process" },
+    { name = "pandas" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -78,6 +80,8 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "ada-command-center-alarms-runtime-process", editable = "processes/alarms-runtime" },
+    { name = "pandas", specifier = "==3.0.3" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]
@@ -87,15 +91,11 @@ name = "ada-command-center-alarms-domain"
 version = "1.0.0"
 source = { editable = "../domain/alarms" }
 dependencies = [
-    { name = "ada-command-center-tools-domain" },
-    { name = "ada-web-tools" },
+    { name = "ada-contracts-tools" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "ada-command-center-tools-domain", editable = "../domain/tools" },
-    { name = "ada-web-tools", editable = "../../ada/web/tools/core" },
-]
+requires-dist = [{ name = "ada-contracts-tools", editable = "../../ada-contracts/tools" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -110,7 +110,8 @@ source = { editable = "alarms/materialization" }
 dependencies = [
     { name = "ada-command-center-alarms-core" },
     { name = "ada-command-center-alarms-domain" },
-    { name = "ada-web-tools" },
+    { name = "ada-contracts-alarms" },
+    { name = "ada-contracts-tools" },
 ]
 
 [package.dev-dependencies]
@@ -123,7 +124,8 @@ dev = [
 requires-dist = [
     { name = "ada-command-center-alarms-core", editable = "alarms/core" },
     { name = "ada-command-center-alarms-domain", editable = "../domain/alarms" },
-    { name = "ada-web-tools", editable = "../../ada/web/tools/core" },
+    { name = "ada-contracts-alarms", editable = "../../ada-contracts/alarms" },
+    { name = "ada-contracts-tools", editable = "../../ada-contracts/tools" },
 ]
 
 [package.metadata.requires-dev]
@@ -142,7 +144,7 @@ dependencies = [
     { name = "ada-command-center-alarms-materialization" },
     { name = "ada-command-center-web-alarm-configuration" },
     { name = "ada-command-center-web-alarm-projection-cosmos" },
-    { name = "ada-web-tools" },
+    { name = "ada-contracts-alarms" },
     { name = "atlanticus-configuration" },
     { name = "atlanticus-cosmos" },
     { name = "atlanticus-job-runtime" },
@@ -167,7 +169,7 @@ requires-dist = [
     { name = "ada-command-center-alarms-materialization", editable = "alarms/materialization" },
     { name = "ada-command-center-web-alarm-configuration", editable = "../web/alarms/configuration" },
     { name = "ada-command-center-web-alarm-projection-cosmos", editable = "../web/alarms/projection-cosmos" },
-    { name = "ada-web-tools", editable = "../../ada/web/tools/core" },
+    { name = "ada-contracts-alarms", editable = "../../ada-contracts/alarms" },
     { name = "atlanticus-configuration", editable = "../../../backend/configuration" },
     { name = "atlanticus-cosmos", editable = "../../../connectivity/cosmos" },
     { name = "atlanticus-job-runtime", editable = "../../../backend/runtime" },
@@ -221,6 +223,7 @@ dependencies = [
     { name = "ada-command-center-alarms-domain" },
     { name = "ada-command-center-alarms-materialization" },
     { name = "ada-command-center-alarms-persistence" },
+    { name = "ada-contracts-alarms" },
     { name = "atlanticus-configuration" },
     { name = "atlanticus-datasets-parquet" },
     { name = "atlanticus-datasets-runtime" },
@@ -246,6 +249,7 @@ requires-dist = [
     { name = "ada-command-center-alarms-domain", editable = "../domain/alarms" },
     { name = "ada-command-center-alarms-materialization", editable = "alarms/materialization" },
     { name = "ada-command-center-alarms-persistence", editable = "alarms/persistence" },
+    { name = "ada-contracts-alarms", editable = "../../ada-contracts/alarms" },
     { name = "atlanticus-configuration", editable = "../../../backend/configuration" },
     { name = "atlanticus-datasets-parquet", editable = "../../../backend/datasets-parquet" },
     { name = "atlanticus-datasets-runtime", editable = "../../../backend/datasets-runtime" },
@@ -272,7 +276,6 @@ source = { virtual = "." }
 dependencies = [
     { name = "ada-command-center-alarms-core" },
     { name = "ada-command-center-alarms-delivery-process" },
-    { name = "ada-command-center-alarms-domain" },
     { name = "ada-command-center-alarms-persistence" },
     { name = "ada-command-center-alarms-runtime-process" },
 ]
@@ -287,7 +290,6 @@ dev = [
 requires-dist = [
     { name = "ada-command-center-alarms-core", editable = "alarms/core" },
     { name = "ada-command-center-alarms-delivery-process", editable = "processes/alarms-delivery" },
-    { name = "ada-command-center-alarms-domain", editable = "../domain/alarms" },
     { name = "ada-command-center-alarms-persistence", editable = "alarms/persistence" },
     { name = "ada-command-center-alarms-runtime-process", editable = "processes/alarms-runtime" },
 ]
@@ -299,31 +301,14 @@ dev = [
 ]
 
 [[package]]
-name = "ada-command-center-tools-domain"
-version = "1.0.0"
-source = { editable = "../domain/tools" }
-dependencies = [
-    { name = "ada-web-tools" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "ada-web-tools", editable = "../../ada/web/tools/core" }]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
 name = "ada-command-center-web-alarm-configuration"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "../web/alarms/configuration" }
 dependencies = [
     { name = "ada-command-center-alarms-domain" },
-    { name = "ada-command-center-tools-domain" },
     { name = "ada-command-center-web-tool-catalog" },
-    { name = "ada-web-tools" },
+    { name = "ada-contracts-alarms" },
+    { name = "ada-contracts-tools" },
     { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
 ]
@@ -331,9 +316,9 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "ada-command-center-alarms-domain", editable = "../domain/alarms" },
-    { name = "ada-command-center-tools-domain", editable = "../domain/tools" },
     { name = "ada-command-center-web-tool-catalog", editable = "../web/tools/catalog" },
-    { name = "ada-web-tools", editable = "../../ada/web/tools/core" },
+    { name = "ada-contracts-alarms", editable = "../../ada-contracts/alarms" },
+    { name = "ada-contracts-tools", editable = "../../ada-contracts/tools" },
     { name = "atlanticus-web", marker = "extra == 'web'", editable = "../../../web/framework/core" },
     { name = "atlanticus-web-manager", marker = "extra == 'web'", editable = "../../../web/capabilities/manager" },
     { name = "atlanticus-web-projection", editable = "../../../web/capabilities/projection/core" },
@@ -356,8 +341,8 @@ name = "ada-command-center-web-alarm-projection-cosmos"
 version = "0.1.0"
 source = { editable = "../web/alarms/projection-cosmos" }
 dependencies = [
-    { name = "ada-command-center-alarms-domain" },
     { name = "ada-command-center-web-alarm-configuration" },
+    { name = "ada-contracts-alarms" },
     { name = "atlanticus-cosmos" },
     { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
@@ -366,8 +351,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-command-center-alarms-domain", editable = "../domain/alarms" },
     { name = "ada-command-center-web-alarm-configuration", editable = "../web/alarms/configuration" },
+    { name = "ada-contracts-alarms", editable = "../../ada-contracts/alarms" },
     { name = "atlanticus-cosmos", editable = "../../../connectivity/cosmos" },
     { name = "atlanticus-web-projection", editable = "../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../web/capabilities/source/core" },
@@ -385,16 +370,16 @@ name = "ada-command-center-web-alarm-projection-local"
 version = "0.1.0"
 source = { editable = "../web/alarms/projection-local" }
 dependencies = [
-    { name = "ada-command-center-alarms-domain" },
     { name = "ada-command-center-web-alarm-configuration" },
+    { name = "ada-contracts-alarms" },
     { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-command-center-alarms-domain", editable = "../domain/alarms" },
     { name = "ada-command-center-web-alarm-configuration", editable = "../web/alarms/configuration" },
+    { name = "ada-contracts-alarms", editable = "../../ada-contracts/alarms" },
     { name = "atlanticus-web-projection", editable = "../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../web/capabilities/source/core" },
 ]
@@ -410,7 +395,7 @@ name = "ada-command-center-web-tool-catalog"
 version = "0.1.0"
 source = { editable = "../web/tools/catalog" }
 dependencies = [
-    { name = "ada-web-tools" },
+    { name = "ada-contracts-tools" },
     { name = "ada-web-tools-configuration" },
     { name = "atlanticus-storage" },
     { name = "atlanticus-web-projection" },
@@ -419,12 +404,42 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ada-web-tools", editable = "../../ada/web/tools/core" },
+    { name = "ada-contracts-tools", editable = "../../ada-contracts/tools" },
     { name = "ada-web-tools-configuration", editable = "../../ada/web/tools/configuration" },
     { name = "atlanticus-storage", editable = "../../../connectivity/storage" },
     { name = "atlanticus-web-projection", editable = "../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../web/capabilities/source/core" },
 ]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-contracts-alarms"
+version = "1.0.0"
+source = { editable = "../../ada-contracts/alarms" }
+dependencies = [
+    { name = "ada-contracts-tools" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "ada-contracts-tools", editable = "../../ada-contracts/tools" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-contracts-tools"
+version = "1.0.0"
+source = { editable = "../../ada-contracts/tools" }
+
+[package.metadata]
 
 [package.metadata.requires-dev]
 dev = [

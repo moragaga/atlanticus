@@ -26,7 +26,7 @@ from ada_command_center.alarms.persistence import (
     GROUP_RUNTIME_SNAPSHOT_SCHEMA_VERSION,
     GroupRuntimeSnapshot,
 )
-from ada_command_center.domain.alarms import AlarmIdentity
+from ada.contracts.alarms import AlarmIdentity
 
 
 class AlarmRuntimeCompositionError(ValueError):

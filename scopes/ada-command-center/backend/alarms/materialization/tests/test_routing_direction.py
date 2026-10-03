@@ -1,15 +1,15 @@
 import pytest
 
-from ada.web.tools.enums import ToolConfigurationKind as Kind
-from ada_command_center.alarms.materialization import (
-    AlarmResolutionStatus,
-    resolve_alarm_configuration,
-)
-from ada_command_center.domain.alarms import (
+from ada.contracts.alarms import (
     AlarmConfiguration,
     AlarmEscalationDefinition,
     AlarmEscalationStepDefinition,
     Criticality,
+)
+from ada.contracts.tools.enums import ToolConfigurationKind as Kind
+from ada_command_center.alarms.materialization import (
+    AlarmResolutionStatus,
+    resolve_alarm_configuration,
 )
 
 from .test_resolver import (

@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 from dash import dcc
 
-from ada.web.tools.enums import ToolConfigurationKind
+from ada.contracts.tools.enums import ToolConfigurationKind
 from ada_command_center.web.alarms.configuration.web.authoring import (
     routing_target_suggestions,
     synchronize_visual_targets,

@@ -9,10 +9,8 @@ description = "Executable Alarm Configuration materialization process for ADA Co
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
-    "ada-command-center-alarms-domain==1.0.0",
     "ada-command-center-alarms-core==1.0.0",
     "ada-command-center-alarms-materialization==1.0.0",
-    "ada-web-tools==0.1.0",
     "ada-command-center-web-alarm-configuration==0.1.0",
     "ada-command-center-web-alarm-projection-cosmos==0.1.0",
     "atlanticus-cosmos==1.0.0",
@@ -23,6 +21,8 @@ dependencies = [
     "atlanticus-state==1.0.0",
     "atlanticus-web-projection==0.1.0",
     "atlanticus-web-source==0.1.0",
+    "ada-contracts-alarms==1.0.0",
+    "ada-command-center-alarms-domain==1.0.0",
 ]
 
 [project.scripts]
@@ -33,10 +33,10 @@ command = "ada-command-center-alarms-materialization"
 system-profile = "base"
 
 [tool.uv.sources]
+ada-contracts-alarms = { path = "../../../../ada-contracts/alarms", editable = true }
 ada-command-center-alarms-domain = { path = "../../../domain/alarms", editable = true }
 ada-command-center-alarms-core = { workspace = true }
 ada-command-center-alarms-materialization = { workspace = true }
-ada-web-tools = { path = "../../../../ada/web/tools/core", editable = true }
 ada-command-center-web-alarm-configuration = { path = "../../../web/alarms/configuration", editable = true }
 ada-command-center-web-alarm-projection-cosmos = { path = "../../../web/alarms/projection-cosmos", editable = true }
 ada-command-center-web-alarm-projection-local = { path = "../../../web/alarms/projection-local", editable = true }
@@ -48,7 +48,6 @@ atlanticus-kernel = { path = "../../../../../backend/kernel", editable = true }
 atlanticus-state = { path = "../../../../../backend/state", editable = true }
 atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
-
 [dependency-groups]
 dev = [
     "pytest==9.1.1",
@@ -74,7 +73,6 @@ pythonpath = [
     "../../../domain/alarms/src",
     "../../alarms/core/src",
     "../../alarms/materialization/src",
-    "../../../domain/tools/src",
     "../../../web/tools/catalog/src",
     "../../../web/alarms/configuration/src",
     "../../../web/alarms/projection-cosmos/src",

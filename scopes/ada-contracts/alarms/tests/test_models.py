@@ -1,6 +1,6 @@
 import pytest
 
-from ada_command_center.domain.alarms import AlarmIdentity, AlarmKind, Criticality
+from ada.contracts.alarms import AlarmIdentity, AlarmKind, Criticality
 
 
 def test_identity_is_stable_pair() -> None:

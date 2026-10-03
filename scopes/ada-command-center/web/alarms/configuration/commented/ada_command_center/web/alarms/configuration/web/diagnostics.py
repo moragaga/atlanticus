@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from ada_command_center.domain.alarms import DEACTIVATION_MAX_HOURS, END_OF_SHIFT
+from ada.contracts.alarms import DEACTIVATION_MAX_HOURS, END_OF_SHIFT
 from ada_command_center.web.alarms.configuration.web.labels import field_label
 from ada_command_center.web.alarms.configuration.web.parameters import parameter_issues
 

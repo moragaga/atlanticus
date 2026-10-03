@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 import pytest
+from ada.contracts.alarms import AlarmKind
 
 from ada_command_center.alarms.core import (
     AlarmContractError,
@@ -14,7 +15,6 @@ from ada_command_center.alarms.core import (
     reduce_group_cycle,
     reset_group_for_reconfiguration,
 )
-from ada_command_center.domain.alarms import AlarmKind
 
 from .support import (
     NOW,

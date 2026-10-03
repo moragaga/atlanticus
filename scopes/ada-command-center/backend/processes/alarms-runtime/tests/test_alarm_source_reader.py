@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 import pandas as pd
 import pytest
+from ada.contracts.alarms import AlarmIdentity
 
-from ada_command_center.domain.alarms import AlarmIdentity
 from ada_command_center.processes.alarms_runtime import (
     AlarmIterationDataError,
     build_alarm_source_adapter,

@@ -1,2 +1,0 @@
-class ToolDependencyManifestValidationError(ValueError):
-    pass

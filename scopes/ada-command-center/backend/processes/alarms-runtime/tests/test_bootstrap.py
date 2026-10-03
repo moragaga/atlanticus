@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 import ada_command_center.processes.alarms_runtime.bootstrap as bootstrap
-from ada_command_center.domain.alarms import ALARM_CONFIGURATION_SOURCE_KEY
+from ada_command_center.domain.alarms.identity import ALARM_CONFIGURATION_SOURCE_KEY
 from ada_command_center.processes.alarms_runtime.settings import AlarmRuntimeSettings
 
 

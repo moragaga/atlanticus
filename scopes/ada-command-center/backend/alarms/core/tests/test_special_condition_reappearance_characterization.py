@@ -1,5 +1,7 @@
 from datetime import timedelta
 
+from ada.contracts.alarms import AlarmKind
+
 from ada_command_center.alarms.core import (
     AlarmStatus,
     GroupLifecycleState,
@@ -8,7 +10,6 @@ from ada_command_center.alarms.core import (
     ReappearanceChange,
     reduce_group_cycle,
 )
-from ada_command_center.domain.alarms import AlarmKind
 
 from .support import (
     NOW,

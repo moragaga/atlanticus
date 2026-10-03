@@ -5,6 +5,8 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from ada.contracts.alarms import AlarmIdentity
+
 from ada_command_center.alarms.core.errors import AlarmContractError
 from ada_command_center.alarms.core.models import (
     AlarmEvaluation,
@@ -15,7 +17,6 @@ from ada_command_center.alarms.core.models import (
     RuntimeEvaluationState,
     TechnicalHoldChangeKind,
 )
-from ada_command_center.domain.alarms import AlarmIdentity
 
 DEFAULT_EVIDENCE_SAMPLING_INTERVAL_SECONDS = 300
 

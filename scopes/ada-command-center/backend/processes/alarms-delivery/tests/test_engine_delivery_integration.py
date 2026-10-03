@@ -8,6 +8,15 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pandas as pd
+from ada.contracts.alarms import (
+    AlarmColor,
+    AlarmIdentity,
+    AlarmKind,
+    BusinessCategory,
+    Criticality,
+    OperationalArea,
+    VisibilityMode,
+)
 
 from ada_command_center.alarms.core import (
     AlarmResolutionKey,
@@ -31,15 +40,6 @@ from ada_command_center.alarms.materialization.local_reader import (
     materialization_root,
 )
 from ada_command_center.alarms.materialization.runtime import RuntimeAlarmConfiguration
-from ada_command_center.domain.alarms import (
-    AlarmColor,
-    AlarmIdentity,
-    AlarmKind,
-    BusinessCategory,
-    Criticality,
-    OperationalArea,
-    VisibilityMode,
-)
 from ada_command_center.processes.alarms_delivery.job import build_delivery_input_job
 from ada_command_center.processes.alarms_runtime import (
     AlarmConfigurationAdoptionExecutor,

@@ -15,10 +15,7 @@ from ada_command_center.alarms.core.models import (
     PlannedAlarm,
     PriorityDisposition,
 )
-from ada_command_center.domain.alarms import (
-    AlarmIdentity,
-    AlarmKind,
-)
+from ada.contracts.alarms import AlarmIdentity, AlarmKind
 
 
 def resolve_group_priority(

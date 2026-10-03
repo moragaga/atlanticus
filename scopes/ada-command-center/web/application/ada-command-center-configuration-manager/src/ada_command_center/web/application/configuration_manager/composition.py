@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ada_command_center.domain.alarms import (
+from ada_command_center.domain.alarms.identity import (
     ALARM_CONFIGURATION_SOURCE_KEY as ALARM_CONFIGURATION_SOURCE_KEY_VALUE,
 )
 from ada_command_center.web.alarms.configuration.manager import (

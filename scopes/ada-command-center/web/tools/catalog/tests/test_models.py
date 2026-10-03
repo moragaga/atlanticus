@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from ada.web.tools.enums import ToolConfigurationKind
+from ada.contracts.tools.enums import ToolConfigurationKind
 from ada_command_center.web.tools.catalog import (
     ToolCatalogEntry,
     ToolCatalogValidationError,

@@ -2,7 +2,7 @@ from types import MappingProxyType
 
 import pytest
 
-from ada_command_center.domain.alarms import (
+from ada.contracts.alarms import (
     AlarmColor,
     AlarmDeactivationDefinition,
     AlarmDefinition,

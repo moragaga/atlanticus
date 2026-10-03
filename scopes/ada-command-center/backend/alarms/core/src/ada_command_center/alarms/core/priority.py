@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from ada.contracts.alarms import AlarmIdentity, AlarmKind
+
 from ada_command_center.alarms.core.errors import AlarmContractError
 from ada_command_center.alarms.core.models import (
     AlarmPriorityDecision,
@@ -10,10 +12,6 @@ from ada_command_center.alarms.core.models import (
     GroupPriorityResolution,
     PlannedAlarm,
     PriorityDisposition,
-)
-from ada_command_center.domain.alarms import (
-    AlarmIdentity,
-    AlarmKind,
 )
 
 

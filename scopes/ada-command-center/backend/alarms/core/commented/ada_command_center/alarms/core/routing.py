@@ -17,10 +17,7 @@ from ada_command_center.alarms.core.models import (
     PlannedAlarm,
     ToolAssignment,
 )
-from ada_command_center.domain.alarms import (
-    AlarmIdentity,
-    Criticality,
-)
+from ada.contracts.alarms import AlarmIdentity, Criticality
 
 
 @dataclass(frozen=True, slots=True)

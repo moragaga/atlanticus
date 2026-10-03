@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
+from ada.contracts.alarms import AlarmIdentity
+
 from ada_command_center.alarms.core.errors import AlarmContractError
 from ada_command_center.alarms.core.models import (
     AlarmPriorityDecision,
@@ -18,7 +20,6 @@ from ada_command_center.alarms.core.models import (
     PriorityDisposition,
     TechnicalHoldChangeKind,
 )
-from ada_command_center.domain.alarms import AlarmIdentity
 
 
 @dataclass(frozen=True, slots=True)

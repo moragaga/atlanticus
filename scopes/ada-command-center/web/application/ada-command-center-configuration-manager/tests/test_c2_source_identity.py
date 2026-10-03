@@ -1,4 +1,6 @@
-from ada_command_center.domain.alarms import ALARM_CONFIGURATION_SOURCE_KEY as DOMAIN_SOURCE_KEY
+from ada_command_center.domain.alarms.identity import (
+    ALARM_CONFIGURATION_SOURCE_KEY as DOMAIN_SOURCE_KEY,
+)
 from ada_command_center.web.application.configuration_manager import ALARM_CONFIGURATION_SOURCE_KEY
 
 

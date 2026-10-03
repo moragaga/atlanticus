@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 from dash import no_update
 
-from ada_command_center.domain.alarms import AlarmConfiguration
+from ada.contracts.alarms import AlarmConfiguration
 from ada_command_center.web.alarms.configuration.web import callbacks
 from ada_command_center.web.alarms.configuration.web.families import initial_navigation
 from ada_command_center.web.alarms.configuration.web.ids import (

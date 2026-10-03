@@ -5,7 +5,7 @@ from collections.abc import Mapping
 
 from dash import dcc, html
 
-from ada_command_center.domain.alarms import (
+from ada.contracts.alarms import (
     DEACTIVATION_MAX_HOURS,
     END_OF_SHIFT,
     AlarmColor,

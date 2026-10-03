@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from ada_command_center.domain.alarms import ALARM_CONFIGURATION_SOURCE_KEY
+from ada_command_center.domain.alarms.identity import ALARM_CONFIGURATION_SOURCE_KEY
 from ada_command_center.processes.alarms_runtime.settings import (
     AlarmRuntimeSettings,
     configuration_specs,

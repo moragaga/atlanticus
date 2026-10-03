@@ -18,7 +18,7 @@ from ada_command_center.alarms.core.models import (
     RuntimeEvaluationState,
     TechnicalHoldChangeKind,
 )
-from ada_command_center.domain.alarms import AlarmIdentity
+from ada.contracts.alarms import AlarmIdentity
 
 DEFAULT_EVIDENCE_SAMPLING_INTERVAL_SECONDS = 300
 

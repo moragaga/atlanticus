@@ -9,8 +9,8 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from ada.web.tools.enums import ToolConfigurationKind
-from ada.web.tools.structure import ToolStructure
+from ada.contracts.tools.enums import ToolConfigurationKind
+from ada.contracts.tools.structure import ToolStructure
 from ada_command_center.web.tools.catalog.errors import ToolCatalogValidationError
 from atlanticus.web.source.models import SourceReleaseId
 

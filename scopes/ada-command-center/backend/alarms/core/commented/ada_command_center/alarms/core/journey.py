@@ -20,7 +20,7 @@ from ada_command_center.alarms.core.models import (
     PriorityDisposition,
     TechnicalHoldChangeKind,
 )
-from ada_command_center.domain.alarms import AlarmIdentity
+from ada.contracts.alarms import AlarmIdentity
 
 
 @dataclass(frozen=True, slots=True)

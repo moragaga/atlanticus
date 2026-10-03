@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 
-from ada.web.tools.enums import ToolConfigurationKind, ToolScope
-from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
-from ada_command_center.domain.alarms import AlarmConfiguration, AlarmConfigurationSnapshot
-from ada_command_center.domain.tools import ToolDependencyEntry, ToolDependencyManifest
+from ada.contracts.alarms import AlarmConfiguration, AlarmConfigurationSnapshot
+from ada.contracts.tools import ToolDependencyEntry, ToolDependencyManifest
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
+from ada.contracts.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 from ada_command_center.processes.alarms_materialization import (
     AlarmCandidateAcquirer,
     AlarmCandidateContractError,

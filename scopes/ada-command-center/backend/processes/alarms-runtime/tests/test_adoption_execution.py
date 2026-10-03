@@ -4,6 +4,7 @@ from hashlib import sha256
 from types import SimpleNamespace
 
 import pytest
+from ada.contracts.alarms import AlarmIdentity, AlarmKind, Criticality
 
 from ada_command_center.alarms.core import (
     AlarmEvaluation,
@@ -26,7 +27,6 @@ from ada_command_center.alarms.persistence import (
     ConfigurationAdoptionRecord,
     ConfigurationAdoptionRecordV2,
 )
-from ada_command_center.domain.alarms import AlarmIdentity, AlarmKind, Criticality
 from ada_command_center.processes.alarms_runtime import (
     AlarmConfigurationAdoptionExecutor,
     AlarmConfigurationRevision,

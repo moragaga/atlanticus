@@ -2,10 +2,10 @@ from datetime import UTC, datetime
 
 import pytest
 
-from ada.web.tools.enums import ToolConfigurationKind, ToolScope
-from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
-from ada_command_center.domain.alarms import AlarmConfigurationSnapshot
-from ada_command_center.domain.tools import ToolDependencyEntry, ToolDependencyManifest
+from ada.contracts.alarms import AlarmConfigurationSnapshot
+from ada.contracts.tools import ToolDependencyEntry, ToolDependencyManifest
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
+from ada.contracts.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 from ada_command_center.web.alarms.configuration.errors import AlarmConfigurationSourceError
 from ada_command_center.web.alarms.configuration.tool_dependencies import (
     WORKSPACE_TOOL_CATALOG_REVISION_KEY,

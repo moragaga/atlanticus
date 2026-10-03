@@ -1,4 +1,5 @@
 import pytest
+from ada.contracts.alarms import AlarmKind
 
 from ada_command_center.alarms.core import (
     AlarmContractError,
@@ -9,7 +10,6 @@ from ada_command_center.alarms.core import (
     reduce_group_cycle,
     resolve_group_priority,
 )
-from ada_command_center.domain.alarms import AlarmKind
 
 from .support import NOW, Ids, identity, physical, plan
 

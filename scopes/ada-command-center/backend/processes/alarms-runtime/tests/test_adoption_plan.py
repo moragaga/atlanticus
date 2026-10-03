@@ -1,4 +1,5 @@
 import pytest
+from ada.contracts.alarms import AlarmIdentity, AlarmKind, Criticality
 
 from ada_command_center.alarms.core import AlarmResolutionKey, AlarmRouting, PlannedAlarm
 from ada_command_center.alarms.materialization import (
@@ -7,7 +8,6 @@ from ada_command_center.alarms.materialization import (
     ReadyAlarmMaterialization,
     RuntimeAlarmConfiguration,
 )
-from ada_command_center.domain.alarms import AlarmIdentity, AlarmKind, Criticality
 from ada_command_center.processes.alarms_runtime import (
     AlarmConfigurationRevision,
     AlarmConfigurationRevisionError,

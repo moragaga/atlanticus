@@ -110,10 +110,9 @@ def test_authority_failure_prevents_dispatch():
         connections={'cosmos-0': object()},
         max_workers=2,
         client_factory=lambda settings: _Writer(settings, counters, lock),
-    ) as publisher:
-        with pytest.raises(RuntimeError, match='expired'):
-            publisher.publish(
-                tasks,
-                assert_authority=lambda: (_ for _ in ()).throw(RuntimeError('expired')),
-            )
+    ) as publisher, pytest.raises(RuntimeError, match='expired'):
+        publisher.publish(
+            tasks,
+            assert_authority=lambda: (_ for _ in ()).throw(RuntimeError('expired')),
+        )
     assert counters['opened'] == 0

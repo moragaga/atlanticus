@@ -1,4 +1,4 @@
-from ada_command_center.domain.alarms import (
+from ada.contracts.alarms import (
     AlarmColor,
     AlarmConfiguration,
     AlarmDeactivationDefinition,

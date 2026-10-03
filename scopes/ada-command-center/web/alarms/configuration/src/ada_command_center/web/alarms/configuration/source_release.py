@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from io import BytesIO
 from typing import Any
 
-from ada_command_center.domain.alarms import AlarmConfigurationSnapshot
+from ada.contracts.alarms import AlarmConfigurationSnapshot
 from ada_command_center.web.alarms.configuration.errors import AlarmConfigurationSourceError
 from atlanticus.web.source.models import (
     ConcurrencyToken,

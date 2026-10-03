@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from ada_command_center.domain.alarms import (
+from ada.contracts.alarms import (
     AlarmConfiguration,
     AlarmConfigurationSnapshot,
     AlarmConfigurationValidationError,

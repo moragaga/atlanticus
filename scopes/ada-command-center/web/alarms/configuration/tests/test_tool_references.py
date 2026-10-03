@@ -1,8 +1,8 @@
 from datetime import UTC, datetime
 
-from ada.web.tools.enums import ToolConfigurationKind, ToolScope
-from ada.web.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
-from ada_command_center.domain.alarms import AlarmConfiguration
+from ada.contracts.alarms import AlarmConfiguration
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
+from ada.contracts.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 from ada_command_center.web.alarms.configuration import AlarmToolReferenceReader
 from ada_command_center.web.tools.catalog import (
     ToolCatalogEntry,
