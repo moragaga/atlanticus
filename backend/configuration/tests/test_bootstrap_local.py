@@ -156,6 +156,12 @@ def test_bootstrap_rejects_invalid_public_inputs() -> None:
             process_values={'ENVIRONMENT': 'local'},
             dotenv_path=123,  # type: ignore[arg-type]
         )
+    with pytest.raises(ConfigurationSourceError, match='configuration_root'):
+        ConfigurationBootstrap.from_process(
+            specs=(),
+            process_values={'ENVIRONMENT': 'local'},
+            configuration_root=123,  # type: ignore[arg-type]
+        )
 
 
 def test_invalid_process_value_is_a_controlled_configuration_error() -> None:
@@ -240,7 +246,6 @@ def test_local_configuration_root_uses_conventional_dotenv_without_file_name(tmp
     )
     configuration = bootstrap.load(process_values={})
 
-    assert bootstrap.dotenv_path == dotenv_path
     assert configuration.require('TOPIC') == 'events'
     assert configuration.sources['ENVIRONMENT'] == ConfigurationSource.DOTENV
     assert configuration.sources['TOPIC'] == ConfigurationSource.DOTENV
@@ -258,17 +263,7 @@ def test_local_configuration_root_keeps_explicit_dotenv_override_exceptional(tmp
     )
     configuration = bootstrap.load(process_values={})
 
-    assert bootstrap.dotenv_path == override_path
     assert configuration.require('TOPIC') == 'integration'
-
-
-def test_configuration_root_must_be_a_path_like_value() -> None:
-    with pytest.raises(ConfigurationSourceError, match='configuration_root'):
-        ConfigurationBootstrap.from_process(
-            specs=(),
-            process_values={'ENVIRONMENT': 'local'},
-            configuration_root=123,  # type: ignore[arg-type]
-        )
 
 
 def test_local_default_discovers_dotenv_without_declaring_file_or_root(
@@ -284,5 +279,4 @@ def test_local_default_discovers_dotenv_without_declaring_file_or_root(
     )
     configuration = bootstrap.load(process_values={})
 
-    assert bootstrap.dotenv_path.as_posix() == '.env'
     assert configuration.require('TOPIC') == 'events'

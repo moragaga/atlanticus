@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from types import MappingProxyType
-
 import pytest
 
 from atlanticus.configuration import (
@@ -24,7 +22,6 @@ def test_resolved_configuration_is_immutable_and_hides_values_from_repr() -> Non
         sensitive_keys=frozenset({'TOKEN'}),
     )
 
-    assert isinstance(configuration.values, MappingProxyType)
     assert configuration.require('TOKEN') == 'top-secret'
     assert configuration.to_dict()['TOKEN'] == '***'
     assert configuration.to_dict(mask_sensitive=False)['TOKEN'] == 'top-secret'

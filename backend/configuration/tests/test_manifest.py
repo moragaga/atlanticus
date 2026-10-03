@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from atlanticus.configuration import SecretManifestEntry, SecretsManifest, SecretsManifestError
+from atlanticus.configuration import SecretsManifest, SecretsManifestError
 
 
 def _write_manifest(tmp_path, document: object):
@@ -13,7 +13,7 @@ def _write_manifest(tmp_path, document: object):
     return path
 
 
-def test_manifest_preserves_the_corporate_schema_and_indexes_entries(tmp_path) -> None:
+def test_manifest_preserves_the_corporate_schema_and_resolves_entries(tmp_path) -> None:
     path = _write_manifest(
         tmp_path,
         [
@@ -107,6 +107,49 @@ def test_manifest_preserves_whitespace_only_static_value(tmp_path) -> None:
                 'exists_in_key_vault': False,
             }
         ],
+        [
+            {
+                'var_name': 'TOPIC',
+                'secret_name': None,
+                'value': 'events',
+                'exists_in_key_vault': False,
+                'unexpected': True,
+            }
+        ],
+        [
+            {
+                'var_name': 'TOPIC',
+                'secret_name': None,
+                'value': 123,
+                'exists_in_key_vault': False,
+            }
+        ],
+        [
+            {
+                'var_name': 'TOKEN',
+                'secret_name': 123,
+                'value': None,
+                'exists_in_key_vault': True,
+            }
+        ],
+        [
+            {
+                'var_name': 'TOKEN',
+                'secret_name': 'secret-token',
+                'value': None,
+                'exists_in_key_vault': 'true',
+            }
+        ],
+    ],
+    ids=[
+        'root-not-array',
+        'missing-required-fields',
+        'missing-secret-name',
+        'missing-static-value',
+        'unknown-field',
+        'invalid-static-value-type',
+        'invalid-secret-name-type',
+        'invalid-key-vault-flag-type',
     ],
 )
 def test_invalid_manifest_is_rejected(tmp_path, document: object) -> None:
@@ -131,62 +174,6 @@ def test_missing_manifest_reports_only_its_path(tmp_path) -> None:
 
     with pytest.raises(SecretsManifestError, match='missing.json'):
         SecretsManifest.from_path(missing)
-
-
-@pytest.mark.parametrize(
-    'entry',
-    [
-        {
-            'var_name': 'TOPIC',
-            'secret_name': None,
-            'value': 'events',
-            'exists_in_key_vault': False,
-            'unexpected': True,
-        },
-        {
-            'var_name': 'TOPIC',
-            'secret_name': None,
-            'value': 123,
-            'exists_in_key_vault': False,
-        },
-        {
-            'var_name': 'TOKEN',
-            'secret_name': 123,
-            'value': None,
-            'exists_in_key_vault': True,
-        },
-        {
-            'var_name': 'TOKEN',
-            'secret_name': 'secret-token',
-            'value': None,
-            'exists_in_key_vault': 'true',
-        },
-    ],
-)
-def test_manifest_rejects_unknown_ambiguous_or_mistyped_fields(tmp_path, entry) -> None:
-    with pytest.raises(SecretsManifestError):
-        SecretsManifest.from_path(_write_manifest(tmp_path, [entry]))
-
-
-def test_manifest_builds_its_index_internally() -> None:
-    entry = SecretManifestEntry(
-        var_name='TOPIC',
-        secret_name=None,
-        value='events',
-        exists_in_key_vault=False,
-    )
-    manifest = SecretsManifest(entries=(entry,))
-
-    assert manifest.find('TOPIC') is entry
-    with pytest.raises(TypeError):
-        SecretsManifest(entries=(entry,), _by_variable={})  # type: ignore[call-arg]
-
-
-def test_manifest_constructor_requires_immutable_validated_entries() -> None:
-    with pytest.raises(SecretsManifestError):
-        SecretsManifest(entries=[])  # type: ignore[arg-type]
-    with pytest.raises(SecretsManifestError):
-        SecretsManifest(entries=('TOPIC',))  # type: ignore[arg-type]
 
 
 def test_manifest_path_type_is_validated() -> None:

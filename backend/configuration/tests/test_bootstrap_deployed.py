@@ -151,8 +151,18 @@ def test_secret_resolver_must_return_a_non_empty_string(tmp_path) -> None:
         bootstrap.load(process_values={'ENVIRONMENT': 'uat'})
 
 
-def test_deployed_source_discriminator_ignores_the_inactive_field_and_preserves_values(
+@pytest.mark.parametrize(
+    ('static_value', 'secret_value'),
+    [
+        ('  static value  ', '  resolved secret  '),
+        (' ', ' '),
+    ],
+    ids=['surrounding-whitespace', 'whitespace-only'],
+)
+def test_deployed_source_discriminator_ignores_inactive_field_and_preserves_values(
     tmp_path,
+    static_value: str,
+    secret_value: str,
 ) -> None:
     path = tmp_path / 'secrets.json'
     path.write_text(
@@ -161,7 +171,7 @@ def test_deployed_source_discriminator_ignores_the_inactive_field_and_preserves_
                 {
                     'var_name': 'STATIC_VALUE',
                     'secret_name': 'ignored-static-secret',
-                    'value': '  static value  ',
+                    'value': static_value,
                     'exists_in_key_vault': False,
                 },
                 {
@@ -174,7 +184,7 @@ def test_deployed_source_discriminator_ignores_the_inactive_field_and_preserves_
         ),
         encoding='utf-8',
     )
-    resolver = FakeResolver({'secret-value': '  resolved secret  '})
+    resolver = FakeResolver({'secret-value': secret_value})
     bootstrap = ConfigurationBootstrap(
         environment=Environment.from_value('dev'),
         specs=(
@@ -187,49 +197,11 @@ def test_deployed_source_discriminator_ignores_the_inactive_field_and_preserves_
 
     configuration = bootstrap.load(process_values={'ENVIRONMENT': 'dev'})
 
-    assert configuration.require('STATIC_VALUE') == '  static value  '
-    assert configuration.require('SECRET_VALUE') == '  resolved secret  '
+    assert configuration.require('STATIC_VALUE') == static_value
+    assert configuration.require('SECRET_VALUE') == secret_value
     assert configuration.sources['STATIC_VALUE'] == ConfigurationSource.MANIFEST
     assert configuration.sources['SECRET_VALUE'] == ConfigurationSource.KEY_VAULT
     assert resolver.requests == ['secret-value']
-
-
-def test_deployed_preserves_whitespace_only_values(tmp_path) -> None:
-    path = tmp_path / 'secrets.json'
-    path.write_text(
-        json.dumps(
-            [
-                {
-                    'var_name': 'STATIC_SPACE',
-                    'secret_name': None,
-                    'value': ' ',
-                    'exists_in_key_vault': False,
-                },
-                {
-                    'var_name': 'SECRET_SPACE',
-                    'secret_name': 'secret-space',
-                    'value': None,
-                    'exists_in_key_vault': True,
-                },
-            ]
-        ),
-        encoding='utf-8',
-    )
-    resolver = FakeResolver({'secret-space': ' '})
-    bootstrap = ConfigurationBootstrap(
-        environment=Environment.from_value('uat'),
-        specs=(
-            ConfigurationVariableSpec(key='STATIC_SPACE'),
-            ConfigurationVariableSpec(key='SECRET_SPACE', sensitive=True),
-        ),
-        secrets_manifest=SecretsManifest.from_path(path),
-        secret_resolver=resolver,
-    )
-
-    configuration = bootstrap.load(process_values={'ENVIRONMENT': 'uat'})
-
-    assert configuration.require('STATIC_SPACE') == ' '
-    assert configuration.require('SECRET_SPACE') == ' '
 
 
 def test_key_vault_source_is_automatically_sensitive(tmp_path) -> None:
