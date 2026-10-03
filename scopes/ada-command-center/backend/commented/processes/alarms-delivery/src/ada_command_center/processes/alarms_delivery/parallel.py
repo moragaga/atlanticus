@@ -1,3 +1,7 @@
+# Espejo pedagógico en español del archivo productivo equivalente.
+# Delivery usa tool_key como identidad de conexión y un contenedor Cosmos fijo.
+# No existe una segunda configuración de targets porque no agrega variación real.
+
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping

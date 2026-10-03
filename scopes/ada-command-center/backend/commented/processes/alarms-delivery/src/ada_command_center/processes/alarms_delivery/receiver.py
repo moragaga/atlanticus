@@ -1,3 +1,7 @@
+# Espejo pedagógico en español del archivo productivo equivalente.
+# Mantiene exactamente el mismo comportamiento; los comentarios explican la intención.
+# Este incremento prioriza el flujo vertical Runtime -> Modeler -> Delivery -> Cosmos.
+
 from __future__ import annotations
 
 import hashlib

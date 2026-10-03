@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "connections": {
-    "cosmos-tool-example": {
+    "tool-example": {
       "endpoint_var": "ALARM_TOOL_EXAMPLE_COSMOS_ENDPOINT",
       "database_var": "ALARM_TOOL_EXAMPLE_COSMOS_DATABASE_NAME",
       "credential_var": "ALARM_TOOL_EXAMPLE_COSMOS_KEY"

@@ -1,3 +1,7 @@
+# Espejo pedagógico del job productivo.
+# Una iteración sólo se marca como trabajo cuando Delivery publicó al menos un documento.
+# Esto hace que las métricas work/empty del runtime representen correctamente la publicación.
+
 from __future__ import annotations
 
 import math

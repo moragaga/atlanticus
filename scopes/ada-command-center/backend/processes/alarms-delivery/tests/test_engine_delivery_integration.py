@@ -17,6 +17,7 @@ from ada.contracts.alarms import (
     OperationalArea,
     VisibilityMode,
 )
+from ada.contracts.tools.enums import ToolConfigurationKind
 
 from ada_command_center.alarms.core import (
     AlarmResolutionKey,
@@ -33,6 +34,7 @@ from ada_command_center.alarms.materialization.delivery import (
     DeliveryAlarmConfiguration,
     ResolvedDeactivationPolicy,
     ResolvedDeliveryAlarm,
+    ResolvedVisualTarget,
 )
 from ada_command_center.alarms.materialization.local_reader import (
     LocalAlarmMaterializationReader,
@@ -40,7 +42,9 @@ from ada_command_center.alarms.materialization.local_reader import (
     materialization_root,
 )
 from ada_command_center.alarms.materialization.runtime import RuntimeAlarmConfiguration
-from ada_command_center.processes.alarms_delivery.job import build_delivery_input_job
+from ada_command_center.processes.alarms_delivery.job import build_delivery_job
+from ada_command_center.processes.alarms_delivery.parallel import ParallelCosmosPublisher
+from ada_command_center.processes.alarms_modeler.job import build_alarm_modeler_job
 from ada_command_center.processes.alarms_runtime import (
     AlarmConfigurationAdoptionExecutor,
     AlarmEvaluatorRegistry,
@@ -61,10 +65,10 @@ from ada_command_center.processes.alarms_runtime.publication import (
 from atlanticus.kernel import Environment
 from atlanticus.operational_data.sources import DataSourceApplications, PiSourceProvider
 from atlanticus.runtime import JobDefinition, JobRuntimeContext, RuntimeConfiguration
-from atlanticus.state import AtomicJsonStore
 
 _AT = datetime(2026, 9, 28, 14, 0, tzinfo=UTC)
 _SOURCE = 'alarm-configuration'
+_TOOL = 'mine'
 
 
 class _DatasetRuntime:
@@ -88,6 +92,21 @@ class _DatasetRuntime:
 class _CommitTime:
     def committed_at(self, *, cycle_at):
         return cycle_at
+
+
+class _Writer:
+    def __init__(self, writes):
+        self._writes = writes
+
+    def __enter__(self):
+        return self
+
+    def upsert_item(self, *, container_name, item):
+        self._writes.append((container_name, dict(item)))
+        return item
+
+    def __exit__(self, *_):
+        return None
 
 
 def _config(volume: Path) -> RuntimeConfiguration:
@@ -149,14 +168,24 @@ def _ready(volume: Path, plan: PlannedAlarm):
                 operational_areas=(OperationalArea.MINE,),
                 color=AlarmColor.RED,
                 default_deactivation_policy=ResolvedDeactivationPolicy(
-                    enabled=False, max_duration_hours=None, approval_required=False
+                    enabled=False,
+                    max_duration_hours=None,
+                    approval_required=False,
+                ),
+                visual_targets=(
+                    ResolvedVisualTarget(
+                        tool_key=_TOOL,
+                        tool_kind=ToolConfigurationKind.INTEGRATED_OPERATIONS,
+                    ),
                 ),
             ),
         ),
     )
     root = materialization_root(volume)
     result_id = materialization_result_id(
-        source_key=_SOURCE, projection_digest='a' * 64, qualification_digest='b' * 64
+        source_key=_SOURCE,
+        projection_digest='a' * 64,
+        qualification_digest='b' * 64,
     )
     version = root / 'versions' / result_id
     inventory = {}
@@ -206,7 +235,9 @@ def _ready(volume: Path, plan: PlannedAlarm):
         },
     )
     return LocalAlarmMaterializationReader(root=root).read_exact_ready(
-        source_key=_SOURCE, result_id=result_id, manifest_sha256=manifest_sha256
+        source_key=_SOURCE,
+        result_id=result_id,
+        manifest_sha256=manifest_sha256,
     )
 
 
@@ -219,7 +250,8 @@ def _engine_cycle(session, composition):
         commit_time_provider=_CommitTime(),
         runtime_artifact_version='1.0.0',
         technical_evidence_contract=EvidenceContractRef(
-            contract_key='integration.technical', contract_version='v1'
+            contract_key='integration.technical',
+            contract_version='v1',
         ),
     )
 
@@ -228,22 +260,37 @@ def _engine_output_root(volume: Path) -> Path:
     return volume / 'ada-command-center' / 'alarms' / 'runtime' / 'output'
 
 
-def _inbox(volume: Path) -> AtomicJsonStore:
-    return AtomicJsonStore(
-        root_path=volume / 'ada-command-center' / 'alarms' / 'delivery' / 'input',
-        max_document_bytes=None,
+def _modeler(configuration: RuntimeConfiguration, *, run_id: str):
+    job = build_alarm_modeler_job(
+        runtime_configuration=configuration,
+        source_key=_SOURCE,
     )
-
-
-def _delivery(configuration: RuntimeConfiguration, *, run_id: str):
-    job = build_delivery_input_job(runtime_configuration=configuration, source_key=_SOURCE)
-    context = _context(configuration, service='delivery', run_id=run_id)
+    context = _context(configuration, service='modeler', run_id=run_id)
     job.recover(context)
     context._begin_iteration(1)
     return job, context
 
 
-def test_real_engine_current_only_delivery_survives_restart_and_facts_remain_available(tmp_path):
+def _delivery(configuration: RuntimeConfiguration, *, run_id: str, writes: list):
+    publisher = ParallelCosmosPublisher(
+        connections={_TOOL: object()},
+        max_workers=1,
+        client_factory=lambda _: _Writer(writes),
+    )
+    job = build_delivery_job(
+        runtime_configuration=configuration,
+        source_key=_SOURCE,
+        publisher=publisher,
+    )
+    context = _context(configuration, service='delivery', run_id=run_id)
+    job.recover(context)
+    context._begin_iteration(1)
+    return job, context, publisher
+
+
+def test_real_runtime_modeler_delivery_flow_survives_restart_and_facts_remain_available(
+    tmp_path,
+):
     plan = PlannedAlarm(
         identity=AlarmIdentity('mina', 'temperature'),
         kind=AlarmKind.RISK,
@@ -253,11 +300,14 @@ def test_real_engine_current_only_delivery_survives_restart_and_facts_remain_ava
         evaluator_key='threshold',
         alarm_configuration_revision='R10',
         tool_registry_revision='C5',
-        routing=AlarmRouting(origin_tool_key='mine'),
+        routing=AlarmRouting(origin_tool_key=_TOOL),
     )
     ready = _ready(tmp_path, plan)
     registry = AlarmEvaluatorRegistry(contracts=(build_threshold_contract(),))
-    revision = build_alarm_configuration_revision(candidate=ready, evaluator_registry=registry)
+    revision = build_alarm_configuration_revision(
+        candidate=ready,
+        evaluator_registry=registry,
+    )
     session = revision.session
     configuration = _config(tmp_path)
     composition = build_alarm_runtime_composition(runtime_configuration=configuration)
@@ -276,9 +326,19 @@ def test_real_engine_current_only_delivery_survives_restart_and_facts_remain_ava
     )
     persistence = composition.durability.persistence
     pin = persistence.read_effective_head().target_artifact_ref
-    exporter = AlarmCommittedFactsExporter(root=_engine_output_root(tmp_path), source_key=_SOURCE)
-    current = AlarmCurrentStatePublisher(root=_engine_output_root(tmp_path), source_key=_SOURCE)
-    assert exporter.initialize_if_needed(context=engine_context, persistence=persistence, pin=pin)
+    exporter = AlarmCommittedFactsExporter(
+        root=_engine_output_root(tmp_path),
+        source_key=_SOURCE,
+    )
+    current = AlarmCurrentStatePublisher(
+        root=_engine_output_root(tmp_path),
+        source_key=_SOURCE,
+    )
+    assert exporter.initialize_if_needed(
+        context=engine_context,
+        persistence=persistence,
+        pin=pin,
+    )
 
     dataset = _DatasetRuntime()
     adapter = build_alarm_source_adapter(
@@ -288,35 +348,65 @@ def test_real_engine_current_only_delivery_survives_restart_and_facts_remain_ava
         runtime_factory=lambda path: dataset,
     )
     engine_context._begin_iteration(1)
-    iteration = AlarmIterationLoader(session=session, source_loader=adapter).load(as_of=_AT)
+    iteration = AlarmIterationLoader(
+        session=session,
+        source_loader=adapter,
+    ).load(as_of=_AT)
     started = _engine_cycle(session, composition).execute(
-        engine_context, iteration, operational_inputs=AlarmOperationalInputs()
+        engine_context,
+        iteration,
+        operational_inputs=AlarmOperationalInputs(),
     )
     assert started.evaluation_for(plan.identity).status is AlarmStatus.ACTIVE
     assert current.publish(
-        context=engine_context, result=started, pin=pin, inputs=AlarmOperationalInputs()
+        context=engine_context,
+        result=started,
+        pin=pin,
+        inputs=AlarmOperationalInputs(),
     )
     assert exporter.publish_unexported(
-        context=engine_context, persistence=persistence, pin=pin
+        context=engine_context,
+        persistence=persistence,
+        pin=pin,
     ) == 1
 
-    delivery, delivery_context = _delivery(configuration, run_id='delivery-1')
-    received = delivery.iteration(delivery_context)
-    assert received.current_status == 'CURRENT_STAGED'
-    inbox = _inbox(tmp_path)
-    first = inbox.read('current/latest.json')
-    assert len(first['state']['alarms']) == 1
-    evidence = first['state']['alarms'][0]['evaluation']['evidence']['payload']
-    assert evidence['observed_value'] == 82.0
-    assert not (delivery.receiver.inbox_root / 'facts').exists()
-    assert inbox.read('state/facts-consumption-cursor.json') is None
+    modeler, modeler_context = _modeler(configuration, run_id='modeler-1')
+    modeled = modeler.iteration(modeler_context)
+    assert modeled.status == 'CURRENT_MODELED'
+    assert modeled.projected_tools == 1
+
+    writes = []
+    delivery, delivery_context, publisher = _delivery(
+        configuration,
+        run_id='delivery-1',
+        writes=writes,
+    )
+    try:
+        delivered = delivery.iteration(delivery_context)
+    finally:
+        publisher.close()
+    assert delivered.current_status == 'CURRENT_AVAILABLE'
+    assert len(writes) == 1
+    container_name, first_projection = writes[0]
+    assert container_name == 'alarm-live-projection'
+    assert first_projection['tool_key'] == _TOOL
+    assert first_projection['operator_pool'] == ['occ-temperature']
+    assert first_projection['operator_view'] == [
+        {'slot': 1, 'occurrence_id': 'occ-temperature'}
+    ]
+    projected = first_projection['alarms']['occ-temperature']
+    assert projected['priority_order'] == 1
+    assert projected['evidence']['payload']['observed_value'] == 82.0
 
     dataset.temperature = 70.0
-    restarted_composition = build_alarm_runtime_composition(runtime_configuration=configuration)
+    restarted_composition = build_alarm_runtime_composition(
+        runtime_configuration=configuration
+    )
     restarted_engine = _context(configuration, service='runtime', run_id='engine-2')
     restarted_composition.recover(restarted_engine)
     restarted_exporter = AlarmCommittedFactsExporter(
-        root=_engine_output_root(tmp_path), source_key=_SOURCE
+        root=_engine_output_root(tmp_path),
+        source_key=_SOURCE,
     )
     assert not restarted_exporter.initialize_if_needed(
         context=restarted_engine,
@@ -327,12 +417,18 @@ def test_real_engine_current_only_delivery_survives_restart_and_facts_remain_ava
     next_at = _AT + timedelta(minutes=1)
     closed = _engine_cycle(session, restarted_composition).execute(
         restarted_engine,
-        AlarmIterationLoader(session=session, source_loader=adapter).load(as_of=next_at),
+        AlarmIterationLoader(
+            session=session,
+            source_loader=adapter,
+        ).load(as_of=next_at),
         operational_inputs=AlarmOperationalInputs(),
     )
     assert closed.evaluation_for(plan.identity).status is AlarmStatus.INACTIVE
     assert current.publish(
-        context=restarted_engine, result=closed, pin=pin, inputs=AlarmOperationalInputs()
+        context=restarted_engine,
+        result=closed,
+        pin=pin,
+        inputs=AlarmOperationalInputs(),
     )
     assert restarted_exporter.publish_unexported(
         context=restarted_engine,
@@ -340,14 +436,33 @@ def test_real_engine_current_only_delivery_survives_restart_and_facts_remain_ava
         pin=pin,
     ) == 1
 
-    delivery_after_restart, context_after_restart = _delivery(configuration, run_id='delivery-2')
-    second = delivery_after_restart.iteration(context_after_restart)
-    assert second.current_status == 'CURRENT_STAGED'
-    assert inbox.read('current/latest.json')['state']['alarms'] == []
-    assert not (delivery_after_restart.receiver.inbox_root / 'facts').exists()
-    assert inbox.read('state/facts-consumption-cursor.json') is None
+    restarted_modeler, restarted_modeler_context = _modeler(
+        configuration,
+        run_id='modeler-2',
+    )
+    modeled_after_restart = restarted_modeler.iteration(restarted_modeler_context)
+    assert modeled_after_restart.status == 'CURRENT_MODELED'
 
-    producer_facts = sorted((_engine_output_root(tmp_path) / 'facts').glob('facts-*.json'))
+    restarted_writes = []
+    restarted_delivery, restarted_delivery_context, restarted_publisher = _delivery(
+        configuration,
+        run_id='delivery-2',
+        writes=restarted_writes,
+    )
+    try:
+        second = restarted_delivery.iteration(restarted_delivery_context)
+    finally:
+        restarted_publisher.close()
+    assert second.current_status == 'CURRENT_AVAILABLE'
+    assert len(restarted_writes) == 1
+    second_projection = restarted_writes[0][1]
+    assert second_projection['operator_pool'] == []
+    assert second_projection['operator_view'] == []
+    assert second_projection['alarms'] == {}
+
+    producer_facts = sorted(
+        (_engine_output_root(tmp_path) / 'facts').glob('facts-*.json')
+    )
     assert len(producer_facts) == 2
     batches = sorted(
         [json.loads(path.read_text(encoding='utf-8')) for path in producer_facts],
@@ -370,9 +485,3 @@ def test_real_engine_current_only_delivery_survives_restart_and_facts_remain_ava
     ]
     assert 'occurrence_started' in events
     assert 'occurrence_closed' in events
-
-    context_after_restart._begin_iteration(2)
-    assert delivery_after_restart.iteration(context_after_restart).current_status == (
-        'CURRENT_UNCHANGED'
-    )
-    assert not (delivery_after_restart.receiver.inbox_root / 'facts').exists()

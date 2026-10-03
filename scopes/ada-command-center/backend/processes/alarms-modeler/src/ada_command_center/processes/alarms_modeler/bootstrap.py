@@ -4,14 +4,9 @@ import os
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from ada_command_center.processes.alarms_delivery.connections import (
-    AlarmDeliveryConnectionRegistry,
-    read_connection_registry,
-)
-from ada_command_center.processes.alarms_delivery.job import build_delivery_job
-from ada_command_center.processes.alarms_delivery.parallel import ParallelCosmosPublisher
-from ada_command_center.processes.alarms_delivery.settings import (
-    AlarmDeliverySettings,
+from ada_command_center.processes.alarms_modeler.job import build_alarm_modeler_job
+from ada_command_center.processes.alarms_modeler.settings import (
+    AlarmModelerSettings,
     configuration_specs,
 )
 from atlanticus.configuration import (
@@ -26,16 +21,11 @@ from atlanticus.runtime import RuntimeConfiguration, RuntimeExecutionResult
 def load_configuration(
     *,
     process_root: str | Path,
-    registry: AlarmDeliveryConnectionRegistry | None = None,
     environ: Mapping[str, str] | None = None,
 ) -> ResolvedConfiguration:
     values = os.environ if environ is None else environ
     root = Path(process_root)
-    active_registry = registry if registry is not None else read_connection_registry(root)
-    specs = (
-        *configuration_specs(),
-        *(active_registry.configuration_specs() if active_registry else ()),
-    )
+    specs = configuration_specs()
     bootstrap = ConfigurationBootstrap.from_process(
         specs=specs,
         process_values=values,
@@ -59,12 +49,10 @@ def load_configuration(
             ).load(process_values=values)
         else:
             bootstrap_values = {**manifest.static_values(), **values}
-            company = _required_bootstrap_value(bootstrap_values, 'COMPANY_ABREV')
-            product = _required_bootstrap_value(bootstrap_values, 'PRODUCT_ABREV')
             with KeyVaultClient(
                 settings=KeyVaultSettings(
-                    company_abrev=company,
-                    product_abrev=product,
+                    company_abrev=_required(bootstrap_values, 'COMPANY_ABREV'),
+                    product_abrev=_required(bootstrap_values, 'PRODUCT_ABREV'),
                     environment=bootstrap.environment,
                 )
             ) as resolver:
@@ -79,7 +67,7 @@ def load_configuration(
     return resolved
 
 
-def _required_bootstrap_value(values: Mapping[str, str], name: str) -> str:
+def _required(values: Mapping[str, str], name: str) -> str:
     value = values.get(name)
     if not isinstance(value, str) or not value or value != value.strip():
         raise ValueError(f'{name} is required to resolve Key Vault')
@@ -91,38 +79,17 @@ def run(
     argv: Sequence[str] | None = None,
     environ: Mapping[str, str] | None = None,
     process_root: str | Path | None = None,
-) -> RuntimeExecutionResult | None:
+) -> RuntimeExecutionResult:
     values = os.environ if environ is None else environ
     root = Path.cwd() if process_root is None else Path(process_root)
-    registry = read_connection_registry(root)
-    if registry is None:
-        return None
-    configuration = load_configuration(
-        process_root=root,
-        registry=registry,
-        environ=values,
-    )
-    settings = AlarmDeliverySettings.from_configuration(configuration)
-    connections = registry.resolve(
-        values=configuration.values,
-        environment=configuration.environment,
-    )
-    runtime_configuration = RuntimeConfiguration.from_sources(
-        environ=configuration.values
-    )
-    with ParallelCosmosPublisher(
-        connections=connections,
-        max_workers=settings.max_workers,
-    ) as publisher:
-        return build_delivery_job(
-            runtime_configuration=runtime_configuration,
-            source_key=settings.source_key,
-            publisher=publisher,
-            poll_seconds=settings.poll_seconds,
-        ).execute(
-            argv=argv,
-            environ=configuration.values,
-        )
+    configuration = load_configuration(process_root=root, environ=values)
+    settings = AlarmModelerSettings.from_configuration(configuration)
+    runtime_configuration = RuntimeConfiguration.from_sources(environ=configuration.values)
+    return build_alarm_modeler_job(
+        runtime_configuration=runtime_configuration,
+        source_key=settings.source_key,
+        poll_seconds=settings.poll_seconds,
+    ).execute(argv=argv, environ=configuration.values)
 
 
 def main() -> None:
