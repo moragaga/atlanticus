@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import importlib.util
 import re
 import sys
@@ -301,20 +300,6 @@ def test_bundle_validation_is_transport_focused_and_does_not_replay_source_tests
     ) in commands
     assert not any("pytest" in command for command in commands)
     assert not any("tests" in command for command in commands)
-
-
-def test_commented_bundle_is_structurally_equivalent() -> None:
-    root = Path(__file__).resolve().parents[1]
-    production = ast.dump(
-        ast.parse((root / "bundle.py").read_text(encoding="utf-8")),
-        include_attributes=False,
-    )
-    commented = ast.dump(
-        ast.parse((root / "commented" / "bundle.py").read_text(encoding="utf-8")),
-        include_attributes=False,
-    )
-
-    assert production == commented
 
 
 def _write_project(

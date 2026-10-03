@@ -145,13 +145,11 @@ def test_deployment_catalog_is_stable() -> None:
         ("06", "operational-data-fabrica-kpis", "fabrica-kpis"),
         ("07", "operational-data-remanentes", "remanentes"),
         ("08", "operational-data-meteodata", "meteodata"),
-        ("21", "ada-kpi-runtime", "kpis"),
+        ("21", "ada-kpi-runtime", "kpis-runtime"),
         ("22", "ada-kpi-historian", "kpis-historian"),
-        ("23", "ada-command-center-alarms-runtime", "alarms-runtime"),
-        ("24", "ada-command-center-alarms-materialization", "alarms-materialization"),
+        ("23", "ada-kpi-materialization", "kpis-materialization"),
         ("41", "ada-kpi-delivery", "kpis-delivery"),
         ("42", "ada-kpi-timeseries-delivery", "kpis-timeseries-delivery"),
-        ("43", "ada-command-center-alarms-delivery", "alarms-delivery"),
     ]
 
 
@@ -184,8 +182,8 @@ def test_distribution_rebuilds_source_and_never_copies_mutable_qa_artifact(
         not output_root.is_relative_to(tmp_path.resolve())
         for output_root in bundle.output_roots
     )
-    assert (target / "processes/kpis/src/sample/__init__.py").is_file()
-    assert not (target / "processes/kpis/src/manual.py").exists()
+    assert (target / "processes/kpis-runtime/src/sample/__init__.py").is_file()
+    assert not (target / "processes/kpis-runtime/src/manual.py").exists()
 
 
 def test_distribution_blocks_stale_source_before_rebuild(
@@ -305,7 +303,7 @@ def test_regeneration_preserves_retained_consumer_configuration(
         targets=(),
         bundle=bundle,
     )
-    retained = target / "processes/kpis"
+    retained = target / "processes/kpis-runtime"
     for name in distribution.CONSUMER_CONFIGURATION_FILES:
         (retained / name).parent.mkdir(parents=True, exist_ok=True)
         (retained / name).write_text(f"{name}\n", encoding="utf-8")
@@ -320,7 +318,7 @@ def test_regeneration_preserves_retained_consumer_configuration(
     )
 
     for name in distribution.CONSUMER_CONFIGURATION_FILES:
-        assert (target / "processes/kpis" / name).read_text() == f"{name}\n"
+        assert (target / "processes/kpis-runtime" / name).read_text() == f"{name}\n"
     assert not (target / "processes/pi-web-api").exists()
 
 

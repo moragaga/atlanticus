@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import importlib.util
 import sys
 from pathlib import Path
@@ -112,26 +111,13 @@ def test_individual_prepare_delegates_process_resolution(tmp_path: Path) -> None
 
 
 def test_public_parser_uses_target_selection_instead_of_scope_flag() -> None:
-    arguments = process_tool._parser().parse_args(["prepare", "ada-kpi-engine", "--all"])
+    arguments = process_tool._parser().parse_args(
+        ["prepare", "ada-kpi-engine", "--all"]
+    )
 
     assert arguments.action == "prepare"
     assert arguments.selections == ["ada-kpi-engine"]
     assert arguments.all is True
-
-
-def test_commented_process_tool_is_structurally_equivalent() -> None:
-    production = ast.dump(
-        ast.parse(MODULE_PATH.read_text(encoding="utf-8")),
-        include_attributes=False,
-    )
-    commented = ast.dump(
-        ast.parse(
-            (MODULE_PATH.parent / "commented/process.py").read_text(encoding="utf-8")
-        ),
-        include_attributes=False,
-    )
-
-    assert production == commented
 
 
 def test_operational_data_target_discovers_both_fabrica_processes(

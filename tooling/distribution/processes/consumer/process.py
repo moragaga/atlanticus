@@ -656,7 +656,8 @@ def _render_extension_compose(root: Path, *, volume_mode: str) -> str:
         cpus, memory = _read_process_contract(root, process)
         config_mount = (
             (f"      - ../../processes/{alias}/config:/app/process/config:ro",)
-            if (root / "processes" / alias / "config/connections.detail.json").is_file() else ()
+            if (root / "processes" / alias / "config/connections.detail.json").is_file()
+            else ()
         )
         services.append(
             "\n".join(

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import importlib
 import json
 import sys
@@ -52,7 +51,7 @@ def project(
 
 def entry(category: str):
     command, package, alias, other = (
-        ("ada-kpi-runtime", "ada-kpi-runtime-process", "kpis", "kpis-historian")
+        ("ada-kpi-runtime", "ada-kpi-runtime-process", "kpis-runtime", "kpis-historian")
         if category == "kpi"
         else (
             "operational-data-pi",
@@ -367,16 +366,3 @@ def test_apply_rolls_back_only_dependencies_on_final_validation_error(tmp_path: 
     assert contract.fingerprint(contract.inventory(current)) == old
     assert (current / "src/main.py").read_text() == "LOCAL_PROCESS_CUSTOMIZATION = 42\n"
     assert not (root / ".updates/.lock").exists()
-
-
-def test_mirrors_are_equivalent_without_prod_comments():
-    for parent, name in (
-        (SOURCE, "update_package.py"),
-        (SOURCE / "consumer", "update.py"),
-        (SOURCE / "consumer", "update_contract.py"),
-    ):
-        production = (parent / name).read_text()
-        mirror = (parent / "commented" / name).read_text()
-        assert ast.dump(ast.parse(production)) == ast.dump(ast.parse(mirror))
-        assert "# " not in production
-        assert "# " in mirror

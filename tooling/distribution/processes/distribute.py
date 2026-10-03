@@ -41,7 +41,12 @@ REQUIRED_ARTIFACT_ENTRIES = (
     "config.detail.json",
     "secrets.detail.json",
 )
-CONSUMER_CONFIGURATION_FILES = (".env", "config.json", "secrets.json", "config/connections.json")
+CONSUMER_CONFIGURATION_FILES = (
+    ".env",
+    "config.json",
+    "secrets.json",
+    "config/connections.json",
+)
 LOCAL_ONLY_NAMES = frozenset(
     {
         ".runtime",
@@ -109,17 +114,15 @@ DEPLOYMENT_CATALOG = (
     ProcessDeployment("06", "operational-data-fabrica-kpis", "fabrica-kpis"),
     ProcessDeployment("07", "operational-data-remanentes", "remanentes"),
     ProcessDeployment("08", "operational-data-meteodata", "meteodata"),
-    ProcessDeployment("21", "ada-kpi-runtime", "kpis"),
+    ProcessDeployment("21", "ada-kpi-runtime", "kpis-runtime"),
     ProcessDeployment("22", "ada-kpi-historian", "kpis-historian"),
-    ProcessDeployment("23", "ada-command-center-alarms-runtime", "alarms-runtime"),
-    ProcessDeployment("24", "ada-command-center-alarms-materialization", "alarms-materialization"),
+    ProcessDeployment("23", "ada-kpi-materialization", "kpis-materialization"),
     ProcessDeployment("41", "ada-kpi-delivery", "kpis-delivery"),
     ProcessDeployment(
         "42",
         "ada-kpi-timeseries-delivery",
         "kpis-timeseries-delivery",
     ),
-    ProcessDeployment("43", "ada-command-center-alarms-delivery", "alarms-delivery"),
 )
 DEPLOYMENT_BY_PROCESS = {item.process: item for item in DEPLOYMENT_CATALOG}
 
@@ -388,7 +391,8 @@ def _render_service(
     volume_source = "runtime" if volume_mode == "named" else "../../.runtime/volumen"
     config_mount = (
         (f"      - ../../processes/{alias}/config:/app/process/config:ro",)
-        if (artifact.root / "config/connections.detail.json").is_file() else ()
+        if (artifact.root / "config/connections.detail.json").is_file()
+        else ()
     )
     return "\n".join(
         (

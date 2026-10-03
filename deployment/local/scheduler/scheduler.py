@@ -265,7 +265,9 @@ def _config_mount(schedule: ProcessSchedule) -> list[str]:
     if not isinstance(mounts, list):
         raise SchedulerError("Scheduler Docker mounts are invalid")
     for mount in mounts:
-        if not isinstance(mount, dict) or mount.get("Destination") != str(WORKSPACE_ROOT):
+        if not isinstance(mount, dict) or mount.get("Destination") != str(
+            WORKSPACE_ROOT
+        ):
             continue
         if mount.get("Type") != "bind":
             raise SchedulerError("Scheduler workspace requires a bind mount")
@@ -273,7 +275,10 @@ def _config_mount(schedule: ProcessSchedule) -> list[str]:
         if not isinstance(source, str) or not source:
             raise SchedulerError("Scheduler workspace mount source is invalid")
         target = Path(source) / config_root.relative_to(WORKSPACE_ROOT)
-        return ["--mount", f"type=bind,source={target},target=/app/process/config,readonly"]
+        return [
+            "--mount",
+            f"type=bind,source={target},target=/app/process/config,readonly",
+        ]
     raise SchedulerError("Scheduler workspace mount not found")
 
 

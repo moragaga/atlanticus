@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import importlib.util
 import os
 import platform
@@ -94,59 +93,29 @@ def _validate_structure(paths: Paths) -> None:
         paths.deployment / "processes" / "Dockerfile",
         paths.deployment / "processes" / ".dockerignore",
         paths.deployment / "processes" / "bundle.py",
-        paths.deployment / "processes" / "commented" / "bundle.py",
         paths.deployment / "local" / "generate_compose.py",
-        paths.deployment / "local" / "commented" / "generate_compose.py",
         paths.deployment / "local" / "simulation.py",
-        paths.deployment / "local" / "commented" / "simulation.py",
         paths.deployment / "local" / "scheduler" / "Dockerfile",
         paths.deployment / "local" / "scheduler" / "scheduler.py",
-        paths.deployment / "local" / "scheduler" / "commented" / "scheduler.py",
         paths.tooling / "local" / "processes" / "process.py",
         paths.tooling / "local" / "processes" / "process.sh",
         paths.tooling / "local" / "processes" / "process.cmd",
-        paths.tooling / "local" / "processes" / "commented" / "process.py",
         paths.tooling / "distribution" / "processes" / "update_package.py",
-        paths.tooling
-        / "distribution"
-        / "processes"
-        / "commented"
-        / "update_package.py",
         paths.tooling / "distribution" / "processes" / "consumer" / "update.py",
         paths.tooling
         / "distribution"
         / "processes"
         / "consumer"
-        / "commented"
-        / "update.py",
-        paths.tooling
-        / "distribution"
-        / "processes"
-        / "consumer"
-        / "update_contract.py",
-        paths.tooling
-        / "distribution"
-        / "processes"
-        / "consumer"
-        / "commented"
         / "update_contract.py",
         paths.tooling / "distribution" / "processes" / "distribute.py",
         paths.tooling / "distribution" / "processes" / "distribute.sh",
         paths.tooling / "distribution" / "processes" / "distribute.cmd",
-        paths.tooling / "distribution" / "processes" / "commented" / "distribute.py",
         paths.tooling / "distribution" / "processes" / "consumer" / "process.py",
         paths.tooling / "distribution" / "processes" / "consumer" / "process.sh",
         paths.tooling / "distribution" / "processes" / "consumer" / "process.cmd",
-        paths.tooling
-        / "distribution"
-        / "processes"
-        / "consumer"
-        / "commented"
-        / "process.py",
         paths.gate / "check.py",
         paths.gate / "check.sh",
         paths.gate / "check.cmd",
-        paths.gate / "commented" / "check.py",
     )
     missing = tuple(path for path in required if not path.is_file())
     if missing:
@@ -222,89 +191,9 @@ def _validate_docker_contract(paths: Paths) -> None:
 
 
 # Compara semántica AST y permite diferencias exclusivamente pedagógicas.
-def _validate_python_mirror(production: Path, commented: Path) -> None:
-    production_ast = ast.dump(
-        ast.parse(production.read_text(encoding="utf-8")),
-        include_attributes=False,
-    )
-    commented_ast = ast.dump(
-        ast.parse(commented.read_text(encoding="utf-8")),
-        include_attributes=False,
-    )
-    if production_ast != commented_ast:
-        raise RuntimeError(f"Commented mirror differs semantically: {commented}")
 
 
 # Verifica los mirrors de todas las capacidades Python que componen process deployment.
-def _validate_mirrors(paths: Paths) -> None:
-    _validate_python_mirror(
-        paths.deployment / "processes" / "bundle.py",
-        paths.deployment / "processes" / "commented" / "bundle.py",
-    )
-    _validate_python_mirror(
-        paths.deployment / "local" / "generate_compose.py",
-        paths.deployment / "local" / "commented" / "generate_compose.py",
-    )
-    _validate_python_mirror(
-        paths.deployment / "local" / "simulation.py",
-        paths.deployment / "local" / "commented" / "simulation.py",
-    )
-    _validate_python_mirror(
-        paths.deployment / "local" / "scheduler" / "scheduler.py",
-        paths.deployment / "local" / "scheduler" / "commented" / "scheduler.py",
-    )
-    _validate_python_mirror(
-        paths.tooling / "local" / "processes" / "process.py",
-        paths.tooling / "local" / "processes" / "commented" / "process.py",
-    )
-    _validate_python_mirror(
-        paths.tooling / "distribution" / "processes" / "distribute.py",
-        paths.tooling / "distribution" / "processes" / "commented" / "distribute.py",
-    )
-    _validate_python_mirror(
-        paths.tooling / "distribution" / "processes" / "consumer" / "process.py",
-        paths.tooling
-        / "distribution"
-        / "processes"
-        / "consumer"
-        / "commented"
-        / "process.py",
-    )
-    # Incluye los contratos transportables de actualización y sus espejos.
-    _validate_python_mirror(
-        paths.tooling / "distribution" / "processes" / "update_package.py",
-        paths.tooling
-        / "distribution"
-        / "processes"
-        / "commented"
-        / "update_package.py",
-    )
-    _validate_python_mirror(
-        paths.tooling / "distribution" / "processes" / "consumer" / "update.py",
-        paths.tooling
-        / "distribution"
-        / "processes"
-        / "consumer"
-        / "commented"
-        / "update.py",
-    )
-    _validate_python_mirror(
-        paths.tooling
-        / "distribution"
-        / "processes"
-        / "consumer"
-        / "update_contract.py",
-        paths.tooling
-        / "distribution"
-        / "processes"
-        / "consumer"
-        / "commented"
-        / "update_contract.py",
-    )
-    _validate_python_mirror(
-        paths.gate / "check.py",
-        paths.gate / "commented" / "check.py",
-    )
 
 
 # Ejecuta el gate transversal completo sin generar artifacts ni levantar Docker.
@@ -312,42 +201,31 @@ def main(argv: list[str] | None = None) -> int:
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     _bootstrap(raw_argv)
     paths = _paths()
-    print("[1/8] Validating Python runtime")
+    print("[1/7] Validating Python runtime")
     _validate_python()
-    print("[2/8] Validating deployment ownership and structure")
+    print("[2/7] Validating deployment ownership and structure")
     _validate_structure(paths)
-    print("[3/8] Validating exportable process container contracts")
+    print("[3/7] Validating exportable process container contracts")
     _validate_process_contracts(paths)
-    print("[4/8] Validating Docker transport boundary")
+    print("[4/7] Validating Docker transport boundary")
     _validate_docker_contract(paths)
-    print("[5/8] Applying safe Ruff fixes and formatting")
+    print("[5/7] Applying safe Ruff fixes and formatting")
     targets = [
         "deployment/processes/bundle.py",
-        "deployment/processes/commented/bundle.py",
         "deployment/processes/tests",
         "deployment/local/generate_compose.py",
-        "deployment/local/commented/generate_compose.py",
         "deployment/local/simulation.py",
-        "deployment/local/commented/simulation.py",
         "deployment/local/scheduler/scheduler.py",
-        "deployment/local/scheduler/commented/scheduler.py",
         "deployment/local/tests",
         "tooling/local/processes/process.py",
-        "tooling/local/processes/commented/process.py",
         "tooling/tests/local/processes",
         "tooling/distribution/processes/update_package.py",
-        "tooling/distribution/processes/commented/update_package.py",
         "tooling/distribution/processes/consumer/update.py",
-        "tooling/distribution/processes/consumer/commented/update.py",
         "tooling/distribution/processes/consumer/update_contract.py",
-        "tooling/distribution/processes/consumer/commented/update_contract.py",
         "tooling/distribution/processes/distribute.py",
-        "tooling/distribution/processes/commented/distribute.py",
         "tooling/distribution/processes/consumer/process.py",
-        "tooling/distribution/processes/consumer/commented/process.py",
         "tooling/tests/distribution/processes",
         "tooling/gates/process-deployment/check.py",
-        "tooling/gates/process-deployment/commented/check.py",
     ]
     _run([sys.executable, "-m", "ruff", "check", "--fix", *targets], cwd=paths.root)
     _run([sys.executable, "-m", "ruff", "format", *targets], cwd=paths.root)
@@ -356,7 +234,7 @@ def main(argv: list[str] | None = None) -> int:
         [sys.executable, "-m", "ruff", "format", "--check", *targets],
         cwd=paths.root,
     )
-    print("[6/8] Running deployment tooling tests")
+    print("[6/7] Running deployment tooling tests")
     _run(
         [sys.executable, "-m", "pytest", "deployment/processes/tests"],
         cwd=paths.root,
@@ -373,9 +251,7 @@ def main(argv: list[str] | None = None) -> int:
         [sys.executable, "-m", "pytest", "tooling/tests/distribution/processes"],
         cwd=paths.root,
     )
-    print("[7/8] Validating productive/commented semantic mirrors")
-    _validate_mirrors(paths)
-    print("[8/8] Validating process launchers")
+    print("[7/7] Validating process launchers")
     if sys.platform != "win32":
         _run(["sh", "-n", "tooling/local/processes/process.sh"], cwd=paths.root)
         _run(

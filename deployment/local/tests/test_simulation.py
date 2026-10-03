@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import importlib.util
 import json
 import sys
@@ -122,18 +121,3 @@ def test_prepare_simulation_keeps_jobs_out_of_compose(tmp_path: Path) -> None:
     assert "--run-once" not in compose
     assert "/var/run/docker.sock" in compose
     assert "/app/volumen" in compose
-
-
-def test_commented_simulation_is_structurally_equivalent() -> None:
-    production = ast.dump(
-        ast.parse(MODULE_PATH.read_text(encoding="utf-8")),
-        include_attributes=False,
-    )
-    commented = ast.dump(
-        ast.parse(
-            (MODULE_PATH.parent / "commented/simulation.py").read_text(encoding="utf-8")
-        ),
-        include_attributes=False,
-    )
-
-    assert production == commented

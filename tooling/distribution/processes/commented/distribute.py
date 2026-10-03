@@ -41,7 +41,12 @@ REQUIRED_ARTIFACT_ENTRIES = (
     "config.detail.json",
     "secrets.detail.json",
 )
-CONSUMER_CONFIGURATION_FILES = (".env", "config.json", "secrets.json")
+CONSUMER_CONFIGURATION_FILES = (
+    ".env",
+    "config.json",
+    "secrets.json",
+    "config/connections.json",
+)
 LOCAL_ONLY_NAMES = frozenset(
     {
         ".runtime",
@@ -55,11 +60,12 @@ LOCAL_ONLY_NAMES = frozenset(
 )
 
 
+# Error de dominio del ensamblador de distribuciones de procesos.
 class DistributionError(RuntimeError):
     pass
 
 
-# Modelos inmutables para separar slot de deployment, artifact y selección final.
+# Contrato inmutable que separa el proceso fuente de su identidad de despliegue.
 @dataclass(frozen=True, slots=True)
 class ProcessDeployment:
     number: str
@@ -75,7 +81,6 @@ class ProcessDeployment:
         return f"processes/{self.execution_file}/config.json"
 
 
-# Modelos inmutables para separar slot de deployment, artifact y selección final.
 @dataclass(frozen=True, slots=True)
 class ProcessArtifact:
     name: str
@@ -90,7 +95,6 @@ class ProcessArtifact:
     memory: str
 
 
-# Modelos inmutables para separar slot de deployment, artifact y selección final.
 @dataclass(frozen=True, slots=True)
 class SelectedSource:
     process_root: Path
@@ -103,31 +107,25 @@ class SelectedProcess:
     deployment: ProcessDeployment
 
 
-# Catálogo estable del pipeline: los subconjuntos nunca renumeran jobs.
+# Catálogo estable de slots. Los subconjuntos conservan sus números de job.
 DEPLOYMENT_CATALOG = (
     ProcessDeployment("01", "operational-data-pi", "pi-web-api"),
     ProcessDeployment("02", "operational-data-notpii", "notpii"),
     ProcessDeployment("03", "operational-data-dispatch", "dispatch"),
     ProcessDeployment("04", "operational-data-blockgrade", "blockgrade"),
-    # Sin despliegues anteriores, los identificadores operativos continúan sin huecos.
     ProcessDeployment("05", "operational-data-fabrica-planes", "fabrica-planes"),
     ProcessDeployment("06", "operational-data-fabrica-kpis", "fabrica-kpis"),
     ProcessDeployment("07", "operational-data-remanentes", "remanentes"),
-    # Nuevo proceso con número propio; los jobs existentes conservan su identificador.
     ProcessDeployment("08", "operational-data-meteodata", "meteodata"),
-    ProcessDeployment("21", "ada-kpi-runtime", "kpis"),
+    ProcessDeployment("21", "ada-kpi-runtime", "kpis-runtime"),
     ProcessDeployment("22", "ada-kpi-historian", "kpis-historian"),
-    # Ejecuciones logicas: Runtime evalua alarmas; Materialization resuelve y publica configuraciones.
-    ProcessDeployment("23", "ada-command-center-alarms-runtime", "alarms-runtime"),
-    ProcessDeployment("24", "ada-command-center-alarms-materialization", "alarms-materialization"),
+    ProcessDeployment("23", "ada-kpi-materialization", "kpis-materialization"),
     ProcessDeployment("41", "ada-kpi-delivery", "kpis-delivery"),
     ProcessDeployment(
         "42",
         "ada-kpi-timeseries-delivery",
         "kpis-timeseries-delivery",
     ),
-    # Delivery recibe las publicaciones del Engine; no se renumeran jobs existentes.
-    ProcessDeployment("43", "ada-command-center-alarms-delivery", "alarms-delivery"),
 )
 DEPLOYMENT_BY_PROCESS = {item.process: item for item in DEPLOYMENT_CATALOG}
 
@@ -141,7 +139,6 @@ def _repository_root() -> Path:
     raise DistributionError("Atlanticus repository root could not be resolved")
 
 
-# Carga la misma capacidad de bundling que usa prepare; no existe un segundo builder.
 def _load_bundle(repository_root: Path) -> ModuleType:
     path = repository_root / "deployment/processes/bundle.py"
     spec = importlib.util.spec_from_file_location(BUNDLE_MODULE_NAME, path)
@@ -229,7 +226,7 @@ def _container_metadata(
     return command, system_profile, float(cpus), memory.lower()
 
 
-# La metadata descriptiva y runtime se derivan del pyproject dueño del artifact.
+# La metadata operativa se deriva del artifact generado; no se duplica configuración.
 def _load_artifact(
     root: Path,
     *,
@@ -301,6 +298,7 @@ def _target_candidates(repository_root: Path, target: str) -> tuple[Path, ...]:
     return tuple(dict.fromkeys(path.resolve() for path in candidates))
 
 
+# Descubre los procesos exportables declarados por un target lógico.
 def _target_commands(repository_root: Path, target: str) -> tuple[str, ...]:
     matches = tuple(
         candidate
@@ -329,8 +327,7 @@ def _target_commands(repository_root: Path, target: str) -> tuple[str, ...]:
     return tuple(commands)
 
 
-# La salida se ordena por catálogo de deployment, no por el orden del CLI.
-# Resuelve release desde source vigente; artifacts/processes no participa de esta selección.
+# Resuelve la selección final contra el catálogo y mantiene el orden contractual de slots.
 def _resolve_selection(
     *,
     repository_root: Path,
@@ -354,7 +351,6 @@ def _resolve_selection(
             "Process deployment slot is not registered: "
             + ", ".join(sorted(unknown_deployments))
         )
-    # El catálogo conserva los slots aunque la selección del CLI llegue en otro orden.
     return tuple(
         SelectedSource(
             process_root=bundle.resolve_process_root(repository_root, item.process),
@@ -371,6 +367,8 @@ def _artifact_ignore(directory: str, names: list[str]) -> set[str]:
     ignored.update(
         name for name in names if name.startswith(".env.") and name != ".env.detail"
     )
+    if Path(directory).name == "config":
+        ignored.add("connections.json")
     ignored.update(name for name in names if name in CONSUMER_CONFIGURATION_FILES)
     return ignored
 
@@ -385,9 +383,11 @@ def _preserve_consumer_configuration(
     for name in CONSUMER_CONFIGURATION_FILES:
         current = current_process / name
         if current.is_file():
+            (staged_process / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(current, staged_process / name)
 
 
+# Renderiza el servicio local desde el alias de despliegue y el contrato del artifact.
 def _render_service(
     distribution_name: str,
     selected: SelectedProcess,
@@ -397,6 +397,11 @@ def _render_service(
     alias = selected.deployment.execution_file
     artifact = selected.artifact
     volume_source = "runtime" if volume_mode == "named" else "../../.runtime/volumen"
+    config_mount = (
+        (f"      - ../../processes/{alias}/config:/app/process/config:ro",)
+        if (artifact.root / "config/connections.detail.json").is_file()
+        else ()
+    )
     return "\n".join(
         (
             f"  {alias}:",
@@ -414,6 +419,7 @@ def _render_service(
             f"      VOLUMEN_PATH: {DEFAULT_VOLUME_PATH}",
             "    volumes:",
             f"      - {volume_source}:{DEFAULT_VOLUME_PATH}",
+            *config_mount,
             f"    cpus: {artifact.cpus:g}",
             f"    mem_limit: {artifact.memory}",
         )
@@ -440,12 +446,10 @@ def _render_compose(
     )
 
 
-# La fecha identifica cuándo se ensambló el paquete, en UTC.
 def _generated_at() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
-# El SHA permite rastrear exactamente la realidad de Atlanticus que generó la distribución.
 def _source_revision(repository_root: Path) -> str:
     try:
         completed = subprocess.run(
@@ -465,7 +469,7 @@ def _source_revision(repository_root: Path) -> str:
     return revision
 
 
-# distribution.json describe la composición Atlanticus sin duplicar metadata del source.
+# distribution.json conserva identidad, versión, runtime y procedencia reproducible.
 def _manifest(
     distribution_name: str,
     selected: tuple[SelectedProcess, ...],
@@ -502,7 +506,7 @@ def _manifest(
     }
 
 
-# services.json y distribution.json comparten execution_file sin alias anteriores.
+# services.json usa la misma identidad de despliegue que el manifest y Compose.
 def _service(item: SelectedProcess) -> dict[str, object]:
     deployment = item.deployment
     return {
@@ -521,7 +525,6 @@ def _services(selected: tuple[SelectedProcess, ...]) -> list[dict[str, object]]:
     return [_service(item) for item in selected]
 
 
-# Empaqueta solo los componentes seleccionados y sus plantillas, sin configuración activa.
 def _package_extension(
     *,
     staging_root: Path,
@@ -592,8 +595,6 @@ def _copy_consumer_tooling(staging_root: Path) -> None:
         shutil.copy2(source_path, target / name)
 
 
-# Antes del reemplazo se validan manifest, services, aliases, Compose y artifacts.
-# Empaqueta capacidad local; no la ejecuta durante distribute.
 def _copy_local_deployment_capability(
     repository_root: Path,
     staging_root: Path,
@@ -623,7 +624,6 @@ def _copy_local_deployment_capability(
     return target
 
 
-# La raíz conserva sólo contratos/payload y la compatibilidad externa del Dockerfile.
 def _validate_staging(
     *,
     staging_root: Path,
@@ -736,8 +736,7 @@ def _replace_directory(source: Path, target: Path) -> None:
         shutil.rmtree(backup)
 
 
-# Una distribución puede mezclar procesos de cualquier scope y queda materializada por alias.
-# Reconstruye release desde source; la proyección QA nunca se copia hacia distribution.
+# Ensambla primero en staging, valida el resultado y reemplaza el destino de forma atómica.
 def distribute(
     *,
     repository_root: Path,
@@ -759,7 +758,6 @@ def distribute(
             selections=selections,
             targets=targets,
         )
-        # Valida todos los receipts antes de gastar trabajo en rebuilds.
         for item in selected_sources:
             bundle.require_prepared_build_inputs(
                 repository_root,
@@ -772,7 +770,6 @@ def distribute(
     output_root = output_root.resolve()
     output_root.mkdir(parents=True, exist_ok=True)
     target_root = output_root / distribution_name
-    # El scratch completo vive fuera del repository para que discovery nunca vea su propio rebuild.
     temporary = Path(
         tempfile.mkdtemp(prefix=f"atlanticus-{distribution_name}-distribution-")
     )
@@ -781,13 +778,11 @@ def distribute(
         selected: list[SelectedProcess] = []
         try:
             for item in selected_sources:
-                # Usa exactamente el mismo bundler que prepare, pero con destino temporal.
                 rebuilt = bundle.build_process_bundle(
                     repository_root=repository_root,
                     process_root=item.process_root,
                     output_root=bundle_root,
                 )
-                # Revalida para detectar cambios del source durante el rebuild.
                 bundle.require_prepared_build_inputs(
                     repository_root,
                     item.process_root,
@@ -839,7 +834,6 @@ def distribute(
                 staged_process,
                 ignore=_artifact_ignore,
             )
-            # Sólo la configuración activa del consumidor puede sobrevivir una regeneración.
             _preserve_consumer_configuration(
                 target_root,
                 staged_process,
@@ -936,7 +930,6 @@ def main(argv: list[str] | None = None) -> int:
         if arguments.output_root is not None
         else repository_root / "distribution"
     )
-    # Construye la actualización desde una distribución base sin alterar el flujo tradicional.
     if arguments.update_from is not None:
         if arguments.extension or arguments.target or len(arguments.processes) != 1:
             raise SystemExit(

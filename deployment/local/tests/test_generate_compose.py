@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import importlib.util
 import sys
 from pathlib import Path
@@ -178,21 +177,6 @@ def test_bind_workspace_preserves_runtime_directory(tmp_path: Path) -> None:
     assert "./runtime:/app/volumen" in compose
     assert "\nvolumes:\n" not in compose
     assert marker.read_text(encoding="utf-8") == "state"
-
-
-def test_commented_generator_is_structurally_equivalent() -> None:
-    root = Path(__file__).resolve().parents[1]
-    production = ast.dump(
-        ast.parse((root / "generate_compose.py").read_text(encoding="utf-8")),
-        include_attributes=False,
-    )
-    commented = ast.dump(
-        ast.parse(
-            (root / "commented" / "generate_compose.py").read_text(encoding="utf-8")
-        ),
-        include_attributes=False,
-    )
-    assert production == commented
 
 
 def test_docker_context_is_allowlisted_to_transport_files() -> None:

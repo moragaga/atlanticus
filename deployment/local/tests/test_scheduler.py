@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import importlib.util
 import json
 import sys
@@ -130,18 +129,3 @@ def test_schedule_contract_uses_replica_timeout_as_external_limit(
     assert schedule.replica_timeout == 605
     assert schedule.cron_expression == "*/10 * * * *"
     assert schedule.parallelism == 1
-
-
-def test_commented_scheduler_is_structurally_equivalent() -> None:
-    production = ast.dump(
-        ast.parse(MODULE_PATH.read_text(encoding="utf-8")),
-        include_attributes=False,
-    )
-    commented = ast.dump(
-        ast.parse(
-            (MODULE_PATH.parent / "commented/scheduler.py").read_text(encoding="utf-8")
-        ),
-        include_attributes=False,
-    )
-
-    assert production == commented

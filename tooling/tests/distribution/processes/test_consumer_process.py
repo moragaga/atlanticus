@@ -19,7 +19,7 @@ SPEC.loader.exec_module(consumer)
 
 
 def _distribution(root: Path, *, with_env: bool) -> None:
-    alias = "kpis"
+    alias = "kpis-runtime"
     (root / f"processes/{alias}/wheels").mkdir(parents=True)
     (root / f"processes/{alias}/src").mkdir()
     (root / f"processes/{alias}/pyproject.toml").write_text("", encoding="utf-8")
@@ -105,7 +105,7 @@ def test_validate_accepts_complete_distribution(tmp_path: Path) -> None:
     _distribution(tmp_path, with_env=True)
 
     assert consumer._validate_distribution(tmp_path, require_environment=True) == (
-        "kpis",
+        "kpis-runtime",
     )
 
 
