@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ada-command-center:engine-committed-facts-batch:v2",
+  "title": "EngineCommittedFactsBatch v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "document_type",
+    "schema_version",
+    "batch_id",
+    "artifact_ref",
+    "journal_position",
+    "commit",
+    "commit_record_hash",
+    "previous_batch",
+    "records",
+    "sha256"
+  ],
+  "properties": {
+    "document_type": {
+      "const": "ada_command_center_engine_committed_facts_batch"
+    },
+    "schema_version": {
+      "const": 2
+    },
+    "batch_id": {
+      "type": "string",
+      "pattern": "^facts-[0-9a-f]{64}$"
+    },
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_key",
+        "result_id",
+        "manifest_sha256",
+        "resolution_key"
+      ],
+      "properties": {
+        "source_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "result_id": {
+          "type": "string",
+          "pattern": "^alarm-materialization-[0-9a-f]{64}$"
+        },
+        "manifest_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "resolution_key": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "alarm_configuration_revision",
+            "confirmed_tool_catalog_revision"
+          ],
+          "properties": {
+            "alarm_configuration_revision": {
+              "type": "string",
+              "minLength": 1
+            },
+            "confirmed_tool_catalog_revision": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "journal_position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "segment_id",
+        "byte_offset",
+        "commit_id"
+      ],
+      "properties": {
+        "segment_id": {
+          "type": "string"
+        },
+        "byte_offset": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "commit_id": {
+          "type": "string"
+        }
+      }
+    },
+    "commit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commit_id",
+        "cycle_id",
+        "priority_group",
+        "previous_commit_id",
+        "evaluated_at",
+        "committed_at",
+        "alarm_configuration_revision",
+        "tool_registry_revision",
+        "runtime_artifact_version",
+        "affected_alarms"
+      ],
+      "properties": {
+        "commit_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cycle_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "priority_group": {
+          "type": "string",
+          "minLength": 1
+        },
+        "previous_commit_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evaluated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "committed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "alarm_configuration_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tool_registry_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runtime_artifact_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "affected_alarms": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "commit_record_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "previous_batch": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "batch_id",
+            "sha256"
+          ],
+          "properties": {
+            "batch_id": {
+              "type": "string",
+              "pattern": "^facts-[0-9a-f]{64}$"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        }
+      ]
+    },
+    "records": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "assignment_changes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object"
+          }
+        },
+        "deactivation_effects": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object"
+          }
+        },
+        "deactivation_requests": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object"
+          }
+        },
+        "episode_changes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object"
+          }
+        },
+        "evidence_records": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object"
+          }
+        },
+        "input_receipts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object"
+          }
+        },
+        "journey_events": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object"
+          }
+        },
+        "management_effects": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object"
+          }
+        },
+        "occurrence_changes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "description": "Only non-empty durable event/evidence collections from the confirmed Engine commit; no repeated INACTIVE polling."
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

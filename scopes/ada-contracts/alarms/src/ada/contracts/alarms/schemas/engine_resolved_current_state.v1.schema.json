@@ -1,0 +1,268 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ada-command-center:engine-resolved-current-state:v1",
+  "title": "EngineResolvedCurrentState publication v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "document_type",
+    "schema_version",
+    "artifact_ref",
+    "state",
+    "sha256"
+  ],
+  "properties": {
+    "document_type": {
+      "const": "ada_command_center_engine_resolved_current_state"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_key",
+        "result_id",
+        "manifest_sha256",
+        "resolution_key"
+      ],
+      "properties": {
+        "source_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "result_id": {
+          "type": "string",
+          "pattern": "^alarm-materialization-[0-9a-f]{64}$"
+        },
+        "manifest_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "resolution_key": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "alarm_configuration_revision",
+            "confirmed_tool_catalog_revision"
+          ],
+          "properties": {
+            "alarm_configuration_revision": {
+              "type": "string",
+              "minLength": 1
+            },
+            "confirmed_tool_catalog_revision": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resolution_key",
+        "as_of",
+        "alarms"
+      ],
+      "properties": {
+        "resolution_key": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "alarm_configuration_revision",
+            "confirmed_tool_catalog_revision"
+          ],
+          "properties": {
+            "alarm_configuration_revision": {
+              "type": "string",
+              "minLength": 1
+            },
+            "confirmed_tool_catalog_revision": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "as_of": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "alarms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "identity",
+              "occurrence_id",
+              "episode_id",
+              "started_at",
+              "evaluation",
+              "priority",
+              "technical_hold",
+              "management_cycle",
+              "management_effect",
+              "deactivation_effect",
+              "pending_deactivation_request",
+              "assignments",
+              "pending_assignments"
+            ],
+            "properties": {
+              "identity": {
+                "type": "string",
+                "minLength": 1
+              },
+              "occurrence_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "episode_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "started_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "evaluation": {
+                "type": "object",
+                "required": [
+                  "status",
+                  "evaluated_at",
+                  "evidence",
+                  "error"
+                ],
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "ACTIVE",
+                      "INACTIVE",
+                      "ERROR"
+                    ]
+                  },
+                  "evaluated_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "evidence": {
+                    "oneOf": [
+                      {
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "error": {
+                    "oneOf": [
+                      {
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "priority": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "disposition",
+                  "blockers"
+                ],
+                "properties": {
+                  "disposition": {
+                    "enum": [
+                      "PREDOMINANT",
+                      "DEACTIVATED",
+                      "ECLIPSED",
+                      "CASCADE_SUPPRESSED"
+                    ]
+                  },
+                  "blockers": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              },
+              "technical_hold": {
+                "oneOf": [
+                  {
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "management_cycle": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "management_effect": {
+                "oneOf": [
+                  {
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "deactivation_effect": {
+                "oneOf": [
+                  {
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "pending_deactivation_request": {
+                "oneOf": [
+                  {
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "assignments": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "pending_assignments": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}
