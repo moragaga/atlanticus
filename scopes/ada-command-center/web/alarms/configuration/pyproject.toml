@@ -82,7 +82,6 @@ pythonpath = [
     "src",
     "../../../domain/alarms/src",
     "../../tools/catalog/src",
-    "../../../../ada/web/tools/core/src",
     "../../../../../web/framework/core/src",
     "../../../../../web/capabilities/manager/src",
     "../../../../../web/capabilities/projection/core/src",

@@ -61,7 +61,6 @@ pythonpath = [
     "src",
     "../discovery-cosmos/src",
     "../catalog/src",
-    "../../../../ada/web/tools/core/src",
     "../../../../ada/web/tools/configuration/src",
     "../../../../ada/web/tools/projection-cosmos/src",
     "../../../../../web/capabilities/storage/namespace/src",

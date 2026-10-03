@@ -18,7 +18,6 @@ dependencies = [
 
 [tool.uv.sources]
 ada-contracts-tools = { path = "../../../../ada-contracts/tools", editable = true }
-ada-web-tools = { path = "../../../../ada/web/tools/core", editable = true }
 ada-web-tools-configuration = { path = "../../../../ada/web/tools/configuration", editable = true }
 atlanticus-storage = { path = "../../../../../connectivity/storage", editable = true }
 atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
@@ -63,7 +62,6 @@ combine-as-imports = true
 testpaths = ["tests"]
 pythonpath = [
     "src",
-    "../../../../ada/web/tools/core/src",
     "../../../../ada/web/tools/configuration/src",
     "../../../../../connectivity/storage/src",
     "../../../../../backend/observability/src",

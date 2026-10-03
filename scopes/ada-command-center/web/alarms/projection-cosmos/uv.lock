@@ -170,33 +170,20 @@ dev = [
 ]
 
 [[package]]
-name = "ada-web-tools"
-version = "0.1.0"
-source = { editable = "../../../../ada/web/tools/core" }
-
-[package.metadata]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "ruff", specifier = "==0.15.22" },
-]
-
-[[package]]
 name = "ada-web-tools-configuration"
 version = "0.1.0"
 source = { editable = "../../../../ada/web/tools/configuration" }
 dependencies = [
+    { name = "ada-contracts-tools" },
     { name = "ada-web-branding" },
-    { name = "ada-web-tools" },
     { name = "atlanticus-web-projection" },
     { name = "atlanticus-web-source" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "ada-contracts-tools", editable = "../../../../ada-contracts/tools" },
     { name = "ada-web-branding", editable = "../../../../ada/web/branding" },
-    { name = "ada-web-tools", editable = "../../../../ada/web/tools/core" },
     { name = "atlanticus-web", marker = "extra == 'web'", editable = "../../../../../web/framework/core" },
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },

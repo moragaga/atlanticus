@@ -56,7 +56,6 @@ combine-as-imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = [
-    "../../../../ada/web/tools/core/src",
     "../configuration/src",
     "../../../../../web/capabilities/projection/core/src",
     "../../../../../web/capabilities/source/core/src",
