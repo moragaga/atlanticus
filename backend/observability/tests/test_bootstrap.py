@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pytest
 
-# import atlanticus.observability as observability
 from atlanticus.observability import (
     EventCategory,
     MemoryEventSink,
@@ -34,12 +33,6 @@ def test_volume_bootstrap_requires_and_uses_volume_path(tmp_path) -> None:
 
     assert configured.settings.volume_path == tmp_path
     close_observability()
-
-
-#
-# def test_observability_does_not_expose_backend_resource_monitoring() -> None:
-#     assert not hasattr(observability, 'ResourceMonitor')
-#     assert not hasattr(observability, 'CgroupResourceSampler')
 
 
 def test_volume_bootstrap_can_disable_file_logs_without_volume() -> None:

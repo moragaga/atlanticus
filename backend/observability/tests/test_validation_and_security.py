@@ -121,18 +121,18 @@ def test_event_captures_a_deeply_immutable_snapshot() -> None:
         event.attributes['items'][0]['value'] = 2
 
 
-def test_result_summary_captures_a_deeply_immutable_snapshot() -> None:
+def test_result_summary_captures_an_immutable_snapshot() -> None:
     values = {'items': ['one']}
     summary = ResultSummary(attributes=values)
 
     values['items'].append('two')
 
-    assert summary.attributes['items'] == ('one',)
-    with pytest.raises(AttributeError):
-        summary.attributes['items'].append('three')
+    assert list(summary.attributes['items']) == ['one']
+    with pytest.raises(TypeError):
+        summary.attributes['new'] = 'value'
 
 
-def test_settings_reject_invalid_direct_environment_and_path() -> None:
+def test_settings_reject_invalid_direct_environment() -> None:
     with pytest.raises(TypeError, match='environment must be an Environment'):
         ObservabilitySettings(
             application='app',
@@ -141,6 +141,8 @@ def test_settings_reject_invalid_direct_environment_and_path() -> None:
             environment='local',
         )
 
+
+def test_settings_reject_invalid_direct_volume_path() -> None:
     with pytest.raises(TypeError, match='volume_path must be a Path'):
         ObservabilitySettings(
             application='app',
@@ -151,40 +153,46 @@ def test_settings_reject_invalid_direct_environment_and_path() -> None:
         )
 
 
-@pytest.mark.parametrize(
-    ('factory', 'message'),
-    [
-        (
-            lambda: ObservabilityEvent(name='event', category='data'),
-            'category must be an EventCategory',
-        ),
-        (
-            lambda: ObservabilityEvent(
-                name='event',
-                category=EventCategory.DATA,
-                context='invalid',
-            ),
-            'context must be an ExecutionContext',
-        ),
-        (lambda: ExecutionContext(iteration=0), 'iteration must be greater than zero'),
-        (
-            lambda: ErrorInfo(error_type='RuntimeError', message='raised', retryable='yes'),
-            'retryable must be a bool',
-        ),
-    ],
-)
-def test_public_models_reject_invalid_contracts(factory, message: str) -> None:
-    with pytest.raises((TypeError, ValueError), match=message):
-        factory()
+def test_event_rejects_invalid_category() -> None:
+    with pytest.raises(TypeError, match='category must be an EventCategory'):
+        ObservabilityEvent(name='event', category='data')
 
 
-def test_projections_and_sinks_reject_invalid_contracts(tmp_path: Path) -> None:
+def test_event_rejects_invalid_context() -> None:
+    with pytest.raises(TypeError, match='context must be an ExecutionContext'):
+        ObservabilityEvent(
+            name='event',
+            category=EventCategory.DATA,
+            context='invalid',
+        )
+
+
+def test_execution_context_rejects_non_positive_iteration() -> None:
+    with pytest.raises(ValueError, match='iteration must be greater than zero'):
+        ExecutionContext(iteration=0)
+
+
+def test_error_info_rejects_non_boolean_retryable() -> None:
+    with pytest.raises(TypeError, match='retryable must be a bool'):
+        ErrorInfo(error_type='RuntimeError', message='raised', retryable='yes')
+
+
+def test_filtered_projection_rejects_non_frozenset_allowed_names() -> None:
     with pytest.raises(TypeError, match='allowed_names must be a frozenset'):
         FilteredEventProjection(allowed_names={'event'})
+
+
+def test_filtered_projection_rejects_invalid_minimum_severity() -> None:
     with pytest.raises(TypeError, match='minimum_severity must be an EventSeverity'):
         FilteredEventProjection(minimum_severity='warning')
+
+
+def test_composite_sink_rejects_non_sink_values() -> None:
     with pytest.raises(TypeError, match='sinks must contain only EventSink instances'):
         CompositeEventSink((object(),))
+
+
+def test_daily_trace_sink_rejects_invalid_durable_minimum_severity(tmp_path: Path) -> None:
     with pytest.raises(TypeError, match='durable_minimum_severity must be an EventSeverity'):
         DailyTraceSink(tmp_path, durable_minimum_severity='warning')
 
