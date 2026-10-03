@@ -1,21 +1,22 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+
 from dash import Output
 from dash.development.base_component import Component
 
 from ada.web.kpis.registry.configuration import (
-    KpiRegistry,
-    KpiRegistryBinding,
     KpiDestination,
     KpiDestinationCatalog,
     KpiDestinationCatalogSnapshot,
+    KpiRegistry,
+    KpiRegistryBinding,
 )
 from ada.web.kpis.registry.configuration.web import (
     KpiRegistryEditorContext,
     build_kpi_configuration_editor_surface,
-    register_kpi_configuration_editor_callbacks,
     creation_state,
+    register_kpi_configuration_editor_callbacks,
     save_binding,
 )
 from ada.web.kpis.registry.configuration.web.ids import ADD_BUTTON_ID, EDITOR_HOURS_ID
@@ -32,6 +33,7 @@ class Destinations:
         if with_component:
             items.append(KpiDestination(key='plant', display_name='Planta'))
         self.snapshot = KpiDestinationCatalogSnapshot(
+            tool_key='process',
             projection_target=ProjectionTarget(
                 source_key=SourceKey('ada-tool-configuration'),
                 source_release=SourceReleaseRef(
@@ -83,7 +85,7 @@ class _CallbackRecorder:
         ]
         if len(matches) != 1:
             raise AssertionError(
-                f"Expected one callback for {component_id!r}.{component_property}, found {len(matches)}"
+                f'Expected one callback for {component_id!r}.{component_property}, found {len(matches)}'
             )
         return matches[0]
 
@@ -97,6 +99,7 @@ def test_series_hours_callback_controls_hours_visibility() -> None:
     assert toggle([]) == (True, True)
     assert toggle(['enabled']) == (False, False)
 
+
 def test_creation_requires_a_real_tool_component() -> None:
     assert creation_state(None)[0] is False
     assert creation_state(Destinations(with_component=False).load().catalog)[0] is False
@@ -108,11 +111,7 @@ def test_editor_surface_disables_creation_without_component() -> None:
         destinations=Destinations(with_component=False),
     )
     layout = build_kpi_configuration_editor_surface(context)
-    add = next(
-        node
-        for node in _walk(layout)
-        if getattr(node, 'id', None) == ADD_BUTTON_ID
-    )
+    add = next(node for node in _walk(layout) if getattr(node, 'id', None) == ADD_BUTTON_ID)
     assert add.disabled is True
 
 

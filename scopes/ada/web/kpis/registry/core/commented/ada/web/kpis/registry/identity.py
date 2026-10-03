@@ -1,4 +1,4 @@
-# Normaliza las identidades de KPI y destinos.
+# Normaliza las identidades de KPI, destinos y Tool sin acoplar Registry al dominio Tools.
 # Este archivo es el espejo pedagógico del código productivo equivalente.
 
 from ada.web.kpis.registry.errors import KpiRegistryValidationError
@@ -13,4 +13,10 @@ def require_kpi_key(value: object) -> str:
 def require_destination_key(value: object) -> str:
     if not isinstance(value, str) or not value.strip():
         raise KpiRegistryValidationError('KPI destination key must be a non-empty string')
+    return value.strip()
+
+
+def require_tool_key(value: object) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise KpiRegistryValidationError('Tool key must be a non-empty string')
     return value.strip()

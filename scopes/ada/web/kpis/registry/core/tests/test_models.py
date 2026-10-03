@@ -11,7 +11,6 @@ def test_registry_uses_kpi_key_as_authoritative_identity() -> None:
     )
     assert binding.to_document()['kpi_key'] == 'throughput'
     assert 'key' not in binding.to_document()
-    assert not hasattr(binding, 'to_delivery_document')
 
 
 def test_registry_round_trip_and_lookup() -> None:
@@ -30,6 +29,24 @@ def test_registry_round_trip_and_lookup() -> None:
     assert restored == registry
     assert restored.kpi_keys == frozenset({'throughput'})
     assert restored.binding('throughput') is not None
+
+
+def test_registry_projection_context_round_trips_tool_key() -> None:
+    registry = KpiRegistry(
+        bindings=(
+            KpiRegistryBinding(
+                kpi_key='throughput',
+                destination_keys=('plant',),
+            ),
+        ),
+        tool_key='process',
+    )
+
+    restored = KpiRegistry.from_document(registry.to_document())
+
+    assert restored == registry
+    assert restored.tool_key == 'process'
+    assert restored.to_document()['tool_key'] == 'process'
 
 
 def test_registry_rejects_duplicate_kpi_keys() -> None:

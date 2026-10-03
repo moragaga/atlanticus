@@ -1,4 +1,4 @@
-# Valida los destinos del Registry contra la proyección exacta de Tool.
+# Transporta la identidad y destinos derivados de la proyección exacta de Tool.
 # Este archivo es el espejo pedagógico del código productivo equivalente.
 
 from __future__ import annotations
@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from ada.web.kpis.registry.errors import KpiRegistryValidationError
+from ada.web.kpis.registry.identity import require_destination_key, require_tool_key
 from ada.web.kpis.registry.models import KpiRegistry
-from ada.web.kpis.registry.identity import require_destination_key
 from atlanticus.web.projection.models import ProjectionTarget
 
 
@@ -55,10 +55,12 @@ class KpiDestinationCatalog:
 
 @dataclass(frozen=True, slots=True)
 class KpiDestinationCatalogSnapshot:
+    tool_key: str
     projection_target: ProjectionTarget
     catalog: KpiDestinationCatalog
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, 'tool_key', require_tool_key(self.tool_key))
         if not isinstance(self.projection_target, ProjectionTarget):
             raise KpiRegistryValidationError('Tool projection target is invalid')
         if not isinstance(self.catalog, KpiDestinationCatalog):

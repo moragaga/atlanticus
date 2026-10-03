@@ -39,7 +39,8 @@ def _record() -> ProjectionRecord[KpiRegistry]:
         source_published_at_utc=published_at,
         projected_at_utc=published_at,
         payload=KpiRegistry(
-            (KpiRegistryBinding(kpi_key='throughput', destination_keys=('crusher',)),)
+            bindings=(KpiRegistryBinding(kpi_key='throughput', destination_keys=('crusher',)),),
+            tool_key='process',
         ),
         dependencies=(dependency,),
     )
@@ -55,8 +56,12 @@ def test_cosmos_registry_projection_round_trips_exact_target() -> None:
     )
     record = _record()
     store.replace_active(record)
-    assert store.get_active(record.source_key) == record
+    loaded = store.get_active(record.source_key)
     saved = next(iter(client.items.values()))
+
+    assert loaded == record
+    assert loaded.payload.tool_key == 'process'
+    assert saved['payload']['tool_key'] == 'process'
     assert saved['partition_key'] == 'kpis'
     assert saved['document_type'] == 'ada_kpi_registry_projection_record'
 

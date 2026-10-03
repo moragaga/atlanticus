@@ -1,4 +1,4 @@
-# Define el Registry durable y sus bindings operacionales.
+# Define el Registry durable; tool_key sólo representa contexto inyectado por la proyección.
 # Este archivo es el espejo pedagógico del código productivo equivalente.
 
 from __future__ import annotations
@@ -8,7 +8,11 @@ from dataclasses import dataclass
 from typing import Any
 
 from ada.web.kpis.registry.errors import KpiRegistryValidationError
-from ada.web.kpis.registry.identity import require_destination_key, require_kpi_key
+from ada.web.kpis.registry.identity import (
+    require_destination_key,
+    require_kpi_key,
+    require_tool_key,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,6 +96,7 @@ class KpiRegistryBinding:
 @dataclass(frozen=True, slots=True)
 class KpiRegistry:
     bindings: tuple[KpiRegistryBinding, ...] = ()
+    tool_key: str | None = None
 
     def __post_init__(self) -> None:
         bindings = tuple(self.bindings)
@@ -101,6 +106,8 @@ class KpiRegistry:
         if len(keys) != len(set(keys)):
             raise KpiRegistryValidationError('KPI keys must be unique')
         object.__setattr__(self, 'bindings', bindings)
+        if self.tool_key is not None:
+            object.__setattr__(self, 'tool_key', require_tool_key(self.tool_key))
 
     @property
     def kpi_keys(self) -> frozenset[str]:
@@ -114,7 +121,12 @@ class KpiRegistry:
         )
 
     def to_document(self) -> dict[str, object]:
-        return {'bindings': [binding.to_document() for binding in self.bindings]}
+        document: dict[str, object] = {
+            'bindings': [binding.to_document() for binding in self.bindings]
+        }
+        if self.tool_key is not None:
+            document['tool_key'] = self.tool_key
+        return document
 
     @classmethod
     def from_document(cls, document: Mapping[str, Any]) -> KpiRegistry:
@@ -124,7 +136,10 @@ class KpiRegistry:
                 isinstance(item, Mapping) for item in bindings
             ):
                 raise TypeError
-            return cls(bindings=tuple(KpiRegistryBinding.from_document(item) for item in bindings))
+            return cls(
+                bindings=tuple(KpiRegistryBinding.from_document(item) for item in bindings),
+                tool_key=document.get('tool_key'),
+            )
         except (TypeError, ValueError) as error:
             if isinstance(error, KpiRegistryValidationError):
                 raise

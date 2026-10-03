@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from io import BytesIO
 from typing import Any
 
-from ada.web.kpis.registry.models import KpiRegistry
 from ada.web.kpis.registry.configuration.errors import KpiRegistrySourceError
+from ada.web.kpis.registry.models import KpiRegistry
 from atlanticus.web.source.models import (
     ConcurrencyToken,
     HistoryPage,
@@ -37,6 +37,8 @@ class KpiRegistrySourcePayload:
     def __post_init__(self) -> None:
         if not isinstance(self.registry, KpiRegistry):
             raise KpiRegistrySourceError('KPI registry source payload is invalid')
+        if self.registry.tool_key is not None:
+            raise KpiRegistrySourceError('KPI registry source must not define tool key')
         actor = self.published_by.strip() if isinstance(self.published_by, str) else ''
         if not actor:
             raise KpiRegistrySourceError('KPI registry publication actor must not be empty')
@@ -179,7 +181,9 @@ def _decode_document(payload: bytes) -> dict[str, Any]:
         with gzip.GzipFile(fileobj=BytesIO(payload), mode='rb') as stream:
             raw = stream.read(DEFAULT_MAX_DECOMPRESSED_BYTES + 1)
     except OSError as error:
-        raise KpiRegistrySourceError('KPI registry source payload is not valid gzip data') from error
+        raise KpiRegistrySourceError(
+            'KPI registry source payload is not valid gzip data'
+        ) from error
     if len(raw) > DEFAULT_MAX_DECOMPRESSED_BYTES:
         raise KpiRegistrySourceError('KPI registry source decompressed payload is too large')
     try:

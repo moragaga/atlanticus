@@ -1,9 +1,9 @@
 import pytest
 
 from ada.web.kpis.registry.configuration import (
-    KpiRegistryValidationError,
     KpiDestination,
     KpiDestinationCatalogSnapshot,
+    KpiRegistryValidationError,
     validate_kpi_registry_destinations,
 )
 
@@ -19,12 +19,19 @@ def test_destination_catalog_is_semantic_and_has_no_private_revision() -> None:
 
 def test_destination_snapshot_carries_generic_tool_projection_target() -> None:
     target = tool_target()
-    snapshot = KpiDestinationCatalogSnapshot(projection_target=target, catalog=catalog())
+    snapshot = KpiDestinationCatalogSnapshot(
+        tool_key='process',
+        projection_target=target,
+        catalog=catalog(),
+    )
 
+    assert snapshot.tool_key == 'process'
     assert snapshot.projection_target == target
     assert snapshot.catalog.destination('crusher') == KpiDestination('crusher', 'Chancado')
 
 
 def test_destination_validation_rejects_destination_not_in_tool_catalog() -> None:
-    with pytest.raises(KpiRegistryValidationError, match="KPI destination 'unknown' is not available"):
+    with pytest.raises(
+        KpiRegistryValidationError, match="KPI destination 'unknown' is not available"
+    ):
         validate_kpi_registry_destinations(configuration('unknown'), catalog())

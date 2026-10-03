@@ -89,7 +89,7 @@ def test_provider_returns_none_without_projected_tool() -> None:
     assert provider.load() is None
 
 
-def test_provider_preserves_projection_target_and_catalog() -> None:
+def test_provider_preserves_tool_identity_projection_target_and_catalog() -> None:
     record = projection(ToolConfiguration.from_document(tool_document()))
     provider = ToolConfigurationKpiDestinationCatalogProvider(
         projection=ProjectionMemory(record),
@@ -99,6 +99,7 @@ def test_provider_preserves_projection_target_and_catalog() -> None:
     snapshot = provider.load()
 
     assert snapshot is not None
+    assert snapshot.tool_key == 'process'
     assert snapshot.projection_target == record.target
     assert tuple(destination.key for destination in snapshot.catalog.destinations) == (
         'global_indicators',

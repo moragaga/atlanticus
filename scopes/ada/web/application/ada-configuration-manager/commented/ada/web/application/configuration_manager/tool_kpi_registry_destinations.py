@@ -1,12 +1,14 @@
-# Espejo pedagógico: deriva destinos KPI desde la proyección activa de Tools conservando el ProjectionTarget completo.
+# Deriva el catálogo KPI y el tool_key desde la misma proyección activa de Tool.
+# Este archivo es el espejo pedagógico del código productivo equivalente.
+
 from __future__ import annotations
 
-from ada.web.kpis.registry.errors import KpiRegistryValidationError
 from ada.web.kpis.registry.configuration import (
     KpiDestination,
     KpiDestinationCatalog,
     KpiDestinationCatalogSnapshot,
 )
+from ada.web.kpis.registry.errors import KpiRegistryValidationError
 from ada.web.tools.configuration import ToolConfiguration
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.models import SourceKey
@@ -17,7 +19,6 @@ _SYSTEM_DESTINATION_DISPLAY_NAMES = {
 }
 
 
-# KPI Configuration consume la proyección activa de Tools y conserva su ProjectionTarget como dependencia exacta.
 class ToolConfigurationKpiDestinationCatalogProvider:
     def __init__(
         self,
@@ -28,7 +29,6 @@ class ToolConfigurationKpiDestinationCatalogProvider:
         self._projection = projection
         self._source_key = source_key
 
-    # Los subcomponentes siguen siendo semántica de Alarmas; sólo kpi_destination_keys forman este catálogo.
     def load(self) -> KpiDestinationCatalogSnapshot | None:
         projection = self._projection.get_active(self._source_key)
         if projection is None:
@@ -50,6 +50,7 @@ class ToolConfigurationKpiDestinationCatalogProvider:
             ),
         )
         return KpiDestinationCatalogSnapshot(
+            tool_key=projection.payload.tool_key,
             projection_target=projection.target,
             catalog=catalog,
         )

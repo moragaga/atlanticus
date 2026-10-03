@@ -11,3 +11,9 @@ def require_destination_key(value: object) -> str:
     if not isinstance(value, str) or not value.strip():
         raise KpiRegistryValidationError('KPI destination key must be a non-empty string')
     return value.strip()
+
+
+def require_tool_key(value: object) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise KpiRegistryValidationError('Tool key must be a non-empty string')
+    return value.strip()

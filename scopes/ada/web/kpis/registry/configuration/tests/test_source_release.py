@@ -1,8 +1,12 @@
+import pytest
+
 from ada.web.kpis.registry.configuration import (
     KPI_REGISTRY_SOURCE_RESOURCE_PATH,
     KpiRegistrySourceCodec,
+    KpiRegistrySourceError,
     KpiRegistrySourceService,
 )
+from ada.web.kpis.registry.models import KpiRegistry
 from atlanticus.web.source.models import SourceKey
 
 from .helpers import SourceStoreStub, configuration, release_ref
@@ -18,6 +22,19 @@ def test_kpi_source_codec_round_trips_configuration() -> None:
     assert resource.logical_path == KPI_REGISTRY_SOURCE_RESOURCE_PATH
     assert decoded.registry == value
     assert decoded.published_by == 'manager-user'
+
+
+def test_kpi_source_rejects_projection_tool_context() -> None:
+    codec = KpiRegistrySourceCodec()
+
+    with pytest.raises(KpiRegistrySourceError, match='must not define tool key'):
+        codec.encode(
+            registry=KpiRegistry(
+                bindings=configuration().bindings,
+                tool_key='process',
+            ),
+            published_by='manager-user',
+        )
 
 
 def test_kpi_source_service_publishes_with_generic_concurrency_contract() -> None:

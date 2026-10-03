@@ -24,7 +24,8 @@ def _record() -> ProjectionRecord[KpiRegistry]:
         source_published_at_utc=published_at,
         projected_at_utc=published_at,
         payload=KpiRegistry(
-            (KpiRegistryBinding(kpi_key='throughput', destination_keys=('crusher',)),)
+            bindings=(KpiRegistryBinding(kpi_key='throughput', destination_keys=('crusher',)),),
+            tool_key='process',
         ),
         dependencies=(dependency,),
     )
@@ -37,4 +38,7 @@ def test_local_registry_projection_round_trip_survives_restart(tmp_path) -> None
     assert first.get_active(record.source_key) is None
     first.replace_active(record)
     restarted = LocalKpiRegistryProjectionStore(settings)
-    assert restarted.get_active(record.source_key) == record
+    loaded = restarted.get_active(record.source_key)
+
+    assert loaded == record
+    assert loaded.payload.tool_key == 'process'

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from ada.web.kpis.registry.errors import KpiRegistryValidationError
 from ada.web.kpis.registry.configuration import (
     KpiDestination,
     KpiDestinationCatalog,
     KpiDestinationCatalogSnapshot,
 )
+from ada.web.kpis.registry.errors import KpiRegistryValidationError
 from ada.web.tools.configuration import ToolConfiguration
 from atlanticus.web.projection.store import ProjectionStore
 from atlanticus.web.source.models import SourceKey
@@ -47,6 +47,7 @@ class ToolConfigurationKpiDestinationCatalogProvider:
             ),
         )
         return KpiDestinationCatalogSnapshot(
+            tool_key=projection.payload.tool_key,
             projection_target=projection.target,
             catalog=catalog,
         )

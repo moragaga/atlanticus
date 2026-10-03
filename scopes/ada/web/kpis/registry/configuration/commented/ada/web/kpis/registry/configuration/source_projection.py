@@ -1,16 +1,18 @@
-# Proyecta Registry conservando la dependencia exacta de Tool.
+# Proyecta Registry validando destinos e inyectando el tool_key de la Tool exacta.
 # Este archivo es el espejo pedagógico del código productivo equivalente.
 
 from __future__ import annotations
 
-from ada.web.kpis.registry.errors import KpiRegistryValidationError
-from ada.web.kpis.registry.models import KpiRegistry
+from dataclasses import replace
+
 from ada.web.kpis.registry.configuration.destinations import (
     KpiDestinationCatalogProvider,
     validate_kpi_registry_destinations,
 )
 from ada.web.kpis.registry.configuration.errors import KpiRegistryProjectionError
 from ada.web.kpis.registry.configuration.source_release import KpiRegistrySourceCodec
+from ada.web.kpis.registry.errors import KpiRegistryValidationError
+from ada.web.kpis.registry.models import KpiRegistry
 from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.projection.service import ProjectionBuilder, SourceProjectionService
 from atlanticus.web.projection.store import ProjectionStore
@@ -41,7 +43,9 @@ class KpiRegistryProjectionBuilder(ProjectionBuilder[KpiRegistry]):
         if snapshot is None:
             raise KpiRegistryProjectionError('Tool projection is not available')
         if snapshot.projection_target != dependency:
-            raise KpiRegistryProjectionError('Tool projection changed before KPI Registry projection')
+            raise KpiRegistryProjectionError(
+                'Tool projection changed before KPI Registry projection'
+            )
         registry = self._codec.decode(resources).registry
         try:
             validate_kpi_registry_destinations(registry, snapshot.catalog)
@@ -49,7 +53,7 @@ class KpiRegistryProjectionBuilder(ProjectionBuilder[KpiRegistry]):
             raise KpiRegistryProjectionError(
                 'Published KPI Registry is not valid for projection'
             ) from error
-        return registry
+        return replace(registry, tool_key=snapshot.tool_key)
 
 
 def create_kpi_registry_projection_service(

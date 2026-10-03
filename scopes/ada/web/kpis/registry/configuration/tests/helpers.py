@@ -1,11 +1,11 @@
 from datetime import UTC, datetime
 
 from ada.web.kpis.registry.configuration import (
-    KpiRegistry,
-    KpiRegistryBinding,
     KpiDestination,
     KpiDestinationCatalog,
     KpiDestinationCatalogSnapshot,
+    KpiRegistry,
+    KpiRegistryBinding,
 )
 from atlanticus.web.projection.models import ProjectionTarget
 from atlanticus.web.source.models import (
@@ -59,6 +59,7 @@ def tool_target(value: str = 'tool-1') -> ProjectionTarget:
 
 def destination_snapshot(value: str = 'tool-1') -> KpiDestinationCatalogSnapshot:
     return KpiDestinationCatalogSnapshot(
+        tool_key='process',
         projection_target=tool_target(value),
         catalog=catalog(),
     )

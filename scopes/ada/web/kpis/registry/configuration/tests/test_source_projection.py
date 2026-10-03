@@ -1,8 +1,8 @@
 import pytest
 
 from ada.web.kpis.registry.configuration import (
-    KpiRegistryProjectionError,
     KpiRegistryProjectionBuilder,
+    KpiRegistryProjectionError,
     KpiRegistrySourceCodec,
     create_kpi_registry_projection_service,
 )
@@ -39,11 +39,13 @@ def test_service_selects_current_target_with_exact_tool_projection_dependency() 
     assert target.dependencies == (provider.value.projection_target,)
 
 
-def test_projection_persists_generic_dependency_and_configuration_payload() -> None:
+def test_projection_persists_tool_identity_dependency_and_configuration_payload() -> None:
     source_key = SourceKey('kpis')
     source_ref = release_ref('kpi-1')
     provider = DestinationProvider(destination_snapshot('tool-1'))
-    resource = KpiRegistrySourceCodec().encode(registry=configuration(), published_by='manager-user')
+    resource = KpiRegistrySourceCodec().encode(
+        registry=configuration(), published_by='manager-user'
+    )
     source = SourceStoreStub(
         source_key=source_key,
         release_ref_value=source_ref,
@@ -60,7 +62,8 @@ def test_projection_persists_generic_dependency_and_configuration_payload() -> N
 
     result = service.project(target)
 
-    assert result.projection.payload == configuration()
+    assert result.projection.payload.bindings == configuration().bindings
+    assert result.projection.payload.tool_key == 'process'
     assert result.projection.dependencies == (provider.value.projection_target,)
     assert result.projection.target == target
     assert projection.calls == 1
@@ -70,7 +73,9 @@ def test_status_becomes_outdated_when_tool_projection_target_changes() -> None:
     source_key = SourceKey('kpis')
     source_ref = release_ref('kpi-1')
     provider = DestinationProvider(destination_snapshot('tool-1'))
-    resource = KpiRegistrySourceCodec().encode(registry=configuration(), published_by='manager-user')
+    resource = KpiRegistrySourceCodec().encode(
+        registry=configuration(), published_by='manager-user'
+    )
     source = SourceStoreStub(
         source_key=source_key,
         release_ref_value=source_ref,
@@ -98,7 +103,9 @@ def test_projection_fails_if_tool_target_changes_after_target_selection() -> Non
     source_key = SourceKey('kpis')
     source_ref = release_ref('kpi-1')
     provider = DestinationProvider(destination_snapshot('tool-1'))
-    resource = KpiRegistrySourceCodec().encode(registry=configuration(), published_by='manager-user')
+    resource = KpiRegistrySourceCodec().encode(
+        registry=configuration(), published_by='manager-user'
+    )
     source = SourceStoreStub(
         source_key=source_key,
         release_ref_value=source_ref,

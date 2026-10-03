@@ -31,6 +31,7 @@ def test_local_runtime_registry_projection_survives_recomposition(tmp_path) -> N
                     destination_keys=('global_indicators',),
                 ),
             ),
+            tool_key='process',
         ),
         dependencies=(
             ProjectionTarget(
@@ -48,10 +49,8 @@ def test_local_runtime_registry_projection_survives_recomposition(tmp_path) -> N
     restarted = create_local_configuration_manager_dependencies(
         source_root=source_root,
     )
-    loaded = restarted.kpi_registry_projection_store.get_active(
-        KPI_REGISTRY_SOURCE_KEY
-    )
+    loaded = restarted.kpi_registry_projection_store.get_active(KPI_REGISTRY_SOURCE_KEY)
 
     assert loaded == projection
-    assert loaded is not None
+    assert loaded.payload.tool_key == 'process'
     assert loaded.target == projection.target
