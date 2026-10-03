@@ -12,6 +12,7 @@ EVALUATION_BATCH_SCHEMA_VERSION = 1
 class KpiEvaluationWriteStatus(StrEnum):
     CREATED = 'created'
     UNCHANGED = 'unchanged'
+    REPLACED = 'replaced'
 
 
 @dataclass(frozen=True, slots=True)

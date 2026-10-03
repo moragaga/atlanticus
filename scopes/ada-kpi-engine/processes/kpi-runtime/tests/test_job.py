@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from ada.kpis.core import KpiCatalog
-from ada.kpis.persistence import KpiEvaluationWriteStatus, KpiPersistenceError
+from ada.kpis.persistence import KpiEvaluationWriteStatus
 from ada.processes.kpi_runtime.errors import KpiRuntimeWatermarkError
 from ada.processes.kpi_runtime.job import KpiRuntimeJob
 from ada.processes.kpi_runtime.models import KpiRuntimeOutcome
@@ -172,7 +172,7 @@ def test_same_source_watermark_reprocesses_when_enabled(tmp_path) -> None:
     assert result.reason == 'evaluated'
     assert result.committed_before == watermark(10)
     assert result.committed_after == watermark(10)
-    assert result.evaluation_write_status is KpiEvaluationWriteStatus.UNCHANGED
+    assert result.evaluation_write_status is KpiEvaluationWriteStatus.REPLACED
     assert persistence.committed_watermark() == watermark(10)
     assert reader.calls == 1
     assert context.work is True
@@ -180,16 +180,19 @@ def test_same_source_watermark_reprocesses_when_enabled(tmp_path) -> None:
     assert context.fences == 1
 
 
-def test_reprocess_current_conflicting_result_fails_without_moving_watermark(tmp_path) -> None:
+def test_reprocess_current_replaces_changed_result_without_moving_watermark(tmp_path) -> None:
     source = StaticWatermarkReader(watermark(10))
     job, persistence, reader = _job(tmp_path, source, reprocess_current=True)
     job.run_iteration(RuntimeContextStub())
     reader.value = 99.0
 
-    with pytest.raises(KpiPersistenceError, match='conflicts with durable content'):
-        job.run_iteration(RuntimeContextStub())
+    result = job.run_iteration(RuntimeContextStub())
 
+    assert result.evaluation_write_status is KpiEvaluationWriteStatus.REPLACED
     assert persistence.committed_watermark() == watermark(10)
+    committed = persistence.read_committed_after()
+    assert len(committed) == 1
+    assert committed[0].evaluations[0].value == '99.0'
 
 
 def test_source_watermark_behind_committed_fails_closed(tmp_path) -> None:

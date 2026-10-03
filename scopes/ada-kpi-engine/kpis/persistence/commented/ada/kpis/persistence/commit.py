@@ -55,6 +55,17 @@ class KpiPersistence:
             self._state.replace(KpiCommitState(batch.watermark))
         return KpiCommitResult(before=before, after=batch.watermark, write_status=status)
 
+    def replace_current(self, batch: KpiEvaluationBatch) -> KpiCommitResult:
+        if not isinstance(batch, KpiEvaluationBatch):
+            raise TypeError('batch must be KpiEvaluationBatch')
+        before = self._state.read().watermark
+        if before is None or batch.watermark != before:
+            raise KpiPersistenceOrderError(
+                'KPI replacement watermark must match the committed watermark'
+            )
+        status = self._evaluations.replace(batch)
+        return KpiCommitResult(before=before, after=before, write_status=status)
+
     def read_committed_after(
         self,
         after: KpiWatermark | None = None,

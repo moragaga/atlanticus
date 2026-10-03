@@ -113,7 +113,10 @@ class KpiRuntimeJob:
         context.raise_if_cancelled()
         context.assert_lease_current()
         with context.fenced_mutation():
-            commit = self._persistence.commit(batch)
+            if self._reprocess_current and observed == committed:
+                commit = self._persistence.replace_current(batch)
+            else:
+                commit = self._persistence.commit(batch)
         context.mark_iteration_work()
         context.increment_execution_counter('evaluations_committed')
         _record_after(

@@ -1,5 +1,5 @@
-# Runtime KPI: REPROCESS_CURRENT permite reevaluar únicamente el watermark ya current.
-# La persistencia sigue siendo write-once: un batch idéntico queda UNCHANGED y uno distinto falla por conflicto.
+# Runtime KPI: REPROCESS_CURRENT permite reevaluar y reemplazar únicamente el watermark ya current.
+# La persistencia normal sigue siendo write-once; el reemplazo se usa solo en el reproceso explícito del CURRENT.
 from __future__ import annotations
 
 from datetime import datetime
@@ -115,7 +115,10 @@ class KpiRuntimeJob:
         context.raise_if_cancelled()
         context.assert_lease_current()
         with context.fenced_mutation():
-            commit = self._persistence.commit(batch)
+            if self._reprocess_current and observed == committed:
+                commit = self._persistence.replace_current(batch)
+            else:
+                commit = self._persistence.commit(batch)
         context.mark_iteration_work()
         context.increment_execution_counter('evaluations_committed')
         _record_after(

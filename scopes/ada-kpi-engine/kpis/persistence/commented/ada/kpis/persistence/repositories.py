@@ -38,6 +38,15 @@ class KpiEvaluationRepository:
             return KpiEvaluationWriteStatus.CREATED
         return KpiEvaluationWriteStatus.UNCHANGED
 
+    def replace(self, batch: KpiEvaluationBatch) -> KpiEvaluationWriteStatus:
+        if not isinstance(batch, KpiEvaluationBatch):
+            raise TypeError('batch must be KpiEvaluationBatch')
+        self._store.replace(
+            self._paths.evaluation_path(batch.watermark),
+            batch.to_payload(),
+        )
+        return KpiEvaluationWriteStatus.REPLACED
+
     def read(self, watermark: KpiWatermark) -> KpiEvaluationBatch | None:
         if not isinstance(watermark, KpiWatermark):
             raise TypeError('watermark must be KpiWatermark')

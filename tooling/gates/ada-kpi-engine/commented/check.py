@@ -340,6 +340,7 @@ def _bootstrap(argv: list[str]) -> None:
             '--frozen',
             '--all-packages',
             '--no-editable',
+            '--reinstall',
         ],
         cwd=scope,
     )

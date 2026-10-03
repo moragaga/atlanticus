@@ -35,6 +35,26 @@ def test_conflicting_retry_is_rejected(tmp_path: Path) -> None:
         repository.commit(batch(10, value=2.0))
 
 
+def test_replace_current_overwrites_same_watermark(tmp_path: Path) -> None:
+    repository = persistence(tmp_path)
+    repository.commit(batch(10, value=1.0))
+
+    result = repository.replace_current(batch(10, value=2.0))
+
+    assert result.before == watermark(10)
+    assert result.after == watermark(10)
+    assert result.write_status is KpiEvaluationWriteStatus.REPLACED
+    assert repository.committed_watermark() == watermark(10)
+    assert repository.read_committed_after() == (batch(10, value=2.0),)
+
+
+def test_replace_current_rejects_non_current_watermark(tmp_path: Path) -> None:
+    repository = persistence(tmp_path)
+    repository.commit(batch(20))
+    with pytest.raises(KpiPersistenceOrderError, match='must match'):
+        repository.replace_current(batch(10))
+
+
 def test_watermark_never_moves_backwards(tmp_path: Path) -> None:
     repository = persistence(tmp_path)
     repository.commit(batch(20))
