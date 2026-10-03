@@ -16,6 +16,7 @@ class GlobalIndicatorMeasurementDefinition:
     label: str
     actual_kpi_key: str
     plan_kpi_key: str
+    color_kpi_key: str | None = None
 
     def __post_init__(self) -> None:
         _require_key(self.key, field_name='measurement key')
@@ -30,10 +31,19 @@ class GlobalIndicatorMeasurementDefinition:
             'plan_kpi_key',
             _require_kpi_key(self.plan_kpi_key, field_name='plan_kpi_key'),
         )
+        if self.color_kpi_key is not None:
+            object.__setattr__(
+                self,
+                'color_kpi_key',
+                _require_kpi_key(self.color_kpi_key, field_name='color_kpi_key'),
+            )
 
     @property
-    def kpi_keys(self) -> tuple[str, str]:
-        return (self.actual_kpi_key, self.plan_kpi_key)
+    def kpi_keys(self) -> tuple[str, ...]:
+        keys = [self.actual_kpi_key, self.plan_kpi_key]
+        if self.color_kpi_key is not None:
+            keys.append(self.color_kpi_key)
+        return tuple(keys)
 
 
 @dataclass(frozen=True, slots=True)

@@ -75,6 +75,12 @@ def _map_measurement(
         label=definition.label,
         actual_value=values[definition.actual_kpi_key],
         plan_value=values[definition.plan_kpi_key],
+        # El color modifica sólo el valor actual; plan no tiene contrato de color.
+        color_class=(
+            None
+            if definition.color_kpi_key is None
+            else values[definition.color_kpi_key]
+        ),
         actual_kpi_key=definition.actual_kpi_key,
         plan_kpi_key=definition.plan_kpi_key,
     )

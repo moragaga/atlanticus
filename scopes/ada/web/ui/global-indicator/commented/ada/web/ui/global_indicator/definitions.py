@@ -11,13 +11,14 @@ from .models import global_indicator_measurement_capacity
 _KEY_PATTERN = re.compile(r'^[a-z][a-z0-9_]*$')
 
 
-# Cada fila conserva por separado la identidad del KPI actual y del KPI plan.
+# Cada fila conserva actual y plan; el color opcional pertenece sólo al valor actual.
 @dataclass(frozen=True, slots=True)
 class GlobalIndicatorMeasurementDefinition:
     key: str
     label: str
     actual_kpi_key: str
     plan_kpi_key: str
+    color_kpi_key: str | None = None
 
     def __post_init__(self) -> None:
         _require_key(self.key, field_name='measurement key')
@@ -32,10 +33,19 @@ class GlobalIndicatorMeasurementDefinition:
             'plan_kpi_key',
             _require_kpi_key(self.plan_kpi_key, field_name='plan_kpi_key'),
         )
+        if self.color_kpi_key is not None:
+            object.__setattr__(
+                self,
+                'color_kpi_key',
+                _require_kpi_key(self.color_kpi_key, field_name='color_kpi_key'),
+            )
 
     @property
-    def kpi_keys(self) -> tuple[str, str]:
-        return (self.actual_kpi_key, self.plan_kpi_key)
+    def kpi_keys(self) -> tuple[str, ...]:
+        keys = [self.actual_kpi_key, self.plan_kpi_key]
+        if self.color_kpi_key is not None:
+            keys.append(self.color_kpi_key)
+        return tuple(keys)
 
 
 # La última medición es un slot independiente y puede apuntar a un KPI distinto.
