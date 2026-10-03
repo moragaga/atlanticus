@@ -56,17 +56,11 @@ def validate_registry_projection(document: Mapping[str, Any]) -> dict[str, Any]:
     if document['id'] != KPI_REGISTRY_ITEM_ID:
         raise KpiMaterializationContractError('KPI Registry projection id is invalid')
     if document['partition_key'] != KPI_REGISTRY_PARTITION_VALUE:
-        raise KpiMaterializationContractError(
-            'KPI Registry projection partition_key is invalid'
-        )
+        raise KpiMaterializationContractError('KPI Registry projection partition_key is invalid')
     if document['document_type'] != KPI_REGISTRY_DOCUMENT_TYPE:
-        raise KpiMaterializationContractError(
-            'KPI Registry projection document_type is invalid'
-        )
+        raise KpiMaterializationContractError('KPI Registry projection document_type is invalid')
     if document['schema_version'] != KPI_REGISTRY_SCHEMA_VERSION:
-        raise KpiMaterializationContractError(
-            'KPI Registry projection schema_version is invalid'
-        )
+        raise KpiMaterializationContractError('KPI Registry projection schema_version is invalid')
     if document['source_key'] != KPI_REGISTRY_SOURCE_KEY:
         raise KpiMaterializationContractError('KPI Registry projection source_key is invalid')
     _required_text(document['source_release_id'], 'source_release_id')
@@ -137,17 +131,16 @@ def _validate_dependency(value: object) -> None:
 
 # Expone una operación del contrato manteniendo validación explícita.
 def _validate_payload(value: object) -> None:
-    if not isinstance(value, Mapping) or set(value) != {'bindings'}:
+    if not isinstance(value, Mapping) or set(value) != {'bindings', 'tool_key'}:
         raise KpiMaterializationContractError('KPI Registry projection payload is invalid')
+    require_tool_key(value['tool_key'])
     bindings = value['bindings']
     if not isinstance(bindings, list):
         raise KpiMaterializationContractError('KPI Registry bindings must be an array')
     seen: set[str] = set()
     for index, binding in enumerate(bindings):
         if not isinstance(binding, Mapping):
-            raise KpiMaterializationContractError(
-                f'KPI Registry binding {index} must be an object'
-            )
+            raise KpiMaterializationContractError(f'KPI Registry binding {index} must be an object')
         expected = {
             'kpi_key',
             'destination_keys',

@@ -123,8 +123,9 @@ def _validate_dependency(value: object) -> None:
 
 
 def _validate_payload(value: object) -> None:
-    if not isinstance(value, Mapping) or set(value) != {'bindings'}:
+    if not isinstance(value, Mapping) or set(value) != {'bindings', 'tool_key'}:
         raise KpiMaterializationContractError('KPI Registry projection payload is invalid')
+    require_tool_key(value['tool_key'])
     bindings = value['bindings']
     if not isinstance(bindings, list):
         raise KpiMaterializationContractError('KPI Registry bindings must be an array')
