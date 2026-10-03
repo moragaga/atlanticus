@@ -1,0 +1,35 @@
+# Local Python environments
+.venv/
+
+# Python generated state
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local Atlanticus runtime state
+/.runtime/
+/.local/
+/.local-volume/
+
+# Local environment values
+.env
+.env.*
+!.env.detail
+
+# Ephemeral build outputs
+/build/
+/dist/
+
+# IDE and operating-system files
+/.idea/
+/.vscode/
+.DS_Store
+*.log
+
+# Runtime manifests, wheels, locks and active process configuration are intentionally versionable.

@@ -115,6 +115,9 @@ def _write_transport(root: Path) -> None:
 def _patch_generation_context(monkeypatch, tmp_path: Path) -> None:
     template = tmp_path / "consumer"
     template.mkdir()
+    (template / ".gitignore").write_text(
+        ".venv/\n.env\n!.env.detail\n", encoding="utf-8"
+    )
     for name in (
         "process.py",
         "process.sh",
@@ -345,6 +348,9 @@ def test_distribution_keeps_local_deployment_assets_out_of_root(
 
     assert (target / "Dockerfile").is_file()
     assert (target / ".dockerignore").is_file()
+    assert (target / ".gitignore").read_text(encoding="utf-8") == (
+        ".venv/\n.env\n!.env.detail\n"
+    )
     assert not (target / "compose.yaml").exists()
     assert not (target / "compose.bind.yaml").exists()
     assert (target / "deployment/local/compose.yaml").is_file()

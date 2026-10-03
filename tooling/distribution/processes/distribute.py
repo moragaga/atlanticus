@@ -568,6 +568,12 @@ def _consumer_template_root() -> Path:
 
 def _copy_consumer_tooling(staging_root: Path) -> None:
     source = _consumer_template_root()
+    gitignore = source / ".gitignore"
+    if not gitignore.is_file():
+        raise DistributionError(
+            f"Consumer repository ignore template not found: {gitignore}"
+        )
+    shutil.copy2(gitignore, staging_root / ".gitignore")
     target = staging_root / "tooling/local/processes"
     target.mkdir(parents=True)
     for name in (
@@ -694,6 +700,10 @@ def _validate_staging(
             )
     if (staging_root / ".runtime").exists():
         raise DistributionError("Generated distribution must not contain .runtime")
+    if not (staging_root / ".gitignore").is_file():
+        raise DistributionError(
+            "Generated distribution must contain the consumer .gitignore"
+        )
     for name in (
         "process.py",
         "process.sh",

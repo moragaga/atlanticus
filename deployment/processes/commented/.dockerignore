@@ -1,11 +1,15 @@
-# El contexto Docker se limita a archivos transportables y nunca incluye configuración activa.
+# El contexto Docker solo admite código, dependencias y configuración necesaria en runtime.
 *
 !Dockerfile
 !processes/
 !processes/*/
 !processes/*/pyproject.toml
 !processes/*/uv.lock
+!processes/*/secrets.json
 !processes/*/wheels/
 !processes/*/wheels/**
 !processes/*/src/
 !processes/*/src/**
+!processes/*/config/
+!processes/*/config/connections.json
+# Los archivos .detail, .env y config.json quedan fuera de la imagen por no ser runtime inputs.
