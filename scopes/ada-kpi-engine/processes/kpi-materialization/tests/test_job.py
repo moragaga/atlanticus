@@ -31,7 +31,7 @@ def test_job_materializes_each_tool_independently(tmp_path):
     job = KpiMaterializationJob(
         repositories={
             'tool_a': Reader(projection(revision='r1')),
-            'tool_b': Reader(projection(revision='r2')),
+            'tool_b': Reader(projection(revision='r2', tool_key='tool_b')),
         },
         store=store,
     )
@@ -74,7 +74,7 @@ def test_failed_tool_keeps_previous_authority_and_does_not_block_other_updates(t
     store = _store(tmp_path)
     old = materialize_registry(
         tool_key='tool_b',
-        projection=projection(revision='old'),
+        projection=projection(revision='old', tool_key='tool_b'),
     )
     store.replace(tool_key='tool_b', document=old)
     job = KpiMaterializationJob(
@@ -100,7 +100,7 @@ def test_job_prunes_registry_when_tool_is_removed_from_connections(tmp_path):
         tool_key='old_tool',
         document=materialize_registry(
             tool_key='old_tool',
-            projection=projection(revision='old'),
+            projection=projection(revision='old', tool_key='old_tool'),
         ),
     )
     job = KpiMaterializationJob(

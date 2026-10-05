@@ -10,6 +10,11 @@ from ada.web.application.generic.composition import (
     create_local_operational_composition,
     create_operational_navigation_modules,
 )
+from ada.web.application.generic.extension import (
+    AdaApplicationExtension,
+    AdaApplicationExtensionFactory,
+    extend_ada_application_definition,
+)
 from ada.web.application.generic.layout import (
     build_body_application_layout,
     create_ada_operational_layout,
@@ -35,6 +40,8 @@ from ada.web.ui.content_state import ContentStatePresentationMode
 __all__ = [
     'OPERATIONAL_LATEST_HOST_TYPE',
     'AdaApplicationComposition',
+    'AdaApplicationExtension',
+    'AdaApplicationExtensionFactory',
     'AdaOperationalBodyFactory',
     'AdaOperationalComponentRenderer',
     'AdaOperationalLatestRenderer',
@@ -54,6 +61,7 @@ __all__ = [
     'create_local_operational_composition',
     'create_operational_latest_render_module',
     'create_operational_navigation_modules',
+    'extend_ada_application_definition',
     'materialize_operational_components',
     'materialize_operational_latest_hosts',
     'operational_latest_host_id',

@@ -4,17 +4,17 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
-from dash import html
 
 from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
 from ada.contracts.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 from ada.web.application.generic import __main__ as cli, bootstrap, host
-from ada.web.application.generic.composition import AdaApplicationComposition
-from ada.web.application.generic.layout import build_body_application_layout
+from ada.web.application.generic.application import create_application_definition
+from ada.web.application.generic.extension import AdaApplicationExtension
 from ada.web.application.generic.settings import AdaGenericSettings
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.tools.configuration import ToolRenderTopology
 from ada.web.tools.persistence import ToolProjectionResolution, ToolProjectionResolutionState
+from atlanticus.web.modules import WebModule
 from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.source.models import SourceKey, SourceReleaseId
 
@@ -64,12 +64,13 @@ def _ready_resolution() -> ToolProjectionResolution:
         ),
     )
     return ToolProjectionResolution(
-        state=ToolProjectionResolutionState.READY, projection=projection
+        state=ToolProjectionResolutionState.READY,
+        projection=projection,
     )
 
 
 @pytest.mark.parametrize('configured', [False, True])
-def test_external_composition_is_resolved_after_tool_projection(
+def test_external_extension_is_resolved_after_tool_projection(
     monkeypatch, tmp_path, configured: bool
 ) -> None:
     resolution = (
@@ -79,66 +80,88 @@ def test_external_composition_is_resolved_after_tool_projection(
     )
     seen: dict[str, object] = {}
     expected_runtime = object()
-    expected_definition = object()
+    base_definition = create_application_definition()
+    base_module_names = tuple(module.name for module in base_definition.modules)
     monkeypatch.setattr(bootstrap, '_resolve_tool_projection', lambda _settings: resolution)
-
-    def create_definition(_resolution, **kwargs):
-        assert _resolution is resolution
-        seen['definition_kwargs'] = kwargs
-        return expected_definition
-
-    monkeypatch.setattr(bootstrap, 'create_definition_from_tool_resolution', create_definition)
-    monkeypatch.setattr(
-        bootstrap,
-        'create_web_application',
-        lambda definition: expected_runtime if definition is expected_definition else None,
-    )
-
-    def composition_factory(binding: OperationalRenderBinding | None) -> AdaApplicationComposition:
-        seen['binding'] = binding
-        return AdaApplicationComposition(
-            modules=(),
-            layout=build_body_application_layout,
-            operational_body_factory=lambda _binding: html.Div(id='external-operational-body'),
-        )
-
-    runtime = bootstrap.create_operational_application_runtime(
-        settings=_settings(tmp_path), composition_factory=composition_factory
-    )
-    assert runtime is expected_runtime
-    kwargs = seen['definition_kwargs']
-    assert isinstance(kwargs['composition'], AdaApplicationComposition)
-    if configured:
-        assert isinstance(seen['binding'], OperationalRenderBinding)
-        assert seen['binding'].component_keys == ('mine', 'plant')
-        assert kwargs['operational_render_binding'] is seen['binding']
-    else:
-        assert seen['binding'] is None
-        assert kwargs['operational_render_binding'] is None
-
-
-def test_external_composition_can_remain_page_based_without_renderers(
-    monkeypatch, tmp_path
-) -> None:
-    monkeypatch.setattr(
-        bootstrap, '_resolve_tool_projection', lambda _settings: _ready_resolution()
-    )
-    captured = {}
-    expected_runtime = object()
     monkeypatch.setattr(
         bootstrap,
         'create_definition_from_tool_resolution',
-        lambda _resolution, **kwargs: captured.update(kwargs) or object(),
+        lambda _resolution, **_kwargs: base_definition,
     )
-    monkeypatch.setattr(bootstrap, 'create_web_application', lambda _definition: expected_runtime)
+
+    def create_web_application(definition):
+        seen['definition'] = definition
+        return expected_runtime
+
+    monkeypatch.setattr(bootstrap, 'create_web_application', create_web_application)
+
+    external_module = WebModule(name='external-feature')
+
+    def extension_factory(binding: OperationalRenderBinding | None) -> AdaApplicationExtension:
+        seen['binding'] = binding
+        return AdaApplicationExtension(
+            modules=(external_module,),
+            page_packages=(),
+        )
+
     runtime = bootstrap.create_operational_application_runtime(
         settings=_settings(tmp_path),
-        composition_factory=lambda _binding: AdaApplicationComposition(
-            modules=(), layout=build_body_application_layout
+        extension_factory=extension_factory,
+    )
+
+    assert runtime is expected_runtime
+    definition = seen['definition']
+    assert tuple(module.name for module in definition.modules[:-1]) == base_module_names
+    assert definition.modules[-1] is external_module
+    assert definition.page_packages == ()
+    if configured:
+        assert isinstance(seen['binding'], OperationalRenderBinding)
+        assert seen['binding'].component_keys == ('mine', 'plant')
+    else:
+        assert seen['binding'] is None
+
+
+def test_external_extension_preserves_generic_pages_by_default(monkeypatch, tmp_path) -> None:
+    resolution = ToolProjectionResolution(state=ToolProjectionResolutionState.UNCONFIGURED)
+    base_definition = create_application_definition()
+    captured = {}
+    monkeypatch.setattr(bootstrap, '_resolve_tool_projection', lambda _settings: resolution)
+    monkeypatch.setattr(
+        bootstrap,
+        'create_definition_from_tool_resolution',
+        lambda _resolution, **_kwargs: base_definition,
+    )
+    monkeypatch.setattr(
+        bootstrap,
+        'create_web_application',
+        lambda definition: captured.setdefault('definition', definition) or object(),
+    )
+
+    runtime = bootstrap.create_operational_application_runtime(
+        settings=_settings(tmp_path),
+        extension_factory=lambda _binding: AdaApplicationExtension(
+            modules=(WebModule(name='external-feature'),)
         ),
     )
-    assert runtime is expected_runtime
-    assert captured['operational_render_binding'] is None
+
+    assert runtime is captured['definition']
+    assert captured['definition'].page_packages == base_definition.page_packages
+
+
+def test_external_extension_factory_must_return_extension(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(
+        bootstrap,
+        '_resolve_tool_projection',
+        lambda _settings: ToolProjectionResolution(
+            state=ToolProjectionResolutionState.UNCONFIGURED
+        ),
+    )
+
+    with pytest.raises(TypeError, match='extension_factory'):
+        bootstrap.create_operational_application_runtime(
+            settings=_settings(tmp_path),
+            extension_factory=lambda _binding: object(),
+        )
 
 
 def test_external_runner_reuses_host_bootstrap_without_second_manager_path(
@@ -162,13 +185,13 @@ def test_external_runner_reuses_host_bootstrap_without_second_manager_path(
         lambda application: forwarded.update(run=application),
     )
 
-    def composition_factory(_binding):
-        return None
+    def extension_factory(_binding):
+        return AdaApplicationExtension()
 
     assert cli.run_operational_application is host.run_operational_application
-    cli.run_operational_application(composition_factory=composition_factory)
+    cli.run_operational_application(extension_factory=extension_factory)
 
-    assert forwarded['composition_factory'] is composition_factory
+    assert forwarded['extension_factory'] is extension_factory
     assert forwarded['production_identity_provider_factory'] is None
     assert forwarded['run'] is runtime
     assert forwarded['closed'] is True

@@ -68,6 +68,8 @@ def load_frozen_delivery_configurations(
             )
             configuration = _configuration_from_materialized(validated)
             digest = canonical_revision(validated)
+        except KpiDeliveryConfigurationError:
+            raise
         except (
             KpiMaterializationContractError,
             KpiDeliveryValidationError,

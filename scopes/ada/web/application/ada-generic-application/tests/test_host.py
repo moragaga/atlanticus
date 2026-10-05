@@ -31,6 +31,9 @@ def test_local_host_owns_runtime_and_master_projection(tmp_path, monkeypatch) ->
     reader = object()
     application = SimpleNamespace(dash='dash', server='server')
 
+    def extension_factory(*_args):
+        return None
+
     monkeypatch.setattr(host, 'AdaGenericSettings', lambda: settings)
     monkeypatch.setattr(host, 'create_local_configuration_manager_stores', lambda: 'local-stores')
     monkeypatch.setattr(host, '_local_identity', lambda: 'local-identity')
@@ -43,13 +46,14 @@ def test_local_host_owns_runtime_and_master_projection(tmp_path, monkeypatch) ->
     monkeypatch.setattr(host, 'create_operational_application_runtime', create)
     monkeypatch.setattr(host, 'prepare_dash_worker', lambda dash: calls.append({'dash': dash}))
 
-    worker = host.create_worker_runtime(composition_factory=lambda *_args: None)
+    worker = host.create_worker_runtime(extension_factory=extension_factory)
 
     assert worker.application is application
     assert calls[0]['manager_stores'] == 'local-stores'
     assert calls[0]['identity_provider'] == 'local-identity'
     assert calls[0]['manager_source_name'] == 'Local Source'
     assert calls[0]['manager_projection_name'] == 'Local Projection'
+    assert calls[0]['extension_factory'] is extension_factory
     assert calls[0]['master_material_reader'] is reader
     assert calls[1] == {'dash': 'dash'}
     worker.close()

@@ -23,10 +23,10 @@ def _projection():
 
     return {
         'id': KPI_REGISTRY_ITEM_ID,
-        'partition_key': 'kpis',
+        'partition_key': 'kpi-registry',
         'document_type': 'ada_kpi_registry_projection_record',
         'schema_version': 1,
-        'source_key': 'kpis',
+        'source_key': 'kpi-registry',
         'source_release_id': 'registry-r1',
         'source_published_at_utc': '2026-10-02T12:00:00+00:00',
         'projected_at_utc': '2026-10-02T12:00:01+00:00',
@@ -47,7 +47,8 @@ def _projection():
                     'series_enabled': False,
                     'series_hours': None,
                 }
-            ]
+            ],
+            'tool_key': 'tool_a',
         },
     }
 

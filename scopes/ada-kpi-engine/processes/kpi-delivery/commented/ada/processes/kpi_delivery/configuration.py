@@ -71,6 +71,9 @@ def load_frozen_delivery_configurations(
             )
             configuration = _configuration_from_materialized(validated)
             digest = canonical_revision(validated)
+        # Los errores de configuración propios ya tienen el mensaje contractual que debe ver el consumidor.
+        except KpiDeliveryConfigurationError:
+            raise
         except (
             KpiMaterializationContractError,
             KpiDeliveryValidationError,

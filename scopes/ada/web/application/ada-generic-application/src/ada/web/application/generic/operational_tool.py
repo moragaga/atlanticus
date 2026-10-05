@@ -46,6 +46,26 @@ def resolve_operational_tool_projection(
     return resolution
 
 
+def resolve_operational_render_binding(
+    resolution: ToolProjectionResolution,
+) -> OperationalRenderBinding | None:
+    if not isinstance(resolution, ToolProjectionResolution):
+        raise TypeError('resolution must be ToolProjectionResolution')
+    if resolution.state is not ToolProjectionResolutionState.READY:
+        return None
+    projection = resolution.projection
+    if projection is None:
+        raise RuntimeError('READY Tool Projection resolution has no projection')
+    configuration = projection.payload
+    structure = configuration.structure
+    if structure is None:
+        raise RuntimeError('READY Tool Projection has no Tool Structure')
+    return bind_operational_render(
+        structure,
+        bottom_component_key=configuration.render_topology.bottom_component_key,
+    )
+
+
 def create_definition_from_tool_resolution(
     resolution: ToolProjectionResolution,
     *,
@@ -54,11 +74,15 @@ def create_definition_from_tool_resolution(
 ) -> WebApplicationDefinition:
     if not isinstance(resolution, ToolProjectionResolution):
         raise TypeError('resolution must be ToolProjectionResolution')
-    extension: dict[str, object] = {}
+    definition_options: dict[str, object] = {}
     if composition is not None:
-        extension['composition'] = composition
-    if operational_render_binding is not None:
-        extension['operational_render_binding'] = operational_render_binding
+        definition_options['composition'] = composition
+    if (
+        operational_render_binding is not None
+        and composition is not None
+        and composition.operational_body_factory is not None
+    ):
+        definition_options['operational_render_binding'] = operational_render_binding
     if resolution.state is ToolProjectionResolutionState.READY:
         projection = resolution.projection
         if projection is None:
@@ -70,21 +94,20 @@ def create_definition_from_tool_resolution(
         bottom_component_key = configuration.render_topology.bottom_component_key
         baseline_binding = operational_render_binding
         if baseline_binding is None:
-            baseline_binding = bind_operational_render(
-                structure,
-                bottom_component_key=bottom_component_key,
-            )
+            baseline_binding = resolve_operational_render_binding(resolution)
         elif (
             baseline_binding.structure != structure
             or baseline_binding.bottom_component_key != bottom_component_key
         ):
             raise ValueError('Operational render binding must match Tool Projection')
+        if baseline_binding is None:
+            raise RuntimeError('READY Tool Projection has no Operational Render Binding')
         alarm_baseline_projection = project_alarm_baseline(
             baseline_binding.structure,
             bottom_component_key=baseline_binding.bottom_component_key,
         )
         return create_application_definition(
-            **extension,
+            **definition_options,
             tool_display_name=configuration.display_name,
             branding_configuration=configuration.branding,
             alarm_baseline_projection=alarm_baseline_projection,
@@ -92,7 +115,7 @@ def create_definition_from_tool_resolution(
             source_operational_participation=configuration.source_operational_participation,
         )
     _log_degraded_resolution(resolution)
-    return create_application_definition(**extension)
+    return create_application_definition(**definition_options)
 
 
 def _log_degraded_resolution(resolution: ToolProjectionResolution) -> None:
