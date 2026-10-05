@@ -7,7 +7,12 @@ from types import MappingProxyType
 
 from atlanticus.datasets.errors import DatasetTargetError
 from atlanticus.datasets.models import DatasetDefinition
-from atlanticus.operational_data.core import DataPartition, DataSource, DataSourceView
+from atlanticus.operational_data.core import (
+    DataPartition,
+    DataSource,
+    DataSourceView,
+    DataView,
+)
 from atlanticus.operational_data.sources.errors import DataSourceBindingError
 
 
@@ -130,6 +135,18 @@ class DataSourceRegistry:
             raise TypeError('view must be DataSourceView')
         binding = self.get(view.source)
         return binding, binding.get_partition(view.partition)
+
+    def get_input_view(
+        self,
+        source: DataSource,
+        view: DataView,
+    ) -> tuple[DataSourceBinding, DataPartitionBinding]:
+        if not isinstance(source, DataSource):
+            raise TypeError('source must be DataSource')
+        if not isinstance(view, DataView):
+            raise TypeError('view must be DataView')
+        binding = self.get(source)
+        return binding, binding.get_partition(DataPartition(view.value))
 
 
 def _optional_text(value: str | None) -> str | None:

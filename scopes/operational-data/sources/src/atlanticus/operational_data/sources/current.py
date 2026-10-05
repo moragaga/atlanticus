@@ -90,7 +90,13 @@ def build_current_source_registry(*, pi_source: PiSourceProvider) -> DataSourceR
             name='stocks',
         ),
         DataSource.FABRICA_PLANES: _fabrica_binding(DataSource.FABRICA_PLANES, name='planes'),
-        DataSource.FABRICA_KPIS: _fabrica_binding(DataSource.FABRICA_KPIS, name='kpis'),
+        DataSource.FABRICA_KPIS: _fabrica_binding(
+            DataSource.FABRICA_KPIS,
+            name='kpis',
+            daily_partition_dimensions=('year', 'month'),
+            daily_time_partition_granularity=TimePartitionGranularity.MONTH,
+            daily_timestamp_column='timestamp',
+        ),
         DataSource.METEODATA_DATA: _meteodata_data_binding(),
         DataSource.METEODATA_PROJECTION: _meteodata_projection_binding(),
     }
@@ -192,13 +198,23 @@ def _latest_binding(
     )
 
 
-def _fabrica_binding(source: DataSource, *, name: str) -> DataSourceBinding:
+def _fabrica_binding(
+    source: DataSource,
+    *,
+    name: str,
+    daily_partition_dimensions: tuple[str, ...] = (),
+    daily_time_partition_granularity: TimePartitionGranularity | None = None,
+    daily_timestamp_column: str | None = None,
+) -> DataSourceBinding:
     definition = DatasetDefinition(
         key=DatasetKey(namespace=('fabrica',), name=name),
         route_segments=('fabrica', name),
         materializations=(
             MaterializationDefinition(
-                name='daily', layout=SingleArtifactLayout(), route_segments=('daily',)
+                name='daily',
+                layout=SingleArtifactLayout(),
+                partition_dimensions=daily_partition_dimensions,
+                route_segments=('daily',),
             ),
             MaterializationDefinition(
                 name='weekly', layout=SingleArtifactLayout(), route_segments=('weekly',)
@@ -210,7 +226,10 @@ def _fabrica_binding(source: DataSource, *, name: str) -> DataSourceBinding:
         definition=definition,
         partitions={
             DataPartition.DAILY: DataPartitionBinding(
-                partition=DataPartition.DAILY, materialization='daily'
+                partition=DataPartition.DAILY,
+                materialization='daily',
+                time_partition_granularity=daily_time_partition_granularity,
+                timestamp_column=daily_timestamp_column,
             ),
             DataPartition.WEEKLY: DataPartitionBinding(
                 partition=DataPartition.WEEKLY, materialization='weekly'

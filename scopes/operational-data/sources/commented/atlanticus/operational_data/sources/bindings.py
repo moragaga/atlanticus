@@ -1,4 +1,4 @@
-# Espejo pedagógico de bindings, routing y carga física de datos operacionales.
+# Espejo pedagógico del registro que conecta vistas lógicas con materializaciones físicas.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -8,7 +8,12 @@ from types import MappingProxyType
 
 from atlanticus.datasets.errors import DatasetTargetError
 from atlanticus.datasets.models import DatasetDefinition
-from atlanticus.operational_data.core import DataPartition, DataSource, DataSourceView
+from atlanticus.operational_data.core import (
+    DataPartition,
+    DataSource,
+    DataSourceView,
+    DataView,
+)
 from atlanticus.operational_data.sources.errors import DataSourceBindingError
 
 
@@ -131,6 +136,20 @@ class DataSourceRegistry:
             raise TypeError('view must be DataSourceView')
         binding = self.get(view.source)
         return binding, binding.get_partition(view.partition)
+
+    def get_input_view(
+        self,
+        source: DataSource,
+        view: DataView,
+    ) -> tuple[DataSourceBinding, DataPartitionBinding]:
+        # DataView es el contrato nuevo.
+        # DataPartition sigue siendo la clave física CURRENT del registro.
+        if not isinstance(source, DataSource):
+            raise TypeError('source must be DataSource')
+        if not isinstance(view, DataView):
+            raise TypeError('view must be DataView')
+        binding = self.get(source)
+        return binding, binding.get_partition(DataPartition(view.value))
 
 
 def _optional_text(value: str | None) -> str | None:

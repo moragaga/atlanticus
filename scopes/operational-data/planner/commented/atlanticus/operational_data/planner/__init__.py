@@ -1,5 +1,11 @@
-# Espejo pedagógico del planner compartido de datos operacionales.
+# API pedagógica del planner.
+# Conviven temporalmente el pipeline CURRENT y el nuevo pipeline por inputs.
 from atlanticus.operational_data.planner.errors import DataPlanKeyError, DataPlanSchemaError
+from atlanticus.operational_data.planner.input_planner import (
+    DataInputLoadPlan,
+    DataInputPlanner,
+    DataInputViewLoadPlan,
+)
 from atlanticus.operational_data.planner.planner import (
     DataLoadPlan,
     DataRequirementPlanner,
@@ -9,6 +15,9 @@ from atlanticus.operational_data.planner.planner import (
 __version__ = '1.0.0'
 
 __all__ = [
+    'DataInputLoadPlan',
+    'DataInputPlanner',
+    'DataInputViewLoadPlan',
     'DataLoadPlan',
     'DataPlanKeyError',
     'DataPlanSchemaError',

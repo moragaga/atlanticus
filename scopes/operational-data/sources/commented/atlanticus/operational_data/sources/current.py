@@ -1,4 +1,6 @@
-# Espejo pedagógico: misma ejecución y contratos que el archivo productivo.
+# Espejo pedagógico del registro CURRENT de fuentes y sus layouts físicos.
+# Fabrica KPIs daily se alinea con el productor: archivo físico por year/month.
+# El timestamp lógico de esa vista es 'timestamp'.
 from __future__ import annotations
 
 from atlanticus.datasets.layouts import SingleArtifactLayout
@@ -18,7 +20,6 @@ _PI_NAMESPACES = {
 }
 
 
-# Declara los contratos de lectura; KPI Fábrica sigue sin binding hasta su materialización temporal.
 def build_current_source_registry(*, pi_source: PiSourceProvider) -> DataSourceRegistry:
     if not isinstance(pi_source, PiSourceProvider):
         raise TypeError('pi_source must be PiSourceProvider')
@@ -92,14 +93,19 @@ def build_current_source_registry(*, pi_source: PiSourceProvider) -> DataSourceR
             name='stocks',
         ),
         DataSource.FABRICA_PLANES: _fabrica_binding(DataSource.FABRICA_PLANES, name='planes'),
-        DataSource.FABRICA_KPIS: _fabrica_binding(DataSource.FABRICA_KPIS, name='kpis'),
+        DataSource.FABRICA_KPIS: _fabrica_binding(
+            DataSource.FABRICA_KPIS,
+            name='kpis',
+            daily_partition_dimensions=('year', 'month'),
+            daily_time_partition_granularity=TimePartitionGranularity.MONTH,
+            daily_timestamp_column='timestamp',
+        ),
         DataSource.METEODATA_DATA: _meteodata_data_binding(),
         DataSource.METEODATA_PROJECTION: _meteodata_projection_binding(),
     }
     return DataSourceRegistry(bindings)
 
 
-# Responsabilidad de _pi_binding.
 def _pi_binding(
     *, source: DataSource, namespace: tuple[str, ...], name: str, include_latest: bool
 ) -> DataSourceBinding:
@@ -150,7 +156,6 @@ def _pi_binding(
     )
 
 
-# Responsabilidad de _shift_binding.
 def _shift_binding(
     source: DataSource, *, namespace: tuple[str, ...], name: str
 ) -> DataSourceBinding:
@@ -177,7 +182,6 @@ def _shift_binding(
     )
 
 
-# Responsabilidad de _latest_binding.
 def _latest_binding(
     source: DataSource, *, namespace: tuple[str, ...], name: str
 ) -> DataSourceBinding:
@@ -197,14 +201,23 @@ def _latest_binding(
     )
 
 
-# Fábrica Planes y KPIs comparten layout físico, pero cada una conserva su aplicación y catálogo.
-def _fabrica_binding(source: DataSource, *, name: str) -> DataSourceBinding:
+def _fabrica_binding(
+    source: DataSource,
+    *,
+    name: str,
+    daily_partition_dimensions: tuple[str, ...] = (),
+    daily_time_partition_granularity: TimePartitionGranularity | None = None,
+    daily_timestamp_column: str | None = None,
+) -> DataSourceBinding:
     definition = DatasetDefinition(
         key=DatasetKey(namespace=('fabrica',), name=name),
         route_segments=('fabrica', name),
         materializations=(
             MaterializationDefinition(
-                name='daily', layout=SingleArtifactLayout(), route_segments=('daily',)
+                name='daily',
+                layout=SingleArtifactLayout(),
+                partition_dimensions=daily_partition_dimensions,
+                route_segments=('daily',),
             ),
             MaterializationDefinition(
                 name='weekly', layout=SingleArtifactLayout(), route_segments=('weekly',)
@@ -216,7 +229,10 @@ def _fabrica_binding(source: DataSource, *, name: str) -> DataSourceBinding:
         definition=definition,
         partitions={
             DataPartition.DAILY: DataPartitionBinding(
-                partition=DataPartition.DAILY, materialization='daily'
+                partition=DataPartition.DAILY,
+                materialization='daily',
+                time_partition_granularity=daily_time_partition_granularity,
+                timestamp_column=daily_timestamp_column,
             ),
             DataPartition.WEEKLY: DataPartitionBinding(
                 partition=DataPartition.WEEKLY, materialization='weekly'
@@ -225,7 +241,6 @@ def _fabrica_binding(source: DataSource, *, name: str) -> DataSourceBinding:
     )
 
 
-# Meteodata datos publica diariamente particiones UTC y acepta las ventanas existentes.
 def _meteodata_data_binding() -> DataSourceBinding:
     definition = DatasetDefinition(
         key=DatasetKey(namespace=('meteodata',), name='datos'),
@@ -251,7 +266,6 @@ def _meteodata_data_binding() -> DataSourceBinding:
     )
 
 
-# La proyección se consume desde su dataset latest independiente.
 def _meteodata_projection_binding() -> DataSourceBinding:
     definition = DatasetDefinition(
         key=DatasetKey(namespace=('meteodata',), name='proyeccion'),
