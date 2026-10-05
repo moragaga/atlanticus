@@ -59,6 +59,10 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
             default=str(_DEFAULT_RETRY_DELAY_SECONDS),
         ),
         ConfigurationVariableSpec(
+            key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED',
+            default='true',
+        ),
+        ConfigurationVariableSpec(
             key='ATLANTICUS_AZURE_OBSERVABILITY_MODE',
             default='off',
         ),

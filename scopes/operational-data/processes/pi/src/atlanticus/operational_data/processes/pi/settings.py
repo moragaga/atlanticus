@@ -154,6 +154,10 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(key='PI_WEB_API_INTERPOLATED_MAX_PARALLEL_REQUESTS', default='3'),
         ConfigurationVariableSpec(key='PI_WEB_API_MAX_DATA_POINTS', default='150000'),
         ConfigurationVariableSpec(
+            key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED',
+            default='true',
+        ),
+        ConfigurationVariableSpec(
             key='ATLANTICUS_AZURE_OBSERVABILITY_MODE',
             default='off',
         ),

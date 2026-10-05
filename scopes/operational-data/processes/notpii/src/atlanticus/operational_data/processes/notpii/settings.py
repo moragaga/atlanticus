@@ -82,6 +82,10 @@ def configuration_specs(
         *service_bus_specs,
         ConfigurationVariableSpec(key=RAW_BATCH_SIZE_VARIABLE, default='100000'),
         ConfigurationVariableSpec(key=MAX_MESSAGE_COUNT_VARIABLE, default='10'),
+        ConfigurationVariableSpec(
+            key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED',
+            default='true',
+        ),
         ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_MODE', default='off'),
         ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_PROFILE', required=False),
         ConfigurationVariableSpec(

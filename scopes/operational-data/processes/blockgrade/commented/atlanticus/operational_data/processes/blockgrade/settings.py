@@ -65,6 +65,11 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
             key='BLOCKGRADE_SQL_RETRY_DELAY_SECONDS',
             default=str(_DEFAULT_RETRY_DELAY_SECONDS),
         ),
+        # El runtime común sólo puede leer el flag si ConfigurationBootstrap lo conserva.
+        ConfigurationVariableSpec(
+            key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED',
+            default='true',
+        ),
         ConfigurationVariableSpec(
             key='ATLANTICUS_AZURE_OBSERVABILITY_MODE',
             default='off',

@@ -82,6 +82,17 @@ class DataInputSpec:
         return tuple(column.name for column in self.columns)
 
 
+# Conserva la colección como tupla y valida que cada input y su identidad sean únicos.
+def validate_data_inputs(inputs: tuple[DataInputSpec, ...]) -> tuple[DataInputSpec, ...]:
+    resolved = tuple(inputs)
+    if not all(isinstance(item, DataInputSpec) for item in resolved):
+        raise TypeError('data inputs must contain DataInputSpec values')
+    keys = tuple(item.input_key for item in resolved)
+    if len(keys) != len(set(keys)):
+        raise ValueError('data input keys must be unique')
+    return resolved
+
+
 # La identidad es local al consumidor y se usa después para context.get(input_key).
 def _input_key(value: str) -> str:
     if not isinstance(value, str) or not value:

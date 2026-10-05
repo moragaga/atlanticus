@@ -82,6 +82,12 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(
             key='REMANENTES_IDLE_SECONDS', default=str(DEFAULT_REMANENTES_IDLE_SECONDS)
         ),
+        # Sin este spec, un false configurado sería descartado antes de construir
+        # RuntimeConfiguration.
+        ConfigurationVariableSpec(
+            key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED',
+            default='true',
+        ),
         ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_MODE', default='off'),
         ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_PROFILE', required=False),
         ConfigurationVariableSpec(

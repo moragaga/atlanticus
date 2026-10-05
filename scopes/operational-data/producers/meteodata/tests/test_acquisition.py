@@ -35,7 +35,11 @@ class FakeClient:
             }
         return self.replies.get(
             key,
-            {'estacion': key[0], 'variable': key[1], 'datos': []},
+            {
+                'estacion': {'codigo': key[0]},
+                'variable': {'codigo': key[1]},
+                'datos': [],
+            },
         )
 
 
@@ -60,8 +64,8 @@ def test_projection_always_decodes_fixed_gmt_minus_four_wall_clock(source_wall_c
 def test_four_queries_use_fixed_gmt_minus_four_even_during_chilean_dst():
     responses = {
         (HM3, 'mp10'): {
-            'estacion': HM3,
-            'variable': 'mp10',
+            'estacion': {'codigo': HM3},
+            'variable': {'codigo': 'mp10'},
             'datos': [['2026-09-25 19:40:00', 70.0]],
         },
     }
@@ -88,8 +92,8 @@ def test_four_queries_use_fixed_gmt_minus_four_even_during_chilean_dst():
 def test_partial_failure_does_not_discard_other_station_data():
     responses = {
         (HM, 'mp10'): {
-            'estacion': HM,
-            'variable': 'mp10',
+            'estacion': {'codigo': HM},
+            'variable': {'codigo': 'mp10'},
             'datos': [['2026-09-25 19:30:00', 44.0]],
         },
     }
@@ -114,8 +118,8 @@ def test_mismatched_response_is_not_used_as_a_different_source():
     client = FakeClient(
         replies={
             (HM3, 'mp10'): {
-                'estacion': HM,
-                'variable': 'mp10',
+                'estacion': {'codigo': HM},
+                'variable': {'codigo': 'mp10'},
                 'datos': [['2026-09-25 19:30:00', 30.0]],
             }
         }
