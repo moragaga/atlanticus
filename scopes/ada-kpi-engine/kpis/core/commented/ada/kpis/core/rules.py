@@ -1,4 +1,5 @@
-# Contratos de definición KPI; recupera modos explícitos y fija precisión, tipo y dependencias antes de evaluar.
+# Espejo pedagógico del contrato de definición de KPI.
+# Los KPI consumen DataInputSpec neutrales; no reconstruyen source/view/selección dentro del dominio KPI.
 from __future__ import annotations
 
 import math
@@ -13,16 +14,12 @@ from ada.kpis.core.values import KpiNativeValue, normalize_kpi_value
 from atlanticus.operational_data.core import (
     DataColumn,
     DataColumnType,
-    DataPartition,
-    DataRequirement,
-    DataRuntimeContext,
-    DataSource,
-    OperationalScope,
-    ShiftSelection,
-    TimeWindow,
+    DataInputContext,
+    DataInputSpec,
+    validate_data_inputs,
 )
 
-KpiResolver: TypeAlias = Callable[[DataRuntimeContext], object]
+KpiResolver: TypeAlias = Callable[[DataInputContext], object]
 OverKpiResolver: TypeAlias = Callable[[Mapping[str, KpiNativeValue]], object]
 _KEY_PATTERN = re.compile(r'[A-Za-z0-9](?:[A-Za-z0-9_.-]{0,119})?')
 _NUMERIC_TYPES = frozenset({DataColumnType.INTEGER, DataColumnType.FLOAT})
@@ -31,18 +28,14 @@ _SIMPLE_TYPES = frozenset(
 )
 
 
+# KpiSpec conserva solo identidad, semántica de cálculo, inputs lógicos y contrato de salida.
+# Para modos simples se exige un único input; CUSTOM puede combinar varios inputs nombrados.
 @dataclass(frozen=True, slots=True)
 class KpiSpec:
     key: str
     area: KpiArea
     mode: KpiMode
-    source: DataSource | None = None
-    partition: DataPartition | None = None
-    columns: tuple[DataColumn, ...] = ()
-    source_requirements: tuple[DataRequirement, ...] = ()
-    time_window: TimeWindow | None = None
-    operational_scope: OperationalScope | None = None
-    shift: ShiftSelection | None = None
+    inputs: tuple[DataInputSpec, ...] = ()
     custom_resolver: KpiResolver | None = None
     constant_value: object | None = None
     value_kind: KpiValueKind = KpiValueKind.VALUE
@@ -73,34 +66,9 @@ class KpiSpec:
         _validate_precision(self.decimals, self.is_truncated, prefix='KPI')
         if not isinstance(self.persist_history, bool):
             raise TypeError('persist_history must be bool')
-        columns = tuple(self.columns)
-        requirements = tuple(self.source_requirements)
-        if not all(isinstance(column, DataColumn) for column in columns):
-            raise TypeError('KPI columns must contain DataColumn values')
-        if not all(isinstance(requirement, DataRequirement) for requirement in requirements):
-            raise TypeError('KPI source_requirements must contain DataRequirement values')
-        object.__setattr__(self, 'columns', columns)
-        object.__setattr__(self, 'source_requirements', requirements)
+        # La unicidad de input_key pertenece al contrato neutral de Operational Data.
+        object.__setattr__(self, 'inputs', validate_data_inputs(tuple(self.inputs)))
         self._validate_mode_contract()
-
-    @property
-    def requirements(self) -> tuple[DataRequirement, ...]:
-        if self.mode is KpiMode.CUSTOM:
-            return self.source_requirements
-        if self.mode is KpiMode.CONSTANT:
-            return ()
-        if self.source is None or self.partition is None:
-            raise RuntimeError('simple KPI source contract is incomplete')
-        return (
-            DataRequirement(
-                source=self.source,
-                partition=self.partition,
-                columns=self.columns,
-                time_window=self.time_window,
-                operational_scope=self.operational_scope,
-                shift=self.shift,
-            ),
-        )
 
     def _validate_mode_contract(self) -> None:
         if self.mode is KpiMode.CUSTOM:
@@ -112,47 +80,17 @@ class KpiSpec:
         self._validate_simple()
 
     def _validate_custom(self) -> None:
-        if (
-            any(
-                value is not None
-                for value in (
-                    self.source,
-                    self.partition,
-                    self.time_window,
-                    self.operational_scope,
-                    self.shift,
-                )
-            )
-            or self.columns
-        ):
-            raise ValueError(
-                'custom KPI must declare source_requirements instead of simple source fields'
-            )
         if self.constant_value is not None:
             raise ValueError('custom KPI must not declare constant_value')
-        if not self.source_requirements:
-            raise ValueError('custom KPI requires source_requirements')
+        if not self.inputs:
+            raise ValueError('custom KPI requires inputs')
         if not callable(self.custom_resolver):
             raise ValueError('custom KPI requires a callable custom_resolver')
         _validate_output_contract(self.value_kind, self.value_type, prefix='custom KPI')
 
     def _validate_constant(self) -> None:
-        if (
-            any(
-                value is not None
-                for value in (
-                    self.source,
-                    self.partition,
-                    self.time_window,
-                    self.operational_scope,
-                    self.shift,
-                    self.custom_resolver,
-                )
-            )
-            or self.columns
-            or self.source_requirements
-        ):
-            raise ValueError('constant KPI must not declare source, requirement or resolver fields')
+        if self.inputs or self.custom_resolver is not None:
+            raise ValueError('constant KPI must not declare inputs or custom_resolver')
         if self.constant_value is None:
             _validate_output_contract(self.value_kind, self.value_type, prefix='constant KPI')
             return
@@ -170,38 +108,33 @@ class KpiSpec:
         elif not _constant_matches_type(self.constant_value, self.value_type):
             raise TypeError('constant_value does not match declared KPI value_type')
 
+    # Un KPI simple evalúa exactamente un frame lógico; el loader decide cómo obtenerlo físicamente.
     def _validate_simple(self) -> None:
-        if self.source_requirements:
-            raise ValueError('simple KPI must not declare source_requirements')
         if self.custom_resolver is not None:
             raise ValueError('simple KPI must not declare custom_resolver')
         if self.constant_value is not None:
             raise ValueError('simple KPI must not declare constant_value')
         if self.value_kind is not KpiValueKind.VALUE:
             raise ValueError('simple KPI must use VALUE value_kind')
-        if not isinstance(self.source, DataSource):
-            raise TypeError('simple KPI source must be DataSource')
-        if not isinstance(self.partition, DataPartition):
-            raise TypeError('simple KPI partition must be DataPartition')
-        if not self.columns:
-            raise ValueError('simple KPI requires at least one typed column')
+        if len(self.inputs) != 1:
+            raise ValueError('simple KPI requires exactly one data input')
+        columns = self.inputs[0].columns
         allowed = _allowed_types(self.mode)
-        invalid = tuple(column for column in self.columns if column.data_type not in allowed)
+        invalid = tuple(column for column in columns if column.data_type not in allowed)
         if invalid:
             raise ValueError(f'{self.mode.value} KPI contains unsupported column types')
         if (
             self.mode in {KpiMode.LATEST, KpiMode.LATEST_NUMBER, KpiMode.STATUS}
-            and len(self.columns) != 1
+            and len(columns) != 1
         ):
             raise ValueError(f'{self.mode.value} KPI requires exactly one column')
-        inferred = _simple_value_type(self.mode, self.columns)
+        inferred = _simple_value_type(self.mode, columns)
         if self.value_type is None:
             object.__setattr__(self, 'value_type', inferred)
         elif self.value_type is not inferred:
             raise ValueError(
                 f'{self.mode.value} KPI value_type must match its typed column contract'
             )
-        _ = self.requirements
 
 
 @dataclass(frozen=True, slots=True)
@@ -268,7 +201,6 @@ def _validate_output_contract(
         raise ValueError(f'{prefix} VALUE output requires value_type')
 
 
-# Normaliza la estructura vacía opcional que los KPI JSON pueden preservar al degradarse.
 def _normalize_empty_json(
     value_kind: KpiValueKind,
     value: KpiNativeValue,

@@ -19,21 +19,21 @@ from ada.kpis.core import (
 from ada.kpis.evaluation.dependencies import KpiDependencies
 from ada.kpis.evaluation.errors import KpiDependencyError, KpiEvaluationContractError
 from ada.kpis.evaluation.values import format_value, missing_value, numeric_value, parse_value
-from atlanticus.operational_data.core import DataRuntimeContext, DataSource
+from atlanticus.operational_data.core import DataInputContext, DataSource
 
 
 def evaluate_kpi(
     *,
     spec: KpiSpec,
-    context: DataRuntimeContext,
+    context: DataInputContext,
     watermark: KpiWatermark,
     source_watermarks: Mapping[DataSource, KpiWatermark | None] | None = None,
     evaluated_at_utc: datetime | None = None,
 ) -> KpiEvaluation:
     if not isinstance(spec, KpiSpec):
         raise TypeError('spec must be KpiSpec')
-    if not isinstance(context, DataRuntimeContext):
-        raise TypeError('context must be DataRuntimeContext')
+    if not isinstance(context, DataInputContext):
+        raise TypeError('context must be DataInputContext')
     if not isinstance(watermark, KpiWatermark):
         raise TypeError('watermark must be KpiWatermark')
     traces = _source_traces(spec, source_watermarks or {})
@@ -118,24 +118,25 @@ def _source_traces(
     spec: KpiSpec,
     watermarks: Mapping[DataSource, KpiWatermark | None],
 ) -> tuple[KpiSourceTrace, ...]:
-    sources = tuple(dict.fromkeys(requirement.source for requirement in spec.requirements))
+    sources = tuple(dict.fromkeys(input_spec.source for input_spec in spec.inputs))
     return tuple(KpiSourceTrace(source, watermarks.get(source)) for source in sources)
 
 
-def _resolve_value(spec: KpiSpec, context: DataRuntimeContext) -> object:
+def _resolve_value(spec: KpiSpec, context: DataInputContext) -> object:
     if spec.mode is KpiMode.CONSTANT:
         return spec.constant_value
     if spec.mode is KpiMode.CUSTOM:
         if spec.custom_resolver is None:
             raise RuntimeError('custom KPI resolver is missing')
         return spec.custom_resolver(context)
-    requirement = spec.requirements[0]
-    frame = context.get(requirement.source, requirement.partition)
+    input_spec = spec.inputs[0]
+    frame = context.get(input_spec.input_key)
+    columns = input_spec.columns
     if spec.mode in {KpiMode.LATEST, KpiMode.LATEST_NUMBER, KpiMode.STATUS}:
-        return frame.last_value(spec.columns[0].name)
+        return frame.last_value(columns[0].name)
     if spec.mode in {KpiMode.SUM_LATESTS_NUMBERS, KpiMode.MAX_LATESTS_NUMBERS}:
         values = []
-        for column in spec.columns:
+        for column in columns:
             value = numeric_value(frame.last_value(column.name))
             if value is not None:
                 values.append(value)
@@ -145,7 +146,7 @@ def _resolve_value(spec: KpiSpec, context: DataRuntimeContext) -> object:
             return sum(values)
         return max(values)
     values = []
-    for column in spec.columns:
+    for column in columns:
         if column.name not in frame.dataframe.columns:
             raise KeyError(column.name)
         for value in frame.dataframe[column.name].tolist():

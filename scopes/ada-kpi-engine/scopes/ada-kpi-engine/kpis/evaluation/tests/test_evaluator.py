@@ -21,7 +21,6 @@ from atlanticus.operational_data.core import (
     TimeWindowSelection,
     TimeWindowUnit,
 )
-
 from .support import context, contexts
 
 WATERMARK = KpiWatermark(datetime(2026, 8, 31, 12, 0, tzinfo=UTC))
@@ -89,7 +88,9 @@ def test_text_one_remains_text_and_is_never_inferred_as_number_or_boolean() -> N
         key='state',
         area=KpiArea.GENERAL,
         mode=KpiMode.STATUS,
-        inputs=(_input(columns=(DataColumn('tag', DataColumnType.TEXT),)),),
+        inputs=(
+            _input(columns=(DataColumn('tag', DataColumnType.TEXT),)),
+        ),
     )
     evaluation = evaluate_kpi(
         spec=spec,
@@ -106,7 +107,9 @@ def test_integer_uses_neutral_value_and_chilean_grouping() -> None:
         key='count',
         area=KpiArea.GENERAL,
         mode=KpiMode.LATEST_NUMBER,
-        inputs=(_input(columns=(DataColumn('tag', DataColumnType.INTEGER),)),),
+        inputs=(
+            _input(columns=(DataColumn('tag', DataColumnType.INTEGER),)),
+        ),
     )
     evaluation = evaluate_kpi(
         spec=spec,
@@ -123,7 +126,9 @@ def test_missing_latest_preserves_expected_scalar_type() -> None:
         key='kpi-a',
         area=KpiArea.GENERAL,
         mode=KpiMode.LATEST,
-        inputs=(_input(columns=(DataColumn('tag', DataColumnType.TEXT),)),),
+        inputs=(
+            _input(columns=(DataColumn('tag', DataColumnType.TEXT),)),
+        ),
     )
     evaluation = evaluate_kpi(spec=spec, context=context('value', []), watermark=WATERMARK)
     assert evaluation.status is KpiStatus.MISSING

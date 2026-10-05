@@ -9,7 +9,13 @@ from ada.kpis.core import (
     KpiValueType,
     OverKpiSpec,
 )
-from atlanticus.operational_data.core import DataColumn, DataColumnType, DataPartition, DataSource
+from atlanticus.operational_data.core import (
+    DataColumn,
+    DataColumnType,
+    DataInputSpec,
+    DataSource,
+    DataView,
+)
 
 
 def _base(key: str) -> KpiSpec:
@@ -17,9 +23,14 @@ def _base(key: str) -> KpiSpec:
         key=key,
         area=KpiArea.GENERAL,
         mode=KpiMode.LATEST_NUMBER,
-        source=DataSource.PI_INTERPOLATED,
-        partition=DataPartition.LATEST,
-        columns=(DataColumn('signal', DataColumnType.FLOAT),),
+        inputs=(
+            DataInputSpec(
+                input_key='value',
+                source=DataSource.PI_INTERPOLATED,
+                view=DataView.LATEST,
+                columns=(DataColumn('signal', DataColumnType.FLOAT),),
+            ),
+        ),
     )
 
 

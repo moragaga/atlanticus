@@ -13,16 +13,17 @@ from ada.kpis.core import (
 from atlanticus.operational_data.core import (
     DataColumn,
     DataColumnType,
-    DataPartition,
-    DataRequirement,
+    DataInputSpec,
     DataSource,
+    DataView,
 )
 
 
-def _requirement() -> DataRequirement:
-    return DataRequirement(
+def _input() -> DataInputSpec:
+    return DataInputSpec(
+        input_key='value',
         source=DataSource.PI_INTERPOLATED,
-        partition=DataPartition.LATEST,
+        view=DataView.LATEST,
         columns=(DataColumn('tag', DataColumnType.FLOAT),),
     )
 
@@ -32,7 +33,7 @@ def test_json_spec_can_declare_structural_empty_payload() -> None:
         key='dynamic-table',
         area=KpiArea.GENERAL,
         mode=KpiMode.CUSTOM,
-        source_requirements=(_requirement(),),
+        inputs=(_input(),),
         custom_resolver=lambda _context: {'rows': [1]},
         value_kind=KpiValueKind.JSON,
         empty_json={'rows': [], 'columns': []},

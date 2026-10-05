@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 
-from atlanticus.operational_data.core import DataRuntimeContext, DataSourceView
+from atlanticus.operational_data.core import DataInputContext
 
 
 class Column:
@@ -41,5 +42,9 @@ class Frame:
         return self.last_value(column, default)
 
 
-def context(view: DataSourceView, rows: list[dict[str, object]]) -> DataRuntimeContext:
-    return DataRuntimeContext({view: Frame(Table(rows))})
+def context(input_key: str, rows: list[dict[str, object]]) -> DataInputContext:
+    return contexts({input_key: rows})
+
+
+def contexts(values: Mapping[str, list[dict[str, object]]]) -> DataInputContext:
+    return DataInputContext({key: Frame(Table(rows)) for key, rows in values.items()})

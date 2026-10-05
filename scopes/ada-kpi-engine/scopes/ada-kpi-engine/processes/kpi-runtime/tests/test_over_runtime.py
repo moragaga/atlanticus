@@ -1,6 +1,5 @@
 from ada.kpis.core import KpiArea, KpiCatalog, KpiValueType, OverKpiSpec
 from ada.processes.kpi_runtime.job import KpiRuntimeJob
-
 from .support import (
     RuntimeContextStub,
     StaticWatermarkReader,

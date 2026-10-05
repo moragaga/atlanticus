@@ -1,5 +1,5 @@
-# Runtime KPI: REPROCESS_CURRENT permite reevaluar y reemplazar únicamente el watermark ya current.
-# La persistencia normal sigue siendo write-once; el reemplazo se usa solo en el reproceso explícito del CURRENT.
+# Espejo pedagógico de la iteración del runtime KPI.
+# El job recibe un plan y loader del contrato DataInput y entrega a cada KPI su DataInputContext exacto.
 from __future__ import annotations
 
 from datetime import datetime
@@ -11,8 +11,8 @@ from ada.processes.kpi_runtime.errors import KpiRuntimeDataError, KpiRuntimeWate
 from ada.processes.kpi_runtime.models import KpiRuntimeIterationResult, KpiRuntimeOutcome
 from ada.processes.kpi_runtime.source_state import PiOperationalWatermarkReader
 from atlanticus.operational_data.core import DataSource
-from atlanticus.operational_data.planner import DataLoadPlan
-from atlanticus.operational_data.sources import DataSourceLoader
+from atlanticus.operational_data.planner import DataInputLoadPlan
+from atlanticus.operational_data.sources import DataInputLoader
 from atlanticus.runtime import JobRuntimeContext
 
 
@@ -21,18 +21,18 @@ class KpiRuntimeJob:
         self,
         *,
         catalog: KpiCatalog,
-        plan: DataLoadPlan,
-        loader: DataSourceLoader,
+        plan: DataInputLoadPlan,
+        loader: DataInputLoader,
         persistence: KpiPersistence,
         source_watermarks: PiOperationalWatermarkReader,
         reprocess_current: bool = False,
     ) -> None:
         if not isinstance(catalog, KpiCatalog):
             raise TypeError('catalog must be a KpiCatalog')
-        if not isinstance(plan, DataLoadPlan):
-            raise TypeError('plan must be a DataLoadPlan')
-        if not isinstance(loader, DataSourceLoader):
-            raise TypeError('loader must be a DataSourceLoader')
+        if not isinstance(plan, DataInputLoadPlan):
+            raise TypeError('plan must be a DataInputLoadPlan')
+        if not isinstance(loader, DataInputLoader):
+            raise TypeError('loader must be a DataInputLoader')
         if not isinstance(persistence, KpiPersistence):
             raise TypeError('persistence must be a KpiPersistence')
         if not callable(getattr(source_watermarks, 'current', None)):
@@ -82,6 +82,7 @@ class KpiRuntimeJob:
             if self._reprocess_current and observed == committed
             else {}
         )
+        # Operational Data realiza la carga consolidada una vez por source/view.
         loaded = self._loader.load(plan=self._plan, as_of=observed.timestamp_utc)
         source_traces = {
             DataSource.PI_INTERPOLATED: observed,
@@ -93,6 +94,7 @@ class KpiRuntimeJob:
         for spec in self._catalog.specs:
             evaluation = evaluate_kpi(
                 spec=spec,
+                # context_for vuelve a separar el superset físico en inputs nombrados del KPI.
                 context=loaded.context_for(spec.key),
                 watermark=observed,
                 source_watermarks=source_traces,

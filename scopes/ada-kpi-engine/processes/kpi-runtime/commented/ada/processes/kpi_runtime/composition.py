@@ -1,4 +1,5 @@
-# Espejo pedagógico: misma ejecución y contratos que el archivo productivo.
+# Espejo pedagógico de la composición del runtime KPI.
+# La composición traduce cada KpiSpec.inputs al plan neutral de Operational Data.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -12,10 +13,10 @@ from ada.processes.kpi_runtime.reader import RoutedDatasetSourceReader
 from ada.processes.kpi_runtime.settings import KpiRuntimeSettings
 from ada.processes.kpi_runtime.source_state import PiOperationalWatermarkReader
 from atlanticus.configuration import ResolvedConfiguration
-from atlanticus.operational_data.planner import DataRequirementPlanner
+from atlanticus.operational_data.planner import DataInputPlanner
 from atlanticus.operational_data.sources import (
+    DataInputLoader,
     DataSourceApplications,
-    DataSourceLoader,
     build_current_source_registry,
 )
 from atlanticus.runtime import (
@@ -28,7 +29,6 @@ from atlanticus.state import AtomicStateStore
 
 
 @dataclass(slots=True)
-# Contrato de KpiRuntimeComposition.
 class KpiRuntimeComposition:
     configuration: ResolvedConfiguration
     runtime_configuration: RuntimeConfiguration
@@ -46,7 +46,6 @@ class KpiRuntimeComposition:
         )
 
 
-# Construye una ejecución independiente y su estado propio.
 def build_composition(
     *,
     configuration: ResolvedConfiguration,
@@ -60,9 +59,8 @@ def build_composition(
     settings = KpiRuntimeSettings.from_configuration(configuration)
     runtime_configuration = RuntimeConfiguration.from_sources(environ=configuration.values)
     registry = build_current_source_registry(pi_source=settings.pi_source)
-    plan = DataRequirementPlanner().plan(
-        {spec.key: spec.requirements for spec in resolved_catalog.specs}
-    )
+    # El planner puede consolidar varios inputs en una misma carga física sin perder input_key.
+    plan = DataInputPlanner().plan({spec.key: spec.inputs for spec in resolved_catalog.specs})
     applications = DataSourceApplications(
         pi=settings.pi_application,
         dispatch=settings.dispatch_application,
@@ -79,7 +77,7 @@ def build_composition(
         registry=registry,
         sources=plan.sources,
     )
-    loader = DataSourceLoader(reader=reader, registry=registry)
+    loader = DataInputLoader(reader=reader, registry=registry)
     persistence = KpiPersistence.from_runtime(
         volume_path=runtime_configuration.volume_path,
         application=runtime_configuration.application,

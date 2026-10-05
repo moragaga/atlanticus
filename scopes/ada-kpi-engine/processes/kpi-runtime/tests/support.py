@@ -8,10 +8,11 @@ import pandas as pd
 
 from ada.kpis.core import KpiArea, KpiCatalog, KpiMode, KpiSpec, KpiWatermark
 from ada.kpis.persistence import KpiPersistence
-from atlanticus.operational_data.core import DataColumn, DataColumnType, DataPartition, DataSource
-from atlanticus.operational_data.planner import DataRequirementPlanner
+from atlanticus.operational_data.core import DataColumn, DataColumnType
+from atlanticus.operational_data.planner import DataInputPlanner
 from atlanticus.operational_data.sources import (
-    DataSourceLoader,
+    DataInputLoader,
+    PiInterpolated,
     PiSourceProvider,
     build_current_source_registry,
 )
@@ -94,9 +95,12 @@ def simple_catalog() -> KpiCatalog:
                 key='test-kpi',
                 area=KpiArea.GENERAL,
                 mode=KpiMode.LATEST_NUMBER,
-                source=DataSource.PI_INTERPOLATED,
-                partition=DataPartition.LATEST,
-                columns=(DataColumn('signal', DataColumnType.FLOAT),),
+                inputs=(
+                    PiInterpolated.latest(
+                        input_key='value',
+                        columns=(DataColumn('signal', DataColumnType.FLOAT),),
+                    ),
+                ),
                 decimals=1,
             ),
         )
@@ -107,7 +111,7 @@ def runtime_parts(tmp_path: Path, *, catalog: KpiCatalog | None = None):
     resolved_catalog = simple_catalog() if catalog is None else catalog
     registry = build_current_source_registry(pi_source=PiSourceProvider.NOTPII)
     reader = FrameReader()
-    loader = DataSourceLoader(reader=reader, registry=registry)
-    plan = DataRequirementPlanner().plan({spec.key: spec.requirements for spec in resolved_catalog})
+    loader = DataInputLoader(reader=reader, registry=registry)
+    plan = DataInputPlanner().plan({spec.key: spec.inputs for spec in resolved_catalog})
     persistence = KpiPersistence.from_runtime(volume_path=tmp_path, application='ada-test')
     return resolved_catalog, plan, loader, persistence, reader

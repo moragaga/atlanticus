@@ -9,8 +9,8 @@ from ada.processes.kpi_runtime.errors import KpiRuntimeDataError, KpiRuntimeWate
 from ada.processes.kpi_runtime.models import KpiRuntimeIterationResult, KpiRuntimeOutcome
 from ada.processes.kpi_runtime.source_state import PiOperationalWatermarkReader
 from atlanticus.operational_data.core import DataSource
-from atlanticus.operational_data.planner import DataLoadPlan
-from atlanticus.operational_data.sources import DataSourceLoader
+from atlanticus.operational_data.planner import DataInputLoadPlan
+from atlanticus.operational_data.sources import DataInputLoader
 from atlanticus.runtime import JobRuntimeContext
 
 
@@ -19,18 +19,18 @@ class KpiRuntimeJob:
         self,
         *,
         catalog: KpiCatalog,
-        plan: DataLoadPlan,
-        loader: DataSourceLoader,
+        plan: DataInputLoadPlan,
+        loader: DataInputLoader,
         persistence: KpiPersistence,
         source_watermarks: PiOperationalWatermarkReader,
         reprocess_current: bool = False,
     ) -> None:
         if not isinstance(catalog, KpiCatalog):
             raise TypeError('catalog must be a KpiCatalog')
-        if not isinstance(plan, DataLoadPlan):
-            raise TypeError('plan must be a DataLoadPlan')
-        if not isinstance(loader, DataSourceLoader):
-            raise TypeError('loader must be a DataSourceLoader')
+        if not isinstance(plan, DataInputLoadPlan):
+            raise TypeError('plan must be a DataInputLoadPlan')
+        if not isinstance(loader, DataInputLoader):
+            raise TypeError('loader must be a DataInputLoader')
         if not isinstance(persistence, KpiPersistence):
             raise TypeError('persistence must be a KpiPersistence')
         if not callable(getattr(source_watermarks, 'current', None)):

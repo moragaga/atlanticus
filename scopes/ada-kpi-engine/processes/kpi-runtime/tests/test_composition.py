@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from ada.kpis.core import KpiCatalog
+from ada.kpis.core import KpiArea, KpiCatalog, KpiMode, KpiSpec
 from ada.processes.kpi_runtime.composition import build_composition
 from atlanticus.configuration import ConfigurationSource, ResolvedConfiguration
 from atlanticus.kernel import Environment
+from atlanticus.operational_data.core import DataColumn, DataColumnType
+from atlanticus.operational_data.sources import PiInterpolated
 
 
 def _configuration(tmp_path, *, reprocess_current='false') -> ResolvedConfiguration:
@@ -39,6 +41,27 @@ def test_composition_uses_job_runtime_and_empty_catalog(tmp_path) -> None:
     assert composition.definition.execution_timeout_seconds == 600
     assert composition.settings.reprocess_current is False
     assert len(composition.catalog) == 0
+
+
+def test_composition_accepts_input_based_catalog(tmp_path) -> None:
+    spec = KpiSpec(
+        key='test-kpi',
+        area=KpiArea.GENERAL,
+        mode=KpiMode.LATEST_NUMBER,
+        inputs=(
+            PiInterpolated.latest(
+                input_key='value',
+                columns=(DataColumn('signal', DataColumnType.FLOAT),),
+            ),
+        ),
+    )
+    composition = build_composition(
+        configuration=_configuration(tmp_path),
+        catalog=KpiCatalog((spec,)),
+    )
+
+    assert composition.catalog.specs == (spec,)
+    assert composition.job is not None
 
 
 def test_composition_accepts_reprocess_current_enabled(tmp_path) -> None:

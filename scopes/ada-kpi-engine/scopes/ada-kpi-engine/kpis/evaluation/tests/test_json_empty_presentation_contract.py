@@ -11,7 +11,6 @@ from atlanticus.operational_data.core import (
     DataSource,
     DataView,
 )
-
 from .support import context
 
 WATERMARK = KpiWatermark(datetime(2026, 8, 31, 12, 0, tzinfo=UTC))
