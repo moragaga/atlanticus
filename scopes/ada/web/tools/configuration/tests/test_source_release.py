@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 
 from ada.web.tools.configuration import (
     TOOL_SOURCE_RESOURCE_PATH,
+    ToolConfiguration,
     ToolSourceCodec,
     ToolSourceService,
 )
@@ -38,6 +39,51 @@ def test_tool_source_codec_round_trips_configuration() -> None:
     assert resource.logical_path == TOOL_SOURCE_RESOURCE_PATH
     assert decoded.configuration == configuration
     assert decoded.published_by == 'manager-user'
+
+
+def test_tool_source_codec_preserves_integrated_operational_component_order() -> None:
+    document = valid_configuration().to_document()
+    document['kind'] = 'integrated_operations'
+    document['structure'] = {
+        'tool_key': 'process',
+        'kind': 'integrated_operations',
+        'components': [
+            {
+                'key': 'extraction',
+                'display_name': 'Extracción',
+                'scope': 'mine',
+                'subcomponents': [
+                    {
+                        'key': 'mine_detail',
+                        'display_name': 'Detalle Mina',
+                        'linked_component_keys': [],
+                    }
+                ],
+            },
+            {
+                'key': 'port',
+                'display_name': 'Puerto',
+                'scope': 'plant',
+                'subcomponents': [
+                    {
+                        'key': 'port_detail',
+                        'display_name': 'Detalle Puerto',
+                        'linked_component_keys': [],
+                    }
+                ],
+            },
+        ],
+    }
+    configuration = ToolConfiguration.from_document(document)
+    codec = ToolSourceCodec()
+
+    decoded = codec.decode(
+        (codec.encode(configuration=configuration, published_by='manager-user'),)
+    )
+
+    assert tuple(
+        component.key for component in decoded.configuration.structure.components
+    ) == ('extraction', 'port')
 
 
 def test_tool_source_service_publishes_with_generic_concurrency_contract() -> None:

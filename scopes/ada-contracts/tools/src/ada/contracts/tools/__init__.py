@@ -1,4 +1,4 @@
-from ada.contracts.tools.enums import ProcessLayoutRole, ToolConfigurationKind, ToolScope
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
 from ada.contracts.tools.errors import (
     ToolConfigurationValidationError,
     ToolDependencyManifestValidationError,
@@ -22,7 +22,6 @@ from ada.contracts.tools.structure import (
 __version__ = '1.0.0'
 
 __all__ = [
-    'ProcessLayoutRole',
     'SourceControlPolicy',
     'ToolComponent',
     'ToolConfigurationKind',

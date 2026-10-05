@@ -38,6 +38,17 @@ def _ready_resolution() -> ToolProjectionResolution:
                 scope=ToolScope.MINE,
                 subcomponents=(ToolSubcomponent(key='phase', display_name='Phase'),),
             ),
+            ToolComponent(
+                key='plant',
+                display_name='Plant',
+                scope=ToolScope.PLANT,
+                subcomponents=(
+                    ToolSubcomponent(
+                        key='plant_phase',
+                        display_name='Plant Phase',
+                    ),
+                ),
+            ),
         ),
     )
     timestamp = datetime(2026, 9, 25, tzinfo=UTC)
@@ -95,7 +106,7 @@ def test_external_composition_is_resolved_after_tool_projection(
     assert isinstance(kwargs['composition'], AdaApplicationComposition)
     if configured:
         assert isinstance(seen['binding'], OperationalRenderBinding)
-        assert seen['binding'].component_keys == ('mine',)
+        assert seen['binding'].component_keys == ('mine', 'plant')
         assert kwargs['operational_render_binding'] is seen['binding']
     else:
         assert seen['binding'] is None

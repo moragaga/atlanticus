@@ -9,7 +9,6 @@ from ada.web.components import (
     build_empty_component_stores,
 )
 from ada.contracts.tools.enums import (
-    ProcessLayoutRole,
     ToolConfigurationKind,
     ToolScope,
 )
@@ -83,11 +82,11 @@ def test_process_with_four_subcomponents_builds_one_empty_store() -> None:
         tool_key='mine_process',
         kind=ToolConfigurationKind.PROCESS,
         operational_scope=ToolScope.MINE,
+        center_component_key='mine',
         components=(
             ToolComponent(
                 key='mine',
                 display_name='Mine',
-                layout_role=ProcessLayoutRole.CENTER,
                 subcomponents=(
                     _subcomponent('phase_1'),
                     _subcomponent('phase_2'),
@@ -131,6 +130,14 @@ def test_integrated_operations_builds_one_store_per_component_in_structure_order
                 scope=ToolScope.MINE,
                 subcomponents=(_subcomponent('transporte_global'),),
             ),
+            ToolComponent(
+                key='plant',
+                display_name='Plant',
+                scope=ToolScope.PLANT,
+                subcomponents=(
+                    ToolSubcomponent(key='plant_status', display_name='Plant Status'),
+                ),
+            ),
         ),
     )
 
@@ -139,6 +146,7 @@ def test_integrated_operations_builds_one_store_per_component_in_structure_order
     assert tuple(store.component_key for store in stores) == (
         'carguio',
         'transporte',
+        'plant',
     )
     assert len(stores) == len(structure.components)
     assert all(store.tool_key == structure.tool_key for store in stores)
@@ -167,12 +175,20 @@ def test_linked_subcomponent_does_not_create_extra_store() -> None:
                 scope=ToolScope.MINE,
                 subcomponents=(_subcomponent('own_status'),),
             ),
+            ToolComponent(
+                key='plant',
+                display_name='Plant',
+                scope=ToolScope.PLANT,
+                subcomponents=(
+                    ToolSubcomponent(key='plant_status', display_name='Plant Status'),
+                ),
+            ),
         ),
     )
 
     stores = build_empty_component_stores(structure)
 
-    assert {store.component_key for store in stores} == {'carguio', 'transporte'}
+    assert {store.component_key for store in stores} == {'carguio', 'transporte', 'plant'}
     assert all(store.component_key != 'shared_status' for store in stores)
 
 

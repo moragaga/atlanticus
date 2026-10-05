@@ -7,7 +7,6 @@ from ada.web.operational_render_binding import (
     bind_operational_render,
 )
 from ada.contracts.tools.enums import (
-    ProcessLayoutRole,
     ToolConfigurationKind,
     ToolScope,
 )
@@ -35,6 +34,14 @@ def _integrated_structure() -> ToolStructure:
                 scope=ToolScope.MINE,
                 subcomponents=(ToolSubcomponent(key='camiones', display_name='Camiones'),),
             ),
+            ToolComponent(
+                key='plant',
+                display_name='Plant',
+                scope=ToolScope.PLANT,
+                subcomponents=(
+                    ToolSubcomponent(key='plant', display_name='Plant'),
+                ),
+            ),
         ),
     )
 
@@ -44,11 +51,11 @@ def _process_structure() -> ToolStructure:
         tool_key='process_tool',
         kind=ToolConfigurationKind.PROCESS,
         operational_scope=ToolScope.PLANT,
+        center_component_key='flotacion',
         components=(
             ToolComponent(
                 key='flotacion',
                 display_name='Flotación',
-                layout_role=ProcessLayoutRole.CENTER,
                 subcomponents=(
                     ToolSubcomponent(key='rougher', display_name='Rougher'),
                     ToolSubcomponent(key='cleaner', display_name='Cleaner'),
@@ -65,7 +72,7 @@ def test_binding_is_derived_exclusively_from_tool_structure() -> None:
     binding = bind_operational_render(structure)
 
     assert binding.structure is structure
-    assert binding.component_keys == ('carguio', 'transporte')
+    assert binding.component_keys == ('carguio', 'transporte', 'plant')
     assert tuple(item.component for item in binding.components) == structure.components
 
 
@@ -89,6 +96,7 @@ def test_render_binding_requires_exact_structure_order() -> None:
             components=(
                 OperationalComponentBinding(component=structure.components[1]),
                 OperationalComponentBinding(component=structure.components[0]),
+                OperationalComponentBinding(component=structure.components[2]),
             ),
         )
 
@@ -140,13 +148,21 @@ def test_linked_subcomponent_does_not_create_an_extra_component_binding() -> Non
                 scope=ToolScope.MINE,
                 subcomponents=(ToolSubcomponent(key='camiones', display_name='Camiones'),),
             ),
+            ToolComponent(
+                key='plant',
+                display_name='Plant',
+                scope=ToolScope.PLANT,
+                subcomponents=(
+                    ToolSubcomponent(key='plant', display_name='Plant'),
+                ),
+            ),
         ),
     )
 
     binding = bind_operational_render(structure)
 
-    assert binding.component_keys == ('carguio', 'transporte')
-    assert len(binding.components) == 2
+    assert binding.component_keys == ('carguio', 'transporte', 'plant')
+    assert len(binding.components) == 3
     assert binding.components[0].component.subcomponents[0].linked_component_keys == ('transporte',)
 
 

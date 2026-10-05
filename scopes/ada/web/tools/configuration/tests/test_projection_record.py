@@ -37,11 +37,11 @@ def _configuration() -> ToolConfiguration:
                 'tool_key': 'operaciones_integradas',
                 'kind': 'process',
                 'operational_scope': 'mine',
+                'center_component_key': 'center',
                 'components': [
                     {
                         'key': 'center',
                         'display_name': 'Centro',
-                        'layout_role': 'center',
                         'subcomponents': [
                             {
                                 'key': 'primary',
@@ -56,7 +56,7 @@ def _configuration() -> ToolConfiguration:
     )
 
 
-def _record() -> ProjectionRecord[ToolConfiguration]:
+def _record(configuration: ToolConfiguration | None = None) -> ProjectionRecord[ToolConfiguration]:
     published = datetime(2026, 9, 20, 20, tzinfo=UTC)
     dependency = ProjectionTarget(
         source_key=SourceKey('profiles'),
@@ -70,9 +70,45 @@ def _record() -> ProjectionRecord[ToolConfiguration]:
         source_release_id=SourceReleaseId('tools-release'),
         source_published_at_utc=published,
         projected_at_utc=datetime(2026, 9, 20, 20, 0, 1, tzinfo=UTC),
-        payload=_configuration(),
+        payload=configuration or _configuration(),
         dependencies=(dependency,),
     )
+
+
+def _integrated_configuration() -> ToolConfiguration:
+    document = _configuration().to_document()
+    document['kind'] = 'integrated_operations'
+    document['structure'] = {
+        'tool_key': 'operaciones_integradas',
+        'kind': 'integrated_operations',
+        'components': [
+            {
+                'key': 'extraction',
+                'display_name': 'Extracción',
+                'scope': 'mine',
+                'subcomponents': [
+                    {
+                        'key': 'mine_detail',
+                        'display_name': 'Detalle Mina',
+                        'linked_component_keys': [],
+                    }
+                ],
+            },
+            {
+                'key': 'concentrator',
+                'display_name': 'Concentradora',
+                'scope': 'plant',
+                'subcomponents': [
+                    {
+                        'key': 'plant_detail',
+                        'display_name': 'Detalle Planta',
+                        'linked_component_keys': [],
+                    }
+                ],
+            },
+        ],
+    }
+    return ToolConfiguration.from_document(document)
 
 
 def test_tool_projection_document_round_trips_exact_contract() -> None:
@@ -88,6 +124,20 @@ def test_tool_projection_document_round_trips_exact_contract() -> None:
     assert document['id'] == 'tool-projection-item'
     assert document['partition_key'] == 'conciencia_situacional/operaciones_integradas'
     assert restored == record
+
+
+def test_tool_projection_preserves_integrated_operational_component_order() -> None:
+    record = _record(_integrated_configuration())
+
+    document = tool_projection_to_document(record)
+    restored = tool_projection_from_document(document)
+
+    assert [
+        component['key'] for component in document['payload']['structure']['components']
+    ] == ['extraction', 'concentrator']
+    assert tuple(
+        component.key for component in restored.payload.structure.components
+    ) == ('extraction', 'concentrator')
 
 
 def test_tool_projection_document_rejects_wrong_document_type() -> None:

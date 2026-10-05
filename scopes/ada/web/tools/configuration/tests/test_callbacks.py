@@ -33,6 +33,42 @@ def test_add_component_does_not_require_completed_general_configuration() -> Non
     assert result is not no_update
 
 
+def test_process_center_selector_tracks_stable_component_keys() -> None:
+    class CallbackApp:
+        def __init__(self) -> None:
+            self.callbacks: dict[str, object] = {}
+
+        def callback(self, *_args, **_kwargs):
+            def register(callback):
+                self.callbacks[callback.__name__] = callback
+                return callback
+
+            return register
+
+    app = CallbackApp()
+    register_tool_structure_editor_callbacks(app)
+
+    options, value, disabled, hidden = app.callbacks['sync_process_center_component'](
+        ['cmp_mine', 'cmp_plant'],
+        ['Mina', 'Planta'],
+        'process',
+        None,
+        'cmp_plant',
+    )
+
+    assert options == [
+        {'label': 'Mina', 'value': 'cmp_mine'},
+        {'label': 'Planta', 'value': 'cmp_plant'},
+    ]
+    assert value == 'cmp_plant'
+    assert disabled is False
+    assert hidden is False
+
+    assert app.callbacks['sync_process_center_component'](
+        ['cmp_mine'], ['Mina'], 'integrated_operations', None, 'cmp_mine'
+    ) == ([], None, True, True)
+
+
 def test_coverage_waits_for_kind_and_restores_process_coverage() -> None:
     class CallbackApp:
         def __init__(self) -> None:

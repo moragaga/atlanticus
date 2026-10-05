@@ -80,7 +80,6 @@ def _configuration(*, operational: bool = True) -> ToolConfiguration:
                         'key': 'mine',
                         'display_name': 'Mina',
                         'scope': 'mine',
-                        'layout_role': None,
                         'subcomponents': [
                             {
                                 'key': 'mine_phase',
@@ -93,7 +92,6 @@ def _configuration(*, operational: bool = True) -> ToolConfiguration:
                         'key': 'plant',
                         'display_name': 'Planta',
                         'scope': 'plant',
-                        'layout_role': None,
                         'subcomponents': [
                             {
                                 'key': 'plant_phase',

@@ -2,11 +2,7 @@ from types import MappingProxyType
 
 import pytest
 
-from ada.contracts.tools.enums import (
-    ProcessLayoutRole,
-    ToolConfigurationKind,
-    ToolScope,
-)
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
 from ada.contracts.tools.errors import ToolConfigurationValidationError
 from ada.contracts.tools.sources import (
     SourceControlPolicy,
@@ -249,11 +245,11 @@ def test_configuration_accepts_structure_for_same_tool_and_kind() -> None:
         tool_key='process',
         kind=ToolConfigurationKind.PROCESS,
         operational_scope=ToolScope.MINE,
+        center_component_key='mina',
         components=(
             ToolComponent(
                 key='mina',
                 display_name='Mina',
-                layout_role=ProcessLayoutRole.CENTER,
                 subcomponents=(ToolSubcomponent(key='principal', display_name='Principal'),),
             ),
         ),
@@ -279,11 +275,11 @@ def test_configuration_rejects_structure_for_another_tool() -> None:
         tool_key='another_process',
         kind=ToolConfigurationKind.PROCESS,
         operational_scope=ToolScope.MINE,
+        center_component_key='center',
         components=(
             ToolComponent(
                 key='center',
                 display_name='Center',
-                layout_role=ProcessLayoutRole.CENTER,
                 subcomponents=(ToolSubcomponent(key='principal', display_name='Principal'),),
             ),
         ),
@@ -363,11 +359,11 @@ def test_document_roundtrip_preserves_structure_when_present() -> None:
         tool_key='process',
         kind=ToolConfigurationKind.PROCESS,
         operational_scope=ToolScope.PLANT,
+        center_component_key='flotacion',
         components=(
             ToolComponent(
                 key='flotacion',
                 display_name='Flotación',
-                layout_role=ProcessLayoutRole.CENTER,
                 subcomponents=(ToolSubcomponent(key='flotacion', display_name='Flotación'),),
             ),
         ),

@@ -73,6 +73,7 @@ def build_structure_from_editor_tables(
     component_rows: Iterable[Mapping[str, Any]] | None,
     subcomponent_rows: Iterable[Mapping[str, Any]] | None,
     coverage: object,
+    center_component_key: object = None,
 ) -> ToolStructure:
     components = _rows(component_rows, label='Tool component rows')
     subcomponents = _rows(
@@ -111,6 +112,9 @@ def build_structure_from_editor_tables(
         'tool_key': base_configuration.tool_key,
         'kind': kind.value,
         'operational_scope': (resolved_coverage if kind is ToolConfigurationKind.PROCESS else None),
+        'center_component_key': (
+            _optional_text(center_component_key) if kind is ToolConfigurationKind.PROCESS else None
+        ),
         'components': [
             {
                 'key': key,

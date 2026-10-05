@@ -7,11 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from typing import Any
 
-from ada.contracts.tools.enums import (
-    ProcessLayoutRole,
-    ToolConfigurationKind,
-    ToolScope,
-)
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
 from ada.contracts.tools.errors import ToolConfigurationValidationError
 from ada.contracts.tools.validation import require_display_name, require_key
 
@@ -75,7 +71,6 @@ class ToolComponent:
     display_name: str
     subcomponents: tuple[ToolSubcomponent, ...] = ()
     scope: ToolScope | None = None
-    layout_role: ProcessLayoutRole | None = None
 
     def __post_init__(self) -> None:
         key = require_key(self.key, label='Tool component key')
@@ -95,11 +90,6 @@ class ToolComponent:
             )
         if self.scope is not None and not isinstance(self.scope, ToolScope):
             raise ToolConfigurationValidationError('Tool component scope is invalid')
-        if self.layout_role is not None and not isinstance(
-            self.layout_role,
-            ProcessLayoutRole,
-        ):
-            raise ToolConfigurationValidationError('Tool component layout role is invalid')
         object.__setattr__(self, 'key', key)
         object.__setattr__(self, 'display_name', display_name)
         object.__setattr__(self, 'subcomponents', subcomponents)
@@ -121,8 +111,6 @@ class ToolComponent:
         }
         if self.scope is not None:
             document['scope'] = self.scope.value
-        if self.layout_role is not None:
-            document['layout_role'] = self.layout_role.value
         return document
 
     @classmethod
@@ -134,7 +122,6 @@ class ToolComponent:
             if not all(isinstance(item, Mapping) for item in raw_subcomponents):
                 raise TypeError
             raw_scope = document.get('scope')
-            raw_layout_role = document.get('layout_role')
             return cls(
                 key=document['key'],
                 display_name=document['display_name'],
@@ -142,9 +129,6 @@ class ToolComponent:
                     ToolSubcomponent.from_document(item) for item in raw_subcomponents
                 ),
                 scope=ToolScope(raw_scope) if raw_scope is not None else None,
-                layout_role=(
-                    ProcessLayoutRole(raw_layout_role) if raw_layout_role is not None else None
-                ),
             )
         except (KeyError, TypeError, ValueError) as error:
             if isinstance(error, ToolConfigurationValidationError):
@@ -176,6 +160,9 @@ class ToolStructure:
     kind: ToolConfigurationKind
     components: tuple[ToolComponent, ...]
     operational_scope: ToolScope | None = None
+    # Process declara explícitamente qué componente representa el centro operacional.
+    # En Integrated Operations la secuencia de components ya expresa izquierda -> derecha.
+    center_component_key: str | None = None
 
     def __post_init__(self) -> None:
         tool_key = require_key(self.tool_key, label='Tool Structure tool key')
@@ -206,6 +193,11 @@ class ToolStructure:
             ToolScope,
         ):
             raise ToolConfigurationValidationError('Tool Structure operational scope is invalid')
+        center_component_key = (
+            require_key(self.center_component_key, label='Process center component key')
+            if self.center_component_key is not None
+            else None
+        )
         if self.kind is ToolConfigurationKind.PROCESS and self.operational_scope is not None:
             components = tuple(
                 replace(component, scope=None)
@@ -215,12 +207,17 @@ class ToolStructure:
             )
         object.__setattr__(self, 'tool_key', tool_key)
         object.__setattr__(self, 'components', components)
+        object.__setattr__(self, 'center_component_key', center_component_key)
         _validate_linked_component_keys(self)
         _validate_visible_subcomponent_namespaces(self)
         if self.kind is ToolConfigurationKind.PROCESS:
             _validate_process_structure(self)
         elif self.kind is ToolConfigurationKind.INTEGRATED_OPERATIONS:
             _validate_integrated_operations_structure(self)
+        elif self.center_component_key is not None:
+            raise ToolConfigurationValidationError(
+                'Strategic Tool Structure must not declare center component key'
+            )
 
     @property
     def kpi_destination_keys(self) -> tuple[str, ...]:
@@ -262,17 +259,6 @@ class ToolStructure:
         raise ToolConfigurationValidationError(
             f'Tool component effective scope is not defined: {component.key!r}'
         )
-
-    def component_for_layout_role(
-        self,
-        role: ProcessLayoutRole,
-    ) -> ToolComponent:
-        if not isinstance(role, ProcessLayoutRole):
-            raise ToolConfigurationValidationError('Process layout role is invalid')
-        for component in self.components:
-            if component.layout_role is role:
-                return component
-        raise ToolConfigurationValidationError(f'Unknown Process layout role: {role.value!r}')
 
     def subcomponent_address(
         self,
@@ -325,6 +311,8 @@ class ToolStructure:
         }
         if self.operational_scope is not None:
             document['operational_scope'] = self.operational_scope.value
+        if self.center_component_key is not None:
+            document['center_component_key'] = self.center_component_key
         document['components'] = [component.to_document() for component in self.components]
         return document
 
@@ -342,6 +330,7 @@ class ToolStructure:
                 kind=ToolConfigurationKind(document['kind']),
                 components=tuple(ToolComponent.from_document(item) for item in raw_components),
                 operational_scope=(ToolScope(raw_scope) if raw_scope is not None else None),
+                center_component_key=document.get('center_component_key'),
             )
         except (KeyError, TypeError, ValueError) as error:
             if isinstance(error, ToolConfigurationValidationError):
@@ -396,37 +385,22 @@ def _validate_process_structure(
 ) -> None:
     if structure.operational_scope is None:
         raise ToolConfigurationValidationError('Process Tool Structure requires operational scope')
-
-    legacy_roles = tuple(
-        component.layout_role
-        for component in structure.components
-        if component.layout_role is not None
-    )
-    if legacy_roles:
-        if len(legacy_roles) != len(structure.components):
-            raise ToolConfigurationValidationError(
-                'Legacy Process layout roles must be declared '
-                'for every component or omitted entirely'
-            )
-        if len(legacy_roles) != len(set(legacy_roles)):
-            raise ToolConfigurationValidationError(
-                'Process Tool Structure contains duplicate layout roles'
-            )
-        if ProcessLayoutRole.CENTER not in legacy_roles:
-            raise ToolConfigurationValidationError(
-                'Process Tool Structure requires CENTER layout role'
-            )
+    if structure.center_component_key is None:
+        raise ToolConfigurationValidationError(
+            'Process Tool Structure requires center component key'
+        )
+    try:
+        structure.component(structure.center_component_key)
+    except ToolConfigurationValidationError as error:
+        raise ToolConfigurationValidationError(
+            'Process center component key must reference an existing component'
+        ) from error
 
     for component in structure.components:
         if not component.subcomponents:
-            if component.layout_role is ProcessLayoutRole.CENTER:
-                raise ToolConfigurationValidationError(
-                    'Process CENTER component requires at least one subcomponent'
-                )
-            if component.layout_role is None:
-                raise ToolConfigurationValidationError(
-                    f'Process Tool component {component.key!r} requires subcomponents'
-                )
+            raise ToolConfigurationValidationError(
+                f'Process Tool component {component.key!r} requires subcomponents'
+            )
         if any(item.linked_component_keys for item in component.subcomponents):
             raise ToolConfigurationValidationError(
                 'Process Tool subcomponents must not declare linked component keys'
@@ -438,16 +412,32 @@ def _validate_integrated_operations_structure(structure: ToolStructure) -> None:
         raise ToolConfigurationValidationError(
             'Integrated Operations Tool Structure must not declare operational scope'
         )
+    if structure.center_component_key is not None:
+        raise ToolConfigurationValidationError(
+            'Integrated Operations Tool Structure must not declare center component key'
+        )
+    scopes: list[ToolScope] = []
     for component in structure.components:
         if component.scope is None:
             raise ToolConfigurationValidationError(
                 f'Integrated Operations component {component.key!r} requires scope'
             )
-        if component.layout_role is not None:
-            raise ToolConfigurationValidationError(
-                'Integrated Operations components must not declare Process layout roles'
-            )
+        scopes.append(component.scope)
         if not component.subcomponents:
             raise ToolConfigurationValidationError(
                 f'Integrated Operations component {component.key!r} requires subcomponents'
+            )
+    # La lista es el orden operacional de izquierda a derecha: Mina primero y luego Planta.
+    if ToolScope.MINE not in scopes or ToolScope.PLANT not in scopes:
+        raise ToolConfigurationValidationError(
+            'Integrated Operations Tool Structure requires Mine and Plant components'
+        )
+    plant_seen = False
+    for scope in scopes:
+        if scope is ToolScope.PLANT:
+            plant_seen = True
+            continue
+        if plant_seen:
+            raise ToolConfigurationValidationError(
+                'Integrated Operations components must follow Mine-to-Plant operational order'
             )

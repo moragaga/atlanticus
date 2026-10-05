@@ -52,12 +52,12 @@ def tool_document() -> dict[str, object]:
             'tool_key': 'process',
             'kind': 'process',
             'operational_scope': 'plant',
+            'center_component_key': 'crusher',
             'components': [
                 {
                     'key': 'crusher',
                     'display_name': 'Chancado',
                     'scope': None,
-                    'layout_role': 'center',
                     'subcomponents': [
                         {
                             'key': 'primary',

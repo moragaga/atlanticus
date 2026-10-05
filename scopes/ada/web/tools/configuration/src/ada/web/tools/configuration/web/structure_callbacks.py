@@ -38,6 +38,8 @@ from ada.web.tools.configuration.web.structure_ids import (
     COMPONENT_SUMMARY_NAME_TYPE,
     COMPONENT_SUMMARY_SCOPE_TYPE,
     STRUCTURE_ADD_COMPONENT_ID,
+    STRUCTURE_CENTER_COMPONENT_ID,
+    STRUCTURE_CENTER_COMPONENT_WRAPPER_ID,
     STRUCTURE_COMPONENTS_CONTAINER_ID,
     STRUCTURE_DOCUMENT_STORE_ID,
     STRUCTURE_KIND_STORE_ID,
@@ -52,6 +54,7 @@ from ada.web.tools.configuration.web.structure_ids import (
     SUBCOMPONENT_SUMMARY_NAME_TYPE,
 )
 from ada.web.tools.configuration.web.structure_presentation import (
+    _component_options,
     _linked_component_options,
     _linked_values,
     _shared_label,
@@ -91,6 +94,46 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             )
             for index, row in enumerate(components)
         ]
+
+    @app.callback(
+        Output(STRUCTURE_CENTER_COMPONENT_ID, 'options'),
+        Output(STRUCTURE_CENTER_COMPONENT_ID, 'value'),
+        Output(STRUCTURE_CENTER_COMPONENT_ID, 'disabled'),
+        Output(STRUCTURE_CENTER_COMPONENT_WRAPPER_ID, 'hidden'),
+        Input({'type': COMPONENT_KEY_TYPE, 'index': ALL}, 'data'),
+        Input({'type': COMPONENT_DISPLAY_NAME_TYPE, 'index': ALL}, 'value'),
+        Input(KIND_ID, 'value'),
+        Input(CONFIGURATION_STORE_ID, 'data'),
+        State(STRUCTURE_CENTER_COMPONENT_ID, 'value'),
+    )
+    def sync_process_center_component(
+        component_keys: list[object],
+        component_names: list[object],
+        kind_value: str | None,
+        configuration_document: dict[str, object] | None,
+        current_value: object,
+    ):
+        if kind_value != ToolConfigurationKind.PROCESS.value:
+            return [], None, True, True
+        rows = [
+            {'key': key, 'display_name': name}
+            for key, name in zip(component_keys, component_names, strict=True)
+        ]
+        options = _component_options(rows)
+        available = {option['value'] for option in options}
+        current = str(current_value or '').strip()
+        if current in available:
+            return options, current, not options, False
+        persisted = None
+        if configuration_document is not None:
+            try:
+                configuration = ToolConfiguration.from_document(configuration_document)
+                if configuration.structure is not None:
+                    persisted = configuration.structure.center_component_key
+            except ValueError:
+                persisted = None
+        selected = persisted if persisted in available else None
+        return options, selected, not options, False
 
     @app.callback(
         Output(
@@ -708,6 +751,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
             'value',
         ),
         Input(COVERAGE_ID, 'value'),
+        Input(STRUCTURE_CENTER_COMPONENT_ID, 'value'),
         Input(DRAFT_STORE_ID, 'data'),
         State({'type': COMPONENT_KEY_TYPE, 'index': ALL}, 'id'),
         State(
@@ -727,6 +771,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
         subcomponent_names: list[object],
         subcomponent_links: list[object],
         coverage: object,
+        center_component_key: object,
         source_document: dict[str, object] | None,
         component_key_ids: list[dict[str, object]],
         subcomponent_key_ids: list[dict[str, object]],
@@ -779,6 +824,7 @@ def register_tool_structure_editor_callbacks(app: object) -> None:
                     component_keys=component_key_values,
                 ),
                 coverage=coverage,
+                center_component_key=center_component_key,
             )
         except ValueError as error:
             return None, False, str(error)

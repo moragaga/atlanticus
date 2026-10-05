@@ -1,7 +1,6 @@
 import pytest
 
 from ada.contracts.tools import (
-    ProcessLayoutRole,
     SourceControlPolicy,
     ToolComponent,
     ToolConfigurationKind,
@@ -25,11 +24,11 @@ def test_tool_structure_roundtrip_preserves_document_contract():
         tool_key='crusher',
         kind=ToolConfigurationKind.PROCESS,
         operational_scope=ToolScope.PLANT,
+        center_component_key='main',
         components=(
             ToolComponent(
                 key='main',
                 display_name='Main',
-                layout_role=ProcessLayoutRole.CENTER,
                 subcomponents=(ToolSubcomponent(key='motor', display_name='Motor'),),
             ),
         ),
@@ -42,6 +41,7 @@ def test_tool_structure_roundtrip_preserves_document_contract():
         'tool_key': 'crusher',
         'kind': 'process',
         'operational_scope': 'plant',
+        'center_component_key': 'main',
         'components': [
             {
                 'key': 'main',
@@ -53,7 +53,6 @@ def test_tool_structure_roundtrip_preserves_document_contract():
                         'linked_component_keys': [],
                     }
                 ],
-                'layout_role': 'center',
             }
         ],
     }
@@ -72,14 +71,25 @@ def test_integrated_operations_visible_linked_subcomponent_is_preserved():
                     ToolSubcomponent(
                         key='shared',
                         display_name='Shared',
-                        linked_component_keys=('plant',),
+                        linked_component_keys=('mine_peer',),
+                    ),
+                ),
+            ),
+            ToolComponent(
+                key='mine_peer',
+                display_name='Mine Peer',
+                scope=ToolScope.MINE,
+                subcomponents=(
+                    ToolSubcomponent(
+                        key='local',
+                        display_name='Local',
                     ),
                 ),
             ),
             ToolComponent(
                 key='plant',
                 display_name='Plant',
-                scope=ToolScope.MINE,
+                scope=ToolScope.PLANT,
                 subcomponents=(ToolSubcomponent(key='local', display_name='Local'),),
             ),
         ),
@@ -87,7 +97,7 @@ def test_integrated_operations_visible_linked_subcomponent_is_preserved():
 
     assert (
         structure.subcomponent_address(
-            component_key='plant', subcomponent_key='shared'
+            component_key='mine_peer', subcomponent_key='shared'
         ).owner_component_key
         == 'mine'
     )
@@ -99,6 +109,7 @@ def test_manifest_roundtrip_and_order_are_stable():
             tool_key=key,
             kind=ToolConfigurationKind.PROCESS,
             operational_scope=ToolScope.PLANT,
+            center_component_key='main',
             components=(
                 ToolComponent(
                     key='main',
@@ -162,5 +173,93 @@ def test_reserved_component_keys_remain_invalid():
                     display_name='Reserved',
                     subcomponents=(ToolSubcomponent(key='motor', display_name='Motor'),),
                 ),
+            ),
+        )
+
+
+def test_process_requires_explicit_existing_center_component() -> None:
+    component = ToolComponent(
+        key='main',
+        display_name='Main',
+        subcomponents=(ToolSubcomponent(key='motor', display_name='Motor'),),
+    )
+
+    with pytest.raises(ToolConfigurationValidationError, match='requires center component key'):
+        ToolStructure(
+            tool_key='crusher',
+            kind=ToolConfigurationKind.PROCESS,
+            operational_scope=ToolScope.PLANT,
+            components=(component,),
+        )
+
+    with pytest.raises(ToolConfigurationValidationError, match='existing component'):
+        ToolStructure(
+            tool_key='crusher',
+            kind=ToolConfigurationKind.PROCESS,
+            operational_scope=ToolScope.PLANT,
+            center_component_key='missing',
+            components=(component,),
+        )
+
+
+def test_integrated_operations_preserves_operational_order() -> None:
+    structure = ToolStructure(
+        tool_key='integrated',
+        kind=ToolConfigurationKind.INTEGRATED_OPERATIONS,
+        components=(
+            ToolComponent(
+                key='mine_a',
+                display_name='Mine A',
+                scope=ToolScope.MINE,
+                subcomponents=(ToolSubcomponent(key='a', display_name='A'),),
+            ),
+            ToolComponent(
+                key='mine_b',
+                display_name='Mine B',
+                scope=ToolScope.MINE,
+                subcomponents=(ToolSubcomponent(key='b', display_name='B'),),
+            ),
+            ToolComponent(
+                key='plant_a',
+                display_name='Plant A',
+                scope=ToolScope.PLANT,
+                subcomponents=(ToolSubcomponent(key='c', display_name='C'),),
+            ),
+        ),
+    )
+
+    restored = ToolStructure.from_document(structure.to_document())
+
+    assert tuple(component.key for component in restored.components) == (
+        'mine_a',
+        'mine_b',
+        'plant_a',
+    )
+
+
+def test_integrated_operations_rejects_incomplete_or_reversed_scope_sequence() -> None:
+    def component(key: str, scope: ToolScope) -> ToolComponent:
+        return ToolComponent(
+            key=key,
+            display_name=key,
+            scope=scope,
+            subcomponents=(ToolSubcomponent(key=f'{key}_sub', display_name='Sub'),),
+        )
+
+    with pytest.raises(ToolConfigurationValidationError, match='requires Mine and Plant'):
+        ToolStructure(
+            tool_key='integrated',
+            kind=ToolConfigurationKind.INTEGRATED_OPERATIONS,
+            components=(component('mine', ToolScope.MINE),),
+        )
+
+    with pytest.raises(ToolConfigurationValidationError, match='Mine-to-Plant operational order'):
+        ToolStructure(
+            tool_key='integrated',
+            kind=ToolConfigurationKind.INTEGRATED_OPERATIONS,
+            components=(
+                component('mine_a', ToolScope.MINE),
+                component('plant', ToolScope.PLANT),
+                component('mine_b', ToolScope.MINE),
             ),
         )

@@ -11,7 +11,6 @@ from ada.contracts.tools.enums import (
 
 
 class AlarmBaselineAnchorKind(StrEnum):
-    LAYOUT_ROLE = 'layout_role'
     COMPONENT = 'component'
 
 

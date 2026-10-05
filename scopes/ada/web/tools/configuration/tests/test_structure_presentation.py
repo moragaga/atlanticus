@@ -12,6 +12,8 @@ from ada.web.tools.configuration.web.structure_ids import (
     COMPONENT_ROW_TYPE,
     COMPONENT_SUBCOMPONENTS_CONTAINER_TYPE,
     COMPONENT_SUMMARY_NAME_TYPE,
+    STRUCTURE_CENTER_COMPONENT_ID,
+    STRUCTURE_CENTER_COMPONENT_WRAPPER_ID,
     SUBCOMPONENT_KEY_TYPE,
     SUBCOMPONENT_LINKED_TYPE,
     SUBCOMPONENT_ROW_TYPE,
@@ -44,7 +46,6 @@ def _configuration() -> dict[str, object]:
                 'key': 'mine',
                 'display_name': 'Mina',
                 'scope': 'mine',
-                'layout_role': None,
                 'subcomponents': [
                     {
                         'key': 'extraction',
@@ -57,7 +58,6 @@ def _configuration() -> dict[str, object]:
                 'key': 'dispatch',
                 'display_name': 'Despacho',
                 'scope': 'mine',
-                'layout_role': None,
                 'subcomponents': [
                     {
                         'key': 'fleet',
@@ -70,7 +70,6 @@ def _configuration() -> dict[str, object]:
                 'key': 'plant',
                 'display_name': 'Planta',
                 'scope': 'plant',
-                'layout_role': None,
                 'subcomponents': [
                     {
                         'key': 'crusher',
@@ -164,6 +163,53 @@ def test_structure_exposes_stable_internal_keys() -> None:
         'index': 0,
         'owner_index': 0,
     } in ids
+
+
+def test_process_structure_editor_exposes_explicit_center_component_selector() -> None:
+    document = _configuration()
+    document['kind'] = 'process'
+    document['structure'] = {
+        'tool_key': 'integrated_operations',
+        'kind': 'process',
+        'operational_scope': 'mine',
+        'center_component_key': 'mine',
+        'components': [
+            {
+                'key': 'mine',
+                'display_name': 'Mina',
+                'scope': 'mine',
+                'subcomponents': [
+                    {
+                        'key': 'extraction',
+                        'display_name': 'Extracción',
+                        'linked_component_keys': [],
+                    }
+                ],
+            }
+        ],
+    }
+
+    layout = build_tool_structure_editor(configuration_document=document)
+    selector = _find_by_id(layout, STRUCTURE_CENTER_COMPONENT_ID)
+    wrapper = _find_by_id(layout, STRUCTURE_CENTER_COMPONENT_WRAPPER_ID)
+
+    assert selector is not None
+    assert selector.value == 'mine'
+    assert selector.options == [{'label': 'Mina', 'value': 'mine'}]
+    assert selector.disabled is False
+    assert wrapper is not None
+    assert wrapper.hidden is False
+
+
+def test_integrated_operations_hides_process_center_selector() -> None:
+    layout = build_tool_structure_editor(configuration_document=_configuration())
+    selector = _find_by_id(layout, STRUCTURE_CENTER_COMPONENT_ID)
+    wrapper = _find_by_id(layout, STRUCTURE_CENTER_COMPONENT_WRAPPER_ID)
+
+    assert selector is not None
+    assert selector.value is None
+    assert wrapper is not None
+    assert wrapper.hidden is True
 
 
 def test_process_component_scope_is_optional_editable_override() -> None:

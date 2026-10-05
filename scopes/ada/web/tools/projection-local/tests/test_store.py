@@ -36,11 +36,11 @@ def _configuration(tool_key: str) -> ToolConfiguration:
                 'tool_key': tool_key,
                 'kind': 'process',
                 'operational_scope': 'mine',
+                'center_component_key': 'center',
                 'components': [
                     {
                         'key': 'center',
                         'display_name': 'Centro',
-                        'layout_role': 'center',
                         'subcomponents': [
                             {
                                 'key': 'primary',

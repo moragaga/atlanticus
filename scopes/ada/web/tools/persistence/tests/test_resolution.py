@@ -75,11 +75,11 @@ def _configuration() -> ToolConfiguration:
                 'tool_key': 'operaciones_integradas',
                 'kind': 'process',
                 'operational_scope': 'mine',
+                'center_component_key': 'center',
                 'components': [
                     {
                         'key': 'center',
                         'display_name': 'Centro',
-                        'layout_role': 'center',
                         'subcomponents': [
                             {
                                 'key': 'primary',

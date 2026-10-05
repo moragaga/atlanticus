@@ -2,11 +2,7 @@ import inspect
 
 import pytest
 
-from ada.contracts.tools.enums import (
-    ProcessLayoutRole,
-    ToolConfigurationKind,
-    ToolScope,
-)
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
 from ada.contracts.tools.errors import ToolConfigurationValidationError
 from ada.contracts.tools.sources import (
     SourceControlPolicy,
@@ -184,11 +180,11 @@ def test_operational_configuration_accepts_process_structure() -> None:
         tool_key='process',
         kind=ToolConfigurationKind.PROCESS,
         operational_scope=ToolScope.MINE,
+        center_component_key='mina',
         components=(
             ToolComponent(
                 key='mina',
                 display_name='Mina',
-                layout_role=ProcessLayoutRole.CENTER,
                 subcomponents=(ToolSubcomponent(key='carguio', display_name='Carguío'),),
             ),
         ),

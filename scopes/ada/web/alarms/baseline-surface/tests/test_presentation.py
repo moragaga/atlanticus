@@ -34,8 +34,8 @@ def _process_projection() -> AlarmBaselineProjection:
         kind=ToolConfigurationKind.PROCESS,
         points=(
             AlarmBaselinePoint(
-                anchor_kind=AlarmBaselineAnchorKind.LAYOUT_ROLE,
-                anchor_key='center',
+                anchor_kind=AlarmBaselineAnchorKind.COMPONENT,
+                anchor_key='mina',
                 component_key='mina',
                 display_name='Mina',
                 scope=ToolScope.MINE,
@@ -77,8 +77,8 @@ def test_process_surface_renders_one_center_point_with_real_component_identity()
     assert _props(surface)['data-ada-alarm-baseline-point-count'] == '1'
     assert _props(surface)['style']['--ada-alarm-baseline-point-count'] == '1'
     assert len(nodes) == 1
-    assert _props(nodes[0])['data-ada-alarm-anchor-kind'] == 'layout_role'
-    assert _props(nodes[0])['data-ada-alarm-anchor-key'] == 'center'
+    assert _props(nodes[0])['data-ada-alarm-anchor-kind'] == 'component'
+    assert _props(nodes[0])['data-ada-alarm-anchor-key'] == 'mina'
     assert _props(nodes[0])['data-ada-component-key'] == 'mina'
 
 

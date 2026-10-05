@@ -38,6 +38,7 @@ def test_process_coverage_maps_to_structure_operational_scope() -> None:
     structure = build_structure_from_editor_tables(
         base_configuration=base,
         coverage='plant',
+        center_component_key='cmp_process',
         component_rows=[
             {
                 'key': 'cmp_process',
@@ -66,8 +67,34 @@ def test_process_coverage_maps_to_structure_operational_scope() -> None:
 
     assert structure.operational_scope is not None
     assert structure.operational_scope.value == 'plant'
-    assert structure.components[0].layout_role is None
+    assert structure.center_component_key == 'cmp_process'
     assert structure_editor_coverage_from_configuration(configured) == 'plant'
+
+
+def test_process_editor_rejects_missing_center_component() -> None:
+    with pytest.raises(
+        ToolStructureEditorValidationError,
+        match='requires center component key',
+    ):
+        build_structure_from_editor_tables(
+            base_configuration=_base(ToolConfigurationKind.PROCESS),
+            coverage='mine',
+            component_rows=[
+                {
+                    'key': 'cmp_process',
+                    'display_name': 'Proceso',
+                    'scope': None,
+                }
+            ],
+            subcomponent_rows=[
+                {
+                    'owner_component_key': 'cmp_process',
+                    'key': 'sub_process',
+                    'display_name': 'Principal',
+                    'linked_component_keys': [],
+                }
+            ],
+        )
 
 
 def test_integrated_operations_rejects_single_scope_coverage() -> None:
@@ -83,7 +110,7 @@ def test_integrated_operations_rejects_single_scope_coverage() -> None:
         )
 
 
-def test_integrated_mine_and_plant_allows_single_component_scope() -> None:
+def test_integrated_mine_and_plant_preserves_left_to_right_component_order() -> None:
     structure = build_structure_from_editor_tables(
         base_configuration=_base(ToolConfigurationKind.INTEGRATED_OPERATIONS),
         coverage='mine_plant',
@@ -92,6 +119,11 @@ def test_integrated_mine_and_plant_allows_single_component_scope() -> None:
                 'key': 'cmp_mine',
                 'display_name': 'Mina',
                 'scope': 'mine',
+            },
+            {
+                'key': 'cmp_plant',
+                'display_name': 'Planta',
+                'scope': 'plant',
             }
         ],
         subcomponent_rows=[
@@ -100,12 +132,18 @@ def test_integrated_mine_and_plant_allows_single_component_scope() -> None:
                 'key': 'sub_extraction',
                 'display_name': 'Extracción',
                 'linked_component_keys': [],
+            },
+            {
+                'owner_component_key': 'cmp_plant',
+                'key': 'sub_plant',
+                'display_name': 'Planta',
+                'linked_component_keys': [],
             }
         ],
     )
 
-    assert structure.components[0].scope is not None
-    assert structure.components[0].scope.value == 'mine'
+    assert tuple(component.key for component in structure.components) == ('cmp_mine', 'cmp_plant')
+    assert tuple(component.scope.value for component in structure.components) == ('mine', 'plant')
 
 
 def test_integrated_shared_subcomponent_keeps_one_owner() -> None:
@@ -162,10 +200,48 @@ def test_integrated_shared_subcomponent_keeps_one_owner() -> None:
     )
 
 
+def test_integrated_operations_editor_rejects_plant_before_mine() -> None:
+    with pytest.raises(
+        ToolStructureEditorValidationError,
+        match='Mine-to-Plant operational order',
+    ):
+        build_structure_from_editor_tables(
+            base_configuration=_base(ToolConfigurationKind.INTEGRATED_OPERATIONS),
+            coverage='mine_plant',
+            component_rows=[
+                {
+                    'key': 'cmp_plant',
+                    'display_name': 'Planta',
+                    'scope': 'plant',
+                },
+                {
+                    'key': 'cmp_mine',
+                    'display_name': 'Mina',
+                    'scope': 'mine',
+                },
+            ],
+            subcomponent_rows=[
+                {
+                    'owner_component_key': 'cmp_plant',
+                    'key': 'sub_plant',
+                    'display_name': 'Planta',
+                    'linked_component_keys': [],
+                },
+                {
+                    'owner_component_key': 'cmp_mine',
+                    'key': 'sub_mine',
+                    'display_name': 'Mina',
+                    'linked_component_keys': [],
+                },
+            ],
+        )
+
+
 def test_process_keeps_component_scope_when_it_overrides_operational_coverage() -> None:
     structure = build_structure_from_editor_tables(
         base_configuration=_base(ToolConfigurationKind.PROCESS),
         coverage='plant',
+        center_component_key='cmp_process',
         component_rows=[
             {
                 'key': 'cmp_process',
@@ -193,6 +269,7 @@ def test_process_editor_canonicalizes_scope_equal_to_operational_coverage() -> N
     structure = build_structure_from_editor_tables(
         base_configuration=_base(ToolConfigurationKind.PROCESS),
         coverage='plant',
+        center_component_key='cmp_process',
         component_rows=[
             {
                 'key': 'cmp_process',

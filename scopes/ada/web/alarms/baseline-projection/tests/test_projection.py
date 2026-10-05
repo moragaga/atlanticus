@@ -5,11 +5,7 @@ from ada.web.alarms.baseline_projection import (
     AlarmBaselineProjectionError,
     project_alarm_baseline,
 )
-from ada.contracts.tools.enums import (
-    ProcessLayoutRole,
-    ToolConfigurationKind,
-    ToolScope,
-)
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
 from ada.contracts.tools.structure import (
     ToolComponent,
     ToolStructure,
@@ -34,22 +30,22 @@ def _process_structure(*, center_subcomponents: tuple[ToolSubcomponent, ...]) ->
         tool_key='mina_process',
         kind=ToolConfigurationKind.PROCESS,
         operational_scope=ToolScope.MINE,
+        center_component_key='mina',
         components=(
             ToolComponent(
                 key='left_context',
                 display_name='Left Context',
-                layout_role=ProcessLayoutRole.LEFT,
+                subcomponents=(_subcomponent('left_context'),),
             ),
             ToolComponent(
                 key='mina',
                 display_name='Mina',
-                layout_role=ProcessLayoutRole.CENTER,
                 subcomponents=center_subcomponents,
             ),
             ToolComponent(
                 key='right_context',
                 display_name='Right Context',
-                layout_role=ProcessLayoutRole.RIGHT,
+                subcomponents=(_subcomponent('right_context'),),
             ),
         ),
     )
@@ -96,8 +92,8 @@ def test_process_projects_exactly_one_center_anchor() -> None:
     assert projection.kind is ToolConfigurationKind.PROCESS
     assert len(projection.points) == 1
     point = projection.points[0]
-    assert point.anchor_kind is AlarmBaselineAnchorKind.LAYOUT_ROLE
-    assert point.anchor_key == 'center'
+    assert point.anchor_kind is AlarmBaselineAnchorKind.COMPONENT
+    assert point.anchor_key == 'mina'
     assert point.component_key == 'mina'
     assert point.display_name == 'Mina'
     assert point.scope is ToolScope.MINE
@@ -132,11 +128,11 @@ def test_process_single_full_size_subcomponent_still_uses_center_anchor() -> Non
         tool_key='flotacion',
         kind=ToolConfigurationKind.PROCESS,
         operational_scope=ToolScope.PLANT,
+        center_component_key='flotacion',
         components=(
             ToolComponent(
                 key='flotacion',
                 display_name='Flotación',
-                layout_role=ProcessLayoutRole.CENTER,
                 subcomponents=(_subcomponent('flotacion'),),
             ),
         ),
@@ -144,7 +140,7 @@ def test_process_single_full_size_subcomponent_still_uses_center_anchor() -> Non
 
     projection = project_alarm_baseline(structure)
 
-    assert projection.points[0].anchor_key == 'center'
+    assert projection.points[0].anchor_key == 'flotacion'
     assert projection.points[0].component_key == 'flotacion'
     assert projection.points[0].scope is ToolScope.PLANT
 
@@ -170,7 +166,7 @@ def test_integrated_operations_preserves_component_scopes() -> None:
     )
 
 
-def test_integrated_operations_accepts_single_component_without_fixed_count() -> None:
+def test_integrated_operations_requires_mine_and_plant_sequence_without_fixed_count() -> None:
     structure = ToolStructure(
         tool_key='small_integrated',
         kind=ToolConfigurationKind.INTEGRATED_OPERATIONS,
@@ -181,12 +177,18 @@ def test_integrated_operations_accepts_single_component_without_fixed_count() ->
                 scope=ToolScope.MINE,
                 subcomponents=(_subcomponent('detail'),),
             ),
+            ToolComponent(
+                key='process_b',
+                display_name='Process B',
+                scope=ToolScope.PLANT,
+                subcomponents=(_subcomponent('detail_b'),),
+            ),
         ),
     )
 
     projection = project_alarm_baseline(structure)
 
-    assert projection.component_keys == ('process_a',)
+    assert projection.component_keys == ('process_a', 'process_b')
 
 
 def test_shared_subcomponent_relationship_does_not_duplicate_baseline_points() -> None:
@@ -235,8 +237,8 @@ def test_process_document_keeps_center_anchor_and_real_component_identity() -> N
 
     assert document['points'] == [
         {
-            'anchor_kind': 'layout_role',
-            'anchor_key': 'center',
+            'anchor_kind': 'component',
+            'anchor_key': 'mina',
             'component_key': 'mina',
             'display_name': 'Mina',
             'scope': 'mine',

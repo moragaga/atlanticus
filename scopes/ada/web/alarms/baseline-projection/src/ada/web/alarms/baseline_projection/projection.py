@@ -3,10 +3,7 @@ from ada.web.alarms.baseline_projection.models import (
     AlarmBaselinePoint,
     AlarmBaselineProjection,
 )
-from ada.contracts.tools.enums import (
-    ProcessLayoutRole,
-    ToolConfigurationKind,
-)
+from ada.contracts.tools.enums import ToolConfigurationKind
 from ada.contracts.tools.structure import ToolStructure
 
 
@@ -14,14 +11,15 @@ def project_alarm_baseline(structure: ToolStructure) -> AlarmBaselineProjection:
     if not isinstance(structure, ToolStructure):
         raise TypeError('Tool Structure is required')
     if structure.kind is ToolConfigurationKind.PROCESS:
-        center = structure.component_for_layout_role(ProcessLayoutRole.CENTER)
+        center_key = structure.center_component_key
+        center = structure.component(center_key)
         return AlarmBaselineProjection(
             tool_key=structure.tool_key,
             kind=structure.kind,
             points=(
                 AlarmBaselinePoint(
-                    anchor_kind=AlarmBaselineAnchorKind.LAYOUT_ROLE,
-                    anchor_key=ProcessLayoutRole.CENTER.value,
+                    anchor_kind=AlarmBaselineAnchorKind.COMPONENT,
+                    anchor_key=center.key,
                     component_key=center.key,
                     display_name=center.display_name,
                     scope=structure.operational_scope,

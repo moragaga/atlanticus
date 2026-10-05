@@ -25,6 +25,14 @@ def _structure(tool_key: str = 'operations') -> ToolStructure:
                     ),
                 ),
             ),
+            ToolComponent(
+                key='plant',
+                display_name='Plant',
+                scope=ToolScope.PLANT,
+                subcomponents=(
+                    ToolSubcomponent(key='concentrator', display_name='Concentrator'),
+                ),
+            ),
         ),
     )
 

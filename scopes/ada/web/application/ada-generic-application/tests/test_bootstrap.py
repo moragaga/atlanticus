@@ -64,7 +64,6 @@ def _configuration() -> ToolConfiguration:
                         'key': 'mine',
                         'display_name': 'Mina',
                         'scope': 'mine',
-                        'layout_role': None,
                         'subcomponents': [
                             {
                                 'key': 'mine_phase',
@@ -77,7 +76,6 @@ def _configuration() -> ToolConfiguration:
                         'key': 'plant',
                         'display_name': 'Planta',
                         'scope': 'plant',
-                        'layout_role': None,
                         'subcomponents': [
                             {
                                 'key': 'plant_phase',

@@ -1,10 +1,6 @@
 from __future__ import annotations
 
-from ada.contracts.tools.enums import (
-    ProcessLayoutRole,
-    ToolConfigurationKind,
-    ToolScope,
-)
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
 from ada.contracts.tools.sources import (
     SourceControlPolicy,
     ToolSourceConsumption,
@@ -36,11 +32,11 @@ def valid_configuration() -> ToolConfiguration:
             tool_key='process',
             kind=ToolConfigurationKind.PROCESS,
             operational_scope=ToolScope.MINE,
+            center_component_key='mina',
             components=(
                 ToolComponent(
                     key='mina',
                     display_name='Mina',
-                    layout_role=ProcessLayoutRole.CENTER,
                     subcomponents=(ToolSubcomponent(key='carguio', display_name='Carguío'),),
                 ),
             ),

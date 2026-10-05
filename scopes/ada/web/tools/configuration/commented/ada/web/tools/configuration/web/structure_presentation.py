@@ -24,6 +24,8 @@ from ada.web.tools.configuration.web.structure_ids import (
     COMPONENT_SUMMARY_NAME_TYPE,
     COMPONENT_SUMMARY_SCOPE_TYPE,
     STRUCTURE_ADD_COMPONENT_ID,
+    STRUCTURE_CENTER_COMPONENT_ID,
+    STRUCTURE_CENTER_COMPONENT_WRAPPER_ID,
     STRUCTURE_COMPONENTS_CONTAINER_ID,
     STRUCTURE_DOCUMENT_STORE_ID,
     STRUCTURE_KIND_STORE_ID,
@@ -65,6 +67,8 @@ def build_tool_structure_editor(
     structure = configuration.structure if configuration is not None else None
     kind = configuration.kind if configuration is not None else None
     nested_rows = _subcomponent_rows_by_owner(subcomponent_rows)
+    # El valor se conserva por key estable, no por posición ni por nombre visible.
+    center_component_key = structure.center_component_key if structure is not None else None
 
     return html.Section(
         [
@@ -101,6 +105,23 @@ def build_tool_structure_editor(
                     ),
                 ],
                 className='ada-tool-structure-editor__heading',
+            ),
+            # Sólo Process necesita elegir un centro. Integrated Operations deriva su geometría del orden.
+            html.Div(
+                _dropdown_field(
+                    label='Componente central',
+                    component_id=STRUCTURE_CENTER_COMPONENT_ID,
+                    value=center_component_key,
+                    options=_component_options(component_rows),
+                    clearable=False,
+                    placeholder='Seleccionar componente central',
+                    disabled=(
+                        kind is not ToolConfigurationKind.PROCESS or not component_rows
+                    ),
+                ),
+                id=STRUCTURE_CENTER_COMPONENT_WRAPPER_ID,
+                hidden=kind is not ToolConfigurationKind.PROCESS,
+                className='ada-tool-structure-editor__context-field',
             ),
             html.Section(
                 [
@@ -533,6 +554,25 @@ def _dropdown_field(
         ],
         className='ada-tool-structure-editor__field',
     )
+
+
+# Las opciones siguen el mismo orden de components; el selector no crea otra fuente de orden.
+def _component_options(
+    rows: Sequence[Mapping[str, object]],
+) -> list[dict[str, str]]:
+    options: list[dict[str, str]] = []
+    for row in rows:
+        key = str(row.get('key') or '').strip()
+        if not key:
+            continue
+        display_name = str(row.get('display_name') or '').strip()
+        options.append(
+            {
+                'label': display_name or key,
+                'value': key,
+            }
+        )
+    return options
 
 
 def _linked_component_options(
