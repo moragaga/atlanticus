@@ -15,6 +15,7 @@ from ada.web.application.configuration_manager.wiring import (
     ConfigurationManagerStores,
 )
 from ada.web.application.generic.composition import create_operational_navigation_modules
+from ada.web.application.generic.descriptor import AdaApplicationDescriptor
 from ada.web.application.generic.extension import (
     AdaApplicationExtension,
     AdaApplicationExtensionFactory,
@@ -109,6 +110,7 @@ def create_operational_application_runtime(
     identity_provider: IdentityProvider | None = None,
     manager_source_name: str = 'Source',
     manager_projection_name: str = 'Projection',
+    application_descriptor: AdaApplicationDescriptor | None = None,
     extension_factory: AdaApplicationExtensionFactory | None = None,
     master_material_reader: MasterMaterialReader | None = None,
 ) -> WebApplicationRuntime:
@@ -122,6 +124,10 @@ def create_operational_application_runtime(
         raise TypeError('manager_stores must be ConfigurationManagerStores')
     if identity_provider is not None and not isinstance(identity_provider, IdentityProvider):
         raise TypeError('identity_provider must implement IdentityProvider')
+    if application_descriptor is not None and not isinstance(
+        application_descriptor, AdaApplicationDescriptor
+    ):
+        raise TypeError('application_descriptor must be AdaApplicationDescriptor')
     if extension_factory is not None and not callable(extension_factory):
         raise TypeError('extension_factory must be callable')
     if manager_dependencies is not None and manager_stores is not None:
@@ -151,6 +157,7 @@ def create_operational_application_runtime(
             raise TypeError('extension_factory must return AdaApplicationExtension')
     definition = create_definition_from_tool_resolution(
         resolution,
+        application_descriptor=application_descriptor,
         operational_render_binding=operational_binding,
     )
     if application_extension is not None:

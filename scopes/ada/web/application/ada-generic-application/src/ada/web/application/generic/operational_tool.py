@@ -6,6 +6,7 @@ from ada.contracts.tools.errors import ToolConfigurationValidationError
 from ada.web.alarms.baseline_projection import project_alarm_baseline
 from ada.web.application.generic.application import create_application_definition
 from ada.web.application.generic.composition import AdaApplicationComposition
+from ada.web.application.generic.descriptor import AdaApplicationDescriptor
 from ada.web.operational_render_binding import (
     OperationalRenderBinding,
     bind_operational_render,
@@ -69,12 +70,15 @@ def resolve_operational_render_binding(
 def create_definition_from_tool_resolution(
     resolution: ToolProjectionResolution,
     *,
+    application_descriptor: AdaApplicationDescriptor | None = None,
     composition: AdaApplicationComposition | None = None,
     operational_render_binding: OperationalRenderBinding | None = None,
 ) -> WebApplicationDefinition:
     if not isinstance(resolution, ToolProjectionResolution):
         raise TypeError('resolution must be ToolProjectionResolution')
     definition_options: dict[str, object] = {}
+    if application_descriptor is not None:
+        definition_options['application_descriptor'] = application_descriptor
     if composition is not None:
         definition_options['composition'] = composition
     if (

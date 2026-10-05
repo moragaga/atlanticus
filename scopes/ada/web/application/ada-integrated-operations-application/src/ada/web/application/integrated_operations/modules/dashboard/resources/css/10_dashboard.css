@@ -1,0 +1,38 @@
+.ada-io-dashboard {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+}
+
+.ada-io-dashboard__scopes {
+    display: grid;
+    flex: 1 1 auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    min-height: 0;
+    min-width: 0;
+}
+
+.ada-io-scope {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+}
+
+.ada-io-scope__title {
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+.ada-io-scope__content {
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+}
+
+@media (max-width: 1100px) {
+    .ada-io-dashboard__scopes {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

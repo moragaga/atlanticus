@@ -8,6 +8,7 @@ from ada.web.application.configuration_manager.local_runtime import (
     create_local_configuration_manager_stores,
 )
 from ada.web.application.generic.bootstrap import create_operational_application_runtime
+from ada.web.application.generic.descriptor import AdaApplicationDescriptor
 from ada.web.application.generic.extension import AdaApplicationExtensionFactory
 from ada.web.application.generic.manager_deployment import open_durable_manager
 from ada.web.application.generic.settings import AdaGenericSettings, AdaPersistenceMode
@@ -55,6 +56,7 @@ def _production_identity(factory: ProductionIdentityFactory | None) -> IdentityP
 
 def create_worker_runtime(
     *,
+    application_descriptor: AdaApplicationDescriptor | None = None,
     extension_factory: AdaApplicationExtensionFactory | None = None,
     production_identity_provider_factory: ProductionIdentityFactory | None = None,
 ) -> AdaWorkerRuntime:
@@ -71,6 +73,7 @@ def create_worker_runtime(
                 identity_provider=_local_identity(),
                 manager_source_name='Local Source',
                 manager_projection_name='Local Projection',
+                application_descriptor=application_descriptor,
                 extension_factory=extension_factory,
                 master_material_reader=material_reader,
             )
@@ -93,6 +96,7 @@ def create_worker_runtime(
                 identity_provider=identity,
                 manager_source_name='Blob Storage',
                 manager_projection_name='Cosmos DB',
+                application_descriptor=application_descriptor,
                 extension_factory=extension_factory,
                 master_material_reader=material_reader,
             )
@@ -105,10 +109,12 @@ def create_worker_runtime(
 
 def run_operational_application(
     *,
+    application_descriptor: AdaApplicationDescriptor | None = None,
     extension_factory: AdaApplicationExtensionFactory | None = None,
     production_identity_provider_factory: ProductionIdentityFactory | None = None,
 ) -> None:
     worker = create_worker_runtime(
+        application_descriptor=application_descriptor,
         extension_factory=extension_factory,
         production_identity_provider_factory=production_identity_provider_factory,
     )

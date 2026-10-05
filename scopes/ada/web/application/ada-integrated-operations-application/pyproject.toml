@@ -1,0 +1,146 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ada-integrated-operations-application"
+version = "0.1.0"
+description = "Aplicación ADA de Operaciones Integradas sobre ADA Generic"
+requires-python = "==3.14.2"
+classifiers = [
+    "Private :: Do Not Upload",
+]
+dependencies = [
+    "ada-generic-application==0.2.26",
+    "ada-contracts-tools==1.0.0",
+    "ada-web-operational-render-binding==0.1.0",
+    "atlanticus-web==0.1.0",
+    "dash==4.4.1",
+]
+
+[dependency-groups]
+dev = [
+    "ruff==0.15.22",
+]
+
+[project.scripts]
+ada-integrated-operations-application = "ada.web.application.integrated_operations.__main__:main"
+
+[tool.uv.sources]
+ada-generic-application = { path = "../ada-generic-application", editable = true }
+atlanticus-web-storage-preparation = { path = "../../../../../web/capabilities/storage/preparation", editable = true }
+atlanticus-web-users-cosmos = { path = "../../../../../web/capabilities/users/cosmos", editable = true }
+atlanticus-web-users-blob = { path = "../../../../../web/capabilities/users/blob", editable = true }
+atlanticus-web-navigation-projection-cosmos = { path = "../../../../../web/capabilities/navigation/projection-cosmos", editable = true }
+ada-web-kpi-registry-projection-cosmos = { path = "../../kpis/registry/projection-cosmos", editable = true }
+ada-web-kpi-definition-projection-cosmos = { path = "../../kpis/definition/projection-cosmos", editable = true }
+ada-web-access-projection-cosmos = { path = "../../access/projection-cosmos", editable = true }
+ada-configuration-manager = { path = "../ada-configuration-manager", editable = true }
+ada-web-operational-identification = { path = "../../operational-identification", editable = true }
+ada-web-access = { path = "../../access/core", editable = true }
+ada-web-access-configuration = { path = "../../access/configuration", editable = true }
+ada-web-configuration = { path = "../../configuration/core", editable = true }
+ada-web-kpi-registry = { path = "../../kpis/registry/core", editable = true }
+ada-web-kpi-registry-configuration = { path = "../../kpis/registry/configuration", editable = true }
+ada-web-kpi-registry-projection-local = { path = "../../kpis/registry/projection-local", editable = true }
+ada-web-kpi-definition = { path = "../../kpis/definition/core", editable = true }
+ada-web-kpi-definition-configuration = { path = "../../kpis/definition/configuration", editable = true }
+ada-web-kpi-definition-projection-local = { path = "../../kpis/definition/projection-local", editable = true }
+ada-web-content-state = { path = "../../content-state/core", editable = true }
+ada-web-operational-state = { path = "../../operational-state", editable = true }
+ada-web-operational-render-binding = { path = "../../operational-render-binding", editable = true }
+ada-web-time-status-store-adapter = { path = "../../time-status/store-adapter", editable = true }
+ada-web-alarm-baseline-projection = { path = "../../alarms/baseline-projection", editable = true }
+ada-web-alarm-baseline-surface = { path = "../../alarms/baseline-surface", editable = true }
+ada-web-branding = { path = "../../branding", editable = true }
+ada-web-ui-content-state = { path = "../../ui/content-state", editable = true }
+ada-web-ui-display-status = { path = "../../ui/display-status", editable = true }
+ada-web-ui-global-indicator = { path = "../../ui/global-indicator", editable = true }
+ada-web-ui-time-status = { path = "../../ui/time-status", editable = true }
+ada-web-alarm-management-summary = { path = "../../alarms/management-summary", editable = true }
+ada-web-alarm-status = { path = "../../alarms/status", editable = true }
+ada-web-ui-core = { path = "../../ui/core", editable = true }
+ada-web-shell-header = { path = "../../shell/header", editable = true }
+ada-web-shell-navigation = { path = "../../shell/navigation", editable = true }
+ada-web-runtime-experience = { path = "../../runtime-experience", editable = true }
+atlanticus-web = { path = "../../../../../web/framework/core", editable = true }
+atlanticus-web-bootstrap = { path = "../../../../../web/framework/bootstrap", editable = true }
+atlanticus-web-configuration = { path = "../../../../../web/framework/configuration", editable = true }
+atlanticus-web-observability = { path = "../../../../../web/framework/observability", editable = true }
+atlanticus-web-identity = { path = "../../../../../web/capabilities/identity/core", editable = true }
+atlanticus-web-identity-local = { path = "../../../../../web/capabilities/identity/local", editable = true }
+atlanticus-web-manager = { path = "../../../../../web/capabilities/manager", editable = true }
+atlanticus-web-composition-navigation-manager = { path = "../../../../../web/compositions/navigation-manager", editable = true }
+atlanticus-web-composition-profiles-manager = { path = "../../../../../web/compositions/profiles-manager", editable = true }
+atlanticus-web-composition-users-manager = { path = "../../../../../web/compositions/users-manager", editable = true }
+atlanticus-web-profiles = { path = "../../../../../web/capabilities/profiles/core", editable = true }
+atlanticus-web-profiles-configuration = { path = "../../../../../web/capabilities/profiles/configuration", editable = true }
+atlanticus-web-profiles-projection-local = { path = "../../../../../web/capabilities/profiles/projection-local", editable = true }
+atlanticus-web-profiles-projection-cosmos = { path = "../../../../../web/capabilities/profiles/projection-cosmos", editable = true }
+atlanticus-web-users = { path = "../../../../../web/capabilities/users/core", editable = true }
+atlanticus-web-navigation = { path = "../../../../../web/capabilities/navigation/core", editable = true }
+atlanticus-web-navigation-configuration = { path = "../../../../../web/capabilities/navigation/configuration", editable = true }
+ada-web-ui-page-readiness = { path = "../../ui/page-readiness", editable = true }
+atlanticus-web-storage-namespace = { path = "../../../../../web/capabilities/storage/namespace", editable = true }
+ada-contracts-tools = { path = "../../../../ada-contracts/tools", editable = true }
+ada-web-tools-configuration = { path = "../../tools/configuration", editable = true }
+ada-web-tools-persistence = { path = "../../tools/persistence", editable = true }
+ada-web-tools-projection-cosmos = { path = "../../tools/projection-cosmos", editable = true }
+ada-web-tools-projection-local = { path = "../../tools/projection-local", editable = true }
+ada-web-components = { path = "../../components/core", editable = true }
+ada-web-kpi-collector = { path = "../../kpis/collector", editable = true }
+atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
+atlanticus-web-master-projection = { path = "../../../../../web/capabilities/master-projection", editable = true }
+atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }
+atlanticus-web-source-blob = { path = "../../../../../web/capabilities/source/blob", editable = true }
+atlanticus-web-source-local = { path = "../../../../../web/capabilities/source/local", editable = true }
+atlanticus-web-storage-topology = { path = "../../../../../web/capabilities/storage/topology", editable = true }
+atlanticus-cosmos = { path = "../../../../../connectivity/cosmos", editable = true }
+atlanticus-storage = { path = "../../../../../connectivity/storage" }
+atlanticus-observability = { path = "../../../../../backend/observability", editable = true }
+atlanticus-kernel = { path = "../../../../../backend/kernel", editable = true }
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+include = ["ada.web.application.integrated_operations*"]
+
+[tool.setuptools.package-data]
+"ada.web.application.integrated_operations" = ["py.typed"]
+"ada.web.application.integrated_operations.modules.dashboard" = [
+    "resources/css/*.css",
+    "resources/css/css.list",
+]
+"ada.web.application.integrated_operations.modules.dashboard.mine" = [
+    "resources/css/*.css",
+    "resources/css/css.list",
+]
+"ada.web.application.integrated_operations.modules.dashboard.plant" = [
+    "resources/css/*.css",
+    "resources/css/css.list",
+]
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+target-version = "py314"
+extend-exclude = [
+    "build",
+    "dist",
+]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ada", "atlanticus"]
+combine-as-imports = true

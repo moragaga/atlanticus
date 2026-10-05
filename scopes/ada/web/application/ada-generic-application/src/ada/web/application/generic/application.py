@@ -18,6 +18,10 @@ from ada.web.application.generic.composition import (
     AdaApplicationComposition,
     create_local_operational_composition,
 )
+from ada.web.application.generic.descriptor import (
+    GENERIC_APPLICATION_DESCRIPTOR,
+    AdaApplicationDescriptor,
+)
 from ada.web.application.generic.operational_render import (
     validate_operational_render_application_binding,
 )
@@ -34,19 +38,18 @@ from ada.web.ui.time_status import TimeStatusDetailState
 from atlanticus.web.models import ApplicationMetadata, WebApplicationDefinition
 
 _LOGGER = logging.getLogger(__name__)
-_APPLICATION_ROOT = Path(__file__).resolve().parents[5]
-_APPLICATION_DISTRIBUTION = 'ada-generic-application'
 
 
-def _resolve_publications_root() -> Path:
+def _resolve_publications_root(descriptor: AdaApplicationDescriptor) -> Path:
     configured = os.getenv('APPLICATION_PUBLICATIONS_ROOT')
     if configured is None or not configured.strip():
-        return _APPLICATION_ROOT / '.runtime' / 'publications'
+        return descriptor.default_publications_root
     return Path(configured).expanduser().resolve()
 
 
 def create_application_definition(
     *,
+    application_descriptor: AdaApplicationDescriptor | None = None,
     composition: AdaApplicationComposition | None = None,
     operational_render_binding: OperationalRenderBinding | None = None,
     tool_display_name: str | None = None,
@@ -67,6 +70,10 @@ def create_application_definition(
     time_status_detail: TimeStatusDetailState | None = None,
 ) -> WebApplicationDefinition:
     _validate_content_state_presentation_mode(content_state_presentation_mode)
+    if application_descriptor is not None and not isinstance(
+        application_descriptor, AdaApplicationDescriptor
+    ):
+        raise TypeError('application_descriptor must be AdaApplicationDescriptor')
     if alarm_baseline_projection is not None and not isinstance(
         alarm_baseline_projection,
         AlarmBaselineProjection,
@@ -74,7 +81,8 @@ def create_application_definition(
         raise TypeError('Generic Application requires AlarmBaselineProjection value')
     if content_state_presentation_mode is ContentStatePresentationMode.AUTHORING:
         _LOGGER.info('Content State presentation override is active: authoring')
-    application_version = version(_APPLICATION_DISTRIBUTION)
+    resolved_descriptor = application_descriptor or GENERIC_APPLICATION_DESCRIPTOR
+    application_version = version(resolved_descriptor.distribution_name)
     resolved_branding_configuration = branding_configuration or BrandingConfiguration()
     branding_assets = resolve_branding_assets(resolved_branding_configuration)
     operational_brand = OperationalBrandState(
@@ -99,13 +107,13 @@ def create_application_definition(
         body_factory=resolved_composition.operational_body_factory,
     )
     return WebApplicationDefinition(
-        import_name='ada.web.application.generic',
+        import_name=resolved_descriptor.import_name,
         metadata=ApplicationMetadata(
-            application_id='ada-generic-application',
-            display_name='ADA',
+            application_id=resolved_descriptor.application_id,
+            display_name=resolved_descriptor.display_name,
             version=application_version,
         ),
-        publications_root=_resolve_publications_root(),
+        publications_root=_resolve_publications_root(resolved_descriptor),
         layout=partial(
             resolved_composition.layout,
             operational_brand=operational_brand,

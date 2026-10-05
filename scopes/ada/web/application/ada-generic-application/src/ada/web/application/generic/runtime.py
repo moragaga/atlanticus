@@ -8,6 +8,7 @@ from ada.web.alarms.management_summary import AlarmManagementSummaryState
 from ada.web.alarms.status import AlarmStatusState
 from ada.web.application.generic.application import create_application_definition
 from ada.web.application.generic.composition import AdaApplicationComposition
+from ada.web.application.generic.descriptor import AdaApplicationDescriptor
 from ada.web.branding import BrandingConfiguration
 from ada.web.content_state import ContentState, ContentStateDependency
 from ada.web.operational_render_binding import OperationalRenderBinding
@@ -22,6 +23,7 @@ from atlanticus.web.models import WebApplicationRuntime
 
 def create_application_runtime(
     *,
+    application_descriptor: AdaApplicationDescriptor | None = None,
     composition: AdaApplicationComposition | None = None,
     operational_render_binding: OperationalRenderBinding | None = None,
     tool_display_name: str | None = None,
@@ -42,6 +44,7 @@ def create_application_runtime(
 ) -> WebApplicationRuntime:
     return create_web_application(
         create_application_definition(
+            application_descriptor=application_descriptor,
             composition=composition,
             operational_render_binding=operational_render_binding,
             tool_display_name=tool_display_name,

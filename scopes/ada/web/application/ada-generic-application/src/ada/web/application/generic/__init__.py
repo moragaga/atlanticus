@@ -10,6 +10,10 @@ from ada.web.application.generic.composition import (
     create_local_operational_composition,
     create_operational_navigation_modules,
 )
+from ada.web.application.generic.descriptor import (
+    GENERIC_APPLICATION_DESCRIPTOR,
+    AdaApplicationDescriptor,
+)
 from ada.web.application.generic.extension import (
     AdaApplicationExtension,
     AdaApplicationExtensionFactory,
@@ -38,8 +42,10 @@ from ada.web.application.generic.runtime import create_application_runtime
 from ada.web.ui.content_state import ContentStatePresentationMode
 
 __all__ = [
+    'GENERIC_APPLICATION_DESCRIPTOR',
     'OPERATIONAL_LATEST_HOST_TYPE',
     'AdaApplicationComposition',
+    'AdaApplicationDescriptor',
     'AdaApplicationExtension',
     'AdaApplicationExtensionFactory',
     'AdaOperationalBodyFactory',
