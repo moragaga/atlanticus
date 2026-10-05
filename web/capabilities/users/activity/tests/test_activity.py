@@ -4,6 +4,7 @@ from flask import Flask
 
 from atlanticus.web.identity.access import AccessSnapshot, AccessStatus
 from atlanticus.web.identity.models import AuthenticatedIdentity
+from atlanticus.web.profiles.models import BASIC_PROFILE, LOCAL_PROFILE
 from atlanticus.web.users.activity import (
     ActivityRoute,
     MemoryUserActivityRepository,
@@ -13,8 +14,13 @@ from atlanticus.web.users.activity import (
     UserActivityService,
     Viewport,
 )
-from atlanticus.web.users.models import EffectiveUser
+from atlanticus.web.users.identity import build_user_key
+from atlanticus.web.users.models import RuntimeProfile, RuntimeUser, UserIdentity
 from atlanticus.web.users.runtime import UsersRuntime
+
+_ISSUER = 'issuer'
+_DEFAULT_SUBJECT_ID = 'subject-1'
+_DEFAULT_USER_ID = build_user_key(issuer=_ISSUER, subject_id=_DEFAULT_SUBJECT_ID)
 
 
 class _Routes:
@@ -27,8 +33,8 @@ class _Routes:
 def _snapshot(
     *,
     provider_key: str = 'entra',
-    user_id: str | None = 'user-1',
-    subject_id: str = 'subject-1',
+    user_id: str | None = _DEFAULT_USER_ID,
+    subject_id: str = _DEFAULT_SUBJECT_ID,
     load_id: str = 'load-1',
     status: AccessStatus = AccessStatus.READY,
     bootstrap_root: bool = False,
@@ -39,7 +45,7 @@ def _snapshot(
         status=status,
         identity=AuthenticatedIdentity(
             provider_key=provider_key,
-            issuer='issuer',
+            issuer=_ISSUER,
             subject_id=subject_id,
             display_name='Should not be persisted',
             email='should-not-be-persisted@example.com',
@@ -51,20 +57,20 @@ def _snapshot(
 
 def _user(
     *,
-    user_id: str = 'user-1',
-    subject_id: str = 'subject-1',
+    subject_id: str = _DEFAULT_SUBJECT_ID,
     enabled: bool = True,
     local: bool = False,
-) -> EffectiveUser:
-    return EffectiveUser(
-        user_id=user_id,
+) -> RuntimeUser:
+    identity = UserIdentity(
+        user_id=build_user_key(issuer=_ISSUER, subject_id=subject_id),
+        issuer=_ISSUER,
         subject_id=subject_id,
         display_name='Tester',
-        email=None,
+    )
+    return RuntimeUser(
+        identity=identity,
         enabled=enabled,
-        avatar_text='TE',
-        profile_key='local' if local else 'basic',
-        is_local=local,
+        profile=RuntimeProfile.from_profile(LOCAL_PROFILE if local else BASIC_PROFILE),
     )
 
 
@@ -245,9 +251,7 @@ def test_disabled_and_stale_users_are_denied_before_repository_access() -> None:
         assert service.should_track(_snapshot(load_id='new-load')) is False
         assert service.should_track(_snapshot(subject_id='different-subject')) is False
         assert service.should_track(_snapshot(user_id='different-user')) is False
-        assert service.should_track(
-            _snapshot(status=AccessStatus.USER_DISABLED)
-        ) is False
+        assert service.should_track(_snapshot(status=AccessStatus.USER_DISABLED)) is False
         assert repository.documents() == ()
 
 

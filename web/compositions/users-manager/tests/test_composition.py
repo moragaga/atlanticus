@@ -6,8 +6,8 @@ from atlanticus.web.manager import ManagerPrincipal
 from atlanticus.web.profiles.models import ProfileCatalog
 from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.users.administration import UsersAdministrationService
-from atlanticus.web.users.models import UsersRegistrySnapshot
-from atlanticus.web.users.store import UsersAdministrationStore, UsersRegistryStore
+from atlanticus.web.users.models import ToolMembershipSnapshot, UsersRegistrySnapshot
+from atlanticus.web.users.store import ToolMembershipStore, UsersRegistryStore
 
 
 class Registry(UsersRegistryStore):
@@ -18,25 +18,19 @@ class Registry(UsersRegistryStore):
         return UsersRegistrySnapshot(users=users, version='v1')
 
 
-class Promoted(UsersAdministrationStore):
-    def get(self, user_id):
-        return None
+class Memberships(ToolMembershipStore):
+    def load(self):
+        return ToolMembershipSnapshot()
 
-    def list_users(self):
-        return ()
-
-    def create(self, user):
-        return user
-
-    def replace(self, user):
-        return user
+    def replace(self, memberships, *, expected_version):
+        return ToolMembershipSnapshot(memberships=memberships, version='v1')
 
 
 def test_users_manager_composition_registers_existing_administration_service() -> None:
     administration = UsersAdministrationService(
         registry=Registry(),
-        promoted=Promoted(),
-        profiles=ProfileCatalog,
+        memberships=Memberships(),
+        profiles=lambda: ProfileCatalog(),
     )
     principal = ManagerPrincipal(
         'admin',

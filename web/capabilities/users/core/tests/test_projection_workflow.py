@@ -83,6 +83,10 @@ def test_workflow_capture_inspect_and_replace_uses_complete_runtime_snapshot():
     )
     preview = workflow.preview_capture()
     saved = workflow.capture(preview, 'ticket')
+    description = workflow.describe_snapshot(saved['snapshot_id'])
+    assert description['snapshot_id'] == saved['snapshot_id']
+    assert description['approved_count'] == 2
+    assert 'tool_key' not in description
     inspection = workflow.inspect(saved['snapshot_id'])
     assert inspection['create_ids']
     assert inspection['delete_ids']

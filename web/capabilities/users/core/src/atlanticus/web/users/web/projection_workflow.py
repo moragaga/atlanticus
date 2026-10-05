@@ -51,7 +51,6 @@ class UsersProjectionWorkflow:
             'approved_count': len(snapshot.users),
             'approval_reference': snapshot.approval_reference,
             'operator_id': snapshot.operator_id,
-            'tool_key': snapshot.tool_key,
         }
 
     def preview_capture(self) -> dict[str, object]:

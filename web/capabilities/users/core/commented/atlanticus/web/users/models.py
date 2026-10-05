@@ -7,6 +7,7 @@ from typing import Any
 
 from atlanticus.web.profiles.models import (
     GUEST_PROFILE_KEY,
+    LOCAL_PROFILE_KEY,
     ProfileDefinition,
     normalize_profile_color,
     normalize_profile_key,
@@ -358,6 +359,11 @@ class RuntimeUser:
     @property
     def email(self) -> str | None:
         return self.identity.email
+
+    # La condición local pertenece al perfil materializado; no duplica estado en el usuario runtime.
+    @property
+    def is_local(self) -> bool:
+        return self.profile.id == LOCAL_PROFILE_KEY
 
     @property
     def has_full_access(self) -> bool:

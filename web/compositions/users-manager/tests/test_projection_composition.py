@@ -1,10 +1,10 @@
 from atlanticus.web.compositions.users_manager import compose_users_projection_manager
 from atlanticus.web.manager import ManagerPrincipal
-from atlanticus.web.users.recovery import UsersApprovedRecoveryService
+from atlanticus.web.users.recovery import ToolUsersRecoveryService
 
 
 def test_users_projection_registers_a_separate_authorized_manager_entry():
-    service = object.__new__(UsersApprovedRecoveryService)
+    service = object.__new__(ToolUsersRecoveryService)
     principal = ManagerPrincipal('operator', 'Operator', access_keys=('users.manage',))
     entry = compose_users_projection_manager(
         recovery=service,

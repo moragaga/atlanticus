@@ -50,7 +50,14 @@ def _record(
         source_published_at_utc=published_at,
         projected_at_utc=published_at + timedelta(seconds=1),
         payload=NavigationConfigurationCatalog(
-            links=(NavigationLinkConfiguration(key='home', label=label, href='/'),)
+            links=(
+                NavigationLinkConfiguration(
+                    key='home',
+                    label=label,
+                    href='/',
+                    access_mode='public',
+                ),
+            )
         ),
     )
 

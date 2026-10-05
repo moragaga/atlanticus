@@ -9,6 +9,7 @@ from atlanticus.web.identity.access import (
     AccessStatus,
 )
 from atlanticus.web.identity.models import AuthenticatedIdentity
+from atlanticus.web.profiles.models import BASIC_PROFILE, LOCAL_PROFILE
 from atlanticus.web.services import ServiceRegistry
 from atlanticus.web.users.activity.adapters.memory import MemoryUserActivityRepository
 from atlanticus.web.users.activity.routes import (
@@ -16,7 +17,8 @@ from atlanticus.web.users.activity.routes import (
     register_user_activity_routes,
 )
 from atlanticus.web.users.activity.services import UserActivityService
-from atlanticus.web.users.models import EffectiveUser
+from atlanticus.web.users.identity import build_user_key
+from atlanticus.web.users.models import RuntimeProfile, RuntimeUser, UserIdentity
 from atlanticus.web.users.runtime import UsersRuntime
 
 
@@ -34,17 +36,18 @@ def _snapshot(state: dict[str, object]) -> AccessSnapshot:
     )
 
 
-def _user(state: dict[str, object]) -> EffectiveUser:
+def _user(state: dict[str, object]) -> RuntimeUser:
     is_local = state['provider_key'] == 'local' and not state['managed_local']
-    return EffectiveUser(
+    identity = UserIdentity(
         user_id=str(state['user_id']),
+        issuer='issuer',
         subject_id=str(state['subject_id']),
         display_name='Tester',
-        email=None,
+    )
+    return RuntimeUser(
+        identity=identity,
         enabled=bool(state['enabled']),
-        avatar_text='TE',
-        profile_key='local' if is_local else 'basic',
-        is_local=is_local,
+        profile=RuntimeProfile.from_profile(LOCAL_PROFILE if is_local else BASIC_PROFILE),
     )
 
 
@@ -56,13 +59,14 @@ def _app(*, promoted: bool = True, provider_key: str = 'entra', track_local: boo
     activity_runtime = AccessRuntime()
     users_runtime = UsersRuntime()
     repository = MemoryUserActivityRepository()
+    subject_id = 'subject'
     state = {
         'promoted': promoted,
         'provider_key': provider_key,
         'status': AccessStatus.READY,
         'load_id': 'load-1',
-        'subject_id': 'subject',
-        'user_id': 'user-1',
+        'subject_id': subject_id,
+        'user_id': build_user_key(issuer='issuer', subject_id=subject_id),
         'enabled': True,
         'managed_local': False,
     }
@@ -116,7 +120,7 @@ def test_unpromoted_identity_is_not_eligible_even_with_deterministic_user_id() -
 
 
 def test_promoted_identity_is_eligible_across_two_access_runtime_instances() -> None:
-    app, repository, _ = _app()
+    app, repository, state = _app()
     client = app.test_client()
 
     bootstrap = client.get('/_atlanticus/activity/bootstrap')
@@ -126,7 +130,7 @@ def test_promoted_identity_is_eligible_across_two_access_runtime_instances() -> 
     assert direct.status_code == 202
     assert direct.get_json()['status'] == 'captured'
     assert len(repository.documents()) == 1
-    assert repository.documents()[0].user_id == 'user-1'
+    assert repository.documents()[0].user_id == state['user_id']
 
 
 def test_disabled_identity_does_not_capture_events() -> None:

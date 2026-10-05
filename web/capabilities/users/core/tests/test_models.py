@@ -1,6 +1,6 @@
 import pytest
 
-from atlanticus.web.profiles.models import BASIC_PROFILE, ROOT_PROFILE
+from atlanticus.web.profiles.models import BASIC_PROFILE, LOCAL_PROFILE, ROOT_PROFILE
 from atlanticus.web.users.errors import UsersDefinitionError
 from atlanticus.web.users.identity import build_user_key
 from atlanticus.web.users.models import (
@@ -71,6 +71,7 @@ def test_runtime_user_materializes_profile_and_operational_and_round_trips():
         operational=operational,
     )
     assert runtime.profile == RuntimeProfile.from_profile(BASIC_PROFILE)
+    assert not runtime.is_local
     assert runtime.operational == operational
     assert RuntimeUser.from_document(runtime.to_document()) == runtime
 
@@ -83,6 +84,15 @@ def test_runtime_user_full_access_is_derived_from_materialized_profile():
         profile=ROOT_PROFILE,
     )
     assert runtime.has_full_access
+
+
+def test_runtime_user_local_state_is_derived_from_materialized_profile():
+    runtime = RuntimeUser(
+        identity=_identity(),
+        enabled=True,
+        profile=RuntimeProfile.from_profile(LOCAL_PROFILE),
+    )
+    assert runtime.is_local
 
 
 def test_managed_user_is_identity_plus_tool_membership_without_profile_presentation():
