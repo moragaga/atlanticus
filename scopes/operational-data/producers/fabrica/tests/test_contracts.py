@@ -55,3 +55,25 @@ def test_float_is_explicit_and_number_is_removed() -> None:
 def test_dataset_rejects_duplicate_metrics() -> None:
     with pytest.raises(FabricaContractError, match='metric ids'):
         FabricaDatasetDefinition(name='daily', source_value='DAY', route_segment='daily', metrics=(_metric(), _metric()))
+
+
+def test_dataset_accepts_monthly_partition_dimensions() -> None:
+    dataset = FabricaDatasetDefinition(
+        name='daily',
+        source_value='DAY',
+        route_segment='daily',
+        metrics=(_metric(),),
+        partition_dimensions=('year', 'month'),
+    )
+    assert dataset.partition_dimensions == ('year', 'month')
+
+
+def test_dataset_rejects_unsupported_partition_dimensions() -> None:
+    with pytest.raises(FabricaContractError, match='partition_dimensions'):
+        FabricaDatasetDefinition(
+            name='daily',
+            source_value='DAY',
+            route_segment='daily',
+            metrics=(_metric(),),
+            partition_dimensions=('month',),
+        )

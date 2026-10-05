@@ -4,7 +4,14 @@ import re
 from atlanticus.data_producers.fabrica import FabricaDatasetDefinition, FabricaStreamDefinition
 
 DATASETS = (
-    FabricaDatasetDefinition(name='daily', source_value='DAY', route_segment='daily', metrics=()),
+    FabricaDatasetDefinition(
+        name='daily',
+        source_value='DAY',
+        route_segment='daily',
+        metrics=(),
+        # Daily conserva valores históricos por fecha, agrupados físicamente por mes.
+        partition_dimensions=('year', 'month'),
+    ),
     FabricaDatasetDefinition(name='weekly', source_value='7LD', route_segment='weekly', metrics=()),
 )
 

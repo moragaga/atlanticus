@@ -33,6 +33,7 @@ class FabricaDatasetDefinition:
     source_value: str
     route_segment: str
     metrics: tuple[FabricaMetricDefinition, ...]
+    partition_dimensions: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, 'name', _route_segment(self.name, 'name'))
@@ -44,6 +45,19 @@ class FabricaDatasetDefinition:
         _unique(metrics, 'id_kpi', 'dataset metric ids')
         _unique(metrics, 'metric_key', 'dataset metric keys')
         object.__setattr__(self, 'metrics', metrics)
+        if isinstance(self.partition_dimensions, str | bytes):
+            raise FabricaContractError('partition_dimensions must be an iterable of names')
+        try:
+            partition_dimensions = tuple(self.partition_dimensions)
+        except TypeError as error:
+            raise FabricaContractError(
+                'partition_dimensions must be an iterable of names'
+            ) from error
+        if partition_dimensions not in ((), ('year', 'month')):
+            raise FabricaContractError(
+                "partition_dimensions must be empty or ('year', 'month')"
+            )
+        object.__setattr__(self, 'partition_dimensions', partition_dimensions)
 
 
 def validate_dataset_catalog(*, datasets: tuple[FabricaDatasetDefinition, ...]) -> None:

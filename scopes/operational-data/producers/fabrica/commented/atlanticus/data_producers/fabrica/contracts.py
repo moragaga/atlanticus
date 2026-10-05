@@ -31,12 +31,13 @@ class FabricaMetricDefinition:
 
 
 @dataclass(frozen=True, slots=True)
-# Agrupa las métricas de una única granularidad y su nivel exacto en el origen.
+# Agrupa las métricas de una granularidad y declara cómo se parte físicamente su histórico.
 class FabricaDatasetDefinition:
     name: str
     source_value: str
     route_segment: str
     metrics: tuple[FabricaMetricDefinition, ...]
+    partition_dimensions: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, 'name', _route_segment(self.name, 'name'))
@@ -48,6 +49,20 @@ class FabricaDatasetDefinition:
         _unique(metrics, 'id_kpi', 'dataset metric ids')
         _unique(metrics, 'metric_key', 'dataset metric keys')
         object.__setattr__(self, 'metrics', metrics)
+        if isinstance(self.partition_dimensions, str | bytes):
+            raise FabricaContractError('partition_dimensions must be an iterable of names')
+        try:
+            partition_dimensions = tuple(self.partition_dimensions)
+        except TypeError as error:
+            raise FabricaContractError(
+                'partition_dimensions must be an iterable of names'
+            ) from error
+        # El incremento actual admite únicamente el histórico no particionado o mensual.
+        if partition_dimensions not in ((), ('year', 'month')):
+            raise FabricaContractError(
+                "partition_dimensions must be empty or ('year', 'month')"
+            )
+        object.__setattr__(self, 'partition_dimensions', partition_dimensions)
 
 
 # Impide colisiones entre datasets y definiciones contradictorias de una métrica.
@@ -67,21 +82,21 @@ def validate_dataset_catalog(*, datasets: tuple[FabricaDatasetDefinition, ...]) 
                 raise FabricaContractError('the same metric id must reuse one definition across datasets')
 
 
-# Responsabilidad de _unique.
+# Verifica unicidad de un atributo en una colección de contratos.
 def _unique(values: tuple[object, ...], field: str, description: str) -> None:
     resolved = tuple(getattr(item, field) for item in values)
     if len(set(resolved)) != len(resolved):
         raise FabricaContractError(f'{description} must be unique')
 
 
-# Responsabilidad de _required_text.
+# Normaliza texto requerido sin aceptar valores vacíos.
 def _required_text(value: str, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise FabricaContractError(f'{field} is required')
     return value.strip()
 
 
-# Responsabilidad de _route_segment.
+# Normaliza segmentos que terminan formando identidades o rutas lógicas.
 def _route_segment(value: str, field: str) -> str:
     normalized = _required_text(value, field).lower()
     if not normalized.replace('_', '').replace('-', '').isalnum():

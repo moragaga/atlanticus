@@ -5,6 +5,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+import pandas as pd
+
 from atlanticus.data_producers.fabrica.models import FabricaSourceBlob, FabricaStreamDefinition
 from atlanticus.data_producers.fabrica.source import FabricaStorageSource
 from atlanticus.data_producers.fabrica.transform import (
@@ -79,6 +81,7 @@ class FabricaMaterializer:
                     'name': dataset.name,
                     'source_value': dataset.source_value,
                     'route_segment': dataset.route_segment,
+                    'partition_dimensions': dataset.partition_dimensions,
                     'metrics': [
                         {'id_kpi': metric.id_kpi, 'metric_key': metric.metric_key, 'value_kind': metric.value_kind.value}
                         for metric in dataset.metrics
@@ -104,13 +107,31 @@ class FabricaMaterializer:
             for dataset in self.definition.datasets:
                 if not dataset.metrics:
                     continue
-                target = self._dataset.resolve_target(materialization=dataset.name)
-                current = self._read_current(target=target)
-                merged = merge_partition_frame(
-                    current=current, incoming=transformed.frames[dataset.name], metrics=dataset.metrics
-                )
-                publication = self._runtime.replace(definition=self._dataset, target=target, data=merged)
-                publications.append(FabricaPartitionPublication(partition_key=dataset.name, publication=publication))
+                for partition, incoming in _materialization_frames(
+                    frame=transformed.frames[dataset.name],
+                    partition_dimensions=dataset.partition_dimensions,
+                ):
+                    target = self._dataset.resolve_target(
+                        materialization=dataset.name,
+                        partition=partition,
+                    )
+                    current = self._read_current(target=target)
+                    merged = merge_partition_frame(
+                        current=current,
+                        incoming=incoming,
+                        metrics=dataset.metrics,
+                    )
+                    publication = self._runtime.replace(
+                        definition=self._dataset,
+                        target=target,
+                        data=merged,
+                    )
+                    publications.append(
+                        FabricaPartitionPublication(
+                            partition_key=_partition_key(dataset.name, partition),
+                            publication=publication,
+                        )
+                    )
             return FabricaMaterializationResult(
                 source_blob=source_blob,
                 source_row_count=transformed.source_row_count,
@@ -132,7 +153,11 @@ class FabricaMaterializer:
         return result.dataframe
 
 
-def _build_dataset_definition(definition: FabricaStreamDefinition, *, namespace: tuple[str, ...]) -> DatasetDefinition:
+def _build_dataset_definition(
+    definition: FabricaStreamDefinition,
+    *,
+    namespace: tuple[str, ...],
+) -> DatasetDefinition:
     normalized = tuple(str(item).strip() for item in namespace if str(item).strip())
     if not normalized:
         raise ValueError('dataset_namespace must not be empty')
@@ -140,7 +165,48 @@ def _build_dataset_definition(definition: FabricaStreamDefinition, *, namespace:
         key=DatasetKey(namespace=normalized, name=definition.stream_key),
         route_segments=(*normalized, definition.output_route_segment),
         materializations=tuple(
-            MaterializationDefinition(name=dataset.name, layout=SingleArtifactLayout(), route_segments=(dataset.route_segment,))
+            MaterializationDefinition(
+                name=dataset.name,
+                layout=SingleArtifactLayout(),
+                partition_dimensions=dataset.partition_dimensions,
+                route_segments=(dataset.route_segment,),
+            )
             for dataset in definition.datasets
         ),
     )
+
+
+def _materialization_frames(
+    *,
+    frame: pd.DataFrame,
+    partition_dimensions: tuple[str, ...],
+) -> tuple[tuple[dict[str, str] | None, pd.DataFrame], ...]:
+    if not partition_dimensions:
+        return ((None, frame),)
+    if frame.empty:
+        return ()
+    working = frame.assign(
+        _partition_year=frame['timestamp'].dt.strftime('%Y'),
+        _partition_month=frame['timestamp'].dt.strftime('%m'),
+    )
+    groups = []
+    for values, group in working.groupby(
+        ['_partition_year', '_partition_month'],
+        sort=True,
+        observed=True,
+    ):
+        year, month = values
+        groups.append(
+            (
+                {'year': year, 'month': month},
+                group.drop(columns=['_partition_year', '_partition_month']).reset_index(drop=True),
+            )
+        )
+    return tuple(groups)
+
+
+def _partition_key(name: str, partition: dict[str, str] | None) -> str:
+    if partition is None:
+        return name
+    suffix = '/'.join(f'{dimension}={value}' for dimension, value in partition.items())
+    return f'{name}/{suffix}'
