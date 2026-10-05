@@ -5,5 +5,9 @@ class DataSourceNotRequestedError(KeyError):
     pass
 
 
+class DataInputNotRequestedError(KeyError):
+    pass
+
+
 class DataColumnNotRequestedError(KeyError):
     pass

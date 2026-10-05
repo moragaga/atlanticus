@@ -15,6 +15,14 @@ from atlanticus.operational_data.sources.errors import (
     DataSourceUnavailableError,
 )
 from atlanticus.operational_data.sources.frame import PandasRuntimeFrameContext
+from atlanticus.operational_data.sources.input_specs import (
+    DispatchShiftLoads,
+    FabricaKpis,
+    MeteodataData,
+    PiInterpolated,
+    PiRecorded,
+    RemanentesStocks,
+)
 from atlanticus.operational_data.sources.loaded import (
     DataSourceLoadFailure,
     LoadedDataSources,
@@ -45,13 +53,19 @@ __all__ = [
     'DataSourceSchemaError',
     'DataSourceUnavailableError',
     'DataSourcesError',
+    'DispatchShiftLoads',
+    'FabricaKpis',
     'LoadedDataSourceView',
     'LoadedDataSources',
+    'MeteodataData',
     'MineShiftResolver',
     'OperationalWindow',
     'OperationalWindowResolver',
     'PandasRuntimeFrameContext',
+    'PiInterpolated',
+    'PiRecorded',
     'PiSourceProvider',
+    'RemanentesStocks',
     'SourceDatasetReader',
     'TimePartitionGranularity',
     '__version__',
