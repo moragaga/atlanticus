@@ -8,6 +8,7 @@ from functools import partial
 from importlib.metadata import version
 from pathlib import Path
 
+from ada.web.alarms.baseline_projection import AlarmBaselineProjection
 from ada.web.alarms.management_summary import AlarmManagementSummaryState
 from ada.web.alarms.status import AlarmStatusState
 from ada.web.application.generic.composition import (
@@ -61,12 +62,18 @@ def create_application_definition(
     content_state_dependencies: tuple[ContentStateDependency, ...] = (),
     alarm_management_summary: AlarmManagementSummaryState | None = None,
     alarm_status: AlarmStatusState | None = None,
+    alarm_baseline_projection: AlarmBaselineProjection | None = None,
     source_consumption: ToolSourceConsumption | None = None,
     source_operational_participation: ToolSourceOperationalParticipation | None = None,
     time_status_snapshot: TimeStatusStoreSnapshot | None = None,
     time_status_detail: TimeStatusDetailState | None = None,
 ) -> WebApplicationDefinition:
     _validate_content_state_presentation_mode(content_state_presentation_mode)
+    if alarm_baseline_projection is not None and not isinstance(
+        alarm_baseline_projection,
+        AlarmBaselineProjection,
+    ):
+        raise TypeError('Generic Application requires AlarmBaselineProjection value')
     if content_state_presentation_mode is ContentStatePresentationMode.AUTHORING:
         _LOGGER.info('Content State presentation override is active: authoring')
     application_version = version(_APPLICATION_DISTRIBUTION)
@@ -117,6 +124,7 @@ def create_application_definition(
             global_indicators_source_keys=operational_state.global_indicators_source_keys,
             alarm_management_summary=alarm_management_summary,
             alarm_status=alarm_status,
+            alarm_baseline_projection=alarm_baseline_projection,
             tool_key=operational_state.tool_key,
             time_status_summary=operational_state.time_status_summary,
             time_status_detail=time_status_detail,

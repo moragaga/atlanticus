@@ -13,6 +13,7 @@ from ada.web.application.generic.composition import AdaApplicationComposition
 from ada.web.application.generic.layout import build_body_application_layout
 from ada.web.application.generic.settings import AdaGenericSettings
 from ada.web.operational_render_binding import OperationalRenderBinding
+from ada.web.tools.configuration import ToolRenderTopology
 from ada.web.tools.persistence import ToolProjectionResolution, ToolProjectionResolutionState
 from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.source.models import SourceKey, SourceReleaseId
@@ -57,7 +58,10 @@ def _ready_resolution() -> ToolProjectionResolution:
         source_release_id=SourceReleaseId('test-release'),
         source_published_at_utc=timestamp,
         projected_at_utc=timestamp,
-        payload=SimpleNamespace(structure=structure),
+        payload=SimpleNamespace(
+            structure=structure,
+            render_topology=ToolRenderTopology(),
+        ),
     )
     return ToolProjectionResolution(
         state=ToolProjectionResolutionState.READY, projection=projection

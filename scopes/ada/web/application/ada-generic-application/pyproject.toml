@@ -33,6 +33,8 @@ dependencies = [
     "ada-web-tools-persistence==0.1.1",
     "ada-web-time-status-store-adapter==0.1.0",
     "ada-web-content-state==0.1.0",
+    "ada-web-alarm-baseline-projection==0.1.0",
+    "ada-web-alarm-baseline-surface==0.1.1",
     "ada-web-alarm-management-summary==0.1.5",
     "ada-web-alarm-status==0.1.7",
     "ada-web-branding[web]==0.1.0",
@@ -98,6 +100,8 @@ ada-web-content-state = { path = "../../content-state/core", editable = true }
 ada-web-operational-state = { path = "../../operational-state", editable = true }
 ada-web-operational-render-binding = { path = "../../operational-render-binding", editable = true }
 ada-web-time-status-store-adapter = { path = "../../time-status/store-adapter", editable = true }
+ada-web-alarm-baseline-projection = { path = "../../alarms/baseline-projection", editable = true }
+ada-web-alarm-baseline-surface = { path = "../../alarms/baseline-surface", editable = true }
 ada-web-branding = { path = "../../branding", editable = true }
 ada-web-ui-content-state = { path = "../../ui/content-state", editable = true }
 ada-web-ui-display-status = { path = "../../ui/display-status", editable = true }

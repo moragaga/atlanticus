@@ -5,7 +5,7 @@ from atlanticus.web.modules import WebModule
 
 ADA_ALARM_BASELINE_SURFACE_ASSET_LAYER = AssetLayer(
     name='ada_alarm_baseline_surface',
-    load_order=150,
+    load_order=145,
     package='ada.web.alarms.baseline_surface',
 )
 

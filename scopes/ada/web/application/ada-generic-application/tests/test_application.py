@@ -14,6 +14,7 @@ from ada.contracts.tools.sources import (
     ToolSourceOperationalParticipation,
     ToolSourceOperationalParticipationValidationError,
 )
+from ada.web.alarms.baseline_surface import ADA_ALARM_BASELINE_SURFACE_ASSET_LAYER
 from ada.web.alarms.management_summary import (
     ADA_ALARM_MANAGEMENT_SUMMARY_ASSET_LAYER,
     AlarmManagementSummaryArea,
@@ -77,6 +78,7 @@ def test_definition_composes_current_ada_web_capabilities() -> None:
         'ada-ui',
         'ada-display-status',
         'ada-global-indicator',
+        'ada-alarm-baseline-surface',
         'ada-alarm-management-summary',
         'ada-alarm-status',
         'ada-branding',
@@ -137,6 +139,10 @@ def test_runtime_starts_locally_with_operational_header(tmp_path, monkeypatch) -
     )
     assert any(
         entry.startswith(f'{ADA_GLOBAL_INDICATOR_ASSET_LAYER.target_name}/css/')
+        for entry in runtime.assets.css_entries
+    )
+    assert any(
+        entry.startswith(f'{ADA_ALARM_BASELINE_SURFACE_ASSET_LAYER.target_name}/css/')
         for entry in runtime.assets.css_entries
     )
     assert any(

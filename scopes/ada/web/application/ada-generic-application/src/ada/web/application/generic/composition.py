@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ada.web.alarms.baseline_surface import create_ada_alarm_baseline_surface_module
 from ada.web.alarms.management_summary import create_ada_alarm_management_summary_module
 from ada.web.alarms.status import create_ada_alarm_status_module
 from ada.web.application.generic.layout import (
@@ -60,6 +61,7 @@ def create_ada_shared_ui_modules(
 
 def create_ada_alarm_surface_modules() -> tuple[WebModule, ...]:
     return (
+        create_ada_alarm_baseline_surface_module(),
         create_ada_alarm_management_summary_module(),
         create_ada_alarm_status_module(),
     )

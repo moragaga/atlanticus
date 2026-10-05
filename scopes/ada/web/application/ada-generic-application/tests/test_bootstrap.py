@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -126,6 +127,13 @@ def test_active_projection_without_kpi_connection_keeps_web_available(
     assert isinstance(runtime, WebApplicationRuntime)
     assert not runtime.services.contains(ADA_KPI_COLLECTOR_SERVICE_KEY)
     assert 'KPI Collector is not configured' in caplog.text
+    response = runtime.server.test_client().get('/_dash-layout')
+    payload = json.dumps(response.get_json(), ensure_ascii=False)
+    assert response.status_code == 200
+    assert 'ada-alarm-baseline-surface' in payload
+    assert 'data-ada-alarm-baseline-tool-key' in payload
+    assert 'integrated_operations' in payload
+    assert 'data-ada-component-key' in payload
 
 
 def test_ready_projection_with_kpi_connection_attaches_lazy_collector(tmp_path: Path) -> None:

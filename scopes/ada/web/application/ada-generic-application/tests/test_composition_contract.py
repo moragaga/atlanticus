@@ -100,6 +100,7 @@ def test_local_operational_composition_is_built_from_explicit_responsibility_blo
         'ada-global-indicator',
     )
     assert tuple(module.name for module in create_ada_alarm_surface_modules()) == (
+        'ada-alarm-baseline-surface',
         'ada-alarm-management-summary',
         'ada-alarm-status',
     )
@@ -122,6 +123,7 @@ def test_local_operational_composition_is_built_from_explicit_responsibility_blo
         'ada-ui',
         'ada-display-status',
         'ada-global-indicator',
+        'ada-alarm-baseline-surface',
         'ada-alarm-management-summary',
         'ada-alarm-status',
         'ada-branding',

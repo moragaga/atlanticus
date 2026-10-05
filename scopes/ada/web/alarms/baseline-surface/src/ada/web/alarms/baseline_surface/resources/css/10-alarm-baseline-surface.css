@@ -1,52 +1,65 @@
 .ada-alarm-baseline-surface {
-    --ada-alarm-baseline-line-color: rgba(91, 92, 100, .28);
+    --ada-alarm-baseline-color: #E1E1E1;
     --ada-alarm-baseline-point-color: #5B5C64;
-    --ada-alarm-baseline-point-background: var(--ada-color-surface-tertiary);
-    --ada-alarm-baseline-point-size: .72rem;
-    position: relative;
+    --ada-alarm-baseline-point-size: 16px;
+    --ada-alarm-baseline-size: 4px;
+    --ada-alarm-baseline-y: 74%;
+    display: grid;
     width: 100%;
-    height: 1.5rem;
-    min-height: 1.5rem;
+    min-width: 0;
     pointer-events: none;
 }
 
-.ada-alarm-baseline-surface__line {
+.ada-alarm-baseline-surface__trace {
+    position: relative;
+    width: 100%;
+    height: 2rem;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.ada-alarm-baseline-surface__baseline {
     position: absolute;
-    top: 50%;
     inset-inline: 0;
-    height: .125rem;
-    transform: translateY(-50%);
-    background: var(--ada-alarm-baseline-line-color);
+    inset-block-start: var(--ada-alarm-baseline-y);
+    height: var(--ada-alarm-baseline-size);
+    transform: translate3d(0, -50%, 0);
+    background: var(--ada-alarm-baseline-color);
+    opacity: .9;
 }
 
 .ada-alarm-baseline-surface__points {
-    position: relative;
-    z-index: 1;
-    display: grid;
-    width: 100%;
-    height: 100%;
-    grid-template-columns: repeat(
-        var(--ada-alarm-baseline-point-count),
-        minmax(0, 1fr)
-    );
+    position: absolute;
+    inset: 0;
 }
 
 .ada-alarm-baseline-surface__point {
-    display: inline-flex;
+    position: absolute;
+    inset-inline-start: var(--ada-alarm-baseline-point-x);
+    inset-block-start: var(--ada-alarm-baseline-y);
     width: var(--ada-alarm-baseline-point-size);
     height: var(--ada-alarm-baseline-point-size);
-    align-self: center;
-    align-items: center;
-    justify-self: center;
-    justify-content: center;
-    border: .09375rem solid var(--ada-alarm-baseline-point-color);
+    transform: translate3d(-50%, -50%, 0);
     border-radius: 50%;
-    background: var(--ada-alarm-baseline-point-background);
+    z-index: 1;
 }
 
-.ada-alarm-baseline-surface__point-dot {
-    width: .28rem;
-    height: .28rem;
+.ada-alarm-baseline-surface__point-core {
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    border: 2px solid var(--ada-alarm-baseline-color);
     border-radius: 50%;
     background: var(--ada-alarm-baseline-point-color);
+}
+
+@media only screen and (min-width: 2560px) {
+    .ada-alarm-baseline-surface {
+        --ada-alarm-baseline-point-size: 24px;
+        --ada-alarm-baseline-size: 6px;
+    }
+
+    .ada-alarm-baseline-surface__trace {
+        height: 2.9rem;
+    }
 }

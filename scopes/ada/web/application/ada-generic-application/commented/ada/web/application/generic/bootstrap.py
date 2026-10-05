@@ -152,7 +152,12 @@ def create_operational_application_runtime(
             if projection is None:
                 raise RuntimeError('READY Tool Projection resolution has no projection')
             if projection.payload.structure is not None:
-                operational_binding = bind_operational_render(projection.payload.structure)
+                operational_binding = bind_operational_render(
+                    projection.payload.structure,
+                    bottom_component_key=(
+                        projection.payload.render_topology.bottom_component_key
+                    ),
+                )
         composition = composition_factory(operational_binding)
         if not isinstance(composition, AdaApplicationComposition):
             raise TypeError('composition_factory must return AdaApplicationComposition')

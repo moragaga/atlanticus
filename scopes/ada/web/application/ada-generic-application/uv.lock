@@ -86,6 +86,8 @@ dependencies = [
     { name = "ada-contracts-tools" },
     { name = "ada-web-access-configuration" },
     { name = "ada-web-access-projection-cosmos" },
+    { name = "ada-web-alarm-baseline-projection" },
+    { name = "ada-web-alarm-baseline-surface" },
     { name = "ada-web-alarm-management-summary" },
     { name = "ada-web-alarm-status" },
     { name = "ada-web-branding", extra = ["web"] },
@@ -146,6 +148,8 @@ requires-dist = [
     { name = "ada-contracts-tools", editable = "../../../../ada-contracts/tools" },
     { name = "ada-web-access-configuration", editable = "../../access/configuration" },
     { name = "ada-web-access-projection-cosmos", editable = "../../access/projection-cosmos" },
+    { name = "ada-web-alarm-baseline-projection", editable = "../../alarms/baseline-projection" },
+    { name = "ada-web-alarm-baseline-surface", editable = "../../alarms/baseline-surface" },
     { name = "ada-web-alarm-management-summary", editable = "../../alarms/management-summary" },
     { name = "ada-web-alarm-status", editable = "../../alarms/status" },
     { name = "ada-web-branding", extras = ["web"], editable = "../../branding" },
@@ -276,6 +280,50 @@ requires-dist = [
     { name = "atlanticus-web-projection", editable = "../../../../../web/capabilities/projection/core" },
     { name = "atlanticus-web-source", editable = "../../../../../web/capabilities/source/core" },
     { name = "atlanticus-web-storage-topology", editable = "../../../../../web/capabilities/storage/topology" },
+]
+
+[[package]]
+name = "ada-web-alarm-baseline-projection"
+version = "0.1.0"
+source = { editable = "../../alarms/baseline-projection" }
+dependencies = [
+    { name = "ada-contracts-tools" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "ada-contracts-tools", editable = "../../../../ada-contracts/tools" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-alarm-baseline-surface"
+version = "0.1.1"
+source = { editable = "../../alarms/baseline-surface" }
+dependencies = [
+    { name = "ada-contracts-tools" },
+    { name = "ada-web-alarm-baseline-projection" },
+    { name = "ada-web-ui-core" },
+    { name = "atlanticus-web" },
+    { name = "dash" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-contracts-tools", editable = "../../../../ada-contracts/tools" },
+    { name = "ada-web-alarm-baseline-projection", editable = "../../alarms/baseline-projection" },
+    { name = "ada-web-ui-core", editable = "../../ui/core" },
+    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
+    { name = "dash", specifier = "==4.4.1" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
 ]
 
 [[package]]

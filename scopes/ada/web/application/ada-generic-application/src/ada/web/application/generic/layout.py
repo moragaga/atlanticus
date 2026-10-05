@@ -6,6 +6,8 @@ from functools import partial
 from dash import html, page_container
 from dash.development.base_component import Component
 
+from ada.web.alarms.baseline_projection import AlarmBaselineProjection
+from ada.web.alarms.baseline_surface import build_alarm_baseline_surface
 from ada.web.alarms.management_summary import (
     AlarmManagementSummaryState,
     build_alarm_management_summary,
@@ -62,6 +64,7 @@ def build_operational_application_layout(
     global_indicators_source_keys: tuple[str, ...],
     alarm_management_summary: AlarmManagementSummaryState | None,
     alarm_status: AlarmStatusState | None,
+    alarm_baseline_projection: AlarmBaselineProjection | None,
     tool_key: str | None,
     time_status_summary: TimeStatusSummaryState | None,
     time_status_detail: TimeStatusDetailState | None,
@@ -93,6 +96,11 @@ def build_operational_application_layout(
         summary=time_status_summary,
         detail=time_status_detail,
     )
+    alarm_baseline_component = (
+        build_alarm_baseline_surface(alarm_baseline_projection)
+        if alarm_baseline_projection is not None
+        else None
+    )
     header = build_ada_operational_header(
         brand=build_operational_brand(operational_brand),
         global_indicators=global_indicators_component,
@@ -103,6 +111,8 @@ def build_operational_application_layout(
         mobile_navigation_trigger=mobile_navigation_trigger,
     )
     children = [header]
+    if alarm_baseline_component is not None:
+        children.append(alarm_baseline_component)
     if navigation_offcanvas is not None:
         children.append(build_ada_navigation_controller())
         children.append(navigation_offcanvas)

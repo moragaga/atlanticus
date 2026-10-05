@@ -175,12 +175,16 @@ def test_ready_resolution_threads_projection_into_application_definition(monkeyp
 
     configuration = _configuration()
     assert definition is expected_definition
-    assert captured == {
-        'tool_display_name': configuration.display_name,
-        'branding_configuration': configuration.branding,
-        'source_consumption': configuration.source_consumption,
-        'source_operational_participation': configuration.source_operational_participation,
-    }
+    assert captured['tool_display_name'] == configuration.display_name
+    assert captured['branding_configuration'] == configuration.branding
+    assert captured['source_consumption'] == configuration.source_consumption
+    assert (
+        captured['source_operational_participation']
+        == configuration.source_operational_participation
+    )
+    baseline = captured['alarm_baseline_projection']
+    assert baseline.main_component_keys == ('mine', 'plant')
+    assert baseline.bottom_point is None
 
 
 def test_unconfigured_resolution_keeps_base_definition(monkeypatch) -> None:
@@ -272,3 +276,103 @@ def test_collector_factory_preserves_tool_revision_and_reader_containers() -> No
     assert timeseries_result.status.value == 'missing'
     assert client.calls[0][0] == 'latest-custom'
     assert client.calls[1][0] == 'timeseries-custom'
+
+
+
+def test_ready_process_resolution_projects_optional_bottom_without_passing_full_tool(monkeypatch) -> None:
+    configuration = ToolConfiguration.from_document(
+        {
+            'tool_key': 'process',
+            'display_name': 'Proceso',
+            'kind': 'process',
+            'source_consumption': {
+                'tool_key': 'process',
+                'source_keys': ['pi'],
+            },
+            'source_operational_participation': {
+                'tool_key': 'process',
+                'control_sources': [
+                    {
+                        'source_key': 'pi',
+                        'pre_degrading_after_seconds': 200,
+                        'degrading_after_seconds': 300,
+                    }
+                ],
+                'additional_observation_source_keys': [],
+            },
+            'structure': {
+                'tool_key': 'process',
+                'kind': 'process',
+                'operational_scope': 'plant',
+                'center_component_key': 'center',
+                'components': [
+                    {
+                        'key': 'left',
+                        'display_name': 'Left',
+                        'subcomponents': [
+                            {
+                                'key': 'left_detail',
+                                'display_name': 'Left Detail',
+                                'linked_component_keys': [],
+                            }
+                        ],
+                    },
+                    {
+                        'key': 'center',
+                        'display_name': 'Center',
+                        'subcomponents': [
+                            {
+                                'key': 'center_detail',
+                                'display_name': 'Center Detail',
+                                'linked_component_keys': [],
+                            }
+                        ],
+                    },
+                    {
+                        'key': 'detail',
+                        'display_name': 'Detail',
+                        'subcomponents': [
+                            {
+                                'key': 'detail_view',
+                                'display_name': 'Detail View',
+                                'linked_component_keys': [],
+                            }
+                        ],
+                    },
+                ],
+            },
+            'render_topology': {
+                'bottom_component_key': 'detail',
+            },
+        }
+    )
+    timestamp = datetime(2026, 10, 5, 12, tzinfo=UTC)
+    projection = ProjectionRecord(
+        source_key=SourceKey('tools'),
+        source_release_id=SourceReleaseId('process-release'),
+        source_published_at_utc=timestamp,
+        projected_at_utc=timestamp,
+        payload=configuration,
+    )
+    captured: dict[str, object] = {}
+    expected_definition = object()
+
+    monkeypatch.setattr(
+        operational_tool,
+        'create_application_definition',
+        lambda **kwargs: captured.update(kwargs) or expected_definition,
+    )
+
+    definition = create_definition_from_tool_resolution(
+        ToolProjectionResolution(
+            state=ToolProjectionResolutionState.READY,
+            projection=projection,
+        )
+    )
+
+    assert definition is expected_definition
+    baseline = captured['alarm_baseline_projection']
+    assert baseline.main_component_keys == ('left', 'center')
+    assert baseline.bottom_component_key == 'detail'
+    assert baseline.bottom_point is not None
+    assert baseline.bottom_point.component_key == 'detail'

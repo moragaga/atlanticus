@@ -3,9 +3,13 @@ from __future__ import annotations
 import logging
 
 from ada.contracts.tools.errors import ToolConfigurationValidationError
+from ada.web.alarms.baseline_projection import project_alarm_baseline
 from ada.web.application.generic.application import create_application_definition
 from ada.web.application.generic.composition import AdaApplicationComposition
-from ada.web.operational_render_binding import OperationalRenderBinding
+from ada.web.operational_render_binding import (
+    OperationalRenderBinding,
+    bind_operational_render,
+)
 from ada.web.tools.configuration import validate_ada_operational_tool_configuration
 from ada.web.tools.persistence import (
     ToolPersistenceComposition,
@@ -60,10 +64,30 @@ def create_definition_from_tool_resolution(
         if projection is None:
             raise RuntimeError('READY Tool Projection resolution has no projection')
         configuration = projection.payload
+        structure = configuration.structure
+        if structure is None:
+            raise RuntimeError('READY Tool Projection has no Tool Structure')
+        bottom_component_key = configuration.render_topology.bottom_component_key
+        baseline_binding = operational_render_binding
+        if baseline_binding is None:
+            baseline_binding = bind_operational_render(
+                structure,
+                bottom_component_key=bottom_component_key,
+            )
+        elif (
+            baseline_binding.structure != structure
+            or baseline_binding.bottom_component_key != bottom_component_key
+        ):
+            raise ValueError('Operational render binding must match Tool Projection')
+        alarm_baseline_projection = project_alarm_baseline(
+            baseline_binding.structure,
+            bottom_component_key=baseline_binding.bottom_component_key,
+        )
         return create_application_definition(
             **extension,
             tool_display_name=configuration.display_name,
             branding_configuration=configuration.branding,
+            alarm_baseline_projection=alarm_baseline_projection,
             source_consumption=configuration.source_consumption,
             source_operational_participation=configuration.source_operational_participation,
         )
