@@ -20,22 +20,82 @@ class _Runtime:
         self.closed += 1
 
 
-def test_gunicorn_capacity_is_derived_from_detected_resources(monkeypatch):
-    monkeypatch.setattr(hosting, '_detect_cpu', lambda: (4.0, 'test_cpu'))
+@pytest.mark.parametrize(
+    ('effective_cpu', 'memory_gib', 'expected_workers'),
+    [
+        (1.0, 1.75, 1),
+        (2.0, 3.5, 2),
+        (4.0, 7.0, 4),
+        (1.0, 4.0, 1),
+        (2.0, 8.0, 2),
+        (4.0, 16.0, 4),
+        (8.0, 32.0, 8),
+    ],
+)
+def test_gunicorn_capacity_uses_effective_cpu_for_supported_profiles(
+    monkeypatch,
+    effective_cpu,
+    memory_gib,
+    expected_workers,
+):
+    memory_bytes = int(memory_gib * _MEMORY_GIB)
+    monkeypatch.setattr(hosting, '_detect_cpu', lambda: (effective_cpu, 'test_cpu'))
     monkeypatch.setattr(
         hosting,
         '_detect_memory_bytes',
-        lambda: (8 * _MEMORY_GIB, 'test_memory'),
+        lambda: (memory_bytes, 'test_memory'),
     )
 
     capacity = hosting.resolve_gunicorn_capacity()
 
-    assert capacity.workers == 3
+    assert capacity.workers == expected_workers
     assert capacity.threads == 2
-    assert capacity.effective_cpu == 4.0
+    assert capacity.effective_cpu == effective_cpu
     assert capacity.cpu_source == 'test_cpu'
-    assert capacity.memory_bytes == 8 * _MEMORY_GIB
+    assert capacity.memory_bytes == memory_bytes
     assert capacity.memory_source == 'test_memory'
+
+
+@pytest.mark.parametrize(
+    ('effective_cpu', 'expected_workers'),
+    [
+        (1.0, 1),
+        (1.9, 1),
+        (2.9, 2),
+        (8.0, 8),
+        (12.0, 8),
+        (16.0, 8),
+    ],
+)
+def test_gunicorn_capacity_floors_cpu_and_caps_workers_at_eight(
+    monkeypatch,
+    effective_cpu,
+    expected_workers,
+):
+    monkeypatch.setattr(hosting, '_detect_cpu', lambda: (effective_cpu, 'test_cpu'))
+    monkeypatch.setattr(hosting, '_detect_memory_bytes', lambda: (None, 'fallback'))
+
+    capacity = hosting.resolve_gunicorn_capacity()
+
+    assert capacity.workers == expected_workers
+    assert capacity.threads == 2
+
+
+def test_gunicorn_capacity_keeps_memory_as_diagnostic_only(monkeypatch):
+    monkeypatch.setattr(hosting, '_detect_cpu', lambda: (4.0, 'test_cpu'))
+
+    for memory_bytes in (None, 2 * _MEMORY_GIB, 7 * _MEMORY_GIB, 32 * _MEMORY_GIB):
+        monkeypatch.setattr(
+            hosting,
+            '_detect_memory_bytes',
+            lambda memory_bytes=memory_bytes: (memory_bytes, 'test_memory'),
+        )
+
+        capacity = hosting.resolve_gunicorn_capacity()
+
+        assert capacity.workers == 4
+        assert capacity.threads == 2
+        assert capacity.memory_bytes == memory_bytes
 
 
 def test_gunicorn_capacity_ignores_legacy_environment_overrides(monkeypatch):
@@ -54,14 +114,14 @@ def test_gunicorn_capacity_ignores_legacy_environment_overrides(monkeypatch):
     assert capacity.threads == 2
 
 
-def test_gunicorn_capacity_uses_conservative_fallback(monkeypatch):
+def test_gunicorn_capacity_uses_conservative_cpu_fallback(monkeypatch):
     monkeypatch.setattr(hosting, '_detect_cpu', lambda: (1.0, 'fallback'))
     monkeypatch.setattr(hosting, '_detect_memory_bytes', lambda: (None, 'fallback'))
 
     capacity = hosting.resolve_gunicorn_capacity()
 
     assert capacity.workers == 1
-    assert capacity.threads == 1
+    assert capacity.threads == 2
 
 
 def test_worker_application_keeps_master_light_and_warms_once():

@@ -13,6 +13,8 @@ from typing import Any, Protocol
 
 _MEMORY_GIB = 1024 * 1024 * 1024
 _CGROUP_UNLIMITED_THRESHOLD = 1 << 60
+_MAX_GUNICORN_WORKERS = 8
+_GUNICORN_THREADS = 2
 
 
 # Contrato mínimo que debe exponer un runtime construido dentro de cada worker.
@@ -101,24 +103,18 @@ def close_gunicorn_worker(worker: object) -> None:
         close()
 
 
-# La capacidad se deriva exclusivamente de recursos efectivos del runtime.
+# CPU efectiva define el paralelismo por procesos; RAM se conserva únicamente como diagnóstico.
+# El techo de ocho workers representa el envelope cualificado actual y evita escalar sin evidencia.
+# Los dos hilos por worker son parte fija del contrato WSGI y absorben concurrencia I/O moderada.
 def resolve_gunicorn_capacity() -> GunicornCapacity:
     effective_cpu, cpu_source = _detect_cpu()
     memory_bytes, memory_source = _detect_memory_bytes()
 
-    detected_workers = min(
-        _resolve_workers_from_memory(memory_bytes),
-        max(1, int(effective_cpu)),
-    )
-    detected_resources = cpu_source != 'fallback' or memory_source != 'fallback'
-    detected_threads = 2 if detected_resources else 1
-
-    workers = detected_workers
-    threads = detected_threads
+    workers = max(1, min(int(effective_cpu), _MAX_GUNICORN_WORKERS))
 
     return GunicornCapacity(
         workers=workers,
-        threads=threads,
+        threads=_GUNICORN_THREADS,
         effective_cpu=effective_cpu,
         cpu_source=cpu_source,
         memory_bytes=memory_bytes,
@@ -248,14 +244,3 @@ def _detect_memory_bytes() -> tuple[int | None, str]:
     if proc_memory is not None:
         return proc_memory, 'proc_meminfo'
     return None, 'fallback'
-
-
-def _resolve_workers_from_memory(memory_bytes: int | None) -> int:
-    if memory_bytes is None:
-        return 1
-    memory_gib = memory_bytes / _MEMORY_GIB
-    if memory_gib <= 2.0:
-        return 1
-    if memory_gib <= 6.0:
-        return 2
-    return 3
