@@ -14,6 +14,7 @@ from ada.contracts.tools.sources import (
 from ada.contracts.tools.structure import ToolStructure
 from ada.contracts.tools.validation import require_display_name, require_key
 from ada.web.branding import BrandingConfiguration
+from ada.web.tools.configuration.render_topology import ToolRenderTopology
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,6 +25,7 @@ class ToolConfiguration:
     source_consumption: ToolSourceConsumption
     source_operational_participation: ToolSourceOperationalParticipation
     structure: ToolStructure | None = None
+    render_topology: ToolRenderTopology = field(default_factory=ToolRenderTopology)
     branding: BrandingConfiguration = field(default_factory=BrandingConfiguration)
 
     def __post_init__(self) -> None:
@@ -43,6 +45,8 @@ class ToolConfiguration:
             raise ToolConfigurationValidationError(
                 'Tool source operational participation contract is invalid'
             )
+        if not isinstance(self.render_topology, ToolRenderTopology):
+            raise ToolConfigurationValidationError('Tool render topology is invalid')
         if not isinstance(self.branding, BrandingConfiguration):
             raise ToolConfigurationValidationError('Tool branding configuration is invalid')
         if self.source_consumption.tool_key != tool_key:
@@ -65,6 +69,11 @@ class ToolConfiguration:
                 raise ToolConfigurationValidationError(
                     'Tool Structure kind must match Tool Configuration kind'
                 )
+        _validate_render_topology(
+            kind=self.kind,
+            structure=self.structure,
+            render_topology=self.render_topology,
+        )
         try:
             validate_operational_participation_against_consumption(
                 consumption=self.source_consumption,
@@ -76,7 +85,7 @@ class ToolConfiguration:
         object.__setattr__(self, 'display_name', display_name)
 
     def to_document(self) -> dict[str, object]:
-        return {
+        document: dict[str, object] = {
             'tool_key': self.tool_key,
             'display_name': self.display_name,
             'kind': self.kind.value,
@@ -87,6 +96,10 @@ class ToolConfiguration:
             'structure': (self.structure.to_document() if self.structure is not None else None),
             'branding': self.branding.to_document(),
         }
+        render_topology = self.render_topology.to_document()
+        if render_topology:
+            document['render_topology'] = render_topology
+        return document
 
     @classmethod
     def from_document(
@@ -97,6 +110,7 @@ class ToolConfiguration:
             source_consumption = document['source_consumption']
             source_operational_participation = document['source_operational_participation']
             raw_structure = document.get('structure')
+            raw_render_topology = document.get('render_topology', {})
             raw_branding = document.get('branding', {})
             if not isinstance(source_consumption, Mapping):
                 raise TypeError
@@ -106,6 +120,8 @@ class ToolConfiguration:
             ):
                 raise TypeError
             if raw_structure is not None and not isinstance(raw_structure, Mapping):
+                raise TypeError
+            if not isinstance(raw_render_topology, Mapping):
                 raise TypeError
             if not isinstance(raw_branding, Mapping):
                 raise TypeError
@@ -124,6 +140,7 @@ class ToolConfiguration:
                     if raw_structure is not None
                     else None
                 ),
+                render_topology=ToolRenderTopology.from_document(raw_render_topology),
                 branding=BrandingConfiguration.from_document(raw_branding),
             )
         except (KeyError, TypeError, ValueError) as error:
@@ -132,3 +149,32 @@ class ToolConfiguration:
             raise ToolConfigurationValidationError(
                 'Tool Configuration contract is invalid'
             ) from error
+
+
+def _validate_render_topology(
+    *,
+    kind: ToolConfigurationKind,
+    structure: ToolStructure | None,
+    render_topology: ToolRenderTopology,
+) -> None:
+    bottom_component_key = render_topology.bottom_component_key
+    if bottom_component_key is None:
+        return
+    if kind is not ToolConfigurationKind.PROCESS:
+        raise ToolConfigurationValidationError(
+            'Tool render bottom component is only supported for Process'
+        )
+    if structure is None:
+        raise ToolConfigurationValidationError(
+            'Tool render bottom component requires Tool Structure'
+        )
+    try:
+        structure.component(bottom_component_key)
+    except ToolConfigurationValidationError as error:
+        raise ToolConfigurationValidationError(
+            'Tool render bottom component key must reference an existing component'
+        ) from error
+    if bottom_component_key == structure.center_component_key:
+        raise ToolConfigurationValidationError(
+            'Tool render bottom component key must differ from Process center component key'
+        )

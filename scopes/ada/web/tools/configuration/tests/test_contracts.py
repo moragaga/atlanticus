@@ -133,20 +133,17 @@ def test_operational_validation_does_not_restrict_additional_observation_names()
     validate_ada_operational_tool_sources(configuration)
 
 
-def test_tool_configuration_contract_exposes_optional_structure_without_ui_fields() -> None:
-    fields = ToolConfiguration.__dataclass_fields__
-
-    assert tuple(fields) == (
-        'tool_key',
-        'display_name',
-        'kind',
-        'source_consumption',
-        'source_operational_participation',
-        'structure',
-        'branding',
+def test_tool_configuration_document_excludes_runtime_ui_implementation_details() -> None:
+    configuration = _configuration(
+        source_keys=('pi',),
+        control_sources=(SourceControlPolicy('pi', 200, 300),),
     )
-    assert fields['branding'].type == 'BrandingConfiguration'
 
+    document = configuration.to_document()
+
+    assert document['structure'] is None
+    assert 'branding' in document
+    assert 'render_topology' not in document
     for field in (
         'alarm_points',
         'renderer',
@@ -154,7 +151,7 @@ def test_tool_configuration_contract_exposes_optional_structure_without_ui_field
         'store_id',
         'callback',
     ):
-        assert field not in fields
+        assert field not in document
 
 
 def test_operational_configuration_requires_structure_only_at_publish_boundary() -> None:

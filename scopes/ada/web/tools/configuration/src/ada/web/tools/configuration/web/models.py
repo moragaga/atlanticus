@@ -17,6 +17,7 @@ from ada.web.branding import (
 )
 from ada.web.tools.configuration import (
     ToolConfiguration,
+    ToolRenderTopology,
     validate_ada_operational_tool_sources,
 )
 from ada.web.tools.configuration.web.errors import (
@@ -198,10 +199,10 @@ def build_configuration_from_source_editor(
             if source_key not in _CONTROL_SOURCE_KEYS
         )
 
-    structure = (
-        base_configuration.structure
-        if (base_configuration is not None and base_configuration.kind is values.kind)
-        else None
+    same_kind = base_configuration is not None and base_configuration.kind is values.kind
+    structure = base_configuration.structure if same_kind else None
+    render_topology = (
+        base_configuration.render_topology if same_kind else ToolRenderTopology()
     )
 
     configuration = ToolConfiguration(
@@ -220,6 +221,7 @@ def build_configuration_from_source_editor(
             )
         ),
         structure=structure,
+        render_topology=render_topology,
         branding=BrandingConfiguration(variant=values.branding_variant),
     )
     validate_ada_operational_tool_sources(configuration)

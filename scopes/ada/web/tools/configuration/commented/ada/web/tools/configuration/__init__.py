@@ -4,6 +4,7 @@ from ada.web.tools.configuration.errors import (
     ToolConfigurationSourceError,
 )
 from ada.web.tools.configuration.models import ToolConfiguration
+from ada.web.tools.configuration.render_topology import ToolRenderTopology
 from ada.web.tools.configuration.operational import (
     validate_ada_operational_tool_configuration,
     validate_ada_operational_tool_sources,
@@ -34,6 +35,7 @@ __all__ = [
     'ToolConfiguration',
     'ToolConfigurationProjectionError',
     'ToolConfigurationSourceError',
+    'ToolRenderTopology',
     'ToolProjectionBuilder',
     'ToolSourceCodec',
     'ToolSourcePayload',

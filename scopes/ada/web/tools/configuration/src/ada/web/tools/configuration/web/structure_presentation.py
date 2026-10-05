@@ -11,6 +11,7 @@ from ada.contracts.tools.enums import (
 )
 from ada.web.tools.configuration import ToolConfiguration
 from ada.web.tools.configuration.web.structure import (
+    structure_editor_document_from_configuration,
     structure_editor_table_data_from_configuration,
 )
 from ada.web.tools.configuration.web.structure_ids import (
@@ -26,6 +27,8 @@ from ada.web.tools.configuration.web.structure_ids import (
     COMPONENT_SUMMARY_NAME_TYPE,
     COMPONENT_SUMMARY_SCOPE_TYPE,
     STRUCTURE_ADD_COMPONENT_ID,
+    STRUCTURE_BOTTOM_COMPONENT_ID,
+    STRUCTURE_BOTTOM_COMPONENT_WRAPPER_ID,
     STRUCTURE_CENTER_COMPONENT_ID,
     STRUCTURE_CENTER_COMPONENT_WRAPPER_ID,
     STRUCTURE_COMPONENTS_CONTAINER_ID,
@@ -66,12 +69,21 @@ def build_tool_structure_editor(
     kind = configuration.kind if configuration is not None else None
     nested_rows = _subcomponent_rows_by_owner(subcomponent_rows)
     center_component_key = structure.center_component_key if structure is not None else None
+    bottom_component_key = (
+        configuration.render_topology.bottom_component_key
+        if configuration is not None
+        else None
+    )
 
     return html.Section(
         [
             dcc.Store(
                 id=STRUCTURE_DOCUMENT_STORE_ID,
-                data=(structure.to_document() if structure is not None else None),
+                data=(
+                    structure_editor_document_from_configuration(configuration)
+                    if configuration is not None
+                    else None
+                ),
                 storage_type='memory',
             ),
             dcc.Store(
@@ -115,6 +127,29 @@ def build_tool_structure_editor(
                     ),
                 ),
                 id=STRUCTURE_CENTER_COMPONENT_WRAPPER_ID,
+                hidden=kind is not ToolConfigurationKind.PROCESS,
+                className='ada-tool-structure-editor__context-field',
+            ),
+            html.Div(
+                _dropdown_field(
+                    label='Componente inferior',
+                    component_id=STRUCTURE_BOTTOM_COMPONENT_ID,
+                    value=bottom_component_key,
+                    options=_bottom_component_options(
+                        component_rows,
+                        center_component_key=center_component_key,
+                    ),
+                    clearable=True,
+                    placeholder='Sin componente inferior',
+                    disabled=(
+                        kind is not ToolConfigurationKind.PROCESS
+                        or not _bottom_component_options(
+                            component_rows,
+                            center_component_key=center_component_key,
+                        )
+                    ),
+                ),
+                id=STRUCTURE_BOTTOM_COMPONENT_WRAPPER_ID,
                 hidden=kind is not ToolConfigurationKind.PROCESS,
                 className='ada-tool-structure-editor__context-field',
             ),
@@ -564,6 +599,20 @@ def _component_options(
             }
         )
     return options
+
+
+
+def _bottom_component_options(
+    rows: Sequence[Mapping[str, object]],
+    *,
+    center_component_key: object,
+) -> list[dict[str, str]]:
+    center = str(center_component_key or '').strip()
+    return [
+        option
+        for option in _component_options(rows)
+        if option['value'] != center
+    ]
 
 
 def _linked_component_options(

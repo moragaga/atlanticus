@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from typing import Any
 
-from ada.web.tools.configuration import ToolConfiguration
+from ada.web.tools.configuration import ToolConfiguration, ToolRenderTopology
 from ada.contracts.tools.enums import ToolConfigurationKind
 from ada.contracts.tools.structure import ToolStructure
 
@@ -52,6 +52,35 @@ def structure_editor_table_data_from_configuration(
         subcomponents,
         structure_editor_coverage_from_configuration(configuration),
     )
+
+
+
+# El store del editor transporta ToolStructure y la topología de presentación sin mezclarlos
+# dentro del contrato estructural persistido.
+def structure_editor_document_from_configuration(
+    configuration: ToolConfiguration,
+) -> dict[str, object] | None:
+    structure = configuration.structure
+    if structure is None:
+        return None
+    return build_structure_editor_document(
+        structure=structure,
+        bottom_component_key=configuration.render_topology.bottom_component_key,
+    )
+
+
+# La clave extra render_topology es metadata del editor. ToolStructure.from_document la ignora.
+def build_structure_editor_document(
+    *,
+    structure: ToolStructure,
+    bottom_component_key: object,
+) -> dict[str, object]:
+    document = structure.to_document()
+    topology = ToolRenderTopology(bottom_component_key=_optional_text(bottom_component_key))
+    render_topology = topology.to_document()
+    if render_topology:
+        document['render_topology'] = render_topology
+    return document
 
 
 def structure_editor_coverage_from_configuration(
@@ -149,7 +178,13 @@ def build_configuration_from_structure_editor(
     structure_document: Mapping[str, Any],
 ) -> ToolConfiguration:
     try:
+        raw_render_topology = structure_document.get('render_topology', {})
+        if not isinstance(raw_render_topology, Mapping):
+            raise ToolStructureEditorValidationError(
+                'Tool render topology contract is invalid'
+            )
         structure = ToolStructure.from_document(structure_document)
+        render_topology = ToolRenderTopology.from_document(raw_render_topology)
         return ToolConfiguration(
             tool_key=base_configuration.tool_key,
             display_name=base_configuration.display_name,
@@ -157,6 +192,7 @@ def build_configuration_from_structure_editor(
             source_consumption=base_configuration.source_consumption,
             source_operational_participation=(base_configuration.source_operational_participation),
             structure=structure,
+            render_topology=render_topology,
             branding=base_configuration.branding,
         )
     except ValueError as error:

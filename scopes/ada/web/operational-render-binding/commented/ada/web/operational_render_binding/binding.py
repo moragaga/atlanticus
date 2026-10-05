@@ -6,7 +6,11 @@ from ada.web.operational_render_binding.models import (
 from ada.contracts.tools.structure import ToolStructure
 
 
-def bind_operational_render(structure: ToolStructure) -> OperationalRenderBinding:
+def bind_operational_render(
+    structure: ToolStructure,
+    *,
+    bottom_component_key: str | None = None,
+) -> OperationalRenderBinding:
     # Configuration determina existencia y orden; ningún Store participa en este paso.
     if not isinstance(structure, ToolStructure):
         raise OperationalRenderBindingError('Operational render requires ToolStructure')
@@ -16,4 +20,5 @@ def bind_operational_render(structure: ToolStructure) -> OperationalRenderBindin
             OperationalComponentBinding(component=component)
             for component in structure.components
         ),
+        bottom_component_key=bottom_component_key,
     )

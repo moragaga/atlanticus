@@ -10,6 +10,8 @@ STRUCTURE_ADD_COMPONENT_ID = 'ada-tool-structure-editor-add-component'
 # Selector estructural exclusivo de Process; apunta a un component key ya existente.
 STRUCTURE_CENTER_COMPONENT_ID = 'ada-tool-structure-editor-center-component'
 STRUCTURE_CENTER_COMPONENT_WRAPPER_ID = 'ada-tool-structure-editor-center-component-wrapper'
+STRUCTURE_BOTTOM_COMPONENT_ID = 'ada-tool-structure-editor-bottom-component'
+STRUCTURE_BOTTOM_COMPONENT_WRAPPER_ID = 'ada-tool-structure-editor-bottom-component-wrapper'
 STRUCTURE_VALIDATION_MESSAGE_ID = 'ada-tool-structure-editor-validation-message'
 TOOL_CONFIGURATION_EDITOR_ROOT_ID = 'ada-tool-configuration-editor-complete'
 

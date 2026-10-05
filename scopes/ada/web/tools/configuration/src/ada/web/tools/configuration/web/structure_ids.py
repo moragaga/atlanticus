@@ -6,6 +6,8 @@ STRUCTURE_COMPONENTS_CONTAINER_ID = 'ada-tool-structure-editor-components'
 STRUCTURE_ADD_COMPONENT_ID = 'ada-tool-structure-editor-add-component'
 STRUCTURE_CENTER_COMPONENT_ID = 'ada-tool-structure-editor-center-component'
 STRUCTURE_CENTER_COMPONENT_WRAPPER_ID = 'ada-tool-structure-editor-center-component-wrapper'
+STRUCTURE_BOTTOM_COMPONENT_ID = 'ada-tool-structure-editor-bottom-component'
+STRUCTURE_BOTTOM_COMPONENT_WRAPPER_ID = 'ada-tool-structure-editor-bottom-component-wrapper'
 STRUCTURE_VALIDATION_MESSAGE_ID = 'ada-tool-structure-editor-validation-message'
 TOOL_CONFIGURATION_EDITOR_ROOT_ID = 'ada-tool-configuration-editor-complete'
 
