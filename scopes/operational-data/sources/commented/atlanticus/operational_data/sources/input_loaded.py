@@ -129,7 +129,7 @@ class LoadedDataInputs:
                 input_spec.source,
                 f'{input_spec.view.value}: source view was not loaded',
             ) from error
-        _, partition_binding = self.registry.get_input_view(input_spec.source, input_spec.view)
+        _, partition_binding = self.registry.get_view(input_spec.source, input_spec.view)
         exact = loaded.frame
         selection = input_spec.selection
         if isinstance(selection, TimeWindowSelection):

@@ -14,9 +14,9 @@ from atlanticus.operational_data.core import (
 )
 from atlanticus.operational_data.planner import DataInputLoadPlan, DataInputViewLoadPlan
 from atlanticus.operational_data.sources.bindings import (
-    DataPartitionBinding,
     DataSourceBinding,
     DataSourceRegistry,
+    DataViewBinding,
     TimePartitionGranularity,
 )
 from atlanticus.operational_data.sources.errors import DataSourceSchemaError, DataSourcesError
@@ -63,7 +63,7 @@ class DataInputLoader:
         for view_plan in plan.views:
             key = view_plan.source, view_plan.view
             try:
-                binding, partition_binding = self._registry.get_input_view(
+                binding, partition_binding = self._registry.get_view(
                     view_plan.source,
                     view_plan.view,
                 )
@@ -99,7 +99,7 @@ class DataInputLoader:
         *,
         plan: DataInputViewLoadPlan,
         binding: DataSourceBinding,
-        partition_binding: DataPartitionBinding,
+        partition_binding: DataViewBinding,
         as_of: datetime,
     ) -> pd.DataFrame:
         projection_schema = _projection_schema(plan=plan, binding=partition_binding)
@@ -142,7 +142,7 @@ class DataInputLoader:
         *,
         plan: DataInputViewLoadPlan,
         binding: DataSourceBinding,
-        partition_binding: DataPartitionBinding,
+        partition_binding: DataViewBinding,
         projection_schema: pa.Schema,
         as_of: datetime,
     ) -> pd.DataFrame:
@@ -180,7 +180,7 @@ class DataInputLoader:
         *,
         plan: DataInputViewLoadPlan,
         binding: DataSourceBinding,
-        partition_binding: DataPartitionBinding,
+        partition_binding: DataViewBinding,
         projection_schema: pa.Schema,
         as_of: datetime,
     ) -> pd.DataFrame:
@@ -227,7 +227,7 @@ class DataInputLoader:
 
 def _validate_selector_capabilities(
     plan: DataInputViewLoadPlan,
-    binding: DataPartitionBinding,
+    binding: DataViewBinding,
 ) -> None:
     if (plan.time_windows or plan.operational_scopes) and binding.timestamp_column is None:
         raise DataSourceSchemaError(
@@ -239,7 +239,7 @@ def _validate_selector_capabilities(
         )
 
 
-def _projection_schema(*, plan: DataInputViewLoadPlan, binding: DataPartitionBinding) -> pa.Schema:
+def _projection_schema(*, plan: DataInputViewLoadPlan, binding: DataViewBinding) -> pa.Schema:
     columns = list(plan.columns)
     _append_technical_column(columns, binding.timestamp_column, DataColumnType.DATETIME)
     _append_technical_column(columns, binding.shift_column, DataColumnType.INTEGER)

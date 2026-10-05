@@ -5,15 +5,17 @@ import pandas as pd
 from atlanticus.operational_data.core import (
     DataColumn,
     DataColumnType,
-    DataPartition,
-    DataRequirement,
+    DataInputSpec,
     DataSource,
+    DataView,
     TimeWindow,
     TimeWindowUnit,
 )
-from atlanticus.operational_data.planner import DataRequirementPlanner
+from atlanticus.operational_data.planner import DataInputPlanner
 from atlanticus.operational_data.sources import (
-    DataSourceLoader,
+    DataInputLoader,
+    FabricaKpis,
+    MeteodataData,
     PiSourceProvider,
     build_current_source_registry,
 )
@@ -47,48 +49,67 @@ class FakeReader:
         return frame.reset_index(drop=True)
 
 
-def test_existing_loader_consumes_fabrica_and_meteodata_as_distinct_sources() -> None:
+def _float(name: str) -> DataColumn:
+    return DataColumn(name, DataColumnType.FLOAT)
+
+
+def test_input_loader_consumes_fabrica_and_meteodata_as_distinct_sources() -> None:
     registry = build_current_source_registry(pi_source=PiSourceProvider.NOTPII)
     as_of = datetime(2026, 8, 20, 12, tzinfo=UTC)
-    definitions = {
-        'plans': (DataSource.FABRICA_PLANES, DataPartition.DAILY, 'toneladas'),
-        'kpis': (DataSource.FABRICA_KPIS, DataPartition.WEEKLY, 'produccion'),
-        'measurements': (DataSource.METEODATA_DATA, DataPartition.DAILY, 'mp10'),
-        'projection': (DataSource.METEODATA_PROJECTION, DataPartition.LATEST, 'proyeccion_mp10'),
-    }
-    requests = {}
-    for key, (source, partition, column) in definitions.items():
-        options = {}
-        if key == 'measurements':
-            options['time_window'] = TimeWindow(1, TimeWindowUnit.DAYS)
-        requests[key] = (
-            DataRequirement(
-                source=source,
-                partition=partition,
-                columns=(DataColumn(column, DataColumnType.FLOAT),),
-                **options,
-            ),
-        )
+    inputs = (
+        DataInputSpec(
+            input_key='plans',
+            source=DataSource.FABRICA_PLANES,
+            view=DataView.DAILY,
+            columns=(_float('toneladas'),),
+        ),
+        FabricaKpis.weekly(
+            input_key='kpis',
+            columns=(_float('produccion'),),
+        ),
+        MeteodataData.daily(
+            input_key='measurements',
+            columns=(_float('mp10'),),
+            period=TimeWindow(1, TimeWindowUnit.DAYS),
+        ),
+        DataInputSpec(
+            input_key='projection',
+            source=DataSource.METEODATA_PROJECTION,
+            view=DataView.LATEST,
+            columns=(_float('proyeccion_mp10'),),
+        ),
+    )
 
     frames = {}
     values = {'plans': 100.0, 'kpis': 200.0, 'measurements': 30.0, 'projection': 40.0}
-    for key, (source, partition, column) in definitions.items():
-        binding = registry.get(source)
+    for input_spec in inputs:
+        binding = registry.get(input_spec.source)
+        view_binding = binding.get_view(input_spec.view)
         target_kwargs = {}
-        if key == 'measurements':
+        if input_spec.input_key == 'measurements':
             target_kwargs['partition'] = {'year': '2026', 'month': '08', 'day': '20'}
-        target = binding.definition.resolve_target(materialization=partition.value, **target_kwargs)
-        payload = {column: [values[key]]}
-        if key in {'measurements', 'projection'}:
+        target = binding.definition.resolve_target(
+            materialization=view_binding.materialization,
+            **target_kwargs,
+        )
+        column = input_spec.column_names[0]
+        payload = {column: [values[input_spec.input_key]]}
+        if input_spec.input_key in {'measurements', 'projection'}:
             payload['timestamp'] = [datetime(2026, 8, 20, 11, tzinfo=UTC)]
         frames[target.identifier] = pd.DataFrame(payload)
 
     reader = FakeReader(frames)
-    loader = DataSourceLoader(reader=reader, registry=registry)
-    loaded = loader.load(plan=DataRequirementPlanner().plan(requests), as_of=as_of)
+    loaded = DataInputLoader(reader=reader, registry=registry).load(
+        plan=DataInputPlanner().plan({'integration': inputs}),
+        as_of=as_of,
+    )
+    context = loaded.context_for('integration')
 
-    for key, (source, partition, column) in definitions.items():
-        context = loaded.context_for(key).get(source, partition)
-        assert context.last_value_number(column) == values[key]
+    for input_spec in inputs:
+        column = input_spec.column_names[0]
+        assert (
+            context.get(input_spec.input_key).last_value_number(column)
+            == values[input_spec.input_key]
+        )
     meteodata_calls = [call for call in reader.calls if call[0].startswith('datasets/meteodata/')]
     assert any(start is not None and end == as_of for _, start, end in meteodata_calls)

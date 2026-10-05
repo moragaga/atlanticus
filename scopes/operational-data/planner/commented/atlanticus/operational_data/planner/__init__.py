@@ -1,15 +1,9 @@
-# API pedagógica del planner.
-# Conviven temporalmente el pipeline CURRENT y el nuevo pipeline por inputs.
+# El planner público expone únicamente el contrato basado en DataInputSpec.
 from atlanticus.operational_data.planner.errors import DataPlanKeyError, DataPlanSchemaError
 from atlanticus.operational_data.planner.input_planner import (
     DataInputLoadPlan,
     DataInputPlanner,
     DataInputViewLoadPlan,
-)
-from atlanticus.operational_data.planner.planner import (
-    DataLoadPlan,
-    DataRequirementPlanner,
-    DataSourceViewLoadPlan,
 )
 
 __version__ = '1.0.0'
@@ -18,10 +12,7 @@ __all__ = [
     'DataInputLoadPlan',
     'DataInputPlanner',
     'DataInputViewLoadPlan',
-    'DataLoadPlan',
     'DataPlanKeyError',
     'DataPlanSchemaError',
-    'DataRequirementPlanner',
-    'DataSourceViewLoadPlan',
     '__version__',
 ]

@@ -4,20 +4,27 @@ from atlanticus.operational_data.calendar import MINE_CALENDAR, PLANT_CALENDAR
 from atlanticus.operational_data.core import (
     DataColumn,
     DataColumnType,
-    DataPartition,
-    DataRequirement,
+    DataInputSpec,
     DataSource,
+    DataView,
     OperationalScope,
     TimeWindow,
     TimeWindowUnit,
 )
-from atlanticus.operational_data.planner import DataRequirementPlanner
+from atlanticus.operational_data.planner import DataInputPlanner
 from atlanticus.operational_data.sources import (
+    FabricaKpis,
+    MeteodataData,
     OperationalWindowResolver,
+    PiInterpolated,
     PiSourceProvider,
     TimePartitionGranularity,
     build_current_source_registry,
 )
+
+
+def _float(name: str) -> DataColumn:
+    return DataColumn(name, DataColumnType.FLOAT)
 
 
 def test_pi_current_week_uses_existing_area_calendars_and_caps_to_pi_as_of() -> None:
@@ -43,7 +50,7 @@ def test_fabrica_and_meteodata_bindings_follow_producer_layouts() -> None:
         assert binding.definition.key.namespace == ('fabrica',)
         assert binding.definition.key.name == name
         assert binding.definition.route_segments == ('fabrica', name)
-        assert set(binding.partitions) == {DataPartition.DAILY, DataPartition.WEEKLY}
+        assert set(binding.views) == {DataView.DAILY, DataView.WEEKLY}
         assert binding.definition.get_materialization('daily').resolved_route_segments == ('daily',)
         assert binding.definition.get_materialization('weekly').resolved_route_segments == (
             'weekly',
@@ -52,12 +59,9 @@ def test_fabrica_and_meteodata_bindings_follow_producer_layouts() -> None:
     data = registry.get(DataSource.METEODATA_DATA)
     assert data.definition.key.namespace == ('meteodata',)
     assert data.definition.key.name == 'datos'
-    assert set(data.partitions) == {DataPartition.DAILY}
-    assert data.get_partition(DataPartition.DAILY).timestamp_column == 'timestamp'
-    assert (
-        data.get_partition(DataPartition.DAILY).time_partition_granularity
-        is TimePartitionGranularity.DAY
-    )
+    assert set(data.views) == {DataView.DAILY}
+    assert data.get_view(DataView.DAILY).timestamp_column == 'timestamp'
+    assert data.get_view(DataView.DAILY).time_partition_granularity is TimePartitionGranularity.DAY
     assert data.definition.get_materialization('daily').partition_dimensions == (
         'year',
         'month',
@@ -67,39 +71,37 @@ def test_fabrica_and_meteodata_bindings_follow_producer_layouts() -> None:
     projection = registry.get(DataSource.METEODATA_PROJECTION)
     assert projection.definition.key.namespace == ('meteodata',)
     assert projection.definition.key.name == 'proyeccion'
-    assert set(projection.partitions) == {DataPartition.LATEST}
-    assert projection.get_partition(DataPartition.LATEST).timestamp_column == 'timestamp'
+    assert set(projection.views) == {DataView.LATEST}
+    assert projection.get_view(DataView.LATEST).timestamp_column == 'timestamp'
 
 
-def test_planner_keeps_fabrica_weekly_independent_of_pi_operational_week() -> None:
-    requirements = (
-        DataRequirement(
-            source=DataSource.PI_INTERPOLATED,
-            partition=DataPartition.DAILY,
-            columns=(DataColumn('tag', DataColumnType.FLOAT),),
-            operational_scope=OperationalScope.CURRENT_OPERATIONAL_WEEK_MINE,
+def test_planner_keeps_logical_views_independent_across_sources() -> None:
+    inputs = (
+        PiInterpolated.daily(
+            input_key='pi-week',
+            columns=(_float('tag'),),
+            period=OperationalScope.CURRENT_OPERATIONAL_WEEK_MINE,
         ),
-        DataRequirement(
-            source=DataSource.FABRICA_KPIS,
-            partition=DataPartition.WEEKLY,
-            columns=(DataColumn('plan', DataColumnType.FLOAT),),
+        FabricaKpis.weekly(
+            input_key='fabrica-week',
+            columns=(_float('plan'),),
         ),
-        DataRequirement(
-            source=DataSource.METEODATA_DATA,
-            partition=DataPartition.DAILY,
-            columns=(DataColumn('mp10', DataColumnType.FLOAT),),
-            time_window=TimeWindow(1, TimeWindowUnit.DAYS),
+        MeteodataData.daily(
+            input_key='weather',
+            columns=(_float('mp10'),),
+            period=TimeWindow(1, TimeWindowUnit.DAYS),
         ),
-        DataRequirement(
+        DataInputSpec(
+            input_key='projection',
             source=DataSource.METEODATA_PROJECTION,
-            partition=DataPartition.LATEST,
-            columns=(DataColumn('proyeccion_mp10', DataColumnType.FLOAT),),
+            view=DataView.LATEST,
+            columns=(_float('proyeccion_mp10'),),
         ),
     )
-    plan = DataRequirementPlanner().plan({'integration': requirements})
-    assert {(view.source, view.partition) for view in plan.views} == {
-        (DataSource.PI_INTERPOLATED, DataPartition.DAILY),
-        (DataSource.FABRICA_KPIS, DataPartition.WEEKLY),
-        (DataSource.METEODATA_DATA, DataPartition.DAILY),
-        (DataSource.METEODATA_PROJECTION, DataPartition.LATEST),
+    plan = DataInputPlanner().plan({'integration': inputs})
+    assert {(view.source, view.view) for view in plan.views} == {
+        (DataSource.PI_INTERPOLATED, DataView.DAILY),
+        (DataSource.FABRICA_KPIS, DataView.WEEKLY),
+        (DataSource.METEODATA_DATA, DataView.DAILY),
+        (DataSource.METEODATA_PROJECTION, DataView.LATEST),
     }

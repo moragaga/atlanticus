@@ -49,14 +49,6 @@ class DataColumn:
             raise TypeError('column data_type must be DataColumnType')
 
 
-class DataPartition(StrEnum):
-    LATEST = 'latest'
-    DAILY = 'daily'
-    MONTHLY = 'monthly'
-    WEEKLY = 'weekly'
-    SHIFT = 'shift'
-
-
 class OperationalScope(StrEnum):
     CURRENT_TURN_MINE = 'current_turn_mine'
     PREVIOUS_TURN_MINE = 'previous_turn_mine'
@@ -135,69 +127,6 @@ class ShiftSelection:
             raise ValueError('days can only be declared with ShiftScope.DAYS')
 
 
-@dataclass(frozen=True, slots=True)
-class DataSourceView:
-    source: DataSource
-    partition: DataPartition
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.source, DataSource):
-            raise TypeError('source view source must be DataSource')
-        if not isinstance(self.partition, DataPartition):
-            raise TypeError('source view partition must be DataPartition')
-
-
-@dataclass(frozen=True, slots=True)
-class DataRequirement:
-    source: DataSource
-    partition: DataPartition
-    columns: tuple[DataColumn, ...]
-    time_window: TimeWindow | None = None
-    operational_scope: OperationalScope | None = None
-    shift: ShiftSelection | None = None
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.source, DataSource):
-            raise TypeError('data requirement source must be DataSource')
-        if not isinstance(self.partition, DataPartition):
-            raise TypeError('data requirement partition must be DataPartition')
-        columns = tuple(self.columns)
-        if not columns:
-            raise ValueError('data requirement requires at least one column')
-        if not all(isinstance(column, DataColumn) for column in columns):
-            raise TypeError('data requirement columns must contain DataColumn values')
-        names = tuple(column.name for column in columns)
-        if len(names) != len(set(names)):
-            raise ValueError('data requirement column names must be unique')
-        if self.time_window is not None and not isinstance(self.time_window, TimeWindow):
-            raise TypeError('time_window must be TimeWindow')
-        if self.operational_scope is not None and not isinstance(
-            self.operational_scope, OperationalScope
-        ):
-            raise TypeError('operational_scope must be OperationalScope')
-        if self.shift is not None and not isinstance(self.shift, ShiftSelection):
-            raise TypeError('shift must be ShiftSelection')
-        selectors = tuple(
-            value
-            for value in (self.time_window, self.operational_scope, self.shift)
-            if value is not None
-        )
-        if len(selectors) > 1:
-            raise ValueError(
-                'data requirement cannot mix time_window, operational_scope, and shift'
-            )
-        _validate_partition_selector(self)
-        object.__setattr__(self, 'columns', columns)
-
-    @property
-    def column_names(self) -> tuple[str, ...]:
-        return tuple(column.name for column in self.columns)
-
-    @property
-    def view(self) -> DataSourceView:
-        return DataSourceView(source=self.source, partition=self.partition)
-
-
 def normalize_utc_second(value: datetime, *, field_name: str = 'datetime') -> datetime:
     if not isinstance(value, datetime):
         raise TypeError(f'{field_name} must be a datetime')
@@ -207,75 +136,6 @@ def normalize_utc_second(value: datetime, *, field_name: str = 'datetime') -> da
     if normalized.microsecond != 0:
         raise ValueError(f'{field_name} must use second precision')
     return normalized
-
-
-def _validate_partition_selector(requirement: DataRequirement) -> None:
-    partition = requirement.partition
-    time_window = requirement.time_window
-    operational_scope = requirement.operational_scope
-    shift = requirement.shift
-
-    if partition is DataPartition.LATEST and any(
-        value is not None for value in (time_window, operational_scope, shift)
-    ):
-        raise ValueError('latest partition must not declare a temporal selector')
-    if shift is not None and partition is not DataPartition.SHIFT:
-        raise ValueError('shift selection requires shift partition')
-    if partition is DataPartition.SHIFT and shift is None:
-        raise ValueError('shift partition requires shift selection')
-    if time_window is not None:
-        if time_window.unit is TimeWindowUnit.MONTHS:
-            if partition is not DataPartition.MONTHLY:
-                raise ValueError('months time window requires monthly partition')
-        elif partition is not DataPartition.DAILY:
-            raise ValueError('minutes, hours, and days time windows require daily partition')
-    if operational_scope is not None:
-        expected = (
-            DataPartition.DAILY
-            if operational_scope in _DAILY_OPERATIONAL_SCOPES
-            else DataPartition.MONTHLY
-        )
-        if partition is not expected:
-            raise ValueError(f'{operational_scope.value} requires {expected.value} partition')
-
-    supported = _SOURCE_PARTITIONS.get(requirement.source)
-    if supported is not None and partition not in supported:
-        raise ValueError(f'{requirement.source.value}: unsupported partition: {partition.value}')
-    if (
-        partition in _SOURCE_TEMPORAL_SELECTOR_REQUIRED.get(requirement.source, frozenset())
-        and time_window is None
-        and operational_scope is None
-    ):
-        raise ValueError(
-            f'{requirement.source.value}: {partition.value} partition requires a temporal selector'
-        )
-
-
-_SOURCE_PARTITIONS = {
-    DataSource.PI_INTERPOLATED: frozenset(
-        {DataPartition.LATEST, DataPartition.DAILY, DataPartition.MONTHLY}
-    ),
-    DataSource.PI_RECORDED: frozenset({DataPartition.DAILY, DataPartition.MONTHLY}),
-}
-
-_SOURCE_TEMPORAL_SELECTOR_REQUIRED = {
-    DataSource.PI_INTERPOLATED: frozenset({DataPartition.DAILY, DataPartition.MONTHLY}),
-    DataSource.PI_RECORDED: frozenset({DataPartition.DAILY, DataPartition.MONTHLY}),
-}
-
-
-_DAILY_OPERATIONAL_SCOPES = frozenset(
-    {
-        OperationalScope.CURRENT_TURN_MINE,
-        OperationalScope.PREVIOUS_TURN_MINE,
-        OperationalScope.CURRENT_TURN_PLANT,
-        OperationalScope.PREVIOUS_TURN_PLANT,
-        OperationalScope.CURRENT_OPERATIONAL_DAY_MINE,
-        OperationalScope.CURRENT_OPERATIONAL_DAY_PLANT,
-        OperationalScope.CURRENT_OPERATIONAL_WEEK_MINE,
-        OperationalScope.CURRENT_OPERATIONAL_WEEK_PLANT,
-    }
-)
 
 
 def _subtract_months(value: datetime, months: int) -> datetime:

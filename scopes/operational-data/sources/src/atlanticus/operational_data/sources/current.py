@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from atlanticus.datasets.layouts import SingleArtifactLayout
 from atlanticus.datasets.models import DatasetDefinition, DatasetKey, MaterializationDefinition
-from atlanticus.operational_data.core import DataPartition, DataSource
+from atlanticus.operational_data.core import DataSource, DataView
 from atlanticus.operational_data.sources.bindings import (
-    DataPartitionBinding,
     DataSourceBinding,
     DataSourceRegistry,
+    DataViewBinding,
     TimePartitionGranularity,
 )
 from atlanticus.operational_data.sources.pi import PiSourceProvider
@@ -107,13 +107,13 @@ def _pi_binding(
     *, source: DataSource, namespace: tuple[str, ...], name: str, include_latest: bool
 ) -> DataSourceBinding:
     materializations = []
-    partitions: dict[DataPartition, DataPartitionBinding] = {}
+    views: dict[DataView, DataViewBinding] = {}
     if include_latest:
         materializations.append(
             MaterializationDefinition(name='latest', layout=SingleArtifactLayout())
         )
-        partitions[DataPartition.LATEST] = DataPartitionBinding(
-            partition=DataPartition.LATEST,
+        views[DataView.LATEST] = DataViewBinding(
+            view=DataView.LATEST,
             materialization='latest',
             timestamp_column='timestamp_utc',
         )
@@ -131,14 +131,14 @@ def _pi_binding(
             ),
         )
     )
-    partitions[DataPartition.DAILY] = DataPartitionBinding(
-        partition=DataPartition.DAILY,
+    views[DataView.DAILY] = DataViewBinding(
+        view=DataView.DAILY,
         materialization='daily',
         time_partition_granularity=TimePartitionGranularity.DAY,
         timestamp_column='timestamp_utc',
     )
-    partitions[DataPartition.MONTHLY] = DataPartitionBinding(
-        partition=DataPartition.MONTHLY,
+    views[DataView.MONTHLY] = DataViewBinding(
+        view=DataView.MONTHLY,
         materialization='monthly',
         time_partition_granularity=TimePartitionGranularity.MONTH,
         timestamp_column='timestamp_utc',
@@ -149,7 +149,7 @@ def _pi_binding(
             key=DatasetKey(namespace=namespace, name=name),
             materializations=tuple(materializations),
         ),
-        partitions=partitions,
+        views=views,
     )
 
 
@@ -169,9 +169,9 @@ def _shift_binding(
     return DataSourceBinding(
         source=source,
         definition=definition,
-        partitions={
-            DataPartition.SHIFT: DataPartitionBinding(
-                partition=DataPartition.SHIFT,
+        views={
+            DataView.SHIFT: DataViewBinding(
+                view=DataView.SHIFT,
                 materialization='shift',
                 shift_column='shift_id',
             )
@@ -189,9 +189,9 @@ def _latest_binding(
     return DataSourceBinding(
         source=source,
         definition=definition,
-        partitions={
-            DataPartition.LATEST: DataPartitionBinding(
-                partition=DataPartition.LATEST,
+        views={
+            DataView.LATEST: DataViewBinding(
+                view=DataView.LATEST,
                 materialization='latest',
             )
         },
@@ -224,16 +224,14 @@ def _fabrica_binding(
     return DataSourceBinding(
         source=source,
         definition=definition,
-        partitions={
-            DataPartition.DAILY: DataPartitionBinding(
-                partition=DataPartition.DAILY,
+        views={
+            DataView.DAILY: DataViewBinding(
+                view=DataView.DAILY,
                 materialization='daily',
                 time_partition_granularity=daily_time_partition_granularity,
                 timestamp_column=daily_timestamp_column,
             ),
-            DataPartition.WEEKLY: DataPartitionBinding(
-                partition=DataPartition.WEEKLY, materialization='weekly'
-            ),
+            DataView.WEEKLY: DataViewBinding(view=DataView.WEEKLY, materialization='weekly'),
         },
     )
 
@@ -252,9 +250,9 @@ def _meteodata_data_binding() -> DataSourceBinding:
     return DataSourceBinding(
         source=DataSource.METEODATA_DATA,
         definition=definition,
-        partitions={
-            DataPartition.DAILY: DataPartitionBinding(
-                partition=DataPartition.DAILY,
+        views={
+            DataView.DAILY: DataViewBinding(
+                view=DataView.DAILY,
                 materialization='daily',
                 time_partition_granularity=TimePartitionGranularity.DAY,
                 timestamp_column='timestamp',
@@ -271,9 +269,9 @@ def _meteodata_projection_binding() -> DataSourceBinding:
     return DataSourceBinding(
         source=DataSource.METEODATA_PROJECTION,
         definition=definition,
-        partitions={
-            DataPartition.LATEST: DataPartitionBinding(
-                partition=DataPartition.LATEST,
+        views={
+            DataView.LATEST: DataViewBinding(
+                view=DataView.LATEST,
                 materialization='latest',
                 timestamp_column='timestamp',
             ),

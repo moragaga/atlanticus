@@ -5,14 +5,7 @@ from typing import Any
 
 import pytest
 
-from atlanticus.operational_data.core import (
-    DataPartition,
-    DataRuntimeContext,
-    DataSource,
-    DataSourceNotRequestedError,
-    DataSourceView,
-    RuntimeFrameContext,
-)
+from atlanticus.operational_data.core import DataInputContext, RuntimeFrameContext
 
 
 @dataclass
@@ -38,26 +31,6 @@ def test_runtime_frame_contract_exposes_helpers() -> None:
     assert frame.last_value_number('a') == 2.0
 
 
-def test_data_runtime_context_keys_frames_by_source_and_partition() -> None:
-    latest = FakeFrameContext(dataframe=[])
-    daily = FakeFrameContext(dataframe=[])
-    latest_view = DataSourceView(DataSource.PI_INTERPOLATED, DataPartition.LATEST)
-    daily_view = DataSourceView(DataSource.PI_INTERPOLATED, DataPartition.DAILY)
-    data_context = DataRuntimeContext({latest_view: latest, daily_view: daily})
-
-    assert data_context.sources == (DataSource.PI_INTERPOLATED,)
-    assert data_context.views == (latest_view, daily_view)
-    assert data_context.get(DataSource.PI_INTERPOLATED, DataPartition.LATEST) is latest
-    assert data_context.get_view(daily_view) is daily
-
-    with pytest.raises(DataSourceNotRequestedError, match='was not requested'):
-        data_context.get(DataSource.PI_INTERPOLATED, DataPartition.MONTHLY)
-
-    with pytest.raises(TypeError, match='source must be DataSource'):
-        data_context.get('pi.interpolated', DataPartition.LATEST)  # type: ignore[arg-type]
-
-
-def test_data_runtime_context_rejects_untyped_mapping_keys() -> None:
-    frame = FakeFrameContext(dataframe=[])
-    with pytest.raises(TypeError, match='DataSourceView'):
-        DataRuntimeContext({'pi.interpolated': frame})  # type: ignore[dict-item]
+def test_data_input_context_rejects_invalid_frames() -> None:
+    with pytest.raises(TypeError, match='invalid runtime frame'):
+        DataInputContext({'actual': object()})

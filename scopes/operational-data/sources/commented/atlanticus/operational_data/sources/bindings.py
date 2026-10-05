@@ -1,4 +1,3 @@
-# Espejo pedagógico del registro que conecta vistas lógicas con materializaciones físicas.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -8,12 +7,7 @@ from types import MappingProxyType
 
 from atlanticus.datasets.errors import DatasetTargetError
 from atlanticus.datasets.models import DatasetDefinition
-from atlanticus.operational_data.core import (
-    DataPartition,
-    DataSource,
-    DataSourceView,
-    DataView,
-)
+from atlanticus.operational_data.core import DataSource, DataView
 from atlanticus.operational_data.sources.errors import DataSourceBindingError
 
 
@@ -22,17 +16,18 @@ class TimePartitionGranularity(StrEnum):
     MONTH = 'month'
 
 
+# Une una vista lógica estable con su materialización y detalles físicos de lectura.
 @dataclass(frozen=True, slots=True)
-class DataPartitionBinding:
-    partition: DataPartition
+class DataViewBinding:
+    view: DataView
     materialization: str
     time_partition_granularity: TimePartitionGranularity | None = None
     timestamp_column: str | None = None
     shift_column: str | None = None
 
     def __post_init__(self) -> None:
-        if not isinstance(self.partition, DataPartition):
-            raise TypeError('partition must be DataPartition')
+        if not isinstance(self.view, DataView):
+            raise TypeError('view must be DataView')
         materialization = _required_text(self.materialization, 'materialization')
         timestamp = _optional_text(self.timestamp_column)
         shift_column = _optional_text(self.shift_column)
@@ -42,61 +37,63 @@ class DataPartitionBinding:
             raise TypeError('time_partition_granularity must be TimePartitionGranularity or None')
         if self.time_partition_granularity is not None and timestamp is None:
             raise DataSourceBindingError(
-                f'{self.partition.value}: partitioned time binding requires timestamp_column'
+                f'{self.view.value}: time-partitioned view requires timestamp_column'
             )
         if shift_column is not None and self.time_partition_granularity is not None:
             raise DataSourceBindingError(
-                f'{self.partition.value}: shift binding cannot use time partition granularity'
+                f'{self.view.value}: shift view cannot use time partition granularity'
             )
         object.__setattr__(self, 'materialization', materialization)
         object.__setattr__(self, 'timestamp_column', timestamp)
         object.__setattr__(self, 'shift_column', shift_column)
 
 
+# Agrupa todas las vistas soportadas por una fuente operacional.
 @dataclass(frozen=True, slots=True)
 class DataSourceBinding:
     source: DataSource
     definition: DatasetDefinition
-    partitions: Mapping[DataPartition, DataPartitionBinding]
+    views: Mapping[DataView, DataViewBinding]
 
     def __post_init__(self) -> None:
         if not isinstance(self.source, DataSource):
             raise TypeError('source must be DataSource')
         if not isinstance(self.definition, DatasetDefinition):
             raise TypeError(f'{self.source.value}: definition must be DatasetDefinition')
-        if not isinstance(self.partitions, Mapping) or not self.partitions:
-            raise DataSourceBindingError(f'{self.source.value}: binding requires partitions')
-        normalized: dict[DataPartition, DataPartitionBinding] = {}
-        for key, partition in self.partitions.items():
-            if not isinstance(key, DataPartition):
-                raise TypeError(f'{self.source.value}: partition keys must be DataPartition values')
-            if not isinstance(partition, DataPartitionBinding):
-                raise TypeError(f'{self.source.value}/{key.value}: invalid partition binding')
-            if partition.partition is not key:
+        if not isinstance(self.views, Mapping) or not self.views:
+            raise DataSourceBindingError(f'{self.source.value}: binding requires views')
+        normalized: dict[DataView, DataViewBinding] = {}
+        for key, view in self.views.items():
+            if not isinstance(key, DataView):
+                raise TypeError(f'{self.source.value}: view keys must be DataView values')
+            if not isinstance(view, DataViewBinding):
+                raise TypeError(f'{self.source.value}/{key.value}: invalid view binding')
+            if view.view is not key:
                 raise DataSourceBindingError(
-                    f'{self.source.value}/{key.value}: partition key and binding must match'
+                    f'{self.source.value}/{key.value}: view key and binding must match'
                 )
             try:
-                self.definition.get_materialization(partition.materialization)
+                self.definition.get_materialization(view.materialization)
             except DatasetTargetError as error:
                 raise DataSourceBindingError(
                     f'{self.source.value}/{key.value}: unknown materialization: '
-                    f'{partition.materialization}'
+                    f'{view.materialization}'
                 ) from error
-            normalized[key] = partition
-        object.__setattr__(self, 'partitions', MappingProxyType(normalized))
+            normalized[key] = view
+        object.__setattr__(self, 'views', MappingProxyType(normalized))
 
-    def get_partition(self, partition: DataPartition) -> DataPartitionBinding:
-        if not isinstance(partition, DataPartition):
-            raise TypeError('partition must be DataPartition')
+    def get_view(self, view: DataView) -> DataViewBinding:
+        if not isinstance(view, DataView):
+            raise TypeError('view must be DataView')
         try:
-            return self.partitions[partition]
+            return self.views[view]
         except KeyError as error:
             raise DataSourceBindingError(
-                f'{self.source.value}: source does not support partition: {partition.value}'
+                f'{self.source.value}: source does not support view: {view.value}'
             ) from error
 
 
+# Autoridad de bindings disponibles para el loader.
 @dataclass(frozen=True, slots=True)
 class DataSourceRegistry:
     bindings: Mapping[DataSource, DataSourceBinding]
@@ -131,25 +128,17 @@ class DataSourceRegistry:
                 f'{source.value}: source has no registered binding'
             ) from error
 
-    def get_view(self, view: DataSourceView) -> tuple[DataSourceBinding, DataPartitionBinding]:
-        if not isinstance(view, DataSourceView):
-            raise TypeError('view must be DataSourceView')
-        binding = self.get(view.source)
-        return binding, binding.get_partition(view.partition)
-
-    def get_input_view(
+    def get_view(
         self,
         source: DataSource,
         view: DataView,
-    ) -> tuple[DataSourceBinding, DataPartitionBinding]:
-        # DataView es el contrato nuevo.
-        # DataPartition sigue siendo la clave física CURRENT del registro.
+    ) -> tuple[DataSourceBinding, DataViewBinding]:
         if not isinstance(source, DataSource):
             raise TypeError('source must be DataSource')
         if not isinstance(view, DataView):
             raise TypeError('view must be DataView')
         binding = self.get(source)
-        return binding, binding.get_partition(DataPartition(view.value))
+        return binding, binding.get_view(view)
 
 
 def _optional_text(value: str | None) -> str | None:
