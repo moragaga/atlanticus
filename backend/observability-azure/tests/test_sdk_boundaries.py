@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from atlanticus.observability import ExecutionContext, SpanError
+import json
+import logging
+
+import pytest
+
+from atlanticus.observability import EventSeverity, ExecutionContext, SpanError
 from atlanticus.observability_azure import AzureMonitorTraceBridge, OpenTelemetryLogBackend
 
 
@@ -50,9 +55,17 @@ class _LoggerProvider:
         self.shutdown_count += 1
 
 
-class _LoggingHandler:
+class _LoggingHandler(logging.Handler):
+    instance = None
+
     def __init__(self, *, logger_provider) -> None:
+        super().__init__()
         self.logger_provider = logger_provider
+        self.messages = []
+        self.__class__.instance = self
+
+    def emit(self, record) -> None:
+        self.messages.append((record.levelno, record.getMessage()))
 
 
 class _Span:
@@ -113,10 +126,11 @@ def _reset_doubles() -> None:
     _Exporter.instances = []
     _Processor.instances = []
     _LoggerProvider.instance = None
+    _LoggingHandler.instance = None
     _TracerProvider.instance = None
 
 
-def test_log_backend_configures_only_bounded_log_export(monkeypatch) -> None:
+def test_log_backend_exports_compact_json_with_bounded_sdk_configuration(monkeypatch) -> None:
     _reset_doubles()
     monkeypatch.setattr(
         'azure.monitor.opentelemetry.exporter.AzureMonitorLogExporter',
@@ -129,6 +143,14 @@ def test_log_backend_configures_only_bounded_log_export(monkeypatch) -> None:
         'opentelemetry.sdk._logs.export.BatchLogRecordProcessor',
         _Processor,
     )
+    payload = {
+        'event': 'execution.completed',
+        'application': 'ada',
+        'environment': 'dev',
+        'service': 'dispatch-job',
+        'run_id': 'run-1',
+        'rows': 120,
+    }
 
     backend = OpenTelemetryLogBackend(
         connection_string='InstrumentationKey=fake',
@@ -136,6 +158,7 @@ def test_log_backend_configures_only_bounded_log_export(monkeypatch) -> None:
         service='dispatch-job',
         flush_timeout_seconds=3,
     )
+    backend.emit(payload, EventSeverity.ERROR)
 
     assert _Resource.values == {'service.namespace': 'ada', 'service.name': 'dispatch-job'}
     assert _Exporter.instances[0].kwargs == {
@@ -144,10 +167,17 @@ def test_log_backend_configures_only_bounded_log_export(monkeypatch) -> None:
     }
     assert _Processor.instances[0].kwargs == {'export_timeout_millis': 3000}
     assert _LoggerProvider.instance.processors == [_Processor.instances[0]]
+    level, message = _LoggingHandler.instance.messages[0]
+    assert level == logging.ERROR
+    assert json.loads(message) == payload
 
     backend.close()
+    backend.close()
+
     assert _LoggerProvider.instance.flushed == [3000]
     assert _LoggerProvider.instance.shutdown_count == 1
+    with pytest.raises(RuntimeError, match='closed'):
+        backend.emit({}, EventSeverity.INFO)
 
 
 def test_trace_backend_exports_only_selected_context(monkeypatch) -> None:
@@ -204,5 +234,6 @@ def test_trace_backend_exports_only_selected_context(monkeypatch) -> None:
 
     bridge.close()
     bridge.close()
+
     assert _TracerProvider.instance.flushed == [3000]
     assert _TracerProvider.instance.shutdown_count == 1

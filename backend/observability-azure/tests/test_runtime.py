@@ -6,7 +6,6 @@ from atlanticus.observability import (
     ObservabilitySettings,
 )
 from atlanticus.observability_azure import (
-    AzureObservabilityRuntime,
     build_azure_export_runtime,
     build_azure_observability_runtime,
 )
@@ -14,11 +13,11 @@ from atlanticus.observability_azure import (
 
 class _Backend:
     def __init__(self) -> None:
-        self.payloads: list[dict[str, object]] = []
+        self.records: list[tuple[dict[str, object], EventSeverity]] = []
         self.closed = 0
 
-    def emit(self, payload: dict[str, object], _severity: EventSeverity) -> None:
-        self.payloads.append(payload)
+    def emit(self, payload: dict[str, object], severity: EventSeverity) -> None:
+        self.records.append((payload, severity))
 
     def close(self) -> None:
         self.closed += 1
@@ -33,12 +32,12 @@ def _settings() -> ObservabilitySettings:
     )
 
 
-def test_export_runtime_without_connection_string_is_noop() -> None:
+def test_export_runtime_without_connection_string_is_noop_and_closes_idempotently() -> None:
     runtime = build_azure_export_runtime(
         observability_settings=_settings(),
         connection_string=None,
     )
-    assert isinstance(runtime, AzureObservabilityRuntime)
+
     assert runtime.emit(
         ObservabilityEvent(
             name='web.callback.failed',
@@ -49,10 +48,11 @@ def test_export_runtime_without_connection_string_is_noop() -> None:
     )
     runtime.close()
     runtime.close()
+
     assert runtime.closed
 
 
-def test_runtime_owns_single_backend_and_filters_info() -> None:
+def test_runtime_filters_info_exports_problem_severities_and_owns_backend() -> None:
     backend = _Backend()
     runtime = build_azure_observability_runtime(
         observability_settings=_settings(),
@@ -63,30 +63,41 @@ def test_runtime_owns_single_backend_and_filters_info() -> None:
         },
         backend_factory=lambda _azure, _obs: backend,
     )
+
     assert runtime.emit(
         ObservabilityEvent(
-            name='dependency.ok',
-            category=EventCategory.DEPENDENCY,
+            name='runtime.execution.summary',
+            category=EventCategory.LIFECYCLE,
             audience=EventAudience.OPERATIONS,
             severity=EventSeverity.INFO,
         )
     )
-    assert runtime.emit(
-        ObservabilityEvent(
-            name='dependency.failed',
-            category=EventCategory.DEPENDENCY,
-            audience=EventAudience.OPERATIONS,
-            severity=EventSeverity.ERROR,
+    for severity in (EventSeverity.WARNING, EventSeverity.ERROR, EventSeverity.CRITICAL):
+        assert runtime.emit(
+            ObservabilityEvent(
+                name='web.callback.failed',
+                category=EventCategory.DIAGNOSTIC,
+                audience=EventAudience.OPERATIONS,
+                severity=severity,
+                attributes={'target_alias': 'pi-primary'},
+            )
         )
-    )
-    assert len(backend.payloads) == 1
+
+    assert [severity for _, severity in backend.records] == [
+        EventSeverity.WARNING,
+        EventSeverity.ERROR,
+        EventSeverity.CRITICAL,
+    ]
+    assert all(payload['target_alias'] == 'pi-primary' for payload, _ in backend.records)
+
     runtime.close()
     runtime.close()
+
     assert backend.closed == 1
     assert not runtime.emit(
         ObservabilityEvent(
-            name='dependency.failed.again',
-            category=EventCategory.DEPENDENCY,
+            name='web.callback.failed.again',
+            category=EventCategory.DIAGNOSTIC,
             severity=EventSeverity.ERROR,
         )
     )
@@ -119,5 +130,5 @@ def test_file_logs_switch_does_not_disable_azure_export() -> None:
             severity=EventSeverity.ERROR,
         )
     )
-    assert len(backend.payloads) == 1
+    assert len(backend.records) == 1
     runtime.close()

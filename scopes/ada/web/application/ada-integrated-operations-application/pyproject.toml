@@ -25,6 +25,7 @@ dev = [
 
 [project.scripts]
 ada-integrated-operations-application = "ada.web.application.integrated_operations.__main__:main"
+ada-integrated-operations-resources = "ada.web.application.generic.manager_deployment:manager_resources_main"
 
 [tool.uv.sources]
 ada-generic-application = { path = "../ada-generic-application", editable = true }
