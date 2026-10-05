@@ -41,8 +41,12 @@ class FabricaDatasetDefinition:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, 'name', _route_segment(self.name, 'name'))
-        object.__setattr__(self, 'source_value', _required_text(self.source_value, 'source_value').upper())
-        object.__setattr__(self, 'route_segment', _route_segment(self.route_segment, 'route_segment'))
+        object.__setattr__(
+            self, 'source_value', _required_text(self.source_value, 'source_value').upper()
+        )
+        object.__setattr__(
+            self, 'route_segment', _route_segment(self.route_segment, 'route_segment')
+        )
         metrics = tuple(self.metrics)
         if not all(isinstance(metric, FabricaMetricDefinition) for metric in metrics):
             raise FabricaContractError('metrics must contain FabricaMetricDefinition values')
@@ -59,9 +63,7 @@ class FabricaDatasetDefinition:
             ) from error
         # El incremento actual admite únicamente el histórico no particionado o mensual.
         if partition_dimensions not in ((), ('year', 'month')):
-            raise FabricaContractError(
-                "partition_dimensions must be empty or ('year', 'month')"
-            )
+            raise FabricaContractError("partition_dimensions must be empty or ('year', 'month')")
         object.__setattr__(self, 'partition_dimensions', partition_dimensions)
 
 
@@ -79,7 +81,9 @@ def validate_dataset_catalog(*, datasets: tuple[FabricaDatasetDefinition, ...]) 
         for metric in dataset.metrics:
             existing = definitions.setdefault(metric.id_kpi, metric)
             if existing != metric:
-                raise FabricaContractError('the same metric id must reuse one definition across datasets')
+                raise FabricaContractError(
+                    'the same metric id must reuse one definition across datasets'
+                )
 
 
 # Verifica unicidad de un atributo en una colección de contratos.
@@ -100,5 +104,7 @@ def _required_text(value: str, field: str) -> str:
 def _route_segment(value: str, field: str) -> str:
     normalized = _required_text(value, field).lower()
     if not normalized.replace('_', '').replace('-', '').isalnum():
-        raise FabricaContractError(f'{field} must contain only letters, numbers, hyphens or underscores')
+        raise FabricaContractError(
+            f'{field} must contain only letters, numbers, hyphens or underscores'
+        )
     return normalized

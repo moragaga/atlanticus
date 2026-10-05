@@ -58,18 +58,22 @@ class FabricaStreamDefinition:
 
     def source_day_prefix(self, value: datetime) -> str:
         normalized = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
-        local_date: date = normalized.astimezone(ZoneInfo(self.source_partition_timezone_name)).date()
+        local_date: date = normalized.astimezone(
+            ZoneInfo(self.source_partition_timezone_name)
+        ).date()
         prefix = self.source_prefix.strip().strip('/')
         return f'{prefix}/year={local_date:%Y}/month={local_date:%m}/day={local_date:%d}/'
 
 
 # Convierte la fecha codificada en el nombre usando la zona de archivo declarada.
-def parse_source_file_timestamp(*, definition: FabricaStreamDefinition, blob_name: str) -> datetime | None:
+def parse_source_file_timestamp(
+    *, definition: FabricaStreamDefinition, blob_name: str
+) -> datetime | None:
     match = definition.source_filename_pattern.search(blob_name)
     if match is None:
         return None
     try:
         parsed = datetime.strptime(match.group('file_timestamp'), '%Y%m%d%H%M%S')
-    except (IndexError, ValueError):
+    except IndexError, ValueError:
         return None
     return parsed.replace(tzinfo=ZoneInfo(definition.source_file_timezone_name)).astimezone(UTC)

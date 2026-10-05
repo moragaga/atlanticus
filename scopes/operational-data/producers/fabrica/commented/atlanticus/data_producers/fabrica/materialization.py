@@ -46,7 +46,9 @@ class FabricaMaterializationResult:
 
     @property
     def partitions_changed(self) -> int:
-        return sum(item.publication.status is PublicationStatus.COMMITTED for item in self.publications)
+        return sum(
+            item.publication.status is PublicationStatus.COMMITTED for item in self.publications
+        )
 
     @property
     def new_data(self) -> bool:
@@ -56,15 +58,20 @@ class FabricaMaterializationResult:
     def publication_signatures(self) -> dict[str, str]:
         return {
             item.partition_key: item.publication.content_signature
-            for item in self.publications if item.publication.content_signature
+            for item in self.publications
+            if item.publication.content_signature
         }
 
 
 # Materializa los datasets declarados sin conocer los procesos que los ejecutan.
 class FabricaMaterializer:
     def __init__(
-        self, *, source: FabricaStorageSource, runtime: DatasetRuntime,
-        definition: FabricaStreamDefinition, dataset_namespace: tuple[str, ...] = ('fabrica',),
+        self,
+        *,
+        source: FabricaStorageSource,
+        runtime: DatasetRuntime,
+        definition: FabricaStreamDefinition,
+        dataset_namespace: tuple[str, ...] = ('fabrica',),
     ) -> None:
         if not isinstance(source, FabricaStorageSource):
             raise TypeError('source must be a FabricaStorageSource')
@@ -88,7 +95,11 @@ class FabricaMaterializer:
                     # Cambiar el particionado cambia el contrato físico y por eso invalida la firma.
                     'partition_dimensions': dataset.partition_dimensions,
                     'metrics': [
-                        {'id_kpi': metric.id_kpi, 'metric_key': metric.metric_key, 'value_kind': metric.value_kind.value}
+                        {
+                            'id_kpi': metric.id_kpi,
+                            'metric_key': metric.metric_key,
+                            'value_kind': metric.value_kind.value,
+                        }
                         for metric in dataset.metrics
                     ],
                 }

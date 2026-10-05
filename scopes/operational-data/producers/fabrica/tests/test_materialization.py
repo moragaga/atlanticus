@@ -22,14 +22,16 @@ class _Source(FabricaStorageSource):
     def __init__(self, definition, tmp_path: Path):
         self.definition = definition
         self._tmp_path = tmp_path
-        self.table = pa.Table.from_pydict({
-            'timestamp': ['2026-08-18T10:00:00Z'] * 3,
-            'id_kpi': ['A', 'A', 'B'],
-            'valor': ['10', '11', '999'],
-            'nivel': ['DAY', '7LD', '7LD'],
-            'timestamp_ejecucion': ['2026-08-18T10:01:00Z'] * 3,
-            'particion': ['1'] * 3,
-        })
+        self.table = pa.Table.from_pydict(
+            {
+                'timestamp': ['2026-08-18T10:00:00Z'] * 3,
+                'id_kpi': ['A', 'A', 'B'],
+                'valor': ['10', '11', '999'],
+                'nivel': ['DAY', '7LD', '7LD'],
+                'timestamp_ejecucion': ['2026-08-18T10:01:00Z'] * 3,
+                'particion': ['1'] * 3,
+            }
+        )
 
     def download(self, *, blob_name):
         path = self._tmp_path / 'download.parquet'
@@ -43,7 +45,8 @@ class _Source(FabricaStorageSource):
 def test_materializer_publishes_monthly_daily_and_unpartitioned_weekly(tmp_path) -> None:
     metric = FabricaMetricDefinition(id_kpi='A', metric_key='a', value_kind=FabricaValueKind.FLOAT)
     definition = FabricaStreamDefinition(
-        stream_key='kpis', source_prefix='kpi',
+        stream_key='kpis',
+        source_prefix='kpi',
         source_filename_pattern=re.compile(r'kpi_(?P<file_timestamp>\d{14})\.parquet$'),
         output_route_segment='kpis',
         datasets=(
@@ -54,15 +57,20 @@ def test_materializer_publishes_monthly_daily_and_unpartitioned_weekly(tmp_path)
                 metrics=(metric,),
                 partition_dimensions=('year', 'month'),
             ),
-            FabricaDatasetDefinition(name='weekly', source_value='7LD', route_segment='weekly', metrics=(metric,)),
+            FabricaDatasetDefinition(
+                name='weekly', source_value='7LD', route_segment='weekly', metrics=(metric,)
+            ),
         ),
     )
     source = _Source(definition, tmp_path)
     runtime = DatasetRuntime(store=ParquetDatasetStore(root=tmp_path / 'datasets'))
     materializer = FabricaMaterializer(source=source, runtime=runtime, definition=definition)
     blob = FabricaSourceBlob(
-        name='kpi_20260818100000.parquet', source_file_timestamp_utc=datetime(2026, 8, 18, 10, tzinfo=UTC),
-        size=1, etag='x', last_modified_utc=None,
+        name='kpi_20260818100000.parquet',
+        source_file_timestamp_utc=datetime(2026, 8, 18, 10, tzinfo=UTC),
+        size=1,
+        etag='x',
+        last_modified_utc=None,
     )
     result = materializer.materialize(source_blob=blob)
     assert result.source_row_count == 2
@@ -103,20 +111,22 @@ def test_monthly_daily_snapshot_is_partial_upsert(tmp_path) -> None:
     runtime = DatasetRuntime(store=ParquetDatasetStore(root=tmp_path / 'datasets'))
     materializer = FabricaMaterializer(source=source, runtime=runtime, definition=definition)
 
-    source.table = pa.Table.from_pydict({
-        'timestamp': [
-            '2026-08-31T10:00:00Z',
-            '2026-09-01T10:00:00Z',
-            '2026-09-01T10:00:00Z',
-            '2026-09-02T10:00:00Z',
-            '2026-09-02T10:00:00Z',
-        ],
-        'id_kpi': ['A', 'A', 'B', 'A', 'B'],
-        'valor': ['8', '10', '20', '11', '21'],
-        'nivel': ['DAY'] * 5,
-        'timestamp_ejecucion': ['2026-09-02T11:00:00Z'] * 5,
-        'particion': ['1'] * 5,
-    })
+    source.table = pa.Table.from_pydict(
+        {
+            'timestamp': [
+                '2026-08-31T10:00:00Z',
+                '2026-09-01T10:00:00Z',
+                '2026-09-01T10:00:00Z',
+                '2026-09-02T10:00:00Z',
+                '2026-09-02T10:00:00Z',
+            ],
+            'id_kpi': ['A', 'A', 'B', 'A', 'B'],
+            'valor': ['8', '10', '20', '11', '21'],
+            'nivel': ['DAY'] * 5,
+            'timestamp_ejecucion': ['2026-09-02T11:00:00Z'] * 5,
+            'particion': ['1'] * 5,
+        }
+    )
     first = FabricaSourceBlob(
         name='kpi_20260902110000.parquet',
         source_file_timestamp_utc=datetime(2026, 9, 2, 11, tzinfo=UTC),
@@ -130,18 +140,20 @@ def test_monthly_daily_snapshot_is_partial_upsert(tmp_path) -> None:
         'daily/year=2026/month=09',
     )
 
-    source.table = pa.Table.from_pydict({
-        'timestamp': [
-            '2026-09-01T10:00:00Z',
-            '2026-09-01T10:00:00Z',
-            '2026-09-03T10:00:00Z',
-        ],
-        'id_kpi': ['A', 'B', 'A'],
-        'valor': ['12', None, '13'],
-        'nivel': ['DAY'] * 3,
-        'timestamp_ejecucion': ['2026-09-03T11:00:00Z'] * 3,
-        'particion': ['1'] * 3,
-    })
+    source.table = pa.Table.from_pydict(
+        {
+            'timestamp': [
+                '2026-09-01T10:00:00Z',
+                '2026-09-01T10:00:00Z',
+                '2026-09-03T10:00:00Z',
+            ],
+            'id_kpi': ['A', 'B', 'A'],
+            'valor': ['12', None, '13'],
+            'nivel': ['DAY'] * 3,
+            'timestamp_ejecucion': ['2026-09-03T11:00:00Z'] * 3,
+            'particion': ['1'] * 3,
+        }
+    )
     second = FabricaSourceBlob(
         name='kpi_20260903110000.parquet',
         source_file_timestamp_utc=datetime(2026, 9, 3, 11, tzinfo=UTC),

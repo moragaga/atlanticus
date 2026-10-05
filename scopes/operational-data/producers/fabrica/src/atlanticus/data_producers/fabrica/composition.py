@@ -50,7 +50,9 @@ def build_fabrica_data_producer(
     if not isinstance(runtime_configuration, RuntimeConfiguration):
         raise TypeError('runtime_configuration must be a RuntimeConfiguration')
     definitions = tuple(definitions)
-    if not definitions or not all(isinstance(item, FabricaStreamDefinition) for item in definitions):
+    if not definitions or not all(
+        isinstance(item, FabricaStreamDefinition) for item in definitions
+    ):
         raise TypeError('definitions must contain FabricaStreamDefinition values')
     keys = [definition.stream_key for definition in definitions]
     if len(set(keys)) != len(keys):
@@ -92,5 +94,7 @@ def build_fabrica_data_producer(
         storages=MappingProxyType(storages),
         materializers=materializers,
         producer_state=producer_state,
-        job=FabricaJob(materializers=materializers, producer_state=producer_state, idle_seconds=idle_seconds),
+        job=FabricaJob(
+            materializers=materializers, producer_state=producer_state, idle_seconds=idle_seconds
+        ),
     )

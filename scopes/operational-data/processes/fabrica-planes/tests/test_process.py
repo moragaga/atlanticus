@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from atlanticus.configuration import ConfigurationSource, ResolvedConfiguration
 from atlanticus.data_producers.fabrica import FabricaValueKind
 from atlanticus.kernel import Environment

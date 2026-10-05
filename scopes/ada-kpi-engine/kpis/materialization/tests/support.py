@@ -29,6 +29,6 @@ def projection(*, revision: str = 'registry-r1') -> dict[str, object]:
                     'series_hours': 8,
                 }
             ],
-            "tool_key": "tool_operaciones_integradas_af1b7d9983bd"
+            'tool_key': 'tool_operaciones_integradas_af1b7d9983bd',
         },
     }

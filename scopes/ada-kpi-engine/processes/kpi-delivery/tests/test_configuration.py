@@ -44,7 +44,7 @@ def _projection(revision='registry-r1', *, tool_key='tool_a'):
                     'series_hours': None,
                 }
             ],
-            'tool_key': tool_key
+            'tool_key': tool_key,
         },
     }
 

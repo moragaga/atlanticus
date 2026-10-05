@@ -16,14 +16,23 @@ from atlanticus.data_producers.fabrica import (
 
 def test_latest_selects_highest_timestamp_without_confusing_storage_containers(monkeypatch) -> None:
     definition = FabricaStreamDefinition(
-        stream_key='kpis', source_prefix='MLP/kpi',
+        stream_key='kpis',
+        source_prefix='MLP/kpi',
         source_filename_pattern=re.compile(r'kpi_(?P<file_timestamp>\d{14})\.parquet$'),
         output_route_segment='kpis',
-        datasets=(FabricaDatasetDefinition(name='daily', source_value='DAY', route_segment='daily', metrics=()),),
+        datasets=(
+            FabricaDatasetDefinition(
+                name='daily', source_value='DAY', route_segment='daily', metrics=()
+            ),
+        ),
     )
-    client = StorageClient(settings=StorageSettings(
-        credential=StorageSasCredential(account_url='https://example.blob.core.windows.net', sas_token='sv=test'),
-    ))
+    client = StorageClient(
+        settings=StorageSettings(
+            credential=StorageSasCredential(
+                account_url='https://example.blob.core.windows.net', sas_token='sv=test'
+            ),
+        )
+    )
     calls = []
 
     def list_blobs(*, container_name: str, prefix: str):

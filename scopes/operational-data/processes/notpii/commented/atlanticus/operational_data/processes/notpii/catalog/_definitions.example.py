@@ -109,4 +109,3 @@ DEFINITIONS: tuple[PiTagDefinition, ...] = (
         materializations=(PiMaterialization.DAILY, PiMaterialization.MONTHLY),
     ),
 )
-

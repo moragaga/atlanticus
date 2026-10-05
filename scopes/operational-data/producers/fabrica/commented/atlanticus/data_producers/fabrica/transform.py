@@ -44,7 +44,9 @@ class FabricaTransformResult:
 
 
 # Filtra por la pareja id_kpi y nivel antes de pivotear cada dataset.
-def build_partition_frames(*, table: pa.Table, definition: FabricaStreamDefinition) -> FabricaTransformResult:
+def build_partition_frames(
+    *, table: pa.Table, definition: FabricaStreamDefinition
+) -> FabricaTransformResult:
     dataframe = table.to_pandas()
     dataframe[_SOURCE_ID] = dataframe[_SOURCE_ID].astype('string').str.strip().str.upper()
     dataframe[_SOURCE_LEVEL] = dataframe[_SOURCE_LEVEL].astype('string').str.strip().str.upper()
@@ -56,16 +58,16 @@ def build_partition_frames(*, table: pa.Table, definition: FabricaStreamDefiniti
         known = {dataset.source_value for dataset in outputs}
         unknown = tuple(sorted(set(dataframe[_SOURCE_LEVEL].dropna()) - known))
     allowed_pairs = {
-        (metric.id_kpi, dataset.source_value)
-        for dataset in outputs
-        for metric in dataset.metrics
+        (metric.id_kpi, dataset.source_value) for dataset in outputs for metric in dataset.metrics
     }
     pairs = pd.MultiIndex.from_frame(dataframe[[_SOURCE_ID, _SOURCE_LEVEL]])
     dataframe = dataframe.loc[pairs.isin(allowed_pairs)].copy()
     source_row_count = len(dataframe)
     dataframe[_SOURCE_TIMESTAMP] = _to_datetime_utc(dataframe[_SOURCE_TIMESTAMP])
     dataframe[_SOURCE_EXECUTION] = _to_datetime_utc(dataframe[_SOURCE_EXECUTION])
-    dataframe[_SOURCE_PARTITION] = pd.to_numeric(dataframe[_SOURCE_PARTITION].map(_unwrap), errors='coerce')
+    dataframe[_SOURCE_PARTITION] = pd.to_numeric(
+        dataframe[_SOURCE_PARTITION].map(_unwrap), errors='coerce'
+    )
     dataframe['_source_order'] = range(len(dataframe))
     frames: dict[str, pd.DataFrame] = {}
     present: set[str] = set()
@@ -77,13 +79,28 @@ def build_partition_frames(*, table: pa.Table, definition: FabricaStreamDefiniti
         frames[dataset.name] = frame
         present.update(found)
         request_count += len(found)
-        missing.append((dataset.name, tuple(metric.metric_key for metric in dataset.metrics if metric.metric_key not in found)))
+        missing.append(
+            (
+                dataset.name,
+                tuple(
+                    metric.metric_key
+                    for metric in dataset.metrics
+                    if metric.metric_key not in found
+                ),
+            )
+        )
     return FabricaTransformResult(
         frames=frames,
         unknown_source_values=unknown,
         source_row_count=source_row_count,
-        present_metric_keys=tuple(metric.metric_key for metric in definition.metrics if metric.metric_key in present),
-        missing_metric_keys=tuple(metric.metric_key for metric in definition.metrics if any(metric.metric_key in keys for _, keys in missing)),
+        present_metric_keys=tuple(
+            metric.metric_key for metric in definition.metrics if metric.metric_key in present
+        ),
+        missing_metric_keys=tuple(
+            metric.metric_key
+            for metric in definition.metrics
+            if any(metric.metric_key in keys for _, keys in missing)
+        ),
         missing_metric_keys_by_output=tuple(missing),
         metric_requests_expected=sum(len(dataset.metrics) for dataset in outputs),
         metric_requests_present=request_count,
@@ -91,7 +108,9 @@ def build_partition_frames(*, table: pa.Table, definition: FabricaStreamDefiniti
 
 
 # Mantiene la fusión histórica vigente, que será reemplazada en el incremento temporal.
-def merge_partition_frame(*, current: pd.DataFrame | None, incoming: pd.DataFrame, metrics: Iterable[object]) -> pd.DataFrame:
+def merge_partition_frame(
+    *, current: pd.DataFrame | None, incoming: pd.DataFrame, metrics: Iterable[object]
+) -> pd.DataFrame:
     metric_values = tuple(metrics)
     expected = ('timestamp', *(metric.metric_key for metric in metric_values))
     new = _normalize_wide(dataframe=incoming, metrics=metric_values)
@@ -105,11 +124,15 @@ def merge_partition_frame(*, current: pd.DataFrame | None, incoming: pd.DataFram
         old_values = old[metric.metric_key].reindex(index)
         new_values = new[metric.metric_key].reindex(index)
         output[metric.metric_key] = new_values.combine_first(old_values)
-    return _normalize_wide(dataframe=output.reset_index(names='timestamp'), metrics=metric_values).loc[:, list(expected)]
+    return _normalize_wide(
+        dataframe=output.reset_index(names='timestamp'), metrics=metric_values
+    ).loc[:, list(expected)]
 
 
 # Responsabilidad de _wide_partition.
-def _wide_partition(*, dataframe: pd.DataFrame, metrics: tuple[object, ...]) -> tuple[pd.DataFrame, set[str]]:
+def _wide_partition(
+    *, dataframe: pd.DataFrame, metrics: tuple[object, ...]
+) -> tuple[pd.DataFrame, set[str]]:
     series: list[pd.Series] = []
     present: set[str] = set()
     for metric in metrics:
@@ -122,14 +145,20 @@ def _wide_partition(*, dataframe: pd.DataFrame, metrics: tuple[object, ...]) -> 
             continue
         values = values.sort_values(
             by=[_SOURCE_TIMESTAMP, _SOURCE_PARTITION, _SOURCE_EXECUTION, '_source_order'],
-            na_position='first', kind='mergesort',
+            na_position='first',
+            kind='mergesort',
         ).drop_duplicates(subset=[_SOURCE_TIMESTAMP], keep='last')
         result = values.set_index(_SOURCE_TIMESTAMP)['_parsed_value']
         result.name = metric.metric_key
         series.append(result)
         present.add(metric.metric_key)
     if series:
-        output = pd.concat(series, axis=1, join='outer').sort_index().reset_index().rename(columns={_SOURCE_TIMESTAMP: 'timestamp'})
+        output = (
+            pd.concat(series, axis=1, join='outer')
+            .sort_index()
+            .reset_index()
+            .rename(columns={_SOURCE_TIMESTAMP: 'timestamp'})
+        )
     else:
         output = pd.DataFrame({'timestamp': pd.Series(dtype='datetime64[ns, UTC]')})
     for metric in metrics:
@@ -180,7 +209,9 @@ def _boolean_value(value: object) -> object:
         return value
     if isinstance(value, int | float) and not isinstance(value, bool):
         return {0: False, 1: True}.get(value, pd.NA)
-    return {'true': True, 'false': False, '1': True, '0': False}.get(str(value).strip().lower(), pd.NA)
+    return {'true': True, 'false': False, '1': True, '0': False}.get(
+        str(value).strip().lower(), pd.NA
+    )
 
 
 # Responsabilidad de _empty_series.

@@ -22,7 +22,9 @@ class _Context:
 
 
 def test_empty_catalog_is_noop_without_storage(tmp_path) -> None:
-    state = FabricaProducerState(store=AtomicStateStore(volume_path=tmp_path, application='fabrica-planes'))
+    state = FabricaProducerState(
+        store=AtomicStateStore(volume_path=tmp_path, application='fabrica-planes')
+    )
     context = _Context()
     job = FabricaJob(materializers=(), producer_state=state, idle_seconds=5)
     job.run_iteration(context)
