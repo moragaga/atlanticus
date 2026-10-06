@@ -151,7 +151,7 @@ def test_materializer_can_advance_without_historical_rows() -> None:
     assert runtime.calls == []
 
 
-def test_materializer_distinguishes_degraded_json_from_explicit_empty_json() -> None:
+def test_materializer_distinguishes_degraded_json_from_explicit_empty_payload() -> None:
     runtime = DatasetMerger()
     materializer = KpiHistorianMaterializer(runtime=runtime)
     current = watermark()
