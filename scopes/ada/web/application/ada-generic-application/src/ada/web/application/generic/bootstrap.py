@@ -159,6 +159,7 @@ def create_operational_application_runtime(
         resolution,
         application_descriptor=application_descriptor,
         operational_render_binding=operational_binding,
+        content_state_presentation_mode=resolved_settings.content_state_presentation_mode,
     )
     if application_extension is not None:
         definition = extend_ada_application_definition(definition, application_extension)

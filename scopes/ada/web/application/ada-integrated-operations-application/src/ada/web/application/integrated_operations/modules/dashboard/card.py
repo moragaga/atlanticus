@@ -13,6 +13,7 @@ from ada.web.application.integrated_operations.modules.dashboard.ids import (
     dashboard_component_id,
 )
 from ada.web.ui.card_display import build_card_display
+from ada.web.ui.content_state import build_content_state_wrapper
 
 
 def build_component_panel(binding: DashboardComponentBinding):
@@ -67,13 +68,19 @@ def _build_card_display(
     tool_subcomponent_key: str,
     linked_tool_component_keys: tuple[str, ...] = (),
 ):
-    return build_card_display(
+    card = build_card_display(
         component_key=tool_component_key,
         subcomponent_key=tool_subcomponent_key,
         linked_component_keys=linked_tool_component_keys,
         wrapper_id=dashboard_card_id(key),
         content=html.Div(id=dashboard_card_content_id(key)),
         footer=label,
+    )
+    return build_content_state_wrapper(
+        component_key=None,
+        children=card,
+        operational_runtime=True,
+        class_name='ada-io-card-state',
     )
 
 

@@ -1,3 +1,4 @@
+# Espejo comentado: Card Display mantiene identidad Tool y Content State la envuelve sin duplicarla.
 from __future__ import annotations
 
 from dash import html
@@ -13,9 +14,9 @@ from ada.web.application.integrated_operations.modules.dashboard.ids import (
     dashboard_component_id,
 )
 from ada.web.ui.card_display import build_card_display
+from ada.web.ui.content_state import build_content_state_wrapper
 
 
-# El panel conserva únicamente composición y título; la apariencia de card pertenece a Card Display.
 def build_component_panel(binding: DashboardComponentBinding):
     return html.Section(
         [
@@ -37,7 +38,6 @@ def build_component_panel(binding: DashboardComponentBinding):
     )
 
 
-# Esta función sólo traduce el binding local al contrato reusable; no implementa otra card.
 def build_dashboard_card(
     binding: DashboardCardBinding,
     *,
@@ -51,7 +51,6 @@ def build_dashboard_card(
     )
 
 
-# La card compartida usa la misma primitive y agrega únicamente los vínculos declarados por Tool.
 def build_shared_dashboard_card(binding: DashboardSharedCardBinding):
     return _build_card_display(
         key=binding.key,
@@ -62,7 +61,6 @@ def build_shared_dashboard_card(binding: DashboardSharedCardBinding):
     )
 
 
-# Un único helper concentra el mapeo desde identidad Tool hacia ada-web-ui-card-display.
 def _build_card_display(
     *,
     key: str,
@@ -71,19 +69,25 @@ def _build_card_display(
     tool_subcomponent_key: str,
     linked_tool_component_keys: tuple[str, ...] = (),
 ):
-    return build_card_display(
+    # La primitive visual sigue siendo única; el wrapper operacional sólo aporta degradación transversal.
+    card = build_card_display(
         component_key=tool_component_key,
         subcomponent_key=tool_subcomponent_key,
         linked_component_keys=linked_tool_component_keys,
         wrapper_id=dashboard_card_id(key),
-        # El id interno sigue siendo el target estable donde luego se montará contenido KPI.
         content=html.Div(id=dashboard_card_content_id(key)),
         footer=label,
+    )
+    # No se codifican PI/Dispatch aquí: el runtime agrega las fuentes CONTROL publicadas por Time Status.
+    return build_content_state_wrapper(
+        component_key=None,
+        children=card,
+        operational_runtime=True,
+        class_name='ada-io-card-state',
     )
 
 
 def _component_attributes(binding: DashboardComponentBinding) -> dict[str, str]:
-    # El panel expone scope e identidad de componente para consumidores transversales.
     return {
         'data-ada-io-component-key': binding.key,
         'data-ada-operational-scope': binding.scope.value,

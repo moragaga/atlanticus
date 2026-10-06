@@ -207,6 +207,7 @@ dependencies = [
     { name = "ada-generic-application" },
     { name = "ada-web-operational-render-binding" },
     { name = "ada-web-ui-card-display" },
+    { name = "ada-web-ui-content-state" },
     { name = "atlanticus-web" },
     { name = "dash" },
 ]
@@ -222,6 +223,7 @@ requires-dist = [
     { name = "ada-generic-application", editable = "../ada-generic-application" },
     { name = "ada-web-operational-render-binding", editable = "../../operational-render-binding" },
     { name = "ada-web-ui-card-display", editable = "../../ui/card-display" },
+    { name = "ada-web-ui-content-state", editable = "../../ui/content-state" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "dash", specifier = "==4.4.1" },
 ]

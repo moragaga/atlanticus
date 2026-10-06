@@ -1,4 +1,4 @@
-# Espejo comentado: la composición selecciona capabilities, layout y factory visual concreto.
+# Espejo comentado: Time Status activa también Content State porque publica freshness operacional.
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -42,7 +42,6 @@ class AdaApplicationComposition:
     modules: tuple[WebModule, ...]
     layout: AdaApplicationLayoutFactory
     page_packages: tuple[str, ...] = _DEFAULT_PAGE_PACKAGES
-    # Cada aplicación puede declarar su renderer de body sin imponerlo al runtime genérico.
     operational_body_factory: AdaOperationalBodyFactory | None = None
 
 
@@ -119,7 +118,8 @@ def create_local_operational_composition(
     return AdaApplicationComposition(
         modules=(
             *create_ada_shared_ui_modules(
-                include_content_state=include_content_state,
+                # Si Time Status existe, Content State debe poder escuchar sus eventos aunque no haya Global Indicators.
+                include_content_state=include_content_state or include_time_status,
                 include_time_status=include_time_status,
             ),
             *create_ada_alarm_surface_modules(),
@@ -132,6 +132,3 @@ def create_local_operational_composition(
         layout=create_ada_operational_layout(navigation_enabled=True),
         operational_body_factory=operational_body_factory,
     )
-
-
-

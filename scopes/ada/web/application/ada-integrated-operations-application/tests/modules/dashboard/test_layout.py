@@ -121,10 +121,17 @@ def test_dashboard_layout_exposes_operational_scopes_and_card_display_inventory(
         if _props(node).get('data-ada-io-presentation-target')
     }
     cards = [node for node in nodes if _has_class(node, 'ada-card-display')]
+    operational_wrappers = [
+        node for node in nodes if _props(node).get('data-ada-content-state-operational') == 'true'
+    ]
 
     assert scopes == {'mine', 'plant'}
     assert targets == {'overview', 'mine', 'plant'}
     assert len(cards) == 22
+    assert len(operational_wrappers) == 22
+    assert all(
+        _props(node)['data-ada-content-state-runtime'] == 'true' for node in operational_wrappers
+    )
 
 
 def test_component_binding_projects_tool_identity_through_card_display() -> None:
@@ -145,11 +152,15 @@ def test_component_binding_projects_tool_identity_through_card_display() -> None
     panel = build_component_panel(binding)
     nodes = tuple(_walk(panel))
     card = next(node for node in nodes if _has_class(node, 'ada-card-display'))
+    wrapper = next(
+        node for node in nodes if _props(node).get('data-ada-content-state-operational') == 'true'
+    )
 
     assert _props(panel)['data-ada-component-key'] == 'tool_component'
     assert _props(card)['data-ada-component-key'] == 'tool_component'
     assert _props(card)['data-ada-subcomponent-key'] == 'tool_subcomponent'
     assert _props(card)['className'] == 'ada-card-display'
+    assert 'data-ada-component-key' not in _props(wrapper)
 
 
 def test_shared_card_projects_owner_and_linked_tool_identity_through_card_display() -> None:
@@ -162,9 +173,11 @@ def test_shared_card_projects_owner_and_linked_tool_identity_through_card_displa
         linked_tool_component_keys=('linked_component',),
     )
 
-    card = build_shared_dashboard_card(binding)
+    wrapper = build_shared_dashboard_card(binding)
+    card = next(node for node in _walk(wrapper) if _has_class(node, 'ada-card-display'))
     props = _props(card)
 
+    assert _props(wrapper)['data-ada-content-state-operational'] == 'true'
     assert props['className'] == 'ada-card-display'
     assert props['data-ada-component-key'] == 'owner_component'
     assert props['data-ada-subcomponent-key'] == 'shared_subcomponent'

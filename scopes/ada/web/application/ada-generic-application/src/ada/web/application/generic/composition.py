@@ -117,7 +117,7 @@ def create_local_operational_composition(
     return AdaApplicationComposition(
         modules=(
             *create_ada_shared_ui_modules(
-                include_content_state=include_content_state,
+                include_content_state=include_content_state or include_time_status,
                 include_time_status=include_time_status,
             ),
             *create_ada_alarm_surface_modules(),

@@ -1,6 +1,5 @@
+# Espejo comentado: bootstrap resuelve settings una vez y compone el runtime operativo.
 from __future__ import annotations
-
-# Login/session consumen users-runtime como única autoridad y no vuelven a consultar Profiles.
 
 import logging
 from collections.abc import Callable
@@ -16,16 +15,21 @@ from ada.web.application.configuration_manager.wiring import (
     NAVIGATION_SOURCE_KEY,
     ConfigurationManagerStores,
 )
-from ada.web.application.generic.composition import (
-    AdaApplicationComposition,
-    create_operational_navigation_modules,
+from ada.web.application.generic.composition import create_operational_navigation_modules
+from ada.web.application.generic.descriptor import AdaApplicationDescriptor
+from ada.web.application.generic.extension import (
+    AdaApplicationExtension,
+    AdaApplicationExtensionFactory,
+    extend_ada_application_definition,
 )
 from ada.web.application.generic.manager_integration import integrate_manager_surface
 from ada.web.application.generic.manager_principal import (
     ManagerPrincipalBinding,
     compose_integrated_manager_dependencies,
 )
-from ada.web.application.generic.master_projection.composition import compose_master_projection_backend
+from ada.web.application.generic.master_projection.composition import (
+    compose_master_projection_backend,
+)
 from ada.web.application.generic.navigation_binding import (
     manager_navigation_principal,
     public_navigation_principal,
@@ -33,10 +37,10 @@ from ada.web.application.generic.navigation_binding import (
 from ada.web.application.generic.operational_collector import attach_operational_kpi_collector
 from ada.web.application.generic.operational_tool import (
     create_definition_from_tool_resolution,
+    resolve_operational_render_binding,
     resolve_operational_tool_projection,
 )
 from ada.web.application.generic.settings import AdaGenericSettings
-from ada.web.operational_render_binding import OperationalRenderBinding, bind_operational_render
 from ada.web.tools.persistence import (
     ToolProjectionResolution,
     ToolProjectionResolutionState,
@@ -98,10 +102,6 @@ _MANAGER_UNAVAILABLE_ERRORS = (
     UsersStoreUnavailableError,
 )
 
-AdaOperationalCompositionFactory = Callable[
-    [OperationalRenderBinding | None], AdaApplicationComposition
-]
-
 
 def create_operational_application_runtime(
     *,
@@ -111,7 +111,8 @@ def create_operational_application_runtime(
     identity_provider: IdentityProvider | None = None,
     manager_source_name: str = 'Source',
     manager_projection_name: str = 'Projection',
-    composition_factory: AdaOperationalCompositionFactory | None = None,
+    application_descriptor: AdaApplicationDescriptor | None = None,
+    extension_factory: AdaApplicationExtensionFactory | None = None,
     master_material_reader: MasterMaterialReader | None = None,
 ) -> WebApplicationRuntime:
     if settings is not None and not isinstance(settings, AdaGenericSettings):
@@ -124,8 +125,12 @@ def create_operational_application_runtime(
         raise TypeError('manager_stores must be ConfigurationManagerStores')
     if identity_provider is not None and not isinstance(identity_provider, IdentityProvider):
         raise TypeError('identity_provider must implement IdentityProvider')
-    if composition_factory is not None and not callable(composition_factory):
-        raise TypeError('composition_factory must be callable')
+    if application_descriptor is not None and not isinstance(
+        application_descriptor, AdaApplicationDescriptor
+    ):
+        raise TypeError('application_descriptor must be AdaApplicationDescriptor')
+    if extension_factory is not None and not callable(extension_factory):
+        raise TypeError('extension_factory must be callable')
     if manager_dependencies is not None and manager_stores is not None:
         raise ValueError('Use manager_stores or manager_dependencies, not both')
     if identity_provider is not None and manager_stores is None:
@@ -143,31 +148,23 @@ def create_operational_application_runtime(
         )
         manager_dependencies = manager_identity[2]
     resolution = _resolve_tool_projection(resolved_settings)
-    if composition_factory is None:
-        definition = create_definition_from_tool_resolution(resolution)
-    else:
-        operational_binding = None
-        if resolution.state is ToolProjectionResolutionState.READY:
-            projection = resolution.projection
-            if projection is None:
-                raise RuntimeError('READY Tool Projection resolution has no projection')
-            if projection.payload.structure is not None:
-                operational_binding = bind_operational_render(
-                    projection.payload.structure,
-                    bottom_component_key=(
-                        projection.payload.render_topology.bottom_component_key
-                    ),
-                )
-        composition = composition_factory(operational_binding)
-        if not isinstance(composition, AdaApplicationComposition):
-            raise TypeError('composition_factory must return AdaApplicationComposition')
-        definition = create_definition_from_tool_resolution(
-            resolution,
-            composition=composition,
-            operational_render_binding=(
-                operational_binding if composition.operational_body_factory is not None else None
-            ),
-        )
+    operational_binding = (
+        resolve_operational_render_binding(resolution) if extension_factory is not None else None
+    )
+    application_extension = None
+    if extension_factory is not None:
+        application_extension = extension_factory(operational_binding)
+        if not isinstance(application_extension, AdaApplicationExtension):
+            raise TypeError('extension_factory must return AdaApplicationExtension')
+    definition = create_definition_from_tool_resolution(
+        resolution,
+        application_descriptor=application_descriptor,
+        operational_render_binding=operational_binding,
+        # El modo de presentación externo llega al definition sin entrar al código del producto.
+        content_state_presentation_mode=resolved_settings.content_state_presentation_mode,
+    )
+    if application_extension is not None:
+        definition = extend_ada_application_definition(definition, application_extension)
     if manager_identity is not None:
         provider, users_runtime, _dependencies, resolver = manager_identity
         definition = _bind_manager_identity(

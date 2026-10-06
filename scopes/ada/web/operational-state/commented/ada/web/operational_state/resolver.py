@@ -1,5 +1,14 @@
+# Espejo comentado: Tool CONTROL basta para montar Time Status; ausencia de snapshot significa DATA_ERROR.
 from __future__ import annotations
 
+from ada.contracts.tools.sources import (
+    SourceControlPolicy,
+    ToolSourceConsumption,
+    ToolSourceConsumptionValidationError,
+    ToolSourceOperationalParticipation,
+    ToolSourceOperationalParticipationValidationError,
+    validate_operational_participation_against_consumption,
+)
 from ada.web.content_state import (
     ContentState,
     ContentStateDependency,
@@ -9,14 +18,6 @@ from ada.web.content_state import (
 from ada.web.time_status.store_adapter import (
     TimeStatusStoreSnapshot,
     TimeStatusTimestampQuality,
-)
-from ada.contracts.tools.sources import (
-    SourceControlPolicy,
-    ToolSourceConsumption,
-    ToolSourceConsumptionValidationError,
-    ToolSourceOperationalParticipation,
-    ToolSourceOperationalParticipationValidationError,
-    validate_operational_participation_against_consumption,
 )
 from ada.web.ui.time_status import (
     TimeStatusDetailState,
@@ -28,7 +29,6 @@ from ada.web.ui.time_status import (
 
 from .models import AdaOperationalState
 
-# La primera versión adopta explícitamente sólo Global Indicators; no existe autodiscovery.
 _SUPPORTED_CONTENT_STATE_COMPONENT_KEYS = frozenset({'global_indicators'})
 _SUPPORTED_ADA_CONTROL_SOURCE_KEYS = frozenset({'pi', 'dispatch'})
 _TIME_STATUS_SOURCE_LABELS = {'pi': 'PI', 'dispatch': 'Dispatch'}
@@ -40,7 +40,6 @@ _TIME_STATUS_FRESHNESS = {
 }
 
 
-# Punto único de entrada para resolver política operacional Web ADA sin I/O.
 def resolve_ada_operational_state(
     *,
     has_global_indicators: bool,
@@ -50,7 +49,6 @@ def resolve_ada_operational_state(
     time_status_snapshot: TimeStatusStoreSnapshot | None = None,
     time_status_detail: TimeStatusDetailState | None = None,
 ) -> AdaOperationalState:
-    # La topología de dependencias viene declarada; los datos nunca crean componentes.
     dependency_graph = ContentStateDependencyGraph(content_state_dependencies)
     _validate_content_state_dependencies(
         dependency_graph,
@@ -82,7 +80,6 @@ def resolve_ada_operational_state(
     )
 
 
-# La configuración declara pertenencia y participación antes de interpretar snapshots.
 def _validate_source_configuration(
     *,
     source_consumption: ToolSourceConsumption | None,
@@ -225,18 +222,14 @@ def _validate_control_dependencies(
                 )
 
 
-# Time Status se deriva sólo desde políticas CONTROL declaradas y el snapshot recibido.
 def _resolve_time_status_summary(
     *,
     snapshot: TimeStatusStoreSnapshot | None,
     participation: ToolSourceOperationalParticipation | None,
 ) -> TimeStatusSummaryState | None:
-    if snapshot is None:
-        return None
+    # Sin Tool operacional no se inventa Time Status; con participation sí se materializa aunque falten datos.
     if participation is None:
-        raise ToolSourceOperationalParticipationValidationError(
-            'Time Status snapshot requires ToolSourceOperationalParticipation'
-        )
+        return None
     pi_policy = participation.control_policy('pi')
     if pi_policy is None:
         raise ToolSourceOperationalParticipationValidationError(
@@ -256,10 +249,11 @@ def _resolve_time_status_summary(
 
 def _resolve_time_status_control_source(
     *,
-    snapshot: TimeStatusStoreSnapshot,
+    snapshot: TimeStatusStoreSnapshot | None,
     policy: SourceControlPolicy,
 ):
-    timestamp = snapshot.source(policy.source_key)
+    # No se fabrica un snapshot falso: ausencia real de runtime se convierte en timestamp ausente.
+    timestamp = None if snapshot is None else snapshot.source(policy.source_key)
     return resolve_time_status_source_state(
         key=policy.source_key,
         label=_TIME_STATUS_SOURCE_LABELS[policy.source_key],
@@ -269,14 +263,13 @@ def _resolve_time_status_control_source(
         ),
         timestamp_utc=(
             timestamp.timestamp_utc
-            if timestamp.quality is TimeStatusTimestampQuality.VALID
+            if timestamp is not None and timestamp.quality is TimeStatusTimestampQuality.VALID
             else None
         ),
-        now_utc=snapshot.generated_at_utc,
+        now_utc=None if snapshot is None else snapshot.generated_at_utc,
     )
 
 
-# Freshness se traduce al contrato de Content State sin acoplarse a Dash.
 def _resolve_source_freshness(
     summary: TimeStatusSummaryState | None,
 ) -> dict[str, SourceFreshnessCondition]:

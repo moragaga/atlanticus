@@ -1,4 +1,4 @@
-# Espejo comentado: el layout materializa shell ADA y el body operacional elegido por composición.
+# Espejo comentado: el root publica contexto Tool/presentación para consumidores runtime descendientes.
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -115,7 +115,6 @@ def build_operational_application_layout(
     if alarm_baseline_component is not None:
         children.append(alarm_baseline_component)
     if navigation_offcanvas is not None:
-        # El controller es hermano del panel y existe antes de la primera apertura.
         children.append(build_ada_navigation_controller())
         children.append(navigation_offcanvas)
     children.append(
@@ -127,9 +126,16 @@ def build_operational_application_layout(
             id='ada-application-content',
         )
     )
+    # Las cards especializadas heredan estos metadatos sin acoplarse a ToolSourceParticipation.
+    attributes = {
+        'data-ada-content-state-presentation': content_state_presentation_mode.value,
+    }
+    if tool_key is not None:
+        attributes['data-ada-operational-tool-key'] = tool_key
     return html.Div(
         children,
         id='ada-generic-application',
+        **attributes,
     )
 
 
@@ -152,7 +158,6 @@ def build_body_application_layout(
     )
 
 
-# La ausencia de binding conserva el page_container; su presencia reemplaza sólo el body principal.
 def _resolve_application_content(
     *,
     binding: OperationalRenderBinding | None,

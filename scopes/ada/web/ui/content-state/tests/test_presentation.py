@@ -118,6 +118,41 @@ def test_runtime_binding_publishes_neutral_tool_and_source_metadata() -> None:
     assert _props(overlay)['aria-hidden'] == 'false'
 
 
+def test_operational_runtime_binding_is_identity_neutral_and_source_agnostic() -> None:
+    wrapper = build_content_state_wrapper(
+        component_key=None,
+        children=html.Div('payload'),
+        operational_runtime=True,
+    )
+    props = _props(wrapper)
+
+    assert props['data-ada-content-state'] == 'ready'
+    assert props['data-ada-content-state-runtime'] == 'true'
+    assert props['data-ada-content-state-operational'] == 'true'
+    assert 'data-ada-component-key' not in props
+    assert 'data-ada-content-state-tool-key' not in props
+    assert 'data-ada-content-state-sources' not in props
+
+
+def test_operational_runtime_rejects_parallel_explicit_source_binding() -> None:
+    with pytest.raises(ValueError, match='must not declare tool_key or source_keys'):
+        build_content_state_wrapper(
+            component_key=None,
+            children=html.Div('payload'),
+            operational_runtime=True,
+            tool_key='process',
+            source_keys=('pi',),
+        )
+
+
+def test_component_identity_remains_required_for_non_operational_wrapper() -> None:
+    with pytest.raises(ValueError, match='component_key is required'):
+        build_content_state_wrapper(
+            component_key=None,
+            children=html.Div('payload'),
+        )
+
+
 def test_construction_remains_effective_over_runtime_source_error() -> None:
     wrapper = build_content_state_wrapper(
         component_key='global_indicators',

@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+from ada.contracts.tools.sources import (
+    SourceControlPolicy,
+    ToolSourceConsumption,
+    ToolSourceConsumptionValidationError,
+    ToolSourceOperationalParticipation,
+    ToolSourceOperationalParticipationValidationError,
+    validate_operational_participation_against_consumption,
+)
 from ada.web.content_state import (
     ContentState,
     ContentStateDependency,
@@ -9,14 +17,6 @@ from ada.web.content_state import (
 from ada.web.time_status.store_adapter import (
     TimeStatusStoreSnapshot,
     TimeStatusTimestampQuality,
-)
-from ada.contracts.tools.sources import (
-    SourceControlPolicy,
-    ToolSourceConsumption,
-    ToolSourceConsumptionValidationError,
-    ToolSourceOperationalParticipation,
-    ToolSourceOperationalParticipationValidationError,
-    validate_operational_participation_against_consumption,
 )
 from ada.web.ui.time_status import (
     TimeStatusDetailState,
@@ -226,12 +226,8 @@ def _resolve_time_status_summary(
     snapshot: TimeStatusStoreSnapshot | None,
     participation: ToolSourceOperationalParticipation | None,
 ) -> TimeStatusSummaryState | None:
-    if snapshot is None:
-        return None
     if participation is None:
-        raise ToolSourceOperationalParticipationValidationError(
-            'Time Status snapshot requires ToolSourceOperationalParticipation'
-        )
+        return None
     pi_policy = participation.control_policy('pi')
     if pi_policy is None:
         raise ToolSourceOperationalParticipationValidationError(
@@ -251,10 +247,10 @@ def _resolve_time_status_summary(
 
 def _resolve_time_status_control_source(
     *,
-    snapshot: TimeStatusStoreSnapshot,
+    snapshot: TimeStatusStoreSnapshot | None,
     policy: SourceControlPolicy,
 ):
-    timestamp = snapshot.source(policy.source_key)
+    timestamp = None if snapshot is None else snapshot.source(policy.source_key)
     return resolve_time_status_source_state(
         key=policy.source_key,
         label=_TIME_STATUS_SOURCE_LABELS[policy.source_key],
@@ -264,10 +260,10 @@ def _resolve_time_status_control_source(
         ),
         timestamp_utc=(
             timestamp.timestamp_utc
-            if timestamp.quality is TimeStatusTimestampQuality.VALID
+            if timestamp is not None and timestamp.quality is TimeStatusTimestampQuality.VALID
             else None
         ),
-        now_utc=snapshot.generated_at_utc,
+        now_utc=None if snapshot is None else snapshot.generated_at_utc,
     )
 
 

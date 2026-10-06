@@ -4,19 +4,19 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from ada.web.content_state import ContentState, ContentStateDependency
-from ada.web.operational_state import AdaOperationalState, resolve_ada_operational_state
-from ada.web.time_status.store_adapter import (
-    TimeStatusSourceTimestamp,
-    TimeStatusStoreSnapshot,
-    TimeStatusTimestampQuality,
-)
 from ada.contracts.tools.sources import (
     SourceControlPolicy,
     ToolSourceConsumption,
     ToolSourceConsumptionValidationError,
     ToolSourceOperationalParticipation,
     ToolSourceOperationalParticipationValidationError,
+)
+from ada.web.content_state import ContentState, ContentStateDependency
+from ada.web.operational_state import AdaOperationalState, resolve_ada_operational_state
+from ada.web.time_status.store_adapter import (
+    TimeStatusSourceTimestamp,
+    TimeStatusStoreSnapshot,
+    TimeStatusTimestampQuality,
 )
 from ada.web.ui.time_status import (
     TimeStatusDetailSourceState,
@@ -113,6 +113,23 @@ def test_empty_resolution_is_explicit_and_ready() -> None:
         global_indicators_runtime_state=ContentState.READY,
         global_indicators_source_keys=(),
     )
+
+
+def test_configured_control_sources_mount_time_status_as_data_error_without_snapshot() -> None:
+    consumption, participation = _source_configuration(with_dispatch=True)
+
+    state = resolve_ada_operational_state(
+        has_global_indicators=False,
+        source_consumption=consumption,
+        source_operational_participation=participation,
+    )
+
+    assert state.time_status_summary is not None
+    assert state.time_status_summary.pi.condition is TimeStatusSourceCondition.DATA_ERROR
+    assert state.time_status_summary.dispatch is not None
+    assert state.time_status_summary.dispatch.condition is TimeStatusSourceCondition.DATA_ERROR
+    assert state.time_status_summary.pi.timestamp_utc is None
+    assert state.time_status_summary.dispatch.timestamp_utc is None
 
 
 def test_control_thresholds_drive_time_status_and_content_state() -> None:

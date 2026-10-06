@@ -125,9 +125,15 @@ def build_operational_application_layout(
             id='ada-application-content',
         )
     )
+    attributes = {
+        'data-ada-content-state-presentation': content_state_presentation_mode.value,
+    }
+    if tool_key is not None:
+        attributes['data-ada-operational-tool-key'] = tool_key
     return html.Div(
         children,
         id='ada-generic-application',
+        **attributes,
     )
 
 

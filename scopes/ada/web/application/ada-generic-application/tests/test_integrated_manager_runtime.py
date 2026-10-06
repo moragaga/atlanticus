@@ -80,7 +80,7 @@ def test_manager_mount_is_independent_of_tool_ready_state(tmp_path, monkeypatch)
     monkeypatch.setattr(
         bootstrap,
         'create_definition_from_tool_resolution',
-        lambda _resolution: create_application_definition(),
+        lambda _resolution, **_kwargs: create_application_definition(),
     )
 
     runtime = bootstrap.create_operational_application_runtime(

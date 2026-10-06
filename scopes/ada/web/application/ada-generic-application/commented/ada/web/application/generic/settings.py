@@ -1,6 +1,6 @@
+# Espejo comentado: settings concentra configuración externa y rechaza authoring en producción.
 from __future__ import annotations
 
-# Espejo pedagógico: mismo comportamiento productivo con contexto explicativo en español.
 from collections.abc import Mapping
 from enum import StrEnum
 from pathlib import Path
@@ -16,6 +16,7 @@ from ada.web.tools.persistence import (
     ToolSourceProvider,
 )
 from ada.web.tools.projection.cosmos import TOOL_PROJECTION_STORAGE_RESOURCE
+from ada.web.ui.content_state import ContentStatePresentationMode
 from atlanticus.connectivity.cosmos import CosmosSettings
 from atlanticus.connectivity.storage import (
     StorageConnectionStringCredential,
@@ -29,6 +30,7 @@ APPLICATION_NAMESPACE_VARIABLE = 'ADA_APPLICATION_NAMESPACE'
 PERSISTENCE_MODE_VARIABLE = 'ADA_PERSISTENCE_MODE'
 TOOL_NAMESPACE_VARIABLE = 'ADA_TOOL_NAMESPACE'
 TOOL_LOCAL_BASE_ROOT_VARIABLE = 'ADA_TOOL_LOCAL_BASE_ROOT'
+CONTENT_STATE_PRESENTATION_MODE_VARIABLE = 'ADA_CONTENT_STATE_PRESENTATION_MODE'
 STORAGE_CONTAINER_VARIABLE = 'ADA_STORAGE_CONTAINER_NAME'
 STORAGE_CONNECTION_STRING_VARIABLE = 'ADA_STORAGE_CONNECTION_STRING'
 STORAGE_ACCOUNT_URL_VARIABLE = 'ADA_STORAGE_ACCOUNT_URL'
@@ -70,6 +72,11 @@ class AdaGenericSettings(WebSettings):
     tool_local_base_root: Path = Field(
         default=Path('.runtime/ada'),
         validation_alias=TOOL_LOCAL_BASE_ROOT_VARIABLE,
+    )
+    # Permite ocultar sólo la presentación degradada durante desarrollo; no altera freshness.
+    content_state_presentation_mode: ContentStatePresentationMode = Field(
+        default=ContentStatePresentationMode.NORMAL,
+        validation_alias=CONTENT_STATE_PRESENTATION_MODE_VARIABLE,
     )
     storage_container_name: str = Field(
         default='dataproduct',
@@ -150,6 +157,13 @@ class AdaGenericSettings(WebSettings):
 
     @model_validator(mode='after')
     def validate_provider_requirements(self) -> Self:
+        # Authoring es deliberadamente una capacidad local para no ocultar incidentes productivos.
+        if (
+            self.environment.is_production
+            and self.content_state_presentation_mode is ContentStatePresentationMode.AUTHORING
+        ):
+            raise ValueError('ADA Content State authoring presentation is unavailable in production')
+
         if self.persistence_mode is AdaPersistenceMode.DURABLE:
             has_connection_string = self.storage_connection_string is not None
             has_account_url = self.storage_account_url is not None

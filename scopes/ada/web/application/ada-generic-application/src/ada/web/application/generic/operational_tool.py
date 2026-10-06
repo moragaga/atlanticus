@@ -18,6 +18,7 @@ from ada.web.tools.persistence import (
     ToolProjectionResolutionState,
     resolve_active_tool_projection,
 )
+from ada.web.ui.content_state import ContentStatePresentationMode
 from atlanticus.web.models import WebApplicationDefinition
 
 _LOGGER = logging.getLogger(__name__)
@@ -73,14 +74,21 @@ def create_definition_from_tool_resolution(
     application_descriptor: AdaApplicationDescriptor | None = None,
     composition: AdaApplicationComposition | None = None,
     operational_render_binding: OperationalRenderBinding | None = None,
+    content_state_presentation_mode: ContentStatePresentationMode = (
+        ContentStatePresentationMode.NORMAL
+    ),
 ) -> WebApplicationDefinition:
     if not isinstance(resolution, ToolProjectionResolution):
         raise TypeError('resolution must be ToolProjectionResolution')
+    if not isinstance(content_state_presentation_mode, ContentStatePresentationMode):
+        raise TypeError('content_state_presentation_mode must be ContentStatePresentationMode')
     definition_options: dict[str, object] = {}
     if application_descriptor is not None:
         definition_options['application_descriptor'] = application_descriptor
     if composition is not None:
         definition_options['composition'] = composition
+    if content_state_presentation_mode is not ContentStatePresentationMode.NORMAL:
+        definition_options['content_state_presentation_mode'] = content_state_presentation_mode
     if (
         operational_render_binding is not None
         and composition is not None
