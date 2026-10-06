@@ -1,10 +1,13 @@
-# REAL EXAMPLE
+# Espejo pedagógico del catálogo de ejemplo de Fábrica Planes.
+# El contenido funcional corresponde al ejemplo que antes vivía en examples/_plans_example.py.
+# Este archivo documenta métricas reales de ejemplo sin incorporarlas a definitions.py.
 from atlanticus.data_producers.fabrica import (
     FabricaDatasetDefinition,
     FabricaMetricDefinition,
     FabricaValueKind,
 )
 
+# Las métricas se declaran una sola vez y se reutilizan en daily y weekly.
 PLAN_METRICS = (
     FabricaMetricDefinition(
         id_kpi='MOVIMIENTO_MINA',
@@ -73,6 +76,7 @@ PLAN_METRICS = (
     ),
 )
 
+# DAY y 7LDB conservan exactamente los source_value vigentes del proceso Planes.
 EXAMPLE_DATASETS = (
     FabricaDatasetDefinition(
         name='daily', source_value='DAY', route_segment='daily', metrics=PLAN_METRICS
