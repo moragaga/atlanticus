@@ -21,6 +21,7 @@ from ada.web.application.generic.extension import (
     AdaApplicationExtensionFactory,
     extend_ada_application_definition,
 )
+from ada.web.application.generic.inspection import create_kpi_inspection_modules
 from ada.web.application.generic.manager_integration import integrate_manager_surface
 from ada.web.application.generic.manager_principal import (
     ManagerPrincipalBinding,
@@ -163,6 +164,17 @@ def create_operational_application_runtime(
     )
     if application_extension is not None:
         definition = extend_ada_application_definition(definition, application_extension)
+    if manager_stores is not None:
+        definition = replace(
+            definition,
+            modules=(
+                *definition.modules,
+                *create_kpi_inspection_modules(
+                    manager_stores.kpi_definitions,
+                    unavailable_errors=_MANAGER_UNAVAILABLE_ERRORS,
+                ),
+            ),
+        )
     if manager_identity is not None:
         provider, users_runtime, _dependencies, resolver = manager_identity
         definition = _bind_manager_identity(
