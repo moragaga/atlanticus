@@ -13,6 +13,7 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.layout im
 
 
 def build_dashboard_layout():
+    # Overview contiene simultáneamente Mina y Planta; el zoom cambia solo presentación CSS.
     return html.Section(
         [
             html.Div(
@@ -36,6 +37,7 @@ def build_dashboard_layout():
 
 
 def _build_overview_controls():
+    # Estos controles no desmontan ningún scope; solo seleccionan qué porción se amplía.
     return html.Div(
         [
             _build_presentation_button(
@@ -56,6 +58,7 @@ def _build_overview_controls():
 
 
 def _build_zoom_controls():
+    # En foco se puede volver a overview o cambiar directamente al scope opuesto.
     return html.Div(
         [
             _build_presentation_button(

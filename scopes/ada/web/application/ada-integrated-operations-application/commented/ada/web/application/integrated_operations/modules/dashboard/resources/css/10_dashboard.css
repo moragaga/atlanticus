@@ -1,3 +1,4 @@
+/* Variables locales del dashboard para no imponer colores globales a Atlanticus. */
 .ada-io-dashboard {
     --ada-io-gap: .2rem;
     --ada-io-card-background: var(--primary-background, #EBEBEB);
@@ -13,6 +14,7 @@
     overflow: hidden;
 }
 
+/* La proporción 4:5 hace que los nueve componentes operacionales tengan el mismo ancho. */
 .ada-io-dashboard__scopes {
     display: grid;
     flex: none;
@@ -47,6 +49,7 @@
     height: 100%;
 }
 
+/* Cada componente conserva su título y distribuye sus propias cards en filas equivalentes. */
 .ada-io-component {
     display: grid;
     width: 100%;
@@ -82,6 +85,7 @@
     overflow: hidden;
 }
 
+/* Todas las cards comparten exactamente el mismo shell visual. */
 .ada-io-card {
     display: grid;
     width: 100%;
@@ -114,6 +118,7 @@
     height: 100%;
 }
 
+/* Los contenedores de controles no capturan clicks fuera de sus botones. */
 .ada-io-dashboard__overview-controls,
 .ada-io-dashboard__zoom-controls {
     pointer-events: none;
@@ -183,6 +188,7 @@
     right: .35rem;
 }
 
+/* Al entrar en foco se ocultan los botones de overview y aparecen los controles del modo ampliado. */
 .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-dashboard__overview-controls,
 .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-dashboard__overview-controls {
     display: none;
@@ -198,12 +204,14 @@
     display: inline-flex;
 }
 
+/* En pantallas menores no se ofrece zoom; el layout completo sigue visible. */
 @media (max-width: 95.999rem) {
     .ada-io-dashboard__presentation-button {
         display: none !important;
     }
 }
 
+/* 225% = 9/4 y 180% = 9/5: cada scope ocupa exactamente el viewport al enfocarse. */
 @media (min-width: 96rem) {
     .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-dashboard__scopes {
         width: 225%;

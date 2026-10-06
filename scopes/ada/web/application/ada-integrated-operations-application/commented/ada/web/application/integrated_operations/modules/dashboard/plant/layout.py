@@ -17,6 +17,7 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.ids impor
 
 
 def build_plant_layout():
+    # Planta mantiene cinco columnas operacionales equivalentes.
     return html.Section(
         html.Div(
             [

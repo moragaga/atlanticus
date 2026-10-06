@@ -18,6 +18,7 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.ids import
 
 
 def build_mine_layout():
+    # Mina mantiene cuatro columnas operacionales. La card compartida ocupa las dos centrales.
     return html.Section(
         html.Div(
             [

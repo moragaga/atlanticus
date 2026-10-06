@@ -114,6 +114,8 @@ include = ["ada.web.application.integrated_operations*"]
 "ada.web.application.integrated_operations.modules.dashboard" = [
     "resources/css/*.css",
     "resources/css/css.list",
+    "resources/js/*.js",
+    "resources/js/js.list",
 ]
 "ada.web.application.integrated_operations.modules.dashboard.mine" = [
     "resources/css/*.css",
