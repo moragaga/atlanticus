@@ -1,15 +1,13 @@
 """Contratos neutrales para identificar y publicar datasets Atlanticus."""
 
-from pkgutil import extend_path
-
-from atlanticus.datasets.errors import (
+from atlanticus.datasets.core.errors import (
     DatasetDefinitionError,
     DatasetError,
     DatasetTargetError,
     DatasetValidationError,
 )
-from atlanticus.datasets.layouts import DatasetLayout, FileSetLayout, SingleArtifactLayout
-from atlanticus.datasets.models import (
+from atlanticus.datasets.core.layouts import DatasetLayout, FileSetLayout, SingleArtifactLayout
+from atlanticus.datasets.core.models import (
     DatasetDefinition,
     DatasetKey,
     DatasetPartition,
@@ -17,7 +15,7 @@ from atlanticus.datasets.models import (
     DatasetTarget,
     MaterializationDefinition,
 )
-from atlanticus.datasets.results import (
+from atlanticus.datasets.core.results import (
     DatasetBatchResult,
     DatasetBatchStatus,
     DatasetPublicationFailure,
@@ -26,8 +24,6 @@ from atlanticus.datasets.results import (
     PublicationSkipReason,
     PublicationStatus,
 )
-
-__path__ = extend_path(__path__, __name__)
 
 __version__ = '1.0.0'
 

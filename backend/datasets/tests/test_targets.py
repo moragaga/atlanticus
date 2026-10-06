@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from atlanticus.datasets import (
+from atlanticus.datasets.core import (
     DatasetDefinition,
     DatasetKey,
     DatasetPartition,

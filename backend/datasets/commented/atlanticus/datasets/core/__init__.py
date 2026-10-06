@@ -1,16 +1,14 @@
 # Esta superficie pública permite cambiar la organización interna sin afectar a los consumidores.
 """Contratos neutrales para identificar y publicar datasets Atlanticus."""
 
-from pkgutil import extend_path
-
-from atlanticus.datasets.errors import (
+from atlanticus.datasets.core.errors import (
     DatasetDefinitionError,
     DatasetError,
     DatasetTargetError,
     DatasetValidationError,
 )
-from atlanticus.datasets.layouts import DatasetLayout, FileSetLayout, SingleArtifactLayout
-from atlanticus.datasets.models import (
+from atlanticus.datasets.core.layouts import DatasetLayout, FileSetLayout, SingleArtifactLayout
+from atlanticus.datasets.core.models import (
     DatasetDefinition,
     DatasetKey,
     DatasetPartition,
@@ -18,7 +16,7 @@ from atlanticus.datasets.models import (
     DatasetTarget,
     MaterializationDefinition,
 )
-from atlanticus.datasets.results import (
+from atlanticus.datasets.core.results import (
     DatasetBatchResult,
     DatasetBatchStatus,
     DatasetPublicationFailure,
@@ -30,8 +28,6 @@ from atlanticus.datasets.results import (
 
 # Permite que adaptadores instalados en otro wheel agreguen subpaquetes como
 # ``atlanticus.datasets.parquet`` sin duplicar ni reemplazar este ``__init__``.
-__path__ = extend_path(__path__, __name__)
-
 __version__ = '1.0.0'
 
 __all__ = [

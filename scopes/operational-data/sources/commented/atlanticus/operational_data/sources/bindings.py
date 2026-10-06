@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from types import MappingProxyType
 
-from atlanticus.datasets.errors import DatasetTargetError
-from atlanticus.datasets.models import DatasetDefinition
+from atlanticus.datasets.core.errors import DatasetTargetError
+from atlanticus.datasets.core.models import DatasetDefinition
 from atlanticus.operational_data.core import DataSource, DataView
 from atlanticus.operational_data.sources.errors import DataSourceBindingError
 

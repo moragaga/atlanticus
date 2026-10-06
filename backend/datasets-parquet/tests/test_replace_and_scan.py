@@ -9,7 +9,7 @@ import pytest
 import atlanticus.datasets.parquet._publication as publication_module
 import atlanticus.datasets.parquet._scan as scan_module
 import atlanticus.datasets.parquet._write as write_module
-from atlanticus.datasets import DatasetDefinition, PublicationSkipReason, PublicationStatus
+from atlanticus.datasets.core import DatasetDefinition, PublicationSkipReason, PublicationStatus
 from atlanticus.datasets.parquet import (
     ColumnFilter,
     FilterOperator,

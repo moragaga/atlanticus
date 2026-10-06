@@ -8,7 +8,7 @@ from threading import Barrier, BrokenBarrierError
 import pyarrow as pa
 import pytest
 
-from atlanticus.datasets import DatasetDefinition, PublicationStatus
+from atlanticus.datasets.core import DatasetDefinition, PublicationStatus
 from atlanticus.datasets.parquet import (
     ParquetDatasetStore,
     ParquetSchemaError,

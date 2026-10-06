@@ -6,7 +6,7 @@ from __future__ import annotations
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from atlanticus.datasets.models import DatasetTarget
+from atlanticus.datasets.core.models import DatasetTarget
 from atlanticus.datasets.parquet.errors import (
     ParquetCorruptionError,
     ParquetReadError,

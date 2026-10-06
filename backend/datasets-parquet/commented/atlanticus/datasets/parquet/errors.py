@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from atlanticus.datasets.errors import DatasetError, DatasetValidationError
+from atlanticus.datasets.core.errors import DatasetError, DatasetValidationError
 
 
 class ParquetDatasetError(DatasetError):

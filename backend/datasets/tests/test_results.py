@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
-from atlanticus.datasets import (
+from atlanticus.datasets.core import (
     DatasetBatchResult,
     DatasetBatchStatus,
     DatasetDefinition,

@@ -1,13 +1,11 @@
-# Las validaciones rechazan entradas ambiguas; nunca corrigen ni normalizan nombres silenciosamente.
 """Validaciones compartidas para identidades y dimensiones lógicas."""
 
 from __future__ import annotations
 
 import re
 
-from atlanticus.datasets.errors import DatasetValidationError
+from atlanticus.datasets.core.errors import DatasetValidationError
 
-# Las identidades forman namespaces; las dimensiones forman pares nombre=valor.
 _IDENTITY_PATTERN = re.compile(r'[A-Za-z0-9](?:[A-Za-z0-9_.-]{0,119})?')
 _DIMENSION_PATTERN = re.compile(r'[A-Za-z][A-Za-z0-9_]{0,119}')
 _VALUE_PATTERN = re.compile(r'[A-Za-z0-9](?:[A-Za-z0-9_.-]{0,239})?')
@@ -23,7 +21,6 @@ def validate_identity_segment(
 
     if not isinstance(value, str) or not _IDENTITY_PATTERN.fullmatch(value):
         raise error_type(f'{field} must use 1-120 letters, numbers, dots, underscores or hyphens')
-    # Los patrones aceptarían punto por sí solo, pero una ruta relativa nunca es una identidad.
     if value in {'.', '..'}:
         raise error_type(f'{field} must not be a relative path')
     return value
@@ -52,7 +49,6 @@ def validate_dimension_value(
 ) -> str:
     """Valida un valor explícito y seguro sin convertir tipos automáticamente."""
 
-    # Exigir string evita que distintos adaptadores serialicen fechas o enteros de manera diferente.
     if not isinstance(value, str) or not _VALUE_PATTERN.fullmatch(value):
         raise error_type(f'{field} must use 1-240 letters, numbers, dots, underscores or hyphens')
     if value in {'.', '..'}:

@@ -11,8 +11,8 @@ from atlanticus.data_producers.notpii import NotPiiBatch, NotPiiSourceError
 from atlanticus.data_producers.notpii.job import NotPiiJob
 from atlanticus.data_producers.notpii.models import NotPiiProcessingResult
 from atlanticus.data_producers.notpii.producer_state import NotPiiProducerState
-from atlanticus.datasets.models import DatasetKey, DatasetTarget
-from atlanticus.datasets.results import (
+from atlanticus.datasets.core.models import DatasetKey, DatasetTarget
+from atlanticus.datasets.core.results import (
     DatasetPublicationResult,
     PublicationQuality,
     PublicationStatus,

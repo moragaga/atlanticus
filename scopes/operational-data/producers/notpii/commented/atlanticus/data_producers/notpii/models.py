@@ -11,7 +11,7 @@ from atlanticus.data_producers.notpii.errors import (
     NotPiiDataProducerConfigurationError,
     NotPiiSourceError,
 )
-from atlanticus.datasets.results import DatasetPublicationResult
+from atlanticus.datasets.core.results import DatasetPublicationResult
 from atlanticus.integrations.pi.contracts import PiExtractionMode
 
 

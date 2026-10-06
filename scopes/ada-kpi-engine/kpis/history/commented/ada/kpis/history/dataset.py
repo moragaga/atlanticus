@@ -17,7 +17,7 @@ from ada.kpis.history.rolling import (
     ROLLING_TIMESTAMP_COLUMN,
     KpiRollingMetadata,
 )
-from atlanticus.datasets import (
+from atlanticus.datasets.core import (
     DatasetDefinition,
     DatasetKey,
     DatasetTarget,

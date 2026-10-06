@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from atlanticus.datasets import (
+from atlanticus.datasets.core import (
     DatasetDefinition,
     DatasetKey,
     MaterializationDefinition,

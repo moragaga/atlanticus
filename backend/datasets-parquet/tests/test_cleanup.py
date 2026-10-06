@@ -5,7 +5,7 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from atlanticus.datasets import DatasetDefinition
+from atlanticus.datasets.core import DatasetDefinition
 from atlanticus.datasets.parquet import ParquetDatasetStore
 
 

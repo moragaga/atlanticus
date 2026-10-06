@@ -18,7 +18,7 @@ Parquet, rutas absolutas o un dominio particular.
 | Estado | En revisión |
 | Ruta física | `backend/datasets/` |
 | Distribución | `atlanticus-datasets` |
-| Import público | `atlanticus.datasets` |
+| Import público | `atlanticus.datasets.core` |
 | Versión técnica actual | `0.1.0` |
 | Python requerido | `3.14.2` |
 | Dependencias productivas | Ninguna fuera de la biblioteca estándar |
@@ -117,7 +117,7 @@ Las funciones internas de validación no se exportan desde el package raíz.
 `DatasetKey` contiene un namespace no vacío y un nombre:
 
 ```python
-from atlanticus.datasets import DatasetKey
+from atlanticus.datasets.core import DatasetKey
 
 key = DatasetKey(
     namespace=('ingestion', 'dispatch'),
@@ -141,7 +141,7 @@ físicas distintas resueltas por el runtime o por el adapter.
 Una definición debe contener al menos una materialización:
 
 ```python
-from atlanticus.datasets import (
+from atlanticus.datasets.core import (
     DatasetDefinition,
     FileSetLayout,
     MaterializationDefinition,
@@ -312,7 +312,7 @@ El único skip controlado es `empty_content`:
 ```python
 from datetime import UTC, datetime
 
-from atlanticus.datasets import DatasetPublicationResult
+from atlanticus.datasets.core import DatasetPublicationResult
 
 result = DatasetPublicationResult.skipped_empty(
     target=target,
@@ -384,7 +384,7 @@ no reemplaza una dependencia directa cuando importan `atlanticus.datasets` por s
 ```text
 backend/datasets/
 ├── pyproject.toml
-├── src/atlanticus/datasets/
+├── src/atlanticus/datasets/core/
 │   ├── __init__.py
 │   ├── errors.py
 │   ├── layouts.py

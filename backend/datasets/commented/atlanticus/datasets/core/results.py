@@ -9,8 +9,8 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Self
 
-from atlanticus.datasets.errors import DatasetValidationError
-from atlanticus.datasets.models import DatasetTarget
+from atlanticus.datasets.core.errors import DatasetValidationError
+from atlanticus.datasets.core.models import DatasetTarget
 
 
 class PublicationStatus(StrEnum):

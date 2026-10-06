@@ -8,8 +8,8 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from atlanticus.datasets.layouts import SingleArtifactLayout
-from atlanticus.datasets.models import DatasetDefinition, DatasetTarget
+from atlanticus.datasets.core.layouts import SingleArtifactLayout
+from atlanticus.datasets.core.models import DatasetDefinition, DatasetTarget
 from atlanticus.datasets.parquet._filesystem import (
     _file_signature,
     _validate_part_filename,

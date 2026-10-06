@@ -8,9 +8,10 @@ from time import monotonic
 
 import pyarrow as pa
 
-from atlanticus.datasets.errors import DatasetValidationError
-from atlanticus.datasets.layouts import FileSetLayout, SingleArtifactLayout
-from atlanticus.datasets.models import DatasetDefinition, DatasetPartKey, DatasetTarget
+from atlanticus.datasets.core.errors import DatasetValidationError
+from atlanticus.datasets.core.layouts import FileSetLayout, SingleArtifactLayout
+from atlanticus.datasets.core.models import DatasetDefinition, DatasetPartKey, DatasetTarget
+from atlanticus.datasets.core.results import DatasetPublicationResult
 from atlanticus.datasets.parquet import (
     ColumnFilter,
     ParquetDatasetStore,
@@ -20,7 +21,6 @@ from atlanticus.datasets.parquet import (
     ParquetReadResult,
     ParquetWriteError,
 )
-from atlanticus.datasets.results import DatasetPublicationResult
 from atlanticus.datasets.runtime.conversion import (
     TabularData,
     normalize_column_names,

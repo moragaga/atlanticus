@@ -18,7 +18,7 @@ from ada.kpis.history.dataset import (
     rolling_table_schema_token,
     rolling_target,
 )
-from atlanticus.datasets import SingleArtifactLayout
+from atlanticus.datasets.core import SingleArtifactLayout
 
 
 def test_durable_schemas_are_explicit() -> None:

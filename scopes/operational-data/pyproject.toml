@@ -55,7 +55,7 @@ atlanticus-pi-web-api = { path = "../../integrations/pi/web-api", editable = tru
 members = [
     "core",
     "planner",
-    "calendar",
+    "operational-calendar",
     "sources",
     "producers/core",
     "producers/sql",

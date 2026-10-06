@@ -17,8 +17,8 @@ from atlanticus.data_producers.sql.models import (
     SqlSourcePlan,
     SqlStorageMode,
 )
-from atlanticus.datasets.layouts import SingleArtifactLayout
-from atlanticus.datasets.models import DatasetDefinition, DatasetKey, MaterializationDefinition
+from atlanticus.datasets.core.layouts import SingleArtifactLayout
+from atlanticus.datasets.core.models import DatasetDefinition, DatasetKey, MaterializationDefinition
 from atlanticus.datasets.runtime import DatasetRuntime
 from atlanticus.runtime import JobRuntimeContext
 

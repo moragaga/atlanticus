@@ -12,7 +12,7 @@ from atlanticus.data_producers.notpii.producer_state import (
     NotPiiProducerState,
     NotPiiStreamObservation,
 )
-from atlanticus.datasets.results import PublicationStatus
+from atlanticus.datasets.core.results import PublicationStatus
 from atlanticus.integrations.pi.contracts import PiExtractionMode
 from atlanticus.runtime import JobRuntimeContext
 

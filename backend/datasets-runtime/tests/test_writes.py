@@ -4,7 +4,7 @@ import pandas as pd
 import pyarrow as pa
 import pytest
 
-from atlanticus.datasets import (
+from atlanticus.datasets.core import (
     DatasetDefinition,
     DatasetKey,
     DatasetPartKey,

@@ -14,7 +14,7 @@ from atlanticus.data_producers.pi.models import (
 from atlanticus.data_producers.pi.planning import PiSlotPlanner
 from atlanticus.data_producers.pi.preparation import PiExecutionPlanPreparer
 from atlanticus.data_producers.pi.watermarks import PiProducerState, PiWatermarkCoordinator
-from atlanticus.datasets.results import PublicationStatus
+from atlanticus.datasets.core.results import PublicationStatus
 from atlanticus.integrations.pi.contracts import PiCatalog
 from atlanticus.runtime import JobRuntimeContext
 

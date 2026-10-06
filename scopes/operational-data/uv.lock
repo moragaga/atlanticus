@@ -459,7 +459,7 @@ requires-dist = [
     { name = "atlanticus-kernel", editable = "../../backend/kernel" },
     { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
     { name = "atlanticus-observability-azure", editable = "../../backend/observability-azure" },
-    { name = "atlanticus-operational-data-calendar", editable = "calendar" },
+    { name = "atlanticus-operational-data-calendar", editable = "operational-calendar" },
     { name = "atlanticus-sql", editable = "../../connectivity/sql" },
 ]
 
@@ -472,7 +472,7 @@ dev = [
 [[package]]
 name = "atlanticus-operational-data-calendar"
 version = "1.0.0"
-source = { editable = "calendar" }
+source = { editable = "operational-calendar" }
 
 [package.dev-dependencies]
 dev = [
@@ -538,7 +538,7 @@ requires-dist = [
     { name = "atlanticus-kernel", editable = "../../backend/kernel" },
     { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
     { name = "atlanticus-observability-azure", editable = "../../backend/observability-azure" },
-    { name = "atlanticus-operational-data-calendar", editable = "calendar" },
+    { name = "atlanticus-operational-data-calendar", editable = "operational-calendar" },
     { name = "atlanticus-sql", editable = "../../connectivity/sql" },
 ]
 
@@ -825,7 +825,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "atlanticus-datasets", editable = "../../backend/datasets" },
-    { name = "atlanticus-operational-data-calendar", editable = "calendar" },
+    { name = "atlanticus-operational-data-calendar", editable = "operational-calendar" },
     { name = "atlanticus-operational-data-core", editable = "core" },
     { name = "atlanticus-operational-data-planner", editable = "planner" },
     { name = "pandas", specifier = "==3.0.3" },

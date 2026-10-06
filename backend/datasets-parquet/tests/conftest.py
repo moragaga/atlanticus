@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 import pyarrow as pa
 import pytest
 
-from atlanticus.datasets import (
+from atlanticus.datasets.core import (
     DatasetDefinition,
     DatasetKey,
     FileSetLayout,

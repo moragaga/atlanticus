@@ -7,7 +7,7 @@ from collections.abc import Iterable
 
 import pyarrow as pa
 
-from atlanticus.datasets.models import DatasetPartKey, DatasetTarget
+from atlanticus.datasets.core.models import DatasetPartKey, DatasetTarget
 from atlanticus.datasets.parquet.errors import ParquetSchemaError, ParquetValidationError
 from atlanticus.datasets.parquet.models import ParquetPart
 

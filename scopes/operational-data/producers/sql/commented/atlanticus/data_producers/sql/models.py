@@ -9,7 +9,7 @@ from types import MappingProxyType
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from atlanticus.data_producers.core import ScopeValue, SourceScope
-from atlanticus.datasets.results import DatasetPublicationResult, PublicationStatus
+from atlanticus.datasets.core.results import DatasetPublicationResult, PublicationStatus
 
 
 class DataValueKind(StrEnum):

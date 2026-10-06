@@ -6,7 +6,7 @@ from pathlib import Path
 import pyarrow as pa
 import pytest
 
-from atlanticus.datasets import DatasetDefinition
+from atlanticus.datasets.core import DatasetDefinition
 from atlanticus.datasets.parquet import ParquetDatasetStore, ParquetSchemaError
 from atlanticus.datasets.runtime import (
     DatasetRuntime,

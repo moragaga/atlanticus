@@ -6,8 +6,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TypeAlias
 
-from atlanticus.datasets.errors import DatasetDefinitionError
-from atlanticus.datasets.validation import (
+from atlanticus.datasets.core.errors import DatasetDefinitionError
+from atlanticus.datasets.core.validation import (
     validate_dimension_name,
     validate_identity_segment,
 )

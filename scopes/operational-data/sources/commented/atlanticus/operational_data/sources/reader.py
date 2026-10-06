@@ -8,7 +8,7 @@ from typing import Protocol, runtime_checkable
 import pandas as pd
 import pyarrow as pa
 
-from atlanticus.datasets.models import DatasetDefinition, DatasetTarget
+from atlanticus.datasets.core.models import DatasetDefinition, DatasetTarget
 
 
 @runtime_checkable

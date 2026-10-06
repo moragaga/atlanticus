@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from atlanticus.datasets.layouts import SingleArtifactLayout
-from atlanticus.datasets.models import DatasetDefinition, DatasetKey, MaterializationDefinition
+from atlanticus.datasets.core.layouts import SingleArtifactLayout
+from atlanticus.datasets.core.models import DatasetDefinition, DatasetKey, MaterializationDefinition
 from atlanticus.operational_data.core import DataSource, DataView
 from atlanticus.operational_data.sources.bindings import (
     DataSourceBinding,

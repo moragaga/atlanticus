@@ -13,8 +13,8 @@ from uuid import uuid4
 import pyarrow as pa
 import pyarrow.compute as pc
 
-from atlanticus.datasets.layouts import FileSetLayout, SingleArtifactLayout
-from atlanticus.datasets.models import DatasetDefinition, DatasetPartKey, DatasetTarget
+from atlanticus.datasets.core.layouts import FileSetLayout, SingleArtifactLayout
+from atlanticus.datasets.core.models import DatasetDefinition, DatasetPartKey, DatasetTarget
 from atlanticus.datasets.parquet._filesystem import (
     _is_owned_part_filename,
     _is_temporary_filename,
@@ -63,7 +63,7 @@ from atlanticus.datasets.parquet.models import (
     ParquetWriteOptions,
     _Artifact,
 )
-from atlanticus.datasets.results import (
+from atlanticus.datasets.core.results import (
     DatasetPublicationResult,
     PublicationQuality,
     PublicationStatus,

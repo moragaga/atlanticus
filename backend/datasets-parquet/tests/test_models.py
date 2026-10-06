@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pyarrow as pa
 
-from atlanticus.datasets import (
+from atlanticus.datasets.core import (
     DatasetDefinition,
     DatasetKey,
     MaterializationDefinition,

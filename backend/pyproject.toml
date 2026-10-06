@@ -78,4 +78,4 @@ testpaths = [
     "runtime/tests",
     "state/tests",
 ]
-addopts = "-q"
+addopts = "-q --import-mode=importlib"

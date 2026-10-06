@@ -14,14 +14,14 @@ from atlanticus.data_producers.fabrica.transform import (
     build_partition_frames,
     merge_partition_frame,
 )
-from atlanticus.datasets.layouts import SingleArtifactLayout
-from atlanticus.datasets.models import (
+from atlanticus.datasets.core.layouts import SingleArtifactLayout
+from atlanticus.datasets.core.models import (
     DatasetDefinition,
     DatasetKey,
     DatasetTarget,
     MaterializationDefinition,
 )
-from atlanticus.datasets.results import DatasetPublicationResult, PublicationStatus
+from atlanticus.datasets.core.results import DatasetPublicationResult, PublicationStatus
 from atlanticus.datasets.runtime import DatasetRuntime, DatasetRuntimeNotFoundError
 
 

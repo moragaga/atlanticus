@@ -15,14 +15,14 @@ from atlanticus.data_producers.pi.models import (
     PiMaterializationResult,
     PiSample,
 )
-from atlanticus.datasets.layouts import SingleArtifactLayout
-from atlanticus.datasets.models import (
+from atlanticus.datasets.core.layouts import SingleArtifactLayout
+from atlanticus.datasets.core.models import (
     DatasetDefinition,
     DatasetKey,
     DatasetTarget,
     MaterializationDefinition,
 )
-from atlanticus.datasets.results import DatasetPublicationResult
+from atlanticus.datasets.core.results import DatasetPublicationResult
 from atlanticus.datasets.runtime import DatasetRuntime, DatasetRuntimeNotFoundError
 from atlanticus.integrations.pi.contracts import (
     PiCatalog,

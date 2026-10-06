@@ -17,14 +17,14 @@ from atlanticus.data_producers.remanentes.models import (
 )
 from atlanticus.data_producers.remanentes.source import RemanentesStorageSource
 from atlanticus.data_producers.remanentes.transform import merge_snapshot, transform_snapshot
-from atlanticus.datasets.layouts import SingleArtifactLayout
-from atlanticus.datasets.models import (
+from atlanticus.datasets.core.layouts import SingleArtifactLayout
+from atlanticus.datasets.core.models import (
     DatasetDefinition,
     DatasetKey,
     DatasetTarget,
     MaterializationDefinition,
 )
-from atlanticus.datasets.results import DatasetPublicationResult, PublicationStatus
+from atlanticus.datasets.core.results import DatasetPublicationResult, PublicationStatus
 from atlanticus.datasets.runtime import DatasetRuntime, DatasetRuntimeNotFoundError
 
 

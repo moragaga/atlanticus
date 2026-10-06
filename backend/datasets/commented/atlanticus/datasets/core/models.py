@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from atlanticus.datasets.errors import DatasetDefinitionError, DatasetTargetError
-from atlanticus.datasets.layouts import DatasetLayout, FileSetLayout, SingleArtifactLayout
-from atlanticus.datasets.validation import (
+from atlanticus.datasets.core.errors import DatasetDefinitionError, DatasetTargetError
+from atlanticus.datasets.core.layouts import DatasetLayout, FileSetLayout, SingleArtifactLayout
+from atlanticus.datasets.core.validation import (
     validate_dimension_name,
     validate_dimension_value,
     validate_identity_segment,
@@ -169,6 +169,7 @@ class MaterializationDefinition:
     name: str
     layout: DatasetLayout
     partition_dimensions: tuple[str, ...] = ()
+    # None conserva la ruta derivada del nombre; una tupla vacía omite el segmento.
     route_segments: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
@@ -208,6 +209,7 @@ class MaterializationDefinition:
             )
             object.__setattr__(self, 'route_segments', route_segments)
 
+    # El adaptador consulta esta propiedad y no interpreta nombres por su cuenta.
     @property
     def resolved_route_segments(self) -> tuple[str, ...]:
         """Segmentos relativos usados por adaptadores físicos para esta materialización."""
@@ -289,6 +291,7 @@ class DatasetDefinition:
 
     key: DatasetKey
     materializations: tuple[MaterializationDefinition, ...]
+    # Permite separar la identidad estable de la ubicación relativa de almacenamiento.
     route_segments: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
@@ -331,6 +334,7 @@ class DatasetDefinition:
             return self.route_segments
         return (*self.key.namespace, self.key.name)
 
+    # La partición siempre se agrega al final para conservar su orden canónico.
     def resolve_route_segments(self, target: DatasetTarget) -> tuple[str, ...]:
         """Resuelve la ruta relativa validada de un target para un adaptador físico."""
 
@@ -397,6 +401,7 @@ class DatasetDefinition:
         )
 
 
+# Reutiliza las mismas reglas de seguridad que los segmentos de identidad.
 def _normalize_route_segments(
     values: tuple[str, ...],
     *,

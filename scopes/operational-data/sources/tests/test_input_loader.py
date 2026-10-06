@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 import pandas as pd
 import pyarrow as pa
 
-from atlanticus.datasets.models import DatasetDefinition, DatasetTarget
+from atlanticus.datasets.core.models import DatasetDefinition, DatasetTarget
 from atlanticus.operational_data.core import DataColumn, DataColumnType, TimeWindow, TimeWindowUnit
 from atlanticus.operational_data.planner import DataInputPlanner
 from atlanticus.operational_data.sources import (

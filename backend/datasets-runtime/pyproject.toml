@@ -21,7 +21,7 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["atlanticus.*"]
+include = ["atlanticus.datasets.runtime*"]
 namespaces = true
 
 [tool.setuptools.package-data]

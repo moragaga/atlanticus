@@ -8,8 +8,8 @@ import pyarrow as pa
 
 from atlanticus.data_producers.meteodata.consolidation import consolidate
 from atlanticus.data_producers.meteodata.models import Measurement, Projection
-from atlanticus.datasets.layouts import SingleArtifactLayout
-from atlanticus.datasets.models import DatasetDefinition, DatasetKey, MaterializationDefinition
+from atlanticus.datasets.core.layouts import SingleArtifactLayout
+from atlanticus.datasets.core.models import DatasetDefinition, DatasetKey, MaterializationDefinition
 from atlanticus.datasets.runtime import DatasetRuntime, DatasetRuntimeNotFoundError
 from atlanticus.runtime import JobRuntimeContext
 
