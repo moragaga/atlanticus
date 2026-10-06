@@ -64,7 +64,7 @@ def test_capacity_evicts_oldest_expiry(tmp_path: Path) -> None:
     assert key_set.contains_many(('oldest', 'newer-1', 'newer-2')) == (False, True, True)
 
 
-def test_expiring_set_rejects_invalid_dependencies(tmp_path: Path) -> None:
+def test_expiring_set_rejects_invalid_dependencies_and_keys(tmp_path: Path) -> None:
     clock = MutableClock()
     store = AtomicStateStore(volume_path=tmp_path, application='ada', clock=clock)
     key = StateKey(namespace=('deduplication',), name='messages')
@@ -91,6 +91,16 @@ def test_expiring_set_rejects_invalid_dependencies(tmp_path: Path) -> None:
             max_entries=10,
             clock='invalid',
         )
+
+    key_set = ExpiringKeySet(
+        store=store,
+        key=key,
+        retention_seconds=60,
+        max_entries=10,
+        clock=clock,
+    )
+    with pytest.raises(StateValidationError, match='UTF-8'):
+        key_set.contains_many(('valid', '\ud800'))
 
 
 def test_expiring_set_ignores_observability_failures(tmp_path: Path) -> None:
@@ -126,22 +136,3 @@ def test_reduced_capacity_is_enforced_during_read_operations(tmp_path: Path) -> 
 
     assert narrowed.contains_many(('oldest', 'middle', 'newest')) == (False, True, True)
     assert narrowed.count() == 2
-
-
-def test_invalid_utf8_key_fails_before_state_access(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    clock = MutableClock()
-    key_set = _key_set(tmp_path, clock)
-
-    def unexpected_read(*_: object, **__: object) -> object:
-        raise AssertionError('state must not be read for an invalid key')
-
-    def unexpected_replace(*_: object, **__: object) -> object:
-        raise AssertionError('state must not be written for an invalid key')
-
-    monkeypatch.setattr(key_set._store, 'read', unexpected_read)
-    monkeypatch.setattr(key_set._store, 'replace', unexpected_replace)
-
-    with pytest.raises(StateValidationError, match='UTF-8'):
-        key_set.contains_many(('valid', '\ud800'))

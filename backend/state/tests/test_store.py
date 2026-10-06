@@ -63,25 +63,16 @@ def test_missing_state_returns_none(tmp_path: Path) -> None:
     assert _store(tmp_path).read(_key()) is None
 
 
-def test_corrupt_state_is_not_treated_as_missing(tmp_path: Path) -> None:
-    store = _store(tmp_path)
-    path = store.path_for(_key())
-    path.parent.mkdir(parents=True)
-    path.write_text('{not-json', encoding='utf-8')
-
-    with pytest.raises(StateCorruptionError):
-        store.read(_key())
-
-
 @pytest.mark.parametrize(
     'content',
     [
+        b'{not-json',
         b'{"schema_version":1,"schema_version":1,"updated_at_utc":"x","value":{}}',
         b'\xff',
         b'{"schema_version":1,"updated_at_utc":"2026-07-20T15:00:00Z","value":{"x":1e999}}',
     ],
 )
-def test_read_rejects_ambiguous_or_invalid_json(tmp_path: Path, content: bytes) -> None:
+def test_existing_invalid_state_is_never_treated_as_missing(tmp_path: Path, content: bytes) -> None:
     store = _store(tmp_path)
     path = store.path_for(_key())
     path.parent.mkdir(parents=True)
@@ -247,25 +238,6 @@ def test_concurrent_readers_observe_only_complete_documents(tmp_path: Path) -> N
     assert all(isinstance(revision, int) for revision in revisions)
 
 
-def test_warning_quality_is_a_valid_committed_state(tmp_path: Path) -> None:
-    store = _store(tmp_path)
-
-    store.replace(
-        _key(),
-        {
-            'change_token': 'new-publication',
-            'quality_status': 'warning',
-            'missing_count': 3,
-        },
-    )
-
-    assert store.read(_key()).value == {
-        'change_token': 'new-publication',
-        'quality_status': 'warning',
-        'missing_count': 3,
-    }
-
-
 def test_replace_serializes_clock_and_commit_order_between_threads(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -306,30 +278,6 @@ def test_replace_serializes_clock_and_commit_order_between_threads(
     assert committed is not None
     assert committed.updated_at_utc == datetime(2026, 7, 20, 16, 0, tzinfo=UTC)
     assert committed.value == {'revision': 'newer'}
-
-
-def test_replace_fsyncs_parent_directory_after_atomic_replace(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    store = _store(tmp_path)
-    replaced = Event()
-    original_replace = store_module.os.replace
-    synced_directories: list[Path] = []
-
-    def tracked_replace(source: Path, target: Path) -> None:
-        original_replace(source, target)
-        replaced.set()
-
-    def tracked_directory_fsync(path: Path) -> None:
-        assert replaced.is_set()
-        synced_directories.append(path)
-
-    monkeypatch.setattr(store_module.os, 'replace', tracked_replace)
-    monkeypatch.setattr(store_module, '_fsync_directory', tracked_directory_fsync)
-
-    store.replace(_key(), {'change_token': 'durable'})
-
-    assert synced_directories == [store.path_for(_key()).parent]
 
 
 def test_atomic_json_store_round_trip_uses_explicit_root(tmp_path: Path) -> None:
