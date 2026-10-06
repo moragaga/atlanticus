@@ -1,5 +1,6 @@
 .ada-io-dashboard {
     --ada-io-gap: .2rem;
+    --ada-io-edge-inset: .3rem;
     --ada-io-card-background: var(--primary-background, #EBEBEB);
     --ada-io-card-border: var(--primary-border-color, #BDBDBD);
     --ada-io-card-text: var(--custom-text-color, #4D4D4D);
@@ -10,6 +11,10 @@
     height: 100%;
     min-width: 0;
     min-height: 0;
+    padding: 0 var(--ada-io-edge-inset) var(--ada-io-edge-inset);
+    border-inline: 1px solid var(--ada-io-card-border);
+    border-bottom: 1px solid var(--ada-io-card-border);
+    box-sizing: border-box;
     overflow: hidden;
 }
 
@@ -136,8 +141,15 @@
     font-weight: 700;
     line-height: 1;
     letter-spacing: .02rem;
-    cursor: pointer;
-    pointer-events: auto;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+}
+
+.ada-io-dashboard__presentation-button:hover {
+    border-color: var(--ada-color-border-strong, #313131);
+    background: var(--ada-color-surface-inverse, #FFFFFF);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
+    cursor: pointer !important;
 }
 
 .ada-io-dashboard__presentation-button:focus-visible {
@@ -156,6 +168,7 @@
 }
 
 .ada-alarm-baseline-surface {
+    --ada-alarm-baseline-y: 52%;
     position: relative;
 }
 
@@ -169,7 +182,28 @@
 .ada-alarm-baseline-surface > .ada-io-dashboard__overview-controls .ada-io-dashboard__presentation-button {
     top: var(--ada-alarm-baseline-y, 74%);
     bottom: auto;
+    min-height: 1.4rem;
+    padding: .16rem .55rem;
+    border: 1px solid var(--ada-color-border-strong, #313131);
+    background: var(--ada-color-surface-inverse, #FFFFFF);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
     transform: translateY(-50%);
+    cursor: pointer !important;
+    pointer-events: auto !important;
+}
+
+.ada-alarm-baseline-surface > .ada-io-dashboard__overview-controls
+.ada-io-dashboard__overview-control--mine {
+    left: 0;
+    border-left: 0;
+    border-radius: 0 .35rem .35rem 0;
+}
+
+.ada-alarm-baseline-surface > .ada-io-dashboard__overview-controls
+.ada-io-dashboard__overview-control--plant {
+    right: 0;
+    border-right: 0;
+    border-radius: .35rem 0 0 .35rem;
 }
 
 .ada-io-dashboard__overview-controls[data-ada-io-presentation='mine']
@@ -190,6 +224,8 @@
     align-items: center;
     justify-content: center;
     font-size: .85rem;
+    cursor: pointer !important;
+    pointer-events: auto !important;
 }
 
 .ada-io-dashboard__zoom-side {
@@ -218,6 +254,7 @@
 @media only screen and (max-width: 1279px) {
     .ada-io-dashboard {
         --ada-io-gap: .5rem;
+        --ada-io-edge-inset: .5rem;
         display: block;
         height: auto;
         overflow: visible;
