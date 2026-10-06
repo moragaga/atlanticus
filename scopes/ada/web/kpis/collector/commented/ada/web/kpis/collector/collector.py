@@ -1,5 +1,6 @@
-# El collector mantiene el último estado válido de Latest y Timeseries y reconstruye stores
-# lógicos por componente usando exclusivamente la identidad definida por ToolStructure.
+# Collector de KPI Delivery. Mantiene dos familias de Store sincronizadas por las mismas revisiones:
+# Component Stores para componentes del Tool y System Stores para destinos reservados como
+# global_indicators y time_status. Ningún consumidor específico vive en esta capa.
 
 from __future__ import annotations
 
@@ -10,6 +11,7 @@ from threading import RLock
 from types import MappingProxyType
 from typing import Any
 
+from ada.contracts.tools.structure import ToolStructure
 from ada.web.components import (
     ComponentDelivery,
     ComponentStoreSnapshot,
@@ -35,8 +37,8 @@ from ada.web.kpis.collector.models import (
     KpiCollectorRefreshStatus,
     KpiCollectorSnapshot,
     KpiDeliveryReader,
+    SystemKpiStoreSnapshot,
 )
-from ada.contracts.tools.structure import ToolStructure
 
 _LATEST_DOCUMENT_FIELDS = frozenset(
     {'id', 'partition_id', 'document_type', 'manifest', 'destinations'}
@@ -52,6 +54,7 @@ _LATEST_MANIFEST_FIELDS = frozenset(
     }
 )
 _LATEST_VALUE_FIELDS = frozenset({'status', 'value_kind', 'value'})
+_LATEST_VALUE_KINDS = frozenset({'value', 'json'})
 _TIMESERIES_DOCUMENT_FIELDS = frozenset(
     {
         'id',
@@ -109,6 +112,8 @@ class _TimeseriesDelivery:
         return self.configuration_revision, self.tool_projection_revision
 
 
+# El Collector conserva el último snapshot válido de Latest y Timeseries y reconstruye ambas
+# familias de Store de forma atómica bajo el mismo lock.
 class AdaKpiCollector:
     def __init__(
         self,
@@ -132,6 +137,8 @@ class AdaKpiCollector:
         self._latest: _LatestDelivery | None = None
         self._timeseries: _TimeseriesDelivery | None = None
         self._stores = build_empty_component_stores(structure)
+        self._system_destination_keys = _system_destination_keys(structure)
+        self._system_stores = _build_empty_system_stores(structure, self._system_destination_keys)
         self._lock = RLock()
 
     @property
@@ -148,10 +155,16 @@ class AdaKpiCollector:
             return self._stores
 
     @property
+    def system_stores(self) -> tuple[SystemKpiStoreSnapshot, ...]:
+        with self._lock:
+            return self._system_stores
+
+    @property
     def snapshot(self) -> KpiCollectorSnapshot:
         with self._lock:
             return KpiCollectorSnapshot(
                 stores=self._stores,
+                system_stores=self._system_stores,
                 latest_revision=None if self._latest is None else self._latest.revision,
                 latest_watermark_utc=(
                     None if self._latest is None else self._latest.manifest['watermark_utc']
@@ -170,11 +183,17 @@ class AdaKpiCollector:
                 ),
             )
 
+    # Latest se valida completo, incluidos sus destination keys, antes de mutar el cache.
     def refresh_latest(self) -> KpiCollectorRefreshResult:
         document = self._reader.read_latest()
         if document is None:
             return KpiCollectorRefreshResult(KpiCollectorRefreshStatus.MISSING)
         candidate = _parse_latest_delivery(document)
+        _validate_destination_keys(
+            candidate.destinations,
+            allowed=self._structure.kpi_destination_keys,
+            label='KPI latest delivery',
+        )
 
         with self._lock:
             if candidate.tool_projection_revision != self._tool_projection_revision:
@@ -206,11 +225,17 @@ class AdaKpiCollector:
                 candidate.revision,
             )
 
+    # Timeseries usa la misma whitelist de destinos y conserva la compatibilidad de revisiones.
     def refresh_timeseries(self) -> KpiCollectorRefreshResult:
         document = self._reader.read_timeseries()
         if document is None:
             return KpiCollectorRefreshResult(KpiCollectorRefreshStatus.MISSING)
         candidate = _parse_timeseries_delivery(document)
+        _validate_destination_keys(
+            candidate.destinations,
+            allowed=self._structure.kpi_destination_keys,
+            label='KPI timeseries delivery',
+        )
 
         with self._lock:
             if candidate.tool_projection_revision != self._tool_projection_revision:
@@ -244,34 +269,62 @@ class AdaKpiCollector:
                 candidate.revision,
             )
 
+    # Una única reconstrucción proyecta el mismo Delivery hacia componentes y destinos de sistema.
     def _rebuild_stores(self) -> None:
         stores = build_empty_component_stores(self._structure)
         deliveries: list[ComponentDelivery] = []
         for component in self._structure.components:
-            latest = _component_latest(self._latest, component.key)
-            timeseries = _component_timeseries(self._timeseries, component.key)
-            if latest is None and timeseries is None:
+            payload = _destination_payload(
+                latest_delivery=self._latest,
+                timeseries_delivery=self._timeseries,
+                destination_key=component.key,
+            )
+            if payload is None:
                 continue
             deliveries.append(
                 ComponentDelivery(
                     tool_key=self._structure.tool_key,
                     component_key=component.key,
-                    payload=ComponentKpiData(
-                        latest=latest,
-                        timeseries=timeseries,
-                    ),
+                    payload=payload,
                 )
             )
         self._stores = collect_component_deliveries(stores, deliveries)
+        self._system_stores = tuple(
+            SystemKpiStoreSnapshot(
+                tool_key=self._structure.tool_key,
+                destination_key=destination_key,
+                payload=_destination_payload(
+                    latest_delivery=self._latest,
+                    timeseries_delivery=self._timeseries,
+                    destination_key=destination_key,
+                ),
+            )
+            for destination_key in self._system_destination_keys
+        )
 
 
-def _component_latest(
+# Esta función evita dos pipelines distintos: component y system consumen exactamente el mismo
+# contrato Latest/Timeseries; solo cambia la identidad del Store que lo publica.
+def _destination_payload(
+    *,
+    latest_delivery: _LatestDelivery | None,
+    timeseries_delivery: _TimeseriesDelivery | None,
+    destination_key: str,
+) -> ComponentKpiData | None:
+    latest = _destination_latest(latest_delivery, destination_key)
+    timeseries = _destination_timeseries(timeseries_delivery, destination_key)
+    if latest is None and timeseries is None:
+        return None
+    return ComponentKpiData(latest=latest, timeseries=timeseries)
+
+
+def _destination_latest(
     delivery: _LatestDelivery | None,
-    component_key: str,
+    destination_key: str,
 ) -> ComponentLatestKpiData | None:
     if delivery is None:
         return None
-    values = delivery.destinations.get(component_key)
+    values = delivery.destinations.get(destination_key)
     if values is None:
         return None
     return ComponentLatestKpiData(
@@ -280,13 +333,13 @@ def _component_latest(
     )
 
 
-def _component_timeseries(
+def _destination_timeseries(
     delivery: _TimeseriesDelivery | None,
-    component_key: str,
+    destination_key: str,
 ) -> ComponentTimeseriesKpiData | None:
     if delivery is None:
         return None
-    keys = delivery.destinations.get(component_key)
+    keys = delivery.destinations.get(destination_key)
     if keys is None:
         return None
     return ComponentTimeseriesKpiData(
@@ -295,6 +348,39 @@ def _component_timeseries(
         step_seconds=delivery.step_seconds,
         series=MappingProxyType({key: _freeze_mapping(delivery.series[key]) for key in keys}),
     )
+
+
+# ToolStructure es la autoridad de los destinos. Los destinos de sistema son los kpi_destination_keys
+# que no corresponden a component.key, por lo que no se mantiene una lista paralela en Collector.
+def _system_destination_keys(structure: ToolStructure) -> tuple[str, ...]:
+    component_keys = {component.key for component in structure.components}
+    return tuple(key for key in structure.kpi_destination_keys if key not in component_keys)
+
+
+def _build_empty_system_stores(
+    structure: ToolStructure,
+    destination_keys: tuple[str, ...],
+) -> tuple[SystemKpiStoreSnapshot, ...]:
+    return tuple(
+        SystemKpiStoreSnapshot(
+            tool_key=structure.tool_key,
+            destination_key=destination_key,
+        )
+        for destination_key in destination_keys
+    )
+
+
+# Un destino desconocido se considera ruptura contractual; ignorarlo ocultaría errores de configuración.
+def _validate_destination_keys(
+    destinations: Mapping[str, object],
+    *,
+    allowed: tuple[str, ...],
+    label: str,
+) -> None:
+    allowed_keys = set(allowed)
+    unknown = next((key for key in destinations if key not in allowed_keys), None)
+    if unknown is not None:
+        raise KpiCollectorContractError(f'{label} contains unknown destination {unknown!r}')
 
 
 def _freeze_mapping(value: Mapping[str, object]) -> Mapping[str, object]:
@@ -309,6 +395,8 @@ def _freeze_value(value: object) -> object:
     return value
 
 
+# El parser conserva el envelope status/value_kind/value. La presentación se resuelve después mediante
+# el decoder canónico de Latest y nunca aquí.
 def _parse_latest_delivery(document: Mapping[str, Any]) -> _LatestDelivery:
     value = _document(document, _LATEST_DOCUMENT_FIELDS, 'KPI latest delivery')
     _require_identity(
@@ -444,6 +532,8 @@ def _parse_timeseries_delivery(document: Mapping[str, Any]) -> _TimeseriesDelive
     )
 
 
+# La validación replica el contrato efectivo de Delivery: value_kind solo puede ser value o json;
+# missing no transporta tipo ni payload y error nunca transporta payload.
 def _validate_latest_value(value: Mapping[str, Any], key: str) -> None:
     status = value['status']
     value_kind = value['value_kind']
@@ -452,10 +542,16 @@ def _validate_latest_value(value: Mapping[str, Any], key: str) -> None:
         raise KpiCollectorContractError(f'KPI latest value {key!r} status is invalid')
     if value_kind is not None:
         _required_text(value_kind, f'KPI latest value {key!r} value_kind')
+        if value_kind not in _LATEST_VALUE_KINDS:
+            raise KpiCollectorContractError(f'KPI latest value {key!r} value_kind is invalid')
     if status == 'ok':
         if value_kind is None or payload is None:
             raise KpiCollectorContractError(
                 f'KPI latest value {key!r} requires value_kind and value when status is ok'
+            )
+        if value_kind == 'json' and not isinstance(payload, list | dict):
+            raise KpiCollectorContractError(
+                f'KPI latest value {key!r} json value must be an object or array'
             )
         return
     if status == 'missing':

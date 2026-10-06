@@ -117,7 +117,7 @@ def test_value_ok_is_returned_directly_without_consumer_inference() -> None:
     assert presentation.resolve_many(('crusher_rate',)) == {'crusher_rate': '42,0'}
 
 
-def test_value_missing_and_error_are_returned_as_status_components() -> None:
+def test_value_missing_and_error_are_presented_as_status_components() -> None:
     missing = OperationalLatestPresentation(
         'integrated_operations',
         'mine',
@@ -134,26 +134,28 @@ def test_value_missing_and_error_are_returned_as_status_components() -> None:
     assert _prop(error, 'src').endswith('/img/status/internal-error.svg')
 
 
-def test_json_ok_missing_and_error_all_preserve_structural_payload() -> None:
-    for status in ('ok', 'missing', 'error'):
-        payload = {'rows': [], 'columns': ['name', 'value']}
+def test_json_ok_preserves_structural_payload() -> None:
+    payload = {'rows': [], 'columns': ['name', 'value']}
+    presentation = OperationalLatestPresentation(
+        'integrated_operations',
+        'mine',
+        _store(values={'table': {'status': 'ok', 'value_kind': 'json', 'value': payload}}),
+    )
+
+    assert presentation['table'] == payload
+
+
+def test_json_payload_on_missing_or_error_is_invalid_contract() -> None:
+    payload = {'rows': [], 'columns': ['name', 'value']}
+    for status in ('missing', 'error'):
         presentation = OperationalLatestPresentation(
             'integrated_operations',
             'mine',
             _store(values={'table': {'status': status, 'value_kind': 'json', 'value': payload}}),
         )
-        assert presentation['table'] == payload
-
-
-def test_json_degraded_without_structural_payload_falls_back_to_status_icon() -> None:
-    presentation = OperationalLatestPresentation(
-        'integrated_operations',
-        'mine',
-        _store(values={'table': {'status': 'missing', 'value_kind': 'json', 'value': None}}),
-    )
-    resolved = presentation['table']
-    assert isinstance(resolved, Component)
-    assert _prop(resolved, 'src').endswith('/img/status/empty-data.svg')
+        resolved = presentation['table']
+        assert isinstance(resolved, Component)
+        assert _prop(resolved, 'src').endswith('/img/status/invalid-data.svg')
 
 
 def test_absent_key_and_invalid_payload_are_normalized_to_icons() -> None:

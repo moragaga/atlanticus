@@ -6,19 +6,21 @@ from threading import Event
 import pytest
 from dash import html
 
+from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
+from ada.contracts.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 from ada.web.components import build_empty_component_stores
 from ada.web.kpis.collector import (
     ADA_KPI_COLLECTOR_RUNTIME_SERVICE_KEY,
     KPI_COMPONENT_STORE_TYPE,
+    KPI_SYSTEM_STORE_TYPE,
     AdaKpiCollectorPollingRuntime,
     KpiCollectorRefreshResult,
     KpiCollectorRefreshStatus,
     KpiCollectorSnapshot,
     KpiDeliveryReadError,
+    SystemKpiStoreSnapshot,
     attach_ada_kpi_collector,
 )
-from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
-from ada.contracts.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 from atlanticus.web.application import create_web_application
 from atlanticus.web.models import ApplicationMetadata, WebApplicationDefinition
 from atlanticus.web.observability import (
@@ -31,7 +33,13 @@ from atlanticus.web.observability import (
 class CollectorStub:
     def __init__(self, structure: ToolStructure) -> None:
         self.structure = structure
-        self.snapshot = KpiCollectorSnapshot(build_empty_component_stores(structure))
+        self.snapshot = KpiCollectorSnapshot(
+            build_empty_component_stores(structure),
+            system_stores=(
+                SystemKpiStoreSnapshot(structure.tool_key, 'global_indicators'),
+                SystemKpiStoreSnapshot(structure.tool_key, 'time_status'),
+            ),
+        )
         self.latest_error: Exception | None = None
         self.latest_calls = 0
         self.timeseries_calls = 0
@@ -63,6 +71,7 @@ def _structure() -> ToolStructure:
         tool_key='process',
         kind=ToolConfigurationKind.PROCESS,
         operational_scope=ToolScope.MINE,
+        center_component_key='mine',
         components=(
             ToolComponent(
                 key='mine',
@@ -105,21 +114,24 @@ def _definition(tmp_path: Path, page_package: str) -> WebApplicationDefinition:
     )
 
 
-def _component_store_ids(value: object) -> list[dict[str, object]]:
+def _collector_store_ids(value: object) -> list[dict[str, object]]:
     found: list[dict[str, object]] = []
     if isinstance(value, dict):
         candidate = value.get('id')
-        if isinstance(candidate, dict) and candidate.get('type') == KPI_COMPONENT_STORE_TYPE:
+        if isinstance(candidate, dict) and candidate.get('type') in {
+            KPI_COMPONENT_STORE_TYPE,
+            KPI_SYSTEM_STORE_TYPE,
+        }:
             found.append(candidate)
         for nested in value.values():
-            found.extend(_component_store_ids(nested))
+            found.extend(_collector_store_ids(nested))
     elif isinstance(value, list):
         for nested in value:
-            found.extend(_component_store_ids(nested))
+            found.extend(_collector_store_ids(nested))
     return found
 
 
-def test_attached_collector_uses_real_web_lifecycle_and_component_stores(
+def test_attached_collector_uses_real_web_lifecycle_and_all_store_families(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -151,10 +163,16 @@ def test_attached_collector_uses_real_web_lifecycle_and_component_stores(
 
     layout_response = client.get('/_dash-layout')
     assert layout_response.status_code == 200
-    ids = _component_store_ids(layout_response.get_json())
+    ids = _collector_store_ids(layout_response.get_json())
     assert ids == [
         {'type': KPI_COMPONENT_STORE_TYPE, 'tool': 'process', 'component': 'mine'},
         {'type': KPI_COMPONENT_STORE_TYPE, 'tool': 'process', 'component': 'plant'},
+        {
+            'type': KPI_SYSTEM_STORE_TYPE,
+            'tool': 'process',
+            'destination': 'global_indicators',
+        },
+        {'type': KPI_SYSTEM_STORE_TYPE, 'tool': 'process', 'destination': 'time_status'},
     ]
 
     polling_runtime.stop()

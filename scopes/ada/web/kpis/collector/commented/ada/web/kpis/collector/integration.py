@@ -1,6 +1,5 @@
-# Integra el collector con Atlanticus Web: registra servicios, arranca el poller sólo con tráfico
-# real de aplicación y conecta el cache de proceso con los stores de navegador.
-# La función attach decora una definición ya resuelta sin introducir dependencia en Generic App.
+# Integración Web del Collector. El layout publica Stores de componente y de sistema y un único
+# callback copia snapshots desde el cache de proceso al navegador sin leer Cosmos inline.
 
 from __future__ import annotations
 
@@ -12,18 +11,21 @@ from dash import Input, Output, State, dcc
 from dash.development.base_component import Component
 from flask import request
 
+from ada.contracts.tools.structure import ToolStructure
 from ada.web.kpis.collector.presentation import (
     KpiCollectorPresentationSettings,
     KpiCollectorPresentationSource,
     component_kpi_store_id,
     project_component_store_data,
+    project_system_store_data,
     resolve_kpi_collector_browser_update,
+    system_kpi_destination_keys,
+    system_kpi_store_id,
 )
 from ada.web.kpis.collector.runtime import (
     AdaKpiCollectorPollingRuntime,
     KpiCollectorPollingSettings,
 )
-from ada.contracts.tools.structure import ToolStructure
 from atlanticus.web.models import WebApplicationDefinition
 from atlanticus.web.modules import CallbackRegistrar, WebModule
 from atlanticus.web.observability import WEB_OBSERVABILITY_SERVICE_KEY, WebObservability
@@ -166,6 +168,8 @@ def _create_module(
     )
 
 
+# El callback conserva un único revision Store y separa los State por identidad solo al invocar la
+# proyección. Component y system outputs avanzan juntos en la misma ejecución.
 def _create_callback_registrar(
     *,
     structure: ToolStructure,
@@ -175,10 +179,15 @@ def _create_callback_registrar(
         component_kpi_store_id(structure.tool_key, component.key)
         for component in structure.components
     )
+    system_ids = tuple(
+        system_kpi_store_id(structure.tool_key, destination_key)
+        for destination_key in system_kpi_destination_keys(structure)
+    )
 
     def register_callbacks(dash_app: Dash, services: ServiceRegistry) -> None:
-        outputs = tuple(Output(component_id, 'data') for component_id in component_ids)
-        states = tuple(State(component_id, 'data') for component_id in component_ids)
+        outputs = tuple(Output(store_id, 'data') for store_id in (*component_ids, *system_ids))
+        states = tuple(State(store_id, 'data') for store_id in (*component_ids, *system_ids))
+        component_count = len(component_ids)
 
         @dash_app.callback(
             *outputs,
@@ -190,19 +199,22 @@ def _create_callback_registrar(
         def refresh_from_cache(
             _n_intervals: int,
             browser_revision: object,
-            *browser_component_data: object,
+            *browser_store_data: object,
         ):
             collector = services.require(ADA_KPI_COLLECTOR_SERVICE_KEY)
-            component_updates, revision = resolve_kpi_collector_browser_update(
+            component_updates, system_updates, revision = resolve_kpi_collector_browser_update(
                 collector,
                 browser_revision=browser_revision,
-                browser_component_data=browser_component_data,
+                browser_component_data=browser_store_data[:component_count],
+                browser_system_data=browser_store_data[component_count:],
             )
-            return (*component_updates, revision)
+            return (*component_updates, *system_updates, revision)
 
     return register_callbacks
 
 
+# Los System Stores se materializan junto a los Component Stores. Su identidad usa destination para
+# evitar convertir global_indicators o time_status en componentes ficticios del Tool.
 def _build_runtime_components(
     *,
     collector: KpiCollectorPresentationSource,
@@ -210,14 +222,23 @@ def _build_runtime_components(
 ) -> tuple[Component, ...]:
     structure = collector.structure
     snapshot = collector.snapshot
-    stores = {store.component_key: store for store in snapshot.stores}
-    component_stores = tuple(
+    component_stores = {store.component_key: store for store in snapshot.stores}
+    system_stores = {store.destination_key: store for store in snapshot.system_stores}
+    component_store_components = tuple(
         dcc.Store(
             id=component_kpi_store_id(structure.tool_key, component.key),
             storage_type='memory',
-            data=project_component_store_data(stores[component.key]),
+            data=project_component_store_data(component_stores[component.key]),
         )
         for component in structure.components
+    )
+    system_store_components = tuple(
+        dcc.Store(
+            id=system_kpi_store_id(structure.tool_key, destination_key),
+            storage_type='memory',
+            data=project_system_store_data(system_stores[destination_key]),
+        )
+        for destination_key in system_kpi_destination_keys(structure)
     )
     return (
         dcc.Interval(
@@ -230,7 +251,8 @@ def _build_runtime_components(
             storage_type='memory',
             data=snapshot.browser_revision,
         ),
-        *component_stores,
+        *component_store_components,
+        *system_store_components,
     )
 
 

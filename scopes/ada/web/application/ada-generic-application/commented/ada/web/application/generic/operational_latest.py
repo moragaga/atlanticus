@@ -1,4 +1,7 @@
-# Espejo pedagógico: normaliza Store.latest antes de entregarlo a modeladores y builders.
+# Adaptador de presentación de Latest para componentes operacionales de Generic. La validación del
+# envelope status/value_kind/value ya no vive aquí: Generic solo convierte el resultado semántico
+# del decoder compartido a la representación visual que necesita esta superficie.
+
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
@@ -7,7 +10,12 @@ from dataclasses import dataclass
 from dash import Input, Output, html
 from dash.development.base_component import Component
 
-from ada.web.kpis.collector import component_kpi_store_id
+from ada.web.kpis.collector import (
+    DecodedKpiLatestValue,
+    KpiLatestValueState,
+    component_kpi_store_id,
+    decode_kpi_latest_value,
+)
 from ada.web.operational_render_binding import (
     OperationalComponentBinding,
     OperationalRenderBinding,
@@ -17,7 +25,7 @@ from atlanticus.web.modules import WebModule
 
 OPERATIONAL_LATEST_HOST_TYPE = 'ada-operational-latest-host'
 
-# Encapsula el Store ya serializado y expone valores listos para consumo de presentación.
+
 @dataclass(frozen=True, slots=True)
 class OperationalLatestPresentation:
     tool_key: str
@@ -29,7 +37,6 @@ class OperationalLatestPresentation:
         object.__setattr__(self, 'tool_key', address['tool'])
         object.__setattr__(self, 'component_key', address['component'])
 
-    # Devuelve directamente valor, JSON estructural o componente Dash de estado.
     def resolve(self, kpi_key: str) -> object:
         return resolve_operational_latest_value(
             self.store_data,
@@ -38,13 +45,11 @@ class OperationalLatestPresentation:
             kpi_key=kpi_key,
         )
 
-    # Permite normalizar de una vez el conjunto de claves que consumirá un modelador.
     def resolve_many(self, kpi_keys: Iterable[str]) -> dict[str, object]:
         if isinstance(kpi_keys, str | bytes):
             raise TypeError('kpi_keys must be an iterable of KPI keys')
         return {kpi_key: self.resolve(kpi_key) for kpi_key in kpi_keys}
 
-    # Hace posible usar presentation['kpi'] sin repetir lógica de status/value_kind aguas abajo.
     def __getitem__(self, kpi_key: str) -> object:
         return self.resolve(kpi_key)
 
@@ -55,7 +60,6 @@ AdaOperationalLatestRenderer = Callable[
 ]
 
 
-# El host comparte dirección Tool/Component con el Store, pero conserva identidad Dash propia.
 def operational_latest_host_id(tool_key: str, component_key: str) -> dict[str, str]:
     address = component_kpi_store_id(tool_key, component_key)
     return {
@@ -65,7 +69,6 @@ def operational_latest_host_id(tool_key: str, component_key: str) -> dict[str, s
     }
 
 
-# Materializa un host por componente según el orden de Tool Structure.
 def materialize_operational_latest_hosts(
     binding: OperationalRenderBinding,
 ) -> tuple[Component, ...]:
@@ -83,7 +86,6 @@ def materialize_operational_latest_hosts(
     )
 
 
-# Construye el cuerpo donde los callbacks depositarán la UI concreta.
 def build_operational_latest_body(binding: OperationalRenderBinding) -> Component:
     return html.Div(
         materialize_operational_latest_hosts(binding),
@@ -91,7 +93,6 @@ def build_operational_latest_body(binding: OperationalRenderBinding) -> Componen
     )
 
 
-# Registra el enlace reactivo Store.data -> host.children por componente.
 def create_operational_latest_render_module(
     binding: OperationalRenderBinding,
     *,
@@ -114,7 +115,8 @@ def create_operational_latest_render_module(
     )
 
 
-# Valida el contrato Store.latest una sola vez y entrega el objeto final de presentación.
+# La identidad y estructura del Component Store siguen siendo responsabilidad de Generic. Una vez
+# localizado el KPI, el envelope se delega al decoder canónico del Collector.
 def resolve_operational_latest_value(
     store_data: object,
     *,
@@ -147,49 +149,25 @@ def resolve_operational_latest_value(
     values = latest['values']
     if not isinstance(values, Mapping):
         return _status_icon(DisplayStatus.INVALID)
-    if resolved_kpi_key not in values:
-        return _status_icon(DisplayStatus.NOT_MAPPED)
-
-    entry = values[resolved_kpi_key]
-    if not isinstance(entry, Mapping) or set(entry) != {'status', 'value_kind', 'value'}:
-        return _status_icon(DisplayStatus.INVALID)
-    return _resolve_delivery_entry(entry)
+    present = resolved_kpi_key in values
+    decoded = decode_kpi_latest_value(values.get(resolved_kpi_key), present=present)
+    return _present_decoded_value(decoded)
 
 
-# JSON estructural siempre conserva su forma; VALUE degradado se convierte en icono compartido.
-def _resolve_delivery_entry(entry: Mapping[str, object]) -> object:
-    status = entry['status']
-    value_kind = entry['value_kind']
-    payload = entry['value']
-
-    if value_kind == 'json':
-        if isinstance(payload, list | dict) and status in {'ok', 'missing', 'error'}:
-            return payload
-        if payload is not None:
-            return _status_icon(DisplayStatus.INVALID)
-        if status == 'missing':
-            return _status_icon(DisplayStatus.EMPTY)
-        if status == 'error':
-            return _status_icon(DisplayStatus.ERROR)
-        return _status_icon(DisplayStatus.INVALID)
-
-    if value_kind == 'value':
-        if status == 'ok' and payload is not None:
-            return payload
-        if payload is not None:
-            return _status_icon(DisplayStatus.INVALID)
-        if status == 'missing':
-            return _status_icon(DisplayStatus.EMPTY)
-        if status == 'error':
-            return _status_icon(DisplayStatus.ERROR)
-        return _status_icon(DisplayStatus.INVALID)
-
-    if value_kind is None and status == 'missing' and payload is None:
-        return _status_icon(DisplayStatus.EMPTY)
-    return _status_icon(DisplayStatus.INVALID)
+# Solo esta capa decide que MISSING se dibuja como EMPTY y que ERROR/INVALID/NOT_MAPPED usan sus
+# iconos correspondientes. Otros consumidores, como Time Status, podrán tomar decisiones distintas.
+def _present_decoded_value(value: DecodedKpiLatestValue) -> object:
+    if value.state is KpiLatestValueState.OK:
+        return value.value
+    statuses = {
+        KpiLatestValueState.NOT_MAPPED: DisplayStatus.NOT_MAPPED,
+        KpiLatestValueState.MISSING: DisplayStatus.EMPTY,
+        KpiLatestValueState.INVALID: DisplayStatus.INVALID,
+        KpiLatestValueState.ERROR: DisplayStatus.ERROR,
+    }
+    return _status_icon(statuses[value.state])
 
 
-# Centraliza la construcción de iconos para que los consumidores no inspeccionen estados.
 def _status_icon(status: DisplayStatus) -> Component:
     icon = build_display_status_icon(status)
     if icon is None:
@@ -197,7 +175,6 @@ def _status_icon(status: DisplayStatus) -> Component:
     return icon
 
 
-# Conserva exactamente la dirección Tool/Component entre Input y Output.
 def _register_component_callback(
     dash_app,
     *,
@@ -226,7 +203,6 @@ def _register_component_callback(
         return rendered
 
 
-# Mantiene el contrato de un renderer por componente estructural.
 def _validate_renderers(
     binding: OperationalRenderBinding,
     renderers: Mapping[str, AdaOperationalLatestRenderer],
@@ -251,7 +227,6 @@ def _validate_renderers(
         raise ValueError(f'Missing operational latest renderer: {missing_key!r}')
 
 
-# KPI key sigue siendo la identidad externa del modelador.
 def _required_text(value: object, field_name: str) -> str:
     if not isinstance(value, str) or not value or value != value.strip():
         raise ValueError(f'{field_name} must be a non-empty trimmed string')

@@ -6,7 +6,12 @@ from dataclasses import dataclass
 from dash import Input, Output, html
 from dash.development.base_component import Component
 
-from ada.web.kpis.collector import component_kpi_store_id
+from ada.web.kpis.collector import (
+    DecodedKpiLatestValue,
+    KpiLatestValueState,
+    component_kpi_store_id,
+    decode_kpi_latest_value,
+)
 from ada.web.operational_render_binding import (
     OperationalComponentBinding,
     OperationalRenderBinding,
@@ -15,6 +20,7 @@ from ada.web.ui.display_status import DisplayStatus, build_display_status_icon
 from atlanticus.web.modules import WebModule
 
 OPERATIONAL_LATEST_HOST_TYPE = 'ada-operational-latest-host'
+
 
 @dataclass(frozen=True, slots=True)
 class OperationalLatestPresentation:
@@ -137,45 +143,21 @@ def resolve_operational_latest_value(
     values = latest['values']
     if not isinstance(values, Mapping):
         return _status_icon(DisplayStatus.INVALID)
-    if resolved_kpi_key not in values:
-        return _status_icon(DisplayStatus.NOT_MAPPED)
-
-    entry = values[resolved_kpi_key]
-    if not isinstance(entry, Mapping) or set(entry) != {'status', 'value_kind', 'value'}:
-        return _status_icon(DisplayStatus.INVALID)
-    return _resolve_delivery_entry(entry)
+    present = resolved_kpi_key in values
+    decoded = decode_kpi_latest_value(values.get(resolved_kpi_key), present=present)
+    return _present_decoded_value(decoded)
 
 
-def _resolve_delivery_entry(entry: Mapping[str, object]) -> object:
-    status = entry['status']
-    value_kind = entry['value_kind']
-    payload = entry['value']
-
-    if value_kind == 'json':
-        if isinstance(payload, list | dict) and status in {'ok', 'missing', 'error'}:
-            return payload
-        if payload is not None:
-            return _status_icon(DisplayStatus.INVALID)
-        if status == 'missing':
-            return _status_icon(DisplayStatus.EMPTY)
-        if status == 'error':
-            return _status_icon(DisplayStatus.ERROR)
-        return _status_icon(DisplayStatus.INVALID)
-
-    if value_kind == 'value':
-        if status == 'ok' and payload is not None:
-            return payload
-        if payload is not None:
-            return _status_icon(DisplayStatus.INVALID)
-        if status == 'missing':
-            return _status_icon(DisplayStatus.EMPTY)
-        if status == 'error':
-            return _status_icon(DisplayStatus.ERROR)
-        return _status_icon(DisplayStatus.INVALID)
-
-    if value_kind is None and status == 'missing' and payload is None:
-        return _status_icon(DisplayStatus.EMPTY)
-    return _status_icon(DisplayStatus.INVALID)
+def _present_decoded_value(value: DecodedKpiLatestValue) -> object:
+    if value.state is KpiLatestValueState.OK:
+        return value.value
+    statuses = {
+        KpiLatestValueState.NOT_MAPPED: DisplayStatus.NOT_MAPPED,
+        KpiLatestValueState.MISSING: DisplayStatus.EMPTY,
+        KpiLatestValueState.INVALID: DisplayStatus.INVALID,
+        KpiLatestValueState.ERROR: DisplayStatus.ERROR,
+    }
+    return _status_icon(statuses[value.state])
 
 
 def _status_icon(status: DisplayStatus) -> Component:
