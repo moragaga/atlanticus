@@ -1,10 +1,13 @@
-# El Header sólo ancla componentes ya construidos. Cada capability conserva su propia presentación.
+# Espejo comentado: el Header conserva ownership de slots y expone una identidad estable para consumidores runtime.
 from __future__ import annotations
 
 from dash import html
 from dash.development.base_component import Component
 
 from ada.web.ui.core import component_identity_attributes, slot_identity_attributes
+
+# Este id identifica el slot, no una implementación de Global Indicators.
+GLOBAL_INDICATORS_SLOT_ID = 'ada-operational-header-global-indicators-slot'
 
 
 def build_ada_operational_header(
@@ -17,13 +20,14 @@ def build_ada_operational_header(
     desktop_navigation_trigger: Component | None = None,
     mobile_navigation_trigger: Component | None = None,
 ) -> html.Header:
-    # La fila primaria mantiene el orden horizontal ya aprobado para los bloques operacionales.
     row_children: list[Component] = [
         _build_slot('brand', brand, 'ada-operational-header__brand-slot'),
+        # El slot puede ser llenado inicialmente o por un callback de una composición externa.
         _build_slot(
             'global_indicators',
             global_indicators,
             'ada-operational-header__global-indicators-slot',
+            component_id=GLOBAL_INDICATORS_SLOT_ID,
         ),
         _build_slot(
             'alarm_management',
@@ -40,15 +44,11 @@ def build_ada_operational_header(
         row_children.append(
             html.Div(
                 mobile_navigation_trigger,
-                className=(
-                    'ada-operational-header__mobile-navigation'
-                ),
+                className='ada-operational-header__mobile-navigation',
                 **slot_identity_attributes('navigation_mobile'),
             )
         )
 
-    # El trigger desktop se ancla únicamente a la fila primaria para que el nuevo strip inferior
-    # de Time Status no cambie su centro vertical ni invada los bloques operacionales.
     primary_children: list[Component] = [
         html.Div(
             row_children,
@@ -64,8 +64,6 @@ def build_ada_operational_header(
             )
         )
 
-    # Time Status vive bajo la fila existente pero sigue dentro del Header. El slot siempre existe
-    # como contrato DOM y se colapsa completamente cuando la composition root no inyecta contenido.
     return html.Header(
         [
             html.Div(
@@ -83,10 +81,17 @@ def build_ada_operational_header(
     )
 
 
-def _build_slot(slot_key: str, content: Component | None, class_name: str) -> html.Div:
-    # Los slots vacíos siguen existiendo en el contrato DOM, pero CSS los colapsa sin placeholders.
+def _build_slot(
+    slot_key: str,
+    content: Component | None,
+    class_name: str,
+    *,
+    component_id: str | None = None,
+) -> html.Div:
     attributes = slot_identity_attributes(slot_key)
     attributes['data-slot-empty'] = 'true' if content is None else 'false'
+    if component_id is not None:
+        attributes['id'] = component_id
     return html.Div(
         [] if content is None else [content],
         className=class_name,

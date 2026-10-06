@@ -5,6 +5,8 @@ from dash.development.base_component import Component
 
 from ada.web.ui.core import component_identity_attributes, slot_identity_attributes
 
+GLOBAL_INDICATORS_SLOT_ID = 'ada-operational-header-global-indicators-slot'
+
 
 def build_ada_operational_header(
     *,
@@ -22,6 +24,7 @@ def build_ada_operational_header(
             'global_indicators',
             global_indicators,
             'ada-operational-header__global-indicators-slot',
+            component_id=GLOBAL_INDICATORS_SLOT_ID,
         ),
         _build_slot(
             'alarm_management',
@@ -38,9 +41,7 @@ def build_ada_operational_header(
         row_children.append(
             html.Div(
                 mobile_navigation_trigger,
-                className=(
-                    'ada-operational-header__mobile-navigation'
-                ),
+                className='ada-operational-header__mobile-navigation',
                 **slot_identity_attributes('navigation_mobile'),
             )
         )
@@ -77,9 +78,17 @@ def build_ada_operational_header(
     )
 
 
-def _build_slot(slot_key: str, content: Component | None, class_name: str) -> html.Div:
+def _build_slot(
+    slot_key: str,
+    content: Component | None,
+    class_name: str,
+    *,
+    component_id: str | None = None,
+) -> html.Div:
     attributes = slot_identity_attributes(slot_key)
     attributes['data-slot-empty'] = 'true' if content is None else 'false'
+    if component_id is not None:
+        attributes['id'] = component_id
     return html.Div(
         [] if content is None else [content],
         className=class_name,

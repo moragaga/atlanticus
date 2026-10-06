@@ -1,0 +1,40 @@
+.ada-io-global-indicator-placement {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+}
+
+.ada-io-global-indicator-placement > .ada-global-indicator {
+    width: 100%;
+    max-width: 100%;
+    flex: 1 1 auto;
+}
+
+#ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine'])
+.ada-io-global-indicator-placement:not([data-ada-io-scope-mine='true']),
+#ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant'])
+.ada-io-global-indicator-placement:not([data-ada-io-scope-plant='true']) {
+    display: none;
+}
+
+@media only screen and (min-width: 350px) and (max-width: 1279.98px) {
+    .ada-io-global-indicator-placement {
+        flex: 0 0 50%;
+        width: 50%;
+        max-width: 50%;
+    }
+
+    .ada-io-global-indicator-placement:nth-child(n + 3) {
+        margin-top: .18rem;
+        padding-top: .48rem;
+        border-top: 1px solid var(--ada-global-indicator-mobile-divider);
+    }
+}
+
+@media only screen and (min-width: 1280px) {
+    .ada-io-global-indicator-placement + .ada-io-global-indicator-placement {
+        border-inline-start: 1px solid var(--ada-global-indicator-border);
+    }
+}

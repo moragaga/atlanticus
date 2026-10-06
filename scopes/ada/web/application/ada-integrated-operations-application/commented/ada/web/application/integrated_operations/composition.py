@@ -1,3 +1,4 @@
+# Espejo comentado: IO compone Dashboard y, cuando existen definiciones, su runtime de Global Indicators.
 from ada.contracts.tools.enums import ToolConfigurationKind
 from ada.web.application.generic import AdaApplicationExtension
 from ada.web.application.integrated_operations.modules.dashboard import create_dashboard_module
@@ -25,6 +26,7 @@ def create_integrated_operations_extension(
     if global_indicator_bindings:
         if binding is None:
             raise ValueError('Global Indicators require an Operational Render Binding')
+        # El Dashboard aporta sólo scopes de presentación; valores y envelopes vienen del Collector.
         modules.append(
             create_dashboard_global_indicators_module(
                 DashboardGlobalIndicatorsRuntimeBinding(
