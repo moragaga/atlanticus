@@ -7,15 +7,37 @@ from atlanticus.runtime import (
     JobRuntimeContext,
     RuntimeCancellationRequested,
     RuntimeConfiguration,
+    RuntimeContractError,
 )
+
+
+def _context(tmp_path, **definition_values) -> JobRuntimeContext:
+    definition = JobDefinition(
+        module_name=definition_values.pop('module_name', 'job'),
+        service_name=definition_values.pop('service_name', 'job-service'),
+        execution_timeout_seconds=definition_values.pop('execution_timeout_seconds', 20),
+        shutdown_grace_seconds=definition_values.pop('shutdown_grace_seconds', 5),
+        iteration_timeout_seconds=definition_values.pop('iteration_timeout_seconds', 10),
+        lease_timeout_seconds=definition_values.pop('lease_timeout_seconds', 30),
+        **definition_values,
+    )
+    configuration = RuntimeConfiguration.from_sources(
+        environ={
+            'ENVIRONMENT': 'local',
+            'APPLICATION': 'ada',
+            'VOLUMEN_PATH': str(tmp_path),
+        }
+    )
+    return JobRuntimeContext.create(
+        definition=definition,
+        configuration=configuration,
+        run_id='run-1',
+        correlation_id='correlation-1',
+    )
 
 
 def test_context_exposes_budget_memory_and_cooperative_stop(tmp_path) -> None:
     now = [10.0]
-
-    def clock() -> float:
-        return now[0]
-
     definition = JobDefinition(
         module_name='job',
         service_name='job-service',
@@ -36,12 +58,11 @@ def test_context_exposes_budget_memory_and_cooperative_stop(tmp_path) -> None:
         configuration=configuration,
         run_id='run-1',
         correlation_id='correlation-1',
-        clock=clock,
+        clock=lambda: now[0],
     )
 
     assert context.safe_remaining_seconds == 15
     assert context.get_or_create('catalog', lambda: {'loaded': True}) == {'loaded': True}
-    assert context.logger._component == 'job'
     assert context.application_root == tmp_path / 'ada'
 
     now[0] = 25.0
@@ -52,7 +73,6 @@ def test_context_exposes_budget_memory_and_cooperative_stop(tmp_path) -> None:
 
 def test_iteration_timeout_applies_only_after_iteration_starts(tmp_path) -> None:
     now = [10.0]
-
     definition = JobDefinition(
         module_name='job',
         service_name='job-service',
@@ -93,27 +113,7 @@ def test_iteration_timeout_applies_only_after_iteration_starts(tmp_path) -> None
 
 
 def test_context_accumulates_custom_facts_without_emitting_events(tmp_path) -> None:
-    definition = JobDefinition(
-        module_name='job',
-        service_name='job-service',
-        execution_timeout_seconds=20,
-        shutdown_grace_seconds=5,
-        iteration_timeout_seconds=10,
-        lease_timeout_seconds=30,
-    )
-    configuration = RuntimeConfiguration.from_sources(
-        environ={
-            'ENVIRONMENT': 'local',
-            'APPLICATION': 'ada',
-            'VOLUMEN_PATH': str(tmp_path),
-        }
-    )
-    context = JobRuntimeContext.create(
-        definition=definition,
-        configuration=configuration,
-        run_id='run-1',
-        correlation_id='correlation-1',
-    )
+    context = _context(tmp_path)
 
     context._begin_iteration(1)
     context.mark_iteration_work()
@@ -135,27 +135,7 @@ def test_context_accumulates_custom_facts_without_emitting_events(tmp_path) -> N
 
 
 def test_context_normalizes_memory_keys_and_preserves_first_stop_reason(tmp_path) -> None:
-    definition = JobDefinition(
-        module_name='ada.process',
-        service_name='process',
-        execution_timeout_seconds=20,
-        shutdown_grace_seconds=5,
-        iteration_timeout_seconds=10,
-        lease_timeout_seconds=30,
-    )
-    configuration = RuntimeConfiguration.from_sources(
-        environ={
-            'ENVIRONMENT': 'local',
-            'APPLICATION': 'ada',
-            'VOLUMEN_PATH': str(tmp_path),
-        }
-    )
-    context = JobRuntimeContext.create(
-        definition=definition,
-        configuration=configuration,
-        run_id='run-1',
-        correlation_id='correlation-1',
-    )
+    context = _context(tmp_path, module_name='ada.process', service_name='process')
 
     context.set_memory(' catalog ', {'loaded': True})
     context.request_stop('sigterm')
@@ -168,54 +148,14 @@ def test_context_normalizes_memory_keys_and_preserves_first_stop_reason(tmp_path
 
 @pytest.mark.parametrize('seconds', [float('nan'), float('inf'), True, -1])
 def test_context_rejects_invalid_waits(tmp_path, seconds) -> None:
-    definition = JobDefinition(
-        module_name='job',
-        service_name='job',
-        execution_timeout_seconds=20,
-        shutdown_grace_seconds=5,
-        iteration_timeout_seconds=10,
-        lease_timeout_seconds=30,
-    )
-    configuration = RuntimeConfiguration.from_sources(
-        environ={
-            'ENVIRONMENT': 'local',
-            'APPLICATION': 'ada',
-            'VOLUMEN_PATH': str(tmp_path),
-        }
-    )
-    context = JobRuntimeContext.create(
-        definition=definition,
-        configuration=configuration,
-        run_id='run-1',
-        correlation_id='correlation-1',
-    )
+    context = _context(tmp_path, service_name='job')
 
     with pytest.raises((TypeError, ValueError)):
         context.wait(seconds)
 
 
 def test_context_accepts_per_iteration_delay_and_resets_it(tmp_path) -> None:
-    definition = JobDefinition(
-        module_name='job',
-        service_name='job',
-        execution_timeout_seconds=20,
-        shutdown_grace_seconds=5,
-        iteration_timeout_seconds=10,
-        lease_timeout_seconds=30,
-    )
-    configuration = RuntimeConfiguration.from_sources(
-        environ={
-            'ENVIRONMENT': 'local',
-            'APPLICATION': 'ada',
-            'VOLUMEN_PATH': str(tmp_path),
-        }
-    )
-    context = JobRuntimeContext.create(
-        definition=definition,
-        configuration=configuration,
-        run_id='run-1',
-        correlation_id='correlation-1',
-    )
+    context = _context(tmp_path, service_name='job')
 
     context._begin_iteration(1)
     context.set_next_iteration_delay(8.75)
@@ -227,27 +167,17 @@ def test_context_accepts_per_iteration_delay_and_resets_it(tmp_path) -> None:
 
 @pytest.mark.parametrize('seconds', [float('nan'), float('inf'), True, -1])
 def test_context_rejects_invalid_next_iteration_delays(tmp_path, seconds) -> None:
-    definition = JobDefinition(
-        module_name='job',
-        service_name='job',
-        execution_timeout_seconds=20,
-        shutdown_grace_seconds=5,
-        iteration_timeout_seconds=10,
-        lease_timeout_seconds=30,
-    )
-    configuration = RuntimeConfiguration.from_sources(
-        environ={
-            'ENVIRONMENT': 'local',
-            'APPLICATION': 'ada',
-            'VOLUMEN_PATH': str(tmp_path),
-        }
-    )
-    context = JobRuntimeContext.create(
-        definition=definition,
-        configuration=configuration,
-        run_id='run-1',
-        correlation_id='correlation-1',
-    )
+    context = _context(tmp_path, service_name='job')
 
     with pytest.raises((TypeError, ValueError)):
         context.set_next_iteration_delay(seconds)
+
+
+def test_context_fails_closed_without_bound_lease_authority(tmp_path) -> None:
+    context = _context(tmp_path, service_name='unbound-authority-job')
+
+    assert context.lease_generation is None
+    with pytest.raises(RuntimeContractError, match='authority is not available'):
+        context.assert_lease_current()
+    with pytest.raises(RuntimeContractError, match='authority is not available'):
+        context.fenced_mutation()

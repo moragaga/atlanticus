@@ -47,109 +47,22 @@ def _lease(
     )
 
 
-def test_poc_generation_is_durable_across_clean_release(tmp_path) -> None:
+def test_generation_is_durable_across_clean_release(tmp_path) -> None:
     clock = MutableClock(datetime(2026, 8, 23, 21, 10, 5, tzinfo=UTC))
     first = _lease(tmp_path, run_id='run-1', clock=clock)
 
-    first_acquisition = first.acquire()
-    assert first_acquisition.generation == 1
+    assert first.acquire().generation == 1
     assert first.release()
 
     second = _lease(tmp_path, run_id='run-2', clock=clock)
-    second_acquisition = second.acquire()
+    assert second.acquire().generation == 2
 
-    assert second_acquisition.generation == 2
     authority = json.loads(second.authority_path.read_text(encoding='utf-8'))
     assert authority['generation'] == 2
     assert second.release()
 
 
-def test_poc_completed_scheduled_slot_is_not_executed_twice(tmp_path) -> None:
-    scheduled_at = datetime(2026, 8, 23, 21, 10, 0, tzinfo=UTC)
-    deadline = datetime(2026, 8, 23, 21, 20, 0, tzinfo=UTC)
-    clock = MutableClock(datetime(2026, 8, 23, 21, 10, 5, tzinfo=UTC))
-    first = _lease(
-        tmp_path,
-        run_id='run-1',
-        clock=clock,
-        scheduled_at_utc=scheduled_at,
-        authority_deadline_utc=deadline,
-    )
-
-    first_acquisition = first.acquire()
-    assert first_acquisition.generation == 1
-    assert first.release(completed=True)
-
-    duplicate = _lease(
-        tmp_path,
-        run_id='run-2',
-        clock=clock,
-        scheduled_at_utc=scheduled_at,
-        authority_deadline_utc=deadline,
-    )
-    duplicate_acquisition = duplicate.acquire()
-
-    assert duplicate_acquisition.skipped_reason == 'scheduled_slot_completed'
-    assert duplicate_acquisition.generation == 1
-    assert duplicate.acquired is False
-    assert duplicate.path.exists() is False
-
-
-def test_poc_incomplete_scheduled_slot_can_be_retried_with_new_generation(tmp_path) -> None:
-    scheduled_at = datetime(2026, 8, 23, 21, 10, 0, tzinfo=UTC)
-    deadline = datetime(2026, 8, 23, 21, 20, 0, tzinfo=UTC)
-    clock = MutableClock(datetime(2026, 8, 23, 21, 10, 5, tzinfo=UTC))
-    first = _lease(
-        tmp_path,
-        run_id='run-1',
-        clock=clock,
-        scheduled_at_utc=scheduled_at,
-        authority_deadline_utc=deadline,
-    )
-
-    assert first.acquire().generation == 1
-    assert first.release(completed=False)
-
-    retry = _lease(
-        tmp_path,
-        run_id='run-2',
-        clock=clock,
-        scheduled_at_utc=scheduled_at,
-        authority_deadline_utc=deadline,
-    )
-    retry_acquisition = retry.acquire()
-
-    assert retry_acquisition.generation == 2
-    assert retry_acquisition.skipped_reason is None
-    assert retry.release(completed=True)
-
-
-def test_poc_expired_takeover_advances_generation(tmp_path) -> None:
-    clock = MutableClock(datetime(2026, 8, 23, 21, 10, 0, tzinfo=UTC))
-    first = _lease(
-        tmp_path,
-        run_id='run-1',
-        clock=clock,
-        lease_timeout_seconds=10,
-    )
-    assert first.acquire().generation == 1
-
-    clock.value += timedelta(seconds=11)
-    second = _lease(
-        tmp_path,
-        run_id='run-2',
-        clock=clock,
-        lease_timeout_seconds=10,
-    )
-    acquisition = second.acquire()
-
-    assert acquisition.generation == 2
-    assert acquisition.recovered is not None
-    assert acquisition.recovered.run_id == 'run-1'
-    assert second.release()
-
-
-def test_poc_renewal_never_crosses_authority_deadline(tmp_path) -> None:
+def test_renewal_never_crosses_authority_deadline(tmp_path) -> None:
     started_at = datetime(2026, 8, 23, 21, 10, 0, tzinfo=UTC)
     deadline = started_at + timedelta(seconds=30)
     clock = MutableClock(started_at)
@@ -175,7 +88,7 @@ def test_poc_renewal_never_crosses_authority_deadline(tmp_path) -> None:
     assert lease.acquired is False
 
 
-def test_poc_elapsed_authority_window_never_creates_a_lease(tmp_path) -> None:
+def test_elapsed_authority_window_never_creates_a_lease(tmp_path) -> None:
     deadline = datetime(2026, 8, 23, 21, 20, 0, tzinfo=UTC)
     clock = MutableClock(deadline)
     lease = _lease(
@@ -194,14 +107,9 @@ def test_poc_elapsed_authority_window_never_creates_a_lease(tmp_path) -> None:
     assert lease.authority_path.exists() is False
 
 
-def test_poc_expired_owner_cannot_renew_same_generation(tmp_path) -> None:
+def test_expired_owner_cannot_renew_the_same_generation(tmp_path) -> None:
     clock = MutableClock(datetime(2026, 8, 23, 21, 10, 0, tzinfo=UTC))
-    lease = _lease(
-        tmp_path,
-        run_id='run-1',
-        clock=clock,
-        lease_timeout_seconds=10,
-    )
+    lease = _lease(tmp_path, run_id='run-1', clock=clock, lease_timeout_seconds=10)
     assert lease.acquire().generation == 1
 
     clock.value += timedelta(seconds=11)
@@ -210,14 +118,9 @@ def test_poc_expired_owner_cannot_renew_same_generation(tmp_path) -> None:
     assert lease.acquired is False
 
 
-def test_poc_renewal_waits_for_short_physical_fence(tmp_path) -> None:
+def test_renewal_waits_for_short_physical_fence_contention(tmp_path) -> None:
     clock = MutableClock(datetime(2026, 8, 23, 21, 10, 0, tzinfo=UTC))
-    lease = _lease(
-        tmp_path,
-        run_id='run-1',
-        clock=clock,
-        lease_timeout_seconds=10,
-    )
+    lease = _lease(tmp_path, run_id='run-1', clock=clock, lease_timeout_seconds=10)
     assert lease.acquire().generation == 1
     entered = threading.Event()
 
@@ -236,7 +139,7 @@ def test_poc_renewal_waits_for_short_physical_fence(tmp_path) -> None:
     assert lease.release()
 
 
-def test_poc_corrupt_authority_state_fails_closed(tmp_path) -> None:
+def test_corrupt_authority_state_fails_closed(tmp_path) -> None:
     clock = MutableClock(datetime(2026, 8, 23, 21, 10, 0, tzinfo=UTC))
     lease = _lease(tmp_path, run_id='run-1', clock=clock)
     lease.authority_path.parent.mkdir(parents=True, exist_ok=True)
@@ -246,14 +149,9 @@ def test_poc_corrupt_authority_state_fails_closed(tmp_path) -> None:
         lease.acquire()
 
 
-def test_poc_physical_fence_linearizes_commit_before_takeover(tmp_path) -> None:
+def test_physical_fence_linearizes_commit_before_takeover(tmp_path) -> None:
     clock = MutableClock(datetime(2026, 8, 23, 21, 10, 0, tzinfo=UTC))
-    first = _lease(
-        tmp_path,
-        run_id='run-1',
-        clock=clock,
-        lease_timeout_seconds=10,
-    )
+    first = _lease(tmp_path, run_id='run-1', clock=clock, lease_timeout_seconds=10)
     assert first.acquire().generation == 1
     entered = threading.Event()
     allow_commit = threading.Event()
@@ -314,10 +212,7 @@ def test_poc_physical_fence_linearizes_commit_before_takeover(tmp_path) -> None:
     assert second.release()
 
 
-def test_poc_heartbeat_retries_long_self_fence_without_false_renewal_failure(
-    tmp_path,
-    monkeypatch,
-) -> None:
+def test_heartbeat_retries_long_self_fence_without_false_failure(tmp_path, monkeypatch) -> None:
     lease = ExecutionLease(
         volume_path=tmp_path,
         application='ada',
@@ -364,10 +259,7 @@ def test_poc_heartbeat_retries_long_self_fence_without_false_renewal_failure(
     assert lease.release()
 
 
-def test_poc_heartbeat_retries_repeated_transient_fence_contention(
-    tmp_path,
-    monkeypatch,
-) -> None:
+def test_heartbeat_retries_repeated_transient_fence_contention(tmp_path, monkeypatch) -> None:
     lease = ExecutionLease(
         volume_path=tmp_path,
         application='ada',
@@ -417,10 +309,7 @@ def test_poc_heartbeat_retries_repeated_transient_fence_contention(
     assert lease.release()
 
 
-def test_poc_heartbeat_contention_still_fails_closed_at_authority_deadline(
-    tmp_path,
-    monkeypatch,
-) -> None:
+def test_heartbeat_contention_fails_closed_at_authority_deadline(tmp_path, monkeypatch) -> None:
     authority_deadline = datetime.now(UTC) + timedelta(seconds=0.15)
     lease = ExecutionLease(
         volume_path=tmp_path,

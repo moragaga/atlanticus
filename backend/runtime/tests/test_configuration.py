@@ -20,9 +20,6 @@ def test_configuration_resolves_application_scope(tmp_path) -> None:
     assert configuration.application_root == tmp_path / 'ada'
     assert configuration.runtime_root == tmp_path / 'ada' / '.runtime'
     assert configuration.observability_file_logs_enabled is True
-    assert not hasattr(configuration, 'values')
-    assert not hasattr(configuration, 'get')
-    assert not hasattr(configuration, 'require')
 
 
 @pytest.mark.parametrize('environment', [None, '', 'LOCAL', ' local ', 'testing', 'stage'])

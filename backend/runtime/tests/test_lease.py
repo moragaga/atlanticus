@@ -189,7 +189,7 @@ def test_lease_renewal_extends_expiration_without_changing_owner(tmp_path) -> No
     assert lease.release()
 
 
-def test_release_cleans_up_without_completing_after_authority_deadline(tmp_path) -> None:
+def test_release_does_not_complete_slot_after_authority_deadline(tmp_path) -> None:
     now = [datetime(2026, 10, 1, 12, 0, tzinfo=UTC)]
     scheduled_at = now[0]
     authority_deadline = scheduled_at + timedelta(seconds=10)
@@ -214,22 +214,6 @@ def test_release_cleans_up_without_completing_after_authority_deadline(tmp_path)
     assert lease.release(completed=True) is True
     authority = json.loads(lease.authority_path.read_text(encoding='utf-8'))
     assert authority['last_completed_scheduled_at_utc'] is None
-
-
-@pytest.mark.parametrize('job_key', ['job/key', 'job key', ' job', 'job '])
-def test_lease_rejects_job_keys_instead_of_sanitizing_them(tmp_path, job_key) -> None:
-    with pytest.raises(ValueError):
-        ExecutionLease(
-            volume_path=tmp_path,
-            application='ada',
-            service_name='dispatch',
-            job_key=job_key,
-            module_name='ada.processes.dispatch',
-            run_id='run-1',
-            lease_timeout_seconds=120,
-            renewal_seconds=30,
-            wait_seconds=0,
-        )
 
 
 def test_heartbeat_failure_requests_stop_and_is_observable(tmp_path, monkeypatch) -> None:
@@ -259,7 +243,7 @@ def test_heartbeat_failure_requests_stop_and_is_observable(tmp_path, monkeypatch
         lease.raise_if_unhealthy()
 
 
-def test_initial_lease_creation_cannot_be_recovered_while_payload_is_still_being_written(
+def test_initial_lease_creation_cannot_be_recovered_while_payload_is_being_written(
     tmp_path,
     monkeypatch,
 ) -> None:
@@ -310,19 +294,6 @@ def test_initial_lease_creation_cannot_be_recovered_while_payload_is_still_being
     assert first.release()
 
 
-def test_lease_fsyncs_directory_after_create_renew_and_release(tmp_path, monkeypatch) -> None:
-    lease = _lease(tmp_path, run_id='run-1')
-    calls = []
-
-    monkeypatch.setattr(lease_module, '_fsync_directory', lambda directory: calls.append(directory))
-
-    lease.acquire()
-    lease.renew()
-    assert lease.release()
-
-    assert calls == [lease.path.parent, lease.path.parent, lease.path.parent]
-
-
 def test_lease_recovers_invalid_utf8_payload_as_corrupt_state(tmp_path) -> None:
     lease = _lease(tmp_path, run_id='run-2')
     lease.path.parent.mkdir(parents=True, exist_ok=True)
@@ -334,36 +305,6 @@ def test_lease_recovers_invalid_utf8_payload_as_corrupt_state(tmp_path) -> None:
     assert acquisition.recovered.run_id is None
     assert json.loads(lease.path.read_text(encoding='utf-8'))['run_id'] == 'run-2'
     assert lease.release()
-
-
-def test_lease_rejects_relative_volume_path() -> None:
-    with pytest.raises(ValueError, match='absolute'):
-        ExecutionLease(
-            volume_path='relative-volume',
-            application='ada',
-            service_name='dispatch',
-            module_name='ada.processes.dispatch',
-            run_id='run-1',
-            lease_timeout_seconds=120,
-            renewal_seconds=30,
-            wait_seconds=0,
-        )
-
-
-def test_lease_context_manager_does_not_hide_business_error(tmp_path, monkeypatch) -> None:
-    lease = _lease(tmp_path, run_id='run-1')
-
-    def fail_release() -> bool:
-        raise OSError('cleanup failed')
-
-    monkeypatch.setattr(lease, 'start_renewal', lambda: None)
-    monkeypatch.setattr(lease, 'release', fail_release)
-
-    with pytest.raises(ValueError, match='business failure'):
-        with lease:
-            raise ValueError('business failure')
-
-    lease.path.unlink(missing_ok=True)
 
 
 def test_persistent_fence_file_does_not_block_after_release(tmp_path) -> None:

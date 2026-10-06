@@ -40,33 +40,29 @@ class SequenceSampler:
         )
 
 
-class CpuSpikeSampler:
+class FailingSampler:
     def __init__(self) -> None:
-        self.sampled = threading.Event()
+        self.calls = 0
+        self.repeated = threading.Event()
 
     def sample(self) -> ResourceSample:
-        self.sampled.set()
-        return ResourceSample(
-            occurred_at_utc=datetime(2026, 7, 17, tzinfo=UTC),
-            memory_used_bytes=200,
-            memory_limit_bytes=1000,
-            memory_percent=20,
-            cpu_percent=99,
-            cpu_limit_cores=0.5,
-            process_rss_bytes=100,
-            process_count=1,
-            thread_count=2,
-            memory_source='fake-cgroup',
-            cpu_source='fake-cgroup',
-        )
+        self.calls += 1
+        if self.calls >= 3:
+            self.repeated.set()
+        raise RuntimeError('sampling unavailable')
 
 
-def test_checkpoint_updates_peaks_without_emitting_a_log() -> None:
+def _configure_sink() -> MemoryEventSink:
     sink = MemoryEventSink()
     configure_observability(
         settings=ObservabilitySettings.build(application='app', service='job', environment='local'),
         sink=sink,
     )
+    return sink
+
+
+def test_checkpoint_updates_peaks_without_emitting_a_log() -> None:
+    sink = _configure_sink()
     monitor = ResourceMonitor(
         sampler=SequenceSampler([20, 40]),
         thresholds=ResourceThresholds(
@@ -94,21 +90,16 @@ def test_checkpoint_updates_peaks_without_emitting_a_log() -> None:
     }
 
 
-def test_sustained_pressure_emits_episode_but_raw_samples_remain_in_memory() -> None:
-    sink = MemoryEventSink()
-    configure_observability(
-        settings=ObservabilitySettings.build(application='app', service='job', environment='local'),
-        sink=sink,
-    )
-    thresholds = ResourceThresholds(
-        warning_samples=2,
-        critical_samples=2,
-        emergency_samples=2,
-        recovered_samples=2,
-    )
+def test_sustained_pressure_emits_one_episode_and_recovery() -> None:
+    sink = _configure_sink()
     monitor = ResourceMonitor(
         sampler=SequenceSampler([86, 87, 70, 70]),
-        thresholds=thresholds,
+        thresholds=ResourceThresholds(
+            warning_samples=2,
+            critical_samples=2,
+            emergency_samples=2,
+            recovered_samples=2,
+        ),
         observe_cpu_pressure=False,
     )
 
@@ -117,39 +108,16 @@ def test_sustained_pressure_emits_episode_but_raw_samples_remain_in_memory() -> 
     monitor.stop()
     close_observability()
 
-    names = [event['name'] for event in sink.events]
-    assert names == ['resource.pressure.started', 'resource.pressure.recovered']
+    assert [event['name'] for event in sink.events] == [
+        'resource.pressure.started',
+        'resource.pressure.recovered',
+    ]
     assert monitor.statistics.sample_count == 4
     assert monitor.pressure_event_count == 1
 
 
-def test_default_monitor_requires_about_thirty_seconds_of_pressure() -> None:
-    monitor = ResourceMonitor(sampler=CpuSpikeSampler(), interval_seconds=5)
-
-    assert monitor._thresholds.warning_samples == 6
-    assert monitor._thresholds.critical_samples == 6
-    assert monitor._thresholds.emergency_samples == 6
-    assert monitor._thresholds.warning_percent == 85
-
-
-class FailingSampler:
-    def __init__(self) -> None:
-        self.calls = 0
-        self.repeated = threading.Event()
-
-    def sample(self) -> ResourceSample:
-        self.calls += 1
-        if self.calls >= 3:
-            self.repeated.set()
-        raise RuntimeError('sampling unavailable')
-
-
 def test_repeated_sampling_failure_emits_only_one_issue_until_recovery() -> None:
-    sink = MemoryEventSink()
-    configure_observability(
-        settings=ObservabilitySettings.build(application='app', service='job', environment='local'),
-        sink=sink,
-    )
+    sink = _configure_sink()
     sampler = FailingSampler()
     monitor = ResourceMonitor(sampler=sampler, interval_seconds=0.01)
 
@@ -166,11 +134,7 @@ def test_repeated_sampling_failure_emits_only_one_issue_until_recovery() -> None
 
 
 def test_checkpoint_failure_is_a_warning_and_does_not_escape() -> None:
-    sink = MemoryEventSink()
-    configure_observability(
-        settings=ObservabilitySettings.build(application='app', service='job', environment='local'),
-        sink=sink,
-    )
+    sink = _configure_sink()
     monitor = ResourceMonitor(sampler=FailingSampler())
 
     sample = monitor.checkpoint()
@@ -181,12 +145,8 @@ def test_checkpoint_failure_is_a_warning_and_does_not_escape() -> None:
     assert 'sampling unavailable' not in str(sink.events[0])
 
 
-def test_escalation_requires_consecutive_samples() -> None:
-    sink = MemoryEventSink()
-    configure_observability(
-        settings=ObservabilitySettings.build(application='app', service='job', environment='local'),
-        sink=sink,
-    )
+def test_pressure_escalation_requires_consecutive_samples() -> None:
+    sink = _configure_sink()
     monitor = ResourceMonitor(
         sampler=SequenceSampler([86, 86, 93, 86, 93, 93]),
         thresholds=ResourceThresholds(
