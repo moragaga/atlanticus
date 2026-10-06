@@ -19,47 +19,47 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
-PYTHON_VERSION = "3.14.2"
-BUNDLE_DEPENDENCY_GROUP = "bundle-internal"
+PYTHON_VERSION = '3.14.2'
+BUNDLE_DEPENDENCY_GROUP = 'bundle-internal'
 BUILD_INPUTS_FINGERPRINT_VERSION = 2
 PREPARE_RECEIPT_SCHEMA_VERSION = 1
-PREPARE_RECEIPT_ROOT = Path("artifacts/receipts/processes")
-TRANSPORT_EXCLUDED_ROOT_NAMES = frozenset({"commented", "docs", "scripts", "tests"})
-ALLOWED_SYSTEM_PROFILES = frozenset({"base", "sqlserver"})
+PREPARE_RECEIPT_ROOT = Path('artifacts/receipts/processes')
+TRANSPORT_EXCLUDED_ROOT_NAMES = frozenset({'commented', 'docs', 'scripts', 'tests'})
+ALLOWED_SYSTEM_PROFILES = frozenset({'base', 'sqlserver'})
 IGNORED_DIRECTORY_NAMES = frozenset(
     {
-        ".git",
-        ".mypy_cache",
-        ".pytest_cache",
-        ".ruff_cache",
-        ".runtime",
-        ".venv",
-        "__pycache__",
-        "artifacts",
-        "build",
-        "dist",
+        '.git',
+        '.mypy_cache',
+        '.pytest_cache',
+        '.ruff_cache',
+        '.runtime',
+        '.venv',
+        '__pycache__',
+        'artifacts',
+        'build',
+        'dist',
     }
 )
-DEPENDENCY_NAME_PATTERN = re.compile(r"^\s*([A-Za-z0-9][A-Za-z0-9._-]*)")
-PROCESS_NAME_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+DEPENDENCY_NAME_PATTERN = re.compile(r'^\s*([A-Za-z0-9][A-Za-z0-9._-]*)')
+PROCESS_NAME_PATTERN = re.compile(r'^[a-z0-9]+(?:-[a-z0-9]+)*$')
 PROCESS_LAYOUT_PATTERNS = (
-    "{scope}/processes/*/pyproject.toml",
-    "{scope}/backend/processes/*/pyproject.toml",
+    '{scope}/processes/*/pyproject.toml',
+    '{scope}/backend/processes/*/pyproject.toml',
 )
 PROJECT_COPY_IGNORE_PATTERNS = (
-    ".git",
-    ".mypy_cache",
-    ".pytest_cache",
-    ".ruff_cache",
-    ".venv",
-    "__pycache__",
-    "artifacts",
-    "build",
-    "dist",
-    ".env",
-    "*.egg-info",
-    "*.dist-info",
-    "*.pyc",
+    '.git',
+    '.mypy_cache',
+    '.pytest_cache',
+    '.ruff_cache',
+    '.venv',
+    '__pycache__',
+    'artifacts',
+    'build',
+    'dist',
+    '.env',
+    '*.egg-info',
+    '*.dist-info',
+    '*.pyc',
 )
 
 
@@ -86,45 +86,40 @@ class ContainerDefinition:
 
 def canonicalize_package_name(value: str) -> str:
     if not isinstance(value, str) or not value.strip():
-        raise ProcessBundleError("package name must be a non-empty string")
-    return re.sub(r"[-_.]+", "-", value.strip()).lower()
+        raise ProcessBundleError('package name must be a non-empty string')
+    return re.sub(r'[-_.]+', '-', value.strip()).lower()
 
 
 def load_project(project_root: Path) -> ProjectDefinition:
-    pyproject_path = project_root / "pyproject.toml"
+    pyproject_path = project_root / 'pyproject.toml'
     if not pyproject_path.is_file():
-        raise ProcessBundleError(f"pyproject.toml not found: {pyproject_path}")
+        raise ProcessBundleError(f'pyproject.toml not found: {pyproject_path}')
     try:
-        source = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+        source = tomllib.loads(pyproject_path.read_text(encoding='utf-8'))
     except (OSError, tomllib.TOMLDecodeError) as error:
-        raise ProcessBundleError(
-            f"could not read project metadata: {pyproject_path}"
-        ) from error
-    project = source.get("project")
+        raise ProcessBundleError(f'could not read project metadata: {pyproject_path}') from error
+    project = source.get('project')
     if not isinstance(project, dict):
-        raise ProcessBundleError(f"project metadata not found: {pyproject_path}")
-    name = project.get("name")
-    version = project.get("version")
-    requires_python = project.get("requires-python")
-    dependencies = project.get("dependencies", [])
-    scripts = project.get("scripts", {})
+        raise ProcessBundleError(f'project metadata not found: {pyproject_path}')
+    name = project.get('name')
+    version = project.get('version')
+    requires_python = project.get('requires-python')
+    dependencies = project.get('dependencies', [])
+    scripts = project.get('scripts', {})
     if not isinstance(name, str) or not name:
-        raise ProcessBundleError(f"project name is invalid: {pyproject_path}")
+        raise ProcessBundleError(f'project name is invalid: {pyproject_path}')
     if not isinstance(version, str) or not version:
-        raise ProcessBundleError(f"project version is invalid: {pyproject_path}")
+        raise ProcessBundleError(f'project version is invalid: {pyproject_path}')
     if not isinstance(requires_python, str):
-        raise ProcessBundleError(
-            f"project Python requirement is invalid: {pyproject_path}"
-        )
+        raise ProcessBundleError(f'project Python requirement is invalid: {pyproject_path}')
     if not isinstance(dependencies, list) or not all(
         isinstance(item, str) for item in dependencies
     ):
-        raise ProcessBundleError(f"project dependencies are invalid: {pyproject_path}")
+        raise ProcessBundleError(f'project dependencies are invalid: {pyproject_path}')
     if not isinstance(scripts, dict) or not all(
-        isinstance(key, str) and isinstance(value, str)
-        for key, value in scripts.items()
+        isinstance(key, str) and isinstance(value, str) for key, value in scripts.items()
     ):
-        raise ProcessBundleError(f"project scripts are invalid: {pyproject_path}")
+        raise ProcessBundleError(f'project scripts are invalid: {pyproject_path}')
     return ProjectDefinition(
         root=project_root,
         name=name,
@@ -140,64 +135,64 @@ def discover_projects(
     repository_root: Path,
 ) -> MappingProxyType[str, ProjectDefinition]:
     projects: dict[str, ProjectDefinition] = {}
-    for pyproject_path in sorted(repository_root.rglob("pyproject.toml")):
+    for pyproject_path in sorted(repository_root.rglob('pyproject.toml')):
         relative_parts = pyproject_path.relative_to(repository_root).parts
         # La distribución raíz es una salida generada y no debe competir con proyectos fuente.
-        if relative_parts[0] == "distribution" or any(
+        if relative_parts[0] == 'distribution' or any(
             part in IGNORED_DIRECTORY_NAMES for part in relative_parts
         ):
             continue
         try:
-            source = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+            source = tomllib.loads(pyproject_path.read_text(encoding='utf-8'))
         except (OSError, tomllib.TOMLDecodeError) as error:
             raise ProcessBundleError(
-                f"could not read project metadata: {pyproject_path}"
+                f'could not read project metadata: {pyproject_path}'
             ) from error
-        if not isinstance(source.get("project"), dict):
+        if not isinstance(source.get('project'), dict):
             continue
         project = load_project(pyproject_path.parent)
         canonical_name = canonicalize_package_name(project.name)
         if canonical_name in projects:
             previous = projects[canonical_name]
             raise ProcessBundleError(
-                f"duplicate project name {project.name}: {previous.root} and {project.root}"
+                f'duplicate project name {project.name}: {previous.root} and {project.root}'
             )
         projects[canonical_name] = project
     return MappingProxyType(projects)
 
 
 def has_container_contract(project: ProjectDefinition) -> bool:
-    tool = project.source.get("tool", {})
+    tool = project.source.get('tool', {})
     if not isinstance(tool, dict):
         return False
-    atlanticus = tool.get("atlanticus", {})
+    atlanticus = tool.get('atlanticus', {})
     if not isinstance(atlanticus, dict):
         return False
-    return isinstance(atlanticus.get("container"), dict)
+    return isinstance(atlanticus.get('container'), dict)
 
 
 def load_container_definition(project: ProjectDefinition) -> ContainerDefinition:
-    tool = project.source.get("tool", {})
+    tool = project.source.get('tool', {})
     if not isinstance(tool, dict):
-        raise ProcessBundleError(f"container contract not found: {project.root}")
-    atlanticus = tool.get("atlanticus", {})
+        raise ProcessBundleError(f'container contract not found: {project.root}')
+    atlanticus = tool.get('atlanticus', {})
     if not isinstance(atlanticus, dict):
-        raise ProcessBundleError(f"container contract not found: {project.root}")
-    container = atlanticus.get("container")
+        raise ProcessBundleError(f'container contract not found: {project.root}')
+    container = atlanticus.get('container')
     if not isinstance(container, dict):
-        raise ProcessBundleError(f"container contract not found: {project.root}")
-    command = container.get("command")
-    system_profile = container.get("system-profile")
+        raise ProcessBundleError(f'container contract not found: {project.root}')
+    command = container.get('command')
+    system_profile = container.get('system-profile')
     if not isinstance(command, str) or PROCESS_NAME_PATTERN.fullmatch(command) is None:
-        raise ProcessBundleError(f"container command is invalid: {project.root}")
+        raise ProcessBundleError(f'container command is invalid: {project.root}')
     if command not in project.scripts:
         raise ProcessBundleError(
-            f"container command {command} is not declared in project scripts: {project.root}"
+            f'container command {command} is not declared in project scripts: {project.root}'
         )
     if system_profile not in ALLOWED_SYSTEM_PROFILES:
-        allowed = ", ".join(sorted(ALLOWED_SYSTEM_PROFILES))
+        allowed = ', '.join(sorted(ALLOWED_SYSTEM_PROFILES))
         raise ProcessBundleError(
-            f"container system profile must be one of {allowed}: {project.root}"
+            f'container system profile must be one of {allowed}: {project.root}'
         )
     return ContainerDefinition(command=command, system_profile=system_profile)
 
@@ -215,18 +210,14 @@ def resolve_internal_dependencies(
         if canonical_project_name in visited:
             return
         if canonical_project_name in visiting:
-            raise ProcessBundleError(
-                f"cyclic internal dependency detected: {project.name}"
-            )
+            raise ProcessBundleError(f'cyclic internal dependency detected: {project.name}')
         visiting.add(canonical_project_name)
         for requirement in project.dependencies:
             dependency_name = _extract_dependency_name(requirement)
             dependency = projects.get(dependency_name)
             if dependency is None:
                 continue
-            _validate_internal_requirement(
-                requirement=requirement, dependency=dependency
-            )
+            _validate_internal_requirement(requirement=requirement, dependency=dependency)
             visit(dependency)
         visiting.remove(canonical_project_name)
         visited.add(canonical_project_name)
@@ -237,15 +228,13 @@ def resolve_internal_dependencies(
     return tuple(ordered)
 
 
-def discover_processes(
-    repository_root: Path, *, scope: str | None = None
-) -> tuple[Path, ...]:
-    scopes_root = repository_root / "scopes"
+def discover_processes(repository_root: Path, *, scope: str | None = None) -> tuple[Path, ...]:
+    scopes_root = repository_root / 'scopes'
     if not scopes_root.is_dir():
-        raise ProcessBundleError(f"scopes directory not found: {scopes_root}")
-    if scope is not None and not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", scope):
-        raise ProcessBundleError(f"invalid scope name: {scope}")
-    scope_pattern = scope if scope is not None else "*"
+        raise ProcessBundleError(f'scopes directory not found: {scopes_root}')
+    if scope is not None and not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', scope):
+        raise ProcessBundleError(f'invalid scope name: {scope}')
+    scope_pattern = scope if scope is not None else '*'
     pyproject_paths = tuple(
         sorted(
             {
@@ -265,20 +254,18 @@ def discover_processes(
         previous = commands.get(container.command)
         if previous is not None:
             raise ProcessBundleError(
-                f"duplicate process container command {container.command}: "
-                f"{previous} and {pyproject_path.parent}"
+                f'duplicate process container command {container.command}: '
+                f'{previous} and {pyproject_path.parent}'
             )
         commands[container.command] = pyproject_path.parent
         process_roots.append(pyproject_path.parent)
     if not process_roots:
         target = scopes_root / scope if scope is not None else scopes_root
-        raise ProcessBundleError(f"no exportable processes found: {target}")
+        raise ProcessBundleError(f'no exportable processes found: {target}')
     return tuple(process_roots)
 
 
-def resolve_process_root(
-    repository_root: Path, value: str, *, scope: str | None = None
-) -> Path:
+def resolve_process_root(repository_root: Path, value: str, *, scope: str | None = None) -> Path:
     candidate = Path(value)
     if candidate.is_absolute():
         candidates = (candidate.resolve(),)
@@ -288,7 +275,7 @@ def resolve_process_root(
             (repository_root / candidate).resolve(),
         )
     for item in candidates:
-        if (item / "pyproject.toml").is_file():
+        if (item / 'pyproject.toml').is_file():
             return item
     matches: list[Path] = []
     for process_root in discover_processes(repository_root, scope=scope):
@@ -297,16 +284,16 @@ def resolve_process_root(
         if value in {process_root.name, container.command, project.name}:
             matches.append(process_root)
     if not matches:
-        raise ProcessBundleError(f"process project not found: {value}")
+        raise ProcessBundleError(f'process project not found: {value}')
     if len(matches) != 1:
-        rendered = ", ".join(str(path.relative_to(repository_root)) for path in matches)
-        raise ProcessBundleError(f"ambiguous process selection {value}: {rendered}")
+        rendered = ', '.join(str(path.relative_to(repository_root)) for path in matches)
+        raise ProcessBundleError(f'ambiguous process selection {value}: {rendered}')
     return matches[0]
 
 
 # Serializa cada componente con su longitud para mantener un hash canónico sin ambigüedad.
 def _fingerprint_component(hasher: Any, value: bytes) -> None:
-    hasher.update(len(value).to_bytes(8, "big"))
+    hasher.update(len(value).to_bytes(8, 'big'))
     hasher.update(value)
 
 
@@ -317,7 +304,7 @@ def _project_input_files(
     process_project: bool,
 ) -> tuple[Path, ...]:
     files: list[Path] = []
-    for path in sorted(project.root.rglob("*")):
+    for path in sorted(project.root.rglob('*')):
         if not path.is_file():
             continue
         relative = path.relative_to(project.root)
@@ -328,9 +315,7 @@ def _project_input_files(
         ):
             continue
         # El proceso descarta lock y wheels previos antes de reconstruirlos.
-        if process_project and (
-            relative == Path("uv.lock") or relative.parts[0] == "wheels"
-        ):
+        if process_project and (relative == Path('uv.lock') or relative.parts[0] == 'wheels'):
             continue
         files.append(path)
     return tuple(files)
@@ -341,10 +326,10 @@ def _wheel_store(repository_root: Path) -> Any:
     import importlib.util
     import sys
 
-    path = Path(__file__).resolve().with_name("wheel_repository.py")
-    spec = importlib.util.spec_from_file_location("atlanticus_wheel_repository", path)
+    path = Path(__file__).resolve().with_name('wheel_repository.py')
+    spec = importlib.util.spec_from_file_location('atlanticus_wheel_repository', path)
     if spec is None or spec.loader is None:
-        raise ProcessBundleError(f"Wheel repository module is unavailable: {path}")
+        raise ProcessBundleError(f'Wheel repository module is unavailable: {path}')
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
@@ -357,12 +342,12 @@ def _wheel_store(repository_root: Path) -> Any:
 # Impide rangos de versión ambiguos en dependencias internas.
 def _internal_pin(requirement: str, name: str) -> str:
     match = re.fullmatch(
-        r"\s*([A-Za-z0-9][A-Za-z0-9._-]*)\s*==\s*([A-Za-z0-9][A-Za-z0-9._+!-]*)\s*",
+        r'\s*([A-Za-z0-9][A-Za-z0-9._-]*)\s*==\s*([A-Za-z0-9][A-Za-z0-9._+!-]*)\s*',
         requirement,
     )
     if match is None or canonicalize_package_name(match.group(1)) != name:
         raise ProcessBundleError(
-            f"Internal dependency must have an exact version pin: {requirement}"
+            f'Internal dependency must have an exact version pin: {requirement}'
         )
     return match.group(2)
 
@@ -374,9 +359,7 @@ def resolve_bundle_dependencies(
     projects: MappingProxyType[str, ProjectDefinition],
 ) -> tuple[tuple[ProjectDefinition, ...], tuple[Any, ...], Any]:
     store = _wheel_store(repository_root)
-    selected: dict[str, str] = {
-        canonicalize_package_name(process.name): process.version
-    }
+    selected: dict[str, str] = {canonicalize_package_name(process.name): process.version}
     visiting: set[str] = {canonicalize_package_name(process.name)}
     visited: set[str] = set()
     sources: list[ProjectDefinition] = []
@@ -388,20 +371,19 @@ def resolve_bundle_dependencies(
             name = _extract_dependency_name(requirement)
             current = projects.get(name)
             if current is None and not store.has_package(name):
-                if name.startswith(("atlanticus-", "ada-")):
+                if name.startswith(('atlanticus-', 'ada-')):
                     raise ProcessBundleError(
-                        f"Internal dependency has no source or archived wheel: {name}"
+                        f'Internal dependency has no source or archived wheel: {name}'
                     )
                 continue
             version = _internal_pin(requirement, name)
             previous_version = selected.get(name)
             if previous_version is not None and previous_version != version:
                 raise ProcessBundleError(
-                    f"Conflicting internal versions for {name}: "
-                    f"{previous_version} and {version}"
+                    f'Conflicting internal versions for {name}: {previous_version} and {version}'
                 )
             if name in visiting:
-                raise ProcessBundleError(f"Cyclic internal dependency: {name}")
+                raise ProcessBundleError(f'Cyclic internal dependency: {name}')
             if name in visited:
                 continue
             selected[name] = version
@@ -419,9 +401,7 @@ def resolve_bundle_dependencies(
                 except RuntimeError as error:
                     raise ProcessBundleError(str(error)) from error
                 if archive is None:
-                    raise ProcessBundleError(
-                        f"Internal wheel is not published: {name}=={version}"
-                    )
+                    raise ProcessBundleError(f'Internal wheel is not published: {name}=={version}')
                 visiting.add(name)
                 visit(archive.dependencies)
                 visiting.remove(name)
@@ -447,18 +427,16 @@ def process_build_inputs_fingerprint(
     hasher = hashlib.sha256()
     _fingerprint_component(
         hasher,
-        f"atlanticus-process-build-inputs-v{BUILD_INPUTS_FINGERPRINT_VERSION}".encode(),
+        f'atlanticus-process-build-inputs-v{BUILD_INPUTS_FINGERPRINT_VERSION}'.encode(),
     )
     try:
         # Un cambio en el bundler invalida receipts previos porque puede cambiar la salida.
         _fingerprint_component(hasher, Path(__file__).read_bytes())
-        _fingerprint_component(
-            hasher, Path(__file__).with_name("wheel_repository.py").read_bytes()
-        )
+        _fingerprint_component(hasher, Path(__file__).with_name('wheel_repository.py').read_bytes())
         ordered = (
-            ("process", process),
+            ('process', process),
             *(
-                ("dependency", dependency)
+                ('dependency', dependency)
                 for dependency in sorted(
                     source_dependencies,
                     key=lambda item: canonicalize_package_name(item.name),
@@ -473,7 +451,7 @@ def process_build_inputs_fingerprint(
             )
             for path in _project_input_files(
                 project,
-                process_project=role == "process",
+                process_project=role == 'process',
             ):
                 relative = path.relative_to(project.root).as_posix()
                 _fingerprint_component(hasher, relative.encode())
@@ -484,16 +462,16 @@ def process_build_inputs_fingerprint(
             _fingerprint_component(hasher, archive.sha256.encode())
     except OSError as error:
         raise ProcessBundleError(
-            f"could not fingerprint process build inputs: {process_root}"
+            f'could not fingerprint process build inputs: {process_root}'
         ) from error
-    return f"sha256:{hasher.hexdigest()}"
+    return f'sha256:{hasher.hexdigest()}'
 
 
 # Separa el receipt de la proyección QA para que editar artifacts no altere provenance.
 def prepare_receipt_path(repository_root: Path, process_root: Path) -> Path:
     process = load_project(process_root)
     command = load_container_definition(process).command
-    return repository_root / PREPARE_RECEIPT_ROOT / f"{command}.json"
+    return repository_root / PREPARE_RECEIPT_ROOT / f'{command}.json'
 
 
 # Persiste evidencia de prepare exitoso sin afirmar aprobación QA ni ejecución Docker.
@@ -502,30 +480,30 @@ def write_prepare_receipt(
     process_root: Path,
     fingerprint: str,
 ) -> Path:
-    if re.fullmatch(r"sha256:[0-9a-f]{64}", fingerprint) is None:
-        raise ProcessBundleError(f"invalid build inputs fingerprint: {fingerprint}")
+    if re.fullmatch(r'sha256:[0-9a-f]{64}', fingerprint) is None:
+        raise ProcessBundleError(f'invalid build inputs fingerprint: {fingerprint}')
     process = load_project(process_root)
     command = load_container_definition(process).command
     path = prepare_receipt_path(repository_root, process_root)
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
-        "schema_version": PREPARE_RECEIPT_SCHEMA_VERSION,
-        "process": command,
-        "project": process.name,
-        "version": process.version,
-        "build_inputs_fingerprint": fingerprint,
+        'schema_version': PREPARE_RECEIPT_SCHEMA_VERSION,
+        'process': command,
+        'project': process.name,
+        'version': process.version,
+        'build_inputs_fingerprint': fingerprint,
     }
-    temporary = path.with_suffix(".json.tmp")
+    temporary = path.with_suffix('.json.tmp')
     try:
         temporary.write_text(
-            json.dumps(payload, indent=2) + "\n",
-            encoding="utf-8",
+            json.dumps(payload, indent=2) + '\n',
+            encoding='utf-8',
         )
         os.replace(temporary, path)
     except OSError as error:
         if temporary.exists():
             temporary.unlink()
-        raise ProcessBundleError(f"could not write prepare receipt: {path}") from error
+        raise ProcessBundleError(f'could not write prepare receipt: {path}') from error
     return path
 
 
@@ -539,27 +517,27 @@ def require_prepared_build_inputs(
     path = prepare_receipt_path(repository_root, process_root)
     if not path.is_file():
         raise ProcessBundleError(
-            f"prepare receipt not found for {command}. "
-            f"Run the local process tool with: prepare {command}"
+            f'prepare receipt not found for {command}. '
+            f'Run the local process tool with: prepare {command}'
         )
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload = json.loads(path.read_text(encoding='utf-8'))
     except (OSError, json.JSONDecodeError) as error:
-        raise ProcessBundleError(f"prepare receipt is invalid: {path}") from error
+        raise ProcessBundleError(f'prepare receipt is invalid: {path}') from error
     if (
         not isinstance(payload, dict)
-        or payload.get("schema_version") != PREPARE_RECEIPT_SCHEMA_VERSION
-        or payload.get("process") != command
-        or payload.get("project") != process.name
-        or payload.get("version") != process.version
-        or not isinstance(payload.get("build_inputs_fingerprint"), str)
+        or payload.get('schema_version') != PREPARE_RECEIPT_SCHEMA_VERSION
+        or payload.get('process') != command
+        or payload.get('project') != process.name
+        or payload.get('version') != process.version
+        or not isinstance(payload.get('build_inputs_fingerprint'), str)
     ):
-        raise ProcessBundleError(f"prepare receipt contract is invalid: {path}")
+        raise ProcessBundleError(f'prepare receipt contract is invalid: {path}')
     current = process_build_inputs_fingerprint(repository_root, process_root)
-    if payload["build_inputs_fingerprint"] != current:
+    if payload['build_inputs_fingerprint'] != current:
         raise ProcessBundleError(
-            f"prepared build inputs are stale for {command}. "
-            f"Run the local process tool with: prepare {command}"
+            f'prepared build inputs are stale for {command}. '
+            f'Run the local process tool with: prepare {command}'
         )
     return path
 
@@ -580,52 +558,50 @@ def build_process_bundle(
     )
     output_path = output_root / load_container_definition(process).command
     output_root.mkdir(parents=True, exist_ok=True)
-    temporary_parent = Path(
-        tempfile.mkdtemp(prefix=f".{process_root.name}-", dir=output_root)
-    )
+    temporary_parent = Path(tempfile.mkdtemp(prefix=f'.{process_root.name}-', dir=output_root))
     temporary_project = temporary_parent / process_root.name
     try:
         _copy_process_project(source=process_root, target=temporary_project)
         wheel_sources = _build_internal_wheels(
             repository_root=repository_root,
             dependencies=source_dependencies,
-            wheel_directory=temporary_project / "wheels",
+            wheel_directory=temporary_project / 'wheels',
         )
         wheel_sources = dict(wheel_sources)
         for archive in archived_dependencies:
             try:
-                copied = store.copy(archive, temporary_project / "wheels")
+                copied = store.copy(archive, temporary_project / 'wheels')
             except RuntimeError as error:
                 raise ProcessBundleError(str(error)) from error
-            wheel_sources[archive.name] = f"wheels/{copied.name}"
+            wheel_sources[archive.name] = f'wheels/{copied.name}'
         _write_export_pyproject(
-            source_path=process_root / "pyproject.toml",
-            target_path=temporary_project / "pyproject.toml",
+            source_path=process_root / 'pyproject.toml',
+            target_path=temporary_project / 'pyproject.toml',
             dependencies=(*source_dependencies, *archived_dependencies),
             wheel_sources=MappingProxyType(wheel_sources),
         )
         _run(
             (
-                "uv",
-                "lock",
-                "--python",
+                'uv',
+                'lock',
+                '--python',
                 PYTHON_VERSION,
-                "--refresh",
-                "--no-cache",
+                '--refresh',
+                '--no-cache',
             ),
             cwd=temporary_project,
         )
         if validate_installation:
             _run(
                 (
-                    "uv",
-                    "sync",
-                    "--frozen",
-                    "--group",
-                    "dev",
-                    "--python",
+                    'uv',
+                    'sync',
+                    '--frozen',
+                    '--group',
+                    'dev',
+                    '--python',
                     PYTHON_VERSION,
-                    "--no-cache",
+                    '--no-cache',
                 ),
                 cwd=temporary_project,
             )
@@ -634,7 +610,7 @@ def build_process_bundle(
                 command=load_container_definition(process).command,
             )
             _validate_bundle_project(temporary_project)
-            shutil.rmtree(temporary_project / ".venv", ignore_errors=True)
+            shutil.rmtree(temporary_project / '.venv', ignore_errors=True)
         _remove_generated_metadata(temporary_project)
         _prune_transport_tree(temporary_project)
         if output_path.exists():
@@ -648,7 +624,7 @@ def build_process_bundle(
 def _extract_dependency_name(requirement: str) -> str:
     match = DEPENDENCY_NAME_PATTERN.match(requirement)
     if match is None:
-        raise ProcessBundleError(f"invalid dependency requirement: {requirement}")
+        raise ProcessBundleError(f'invalid dependency requirement: {requirement}')
     return canonicalize_package_name(match.group(1))
 
 
@@ -658,42 +634,40 @@ def _validate_internal_requirement(
     dependency: ProjectDefinition,
 ) -> None:
     pattern = re.compile(
-        rf"^\s*{re.escape(dependency.name)}\s*==\s*{re.escape(dependency.version)}\s*$",
+        rf'^\s*{re.escape(dependency.name)}\s*==\s*{re.escape(dependency.version)}\s*$',
         re.IGNORECASE,
     )
     if pattern.fullmatch(requirement) is None:
         raise ProcessBundleError(
-            f"internal dependency must be pinned exactly as "
-            f"{dependency.name}=={dependency.version}: {requirement}"
+            f'internal dependency must be pinned exactly as '
+            f'{dependency.name}=={dependency.version}: {requirement}'
         )
 
 
 def _validate_python_contract(project: ProjectDefinition) -> None:
-    expected = f"=={PYTHON_VERSION}"
+    expected = f'=={PYTHON_VERSION}'
     if project.requires_python != expected:
-        raise ProcessBundleError(
-            f'{project.name} must declare requires-python = "{expected}"'
-        )
+        raise ProcessBundleError(f'{project.name} must declare requires-python = "{expected}"')
 
 
 def _copy_process_project(*, source: Path, target: Path) -> None:
     _copy_project_tree(source=source, target=target)
-    lock_path = target / "uv.lock"
+    lock_path = target / 'uv.lock'
     if lock_path.exists():
         lock_path.unlink()
-    wheels_path = target / "wheels"
+    wheels_path = target / 'wheels'
     if wheels_path.exists():
         shutil.rmtree(wheels_path)
 
 
 def _remove_generated_metadata(project_root: Path) -> None:
-    for name in (".pytest_cache", ".ruff_cache", "__pycache__"):
+    for name in ('.pytest_cache', '.ruff_cache', '__pycache__'):
         for path in tuple(project_root.rglob(name)):
             if path.is_dir():
                 shutil.rmtree(path)
             elif path.exists():
                 path.unlink()
-    for pattern in ("*.egg-info", "*.dist-info", "*.pyc"):
+    for pattern in ('*.egg-info', '*.dist-info', '*.pyc'):
         for path in tuple(project_root.rglob(pattern)):
             if path.is_dir():
                 shutil.rmtree(path)
@@ -712,30 +686,30 @@ def _prune_transport_tree(project_root: Path) -> None:
 
 def _validate_bundle_project(project_root: Path) -> None:
     commands = (
-        ("uv", "lock", "--check"),
-        ("uv", "run", "--python", PYTHON_VERSION, "--no-sync", "ruff", "check", "src"),
+        ('uv', 'lock', '--check'),
+        ('uv', 'run', '--python', PYTHON_VERSION, '--no-sync', 'ruff', 'check', 'src'),
         (
-            "uv",
-            "run",
-            "--python",
+            'uv',
+            'run',
+            '--python',
             PYTHON_VERSION,
-            "--no-sync",
-            "ruff",
-            "format",
-            "--check",
-            "src",
+            '--no-sync',
+            'ruff',
+            'format',
+            '--check',
+            'src',
         ),
         (
-            "uv",
-            "run",
-            "--python",
+            'uv',
+            'run',
+            '--python',
             PYTHON_VERSION,
-            "--no-sync",
-            "python",
-            "-m",
-            "compileall",
-            "-q",
-            "src",
+            '--no-sync',
+            'python',
+            '-m',
+            'compileall',
+            '-q',
+            'src',
         ),
     )
     for command in commands:
@@ -757,43 +731,41 @@ def _build_internal_wheels(
     wheel_directory: Path,
 ) -> MappingProxyType[str, str]:
     wheel_directory.mkdir(parents=True, exist_ok=True)
-    build_root = wheel_directory.parent / ".wheel-build"
+    build_root = wheel_directory.parent / '.wheel-build'
     sources: dict[str, str] = {}
     try:
         for dependency in dependencies:
             package_root = build_root / canonicalize_package_name(dependency.name)
-            package_source = package_root / "source"
-            package_output = package_root / "dist"
+            package_source = package_root / 'source'
+            package_output = package_root / 'dist'
             _copy_project_tree(source=dependency.root, target=package_source)
             _run(
                 (
-                    "uv",
-                    "build",
+                    'uv',
+                    'build',
                     str(package_source),
-                    "--wheel",
-                    "--out-dir",
+                    '--wheel',
+                    '--out-dir',
                     str(package_output),
-                    "--clear",
-                    "--no-sources",
-                    "--python",
+                    '--clear',
+                    '--no-sources',
+                    '--python',
                     PYTHON_VERSION,
-                    "--refresh",
-                    "--no-cache",
+                    '--refresh',
+                    '--no-cache',
                 ),
                 cwd=repository_root,
             )
-            wheels = tuple(package_output.glob("*.whl"))
+            wheels = tuple(package_output.glob('*.whl'))
             if len(wheels) != 1:
                 raise ProcessBundleError(
-                    f"exactly one wheel was expected for {dependency.name}, found {len(wheels)}"
+                    f'exactly one wheel was expected for {dependency.name}, found {len(wheels)}'
                 )
             destination = wheel_directory / wheels[0].name
             if destination.exists():
-                raise ProcessBundleError(
-                    f"duplicate wheel filename: {destination.name}"
-                )
+                raise ProcessBundleError(f'duplicate wheel filename: {destination.name}')
             shutil.move(str(wheels[0]), destination)
-            sources[dependency.name] = f"wheels/{destination.name}"
+            sources[dependency.name] = f'wheels/{destination.name}'
     finally:
         shutil.rmtree(build_root, ignore_errors=True)
     return MappingProxyType(sources)
@@ -806,14 +778,14 @@ def _write_export_pyproject(
     dependencies: tuple[Any, ...],
     wheel_sources: MappingProxyType[str, str],
 ) -> None:
-    source_text = source_path.read_text(encoding="utf-8").rstrip()
+    source_text = source_path.read_text(encoding='utf-8').rstrip()
     source = tomllib.loads(source_text)
-    dependency_groups = source.get("dependency-groups", {})
+    dependency_groups = source.get('dependency-groups', {})
     if not isinstance(dependency_groups, dict):
-        raise ProcessBundleError(f"dependency groups are invalid: {source_path}")
+        raise ProcessBundleError(f'dependency groups are invalid: {source_path}')
     if BUNDLE_DEPENDENCY_GROUP in dependency_groups:
         raise ProcessBundleError(
-            f"process project already declares {BUNDLE_DEPENDENCY_GROUP}: {source_path}"
+            f'process project already declares {BUNDLE_DEPENDENCY_GROUP}: {source_path}'
         )
     source_text = _remove_uv_sources_section(source_text)
     source_text = _insert_bundle_dependency_group(
@@ -821,36 +793,30 @@ def _write_export_pyproject(
         dependencies=dependencies,
     )
     source_text = _insert_export_uv_defaults(source_text)
-    lines = [source_text.rstrip(), "", "[tool.uv.sources]"]
+    lines = [source_text.rstrip(), '', '[tool.uv.sources]']
     for package_name, wheel_path in sorted(wheel_sources.items()):
         lines.append(f'{package_name} = {{ path = "{wheel_path}" }}')
-    target_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    target_path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
 
 
 def _remove_uv_sources_section(source_text: str) -> str:
-    pattern = re.compile(r"(?ms)^\[tool\.uv\.sources\]\s*\n.*?(?=^\[|\Z)")
-    return pattern.sub("", source_text).rstrip()
+    pattern = re.compile(r'(?ms)^\[tool\.uv\.sources\]\s*\n.*?(?=^\[|\Z)')
+    return pattern.sub('', source_text).rstrip()
 
 
 def _insert_export_uv_defaults(source_text: str) -> str:
-    section = re.search(r"(?m)^\[tool\.uv\]\s*$", source_text)
+    section = re.search(r'(?m)^\[tool\.uv\]\s*$', source_text)
     if section is None:
-        return f"{source_text.rstrip()}\n\n[tool.uv]\ndefault-groups = []"
-    next_section = re.search(r"(?m)^\[", source_text[section.end() :])
-    insert_at = (
-        len(source_text)
-        if next_section is None
-        else section.end() + next_section.start()
-    )
+        return f'{source_text.rstrip()}\n\n[tool.uv]\ndefault-groups = []'
+    next_section = re.search(r'(?m)^\[', source_text[section.end() :])
+    insert_at = len(source_text) if next_section is None else section.end() + next_section.start()
     prefix = source_text[: section.end()]
     body = source_text[section.end() : insert_at]
     suffix = source_text[insert_at:]
-    if re.search(r"(?m)^\s*default-groups\s*=", body):
-        raise ProcessBundleError(
-            "process project already declares tool.uv.default-groups"
-        )
-    body = f"\ndefault-groups = []{body}"
-    return f"{prefix}{body}{suffix}"
+    if re.search(r'(?m)^\s*default-groups\s*=', body):
+        raise ProcessBundleError('process project already declares tool.uv.default-groups')
+    body = f'\ndefault-groups = []{body}'
+    return f'{prefix}{body}{suffix}'
 
 
 def _insert_bundle_dependency_group(
@@ -858,82 +824,78 @@ def _insert_bundle_dependency_group(
     source_text: str,
     dependencies: tuple[ProjectDefinition, ...],
 ) -> str:
-    group_lines = [f"{BUNDLE_DEPENDENCY_GROUP} = ["]
+    group_lines = [f'{BUNDLE_DEPENDENCY_GROUP} = [']
     group_lines.extend(
         f'    "{dependency.name}=={dependency.version}",' for dependency in dependencies
     )
-    group_lines.append("]")
-    group_text = "\n".join(group_lines)
-    section = re.search(r"(?m)^\[dependency-groups\]\s*$", source_text)
+    group_lines.append(']')
+    group_text = '\n'.join(group_lines)
+    section = re.search(r'(?m)^\[dependency-groups\]\s*$', source_text)
     if section is None:
-        return f"{source_text.rstrip()}\n\n[dependency-groups]\n{group_text}"
-    next_section = re.search(r"(?m)^\[", source_text[section.end() :])
-    insert_at = (
-        len(source_text)
-        if next_section is None
-        else section.end() + next_section.start()
-    )
+        return f'{source_text.rstrip()}\n\n[dependency-groups]\n{group_text}'
+    next_section = re.search(r'(?m)^\[', source_text[section.end() :])
+    insert_at = len(source_text) if next_section is None else section.end() + next_section.start()
     prefix = source_text[:insert_at].rstrip()
-    suffix = source_text[insert_at:].lstrip("\n")
+    suffix = source_text[insert_at:].lstrip('\n')
     if not suffix:
-        return f"{prefix}\n{group_text}"
-    return f"{prefix}\n{group_text}\n\n{suffix}"
+        return f'{prefix}\n{group_text}'
+    return f'{prefix}\n{group_text}\n\n{suffix}'
 
 
 def _validate_installed_command(*, project_root: Path, command: str) -> None:
-    if os.name == "nt":
+    if os.name == 'nt':
         candidates = (
-            project_root / ".venv" / "Scripts" / f"{command}.exe",
-            project_root / ".venv" / "Scripts" / f"{command}.cmd",
+            project_root / '.venv' / 'Scripts' / f'{command}.exe',
+            project_root / '.venv' / 'Scripts' / f'{command}.cmd',
         )
     else:
-        candidates = (project_root / ".venv" / "bin" / command,)
+        candidates = (project_root / '.venv' / 'bin' / command,)
     if not any(candidate.is_file() for candidate in candidates):
-        raise ProcessBundleError(f"installed process command not found: {command}")
+        raise ProcessBundleError(f'installed process command not found: {command}')
 
 
 def _run(command: tuple[str, ...], *, cwd: Path) -> None:
     try:
         subprocess.run(command, cwd=cwd, check=True)
     except (OSError, subprocess.CalledProcessError) as error:
-        raise ProcessBundleError(f"command failed: {' '.join(command)}") from error
+        raise ProcessBundleError(f'command failed: {" ".join(command)}') from error
 
 
 def _repository_root_from_script() -> Path:
     for root in Path(__file__).resolve().parents:
-        if (root / "deployment").is_dir() and (root / "scripts").is_dir():
+        if (root / 'deployment').is_dir() and (root / 'scripts').is_dir():
             return root
-    raise ProcessBundleError("Atlanticus repository root could not be resolved")
+    raise ProcessBundleError('Atlanticus repository root could not be resolved')
 
 
 def _parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Export Atlanticus processes as autonomous transport projects."
+        description='Export Atlanticus processes as autonomous transport projects.'
     )
     parser.add_argument(
-        "processes",
-        nargs="*",
-        help="Process names, package names, commands or paths. Without values exports discovered processes.",
+        'processes',
+        nargs='*',
+        help='Process names, package names, commands or paths. Without values exports discovered processes.',
     )
     parser.add_argument(
-        "--repository-root",
+        '--repository-root',
         type=Path,
         default=_repository_root_from_script(),
-        help="Atlanticus repository root.",
+        help='Atlanticus repository root.',
     )
     parser.add_argument(
-        "--scope",
-        help="Limit discovery and named selection to one scope.",
+        '--scope',
+        help='Limit discovery and named selection to one scope.',
     )
     parser.add_argument(
-        "--output-root",
+        '--output-root',
         type=Path,
-        help="Output directory. Defaults to artifacts/processes at repository root.",
+        help='Output directory. Defaults to artifacts/processes at repository root.',
     )
     parser.add_argument(
-        "--skip-install-validation",
-        action="store_true",
-        help="Build the transport bundle without installation validation.",
+        '--skip-install-validation',
+        action='store_true',
+        help='Build the transport bundle without installation validation.',
     )
     return parser.parse_args()
 
@@ -944,7 +906,7 @@ def main() -> None:
     output_root = (
         arguments.output_root.resolve()
         if arguments.output_root is not None
-        else repository_root / "artifacts" / "processes"
+        else repository_root / 'artifacts' / 'processes'
     )
     process_roots = (
         tuple(
@@ -964,5 +926,5 @@ def main() -> None:
         print(output_path)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

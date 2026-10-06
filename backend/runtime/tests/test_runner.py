@@ -11,6 +11,7 @@ import atlanticus.runtime.runner as runner_module
 from atlanticus.kernel import OperationStatus
 from atlanticus.observability import configure_volume_observability
 from atlanticus.runtime import (
+    JOB_EXECUTION_DISABLED_VARIABLE,
     JobDefinition,
     JobRuntimeContext,
     LeaseOwnershipLostError,
@@ -853,3 +854,29 @@ def test_execute_job_rejects_non_callable_lifecycle_hooks(tmp_path) -> None:
             argv=[],
             environ=_environment(tmp_path),
         )
+
+
+def test_execution_disabled_returns_success_before_configuration_or_lease(
+    monkeypatch,
+) -> None:
+    calls: list[str] = []
+
+    def forbidden_acquire(self):
+        raise AssertionError('lease acquisition must not run while execution is disabled')
+
+    monkeypatch.setattr(ExecutionLease, 'acquire', forbidden_acquire)
+
+    result = execute_job(
+        definition=_definition(),
+        iteration=lambda context: calls.append('iteration'),
+        recovery=lambda context: calls.append('recovery'),
+        drain=lambda context: calls.append('drain'),
+        argv=[],
+        environ={JOB_EXECUTION_DISABLED_VARIABLE: 'true'},
+    )
+
+    assert result.status is OperationStatus.SUCCESS
+    assert result.iteration_count == 0
+    assert result.duration_seconds == 0.0
+    assert result.stop_reason == 'execution_disabled'
+    assert calls == []

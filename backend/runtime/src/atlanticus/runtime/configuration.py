@@ -23,8 +23,25 @@ VOLUME_PATH_VARIABLE = 'VOLUMEN_PATH'
 JOB_SCHEDULE_CRON_VARIABLE = 'ATLANTICUS_JOB_SCHEDULE_CRON'
 JOB_SCHEDULE_TIMEZONE_VARIABLE = 'ATLANTICUS_JOB_SCHEDULE_TIMEZONE'
 JOB_PLATFORM_TIMEOUT_SECONDS_VARIABLE = 'ATLANTICUS_JOB_PLATFORM_TIMEOUT_SECONDS'
+JOB_EXECUTION_DISABLED_VARIABLE = 'ATLANTICUS_JOB_EXECUTION_DISABLED'
 _TRUE_VALUES = frozenset({'1', 'true', 'yes', 'on'})
 _FALSE_VALUES = frozenset({'0', 'false', 'no', 'off'})
+
+
+def job_execution_disabled(
+    *,
+    environ: Mapping[str, str] | None = None,
+) -> bool:
+    """Resuelve la barrera administrativa sin requerir configuración del job."""
+
+    source_values = os.environ if environ is None else environ
+    if not isinstance(source_values, Mapping):
+        raise TypeError('environ must be a mapping')
+    return _optional_bool(
+        source_values,
+        JOB_EXECUTION_DISABLED_VARIABLE,
+        default=False,
+    )
 
 
 @dataclass(frozen=True, slots=True)

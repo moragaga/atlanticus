@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from atlanticus.runtime import RuntimeConfiguration, RuntimeConfigurationError
+from atlanticus.runtime import (
+    JOB_EXECUTION_DISABLED_VARIABLE,
+    RuntimeConfiguration,
+    RuntimeConfigurationError,
+    job_execution_disabled,
+)
 
 
 def test_configuration_resolves_application_scope(tmp_path) -> None:
@@ -170,3 +175,33 @@ def test_configuration_rejects_schedule_timezone_without_cron(tmp_path) -> None:
                 'ATLANTICUS_JOB_SCHEDULE_TIMEZONE': 'America/Santiago',
             }
         )
+
+
+@pytest.mark.parametrize(
+    ('value', 'expected'),
+    [
+        (None, False),
+        ('false', False),
+        ('0', False),
+        ('no', False),
+        ('off', False),
+        ('FALSE', False),
+        ('true', True),
+        ('1', True),
+        ('yes', True),
+        ('on', True),
+        ('TRUE', True),
+    ],
+)
+def test_job_execution_disabled_defaults_to_false_and_parses_supported_values(
+    value, expected
+) -> None:
+    environment = {} if value is None else {JOB_EXECUTION_DISABLED_VARIABLE: value}
+
+    assert job_execution_disabled(environ=environment) is expected
+
+
+@pytest.mark.parametrize('value', ['', 'stop', ' true ', 'false '])
+def test_job_execution_disabled_rejects_ambiguous_values(value) -> None:
+    with pytest.raises(RuntimeConfigurationError, match=JOB_EXECUTION_DISABLED_VARIABLE):
+        job_execution_disabled(environ={JOB_EXECUTION_DISABLED_VARIABLE: value})

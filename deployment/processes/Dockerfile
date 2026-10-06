@@ -50,8 +50,26 @@ RUN set -eu; \
             exit 1; \
             ;; \
     esac
-RUN command="$(cat /etc/atlanticus/command)"; \
-    printf '#!/bin/sh\nset -eu\nexec "/app/process/.venv/bin/%s" "$@"\n' "$command" > /usr/local/bin/atlanticus-entrypoint; \
+RUN printf '%s\n' \
+    '#!/bin/sh' \
+    'set -eu' \
+    'raw="${ATLANTICUS_JOB_EXECUTION_DISABLED-false}"' \
+    'normalized="$(printf "%s" "$raw" | tr "[:upper:]" "[:lower:]")"' \
+    'case "$normalized" in' \
+    '    1|true|yes|on)' \
+    '        printf "%s\n" "Process execution disabled by ATLANTICUS_JOB_EXECUTION_DISABLED=$raw"' \
+    '        exit 0' \
+    '        ;;' \
+    '    0|false|no|off)' \
+    '        ;;' \
+    '    *)' \
+    '        printf "%s\n" "Invalid boolean value for ATLANTICUS_JOB_EXECUTION_DISABLED: $raw" >&2' \
+    '        exit 2' \
+    '        ;;' \
+    'esac' \
+    'command="$(cat /etc/atlanticus/command)"' \
+    'exec "/app/process/.venv/bin/$command" "$@"' \
+    > /usr/local/bin/atlanticus-entrypoint; \
     chmod +x /usr/local/bin/atlanticus-entrypoint
 WORKDIR /app/process
 ENTRYPOINT ["/usr/local/bin/atlanticus-entrypoint"]

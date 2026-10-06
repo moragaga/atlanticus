@@ -33,7 +33,7 @@ from atlanticus.observability import (
     trace_span,
 )
 from atlanticus.runtime._resource_monitor import ResourceMonitor
-from atlanticus.runtime.configuration import RuntimeConfiguration
+from atlanticus.runtime.configuration import RuntimeConfiguration, job_execution_disabled
 from atlanticus.runtime.context import JobRuntimeContext
 from atlanticus.runtime.definition import JobDefinition
 from atlanticus.runtime.errors import (
@@ -113,8 +113,18 @@ def execute_job(
     if environ is not None and not isinstance(environ, Mapping):
         raise TypeError('environ must be a mapping')
 
-    options = parse_runtime_options(definition=definition, argv=argv)
     source_environ = os.environ if environ is None else environ
+    if job_execution_disabled(environ=source_environ):
+        return RuntimeExecutionResult(
+            run_id=str(uuid4()),
+            correlation_id=str(uuid4()),
+            status=OperationStatus.SUCCESS,
+            iteration_count=0,
+            duration_seconds=0.0,
+            stop_reason='execution_disabled',
+        )
+
+    options = parse_runtime_options(definition=definition, argv=argv)
     configuration = RuntimeConfiguration.from_sources(
         cli_environment=options.environment,
         environ=source_environ,

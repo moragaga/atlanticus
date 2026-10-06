@@ -3,7 +3,11 @@
 
 """Ejecución controlada y coordinación de jobs backend Atlanticus."""
 
-from atlanticus.runtime.configuration import RuntimeConfiguration
+from atlanticus.runtime.configuration import (
+    JOB_EXECUTION_DISABLED_VARIABLE,
+    RuntimeConfiguration,
+    job_execution_disabled,
+)
 from atlanticus.runtime.context import JobRuntimeContext
 from atlanticus.runtime.definition import JobDefinition
 from atlanticus.runtime.errors import (
@@ -24,6 +28,7 @@ __all__ = [
     'ConcurrentExecutionError',
     'JobDefinition',
     'JobRuntimeContext',
+    'JOB_EXECUTION_DISABLED_VARIABLE',
     'LeaseOwnershipLostError',
     'LeaseRenewalError',
     'RuntimeCancellationRequested',
@@ -33,4 +38,5 @@ __all__ = [
     'RuntimeExecutionResult',
     '__version__',
     'execute_job',
+    'job_execution_disabled',
 ]
