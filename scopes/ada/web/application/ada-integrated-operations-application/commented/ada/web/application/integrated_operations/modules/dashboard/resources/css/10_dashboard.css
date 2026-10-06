@@ -1,4 +1,4 @@
-/* Shell del dashboard: define tokens locales y ocupa el contenedor disponible. */
+/* Dashboard de Operaciones Integradas: una sola separación gobierna componentes y cards. */
 .ada-io-dashboard {
     --ada-io-gap: .2rem;
     --ada-io-card-background: var(--primary-background, #EBEBEB);
@@ -14,18 +14,23 @@
     overflow: hidden;
 }
 
-/* Overview desktop: cuatro novenos para Mina y cinco para Planta. */
 .ada-io-dashboard__scopes {
     display: grid;
-    flex: none;
+    flex: 1 1 auto;
     width: 100%;
     height: 100%;
     min-width: 0;
     min-height: 0;
-    grid-template-columns: minmax(0, 4fr) minmax(0, 5fr);
-    transform: translateX(0);
-    transform-origin: top left;
-    transition: width 180ms ease, transform 180ms ease;
+    grid-template-columns: repeat(9, minmax(0, 1fr));
+    gap: var(--ada-io-gap);
+}
+
+.ada-io-scope--mine {
+    grid-column: span 4;
+}
+
+.ada-io-scope--plant {
+    grid-column: span 5;
 }
 
 .ada-io-scope,
@@ -38,26 +43,22 @@
     min-height: 0;
 }
 
-.ada-io-scope {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-}
-
+.ada-io-scope,
 .ada-io-scope__content {
     width: 100%;
     height: 100%;
 }
 
-/* Cada componente separa título y cuerpo de cards sin imponer semántica de datos. */
+.ada-io-scope {
+    overflow: hidden;
+}
+
 .ada-io-component {
     display: grid;
     width: 100%;
     height: 100%;
-    padding-inline: calc(var(--ada-io-gap) / 2);
     grid-template-rows: auto minmax(0, 1fr);
     gap: .1rem;
-    box-sizing: border-box;
     overflow: hidden;
 }
 
@@ -85,7 +86,6 @@
     overflow: hidden;
 }
 
-/* Todas las cards comparten el mismo shell visual. */
 .ada-io-card {
     display: grid;
     width: 100%;
@@ -95,7 +95,6 @@
     border-radius: .3rem;
     background: var(--ada-io-card-background);
     color: var(--ada-io-card-text);
-    box-sizing: border-box;
     overflow: hidden;
 }
 
@@ -118,7 +117,6 @@
     height: 100%;
 }
 
-/* Los wrappers no interceptan interacción; solo los botones son clickeables. */
 .ada-io-dashboard__overview-controls,
 .ada-io-dashboard__zoom-controls {
     pointer-events: none;
@@ -148,17 +146,38 @@
     outline-offset: 1px;
 }
 
-.ada-io-dashboard__overview-control--mine,
-.ada-io-dashboard__overview-control--plant {
-    bottom: .35rem;
-}
-
 .ada-io-dashboard__overview-control--mine {
     left: .35rem;
+    bottom: .35rem;
 }
 
 .ada-io-dashboard__overview-control--plant {
     right: .35rem;
+    bottom: .35rem;
+}
+
+.ada-alarm-baseline-surface {
+    position: relative;
+}
+
+.ada-alarm-baseline-surface > .ada-io-dashboard__overview-controls {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.ada-alarm-baseline-surface > .ada-io-dashboard__overview-controls .ada-io-dashboard__presentation-button {
+    top: var(--ada-alarm-baseline-y, 74%);
+    bottom: auto;
+    transform: translateY(-50%);
+}
+
+.ada-io-dashboard__overview-controls[data-ada-io-presentation='mine']
+.ada-io-dashboard__overview-control--mine,
+.ada-io-dashboard__overview-controls[data-ada-io-presentation='plant']
+.ada-io-dashboard__overview-control--plant {
+    display: none !important;
 }
 
 .ada-io-dashboard__zoom-close {
@@ -175,22 +194,7 @@
 }
 
 .ada-io-dashboard__zoom-side {
-    top: 50%;
-    display: none;
-    transform: translateY(-50%);
-}
-
-.ada-io-dashboard__zoom-side--mine {
-    left: .35rem;
-}
-
-.ada-io-dashboard__zoom-side--plant {
-    right: .35rem;
-}
-
-.ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-dashboard__overview-controls,
-.ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-dashboard__overview-controls {
-    display: none;
+    display: none !important;
 }
 
 .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-dashboard__zoom-close,
@@ -198,17 +202,10 @@
     display: inline-flex;
 }
 
-.ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-dashboard__zoom-side--plant,
-.ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-dashboard__zoom-side--mine {
-    display: inline-flex;
-}
-
-/* JS usa hidden para retirar puntos que no pertenecen al scope visible en tablet. */
 .ada-alarm-baseline-surface__point[hidden] {
     display: none !important;
 }
 
-/* La página de Integrated Operations debe ocupar siempre todo el ancho disponible de Dash Pages. */
 #ada-generic-application:has(.ada-io-dashboard),
 #ada-generic-application:has(.ada-io-dashboard) > #ada-application-content,
 #ada-generic-application:has(.ada-io-dashboard) > #ada-application-content > div,
@@ -219,11 +216,12 @@
     min-width: 0;
 }
 
-/* Mobile: todo el dashboard se apila verticalmente, sin controles ni alarmas. */
 @media only screen and (max-width: 1279px) {
-    /* En mobile ampliamos la separación visual sin cambiar el flujo vertical aprobado. */
     .ada-io-dashboard {
         --ada-io-gap: .5rem;
+        display: block;
+        height: auto;
+        overflow: visible;
     }
 
     .ada-operational-header {
@@ -236,18 +234,12 @@
         display: none !important;
     }
 
-    .ada-io-dashboard {
-        display: block;
-        height: auto;
-        min-height: 0;
-        overflow: visible;
-    }
-
     .ada-io-dashboard__scopes {
-        display: block;
+        display: flex;
         width: 100%;
         height: auto;
-        transform: none;
+        flex-direction: column;
+        gap: .75rem;
         overflow: visible;
     }
 
@@ -255,19 +247,16 @@
     .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-scope,
     .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-scope {
         display: block;
+        width: 100%;
         height: auto;
         overflow: visible;
     }
 
-    .ada-io-scope + .ada-io-scope {
-        margin-top: .75rem;
-    }
-
     .ada-io-dashboard .ada-io-scope__content {
         display: flex;
-        flex-direction: column;
         width: 100%;
         height: auto;
+        flex-direction: column;
         gap: .75rem;
         overflow: visible;
     }
@@ -283,7 +272,6 @@
 
     .ada-io-dashboard .ada-io-component {
         height: auto;
-        padding-inline: 0;
         gap: .35rem;
         overflow: visible;
     }
@@ -293,11 +281,6 @@
         grid-auto-rows: auto;
         gap: .5rem;
         overflow: visible;
-    }
-
-    /* La card compartida respeta el mismo borde horizontal que el resto en mobile. */
-    .ada-io-dashboard .ada-io-mine-grid__shared-card {
-        padding-inline: 0;
     }
 
     .ada-io-dashboard .ada-io-card {
@@ -312,69 +295,46 @@
     }
 }
 
-/* Ajuste de altura del header para mobile desde 350 px. */
 @media only screen and (min-width: 350px) and (max-width: 1279px) {
     .ada-operational-header {
         grid-template-rows: minmax(5.45rem, auto) auto;
     }
 }
 
-/* Ajuste de altura del header para mobile desde 480 px. */
 @media only screen and (min-width: 480px) and (max-width: 1279px) {
     .ada-operational-header {
         grid-template-rows: minmax(5.8rem, auto) auto;
     }
 }
 
-/* Tablet en adelante: el dashboard toma todo el alto restante bajo header/baseline. */
-/* Desktop/tablet fijan el alto de la aplicación al viewport y reparten el resto con flex. */
 @media only screen and (min-width: 1280px) {
     #ada-generic-application:has(.ada-io-dashboard) {
         display: flex;
-        width: 100%;
         height: 100dvh;
-        min-width: 0;
         min-height: 100dvh;
         flex-direction: column;
         overflow: hidden;
     }
 
-    /* El main consume el espacio que queda debajo del header y del baseline. */
-    #ada-generic-application:has(.ada-io-dashboard) > #ada-application-content {
+    #ada-generic-application:has(.ada-io-dashboard) > #ada-application-content,
+    #ada-generic-application:has(.ada-io-dashboard) > #ada-application-content > div,
+    #ada-generic-application:has(.ada-io-dashboard) #_pages_content {
         display: flex;
-        width: 100%;
-        min-width: 0;
         min-height: 0;
         flex: 1 1 auto;
         align-items: stretch;
+    }
+
+    #ada-generic-application:has(.ada-io-dashboard) > #ada-application-content {
         overflow: hidden;
     }
 
-    /* dash.page_container es un Div anónimo; por eso se selecciona como hijo directo. */
     #ada-generic-application:has(.ada-io-dashboard) > #ada-application-content > div {
-        display: flex;
-        width: 100%;
-        min-width: 0;
-        min-height: 0;
-        flex: 1 1 auto;
         flex-direction: column;
-        align-items: stretch;
-    }
-
-    /* _pages_content recibe la página actual y la estira sin imponer altura porcentual. */
-    #ada-generic-application:has(.ada-io-dashboard) #_pages_content {
-        display: flex;
-        width: 100%;
-        min-width: 0;
-        min-height: 0;
-        flex: 1 1 auto;
-        align-items: stretch;
     }
 
     #ada-generic-application:has(.ada-io-dashboard) #_pages_content > .ada-io-dashboard {
-        width: 100%;
         height: auto;
-        min-width: 0;
         min-height: 0;
         flex: 1 1 auto;
         align-self: stretch;
@@ -383,7 +343,6 @@
     .ada-io-dashboard__scopes {
         height: auto;
         min-height: 0;
-        flex: 1 1 auto;
         align-self: stretch;
     }
 
@@ -399,20 +358,15 @@
 }
 
 @media only screen and (min-width: 1280px) and (max-width: 1365px) {
-    /* El scope visible ocupa el ancho y alto completos de la superficie tablet. */
     .ada-io-dashboard__scopes {
-        display: flex;
-        width: 100%;
-        height: 100%;
-        flex: 1 1 100%;
-        transform: none;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
     }
 
     .ada-io-scope {
         display: none;
-        width: 100%;
-        height: 100%;
-        flex: 0 0 100%;
+        grid-column: 1;
     }
 
     .ada-io-dashboard[data-ada-io-presentation='overview'] .ada-io-scope--mine,
@@ -421,59 +375,54 @@
         display: block;
     }
 
-    .ada-io-dashboard__overview-controls {
-        display: block !important;
-    }
-
     .ada-io-dashboard__zoom-controls {
         display: none !important;
     }
-
-    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-dashboard__overview-control--mine,
-    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-dashboard__overview-control--plant {
-        display: none !important;
-    }
-
-    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-dashboard__overview-control--plant,
-    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-dashboard__overview-control--mine {
-        display: inline-flex !important;
-    }
 }
 
-/* Small notebook en adelante: overview 4/5 y focus normal. */
 @media only screen and (min-width: 1366px) {
     .ada-io-dashboard__scopes {
-        display: grid;
-        width: 100%;
-        grid-template-columns: minmax(0, 4fr) minmax(0, 5fr);
-        transform: translateX(0);
+        grid-template-columns: repeat(9, minmax(0, 1fr));
+        gap: var(--ada-io-gap);
     }
 
-    .ada-io-scope {
-        display: block;
+    .ada-io-scope--mine {
+        grid-column: span 4;
     }
 
-    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-dashboard__scopes {
-        width: 225%;
-        transform: translateX(0);
+    .ada-io-scope--plant {
+        grid-column: span 5;
     }
 
-    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-dashboard__scopes {
-        width: 180%;
-        transform: translateX(-44.444444%);
+    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-scope--plant,
+    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-scope--mine {
+        display: none;
+    }
+
+    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-scope--mine,
+    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-scope--plant {
+        grid-column: 1 / -1;
     }
 }
 
-/* Videowall: overview fijo sin controles de focus. */
 @media only screen and (min-width: 2560px) {
-    .ada-io-dashboard__presentation-button {
+    .ada-io-dashboard__presentation-button,
+    .ada-io-dashboard__overview-controls {
         display: none !important;
     }
 
-    .ada-io-dashboard__scopes,
-    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-dashboard__scopes,
-    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-dashboard__scopes {
-        width: 100%;
-        transform: translateX(0);
+    .ada-io-dashboard__scopes {
+        grid-template-columns: repeat(9, minmax(0, 1fr));
+        gap: var(--ada-io-gap);
+    }
+
+    .ada-io-scope--mine {
+        display: block !important;
+        grid-column: span 4 !important;
+    }
+
+    .ada-io-scope--plant {
+        display: block !important;
+        grid-column: span 5 !important;
     }
 }

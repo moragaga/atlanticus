@@ -3,6 +3,7 @@
 
     const DASHBOARD_SELECTOR = '[data-ada-module="dashboard"]';
     const TARGET_SELECTOR = '[data-ada-io-presentation-target]';
+    const OVERVIEW_CONTROLS_SELECTOR = '.ada-io-dashboard__overview-controls';
     const BASELINE_SELECTOR = '.ada-alarm-baseline-surface';
     const BASELINE_POINT_SELECTOR = '.ada-alarm-baseline-surface__point';
     const VALID_PRESENTATIONS = new Set(['overview', 'mine', 'plant']);
@@ -24,9 +25,27 @@
         return 'mobile';
     }
 
+    function resolveApplication(dashboard) {
+        return dashboard.closest('#ada-generic-application');
+    }
+
     function resolveAlarmBaseline(dashboard) {
-        const application = dashboard.closest('#ada-generic-application');
+        const application = resolveApplication(dashboard);
         return application ? application.querySelector(BASELINE_SELECTOR) : null;
+    }
+
+    function resolveOverviewControls(dashboard) {
+        const application = resolveApplication(dashboard);
+        return application ? application.querySelector(OVERVIEW_CONTROLS_SELECTOR) : null;
+    }
+
+    function mountOverviewControls(dashboard) {
+        const baseline = resolveAlarmBaseline(dashboard);
+        const controls = resolveOverviewControls(dashboard);
+        if (baseline && controls && controls.parentElement !== baseline) {
+            baseline.appendChild(controls);
+        }
+        return controls;
     }
 
     function rememberAlarmBaselinePointPosition(point) {
@@ -59,9 +78,16 @@
         if (!baseline) {
             return;
         }
+
         const points = Array.from(baseline.querySelectorAll(BASELINE_POINT_SELECTOR));
         points.forEach(rememberAlarmBaselinePointPosition);
+
         const visiblePoints = points.filter((point) => point.dataset.adaScope === scope);
+        if (!visiblePoints.length) {
+            restoreAlarmBaseline(dashboard);
+            return;
+        }
+
         points.forEach((point) => {
             point.hidden = point.dataset.adaScope !== scope;
         });
@@ -76,18 +102,27 @@
     }
 
     function synchronizeAlarmBaseline(dashboard, mode, presentation) {
-        if (mode === 'tablet' && (presentation === 'mine' || presentation === 'plant')) {
+        const focused = presentation === 'mine' || presentation === 'plant';
+        if ((mode === 'tablet' || mode === 'desktop') && focused) {
             focusAlarmBaseline(dashboard, presentation);
             return;
         }
         restoreAlarmBaseline(dashboard);
     }
 
-    function applyPresentation(dashboard, presentation) {
-        if (!VALID_PRESENTATIONS.has(presentation)) {
+    function synchronizeOverviewControls(dashboard, mode, presentation) {
+        const controls = mountOverviewControls(dashboard);
+        if (!controls) {
             return;
         }
-        dashboard.dataset.adaIoPresentation = presentation;
+        controls.dataset.adaIoViewport = mode;
+        controls.dataset.adaIoPresentation = presentation;
+    }
+
+    function applyPresentation(dashboard, presentation) {
+        if (VALID_PRESENTATIONS.has(presentation)) {
+            dashboard.dataset.adaIoPresentation = presentation;
+        }
     }
 
     function synchronizeDashboard(dashboard) {
@@ -113,6 +148,7 @@
 
         applyPresentation(dashboard, presentation);
         synchronizeAlarmBaseline(dashboard, mode, presentation);
+        synchronizeOverviewControls(dashboard, mode, presentation);
     }
 
     function synchronizeAllDashboards() {
@@ -129,15 +165,26 @@
         });
     }
 
+    function resolveDashboardFromTrigger(trigger) {
+        const directDashboard = trigger.closest(DASHBOARD_SELECTOR);
+        if (directDashboard) {
+            return directDashboard;
+        }
+        const application = trigger.closest('#ada-generic-application');
+        return application ? application.querySelector(DASHBOARD_SELECTOR) : null;
+    }
+
     function handleClick(event) {
         const trigger = event.target.closest(TARGET_SELECTOR);
         if (!trigger) {
             return;
         }
-        const dashboard = trigger.closest(DASHBOARD_SELECTOR);
+
+        const dashboard = resolveDashboardFromTrigger(trigger);
         if (!dashboard) {
             return;
         }
+
         const mode = resolveViewportMode(window.innerWidth);
         const presentation = trigger.dataset.adaIoPresentationTarget || '';
         if (!VALID_PRESENTATIONS.has(presentation) || mode === 'mobile' || mode === 'videowall') {
@@ -146,8 +193,10 @@
         if (mode === 'tablet' && presentation === 'overview') {
             return;
         }
+
         applyPresentation(dashboard, presentation);
         synchronizeAlarmBaseline(dashboard, mode, presentation);
+        synchronizeOverviewControls(dashboard, mode, presentation);
     }
 
     document.addEventListener('click', handleClick);

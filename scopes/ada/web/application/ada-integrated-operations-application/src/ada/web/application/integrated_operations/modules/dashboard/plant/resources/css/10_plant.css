@@ -1,5 +1,6 @@
 .ada-io-plant-grid {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--ada-io-gap);
     align-items: stretch;
 }

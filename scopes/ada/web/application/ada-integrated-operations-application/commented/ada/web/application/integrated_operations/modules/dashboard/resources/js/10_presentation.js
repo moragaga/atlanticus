@@ -1,9 +1,10 @@
 (() => {
     'use strict';
 
-    // El JS controla solo presentación responsive; no consume estado de backend.
+    // Este asset controla solo presentación; no conoce datos ni contratos de backend.
     const DASHBOARD_SELECTOR = '[data-ada-module="dashboard"]';
     const TARGET_SELECTOR = '[data-ada-io-presentation-target]';
+    const OVERVIEW_CONTROLS_SELECTOR = '.ada-io-dashboard__overview-controls';
     const BASELINE_SELECTOR = '.ada-alarm-baseline-surface';
     const BASELINE_POINT_SELECTOR = '.ada-alarm-baseline-surface__point';
     const VALID_PRESENTATIONS = new Set(['overview', 'mine', 'plant']);
@@ -12,7 +13,6 @@
     const VIDEOWALL_MIN_WIDTH = 2560;
     let resizeFrame = null;
 
-    // Traduce el ancho actual al contrato responsive de ADA Operaciones Integradas.
     function resolveViewportMode(width) {
         if (width >= VIDEOWALL_MIN_WIDTH) {
             return 'videowall';
@@ -26,13 +26,30 @@
         return 'mobile';
     }
 
-    // El baseline vive fuera del dashboard; se resuelve dentro de la misma aplicación.
+    function resolveApplication(dashboard) {
+        return dashboard.closest('#ada-generic-application');
+    }
+
     function resolveAlarmBaseline(dashboard) {
-        const application = dashboard.closest('#ada-generic-application');
+        const application = resolveApplication(dashboard);
         return application ? application.querySelector(BASELINE_SELECTOR) : null;
     }
 
-    // Conserva la posición original para poder restaurar overview al cambiar de breakpoint.
+    function resolveOverviewControls(dashboard) {
+        const application = resolveApplication(dashboard);
+        return application ? application.querySelector(OVERVIEW_CONTROLS_SELECTOR) : null;
+    }
+
+    // Los botones Mina/Planta se mueven al Alarm Baseline para no cubrir las cards.
+    function mountOverviewControls(dashboard) {
+        const baseline = resolveAlarmBaseline(dashboard);
+        const controls = resolveOverviewControls(dashboard);
+        if (baseline && controls && controls.parentElement !== baseline) {
+            baseline.appendChild(controls);
+        }
+        return controls;
+    }
+
     function rememberAlarmBaselinePointPosition(point) {
         if (point.dataset.adaIoOriginalPointX !== undefined) {
             return;
@@ -42,7 +59,6 @@
         );
     }
 
-    // Desktop/mobile usan la geometría original completa del baseline.
     function restoreAlarmBaseline(dashboard) {
         const baseline = resolveAlarmBaseline(dashboard);
         if (!baseline) {
@@ -59,15 +75,22 @@
         delete baseline.dataset.adaIoScope;
     }
 
-    // Tablet redistribuye solo los puntos del scope visible sobre todo el ancho disponible.
+    // En focus, solo los puntos del scope visible se redistribuyen sobre todo el baseline.
     function focusAlarmBaseline(dashboard, scope) {
         const baseline = resolveAlarmBaseline(dashboard);
         if (!baseline) {
             return;
         }
+
         const points = Array.from(baseline.querySelectorAll(BASELINE_POINT_SELECTOR));
         points.forEach(rememberAlarmBaselinePointPosition);
+
         const visiblePoints = points.filter((point) => point.dataset.adaScope === scope);
+        if (!visiblePoints.length) {
+            restoreAlarmBaseline(dashboard);
+            return;
+        }
+
         points.forEach((point) => {
             point.hidden = point.dataset.adaScope !== scope;
         });
@@ -81,24 +104,31 @@
         baseline.dataset.adaIoScope = scope;
     }
 
-    // El filtrado del baseline aplica únicamente en tablet.
     function synchronizeAlarmBaseline(dashboard, mode, presentation) {
-        if (mode === 'tablet' && (presentation === 'mine' || presentation === 'plant')) {
+        const focused = presentation === 'mine' || presentation === 'plant';
+        if ((mode === 'tablet' || mode === 'desktop') && focused) {
             focusAlarmBaseline(dashboard, presentation);
             return;
         }
         restoreAlarmBaseline(dashboard);
     }
 
-    // El estado visual se expresa mediante metadata DOM consumida por CSS.
-    function applyPresentation(dashboard, presentation) {
-        if (!VALID_PRESENTATIONS.has(presentation)) {
+    function synchronizeOverviewControls(dashboard, mode, presentation) {
+        const controls = mountOverviewControls(dashboard);
+        if (!controls) {
             return;
         }
-        dashboard.dataset.adaIoPresentation = presentation;
+        controls.dataset.adaIoViewport = mode;
+        controls.dataset.adaIoPresentation = presentation;
     }
 
-    // Mobile/videowall fuerzan overview; tablet parte en Mina; desktop recupera overview.
+    function applyPresentation(dashboard, presentation) {
+        if (VALID_PRESENTATIONS.has(presentation)) {
+            dashboard.dataset.adaIoPresentation = presentation;
+        }
+    }
+
+    // Cada breakpoint conserva una semántica de presentación explícita.
     function synchronizeDashboard(dashboard) {
         const previousMode = dashboard.dataset.adaIoViewport || '';
         const mode = resolveViewportMode(window.innerWidth);
@@ -122,13 +152,13 @@
 
         applyPresentation(dashboard, presentation);
         synchronizeAlarmBaseline(dashboard, mode, presentation);
+        synchronizeOverviewControls(dashboard, mode, presentation);
     }
 
     function synchronizeAllDashboards() {
         document.querySelectorAll(DASHBOARD_SELECTOR).forEach(synchronizeDashboard);
     }
 
-    // Agrupa eventos de resize/render para evitar trabajo duplicado en el mismo frame.
     function scheduleSynchronization() {
         if (resizeFrame !== null) {
             return;
@@ -139,16 +169,27 @@
         });
     }
 
-    // Delegación permite que Dash remonte el árbol sin reinstalar listeners por botón.
+    // Los controles pueden vivir dentro del baseline, por eso resolvemos el dashboard vía aplicación.
+    function resolveDashboardFromTrigger(trigger) {
+        const directDashboard = trigger.closest(DASHBOARD_SELECTOR);
+        if (directDashboard) {
+            return directDashboard;
+        }
+        const application = trigger.closest('#ada-generic-application');
+        return application ? application.querySelector(DASHBOARD_SELECTOR) : null;
+    }
+
     function handleClick(event) {
         const trigger = event.target.closest(TARGET_SELECTOR);
         if (!trigger) {
             return;
         }
-        const dashboard = trigger.closest(DASHBOARD_SELECTOR);
+
+        const dashboard = resolveDashboardFromTrigger(trigger);
         if (!dashboard) {
             return;
         }
+
         const mode = resolveViewportMode(window.innerWidth);
         const presentation = trigger.dataset.adaIoPresentationTarget || '';
         if (!VALID_PRESENTATIONS.has(presentation) || mode === 'mobile' || mode === 'videowall') {
@@ -157,8 +198,10 @@
         if (mode === 'tablet' && presentation === 'overview') {
             return;
         }
+
         applyPresentation(dashboard, presentation);
         synchronizeAlarmBaseline(dashboard, mode, presentation);
+        synchronizeOverviewControls(dashboard, mode, presentation);
     }
 
     document.addEventListener('click', handleClick);
@@ -166,7 +209,6 @@
     window.addEventListener('load', scheduleSynchronization);
     window.addEventListener('resize', scheduleSynchronization);
 
-    // Dash puede montar el dashboard o baseline después de que el asset ya fue cargado.
     new MutationObserver(scheduleSynchronization).observe(document.documentElement, {
         childList: true,
         subtree: true,

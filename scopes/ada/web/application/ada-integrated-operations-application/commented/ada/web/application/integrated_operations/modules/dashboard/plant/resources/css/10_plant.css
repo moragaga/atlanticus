@@ -1,6 +1,7 @@
-/* Las cinco columnas de Planta tienen la misma fracción y, por 4:5 global, el mismo ancho que Mina. */
+/* Planta conserva cinco columnas iguales usando exactamente el mismo gap que Mina. */
 .ada-io-plant-grid {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--ada-io-gap);
     align-items: stretch;
 }

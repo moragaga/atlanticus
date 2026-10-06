@@ -1,12 +1,12 @@
-/* Mina se divide en cuatro columnas iguales y dos filas iguales. */
+/* Mina conserva cuatro columnas iguales y separa también las dos filas con el gap común. */
 .ada-io-mine-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: var(--ada-io-gap);
     align-items: stretch;
 }
 
-/* General Mina utiliza toda la altura de las dos filas. */
 .ada-io-mine-grid .ada-io-component--general_mina {
     grid-column: 1;
     grid-row: 1 / 3;
@@ -22,18 +22,14 @@
     grid-row: 1;
 }
 
-/* La card compartida usa las columnas de Carguío y Transporte sin crear un décimo componente. */
 .ada-io-mine-grid__shared-card {
     min-width: 0;
     min-height: 0;
     grid-column: 2 / 4;
     grid-row: 2;
-    padding: 0 calc(var(--ada-io-gap) / 2);
-    box-sizing: border-box;
     overflow: hidden;
 }
 
-/* Chancado-STMG utiliza toda la altura igual que General Mina. */
 .ada-io-mine-grid .ada-io-component--chancado_stmg {
     grid-column: 4;
     grid-row: 1 / 3;
