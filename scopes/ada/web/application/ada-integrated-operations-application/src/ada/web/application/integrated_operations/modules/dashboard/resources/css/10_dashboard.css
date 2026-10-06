@@ -198,13 +198,255 @@
     display: inline-flex;
 }
 
-@media (max-width: 95.999rem) {
+.ada-alarm-baseline-surface__point[hidden] {
+    display: none !important;
+}
+
+#ada-generic-application:has(.ada-io-dashboard),
+#ada-generic-application:has(.ada-io-dashboard) > #ada-application-content,
+#ada-generic-application:has(.ada-io-dashboard) > #ada-application-content > div,
+#ada-generic-application:has(.ada-io-dashboard) #_pages_content,
+#ada-generic-application:has(.ada-io-dashboard) #_pages_content > * {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+}
+
+@media only screen and (max-width: 1279px) {
+    .ada-io-dashboard {
+        --ada-io-gap: .5rem;
+    }
+
+    .ada-operational-header {
+        grid-template-rows: minmax(5.2rem, auto) auto;
+    }
+
+    .ada-operational-header__alarm-management-slot,
+    .ada-operational-header__alarm-status-slot,
+    .ada-alarm-baseline-surface {
+        display: none !important;
+    }
+
+    .ada-io-dashboard {
+        display: block;
+        height: auto;
+        min-height: 0;
+        overflow: visible;
+    }
+
+    .ada-io-dashboard__scopes {
+        display: block;
+        width: 100%;
+        height: auto;
+        transform: none;
+        overflow: visible;
+    }
+
+    .ada-io-scope,
+    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-scope,
+    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-scope {
+        display: block;
+        height: auto;
+        overflow: visible;
+    }
+
+    .ada-io-scope + .ada-io-scope {
+        margin-top: .75rem;
+    }
+
+    .ada-io-dashboard .ada-io-scope__content {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: auto;
+        gap: .75rem;
+        overflow: visible;
+    }
+
+    .ada-io-dashboard .ada-io-scope__content > .ada-io-component,
+    .ada-io-dashboard .ada-io-scope__content > .ada-io-mine-grid__shared-card {
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        grid-column: auto !important;
+        grid-row: auto !important;
+    }
+
+    .ada-io-dashboard .ada-io-component {
+        height: auto;
+        padding-inline: 0;
+        gap: .35rem;
+        overflow: visible;
+    }
+
+    .ada-io-dashboard .ada-io-component__cards {
+        height: auto;
+        grid-auto-rows: auto;
+        gap: .5rem;
+        overflow: visible;
+    }
+
+    .ada-io-dashboard .ada-io-mine-grid__shared-card {
+        padding-inline: 0;
+    }
+
+    .ada-io-dashboard .ada-io-card {
+        height: auto;
+        min-height: 9rem;
+    }
+
+    .ada-io-dashboard__overview-controls,
+    .ada-io-dashboard__zoom-controls,
     .ada-io-dashboard__presentation-button {
         display: none !important;
     }
 }
 
-@media (min-width: 96rem) {
+@media only screen and (min-width: 350px) and (max-width: 1279px) {
+    .ada-operational-header {
+        grid-template-rows: minmax(5.45rem, auto) auto;
+    }
+}
+
+@media only screen and (min-width: 480px) and (max-width: 1279px) {
+    .ada-operational-header {
+        grid-template-rows: minmax(5.8rem, auto) auto;
+    }
+}
+
+@media only screen and (min-width: 1280px) {
+    #ada-generic-application:has(.ada-io-dashboard) {
+        display: flex;
+        width: 100%;
+        height: 100dvh;
+        min-width: 0;
+        min-height: 100dvh;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    #ada-generic-application:has(.ada-io-dashboard) > #ada-application-content {
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        min-height: 0;
+        flex: 1 1 auto;
+        align-items: stretch;
+        overflow: hidden;
+    }
+
+    #ada-generic-application:has(.ada-io-dashboard) > #ada-application-content > div {
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        min-height: 0;
+        flex: 1 1 auto;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    #ada-generic-application:has(.ada-io-dashboard) #_pages_content {
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        min-height: 0;
+        flex: 1 1 auto;
+        align-items: stretch;
+    }
+
+    #ada-generic-application:has(.ada-io-dashboard) #_pages_content > .ada-io-dashboard {
+        width: 100%;
+        height: auto;
+        min-width: 0;
+        min-height: 0;
+        flex: 1 1 auto;
+        align-self: stretch;
+    }
+
+    #ada-generic-application:has(.ada-io-dashboard) .ada-io-dashboard__scopes {
+        height: auto;
+        min-height: 0;
+        flex: 1 1 auto;
+        align-self: stretch;
+    }
+
+    #ada-generic-application:has(.ada-io-dashboard) .ada-io-scope,
+    #ada-generic-application:has(.ada-io-dashboard) .ada-io-scope__content {
+        min-height: 0;
+        align-self: stretch;
+    }
+
+    #ada-generic-application:has(.ada-io-dashboard) .ada-io-scope__content {
+        height: 100%;
+    }
+}
+
+@media only screen and (min-width: 1280px) and (max-width: 1365px) {
+    .ada-io-dashboard__scopes {
+        display: flex;
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        flex: 1 1 auto;
+        transform: none;
+    }
+
+    .ada-io-scope {
+        display: none;
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        flex: 0 0 100%;
+    }
+
+    .ada-io-dashboard[data-ada-io-presentation='overview'] .ada-io-scope--mine,
+    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-scope--mine,
+    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-scope--plant {
+        display: flex;
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        flex: 1 1 100%;
+        flex-direction: column;
+    }
+
+    .ada-io-dashboard[data-ada-io-presentation='overview'] .ada-io-scope--mine > .ada-io-scope__content,
+    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-scope--mine > .ada-io-scope__content,
+    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-scope--plant > .ada-io-scope__content {
+        flex: 1 1 auto;
+    }
+
+    .ada-io-dashboard__overview-controls {
+        display: block !important;
+    }
+
+    .ada-io-dashboard__zoom-controls {
+        display: none !important;
+    }
+
+    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-dashboard__overview-control--mine,
+    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-dashboard__overview-control--plant {
+        display: none !important;
+    }
+
+    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-dashboard__overview-control--plant,
+    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-dashboard__overview-control--mine {
+        display: inline-flex !important;
+    }
+}
+
+@media only screen and (min-width: 1366px) {
+    .ada-io-dashboard__scopes {
+        display: grid;
+        width: 100%;
+        grid-template-columns: minmax(0, 4fr) minmax(0, 5fr);
+        transform: translateX(0);
+    }
+
+    .ada-io-scope {
+        display: block;
+    }
+
     .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-dashboard__scopes {
         width: 225%;
         transform: translateX(0);
@@ -213,5 +455,18 @@
     .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-dashboard__scopes {
         width: 180%;
         transform: translateX(-44.444444%);
+    }
+}
+
+@media only screen and (min-width: 2560px) {
+    .ada-io-dashboard__presentation-button {
+        display: none !important;
+    }
+
+    .ada-io-dashboard__scopes,
+    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-dashboard__scopes,
+    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-dashboard__scopes {
+        width: 100%;
+        transform: translateX(0);
     }
 }

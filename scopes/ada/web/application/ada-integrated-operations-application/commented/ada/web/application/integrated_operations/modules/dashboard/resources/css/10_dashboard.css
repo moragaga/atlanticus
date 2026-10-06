@@ -1,4 +1,4 @@
-/* Variables locales del dashboard para no imponer colores globales a Atlanticus. */
+/* Shell del dashboard: define tokens locales y ocupa el contenedor disponible. */
 .ada-io-dashboard {
     --ada-io-gap: .2rem;
     --ada-io-card-background: var(--primary-background, #EBEBEB);
@@ -14,7 +14,7 @@
     overflow: hidden;
 }
 
-/* La proporción 4:5 hace que los nueve componentes operacionales tengan el mismo ancho. */
+/* Overview desktop: cuatro novenos para Mina y cinco para Planta. */
 .ada-io-dashboard__scopes {
     display: grid;
     flex: none;
@@ -49,7 +49,7 @@
     height: 100%;
 }
 
-/* Cada componente conserva su título y distribuye sus propias cards en filas equivalentes. */
+/* Cada componente separa título y cuerpo de cards sin imponer semántica de datos. */
 .ada-io-component {
     display: grid;
     width: 100%;
@@ -85,7 +85,7 @@
     overflow: hidden;
 }
 
-/* Todas las cards comparten exactamente el mismo shell visual. */
+/* Todas las cards comparten el mismo shell visual. */
 .ada-io-card {
     display: grid;
     width: 100%;
@@ -118,7 +118,7 @@
     height: 100%;
 }
 
-/* Los contenedores de controles no capturan clicks fuera de sus botones. */
+/* Los wrappers no interceptan interacción; solo los botones son clickeables. */
 .ada-io-dashboard__overview-controls,
 .ada-io-dashboard__zoom-controls {
     pointer-events: none;
@@ -188,7 +188,6 @@
     right: .35rem;
 }
 
-/* Al entrar en foco se ocultan los botones de overview y aparecen los controles del modo ampliado. */
 .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-dashboard__overview-controls,
 .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-dashboard__overview-controls {
     display: none;
@@ -204,15 +203,256 @@
     display: inline-flex;
 }
 
-/* En pantallas menores no se ofrece zoom; el layout completo sigue visible. */
-@media (max-width: 95.999rem) {
+/* JS usa hidden para retirar puntos que no pertenecen al scope visible en tablet. */
+.ada-alarm-baseline-surface__point[hidden] {
+    display: none !important;
+}
+
+/* La página de Integrated Operations debe ocupar siempre todo el ancho disponible de Dash Pages. */
+#ada-generic-application:has(.ada-io-dashboard),
+#ada-generic-application:has(.ada-io-dashboard) > #ada-application-content,
+#ada-generic-application:has(.ada-io-dashboard) > #ada-application-content > div,
+#ada-generic-application:has(.ada-io-dashboard) #_pages_content,
+#ada-generic-application:has(.ada-io-dashboard) #_pages_content > * {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+}
+
+/* Mobile: todo el dashboard se apila verticalmente, sin controles ni alarmas. */
+@media only screen and (max-width: 1279px) {
+    /* En mobile ampliamos la separación visual sin cambiar el flujo vertical aprobado. */
+    .ada-io-dashboard {
+        --ada-io-gap: .5rem;
+    }
+
+    .ada-operational-header {
+        grid-template-rows: minmax(5.2rem, auto) auto;
+    }
+
+    .ada-operational-header__alarm-management-slot,
+    .ada-operational-header__alarm-status-slot,
+    .ada-alarm-baseline-surface {
+        display: none !important;
+    }
+
+    .ada-io-dashboard {
+        display: block;
+        height: auto;
+        min-height: 0;
+        overflow: visible;
+    }
+
+    .ada-io-dashboard__scopes {
+        display: block;
+        width: 100%;
+        height: auto;
+        transform: none;
+        overflow: visible;
+    }
+
+    .ada-io-scope,
+    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-scope,
+    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-scope {
+        display: block;
+        height: auto;
+        overflow: visible;
+    }
+
+    .ada-io-scope + .ada-io-scope {
+        margin-top: .75rem;
+    }
+
+    .ada-io-dashboard .ada-io-scope__content {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: auto;
+        gap: .75rem;
+        overflow: visible;
+    }
+
+    .ada-io-dashboard .ada-io-scope__content > .ada-io-component,
+    .ada-io-dashboard .ada-io-scope__content > .ada-io-mine-grid__shared-card {
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        grid-column: auto !important;
+        grid-row: auto !important;
+    }
+
+    .ada-io-dashboard .ada-io-component {
+        height: auto;
+        padding-inline: 0;
+        gap: .35rem;
+        overflow: visible;
+    }
+
+    .ada-io-dashboard .ada-io-component__cards {
+        height: auto;
+        grid-auto-rows: auto;
+        gap: .5rem;
+        overflow: visible;
+    }
+
+    /* La card compartida respeta el mismo borde horizontal que el resto en mobile. */
+    .ada-io-dashboard .ada-io-mine-grid__shared-card {
+        padding-inline: 0;
+    }
+
+    .ada-io-dashboard .ada-io-card {
+        height: auto;
+        min-height: 9rem;
+    }
+
+    .ada-io-dashboard__overview-controls,
+    .ada-io-dashboard__zoom-controls,
     .ada-io-dashboard__presentation-button {
         display: none !important;
     }
 }
 
-/* 225% = 9/4 y 180% = 9/5: cada scope ocupa exactamente el viewport al enfocarse. */
-@media (min-width: 96rem) {
+/* Ajuste de altura del header para mobile desde 350 px. */
+@media only screen and (min-width: 350px) and (max-width: 1279px) {
+    .ada-operational-header {
+        grid-template-rows: minmax(5.45rem, auto) auto;
+    }
+}
+
+/* Ajuste de altura del header para mobile desde 480 px. */
+@media only screen and (min-width: 480px) and (max-width: 1279px) {
+    .ada-operational-header {
+        grid-template-rows: minmax(5.8rem, auto) auto;
+    }
+}
+
+/* Tablet en adelante: el dashboard toma todo el alto restante bajo header/baseline. */
+/* Desktop/tablet fijan el alto de la aplicación al viewport y reparten el resto con flex. */
+@media only screen and (min-width: 1280px) {
+    #ada-generic-application:has(.ada-io-dashboard) {
+        display: flex;
+        width: 100%;
+        height: 100dvh;
+        min-width: 0;
+        min-height: 100dvh;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    /* El main consume el espacio que queda debajo del header y del baseline. */
+    #ada-generic-application:has(.ada-io-dashboard) > #ada-application-content {
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        min-height: 0;
+        flex: 1 1 auto;
+        align-items: stretch;
+        overflow: hidden;
+    }
+
+    /* dash.page_container es un Div anónimo; por eso se selecciona como hijo directo. */
+    #ada-generic-application:has(.ada-io-dashboard) > #ada-application-content > div {
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        min-height: 0;
+        flex: 1 1 auto;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    /* _pages_content recibe la página actual y la estira sin imponer altura porcentual. */
+    #ada-generic-application:has(.ada-io-dashboard) #_pages_content {
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        min-height: 0;
+        flex: 1 1 auto;
+        align-items: stretch;
+    }
+
+    #ada-generic-application:has(.ada-io-dashboard) #_pages_content > .ada-io-dashboard {
+        width: 100%;
+        height: auto;
+        min-width: 0;
+        min-height: 0;
+        flex: 1 1 auto;
+        align-self: stretch;
+    }
+
+    .ada-io-dashboard__scopes {
+        height: auto;
+        min-height: 0;
+        flex: 1 1 auto;
+        align-self: stretch;
+    }
+
+    .ada-io-scope,
+    .ada-io-scope__content {
+        min-height: 0;
+        align-self: stretch;
+    }
+
+    .ada-io-scope__content {
+        height: 100%;
+    }
+}
+
+@media only screen and (min-width: 1280px) and (max-width: 1365px) {
+    /* El scope visible ocupa el ancho y alto completos de la superficie tablet. */
+    .ada-io-dashboard__scopes {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        flex: 1 1 100%;
+        transform: none;
+    }
+
+    .ada-io-scope {
+        display: none;
+        width: 100%;
+        height: 100%;
+        flex: 0 0 100%;
+    }
+
+    .ada-io-dashboard[data-ada-io-presentation='overview'] .ada-io-scope--mine,
+    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-scope--mine,
+    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-scope--plant {
+        display: block;
+    }
+
+    .ada-io-dashboard__overview-controls {
+        display: block !important;
+    }
+
+    .ada-io-dashboard__zoom-controls {
+        display: none !important;
+    }
+
+    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-dashboard__overview-control--mine,
+    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-dashboard__overview-control--plant {
+        display: none !important;
+    }
+
+    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-dashboard__overview-control--plant,
+    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-dashboard__overview-control--mine {
+        display: inline-flex !important;
+    }
+}
+
+/* Small notebook en adelante: overview 4/5 y focus normal. */
+@media only screen and (min-width: 1366px) {
+    .ada-io-dashboard__scopes {
+        display: grid;
+        width: 100%;
+        grid-template-columns: minmax(0, 4fr) minmax(0, 5fr);
+        transform: translateX(0);
+    }
+
+    .ada-io-scope {
+        display: block;
+    }
+
     .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-dashboard__scopes {
         width: 225%;
         transform: translateX(0);
@@ -221,5 +461,19 @@
     .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-dashboard__scopes {
         width: 180%;
         transform: translateX(-44.444444%);
+    }
+}
+
+/* Videowall: overview fijo sin controles de focus. */
+@media only screen and (min-width: 2560px) {
+    .ada-io-dashboard__presentation-button {
+        display: none !important;
+    }
+
+    .ada-io-dashboard__scopes,
+    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-dashboard__scopes,
+    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-dashboard__scopes {
+        width: 100%;
+        transform: translateX(0);
     }
 }
