@@ -8,7 +8,8 @@ from ada.kpis.materialization import (
     validate_materialized_registry,
     validate_registry_projection,
 )
-from tests.support import projection
+
+from .support import projection
 
 
 def test_materialization_preserves_projection_and_adds_root_tool_key():

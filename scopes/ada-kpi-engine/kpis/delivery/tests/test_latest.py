@@ -1,5 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from ada.kpis.delivery import (
     KpiDeliveryBinding,
     KpiDeliveryConfiguration,
@@ -144,3 +146,16 @@ def test_latest_revision_changes_for_configuration_revision() -> None:
         published_at_utc=now,
     )
     assert first.manifest.revision != second.manifest.revision
+
+
+@pytest.mark.parametrize('status', (KpiDeliveryStatus.MISSING, KpiDeliveryStatus.ERROR))
+def test_degraded_latest_values_never_carry_json_payloads(status) -> None:
+    value = KpiLatestValue(status=status, value_kind='json', value=None)
+    assert value.to_payload() == {
+        'status': status.value,
+        'value_kind': 'json',
+        'value': None,
+    }
+
+    with pytest.raises(ValueError, match='must not carry a value'):
+        KpiLatestValue(status=status, value_kind='json', value={'rows': []})

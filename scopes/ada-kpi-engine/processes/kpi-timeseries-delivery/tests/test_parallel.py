@@ -11,7 +11,8 @@ from ada.processes.kpi_timeseries_delivery.parallel import (
     KpiTimeseriesPublicationTask,
     ParallelKpiTimeseriesPublisher,
 )
-from tests.support import SnapshotPublisher, configuration
+
+from .support import SnapshotPublisher, configuration
 
 
 class BarrierPublisher(SnapshotPublisher):

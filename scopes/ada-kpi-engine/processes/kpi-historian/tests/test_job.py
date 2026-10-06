@@ -6,7 +6,8 @@ from ada.kpis.history import KpiHistorianAuthority
 from ada.processes.kpi_historian.errors import KpiHistorianRepositoryError
 from ada.processes.kpi_historian.job import KpiHistorianJob
 from ada.processes.kpi_historian.models import KpiHistorianIterationStatus
-from tests.support import (
+
+from .support import (
     AuthorityStore,
     CommitStateReader,
     EvaluationReader,

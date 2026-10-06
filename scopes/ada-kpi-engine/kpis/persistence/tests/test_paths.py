@@ -1,7 +1,8 @@
 from pathlib import Path
 
 from ada.kpis.persistence import KpiPersistencePaths
-from tests.support import watermark
+
+from .support import watermark
 
 
 def test_evaluation_path_is_deterministic_and_partitioned(tmp_path: Path) -> None:

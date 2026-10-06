@@ -16,7 +16,8 @@ from atlanticus.connectivity.cosmos import (
     CosmosOperationError,
     CosmosPreconditionFailedError,
 )
-from tests.support import configuration
+
+from .support import configuration
 
 
 class ProvisionerStub:

@@ -6,7 +6,8 @@ from ada.kpis.materialization import (
     materialization_root,
     materialize_registry,
 )
-from tests.support import projection
+
+from .support import projection
 
 
 def test_store_persists_one_registry_per_tool(tmp_path):

@@ -9,7 +9,8 @@ from ada.processes.kpi_delivery.errors import (
 )
 from ada.processes.kpi_delivery.job import KpiLatestDeliveryJob
 from ada.processes.kpi_delivery.models import KpiLatestDeliveryIterationStatus
-from tests.support import (
+
+from .support import (
     CheckpointStore,
     CommitStateReader,
     EvaluationReader,

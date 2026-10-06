@@ -3,7 +3,8 @@ from pathlib import Path
 import pytest
 
 from ada.kpis.persistence import KpiEvaluationWriteStatus, KpiPersistence, KpiPersistenceOrderError
-from tests.support import batch, watermark
+
+from .support import batch, watermark
 
 
 def persistence(tmp_path: Path) -> KpiPersistence:

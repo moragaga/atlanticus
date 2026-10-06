@@ -64,7 +64,7 @@ members = [
 line-length = 100
 indent-width = 4
 target-version = "py314"
-extend-exclude = ["build", "dist"]
+extend-exclude = ["build", "dist", "**/commented/**"]
 
 [tool.ruff.format]
 quote-style = "single"
@@ -81,3 +81,17 @@ combine-as-imports = true
 
 [tool.pytest.ini_options]
 addopts = "-q --import-mode=importlib"
+testpaths = [
+    "kpis/core/tests",
+    "kpis/evaluation/tests",
+    "kpis/persistence/tests",
+    "processes/kpi-runtime/tests",
+    "kpis/delivery/tests",
+    "processes/kpi-delivery/tests",
+    "kpis/history/tests",
+    "processes/kpi-historian/tests",
+    "processes/kpi-timeseries-delivery/tests",
+    "kpis/connections/tests",
+    "kpis/materialization/tests",
+    "processes/kpi-materialization/tests",
+]

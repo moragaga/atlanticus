@@ -7,7 +7,8 @@ import pytest
 from ada.kpis.core import KpiStatus, KpiValueKind, KpiValueType
 from ada.processes.kpi_historian.errors import KpiHistorianHistoryError
 from ada.processes.kpi_historian.history import KpiHistorianMaterializer
-from tests.support import batch, evaluation, watermark
+
+from .support import batch, evaluation, watermark
 
 
 class DatasetMerger:
@@ -148,3 +149,44 @@ def test_materializer_can_advance_without_historical_rows() -> None:
     assert result.history_rows == 0
     assert result.error_rows == 0
     assert runtime.calls == []
+
+
+def test_materializer_distinguishes_degraded_json_from_explicit_empty_json() -> None:
+    runtime = DatasetMerger()
+    materializer = KpiHistorianMaterializer(runtime=runtime)
+    current = watermark()
+    result = materializer.materialize(
+        batches=(
+            batch(
+                evaluation(
+                    'missing-json',
+                    watermark_value=current,
+                    status=KpiStatus.MISSING,
+                    value_kind=KpiValueKind.JSON,
+                ),
+                evaluation(
+                    'error-json',
+                    watermark_value=current,
+                    status=KpiStatus.ERROR,
+                    value_kind=KpiValueKind.JSON,
+                    error='RuntimeError',
+                ),
+                evaluation(
+                    'empty-json',
+                    watermark_value=current,
+                    value_kind=KpiValueKind.JSON,
+                    value={'rows': []},
+                ),
+            ),
+        )
+    )
+    assert result.history_rows == 3
+    assert result.error_rows == 1
+    rows = {row['key']: row for row in runtime.calls[0]['data'].to_pylist()}
+    assert rows['missing-json']['status'] == 'missing'
+    assert rows['missing-json']['value'] is None
+    assert rows['error-json']['status'] == 'error'
+    assert rows['error-json']['value'] is None
+    assert rows['empty-json']['status'] == 'ok'
+    assert rows['empty-json']['value'] == '{"rows":[]}'
+    assert runtime.calls[1]['data'].to_pylist()[0]['error'] == 'RuntimeError'

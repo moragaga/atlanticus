@@ -11,7 +11,8 @@ from ada.processes.kpi_materialization.errors import (
 from ada.processes.kpi_materialization.repository import (
     CosmosKpiRegistryRepository,
 )
-from tests.support import projection
+
+from .support import projection
 
 
 class Client:

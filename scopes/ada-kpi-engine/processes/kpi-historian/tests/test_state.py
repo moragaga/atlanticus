@@ -6,7 +6,8 @@ from ada.kpis.history import KpiHistorianAuthority
 from ada.processes.kpi_historian.errors import KpiHistorianRepositoryError
 from ada.processes.kpi_historian.state import KpiHistorianAuthorityStore
 from atlanticus.state import AtomicStateStore
-from tests.support import watermark
+
+from .support import watermark
 
 
 def test_authority_round_trip_and_idempotence(tmp_path) -> None:

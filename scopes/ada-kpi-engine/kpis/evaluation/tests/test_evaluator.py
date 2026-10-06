@@ -221,6 +221,8 @@ def test_custom_exception_is_sanitized_to_exception_type() -> None:
     assert evaluation.status is KpiStatus.ERROR
     assert evaluation.value_kind is KpiValueKind.JSON
     assert evaluation.value_type is None
+    assert evaluation.value is None
+    assert evaluation.parsed_value is None
     assert evaluation.error == 'RuntimeError'
     assert 'secret' not in evaluation.to_payload().__repr__()
 
@@ -295,3 +297,38 @@ def test_truncated_precision_keeps_declared_decimal_places() -> None:
     )
     assert evaluation.value == '4.20'
     assert evaluation.parsed_value == '4,20'
+
+
+def test_custom_json_resolver_owns_empty_container_and_missing_stays_null() -> None:
+    empty_spec = KpiSpec(
+        key='custom-empty',
+        area=KpiArea.GENERAL,
+        mode=KpiMode.CUSTOM,
+        inputs=(_input(),),
+        custom_resolver=lambda _context: {'rows': [], 'columns': []},
+        value_kind=KpiValueKind.JSON,
+    )
+    empty = evaluate_kpi(
+        spec=empty_spec,
+        context=context('value', [{'tag': 1.0}]),
+        watermark=WATERMARK,
+    )
+    assert empty.status is KpiStatus.OK
+    assert empty.value == {'rows': [], 'columns': []}
+
+    missing_spec = KpiSpec(
+        key='custom-missing',
+        area=KpiArea.GENERAL,
+        mode=KpiMode.CUSTOM,
+        inputs=(_input(),),
+        custom_resolver=lambda _context: None,
+        value_kind=KpiValueKind.JSON,
+    )
+    missing = evaluate_kpi(
+        spec=missing_spec,
+        context=context('value', [{'tag': 1.0}]),
+        watermark=WATERMARK,
+    )
+    assert missing.status is KpiStatus.MISSING
+    assert missing.value_kind is KpiValueKind.JSON
+    assert missing.value is None

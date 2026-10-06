@@ -1,4 +1,4 @@
-# Adaptador Latest: VALUE publica parsed_value y JSON conserva su estructura incluso degradado.
+# Adaptador Latest: OK publica su valor; MISSING y ERROR conservan estado/tipo sin valor.
 from __future__ import annotations
 
 from ada.kpis.core import KpiStatus, KpiValueKind
@@ -19,13 +19,13 @@ def delivery_values_from_batch(batch: KpiEvaluationBatch) -> dict[str, KpiLatest
                     if evaluation.value_kind is KpiValueKind.JSON
                     else None
                 ),
-                value=(evaluation.value if evaluation.value_kind is KpiValueKind.JSON else None),
+                value=None,
             )
         elif evaluation.status is KpiStatus.ERROR:
             projected = KpiLatestValue(
                 status=KpiDeliveryStatus.ERROR,
                 value_kind=evaluation.value_kind.value,
-                value=(evaluation.value if evaluation.value_kind is KpiValueKind.JSON else None),
+                value=None,
             )
         else:
             value = (

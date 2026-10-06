@@ -148,4 +148,58 @@ def test_json_over_requires_json_container() -> None:
         evaluated_at_utc=EVALUATED_AT,
     )
     assert evaluation.status is KpiStatus.ERROR
+    assert evaluation.value is None
     assert evaluation.error == 'TypeError'
+
+
+def test_json_over_resolver_owns_empty_container_and_degraded_results_stay_null() -> None:
+    dependency = {'general.a': _evaluation('general.a')}
+
+    empty_spec = OverKpiSpec(
+        key='general.empty',
+        area=KpiArea.GENERAL,
+        dependencies=('general.a',),
+        resolver=lambda _values: {'rows': []},
+        value_kind=KpiValueKind.JSON,
+    )
+    empty = evaluate_over_kpi(
+        spec=empty_spec,
+        dependencies=dependency,
+        watermark=WATERMARK,
+        evaluated_at_utc=EVALUATED_AT,
+    )
+    assert empty.status is KpiStatus.OK
+    assert empty.value == {'rows': []}
+
+    missing_spec = OverKpiSpec(
+        key='general.missing',
+        area=KpiArea.GENERAL,
+        dependencies=('general.a',),
+        resolver=lambda _values: None,
+        value_kind=KpiValueKind.JSON,
+    )
+    missing = evaluate_over_kpi(
+        spec=missing_spec,
+        dependencies=dependency,
+        watermark=WATERMARK,
+        evaluated_at_utc=EVALUATED_AT,
+    )
+    assert missing.status is KpiStatus.MISSING
+    assert missing.value is None
+
+    dependency_error = OverKpiSpec(
+        key='general.error',
+        area=KpiArea.GENERAL,
+        dependencies=('general.a',),
+        resolver=lambda _values: {'unreachable': True},
+        value_kind=KpiValueKind.JSON,
+    )
+    failed = evaluate_over_kpi(
+        spec=dependency_error,
+        dependencies={'general.a': _evaluation('general.a', status=KpiStatus.ERROR)},
+        watermark=WATERMARK,
+        evaluated_at_utc=EVALUATED_AT,
+    )
+    assert failed.status is KpiStatus.ERROR
+    assert failed.value is None
+    assert failed.error == 'KpiDependencyError'

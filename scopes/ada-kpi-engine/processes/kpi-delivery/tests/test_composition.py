@@ -4,7 +4,8 @@ from ada.processes.kpi_delivery.models import KpiLatestDeliveryIterationStatus
 from atlanticus.configuration import ConfigurationSource, ResolvedConfiguration
 from atlanticus.connectivity.cosmos import CosmosSettings
 from atlanticus.kernel import Environment
-from tests.support import RuntimeContextStub
+
+from .support import RuntimeContextStub
 
 
 def _configuration(tmp_path):

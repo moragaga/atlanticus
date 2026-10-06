@@ -16,7 +16,8 @@ from ada.processes.kpi_timeseries_delivery.models import (
 from ada.processes.kpi_timeseries_delivery.planning import (
     build_timeseries_read_plan,
 )
-from tests.support import (
+
+from .support import (
     AuthorityReader,
     CheckpointStore,
     ParallelPublisherStub,

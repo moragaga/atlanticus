@@ -9,7 +9,8 @@ from ada.processes.kpi_delivery.parallel import (
     KpiLatestPublicationTask,
     ParallelKpiLatestPublisher,
 )
-from tests.support import SnapshotPublisher, configuration
+
+from .support import SnapshotPublisher, configuration
 
 
 class BarrierPublisher(SnapshotPublisher):

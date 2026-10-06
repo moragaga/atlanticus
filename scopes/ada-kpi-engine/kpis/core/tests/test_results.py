@@ -72,3 +72,25 @@ def test_json_result_has_no_scalar_type_or_parsed_duplicate() -> None:
             value={'a': 1},
             value_type=KpiValueType.INTEGER,
         )
+
+
+@pytest.mark.parametrize(
+    ('status', 'error'),
+    ((KpiStatus.MISSING, None), (KpiStatus.ERROR, 'RuntimeError')),
+)
+def test_degraded_results_never_expose_values(status, error) -> None:
+    result = KpiResult(
+        status=status,
+        value_kind=KpiValueKind.JSON,
+        error=error,
+    )
+    assert result.value is None
+    assert result.parsed_value is None
+
+    with pytest.raises(ValueError, match='must not expose value or parsed_value'):
+        KpiResult(
+            status=status,
+            value_kind=KpiValueKind.JSON,
+            value={'rows': []},
+            error=error,
+        )

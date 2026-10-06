@@ -4,7 +4,8 @@ from ada.processes.kpi_delivery.errors import KpiDeliveryRepositoryError
 from ada.processes.kpi_delivery.models import KpiDeliveryCheckpoint
 from ada.processes.kpi_delivery.state import KpiLatestDeliveryCheckpointStore
 from atlanticus.state import AtomicStateStore
-from tests.support import watermark
+
+from .support import watermark
 
 
 def test_checkpoint_is_independent_per_tool(tmp_path):

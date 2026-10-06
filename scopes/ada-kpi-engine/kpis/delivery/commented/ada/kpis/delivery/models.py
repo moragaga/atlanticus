@@ -19,7 +19,7 @@ class KpiDeliveryStatus(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
-# Latest admite estructura JSON también en estados degradados para conservar construcción UI.
+# Latest conserva el tipo contractual, pero los estados degradados nunca transportan valor.
 class KpiLatestValue:
     status: KpiDeliveryStatus
     value_kind: str | None
@@ -42,9 +42,6 @@ class KpiLatestValue:
                 raise ValueError('value is required for ok delivery values')
             if self.value_kind == 'json' and not isinstance(self.value, list | dict):
                 raise TypeError('json delivery values must contain a list or dict')
-        elif self.value_kind == 'json':
-            if self.value is not None and not isinstance(self.value, list | dict):
-                raise TypeError('degraded json delivery values must contain a list or dict')
         elif self.value is not None:
             raise ValueError(f'{self.status.value} delivery values must not carry a value')
 

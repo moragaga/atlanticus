@@ -12,7 +12,8 @@ from ada.processes.kpi_materialization.job import (
     READINESS_RETRY_SECONDS,
     KpiMaterializationJob,
 )
-from tests.support import (
+
+from .support import (
     Context,
     Reader,
     acquisition_error,

@@ -11,7 +11,8 @@ from ada.kpis.history import (
 from ada.processes.kpi_historian.history import KpiHistorianMaterializer
 from atlanticus.datasets.parquet import ParquetDatasetStore
 from atlanticus.datasets.runtime import DatasetRuntime
-from tests.support import batch, evaluation, watermark
+
+from .support import batch, evaluation, watermark
 
 
 def test_materialization_is_idempotent_on_real_dataset_runtime(tmp_path) -> None:

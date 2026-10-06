@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from ada.kpis.core import KpiStatus, KpiValueType, KpiWatermark
+from ada.kpis.core import KpiStatus, KpiValueKind, KpiValueType, KpiWatermark
 from ada.kpis.history import KpiHistorianAuthority
 from ada.kpis.history.dataset import (
     history_table,
@@ -17,7 +17,8 @@ from ada.processes.kpi_historian.errors import KpiHistorianRollingError
 from ada.processes.kpi_historian.rolling import KpiHistorianRollingMaterializer
 from atlanticus.datasets.parquet import ParquetDatasetStore
 from atlanticus.datasets.runtime import DatasetRuntime, DatasetRuntimeWriteError
-from tests.support import batch, evaluation, watermark
+
+from .support import batch, evaluation, watermark
 
 
 class HistoryRuntime:
@@ -282,3 +283,33 @@ def test_nonaligned_target_watermark_is_rejected(tmp_path) -> None:
             previous_authority=None,
             authority=_authority(current),
         )
+
+
+def test_degraded_json_does_not_create_rolling_points_or_types(tmp_path) -> None:
+    materializer, runtime = _materializer(tmp_path)
+    current = watermark(1)
+
+    materializer.materialize(
+        batches=(
+            batch(
+                evaluation(
+                    'missing-json',
+                    watermark_value=current,
+                    status=KpiStatus.MISSING,
+                    value_kind=KpiValueKind.JSON,
+                ),
+                evaluation(
+                    'error-json',
+                    watermark_value=current,
+                    status=KpiStatus.ERROR,
+                    value_kind=KpiValueKind.JSON,
+                ),
+            ),
+        ),
+        previous_authority=None,
+        authority=_authority(current),
+    )
+
+    metadata, points = _read(runtime)
+    assert points == {}
+    assert dict(metadata.value_types) == {}

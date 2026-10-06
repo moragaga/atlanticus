@@ -255,3 +255,59 @@ def test_resolver_error_is_committed_as_kpi_error(tmp_path) -> None:
     assert batch.evaluations[0].status.value == 'error'
     assert batch.evaluations[0].value_type is KpiValueType.FLOAT
     assert batch.evaluations[0].error == 'RuntimeError'
+
+
+def test_json_output_contract_is_committed_without_automatic_empty_fallback(tmp_path) -> None:
+    from ada.kpis.core import KpiCatalog, KpiMode, KpiSpec, KpiStatus, KpiValueKind
+
+    base_catalog, _plan, _loader, _persistence, _reader = runtime_parts(tmp_path / 'base')
+    base = next(iter(base_catalog))
+
+    def explode(_context):
+        raise RuntimeError('boom')
+
+    failing_catalog = KpiCatalog(
+        (
+            KpiSpec(
+                key='json-kpi',
+                area=base.area,
+                mode=KpiMode.CUSTOM,
+                inputs=base.inputs,
+                custom_resolver=explode,
+                value_kind=KpiValueKind.JSON,
+            ),
+        )
+    )
+    failing_job, failing_persistence, _reader = _job(
+        tmp_path / 'failing',
+        StaticWatermarkReader(watermark(10)),
+        catalog=failing_catalog,
+    )
+    failing_job.run_iteration(RuntimeContextStub())
+    failed = failing_persistence.read_committed_after()[0].evaluations[0]
+    assert failed.status is KpiStatus.ERROR
+    assert failed.value_kind is KpiValueKind.JSON
+    assert failed.value is None
+    assert failed.error == 'RuntimeError'
+
+    empty_catalog = KpiCatalog(
+        (
+            KpiSpec(
+                key='json-kpi',
+                area=base.area,
+                mode=KpiMode.CUSTOM,
+                inputs=base.inputs,
+                custom_resolver=lambda _context: {'rows': []},
+                value_kind=KpiValueKind.JSON,
+            ),
+        )
+    )
+    empty_job, empty_persistence, _reader = _job(
+        tmp_path / 'empty',
+        StaticWatermarkReader(watermark(10)),
+        catalog=empty_catalog,
+    )
+    empty_job.run_iteration(RuntimeContextStub())
+    empty = empty_persistence.read_committed_after()[0].evaluations[0]
+    assert empty.status is KpiStatus.OK
+    assert empty.value == {'rows': []}
