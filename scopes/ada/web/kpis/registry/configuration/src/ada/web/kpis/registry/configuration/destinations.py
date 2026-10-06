@@ -8,6 +8,8 @@ from ada.web.kpis.registry.identity import require_destination_key, require_tool
 from ada.web.kpis.registry.models import KpiRegistry
 from atlanticus.web.projection.models import ProjectionTarget
 
+_LATEST_ONLY_DESTINATION_KEYS = frozenset({'time_status'})
+
 
 @dataclass(frozen=True, slots=True)
 class KpiDestination:
@@ -82,4 +84,8 @@ def validate_kpi_registry_destinations(
             if destination_key not in available:
                 raise KpiRegistryValidationError(
                     f'KPI destination {destination_key!r} is not available'
+                )
+            if destination_key in _LATEST_ONLY_DESTINATION_KEYS and binding.series_enabled:
+                raise KpiRegistryValidationError(
+                    f'KPI destination {destination_key!r} does not support series delivery'
                 )

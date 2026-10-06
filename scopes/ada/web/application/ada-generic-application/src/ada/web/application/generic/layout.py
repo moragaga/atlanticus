@@ -28,17 +28,15 @@ from ada.web.shell.navigation import (
     build_ada_navigation_mobile_trigger,
     build_ada_navigation_offcanvas,
 )
+from ada.web.time_status.runtime import (
+    TimeStatusRuntimeBinding,
+    build_time_status_runtime_host,
+)
 from ada.web.ui.content_state import (
     ContentStatePresentationMode,
     build_content_state_wrapper,
 )
 from ada.web.ui.global_indicator import GlobalIndicatorCollection, build_global_indicators
-from ada.web.ui.time_status import (
-    TimeStatusDetailState,
-    TimeStatusSummaryState,
-    build_time_status,
-    build_time_status_detail,
-)
 from atlanticus.web.navigation.api import resolve_navigation_from_services
 from atlanticus.web.services import ServiceRegistry
 
@@ -66,8 +64,7 @@ def build_operational_application_layout(
     alarm_status: AlarmStatusState | None,
     alarm_baseline_projection: AlarmBaselineProjection | None,
     tool_key: str | None,
-    time_status_summary: TimeStatusSummaryState | None,
-    time_status_detail: TimeStatusDetailState | None,
+    time_status_binding: TimeStatusRuntimeBinding | None,
     operational_render_binding: OperationalRenderBinding | None,
     operational_body_factory: AdaOperationalBodyFactory | None,
     navigation_enabled: bool,
@@ -91,10 +88,8 @@ def build_operational_application_layout(
     )
     alarm_management_component = build_alarm_management_summary(alarm_management_summary)
     alarm_status_component = build_alarm_status(alarm_status)
-    time_status_component = _build_time_status_component(
-        tool_key=tool_key,
-        summary=time_status_summary,
-        detail=time_status_detail,
+    time_status_component = (
+        None if time_status_binding is None else build_time_status_runtime_host(time_status_binding)
     )
     alarm_baseline_component = (
         build_alarm_baseline_surface(alarm_baseline_projection)
@@ -187,21 +182,4 @@ def _build_global_indicators_component(
         presentation_mode=presentation_mode,
         tool_key=tool_key if source_keys else None,
         source_keys=source_keys,
-    )
-
-
-def _build_time_status_component(
-    *,
-    tool_key: str | None,
-    summary: TimeStatusSummaryState | None,
-    detail: TimeStatusDetailState | None,
-):
-    if summary is None:
-        if detail is not None:
-            raise ValueError('Time Status detail requires Time Status summary')
-        return None
-    return build_time_status(
-        tool_key=tool_key or '',
-        state=summary,
-        detail=None if detail is None else build_time_status_detail(state=detail),
     )

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-web-operational-state"
-version = "0.1.0"
+version = "0.2.0"
 description = "Resolución de estado operacional Web reutilizable para aplicaciones ADA"
 requires-python = "==3.14.2"
 classifiers = [
@@ -13,8 +13,6 @@ classifiers = [
 dependencies = [
     "ada-contracts-tools==1.0.0",
     "ada-web-content-state==0.1.0",
-    "ada-web-time-status-store-adapter==0.1.0",
-    "ada-web-ui-time-status==0.1.15",
 ]
 
 [dependency-groups]
@@ -25,9 +23,8 @@ dev = [
 
 [tool.uv.sources]
 ada-web-content-state = { path = "../content-state/core", editable = true }
-ada-web-time-status-store-adapter = { path = "../time-status/store-adapter", editable = true }
-ada-web-ui-time-status = { path = "../ui/time-status", editable = true }
 ada-contracts-tools = { path = "../../../ada-contracts/tools", editable = true }
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 

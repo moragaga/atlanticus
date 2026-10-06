@@ -13,7 +13,6 @@ from ada.web.branding import BrandingConfiguration
 from ada.web.content_state import ContentState, ContentStateDependency
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.shell.navigation import AdaNavigationView
-from ada.web.time_status.store_adapter import TimeStatusStoreSnapshot
 from ada.web.ui.content_state import ContentStatePresentationMode
 from ada.web.ui.global_indicator import GlobalIndicatorCollection
 from ada.web.ui.time_status import TimeStatusDetailState
@@ -39,7 +38,6 @@ def create_application_runtime(
     alarm_status: AlarmStatusState | None = None,
     source_consumption: ToolSourceConsumption | None = None,
     source_operational_participation: ToolSourceOperationalParticipation | None = None,
-    time_status_snapshot: TimeStatusStoreSnapshot | None = None,
     time_status_detail: TimeStatusDetailState | None = None,
 ) -> WebApplicationRuntime:
     return create_web_application(
@@ -58,7 +56,6 @@ def create_application_runtime(
             alarm_status=alarm_status,
             source_consumption=source_consumption,
             source_operational_participation=source_operational_participation,
-            time_status_snapshot=time_status_snapshot,
             time_status_detail=time_status_detail,
         )
     )

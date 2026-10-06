@@ -79,7 +79,7 @@ dev = [
 
 [[package]]
 name = "ada-generic-application"
-version = "0.2.26"
+version = "0.2.27"
 source = { editable = "." }
 dependencies = [
     { name = "ada-configuration-manager" },
@@ -101,7 +101,7 @@ dependencies = [
     { name = "ada-web-runtime-experience" },
     { name = "ada-web-shell-header" },
     { name = "ada-web-shell-navigation" },
-    { name = "ada-web-time-status-store-adapter" },
+    { name = "ada-web-time-status-runtime" },
     { name = "ada-web-tools-configuration" },
     { name = "ada-web-tools-persistence" },
     { name = "ada-web-tools-projection-cosmos" },
@@ -163,7 +163,7 @@ requires-dist = [
     { name = "ada-web-runtime-experience", editable = "../../runtime-experience" },
     { name = "ada-web-shell-header", editable = "../../shell/header" },
     { name = "ada-web-shell-navigation", editable = "../../shell/navigation" },
-    { name = "ada-web-time-status-store-adapter", editable = "../../time-status/store-adapter" },
+    { name = "ada-web-time-status-runtime", editable = "../../time-status/runtime" },
     { name = "ada-web-tools-configuration", editable = "../../tools/configuration" },
     { name = "ada-web-tools-persistence", editable = "../../tools/persistence" },
     { name = "ada-web-tools-projection-cosmos", editable = "../../tools/projection-cosmos" },
@@ -746,21 +746,17 @@ dev = [
 
 [[package]]
 name = "ada-web-operational-state"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "../../operational-state" }
 dependencies = [
     { name = "ada-contracts-tools" },
     { name = "ada-web-content-state" },
-    { name = "ada-web-time-status-store-adapter" },
-    { name = "ada-web-ui-time-status" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "ada-contracts-tools", editable = "../../../../ada-contracts/tools" },
     { name = "ada-web-content-state", editable = "../../content-state/core" },
-    { name = "ada-web-time-status-store-adapter", editable = "../../time-status/store-adapter" },
-    { name = "ada-web-ui-time-status", editable = "../../ui/time-status" },
 ]
 
 [package.metadata.requires-dev]
@@ -837,11 +833,25 @@ dev = [
 ]
 
 [[package]]
-name = "ada-web-time-status-store-adapter"
+name = "ada-web-time-status-runtime"
 version = "0.1.0"
-source = { editable = "../../time-status/store-adapter" }
+source = { editable = "../../time-status/runtime" }
+dependencies = [
+    { name = "ada-contracts-tools" },
+    { name = "ada-web-kpi-collector" },
+    { name = "ada-web-ui-time-status" },
+    { name = "atlanticus-web" },
+    { name = "dash" },
+]
 
 [package.metadata]
+requires-dist = [
+    { name = "ada-contracts-tools", editable = "../../../../ada-contracts/tools" },
+    { name = "ada-web-kpi-collector", editable = "../../kpis/collector" },
+    { name = "ada-web-ui-time-status", editable = "../../ui/time-status" },
+    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
+    { name = "dash", specifier = "==4.4.1" },
+]
 
 [package.metadata.requires-dev]
 dev = [

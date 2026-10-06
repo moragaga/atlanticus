@@ -9,7 +9,9 @@ from pathlib import Path
 
 from ada.contracts.tools.sources import (
     ToolSourceConsumption,
+    ToolSourceConsumptionValidationError,
     ToolSourceOperationalParticipation,
+    ToolSourceOperationalParticipationValidationError,
 )
 from ada.web.alarms.baseline_projection import AlarmBaselineProjection
 from ada.web.alarms.management_summary import AlarmManagementSummaryState
@@ -31,7 +33,10 @@ from ada.web.content_state import ContentState, ContentStateDependency
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.operational_state import resolve_ada_operational_state
 from ada.web.shell.navigation import AdaNavigationView
-from ada.web.time_status.store_adapter import TimeStatusStoreSnapshot
+from ada.web.time_status.runtime import (
+    TimeStatusRuntimeBinding,
+    create_time_status_runtime_module,
+)
 from ada.web.ui.content_state import ContentStatePresentationMode
 from ada.web.ui.global_indicator import GlobalIndicatorCollection
 from ada.web.ui.time_status import TimeStatusDetailState
@@ -66,7 +71,6 @@ def create_application_definition(
     alarm_baseline_projection: AlarmBaselineProjection | None = None,
     source_consumption: ToolSourceConsumption | None = None,
     source_operational_participation: ToolSourceOperationalParticipation | None = None,
-    time_status_snapshot: TimeStatusStoreSnapshot | None = None,
     time_status_detail: TimeStatusDetailState | None = None,
 ) -> WebApplicationDefinition:
     _validate_content_state_presentation_mode(content_state_presentation_mode)
@@ -90,21 +94,29 @@ def create_application_definition(
         logo_src=branding_assets.operational_logo_src,
     )
     resolved_global_indicators = global_indicators or GlobalIndicatorCollection(())
+    time_status_binding = _resolve_time_status_binding(
+        source_consumption=source_consumption,
+        source_operational_participation=source_operational_participation,
+        time_status_detail=time_status_detail,
+    )
     operational_state = resolve_ada_operational_state(
         has_global_indicators=bool(len(resolved_global_indicators)),
         content_state_dependencies=content_state_dependencies,
         source_consumption=source_consumption,
         source_operational_participation=source_operational_participation,
-        time_status_snapshot=time_status_snapshot,
-        time_status_detail=time_status_detail,
     )
     resolved_composition = composition or create_local_operational_composition(
         include_content_state=bool(len(resolved_global_indicators)),
-        include_time_status=operational_state.time_status_summary is not None,
+        include_time_status=time_status_binding is not None,
     )
     validate_operational_render_application_binding(
         binding=operational_render_binding,
         body_factory=resolved_composition.operational_body_factory,
+    )
+    runtime_modules = (
+        ()
+        if time_status_binding is None
+        else (create_time_status_runtime_module(time_status_binding),)
     )
     return WebApplicationDefinition(
         import_name=resolved_descriptor.import_name,
@@ -131,13 +143,35 @@ def create_application_definition(
             alarm_status=alarm_status,
             alarm_baseline_projection=alarm_baseline_projection,
             tool_key=operational_state.tool_key,
-            time_status_summary=operational_state.time_status_summary,
-            time_status_detail=time_status_detail,
+            time_status_binding=time_status_binding,
             operational_render_binding=operational_render_binding,
             operational_body_factory=resolved_composition.operational_body_factory,
         ),
-        modules=resolved_composition.modules,
+        modules=(*resolved_composition.modules, *runtime_modules),
         page_packages=resolved_composition.page_packages,
+    )
+
+
+def _resolve_time_status_binding(
+    *,
+    source_consumption: ToolSourceConsumption | None,
+    source_operational_participation: ToolSourceOperationalParticipation | None,
+    time_status_detail: TimeStatusDetailState | None,
+) -> TimeStatusRuntimeBinding | None:
+    if source_operational_participation is None:
+        if time_status_detail is not None:
+            raise ToolSourceOperationalParticipationValidationError(
+                'Time Status detail requires ToolSourceOperationalParticipation'
+            )
+        return None
+    if source_consumption is None:
+        raise ToolSourceConsumptionValidationError(
+            'Time Status runtime requires ToolSourceConsumption'
+        )
+    return TimeStatusRuntimeBinding(
+        consumption=source_consumption,
+        participation=source_operational_participation,
+        detail=time_status_detail,
     )
 
 

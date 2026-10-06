@@ -1,4 +1,4 @@
-# Espejo comentado: composition root ADA; recibe bindings ya resueltos y delega presentación.
+# Composition root: valida contratos y monta el runtime de Time Status sin leer Delivery.
 from __future__ import annotations
 
 import logging
@@ -8,12 +8,22 @@ from functools import partial
 from importlib.metadata import version
 from pathlib import Path
 
+from ada.contracts.tools.sources import (
+    ToolSourceConsumption,
+    ToolSourceConsumptionValidationError,
+    ToolSourceOperationalParticipation,
+    ToolSourceOperationalParticipationValidationError,
+)
 from ada.web.alarms.baseline_projection import AlarmBaselineProjection
 from ada.web.alarms.management_summary import AlarmManagementSummaryState
 from ada.web.alarms.status import AlarmStatusState
 from ada.web.application.generic.composition import (
     AdaApplicationComposition,
     create_local_operational_composition,
+)
+from ada.web.application.generic.descriptor import (
+    GENERIC_APPLICATION_DESCRIPTOR,
+    AdaApplicationDescriptor,
 )
 from ada.web.application.generic.operational_render import (
     validate_operational_render_application_binding,
@@ -24,10 +34,9 @@ from ada.web.content_state import ContentState, ContentStateDependency
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.operational_state import resolve_ada_operational_state
 from ada.web.shell.navigation import AdaNavigationView
-from ada.web.time_status.store_adapter import TimeStatusStoreSnapshot
-from ada.contracts.tools.sources import (
-    ToolSourceConsumption,
-    ToolSourceOperationalParticipation,
+from ada.web.time_status.runtime import (
+    TimeStatusRuntimeBinding,
+    create_time_status_runtime_module,
 )
 from ada.web.ui.content_state import ContentStatePresentationMode
 from ada.web.ui.global_indicator import GlobalIndicatorCollection
@@ -35,20 +44,18 @@ from ada.web.ui.time_status import TimeStatusDetailState
 from atlanticus.web.models import ApplicationMetadata, WebApplicationDefinition
 
 _LOGGER = logging.getLogger(__name__)
-_APPLICATION_ROOT = Path(__file__).resolve().parents[5]
-_APPLICATION_DISTRIBUTION = 'ada-generic-application'
 
 
-# El host distribuido puede publicar assets en una ubicación escribible externa al wheel.
-def _resolve_publications_root() -> Path:
+def _resolve_publications_root(descriptor: AdaApplicationDescriptor) -> Path:
     configured = os.getenv('APPLICATION_PUBLICATIONS_ROOT')
     if configured is None or not configured.strip():
-        return _APPLICATION_ROOT / '.runtime' / 'publications'
+        return descriptor.default_publications_root
     return Path(configured).expanduser().resolve()
 
 
 def create_application_definition(
     *,
+    application_descriptor: AdaApplicationDescriptor | None = None,
     composition: AdaApplicationComposition | None = None,
     operational_render_binding: OperationalRenderBinding | None = None,
     tool_display_name: str | None = None,
@@ -65,10 +72,13 @@ def create_application_definition(
     alarm_baseline_projection: AlarmBaselineProjection | None = None,
     source_consumption: ToolSourceConsumption | None = None,
     source_operational_participation: ToolSourceOperationalParticipation | None = None,
-    time_status_snapshot: TimeStatusStoreSnapshot | None = None,
     time_status_detail: TimeStatusDetailState | None = None,
 ) -> WebApplicationDefinition:
     _validate_content_state_presentation_mode(content_state_presentation_mode)
+    if application_descriptor is not None and not isinstance(
+        application_descriptor, AdaApplicationDescriptor
+    ):
+        raise TypeError('application_descriptor must be AdaApplicationDescriptor')
     if alarm_baseline_projection is not None and not isinstance(
         alarm_baseline_projection,
         AlarmBaselineProjection,
@@ -76,7 +86,8 @@ def create_application_definition(
         raise TypeError('Generic Application requires AlarmBaselineProjection value')
     if content_state_presentation_mode is ContentStatePresentationMode.AUTHORING:
         _LOGGER.info('Content State presentation override is active: authoring')
-    application_version = version(_APPLICATION_DISTRIBUTION)
+    resolved_descriptor = application_descriptor or GENERIC_APPLICATION_DESCRIPTOR
+    application_version = version(resolved_descriptor.distribution_name)
     resolved_branding_configuration = branding_configuration or BrandingConfiguration()
     branding_assets = resolve_branding_assets(resolved_branding_configuration)
     operational_brand = OperationalBrandState(
@@ -84,31 +95,38 @@ def create_application_definition(
         logo_src=branding_assets.operational_logo_src,
     )
     resolved_global_indicators = global_indicators or GlobalIndicatorCollection(())
+    time_status_binding = _resolve_time_status_binding(
+        source_consumption=source_consumption,
+        source_operational_participation=source_operational_participation,
+        time_status_detail=time_status_detail,
+    )
     operational_state = resolve_ada_operational_state(
         has_global_indicators=bool(len(resolved_global_indicators)),
         content_state_dependencies=content_state_dependencies,
         source_consumption=source_consumption,
         source_operational_participation=source_operational_participation,
-        time_status_snapshot=time_status_snapshot,
-        time_status_detail=time_status_detail,
     )
     resolved_composition = composition or create_local_operational_composition(
         include_content_state=bool(len(resolved_global_indicators)),
-        include_time_status=operational_state.time_status_summary is not None,
+        include_time_status=time_status_binding is not None,
     )
-    # Un binding sólo es válido si la composición declara cómo renderizarlo.
     validate_operational_render_application_binding(
         binding=operational_render_binding,
         body_factory=resolved_composition.operational_body_factory,
     )
+    runtime_modules = (
+        ()
+        if time_status_binding is None
+        else (create_time_status_runtime_module(time_status_binding),)
+    )
     return WebApplicationDefinition(
-        import_name='ada.web.application.generic',
+        import_name=resolved_descriptor.import_name,
         metadata=ApplicationMetadata(
-            application_id='ada-generic-application',
-            display_name='ADA',
+            application_id=resolved_descriptor.application_id,
+            display_name=resolved_descriptor.display_name,
             version=application_version,
         ),
-        publications_root=_resolve_publications_root(),
+        publications_root=_resolve_publications_root(resolved_descriptor),
         layout=partial(
             resolved_composition.layout,
             operational_brand=operational_brand,
@@ -126,14 +144,35 @@ def create_application_definition(
             alarm_status=alarm_status,
             alarm_baseline_projection=alarm_baseline_projection,
             tool_key=operational_state.tool_key,
-            time_status_summary=operational_state.time_status_summary,
-            time_status_detail=time_status_detail,
-            # El binding cruza intacto hasta el layout; aquí no se inspecciona payload ni ToolKind.
+            time_status_binding=time_status_binding,
             operational_render_binding=operational_render_binding,
             operational_body_factory=resolved_composition.operational_body_factory,
         ),
-        modules=resolved_composition.modules,
+        modules=(*resolved_composition.modules, *runtime_modules),
         page_packages=resolved_composition.page_packages,
+    )
+
+
+def _resolve_time_status_binding(
+    *,
+    source_consumption: ToolSourceConsumption | None,
+    source_operational_participation: ToolSourceOperationalParticipation | None,
+    time_status_detail: TimeStatusDetailState | None,
+) -> TimeStatusRuntimeBinding | None:
+    if source_operational_participation is None:
+        if time_status_detail is not None:
+            raise ToolSourceOperationalParticipationValidationError(
+                'Time Status detail requires ToolSourceOperationalParticipation'
+            )
+        return None
+    if source_consumption is None:
+        raise ToolSourceConsumptionValidationError(
+            'Time Status runtime requires ToolSourceConsumption'
+        )
+    return TimeStatusRuntimeBinding(
+        consumption=source_consumption,
+        participation=source_operational_participation,
+        detail=time_status_detail,
     )
 
 

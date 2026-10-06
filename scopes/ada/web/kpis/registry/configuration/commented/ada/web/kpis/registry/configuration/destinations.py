@@ -1,6 +1,4 @@
-# Transporta la identidad y destinos derivados de la proyección exacta de Tool.
-# Este archivo es el espejo pedagógico del código productivo equivalente.
-
+# El catálogo valida destinos contra Tool y protege capacidades de destinos sistémicos.
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,6 +8,9 @@ from ada.web.kpis.registry.errors import KpiRegistryValidationError
 from ada.web.kpis.registry.identity import require_destination_key, require_tool_key
 from ada.web.kpis.registry.models import KpiRegistry
 from atlanticus.web.projection.models import ProjectionTarget
+
+# Time Status publica hechos puntuales de frescura; no existe contrato de serie para ese destino.
+_LATEST_ONLY_DESTINATION_KEYS = frozenset({'time_status'})
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,4 +86,9 @@ def validate_kpi_registry_destinations(
             if destination_key not in available:
                 raise KpiRegistryValidationError(
                     f'KPI destination {destination_key!r} is not available'
+                )
+            # Impide que una configuración inválida llegue hasta Delivery para ser ignorada luego.
+            if destination_key in _LATEST_ONLY_DESTINATION_KEYS and binding.series_enabled:
+                raise KpiRegistryValidationError(
+                    f'KPI destination {destination_key!r} does not support series delivery'
                 )

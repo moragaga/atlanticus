@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ada-generic-application"
-version = "0.2.26"
+version = "0.2.27"
 description = "Composition root web genérico de ADA sobre Atlanticus Web"
 requires-python = "==3.14.2"
 classifiers = [
@@ -25,13 +25,13 @@ dependencies = [
     "ada-web-kpi-definition-projection-cosmos==0.1.0",
     "ada-web-access-projection-cosmos==0.1.0",
     "ada-web-access-configuration==0.1.0",
-    "ada-web-operational-state==0.1.0",
+    "ada-web-operational-state==0.2.0",
     "ada-web-operational-render-binding==0.1.0",
     "atlanticus-web-storage-namespace==0.1.0",
     "ada-contracts-tools==1.0.0",
     "ada-web-tools-configuration==0.1.0",
     "ada-web-tools-persistence==0.1.1",
-    "ada-web-time-status-store-adapter==0.1.0",
+    "ada-web-time-status-runtime==0.1.0",
     "ada-web-content-state==0.1.0",
     "ada-web-alarm-baseline-projection==0.1.0",
     "ada-web-alarm-baseline-surface==0.1.1",
@@ -99,7 +99,7 @@ ada-web-kpi-definition-projection-local = { path = "../../kpis/definition/projec
 ada-web-content-state = { path = "../../content-state/core", editable = true }
 ada-web-operational-state = { path = "../../operational-state", editable = true }
 ada-web-operational-render-binding = { path = "../../operational-render-binding", editable = true }
-ada-web-time-status-store-adapter = { path = "../../time-status/store-adapter", editable = true }
+ada-web-time-status-runtime = { path = "../../time-status/runtime", editable = true }
 ada-web-alarm-baseline-projection = { path = "../../alarms/baseline-projection", editable = true }
 ada-web-alarm-baseline-surface = { path = "../../alarms/baseline-surface", editable = true }
 ada-web-branding = { path = "../../branding", editable = true }

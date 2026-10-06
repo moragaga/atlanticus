@@ -1,19 +1,19 @@
-# Espejo comentado: entrypoint productivo que propaga explícitamente OperationalRenderBinding.
+# Entrypoint de ejecución; propaga contratos y deja el bridge browser al módulo dedicado.
 from __future__ import annotations
 
-from ada.web.alarms.management_summary import AlarmManagementSummaryState
-from ada.web.alarms.status import AlarmStatusState
-from ada.web.application.generic.application import create_application_definition
-from ada.web.application.generic.composition import AdaApplicationComposition
-from ada.web.branding import BrandingConfiguration
-from ada.web.content_state import ContentState, ContentStateDependency
-from ada.web.operational_render_binding import OperationalRenderBinding
-from ada.web.shell.navigation import AdaNavigationView
-from ada.web.time_status.store_adapter import TimeStatusStoreSnapshot
 from ada.contracts.tools.sources import (
     ToolSourceConsumption,
     ToolSourceOperationalParticipation,
 )
+from ada.web.alarms.management_summary import AlarmManagementSummaryState
+from ada.web.alarms.status import AlarmStatusState
+from ada.web.application.generic.application import create_application_definition
+from ada.web.application.generic.composition import AdaApplicationComposition
+from ada.web.application.generic.descriptor import AdaApplicationDescriptor
+from ada.web.branding import BrandingConfiguration
+from ada.web.content_state import ContentState, ContentStateDependency
+from ada.web.operational_render_binding import OperationalRenderBinding
+from ada.web.shell.navigation import AdaNavigationView
 from ada.web.ui.content_state import ContentStatePresentationMode
 from ada.web.ui.global_indicator import GlobalIndicatorCollection
 from ada.web.ui.time_status import TimeStatusDetailState
@@ -23,6 +23,7 @@ from atlanticus.web.models import WebApplicationRuntime
 
 def create_application_runtime(
     *,
+    application_descriptor: AdaApplicationDescriptor | None = None,
     composition: AdaApplicationComposition | None = None,
     operational_render_binding: OperationalRenderBinding | None = None,
     tool_display_name: str | None = None,
@@ -38,13 +39,12 @@ def create_application_runtime(
     alarm_status: AlarmStatusState | None = None,
     source_consumption: ToolSourceConsumption | None = None,
     source_operational_participation: ToolSourceOperationalParticipation | None = None,
-    time_status_snapshot: TimeStatusStoreSnapshot | None = None,
     time_status_detail: TimeStatusDetailState | None = None,
 ) -> WebApplicationRuntime:
     return create_web_application(
         create_application_definition(
+            application_descriptor=application_descriptor,
             composition=composition,
-            # El entrypoint no reconstruye Stores ni llama al Collector; sólo propaga el binding final.
             operational_render_binding=operational_render_binding,
             tool_display_name=tool_display_name,
             branding_configuration=branding_configuration,
@@ -57,7 +57,6 @@ def create_application_runtime(
             alarm_status=alarm_status,
             source_consumption=source_consumption,
             source_operational_participation=source_operational_participation,
-            time_status_snapshot=time_status_snapshot,
             time_status_detail=time_status_detail,
         )
     )
