@@ -1,10 +1,10 @@
-/* Dashboard de Operaciones Integradas: una sola separación gobierna componentes y cards. */
+/* Dashboard conserva layout, responsive y controles; la apariencia de card vive sólo en ada-web-ui-card-display. */
 .ada-io-dashboard {
     --ada-io-gap: .2rem;
     --ada-io-edge-inset: .3rem;
-    --ada-io-card-background: var(--primary-background, #EBEBEB);
-    --ada-io-card-border: var(--primary-border-color, #BDBDBD);
-    --ada-io-card-text: var(--custom-text-color, #4D4D4D);
+    --ada-io-surface: var(--primary-background, #EBEBEB);
+    --ada-io-border: var(--primary-border-color, #BDBDBD);
+    --ada-io-text: var(--custom-text-color, #4D4D4D);
     position: relative;
     display: flex;
     flex: 1 1 auto;
@@ -12,10 +12,9 @@
     height: 100%;
     min-width: 0;
     min-height: 0;
-    /* El marco lateral/inferior evita que las cards mueran contra el viewport. */
     padding: 0 var(--ada-io-edge-inset) var(--ada-io-edge-inset);
-    border-inline: 1px solid var(--ada-io-card-border);
-    border-bottom: 1px solid var(--ada-io-card-border);
+    border-inline: 1px solid var(--ada-io-border);
+    border-bottom: 1px solid var(--ada-io-border);
     box-sizing: border-box;
     overflow: hidden;
 }
@@ -42,9 +41,7 @@
 .ada-io-scope,
 .ada-io-scope__content,
 .ada-io-component,
-.ada-io-component__cards,
-.ada-io-card,
-.ada-io-card__content {
+.ada-io-component__cards {
     min-width: 0;
     min-height: 0;
 }
@@ -59,6 +56,7 @@
     overflow: hidden;
 }
 
+/* Component organiza título y colección de cards, pero no redefine la primitive visual. */
 .ada-io-component {
     display: grid;
     width: 100%;
@@ -92,37 +90,6 @@
     overflow: hidden;
 }
 
-.ada-io-card {
-    display: grid;
-    width: 100%;
-    height: 100%;
-    grid-template-rows: minmax(0, 1fr) auto;
-    border: 1px solid var(--ada-io-card-border);
-    border-radius: .3rem;
-    background: var(--ada-io-card-background);
-    color: var(--ada-io-card-text);
-    overflow: hidden;
-}
-
-.ada-io-card__content {
-    overflow: hidden;
-}
-
-.ada-io-card__footer {
-    overflow: hidden;
-    padding: .12rem .28rem;
-    border-top: 1px solid var(--ada-io-card-border);
-    font-size: .54rem;
-    font-weight: 700;
-    line-height: 1.2;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.ada-io-card--shared {
-    height: 100%;
-}
-
 .ada-io-dashboard__overview-controls,
 .ada-io-dashboard__zoom-controls {
     pointer-events: none;
@@ -134,10 +101,10 @@
     min-width: 0;
     min-height: 1.35rem;
     padding: .1rem .42rem;
-    border: 1px solid var(--ada-io-card-border);
+    border: 1px solid var(--ada-io-border);
     border-radius: .3rem;
-    background: var(--ada-io-card-background);
-    color: var(--ada-io-card-text);
+    background: var(--ada-io-surface);
+    color: var(--ada-io-text);
     font: inherit;
     font-size: .52rem;
     font-weight: 700;
@@ -147,7 +114,6 @@
     pointer-events: auto !important;
 }
 
-/* Hover refuerza affordance y cursor sin modificar comportamiento. */
 .ada-io-dashboard__presentation-button:hover {
     border-color: var(--ada-color-border-strong, #313131);
     background: var(--ada-color-surface-inverse, #FFFFFF);
@@ -170,7 +136,7 @@
     bottom: .35rem;
 }
 
-/* Se eleva la línea para separar controles y puntos de los títulos de componentes. */
+/* El baseline continúa siendo responsabilidad de la composición operativa, no de Card Display. */
 .ada-alarm-baseline-surface {
     --ada-alarm-baseline-y: 52%;
     position: relative;
@@ -183,7 +149,6 @@
     pointer-events: none;
 }
 
-/* En el baseline los controles se leen como botones adheridos a cada extremo. */
 .ada-alarm-baseline-surface > .ada-io-dashboard__overview-controls .ada-io-dashboard__presentation-button {
     top: var(--ada-alarm-baseline-y, 74%);
     bottom: auto;
@@ -197,7 +162,6 @@
     pointer-events: auto !important;
 }
 
-/* Mina se pega al borde izquierdo y conserva borde en los lados expuestos. */
 .ada-alarm-baseline-surface > .ada-io-dashboard__overview-controls
 .ada-io-dashboard__overview-control--mine {
     left: 0;
@@ -205,7 +169,6 @@
     border-radius: 0 .35rem .35rem 0;
 }
 
-/* Planta hace el espejo en el borde derecho. */
 .ada-alarm-baseline-surface > .ada-io-dashboard__overview-controls
 .ada-io-dashboard__overview-control--plant {
     right: 0;
@@ -287,8 +250,8 @@
     }
 
     .ada-io-scope,
-    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-scope,
-    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-scope {
+    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-scope--mine,
+    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-scope--plant {
         display: block;
         width: 100%;
         height: auto;
@@ -326,7 +289,8 @@
         overflow: visible;
     }
 
-    .ada-io-dashboard .ada-io-card {
+    /* En mobile sólo se adapta geometría externa de la primitive reusable. */
+    .ada-io-dashboard .ada-card-display {
         height: auto;
         min-height: 9rem;
     }

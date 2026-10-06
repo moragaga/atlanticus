@@ -33,6 +33,7 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
     return WebModule(
         name='ada-integrated-operations-dashboard',
         page_packages=(_DASHBOARD_PAGE_PACKAGE,),
+        # Card Display se carga como asset reusable antes de los assets específicos del dashboard.
         asset_layers=(
             ADA_CARD_DISPLAY_ASSET_LAYER,
             DASHBOARD_ASSET_LAYER,

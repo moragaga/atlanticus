@@ -12,6 +12,7 @@ from ada.web.application.integrated_operations.modules.dashboard.ids import (
     dashboard_card_id,
     dashboard_component_id,
 )
+from ada.web.ui.card_display import build_card_display
 
 
 def build_component_panel(binding: DashboardComponentBinding):
@@ -23,7 +24,6 @@ def build_component_panel(binding: DashboardComponentBinding):
                     build_dashboard_card(
                         card,
                         tool_component_key=binding.tool_component_key,
-                        scope=binding.scope.value,
                     )
                     for card in binding.cards
                 ],
@@ -39,65 +39,47 @@ def build_component_panel(binding: DashboardComponentBinding):
 def build_dashboard_card(
     binding: DashboardCardBinding,
     *,
-    tool_component_key: str | None,
-    scope: str,
+    tool_component_key: str,
 ):
-    attributes = {
-        'data-ada-io-card-key': binding.key,
-        'data-ada-operational-scope': scope,
-    }
-    if tool_component_key is not None:
-        attributes['data-ada-component-key'] = tool_component_key
-    if binding.tool_subcomponent_key is not None:
-        attributes['data-ada-subcomponent-key'] = binding.tool_subcomponent_key
-
-    return html.Article(
-        [
-            html.Div(
-                id=dashboard_card_content_id(binding.key),
-                className='ada-io-card__content',
-            ),
-            html.Div(binding.label, className='ada-io-card__footer'),
-        ],
-        id=dashboard_card_id(binding.key),
-        className='ada-io-card',
-        **attributes,
+    return _build_card_display(
+        key=binding.key,
+        label=binding.label,
+        tool_component_key=tool_component_key,
+        tool_subcomponent_key=binding.tool_subcomponent_key,
     )
 
 
 def build_shared_dashboard_card(binding: DashboardSharedCardBinding):
-    attributes = {
-        'data-ada-io-card-key': binding.key,
-        'data-ada-operational-scope': binding.scope.value,
-    }
-    if binding.tool_component_key is not None:
-        attributes['data-ada-component-key'] = binding.tool_component_key
-    if binding.tool_subcomponent_key is not None:
-        attributes['data-ada-subcomponent-key'] = binding.tool_subcomponent_key
-    if binding.linked_tool_component_keys:
-        attributes['data-ada-linked-component-keys'] = ' '.join(
-            binding.linked_tool_component_keys
-        )
+    return _build_card_display(
+        key=binding.key,
+        label=binding.label,
+        tool_component_key=binding.tool_component_key,
+        tool_subcomponent_key=binding.tool_subcomponent_key,
+        linked_tool_component_keys=binding.linked_tool_component_keys,
+    )
 
-    return html.Article(
-        [
-            html.Div(
-                id=dashboard_card_content_id(binding.key),
-                className='ada-io-card__content',
-            ),
-            html.Div(binding.label, className='ada-io-card__footer'),
-        ],
-        id=dashboard_card_id(binding.key),
-        className='ada-io-card ada-io-card--shared',
-        **attributes,
+
+def _build_card_display(
+    *,
+    key: str,
+    label: str,
+    tool_component_key: str,
+    tool_subcomponent_key: str,
+    linked_tool_component_keys: tuple[str, ...] = (),
+):
+    return build_card_display(
+        component_key=tool_component_key,
+        subcomponent_key=tool_subcomponent_key,
+        linked_component_keys=linked_tool_component_keys,
+        wrapper_id=dashboard_card_id(key),
+        content=html.Div(id=dashboard_card_content_id(key)),
+        footer=label,
     )
 
 
 def _component_attributes(binding: DashboardComponentBinding) -> dict[str, str]:
-    attributes = {
+    return {
         'data-ada-io-component-key': binding.key,
         'data-ada-operational-scope': binding.scope.value,
+        'data-ada-component-key': binding.tool_component_key,
     }
-    if binding.tool_component_key is not None:
-        attributes['data-ada-component-key'] = binding.tool_component_key
-    return attributes

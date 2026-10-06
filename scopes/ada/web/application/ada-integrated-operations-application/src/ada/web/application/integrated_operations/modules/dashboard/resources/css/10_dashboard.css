@@ -1,9 +1,9 @@
 .ada-io-dashboard {
     --ada-io-gap: .2rem;
     --ada-io-edge-inset: .3rem;
-    --ada-io-card-background: var(--primary-background, #EBEBEB);
-    --ada-io-card-border: var(--primary-border-color, #BDBDBD);
-    --ada-io-card-text: var(--custom-text-color, #4D4D4D);
+    --ada-io-surface: var(--primary-background, #EBEBEB);
+    --ada-io-border: var(--primary-border-color, #BDBDBD);
+    --ada-io-text: var(--custom-text-color, #4D4D4D);
     position: relative;
     display: flex;
     flex: 1 1 auto;
@@ -12,8 +12,8 @@
     min-width: 0;
     min-height: 0;
     padding: 0 var(--ada-io-edge-inset) var(--ada-io-edge-inset);
-    border-inline: 1px solid var(--ada-io-card-border);
-    border-bottom: 1px solid var(--ada-io-card-border);
+    border-inline: 1px solid var(--ada-io-border);
+    border-bottom: 1px solid var(--ada-io-border);
     box-sizing: border-box;
     overflow: hidden;
 }
@@ -40,9 +40,7 @@
 .ada-io-scope,
 .ada-io-scope__content,
 .ada-io-component,
-.ada-io-component__cards,
-.ada-io-card,
-.ada-io-card__content {
+.ada-io-component__cards {
     min-width: 0;
     min-height: 0;
 }
@@ -90,37 +88,6 @@
     overflow: hidden;
 }
 
-.ada-io-card {
-    display: grid;
-    width: 100%;
-    height: 100%;
-    grid-template-rows: minmax(0, 1fr) auto;
-    border: 1px solid var(--ada-io-card-border);
-    border-radius: .3rem;
-    background: var(--ada-io-card-background);
-    color: var(--ada-io-card-text);
-    overflow: hidden;
-}
-
-.ada-io-card__content {
-    overflow: hidden;
-}
-
-.ada-io-card__footer {
-    overflow: hidden;
-    padding: .12rem .28rem;
-    border-top: 1px solid var(--ada-io-card-border);
-    font-size: .54rem;
-    font-weight: 700;
-    line-height: 1.2;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.ada-io-card--shared {
-    height: 100%;
-}
-
 .ada-io-dashboard__overview-controls,
 .ada-io-dashboard__zoom-controls {
     pointer-events: none;
@@ -132,10 +99,10 @@
     min-width: 0;
     min-height: 1.35rem;
     padding: .1rem .42rem;
-    border: 1px solid var(--ada-io-card-border);
+    border: 1px solid var(--ada-io-border);
     border-radius: .3rem;
-    background: var(--ada-io-card-background);
-    color: var(--ada-io-card-text);
+    background: var(--ada-io-surface);
+    color: var(--ada-io-text);
     font: inherit;
     font-size: .52rem;
     font-weight: 700;
@@ -280,8 +247,8 @@
     }
 
     .ada-io-scope,
-    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-scope,
-    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-scope {
+    .ada-io-dashboard[data-ada-io-presentation='mine'] .ada-io-scope--mine,
+    .ada-io-dashboard[data-ada-io-presentation='plant'] .ada-io-scope--plant {
         display: block;
         width: 100%;
         height: auto;
@@ -319,7 +286,7 @@
         overflow: visible;
     }
 
-    .ada-io-dashboard .ada-io-card {
+    .ada-io-dashboard .ada-card-display {
         height: auto;
         min-height: 9rem;
     }

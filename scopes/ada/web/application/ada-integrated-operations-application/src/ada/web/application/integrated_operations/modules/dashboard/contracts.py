@@ -9,7 +9,7 @@ from ada.contracts.tools.enums import ToolScope
 class DashboardCardBinding:
     key: str
     label: str
-    tool_subcomponent_key: str | None = None
+    tool_subcomponent_key: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -17,8 +17,8 @@ class DashboardComponentBinding:
     key: str
     label: str
     scope: ToolScope
+    tool_component_key: str
     cards: tuple[DashboardCardBinding, ...]
-    tool_component_key: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,6 +26,6 @@ class DashboardSharedCardBinding:
     key: str
     label: str
     scope: ToolScope
-    tool_component_key: str | None = None
-    tool_subcomponent_key: str | None = None
+    tool_component_key: str
+    tool_subcomponent_key: str
     linked_tool_component_keys: tuple[str, ...] = ()

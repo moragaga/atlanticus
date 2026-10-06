@@ -5,30 +5,30 @@ from dataclasses import dataclass
 from ada.contracts.tools.enums import ToolScope
 
 
-# Contrato visual mínimo compartido por las composiciones Mine y Plant.
+# Toda card visible debe quedar enlazada a una identidad real de subcomponente definida por desarrollo.
 @dataclass(frozen=True, slots=True)
 class DashboardCardBinding:
     key: str
     label: str
-    tool_subcomponent_key: str | None = None
+    tool_subcomponent_key: str
 
 
-# Un componente visual conserva su scope y puede recibir después la identidad Tool definida por desarrollo.
+# El componente conserva una key visual independiente, pero exige la identidad Tool usada por runtime.
 @dataclass(frozen=True, slots=True)
 class DashboardComponentBinding:
     key: str
     label: str
     scope: ToolScope
+    tool_component_key: str
     cards: tuple[DashboardCardBinding, ...]
-    tool_component_key: str | None = None
 
 
-# Una card compartida conserva owner, subcomponent y vínculos sin imponer semántica de un scope concreto.
+# La card compartida exige owner, subcomponent y vínculos explícitos; no deriva identidades desde labels.
 @dataclass(frozen=True, slots=True)
 class DashboardSharedCardBinding:
     key: str
     label: str
     scope: ToolScope
-    tool_component_key: str | None = None
-    tool_subcomponent_key: str | None = None
+    tool_component_key: str
+    tool_subcomponent_key: str
     linked_tool_component_keys: tuple[str, ...] = ()
