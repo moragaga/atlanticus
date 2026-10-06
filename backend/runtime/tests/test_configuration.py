@@ -25,6 +25,7 @@ def test_configuration_resolves_application_scope(tmp_path) -> None:
     assert configuration.application_root == tmp_path / 'ada'
     assert configuration.runtime_root == tmp_path / 'ada' / '.runtime'
     assert configuration.observability_file_logs_enabled is True
+    assert configuration.job_execution_disabled is False
 
 
 @pytest.mark.parametrize('environment', [None, '', 'LOCAL', ' local ', 'testing', 'stage'])
@@ -81,6 +82,19 @@ def test_configuration_rejects_ambiguous_application_identifiers(
                 'VOLUMEN_PATH': str(tmp_path),
             }
         )
+
+
+def test_configuration_resolves_execution_disabled_flag(tmp_path) -> None:
+    configuration = RuntimeConfiguration.from_sources(
+        environ={
+            'ENVIRONMENT': 'local',
+            'APPLICATION': 'ada',
+            'VOLUMEN_PATH': str(tmp_path),
+            JOB_EXECUTION_DISABLED_VARIABLE: 'true',
+        }
+    )
+
+    assert configuration.job_execution_disabled is True
 
 
 def test_configuration_resolves_observability_file_logs_flag(tmp_path) -> None:

@@ -59,6 +59,7 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
     return (
         ConfigurationVariableSpec(key='APPLICATION'),
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
+        ConfigurationVariableSpec(key='ATLANTICUS_JOB_EXECUTION_DISABLED', default='false'),
         ConfigurationVariableSpec(key='METEODATA_BASE_URL'),
         ConfigurationVariableSpec(key='METEODATA_TOKEN', sensitive=True),
         ConfigurationVariableSpec(key='METEODATA_CONNECT_TIMEOUT_SECONDS', default='5'),

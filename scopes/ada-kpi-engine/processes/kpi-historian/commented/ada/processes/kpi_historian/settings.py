@@ -44,6 +44,7 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
     return (
         ConfigurationVariableSpec(key='APPLICATION'),
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
+        ConfigurationVariableSpec(key='ATLANTICUS_JOB_EXECUTION_DISABLED', default='false'),
         ConfigurationVariableSpec(key=KPI_RUNTIME_APPLICATION_VARIABLE),
         ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='1'),
         ConfigurationVariableSpec(key=REPROCESS_CURRENT_VARIABLE, default='false'),

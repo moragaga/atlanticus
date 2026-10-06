@@ -138,6 +138,7 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
     return (
         ConfigurationVariableSpec(key='APPLICATION'),
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
+        ConfigurationVariableSpec(key='ATLANTICUS_JOB_EXECUTION_DISABLED', default='false'),
         ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='0'),
         ConfigurationVariableSpec(key='PI_WEB_API_BASE_URL'),
         ConfigurationVariableSpec(key='PI_WEB_API_SERVER'),

@@ -32,7 +32,7 @@ _TRUE_VALUES = frozenset({'1', 'true', 'yes', 'on'})
 _FALSE_VALUES = frozenset({'0', 'false', 'no', 'off'})
 
 
-# Esta señal es una barrera administrativa previa a cualquier configuración funcional.
+# Esta señal se interpreta desde el mapping ya resuelto por el proceso.
 # Ausente equivale a false; un valor inválido falla cerrado y nunca habilita la ejecución.
 def job_execution_disabled(
     *,
@@ -58,6 +58,7 @@ class RuntimeConfiguration:
     application: str
     volume_path: Path
     observability_file_logs_enabled: bool = True
+    job_execution_disabled: bool = False
     job_schedule_cron: str | None = None
     job_schedule_timezone: str = 'UTC'
     job_platform_timeout_seconds: float | None = None
@@ -72,6 +73,8 @@ class RuntimeConfiguration:
             raise RuntimeConfigurationError('VOLUMEN_PATH must be an absolute path')
         if not isinstance(self.observability_file_logs_enabled, bool):
             raise TypeError('observability_file_logs_enabled must be a bool')
+        if not isinstance(self.job_execution_disabled, bool):
+            raise TypeError('job_execution_disabled must be a bool')
         if self.job_schedule_cron is not None:
             validate_cron_expression(self.job_schedule_cron)
             validate_timezone_name(self.job_schedule_timezone)
@@ -133,6 +136,7 @@ class RuntimeConfiguration:
                 ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED_VARIABLE,
                 default=True,
             ),
+            job_execution_disabled=job_execution_disabled(environ=source_values),
             job_schedule_cron=schedule_cron,
             job_schedule_timezone='UTC' if schedule_timezone is None else schedule_timezone,
             job_platform_timeout_seconds=_optional_positive_float(

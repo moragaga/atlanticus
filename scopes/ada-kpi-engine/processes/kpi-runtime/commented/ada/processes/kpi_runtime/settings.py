@@ -78,6 +78,7 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
     return (
         ConfigurationVariableSpec(key='APPLICATION'),
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
+        ConfigurationVariableSpec(key='ATLANTICUS_JOB_EXECUTION_DISABLED', default='false'),
         ConfigurationVariableSpec(key=PI_SOURCE_VARIABLE),
         ConfigurationVariableSpec(key=PI_APPLICATION_VARIABLE),
         ConfigurationVariableSpec(key=DISPATCH_APPLICATION_VARIABLE, required=False),

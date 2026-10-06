@@ -856,15 +856,22 @@ def test_execute_job_rejects_non_callable_lifecycle_hooks(tmp_path) -> None:
         )
 
 
-def test_execution_disabled_returns_success_before_configuration_or_lease(
+def test_execution_disabled_returns_success_before_context_or_lease(
+    tmp_path,
     monkeypatch,
 ) -> None:
     calls: list[str] = []
 
+    def forbidden_context(*args, **kwargs):
+        raise AssertionError('runtime context must not be created while execution is disabled')
+
     def forbidden_acquire(self):
         raise AssertionError('lease acquisition must not run while execution is disabled')
 
+    monkeypatch.setattr(JobRuntimeContext, 'create', forbidden_context)
     monkeypatch.setattr(ExecutionLease, 'acquire', forbidden_acquire)
+    environment = _environment(tmp_path)
+    environment[JOB_EXECUTION_DISABLED_VARIABLE] = 'true'
 
     result = execute_job(
         definition=_definition(),
@@ -872,7 +879,7 @@ def test_execution_disabled_returns_success_before_configuration_or_lease(
         recovery=lambda context: calls.append('recovery'),
         drain=lambda context: calls.append('drain'),
         argv=[],
-        environ={JOB_EXECUTION_DISABLED_VARIABLE: 'true'},
+        environ=environment,
     )
 
     assert result.status is OperationStatus.SUCCESS
@@ -880,3 +887,5 @@ def test_execution_disabled_returns_success_before_configuration_or_lease(
     assert result.duration_seconds == 0.0
     assert result.stop_reason == 'execution_disabled'
     assert calls == []
+    assert not (tmp_path / 'ada' / '.runtime').exists()
+    assert not (tmp_path / 'ada' / 'logs').exists()

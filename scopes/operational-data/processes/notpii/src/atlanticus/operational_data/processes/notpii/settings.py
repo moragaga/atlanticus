@@ -78,6 +78,7 @@ def configuration_specs(
     return (
         ConfigurationVariableSpec(key='APPLICATION'),
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
+        ConfigurationVariableSpec(key='ATLANTICUS_JOB_EXECUTION_DISABLED', default='false'),
         ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='0'),
         *service_bus_specs,
         ConfigurationVariableSpec(key=RAW_BATCH_SIZE_VARIABLE, default='100000'),

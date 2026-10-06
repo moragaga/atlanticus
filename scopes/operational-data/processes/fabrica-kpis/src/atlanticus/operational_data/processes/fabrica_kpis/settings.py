@@ -74,6 +74,7 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
     return (
         ConfigurationVariableSpec(key='APPLICATION'),
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
+        ConfigurationVariableSpec(key='ATLANTICUS_JOB_EXECUTION_DISABLED', default='false'),
         ConfigurationVariableSpec(key=f'STORAGE_ACCOUNT_SAS_URL_{STORAGE_SUFFIX}', sensitive=True),
         ConfigurationVariableSpec(
             key=f'STORAGE_ACCOUNT_SAS_TOKEN_{STORAGE_SUFFIX}', required=False, sensitive=True

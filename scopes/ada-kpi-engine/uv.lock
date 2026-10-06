@@ -597,7 +597,7 @@ requires-dist = [
 [[package]]
 name = "atlanticus-operational-data-calendar"
 version = "1.0.0"
-source = { editable = "../operational-data/calendar" }
+source = { editable = "../operational-data/operational-calendar" }
 
 [package.metadata]
 
@@ -653,7 +653,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "atlanticus-datasets", editable = "../../backend/datasets" },
-    { name = "atlanticus-operational-data-calendar", editable = "../operational-data/calendar" },
+    { name = "atlanticus-operational-data-calendar", editable = "../operational-data/operational-calendar" },
     { name = "atlanticus-operational-data-core", editable = "../operational-data/core" },
     { name = "atlanticus-operational-data-planner", editable = "../operational-data/planner" },
     { name = "pandas", specifier = "==3.0.3" },
