@@ -9,6 +9,7 @@
 }
 
 .ada-time-status {
+    --ada-time-status-source-width: 11rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -85,7 +86,9 @@
 }
 
 .ada-time-status__source {
-    flex: 0 1 auto;
+    box-sizing: border-box;
+    flex: 0 0 var(--ada-time-status-source-width);
+    width: var(--ada-time-status-source-width);
     padding-inline: .2rem;
 }
 
@@ -102,6 +105,8 @@
 }
 
 .ada-time-status__source-content {
+    box-sizing: border-box;
+    width: 100%;
     padding: .04rem .2rem;
     border-radius: .2rem;
 }

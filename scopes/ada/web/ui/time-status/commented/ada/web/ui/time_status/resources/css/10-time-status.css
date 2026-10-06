@@ -9,7 +9,9 @@
     position: relative;
 }
 
+/* En desktop cada fuente CONTROL reserva un ancho estable para evitar desplazamientos cuando cambia el texto de frescura. */
 .ada-time-status {
+    --ada-time-status-source-width: 11rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -86,7 +88,9 @@
 }
 
 .ada-time-status__source {
-    flex: 0 1 auto;
+    box-sizing: border-box;
+    flex: 0 0 var(--ada-time-status-source-width);
+    width: var(--ada-time-status-source-width);
     padding-inline: .2rem;
 }
 
@@ -103,6 +107,8 @@
 }
 
 .ada-time-status__source-content {
+    box-sizing: border-box;
+    width: 100%;
     padding: .04rem .2rem;
     border-radius: .2rem;
 }
@@ -267,7 +273,7 @@
 
 /* Bajo 1280 px cada fuente y el reloj ocupan su propia fila; el contenido interno de cada fila sigue horizontal. */
 /* Mobile usa filas full-width con contenido corrido desde la izquierda y .2rem entre filas. */
-/* Las fuentes eliminan su padding inline externo para alinear la superficie de estado con el ancho útil del bloque. */
+/* Las fuentes eliminan su ancho desktop reservado para alinearse con el ancho útil completo. */
 @media only screen and (max-width: 1279.98px) {
     .ada-time-status,
     .ada-time-status__sources {
