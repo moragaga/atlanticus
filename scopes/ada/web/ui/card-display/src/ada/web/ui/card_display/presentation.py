@@ -16,6 +16,8 @@ def build_card_display(
     *,
     component_key: str,
     wrapper_id: str,
+    subcomponent_key: str | None = None,
+    linked_component_keys: Sequence[str] = (),
     content: CardDisplayChildren = None,
     regions: CardDisplayChildren = None,
     footer: CardDisplayChildren = None,
@@ -23,27 +25,25 @@ def build_card_display(
     class_name: str | None = None,
 ) -> Component:
     attributes = component_identity_attributes(component_key)
-    return html.Div(
+    if subcomponent_key is not None:
+        attributes.update(subcomponent_identity_attributes(subcomponent_key))
+    attributes.update(_linked_component_identity_attributes(linked_component_keys))
+    return html.Article(
         id=_require_wrapper_id(wrapper_id),
         className=_join_class_names('ada-card-display', class_name),
         **attributes,
         children=[
             html.Div(
-                className='ada-card-display__frame',
-                children=[
-                    html.Div(
-                        className='ada-card-display__content',
-                        children=_normalize_children(content),
-                    ),
-                    html.Div(
-                        className='ada-card-display__regions',
-                        children=_normalize_children(regions),
-                    ),
-                    html.Div(
-                        className='ada-card-display__footer',
-                        children=_normalize_children(footer),
-                    ),
-                ],
+                className='ada-card-display__content',
+                children=_normalize_children(content),
+            ),
+            html.Div(
+                className='ada-card-display__regions',
+                children=_normalize_children(regions),
+            ),
+            html.Div(
+                className='ada-card-display__footer',
+                children=_normalize_children(footer),
             ),
             html.Div(
                 className='ada-card-display__overlay',
@@ -67,6 +67,17 @@ def build_card_display_region(
         **attributes,
         children=_normalize_children(children),
     )
+
+
+def _linked_component_identity_attributes(values: Sequence[str]) -> dict[str, str]:
+    if isinstance(values, (str, bytes)):
+        raise TypeError('Card Display linked_component_keys must be a sequence of component keys')
+    normalized = [
+        component_identity_attributes(value)['data-ada-component-key'] for value in values
+    ]
+    if not normalized:
+        return {}
+    return {'data-ada-linked-component-keys': ' '.join(normalized)}
 
 
 def _require_wrapper_id(value: str) -> str:
