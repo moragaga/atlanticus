@@ -7,7 +7,7 @@ from atlanticus.web.modules import WebModule
 
 ADA_KPI_INSPECTION_SURFACE_ASSET_LAYER = AssetLayer(
     name='ada_kpi_inspection_surface',
-    load_order=300,
+    load_order=301,
     package='ada.web.inspection.surface',
 )
 

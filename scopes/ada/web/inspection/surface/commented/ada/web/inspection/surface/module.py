@@ -8,7 +8,7 @@ from atlanticus.web.modules import WebModule
 # Carga después de las capas UI/shell actuales y sigue siendo una capability independiente.
 ADA_KPI_INSPECTION_SURFACE_ASSET_LAYER = AssetLayer(
     name='ada_kpi_inspection_surface',
-    load_order=300,
+    load_order=301,
     package='ada.web.inspection.surface',
 )
 

@@ -11,7 +11,7 @@ def test_surface_module_contributes_stable_index_fragment_and_assets() -> None:
 
     assert module.name == 'kpi-inspection-surface'
     assert module.asset_layers == (ADA_KPI_INSPECTION_SURFACE_ASSET_LAYER,)
-    assert ADA_KPI_INSPECTION_SURFACE_ASSET_LAYER.load_order == 300
+    assert ADA_KPI_INSPECTION_SURFACE_ASSET_LAYER.load_order == 301
     assert module.index.runtime_config == {'api_base_path': '/api/inspection/kpis'}
     assert len(module.index.body_end_fragments) == 1
     assert 'id="ada-kpi-inspection-surface"' in module.index.body_end_fragments[0]

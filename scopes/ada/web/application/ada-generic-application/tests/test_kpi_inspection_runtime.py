@@ -6,6 +6,7 @@ from ada.web.application.generic.inspection import create_kpi_inspection_modules
 from ada.web.inspection.surface import ADA_KPI_INSPECTION_SURFACE_ASSET_LAYER
 from ada.web.kpis.definition.coverage import KpiDefinitionCatalog
 from ada.web.kpis.definition.models import KpiDefinition, KpiDefinitionConfiguration
+from atlanticus.web.manager.web.assets import manager_asset_layer
 from atlanticus.web.projection.errors import ProjectionStoreError
 from atlanticus.web.projection.models import ProjectionRecord
 from atlanticus.web.projection.store import ProjectionStore
@@ -61,6 +62,7 @@ def test_inspection_modules_share_projected_kpi_identity_with_surface_trigger_co
         'kpi-inspection-surface',
     )
     assert modules[1].asset_layers == (ADA_KPI_INSPECTION_SURFACE_ASSET_LAYER,)
+    assert ADA_KPI_INSPECTION_SURFACE_ASSET_LAYER.load_order != manager_asset_layer().load_order
     assert 'id="ada-kpi-inspection-surface"' in modules[1].index.body_end_fragments[0]
 
     server = Flask(__name__)
