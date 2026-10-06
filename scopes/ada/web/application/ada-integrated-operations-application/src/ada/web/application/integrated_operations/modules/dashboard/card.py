@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dash import html
 
-from ada.web.application.integrated_operations.modules.dashboard.bindings import (
+from ada.web.application.integrated_operations.modules.dashboard.contracts import (
     DashboardCardBinding,
     DashboardComponentBinding,
     DashboardSharedCardBinding,

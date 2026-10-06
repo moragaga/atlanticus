@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dash import html
 
-from ada.web.application.integrated_operations.modules.dashboard.bindings import (
+from ada.web.application.integrated_operations.modules.dashboard.contracts import (
     DashboardCardBinding,
     DashboardComponentBinding,
     DashboardSharedCardBinding,
@@ -14,8 +14,8 @@ from ada.web.application.integrated_operations.modules.dashboard.ids import (
 )
 
 
+# El renderer consume contratos compartidos, pero no es dueño del catálogo Mine/Plant.
 def build_component_panel(binding: DashboardComponentBinding):
-    # El panel agrupa título y cards, pero no conoce KPIs ni fuentes de datos.
     return html.Section(
         [
             html.Div(binding.label, className='ada-io-component__title'),
@@ -43,7 +43,6 @@ def build_dashboard_card(
     tool_component_key: str | None,
     scope: str,
 ):
-    # Las claves de Tool solo se publican en DOM cuando están verificadas y configuradas.
     attributes = {
         'data-ada-io-card-key': binding.key,
         'data-ada-operational-scope': scope,
@@ -55,7 +54,6 @@ def build_dashboard_card(
 
     return html.Article(
         [
-            # Este nodo vacío será el target natural del futuro vertical KPI.
             html.Div(
                 id=dashboard_card_content_id(binding.key),
                 className='ada-io-card__content',
@@ -69,7 +67,6 @@ def build_dashboard_card(
 
 
 def build_shared_dashboard_card(binding: DashboardSharedCardBinding):
-    # La card compartida conserva un owner principal y puede declarar componentes enlazados.
     attributes = {
         'data-ada-io-card-key': binding.key,
         'data-ada-operational-scope': binding.scope.value,
@@ -98,7 +95,6 @@ def build_shared_dashboard_card(binding: DashboardSharedCardBinding):
 
 
 def _component_attributes(binding: DashboardComponentBinding) -> dict[str, str]:
-    # Se expone siempre la identidad visual; la identidad del Tool sigue siendo opcional.
     attributes = {
         'data-ada-io-component-key': binding.key,
         'data-ada-operational-scope': binding.scope.value,

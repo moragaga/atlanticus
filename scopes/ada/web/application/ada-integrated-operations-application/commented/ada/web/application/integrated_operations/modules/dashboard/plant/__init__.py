@@ -1,3 +1,4 @@
+# Expone la frontera pública de Plant sin trasladar ownership de sus bindings al Dashboard raíz.
 from ada.web.application.integrated_operations.modules.dashboard.plant.bindings import (
     PLANT_COMPONENTS,
 )

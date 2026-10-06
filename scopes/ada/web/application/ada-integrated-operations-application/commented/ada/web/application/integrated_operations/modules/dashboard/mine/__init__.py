@@ -1,3 +1,4 @@
+# Expone la frontera pública de Mine sin trasladar ownership de sus bindings al Dashboard raíz.
 from ada.web.application.integrated_operations.modules.dashboard.mine.bindings import (
     CARGUIO_TRANSPORTE,
     MINE_COMPONENTS,

@@ -1,14 +1,14 @@
 from dash import html
 
-from ada.web.application.integrated_operations.modules.dashboard.bindings import (
+from ada.web.application.integrated_operations.modules.dashboard.card import (
+    build_component_panel,
+)
+from ada.web.application.integrated_operations.modules.dashboard.plant.bindings import (
     FLOTACION,
     MOLIENDA,
     PUERTO,
     STOCKPILE_CHACAY,
     TRANSPORTE_FLUIDOS,
-)
-from ada.web.application.integrated_operations.modules.dashboard.card import (
-    build_component_panel,
 )
 from ada.web.application.integrated_operations.modules.dashboard.plant.ids import (
     PLANT_CONTENT_ID,

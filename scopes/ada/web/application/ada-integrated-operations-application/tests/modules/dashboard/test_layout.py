@@ -1,17 +1,22 @@
 from ada.contracts.tools.enums import ToolScope
-from ada.web.application.integrated_operations.modules.dashboard.bindings import (
-    CARGUIO_TRANSPORTE,
-    DASHBOARD_COMPONENTS,
-    DashboardCardBinding,
-    DashboardComponentBinding,
-    DashboardSharedCardBinding,
-)
 from ada.web.application.integrated_operations.modules.dashboard.card import (
     build_component_panel,
     build_shared_dashboard_card,
 )
+from ada.web.application.integrated_operations.modules.dashboard.contracts import (
+    DashboardCardBinding,
+    DashboardComponentBinding,
+    DashboardSharedCardBinding,
+)
 from ada.web.application.integrated_operations.modules.dashboard.layout import (
     build_dashboard_layout,
+)
+from ada.web.application.integrated_operations.modules.dashboard.mine import (
+    CARGUIO_TRANSPORTE,
+    MINE_COMPONENTS,
+)
+from ada.web.application.integrated_operations.modules.dashboard.plant import (
+    PLANT_COMPONENTS,
 )
 
 
@@ -31,15 +36,17 @@ def _walk(component):
             yield from _walk(child)
 
 
-def test_dashboard_declares_complete_visual_card_inventory() -> None:
-    card_keys = [
-        card.key
-        for component in DASHBOARD_COMPONENTS
-        for card in component.cards
-    ]
-    card_keys.append(CARGUIO_TRANSPORTE.key)
+def test_dashboard_declares_complete_visual_card_inventory_by_scope() -> None:
+    mine_card_keys = [card.key for component in MINE_COMPONENTS for card in component.cards]
+    mine_card_keys.append(CARGUIO_TRANSPORTE.key)
+    plant_card_keys = [card.key for component in PLANT_COMPONENTS for card in component.cards]
+    card_keys = [*mine_card_keys, *plant_card_keys]
 
-    assert len(DASHBOARD_COMPONENTS) == 9
+    assert len(MINE_COMPONENTS) == 4
+    assert len(PLANT_COMPONENTS) == 5
+    assert all(component.scope is ToolScope.MINE for component in MINE_COMPONENTS)
+    assert CARGUIO_TRANSPORTE.scope is ToolScope.MINE
+    assert all(component.scope is ToolScope.PLANT for component in PLANT_COMPONENTS)
     assert len(card_keys) == 22
     assert len(card_keys) == len(set(card_keys))
 
@@ -56,11 +63,7 @@ def test_dashboard_layout_exposes_operational_scopes_and_presentation_targets() 
         for node in nodes
         if _props(node).get('data-ada-io-presentation-target')
     }
-    cards = [
-        node
-        for node in nodes
-        if _props(node).get('data-ada-io-card-key')
-    ]
+    cards = [node for node in nodes if _props(node).get('data-ada-io-card-key')]
 
     assert scopes == {'mine', 'plant'}
     assert targets == {'overview', 'mine', 'plant'}

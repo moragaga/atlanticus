@@ -1,15 +1,15 @@
 from dash import html
 
-from ada.web.application.integrated_operations.modules.dashboard.bindings import (
+from ada.web.application.integrated_operations.modules.dashboard.card import (
+    build_component_panel,
+    build_shared_dashboard_card,
+)
+from ada.web.application.integrated_operations.modules.dashboard.mine.bindings import (
     CARGUIO,
     CARGUIO_TRANSPORTE,
     CHANCADO_STMG,
     GENERAL_MINA,
     TRANSPORTE,
-)
-from ada.web.application.integrated_operations.modules.dashboard.card import (
-    build_component_panel,
-    build_shared_dashboard_card,
 )
 from ada.web.application.integrated_operations.modules.dashboard.mine.ids import (
     MINE_CONTENT_ID,
