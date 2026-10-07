@@ -1,4 +1,4 @@
-# Persistencia local atómica de versiones READY/BLOCKED y lectura con verificación de integridad.
+# Persistencia local atómica para Materialization y lectura angosta por consumidor.
 from __future__ import annotations
 
 import json
@@ -31,8 +31,8 @@ from ada.alarms.persistence.errors import AlarmMaterializationPersistenceError
 from atlanticus.state import AtomicJsonStore, StateError
 
 
+# Vista interna de cualquier versión durable ya inspeccionada.
 @dataclass(frozen=True, slots=True)
-# Representa cualquier versión durable ya inspeccionada.
 class AlarmMaterializationVersion:
     manifest: AlarmMaterializationManifest
     manifest_sha256: str
@@ -41,8 +41,8 @@ class AlarmMaterializationVersion:
     delivery: DeliveryAlarmConfiguration | None
 
 
+# Vista completa usada por persistence para inspección integral de una generación READY.
 @dataclass(frozen=True, slots=True)
-# Vista tipada de una versión READY con los tres contratos cargados.
 class ReadyAlarmMaterialization:
     result_id: str
     manifest: AlarmMaterializationManifest
@@ -52,8 +52,8 @@ class ReadyAlarmMaterialization:
     delivery: DeliveryAlarmConfiguration
 
 
+# Resultado durable de publicar una resolución y eventualmente promover READY.
 @dataclass(frozen=True, slots=True)
-# Resultado de una publicación e indicador de promoción del head READY.
 class AlarmMaterializationPublicationResult:
     result_id: str
     status: AlarmResolutionStatus
@@ -61,14 +61,14 @@ class AlarmMaterializationPublicationResult:
     promoted_ready: bool
 
 
-# Ubicación durable propia de ada-alarm-engine dentro del volumen compartido.
+# Ubicación durable compartida por Materialization y sus consumidores locales.
 def materialization_root(volume_path: Path) -> Path:
     if not isinstance(volume_path, Path) or not volume_path.is_absolute():
         raise ValueError('VOLUMEN_PATH must be an absolute Path')
     return volume_path / 'ada-alarm-engine' / 'alarms' / 'materialization'
 
 
-# Store local que publica por staging, valida y promueve atómicamente el head READY.
+# Store que publica generaciones completas y ofrece readers separados para cada consumidor.
 class LocalAlarmMaterializationStore:
     def __init__(self, *, root: Path) -> None:
         if not isinstance(root, Path) or not root.is_absolute():
@@ -77,7 +77,7 @@ class LocalAlarmMaterializationStore:
         self._versions = root / 'versions'
         self._heads = AtomicJsonStore(root_path=root, max_document_bytes=None)
 
-    # Publica idempotentemente; un BLOCKED nunca reemplaza el último READY.
+    # Publica idempotentemente una generación; BLOCKED nunca reemplaza el último READY.
     def publish(
         self,
         *,
@@ -123,7 +123,7 @@ class LocalAlarmMaterializationStore:
             promoted_ready=promoted,
         )
 
-    # Lee una versión exacta y verifica manifest, inventario y hashes.
+    # Inspecciona una versión exacta y valida todos sus artifacts cuando es READY.
     def read_result(
         self,
         *,
@@ -135,6 +135,7 @@ class LocalAlarmMaterializationStore:
             return None
         return self._inspect_version(path, source_key=source_key, result_id=result_id)
 
+    # Lee una generación READY completa; se conserva para operaciones internas de persistence.
     def read_ready(
         self,
         *,
@@ -151,9 +152,7 @@ class LocalAlarmMaterializationStore:
         ):
             raise AlarmMaterializationPersistenceError('READY manifest integrity check failed')
         if version.engine is None or version.modeler is None or version.delivery is None:
-            raise AlarmMaterializationPersistenceError(
-                'READY materialization artifacts are missing'
-            )
+            raise AlarmMaterializationPersistenceError('READY materialization artifacts are missing')
         return ReadyAlarmMaterialization(
             result_id=result_id,
             manifest=version.manifest,
@@ -163,7 +162,7 @@ class LocalAlarmMaterializationStore:
             delivery=version.delivery,
         )
 
-    # Resuelve ready.json y vuelve a comprobar integridad antes de entregar datos.
+    # Resuelve el READY completo; los procesos nuevos deben preferir los readers angostos.
     def read_published_ready(self, *, source_key: str) -> ReadyAlarmMaterialization | None:
         pointer = self._read_ready_pointer(source_key=source_key)
         if pointer is None:
@@ -177,7 +176,97 @@ class LocalAlarmMaterializationStore:
             raise AlarmMaterializationPersistenceError('READY pointer resolution key mismatch')
         return ready
 
-    # Construye una versión completa en staging antes del rename atómico.
+    # Entrega únicamente la configuración ejecutable del Engine desde la generación READY vigente.
+    def read_published_engine(self, *, source_key: str) -> EngineAlarmConfiguration | None:
+        published = self._read_published_artifact(source_key=source_key, label='engine')
+        if published is None:
+            return None
+        manifest, document = published
+        try:
+            configuration = engine_from_document(document)
+        except (KeyError, TypeError, ValueError) as error:
+            raise AlarmMaterializationPersistenceError(
+                'READY Engine artifact contract is invalid'
+            ) from error
+        if configuration.resolution_key != manifest.resolution_key:
+            raise AlarmMaterializationPersistenceError(
+                'READY Engine artifact resolution key mismatch'
+            )
+        return configuration
+
+    # Entrega únicamente la configuración ejecutable del Modeler desde la generación READY vigente.
+    def read_published_modeler(self, *, source_key: str) -> ModelerAlarmConfiguration | None:
+        published = self._read_published_artifact(source_key=source_key, label='modeler')
+        if published is None:
+            return None
+        manifest, document = published
+        try:
+            configuration = modeler_from_document(document)
+        except (KeyError, TypeError, ValueError) as error:
+            raise AlarmMaterializationPersistenceError(
+                'READY Modeler artifact contract is invalid'
+            ) from error
+        if configuration.resolution_key != manifest.resolution_key:
+            raise AlarmMaterializationPersistenceError(
+                'READY Modeler artifact resolution key mismatch'
+            )
+        return configuration
+
+    # Entrega únicamente la configuración ejecutable de Delivery desde la generación READY vigente.
+    def read_published_delivery(self, *, source_key: str) -> DeliveryAlarmConfiguration | None:
+        published = self._read_published_artifact(source_key=source_key, label='delivery')
+        if published is None:
+            return None
+        manifest, document = published
+        try:
+            configuration = delivery_from_document(document)
+        except (KeyError, TypeError, ValueError) as error:
+            raise AlarmMaterializationPersistenceError(
+                'READY Delivery artifact contract is invalid'
+            ) from error
+        if configuration.resolution_key != manifest.resolution_key:
+            raise AlarmMaterializationPersistenceError(
+                'READY Delivery artifact resolution key mismatch'
+            )
+        return configuration
+
+    # Verifica head, manifest, inventario y sólo el artifact solicitado; no parsea los otros payloads.
+    def _read_published_artifact(
+        self,
+        *,
+        source_key: str,
+        label: str,
+    ) -> tuple[AlarmMaterializationManifest, dict[str, object]] | None:
+        pointer = self._read_ready_pointer(source_key=source_key)
+        if pointer is None:
+            return None
+        path = self._version_path(pointer.result_id)
+        if not path.is_dir() or path.is_symlink():
+            raise AlarmMaterializationPersistenceError('READY materialization is unavailable')
+        manifest_document, manifest_digest, _ = self._read_document(path / 'manifest.json')
+        if manifest_digest != pointer.manifest_sha256:
+            raise AlarmMaterializationPersistenceError('READY manifest integrity check failed')
+        try:
+            manifest = AlarmMaterializationManifest.from_document(manifest_document)
+        except (KeyError, TypeError, ValueError) as error:
+            raise AlarmMaterializationPersistenceError('Invalid materialization manifest') from error
+        if manifest.source_key != source_key or manifest.result_id != pointer.result_id:
+            raise AlarmMaterializationPersistenceError('Invalid materialization manifest identity')
+        if manifest.status is not AlarmResolutionStatus.READY:
+            raise AlarmMaterializationPersistenceError('READY materialization is unavailable')
+        if manifest.resolution_key != pointer.resolution_key:
+            raise AlarmMaterializationPersistenceError('READY pointer resolution key mismatch')
+        self._require_exact_files(
+            path,
+            {'manifest.json', 'engine.json', 'modeler.json', 'delivery.json'},
+        )
+        artifact = manifest.artifacts[label]
+        document, digest, size = self._read_document(path / artifact.path)
+        if digest != artifact.sha256 or size != artifact.size_bytes:
+            raise AlarmMaterializationPersistenceError('READY materialization integrity check failed')
+        return manifest, document
+
+    # Escribe una versión completa en staging antes del rename durable.
     def _create_version(
         self,
         *,
@@ -229,6 +318,7 @@ class LocalAlarmMaterializationStore:
             if stage is not None:
                 shutil.rmtree(stage, ignore_errors=True)
 
+    # Inspección integral usada por publication/read_ready, incluyendo los tres artifacts READY.
     def _inspect_version(
         self,
         path: Path,
@@ -242,9 +332,7 @@ class LocalAlarmMaterializationStore:
         try:
             manifest = AlarmMaterializationManifest.from_document(manifest_document)
         except (KeyError, TypeError, ValueError) as error:
-            raise AlarmMaterializationPersistenceError(
-                'Invalid materialization manifest'
-            ) from error
+            raise AlarmMaterializationPersistenceError('Invalid materialization manifest') from error
         if manifest.source_key != source_key or manifest.result_id != result_id:
             raise AlarmMaterializationPersistenceError('Invalid materialization manifest identity')
         expected_files = {'manifest.json'}
@@ -292,7 +380,7 @@ class LocalAlarmMaterializationStore:
             delivery=delivery,
         )
 
-    # Cambia el head sólo después de tener una versión READY válida y durable.
+    # Promueve atómicamente el head sólo después de validar una generación READY completa.
     def _promote_ready(
         self,
         manifest: AlarmMaterializationManifest,
@@ -317,6 +405,7 @@ class LocalAlarmMaterializationStore:
             ) from error
         return True
 
+    # Lee y valida el puntero estable al READY vigente.
     def _read_ready_pointer(
         self,
         *,
@@ -327,9 +416,7 @@ class LocalAlarmMaterializationStore:
         try:
             document = self._heads.read('ready.json')
         except StateError as error:
-            raise AlarmMaterializationPersistenceError(
-                'Could not read local READY pointer'
-            ) from error
+            raise AlarmMaterializationPersistenceError('Could not read local READY pointer') from error
         if document is None:
             return None
         try:
@@ -340,14 +427,14 @@ class LocalAlarmMaterializationStore:
             raise AlarmMaterializationPersistenceError('READY pointer source key mismatch')
         return pointer
 
+    # Impide publicar una resolución cuya identidad no coincide con su provenance.
     def _validate_resolution_provenance(
         self,
         provenance: AlarmMaterializationProvenance,
         resolution: AlarmConfigurationResolution,
     ) -> None:
         if (
-            resolution.resolution_key.alarm_configuration_revision
-            != provenance.source_release_id
+            resolution.resolution_key.alarm_configuration_revision != provenance.source_release_id
             or resolution.resolution_key.confirmed_tool_catalog_revision
             != provenance.confirmed_tool_catalog_revision
         ):
@@ -355,6 +442,7 @@ class LocalAlarmMaterializationStore:
                 'Resolution key does not match materialization provenance'
             )
 
+    # Garantiza idempotencia: el mismo result_id no puede representar contenido distinto.
     def _validate_existing(
         self,
         version: AlarmMaterializationVersion,
@@ -384,6 +472,7 @@ class LocalAlarmMaterializationStore:
                 'Materialization result identity conflicts with existing artifacts'
             )
 
+    # Serializa los tres artifacts que constituyen una publicación READY completa.
     @staticmethod
     def _ready_documents(
         resolution: AlarmConfigurationResolution,
@@ -402,6 +491,7 @@ class LocalAlarmMaterializationStore:
             'delivery': delivery_to_document(resolution.delivery_configuration),
         }
 
+    # Evita aceptar inventarios parciales o archivos inesperados dentro de una versión.
     @staticmethod
     def _require_exact_files(path: Path, expected: set[str]) -> None:
         try:
@@ -415,6 +505,7 @@ class LocalAlarmMaterializationStore:
                 'Materialization version contains an invalid file inventory'
             )
 
+    # Lee JSON local sin seguir symlinks y devuelve payload, SHA-256 y tamaño real.
     @staticmethod
     def _read_document(path: Path) -> tuple[dict[str, object], str, int]:
         try:
@@ -434,6 +525,7 @@ class LocalAlarmMaterializationStore:
             raise AlarmMaterializationPersistenceError('Materialization artifact must be an object')
         return document, sha256(payload).hexdigest(), len(payload)
 
+    # Resuelve únicamente identidades de versión con el formato contractual esperado.
     def _version_path(self, result_id: str) -> Path:
         if not isinstance(result_id, str) or not result_id.startswith('alarm-materialization-'):
             raise AlarmMaterializationPersistenceError('Invalid materialization result identity')
@@ -445,6 +537,7 @@ class LocalAlarmMaterializationStore:
             raise AlarmMaterializationPersistenceError('Invalid materialization result identity')
         return self._versions / result_id
 
+    # Limpia staging huérfano de la misma identidad antes de reintentar publicación.
     def _remove_orphan_stages(self, result_id: str) -> None:
         for stage in self._versions.glob(f'.{result_id}.*.staging'):
             if stage.is_symlink() or not stage.is_dir():
@@ -457,6 +550,7 @@ class LocalAlarmMaterializationStore:
                 ) from error
 
 
+# Fuerza metadata de directorio en plataformas POSIX después de promociones atómicas.
 def _fsync_directory(path: Path) -> None:
     if os.name == 'nt':
         return

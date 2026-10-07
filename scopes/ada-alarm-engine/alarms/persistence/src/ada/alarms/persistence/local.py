@@ -168,6 +168,96 @@ class LocalAlarmMaterializationStore:
             raise AlarmMaterializationPersistenceError('READY pointer resolution key mismatch')
         return ready
 
+    def read_published_engine(self, *, source_key: str) -> EngineAlarmConfiguration | None:
+        published = self._read_published_artifact(source_key=source_key, label='engine')
+        if published is None:
+            return None
+        manifest, document = published
+        try:
+            configuration = engine_from_document(document)
+        except (KeyError, TypeError, ValueError) as error:
+            raise AlarmMaterializationPersistenceError(
+                'READY Engine artifact contract is invalid'
+            ) from error
+        if configuration.resolution_key != manifest.resolution_key:
+            raise AlarmMaterializationPersistenceError(
+                'READY Engine artifact resolution key mismatch'
+            )
+        return configuration
+
+    def read_published_modeler(self, *, source_key: str) -> ModelerAlarmConfiguration | None:
+        published = self._read_published_artifact(source_key=source_key, label='modeler')
+        if published is None:
+            return None
+        manifest, document = published
+        try:
+            configuration = modeler_from_document(document)
+        except (KeyError, TypeError, ValueError) as error:
+            raise AlarmMaterializationPersistenceError(
+                'READY Modeler artifact contract is invalid'
+            ) from error
+        if configuration.resolution_key != manifest.resolution_key:
+            raise AlarmMaterializationPersistenceError(
+                'READY Modeler artifact resolution key mismatch'
+            )
+        return configuration
+
+    def read_published_delivery(self, *, source_key: str) -> DeliveryAlarmConfiguration | None:
+        published = self._read_published_artifact(source_key=source_key, label='delivery')
+        if published is None:
+            return None
+        manifest, document = published
+        try:
+            configuration = delivery_from_document(document)
+        except (KeyError, TypeError, ValueError) as error:
+            raise AlarmMaterializationPersistenceError(
+                'READY Delivery artifact contract is invalid'
+            ) from error
+        if configuration.resolution_key != manifest.resolution_key:
+            raise AlarmMaterializationPersistenceError(
+                'READY Delivery artifact resolution key mismatch'
+            )
+        return configuration
+
+    def _read_published_artifact(
+        self,
+        *,
+        source_key: str,
+        label: str,
+    ) -> tuple[AlarmMaterializationManifest, dict[str, object]] | None:
+        pointer = self._read_ready_pointer(source_key=source_key)
+        if pointer is None:
+            return None
+        path = self._version_path(pointer.result_id)
+        if not path.is_dir() or path.is_symlink():
+            raise AlarmMaterializationPersistenceError('READY materialization is unavailable')
+        manifest_document, manifest_digest, _ = self._read_document(path / 'manifest.json')
+        if manifest_digest != pointer.manifest_sha256:
+            raise AlarmMaterializationPersistenceError('READY manifest integrity check failed')
+        try:
+            manifest = AlarmMaterializationManifest.from_document(manifest_document)
+        except (KeyError, TypeError, ValueError) as error:
+            raise AlarmMaterializationPersistenceError(
+                'Invalid materialization manifest'
+            ) from error
+        if manifest.source_key != source_key or manifest.result_id != pointer.result_id:
+            raise AlarmMaterializationPersistenceError('Invalid materialization manifest identity')
+        if manifest.status is not AlarmResolutionStatus.READY:
+            raise AlarmMaterializationPersistenceError('READY materialization is unavailable')
+        if manifest.resolution_key != pointer.resolution_key:
+            raise AlarmMaterializationPersistenceError('READY pointer resolution key mismatch')
+        self._require_exact_files(
+            path,
+            {'manifest.json', 'engine.json', 'modeler.json', 'delivery.json'},
+        )
+        artifact = manifest.artifacts[label]
+        document, digest, size = self._read_document(path / artifact.path)
+        if digest != artifact.sha256 or size != artifact.size_bytes:
+            raise AlarmMaterializationPersistenceError(
+                'READY materialization integrity check failed'
+            )
+        return manifest, document
+
     def _create_version(
         self,
         *,

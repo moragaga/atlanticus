@@ -38,13 +38,76 @@ def test_ready_publication_is_atomic_complete_and_readable(tmp_path: Path) -> No
     assert ready.manifest_sha256 == result.manifest_sha256
 
 
-def test_blocked_publication_does_not_replace_last_ready(tmp_path: Path) -> None:
+def test_narrow_readers_return_only_owned_ready_configuration(tmp_path: Path) -> None:
+    store = LocalAlarmMaterializationStore(root=materialization_root(tmp_path))
+    resolution = ready_resolution()
+    store.publish(
+        source_key='alarm_configuration',
+        provenance=provenance(),
+        resolution=resolution,
+    )
+    assert (
+        store.read_published_engine(source_key='alarm_configuration')
+        == resolution.engine_configuration
+    )
+    assert (
+        store.read_published_modeler(source_key='alarm_configuration')
+        == resolution.modeler_configuration
+    )
+    assert (
+        store.read_published_delivery(source_key='alarm_configuration')
+        == resolution.delivery_configuration
+    )
+
+
+def test_narrow_readers_return_none_without_published_ready(tmp_path: Path) -> None:
+    store = LocalAlarmMaterializationStore(root=materialization_root(tmp_path))
+    assert store.read_published_engine(source_key='alarm_configuration') is None
+    assert store.read_published_modeler(source_key='alarm_configuration') is None
+    assert store.read_published_delivery(source_key='alarm_configuration') is None
+
+
+def test_engine_reader_does_not_deserialize_unowned_artifacts(tmp_path: Path) -> None:
     root = materialization_root(tmp_path)
     store = LocalAlarmMaterializationStore(root=root)
-    ready_result = store.publish(
+    resolution = ready_resolution()
+    result = store.publish(
+        source_key='alarm_configuration',
+        provenance=provenance(),
+        resolution=resolution,
+    )
+    modeler_path = root / 'versions' / result.result_id / 'modeler.json'
+    modeler_path.write_text('{}', encoding='utf-8')
+    assert (
+        store.read_published_engine(source_key='alarm_configuration')
+        == resolution.engine_configuration
+    )
+
+
+def test_narrow_reader_detects_owned_artifact_tampering(tmp_path: Path) -> None:
+    root = materialization_root(tmp_path)
+    store = LocalAlarmMaterializationStore(root=root)
+    result = store.publish(
         source_key='alarm_configuration',
         provenance=provenance(),
         resolution=ready_resolution(),
+    )
+    engine_path = root / 'versions' / result.result_id / 'engine.json'
+    document = json.loads(engine_path.read_text(encoding='utf-8'))
+    document['defined_alarm_identities'] = []
+    engine_path.write_text(json.dumps(document), encoding='utf-8')
+    with pytest.raises(AlarmMaterializationPersistenceError, match='integrity check failed'):
+        store.read_published_engine(source_key='alarm_configuration')
+
+
+def test_blocked_publication_does_not_replace_last_ready(tmp_path: Path) -> None:
+    root = materialization_root(tmp_path)
+    store = LocalAlarmMaterializationStore(root=root)
+    ready_resolution_value = ready_resolution()
+    ready_result = store.publish(
+        source_key='alarm_configuration',
+        provenance=provenance(),
+        resolution=ready_resolution_value,
     )
     blocked_result = store.publish(
         source_key='alarm_configuration',
@@ -62,6 +125,18 @@ def test_blocked_publication_does_not_replace_last_ready(tmp_path: Path) -> None
     published = store.read_published_ready(source_key='alarm_configuration')
     assert published is not None
     assert published.result_id == ready_result.result_id
+    assert (
+        store.read_published_engine(source_key='alarm_configuration')
+        == ready_resolution_value.engine_configuration
+    )
+    assert (
+        store.read_published_modeler(source_key='alarm_configuration')
+        == ready_resolution_value.modeler_configuration
+    )
+    assert (
+        store.read_published_delivery(source_key='alarm_configuration')
+        == ready_resolution_value.delivery_configuration
+    )
 
 
 def test_repeat_ready_publication_is_idempotent(tmp_path: Path) -> None:
