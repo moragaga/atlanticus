@@ -40,6 +40,20 @@ def test_parameter_evaluator_and_kind_changes_are_compatible() -> None:
         assert plan.changes[0].disposition is ConfigurationAdoptionDisposition.COMPATIBLE
 
 
+def test_special_condition_flag_change_is_compatible() -> None:
+    source = engine_configuration()
+    target_base = engine_configuration(release='ALARMS-8')
+    target = _with_plan(
+        target_base,
+        replace(target_base.planned_alarms[0], is_special_condition=True),
+    )
+
+    plan = plan_configuration_adoption(source, target)
+
+    assert plan.is_adoptable is True
+    assert plan.changes[0].disposition is ConfigurationAdoptionDisposition.COMPATIBLE
+
+
 def test_disabled_and_removed_are_distinct_adoption_changes() -> None:
     source = engine_configuration()
     target_base = engine_configuration(release='ALARMS-8')

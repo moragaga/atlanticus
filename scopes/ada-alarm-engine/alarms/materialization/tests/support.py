@@ -53,11 +53,16 @@ def resolution_key(
     )
 
 
-def plan(alarm_key: str = 'risk') -> PlannedAlarm:
+def plan(
+    alarm_key: str = 'risk',
+    *,
+    is_special_condition: bool = False,
+) -> PlannedAlarm:
     return PlannedAlarm(
         identity=identity(alarm_key),
         kind=AlarmKind.RISK,
         criticality=Criticality.C2,
+        is_special_condition=is_special_condition,
         priority_group='mill-feed',
         priority_order=1,
         evaluator_key='threshold',
@@ -67,8 +72,11 @@ def plan(alarm_key: str = 'risk') -> PlannedAlarm:
     )
 
 
-def engine_configuration() -> EngineAlarmConfiguration:
-    alarm = plan()
+def engine_configuration(
+    *,
+    is_special_condition: bool = False,
+) -> EngineAlarmConfiguration:
+    alarm = plan(is_special_condition=is_special_condition)
     return EngineAlarmConfiguration(
         resolution_key=resolution_key(),
         defined_alarm_identities=(alarm.identity, identity('disabled')),

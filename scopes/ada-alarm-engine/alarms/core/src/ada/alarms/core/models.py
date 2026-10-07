@@ -176,6 +176,7 @@ class PlannedAlarm:
     identity: AlarmIdentity
     kind: AlarmKind
     criticality: Criticality
+    is_special_condition: bool
     priority_group: str
     priority_order: int
     evaluator_key: str
@@ -193,6 +194,8 @@ class PlannedAlarm:
             raise TypeError('kind must be an AlarmKind')
         if not isinstance(self.criticality, Criticality):
             raise TypeError('criticality must be a Criticality')
+        if not isinstance(self.is_special_condition, bool):
+            raise TypeError('is_special_condition must be a bool')
         _require_non_empty_string(self.priority_group, 'priority_group')
         if isinstance(self.priority_order, bool) or not isinstance(self.priority_order, int):
             raise TypeError('priority_order must be an int')

@@ -228,6 +228,7 @@ def _runtime_semantics_equal(
     return (
         source_plan.kind is target_plan.kind
         and source_plan.criticality is target_plan.criticality
+        and source_plan.is_special_condition is target_plan.is_special_condition
         and source_plan.priority_group == target_plan.priority_group
         and source_plan.priority_order == target_plan.priority_order
         and source_plan.evaluator_key == target_plan.evaluator_key

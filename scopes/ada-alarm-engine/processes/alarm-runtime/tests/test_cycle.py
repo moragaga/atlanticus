@@ -53,6 +53,7 @@ def _plan(identity: AlarmIdentity, *, evaluator_key: str, priority: int) -> Plan
         identity=identity,
         kind=AlarmKind.RISK,
         criticality=Criticality.C1,
+        is_special_condition=False,
         priority_group='group',
         priority_order=priority,
         evaluator_key=evaluator_key,

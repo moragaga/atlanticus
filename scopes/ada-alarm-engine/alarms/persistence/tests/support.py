@@ -55,6 +55,7 @@ def ready_resolution(
         identity=identity,
         kind=AlarmKind.RISK,
         criticality=Criticality.C1,
+        is_special_condition=False,
         priority_group='mill_feed',
         priority_order=1,
         evaluator_key='threshold',

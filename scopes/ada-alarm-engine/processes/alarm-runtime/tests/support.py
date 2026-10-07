@@ -35,12 +35,14 @@ def engine_configuration(
     tool_revision: str = 'TOOLS-4',
     evaluator_key: str = 'threshold',
     limit: float = 10.0,
+    is_special_condition: bool = False,
 ) -> EngineAlarmConfiguration:
     identity = AlarmIdentity('mill', 'risk')
     plan = PlannedAlarm(
         identity=identity,
         kind=AlarmKind.RISK,
         criticality=Criticality.C1,
+        is_special_condition=is_special_condition,
         priority_group='mill_feed',
         priority_order=1,
         evaluator_key=evaluator_key,

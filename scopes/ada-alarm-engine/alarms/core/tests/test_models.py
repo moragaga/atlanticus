@@ -61,6 +61,13 @@ def test_planned_alarm_keeps_domain_dimensions_separate() -> None:
     assert value.priority_order == 1
 
 
+def test_planned_alarm_requires_special_condition_boolean() -> None:
+    assert plan(is_special_condition=True).is_special_condition is True
+    assert plan(is_special_condition=False).is_special_condition is False
+    with pytest.raises(TypeError, match='is_special_condition'):
+        plan(is_special_condition='true')
+
+
 def test_planned_alarm_validates_reappearance_after_seconds() -> None:
     assert plan().reappearance_after_seconds is None
     assert plan(reappearance_after_seconds=480).reappearance_after_seconds == 480
@@ -88,6 +95,7 @@ def test_planned_alarm_rejects_boolean_priority_order() -> None:
             identity=identity(),
             kind=AlarmKind.RISK,
             criticality=Criticality.C2,
+            is_special_condition=False,
             priority_group='mill-feed',
             priority_order=True,
             evaluator_key='threshold',

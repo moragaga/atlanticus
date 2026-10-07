@@ -98,6 +98,8 @@ def engine_from_document(document: Mapping[str, object]) -> EngineAlarmConfigura
                 identity=_decode_identity(entry['identity']),
                 kind=AlarmKind(entry['kind']),
                 criticality=Criticality(entry['criticality']),
+                # El artifact debe transportar la clasificación sin defaults implícitos ni inferencias.
+                is_special_condition=entry['is_special_condition'],
                 priority_group=entry['priority_group'],
                 priority_order=entry['priority_order'],
                 evaluator_key=entry['evaluator_key'],

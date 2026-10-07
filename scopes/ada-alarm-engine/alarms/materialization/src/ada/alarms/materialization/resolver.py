@@ -405,6 +405,7 @@ def _materialize_engine(
             identity=rule.identity,
             kind=rule.kind,
             criticality=rule.criticality,
+            is_special_condition=rule.is_special_condition,
             priority_group=rule.priority_group,
             priority_order=rule.priority_order,
             evaluator_key=rule.evaluator_key,

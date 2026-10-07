@@ -98,6 +98,29 @@ def test_ready_resolution_materializes_engine_modeler_and_delivery() -> None:
     assert result.delivery_configuration.publication_tool_keys == ('tool_a',)
 
 
+def test_ready_resolution_propagates_special_condition_to_engine_plan() -> None:
+    configuration = AlarmConfiguration(
+        rules=(rule(alarm_key='special', is_special_condition=True),),
+        messages=(),
+    )
+    result = resolve_alarm_configuration(
+        configuration=configuration,
+        alarm_configuration_revision='ALARMS-SPECIAL',
+        confirmed_tool_catalog=ConfirmedToolCatalog(
+            revision='TOOLS-1',
+            entries={'tool_a': process_entry('tool_a')},
+        ),
+        tool_qualification=ToolReconciliationQualification(('tool_a',)),
+        evaluator_qualification=EvaluatorQualificationCatalog(
+            qualified_keys=(EvaluatorQualificationKey('mill', 'threshold'),),
+        ),
+    )
+
+    assert result.status is AlarmResolutionStatus.READY
+    assert result.engine_configuration is not None
+    assert result.engine_configuration.planned_alarms[0].is_special_condition is True
+
+
 def test_modeler_receives_priority_metadata_without_reading_engine_configuration() -> None:
     configuration = AlarmConfiguration(
         rules=(
@@ -131,6 +154,7 @@ def rule(
     *,
     alarm_key: str,
     visibility_mode: VisibilityMode = VisibilityMode.VISIBLE,
+    is_special_condition: bool = False,
     priority_group: str = 'mill-feed',
     priority_order: int = 1,
     visual_targets: tuple[AlarmVisualTarget, ...] = (),
@@ -143,7 +167,7 @@ def rule(
         cause_template='Value exceeds threshold',
         is_active=True,
         visibility_mode=visibility_mode,
-        is_special_condition=False,
+        is_special_condition=is_special_condition,
         kind=AlarmKind.RISK,
         criticality=Criticality.C1,
         business_category=BusinessCategory.PRODUCTIVITY,
