@@ -84,9 +84,7 @@ def _snapshot():
             AlarmVisualTarget(
                 tool_key='crusher',
                 component_keys=('main',),
-                subcomponents=(
-                    AlarmVisualSubcomponentTarget('main', 'motor'),
-                ),
+                subcomponents=(AlarmVisualSubcomponentTarget('main', 'motor'),),
                 process_projection_mode=ProcessAlarmProjectionMode.GENERIC,
             ),
         ),

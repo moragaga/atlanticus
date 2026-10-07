@@ -8,3 +8,15 @@ class AlarmMaterializationConfigurationPending(AlarmMaterializationAcquisitionEr
 
 class AlarmMaterializationContractError(AlarmMaterializationAcquisitionError):
     pass
+
+
+class AlarmMaterializationQualificationError(RuntimeError):
+    pass
+
+
+class AlarmMaterializationSupersededError(RuntimeError):
+    pass
+
+
+class AlarmMaterializationSettingsError(ValueError):
+    pass
