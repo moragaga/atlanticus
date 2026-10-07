@@ -79,7 +79,7 @@ dev = [
 
 [[package]]
 name = "ada-generic-application"
-version = "0.2.28"
+version = "0.2.29"
 source = { editable = "../ada-generic-application" }
 dependencies = [
     { name = "ada-configuration-manager" },
@@ -208,12 +208,12 @@ dev = [
 
 [[package]]
 name = "ada-integrated-operations-application"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "." }
 dependencies = [
     { name = "ada-contracts-tools" },
-    { name = "ada-web-content-state" },
     { name = "ada-generic-application" },
+    { name = "ada-web-content-state" },
     { name = "ada-web-kpi-collector" },
     { name = "ada-web-operational-render-binding" },
     { name = "ada-web-shell-header" },
@@ -233,8 +233,8 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "ada-contracts-tools", editable = "../../../../ada-contracts/tools" },
-    { name = "ada-web-content-state", editable = "../../content-state/core" },
     { name = "ada-generic-application", editable = "../ada-generic-application" },
+    { name = "ada-web-content-state", editable = "../../content-state/core" },
     { name = "ada-web-kpi-collector", editable = "../../kpis/collector" },
     { name = "ada-web-operational-render-binding", editable = "../../operational-render-binding" },
     { name = "ada-web-shell-header", editable = "../../shell/header" },
@@ -1203,7 +1203,7 @@ dev = [
 
 [[package]]
 name = "ada-web-ui-global-indicator"
-version = "0.2.9"
+version = "0.2.10"
 source = { editable = "../../ui/global-indicator" }
 dependencies = [
     { name = "ada-web-ui-core" },

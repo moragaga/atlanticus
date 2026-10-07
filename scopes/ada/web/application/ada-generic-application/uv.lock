@@ -79,7 +79,7 @@ dev = [
 
 [[package]]
 name = "ada-generic-application"
-version = "0.2.28"
+version = "0.2.29"
 source = { editable = "." }
 dependencies = [
     { name = "ada-configuration-manager" },
@@ -1143,7 +1143,7 @@ dev = [
 
 [[package]]
 name = "ada-web-ui-global-indicator"
-version = "0.2.9"
+version = "0.2.10"
 source = { editable = "../../ui/global-indicator" }
 dependencies = [
     { name = "ada-web-ui-core" },

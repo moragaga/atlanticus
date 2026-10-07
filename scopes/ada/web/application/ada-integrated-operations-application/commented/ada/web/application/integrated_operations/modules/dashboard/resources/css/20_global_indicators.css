@@ -1,27 +1,12 @@
-/* En mobile la colección crece por contenido; la altura completa se reserva para desktop. */
+/* IO sólo adapta el host de Content State al slot de su header. */
 .ada-io-global-indicators-state,
-.ada-io-global-indicators-state > .ada-content-state__content,
-.ada-io-global-indicators {
+.ada-io-global-indicators-state > .ada-content-state__content {
     width: 100%;
     min-width: 0;
     min-height: 0;
 }
 
-.ada-io-global-indicator-placement {
-    display: flex;
-    width: 100%;
-    min-width: 0;
-    min-height: 0;
-}
-
-.ada-io-global-indicator-placement > .ada-global-indicator {
-    /* La tabla se ajusta a su contenido: Día/Semana + actual / plan, sin ancho artificial. */
-    --ada-global-indicator-table-min-width: 0rem;
-    width: 100%;
-    max-width: 100%;
-    flex: 1 1 auto;
-}
-
+/* La política Mina/Planta permanece fuera del componente genérico. */
 #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='mine'])
 .ada-io-global-indicator-placement:not([data-ada-io-scope-mine='true']),
 #ada-generic-application:has(.ada-io-dashboard[data-ada-io-presentation='plant'])
@@ -29,29 +14,10 @@
     display: none;
 }
 
-@media only screen and (min-width: 350px) and (max-width: 1279.98px) {
-    .ada-io-global-indicator-placement {
-        flex: 0 0 50%;
-        width: 50%;
-        max-width: 50%;
-    }
-
-    .ada-io-global-indicator-placement:nth-child(n + 3) {
-        margin-top: .18rem;
-        padding-top: .48rem;
-        border-top: 1px solid var(--ada-global-indicator-mobile-divider);
-    }
-}
-
+/* En desktop el host de IO permite que el grid genérico aproveche toda la altura del header. */
 @media only screen and (min-width: 1280px) {
     .ada-io-global-indicators-state,
-    .ada-io-global-indicators-state > .ada-content-state__content,
-    .ada-io-global-indicators,
-    .ada-io-global-indicator-placement {
+    .ada-io-global-indicators-state > .ada-content-state__content {
         height: 100%;
-    }
-
-    .ada-io-global-indicator-placement + .ada-io-global-indicator-placement {
-        border-inline-start: 1px solid var(--ada-global-indicator-border);
     }
 }

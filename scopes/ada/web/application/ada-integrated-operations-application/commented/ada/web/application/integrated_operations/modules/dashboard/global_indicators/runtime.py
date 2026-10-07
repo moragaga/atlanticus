@@ -1,5 +1,4 @@
-# Espejo comentado: la colección completa se envuelve una sola vez con Content State. El wrapper
-# operacional hereda el modo NORMAL/AUTHORING publicado por el layout raíz de ADA Generic.
+# Espejo comentado: IO usa el placement genérico para sizing y conserva sólo metadata/política de scope.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -33,13 +32,11 @@ def build_dashboard_global_indicators_runtime_component(
 ) -> Component:
     _require_binding(binding)
     resolved = resolve_dashboard_global_indicators(store_data, binding=binding)
-    # El grid mantiene todos los indicadores configurados y su metadata de scope.
     grid = html.Div(
         className='ada-global-indicator-grid ada-io-global-indicators',
         **{'data-ada-io-global-indicators-runtime': 'true'},
         children=[_build_placement(item) for item in resolved],
     )
-    # El estado declarado y el estado runtime se resuelven para la colección completa.
     return build_content_state_wrapper(
         component_key=None,
         children=grid,
@@ -82,9 +79,10 @@ def create_dashboard_global_indicators_module(
 
 def _build_placement(item: ResolvedDashboardGlobalIndicator) -> Component:
     scopes = item.binding.scopes
+    # La clase genérica recibe responsive/sizing; la clase IO queda sólo para filtrar por scope.
     return html.Div(
         build_global_indicator(state=item.state),
-        className='ada-io-global-indicator-placement',
+        className='ada-global-indicator-placement ada-io-global-indicator-placement',
         **{
             'data-ada-io-global-indicator-key': item.state.key,
             'data-ada-io-global-indicator-scopes': ','.join(scope.value for scope in scopes),

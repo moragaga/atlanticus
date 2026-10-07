@@ -80,7 +80,7 @@ def _build_placement(item: ResolvedDashboardGlobalIndicator) -> Component:
     scopes = item.binding.scopes
     return html.Div(
         build_global_indicator(state=item.state),
-        className='ada-io-global-indicator-placement',
+        className='ada-global-indicator-placement ada-io-global-indicator-placement',
         **{
             'data-ada-io-global-indicator-key': item.state.key,
             'data-ada-io-global-indicator-scopes': ','.join(scope.value for scope in scopes),

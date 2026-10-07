@@ -1,10 +1,10 @@
+/* El grid genérico crece por contenido en mobile y ocupa la altura disponible sólo en desktop. */
 .ada-global-indicator-grid {
     --ada-global-indicator-border: var(--ada-color-border-primary);
     --ada-global-indicator-mobile-divider: rgba(91, 92, 100, .12);
     --ada-global-indicator-ink: var(--ada-color-text-primary);
     display: flex;
     width: 100%;
-    height: 100%;
     min-width: 0;
     min-height: 0;
     align-items: stretch;
@@ -14,9 +14,21 @@
     padding-block: .2rem;
 }
 
-/* La tabla mínima estabiliza el eje de columnas sin forzar un layout rígido. */
+/* Un consumidor puede envolver cada indicador para agregar metadata sin reimplementar sizing. */
+.ada-global-indicator-placement {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+}
+
+.ada-global-indicator-placement > .ada-global-indicator {
+    width: 100%;
+    max-width: 100%;
+    flex: 1 1 auto;
+}
+
 .ada-global-indicator {
-    --ada-global-indicator-table-min-width: 9rem;
     display: flex;
     flex: 0 0 100%;
     width: 100%;
@@ -73,9 +85,10 @@
     gap: .04rem;
 }
 
+/* La tabla se ajusta al contenido real: etiqueta seguida inmediatamente por actual / plan. */
 .ada-global-indicator__table {
     width: auto;
-    min-width: min(100%, var(--ada-global-indicator-table-min-width));
+    min-width: 0;
     max-width: 100%;
     background: transparent;
     border-collapse: collapse;
@@ -100,7 +113,7 @@
     text-align: start;
 }
 
-/* Los valores numéricos usan cifras tabulares para alinear sus bordes visuales. */
+/* Las cifras tabulares preservan alineación sin imponer ancho mínimo a la tabla. */
 .ada-global-indicator__value--actual {
     padding: .16rem .05rem .16rem 0;
     font-weight: 800;
@@ -120,15 +133,15 @@
     font-weight: 500;
     font-variant-numeric: tabular-nums;
     text-align: start;
+    line-height: 0;
 }
 
-/* Última medición conserva el contrato visual: label arriba, valor abajo. */
 .ada-global-indicator__last-measurement {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: .1rem;
+    gap: .15rem;
     margin-top: .2rem;
 }
 
@@ -155,28 +168,33 @@
     margin-inline: auto;
 }
 
-/* Mobile conserva dos indicadores por fila y el divisor horizontal tenue. */
+/* Mobile mantiene dos indicadores o placements por fila y deja crecer la colección verticalmente. */
 @media only screen and (min-width: 350px) and (max-width: 1279.98px) {
     .ada-global-indicator-grid {
         padding-block: .3rem;
     }
 
-    .ada-global-indicator {
-        --ada-global-indicator-table-min-width: 9.25rem;
+    .ada-global-indicator,
+    .ada-global-indicator-placement {
         flex: 0 0 50%;
         width: 50%;
         max-width: 50%;
+    }
+
+    .ada-global-indicator {
         gap: .36rem;
         padding: .38rem .65rem;
     }
 
-    .ada-global-indicator:nth-child(n + 3) {
+    .ada-global-indicator:nth-child(n + 3),
+    .ada-global-indicator-placement:nth-child(n + 3) {
         margin-top: .18rem;
         padding-top: .48rem;
         border-top: 1px solid var(--ada-global-indicator-mobile-divider);
     }
 
-    .ada-global-indicator-grid > .ada-global-indicator:last-child:nth-child(odd) {
+    .ada-global-indicator-grid > .ada-global-indicator:last-child:nth-child(odd),
+    .ada-global-indicator-grid > .ada-global-indicator-placement:last-child:nth-child(odd) {
         margin-inline: auto;
     }
 
@@ -192,12 +210,12 @@
 
 @media only screen and (min-width: 480px) and (max-width: 1279.98px) {
     .ada-global-indicator {
-        --ada-global-indicator-table-min-width: 9.75rem;
         gap: .4rem;
         padding-inline: .85rem;
     }
 
-    .ada-global-indicator:nth-child(n + 3) {
+    .ada-global-indicator:nth-child(n + 3),
+    .ada-global-indicator-placement:nth-child(n + 3) {
         margin-top: .22rem;
         padding-top: .52rem;
     }
@@ -207,10 +225,11 @@
     }
 }
 
-/* Desktop calibra sólo el ancho mínimo y el microespaciado; no altera la geometría general. */
+/* Desktop distribuye todos los hijos en columnas equivalentes y usa toda la altura disponible. */
 @media only screen and (min-width: 1280px) {
     .ada-global-indicator-grid {
         display: grid;
+        height: 100%;
         grid-auto-flow: column;
         grid-auto-columns: minmax(0, 1fr);
         align-items: stretch;
@@ -219,16 +238,20 @@
         padding-block: .08rem;
     }
 
+    .ada-global-indicator-placement {
+        height: 100%;
+    }
+
     .ada-global-indicator {
-        --ada-global-indicator-table-min-width: 6.6rem;
         width: 100%;
         height: 100%;
         max-width: 100%;
-        gap: .2rem;
+        gap: .25rem;
         padding: .12rem .35rem;
     }
 
-    .ada-global-indicator + .ada-global-indicator {
+    .ada-global-indicator + .ada-global-indicator,
+    .ada-global-indicator-placement + .ada-global-indicator-placement {
         border-inline-start: 1px solid var(--ada-global-indicator-border);
     }
 
@@ -254,16 +277,9 @@
     .ada-global-indicator__text--micro { font-size: .5rem; }
 }
 
-@media only screen and (min-width: 1366px) {
-    .ada-global-indicator {
-        --ada-global-indicator-table-min-width: 7rem;
-    }
-}
-
 @media only screen and (min-width: 1536px) {
     .ada-global-indicator {
-        --ada-global-indicator-table-min-width: 7.5rem;
-        gap: .22rem;
+        gap: .3rem;
         padding-inline: .45rem;
     }
 
@@ -279,8 +295,7 @@
 
 @media only screen and (min-width: 1920px) {
     .ada-global-indicator {
-        --ada-global-indicator-table-min-width: 8.3rem;
-        gap: .24rem;
+        gap: .35rem;
         padding-inline: .55rem;
     }
 
@@ -308,7 +323,6 @@
 
 @media only screen and (min-width: 2560px) {
     .ada-global-indicator {
-        --ada-global-indicator-table-min-width: 9rem;
         gap: .3rem;
         padding-inline: .75rem;
     }
