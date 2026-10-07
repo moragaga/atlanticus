@@ -17,6 +17,12 @@ ALARM_CONFIGURATION_PROJECTION_DOCUMENT_TYPE = (
 ALARM_CONFIGURATION_PROJECTION_SCHEMA_VERSION = 1
 
 
+def alarm_configuration_projection_item_id(source_key: str) -> str:
+    _require_text(source_key, 'source_key')
+    digest = sha256(source_key.encode('utf-8')).hexdigest()
+    return f'ada-command-center-alarm-configuration-projection-{digest}'
+
+
 @dataclass(frozen=True, slots=True)
 class AlarmConfigurationProjectionDependency:
     source_key: str

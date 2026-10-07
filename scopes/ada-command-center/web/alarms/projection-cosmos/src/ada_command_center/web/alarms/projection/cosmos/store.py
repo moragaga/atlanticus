@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
 
-from ada.contracts.alarms import AlarmConfigurationSnapshot
+from ada.contracts.alarms import (
+    AlarmConfigurationSnapshot,
+    alarm_configuration_projection_item_id,
+)
 from ada_command_center.web.alarms.configuration.errors import AlarmConfigurationProjectionError
 from ada_command_center.web.alarms.configuration.projection_record import (
     alarm_configuration_projection_from_document,
@@ -90,5 +92,4 @@ class CosmosAlarmConfigurationProjectionStore(ProjectionStore[AlarmConfiguration
 
 
 def _item_id(source_key: SourceKey) -> str:
-    digest = hashlib.sha256(source_key.value.encode('utf-8')).hexdigest()
-    return f'ada-command-center-alarm-configuration-projection-{digest}'
+    return alarm_configuration_projection_item_id(source_key.value)

@@ -21,6 +21,14 @@ ALARM_CONFIGURATION_PROJECTION_DOCUMENT_TYPE = (
 ALARM_CONFIGURATION_PROJECTION_SCHEMA_VERSION = 1
 
 
+# La identidad física del documento activo es parte del contrato entre productor y consumidores.
+# El helper no conoce Cosmos ni el nombre del container; sólo reproduce el id durable ya publicado.
+def alarm_configuration_projection_item_id(source_key: str) -> str:
+    _require_text(source_key, 'source_key')
+    digest = sha256(source_key.encode('utf-8')).hexdigest()
+    return f'ada-command-center-alarm-configuration-projection-{digest}'
+
+
 @dataclass(frozen=True, slots=True)
 class AlarmConfigurationProjectionDependency:
     # Una dependencia conserva la identidad exacta de la release que participó en la proyección.

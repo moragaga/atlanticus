@@ -15,11 +15,13 @@ dev = [
 package = false
 
 [tool.uv.sources]
+ada-alarm-materialization-process = { workspace = true }
 ada-alarms-core = { workspace = true }
 ada-alarms-materialization = { workspace = true }
 ada-alarms-persistence = { workspace = true }
 ada-contracts-alarms = { path = "../ada-contracts/alarms", editable = true }
 ada-contracts-tools = { path = "../ada-contracts/tools", editable = true }
+atlanticus-cosmos = { path = "../../connectivity/cosmos", editable = true }
 atlanticus-state = { path = "../../backend/state", editable = true }
 
 [tool.uv.workspace]
@@ -27,6 +29,7 @@ members = [
     "alarms/core",
     "alarms/materialization",
     "alarms/persistence",
+    "processes/alarm-materialization",
 ]
 
 [tool.ruff]
@@ -54,4 +57,5 @@ testpaths = [
     "alarms/core/tests",
     "alarms/materialization/tests",
     "alarms/persistence/tests",
+    "processes/alarm-materialization/tests",
 ]

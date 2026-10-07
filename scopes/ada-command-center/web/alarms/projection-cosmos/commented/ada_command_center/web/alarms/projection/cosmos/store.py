@@ -1,10 +1,13 @@
-# Espejo pedagógico en español; el comportamiento equivale al archivo de src.
+# Adapter Cosmos propietario de Command Center para la proyección activa de Alarm Configuration.
+# El comportamiento es equivalente al archivo productivo; los comentarios explican ownership y límites.
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
 
-from ada.contracts.alarms import AlarmConfigurationSnapshot
+from ada.contracts.alarms import (
+    AlarmConfigurationSnapshot,
+    alarm_configuration_projection_item_id,
+)
 from ada_command_center.web.alarms.configuration.errors import AlarmConfigurationProjectionError
 from ada_command_center.web.alarms.configuration.projection_record import (
     alarm_configuration_projection_from_document,
@@ -18,6 +21,7 @@ from atlanticus.web.source.models import SourceKey
 
 @dataclass(frozen=True, slots=True)
 class CosmosAlarmConfigurationProjectionStoreSettings:
+    # El nombre físico pertenece a la composición/provisioning de Command Center, no al contrato compartido.
     container_name: str
 
     def __post_init__(self) -> None:
@@ -29,7 +33,6 @@ class CosmosAlarmConfigurationProjectionStoreSettings:
             raise ValueError('Cosmos Alarm Configuration projection container name is invalid')
 
 
-# Cosmos implementa el mismo ProjectionStore; no lee ni modifica la autoridad histórica Blob.
 class CosmosAlarmConfigurationProjectionStore(ProjectionStore[AlarmConfigurationSnapshot]):
     def __init__(
         self,
@@ -42,11 +45,11 @@ class CosmosAlarmConfigurationProjectionStore(ProjectionStore[AlarmConfiguration
         self._client = client
         self._settings = settings
 
-    # Ausente devuelve None; errores de lectura o datos corruptos se propagan como errores de proyección.
     def get_active(
         self,
         source_key: SourceKey,
     ) -> ProjectionRecord[AlarmConfigurationSnapshot] | None:
+        # Command Center conserva lectura y escritura porque es owner de este recurso Cosmos.
         try:
             document = self._client.find_item(
                 container_name=self._settings.container_name,
@@ -66,11 +69,11 @@ class CosmosAlarmConfigurationProjectionStore(ProjectionStore[AlarmConfiguration
             )
         return projection
 
-    # Se sustituye el head activo para un SourceKey; la selección de la release pertenece al servicio genérico.
     def replace_active(
         self,
         projection: ProjectionRecord[AlarmConfigurationSnapshot],
     ) -> ProjectionRecord[AlarmConfigurationSnapshot]:
+        # La identidad del item ya es transversal; el upsert continúa siendo responsabilidad del productor.
         document = alarm_configuration_projection_to_document(
             projection,
             item_id=_item_id(projection.source_key),
@@ -93,7 +96,6 @@ class CosmosAlarmConfigurationProjectionStore(ProjectionStore[AlarmConfiguration
         return persisted
 
 
-# La identidad estable permite reemplazar el mismo documento sin convertir Cosmos en un historial de releases.
 def _item_id(source_key: SourceKey) -> str:
-    digest = hashlib.sha256(source_key.value.encode('utf-8')).hexdigest()
-    return f'ada-command-center-alarm-configuration-projection-{digest}'
+    # El algoritmo no se duplica: productor y consumidores comparten la misma identidad durable.
+    return alarm_configuration_projection_item_id(source_key.value)

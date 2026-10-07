@@ -11,6 +11,7 @@ from ada.contracts.alarms import (
     AlarmConfigurationProjectionDependency,
     AlarmConfigurationProjectionValidationError,
     AlarmConfigurationSnapshot,
+    alarm_configuration_projection_item_id,
 )
 from ada.contracts.tools import ToolDependencyManifest
 
@@ -102,3 +103,16 @@ def test_projection_dependency_rejects_invalid_nested_dependency() -> None:
 
     with pytest.raises(AlarmConfigurationProjectionValidationError):
         AlarmConfigurationProjection.from_document(document)
+
+
+def test_projection_item_id_preserves_published_identity_contract() -> None:
+    assert (
+        alarm_configuration_projection_item_id(ALARM_CONFIGURATION_SOURCE_KEY)
+        == 'ada-command-center-alarm-configuration-projection-'
+        'eff3875d752b9f8ab4e406943b6fc6ca6762585f38777e2c9f0053f4ea8aad57'
+    )
+
+
+def test_projection_item_id_rejects_invalid_source_key() -> None:
+    with pytest.raises(ValueError):
+        alarm_configuration_projection_item_id(' alarm-configuration ')

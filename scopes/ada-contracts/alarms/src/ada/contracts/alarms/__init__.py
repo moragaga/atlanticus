@@ -30,6 +30,7 @@ from ada.contracts.alarms.projection import (
     ALARM_CONFIGURATION_SOURCE_KEY,
     AlarmConfigurationProjection,
     AlarmConfigurationProjectionDependency,
+    alarm_configuration_projection_item_id,
 )
 from ada.contracts.alarms.snapshot import AlarmConfigurationSnapshot
 
@@ -46,6 +47,7 @@ __all__ = [
     'AlarmConfigurationProjection',
     'AlarmConfigurationProjectionDependency',
     'AlarmConfigurationProjectionValidationError',
+    'alarm_configuration_projection_item_id',
     'AlarmConfigurationSnapshot',
     'AlarmConfigurationValidationError',
     'AlarmDeactivationDefinition',
