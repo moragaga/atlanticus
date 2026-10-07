@@ -19,17 +19,33 @@ from ada.contracts.alarms.definition import (
     ReappearanceDefinition,
     VisibilityMode,
 )
-from ada.contracts.alarms.errors import AlarmConfigurationValidationError
+from ada.contracts.alarms.errors import (
+    AlarmConfigurationProjectionValidationError,
+    AlarmConfigurationValidationError,
+)
 from ada.contracts.alarms.models import AlarmIdentity, AlarmKind, Criticality
+from ada.contracts.alarms.projection import (
+    ALARM_CONFIGURATION_PROJECTION_DOCUMENT_TYPE,
+    ALARM_CONFIGURATION_PROJECTION_SCHEMA_VERSION,
+    ALARM_CONFIGURATION_SOURCE_KEY,
+    AlarmConfigurationProjection,
+    AlarmConfigurationProjectionDependency,
+)
 from ada.contracts.alarms.snapshot import AlarmConfigurationSnapshot
 
 __version__ = '1.0.0'
 
 __all__ = [
+    'ALARM_CONFIGURATION_PROJECTION_DOCUMENT_TYPE',
+    'ALARM_CONFIGURATION_PROJECTION_SCHEMA_VERSION',
+    'ALARM_CONFIGURATION_SOURCE_KEY',
     'DEACTIVATION_MAX_HOURS',
     'END_OF_SHIFT',
     'AlarmColor',
     'AlarmConfiguration',
+    'AlarmConfigurationProjection',
+    'AlarmConfigurationProjectionDependency',
+    'AlarmConfigurationProjectionValidationError',
     'AlarmConfigurationSnapshot',
     'AlarmConfigurationValidationError',
     'AlarmDeactivationDefinition',
