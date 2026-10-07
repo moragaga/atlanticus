@@ -1,11 +1,10 @@
+# Adapter físico compartido entre consumidores de Operational Data y DatasetRuntime/Parquet.
 from __future__ import annotations
 
-# Espejo pedagógico: conserva el comportamiento productivo y documenta la responsabilidad de este módulo.
 from collections.abc import Callable, Iterable
 from datetime import datetime
 from pathlib import Path
 
-from ada.processes.kpi_runtime.errors import KpiRuntimeDataError
 from atlanticus.datasets.parquet import ColumnFilter, FilterOperator, ParquetDatasetStore
 from atlanticus.datasets.runtime import (
     DatasetRuntime,
@@ -18,11 +17,13 @@ from atlanticus.operational_data.sources import (
     DataSourceApplications,
     DataSourceReadError,
     DataSourceRegistry,
+    DataSourceRoutingError,
 )
 
 RuntimeFactory = Callable[[Path], DatasetRuntime]
 
 
+# El adapter conoce almacenamiento físico; sources permanece libre de DatasetRuntime.
 class RoutedDatasetSourceReader:
     def __init__(
         self,
@@ -44,6 +45,7 @@ class RoutedDatasetSourceReader:
         self._runtime_factory = _runtime_factory if runtime_factory is None else runtime_factory
         if not callable(self._runtime_factory):
             raise TypeError('runtime_factory must be callable')
+        # Sólo las fuentes presentes en el plan del consumidor exigen una ruta física.
         self._applications_by_dataset = _dataset_routes(registry, applications, resolved_sources)
         self._runtimes: dict[str, DatasetRuntime] = {}
 
@@ -61,7 +63,7 @@ class RoutedDatasetSourceReader:
         try:
             application = self._applications_by_dataset[identifier]
         except KeyError as error:
-            raise KpiRuntimeDataError(
+            raise DataSourceRoutingError(
                 f'{identifier}: dataset has no configured application route'
             ) from error
         runtime = self._runtime_for(application)
@@ -86,6 +88,7 @@ class RoutedDatasetSourceReader:
             raise DataSourceReadError(f'{target.identifier}: dataset runtime returned invalid data')
         return dataframe
 
+    # Se reutiliza un DatasetRuntime por aplicación productora durante la vida del reader.
     def _runtime_for(self, application: str) -> DatasetRuntime:
         runtime = self._runtimes.get(application)
         if runtime is None:
@@ -106,7 +109,7 @@ def _dataset_routes(
         application = applications.application_for(source)
         existing = routes.get(identifier)
         if existing is not None and existing != application:
-            raise KpiRuntimeDataError(f'{identifier}: dataset routes to multiple applications')
+            raise DataSourceRoutingError(f'{identifier}: dataset routes to multiple applications')
         routes[identifier] = application
     return routes
 
@@ -115,6 +118,7 @@ def _runtime_factory(dataset_root: Path) -> DatasetRuntime:
     return DatasetRuntime(store=ParquetDatasetStore(root=dataset_root))
 
 
+# Convierte el rango temporal lógico del loader en filtros físicos del DatasetRuntime.
 def _time_filters(
     *,
     timestamp_column: str | None,
@@ -123,7 +127,7 @@ def _time_filters(
 ) -> tuple[ColumnFilter, ...]:
     if timestamp_column is None:
         if start_utc is not None or end_utc is not None:
-            raise KpiRuntimeDataError(
+            raise DataSourceRoutingError(
                 'timestamp_column is required when a time boundary is provided'
             )
         return ()
@@ -150,5 +154,5 @@ def _time_filters(
 def _absolute_path(value: str | Path) -> Path:
     path = Path(value)
     if not path.is_absolute():
-        raise KpiRuntimeDataError('volume_path must be an absolute path')
+        raise DataSourceRoutingError('volume_path must be an absolute path')
     return path

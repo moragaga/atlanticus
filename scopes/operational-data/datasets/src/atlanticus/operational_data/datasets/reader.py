@@ -4,7 +4,6 @@ from collections.abc import Callable, Iterable
 from datetime import datetime
 from pathlib import Path
 
-from ada.processes.kpi_runtime.errors import KpiRuntimeDataError
 from atlanticus.datasets.parquet import ColumnFilter, FilterOperator, ParquetDatasetStore
 from atlanticus.datasets.runtime import (
     DatasetRuntime,
@@ -17,6 +16,7 @@ from atlanticus.operational_data.sources import (
     DataSourceApplications,
     DataSourceReadError,
     DataSourceRegistry,
+    DataSourceRoutingError,
 )
 
 RuntimeFactory = Callable[[Path], DatasetRuntime]
@@ -60,7 +60,7 @@ class RoutedDatasetSourceReader:
         try:
             application = self._applications_by_dataset[identifier]
         except KeyError as error:
-            raise KpiRuntimeDataError(
+            raise DataSourceRoutingError(
                 f'{identifier}: dataset has no configured application route'
             ) from error
         runtime = self._runtime_for(application)
@@ -105,7 +105,7 @@ def _dataset_routes(
         application = applications.application_for(source)
         existing = routes.get(identifier)
         if existing is not None and existing != application:
-            raise KpiRuntimeDataError(f'{identifier}: dataset routes to multiple applications')
+            raise DataSourceRoutingError(f'{identifier}: dataset routes to multiple applications')
         routes[identifier] = application
     return routes
 
@@ -122,7 +122,7 @@ def _time_filters(
 ) -> tuple[ColumnFilter, ...]:
     if timestamp_column is None:
         if start_utc is not None or end_utc is not None:
-            raise KpiRuntimeDataError(
+            raise DataSourceRoutingError(
                 'timestamp_column is required when a time boundary is provided'
             )
         return ()
@@ -149,5 +149,5 @@ def _time_filters(
 def _absolute_path(value: str | Path) -> Path:
     path = Path(value)
     if not path.is_absolute():
-        raise KpiRuntimeDataError('volume_path must be an absolute path')
+        raise DataSourceRoutingError('volume_path must be an absolute path')
     return path

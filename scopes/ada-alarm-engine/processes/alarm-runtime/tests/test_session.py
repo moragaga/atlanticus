@@ -5,6 +5,7 @@ from ada.processes.alarm_runtime import (
     build_alarm_execution_session,
 )
 from ada.processes.alarm_runtime.errors import AlarmExecutionSessionError
+from atlanticus.operational_data.core import DataSource
 
 from .support import engine_configuration, registry
 
@@ -20,6 +21,17 @@ def test_session_binds_planned_alarm_to_registered_evaluator() -> None:
     assert session.planned_alarms == configuration.planned_alarms
     assert len(session.entries) == 1
     assert session.entries[0].parameters == {'limit': 10.0}
+
+
+def test_session_builds_operational_data_plan_from_evaluator_inputs() -> None:
+    session = build_alarm_execution_session(
+        configuration=engine_configuration(),
+        evaluator_registry=registry(),
+    )
+    entry = session.entries[0]
+    assert entry.consumer_key == entry.identity.canonical_key
+    assert session.data_plan.inputs_for(entry.consumer_key) == entry.inputs
+    assert session.data_plan.sources == (DataSource.PI_INTERPOLATED,)
 
 
 def test_session_rejects_unregistered_evaluator() -> None:

@@ -24,9 +24,16 @@ ada-contracts-alarms = { path = "../ada-contracts/alarms", editable = true }
 ada-contracts-tools = { path = "../ada-contracts/tools", editable = true }
 atlanticus-configuration = { path = "../../backend/configuration", editable = true }
 atlanticus-cosmos = { path = "../../connectivity/cosmos", editable = true }
+atlanticus-datasets = { path = "../../backend/datasets", editable = true }
+atlanticus-datasets-parquet = { path = "../../backend/datasets-parquet", editable = true }
+atlanticus-datasets-runtime = { path = "../../backend/datasets-runtime", editable = true }
 atlanticus-job-runtime = { path = "../../backend/runtime", editable = true }
 atlanticus-key-vault = { path = "../../connectivity/key-vault", editable = true }
 atlanticus-kernel = { path = "../../backend/kernel", editable = true }
+atlanticus-operational-data-calendar = { path = "../operational-data/operational-calendar", editable = true }
+atlanticus-operational-data-core = { path = "../operational-data/core", editable = true }
+atlanticus-operational-data-planner = { path = "../operational-data/planner", editable = true }
+atlanticus-operational-data-sources = { path = "../operational-data/sources", editable = true }
 atlanticus-state = { path = "../../backend/state", editable = true }
 
 [tool.uv.workspace]

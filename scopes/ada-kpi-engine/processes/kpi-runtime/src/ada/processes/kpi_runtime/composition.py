@@ -7,10 +7,10 @@ from ada.kpis.core import KpiCatalog
 from ada.kpis.persistence import KpiPersistence
 from ada.processes.kpi_runtime.catalog import build_catalog
 from ada.processes.kpi_runtime.job import KpiRuntimeJob
-from ada.processes.kpi_runtime.reader import RoutedDatasetSourceReader
 from ada.processes.kpi_runtime.settings import KpiRuntimeSettings
 from ada.processes.kpi_runtime.source_state import PiOperationalWatermarkReader
 from atlanticus.configuration import ResolvedConfiguration
+from atlanticus.operational_data.datasets import RoutedDatasetSourceReader
 from atlanticus.operational_data.planner import DataInputPlanner
 from atlanticus.operational_data.sources import (
     DataInputLoader,

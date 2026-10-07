@@ -19,6 +19,7 @@ members = [
     "atlanticus-operational-data-blockgrade-process",
     "atlanticus-operational-data-calendar",
     "atlanticus-operational-data-core",
+    "atlanticus-operational-data-datasets",
     "atlanticus-operational-data-dispatch-process",
     "atlanticus-operational-data-fabrica-kpis-process",
     "atlanticus-operational-data-fabrica-planes-process",
@@ -500,6 +501,37 @@ dev = [
 ]
 
 [package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "atlanticus-operational-data-datasets"
+version = "1.0.0"
+source = { editable = "datasets" }
+dependencies = [
+    { name = "atlanticus-datasets-parquet" },
+    { name = "atlanticus-datasets-runtime" },
+    { name = "atlanticus-operational-data-core" },
+    { name = "atlanticus-operational-data-sources" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-datasets-parquet", editable = "../../backend/datasets-parquet" },
+    { name = "atlanticus-datasets-runtime", editable = "../../backend/datasets-runtime" },
+    { name = "atlanticus-operational-data-core", editable = "core" },
+    { name = "atlanticus-operational-data-sources", editable = "sources" },
+]
 
 [package.metadata.requires-dev]
 dev = [

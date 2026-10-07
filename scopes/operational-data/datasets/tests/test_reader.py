@@ -6,8 +6,8 @@ from types import SimpleNamespace
 import pandas as pd
 import pyarrow as pa
 
-from ada.processes.kpi_runtime.reader import RoutedDatasetSourceReader
 from atlanticus.operational_data.core import DataSource
+from atlanticus.operational_data.datasets import RoutedDatasetSourceReader
 from atlanticus.operational_data.sources import (
     DataSourceApplications,
     PiSourceProvider,

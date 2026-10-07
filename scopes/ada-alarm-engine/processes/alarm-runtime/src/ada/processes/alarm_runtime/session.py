@@ -8,6 +8,8 @@ from ada.alarms.core import AlarmResolutionKey, Evaluator, PlannedAlarm
 from ada.alarms.materialization import EngineAlarmConfiguration
 from ada.contracts.alarms import AlarmIdentity
 from ada.processes.alarm_runtime.errors import AlarmExecutionSessionError
+from atlanticus.operational_data.core import DataInputSpec, validate_data_inputs
+from atlanticus.operational_data.planner import DataInputLoadPlan, DataInputPlanner
 
 AlarmParameterValue = str | float | bool
 
@@ -17,12 +19,14 @@ class AlarmEvaluatorContract:
     family_key: str
     evaluator_key: str
     evaluator: Evaluator
+    inputs: tuple[DataInputSpec, ...] = ()
 
     def __post_init__(self) -> None:
         _require_text(self.family_key, 'family_key')
         _require_text(self.evaluator_key, 'evaluator_key')
         if not callable(self.evaluator):
             raise TypeError('evaluator must be callable')
+        object.__setattr__(self, 'inputs', validate_data_inputs(tuple(self.inputs)))
 
     @property
     def key(self) -> tuple[str, str]:
@@ -64,6 +68,7 @@ class AlarmExecutionEntry:
     planned_alarm: PlannedAlarm
     evaluator: Evaluator
     parameters: Mapping[str, AlarmParameterValue]
+    inputs: tuple[DataInputSpec, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.planned_alarm, PlannedAlarm):
@@ -71,22 +76,30 @@ class AlarmExecutionEntry:
         if not callable(self.evaluator):
             raise TypeError('evaluator must be callable')
         object.__setattr__(self, 'parameters', _normalize_parameters(self.parameters))
+        object.__setattr__(self, 'inputs', validate_data_inputs(tuple(self.inputs)))
 
     @property
     def identity(self) -> AlarmIdentity:
         return self.planned_alarm.identity
+
+    @property
+    def consumer_key(self) -> str:
+        return self.identity.canonical_key
 
 
 @dataclass(frozen=True, slots=True)
 class AlarmExecutionSession:
     configuration: EngineAlarmConfiguration
     entries: tuple[AlarmExecutionEntry, ...]
+    data_plan: DataInputLoadPlan
 
     def __post_init__(self) -> None:
         if not isinstance(self.configuration, EngineAlarmConfiguration):
             raise TypeError('configuration must be an EngineAlarmConfiguration')
         if not isinstance(self.entries, tuple):
             raise TypeError('entries must be a tuple')
+        if not isinstance(self.data_plan, DataInputLoadPlan):
+            raise TypeError('data_plan must be a DataInputLoadPlan')
         identities: list[AlarmIdentity] = []
         for entry in self.entries:
             if not isinstance(entry, AlarmExecutionEntry):
@@ -97,6 +110,16 @@ class AlarmExecutionSession:
             raise AlarmExecutionSessionError(
                 'execution session entries must exactly follow configured planned alarms'
             )
+        expected_consumers = tuple(entry.consumer_key for entry in self.entries)
+        if tuple(self.data_plan.inputs_by_key) != expected_consumers:
+            raise AlarmExecutionSessionError(
+                'data plan consumers must exactly follow execution session alarm order'
+            )
+        for entry in self.entries:
+            if self.data_plan.inputs_for(entry.consumer_key) != entry.inputs:
+                raise AlarmExecutionSessionError(
+                    f'{entry.consumer_key}: data plan inputs do not match evaluator contract'
+                )
 
     @property
     def resolution_key(self) -> AlarmResolutionKey:
@@ -127,16 +150,22 @@ def build_alarm_execution_session(
     if not isinstance(evaluator_registry, AlarmEvaluatorRegistry):
         raise TypeError('evaluator_registry must be an AlarmEvaluatorRegistry')
     entries: list[AlarmExecutionEntry] = []
+    inputs_by_key: dict[str, tuple[DataInputSpec, ...]] = {}
     for planned_alarm in configuration.planned_alarms:
         contract = evaluator_registry.resolve(planned_alarm)
-        entries.append(
-            AlarmExecutionEntry(
-                planned_alarm=planned_alarm,
-                evaluator=contract.evaluator,
-                parameters=configuration.parameters_by_alarm.get(planned_alarm.identity, {}),
-            )
+        entry = AlarmExecutionEntry(
+            planned_alarm=planned_alarm,
+            evaluator=contract.evaluator,
+            parameters=configuration.parameters_by_alarm.get(planned_alarm.identity, {}),
+            inputs=contract.inputs,
         )
-    return AlarmExecutionSession(configuration=configuration, entries=tuple(entries))
+        entries.append(entry)
+        inputs_by_key[entry.consumer_key] = entry.inputs
+    return AlarmExecutionSession(
+        configuration=configuration,
+        entries=tuple(entries),
+        data_plan=DataInputPlanner().plan(inputs_by_key),
+    )
 
 
 def _normalize_parameters(

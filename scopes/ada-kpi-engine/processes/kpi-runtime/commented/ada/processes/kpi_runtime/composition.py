@@ -1,5 +1,4 @@
-# Espejo pedagógico de la composición del runtime KPI.
-# La composición traduce cada KpiSpec.inputs al plan neutral de Operational Data.
+# Composición del KPI Runtime sobre el contrato compartido de Operational Data.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -9,10 +8,10 @@ from ada.kpis.core import KpiCatalog
 from ada.kpis.persistence import KpiPersistence
 from ada.processes.kpi_runtime.catalog import build_catalog
 from ada.processes.kpi_runtime.job import KpiRuntimeJob
-from ada.processes.kpi_runtime.reader import RoutedDatasetSourceReader
 from ada.processes.kpi_runtime.settings import KpiRuntimeSettings
 from ada.processes.kpi_runtime.source_state import PiOperationalWatermarkReader
 from atlanticus.configuration import ResolvedConfiguration
+from atlanticus.operational_data.datasets import RoutedDatasetSourceReader
 from atlanticus.operational_data.planner import DataInputPlanner
 from atlanticus.operational_data.sources import (
     DataInputLoader,
@@ -58,8 +57,8 @@ def build_composition(
         raise TypeError('catalog must be a KpiCatalog')
     settings = KpiRuntimeSettings.from_configuration(configuration)
     runtime_configuration = RuntimeConfiguration.from_sources(environ=configuration.values)
+    # Sources conserva contratos/routing; el adapter físico DatasetRuntime vive en operational_data.datasets.
     registry = build_current_source_registry(pi_source=settings.pi_source)
-    # El planner puede consolidar varios inputs en una misma carga física sin perder input_key.
     plan = DataInputPlanner().plan({spec.key: spec.inputs for spec in resolved_catalog.specs})
     applications = DataSourceApplications(
         pi=settings.pi_application,
@@ -70,6 +69,7 @@ def build_composition(
         fabrica_kpis=settings.fabrica_kpis_application,
         meteodata=settings.meteodata_application,
     )
+    # Sólo las fuentes realmente requeridas por el plan exigen una aplicación productora configurada.
     applications.validate_sources(plan.sources)
     reader = RoutedDatasetSourceReader(
         volume_path=runtime_configuration.volume_path,

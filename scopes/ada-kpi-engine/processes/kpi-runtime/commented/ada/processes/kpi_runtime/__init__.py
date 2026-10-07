@@ -1,4 +1,4 @@
-# Espejo pedagógico: conserva el comportamiento productivo y documenta la responsabilidad de este módulo.
+# Superficie pública del KPI Runtime; el reader físico pertenece ahora a Operational Data.
 from ada.processes.kpi_runtime.bootstrap import load_configuration, run
 from ada.processes.kpi_runtime.catalog import build_catalog
 from ada.processes.kpi_runtime.composition import KpiRuntimeComposition, build_composition
@@ -11,7 +11,6 @@ from ada.processes.kpi_runtime.errors import (
 )
 from ada.processes.kpi_runtime.job import KpiRuntimeJob
 from ada.processes.kpi_runtime.models import KpiRuntimeIterationResult, KpiRuntimeOutcome
-from ada.processes.kpi_runtime.reader import RoutedDatasetSourceReader
 from ada.processes.kpi_runtime.settings import KpiRuntimeSettings, configuration_specs
 from ada.processes.kpi_runtime.source_state import PiOperationalWatermarkReader
 
@@ -29,7 +28,6 @@ __all__ = [
     'KpiRuntimeSourceStateError',
     'KpiRuntimeWatermarkError',
     'PiOperationalWatermarkReader',
-    'RoutedDatasetSourceReader',
     '__version__',
     'build_catalog',
     'build_composition',

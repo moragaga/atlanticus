@@ -4,6 +4,8 @@ from ada.alarms.core import AlarmResolutionKey, AlarmRouting, EvaluationContext,
 from ada.alarms.materialization import EngineAlarmConfiguration
 from ada.contracts.alarms import AlarmIdentity, AlarmKind, Criticality
 from ada.processes.alarm_runtime.session import AlarmEvaluatorContract, AlarmEvaluatorRegistry
+from atlanticus.operational_data.core import DataColumn, DataColumnType
+from atlanticus.operational_data.sources import PiInterpolated
 
 
 def evaluator(_context: EvaluationContext):
@@ -44,6 +46,12 @@ def registry() -> AlarmEvaluatorRegistry:
                 family_key='mill',
                 evaluator_key='threshold',
                 evaluator=evaluator,
+                inputs=(
+                    PiInterpolated.latest(
+                        input_key='value',
+                        columns=(DataColumn('signal', DataColumnType.FLOAT),),
+                    ),
+                ),
             ),
         )
     )

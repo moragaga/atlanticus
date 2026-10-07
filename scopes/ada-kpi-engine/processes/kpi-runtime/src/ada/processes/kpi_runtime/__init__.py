@@ -10,7 +10,6 @@ from ada.processes.kpi_runtime.errors import (
 )
 from ada.processes.kpi_runtime.job import KpiRuntimeJob
 from ada.processes.kpi_runtime.models import KpiRuntimeIterationResult, KpiRuntimeOutcome
-from ada.processes.kpi_runtime.reader import RoutedDatasetSourceReader
 from ada.processes.kpi_runtime.settings import KpiRuntimeSettings, configuration_specs
 from ada.processes.kpi_runtime.source_state import PiOperationalWatermarkReader
 
@@ -28,7 +27,6 @@ __all__ = [
     'KpiRuntimeSourceStateError',
     'KpiRuntimeWatermarkError',
     'PiOperationalWatermarkReader',
-    'RoutedDatasetSourceReader',
     '__version__',
     'build_catalog',
     'build_composition',
