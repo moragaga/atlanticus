@@ -1,58 +1,498 @@
+from datetime import UTC, datetime, timedelta
+
 import pytest
 
 from ada.alarms.core import (
+    AffectedInputIssue,
+    AlarmEpisode,
+    AlarmEvaluation,
+    AlarmOccurrence,
     AlarmResolutionKey,
     AlarmRouting,
-    DeactivationPolicy,
+    AlarmRuntimeState,
+    AlarmStatus,
+    ConfigurationClosure,
+    EpisodeClosureReason,
+    EvaluationContext,
+    EvaluationError,
+    EvaluationErrorOrigin,
+    EvidenceSnapshot,
+    GroupLifecycleDecision,
+    GroupLifecycleState,
+    OccurrenceClosureReason,
+    PendingToolAssignment,
     PlannedAlarm,
     RoutingDestination,
+    RuntimeEvaluationState,
+    TechnicalHold,
+    TechnicalHoldChange,
+    TechnicalHoldChangeKind,
+    ToolAssignment,
 )
-from ada.contracts.alarms import AlarmIdentity, AlarmKind, Criticality
+from ada.contracts.alarms import AlarmKind, Criticality
+
+from .support import NOW, identity, physical, plan
 
 
-def test_resolution_key_requires_both_revisions() -> None:
-    key = AlarmResolutionKey('ALARMS-1', 'TOOLS-1')
-    assert key.alarm_configuration_revision == 'ALARMS-1'
-    assert key.confirmed_tool_catalog_revision == 'TOOLS-1'
+def test_alarm_resolution_key_requires_both_non_empty_revisions() -> None:
+    value = AlarmResolutionKey(
+        alarm_configuration_revision='R42',
+        confirmed_tool_catalog_revision='T18',
+    )
+    assert value.alarm_configuration_revision == 'R42'
+    assert value.confirmed_tool_catalog_revision == 'T18'
+    with pytest.raises(ValueError, match='alarm_configuration_revision'):
+        AlarmResolutionKey(
+            alarm_configuration_revision='',
+            confirmed_tool_catalog_revision='T18',
+        )
+    with pytest.raises(ValueError, match='confirmed_tool_catalog_revision'):
+        AlarmResolutionKey(
+            alarm_configuration_revision='R42',
+            confirmed_tool_catalog_revision='',
+        )
 
-    with pytest.raises(ValueError, match='must not be empty'):
-        AlarmResolutionKey('', 'TOOLS-1')
+
+def test_planned_alarm_keeps_domain_dimensions_separate() -> None:
+    value = plan(kind=AlarmKind.IMPACT, criticality=Criticality.C1, priority_order=1)
+    assert value.kind is AlarmKind.IMPACT
+    assert value.criticality is Criticality.C1
+    assert value.priority_group == 'mill-feed'
+    assert value.priority_order == 1
 
 
-def test_c2_planned_alarm_requires_delayed_destinations() -> None:
-    with pytest.raises(ValueError, match='require delay_seconds'):
+def test_planned_alarm_validates_reappearance_after_seconds() -> None:
+    assert plan().reappearance_after_seconds is None
+    assert plan(reappearance_after_seconds=480).reappearance_after_seconds == 480
+    with pytest.raises(TypeError, match='reappearance_after_seconds'):
+        plan(reappearance_after_seconds=True)
+    with pytest.raises(ValueError, match='reappearance_after_seconds'):
+        plan(reappearance_after_seconds=0)
+    with pytest.raises(ValueError, match='reappearance_after_seconds'):
+        plan(reappearance_after_seconds=-1)
+
+
+def test_planned_alarm_validates_reappearance_special_conditions() -> None:
+    special = identity('special')
+    value = plan(reappearance_special_conditions=(special,))
+    assert value.reappearance_special_conditions == (special,)
+    with pytest.raises(ValueError, match='reappearance_special_conditions'):
+        plan(reappearance_special_conditions=(special, special))
+    with pytest.raises(TypeError, match='reappearance_special_conditions'):
+        plan(reappearance_special_conditions=('special',))
+
+
+def test_planned_alarm_rejects_boolean_priority_order() -> None:
+    with pytest.raises(TypeError, match='priority_order'):
         PlannedAlarm(
-            identity=AlarmIdentity('mill', 'risk'),
+            identity=identity(),
             kind=AlarmKind.RISK,
             criticality=Criticality.C2,
             priority_group='mill-feed',
-            priority_order=1,
+            priority_order=True,
             evaluator_key='threshold',
-            alarm_configuration_revision='ALARMS-1',
-            tool_registry_revision='TOOLS-1',
+            alarm_configuration_revision='R1',
+            tool_registry_revision='T1',
             routing=AlarmRouting(
-                origin_tool_key='process',
-                destinations=(RoutingDestination('io'),),
+                origin_tool_key='tool-a',
+                destinations=(RoutingDestination('tool-b', 900),),
             ),
         )
 
 
-def test_planned_alarm_preserves_execution_contract() -> None:
-    plan = PlannedAlarm(
-        identity=AlarmIdentity('mill', 'risk'),
-        kind=AlarmKind.RISK,
-        criticality=Criticality.C2,
-        priority_group='mill-feed',
-        priority_order=1,
-        evaluator_key='threshold',
-        alarm_configuration_revision='ALARMS-1',
-        tool_registry_revision='TOOLS-1',
-        routing=AlarmRouting(
-            origin_tool_key='process',
-            destinations=(RoutingDestination('io', 600),),
-        ),
-        deactivation_policy=DeactivationPolicy(approval_required=True),
-        reappearance_after_seconds=900,
+def test_evaluation_context_accepts_only_static_parameter_types() -> None:
+    context = EvaluationContext(
+        alarm_identity=identity(),
+        now=NOW,
+        parameters={'mode': 'primary', 'limit': 10.0, 'enabled': True},
+        data={'value': 11.0},
     )
-    assert plan.routing.destinations[0].delay_seconds == 600
-    assert plan.reappearance_after_seconds == 900
+    assert context.parameters['limit'] == 10.0
+    with pytest.raises(TypeError, match='TEXT, FLOAT, or BOOLEAN'):
+        EvaluationContext(
+            alarm_identity=identity(),
+            now=NOW,
+            parameters={'count': 2},
+            data=None,
+        )
+
+
+def test_active_evaluation_requires_evidence_and_forbids_error() -> None:
+    with pytest.raises(ValueError, match='evidence_snapshot'):
+        AlarmEvaluation(
+            alarm_identity=identity(),
+            status=AlarmStatus.ACTIVE,
+            evaluated_at=NOW,
+        )
+
+
+def test_error_evaluation_requires_error_and_forbids_physical_evidence() -> None:
+    with pytest.raises(ValueError, match='requires error'):
+        AlarmEvaluation(
+            alarm_identity=identity(),
+            status=AlarmStatus.ERROR,
+            evaluated_at=NOW,
+        )
+    with pytest.raises(ValueError, match='must not contain physical evidence_snapshot'):
+        AlarmEvaluation(
+            alarm_identity=identity(),
+            status=AlarmStatus.ERROR,
+            evaluated_at=NOW,
+            evidence_snapshot=EvidenceSnapshot('threshold', 'v1', {'value': 1}),
+            error=EvaluationError(
+                origin=EvaluationErrorOrigin.QUALITY,
+                error_key='stale',
+                message='Input is stale',
+            ),
+        )
+
+
+def test_affected_input_issue_allows_unknown_causality() -> None:
+    error = EvaluationError(
+        origin=EvaluationErrorOrigin.EVALUATOR,
+        error_key='calculation_failed',
+        message='Calculation failed',
+        affected_inputs=(),
+    )
+    assert error.affected_inputs == ()
+    issue = AffectedInputIssue(
+        source_key='pi',
+        scope_key='latest',
+        reason_key='insufficient_data',
+        fields=('tag_a',),
+    )
+    assert issue.source_key == 'pi'
+
+
+def test_occurrence_open_and_closed_contracts_are_distinct() -> None:
+    occurrence = AlarmOccurrence(
+        occurrence_id='O1',
+        alarm_identity=identity(),
+        episode_id='E1',
+        started_at=NOW,
+        alarm_configuration_revision='R1',
+        tool_registry_revision='T1',
+    )
+    assert occurrence.is_open
+    closed = occurrence.close(
+        ended_at=NOW + timedelta(minutes=1),
+        reason=OccurrenceClosureReason.CONDITION_NORMALIZED,
+    )
+    assert not closed.is_open
+    assert closed.closure_reason is OccurrenceClosureReason.CONDITION_NORMALIZED
+    with pytest.raises(Exception, match='immutable'):
+        closed.close(
+            ended_at=NOW + timedelta(minutes=2),
+            reason=OccurrenceClosureReason.CONDITION_NORMALIZED,
+        )
+
+
+def test_episode_closed_contract_requires_reason() -> None:
+    with pytest.raises(ValueError, match='requires closure_reason'):
+        AlarmEpisode(
+            episode_id='E1',
+            priority_group='mill-feed',
+            started_at=NOW,
+            ended_at=NOW + timedelta(minutes=1),
+        )
+
+
+def test_runtime_state_requires_error_evaluation_for_technical_hold() -> None:
+    occurrence = AlarmOccurrence(
+        occurrence_id='O1',
+        alarm_identity=identity(),
+        episode_id='E1',
+        started_at=NOW,
+        alarm_configuration_revision='R1',
+        tool_registry_revision='T1',
+    )
+    with pytest.raises(ValueError, match='last_evaluation ERROR'):
+        AlarmRuntimeState(
+            alarm_identity=identity(),
+            occurrence=occurrence,
+            last_evaluation=RuntimeEvaluationState.from_evaluation(
+                physical('risk', AlarmStatus.ACTIVE)
+            ),
+            management_cycle=1,
+            technical_hold=TechnicalHold(
+                started_at=NOW,
+                due_at=NOW + timedelta(minutes=5),
+            ),
+        )
+
+
+def test_group_state_requires_episode_for_open_occurrence() -> None:
+    occurrence = AlarmOccurrence(
+        occurrence_id='O1',
+        alarm_identity=identity(),
+        episode_id='E1',
+        started_at=NOW,
+        alarm_configuration_revision='R1',
+        tool_registry_revision='T1',
+    )
+    with pytest.raises(ValueError, match='open occurrence requires an open episode'):
+        GroupLifecycleState(
+            priority_group='mill-feed',
+            alarms=(
+                AlarmRuntimeState(
+                    alarm_identity=identity(),
+                    occurrence=occurrence,
+                    last_evaluation=RuntimeEvaluationState.from_evaluation(
+                        physical('risk', AlarmStatus.ACTIVE)
+                    ),
+                    management_cycle=1,
+                ),
+            ),
+        )
+
+
+def test_domain_times_must_be_utc() -> None:
+    naive = datetime(2026, 8, 24, 14, 0)
+    with pytest.raises(ValueError, match='UTC'):
+        EvaluationContext(alarm_identity=identity(), now=naive, parameters={}, data=None)
+    assert NOW.tzinfo is UTC
+
+
+def test_closed_episode_reason_values_match_contract() -> None:
+    episode = AlarmEpisode(
+        episode_id='E1',
+        priority_group='mill-feed',
+        started_at=NOW,
+    ).close(
+        ended_at=NOW + timedelta(minutes=1),
+        reason=EpisodeClosureReason.TECHNICAL_UNCERTAINTY,
+    )
+    assert episode.closure_reason.value == 'technical_uncertainty'
+
+
+def test_active_evaluation_requires_evidence_snapshot_contract_type() -> None:
+    with pytest.raises(TypeError, match='evidence_snapshot must be an EvidenceSnapshot'):
+        AlarmEvaluation(
+            alarm_identity=identity(),
+            status=AlarmStatus.ACTIVE,
+            evaluated_at=NOW,
+            evidence_snapshot=object(),
+        )
+
+
+def test_error_evaluation_requires_structured_error_contract_type() -> None:
+    with pytest.raises(TypeError, match='error must be an EvaluationError'):
+        AlarmEvaluation(
+            alarm_identity=identity(),
+            status=AlarmStatus.ERROR,
+            evaluated_at=NOW,
+            error=object(),
+        )
+
+
+def test_runtime_evaluation_state_compacts_physical_evaluation() -> None:
+    evaluation = physical('risk', AlarmStatus.ACTIVE)
+    compact = RuntimeEvaluationState.from_evaluation(evaluation)
+    assert compact.status is AlarmStatus.ACTIVE
+    assert compact.evaluated_at == evaluation.evaluated_at
+    assert compact.error_key is None
+    assert not hasattr(compact, 'alarm_identity')
+    assert not hasattr(compact, 'evidence_snapshot')
+    assert not hasattr(compact, 'error')
+
+
+def test_runtime_evaluation_state_compacts_error_to_error_key() -> None:
+    evaluation = AlarmEvaluation(
+        alarm_identity=identity(),
+        status=AlarmStatus.ERROR,
+        evaluated_at=NOW,
+        error=EvaluationError(
+            origin=EvaluationErrorOrigin.EVALUATOR,
+            error_key='source_unavailable',
+            message='Source unavailable with diagnostic payload',
+            affected_inputs=(AffectedInputIssue(reason_key='missing'),),
+        ),
+    )
+    compact = RuntimeEvaluationState.from_evaluation(evaluation)
+    assert compact.status is AlarmStatus.ERROR
+    assert compact.evaluated_at == NOW
+    assert compact.error_key == 'source_unavailable'
+    assert not hasattr(compact, 'error')
+
+
+def test_runtime_evaluation_state_rejects_error_without_error_key() -> None:
+    with pytest.raises(TypeError, match='error_key'):
+        RuntimeEvaluationState(status=AlarmStatus.ERROR, evaluated_at=NOW)
+
+
+def test_runtime_evaluation_state_rejects_error_key_for_non_error_status() -> None:
+    with pytest.raises(ValueError, match='must not contain error_key'):
+        RuntimeEvaluationState(
+            status=AlarmStatus.ACTIVE,
+            evaluated_at=NOW,
+            error_key='unexpected',
+        )
+
+
+def test_runtime_state_rejects_full_alarm_evaluation() -> None:
+    occurrence = AlarmOccurrence(
+        occurrence_id='O1',
+        alarm_identity=identity(),
+        episode_id='E1',
+        started_at=NOW,
+        alarm_configuration_revision='R1',
+        tool_registry_revision='T1',
+    )
+    with pytest.raises(TypeError, match='RuntimeEvaluationState'):
+        AlarmRuntimeState(
+            alarm_identity=identity(),
+            occurrence=occurrence,
+            last_evaluation=physical('risk', AlarmStatus.ACTIVE),
+            management_cycle=1,
+        )
+
+
+def test_open_runtime_state_requires_non_inactive_last_evaluation() -> None:
+    occurrence = AlarmOccurrence(
+        occurrence_id='O1',
+        alarm_identity=identity(),
+        episode_id='E1',
+        started_at=NOW,
+        alarm_configuration_revision='R1',
+        tool_registry_revision='T1',
+    )
+    with pytest.raises(ValueError, match='requires last_evaluation'):
+        AlarmRuntimeState(alarm_identity=identity(), occurrence=occurrence)
+    with pytest.raises(ValueError, match='must not retain last_evaluation INACTIVE'):
+        AlarmRuntimeState(
+            alarm_identity=identity(),
+            occurrence=occurrence,
+            last_evaluation=RuntimeEvaluationState.from_evaluation(
+                physical('risk', AlarmStatus.INACTIVE)
+            ),
+            management_cycle=1,
+        )
+
+
+def test_last_evaluation_does_not_persist_without_open_occurrence() -> None:
+    with pytest.raises(ValueError, match='last_evaluation requires an open occurrence'):
+        AlarmRuntimeState(
+            alarm_identity=identity(),
+            last_evaluation=RuntimeEvaluationState.from_evaluation(
+                physical('risk', AlarmStatus.ACTIVE)
+            ),
+        )
+
+
+def test_configuration_closure_requires_configuration_reason_enum() -> None:
+    with pytest.raises(TypeError, match='reason must be an OccurrenceClosureReason'):
+        ConfigurationClosure(
+            alarm_identity=identity(),
+            reason='configuration_disabled',
+            effective_at=NOW,
+        )
+
+
+def test_started_technical_hold_change_uses_hold_start_as_effective_time() -> None:
+    hold = TechnicalHold(started_at=NOW, due_at=NOW + timedelta(minutes=5))
+    with pytest.raises(ValueError, match='effective_at must match started_at'):
+        TechnicalHoldChange(
+            kind=TechnicalHoldChangeKind.STARTED,
+            alarm_identity=identity(),
+            occurrence_id='O1',
+            effective_at=NOW + timedelta(seconds=1),
+            technical_hold=hold,
+        )
+
+
+def test_group_lifecycle_decision_validates_all_change_collections() -> None:
+    with pytest.raises(TypeError, match='occurrence_changes must contain OccurrenceChange values'):
+        GroupLifecycleDecision(
+            state=GroupLifecycleState(priority_group='mill-feed'),
+            occurrence_changes=(object(),),
+        )
+    with pytest.raises(
+        TypeError,
+        match='technical_hold_changes must contain TechnicalHoldChange values',
+    ):
+        GroupLifecycleDecision(
+            state=GroupLifecycleState(priority_group='mill-feed'),
+            technical_hold_changes=(object(),),
+        )
+
+
+def test_routing_contract_matches_criticality_semantics() -> None:
+    c1 = plan(
+        'impact',
+        kind=AlarmKind.IMPACT,
+        criticality=Criticality.C1,
+        priority_order=1,
+        destinations=(RoutingDestination('tool-b'),),
+    )
+    assert c1.routing.origin_tool_key == 'tool-a'
+    c2 = plan(destinations=(RoutingDestination('tool-b', 300),))
+    assert c2.routing.destinations[0].delay_seconds == 300
+    c3 = plan(criticality=Criticality.C3)
+    assert c3.routing.destinations == ()
+
+
+def test_routing_contract_rejects_ambiguous_criticality_shapes() -> None:
+    with pytest.raises(ValueError, match='C1 routing destinations must be immediate'):
+        plan(
+            'impact',
+            kind=AlarmKind.IMPACT,
+            criticality=Criticality.C1,
+            priority_order=1,
+            destinations=(RoutingDestination('tool-b', 10),),
+        )
+    with pytest.raises(ValueError, match='C2 routing destinations require delay_seconds'):
+        plan(destinations=(RoutingDestination('tool-b'),))
+    with pytest.raises(ValueError, match='C3 routing must contain only the origin Tool'):
+        plan(
+            criticality=Criticality.C3,
+            destinations=(RoutingDestination('tool-b'),),
+        )
+
+
+def test_routing_rejects_duplicate_tools() -> None:
+    with pytest.raises(ValueError, match='routing tools must not contain duplicates'):
+        AlarmRouting(
+            origin_tool_key='tool-a',
+            destinations=(RoutingDestination('tool-a', 300),),
+        )
+
+
+def test_runtime_assignments_are_decision_complete_and_mutually_exclusive() -> None:
+    occurrence = AlarmOccurrence(
+        occurrence_id='O1',
+        alarm_identity=identity(),
+        episode_id='E1',
+        started_at=NOW,
+        alarm_configuration_revision='R1',
+        tool_registry_revision='T1',
+    )
+    state = AlarmRuntimeState(
+        alarm_identity=identity(),
+        occurrence=occurrence,
+        last_evaluation=RuntimeEvaluationState.from_evaluation(
+            physical('risk', AlarmStatus.ACTIVE)
+        ),
+        management_cycle=1,
+        assignments=(ToolAssignment('tool-a', NOW),),
+        pending_assignments=(PendingToolAssignment('tool-b', NOW + timedelta(minutes=15)),),
+    )
+    assert state.assignments[0].tool_key == 'tool-a'
+    with pytest.raises(ValueError, match='both assigned and pending'):
+        AlarmRuntimeState(
+            alarm_identity=identity(),
+            occurrence=occurrence,
+            last_evaluation=RuntimeEvaluationState.from_evaluation(
+                physical('risk', AlarmStatus.ACTIVE)
+            ),
+            management_cycle=1,
+            assignments=(ToolAssignment('tool-a', NOW),),
+            pending_assignments=(PendingToolAssignment('tool-a', NOW + timedelta(minutes=15)),),
+        )
+
+
+def test_assignments_cannot_survive_without_open_occurrence() -> None:
+    with pytest.raises(ValueError, match='assignments require an open occurrence'):
+        AlarmRuntimeState(
+            alarm_identity=identity(),
+            assignments=(ToolAssignment('tool-a', NOW),),
+        )
