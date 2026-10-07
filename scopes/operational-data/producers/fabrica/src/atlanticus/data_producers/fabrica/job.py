@@ -124,14 +124,13 @@ class FabricaJob:
                 changed += 1
                 context.increment_execution_counter('streams_changed')
                 context.set_execution_fact('new_data', True)
-            if result.unknown_source_values and definition.report_unknown_source_values:
+            if result.unknown_source_values:
                 context.logger.warning(
-                    'Unknown source partition value ignored',
-                    event_name='fabrica.stream.unknown_partition',
+                    'Unknown source value ignored',
+                    event_name='fabrica.stream.unknown_source_value',
                     stream=definition.stream_key,
-                    expected_partitions=','.join(
-                        f'{partition.key.value}:{partition.source_value}'
-                        for partition in definition.partitions
+                    expected_source_values=','.join(
+                        dataset.source_value for dataset in definition.datasets
                     ),
                     unknown_count=len(result.unknown_source_values),
                     unknown_source_values=','.join(result.unknown_source_values),

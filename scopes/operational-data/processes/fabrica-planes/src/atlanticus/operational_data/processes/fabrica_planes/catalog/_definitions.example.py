@@ -74,9 +74,17 @@ PLAN_METRICS = (
 
 EXAMPLE_DATASETS = (
     FabricaDatasetDefinition(
-        name='daily', source_value='DAY', route_segment='daily', metrics=PLAN_METRICS
+        name='daily',
+        source_value='DAY',
+        route_segment='daily',
+        metrics=PLAN_METRICS,
+        partition_dimensions=('year', 'month'),
     ),
     FabricaDatasetDefinition(
-        name='weekly', source_value='7LDB', route_segment='weekly', metrics=PLAN_METRICS
+        name='weekly',
+        source_value='7LDB',
+        route_segment='weekly',
+        metrics=PLAN_METRICS,
+        partition_dimensions=('year', 'month'),
     ),
 )

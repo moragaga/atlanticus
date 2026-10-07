@@ -233,7 +233,7 @@ EXPECTED_SOURCES = {
         'editable': True,
     },
     'atlanticus-operational-data-calendar': {
-        'path': '../operational-data/calendar',
+        'path': '../operational-data/operational-calendar',
         'editable': True,
     },
     'atlanticus-operational-data-core': {
@@ -264,7 +264,7 @@ LOCAL_BASELINES = {
     'atlanticus-key-vault': 'connectivity/key-vault',
     'atlanticus-observability': 'backend/observability',
     'atlanticus-observability-azure': 'backend/observability-azure',
-    'atlanticus-operational-data-calendar': 'scopes/operational-data/calendar',
+    'atlanticus-operational-data-calendar': 'scopes/operational-data/operational-calendar',
     'atlanticus-operational-data-core': 'scopes/operational-data/core',
     'atlanticus-operational-data-planner': 'scopes/operational-data/planner',
     'atlanticus-operational-data-sources': 'scopes/operational-data/sources',

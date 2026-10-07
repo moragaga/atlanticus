@@ -30,7 +30,6 @@ class FabricaStreamDefinition:
     datasets: tuple[FabricaDatasetDefinition, ...]
     source_partition_timezone_name: str = 'America/Santiago'
     source_file_timezone_name: str = 'UTC'
-    report_unknown_source_values: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.stream_key, str) or not self.stream_key.strip():

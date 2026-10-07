@@ -13,7 +13,7 @@ from atlanticus.operational_data.core import (
     TimeWindowUnit,
 )
 
-_DAILY_OPERATIONAL_SCOPES = frozenset(
+_TIME_SERIES_OPERATIONAL_SCOPES = frozenset(
     {
         OperationalScope.CURRENT_TURN_MINE,
         OperationalScope.PREVIOUS_TURN_MINE,
@@ -55,7 +55,7 @@ class PiInterpolated:
             source=DataSource.PI_INTERPOLATED,
             view=DataView.DAILY,
             columns=columns,
-            selection=_daily_selection(period),
+            selection=_time_series_selection(period),
         )
 
     @staticmethod
@@ -87,7 +87,7 @@ class PiRecorded:
             source=DataSource.PI_RECORDED,
             view=DataView.DAILY,
             columns=columns,
-            selection=_daily_selection(period),
+            selection=_time_series_selection(period),
         )
 
     @staticmethod
@@ -106,6 +106,38 @@ class PiRecorded:
         )
 
 
+class FabricaPlanes:
+    @staticmethod
+    def daily(
+        *,
+        input_key: str,
+        columns: tuple[DataColumn, ...],
+        period: TimeWindow | OperationalScope,
+    ) -> DataInputSpec:
+        return _input(
+            input_key=input_key,
+            source=DataSource.FABRICA_PLANES,
+            view=DataView.DAILY,
+            columns=columns,
+            selection=_time_series_selection(period),
+        )
+
+    @staticmethod
+    def weekly(
+        *,
+        input_key: str,
+        columns: tuple[DataColumn, ...],
+        period: TimeWindow | OperationalScope,
+    ) -> DataInputSpec:
+        return _input(
+            input_key=input_key,
+            source=DataSource.FABRICA_PLANES,
+            view=DataView.WEEKLY,
+            columns=columns,
+            selection=_time_series_selection(period),
+        )
+
+
 class FabricaKpis:
     @staticmethod
     def daily(
@@ -119,16 +151,22 @@ class FabricaKpis:
             source=DataSource.FABRICA_KPIS,
             view=DataView.DAILY,
             columns=columns,
-            selection=_daily_selection(period),
+            selection=_time_series_selection(period),
         )
 
     @staticmethod
-    def weekly(*, input_key: str, columns: tuple[DataColumn, ...]) -> DataInputSpec:
+    def weekly(
+        *,
+        input_key: str,
+        columns: tuple[DataColumn, ...],
+        period: TimeWindow | OperationalScope,
+    ) -> DataInputSpec:
         return _input(
             input_key=input_key,
             source=DataSource.FABRICA_KPIS,
             view=DataView.WEEKLY,
             columns=columns,
+            selection=_time_series_selection(period),
         )
 
 
@@ -175,7 +213,7 @@ class MeteodataData:
             source=DataSource.METEODATA_DATA,
             view=DataView.DAILY,
             columns=columns,
-            selection=_daily_selection(period),
+            selection=_time_series_selection(period),
         )
 
 
@@ -196,14 +234,14 @@ def _input(
     )
 
 
-def _daily_selection(value: TimeWindow | OperationalScope):
+def _time_series_selection(value: TimeWindow | OperationalScope):
     if isinstance(value, TimeWindow):
         if value.unit is TimeWindowUnit.MONTHS:
-            raise ValueError('daily inputs do not accept month windows')
+            raise ValueError('time-series inputs do not accept month windows')
         return TimeWindowSelection(value)
     if isinstance(value, OperationalScope):
-        if value not in _DAILY_OPERATIONAL_SCOPES:
-            raise ValueError(f'{value.value}: operational scope does not use the daily view')
+        if value not in _TIME_SERIES_OPERATIONAL_SCOPES:
+            raise ValueError(f'{value.value}: operational scope does not use a time-series view')
         return OperationalScopeSelection(value)
     raise TypeError('period must be TimeWindow or OperationalScope')
 

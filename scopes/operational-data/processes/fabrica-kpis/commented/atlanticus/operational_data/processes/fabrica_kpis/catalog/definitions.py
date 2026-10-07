@@ -12,7 +12,14 @@ DATASETS = (
         # Daily conserva valores históricos por fecha, agrupados físicamente por mes.
         partition_dimensions=('year', 'month'),
     ),
-    FabricaDatasetDefinition(name='weekly', source_value='7LD', route_segment='weekly', metrics=()),
+    FabricaDatasetDefinition(
+        name='weekly',
+        source_value='7LD',
+        route_segment='weekly',
+        metrics=(),
+        # Weekly usa la misma geometría física mensual para evitar un contrato paralelo.
+        partition_dimensions=('year', 'month'),
+    ),
 )
 
 
@@ -26,5 +33,4 @@ def build_catalog() -> FabricaStreamDefinition:
         ),
         output_route_segment='kpis',
         datasets=DATASETS,
-        report_unknown_source_values=False,
     )

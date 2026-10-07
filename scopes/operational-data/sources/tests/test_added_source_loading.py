@@ -15,6 +15,7 @@ from atlanticus.operational_data.planner import DataInputPlanner
 from atlanticus.operational_data.sources import (
     DataInputLoader,
     FabricaKpis,
+    FabricaPlanes,
     MeteodataData,
     PiSourceProvider,
     build_current_source_registry,
@@ -57,15 +58,15 @@ def test_input_loader_consumes_fabrica_and_meteodata_as_distinct_sources() -> No
     registry = build_current_source_registry(pi_source=PiSourceProvider.NOTPII)
     as_of = datetime(2026, 8, 20, 12, tzinfo=UTC)
     inputs = (
-        DataInputSpec(
+        FabricaPlanes.daily(
             input_key='plans',
-            source=DataSource.FABRICA_PLANES,
-            view=DataView.DAILY,
             columns=(_float('toneladas'),),
+            period=TimeWindow(1, TimeWindowUnit.DAYS),
         ),
         FabricaKpis.weekly(
             input_key='kpis',
             columns=(_float('produccion'),),
+            period=TimeWindow(1, TimeWindowUnit.DAYS),
         ),
         MeteodataData.daily(
             input_key='measurements',
@@ -86,7 +87,9 @@ def test_input_loader_consumes_fabrica_and_meteodata_as_distinct_sources() -> No
         binding = registry.get(input_spec.source)
         view_binding = binding.get_view(input_spec.view)
         target_kwargs = {}
-        if input_spec.input_key == 'measurements':
+        if input_spec.input_key in {'plans', 'kpis'}:
+            target_kwargs['partition'] = {'year': '2026', 'month': '08'}
+        elif input_spec.input_key == 'measurements':
             target_kwargs['partition'] = {'year': '2026', 'month': '08', 'day': '20'}
         target = binding.definition.resolve_target(
             materialization=view_binding.materialization,
@@ -94,7 +97,7 @@ def test_input_loader_consumes_fabrica_and_meteodata_as_distinct_sources() -> No
         )
         column = input_spec.column_names[0]
         payload = {column: [values[input_spec.input_key]]}
-        if input_spec.input_key in {'measurements', 'projection'}:
+        if input_spec.input_key in {'plans', 'kpis', 'measurements', 'projection'}:
             payload['timestamp'] = [datetime(2026, 8, 20, 11, tzinfo=UTC)]
         frames[target.identifier] = pd.DataFrame(payload)
 

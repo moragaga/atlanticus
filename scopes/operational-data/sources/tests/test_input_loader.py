@@ -12,6 +12,7 @@ from atlanticus.operational_data.planner import DataInputPlanner
 from atlanticus.operational_data.sources import (
     DataInputLoader,
     FabricaKpis,
+    FabricaPlanes,
     PiInterpolated,
     PiSourceProvider,
     build_current_source_registry,
@@ -138,3 +139,47 @@ def test_fabrica_daily_reads_month_partition_and_returns_logical_input() -> None
     assert len(reader.calls) == 1
     assert reader.calls[0][0] == target.identifier
     assert frame.dataframe['plan_tonelaje'].tolist() == [200.0, 300.0]
+
+
+def test_fabrica_weekly_reads_multiple_month_partitions() -> None:
+    plan_input = FabricaPlanes.weekly(
+        input_key='plan',
+        columns=(_float('plan_tonelaje'),),
+        period=TimeWindow(40, TimeWindowUnit.DAYS),
+    )
+    plan = DataInputPlanner().plan({'kpi': (plan_input,)})
+    registry = build_current_source_registry(pi_source=PiSourceProvider.PI_WEB_API)
+    binding = registry.get(plan_input.source)
+    july = binding.definition.resolve_target(
+        materialization='weekly',
+        partition={'year': '2026', 'month': '07'},
+    )
+    august = binding.definition.resolve_target(
+        materialization='weekly',
+        partition={'year': '2026', 'month': '08'},
+    )
+    reader = FakeReader(
+        {
+            july.identifier: pd.DataFrame(
+                {
+                    'timestamp': [datetime(2026, 7, 20, 12, tzinfo=UTC)],
+                    'plan_tonelaje': [100.0],
+                }
+            ),
+            august.identifier: pd.DataFrame(
+                {
+                    'timestamp': [datetime(2026, 8, 19, 10, tzinfo=UTC)],
+                    'plan_tonelaje': [300.0],
+                }
+            ),
+        }
+    )
+
+    loaded = DataInputLoader(reader=reader, registry=registry).load(
+        plan=plan,
+        as_of=datetime(2026, 8, 19, 12, tzinfo=UTC),
+    )
+    frame = loaded.context_for('kpi').get('plan')
+
+    assert [call[0] for call in reader.calls] == [july.identifier, august.identifier]
+    assert frame.dataframe['plan_tonelaje'].tolist() == [100.0, 300.0]

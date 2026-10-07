@@ -26,8 +26,7 @@ def test_catalog_example_is_valid_and_preserves_dataset_contract() -> None:
         ('daily', 'DAY'),
         ('weekly', '7LD'),
     ]
-    assert datasets[0].partition_dimensions == ('year', 'month')
-    assert datasets[1].partition_dimensions == ()
+    assert all(dataset.partition_dimensions == ('year', 'month') for dataset in datasets)
     assert all(dataset.metrics == metrics for dataset in datasets)
     assert {metric.value_kind for metric in metrics} == {
         FabricaValueKind.FLOAT,

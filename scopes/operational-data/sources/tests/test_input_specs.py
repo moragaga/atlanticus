@@ -16,6 +16,7 @@ from atlanticus.operational_data.core import (
 from atlanticus.operational_data.sources import (
     DispatchShiftLoads,
     FabricaKpis,
+    FabricaPlanes,
     MeteodataData,
     PiInterpolated,
     PiRecorded,
@@ -83,6 +84,40 @@ def test_source_builders_reject_invalid_temporal_combinations() -> None:
             columns=(_float(),),
             period=TimeWindow(24, TimeWindowUnit.HOURS),
         )
+
+
+def test_fabrica_daily_and_weekly_inputs_are_temporal() -> None:
+    period = TimeWindow(14, TimeWindowUnit.DAYS)
+    inputs = (
+        FabricaPlanes.daily(
+            input_key='planes-daily',
+            columns=(_float('planes_daily'),),
+            period=period,
+        ),
+        FabricaPlanes.weekly(
+            input_key='planes-weekly',
+            columns=(_float('planes_weekly'),),
+            period=period,
+        ),
+        FabricaKpis.daily(
+            input_key='kpis-daily',
+            columns=(_float('kpis_daily'),),
+            period=period,
+        ),
+        FabricaKpis.weekly(
+            input_key='kpis-weekly',
+            columns=(_float('kpis_weekly'),),
+            period=period,
+        ),
+    )
+
+    assert [(item.source, item.view) for item in inputs] == [
+        (DataSource.FABRICA_PLANES, DataView.DAILY),
+        (DataSource.FABRICA_PLANES, DataView.WEEKLY),
+        (DataSource.FABRICA_KPIS, DataView.DAILY),
+        (DataSource.FABRICA_KPIS, DataView.WEEKLY),
+    ]
+    assert all(item.selection == TimeWindowSelection(period) for item in inputs)
 
 
 def test_representative_sources_build_only_their_logical_input_shapes() -> None:

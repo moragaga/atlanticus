@@ -38,7 +38,7 @@ atlanticus-kernel = { path = "../../backend/kernel", editable = true }
 atlanticus-key-vault = { path = "../../connectivity/key-vault", editable = true }
 atlanticus-observability = { path = "../../backend/observability", editable = true }
 atlanticus-observability-azure = { path = "../../backend/observability-azure", editable = true }
-atlanticus-operational-data-calendar = { path = "../operational-data/calendar", editable = true }
+atlanticus-operational-data-calendar = { path = "../operational-data/operational-calendar", editable = true }
 atlanticus-operational-data-core = { path = "../operational-data/core", editable = true }
 atlanticus-operational-data-planner = { path = "../operational-data/planner", editable = true }
 atlanticus-operational-data-sources = { path = "../operational-data/sources", editable = true }

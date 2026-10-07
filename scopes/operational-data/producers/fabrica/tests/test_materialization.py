@@ -42,7 +42,7 @@ class _Source(FabricaStorageSource):
         return self.table
 
 
-def test_materializer_publishes_monthly_daily_and_unpartitioned_weekly(tmp_path) -> None:
+def test_materializer_publishes_monthly_daily_and_weekly(tmp_path) -> None:
     metric = FabricaMetricDefinition(id_kpi='A', metric_key='a', value_kind=FabricaValueKind.FLOAT)
     definition = FabricaStreamDefinition(
         stream_key='kpis',
@@ -58,7 +58,11 @@ def test_materializer_publishes_monthly_daily_and_unpartitioned_weekly(tmp_path)
                 partition_dimensions=('year', 'month'),
             ),
             FabricaDatasetDefinition(
-                name='weekly', source_value='7LD', route_segment='weekly', metrics=(metric,)
+                name='weekly',
+                source_value='7LD',
+                route_segment='weekly',
+                metrics=(metric,),
+                partition_dimensions=('year', 'month'),
             ),
         ),
     )
@@ -76,15 +80,14 @@ def test_materializer_publishes_monthly_daily_and_unpartitioned_weekly(tmp_path)
     assert result.source_row_count == 2
     assert tuple(item.partition_key for item in result.publications) == (
         'daily/year=2026/month=08',
-        'weekly',
+        'weekly/year=2026/month=08',
     )
     assert pq.read_table(
         tmp_path / 'datasets/fabrica/kpis/daily/year=2026/month=08/data.parquet'
     ).column_names == ['timestamp', 'a']
-    assert pq.read_table(tmp_path / 'datasets/fabrica/kpis/weekly/data.parquet').column_names == [
-        'timestamp',
-        'a',
-    ]
+    assert pq.read_table(
+        tmp_path / 'datasets/fabrica/kpis/weekly/year=2026/month=08/data.parquet'
+    ).column_names == ['timestamp', 'a']
 
 
 def test_monthly_daily_snapshot_is_partial_upsert(tmp_path) -> None:

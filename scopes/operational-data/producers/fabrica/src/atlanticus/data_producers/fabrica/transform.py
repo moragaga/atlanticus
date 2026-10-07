@@ -50,10 +50,8 @@ def build_partition_frames(
     outputs = definition.datasets
     ids = {metric.id_kpi for dataset in outputs for metric in dataset.metrics}
     dataframe = dataframe[dataframe[_SOURCE_ID].isin(ids)].copy()
-    unknown = ()
-    if definition.report_unknown_source_values:
-        known = {dataset.source_value for dataset in outputs}
-        unknown = tuple(sorted(set(dataframe[_SOURCE_LEVEL].dropna()) - known))
+    known = {dataset.source_value for dataset in outputs}
+    unknown = tuple(sorted(set(dataframe[_SOURCE_LEVEL].dropna()) - known))
     allowed_pairs = {
         (metric.id_kpi, dataset.source_value) for dataset in outputs for metric in dataset.metrics
     }

@@ -49,9 +49,9 @@ CAPABILITIES: dict[str, OperationalDataCapability] = {
         'calendar',
         'atlanticus-operational-data-calendar',
         'atlanticus.operational_data.calendar',
-        'calendar',
-        'calendar/src',
-        'calendar/commented',
+        'operational-calendar',
+        'operational-calendar/src',
+        'operational-calendar/commented',
     ),
     'sources': OperationalDataCapability(
         'sources',
@@ -186,7 +186,7 @@ CAPABILITIES: dict[str, OperationalDataCapability] = {
 EXPECTED_WORKSPACE_MEMBERS = [
     'core',
     'planner',
-    'calendar',
+    'operational-calendar',
     'sources',
     'producers/core',
     'producers/sql',

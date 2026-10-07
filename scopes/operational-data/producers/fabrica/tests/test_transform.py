@@ -47,7 +47,7 @@ def test_output_filters_exact_dataset_metric_pairs_and_pivots() -> None:
     assert result.frames['daily'].loc[0, 'a'] == 91.0
     assert result.frames['weekly'].loc[0, 'a'] == 90.0
     assert str(result.frames['daily']['a'].dtype) == 'Float64'
-    assert result.unknown_source_values == ()
+    assert result.unknown_source_values == ('HOUR',)
 
 
 def test_merge_does_not_replace_previous_value_with_null() -> None:
@@ -66,3 +66,53 @@ def test_merge_does_not_replace_previous_value_with_null() -> None:
     )
     merged = merge_partition_frame(current=current, incoming=incoming, metrics=(metric,))
     assert merged.loc[0, 'a'] == 91.0
+
+
+def test_daily_and_weekly_share_deduplication_ordering() -> None:
+    metric = FabricaMetricDefinition(
+        id_kpi='A',
+        metric_key='a',
+        value_kind=FabricaValueKind.FLOAT,
+    )
+    definition = FabricaStreamDefinition(
+        stream_key='planes',
+        source_prefix='planes',
+        source_filename_pattern=re.compile(r'planes_(?P<file_timestamp>\d{14})\.parquet$'),
+        output_route_segment='planes',
+        datasets=(
+            FabricaDatasetDefinition(
+                name='daily',
+                source_value='DAY',
+                route_segment='daily',
+                metrics=(metric,),
+                partition_dimensions=('year', 'month'),
+            ),
+            FabricaDatasetDefinition(
+                name='weekly',
+                source_value='7LDB',
+                route_segment='weekly',
+                metrics=(metric,),
+                partition_dimensions=('year', 'month'),
+            ),
+        ),
+    )
+    table = pa.Table.from_pydict(
+        {
+            'timestamp': ['2026-08-10T10:00:00Z'] * 4,
+            'id_kpi': ['A'] * 4,
+            'valor': ['10', '11', '20', '21'],
+            'nivel': ['DAY', 'DAY', '7LDB', '7LDB'],
+            'timestamp_ejecucion': [
+                '2026-08-10T10:01:00Z',
+                '2026-08-10T10:02:00Z',
+                '2026-08-10T10:01:00Z',
+                '2026-08-10T10:02:00Z',
+            ],
+            'particion': ['1', '2', '1', '2'],
+        }
+    )
+
+    result = build_partition_frames(table=table, definition=definition)
+
+    assert result.frames['daily']['a'].tolist() == [11.0]
+    assert result.frames['weekly']['a'].tolist() == [21.0]

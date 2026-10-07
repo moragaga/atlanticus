@@ -51,10 +51,16 @@ def test_fabrica_and_meteodata_bindings_follow_producer_layouts() -> None:
         assert binding.definition.key.name == name
         assert binding.definition.route_segments == ('fabrica', name)
         assert set(binding.views) == {DataView.DAILY, DataView.WEEKLY}
-        assert binding.definition.get_materialization('daily').resolved_route_segments == ('daily',)
-        assert binding.definition.get_materialization('weekly').resolved_route_segments == (
-            'weekly',
-        )
+        for view, materialization_name in (
+            (DataView.DAILY, 'daily'),
+            (DataView.WEEKLY, 'weekly'),
+        ):
+            view_binding = binding.get_view(view)
+            materialization = binding.definition.get_materialization(materialization_name)
+            assert materialization.resolved_route_segments == (materialization_name,)
+            assert materialization.partition_dimensions == ('year', 'month')
+            assert view_binding.time_partition_granularity is TimePartitionGranularity.MONTH
+            assert view_binding.timestamp_column == 'timestamp'
 
     data = registry.get(DataSource.METEODATA_DATA)
     assert data.definition.key.namespace == ('meteodata',)
@@ -85,6 +91,7 @@ def test_planner_keeps_logical_views_independent_across_sources() -> None:
         FabricaKpis.weekly(
             input_key='fabrica-week',
             columns=(_float('plan'),),
+            period=OperationalScope.CURRENT_OPERATIONAL_WEEK_PLANT,
         ),
         MeteodataData.daily(
             input_key='weather',

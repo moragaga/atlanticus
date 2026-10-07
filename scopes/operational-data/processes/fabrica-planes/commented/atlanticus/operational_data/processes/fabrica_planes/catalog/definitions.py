@@ -4,9 +4,19 @@ import re
 from atlanticus.data_producers.fabrica import FabricaDatasetDefinition, FabricaStreamDefinition
 
 DATASETS = (
-    FabricaDatasetDefinition(name='daily', source_value='DAY', route_segment='daily', metrics=()),
     FabricaDatasetDefinition(
-        name='weekly', source_value='7LDB', route_segment='weekly', metrics=()
+        name='daily',
+        source_value='DAY',
+        route_segment='daily',
+        metrics=(),
+        partition_dimensions=('year', 'month'),
+    ),
+    FabricaDatasetDefinition(
+        name='weekly',
+        source_value='7LDB',
+        route_segment='weekly',
+        metrics=(),
+        partition_dimensions=('year', 'month'),
     ),
 )
 
@@ -21,5 +31,4 @@ def build_catalog() -> FabricaStreamDefinition:
         ),
         output_route_segment='planes',
         datasets=DATASETS,
-        report_unknown_source_values=True,
     )

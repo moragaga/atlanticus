@@ -37,5 +37,6 @@ EXAMPLE_DATASETS = (
         source_value='7LD',
         route_segment='weekly',
         metrics=EXAMPLE_KPI_METRICS,
+        partition_dimensions=('year', 'month'),
     ),
 )

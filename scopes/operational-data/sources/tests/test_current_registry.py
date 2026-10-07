@@ -48,16 +48,27 @@ def test_non_pi_sources_and_providers_are_stable() -> None:
     )
 
 
-def test_fabrica_plans_materialization_is_aligned_with_new_producer_contract() -> None:
+def test_fabrica_materializations_share_month_partition_contract() -> None:
     registry = build_current_source_registry(pi_source=PiSourceProvider.PI_WEB_API)
-    plans = registry.get(DataSource.FABRICA_PLANES)
-    assert plans.definition.key.namespace == ('fabrica',)
-    assert plans.definition.key.name == 'planes'
-    assert plans.definition.route_segments == ('fabrica', 'planes')
-    assert plans.get_view(DataView.DAILY).materialization == 'daily'
-    assert plans.get_view(DataView.WEEKLY).materialization == 'weekly'
-    assert plans.definition.get_materialization('daily').resolved_route_segments == ('daily',)
-    assert plans.definition.get_materialization('weekly').resolved_route_segments == ('weekly',)
+    for source, name in (
+        (DataSource.FABRICA_PLANES, 'planes'),
+        (DataSource.FABRICA_KPIS, 'kpis'),
+    ):
+        binding = registry.get(source)
+        assert binding.definition.key.namespace == ('fabrica',)
+        assert binding.definition.key.name == name
+        assert binding.definition.route_segments == ('fabrica', name)
+        for view, materialization in (
+            (DataView.DAILY, 'daily'),
+            (DataView.WEEKLY, 'weekly'),
+        ):
+            view_binding = binding.get_view(view)
+            definition = binding.definition.get_materialization(materialization)
+            assert view_binding.materialization == materialization
+            assert view_binding.time_partition_granularity is TimePartitionGranularity.MONTH
+            assert view_binding.timestamp_column == 'timestamp'
+            assert definition.partition_dimensions == ('year', 'month')
+            assert definition.resolved_route_segments == (materialization,)
 
 
 def test_invalid_pi_provider_is_rejected() -> None:

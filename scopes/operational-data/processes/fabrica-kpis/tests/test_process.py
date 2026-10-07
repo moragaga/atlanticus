@@ -16,8 +16,7 @@ def test_empty_catalog_is_independent_and_declarative() -> None:
         ('daily', 'DAY'),
         ('weekly', '7LD'),
     ]
-    assert DATASETS[0].partition_dimensions == ('year', 'month')
-    assert DATASETS[1].partition_dimensions == ()
+    assert all(dataset.partition_dimensions == ('year', 'month') for dataset in DATASETS)
     assert all(dataset.metrics == () for dataset in DATASETS)
     assert FabricaValueKind.FLOAT.value == 'float'
     assert JOB_DEFINITION.service_name == 'fabrica-kpis'

@@ -24,6 +24,7 @@ from atlanticus.operational_data.sources.input_loader import DataInputLoader
 from atlanticus.operational_data.sources.input_specs import (
     DispatchShiftLoads,
     FabricaKpis,
+    FabricaPlanes,
     MeteodataData,
     PiInterpolated,
     PiRecorded,
@@ -55,6 +56,7 @@ __all__ = [
     'DataViewBinding',
     'DispatchShiftLoads',
     'FabricaKpis',
+    'FabricaPlanes',
     'LoadedDataInputView',
     'LoadedDataInputs',
     'MeteodataData',

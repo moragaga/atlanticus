@@ -10,7 +10,13 @@ DATASETS = (
         metrics=(),
         partition_dimensions=('year', 'month'),
     ),
-    FabricaDatasetDefinition(name='weekly', source_value='7LD', route_segment='weekly', metrics=()),
+    FabricaDatasetDefinition(
+        name='weekly',
+        source_value='7LD',
+        route_segment='weekly',
+        metrics=(),
+        partition_dimensions=('year', 'month'),
+    ),
 )
 
 
@@ -23,5 +29,4 @@ def build_catalog() -> FabricaStreamDefinition:
         ),
         output_route_segment='kpis',
         datasets=DATASETS,
-        report_unknown_source_values=False,
     )
