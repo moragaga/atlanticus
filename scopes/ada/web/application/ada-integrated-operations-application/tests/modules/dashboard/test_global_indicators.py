@@ -12,7 +12,9 @@ from ada.web.application.integrated_operations.modules.dashboard.global_indicato
     build_dashboard_global_indicators_runtime_component,
     create_dashboard_global_indicators_module,
     resolve_dashboard_global_indicators,
+    resolve_dashboard_global_indicators_runtime_state,
 )
+from ada.web.content_state import ContentState
 from ada.web.kpis.collector import system_kpi_store_id
 from ada.web.operational_render_binding import bind_operational_render
 from ada.web.shell.header import GLOBAL_INDICATORS_SLOT_ID
@@ -65,7 +67,10 @@ def _definition(key: str) -> GlobalIndicatorDefinition:
     )
 
 
-def _binding() -> DashboardGlobalIndicatorsRuntimeBinding:
+def _binding(
+    *,
+    content_state: ContentState = ContentState.READY,
+) -> DashboardGlobalIndicatorsRuntimeBinding:
     return DashboardGlobalIndicatorsRuntimeBinding(
         tool_key='integrated_operations',
         indicators=(
@@ -76,6 +81,7 @@ def _binding() -> DashboardGlobalIndicatorsRuntimeBinding:
             ),
             DashboardGlobalIndicatorBinding(_definition('plant_only'), (ToolScope.PLANT,)),
         ),
+        content_state=content_state,
     )
 
 
@@ -119,9 +125,10 @@ def _walk(component):
                 yield from _walk(child)
 
 
-def test_binding_supports_shared_indicator_without_duplicate_identity() -> None:
+def test_binding_supports_shared_indicator_and_collection_level_content_state() -> None:
     binding = _binding()
 
+    assert binding.content_state is ContentState.READY
     assert binding.indicators[1].appears_in(ToolScope.MINE)
     assert binding.indicators[1].appears_in(ToolScope.PLANT)
     assert tuple(item.definition.key for item in binding.indicators) == (
@@ -131,7 +138,7 @@ def test_binding_supports_shared_indicator_without_duplicate_identity() -> None:
     )
 
 
-def test_binding_rejects_duplicate_indicator_identity_and_scopes() -> None:
+def test_binding_rejects_duplicate_indicator_identity_scopes_and_invalid_content_state() -> None:
     definition = _definition('shared')
     with pytest.raises(ValueError, match='presentation scopes must be unique'):
         DashboardGlobalIndicatorBinding(definition, (ToolScope.MINE, ToolScope.MINE))
@@ -139,6 +146,12 @@ def test_binding_rejects_duplicate_indicator_identity_and_scopes() -> None:
     shared = DashboardGlobalIndicatorBinding(definition, (ToolScope.MINE, ToolScope.PLANT))
     with pytest.raises(ValueError, match='unique indicator keys'):
         DashboardGlobalIndicatorsRuntimeBinding('integrated_operations', (shared, shared))
+    with pytest.raises(TypeError, match='content_state'):
+        DashboardGlobalIndicatorsRuntimeBinding(
+            'integrated_operations',
+            (shared,),
+            content_state='construction',
+        )
 
 
 def test_resolver_maps_canonical_latest_envelopes_and_preserves_kpi_inspection_keys() -> None:
@@ -154,28 +167,41 @@ def test_resolver_maps_canonical_latest_envelopes_and_preserves_kpi_inspection_k
     assert shared.last_measurement.actual_kpi_key == 'shared.latest'
 
 
-def test_missing_store_degrades_values_to_not_mapped_without_raising() -> None:
-    resolved = resolve_dashboard_global_indicators(None, binding=_binding())
+def test_runtime_state_requires_every_kpi_declared_by_the_collection() -> None:
+    binding = _binding()
+    store = _store()
 
-    assert all(
-        measurement.actual_value.status is DisplayStatus.NOT_MAPPED
-        for item in resolved
-        for measurement in item.state.measurements
+    assert (
+        resolve_dashboard_global_indicators_runtime_state(store, binding=binding)
+        is ContentState.READY
+    )
+
+    del store['latest']['values']['shared.dia.plan']
+
+    assert (
+        resolve_dashboard_global_indicators_runtime_state(store, binding=binding)
+        is ContentState.SOURCE_ERROR
     )
 
 
-def test_invalid_or_json_latest_value_maps_to_invalid_display_status() -> None:
+def test_runtime_state_rejects_missing_or_invalid_latest_payload() -> None:
+    binding = _binding()
+    assert (
+        resolve_dashboard_global_indicators_runtime_state(None, binding=binding)
+        is ContentState.SOURCE_ERROR
+    )
+
     store = _store()
-    values = store['latest']['values']
-    values['shared.turno.actual'] = {
+    store['latest']['values']['shared.turno.actual'] = {
         'status': 'ok',
         'value_kind': 'json',
         'value': {'value': 10},
     }
 
-    resolved = resolve_dashboard_global_indicators(store, binding=_binding())
-
-    assert resolved[1].state.measurements[0].actual_value.status is DisplayStatus.INVALID
+    assert (
+        resolve_dashboard_global_indicators_runtime_state(store, binding=binding)
+        is ContentState.SOURCE_ERROR
+    )
 
 
 def test_runtime_renders_each_indicator_once_and_shared_scope_metadata_once() -> None:
@@ -200,11 +226,18 @@ def test_runtime_callback_bridges_exact_system_store_to_header_slot() -> None:
     module.register_callbacks(dash_app, object())
 
     component, empty = dash_app.callback_function(_store())
+    grids = [
+        node
+        for node in _walk(component)
+        if _props(node).get('data-ada-io-global-indicators-runtime') == 'true'
+    ]
 
     assert module.name == 'ada-integrated-operations-global-indicators'
     assert module.asset_layers == ()
     assert empty == 'false'
-    assert _props(component)['data-ada-io-global-indicators-runtime'] == 'true'
+    assert len(grids) == 1
+    assert _props(component)['data-ada-content-state'] == 'ready'
+    assert _props(component)['data-ada-content-state-operational'] == 'true'
     assert system_kpi_store_id('integrated_operations', GLOBAL_INDICATORS_DESTINATION_KEY) == {
         'type': 'ada-kpi-system-store',
         'tool': 'integrated_operations',
@@ -214,7 +247,7 @@ def test_runtime_callback_bridges_exact_system_store_to_header_slot() -> None:
     assert all(output.component_id == GLOBAL_INDICATORS_SLOT_ID for output in outputs)
 
 
-def test_runtime_callback_materializes_not_mapped_ui_from_empty_system_store() -> None:
+def test_runtime_callback_degrades_complete_collection_from_empty_system_store() -> None:
     binding = _binding()
     module = create_dashboard_global_indicators_module(binding)
     dash_app = DashStub()
@@ -231,13 +264,27 @@ def test_runtime_callback_materializes_not_mapped_ui_from_empty_system_store() -
     placements = [
         node for node in _walk(component) if _props(node).get('data-ada-io-global-indicator-key')
     ]
-    not_mapped_icons = [
-        node for node in _walk(component) if _props(node).get('alt') == 'Dato no mapeado'
-    ]
 
     assert empty == 'false'
     assert len(placements) == 3
-    assert len(not_mapped_icons) == 15
+    assert _props(component)['data-ada-content-state'] == 'source_error'
+    assert _props(component)['data-ada-content-state-declared'] == 'ready'
+    assert _props(component)['data-ada-content-state-operational'] == 'true'
+
+
+def test_declared_construction_wraps_the_complete_collection() -> None:
+    component = build_dashboard_global_indicators_runtime_component(
+        _store(),
+        binding=_binding(content_state=ContentState.CONSTRUCTION),
+    )
+
+    assert _props(component)['data-ada-content-state'] == 'construction'
+    assert _props(component)['data-ada-content-state-declared'] == 'construction'
+    assert _props(component)['data-ada-content-state-operational'] == 'true'
+    placements = [
+        node for node in _walk(component) if _props(node).get('data-ada-io-global-indicator-key')
+    ]
+    assert len(placements) == 3
 
 
 def test_integrated_operations_extension_owns_global_indicator_runtime_module() -> None:

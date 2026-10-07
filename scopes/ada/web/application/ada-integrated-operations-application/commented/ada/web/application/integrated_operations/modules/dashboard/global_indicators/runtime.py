@@ -1,4 +1,5 @@
-# Espejo comentado: el callback cruza Store browser -> Header sin leer Cosmos ni crear polling propio.
+# Espejo comentado: la colección completa se envuelve una sola vez con Content State. El wrapper
+# operacional hereda el modo NORMAL/AUTHORING publicado por el layout raíz de ADA Generic.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -8,11 +9,16 @@ from dash.development.base_component import Component
 
 from ada.web.kpis.collector import system_kpi_store_id
 from ada.web.shell.header import GLOBAL_INDICATORS_SLOT_ID
+from ada.web.ui.content_state import build_content_state_wrapper
 from ada.web.ui.global_indicator import build_global_indicator
 from atlanticus.web.modules import WebModule
 
 from .bindings import DashboardGlobalIndicatorsRuntimeBinding
-from .resolver import ResolvedDashboardGlobalIndicator, resolve_dashboard_global_indicators
+from .resolver import (
+    ResolvedDashboardGlobalIndicator,
+    resolve_dashboard_global_indicators,
+    resolve_dashboard_global_indicators_runtime_state,
+)
 
 if TYPE_CHECKING:
     from dash import Dash
@@ -27,11 +33,23 @@ def build_dashboard_global_indicators_runtime_component(
 ) -> Component:
     _require_binding(binding)
     resolved = resolve_dashboard_global_indicators(store_data, binding=binding)
-    # Cada indicador se materializa una sola vez; los scopes sólo controlan su visibilidad.
-    return html.Div(
+    # El grid mantiene todos los indicadores configurados y su metadata de scope.
+    grid = html.Div(
         className='ada-global-indicator-grid ada-io-global-indicators',
         **{'data-ada-io-global-indicators-runtime': 'true'},
         children=[_build_placement(item) for item in resolved],
+    )
+    # El estado declarado y el estado runtime se resuelven para la colección completa.
+    return build_content_state_wrapper(
+        component_key=None,
+        children=grid,
+        state=binding.content_state,
+        runtime_state=resolve_dashboard_global_indicators_runtime_state(
+            store_data,
+            binding=binding,
+        ),
+        operational_runtime=True,
+        class_name='ada-io-global-indicators-state',
     )
 
 

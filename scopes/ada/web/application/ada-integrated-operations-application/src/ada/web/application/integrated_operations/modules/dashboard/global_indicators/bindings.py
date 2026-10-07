@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from ada.contracts.tools.enums import ToolScope
 from ada.contracts.tools.validation import require_key
+from ada.web.content_state import ContentState
 from ada.web.ui.global_indicator import GlobalIndicatorDefinition
 
 
@@ -34,6 +35,7 @@ class DashboardGlobalIndicatorBinding:
 class DashboardGlobalIndicatorsRuntimeBinding:
     tool_key: str
     indicators: tuple[DashboardGlobalIndicatorBinding, ...]
+    content_state: ContentState = ContentState.READY
 
     def __post_init__(self) -> None:
         object.__setattr__(self, 'tool_key', require_key(self.tool_key, label='Tool key'))
@@ -45,6 +47,8 @@ class DashboardGlobalIndicatorsRuntimeBinding:
             raise TypeError(
                 'Global Indicator bindings must contain DashboardGlobalIndicatorBinding values'
             )
+        if not isinstance(self.content_state, ContentState):
+            raise TypeError('Global Indicators runtime content_state must be ContentState')
         keys = tuple(item.definition.key for item in self.indicators)
         if len(keys) != len(set(keys)):
             raise ValueError('Global Indicator bindings must have unique indicator keys')

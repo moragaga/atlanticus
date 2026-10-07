@@ -7,11 +7,16 @@ from dash.development.base_component import Component
 
 from ada.web.kpis.collector import system_kpi_store_id
 from ada.web.shell.header import GLOBAL_INDICATORS_SLOT_ID
+from ada.web.ui.content_state import build_content_state_wrapper
 from ada.web.ui.global_indicator import build_global_indicator
 from atlanticus.web.modules import WebModule
 
 from .bindings import DashboardGlobalIndicatorsRuntimeBinding
-from .resolver import ResolvedDashboardGlobalIndicator, resolve_dashboard_global_indicators
+from .resolver import (
+    ResolvedDashboardGlobalIndicator,
+    resolve_dashboard_global_indicators,
+    resolve_dashboard_global_indicators_runtime_state,
+)
 
 if TYPE_CHECKING:
     from dash import Dash
@@ -26,10 +31,21 @@ def build_dashboard_global_indicators_runtime_component(
 ) -> Component:
     _require_binding(binding)
     resolved = resolve_dashboard_global_indicators(store_data, binding=binding)
-    return html.Div(
+    grid = html.Div(
         className='ada-global-indicator-grid ada-io-global-indicators',
         **{'data-ada-io-global-indicators-runtime': 'true'},
         children=[_build_placement(item) for item in resolved],
+    )
+    return build_content_state_wrapper(
+        component_key=None,
+        children=grid,
+        state=binding.content_state,
+        runtime_state=resolve_dashboard_global_indicators_runtime_state(
+            store_data,
+            binding=binding,
+        ),
+        operational_runtime=True,
+        class_name='ada-io-global-indicators-state',
     )
 
 

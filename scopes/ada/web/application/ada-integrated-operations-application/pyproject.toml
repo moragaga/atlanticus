@@ -14,6 +14,7 @@ dependencies = [
     "ada-generic-application==0.2.28",
     "ada-contracts-tools==1.0.0",
     "ada-web-operational-render-binding==0.1.0",
+    "ada-web-content-state==0.1.0",
     "ada-web-ui-card-display==0.1.0",
     "ada-web-ui-content-state==0.1.6",
     "atlanticus-web==0.1.0",

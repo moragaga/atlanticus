@@ -1,10 +1,12 @@
-# Espejo comentado: agrega pertenencia de presentación sin contaminar GlobalIndicatorDefinition con ToolScope.
+# Espejo comentado: cada binding individual conserva sólo definición y scopes; el estado pertenece
+# a la colección completa que se monta como un único runtime.
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from ada.contracts.tools.enums import ToolScope
 from ada.contracts.tools.validation import require_key
+from ada.web.content_state import ContentState
 from ada.web.ui.global_indicator import GlobalIndicatorDefinition
 
 
@@ -25,7 +27,6 @@ class DashboardGlobalIndicatorBinding:
         if len(self.scopes) != len(set(self.scopes)):
             raise ValueError('Global Indicator presentation scopes must be unique')
 
-    # Un mismo indicador puede pertenecer simultáneamente a Mina y Planta.
     def appears_in(self, scope: ToolScope) -> bool:
         if not isinstance(scope, ToolScope):
             raise TypeError('scope must be ToolScope')
@@ -36,6 +37,7 @@ class DashboardGlobalIndicatorBinding:
 class DashboardGlobalIndicatorsRuntimeBinding:
     tool_key: str
     indicators: tuple[DashboardGlobalIndicatorBinding, ...]
+    content_state: ContentState = ContentState.READY
 
     def __post_init__(self) -> None:
         object.__setattr__(self, 'tool_key', require_key(self.tool_key, label='Tool key'))
@@ -47,7 +49,9 @@ class DashboardGlobalIndicatorsRuntimeBinding:
             raise TypeError(
                 'Global Indicator bindings must contain DashboardGlobalIndicatorBinding values'
             )
-        # La identidad del indicador sigue siendo única aunque tenga más de un scope.
+        if not isinstance(self.content_state, ContentState):
+            raise TypeError('Global Indicators runtime content_state must be ContentState')
+        # La colección completa comparte un único estado declarado.
         keys = tuple(item.definition.key for item in self.indicators)
         if len(keys) != len(set(keys)):
             raise ValueError('Global Indicator bindings must have unique indicator keys')

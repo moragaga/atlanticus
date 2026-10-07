@@ -8,6 +8,7 @@ from ada.web.application.integrated_operations.modules.dashboard.global_indicato
 )
 from ada.web.application.integrated_operations.modules.dashboard.global_indicators.catalog import (
     INTEGRATED_OPERATIONS_GLOBAL_INDICATOR_BINDINGS,
+    INTEGRATED_OPERATIONS_GLOBAL_INDICATORS_CONTENT_STATE,
 )
 from ada.web.operational_render_binding import OperationalRenderBinding
 
@@ -36,6 +37,7 @@ def create_integrated_operations_extension(
                 DashboardGlobalIndicatorsRuntimeBinding(
                     tool_key=binding.structure.tool_key,
                     indicators=resolved_global_indicator_bindings,
+                    content_state=INTEGRATED_OPERATIONS_GLOBAL_INDICATORS_CONTENT_STATE,
                 )
             )
         )
