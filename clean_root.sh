@@ -100,4 +100,4 @@ find "$ROOT" \
         -o -name '.local-volume' \
     \) -prune -exec bash -c 'remove_directory "$1"' _ {} \;
 
-echo "Atlanticus clean completed successfully.!"
+echo "Atlanticus clean completed successfully.!!"
