@@ -9,6 +9,8 @@ from ada.web.application.generic.settings import AdaGenericSettings
 from ada.web.kpis.collector import (
     ADA_KPI_COLLECTOR_RUNTIME_SERVICE_KEY,
     ADA_KPI_COLLECTOR_SERVICE_KEY,
+    KPI_COMPONENT_STORE_TYPE,
+    KPI_SYSTEM_STORE_TYPE,
     AdaKpiCollector,
     AdaKpiCollectorPollingRuntime,
 )
@@ -126,7 +128,7 @@ def test_active_projection_without_kpi_connection_keeps_web_available(
 
     assert isinstance(runtime, WebApplicationRuntime)
     assert not runtime.services.contains(ADA_KPI_COLLECTOR_SERVICE_KEY)
-    assert 'KPI Collector is not configured' in caplog.text
+    assert 'KPI Delivery is not configured; using empty KPI presentation stores' in caplog.text
     response = runtime.server.test_client().get('/_dash-layout')
     payload = json.dumps(response.get_json(), ensure_ascii=False)
     assert response.status_code == 200
@@ -134,6 +136,10 @@ def test_active_projection_without_kpi_connection_keeps_web_available(
     assert 'data-ada-alarm-baseline-tool-key' in payload
     assert 'integrated_operations' in payload
     assert 'data-ada-component-key' in payload
+    assert f'"type": "{KPI_COMPONENT_STORE_TYPE}"' in payload
+    assert f'"type": "{KPI_SYSTEM_STORE_TYPE}"' in payload
+    assert '"destination": "global_indicators"' in payload
+    assert '"latest": null' in payload
 
 
 def test_ready_projection_with_kpi_connection_attaches_lazy_collector(tmp_path: Path) -> None:

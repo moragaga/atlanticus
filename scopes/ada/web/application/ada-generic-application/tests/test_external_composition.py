@@ -88,6 +88,11 @@ def test_external_extension_is_resolved_after_tool_projection(
         'create_definition_from_tool_resolution',
         lambda _resolution, **_kwargs: base_definition,
     )
+    monkeypatch.setattr(
+        bootstrap,
+        'attach_operational_kpi_presentation_stores',
+        lambda definition, **_kwargs: definition,
+    )
 
     def create_web_application(definition):
         seen['definition'] = definition

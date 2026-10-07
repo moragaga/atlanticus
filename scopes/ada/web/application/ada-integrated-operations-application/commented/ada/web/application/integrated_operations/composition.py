@@ -32,9 +32,9 @@ def create_integrated_operations_extension(
     if not isinstance(resolved_global_indicator_bindings, tuple):
         raise TypeError('global_indicator_bindings must be a tuple')
     modules = [create_dashboard_module(binding)]
-    if resolved_global_indicator_bindings:
-        if binding is None:
-            raise ValueError('Global Indicators require an Operational Render Binding')
+    # Sin Tool configurada no existe identidad operacional para los stores, por lo que no se monta
+    # el runtime. La presencia del catálogo no convierte UNCONFIGURED en un error de aplicación.
+    if resolved_global_indicator_bindings and binding is not None:
         # El Dashboard aporta sólo scopes de presentación; valores y envelopes vienen del Collector.
         modules.append(
             create_dashboard_global_indicators_module(

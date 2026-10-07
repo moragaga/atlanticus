@@ -13,6 +13,7 @@ from ada.web.kpis.collector.integration import (
     ADA_KPI_COLLECTOR_SERVICE_KEY,
     AdaKpiCollectorWebIntegration,
     attach_ada_kpi_collector,
+    attach_ada_kpi_presentation_stores,
     create_ada_kpi_collector_module,
     create_ada_kpi_collector_web_integration,
 )
@@ -71,6 +72,7 @@ __all__ = [
     'KpiLatestValueState',
     'SystemKpiStoreSnapshot',
     'attach_ada_kpi_collector',
+    'attach_ada_kpi_presentation_stores',
     'ComponentKpiData',
     'ComponentLatestKpiData',
     'ComponentTimeseriesKpiData',

@@ -30,9 +30,7 @@ def create_integrated_operations_extension(
     if not isinstance(resolved_global_indicator_bindings, tuple):
         raise TypeError('global_indicator_bindings must be a tuple')
     modules = [create_dashboard_module(binding)]
-    if resolved_global_indicator_bindings:
-        if binding is None:
-            raise ValueError('Global Indicators require an Operational Render Binding')
+    if resolved_global_indicator_bindings and binding is not None:
         modules.append(
             create_dashboard_global_indicators_module(
                 DashboardGlobalIndicatorsRuntimeBinding(

@@ -20,6 +20,7 @@ from ada.web.kpis.collector import (
     KpiDeliveryReadError,
     SystemKpiStoreSnapshot,
     attach_ada_kpi_collector,
+    attach_ada_kpi_presentation_stores,
 )
 from atlanticus.web.application import create_web_application
 from atlanticus.web.models import ApplicationMetadata, WebApplicationDefinition
@@ -87,13 +88,13 @@ def _structure() -> ToolStructure:
     )
 
 
-def _build_page_package(tmp_path: Path, name: str) -> str:
+def _build_page_package(tmp_path: Path, name: str, *, route: str = '/') -> str:
     package = tmp_path / name
     package.mkdir()
     (package / '__init__.py').write_text('', encoding='utf-8')
     (package / 'home.py').write_text(
         'from dash import html, register_page\n'
-        "register_page(__name__, path='/', name='Home')\n"
+        f"register_page(__name__, path={route!r}, name='Home')\n"
         "layout = html.Div('Home')\n",
         encoding='utf-8',
     )
@@ -176,6 +177,39 @@ def test_attached_collector_uses_real_web_lifecycle_and_all_store_families(
     ]
 
     polling_runtime.stop()
+
+
+def test_presentation_store_attachment_mounts_empty_stores_without_collector_runtime(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    page_package = _build_page_package(
+        tmp_path,
+        'test_kpi_presentation_store_pages',
+        route='/presentation-store',
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.delenv('ATLANTICUS_ENVIRONMENT', raising=False)
+    runtime = create_web_application(
+        attach_ada_kpi_presentation_stores(
+            _definition(tmp_path, page_package),
+            structure=_structure(),
+        )
+    )
+
+    assert not runtime.services.contains(ADA_KPI_COLLECTOR_RUNTIME_SERVICE_KEY)
+    response = runtime.server.test_client().get('/_dash-layout')
+    assert response.status_code == 200
+    assert _collector_store_ids(response.get_json()) == [
+        {'type': KPI_COMPONENT_STORE_TYPE, 'tool': 'process', 'component': 'mine'},
+        {'type': KPI_COMPONENT_STORE_TYPE, 'tool': 'process', 'component': 'plant'},
+        {
+            'type': KPI_SYSTEM_STORE_TYPE,
+            'tool': 'process',
+            'destination': 'global_indicators',
+        },
+        {'type': KPI_SYSTEM_STORE_TYPE, 'tool': 'process', 'destination': 'time_status'},
+    ]
 
 
 def test_attached_collector_reports_delivery_failure_through_framework_observability_once(

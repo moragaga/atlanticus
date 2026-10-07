@@ -12,6 +12,8 @@ from dash.development.base_component import Component
 from flask import request
 
 from ada.contracts.tools.structure import ToolStructure
+from ada.web.components import build_empty_component_stores
+from ada.web.kpis.collector.models import KpiCollectorSnapshot, SystemKpiStoreSnapshot
 from ada.web.kpis.collector.presentation import (
     KpiCollectorPresentationSettings,
     KpiCollectorPresentationSource,
@@ -89,6 +91,33 @@ def attach_ada_kpi_collector(
         modules=(*definition.modules, integration.module),
         layout=integration.wrap_layout(definition.layout),
     )
+
+
+# La Tool READY posee stores de presentación aunque no exista un proveedor de Delivery.
+# Esta integración no crea polling ni servicios: sólo materializa el contrato browser-side vacío.
+def attach_ada_kpi_presentation_stores(
+    definition: WebApplicationDefinition,
+    *,
+    structure: ToolStructure,
+) -> WebApplicationDefinition:
+    if not isinstance(definition, WebApplicationDefinition):
+        raise TypeError('definition must be WebApplicationDefinition')
+    if not isinstance(structure, ToolStructure):
+        raise TypeError('structure must be ToolStructure')
+    snapshot = _build_empty_presentation_snapshot(structure)
+    layout = definition.layout
+
+    def wrapped_layout(*args: object, **kwargs: object) -> Component:
+        resolved = layout(*args, **kwargs)
+        if not isinstance(resolved, Component):
+            raise TypeError('KPI presentation store integration requires a Dash Component layout')
+        _append_runtime_components(
+            resolved,
+            _build_store_components(structure=structure, snapshot=snapshot),
+        )
+        return resolved
+
+    return replace(definition, layout=wrapped_layout)
 
 
 def create_ada_kpi_collector_module(
@@ -213,8 +242,7 @@ def _create_callback_registrar(
     return register_callbacks
 
 
-# Los System Stores se materializan junto a los Component Stores. Su identidad usa destination para
-# evitar convertir global_indicators o time_status en componentes ficticios del Tool.
+# Cuando existe polling se agregan sus controles, pero los stores se construyen por una ruta común.
 def _build_runtime_components(
     *,
     collector: KpiCollectorPresentationSource,
@@ -222,6 +250,39 @@ def _build_runtime_components(
 ) -> tuple[Component, ...]:
     structure = collector.structure
     snapshot = collector.snapshot
+    return (
+        dcc.Interval(
+            id=settings.interval_id,
+            interval=int(settings.refresh_interval_seconds * 1000),
+            n_intervals=0,
+        ),
+        dcc.Store(
+            id=settings.revision_store_id,
+            storage_type='memory',
+            data=snapshot.browser_revision,
+        ),
+        *_build_store_components(structure=structure, snapshot=snapshot),
+    )
+
+
+# La ausencia de Delivery se representa con snapshots vacíos, no suprimiendo identidades de Store.
+def _build_empty_presentation_snapshot(structure: ToolStructure) -> KpiCollectorSnapshot:
+    return KpiCollectorSnapshot(
+        stores=build_empty_component_stores(structure),
+        system_stores=tuple(
+            SystemKpiStoreSnapshot(structure.tool_key, destination_key)
+            for destination_key in system_kpi_destination_keys(structure)
+        ),
+    )
+
+
+# Los System Stores se materializan junto a los Component Stores. Su identidad usa destination para
+# evitar convertir global_indicators o time_status en componentes ficticios del Tool.
+def _build_store_components(
+    *,
+    structure: ToolStructure,
+    snapshot: KpiCollectorSnapshot,
+) -> tuple[Component, ...]:
     component_stores = {store.component_key: store for store in snapshot.stores}
     system_stores = {store.destination_key: store for store in snapshot.system_stores}
     component_store_components = tuple(
@@ -240,20 +301,7 @@ def _build_runtime_components(
         )
         for destination_key in system_kpi_destination_keys(structure)
     )
-    return (
-        dcc.Interval(
-            id=settings.interval_id,
-            interval=int(settings.refresh_interval_seconds * 1000),
-            n_intervals=0,
-        ),
-        dcc.Store(
-            id=settings.revision_store_id,
-            storage_type='memory',
-            data=snapshot.browser_revision,
-        ),
-        *component_store_components,
-        *system_store_components,
-    )
+    return (*component_store_components, *system_store_components)
 
 
 def _append_runtime_components(

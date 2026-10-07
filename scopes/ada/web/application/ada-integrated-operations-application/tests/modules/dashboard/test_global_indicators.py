@@ -214,6 +214,32 @@ def test_runtime_callback_bridges_exact_system_store_to_header_slot() -> None:
     assert all(output.component_id == GLOBAL_INDICATORS_SLOT_ID for output in outputs)
 
 
+def test_runtime_callback_materializes_not_mapped_ui_from_empty_system_store() -> None:
+    binding = _binding()
+    module = create_dashboard_global_indicators_module(binding)
+    dash_app = DashStub()
+    module.register_callbacks(dash_app, object())
+
+    component, empty = dash_app.callback_function(
+        {
+            'tool_key': 'integrated_operations',
+            'destination_key': 'global_indicators',
+            'latest': None,
+            'timeseries': None,
+        }
+    )
+    placements = [
+        node for node in _walk(component) if _props(node).get('data-ada-io-global-indicator-key')
+    ]
+    not_mapped_icons = [
+        node for node in _walk(component) if _props(node).get('alt') == 'Dato no mapeado'
+    ]
+
+    assert empty == 'false'
+    assert len(placements) == 3
+    assert len(not_mapped_icons) == 15
+
+
 def test_integrated_operations_extension_owns_global_indicator_runtime_module() -> None:
     structure = ToolStructure(
         tool_key='integrated_operations',
@@ -246,7 +272,7 @@ def test_integrated_operations_extension_owns_global_indicator_runtime_module() 
     )
 
 
-def test_global_indicator_runtime_is_not_mounted_without_product_bindings() -> None:
+def test_global_indicator_runtime_is_mounted_from_product_catalog() -> None:
     structure = ToolStructure(
         tool_key='integrated_operations',
         kind=ToolConfigurationKind.INTEGRATED_OPERATIONS,
@@ -267,6 +293,15 @@ def test_global_indicator_runtime_is_not_mounted_without_product_bindings() -> N
     )
 
     extension = create_integrated_operations_extension(bind_operational_render(structure))
+
+    assert tuple(module.name for module in extension.modules) == (
+        'ada-integrated-operations-dashboard',
+        'ada-integrated-operations-global-indicators',
+    )
+
+
+def test_unconfigured_tool_does_not_mount_global_indicator_runtime_or_fail_extension() -> None:
+    extension = create_integrated_operations_extension(None)
 
     assert tuple(module.name for module in extension.modules) == (
         'ada-integrated-operations-dashboard',

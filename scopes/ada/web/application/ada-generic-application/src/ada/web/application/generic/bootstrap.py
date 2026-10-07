@@ -34,7 +34,10 @@ from ada.web.application.generic.navigation_binding import (
     manager_navigation_principal,
     public_navigation_principal,
 )
-from ada.web.application.generic.operational_collector import attach_operational_kpi_collector
+from ada.web.application.generic.operational_collector import (
+    attach_operational_kpi_collector,
+    attach_operational_kpi_presentation_stores,
+)
 from ada.web.application.generic.operational_tool import (
     create_definition_from_tool_resolution,
     resolve_operational_render_binding,
@@ -221,7 +224,11 @@ def create_operational_application_runtime(
                 raise RuntimeError('READY Tool Projection resolution has no projection')
             kpi_cosmos_settings = resolved_settings.kpi_delivery_cosmos_settings()
             if kpi_cosmos_settings is None:
-                _LOGGER.info('KPI Collector is not configured')
+                definition = attach_operational_kpi_presentation_stores(
+                    definition,
+                    tool_projection=projection,
+                )
+                _LOGGER.info('KPI Delivery is not configured; using empty KPI presentation stores')
             else:
                 kpi_cosmos_client = CosmosClient(settings=kpi_cosmos_settings)
                 definition = attach_operational_kpi_collector(
