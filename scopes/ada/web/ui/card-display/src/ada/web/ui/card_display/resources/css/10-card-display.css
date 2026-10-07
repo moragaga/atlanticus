@@ -35,6 +35,7 @@
 
 .ada-card-display__content {
     min-height: min-content;
+    padding-top: .14rem;
     overflow: visible;
 }
 

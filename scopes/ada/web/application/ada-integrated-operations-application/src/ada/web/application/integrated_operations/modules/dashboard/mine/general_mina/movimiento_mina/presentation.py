@@ -3,15 +3,15 @@ from __future__ import annotations
 from dash import html
 from dash.development.base_component import Component
 
+from ada.web.application.integrated_operations.modules.dashboard.data_state import (
+    DashboardDataState,
+)
+from ada.web.application.integrated_operations.modules.dashboard.value_status import (
+    DashboardValueStatus,
+)
 from ada.web.ui.display_status import DisplayStatus, build_display_status_icon
 
-from .models import (
-    MovimientoMinaDataState,
-    MovimientoMinaMetricStatus,
-    MovimientoMinaRow,
-    MovimientoMinaRowKey,
-    MovimientoMinaState,
-)
+from .models import MovimientoMinaRow, MovimientoMinaRowKey, MovimientoMinaState
 
 _ROW_LABELS = {
     MovimientoMinaRowKey.EXTRACCION_MINA: 'Ext. Mina Total',
@@ -24,15 +24,27 @@ _ROW_LABELS = {
 }
 
 _STATUS_CLASS = {
-    MovimientoMinaMetricStatus.NEUTRAL: '',
-    MovimientoMinaMetricStatus.DANGER: 'movimiento-mina__value--danger',
-    MovimientoMinaMetricStatus.WARNING: 'movimiento-mina__value--warning',
+    DashboardValueStatus.NEUTRAL: '',
+    DashboardValueStatus.DANGER: 'movimiento-mina__value--danger',
+    DashboardValueStatus.WARNING: 'movimiento-mina__value--warning',
 }
 
 
 def build_movimiento_mina(state: MovimientoMinaState) -> Component:
     if not isinstance(state, MovimientoMinaState):
         raise TypeError('state must be MovimientoMinaState')
+    if state.data_state is DashboardDataState.ERROR:
+        return html.Div(
+            className='movimiento-mina movimiento-mina--unavailable',
+            children=[
+                _build_header(),
+                _build_status(
+                    status=DisplayStatus.INVALID,
+                    message='Información no disponible',
+                    modifier='error',
+                ),
+            ],
+        )
     children: list[Component] = [
         _build_header(),
         html.Div(
@@ -118,7 +130,7 @@ def _build_row(row: MovimientoMinaRow) -> Component:
 def _build_comparison_metric(
     value: object,
     plan: object,
-    status: MovimientoMinaMetricStatus,
+    status: DashboardValueStatus,
 ) -> Component:
     modifier = _STATUS_CLASS[status]
     value_class = ' '.join(item for item in ('movimiento-mina__value', modifier) if item)
@@ -142,10 +154,10 @@ def _build_rhythm_metric(value: object) -> Component:
     )
 
 
-def _build_state(state: MovimientoMinaDataState) -> Component | None:
-    if state is MovimientoMinaDataState.READY:
+def _build_state(state: DashboardDataState) -> Component | None:
+    if state is DashboardDataState.OK:
         return None
-    if state is MovimientoMinaDataState.UNSHIFT:
+    if state is DashboardDataState.UNSHIFT:
         return html.Div(
             className='movimiento-mina__state movimiento-mina__state--unshift',
             children=[
@@ -155,11 +167,7 @@ def _build_state(state: MovimientoMinaDataState) -> Component | None:
                 )
             ],
         )
-    return _build_status(
-        status=DisplayStatus.INVALID,
-        message='Información no disponible',
-        modifier='error',
-    )
+    return None
 
 
 def _build_status(

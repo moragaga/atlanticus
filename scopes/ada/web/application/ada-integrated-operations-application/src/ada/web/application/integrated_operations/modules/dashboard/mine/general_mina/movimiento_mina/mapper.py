@@ -2,14 +2,19 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from ada.web.application.integrated_operations.modules.dashboard.data_state import (
+    DashboardDataState,
+    map_dashboard_data_state,
+)
+from ada.web.application.integrated_operations.modules.dashboard.value_status import (
+    map_dashboard_value_status,
+)
 from ada.web.kpis.collector import KpiLatestValueState, decode_kpi_latest_value
 
 from .models import (
     MOVIMIENTO_MINA_KPI_KEY,
     MOVIMIENTO_MINA_ROW_KEYS,
     MovimientoMinaComparison,
-    MovimientoMinaDataState,
-    MovimientoMinaMetricStatus,
     MovimientoMinaRow,
     MovimientoMinaState,
 )
@@ -54,10 +59,18 @@ def map_movimiento_mina_store(store_data: object) -> MovimientoMinaState:
 
 
 def map_movimiento_mina_payload(payload: Mapping[str, object]) -> MovimientoMinaState:
+    if 'data_state' not in payload:
+        raise MovimientoMinaContractError('Movimiento Mina data_state is required')
+    try:
+        data_state = map_dashboard_data_state(payload['data_state'])
+    except ValueError as error:
+        raise MovimientoMinaContractError(str(error)) from error
+    if data_state is DashboardDataState.ERROR and 'rows' not in payload:
+        return MovimientoMinaState(rows=(), data_state=data_state)
     rows = _require_mapping(payload, 'rows')
     return MovimientoMinaState(
         rows=tuple(_map_row(rows, key.value) for key in MOVIMIENTO_MINA_ROW_KEYS),
-        data_state=_map_data_state(payload.get('data_state')),
+        data_state=data_state,
     )
 
 
@@ -92,35 +105,15 @@ def _map_comparison(
     value_key: str,
 ) -> MovimientoMinaComparison:
     section = _require_mapping(row, section_key)
+    try:
+        status = map_dashboard_value_status(section.get('status'))
+    except ValueError as error:
+        raise MovimientoMinaContractError(str(error)) from error
     return MovimientoMinaComparison(
         value=_require_value(section, value_key),
         plan=_require_value(section, 'plan'),
-        status=_map_status(section.get('status')),
+        status=status,
     )
-
-
-def _map_status(value: object) -> MovimientoMinaMetricStatus:
-    if value is None:
-        return MovimientoMinaMetricStatus.NEUTRAL
-    if type(value) is not int:
-        raise MovimientoMinaContractError('Movimiento Mina status must be 0, 1, 2 or null')
-    if value == 0:
-        return MovimientoMinaMetricStatus.NEUTRAL
-    if value == 1:
-        return MovimientoMinaMetricStatus.DANGER
-    if value == 2:
-        return MovimientoMinaMetricStatus.WARNING
-    raise MovimientoMinaContractError('Movimiento Mina status must be 0, 1, 2 or null')
-
-
-def _map_data_state(value: object) -> MovimientoMinaDataState:
-    if value is None:
-        return MovimientoMinaDataState.READY
-    if value == 'unshift':
-        return MovimientoMinaDataState.UNSHIFT
-    if value == 'error':
-        return MovimientoMinaDataState.ERROR
-    raise MovimientoMinaContractError('Movimiento Mina data_state must be null, unshift or error')
 
 
 def _require_mapping(container: Mapping[str, object], key: str) -> Mapping[str, object]:

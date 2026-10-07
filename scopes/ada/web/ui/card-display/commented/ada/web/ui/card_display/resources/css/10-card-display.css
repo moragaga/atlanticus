@@ -23,7 +23,6 @@
     );
     box-sizing: border-box;
     overflow: visible;
-    /* Se conserva container query readiness sin imponer breakpoints a los consumidores. */
     container-type: inline-size;
     container-name: ada-card-display;
 }
@@ -36,9 +35,10 @@
     min-height: 0;
 }
 
-/* El contenido principal transmite su mínimo al layout y no crea scroll local. */
+/* El contenido respira levemente respecto del borde superior de cualquier card. */
 .ada-card-display__content {
     min-height: min-content;
+    padding-top: .14rem;
     overflow: visible;
 }
 
@@ -49,7 +49,6 @@
     min-height: min-content;
 }
 
-/* Regions es una capacidad opcional del mismo contrato, no una segunda variante visual. */
 .ada-card-display__regions {
     display: grid;
     grid-template-columns: repeat(
@@ -61,12 +60,10 @@
     overflow: visible;
 }
 
-/* Una región ausente no debe alterar la geometría de content + footer. */
 .ada-card-display__regions:empty {
     display: none;
 }
 
-/* Footer replica el pie compacto aprobado y queda como apariencia canónica para todas las cards ADA. */
 .ada-card-display__footer {
     overflow: hidden;
     padding: .12rem .28rem;
@@ -81,12 +78,10 @@
     white-space: nowrap;
 }
 
-/* Sin footer no queda una línea visual vacía al final de la card. */
 .ada-card-display__footer:empty {
     display: none;
 }
 
-/* Overlay continúa siendo una superficie neutral y no captura interacción por defecto. */
 .ada-card-display__overlay {
     position: absolute;
     inset: 0;

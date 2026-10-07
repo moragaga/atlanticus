@@ -3,19 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from ada.web.application.integrated_operations.modules.dashboard.data_state import (
+    DashboardDataState,
+)
+from ada.web.application.integrated_operations.modules.dashboard.value_status import (
+    DashboardValueStatus,
+)
+
 MOVIMIENTO_MINA_KPI_KEY = 'movimiento_mina'
-
-
-class MovimientoMinaMetricStatus(StrEnum):
-    NEUTRAL = 'neutral'
-    DANGER = 'danger'
-    WARNING = 'warning'
-
-
-class MovimientoMinaDataState(StrEnum):
-    READY = 'ready'
-    UNSHIFT = 'unshift'
-    ERROR = 'error'
 
 
 class MovimientoMinaRowKey(StrEnum):
@@ -35,11 +30,11 @@ MOVIMIENTO_MINA_ROW_KEYS = tuple(MovimientoMinaRowKey)
 class MovimientoMinaComparison:
     value: object
     plan: object
-    status: MovimientoMinaMetricStatus
+    status: DashboardValueStatus
 
     def __post_init__(self) -> None:
-        if not isinstance(self.status, MovimientoMinaMetricStatus):
-            raise TypeError('status must be MovimientoMinaMetricStatus')
+        if not isinstance(self.status, DashboardValueStatus):
+            raise TypeError('status must be DashboardValueStatus')
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,12 +56,15 @@ class MovimientoMinaRow:
 @dataclass(frozen=True, slots=True)
 class MovimientoMinaState:
     rows: tuple[MovimientoMinaRow, ...]
-    data_state: MovimientoMinaDataState = MovimientoMinaDataState.READY
+    data_state: DashboardDataState
 
     def __post_init__(self) -> None:
         if not isinstance(self.rows, tuple):
             raise TypeError('rows must be a tuple')
-        if tuple(row.key for row in self.rows) != MOVIMIENTO_MINA_ROW_KEYS:
-            raise ValueError('Movimiento Mina rows must match the canonical row order')
-        if not isinstance(self.data_state, MovimientoMinaDataState):
-            raise TypeError('data_state must be MovimientoMinaDataState')
+        if self.data_state is not DashboardDataState.ERROR:
+            if tuple(row.key for row in self.rows) != MOVIMIENTO_MINA_ROW_KEYS:
+                raise ValueError('Movimiento Mina rows must match the canonical row order')
+        elif self.rows and tuple(row.key for row in self.rows) != MOVIMIENTO_MINA_ROW_KEYS:
+            raise ValueError('Movimiento Mina error rows must match the canonical row order')
+        if not isinstance(self.data_state, DashboardDataState):
+            raise TypeError('data_state must be DashboardDataState')

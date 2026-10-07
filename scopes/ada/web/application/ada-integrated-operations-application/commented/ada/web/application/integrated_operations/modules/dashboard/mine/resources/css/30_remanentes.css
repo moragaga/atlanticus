@@ -1,0 +1,254 @@
+/* Remanentes combina dos fuentes independientes dentro de una card: summary JSON y Stock 3080. */
+.remanentes {
+    --atlanticus-inline-value-row-border: var(--ada-color-border-primary);
+    --atlanticus-inline-value-row-value-border: var(--soft-border-color, rgb(0 0 0 / 16%));
+    --atlanticus-inline-value-row-text: var(--ada-color-text-primary);
+    --atlanticus-inline-value-row-danger: var(--ada-color-danger);
+    --atlanticus-inline-value-row-warning: var(--ada-color-warning);
+    --atlanticus-inline-value-row-font-size: .36rem;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: min-content;
+    flex-direction: column;
+    padding: .08rem .18rem;
+    color: var(--ada-color-text-primary);
+}
+
+.remanentes__summary {
+    display: flex;
+    min-width: 0;
+    min-height: min-content;
+    flex: 1 1 auto;
+    flex-direction: column;
+}
+
+.remanentes__header,
+.remanentes__row {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1.55fr) repeat(4, minmax(0, 1fr));
+    align-items: center;
+}
+
+.remanentes__header {
+    padding: 0 0 .08rem;
+    border-bottom: 1px solid var(--ada-color-border-primary);
+}
+
+.remanentes__header-cell {
+    overflow: hidden;
+    font-size: .31rem;
+    font-weight: 700;
+    line-height: 1.05;
+    text-align: end;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.remanentes__header-cell--fase {
+    text-align: start;
+}
+
+.remanentes__rows {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.remanentes__row {
+    padding: .09rem 0;
+    border-bottom: 1px solid var(--ada-color-border-primary);
+}
+
+.remanentes__cell {
+    min-width: 0;
+    overflow: hidden;
+    font-size: .36rem;
+    font-weight: 600;
+    line-height: 1.05;
+    text-align: end;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.remanentes__cell--fase {
+    padding-inline-start: .04rem;
+    font-weight: 500;
+    text-align: start;
+}
+
+.remanentes__metrics {
+    flex: 0 0 auto;
+    padding-top: .12rem;
+}
+
+.remanentes__state {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    gap: .12rem;
+    padding-top: .2rem;
+    font-size: .32rem;
+    font-weight: 600;
+    line-height: 1.1;
+    text-align: center;
+}
+
+.remanentes__summary--unavailable .remanentes__state,
+.remanentes__summary--error .remanentes__state {
+    flex: 1 1 auto;
+    padding-top: 0;
+}
+
+/* Display Status usa su variable canónica; aquí se compacta para la densidad del dashboard. */
+.remanentes__status-icon {
+    --ada-status-icon-size: 2em;
+}
+
+.remanentes__inline-status-icon {
+    --ada-status-icon-size: 1.2em;
+}
+
+@media only screen and (min-width: 350px) {
+    .remanentes {
+        --atlanticus-inline-value-row-font-size: .55rem;
+    }
+
+    .remanentes__header-cell {
+        font-size: .48rem;
+    }
+
+    .remanentes__cell {
+        font-size: .55rem;
+    }
+
+    .remanentes__state {
+        font-size: .48rem;
+    }
+}
+
+@media only screen and (min-width: 480px) {
+    .remanentes {
+        --atlanticus-inline-value-row-font-size: .6rem;
+    }
+
+    .remanentes__header-cell {
+        font-size: .52rem;
+    }
+
+    .remanentes__cell {
+        font-size: .6rem;
+    }
+
+    .remanentes__state {
+        font-size: .52rem;
+    }
+}
+
+@media only screen and (min-width: 1280px) {
+    .remanentes {
+        --atlanticus-inline-value-row-font-size: .4rem;
+    }
+
+    .remanentes__header-cell {
+        font-size: .34rem;
+    }
+
+    .remanentes__cell {
+        font-size: .4rem;
+    }
+
+    .remanentes__state {
+        font-size: .34rem;
+    }
+}
+
+@media only screen and (min-width: 1366px) {
+    [data-ada-io-presentation='mine'] .remanentes {
+        --atlanticus-inline-value-row-font-size: .48rem;
+    }
+
+    [data-ada-io-presentation='mine'] .remanentes__header-cell {
+        font-size: .4rem;
+    }
+
+    [data-ada-io-presentation='mine'] .remanentes__cell {
+        font-size: .48rem;
+    }
+
+    [data-ada-io-presentation='mine'] .remanentes__state {
+        font-size: .4rem;
+    }
+}
+
+@media only screen and (min-width: 1536px) {
+    .remanentes {
+        --atlanticus-inline-value-row-font-size: .42rem;
+    }
+
+    .remanentes__header-cell {
+        font-size: .36rem;
+    }
+
+    .remanentes__cell {
+        font-size: .42rem;
+    }
+
+    [data-ada-io-presentation='mine'] .remanentes {
+        --atlanticus-inline-value-row-font-size: .51rem;
+    }
+
+    [data-ada-io-presentation='mine'] .remanentes__header-cell {
+        font-size: .43rem;
+    }
+
+    [data-ada-io-presentation='mine'] .remanentes__cell {
+        font-size: .51rem;
+    }
+}
+
+@media only screen and (min-width: 1920px) {
+    .remanentes {
+        --atlanticus-inline-value-row-font-size: .46rem;
+    }
+
+    .remanentes__header-cell {
+        font-size: .4rem;
+    }
+
+    .remanentes__cell {
+        font-size: .46rem;
+    }
+
+    [data-ada-io-presentation='mine'] .remanentes {
+        --atlanticus-inline-value-row-font-size: .57rem;
+    }
+
+    [data-ada-io-presentation='mine'] .remanentes__header-cell {
+        font-size: .49rem;
+    }
+
+    [data-ada-io-presentation='mine'] .remanentes__cell {
+        font-size: .57rem;
+    }
+}
+
+@media only screen and (min-width: 2560px) {
+    .remanentes,
+    [data-ada-io-presentation='mine'] .remanentes {
+        --atlanticus-inline-value-row-font-size: .54rem;
+    }
+
+    .remanentes__header-cell,
+    [data-ada-io-presentation='mine'] .remanentes__header-cell {
+        font-size: .46rem;
+    }
+
+    .remanentes__cell,
+    [data-ada-io-presentation='mine'] .remanentes__cell {
+        font-size: .54rem;
+    }
+}
