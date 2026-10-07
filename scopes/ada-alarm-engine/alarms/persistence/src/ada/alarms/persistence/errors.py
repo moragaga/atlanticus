@@ -1,0 +1,2 @@
+class AlarmMaterializationPersistenceError(RuntimeError):
+    pass

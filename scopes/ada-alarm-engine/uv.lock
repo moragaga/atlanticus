@@ -7,6 +7,7 @@ members = [
     "ada-alarm-engine-workspace",
     "ada-alarms-core",
     "ada-alarms-materialization",
+    "ada-alarms-persistence",
 ]
 
 [[package]]
@@ -81,6 +82,33 @@ dev = [
 ]
 
 [[package]]
+name = "ada-alarms-persistence"
+version = "1.0.0"
+source = { editable = "alarms/persistence" }
+dependencies = [
+    { name = "ada-alarms-materialization" },
+    { name = "atlanticus-state" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-alarms-materialization", editable = "alarms/materialization" },
+    { name = "atlanticus-state", editable = "../../backend/state" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
 name = "ada-contracts-alarms"
 version = "1.0.0"
 source = { editable = "../ada-contracts/alarms" }
@@ -109,6 +137,33 @@ dev = [
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]
+
+[[package]]
+name = "atlanticus-kernel"
+version = "1.0.0"
+source = { editable = "../../backend/kernel" }
+
+[[package]]
+name = "atlanticus-observability"
+version = "1.0.0"
+source = { editable = "../../backend/observability" }
+dependencies = [
+    { name = "atlanticus-kernel" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "atlanticus-kernel", editable = "../../backend/kernel" }]
+
+[[package]]
+name = "atlanticus-state"
+version = "1.0.0"
+source = { editable = "../../backend/state" }
+dependencies = [
+    { name = "atlanticus-observability" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "atlanticus-observability", editable = "../../backend/observability" }]
 
 [[package]]
 name = "colorama"

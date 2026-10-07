@@ -17,13 +17,16 @@ package = false
 [tool.uv.sources]
 ada-alarms-core = { workspace = true }
 ada-alarms-materialization = { workspace = true }
+ada-alarms-persistence = { workspace = true }
 ada-contracts-alarms = { path = "../ada-contracts/alarms", editable = true }
 ada-contracts-tools = { path = "../ada-contracts/tools", editable = true }
+atlanticus-state = { path = "../../backend/state", editable = true }
 
 [tool.uv.workspace]
 members = [
     "alarms/core",
     "alarms/materialization",
+    "alarms/persistence",
 ]
 
 [tool.ruff]
@@ -50,4 +53,5 @@ addopts = "-q --import-mode=importlib"
 testpaths = [
     "alarms/core/tests",
     "alarms/materialization/tests",
+    "alarms/persistence/tests",
 ]

@@ -16,6 +16,17 @@ from ada.alarms.materialization.modeler import (
     ResolvedVisualSubcomponentTarget,
     ResolvedVisualTarget,
 )
+from ada.alarms.materialization.publication import (
+    DOCUMENT_TYPE,
+    READY_DOCUMENT_TYPE,
+    SCHEMA_VERSION,
+    AlarmMaterializationArtifact,
+    AlarmMaterializationManifest,
+    AlarmMaterializationProvenance,
+    AlarmMaterializationReadyPointer,
+    canonical_json_bytes,
+    materialization_result_id,
+)
 from ada.alarms.materialization.qualification import (
     EvaluatorQualificationCatalog,
     EvaluatorQualificationKey,
@@ -33,7 +44,14 @@ from ada.alarms.materialization.routing_policy import next_routing_tool_kind
 __version__ = '1.0.0'
 
 __all__ = [
+    'DOCUMENT_TYPE',
+    'READY_DOCUMENT_TYPE',
+    'SCHEMA_VERSION',
     'AlarmConfigurationResolution',
+    'AlarmMaterializationArtifact',
+    'AlarmMaterializationManifest',
+    'AlarmMaterializationProvenance',
+    'AlarmMaterializationReadyPointer',
     'AlarmResolutionFinding',
     'AlarmResolutionFindingSeverity',
     'AlarmResolutionStatus',
@@ -49,10 +67,12 @@ __all__ = [
     'ResolvedVisualTarget',
     'ToolReconciliationQualification',
     '__version__',
+    'canonical_json_bytes',
     'delivery_from_document',
     'delivery_to_document',
     'engine_from_document',
     'engine_to_document',
+    'materialization_result_id',
     'modeler_from_document',
     'modeler_to_document',
     'next_routing_tool_kind',
