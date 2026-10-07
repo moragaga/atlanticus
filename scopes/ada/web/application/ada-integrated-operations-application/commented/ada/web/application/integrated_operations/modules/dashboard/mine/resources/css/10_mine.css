@@ -1,8 +1,8 @@
-/* Mina conserva cuatro columnas iguales y separa también las dos filas con el gap común. */
+/* Mina conserva cuatro columnas y dos filas; las filas pueden crecer por contenido sin perder el gap ni romper la card compartida. */
 .ada-io-mine-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    grid-template-rows: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(min-content, 1fr));
     gap: var(--ada-io-gap);
     align-items: stretch;
 }
@@ -23,11 +23,18 @@
 }
 
 .ada-io-mine-grid__shared-card {
+    display: flex;
     min-width: 0;
-    min-height: 0;
+    min-height: min-content;
     grid-column: 2 / 4;
     grid-row: 2;
-    overflow: hidden;
+    overflow: visible;
+}
+
+.ada-io-mine-grid__shared-card > .ada-io-card-state {
+    width: 100%;
+    min-height: min-content;
+    flex: 1 1 auto;
 }
 
 .ada-io-mine-grid .ada-io-component--chancado_stmg {

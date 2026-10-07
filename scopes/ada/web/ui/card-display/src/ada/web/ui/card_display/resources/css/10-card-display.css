@@ -4,8 +4,8 @@
     width: 100%;
     height: 100%;
     min-width: 0;
-    min-height: 0;
-    grid-template-rows: minmax(0, 1fr) auto auto;
+    min-height: min-content;
+    grid-template-rows: minmax(min-content, 1fr) auto auto;
     border: 1px solid var(
         --ada-card-display-border,
         var(--primary-border-color, var(--ada-color-border-primary))
@@ -20,7 +20,7 @@
         var(--custom-text-color, var(--ada-color-text-primary))
     );
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: visible;
     container-type: inline-size;
     container-name: ada-card-display;
 }
@@ -34,7 +34,15 @@
 }
 
 .ada-card-display__content {
-    overflow: hidden;
+    min-height: min-content;
+    overflow: visible;
+}
+
+.ada-card-display__content > * {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: min-content;
 }
 
 .ada-card-display__regions {
@@ -44,7 +52,8 @@
         minmax(0, 1fr)
     );
     gap: var(--ada-card-display-region-gap, 0);
-    overflow: hidden;
+    min-height: min-content;
+    overflow: visible;
 }
 
 .ada-card-display__regions:empty {

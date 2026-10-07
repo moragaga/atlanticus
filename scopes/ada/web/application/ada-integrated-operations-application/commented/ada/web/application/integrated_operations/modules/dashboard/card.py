@@ -69,16 +69,13 @@ def _build_card_display(
     tool_subcomponent_key: str,
     linked_tool_component_keys: tuple[str, ...] = (),
 ):
-    # El slot de contenido recibe una clase explícita para que todas las cards puedan ceder su alto al renderer sin reglas por id.
+    # Card Display gobierna globalmente la adaptabilidad; IO sólo entrega el slot identificado.
     card = build_card_display(
         component_key=tool_component_key,
         subcomponent_key=tool_subcomponent_key,
         linked_component_keys=linked_tool_component_keys,
         wrapper_id=dashboard_card_id(key),
-        content=html.Div(
-            id=dashboard_card_content_id(key),
-            className='ada-io-card-content',
-        ),
+        content=html.Div(id=dashboard_card_content_id(key)),
         footer=label,
     )
     # No se codifican PI/Dispatch aquí: el runtime agrega las fuentes CONTROL publicadas por Time Status.
