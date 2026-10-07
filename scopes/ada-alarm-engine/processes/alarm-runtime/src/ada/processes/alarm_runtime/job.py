@@ -6,6 +6,7 @@ from typing import Protocol, runtime_checkable
 
 from ada.alarms.materialization import EngineAlarmConfiguration
 from ada.alarms.persistence import AlarmMaterializationPersistenceError
+from ada.processes.alarm_runtime.adoption import plan_configuration_adoption
 from ada.processes.alarm_runtime.cycle import (
     AlarmEvaluationCycleExecutor,
     AlarmEvaluationCycleResult,
@@ -13,6 +14,12 @@ from ada.processes.alarm_runtime.cycle import (
 from ada.processes.alarm_runtime.errors import (
     AlarmExecutionSessionError,
     AlarmRuntimeConfigurationError,
+)
+from ada.processes.alarm_runtime.lifecycle import (
+    AlarmLifecycleCycle,
+    AlarmLifecycleCycleExecutor,
+    AlarmLifecycleCycleResult,
+    AlarmLifecycleRuntimeState,
 )
 from ada.processes.alarm_runtime.session import (
     AlarmEvaluatorRegistry,
@@ -24,6 +31,7 @@ from atlanticus.runtime import JobRuntimeContext
 
 INITIAL_CONFIGURATION_RETRY_SECONDS = 30.0
 _SESSION_MEMORY_KEY = 'ada.alarm_engine.runtime.execution_session'
+_LIFECYCLE_MEMORY_KEY = 'ada.alarm_engine.runtime.lifecycle_state'
 
 
 @runtime_checkable
@@ -45,6 +53,7 @@ class AlarmRuntimeIterationResult:
     session: AlarmExecutionSession | None
     reason: str
     cycle: AlarmEvaluationCycleResult | None = None
+    lifecycle: AlarmLifecycleCycleResult | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.outcome, AlarmRuntimeConfigurationOutcome):
@@ -55,8 +64,17 @@ class AlarmRuntimeIterationResult:
             raise ValueError('reason must be non-empty text')
         if self.cycle is not None and not isinstance(self.cycle, AlarmEvaluationCycleResult):
             raise TypeError('cycle must be an AlarmEvaluationCycleResult or None')
+        if self.lifecycle is not None and not isinstance(self.lifecycle, AlarmLifecycleCycleResult):
+            raise TypeError('lifecycle must be an AlarmLifecycleCycleResult or None')
         if self.cycle is not None and self.session is None:
             raise ValueError('cycle requires an execution session')
+        if self.lifecycle is not None:
+            if self.cycle is None or self.session is None:
+                raise ValueError('lifecycle requires cycle and execution session')
+            if self.lifecycle.cycle_at != self.cycle.cycle_at:
+                raise ValueError('lifecycle cycle_at must match evaluation cycle_at')
+            if self.lifecycle.state.configuration != self.session.configuration:
+                raise ValueError('lifecycle state configuration must match execution session')
 
 
 class AlarmRuntimeJob:
@@ -68,6 +86,7 @@ class AlarmRuntimeJob:
         evaluator_registry: AlarmEvaluatorRegistry,
         source_applications: DataSourceApplications,
         cycle: AlarmEvaluationCycleExecutor,
+        lifecycle: AlarmLifecycleCycleExecutor | None = None,
     ) -> None:
         if not isinstance(reader, EngineConfigurationReader):
             raise TypeError('reader must implement EngineConfigurationReader')
@@ -79,11 +98,15 @@ class AlarmRuntimeJob:
             raise TypeError('source_applications must be DataSourceApplications')
         if not isinstance(cycle, AlarmEvaluationCycleExecutor):
             raise TypeError('cycle must implement AlarmEvaluationCycleExecutor')
+        resolved_lifecycle = AlarmLifecycleCycle() if lifecycle is None else lifecycle
+        if not isinstance(resolved_lifecycle, AlarmLifecycleCycleExecutor):
+            raise TypeError('lifecycle must implement AlarmLifecycleCycleExecutor')
         self._reader = reader
         self._source_key = source_key
         self._evaluator_registry = evaluator_registry
         self._source_applications = source_applications
         self._cycle = cycle
+        self._lifecycle = resolved_lifecycle
 
     def run_iteration(self, context: JobRuntimeContext) -> AlarmRuntimeIterationResult:
         context.raise_if_cancelled()
@@ -156,10 +179,20 @@ class AlarmRuntimeJob:
                 ),
             )
 
+        if pinned is not None:
+            adoption = plan_configuration_adoption(pinned.configuration, candidate.configuration)
+            if not adoption.is_adoptable:
+                return self._finish(
+                    context,
+                    AlarmRuntimeIterationResult(
+                        outcome=AlarmRuntimeConfigurationOutcome.REJECTED,
+                        session=pinned,
+                        reason='published_engine_not_adoptable',
+                    ),
+                )
+
         context.raise_if_cancelled()
-        context.set_memory(_SESSION_MEMORY_KEY, candidate)
-        context.mark_iteration_work()
-        return self._finish(
+        finished = self._finish(
             context,
             AlarmRuntimeIterationResult(
                 outcome=(
@@ -171,6 +204,9 @@ class AlarmRuntimeJob:
                 reason='published_engine_adopted',
             ),
         )
+        context.set_memory(_SESSION_MEMORY_KEY, candidate)
+        context.mark_iteration_work()
+        return finished
 
     def _finish(
         self,
@@ -180,11 +216,21 @@ class AlarmRuntimeJob:
         if result.session is not None:
             context.raise_if_cancelled()
             cycle = self._cycle.run(result.session)
+            previous = context.get_memory(_LIFECYCLE_MEMORY_KEY)
+            if previous is not None and not isinstance(previous, AlarmLifecycleRuntimeState):
+                raise TypeError('pinned lifecycle state must be an AlarmLifecycleRuntimeState')
+            lifecycle = self._lifecycle.run(
+                previous=previous,
+                session=result.session,
+                cycle=cycle,
+            )
+            context.set_memory(_LIFECYCLE_MEMORY_KEY, lifecycle.state)
             result = AlarmRuntimeIterationResult(
                 outcome=result.outcome,
                 session=result.session,
                 reason=result.reason,
                 cycle=cycle,
+                lifecycle=lifecycle,
             )
             if cycle.evaluations:
                 context.mark_iteration_work()
@@ -217,4 +263,35 @@ class AlarmRuntimeJob:
             context.set_iteration_fact(
                 'error_evaluation_count',
                 sum(item.status.value == 'ERROR' for item in evaluations),
+            )
+        if result.lifecycle is not None:
+            groups = result.lifecycle.groups
+            context.set_iteration_fact('lifecycle_group_count', len(groups))
+            context.set_iteration_fact(
+                'occurrence_change_count',
+                sum(
+                    len(item.decision.occurrence_changes)
+                    + (
+                        0
+                        if item.adoption_decision is None
+                        else len(item.adoption_decision.occurrence_changes)
+                    )
+                    for item in groups
+                ),
+            )
+            context.set_iteration_fact(
+                'episode_change_count',
+                sum(
+                    len(item.decision.episode_changes)
+                    + (
+                        0
+                        if item.adoption_decision is None
+                        else len(item.adoption_decision.episode_changes)
+                    )
+                    for item in groups
+                ),
+            )
+            context.set_iteration_fact(
+                'management_action_count',
+                sum(len(item.decision.management_action_results) for item in groups),
             )

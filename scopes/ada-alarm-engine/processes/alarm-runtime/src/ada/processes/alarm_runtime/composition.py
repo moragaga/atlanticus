@@ -7,6 +7,7 @@ from ada.alarms.persistence import LocalAlarmMaterializationStore, materializati
 from ada.contracts.alarms import ALARM_CONFIGURATION_SOURCE_KEY
 from ada.processes.alarm_runtime.cycle import AlarmEvaluationCycle
 from ada.processes.alarm_runtime.job import AlarmRuntimeJob
+from ada.processes.alarm_runtime.lifecycle import AlarmLifecycleCycle
 from ada.processes.alarm_runtime.session import AlarmEvaluatorRegistry
 from ada.processes.alarm_runtime.settings import AlarmRuntimeSettings
 from atlanticus.configuration import ResolvedConfiguration
@@ -77,6 +78,7 @@ def build_composition(
         evaluator_registry=evaluator_registry,
         source_applications=applications,
         cycle=cycle,
+        lifecycle=AlarmLifecycleCycle(),
     )
     definition = JobDefinition(
         module_name='ada.processes.alarm_runtime',

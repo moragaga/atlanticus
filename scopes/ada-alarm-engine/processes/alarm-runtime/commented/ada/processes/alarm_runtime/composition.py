@@ -1,4 +1,5 @@
-# Composición del proceso Alarm Runtime con el mismo pipeline de adquisición usado por KPI.
+# Espejo pedagógico de la composición ejecutable de Alarm Runtime.
+# Conecta adquisición de datos, evaluación y lifecycle sin incorporar Modeler, Delivery ni persistencia operacional.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -8,6 +9,7 @@ from ada.alarms.persistence import LocalAlarmMaterializationStore, materializati
 from ada.contracts.alarms import ALARM_CONFIGURATION_SOURCE_KEY
 from ada.processes.alarm_runtime.cycle import AlarmEvaluationCycle
 from ada.processes.alarm_runtime.job import AlarmRuntimeJob
+from ada.processes.alarm_runtime.lifecycle import AlarmLifecycleCycle
 from ada.processes.alarm_runtime.session import AlarmEvaluatorRegistry
 from ada.processes.alarm_runtime.settings import AlarmRuntimeSettings
 from atlanticus.configuration import ResolvedConfiguration
@@ -53,12 +55,9 @@ def build_composition(
         raise TypeError('evaluator_registry must be an AlarmEvaluatorRegistry')
     settings = AlarmRuntimeSettings.from_configuration(configuration)
     runtime_configuration = RuntimeConfiguration.from_sources(environ=configuration.values)
-    # Alarm Materialization sigue siendo la única fuente de configuración ejecutable.
     configuration_reader = LocalAlarmMaterializationStore(
         root=materialization_root(runtime_configuration.volume_path),
     )
-    # Registry, routing, reader físico y loader son exactamente las superficies compartidas
-    # con KPI. Alarm no crea un subsistema paralelo de inputs.
     registry = build_current_source_registry(pi_source=settings.pi_source)
     applications = DataSourceApplications(
         pi=settings.pi_application,
@@ -81,6 +80,7 @@ def build_composition(
         evaluator_registry=evaluator_registry,
         source_applications=applications,
         cycle=cycle,
+        lifecycle=AlarmLifecycleCycle(),
     )
     definition = JobDefinition(
         module_name='ada.processes.alarm_runtime',

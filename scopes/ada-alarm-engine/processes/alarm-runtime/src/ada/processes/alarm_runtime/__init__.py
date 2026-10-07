@@ -1,14 +1,35 @@
+from ada.processes.alarm_runtime.adoption import (
+    ConfigurationAdoptionChange,
+    ConfigurationAdoptionDisposition,
+    ConfigurationAdoptionPlan,
+    ConfigurationAdoptionPlanError,
+    ConfigurationAdoptionRejectionReason,
+    plan_configuration_adoption,
+)
 from ada.processes.alarm_runtime.cycle import (
-    AlarmDataInputLoader,
     AlarmEvaluationCycle,
     AlarmEvaluationCycleExecutor,
     AlarmEvaluationCycleResult,
+)
+from ada.processes.alarm_runtime.inputs import (
+    AlarmOperationalInputs,
+    AlarmPendingDeactivationRequest,
 )
 from ada.processes.alarm_runtime.job import (
     AlarmRuntimeConfigurationOutcome,
     AlarmRuntimeIterationResult,
     AlarmRuntimeJob,
     EngineConfigurationReader,
+)
+from ada.processes.alarm_runtime.lifecycle import (
+    AlarmLifecycleCycle,
+    AlarmLifecycleCycleExecutor,
+    AlarmLifecycleCycleResult,
+    AlarmLifecycleGroupResult,
+    AlarmLifecycleOrchestrationError,
+    AlarmLifecycleRuntimeState,
+    AlarmOperationalInputsProvider,
+    EmptyAlarmOperationalInputsProvider,
 )
 from ada.processes.alarm_runtime.session import (
     AlarmEvaluatorContract,
@@ -21,7 +42,6 @@ from ada.processes.alarm_runtime.session import (
 __version__ = '1.0.0'
 
 __all__ = [
-    'AlarmDataInputLoader',
     'AlarmEvaluationCycle',
     'AlarmEvaluationCycleExecutor',
     'AlarmEvaluationCycleResult',
@@ -29,10 +49,26 @@ __all__ = [
     'AlarmEvaluatorRegistry',
     'AlarmExecutionEntry',
     'AlarmExecutionSession',
+    'AlarmLifecycleCycle',
+    'AlarmLifecycleCycleExecutor',
+    'AlarmLifecycleCycleResult',
+    'AlarmLifecycleGroupResult',
+    'AlarmLifecycleOrchestrationError',
+    'AlarmLifecycleRuntimeState',
+    'AlarmOperationalInputs',
+    'AlarmOperationalInputsProvider',
+    'AlarmPendingDeactivationRequest',
     'AlarmRuntimeConfigurationOutcome',
     'AlarmRuntimeIterationResult',
     'AlarmRuntimeJob',
+    'ConfigurationAdoptionChange',
+    'ConfigurationAdoptionDisposition',
+    'ConfigurationAdoptionPlan',
+    'ConfigurationAdoptionPlanError',
+    'ConfigurationAdoptionRejectionReason',
+    'EmptyAlarmOperationalInputsProvider',
     'EngineConfigurationReader',
     '__version__',
     'build_alarm_execution_session',
+    'plan_configuration_adoption',
 ]
