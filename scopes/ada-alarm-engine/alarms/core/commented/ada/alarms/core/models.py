@@ -107,6 +107,7 @@ class ManagementActionOutcome(StrEnum):
 # Clase ManagementEffectChangeKind: contrato tipado con invariantes explícitas para evitar estados ambiguos.
 class ManagementEffectChangeKind(StrEnum):
     STARTED = 'STARTED'
+    UPDATED = 'UPDATED'
     CLEARED = 'CLEARED'
 
 
@@ -569,15 +570,16 @@ class ManagementEffect:
     effect_id: str
     source_occurrence_id: str
     effective_at: datetime
-    reappearance_due_at: datetime
+    reappearance_due_at: datetime | None
 
     def __post_init__(self) -> None:
         _require_non_empty_string(self.effect_id, 'effect_id')
         _require_non_empty_string(self.source_occurrence_id, 'source_occurrence_id')
         _require_utc_datetime(self.effective_at, 'effective_at')
-        _require_utc_datetime(self.reappearance_due_at, 'reappearance_due_at')
-        if self.reappearance_due_at <= self.effective_at:
-            raise ValueError('reappearance_due_at must be after effective_at')
+        if self.reappearance_due_at is not None:
+            _require_utc_datetime(self.reappearance_due_at, 'reappearance_due_at')
+            if self.reappearance_due_at <= self.effective_at:
+                raise ValueError('reappearance_due_at must be after effective_at')
 
 
 @dataclass(frozen=True, slots=True)
@@ -929,6 +931,11 @@ class ManagementEffectChange:
                 raise ValueError('STARTED management effect change requires management_effect')
             if self.effective_at != self.management_effect.effective_at:
                 raise ValueError('STARTED management effect effective_at must match effect')
+        elif self.kind is ManagementEffectChangeKind.UPDATED:
+            if not isinstance(self.management_effect, ManagementEffect):
+                raise ValueError('UPDATED management effect change requires management_effect')
+            if self.effective_at < self.management_effect.effective_at:
+                raise ValueError('UPDATED management effect must not precede effect start')
         elif self.management_effect is not None:
             raise ValueError('CLEARED management effect change must not contain management_effect')
 

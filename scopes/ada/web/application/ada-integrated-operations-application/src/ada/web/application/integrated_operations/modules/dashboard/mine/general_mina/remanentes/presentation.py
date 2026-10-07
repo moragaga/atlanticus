@@ -16,7 +16,11 @@ from atlanticus.web.inline_value_row import (
     build_inline_value_row,
 )
 
-from .definitions import STOCK_3080_ROW_DEFINITION
+from .definitions import (
+    REMANENTES_SUMMARY_KPI_KEY,
+    STOCK_3080_KPI_KEY,
+    STOCK_3080_ROW_DEFINITION,
+)
 from .models import RemanentesState, RemanentesSummaryRow, RemanentesSummaryState
 
 _TONE = {
@@ -39,7 +43,10 @@ def build_remanentes(state: RemanentesState) -> Component:
                     build_inline_value_row(
                         InlineValueRowState(
                             definition=STOCK_3080_ROW_DEFINITION,
-                            value=_build_display_value(state.stock_3080.value),
+                            value=html.Span(
+                                _build_display_value(state.stock_3080.value),
+                                **{'data-kpi-inspection-key': STOCK_3080_KPI_KEY},
+                            ),
                             tone=_TONE[state.stock_3080.status],
                         )
                     )
@@ -56,6 +63,7 @@ def _build_summary(
     if state is None:
         return html.Div(
             className='remanentes__summary remanentes__summary--unavailable',
+            **{'data-kpi-inspection-key': REMANENTES_SUMMARY_KPI_KEY},
             children=[
                 _build_header(),
                 _build_status(status, 'Información no disponible'),
@@ -64,6 +72,7 @@ def _build_summary(
     if state.data_state is DashboardDataState.ERROR:
         return html.Div(
             className='remanentes__summary remanentes__summary--error',
+            **{'data-kpi-inspection-key': REMANENTES_SUMMARY_KPI_KEY},
             children=[
                 _build_header(),
                 _build_status(DisplayStatus.INVALID, 'Información no disponible'),
@@ -85,6 +94,7 @@ def _build_summary(
         )
     return html.Div(
         className='remanentes__summary',
+        **{'data-kpi-inspection-key': REMANENTES_SUMMARY_KPI_KEY},
         children=children,
     )
 

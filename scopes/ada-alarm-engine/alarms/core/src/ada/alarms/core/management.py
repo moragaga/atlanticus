@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from ada.alarms.core.deactivation import (
     DeactivationEffectIdFactory,
@@ -40,7 +40,7 @@ from ada.alarms.core.models import (
 from ada.contracts.alarms import AlarmIdentity, AlarmKind
 
 ManagementEffectIdFactory = Callable[[ManagementAction], str]
-ReappearanceDueAtResolver = Callable[[ManagementAction], datetime]
+ReappearanceDueAtResolver = Callable[[ManagementAction], datetime | None]
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,7 +72,8 @@ def is_directly_managed(state: AlarmRuntimeState, *, at: datetime) -> bool:
         occurrence is not None
         and effect is not None
         and effect.source_occurrence_id == occurrence.occurrence_id
-        and effect.effective_at <= at < effect.reappearance_due_at
+        and effect.effective_at <= at
+        and (effect.reappearance_due_at is None or at < effect.reappearance_due_at)
     )
 
 
@@ -129,6 +130,54 @@ def resolve_management_cascades(
                 item.deactivation_effect_id or item.management_effect_id or '',
             ),
         )
+    )
+
+
+def _reconcile_management_effect_reappearance(
+    state: GroupLifecycleState,
+    *,
+    planned_alarms: Sequence[PlannedAlarm],
+    cycle_at: datetime,
+) -> tuple[GroupLifecycleState, tuple[ManagementEffectChange, ...]]:
+    if not isinstance(state, GroupLifecycleState):
+        raise TypeError('state must be a GroupLifecycleState')
+    _require_utc_datetime(cycle_at, 'cycle_at')
+    plans = _index_plans(state.priority_group, planned_alarms)
+    working = {alarm.alarm_identity: alarm for alarm in state.alarms}
+    changes: list[ManagementEffectChange] = []
+    for identity in sorted(tuple(working)):
+        current = working[identity]
+        effect = current.management_effect
+        plan = plans.get(identity)
+        if effect is None or plan is None:
+            continue
+        configured_due_at = (
+            None
+            if plan.reappearance_after_seconds is None
+            else effect.effective_at + timedelta(seconds=plan.reappearance_after_seconds)
+        )
+        if configured_due_at == effect.reappearance_due_at:
+            continue
+        reconciled_due_at = configured_due_at
+        if reconciled_due_at is not None and reconciled_due_at <= cycle_at:
+            reconciled_due_at = cycle_at
+        updated_effect = replace(effect, reappearance_due_at=reconciled_due_at)
+        working[identity] = replace(current, management_effect=updated_effect)
+        changes.append(
+            ManagementEffectChange(
+                kind=ManagementEffectChangeKind.UPDATED,
+                alarm_identity=identity,
+                effective_at=cycle_at,
+                management_effect=updated_effect,
+            )
+        )
+    return (
+        GroupLifecycleState(
+            priority_group=state.priority_group,
+            episode=state.episode,
+            alarms=tuple(working[identity] for identity in sorted(working)),
+        ),
+        tuple(changes),
     )
 
 
@@ -580,7 +629,8 @@ def _create_effect(
     if not isinstance(effect_id, str) or not effect_id.strip():
         raise AlarmLifecycleError('management effect factory must return a non-empty string')
     due_at = due_at_resolver(action)
-    _require_utc_datetime(due_at, 'reappearance_due_at')
+    if due_at is not None:
+        _require_utc_datetime(due_at, 'reappearance_due_at')
     return ManagementEffect(
         effect_id=effect_id,
         source_occurrence_id=source_occurrence_id,
@@ -608,6 +658,8 @@ def _resolve_due_effects(
         if effect is None:
             continue
         due = effect.reappearance_due_at
+        if due is None:
+            continue
         if due > cutoff:
             continue
         if due == cutoff and (not include_equal or identity in exclude_equal_identities):
@@ -871,7 +923,9 @@ def _index_plans(
 
 
 def _effect_is_active(effect: ManagementEffect, *, at: datetime) -> bool:
-    return effect.effective_at <= at < effect.reappearance_due_at
+    return effect.effective_at <= at and (
+        effect.reappearance_due_at is None or at < effect.reappearance_due_at
+    )
 
 
 def _effect_change_sort_key(

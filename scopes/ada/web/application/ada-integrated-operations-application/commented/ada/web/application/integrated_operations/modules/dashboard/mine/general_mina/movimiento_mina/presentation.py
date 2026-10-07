@@ -12,7 +12,12 @@ from ada.web.application.integrated_operations.modules.dashboard.value_status im
 )
 from ada.web.ui.display_status import DisplayStatus, build_display_status_icon
 
-from .models import MovimientoMinaRow, MovimientoMinaRowKey, MovimientoMinaState
+from .models import (
+    MOVIMIENTO_MINA_KPI_KEY,
+    MovimientoMinaRow,
+    MovimientoMinaRowKey,
+    MovimientoMinaState,
+)
 
 _ROW_LABELS = {
     MovimientoMinaRowKey.EXTRACCION_MINA: 'Ext. Mina Total',
@@ -34,10 +39,11 @@ _STATUS_CLASS = {
 def build_movimiento_mina(state: MovimientoMinaState) -> Component:
     if not isinstance(state, MovimientoMinaState):
         raise TypeError('state must be MovimientoMinaState')
-    # ERROR prevalece sobre filas opcionales y deja una superficie explícita.
+    # Todo el bloque representa un único KPI JSON y por eso comparte un solo trigger de inspección.
     if state.data_state is DashboardDataState.ERROR:
         return html.Div(
             className='movimiento-mina movimiento-mina--unavailable',
+            **{'data-kpi-inspection-key': MOVIMIENTO_MINA_KPI_KEY},
             children=[
                 _build_header(),
                 _build_status(
@@ -59,6 +65,7 @@ def build_movimiento_mina(state: MovimientoMinaState) -> Component:
         children.append(state_component)
     return html.Div(
         className='movimiento-mina',
+        **{'data-kpi-inspection-key': MOVIMIENTO_MINA_KPI_KEY},
         children=children,
     )
 
@@ -66,8 +73,10 @@ def build_movimiento_mina(state: MovimientoMinaState) -> Component:
 def build_movimiento_mina_unavailable(status: DisplayStatus) -> Component:
     if not isinstance(status, DisplayStatus):
         raise TypeError('status must be DisplayStatus')
+    # La definición sigue siendo inspeccionable aunque el último valor no esté disponible.
     return html.Div(
         className='movimiento-mina movimiento-mina--unavailable',
+        **{'data-kpi-inspection-key': MOVIMIENTO_MINA_KPI_KEY},
         children=[
             _build_header(),
             _build_status(
@@ -135,7 +144,11 @@ def _build_comparison_metric(
     status: DashboardValueStatus,
 ) -> Component:
     modifier = _STATUS_CLASS[status]
-    value_class = ' '.join(item for item in ('movimiento-mina__value', modifier) if item)
+    value_class = ' '.join(
+        item
+        for item in ('movimiento-mina__value', modifier)
+        if item
+    )
     return html.Div(
         className='movimiento-mina__metric',
         children=[

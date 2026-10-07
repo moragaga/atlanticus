@@ -17,7 +17,11 @@ from atlanticus.web.inline_value_row import (
     build_inline_value_row,
 )
 
-from .definitions import STOCK_3080_ROW_DEFINITION
+from .definitions import (
+    REMANENTES_SUMMARY_KPI_KEY,
+    STOCK_3080_KPI_KEY,
+    STOCK_3080_ROW_DEFINITION,
+)
 from .models import RemanentesState, RemanentesSummaryRow, RemanentesSummaryState
 
 _TONE = {
@@ -34,14 +38,17 @@ def build_remanentes(state: RemanentesState) -> Component:
         className='remanentes',
         children=[
             _build_summary(state.summary, state.summary_status),
-            # La línea siempre se renderiza: puede mostrar valor, NOT_MAPPED, EMPTY, INVALID o ERROR.
             html.Div(
                 className='remanentes__metrics',
                 children=[
                     build_inline_value_row(
                         InlineValueRowState(
                             definition=STOCK_3080_ROW_DEFINITION,
-                            value=_build_display_value(state.stock_3080.value),
+                            # Stock 3080 inspecciona sólo el valor derecho; InlineValueRow sigue siendo genérico.
+                            value=html.Span(
+                                _build_display_value(state.stock_3080.value),
+                                **{'data-kpi-inspection-key': STOCK_3080_KPI_KEY},
+                            ),
                             tone=_TONE[state.stock_3080.status],
                         )
                     )
@@ -58,6 +65,7 @@ def _build_summary(
     if state is None:
         return html.Div(
             className='remanentes__summary remanentes__summary--unavailable',
+            **{'data-kpi-inspection-key': REMANENTES_SUMMARY_KPI_KEY},
             children=[
                 _build_header(),
                 _build_status(status, 'Información no disponible'),
@@ -66,6 +74,7 @@ def _build_summary(
     if state.data_state is DashboardDataState.ERROR:
         return html.Div(
             className='remanentes__summary remanentes__summary--error',
+            **{'data-kpi-inspection-key': REMANENTES_SUMMARY_KPI_KEY},
             children=[
                 _build_header(),
                 _build_status(DisplayStatus.INVALID, 'Información no disponible'),
@@ -85,8 +94,10 @@ def _build_summary(
                 children=['Datos del turno aún no disponibles'],
             )
         )
+    # El JSON completo corresponde a un solo KPI y toda su tabla abre la misma definición.
     return html.Div(
         className='remanentes__summary',
+        **{'data-kpi-inspection-key': REMANENTES_SUMMARY_KPI_KEY},
         children=children,
     )
 
@@ -132,7 +143,6 @@ def _build_status(status: DisplayStatus, message: str) -> Component:
 
 
 def _build_display_value(value: DisplayValue) -> str | Component:
-    # El adaptador ADA convierte DisplayValue a texto/icono antes de entrar al componente Atlanticus.
     if value.status is DisplayStatus.OK:
         if isinstance(value.value, Component):
             return value.value

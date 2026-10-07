@@ -11,7 +11,12 @@ from ada.web.application.integrated_operations.modules.dashboard.value_status im
 )
 from ada.web.ui.display_status import DisplayStatus, build_display_status_icon
 
-from .models import MovimientoMinaRow, MovimientoMinaRowKey, MovimientoMinaState
+from .models import (
+    MOVIMIENTO_MINA_KPI_KEY,
+    MovimientoMinaRow,
+    MovimientoMinaRowKey,
+    MovimientoMinaState,
+)
 
 _ROW_LABELS = {
     MovimientoMinaRowKey.EXTRACCION_MINA: 'Ext. Mina Total',
@@ -36,6 +41,7 @@ def build_movimiento_mina(state: MovimientoMinaState) -> Component:
     if state.data_state is DashboardDataState.ERROR:
         return html.Div(
             className='movimiento-mina movimiento-mina--unavailable',
+            **{'data-kpi-inspection-key': MOVIMIENTO_MINA_KPI_KEY},
             children=[
                 _build_header(),
                 _build_status(
@@ -57,6 +63,7 @@ def build_movimiento_mina(state: MovimientoMinaState) -> Component:
         children.append(state_component)
     return html.Div(
         className='movimiento-mina',
+        **{'data-kpi-inspection-key': MOVIMIENTO_MINA_KPI_KEY},
         children=children,
     )
 
@@ -66,6 +73,7 @@ def build_movimiento_mina_unavailable(status: DisplayStatus) -> Component:
         raise TypeError('status must be DisplayStatus')
     return html.Div(
         className='movimiento-mina movimiento-mina--unavailable',
+        **{'data-kpi-inspection-key': MOVIMIENTO_MINA_KPI_KEY},
         children=[
             _build_header(),
             _build_status(
@@ -133,7 +141,11 @@ def _build_comparison_metric(
     status: DashboardValueStatus,
 ) -> Component:
     modifier = _STATUS_CLASS[status]
-    value_class = ' '.join(item for item in ('movimiento-mina__value', modifier) if item)
+    value_class = ' '.join(
+        item
+        for item in ('movimiento-mina__value', modifier)
+        if item
+    )
     return html.Div(
         className='movimiento-mina__metric',
         children=[

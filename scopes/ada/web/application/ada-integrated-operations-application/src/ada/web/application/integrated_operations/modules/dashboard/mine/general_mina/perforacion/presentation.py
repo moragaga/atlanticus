@@ -11,6 +11,7 @@ from ada.web.application.integrated_operations.modules.dashboard.value_status im
 )
 from ada.web.ui.display_status import DisplayStatus, build_display_status_icon
 
+from .definitions import PERFORACION_DETALLE_KPI_KEY, PERFORACION_RESUMEN_KPI_KEY
 from .models import (
     PerforacionComparison,
     PerforacionDetalleState,
@@ -46,6 +47,7 @@ def _build_resumen(
     if state is None:
         return html.Div(
             className='perforacion__resumen perforacion__resumen--unavailable',
+            **{'data-kpi-inspection-key': PERFORACION_RESUMEN_KPI_KEY},
             children=[
                 _build_resumen_title(),
                 _build_status(status, 'Información no disponible'),
@@ -54,6 +56,7 @@ def _build_resumen(
     if state.data_state is DashboardDataState.ERROR:
         return html.Div(
             className='perforacion__resumen perforacion__resumen--unavailable',
+            **{'data-kpi-inspection-key': PERFORACION_RESUMEN_KPI_KEY},
             children=[
                 _build_resumen_title(),
                 _build_status(DisplayStatus.INVALID, 'Información no disponible'),
@@ -98,6 +101,7 @@ def _build_resumen(
 
     return html.Div(
         className='perforacion__resumen',
+        **{'data-kpi-inspection-key': PERFORACION_RESUMEN_KPI_KEY},
         children=children,
     )
 
@@ -137,6 +141,7 @@ def _build_detalle(
     if state is None:
         return html.Div(
             className='perforacion__detalle perforacion__detalle--unavailable',
+            **{'data-kpi-inspection-key': PERFORACION_DETALLE_KPI_KEY},
             children=[
                 _build_table_header_only(),
                 _build_status(status, 'Información no disponible'),
@@ -145,6 +150,7 @@ def _build_detalle(
     if state.data_state is DashboardDataState.ERROR:
         return html.Div(
             className='perforacion__detalle perforacion__detalle--unavailable',
+            **{'data-kpi-inspection-key': PERFORACION_DETALLE_KPI_KEY},
             children=[
                 _build_table_header_only(),
                 _build_status(DisplayStatus.INVALID, 'Información no disponible'),
@@ -171,6 +177,7 @@ def _build_detalle(
 
     return html.Div(
         className='perforacion__detalle',
+        **{'data-kpi-inspection-key': PERFORACION_DETALLE_KPI_KEY},
         children=children,
     )
 
