@@ -16,6 +16,7 @@ package = false
 
 [tool.uv.sources]
 ada-alarm-materialization-process = { workspace = true }
+ada-alarm-runtime-process = { workspace = true }
 ada-alarms-core = { workspace = true }
 ada-alarms-materialization = { workspace = true }
 ada-alarms-persistence = { workspace = true }
@@ -34,6 +35,7 @@ members = [
     "alarms/materialization",
     "alarms/persistence",
     "processes/alarm-materialization",
+    "processes/alarm-runtime",
 ]
 
 [tool.ruff]
@@ -62,4 +64,5 @@ testpaths = [
     "alarms/materialization/tests",
     "alarms/persistence/tests",
     "processes/alarm-materialization/tests",
+    "processes/alarm-runtime/tests",
 ]

@@ -6,6 +6,7 @@ requires-python = "==3.14.2"
 members = [
     "ada-alarm-engine-workspace",
     "ada-alarm-materialization-process",
+    "ada-alarm-runtime-process",
     "ada-alarms-core",
     "ada-alarms-materialization",
     "ada-alarms-persistence",
@@ -58,6 +59,45 @@ requires-dist = [
     { name = "ada-contracts-alarms", editable = "../ada-contracts/alarms" },
     { name = "atlanticus-configuration", editable = "../../backend/configuration" },
     { name = "atlanticus-cosmos", editable = "../../connectivity/cosmos" },
+    { name = "atlanticus-job-runtime", editable = "../../backend/runtime" },
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
+    { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-alarm-runtime-process"
+version = "1.0.0"
+source = { editable = "processes/alarm-runtime" }
+dependencies = [
+    { name = "ada-alarms-core" },
+    { name = "ada-alarms-materialization" },
+    { name = "ada-alarms-persistence" },
+    { name = "ada-contracts-alarms" },
+    { name = "atlanticus-configuration" },
+    { name = "atlanticus-job-runtime" },
+    { name = "atlanticus-kernel" },
+    { name = "atlanticus-key-vault" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-alarms-core", editable = "alarms/core" },
+    { name = "ada-alarms-materialization", editable = "alarms/materialization" },
+    { name = "ada-alarms-persistence", editable = "alarms/persistence" },
+    { name = "ada-contracts-alarms", editable = "../ada-contracts/alarms" },
+    { name = "atlanticus-configuration", editable = "../../backend/configuration" },
     { name = "atlanticus-job-runtime", editable = "../../backend/runtime" },
     { name = "atlanticus-kernel", editable = "../../backend/kernel" },
     { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
