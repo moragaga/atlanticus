@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
@@ -29,7 +29,6 @@ class RoutedDatasetSourceReader:
         volume_path: str | Path,
         applications: DataSourceApplications,
         registry: DataSourceRegistry,
-        sources: Iterable[DataSource],
         runtime_factory: RuntimeFactory | None = None,
     ) -> None:
         self._volume_path = _absolute_path(volume_path)
@@ -37,13 +36,11 @@ class RoutedDatasetSourceReader:
             raise TypeError('applications must be DataSourceApplications')
         if not isinstance(registry, DataSourceRegistry):
             raise TypeError('registry must be DataSourceRegistry')
-        resolved_sources = tuple(sources)
-        if any(not isinstance(source, DataSource) for source in resolved_sources):
-            raise TypeError('sources must contain DataSource values')
+        self._applications = applications
+        self._sources_by_dataset = _dataset_sources(registry)
         self._runtime_factory = _runtime_factory if runtime_factory is None else runtime_factory
         if not callable(self._runtime_factory):
             raise TypeError('runtime_factory must be callable')
-        self._applications_by_dataset = _dataset_routes(registry, applications, resolved_sources)
         self._runtimes: dict[str, DatasetRuntime] = {}
 
     def read_frame(
@@ -58,11 +55,12 @@ class RoutedDatasetSourceReader:
     ):
         identifier = definition.key.identifier
         try:
-            application = self._applications_by_dataset[identifier]
+            source = self._sources_by_dataset[identifier]
         except KeyError as error:
             raise DataSourceRoutingError(
-                f'{identifier}: dataset has no configured application route'
+                f'{identifier}: dataset has no registered operational source'
             ) from error
+        application = self._applications.application_for(source)
         runtime = self._runtime_for(application)
         filters = _time_filters(
             timestamp_column=timestamp_column,
@@ -93,21 +91,17 @@ class RoutedDatasetSourceReader:
         return runtime
 
 
-def _dataset_routes(
-    registry: DataSourceRegistry,
-    applications: DataSourceApplications,
-    sources: tuple[DataSource, ...],
-) -> dict[str, str]:
-    routes: dict[str, str] = {}
-    for source in sources:
-        binding = registry.get(source)
-        identifier = binding.definition.key.identifier
-        application = applications.application_for(source)
-        existing = routes.get(identifier)
-        if existing is not None and existing != application:
-            raise DataSourceRoutingError(f'{identifier}: dataset routes to multiple applications')
-        routes[identifier] = application
-    return routes
+def _dataset_sources(registry: DataSourceRegistry) -> dict[str, DataSource]:
+    sources: dict[str, DataSource] = {}
+    for source in registry.sources:
+        identifier = registry.get(source).definition.key.identifier
+        existing = sources.get(identifier)
+        if existing is not None and existing is not source:
+            raise DataSourceRoutingError(
+                f'{identifier}: dataset maps to multiple operational sources'
+            )
+        sources[identifier] = source
+    return sources
 
 
 def _runtime_factory(dataset_root: Path) -> DatasetRuntime:

@@ -72,7 +72,6 @@ def build_composition(
         volume_path=runtime_configuration.volume_path,
         applications=applications,
         registry=registry,
-        sources=plan.sources,
     )
     loader = DataInputLoader(reader=reader, registry=registry)
     persistence = KpiPersistence.from_runtime(

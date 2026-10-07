@@ -1,4 +1,4 @@
-# Composición del proceso: reader local angosto, registry y Atlanticus Job Runtime.
+# Composición del proceso Alarm Runtime con el mismo pipeline de adquisición usado por KPI.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -6,10 +6,17 @@ from dataclasses import dataclass
 
 from ada.alarms.persistence import LocalAlarmMaterializationStore, materialization_root
 from ada.contracts.alarms import ALARM_CONFIGURATION_SOURCE_KEY
+from ada.processes.alarm_runtime.cycle import AlarmEvaluationCycle
 from ada.processes.alarm_runtime.job import AlarmRuntimeJob
 from ada.processes.alarm_runtime.session import AlarmEvaluatorRegistry
 from ada.processes.alarm_runtime.settings import AlarmRuntimeSettings
 from atlanticus.configuration import ResolvedConfiguration
+from atlanticus.operational_data.datasets import RoutedDatasetSourceReader
+from atlanticus.operational_data.sources import (
+    DataInputLoader,
+    DataSourceApplications,
+    build_current_source_registry,
+)
 from atlanticus.runtime import (
     JobDefinition,
     RuntimeConfiguration,
@@ -46,13 +53,34 @@ def build_composition(
         raise TypeError('evaluator_registry must be an AlarmEvaluatorRegistry')
     settings = AlarmRuntimeSettings.from_configuration(configuration)
     runtime_configuration = RuntimeConfiguration.from_sources(environ=configuration.values)
-    reader = LocalAlarmMaterializationStore(
+    # Alarm Materialization sigue siendo la única fuente de configuración ejecutable.
+    configuration_reader = LocalAlarmMaterializationStore(
         root=materialization_root(runtime_configuration.volume_path),
     )
+    # Registry, routing, reader físico y loader son exactamente las superficies compartidas
+    # con KPI. Alarm no crea un subsistema paralelo de inputs.
+    registry = build_current_source_registry(pi_source=settings.pi_source)
+    applications = DataSourceApplications(
+        pi=settings.pi_application,
+        dispatch=settings.dispatch_application,
+        blockgrade=settings.blockgrade_application,
+        remanentes=settings.remanentes_application,
+        fabrica_planes=settings.fabrica_planes_application,
+        fabrica_kpis=settings.fabrica_kpis_application,
+        meteodata=settings.meteodata_application,
+    )
+    data_reader = RoutedDatasetSourceReader(
+        volume_path=runtime_configuration.volume_path,
+        applications=applications,
+        registry=registry,
+    )
+    cycle = AlarmEvaluationCycle(loader=DataInputLoader(reader=data_reader, registry=registry))
     job = AlarmRuntimeJob(
-        reader=reader,
+        reader=configuration_reader,
         source_key=ALARM_CONFIGURATION_SOURCE_KEY,
         evaluator_registry=evaluator_registry,
+        source_applications=applications,
+        cycle=cycle,
     )
     definition = JobDefinition(
         module_name='ada.processes.alarm_runtime',

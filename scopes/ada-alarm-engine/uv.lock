@@ -89,6 +89,7 @@ dependencies = [
     { name = "atlanticus-kernel" },
     { name = "atlanticus-key-vault" },
     { name = "atlanticus-operational-data-core" },
+    { name = "atlanticus-operational-data-datasets" },
     { name = "atlanticus-operational-data-planner" },
     { name = "atlanticus-operational-data-sources" },
 ]
@@ -110,6 +111,7 @@ requires-dist = [
     { name = "atlanticus-kernel", editable = "../../backend/kernel" },
     { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
     { name = "atlanticus-operational-data-core", editable = "../operational-data/core" },
+    { name = "atlanticus-operational-data-datasets", editable = "../operational-data/datasets" },
     { name = "atlanticus-operational-data-planner", editable = "../operational-data/planner" },
     { name = "atlanticus-operational-data-sources", editable = "../operational-data/sources" },
 ]
@@ -265,6 +267,40 @@ version = "1.0.0"
 source = { editable = "../../backend/datasets" }
 
 [[package]]
+name = "atlanticus-datasets-parquet"
+version = "1.0.0"
+source = { editable = "../../backend/datasets-parquet" }
+dependencies = [
+    { name = "atlanticus-datasets" },
+    { name = "pyarrow" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-datasets", editable = "../../backend/datasets" },
+    { name = "pyarrow", specifier = "==25.0.0" },
+]
+
+[[package]]
+name = "atlanticus-datasets-runtime"
+version = "1.0.0"
+source = { editable = "../../backend/datasets-runtime" }
+dependencies = [
+    { name = "atlanticus-datasets" },
+    { name = "atlanticus-datasets-parquet" },
+    { name = "pandas" },
+    { name = "pyarrow" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-datasets", editable = "../../backend/datasets" },
+    { name = "atlanticus-datasets-parquet", editable = "../../backend/datasets-parquet" },
+    { name = "pandas", specifier = "==3.0.3" },
+    { name = "pyarrow", specifier = "==25.0.0" },
+]
+
+[[package]]
 name = "atlanticus-job-runtime"
 version = "1.0.0"
 source = { editable = "../../backend/runtime" }
@@ -335,6 +371,31 @@ version = "1.0.0"
 source = { editable = "../operational-data/core" }
 
 [package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "atlanticus-operational-data-datasets"
+version = "1.0.0"
+source = { editable = "../operational-data/datasets" }
+dependencies = [
+    { name = "atlanticus-datasets-parquet" },
+    { name = "atlanticus-datasets-runtime" },
+    { name = "atlanticus-operational-data-core" },
+    { name = "atlanticus-operational-data-sources" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-datasets-parquet", editable = "../../backend/datasets-parquet" },
+    { name = "atlanticus-datasets-runtime", editable = "../../backend/datasets-runtime" },
+    { name = "atlanticus-operational-data-core", editable = "../operational-data/core" },
+    { name = "atlanticus-operational-data-sources", editable = "../operational-data/sources" },
+]
 
 [package.metadata.requires-dev]
 dev = [

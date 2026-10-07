@@ -1,4 +1,5 @@
-# Composición del KPI Runtime sobre el contrato compartido de Operational Data.
+# Espejo pedagógico de la composición del runtime KPI.
+# KPI sigue usando el mismo contrato Operational Data; el reader ahora enruta fuentes por demanda.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -57,8 +58,8 @@ def build_composition(
         raise TypeError('catalog must be a KpiCatalog')
     settings = KpiRuntimeSettings.from_configuration(configuration)
     runtime_configuration = RuntimeConfiguration.from_sources(environ=configuration.values)
-    # Sources conserva contratos/routing; el adapter físico DatasetRuntime vive en operational_data.datasets.
     registry = build_current_source_registry(pi_source=settings.pi_source)
+    # El plan KPI sigue fijo por catálogo y valida sus rutas al construir la composición.
     plan = DataInputPlanner().plan({spec.key: spec.inputs for spec in resolved_catalog.specs})
     applications = DataSourceApplications(
         pi=settings.pi_application,
@@ -69,13 +70,12 @@ def build_composition(
         fabrica_kpis=settings.fabrica_kpis_application,
         meteodata=settings.meteodata_application,
     )
-    # Sólo las fuentes realmente requeridas por el plan exigen una aplicación productora configurada.
     applications.validate_sources(plan.sources)
+    # El adapter ya no necesita congelar sources: resuelve el DataSource al momento de leer.
     reader = RoutedDatasetSourceReader(
         volume_path=runtime_configuration.volume_path,
         applications=applications,
         registry=registry,
-        sources=plan.sources,
     )
     loader = DataInputLoader(reader=reader, registry=registry)
     persistence = KpiPersistence.from_runtime(

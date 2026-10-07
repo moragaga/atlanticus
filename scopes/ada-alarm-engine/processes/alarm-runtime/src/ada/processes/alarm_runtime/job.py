@@ -6,6 +6,10 @@ from typing import Protocol, runtime_checkable
 
 from ada.alarms.materialization import EngineAlarmConfiguration
 from ada.alarms.persistence import AlarmMaterializationPersistenceError
+from ada.processes.alarm_runtime.cycle import (
+    AlarmEvaluationCycleExecutor,
+    AlarmEvaluationCycleResult,
+)
 from ada.processes.alarm_runtime.errors import (
     AlarmExecutionSessionError,
     AlarmRuntimeConfigurationError,
@@ -15,6 +19,7 @@ from ada.processes.alarm_runtime.session import (
     AlarmExecutionSession,
     build_alarm_execution_session,
 )
+from atlanticus.operational_data.sources import DataSourceApplications, DataSourceRoutingError
 from atlanticus.runtime import JobRuntimeContext
 
 INITIAL_CONFIGURATION_RETRY_SECONDS = 30.0
@@ -39,6 +44,7 @@ class AlarmRuntimeIterationResult:
     outcome: AlarmRuntimeConfigurationOutcome
     session: AlarmExecutionSession | None
     reason: str
+    cycle: AlarmEvaluationCycleResult | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.outcome, AlarmRuntimeConfigurationOutcome):
@@ -47,6 +53,10 @@ class AlarmRuntimeIterationResult:
             raise TypeError('session must be an AlarmExecutionSession or None')
         if not isinstance(self.reason, str) or not self.reason.strip():
             raise ValueError('reason must be non-empty text')
+        if self.cycle is not None and not isinstance(self.cycle, AlarmEvaluationCycleResult):
+            raise TypeError('cycle must be an AlarmEvaluationCycleResult or None')
+        if self.cycle is not None and self.session is None:
+            raise ValueError('cycle requires an execution session')
 
 
 class AlarmRuntimeJob:
@@ -56,6 +66,8 @@ class AlarmRuntimeJob:
         reader: EngineConfigurationReader,
         source_key: str,
         evaluator_registry: AlarmEvaluatorRegistry,
+        source_applications: DataSourceApplications,
+        cycle: AlarmEvaluationCycleExecutor,
     ) -> None:
         if not isinstance(reader, EngineConfigurationReader):
             raise TypeError('reader must implement EngineConfigurationReader')
@@ -63,9 +75,15 @@ class AlarmRuntimeJob:
             raise ValueError('source_key must be non-empty text without surrounding whitespace')
         if not isinstance(evaluator_registry, AlarmEvaluatorRegistry):
             raise TypeError('evaluator_registry must be an AlarmEvaluatorRegistry')
+        if not isinstance(source_applications, DataSourceApplications):
+            raise TypeError('source_applications must be DataSourceApplications')
+        if not isinstance(cycle, AlarmEvaluationCycleExecutor):
+            raise TypeError('cycle must implement AlarmEvaluationCycleExecutor')
         self._reader = reader
         self._source_key = source_key
         self._evaluator_registry = evaluator_registry
+        self._source_applications = source_applications
+        self._cycle = cycle
 
     def run_iteration(self, context: JobRuntimeContext) -> AlarmRuntimeIterationResult:
         context.raise_if_cancelled()
@@ -77,73 +95,99 @@ class AlarmRuntimeJob:
         except AlarmMaterializationPersistenceError:
             if pinned is None:
                 raise
-            result = AlarmRuntimeIterationResult(
-                outcome=AlarmRuntimeConfigurationOutcome.REJECTED,
-                session=pinned,
-                reason='published_engine_invalid_using_pinned',
+            return self._finish(
+                context,
+                AlarmRuntimeIterationResult(
+                    outcome=AlarmRuntimeConfigurationOutcome.REJECTED,
+                    session=pinned,
+                    reason='published_engine_invalid_using_pinned',
+                ),
             )
-            self._record(context, result)
-            return result
 
         if configuration is None:
             if pinned is None:
                 context.set_next_iteration_delay(INITIAL_CONFIGURATION_RETRY_SECONDS)
-                result = AlarmRuntimeIterationResult(
-                    outcome=AlarmRuntimeConfigurationOutcome.WAITING,
-                    session=None,
-                    reason='published_engine_missing',
+                return self._finish(
+                    context,
+                    AlarmRuntimeIterationResult(
+                        outcome=AlarmRuntimeConfigurationOutcome.WAITING,
+                        session=None,
+                        reason='published_engine_missing',
+                    ),
                 )
-                self._record(context, result)
-                return result
-            result = AlarmRuntimeIterationResult(
-                outcome=AlarmRuntimeConfigurationOutcome.UNCHANGED,
-                session=pinned,
-                reason='published_engine_missing_using_pinned',
+            return self._finish(
+                context,
+                AlarmRuntimeIterationResult(
+                    outcome=AlarmRuntimeConfigurationOutcome.UNCHANGED,
+                    session=pinned,
+                    reason='published_engine_missing_using_pinned',
+                ),
             )
-            self._record(context, result)
-            return result
 
         if pinned is not None and configuration.resolution_key == pinned.resolution_key:
             if configuration != pinned.configuration:
                 raise AlarmRuntimeConfigurationError(
                     'Published Engine configuration changed without changing resolution_key'
                 )
-            result = AlarmRuntimeIterationResult(
-                outcome=AlarmRuntimeConfigurationOutcome.UNCHANGED,
-                session=pinned,
-                reason='published_engine_unchanged',
+            return self._finish(
+                context,
+                AlarmRuntimeIterationResult(
+                    outcome=AlarmRuntimeConfigurationOutcome.UNCHANGED,
+                    session=pinned,
+                    reason='published_engine_unchanged',
+                ),
             )
-            self._record(context, result)
-            return result
 
         try:
             candidate = build_alarm_execution_session(
                 configuration=configuration,
                 evaluator_registry=self._evaluator_registry,
             )
-        except AlarmExecutionSessionError:
+            self._source_applications.validate_sources(candidate.data_plan.sources)
+        except AlarmExecutionSessionError, DataSourceRoutingError:
             if pinned is None:
                 context.set_next_iteration_delay(INITIAL_CONFIGURATION_RETRY_SECONDS)
-            result = AlarmRuntimeIterationResult(
-                outcome=AlarmRuntimeConfigurationOutcome.REJECTED,
-                session=pinned,
-                reason='published_engine_not_executable',
+            return self._finish(
+                context,
+                AlarmRuntimeIterationResult(
+                    outcome=AlarmRuntimeConfigurationOutcome.REJECTED,
+                    session=pinned,
+                    reason='published_engine_not_executable',
+                ),
             )
-            self._record(context, result)
-            return result
 
         context.raise_if_cancelled()
         context.set_memory(_SESSION_MEMORY_KEY, candidate)
         context.mark_iteration_work()
-        result = AlarmRuntimeIterationResult(
-            outcome=(
-                AlarmRuntimeConfigurationOutcome.BOOTSTRAPPED
-                if pinned is None
-                else AlarmRuntimeConfigurationOutcome.ADOPTED
+        return self._finish(
+            context,
+            AlarmRuntimeIterationResult(
+                outcome=(
+                    AlarmRuntimeConfigurationOutcome.BOOTSTRAPPED
+                    if pinned is None
+                    else AlarmRuntimeConfigurationOutcome.ADOPTED
+                ),
+                session=candidate,
+                reason='published_engine_adopted',
             ),
-            session=candidate,
-            reason='published_engine_adopted',
         )
+
+    def _finish(
+        self,
+        context: JobRuntimeContext,
+        result: AlarmRuntimeIterationResult,
+    ) -> AlarmRuntimeIterationResult:
+        if result.session is not None:
+            context.raise_if_cancelled()
+            cycle = self._cycle.run(result.session)
+            result = AlarmRuntimeIterationResult(
+                outcome=result.outcome,
+                session=result.session,
+                reason=result.reason,
+                cycle=cycle,
+            )
+            if cycle.evaluations:
+                context.mark_iteration_work()
         self._record(context, result)
         return result
 
@@ -158,3 +202,19 @@ class AlarmRuntimeJob:
             )
             context.set_iteration_fact('tool_catalog_revision', key.confirmed_tool_catalog_revision)
             context.set_iteration_fact('planned_alarm_count', len(result.session.entries))
+        if result.cycle is not None:
+            evaluations = result.cycle.evaluations
+            context.set_iteration_fact('cycle_at_utc', result.cycle.cycle_at.isoformat())
+            context.set_iteration_fact('evaluation_count', len(evaluations))
+            context.set_iteration_fact(
+                'active_evaluation_count',
+                sum(item.status.value == 'ACTIVE' for item in evaluations),
+            )
+            context.set_iteration_fact(
+                'inactive_evaluation_count',
+                sum(item.status.value == 'INACTIVE' for item in evaluations),
+            )
+            context.set_iteration_fact(
+                'error_evaluation_count',
+                sum(item.status.value == 'ERROR' for item in evaluations),
+            )

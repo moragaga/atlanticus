@@ -1,7 +1,7 @@
-# Adapter físico compartido entre consumidores de Operational Data y DatasetRuntime/Parquet.
+# Adapter físico compartido que conecta el contrato neutral de Operational Data con DatasetRuntime.
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
@@ -23,7 +23,6 @@ from atlanticus.operational_data.sources import (
 RuntimeFactory = Callable[[Path], DatasetRuntime]
 
 
-# El adapter conoce almacenamiento físico; sources permanece libre de DatasetRuntime.
 class RoutedDatasetSourceReader:
     def __init__(
         self,
@@ -31,7 +30,6 @@ class RoutedDatasetSourceReader:
         volume_path: str | Path,
         applications: DataSourceApplications,
         registry: DataSourceRegistry,
-        sources: Iterable[DataSource],
         runtime_factory: RuntimeFactory | None = None,
     ) -> None:
         self._volume_path = _absolute_path(volume_path)
@@ -39,14 +37,15 @@ class RoutedDatasetSourceReader:
             raise TypeError('applications must be DataSourceApplications')
         if not isinstance(registry, DataSourceRegistry):
             raise TypeError('registry must be DataSourceRegistry')
-        resolved_sources = tuple(sources)
-        if any(not isinstance(source, DataSource) for source in resolved_sources):
-            raise TypeError('sources must contain DataSource values')
+        # Conservamos el routing lógico completo y resolvemos la aplicación sólo cuando una vista
+        # es leída. Esto permite que un consumidor adopte nuevos DataSource sin reconstruir
+        # el reader.
+        self._applications = applications
+        self._sources_by_dataset = _dataset_sources(registry)
         self._runtime_factory = _runtime_factory if runtime_factory is None else runtime_factory
         if not callable(self._runtime_factory):
             raise TypeError('runtime_factory must be callable')
-        # Sólo las fuentes presentes en el plan del consumidor exigen una ruta física.
-        self._applications_by_dataset = _dataset_routes(registry, applications, resolved_sources)
+        # DatasetRuntime se reutiliza por aplicación para no reconstruir el adapter en cada ciclo.
         self._runtimes: dict[str, DatasetRuntime] = {}
 
     def read_frame(
@@ -61,11 +60,12 @@ class RoutedDatasetSourceReader:
     ):
         identifier = definition.key.identifier
         try:
-            application = self._applications_by_dataset[identifier]
+            source = self._sources_by_dataset[identifier]
         except KeyError as error:
             raise DataSourceRoutingError(
-                f'{identifier}: dataset has no configured application route'
+                f'{identifier}: dataset has no registered operational source'
             ) from error
+        application = self._applications.application_for(source)
         runtime = self._runtime_for(application)
         filters = _time_filters(
             timestamp_column=timestamp_column,
@@ -80,6 +80,8 @@ class RoutedDatasetSourceReader:
                 filters=filters,
             )
         except DatasetRuntimeNotFoundError:
+            # Ausencia física de un target es "sin filas disponibles", no una afirmación
+            # sobre calidad/suficiencia del dato para un consumidor.
             return None
         except (DatasetRuntimeReadError, DatasetRuntimeValidationError) as error:
             raise DataSourceReadError(f'{target.identifier}: dataset source read failed') from error
@@ -88,7 +90,6 @@ class RoutedDatasetSourceReader:
             raise DataSourceReadError(f'{target.identifier}: dataset runtime returned invalid data')
         return dataframe
 
-    # Se reutiliza un DatasetRuntime por aplicación productora durante la vida del reader.
     def _runtime_for(self, application: str) -> DatasetRuntime:
         runtime = self._runtimes.get(application)
         if runtime is None:
@@ -97,28 +98,25 @@ class RoutedDatasetSourceReader:
         return runtime
 
 
-def _dataset_routes(
-    registry: DataSourceRegistry,
-    applications: DataSourceApplications,
-    sources: tuple[DataSource, ...],
-) -> dict[str, str]:
-    routes: dict[str, str] = {}
-    for source in sources:
-        binding = registry.get(source)
-        identifier = binding.definition.key.identifier
-        application = applications.application_for(source)
-        existing = routes.get(identifier)
-        if existing is not None and existing != application:
-            raise DataSourceRoutingError(f'{identifier}: dataset routes to multiple applications')
-        routes[identifier] = application
-    return routes
+def _dataset_sources(registry: DataSourceRegistry) -> dict[str, DataSource]:
+    # DatasetDefinition llega al protocolo SourceDatasetReader; este índice permite recuperar
+    # su DataSource neutral y desde allí aplicar el routing común de aplicaciones.
+    sources: dict[str, DataSource] = {}
+    for source in registry.sources:
+        identifier = registry.get(source).definition.key.identifier
+        existing = sources.get(identifier)
+        if existing is not None and existing is not source:
+            raise DataSourceRoutingError(
+                f'{identifier}: dataset maps to multiple operational sources'
+            )
+        sources[identifier] = source
+    return sources
 
 
 def _runtime_factory(dataset_root: Path) -> DatasetRuntime:
     return DatasetRuntime(store=ParquetDatasetStore(root=dataset_root))
 
 
-# Convierte el rango temporal lógico del loader en filtros físicos del DatasetRuntime.
 def _time_filters(
     *,
     timestamp_column: str | None,

@@ -1,6 +1,14 @@
 from __future__ import annotations
 
-from ada.alarms.core import AlarmResolutionKey, AlarmRouting, EvaluationContext, PlannedAlarm
+from ada.alarms.core import (
+    AlarmEvaluation,
+    AlarmResolutionKey,
+    AlarmRouting,
+    AlarmStatus,
+    EvaluationContext,
+    EvidenceSnapshot,
+    PlannedAlarm,
+)
 from ada.alarms.materialization import EngineAlarmConfiguration
 from ada.contracts.alarms import AlarmIdentity, AlarmKind, Criticality
 from ada.processes.alarm_runtime.session import AlarmEvaluatorContract, AlarmEvaluatorRegistry
@@ -8,8 +16,17 @@ from atlanticus.operational_data.core import DataColumn, DataColumnType
 from atlanticus.operational_data.sources import PiInterpolated
 
 
-def evaluator(_context: EvaluationContext):
-    return None
+def evaluator(context: EvaluationContext) -> AlarmEvaluation:
+    return AlarmEvaluation(
+        alarm_identity=context.alarm_identity,
+        status=AlarmStatus.INACTIVE,
+        evaluated_at=context.now,
+        evidence_snapshot=EvidenceSnapshot(
+            contract_key='test',
+            contract_version='1',
+            payload={},
+        ),
+    )
 
 
 def engine_configuration(
