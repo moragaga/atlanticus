@@ -2,6 +2,9 @@ from ada.web.application.integrated_operations.modules.dashboard.context import 
     DASHBOARD_CONTEXT_SERVICE_KEY,
     DashboardContext,
 )
+from ada.web.application.integrated_operations.modules.dashboard.mine.carguio.runtime import (
+    register_carguio_callback,
+)
 from ada.web.application.integrated_operations.modules.dashboard.mine.general_mina.runtime import (
     register_general_mina_callback,
 )
@@ -39,6 +42,7 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
 
         def register_callbacks(dash_app, _services) -> None:
             register_general_mina_callback(dash_app, tool_key=tool_key)
+            register_carguio_callback(dash_app, tool_key=tool_key)
 
     return WebModule(
         name='ada-integrated-operations-dashboard',

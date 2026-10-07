@@ -2,6 +2,9 @@ from ada.web.application.integrated_operations.modules.dashboard.context import 
     DASHBOARD_CONTEXT_SERVICE_KEY,
     DashboardContext,
 )
+from ada.web.application.integrated_operations.modules.dashboard.mine.carguio.runtime import (
+    register_carguio_callback,
+)
 from ada.web.application.integrated_operations.modules.dashboard.mine.general_mina.runtime import (
     register_general_mina_callback,
 )
@@ -35,14 +38,15 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
     def register_services(services) -> None:
         services.add(DASHBOARD_CONTEXT_SERVICE_KEY, context)
 
-    # Sólo una Tool resuelta tiene Component KPI Stores. Sin binding no se registra un Input inexistente.
+    # Sólo una Tool resuelta tiene Component KPI Stores. Sin binding no se registran Inputs inexistentes.
     register_callbacks = None
     if binding is not None:
         tool_key = binding.structure.tool_key
 
-        # General Mina conserva un callback coordinador; cada subcomponente futuro agregará su Output aquí.
+        # Cada componente operacional tiene un callback coordinador y sus cards agregan Outputs allí.
         def register_callbacks(dash_app, _services) -> None:
             register_general_mina_callback(dash_app, tool_key=tool_key)
+            register_carguio_callback(dash_app, tool_key=tool_key)
 
     return WebModule(
         name='ada-integrated-operations-dashboard',
