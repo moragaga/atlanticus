@@ -15,6 +15,7 @@ from ada.alarms.core.management import (
     ReappearanceDueAtResolver,
     _finalize_management_state,
     _prepare_management_state,
+    _reconcile_management_effect_reappearance,
 )
 from ada.alarms.core.models import (
     TECHNICAL_HOLD_GRACE_SECONDS,
@@ -498,10 +499,24 @@ def reconcile_group_configuration(
         episode=episode,
         alarms=tuple(working[identity] for identity in sorted(working)),
     )
+    reconciled_management_state, reappearance_reconciliation_changes = (
+        _reconcile_management_effect_reappearance(
+            intermediate,
+            planned_alarms=tuple(plans.values()),
+            cycle_at=effective_at,
+        )
+    )
+    deferred_reappearance_identities = frozenset(
+        change.alarm_identity
+        for change in reappearance_reconciliation_changes
+        if change.management_effect is not None
+        and change.management_effect.reappearance_due_at == effective_at
+    )
     finalized_management = _finalize_management_state(
-        intermediate,
+        reconciled_management_state,
         cycle_at=effective_at,
         plans=plans,
+        exclude_equal_due_identities=deferred_reappearance_identities,
         occurrence_changes=tuple(occurrence_changes),
         episode_changes=tuple(episode_changes),
     )
@@ -524,6 +539,7 @@ def reconcile_group_configuration(
             sorted(
                 (
                     *lifecycle_management_effect_changes,
+                    *reappearance_reconciliation_changes,
                     *finalized_management.effect_changes,
                 ),
                 key=lambda change: (

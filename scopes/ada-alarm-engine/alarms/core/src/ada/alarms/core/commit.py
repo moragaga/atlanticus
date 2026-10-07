@@ -78,7 +78,7 @@ class ManagementEffectRecord:
     effective_at: datetime
     source_occurrence_id: str
     effect_effective_at: datetime
-    reappearance_due_at: datetime
+    reappearance_due_at: datetime | None
 
     def __post_init__(self) -> None:
         _require_non_empty_string(self.record_id, 'record_id')
@@ -90,7 +90,8 @@ class ManagementEffectRecord:
         _require_utc_datetime(self.effective_at, 'effective_at')
         _require_non_empty_string(self.source_occurrence_id, 'source_occurrence_id')
         _require_utc_datetime(self.effect_effective_at, 'effect_effective_at')
-        _require_utc_datetime(self.reappearance_due_at, 'reappearance_due_at')
+        if self.reappearance_due_at is not None:
+            _require_utc_datetime(self.reappearance_due_at, 'reappearance_due_at')
 
     def as_document(self) -> dict[str, Any]:
         return {
@@ -101,7 +102,9 @@ class ManagementEffectRecord:
             'effective_at': _timestamp(self.effective_at),
             'source_occurrence_id': self.source_occurrence_id,
             'effect_effective_at': _timestamp(self.effect_effective_at),
-            'reappearance_due_at': _timestamp(self.reappearance_due_at),
+            'reappearance_due_at': (
+                None if self.reappearance_due_at is None else _timestamp(self.reappearance_due_at)
+            ),
         }
 
 

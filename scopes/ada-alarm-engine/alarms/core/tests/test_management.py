@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import timedelta
 
 import pytest
@@ -11,6 +12,7 @@ from ada.alarms.core import (
     OccurrenceChangeKind,
     ReappearanceChange,
     is_directly_managed,
+    reconcile_group_configuration,
     reduce_group_cycle,
     reset_group_for_reconfiguration,
 )
@@ -24,7 +26,6 @@ from .support import (
     management_action,
     physical,
     plan,
-    reappear_after,
 )
 
 
@@ -36,9 +37,15 @@ def _reduce(
     at=NOW,
     actions=(),
     ids: Ids | None = None,
-    reappearance_seconds=300,
+    reappearance_seconds: int | None = 300,
 ):
     generated = ids or Ids()
+
+    def resolve_reappearance(action):
+        if reappearance_seconds is None:
+            return None
+        return action.source_created_at + timedelta(seconds=reappearance_seconds)
+
     return reduce_group_cycle(
         state,
         cycle_at=at,
@@ -48,7 +55,7 @@ def _reduce(
         occurrence_id_factory=generated.new_occurrence,
         episode_id_factory=generated.new_episode,
         management_effect_id_factory=generated.new_management_effect,
-        reappearance_due_at_resolver=reappear_after(reappearance_seconds),
+        reappearance_due_at_resolver=resolve_reappearance,
     )
 
 
@@ -682,3 +689,228 @@ def test_episode_end_by_overdue_technical_hold_clears_management_effect_at_due_t
     ]
     assert len(cleared) == 1
     assert cleared[0].effective_at == technical_due
+
+
+def _managed_risk_with_reappearance(seconds: int | None):
+    ids = Ids()
+    alarm = plan('risk', reappearance_after_seconds=seconds)
+    started = _reduce(
+        GroupLifecycleState(priority_group='mill-feed'),
+        (alarm,),
+        (physical('risk', AlarmStatus.ACTIVE),),
+        ids=ids,
+        reappearance_seconds=seconds,
+    )
+    managed_at = NOW + timedelta(minutes=1)
+    managed = _reduce(
+        started.state,
+        (alarm,),
+        (physical('risk', AlarmStatus.ACTIVE, at=managed_at),),
+        at=managed_at,
+        actions=(management_action('risk', at=managed_at),),
+        ids=ids,
+        reappearance_seconds=seconds,
+    )
+    return alarm, managed, ids, managed_at
+
+
+def test_management_without_timer_remains_managed_while_condition_stays_active() -> None:
+    alarm, managed, ids, managed_at = _managed_risk_with_reappearance(None)
+    later = managed_at + timedelta(hours=1)
+    decision = _reduce(
+        managed.state,
+        (alarm,),
+        (physical('risk', AlarmStatus.ACTIVE, at=later),),
+        at=later,
+        ids=ids,
+        reappearance_seconds=None,
+    )
+
+    runtime = decision.state.get(alarm.identity)
+    assert runtime is not None and runtime.management_effect is not None
+    assert runtime.management_effect.reappearance_due_at is None
+    assert is_directly_managed(runtime, at=later)
+    assert decision.reappearance_changes == ()
+
+
+def test_special_condition_only_reappearance_works_without_timer() -> None:
+    risk = plan(
+        'risk',
+        priority_order=1,
+        reappearance_after_seconds=None,
+        reappearance_special_conditions=(identity('special'),),
+    )
+    special = plan(
+        'special',
+        priority_order=2,
+        reappearance_after_seconds=None,
+    )
+    plans = (risk, special)
+    ids = Ids()
+    started = _reduce(
+        GroupLifecycleState(priority_group='mill-feed'),
+        plans,
+        (
+            physical('risk', AlarmStatus.ACTIVE),
+            physical('special', AlarmStatus.INACTIVE),
+        ),
+        ids=ids,
+        reappearance_seconds=None,
+    )
+    managed_at = NOW + timedelta(minutes=1)
+    managed = _reduce(
+        started.state,
+        plans,
+        (
+            physical('risk', AlarmStatus.ACTIVE, at=managed_at),
+            physical('special', AlarmStatus.INACTIVE, at=managed_at),
+        ),
+        at=managed_at,
+        actions=(management_action('risk', at=managed_at),),
+        ids=ids,
+        reappearance_seconds=None,
+    )
+    trigger_at = managed_at + timedelta(minutes=1)
+    decision = _reduce(
+        managed.state,
+        plans,
+        (
+            physical('risk', AlarmStatus.ACTIVE, at=trigger_at),
+            physical('special', AlarmStatus.ACTIVE, at=trigger_at),
+        ),
+        at=trigger_at,
+        ids=ids,
+        reappearance_seconds=None,
+    )
+
+    runtime = decision.state.get(risk.identity)
+    assert runtime is not None
+    assert runtime.management_effect is None
+    assert runtime.management_cycle == 2
+    assert decision.reappearance_changes == (
+        ReappearanceChange(
+            alarm_identity=risk.identity,
+            occurrence_id='O1',
+            effective_at=trigger_at,
+            management_cycle=2,
+        ),
+    )
+
+
+def test_reappearance_delay_300_to_600_recalculates_from_original_effective_at() -> None:
+    source, managed, _ids, managed_at = _managed_risk_with_reappearance(300)
+    target = replace(source, reappearance_after_seconds=600)
+    adoption_at = managed_at + timedelta(seconds=400)
+
+    decision = reconcile_group_configuration(
+        managed.state,
+        effective_at=adoption_at,
+        planned_alarms=(target,),
+    )
+
+    runtime = decision.state.get(source.identity)
+    assert runtime is not None and runtime.management_effect is not None
+    assert runtime.management_effect.reappearance_due_at == managed_at + timedelta(seconds=600)
+    assert decision.reappearance_changes == ()
+    assert len(decision.management_effect_changes) == 1
+    change = decision.management_effect_changes[0]
+    assert change.kind is ManagementEffectChangeKind.UPDATED
+    assert change.effective_at == adoption_at
+    assert change.management_effect == runtime.management_effect
+
+
+def test_reappearance_delay_300_to_none_removes_temporal_deadline() -> None:
+    source, managed, _ids, managed_at = _managed_risk_with_reappearance(300)
+    target = replace(source, reappearance_after_seconds=None)
+    adoption_at = managed_at + timedelta(seconds=30)
+
+    decision = reconcile_group_configuration(
+        managed.state,
+        effective_at=adoption_at,
+        planned_alarms=(target,),
+    )
+
+    runtime = decision.state.get(source.identity)
+    assert runtime is not None and runtime.management_effect is not None
+    assert runtime.management_effect.reappearance_due_at is None
+    assert decision.management_effect_changes[0].kind is ManagementEffectChangeKind.UPDATED
+
+
+def test_reappearance_delay_none_to_60_creates_temporal_deadline() -> None:
+    source, managed, _ids, managed_at = _managed_risk_with_reappearance(None)
+    target = replace(source, reappearance_after_seconds=60)
+    adoption_at = managed_at + timedelta(seconds=30)
+
+    decision = reconcile_group_configuration(
+        managed.state,
+        effective_at=adoption_at,
+        planned_alarms=(target,),
+    )
+
+    runtime = decision.state.get(source.identity)
+    assert runtime is not None and runtime.management_effect is not None
+    assert runtime.management_effect.reappearance_due_at == managed_at + timedelta(seconds=60)
+    assert decision.management_effect_changes[0].kind is ManagementEffectChangeKind.UPDATED
+
+
+def test_overdue_reconciled_deadline_active_reappears_in_same_physical_cycle() -> None:
+    source, managed, ids, managed_at = _managed_risk_with_reappearance(None)
+    target = replace(source, reappearance_after_seconds=60)
+    cycle_at = managed_at + timedelta(seconds=120)
+
+    adoption = reconcile_group_configuration(
+        managed.state,
+        effective_at=cycle_at,
+        planned_alarms=(target,),
+    )
+    adopted_runtime = adoption.state.get(source.identity)
+    assert adopted_runtime is not None and adopted_runtime.management_effect is not None
+    assert adopted_runtime.management_effect.reappearance_due_at == cycle_at
+    assert adoption.reappearance_changes == ()
+
+    decision = _reduce(
+        adoption.state,
+        (target,),
+        (physical('risk', AlarmStatus.ACTIVE, at=cycle_at),),
+        at=cycle_at,
+        ids=ids,
+        reappearance_seconds=60,
+    )
+
+    runtime = decision.state.get(source.identity)
+    assert runtime is not None
+    assert runtime.management_effect is None
+    assert runtime.management_cycle == 2
+    assert decision.reappearance_changes == (
+        ReappearanceChange(
+            alarm_identity=source.identity,
+            occurrence_id='O1',
+            effective_at=cycle_at,
+            management_cycle=2,
+        ),
+    )
+
+
+def test_overdue_reconciled_deadline_inactive_normalizes_without_reappearance() -> None:
+    source, managed, ids, managed_at = _managed_risk_with_reappearance(None)
+    target = replace(source, reappearance_after_seconds=60)
+    cycle_at = managed_at + timedelta(seconds=120)
+
+    adoption = reconcile_group_configuration(
+        managed.state,
+        effective_at=cycle_at,
+        planned_alarms=(target,),
+    )
+
+    decision = _reduce(
+        adoption.state,
+        (target,),
+        (physical('risk', AlarmStatus.INACTIVE, at=cycle_at),),
+        at=cycle_at,
+        ids=ids,
+        reappearance_seconds=60,
+    )
+
+    assert decision.reappearance_changes == ()
+    assert decision.state.episode is None
+    assert decision.state.alarms == ()

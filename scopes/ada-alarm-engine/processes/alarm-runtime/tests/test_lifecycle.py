@@ -1,8 +1,6 @@
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
-import pytest
-
 from ada.alarms.core import (
     AlarmEvaluation,
     AlarmStatus,
@@ -11,6 +9,7 @@ from ada.alarms.core import (
     EvidenceSnapshot,
     ManagementAction,
     ManagementActionOutcome,
+    ManagementEffectChangeKind,
     OccurrenceClosureReason,
 )
 from ada.alarms.materialization import EngineAlarmConfiguration
@@ -18,7 +17,6 @@ from ada.contracts.alarms import Criticality
 from ada.processes.alarm_runtime import (
     AlarmEvaluationCycleResult,
     AlarmLifecycleCycle,
-    AlarmLifecycleOrchestrationError,
     AlarmOperationalInputs,
     build_alarm_execution_session,
 )
@@ -300,7 +298,42 @@ def test_structural_reset_closes_old_continuity_then_new_cycle_can_open_new_occu
     assert runtime.occurrence.occurrence_id == 'O2'
 
 
-def test_reappearance_delay_change_with_live_management_effect_is_blocked_explicitly() -> None:
+def test_management_without_timer_is_supported() -> None:
+    session = _session(engine_configuration())
+    provider = InputsProvider()
+    lifecycle, _ids = _lifecycle(provider)
+    first = lifecycle.run(
+        previous=None,
+        session=session,
+        cycle=_cycle(session, AlarmStatus.ACTIVE, at=AT),
+    )
+    identity = session.entries[0].identity
+    managed_at = AT + timedelta(seconds=5)
+    provider.value = AlarmOperationalInputs(
+        management_actions=(
+            ManagementAction(
+                input_id='management-1',
+                alarm_identity=identity,
+                source_occurrence_id='O1',
+                tool_key='tool_a',
+                actor_key='operator',
+                source_created_at=managed_at,
+            ),
+        )
+    )
+
+    result = lifecycle.run(
+        previous=first.state,
+        session=session,
+        cycle=_cycle(session, AlarmStatus.ACTIVE, at=managed_at),
+    )
+
+    runtime = result.groups[0].decision.state.get(identity)
+    assert runtime is not None and runtime.management_effect is not None
+    assert runtime.management_effect.reappearance_due_at is None
+
+
+def test_reappearance_delay_change_with_live_management_effect_is_reconciled() -> None:
     base = engine_configuration()
     source_configuration = _configuration_with_plan(
         base,
@@ -340,17 +373,24 @@ def test_reappearance_delay_change_with_live_management_effect_is_blocked_explic
     )
     target_session = _session(target_configuration)
     provider.value = AlarmOperationalInputs()
+    adoption_at = managed_at + timedelta(seconds=5)
 
-    with pytest.raises(
-        AlarmLifecycleOrchestrationError,
-        match='reappearance deadline reconciliation is not implemented',
-    ):
-        lifecycle.run(
-            previous=managed.state,
-            session=target_session,
-            cycle=_cycle(
-                target_session,
-                AlarmStatus.ACTIVE,
-                at=managed_at + timedelta(seconds=5),
-            ),
-        )
+    result = lifecycle.run(
+        previous=managed.state,
+        session=target_session,
+        cycle=_cycle(target_session, AlarmStatus.ACTIVE, at=adoption_at),
+    )
+
+    group = result.groups[0]
+    assert group.adoption_decision is not None
+    updates = [
+        change
+        for change in group.adoption_decision.management_effect_changes
+        if change.kind is ManagementEffectChangeKind.UPDATED
+    ]
+    assert len(updates) == 1
+    assert updates[0].management_effect is not None
+    assert updates[0].management_effect.reappearance_due_at == managed_at + timedelta(seconds=600)
+    runtime = group.decision.state.get(identity)
+    assert runtime is not None and runtime.management_effect is not None
+    assert runtime.management_effect.reappearance_due_at == managed_at + timedelta(seconds=600)

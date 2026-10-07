@@ -6,7 +6,6 @@ from typing import Protocol, runtime_checkable
 from uuid import uuid4
 
 from ada.alarms.core import (
-    AlarmLifecycleError,
     ConfigurationClosure,
     DeactivationEffectIdFactory,
     DeactivationRequestIdFactory,
@@ -315,11 +314,6 @@ class AlarmLifecycleCycle:
             for entry in session.entries
             if entry.planned_alarm.priority_group == priority_group
         )
-        self._validate_reappearance_adoption(
-            state,
-            plans=plans,
-            adoption_plan=adoption_plan,
-        )
         adoption_decision = self._reconcile_group(
             state,
             priority_group=priority_group,
@@ -368,36 +362,6 @@ class AlarmLifecycleCycle:
             adoption_decision=adoption_decision,
             decision=decision,
         )
-
-    @staticmethod
-    def _validate_reappearance_adoption(
-        state: GroupLifecycleState,
-        *,
-        plans: tuple[PlannedAlarm, ...],
-        adoption_plan: ConfigurationAdoptionPlan | None,
-    ) -> None:
-        if adoption_plan is None:
-            return
-        target_by_identity = {plan.identity: plan for plan in plans}
-        for alarm_state in state.alarms:
-            if alarm_state.management_effect is None:
-                continue
-            source_plan = next(
-                (
-                    plan
-                    for plan in adoption_plan.source.planned_alarms
-                    if plan.identity == alarm_state.alarm_identity
-                ),
-                None,
-            )
-            target_plan = target_by_identity.get(alarm_state.alarm_identity)
-            if source_plan is None or target_plan is None:
-                continue
-            if source_plan.reappearance_after_seconds != target_plan.reappearance_after_seconds:
-                raise AlarmLifecycleOrchestrationError(
-                    f'{alarm_state.alarm_identity.canonical_key}: current ManagementEffect '
-                    'reappearance deadline reconciliation is not implemented by Alarm Core'
-                )
 
     @staticmethod
     def _reconcile_group(
@@ -486,7 +450,7 @@ class AlarmLifecycleCycle:
 def _reappearance_due_at_resolver(
     plans: dict[AlarmIdentity, PlannedAlarm],
 ) -> ReappearanceDueAtResolver:
-    def resolve(action) -> datetime:
+    def resolve(action) -> datetime | None:
         plan = plans.get(action.alarm_identity)
         if plan is None:
             raise AlarmLifecycleOrchestrationError(
@@ -494,10 +458,7 @@ def _reappearance_due_at_resolver(
             )
         seconds = plan.reappearance_after_seconds
         if seconds is None:
-            raise AlarmLifecycleError(
-                f'{action.alarm_identity.canonical_key}: effective management requires '
-                'reappearance_after_seconds'
-            )
+            return None
         return action.source_created_at + timedelta(seconds=seconds)
 
     return resolve

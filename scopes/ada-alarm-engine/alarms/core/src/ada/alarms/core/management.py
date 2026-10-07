@@ -354,6 +354,7 @@ def _finalize_management_state(
     cycle_at: datetime,
     plans: Mapping[AlarmIdentity, PlannedAlarm],
     active_alarm_identities: frozenset[AlarmIdentity] = frozenset(),
+    exclude_equal_due_identities: frozenset[AlarmIdentity] = frozenset(),
     occurrence_changes: Sequence[OccurrenceChange],
     episode_changes: Sequence[EpisodeChange],
 ) -> _ManagementFinalization:
@@ -362,7 +363,7 @@ def _finalize_management_state(
         working,
         cutoff=cycle_at,
         include_equal=True,
-        exclude_equal_identities=set(),
+        exclude_equal_identities=set(exclude_equal_due_identities),
     )
     (
         working,

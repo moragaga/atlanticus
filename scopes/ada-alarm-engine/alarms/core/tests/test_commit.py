@@ -15,6 +15,7 @@ from ada.alarms.core import (
     GroupLifecycleState,
     InputKind,
     ManagementActionOutcome,
+    ManagementEffectChangeKind,
     OccurrenceClosureReason,
     PriorityDisposition,
     RoutingDestination,
@@ -22,6 +23,7 @@ from ada.alarms.core import (
     commit_id_for,
     cycle_id_for,
     materialize_group_commit,
+    reconcile_group_configuration,
     reduce_group_cycle,
     reset_group_for_reconfiguration,
 )
@@ -36,7 +38,6 @@ from .support import (
     management_action,
     physical,
     plan,
-    reappear_after,
 )
 
 TECHNICAL_EVIDENCE = EvidenceContractRef(
@@ -56,8 +57,15 @@ def _reduce(
     pending_requests=(),
     decisions=(),
     ids=None,
+    reappearance_seconds: int | None = 300,
 ):
     generated = ids or Ids()
+
+    def resolve_reappearance(action):
+        if reappearance_seconds is None:
+            return None
+        return action.source_created_at + timedelta(seconds=reappearance_seconds)
+
     return reduce_group_cycle(
         state,
         cycle_at=at,
@@ -70,7 +78,7 @@ def _reduce(
         occurrence_id_factory=generated.new_occurrence,
         episode_id_factory=generated.new_episode,
         management_effect_id_factory=generated.new_management_effect,
-        reappearance_due_at_resolver=reappear_after(300),
+        reappearance_due_at_resolver=resolve_reappearance,
         deactivation_request_id_factory=generated.new_deactivation_request,
         deactivation_effect_id_factory=generated.new_deactivation_effect,
     )
@@ -751,6 +759,83 @@ def test_engine_commit_records_document_contains_full_immutable_payloads() -> No
     assert effect['source_occurrence_id'] == 'O1'
     assert effect['reappearance_due_at'].endswith('Z')
     assert document['input_receipts'][0]['commit_id'] == materialized.commit.commit_id
+
+
+def test_engine_commit_record_supports_management_without_timer() -> None:
+    alarm, ids, started = _started()
+    at = NOW + timedelta(minutes=1)
+    evaluation = physical('risk', AlarmStatus.ACTIVE, at=at)
+    decision = _reduce(
+        started.state,
+        (alarm,),
+        (evaluation,),
+        at=at,
+        actions=(management_action('risk', at=at),),
+        ids=ids,
+        reappearance_seconds=None,
+    )
+
+    materialized = _materialize(
+        started.state,
+        decision,
+        (evaluation,),
+        at=at,
+        previous_commit_id=started.commit.commit_id,
+    )
+
+    assert materialized is not None
+    effect = materialized.records.as_document()['management_effects'][0]
+    assert effect['effect_id'] == 'ME1'
+    assert effect['reappearance_due_at'] is None
+
+
+def test_engine_commit_record_materializes_management_effect_updated() -> None:
+    ids = Ids()
+    alarm = plan('risk', reappearance_after_seconds=300)
+    previous = GroupLifecycleState(priority_group='mill-feed')
+    initial_evaluation = physical('risk', AlarmStatus.ACTIVE)
+    initial_decision = _reduce(previous, (alarm,), (initial_evaluation,), ids=ids)
+    started = _materialize(previous, initial_decision, (initial_evaluation,))
+    assert started is not None
+    managed_at = NOW + timedelta(minutes=1)
+    managed_evaluation = physical('risk', AlarmStatus.ACTIVE, at=managed_at)
+    managed_decision = _reduce(
+        started.state,
+        (alarm,),
+        (managed_evaluation,),
+        at=managed_at,
+        actions=(management_action('risk', at=managed_at),),
+        ids=ids,
+    )
+    managed = _materialize(
+        started.state,
+        managed_decision,
+        (managed_evaluation,),
+        at=managed_at,
+        previous_commit_id=started.commit.commit_id,
+    )
+    assert managed is not None
+    target = replace(alarm, reappearance_after_seconds=600)
+    adoption_at = managed_at + timedelta(seconds=10)
+    adoption_decision = reconcile_group_configuration(
+        managed.state,
+        effective_at=adoption_at,
+        planned_alarms=(target,),
+    )
+
+    materialized = _materialize(
+        managed.state,
+        adoption_decision,
+        (),
+        at=adoption_at,
+        previous_commit_id=managed.commit.commit_id,
+    )
+
+    assert materialized is not None
+    record = materialized.records.management_effects[0]
+    assert record.kind is ManagementEffectChangeKind.UPDATED
+    assert record.effect_id == 'ME1'
+    assert record.reappearance_due_at == managed_at + timedelta(seconds=600)
 
 
 def test_configuration_close_uses_current_physical_evaluation_for_final_evidence() -> None:
