@@ -17,7 +17,7 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.ids import
 )
 
 
-# El layout consume únicamente bindings propiedad del scope Mine.
+# El layout vuelve a contener sólo estructura visual; los Stores KPI reales los monta la integración del collector.
 def build_mine_layout():
     return html.Section(
         html.Div(

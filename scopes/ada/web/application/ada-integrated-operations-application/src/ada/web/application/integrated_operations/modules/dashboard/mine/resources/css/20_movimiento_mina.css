@@ -1,0 +1,331 @@
+.movimiento-mina {
+    --movimiento-mina-padding-x: .18rem;
+    --movimiento-mina-padding-y: .08rem;
+    --movimiento-mina-section-gap: .04rem;
+    --movimiento-mina-header-title-size: .38rem;
+    --movimiento-mina-header-subtitle-size: .31rem;
+    --movimiento-mina-label-size: .34rem;
+    --movimiento-mina-value-size: .39rem;
+    --movimiento-mina-plan-size: .32rem;
+    --movimiento-mina-state-size: .32rem;
+    --movimiento-mina-status-icon-size: .7rem;
+    --movimiento-mina-row-gap: .03rem;
+    --movimiento-mina-metric-gap: .07rem;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    min-width: 100%;
+    min-height: 100%;
+    flex-direction: column;
+    gap: var(--movimiento-mina-section-gap);
+    padding: var(--movimiento-mina-padding-y) var(--movimiento-mina-padding-x);
+    color: var(--ada-color-text-primary);
+    box-sizing: border-box;
+}
+
+.movimiento-mina__header,
+.movimiento-mina__metrics {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.movimiento-mina__header {
+    flex: 0 0 auto;
+    padding-bottom: .1rem;
+    border-bottom: 1px solid var(--ada-color-border-primary);
+}
+
+.movimiento-mina__header-column {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.movimiento-mina__header-title,
+.movimiento-mina__header-subtitle,
+.movimiento-mina__row-label {
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    line-height: 1.05;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.movimiento-mina__value,
+.movimiento-mina__plan,
+.movimiento-mina__separator,
+.movimiento-mina__unit {
+    margin: 0;
+    line-height: 1.05;
+    white-space: nowrap;
+}
+
+.movimiento-mina__header-title {
+    font-size: var(--movimiento-mina-header-title-size);
+    font-weight: 700;
+    letter-spacing: .01rem;
+}
+
+.movimiento-mina__header-subtitle {
+    margin-top: .02rem;
+    font-size: var(--movimiento-mina-header-subtitle-size);
+    font-weight: 400;
+}
+
+.movimiento-mina__rows {
+    display: grid;
+    min-width: 0;
+    min-height: 0;
+    flex: 0 0 auto;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--movimiento-mina-row-gap);
+    overflow: visible;
+}
+
+.movimiento-mina__row {
+    display: grid;
+    min-width: 0;
+    min-height: 0;
+    grid-template-rows: auto auto;
+    gap: .02rem;
+    padding: .1rem 0 .03rem;
+    border-bottom: 1px solid var(--ada-color-border-primary);
+    overflow: visible;
+}
+
+.movimiento-mina__row-label {
+    padding: 0 0 .1rem .04rem;
+    font-size: var(--movimiento-mina-label-size);
+    font-weight: 500;
+}
+
+.movimiento-mina__metrics {
+    align-items: center;
+}
+
+.movimiento-mina__metric {
+    display: flex;
+    min-width: 0;
+    align-items: baseline;
+    justify-content: center;
+    gap: var(--movimiento-mina-metric-gap);
+    overflow: visible;
+    white-space: nowrap;
+}
+
+.movimiento-mina__value {
+    flex: 0 0 auto;
+    font-size: var(--movimiento-mina-value-size);
+    font-weight: 700;
+}
+
+.movimiento-mina__value--danger {
+    color: var(--ada-color-danger);
+}
+
+.movimiento-mina__value--warning {
+    color: var(--ada-color-warning);
+}
+
+.movimiento-mina__plan,
+.movimiento-mina__separator,
+.movimiento-mina__unit {
+    flex: 0 0 auto;
+    font-size: var(--movimiento-mina-plan-size);
+    font-weight: 400;
+}
+
+.movimiento-mina__state {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    margin-top: auto;
+    align-items: center;
+    justify-content: center;
+    gap: .12rem;
+    padding: .2rem 0 0;
+    font-size: var(--movimiento-mina-state-size);
+}
+
+.movimiento-mina__state-message {
+    min-width: 0;
+    margin: 0;
+    font-size: var(--movimiento-mina-state-size);
+    font-weight: 600;
+    line-height: 1.1;
+    text-align: center;
+    white-space: normal;
+}
+
+.movimiento-mina__state-icon {
+    display: block;
+    width: var(--movimiento-mina-status-icon-size);
+    height: var(--movimiento-mina-status-icon-size);
+    flex: 0 0 auto;
+    object-fit: contain;
+}
+
+.movimiento-mina--unavailable {
+    min-height: 2rem;
+}
+
+.movimiento-mina--unavailable .movimiento-mina__state {
+    flex: 1 1 auto;
+    margin-top: 0;
+    padding-top: 0;
+}
+
+@media only screen and (min-width: 350px) {
+    .movimiento-mina {
+        --movimiento-mina-padding-x: .28rem;
+        --movimiento-mina-padding-y: .16rem;
+        --movimiento-mina-section-gap: .06rem;
+        --movimiento-mina-header-title-size: .58rem;
+        --movimiento-mina-header-subtitle-size: .48rem;
+        --movimiento-mina-label-size: .52rem;
+        --movimiento-mina-value-size: .62rem;
+        --movimiento-mina-plan-size: .5rem;
+        --movimiento-mina-state-size: .48rem;
+        --movimiento-mina-status-icon-size: .9rem;
+        --movimiento-mina-row-gap: .05rem;
+        --movimiento-mina-metric-gap: .09rem;
+    }
+}
+
+@media only screen and (min-width: 480px) {
+    .movimiento-mina {
+        --movimiento-mina-padding-x: .36rem;
+        --movimiento-mina-padding-y: .2rem;
+        --movimiento-mina-section-gap: .07rem;
+        --movimiento-mina-header-title-size: .64rem;
+        --movimiento-mina-header-subtitle-size: .52rem;
+        --movimiento-mina-label-size: .57rem;
+        --movimiento-mina-value-size: .68rem;
+        --movimiento-mina-plan-size: .54rem;
+        --movimiento-mina-state-size: .52rem;
+        --movimiento-mina-status-icon-size: 1rem;
+        --movimiento-mina-row-gap: .06rem;
+        --movimiento-mina-metric-gap: .1rem;
+    }
+}
+
+@media only screen and (min-width: 1280px) {
+    .movimiento-mina {
+        --movimiento-mina-padding-x: .2rem;
+        --movimiento-mina-padding-y: .08rem;
+        --movimiento-mina-section-gap: .04rem;
+        --movimiento-mina-header-title-size: .43rem;
+        --movimiento-mina-header-subtitle-size: .34rem;
+        --movimiento-mina-label-size: .38rem;
+        --movimiento-mina-value-size: .45rem;
+        --movimiento-mina-plan-size: .35rem;
+        --movimiento-mina-state-size: .34rem;
+        --movimiento-mina-status-icon-size: .72rem;
+        --movimiento-mina-row-gap: .03rem;
+        --movimiento-mina-metric-gap: .07rem;
+    }
+}
+
+@media only screen and (min-width: 1366px) {
+    .movimiento-mina {
+        --movimiento-mina-header-title-size: .37rem;
+        --movimiento-mina-header-subtitle-size: .3rem;
+        --movimiento-mina-label-size: .33rem;
+        --movimiento-mina-value-size: .39rem;
+        --movimiento-mina-plan-size: .31rem;
+        --movimiento-mina-state-size: .3rem;
+        --movimiento-mina-status-icon-size: .66rem;
+    }
+
+    [data-ada-io-presentation='mine'] .movimiento-mina {
+        --movimiento-mina-padding-x: .3rem;
+        --movimiento-mina-section-gap: .06rem;
+        --movimiento-mina-header-title-size: .5rem;
+        --movimiento-mina-header-subtitle-size: .4rem;
+        --movimiento-mina-label-size: .44rem;
+        --movimiento-mina-value-size: .52rem;
+        --movimiento-mina-plan-size: .41rem;
+        --movimiento-mina-state-size: .4rem;
+        --movimiento-mina-status-icon-size: .82rem;
+        --movimiento-mina-row-gap: .04rem;
+        --movimiento-mina-metric-gap: .09rem;
+    }
+}
+
+@media only screen and (min-width: 1536px) {
+    .movimiento-mina {
+        --movimiento-mina-header-title-size: .4rem;
+        --movimiento-mina-header-subtitle-size: .32rem;
+        --movimiento-mina-label-size: .35rem;
+        --movimiento-mina-value-size: .42rem;
+        --movimiento-mina-plan-size: .33rem;
+        --movimiento-mina-state-size: .32rem;
+        --movimiento-mina-status-icon-size: .7rem;
+    }
+
+    [data-ada-io-presentation='mine'] .movimiento-mina {
+        --movimiento-mina-padding-x: .34rem;
+        --movimiento-mina-section-gap: .07rem;
+        --movimiento-mina-header-title-size: .54rem;
+        --movimiento-mina-header-subtitle-size: .43rem;
+        --movimiento-mina-label-size: .47rem;
+        --movimiento-mina-value-size: .56rem;
+        --movimiento-mina-plan-size: .44rem;
+        --movimiento-mina-state-size: .43rem;
+        --movimiento-mina-status-icon-size: .88rem;
+        --movimiento-mina-row-gap: .05rem;
+        --movimiento-mina-metric-gap: .1rem;
+    }
+}
+
+@media only screen and (min-width: 1920px) {
+    .movimiento-mina {
+        --movimiento-mina-padding-x: .24rem;
+        --movimiento-mina-section-gap: .05rem;
+        --movimiento-mina-header-title-size: .46rem;
+        --movimiento-mina-header-subtitle-size: .36rem;
+        --movimiento-mina-label-size: .4rem;
+        --movimiento-mina-value-size: .48rem;
+        --movimiento-mina-plan-size: .37rem;
+        --movimiento-mina-state-size: .36rem;
+        --movimiento-mina-status-icon-size: .76rem;
+        --movimiento-mina-metric-gap: .08rem;
+    }
+
+    [data-ada-io-presentation='mine'] .movimiento-mina {
+        --movimiento-mina-padding-x: .4rem;
+        --movimiento-mina-section-gap: .08rem;
+        --movimiento-mina-header-title-size: .62rem;
+        --movimiento-mina-header-subtitle-size: .49rem;
+        --movimiento-mina-label-size: .54rem;
+        --movimiento-mina-value-size: .64rem;
+        --movimiento-mina-plan-size: .5rem;
+        --movimiento-mina-state-size: .49rem;
+        --movimiento-mina-status-icon-size: .98rem;
+        --movimiento-mina-row-gap: .06rem;
+        --movimiento-mina-metric-gap: .11rem;
+    }
+}
+
+@media only screen and (min-width: 2560px) {
+    .movimiento-mina,
+    [data-ada-io-presentation='mine'] .movimiento-mina {
+        --movimiento-mina-padding-x: .34rem;
+        --movimiento-mina-padding-y: .12rem;
+        --movimiento-mina-section-gap: .06rem;
+        --movimiento-mina-header-title-size: .56rem;
+        --movimiento-mina-header-subtitle-size: .44rem;
+        --movimiento-mina-label-size: .49rem;
+        --movimiento-mina-value-size: .58rem;
+        --movimiento-mina-plan-size: .45rem;
+        --movimiento-mina-state-size: .44rem;
+        --movimiento-mina-status-icon-size: .9rem;
+        --movimiento-mina-row-gap: .05rem;
+        --movimiento-mina-metric-gap: .1rem;
+    }
+}

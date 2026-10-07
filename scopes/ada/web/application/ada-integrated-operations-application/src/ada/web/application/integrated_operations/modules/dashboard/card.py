@@ -73,7 +73,10 @@ def _build_card_display(
         subcomponent_key=tool_subcomponent_key,
         linked_component_keys=linked_tool_component_keys,
         wrapper_id=dashboard_card_id(key),
-        content=html.Div(id=dashboard_card_content_id(key)),
+        content=html.Div(
+            id=dashboard_card_content_id(key),
+            className='ada-io-card-content',
+        ),
         footer=label,
     )
     return build_content_state_wrapper(

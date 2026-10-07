@@ -42,7 +42,7 @@ def _build_test() -> Iterator[DashboardGlobalIndicatorBinding]:
         )
 
 
-INTEGRATED_OPERATIONS_GLOBAL_INDICATORS_CONTENT_STATE = ContentState.CONSTRUCTION
+INTEGRATED_OPERATIONS_GLOBAL_INDICATORS_CONTENT_STATE = ContentState.READY
 INTEGRATED_OPERATIONS_GLOBAL_INDICATOR_BINDINGS: tuple[DashboardGlobalIndicatorBinding, ...] = (
     tuple(_build_test())
 )

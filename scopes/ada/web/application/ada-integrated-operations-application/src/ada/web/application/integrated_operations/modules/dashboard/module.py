@@ -2,6 +2,9 @@ from ada.web.application.integrated_operations.modules.dashboard.context import 
     DASHBOARD_CONTEXT_SERVICE_KEY,
     DashboardContext,
 )
+from ada.web.application.integrated_operations.modules.dashboard.mine.general_mina.runtime import (
+    register_general_mina_callback,
+)
 from ada.web.application.integrated_operations.modules.dashboard.mine.module import (
     MINE_ASSET_LAYER,
 )
@@ -30,6 +33,13 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
     def register_services(services) -> None:
         services.add(DASHBOARD_CONTEXT_SERVICE_KEY, context)
 
+    register_callbacks = None
+    if binding is not None:
+        tool_key = binding.structure.tool_key
+
+        def register_callbacks(dash_app, _services) -> None:
+            register_general_mina_callback(dash_app, tool_key=tool_key)
+
     return WebModule(
         name='ada-integrated-operations-dashboard',
         page_packages=(_DASHBOARD_PAGE_PACKAGE,),
@@ -40,4 +50,5 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             PLANT_ASSET_LAYER,
         ),
         register_services=register_services,
+        register_callbacks=register_callbacks,
     )

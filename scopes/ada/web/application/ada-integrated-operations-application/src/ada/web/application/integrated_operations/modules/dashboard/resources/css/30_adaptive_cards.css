@@ -1,0 +1,27 @@
+@media only screen and (min-width: 1280px) {
+    .ada-io-dashboard {
+        overflow: auto;
+    }
+
+    .ada-io-scope,
+    .ada-io-scope__content,
+    .ada-io-component,
+    .ada-io-component__cards {
+        overflow: visible;
+    }
+
+    .ada-io-component__cards {
+        grid-auto-rows: minmax(min-content, 1fr);
+    }
+
+    .ada-io-component__cards .ada-card-display {
+        grid-template-rows: minmax(min-content, 1fr) auto auto;
+    }
+}
+
+.ada-io-card-content {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+}
