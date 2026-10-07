@@ -224,7 +224,7 @@ def prepare_workspace(
         shutil.copytree(
             definition.artifact_root,
             processes_root / definition.name,
-            ignore=shutil.ignore_patterns(".env", "config.json", "secrets.json"),
+            ignore=shutil.ignore_patterns(".env", "config.json"),
         )
     compose_root = workspace_root / "compose"
     compose_root.mkdir()

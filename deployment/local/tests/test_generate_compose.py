@@ -102,13 +102,16 @@ def test_source_contract_validation_rejects_stale_artifact_with_actionable_messa
         validate_source_contracts(repository, discover_processes(repository))
 
 
-def test_workspace_excludes_active_configuration_and_generates_run_once_services(
+def test_workspace_preserves_runtime_configuration_and_generates_run_once_services(
     tmp_path: Path,
 ) -> None:
     repository = _repository(tmp_path)
     artifact = _write_artifact(repository, "operational-data-pi", profile="base")
     (artifact / "config.json").write_text('{"active": true}\n', encoding="utf-8")
     (artifact / "secrets.json").write_text('[{"secret": "active"}]\n', encoding="utf-8")
+    config = artifact / "config"
+    config.mkdir()
+    (config / "connections.json").write_text('{"connections": []}\n', encoding="utf-8")
     workspace = repository / ".runtime" / "local-deployment"
 
     compose_path = prepare_workspace(
@@ -131,7 +134,8 @@ def test_workspace_excludes_active_configuration_and_generates_run_once_services
     assert (copied / "pyproject.toml").is_file()
     assert not (copied / ".env").exists()
     assert not (copied / "config.json").exists()
-    assert not (copied / "secrets.json").exists()
+    assert (copied / "secrets.json").is_file()
+    assert (copied / "config/connections.json").is_file()
     validate_workspace_contract(workspace)
 
 
@@ -179,7 +183,7 @@ def test_bind_workspace_preserves_runtime_directory(tmp_path: Path) -> None:
     assert marker.read_text(encoding="utf-8") == "state"
 
 
-def test_docker_context_is_allowlisted_to_transport_files() -> None:
+def test_docker_context_is_allowlisted_to_runtime_inputs() -> None:
     repository_root = Path(__file__).resolve().parents[3]
     dockerignore = (repository_root / "deployment/processes/.dockerignore").read_text(
         encoding="utf-8"
@@ -187,16 +191,27 @@ def test_docker_context_is_allowlisted_to_transport_files() -> None:
     dockerfile = (repository_root / "deployment/processes/Dockerfile").read_text(
         encoding="utf-8"
     )
+    allowed = frozenset(
+        line.strip()
+        for line in dockerignore.splitlines()
+        if line.strip().startswith("!")
+    )
 
-    assert "!processes/*/pyproject.toml" in dockerignore
-    assert "!processes/*/uv.lock" in dockerignore
-    assert "!processes/*/wheels/**" in dockerignore
-    assert "!processes/*/src/**" in dockerignore
-    assert "!processes/**" not in dockerignore
-    assert "COPY processes/${FILENAME}/ ./" not in dockerfile
-    assert "COPY processes/${FILENAME}/src ./src" in dockerfile
-    assert "config.json" not in dockerfile
-    assert "secrets.json" not in dockerfile
+    assert "!processes/*/pyproject.toml" in allowed
+    assert "!processes/*/uv.lock" in allowed
+    assert "!processes/*/secrets.json" in allowed
+    assert "!processes/*/wheels/**" in allowed
+    assert "!processes/*/src/**" in allowed
+    assert "!processes/*/config/" in allowed
+    assert "!processes/*/config/connections.json" in allowed
+    assert "!processes/**" not in allowed
+    assert "!processes/*/.env" not in allowed
+    assert "!processes/*/config.json" not in allowed
+    assert all(".detail" not in rule for rule in allowed)
+    assert "COPY processes/${FILENAME}/ ./" in dockerfile
+    assert (
+        'test -f secrets.json || (echo "Process secrets.json not found"' in dockerfile
+    )
 
 
 def _repository(tmp_path: Path) -> Path:

@@ -24,12 +24,12 @@ BOOTSTRAP_ENVIRONMENT_VARIABLE = "ATLANTICUS_DISTRIBUTION_TOOL_BOOTSTRAPPED"
 BUNDLE_MODULE_NAME = "atlanticus_distribution_process_bundle"
 PROCESS_NAME_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 DISTRIBUTION_NAME_PATTERN = PROCESS_NAME_PATTERN
-MEMORY_PATTERN = re.compile(r"^[1-9][0-9]*(?:\.[0-9]+)?[bkmg]?$", re.IGNORECASE)
 REVISION_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 ALLOWED_SYSTEM_PROFILES = frozenset({"base", "sqlserver"})
-DEFAULT_CPUS = 0.5
-DEFAULT_MEMORY = "1g"
 DEFAULT_VOLUME_PATH = "/app/volumen"
+DEPLOYMENT_RESOURCES_MODULE_NAME = "atlanticus_distribution_deployment_resources"
+DEPLOYMENT_RESOURCES_FILE = "deployment.resources.json"
+RESOURCE_GUIDE_FILE = "AZURE_CONTAINER_APPS_RESOURCES.md"
 DISTRIBUTION_CONTRACT_KEY = "x-atlanticus-distribution-contract"
 DISTRIBUTION_CONTRACT_VERSION = "1"
 REQUIRED_ARTIFACT_ENTRIES = (
@@ -91,8 +91,6 @@ class ProcessArtifact:
     runtime_version: str
     command: str
     system_profile: str
-    cpus: float
-    memory: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,6 +148,18 @@ def _load_bundle(repository_root: Path) -> ModuleType:
     return module
 
 
+# Carga un único contrato compartido por el generador y el tooling entregado al consumidor.
+def _load_deployment_resources_contract() -> ModuleType:
+    path = Path(__file__).resolve().parent / "consumer/deployment_resources.py"
+    spec = importlib.util.spec_from_file_location(DEPLOYMENT_RESOURCES_MODULE_NAME, path)
+    if spec is None or spec.loader is None:
+        raise DistributionError(f"Deployment resources module could not be loaded: {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def _bootstrap(raw_argv: list[str]) -> None:
     if os.environ.get(BOOTSTRAP_ENVIRONMENT_VARIABLE) == "1":
         return
@@ -188,7 +198,7 @@ def _read_toml(path: Path) -> dict[str, Any]:
 def _container_metadata(
     metadata: dict[str, Any],
     pyproject_path: Path,
-) -> tuple[str, str, float, str]:
+) -> tuple[str, str]:
     project = metadata.get("project")
     if not isinstance(project, dict):
         raise DistributionError(f"Project metadata is invalid: {pyproject_path}")
@@ -212,18 +222,7 @@ def _container_metadata(
         raise DistributionError(
             f"Container system profile is invalid: {pyproject_path}"
         )
-    resources = container.get("resources", {})
-    if not isinstance(resources, dict):
-        raise DistributionError(f"Container resources are invalid: {pyproject_path}")
-    cpus = resources.get("cpus", DEFAULT_CPUS)
-    memory = resources.get("memory", DEFAULT_MEMORY)
-    if isinstance(cpus, bool) or not isinstance(cpus, (int, float)) or cpus <= 0:
-        raise DistributionError(
-            f"Container cpus must be greater than zero: {pyproject_path}"
-        )
-    if not isinstance(memory, str) or not MEMORY_PATTERN.fullmatch(memory):
-        raise DistributionError(f"Container memory is invalid: {pyproject_path}")
-    return command, system_profile, float(cpus), memory.lower()
+    return command, system_profile
 
 
 # La metadata operativa se deriva del artifact generado; no se duplica configuración.
@@ -267,7 +266,7 @@ def _load_artifact(
             f"Process artifact must require Python {PYTHON_VERSION}: "
             f"{root / 'pyproject.toml'}"
         )
-    command, system_profile, cpus, memory = _container_metadata(
+    command, system_profile = _container_metadata(
         metadata,
         root / "pyproject.toml",
     )
@@ -284,8 +283,6 @@ def _load_artifact(
         runtime_version=requires_python.removeprefix("=="),
         command=command,
         system_profile=system_profile,
-        cpus=cpus,
-        memory=memory,
     )
 
 
@@ -320,7 +317,7 @@ def _target_commands(repository_root: Path, target: str) -> tuple[str, ...]:
         )
         if not isinstance(container, dict):
             continue
-        command, _, _, _ = _container_metadata(metadata, pyproject_path)
+        command, _ = _container_metadata(metadata, pyproject_path)
         commands.append(command)
     if not commands:
         raise DistributionError(f"No exportable processes found for target: {target}")
@@ -387,7 +384,7 @@ def _preserve_consumer_configuration(
             shutil.copy2(current, staged_process / name)
 
 
-# Renderiza el servicio local desde el alias de despliegue y el contrato del artifact.
+# Renderiza la estructura base del servicio; CPU/RAM se resuelven dinámicamente al ejecutar.
 def _render_service(
     distribution_name: str,
     selected: SelectedProcess,
@@ -420,8 +417,6 @@ def _render_service(
             "    volumes:",
             f"      - {volume_source}:{DEFAULT_VOLUME_PATH}",
             *config_mount,
-            f"    cpus: {artifact.cpus:g}",
-            f"    mem_limit: {artifact.memory}",
         )
     )
 
@@ -587,12 +582,17 @@ def _copy_consumer_tooling(staging_root: Path) -> None:
     shutil.copy2(gitignore, staging_root / ".gitignore")
     target = staging_root / "tooling/local/processes"
     target.mkdir(parents=True)
+    guide = source / RESOURCE_GUIDE_FILE
+    if not guide.is_file():
+        raise DistributionError(f"Consumer resource guide template not found: {guide}")
+    shutil.copy2(guide, staging_root / RESOURCE_GUIDE_FILE)
     for name in (
         "process.py",
         "process.sh",
         "process.cmd",
         "update.py",
         "update_contract.py",
+        "deployment_resources.py",
     ):
         source_path = source / name
         if not source_path.is_file():
@@ -600,6 +600,33 @@ def _copy_consumer_tooling(staging_root: Path) -> None:
                 f"Consumer process tool template not found: {source_path}"
             )
         shutil.copy2(source_path, target / name)
+
+
+# Conserva sizing del consumidor para procesos existentes y aplica el default sólo a procesos nuevos.
+def _write_deployment_resources(
+    *,
+    staging_root: Path,
+    target_root: Path,
+    selected: tuple[SelectedProcess, ...],
+) -> None:
+    contract = _load_deployment_resources_contract()
+    existing = {}
+    current_path = target_root / DEPLOYMENT_RESOURCES_FILE
+    if current_path.is_file():
+        try:
+            existing = contract.read_resources(current_path)
+        except contract.DeploymentResourcesError as error:
+            raise DistributionError(str(error)) from error
+    resources = {
+        item.deployment.execution_file: existing.get(
+            item.deployment.execution_file, contract.default_resources()
+        )
+        for item in selected
+    }
+    try:
+        contract.write_resources(staging_root / DEPLOYMENT_RESOURCES_FILE, resources)
+    except contract.DeploymentResourcesError as error:
+        raise DistributionError(str(error)) from error
 
 
 def _copy_local_deployment_capability(
@@ -681,6 +708,17 @@ def _validate_staging(
         raise DistributionError(
             "Generated services manifest does not match the deployment catalog"
         )
+    # El sizing efectivo debe corresponder exactamente a los procesos de la distribución.
+    contract = _load_deployment_resources_contract()
+    try:
+        contract.require_resources(
+            staging_root / DEPLOYMENT_RESOURCES_FILE,
+            expected_aliases,
+        )
+    except contract.DeploymentResourcesError as error:
+        raise DistributionError(str(error)) from error
+    if not (staging_root / RESOURCE_GUIDE_FILE).is_file():
+        raise DistributionError("Generated distribution must contain the resource guide")
     local_root = staging_root / "deployment/local"
     for compose_name in ("compose.yaml", "compose.bind.yaml"):
         compose = (local_root / compose_name).read_text(encoding="utf-8")
@@ -722,6 +760,7 @@ def _validate_staging(
         "process.cmd",
         "update.py",
         "update_contract.py",
+        "deployment_resources.py",
     ):
         if not (staging_root / "tooling/local/processes" / name).is_file():
             raise DistributionError(
@@ -868,6 +907,11 @@ def distribute(
             json.dumps(_services(selected_processes), indent=2) + "\n",
             encoding="utf-8",
         )
+        _write_deployment_resources(
+            staging_root=staging_root,
+            target_root=target_root,
+            selected=selected_processes,
+        )
         local_root = _copy_local_deployment_capability(
             repository_root,
             staging_root,
@@ -982,6 +1026,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Distribution package: {target}")
     print(f"Configure process files under: {target / 'processes'}")
     print(f"Pipeline manifest: {target / 'services.json'}")
+    print(f"Deployment resources: {target / DEPLOYMENT_RESOURCES_FILE}")
     print(f"Local validation: {target / 'tooling/local/processes/process.sh'} validate")
     return 0
 

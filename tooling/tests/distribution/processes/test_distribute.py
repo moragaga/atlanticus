@@ -124,8 +124,12 @@ def _patch_generation_context(monkeypatch, tmp_path: Path) -> None:
         "process.cmd",
         "update.py",
         "update_contract.py",
+        "deployment_resources.py",
     ):
         (template / name).write_text(name, encoding="utf-8")
+    (template / "AZURE_CONTAINER_APPS_RESOURCES.md").write_text(
+        "resource guide\n", encoding="utf-8"
+    )
     monkeypatch.setattr(distribution, "_consumer_template_root", lambda: template)
     monkeypatch.setattr(distribution, "_generated_at", lambda: "2026-09-22T23:30:00Z")
     monkeypatch.setattr(
@@ -360,6 +364,17 @@ def test_distribution_keeps_local_deployment_assets_out_of_root(
     assert (target / "deployment/local/scheduler/scheduler.py").is_file()
     assert (target / "tooling/local/processes/update.py").is_file()
     assert (target / "tooling/local/processes/update_contract.py").is_file()
+    assert (target / "tooling/local/processes/deployment_resources.py").is_file()
+    assert (target / "AZURE_CONTAINER_APPS_RESOURCES.md").is_file()
+    resources = json.loads(
+        (target / "deployment.resources.json").read_text(encoding="utf-8")
+    )
+    assert resources == {
+        "schema_version": 1,
+        "processes": {
+            "kpis-runtime": {"vcpu": 0.5, "memory_gib": 1.0},
+        },
+    }
 
 
 def test_split_fabrica_distribution_preserves_contiguous_slots(
@@ -640,3 +655,52 @@ def test_extension_integrates_into_existing_project_without_rebuilding_existing_
     else:
         raise AssertionError("Integrating the same component again must fail")
     assert (original / "distribution.json").read_bytes() == before
+
+
+def test_regeneration_preserves_consumer_owned_deployment_resources(
+    tmp_path: Path, monkeypatch
+) -> None:
+    _write_transport(tmp_path)
+    runtime = _write_source(
+        tmp_path,
+        "scopes/ada-kpi-engine/processes/kpi-runtime",
+        "ada-kpi-runtime",
+    )
+    runtime_pyproject = runtime / "pyproject.toml"
+    runtime_pyproject.write_text(
+        runtime_pyproject.read_text(encoding="utf-8")
+        + '\n[tool.atlanticus.container.resources]\ncpus = 4.0\nmemory = "8g"\n',
+        encoding="utf-8",
+    )
+    _patch_generation_context(monkeypatch, tmp_path)
+    bundle = BundleStub({"ada-kpi-runtime": runtime})
+
+    target = distribution.distribute(
+        repository_root=tmp_path,
+        output_root=tmp_path / "distribution",
+        distribution_name="consumer-resources",
+        selections=("ada-kpi-runtime",),
+        targets=(),
+        bundle=bundle,
+    )
+    resources_path = target / "deployment.resources.json"
+    resources = json.loads(resources_path.read_text(encoding="utf-8"))
+    assert resources["processes"]["kpis-runtime"] == {"vcpu": 0.5, "memory_gib": 1.0}
+    resources["processes"]["kpis-runtime"] = {"vcpu": 1.5, "memory_gib": 3.0}
+    resources_path.write_text(json.dumps(resources, indent=2) + "\n", encoding="utf-8")
+
+    target = distribution.distribute(
+        repository_root=tmp_path,
+        output_root=tmp_path / "distribution",
+        distribution_name="consumer-resources",
+        selections=("ada-kpi-runtime",),
+        targets=(),
+        bundle=bundle,
+    )
+    resources = json.loads(
+        (target / "deployment.resources.json").read_text(encoding="utf-8")
+    )
+    assert resources["processes"]["kpis-runtime"] == {"vcpu": 1.5, "memory_gib": 3.0}
+    compose = (target / "deployment/local/compose.yaml").read_text(encoding="utf-8")
+    assert "cpus:" not in compose
+    assert "mem_limit:" not in compose

@@ -228,10 +228,12 @@ def prepare_workspace(
     processes_root = workspace_root / "processes"
     processes_root.mkdir()
     for definition in definitions:
+        # El workspace conserva los inputs que el Dockerfile necesita en runtime.
+        # .env sigue externo a la imagen y config.json permanece fuera del build context.
         shutil.copytree(
             definition.artifact_root,
             processes_root / definition.name,
-            ignore=shutil.ignore_patterns(".env", "config.json", "secrets.json"),
+            ignore=shutil.ignore_patterns(".env", "config.json"),
         )
     compose_root = workspace_root / "compose"
     compose_root.mkdir()

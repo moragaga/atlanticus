@@ -100,6 +100,16 @@ def _validate_structure(paths: Paths) -> None:
         / "processes"
         / "consumer"
         / "update_contract.py",
+        paths.tooling
+        / "distribution"
+        / "processes"
+        / "consumer"
+        / "deployment_resources.py",
+        paths.tooling
+        / "distribution"
+        / "processes"
+        / "consumer"
+        / "AZURE_CONTAINER_APPS_RESOURCES.md",
         paths.tooling / "distribution" / "processes" / "distribute.py",
         paths.tooling / "distribution" / "processes" / "distribute.sh",
         paths.tooling / "distribution" / "processes" / "distribute.cmd",
@@ -148,36 +158,40 @@ def _validate_docker_contract(paths: Paths) -> None:
     dockerfile = (paths.deployment / "processes" / "Dockerfile").read_text(
         encoding="utf-8"
     )
-    dockerignore = (paths.deployment / "processes" / ".dockerignore").read_text(
-        encoding="utf-8"
+    rules = tuple(
+        line.strip()
+        for line in (paths.deployment / "processes" / ".dockerignore")
+        .read_text(encoding="utf-8")
+        .splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
     )
-    forbidden = (
+    allowed = frozenset(rule for rule in rules if rule.startswith("!"))
+    for value in (
         "COPY processes/${FILENAME}/ ./",
-        "config.json",
-        "secrets.json",
-        ".env",
-    )
-    for value in forbidden:
-        if value in dockerfile:
-            raise RuntimeError(f"Active configuration may reach process image: {value}")
-    required = (
-        "COPY processes/${FILENAME}/pyproject.toml processes/${FILENAME}/uv.lock ./",
-        "COPY processes/${FILENAME}/wheels ./wheels",
-        "COPY processes/${FILENAME}/src ./src",
-    )
-    for value in required:
+        'test -f secrets.json || (echo "Process secrets.json not found"',
+    ):
         if value not in dockerfile:
-            raise RuntimeError(f"Docker transport COPY contract is missing: {value}")
-    if "!processes/**" in dockerignore:
-        raise RuntimeError("Docker context must not expose complete process artifacts")
+            raise RuntimeError(f"Docker transport contract is missing: {value}")
     for value in (
         "!processes/*/pyproject.toml",
         "!processes/*/uv.lock",
+        "!processes/*/secrets.json",
+        "!processes/*/wheels/",
         "!processes/*/wheels/**",
+        "!processes/*/src/",
         "!processes/*/src/**",
+        "!processes/*/config/",
+        "!processes/*/config/connections.json",
     ):
-        if value not in dockerignore:
+        if value not in allowed:
             raise RuntimeError(f"Docker context allowlist is missing: {value}")
+    for value in ("!processes/*/.env", "!processes/*/config.json"):
+        if value in allowed:
+            raise RuntimeError(f"Docker context exposes active configuration: {value}")
+    if any(".detail" in value for value in allowed):
+        raise RuntimeError("Docker context must not expose detail configuration files")
+    if "!processes/**" in allowed:
+        raise RuntimeError("Docker context must not expose complete process artifacts")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -207,6 +221,7 @@ def main(argv: list[str] | None = None) -> int:
         "tooling/distribution/processes/consumer/update_contract.py",
         "tooling/distribution/processes/distribute.py",
         "tooling/distribution/processes/consumer/process.py",
+        "tooling/distribution/processes/consumer/deployment_resources.py",
         "tooling/tests/distribution/processes",
         "tooling/gates/process-deployment/check.py",
     ]

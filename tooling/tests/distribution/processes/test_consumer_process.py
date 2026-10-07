@@ -75,6 +75,20 @@ def _distribution(root: Path, *, with_env: bool) -> None:
         ),
         encoding="utf-8",
     )
+    (root / "deployment.resources.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "processes": {
+                    alias: {"vcpu": 0.5, "memory_gib": 1.0},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (root / "AZURE_CONTAINER_APPS_RESOURCES.md").write_text(
+        "resource guide\n", encoding="utf-8"
+    )
     marker = (
         'x-atlanticus-distribution-contract: "1"\n'
         f"services:\n  {alias}:\n    build:\n      args:\n        FILENAME: {alias}\n"
@@ -196,3 +210,31 @@ def test_integrate_rejects_unsafe_archive_without_changing_distribution(
         raise AssertionError("Path traversal must be rejected")
     assert manifest_path.read_bytes() == before
     assert not (tmp_path.parent / "unexpected.txt").exists()
+
+
+def test_resource_override_translates_gib_to_docker_mib(tmp_path: Path) -> None:
+    _distribution(tmp_path, with_env=True)
+    path = tmp_path / "deployment.resources.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["processes"]["kpis-runtime"] = {"vcpu": 1.5, "memory_gib": 3.0}
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    override = consumer._render_resource_override(tmp_path)
+
+    assert "cpus: 1.5" in override
+    assert "mem_limit: 3072m" in override
+
+
+def test_validate_rejects_non_azure_resource_pair(tmp_path: Path) -> None:
+    _distribution(tmp_path, with_env=True)
+    path = tmp_path / "deployment.resources.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["processes"]["kpis-runtime"] = {"vcpu": 1.5, "memory_gib": 2.5}
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    try:
+        consumer._validate_distribution(tmp_path, require_environment=True)
+    except consumer.ConsumerProcessError as error:
+        assert "Deployment memory must be 3 GiB for 1.5 vCPU" in str(error)
+    else:
+        raise AssertionError("Expected invalid Azure resource pair to fail validation")

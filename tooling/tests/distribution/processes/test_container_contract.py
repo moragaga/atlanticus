@@ -27,12 +27,14 @@ def test_process_docker_context_exposes_runtime_inputs_without_detail_files() ->
 
 
 def test_process_dockerfile_uses_filtered_process_root_and_requires_manifest() -> None:
-    dockerfile = (
-        REPOSITORY_ROOT / "deployment/processes/Dockerfile"
-    ).read_text(encoding="utf-8")
+    dockerfile = (REPOSITORY_ROOT / "deployment/processes/Dockerfile").read_text(
+        encoding="utf-8"
+    )
 
     assert "COPY processes/${FILENAME}/ ./" in dockerfile
-    assert 'test -f secrets.json || (echo "Process secrets.json not found"' in dockerfile
+    assert (
+        'test -f secrets.json || (echo "Process secrets.json not found"' in dockerfile
+    )
 
 
 def test_consumer_gitignore_keeps_distribution_payload_versionable() -> None:

@@ -4,12 +4,9 @@ import json
 import os
 import re
 import shutil
-import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
-DEFAULT_CPUS = 0.5
-DEFAULT_MEMORY = "1g"
 DOCKER_SOCKET_TARGET = "/var/run/docker.sock"
 DOCKER_DESKTOP_SOCKET_SOURCE = "/var/run/docker.sock.raw"
 RUNTIME_TARGET = "/app/volumen"
@@ -60,38 +57,21 @@ def resolve_docker_socket_source(
     )
 
 
-# Lee recursos y configuración activa desde el proceso preparado.
+# Recibe recursos ya resueltos y valida la configuración activa del proceso preparado.
 def load_simulation_process(
     *,
     process_root: Path,
     name: str,
     image: str,
+    cpus: float,
+    memory: str,
 ) -> SimulationProcess:
     if PROCESS_NAME_PATTERN.fullmatch(name) is None:
         raise LocalSimulationError(f"Invalid simulation process name: {name}")
-    pyproject_path = process_root / "pyproject.toml"
-    try:
-        metadata = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
-    except (OSError, tomllib.TOMLDecodeError) as error:
-        raise LocalSimulationError(
-            f"Could not read process metadata: {pyproject_path}"
-        ) from error
-    tool = metadata.get("tool")
-    atlanticus = tool.get("atlanticus") if isinstance(tool, dict) else None
-    container = atlanticus.get("container") if isinstance(atlanticus, dict) else None
-    if not isinstance(container, dict):
-        raise LocalSimulationError(f"Container metadata is missing: {pyproject_path}")
-    resources = container.get("resources", {})
-    if not isinstance(resources, dict):
-        raise LocalSimulationError(f"Container resources are invalid: {pyproject_path}")
-    cpus = resources.get("cpus", DEFAULT_CPUS)
-    memory = resources.get("memory", DEFAULT_MEMORY)
     if isinstance(cpus, bool) or not isinstance(cpus, (int, float)) or cpus <= 0:
-        raise LocalSimulationError(
-            f"Container cpus must be greater than zero: {pyproject_path}"
-        )
+        raise LocalSimulationError(f"Simulation cpus must be greater than zero: {name}")
     if not isinstance(memory, str) or not memory.strip():
-        raise LocalSimulationError(f"Container memory is invalid: {pyproject_path}")
+        raise LocalSimulationError(f"Simulation memory is invalid: {name}")
     env_file = process_root / ".env"
     config_file = process_root / "config.json"
     if not env_file.is_file():

@@ -19,6 +19,9 @@ DISTRIBUTION_CONTRACT_VERSION = "1"
 SIMULATION_MODULE_NAME = "atlanticus_distribution_local_simulation"
 PROCESS_NAME_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 REQUIRED_ARTIFACT_ENTRIES = ("pyproject.toml", "uv.lock", "wheels", "src")
+DEPLOYMENT_RESOURCES_MODULE_NAME = "atlanticus_distribution_deployment_resources"
+DEPLOYMENT_RESOURCES_FILE = "deployment.resources.json"
+RESOURCE_GUIDE_FILE = "AZURE_CONTAINER_APPS_RESOURCES.md"
 
 
 class ConsumerProcessError(RuntimeError):
@@ -35,6 +38,18 @@ def _distribution_root() -> Path:
         ):
             return candidate
     raise ConsumerProcessError("Atlanticus distribution root could not be resolved")
+
+
+# Carga el mismo contrato de recursos que fue entregado junto a este tooling.
+def _load_deployment_resources_contract():
+    path = Path(__file__).with_name("deployment_resources.py")
+    spec = importlib.util.spec_from_file_location(DEPLOYMENT_RESOURCES_MODULE_NAME, path)
+    if spec is None or spec.loader is None:
+        raise ConsumerProcessError(f"Deployment resources module could not be loaded: {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def _require_command(name: str) -> None:
@@ -122,6 +137,21 @@ def _deployment_entries(root: Path) -> tuple[tuple[str, str], ...]:
     return tuple(entries)
 
 
+# Lee sizing efectivo y exige correspondencia exacta con los procesos instalados.
+def _deployment_resources(root: Path):
+    aliases = tuple(alias for alias, _ in _deployment_entries(root))
+    contract = _load_deployment_resources_contract()
+    try:
+        return contract.require_resources(root / DEPLOYMENT_RESOURCES_FILE, aliases)
+    except contract.DeploymentResourcesError as error:
+        raise ConsumerProcessError(str(error)) from error
+
+
+def _render_resource_override(root: Path) -> str:
+    contract = _load_deployment_resources_contract()
+    return contract.render_compose_override(_deployment_resources(root))
+
+
 # Reconstruye el contrato esperado del pipeline para detectar drift en services.json.
 def _expected_services(root: Path) -> list[dict[str, object]]:
     return [
@@ -147,6 +177,9 @@ def _compose_file(root: Path, *, bind: bool) -> Path:
 def _validate_distribution(root: Path, *, require_environment: bool) -> tuple[str, ...]:
     entries = _deployment_entries(root)
     aliases = tuple(alias for alias, _ in entries)
+    _deployment_resources(root)
+    if not (root / RESOURCE_GUIDE_FILE).is_file():
+        raise ConsumerProcessError("Distribution resource guide is missing")
     process_root = root / "processes"
     actual = tuple(
         sorted(path.name for path in process_root.iterdir() if path.is_dir())
@@ -218,22 +251,33 @@ def _compose(
     capture_output: bool = False,
     compose_file: Path | None = None,
     environment: dict[str, str] | None = None,
+    with_resources: bool = False,
 ) -> subprocess.CompletedProcess[str]:
     selected_compose = (
         _compose_file(root, bind=bind) if compose_file is None else compose_file
     )
-    return _run(
-        [
-            "docker",
-            "compose",
-            "-f",
-            str(selected_compose),
-            *arguments,
-        ],
-        cwd=root,
-        capture_output=capture_output,
-        environment=environment,
-    )
+    command = ["docker", "compose", "-f", str(selected_compose)]
+    override_path: Path | None = None
+    try:
+        if with_resources:
+            descriptor, temporary = tempfile.mkstemp(
+                prefix=".atlanticus-resources-",
+                suffix=".yaml",
+                dir=selected_compose.parent,
+            )
+            os.close(descriptor)
+            override_path = Path(temporary)
+            override_path.write_text(_render_resource_override(root), encoding="utf-8")
+            command.extend(("-f", str(override_path)))
+        return _run(
+            [*command, *arguments],
+            cwd=root,
+            capture_output=capture_output,
+            environment=environment,
+        )
+    finally:
+        if override_path is not None:
+            override_path.unlink(missing_ok=True)
 
 
 def _ensure_bind_runtime(root: Path) -> None:
@@ -261,7 +305,7 @@ def _up(root: Path, *, bind: bool) -> None:
         _ensure_bind_runtime(root)
     _compose(root, bind=bind, arguments=["down", "--remove-orphans"])
     _compose(root, bind=bind, arguments=["build", "--no-cache"])
-    _compose(root, bind=bind, arguments=["up", "-d"])
+    _compose(root, bind=bind, arguments=["up", "-d"], with_resources=True)
     _compose(root, bind=bind, arguments=["ps", "-a"])
 
 
@@ -302,6 +346,7 @@ def _run_process(root: Path, *, bind: bool, process: str) -> None:
         root,
         bind=bind,
         arguments=["run", "--rm", process, "--run-once"],
+        with_resources=True,
     )
 
 
@@ -370,11 +415,15 @@ def _simulation_compose_files(root: Path) -> tuple[Path, ...]:
 def _simulation_processes(root: Path, simulation) -> tuple[object, ...]:
     manifest = _manifest(root)
     distribution_name = manifest["name"]
+    resources = _deployment_resources(root)
+    contract = _load_deployment_resources_contract()
     return tuple(
         simulation.load_simulation_process(
             process_root=root / "processes" / alias,
             name=alias,
             image=f"atlanticus-{distribution_name}-{alias}:local",
+            cpus=resources[alias].vcpu,
+            memory=contract.docker_memory(resources[alias]),
         )
         for alias, _ in _deployment_entries(root)
     )
@@ -617,7 +666,7 @@ def _validate_extension_archive(
 
 
 # Comprueba que los metadatos del paquete real coinciden con su manifest.
-def _read_process_contract(root: Path, process: dict[str, object]) -> tuple[float, str]:
+def _validate_process_contract(root: Path, process: dict[str, object]) -> None:
     alias = process["deployment"]["execution_file"]
     path = root / "processes" / alias / "pyproject.toml"
     try:
@@ -645,21 +694,9 @@ def _read_process_contract(root: Path, process: dict[str, object]) -> tuple[floa
         raise ConsumerProcessError(
             f"Extension project contract does not match manifest: {alias}"
         )
-    resources = container.get("resources", {})
-    cpus = resources.get("cpus", 0.5) if isinstance(resources, dict) else None
-    memory = resources.get("memory", "1g") if isinstance(resources, dict) else None
-    if (
-        isinstance(cpus, bool)
-        or not isinstance(cpus, (int, float))
-        or cpus <= 0
-        or not isinstance(memory, str)
-        or not re.fullmatch(r"[1-9][0-9]*(?:\.[0-9]+)?[bkmg]?", memory, re.IGNORECASE)
-    ):
-        raise ConsumerProcessError(f"Extension process resources are invalid: {alias}")
-    return float(cpus), memory.lower()
 
 
-# Regenera Compose desde la composicion integrada y los recursos declarados.
+# Regenera sólo la estructura base; los recursos se superponen dinámicamente al ejecutar.
 def _render_extension_compose(root: Path, *, volume_mode: str) -> str:
     manifest = _manifest(root)
     distribution_name = manifest["name"]
@@ -667,7 +704,6 @@ def _render_extension_compose(root: Path, *, volume_mode: str) -> str:
     services = []
     for process in manifest["processes"]:
         alias = process["deployment"]["execution_file"]
-        cpus, memory = _read_process_contract(root, process)
         config_mount = (
             (f"      - ../../processes/{alias}/config:/app/process/config:ro",)
             if (root / "processes" / alias / "config/connections.detail.json").is_file()
@@ -692,8 +728,6 @@ def _render_extension_compose(root: Path, *, volume_mode: str) -> str:
                     "    volumes:",
                     f"      - {volume_source}:/app/volumen",
                     *config_mount,
-                    f"    cpus: {cpus:g}",
-                    f"    mem_limit: {memory}",
                 )
             )
         )
@@ -768,7 +802,7 @@ def _integrate(root: Path, extension_path: Path) -> None:
                     ):
                         shutil.copyfileobj(source, target)
                 for item in additions:
-                    _read_process_contract(candidate, item)
+                    _validate_process_contract(candidate, item)
                 merged = dict(previous)
                 merged["processes"] = [
                     *previous["processes"],
@@ -780,6 +814,15 @@ def _integrate(root: Path, extension_path: Path) -> None:
                 (candidate / "services.json").write_text(
                     json.dumps(_expected_services(candidate), indent=2) + "\n",
                     encoding="utf-8",
+                )
+                contract = _load_deployment_resources_contract()
+                resources = contract.read_resources(candidate / DEPLOYMENT_RESOURCES_FILE)
+                for item in additions:
+                    alias = item["deployment"]["execution_file"]
+                    resources[alias] = contract.default_resources()
+                contract.write_resources(
+                    candidate / DEPLOYMENT_RESOURCES_FILE,
+                    resources,
                 )
                 local = candidate / "deployment/local"
                 for name, mode in (
@@ -794,6 +837,7 @@ def _integrate(root: Path, extension_path: Path) -> None:
                 managed = (
                     "distribution.json",
                     "services.json",
+                    "deployment.resources.json",
                     "deployment/local/compose.yaml",
                     "deployment/local/compose.bind.yaml",
                 )

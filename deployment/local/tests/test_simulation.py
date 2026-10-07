@@ -98,6 +98,8 @@ def test_prepare_simulation_keeps_jobs_out_of_compose(tmp_path: Path) -> None:
         process_root=process_root,
         name="kpis",
         image="atlanticus-sample-kpis:local",
+        cpus=1.5,
+        memory="3072m",
     )
 
     compose_path = simulation.prepare_simulation(
@@ -114,6 +116,8 @@ def test_prepare_simulation_keeps_jobs_out_of_compose(tmp_path: Path) -> None:
     spec = json.loads((local / "simulation.json").read_text(encoding="utf-8"))
     assert spec["processes"][0]["config_file"] == "processes/kpis/config.json"
     assert spec["processes"][0]["env_file"] == "processes/kpis/.env"
+    assert spec["processes"][0]["cpus"] == 1.5
+    assert spec["processes"][0]["memory"] == "3072m"
 
     compose = compose_path.read_text(encoding="utf-8")
     assert "scheduler:" in compose
