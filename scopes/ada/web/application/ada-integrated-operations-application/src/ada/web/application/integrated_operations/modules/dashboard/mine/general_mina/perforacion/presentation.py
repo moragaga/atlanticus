@@ -1,0 +1,277 @@
+from __future__ import annotations
+
+from dash import html
+from dash.development.base_component import Component
+
+from ada.web.application.integrated_operations.modules.dashboard.data_state import (
+    DashboardDataState,
+)
+from ada.web.application.integrated_operations.modules.dashboard.value_status import (
+    DashboardValueStatus,
+)
+from ada.web.ui.display_status import DisplayStatus, build_display_status_icon
+
+from .models import (
+    PerforacionComparison,
+    PerforacionDetalleState,
+    PerforacionEquipoState,
+    PerforacionFaseState,
+    PerforacionResumenState,
+    PerforacionState,
+)
+
+_STATUS_CLASS = {
+    DashboardValueStatus.NEUTRAL: '',
+    DashboardValueStatus.DANGER: 'perforacion__value--danger',
+    DashboardValueStatus.WARNING: 'perforacion__value--warning',
+}
+
+
+def build_perforacion(state: PerforacionState) -> Component:
+    if not isinstance(state, PerforacionState):
+        raise TypeError('state must be PerforacionState')
+    return html.Div(
+        className='perforacion',
+        children=[
+            _build_resumen(state.resumen, state.resumen_status),
+            _build_detalle(state.detalle, state.detalle_status),
+        ],
+    )
+
+
+def _build_resumen(
+    state: PerforacionResumenState | None,
+    status: DisplayStatus,
+) -> Component:
+    if state is None:
+        return html.Div(
+            className='perforacion__resumen perforacion__resumen--unavailable',
+            children=[
+                _build_resumen_title(),
+                _build_status(status, 'Información no disponible'),
+            ],
+        )
+    if state.data_state is DashboardDataState.ERROR:
+        return html.Div(
+            className='perforacion__resumen perforacion__resumen--unavailable',
+            children=[
+                _build_resumen_title(),
+                _build_status(DisplayStatus.INVALID, 'Información no disponible'),
+            ],
+        )
+
+    acumulado = state.acumulado_semanal
+    if acumulado is None:
+        raise ValueError('Perforacion resumen acumulado_semanal is required')
+
+    children: list[Component] = [
+        _build_resumen_title(),
+        _build_progress(state.avance, acumulado.status),
+        html.Div(
+            className='perforacion__summary-metrics',
+            children=[
+                html.Div(
+                    className='perforacion__summary-item',
+                    children=[
+                        html.Span(
+                            'Acum. semanal',
+                            className='perforacion__summary-label',
+                        ),
+                        _build_comparison(acumulado),
+                    ],
+                ),
+                html.Div(
+                    className='perforacion__summary-item perforacion__summary-item--plan',
+                    children=[
+                        html.Span('PS', className='perforacion__summary-label'),
+                        html.Span(
+                            state.plan_semanal,
+                            className='perforacion__summary-plan',
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ]
+    if state.data_state is DashboardDataState.UNSHIFT:
+        children.append(_build_unshift_state())
+
+    return html.Div(
+        className='perforacion__resumen',
+        children=children,
+    )
+
+
+def _build_resumen_title() -> Component:
+    return html.Div(
+        'AVANCE SEMANAL (m)',
+        className='perforacion__summary-title',
+    )
+
+
+def _build_progress(
+    avance: str | None,
+    status: DashboardValueStatus,
+) -> Component:
+    fill = None
+    if avance is not None:
+        modifier = _STATUS_CLASS[status]
+        fill = html.Div(
+            className=' '.join(
+                item
+                for item in ('perforacion__progress-fill', modifier)
+                if item
+            ),
+            style={'width': avance},
+        )
+    return html.Div(
+        className='perforacion__progress',
+        children=[] if fill is None else [fill],
+    )
+
+
+def _build_detalle(
+    state: PerforacionDetalleState | None,
+    status: DisplayStatus,
+) -> Component:
+    if state is None:
+        return html.Div(
+            className='perforacion__detalle perforacion__detalle--unavailable',
+            children=[
+                _build_table_header_only(),
+                _build_status(status, 'Información no disponible'),
+            ],
+        )
+    if state.data_state is DashboardDataState.ERROR:
+        return html.Div(
+            className='perforacion__detalle perforacion__detalle--unavailable',
+            children=[
+                _build_table_header_only(),
+                _build_status(DisplayStatus.INVALID, 'Información no disponible'),
+            ],
+        )
+
+    children: list[Component] = [
+        html.Table(
+            className='perforacion__table',
+            children=[
+                _build_table_head(),
+                html.Tbody(
+                    children=[
+                        row
+                        for fase in state.fases
+                        for row in _build_fase_rows(fase)
+                    ],
+                ),
+            ],
+        )
+    ]
+    if state.data_state is DashboardDataState.UNSHIFT:
+        children.append(_build_unshift_state())
+
+    return html.Div(
+        className='perforacion__detalle',
+        children=children,
+    )
+
+
+def _build_table_header_only() -> Component:
+    return html.Table(
+        className='perforacion__table perforacion__table--header-only',
+        children=[_build_table_head()],
+    )
+
+
+def _build_table_head() -> Component:
+    return html.Thead(
+        children=[
+            html.Tr(
+                children=[
+                    html.Th('FASE', className='perforacion__head perforacion__head--fase'),
+                    html.Th(
+                        'PERFORADORA',
+                        className='perforacion__head perforacion__head--equipo',
+                    ),
+                    html.Th(
+                        'DÍA ANTERIOR (m)',
+                        className='perforacion__head',
+                    ),
+                    html.Th(
+                        'ACUM. SEMANA (m)',
+                        className='perforacion__head',
+                    ),
+                ],
+            )
+        ]
+    )
+
+
+def _build_fase_rows(fase: PerforacionFaseState) -> list[Component]:
+    rows: list[Component] = []
+    row_span = len(fase.perforadoras)
+    for index, equipo in enumerate(fase.perforadoras):
+        cells: list[Component] = []
+        if index == 0:
+            cells.append(
+                html.Td(
+                    fase.fase,
+                    rowSpan=max(row_span, 1),
+                    className='perforacion__cell perforacion__cell--fase',
+                )
+            )
+        cells.extend(_build_equipo_cells(equipo))
+        rows.append(html.Tr(children=cells))
+    return rows
+
+
+def _build_equipo_cells(equipo: PerforacionEquipoState) -> list[Component]:
+    return [
+        html.Td(
+            equipo.perforadora,
+            className='perforacion__cell perforacion__cell--equipo',
+        ),
+        html.Td(
+            _build_comparison(equipo.dia_anterior),
+            className='perforacion__cell perforacion__cell--metric',
+        ),
+        html.Td(
+            _build_comparison(equipo.acumulado_semanal),
+            className='perforacion__cell perforacion__cell--metric',
+        ),
+    ]
+
+
+def _build_comparison(value: PerforacionComparison) -> Component:
+    modifier = _STATUS_CLASS[value.status]
+    real_class = ' '.join(
+        item for item in ('perforacion__value', modifier) if item
+    )
+    return html.Span(
+        className='perforacion__comparison',
+        children=[
+            html.Span(value.real, className=real_class),
+            html.Span(' / ', className='perforacion__separator'),
+            html.Span(value.plan, className='perforacion__plan'),
+        ],
+    )
+
+
+def _build_unshift_state() -> Component:
+    return html.Div(
+        className='perforacion__state perforacion__state--unshift',
+        children=['Datos del turno aún no disponibles'],
+    )
+
+
+def _build_status(status: DisplayStatus, message: str) -> Component:
+    icon = build_display_status_icon(
+        status,
+        class_name='perforacion__status-icon',
+    )
+    return html.Div(
+        className='perforacion__state perforacion__state--unavailable',
+        children=[
+            *([] if icon is None else [icon]),
+            html.Span(message, className='perforacion__state-message'),
+        ],
+    )

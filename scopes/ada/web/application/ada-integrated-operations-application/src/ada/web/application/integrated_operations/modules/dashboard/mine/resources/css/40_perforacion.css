@@ -1,0 +1,327 @@
+.perforacion {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: min-content;
+    flex-direction: column;
+    gap: .16rem;
+    padding: .04rem .18rem .08rem;
+    color: var(--ada-color-text-primary);
+}
+
+.perforacion__resumen,
+.perforacion__detalle {
+    display: flex;
+    min-width: 0;
+    min-height: min-content;
+    flex-direction: column;
+}
+
+.perforacion__resumen {
+    flex: 0 0 auto;
+}
+
+.perforacion__detalle {
+    flex: 1 1 auto;
+}
+
+.perforacion__summary-title {
+    margin: 0 0 .08rem;
+    font-size: .31rem;
+    font-weight: 700;
+    line-height: 1.05;
+}
+
+.perforacion__progress {
+    width: 100%;
+    height: .16rem;
+    margin-bottom: .1rem;
+    overflow: hidden;
+    border-radius: .1rem;
+    background: var(--ada-color-surface-secondary);
+}
+
+.perforacion__progress-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: var(--ada-color-text-primary);
+}
+
+.perforacion__progress-fill.perforacion__value--danger {
+    background: var(--ada-color-danger);
+}
+
+.perforacion__progress-fill.perforacion__value--warning {
+    background: var(--ada-color-warning);
+}
+
+.perforacion__summary-metrics {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: .25rem;
+}
+
+.perforacion__summary-item {
+    display: inline-flex;
+    min-width: 0;
+    align-items: baseline;
+    gap: .12rem;
+    font-size: .34rem;
+    line-height: 1.05;
+}
+
+.perforacion__summary-item--plan {
+    flex: 0 0 auto;
+}
+
+.perforacion__summary-label {
+    color: var(--ada-color-text-secondary);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.perforacion__summary-plan {
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.perforacion__table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.perforacion__head {
+    width: 31%;
+    padding: .08rem .04rem;
+    border-bottom: 1px solid var(--ada-color-border-primary);
+    font-size: .27rem;
+    font-weight: 700;
+    line-height: 1.05;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.perforacion__head--fase {
+    width: 14%;
+    text-align: start;
+}
+
+.perforacion__head--equipo {
+    width: 24%;
+    text-align: start;
+}
+
+.perforacion__cell {
+    padding: .08rem .04rem;
+    border-bottom: 1px solid var(--ada-color-border-primary);
+    font-size: .32rem;
+    line-height: 1.05;
+}
+
+.perforacion__cell--fase {
+    font-weight: 700;
+    text-align: start;
+    vertical-align: middle;
+}
+
+.perforacion__cell--equipo {
+    font-weight: 600;
+    text-align: start;
+}
+
+.perforacion__cell--metric {
+    text-align: center;
+}
+
+.perforacion__comparison {
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.perforacion__value {
+    font-weight: 700;
+}
+
+.perforacion__value--danger {
+    color: var(--ada-color-danger);
+}
+
+.perforacion__value--warning {
+    color: var(--ada-color-warning);
+}
+
+.perforacion__separator,
+.perforacion__plan {
+    color: var(--ada-color-text-secondary);
+    font-weight: 400;
+}
+
+.perforacion__state {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    gap: .12rem;
+    padding-top: .18rem;
+    font-size: .32rem;
+    font-weight: 600;
+    line-height: 1.1;
+    text-align: center;
+}
+
+.perforacion__resumen--unavailable .perforacion__state,
+.perforacion__detalle--unavailable .perforacion__state {
+    flex: 1 1 auto;
+}
+
+.perforacion__status-icon {
+    --ada-status-icon-size: 2em;
+}
+
+@media only screen and (min-width: 350px) {
+    .perforacion__summary-title,
+    .perforacion__head {
+        font-size: .46rem;
+    }
+
+    .perforacion__summary-item,
+    .perforacion__cell,
+    .perforacion__state {
+        font-size: .52rem;
+    }
+
+    .perforacion__progress {
+        height: .24rem;
+    }
+}
+
+@media only screen and (min-width: 480px) {
+    .perforacion__summary-title,
+    .perforacion__head {
+        font-size: .5rem;
+    }
+
+    .perforacion__summary-item,
+    .perforacion__cell,
+    .perforacion__state {
+        font-size: .58rem;
+    }
+}
+
+@media only screen and (min-width: 1280px) {
+    .perforacion__summary-title {
+        font-size: .32rem;
+    }
+
+    .perforacion__head {
+        font-size: .28rem;
+    }
+
+    .perforacion__summary-item,
+    .perforacion__cell,
+    .perforacion__state {
+        font-size: .34rem;
+    }
+
+    .perforacion__progress {
+        height: .16rem;
+    }
+}
+
+@media only screen and (min-width: 1366px) {
+    [data-ada-io-presentation='mine'] .perforacion__summary-title,
+    [data-ada-io-presentation='mine'] .perforacion__head {
+        font-size: .4rem;
+    }
+
+    [data-ada-io-presentation='mine'] .perforacion__summary-item,
+    [data-ada-io-presentation='mine'] .perforacion__cell,
+    [data-ada-io-presentation='mine'] .perforacion__state {
+        font-size: .46rem;
+    }
+
+    [data-ada-io-presentation='mine'] .perforacion__progress {
+        height: .2rem;
+    }
+}
+
+@media only screen and (min-width: 1536px) {
+    .perforacion__summary-title {
+        font-size: .35rem;
+    }
+
+    .perforacion__head {
+        font-size: .3rem;
+    }
+
+    .perforacion__summary-item,
+    .perforacion__cell,
+    .perforacion__state {
+        font-size: .37rem;
+    }
+
+    [data-ada-io-presentation='mine'] .perforacion__summary-title,
+    [data-ada-io-presentation='mine'] .perforacion__head {
+        font-size: .43rem;
+    }
+
+    [data-ada-io-presentation='mine'] .perforacion__summary-item,
+    [data-ada-io-presentation='mine'] .perforacion__cell,
+    [data-ada-io-presentation='mine'] .perforacion__state {
+        font-size: .49rem;
+    }
+}
+
+@media only screen and (min-width: 1920px) {
+    .perforacion__summary-title {
+        font-size: .39rem;
+    }
+
+    .perforacion__head {
+        font-size: .34rem;
+    }
+
+    .perforacion__summary-item,
+    .perforacion__cell,
+    .perforacion__state {
+        font-size: .41rem;
+    }
+
+    [data-ada-io-presentation='mine'] .perforacion__summary-title,
+    [data-ada-io-presentation='mine'] .perforacion__head {
+        font-size: .49rem;
+    }
+
+    [data-ada-io-presentation='mine'] .perforacion__summary-item,
+    [data-ada-io-presentation='mine'] .perforacion__cell,
+    [data-ada-io-presentation='mine'] .perforacion__state {
+        font-size: .55rem;
+    }
+}
+
+@media only screen and (min-width: 2560px) {
+    .perforacion__summary-title,
+    [data-ada-io-presentation='mine'] .perforacion__summary-title {
+        font-size: .45rem;
+    }
+
+    .perforacion__head,
+    [data-ada-io-presentation='mine'] .perforacion__head {
+        font-size: .39rem;
+    }
+
+    .perforacion__summary-item,
+    .perforacion__cell,
+    .perforacion__state,
+    [data-ada-io-presentation='mine'] .perforacion__summary-item,
+    [data-ada-io-presentation='mine'] .perforacion__cell,
+    [data-ada-io-presentation='mine'] .perforacion__state {
+        font-size: .48rem;
+    }
+}

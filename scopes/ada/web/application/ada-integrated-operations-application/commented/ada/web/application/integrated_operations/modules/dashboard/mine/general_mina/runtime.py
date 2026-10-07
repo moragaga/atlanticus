@@ -1,4 +1,4 @@
-# General Mina conserva un callback único; cada subcomponente mantiene su semántica de disponibilidad.
+# General Mina conserva un callback único y agrega un Output por subcomponente migrado.
 from __future__ import annotations
 
 from dash import Input, Output
@@ -17,6 +17,7 @@ from .movimiento_mina import (
     build_movimiento_mina_unavailable,
     map_movimiento_mina_store,
 )
+from .perforacion import build_perforacion, map_perforacion_store
 from .remanentes import build_remanentes, map_remanentes_store
 
 _SOURCE_STATUS = {
@@ -30,13 +31,15 @@ def register_general_mina_callback(dash_app, *, tool_key: str) -> None:
     @dash_app.callback(
         Output(dashboard_card_content_id('movimiento_mina'), 'children'),
         Output(dashboard_card_content_id('remanentes'), 'children'),
+        Output(dashboard_card_content_id('perforacion'), 'children'),
         Input(component_kpi_store_id(tool_key, GENERAL_MINA.tool_component_key), 'data'),
     )
     def refresh_general_mina(store_data: object):
-        # Remanentes resuelve internamente summary y Stock 3080; no se colapsan en un único estado.
+        # Los tres subcomponentes consumen el mismo store, pero resuelven sus contratos por separado.
         return (
             _render_movimiento_mina(store_data),
             build_remanentes(map_remanentes_store(store_data)),
+            build_perforacion(map_perforacion_store(store_data)),
         )
 
 
