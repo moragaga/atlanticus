@@ -176,10 +176,14 @@ def _build_state(state: DashboardDataState) -> Component | None:
         return html.Div(
             className='movimiento-mina__state movimiento-mina__state--unshift',
             children=[
+                html.I(
+                    className='bi bi-hourglass-split',
+                    **{'aria-hidden': 'true'},
+                ),
                 html.Span(
                     'Datos del turno aún no disponibles',
                     className='movimiento-mina__state-message',
-                )
+                ),
             ],
         )
     return None

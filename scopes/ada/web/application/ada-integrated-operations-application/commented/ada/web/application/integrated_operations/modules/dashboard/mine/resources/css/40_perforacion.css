@@ -7,9 +7,9 @@
     min-width: 0;
     min-height: min-content;
     flex-direction: column;
-    gap: .16rem;
-    padding: .04rem .18rem .08rem;
-    color: var(--ada-color-text-primary);
+    gap: .32rem;
+    padding: .06rem .18rem .08rem;
+    color: var(--ada-io-text, var(--custom-text-color, #4D4D4D));
 }
 
 .perforacion__resumen,
@@ -29,7 +29,7 @@
 }
 
 .perforacion__summary-title {
-    margin: 0 0 .08rem;
+    margin: 0 0 .3rem;
     font-size: .31rem;
     font-weight: 700;
     line-height: 1.05;
@@ -38,7 +38,7 @@
 .perforacion__progress {
     width: 100%;
     height: .16rem;
-    margin-bottom: .1rem;
+    margin-bottom: .14rem;
     overflow: hidden;
     border-radius: .1rem;
     background: var(--ada-color-surface-secondary);
@@ -63,7 +63,8 @@
     min-width: 0;
     align-items: center;
     justify-content: space-between;
-    gap: .25rem;
+    gap: .3rem;
+    padding-bottom: .04rem;
 }
 
 .perforacion__summary-item {
@@ -80,8 +81,8 @@
 }
 
 .perforacion__summary-label {
-    color: var(--ada-color-text-secondary);
-    font-weight: 500;
+    color: inherit;
+    font-weight: 400;
     white-space: nowrap;
 }
 
@@ -147,7 +148,7 @@
 }
 
 .perforacion__value {
-    font-weight: 700;
+    font-weight: 800;
 }
 
 .perforacion__value--danger {
@@ -160,8 +161,15 @@
 
 .perforacion__separator,
 .perforacion__plan {
-    color: var(--ada-color-text-secondary);
+    color: inherit;
+}
+
+.perforacion__separator {
     font-weight: 400;
+}
+
+.perforacion__plan {
+    font-weight: 500;
 }
 
 .perforacion__state {

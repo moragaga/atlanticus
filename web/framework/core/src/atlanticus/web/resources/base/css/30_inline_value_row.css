@@ -9,7 +9,7 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--atlanticus-inline-value-row-gap, .35rem);
-    padding: var(--atlanticus-inline-value-row-padding, .08rem .18rem .04rem);
+    padding: var(--atlanticus-inline-value-row-padding, .08rem 0 0);
     border-bottom: 1px solid var(--atlanticus-inline-value-row-border);
     color: var(--atlanticus-inline-value-row-text);
     font-size: var(--atlanticus-inline-value-row-font-size, inherit);

@@ -274,7 +274,13 @@ def _build_comparison(value: PerforacionComparison) -> Component:
 def _build_unshift_state() -> Component:
     return html.Div(
         className='perforacion__state perforacion__state--unshift',
-        children=['Datos del turno aún no disponibles'],
+        children=[
+            html.I(
+                className='bi bi-hourglass-split',
+                **{'aria-hidden': 'true'},
+            ),
+            html.Span('Datos del turno aún no disponibles'),
+        ],
     )
 
 

@@ -18,6 +18,7 @@ from atlanticus.web.inline_value_row import (
 
 from .definitions import (
     REMANENTES_SUMMARY_KPI_KEY,
+    REMANENTES_UNIT,
     STOCK_3080_KPI_KEY,
     STOCK_3080_ROW_DEFINITION,
 )
@@ -89,7 +90,13 @@ def _build_summary(
         children.append(
             html.Div(
                 className='remanentes__state remanentes__state--unshift',
-                children=['Datos del turno aún no disponibles'],
+                children=[
+                    html.I(
+                        className='bi bi-hourglass-split',
+                        **{'aria-hidden': 'true'},
+                    ),
+                    html.Span('Datos del turno aún no disponibles'),
+                ],
             )
         )
     return html.Div(
@@ -116,7 +123,16 @@ def _build_row(row: RemanentesSummaryRow) -> Component:
     return html.Div(
         className='remanentes__row',
         children=[
-            html.Span(row.fase, className='remanentes__cell remanentes__cell--fase'),
+            html.Span(
+                className='remanentes__cell remanentes__cell--fase',
+                children=[
+                    html.Span(row.fase),
+                    html.Span(
+                        f'({REMANENTES_UNIT})',
+                        className='remanentes__cell-unit',
+                    ),
+                ],
+            ),
             html.Span(row.mineral, className='remanentes__cell'),
             html.Span(row.esteril, className='remanentes__cell'),
             html.Span(row.baja_ley, className='remanentes__cell'),

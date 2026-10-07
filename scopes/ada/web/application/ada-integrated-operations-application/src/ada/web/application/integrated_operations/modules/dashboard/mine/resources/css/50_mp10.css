@@ -14,7 +14,7 @@
     align-items: center;
     justify-content: space-between;
     gap: .35rem;
-    padding: .08rem .18rem .04rem;
+    padding: .08rem 0 0;
     border-bottom: 1px solid var(--ada-color-border-primary);
 }
 

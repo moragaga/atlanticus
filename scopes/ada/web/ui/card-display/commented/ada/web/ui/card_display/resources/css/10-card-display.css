@@ -6,6 +6,7 @@
     height: 100%;
     min-width: 0;
     min-height: min-content;
+    padding: .1rem;
     /* Content conserva su mínimo intrínseco; regions y footer sólo consumen espacio cuando existen. */
     grid-template-rows: minmax(min-content, 1fr) auto auto;
     border: 1px solid var(
@@ -38,7 +39,7 @@
 /* El contenido respira levemente respecto del borde superior de cualquier card. */
 .ada-card-display__content {
     min-height: min-content;
-    padding-top: .14rem;
+    padding: 0;
     overflow: visible;
 }
 
