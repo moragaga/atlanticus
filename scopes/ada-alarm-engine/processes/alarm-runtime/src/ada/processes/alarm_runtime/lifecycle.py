@@ -354,6 +354,9 @@ class AlarmLifecycleCycle:
             deactivation_decisions=tuple(
                 item for item in inputs.deactivation_decisions if item.request_id in pending_ids
             ),
+            prior_deactivation_effect_changes=(
+                () if adoption_decision is None else adoption_decision.deactivation_effect_changes
+            ),
             deactivation_request_id_factory=self.deactivation_request_id_factory,
             deactivation_effect_id_factory=self.deactivation_effect_id_factory,
         )

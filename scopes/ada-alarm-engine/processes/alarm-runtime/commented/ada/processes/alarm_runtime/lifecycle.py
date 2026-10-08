@@ -358,6 +358,13 @@ class AlarmLifecycleCycle:
             deactivation_decisions=tuple(
                 item for item in inputs.deactivation_decisions if item.request_id in pending_ids
             ),
+            # Entrega al physical cycle los CLEARED ya producidos por Adoption en este
+            # mismo ciclo para preservar causalidad; Core aplica la semántica del target plan.
+            prior_deactivation_effect_changes=(
+                ()
+                if adoption_decision is None
+                else adoption_decision.deactivation_effect_changes
+            ),
             deactivation_request_id_factory=self.deactivation_request_id_factory,
             deactivation_effect_id_factory=self.deactivation_effect_id_factory,
         )

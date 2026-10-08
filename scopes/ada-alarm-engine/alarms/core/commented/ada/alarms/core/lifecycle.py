@@ -27,6 +27,7 @@ from ada.alarms.core.models import (
     AlarmStatus,
     ConfigurationClosure,
     DeactivationDecision,
+    DeactivationEffectChange,
     DeactivationEffectChangeKind,
     DeactivationRequest,
     EpisodeChange,
@@ -78,12 +79,24 @@ def reduce_group_cycle(
     reappearance_due_at_resolver: ReappearanceDueAtResolver | None = None,
     pending_deactivation_requests: Sequence[DeactivationRequest] = (),
     deactivation_decisions: Sequence[DeactivationDecision] = (),
+    prior_deactivation_effect_changes: Sequence[DeactivationEffectChange] = (),
     deactivation_request_id_factory: DeactivationRequestIdFactory | None = None,
     deactivation_effect_id_factory: DeactivationEffectIdFactory | None = None,
     technical_hold_grace_seconds: int = TECHNICAL_HOLD_GRACE_SECONDS,
 ) -> GroupLifecycleDecision:
     _validate_cycle_at(cycle_at)
     _validate_grace(technical_hold_grace_seconds)
+    # Conserva hechos de deactivation ya materializados por una etapa previa del mismo ciclo,
+    # sin reinsertar el efecto expirado ni convertir configuración en verdad física.
+    for change in prior_deactivation_effect_changes:
+        if not isinstance(change, DeactivationEffectChange):
+            raise TypeError(
+                'prior_deactivation_effect_changes must contain DeactivationEffectChange values'
+            )
+        if change.effective_at > cycle_at:
+            raise AlarmContractError(
+                'prior deactivation effect change effective_at must not be after cycle_at'
+            )
     plans = _index_plans(state.priority_group, planned_alarms)
     evaluation_map = _index_evaluations(cycle_at, evaluations)
     closures = _index_closures(cycle_at, configuration_closures)
@@ -281,7 +294,10 @@ def reduce_group_cycle(
         ),
         expired_deactivation_identities=frozenset(
             change.alarm_identity
-            for change in management.deactivation_effect_changes
+            for change in (
+                *prior_deactivation_effect_changes,
+                *management.deactivation_effect_changes,
+            )
             if change.kind is DeactivationEffectChangeKind.CLEARED
         ),
         occurrence_changes=sorted_occurrence_changes,
