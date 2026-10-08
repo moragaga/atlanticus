@@ -132,7 +132,22 @@ def test_c2_destination_change_is_compatible() -> None:
     assert plan.changes[0].disposition is ConfigurationAdoptionDisposition.COMPATIBLE
 
 
-def test_priority_group_change_is_explicitly_blocked_until_group_migration_exists() -> None:
+def test_priority_order_change_is_compatible_within_same_group() -> None:
+    source = engine_configuration()
+    target_base = engine_configuration(release='ALARMS-8')
+    target = _with_plan(
+        target_base,
+        replace(target_base.planned_alarms[0], priority_order=2),
+    )
+
+    plan = plan_configuration_adoption(source, target)
+
+    assert plan.is_adoptable is True
+    assert plan.changes[0].disposition is ConfigurationAdoptionDisposition.COMPATIBLE
+    assert plan.changes[0].rejection_reason is None
+
+
+def test_priority_group_change_is_rejected_because_group_is_immutable() -> None:
     source = engine_configuration()
     target_base = engine_configuration(release='ALARMS-8')
     target = _with_plan(
@@ -145,5 +160,5 @@ def test_priority_group_change_is_explicitly_blocked_until_group_migration_exist
     assert plan.is_adoptable is False
     assert plan.changes[0].disposition is ConfigurationAdoptionDisposition.REJECTED
     assert plan.changes[0].rejection_reason is (
-        ConfigurationAdoptionRejectionReason.PRIORITY_GROUP_MIGRATION_REQUIRED
+        ConfigurationAdoptionRejectionReason.PRIORITY_GROUP_IMMUTABLE
     )

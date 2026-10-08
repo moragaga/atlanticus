@@ -24,7 +24,7 @@ class ConfigurationAdoptionDisposition(StrEnum):
 
 
 class ConfigurationAdoptionRejectionReason(StrEnum):
-    PRIORITY_GROUP_MIGRATION_REQUIRED = 'priority_group_migration_required'
+    PRIORITY_GROUP_IMMUTABLE = 'priority_group_immutable'
     C1_ROUTING_MUTATION_UNSUPPORTED = 'c1_routing_mutation_unsupported'
     C3_ROUTING_MUTATION_UNSUPPORTED = 'c3_routing_mutation_unsupported'
 
@@ -202,7 +202,7 @@ def _rejection_reason(
     target: PlannedAlarm,
 ) -> ConfigurationAdoptionRejectionReason | None:
     if source.priority_group != target.priority_group:
-        return ConfigurationAdoptionRejectionReason.PRIORITY_GROUP_MIGRATION_REQUIRED
+        return ConfigurationAdoptionRejectionReason.PRIORITY_GROUP_IMMUTABLE
     return None
 
 

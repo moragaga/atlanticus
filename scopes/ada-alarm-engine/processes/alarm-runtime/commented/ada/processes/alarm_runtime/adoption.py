@@ -1,5 +1,5 @@
 # Espejo pedagógico de la clasificación de cambios entre revisiones ejecutables de Alarm.
-# Mantiene separadas las mutaciones compatibles, los resets estructurales y las migraciones aún no soportadas.
+# Separa mutaciones compatibles, resets estructurales e invariantes rechazadas por diseño.
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -26,7 +26,7 @@ class ConfigurationAdoptionDisposition(StrEnum):
 
 
 class ConfigurationAdoptionRejectionReason(StrEnum):
-    PRIORITY_GROUP_MIGRATION_REQUIRED = 'priority_group_migration_required'
+    PRIORITY_GROUP_IMMUTABLE = 'priority_group_immutable'
     C1_ROUTING_MUTATION_UNSUPPORTED = 'c1_routing_mutation_unsupported'
     C3_ROUTING_MUTATION_UNSUPPORTED = 'c3_routing_mutation_unsupported'
 
@@ -203,8 +203,9 @@ def _rejection_reason(
     source: PlannedAlarm,
     target: PlannedAlarm,
 ) -> ConfigurationAdoptionRejectionReason | None:
+    # priority_group pertenece a la identidad operacional vigente y no se migra entre grupos.
     if source.priority_group != target.priority_group:
-        return ConfigurationAdoptionRejectionReason.PRIORITY_GROUP_MIGRATION_REQUIRED
+        return ConfigurationAdoptionRejectionReason.PRIORITY_GROUP_IMMUTABLE
     return None
 
 
