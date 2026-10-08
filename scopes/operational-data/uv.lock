@@ -19,7 +19,7 @@ members = [
     "atlanticus-operational-data-blockgrade-process",
     "atlanticus-operational-data-calendar",
     "atlanticus-operational-data-core",
-    "atlanticus-operational-data-datasets",
+    "atlanticus-operational-data-dataset-reader",
     "atlanticus-operational-data-dispatch-process",
     "atlanticus-operational-data-fabrica-kpis-process",
     "atlanticus-operational-data-fabrica-planes-process",
@@ -509,9 +509,9 @@ dev = [
 ]
 
 [[package]]
-name = "atlanticus-operational-data-datasets"
+name = "atlanticus-operational-data-dataset-reader"
 version = "1.0.0"
-source = { editable = "datasets" }
+source = { editable = "dataset-reader" }
 dependencies = [
     { name = "atlanticus-datasets-parquet" },
     { name = "atlanticus-datasets-runtime" },

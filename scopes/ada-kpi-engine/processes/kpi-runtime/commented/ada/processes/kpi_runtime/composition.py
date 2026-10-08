@@ -12,7 +12,7 @@ from ada.processes.kpi_runtime.job import KpiRuntimeJob
 from ada.processes.kpi_runtime.settings import KpiRuntimeSettings
 from ada.processes.kpi_runtime.source_state import PiOperationalWatermarkReader
 from atlanticus.configuration import ResolvedConfiguration
-from atlanticus.operational_data.datasets import RoutedDatasetSourceReader
+from atlanticus.operational_data.dataset_reader import RoutedDatasetSourceReader
 from atlanticus.operational_data.planner import DataInputPlanner
 from atlanticus.operational_data.sources import (
     DataInputLoader,

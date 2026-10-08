@@ -32,7 +32,7 @@ atlanticus-key-vault = { path = "../../connectivity/key-vault", editable = true 
 atlanticus-kernel = { path = "../../backend/kernel", editable = true }
 atlanticus-operational-data-calendar = { path = "../operational-data/operational-calendar", editable = true }
 atlanticus-operational-data-core = { path = "../operational-data/core", editable = true }
-atlanticus-operational-data-datasets = { path = "../operational-data/datasets", editable = true }
+atlanticus-operational-data-dataset-reader = { path = "../operational-data/dataset-reader", editable = true }
 atlanticus-operational-data-planner = { path = "../operational-data/planner", editable = true }
 atlanticus-operational-data-sources = { path = "../operational-data/sources", editable = true }
 atlanticus-state = { path = "../../backend/state", editable = true }

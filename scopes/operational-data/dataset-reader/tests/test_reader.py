@@ -8,7 +8,7 @@ import pyarrow as pa
 import pytest
 
 from atlanticus.operational_data.core import DataSource
-from atlanticus.operational_data.datasets import RoutedDatasetSourceReader
+from atlanticus.operational_data.dataset_reader import RoutedDatasetSourceReader
 from atlanticus.operational_data.sources import (
     DataSourceApplications,
     DataSourceRoutingError,

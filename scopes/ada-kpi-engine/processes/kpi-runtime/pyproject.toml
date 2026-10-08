@@ -18,7 +18,7 @@ dependencies = [
     "atlanticus-kernel==1.0.0",
     "atlanticus-observability-azure==1.0.0",
     "atlanticus-operational-data-core==1.0.0",
-    "atlanticus-operational-data-datasets==1.0.0",
+    "atlanticus-operational-data-dataset-reader==1.0.0",
     "atlanticus-operational-data-planner==1.0.0",
     "atlanticus-operational-data-sources==1.0.0",
     "atlanticus-state==1.0.0",

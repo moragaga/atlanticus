@@ -89,7 +89,7 @@ dependencies = [
     { name = "atlanticus-kernel" },
     { name = "atlanticus-key-vault" },
     { name = "atlanticus-operational-data-core" },
-    { name = "atlanticus-operational-data-datasets" },
+    { name = "atlanticus-operational-data-dataset-reader" },
     { name = "atlanticus-operational-data-planner" },
     { name = "atlanticus-operational-data-sources" },
 ]
@@ -111,7 +111,7 @@ requires-dist = [
     { name = "atlanticus-kernel", editable = "../../backend/kernel" },
     { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
     { name = "atlanticus-operational-data-core", editable = "../operational-data/core" },
-    { name = "atlanticus-operational-data-datasets", editable = "../operational-data/datasets" },
+    { name = "atlanticus-operational-data-dataset-reader", editable = "../operational-data/dataset-reader" },
     { name = "atlanticus-operational-data-planner", editable = "../operational-data/planner" },
     { name = "atlanticus-operational-data-sources", editable = "../operational-data/sources" },
 ]
@@ -388,9 +388,9 @@ dev = [
 ]
 
 [[package]]
-name = "atlanticus-operational-data-datasets"
+name = "atlanticus-operational-data-dataset-reader"
 version = "1.0.0"
-source = { editable = "../operational-data/datasets" }
+source = { editable = "../operational-data/dataset-reader" }
 dependencies = [
     { name = "atlanticus-datasets-parquet" },
     { name = "atlanticus-datasets-runtime" },

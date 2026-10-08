@@ -23,7 +23,7 @@ from ada.processes.alarm_runtime.publication.operational import AlarmDurablePubl
 from ada.processes.alarm_runtime.session import AlarmEvaluatorRegistry
 from ada.processes.alarm_runtime.settings import AlarmRuntimeSettings
 from atlanticus.configuration import ResolvedConfiguration
-from atlanticus.operational_data.datasets import RoutedDatasetSourceReader
+from atlanticus.operational_data.dataset_reader import RoutedDatasetSourceReader
 from atlanticus.operational_data.sources import (
     DataInputLoader,
     DataSourceApplications,

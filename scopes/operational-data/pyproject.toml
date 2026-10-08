@@ -19,7 +19,7 @@ atlanticus-operational-data-core = { workspace = true }
 atlanticus-operational-data-planner = { workspace = true }
 atlanticus-operational-data-calendar = { workspace = true }
 atlanticus-operational-data-sources = { workspace = true }
-atlanticus-operational-data-datasets = { workspace = true }
+atlanticus-operational-data-dataset-reader = { workspace = true }
 atlanticus-data-producers-core = { workspace = true }
 atlanticus-data-producers-sql = { workspace = true }
 atlanticus-data-producers-pi = { workspace = true }
@@ -58,7 +58,7 @@ members = [
     "planner",
     "operational-calendar",
     "sources",
-    "datasets",
+    "dataset-reader",
     "producers/core",
     "producers/sql",
     "producers/pi",
