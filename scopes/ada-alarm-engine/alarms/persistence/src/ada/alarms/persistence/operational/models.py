@@ -17,7 +17,9 @@ from ada.alarms.persistence.operational.errors import (
 from atlanticus.json import JsonDocument, normalize_json_document
 
 ENGINE_COMMIT_RECORD_SCHEMA_VERSION = 'engine-commit-record.v1'
+ENGINE_COMMIT_RECORD_V2_SCHEMA_VERSION = 'engine-commit-record.v2'
 GROUP_RUNTIME_SNAPSHOT_SCHEMA_VERSION = 'group-runtime-snapshot.v1'
+GROUP_RUNTIME_SNAPSHOT_V2_SCHEMA_VERSION = 'group-runtime-snapshot.v2'
 JOURNAL_HEAD_SCHEMA_VERSION = 'journal-head.v1'
 
 _SEGMENT_ID_PATTERN = re.compile(r'\d{4}-\d{2}-\d{2}T\d{2}Z#\d{4}')
@@ -31,6 +33,7 @@ _RECORD_COLLECTIONS = {
     'journey_events',
     'management_effects',
     'occurrence_changes',
+    'technical_incident_changes',
 }
 
 
@@ -249,6 +252,7 @@ class EngineCommitRecord:
     snapshot_after: GroupRuntimeSnapshot
     records: JsonDocument
     record_hash: str
+    schema_version: str = ENGINE_COMMIT_RECORD_SCHEMA_VERSION
 
     def __post_init__(self) -> None:
         if not isinstance(self.commit, EngineCommitMetadata):
@@ -261,6 +265,21 @@ class EngineCommitRecord:
             raise ValueError('snapshot_after last_commit_id must match commit_id')
         normalized_records = _normalize_records(self.records, corruption=False)
         object.__setattr__(self, 'records', normalized_records)
+        if self.schema_version not in {
+            ENGINE_COMMIT_RECORD_SCHEMA_VERSION,
+            ENGINE_COMMIT_RECORD_V2_SCHEMA_VERSION,
+        }:
+            raise ValueError('engine commit record schema version is unsupported')
+        is_v2_snapshot = (
+            self.snapshot_after.as_document()['snapshot_schema_version']
+            == GROUP_RUNTIME_SNAPSHOT_V2_SCHEMA_VERSION
+        )
+        if (self.schema_version == ENGINE_COMMIT_RECORD_V2_SCHEMA_VERSION) != is_v2_snapshot:
+            raise ValueError('engine commit version must match snapshot version')
+        if 'technical_incident_changes' in normalized_records and not is_v2_snapshot:
+            raise ValueError('technical incident transitions require commit v2')
+        if is_v2_snapshot:
+            _validate_technical_incident_changes(normalized_records, self.commit)
         _require_record_hash(self.record_hash)
 
     @classmethod
@@ -272,8 +291,14 @@ class EngineCommitRecord:
         records: Mapping[str, Any] | None = None,
     ) -> EngineCommitRecord:
         normalized_records = _normalize_records(records or {}, corruption=False)
+        schema_version = (
+            ENGINE_COMMIT_RECORD_V2_SCHEMA_VERSION
+            if snapshot_after.as_document()['snapshot_schema_version']
+            == GROUP_RUNTIME_SNAPSHOT_V2_SCHEMA_VERSION
+            else ENGINE_COMMIT_RECORD_SCHEMA_VERSION
+        )
         unsigned = {
-            'record_schema_version': ENGINE_COMMIT_RECORD_SCHEMA_VERSION,
+            'record_schema_version': schema_version,
             'commit': commit.as_document(),
             'snapshot_after': snapshot_after.as_document(),
             'records': normalized_records,
@@ -285,11 +310,12 @@ class EngineCommitRecord:
             snapshot_after=snapshot_after,
             records=normalized_records,
             record_hash=build_record_hash(unsigned),
+            schema_version=schema_version,
         )
 
     def unsigned_document(self) -> JsonDocument:
         return {
-            'record_schema_version': ENGINE_COMMIT_RECORD_SCHEMA_VERSION,
+            'record_schema_version': self.schema_version,
             'commit': self.commit.as_document(),
             'snapshot_after': self.snapshot_after.as_document(),
             'records': copy.deepcopy(self.records),
@@ -311,7 +337,10 @@ class EngineCommitRecord:
             },
             label='engine commit record',
         )
-        if document['record_schema_version'] != ENGINE_COMMIT_RECORD_SCHEMA_VERSION:
+        if document['record_schema_version'] not in {
+            ENGINE_COMMIT_RECORD_SCHEMA_VERSION,
+            ENGINE_COMMIT_RECORD_V2_SCHEMA_VERSION,
+        }:
             raise AlarmPersistenceCorruptionError(
                 'engine commit record schema version is unsupported'
             )
@@ -335,6 +364,7 @@ class EngineCommitRecord:
                 snapshot_after=snapshot,
                 records=records,
                 record_hash=record_hash,
+                schema_version=document['record_schema_version'],
             )
         except (TypeError, ValueError) as error:
             raise AlarmPersistenceCorruptionError('engine commit record is invalid') from error
@@ -449,21 +479,110 @@ def _normalize_records(value: Mapping[str, Any], *, corruption: bool) -> JsonDoc
 def _validate_snapshot_document(document: JsonDocument, *, corruption: bool) -> None:
     error_type = AlarmPersistenceCorruptionError if corruption else AlarmPersistenceValidationError
     required = {'snapshot_schema_version', 'priority_group', 'last_commit_id', 'alarms'}
-    optional = {'state_basis', 'episode'}
+    version = document.get('snapshot_schema_version')
+    if version == GROUP_RUNTIME_SNAPSHOT_SCHEMA_VERSION:
+        optional = {'state_basis', 'episode'}
+    elif version == GROUP_RUNTIME_SNAPSHOT_V2_SCHEMA_VERSION:
+        optional = {'state_basis', 'episode'}
+        required.add('technical_incidents')
+    else:
+        raise error_type('group runtime snapshot schema version is unsupported')
     if set(document) - required - optional or required - set(document):
         raise error_type('group runtime snapshot has unexpected or missing fields')
-    if document['snapshot_schema_version'] != GROUP_RUNTIME_SNAPSHOT_SCHEMA_VERSION:
-        raise error_type('group runtime snapshot schema version is unsupported')
     try:
         _require_priority_group(document['priority_group'])
         _require_non_empty_string(document['last_commit_id'], 'last_commit_id')
         _validate_state_basis(document.get('state_basis'), error_type)
         _validate_episode(document.get('episode'), error_type)
         _validate_alarm_states(document['alarms'], error_type)
+        if version == GROUP_RUNTIME_SNAPSHOT_V2_SCHEMA_VERSION:
+            _validate_technical_incidents(
+                document['technical_incidents'], document['priority_group'], error_type
+            )
     except (TypeError, ValueError) as error:
         if isinstance(error, error_type):
             raise
         raise error_type('group runtime snapshot is invalid') from error
+
+
+def _validate_technical_incidents(value: Any, priority_group: str, error_type: type) -> None:
+    from ada.alarms.core import TechnicalIncident
+
+    if not isinstance(value, dict):
+        raise error_type('technical_incidents must be an object')
+    for alarm_key, content in value.items():
+        try:
+            incident = TechnicalIncident.from_document(content)
+        except (TypeError, ValueError) as error:
+            raise error_type('technical incident snapshot is invalid') from error
+        if (
+            incident.alarm_identity.canonical_key != alarm_key
+            or incident.priority_group != priority_group
+        ):
+            raise error_type('technical incident snapshot identity does not match group')
+
+
+def _validate_technical_incident_changes(
+    records: JsonDocument, commit: EngineCommitMetadata
+) -> None:
+    changes = records.get('technical_incident_changes', [])
+    ids: set[str] = set()
+    required = {
+        'schema_version',
+        'record_id',
+        'kind',
+        'incident_id',
+        'alarm_key',
+        'priority_group',
+        'effective_at',
+        'previous_fingerprint',
+        'fingerprint',
+        'resolution',
+        'error',
+    }
+    for change in changes:
+        if set(change) != required or change['schema_version'] != 'technical-incident-change.v1':
+            raise AlarmPersistenceValidationError('technical incident transition is invalid')
+        for key in ('record_id', 'incident_id', 'alarm_key', 'fingerprint'):
+            _require_non_empty_string(change[key], key)
+        if (
+            change['record_id'] in ids
+            or change['priority_group'] != commit.priority_group
+            or change['alarm_key'] not in commit.affected_alarms
+        ):
+            raise AlarmPersistenceValidationError(
+                'technical incident transition identity is invalid'
+            )
+        ids.add(change['record_id'])
+        _require_utc_timestamp(change['effective_at'], 'incident effective_at')
+        if not isinstance(change['error'], dict):
+            raise AlarmPersistenceValidationError('technical incident transition error is invalid')
+        kind = change['kind']
+        if kind == 'STARTED':
+            if change['previous_fingerprint'] is not None or change['resolution'] is not None:
+                raise AlarmPersistenceValidationError(
+                    'invalid STARTED technical incident transition'
+                )
+        elif kind == 'CHANGED':
+            if (
+                not isinstance(change['previous_fingerprint'], str)
+                or not change['previous_fingerprint']
+                or change['previous_fingerprint'] == change['fingerprint']
+                or change['resolution'] is not None
+            ):
+                raise AlarmPersistenceValidationError(
+                    'invalid CHANGED technical incident transition'
+                )
+        elif kind == 'RESOLVED':
+            if change['previous_fingerprint'] is not None or change['resolution'] not in {
+                'VALID_EVALUATION',
+                'CONFIGURATION_WITHDRAWN',
+            }:
+                raise AlarmPersistenceValidationError(
+                    'invalid RESOLVED technical incident transition'
+                )
+        else:
+            raise AlarmPersistenceValidationError('unsupported technical incident transition kind')
 
 
 def _validate_state_basis(

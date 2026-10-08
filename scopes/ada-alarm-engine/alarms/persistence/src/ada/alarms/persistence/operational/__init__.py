@@ -20,7 +20,9 @@ from ada.alarms.persistence.operational.errors import (
 )
 from ada.alarms.persistence.operational.models import (
     ENGINE_COMMIT_RECORD_SCHEMA_VERSION,
+    ENGINE_COMMIT_RECORD_V2_SCHEMA_VERSION,
     GROUP_RUNTIME_SNAPSHOT_SCHEMA_VERSION,
+    GROUP_RUNTIME_SNAPSHOT_V2_SCHEMA_VERSION,
     JOURNAL_HEAD_SCHEMA_VERSION,
     CommitBatchResult,
     EngineCommitMetadata,
@@ -39,6 +41,11 @@ from ada.alarms.persistence.operational.store import (
     AuthorityCheck,
     MutationFence,
 )
+from ada.alarms.persistence.operational.technical_incidents import (
+    build_technical_incident_commit,
+    read_open_technical_incidents,
+    snapshot_technical_incidents,
+)
 
 __version__ = '1.0.0'
 
@@ -50,7 +57,9 @@ __all__ = [
     'ConfigurationAdoptionRecordV2',
     'GroupCommitReference',
     'ENGINE_COMMIT_RECORD_SCHEMA_VERSION',
+    'ENGINE_COMMIT_RECORD_V2_SCHEMA_VERSION',
     'GROUP_RUNTIME_SNAPSHOT_SCHEMA_VERSION',
+    'GROUP_RUNTIME_SNAPSHOT_V2_SCHEMA_VERSION',
     'JOURNAL_HEAD_SCHEMA_VERSION',
     'ALARM_EFFECTIVE_HEAD_SCHEMA_VERSION',
     'AlarmEffectiveConfigurationHead',
@@ -75,4 +84,7 @@ __all__ = [
     '__version__',
     'parse_segment_id',
     'segment_id_for_evaluated_at',
+    'build_technical_incident_commit',
+    'read_open_technical_incidents',
+    'snapshot_technical_incidents',
 ]

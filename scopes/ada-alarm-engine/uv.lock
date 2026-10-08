@@ -179,6 +179,7 @@ name = "ada-alarms-persistence"
 version = "1.0.0"
 source = { editable = "alarms/persistence" }
 dependencies = [
+    { name = "ada-alarms-core" },
     { name = "ada-alarms-materialization" },
     { name = "atlanticus-json" },
     { name = "atlanticus-state" },
@@ -192,6 +193,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "ada-alarms-core", editable = "alarms/core" },
     { name = "ada-alarms-materialization", editable = "alarms/materialization" },
     { name = "atlanticus-json", editable = "../../backend/json" },
     { name = "atlanticus-state", editable = "../../backend/state" },
