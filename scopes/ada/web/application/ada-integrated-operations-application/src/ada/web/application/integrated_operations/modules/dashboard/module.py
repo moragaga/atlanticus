@@ -19,6 +19,7 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.module im
 )
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.ui.card_display import ADA_CARD_DISPLAY_ASSET_LAYER
+from ada.web.ui.inline_row import ADA_INLINE_ROW_ASSET_LAYER
 from atlanticus.web.assets import AssetLayer
 from atlanticus.web.modules import WebModule
 
@@ -53,6 +54,7 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
         page_packages=(_DASHBOARD_PAGE_PACKAGE,),
         asset_layers=(
             ADA_CARD_DISPLAY_ASSET_LAYER,
+            ADA_INLINE_ROW_ASSET_LAYER,
             DASHBOARD_ASSET_LAYER,
             MINE_ASSET_LAYER,
             PLANT_ASSET_LAYER,

@@ -1,4 +1,4 @@
-from atlanticus.web.inline_value_row import InlineValueRowDefinition
+from ada.web.ui.inline_row import InlineValueRowDefinition
 
 REMANENTES_SUMMARY_KPI_KEY = 'remanentes_summary_inst'
 STOCK_3080_KPI_KEY = 'stock_3080_inst'

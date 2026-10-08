@@ -10,7 +10,7 @@ from ada.web.application.integrated_operations.modules.dashboard.value_status im
     DashboardValueStatus,
 )
 from ada.web.ui.display_status import DisplayStatus, DisplayValue, build_display_status_icon
-from atlanticus.web.inline_value_row import (
+from ada.web.ui.inline_row import (
     InlineValueRowState,
     InlineValueRowTone,
     build_inline_value_row,

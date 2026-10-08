@@ -5,6 +5,9 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.transporte
     build_transporte_global_turno,
     map_transporte_global_turno_store,
 )
+from ada.web.application.integrated_operations.modules.dashboard.value_status import (
+    DashboardValueStatus,
+)
 from ada.web.ui.display_status import DisplayStatus
 
 
@@ -82,16 +85,18 @@ def test_transporte_global_turno_uses_canonical_frontend_order() -> None:
     ]
 
 
-def test_transporte_global_turno_supports_independent_real_plan_statuses() -> None:
+def test_transporte_global_turno_preserves_independent_real_plan_statuses() -> None:
     state, status = map_transporte_global_turno_store(_store(_payload()))
-    component = build_transporte_global_turno(state, status)
-    classes = ' '.join(
-        str(_props(node).get('className', ''))
-        for node in _walk(component)
-    )
 
-    assert 'atlanticus-inline-comparison-row__value--danger' in classes
-    assert 'atlanticus-inline-comparison-row__value--warning' in classes
+    assert status is DisplayStatus.OK
+    assert state is not None
+    values = {row.key: row for row in state.rows}
+    assert values['rendimiento'].real.status is DashboardValueStatus.WARNING
+    assert values['rendimiento'].plan.status is DashboardValueStatus.NEUTRAL
+    assert values['ciclo'].real.status is DashboardValueStatus.DANGER
+    assert values['ciclo'].plan.status is DashboardValueStatus.WARNING
+    assert values['uebd'].real.status is DashboardValueStatus.NEUTRAL
+    assert values['uebd'].plan.status is DashboardValueStatus.DANGER
 
 
 def test_transporte_global_turno_supports_unshift() -> None:

@@ -221,6 +221,7 @@ dependencies = [
     { name = "ada-web-ui-content-state" },
     { name = "ada-web-ui-display-status" },
     { name = "ada-web-ui-global-indicator" },
+    { name = "ada-web-ui-inline-row" },
     { name = "atlanticus-web" },
     { name = "dash" },
 ]
@@ -242,6 +243,7 @@ requires-dist = [
     { name = "ada-web-ui-content-state", editable = "../../ui/content-state" },
     { name = "ada-web-ui-display-status", editable = "../../ui/display-status" },
     { name = "ada-web-ui-global-indicator", editable = "../../ui/global-indicator" },
+    { name = "ada-web-ui-inline-row", editable = "../../ui/inline-row" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "dash", specifier = "==4.4.1" },
 ]
@@ -1216,6 +1218,27 @@ dependencies = [
 requires-dist = [
     { name = "ada-web-ui-core", editable = "../../ui/core" },
     { name = "ada-web-ui-display-status", editable = "../../ui/display-status" },
+    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
+    { name = "dash", specifier = "==4.4.1" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-ui-inline-row"
+version = "0.1.0"
+source = { editable = "../../ui/inline-row" }
+dependencies = [
+    { name = "atlanticus-web" },
+    { name = "dash" },
+]
+
+[package.metadata]
+requires-dist = [
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "dash", specifier = "==4.4.1" },
 ]

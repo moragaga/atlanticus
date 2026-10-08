@@ -1,4 +1,4 @@
-.atlanticus-inline-comparison-row {
+.ada-inline-comparison-row {
     --atlanticus-inline-comparison-row-border: var(--atlanticus-ui-border-strong);
     --atlanticus-inline-comparison-row-text: var(--atlanticus-ui-text);
     --atlanticus-inline-comparison-row-danger: var(--atlanticus-ui-danger);
@@ -15,43 +15,43 @@
     font-size: var(--atlanticus-inline-comparison-row-font-size, inherit);
 }
 
-.atlanticus-inline-comparison-row--borderless {
+.ada-inline-comparison-row--borderless {
     border-bottom: 0;
 }
 
-.atlanticus-inline-comparison-row__descriptor {
+.ada-inline-comparison-row__descriptor {
     display: flex;
     min-width: 0;
     align-items: baseline;
 }
 
-.atlanticus-inline-comparison-row__label,
-.atlanticus-inline-comparison-row__unit,
-.atlanticus-inline-comparison-row__first,
-.atlanticus-inline-comparison-row__separator,
-.atlanticus-inline-comparison-row__second {
+.ada-inline-comparison-row__label,
+.ada-inline-comparison-row__unit,
+.ada-inline-comparison-row__first,
+.ada-inline-comparison-row__separator,
+.ada-inline-comparison-row__second {
     margin: 0;
     line-height: 1.1;
 }
 
-.atlanticus-inline-comparison-row__label,
-.atlanticus-inline-comparison-row__unit {
+.ada-inline-comparison-row__label,
+.ada-inline-comparison-row__unit {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.atlanticus-inline-comparison-row__label {
+.ada-inline-comparison-row__label {
     font-weight: 500;
 }
 
-.atlanticus-inline-comparison-row__unit {
+.ada-inline-comparison-row__unit {
     flex: 0 0 auto;
     margin-inline-start: .16rem;
     font-weight: 700;
 }
 
-.atlanticus-inline-comparison-row__comparison {
+.ada-inline-comparison-row__comparison {
     display: inline-flex;
     min-width: 0;
     flex: 0 0 auto;
@@ -61,19 +61,19 @@
     white-space: nowrap;
 }
 
-.atlanticus-inline-comparison-row__first {
+.ada-inline-comparison-row__first {
     font-weight: 700;
 }
 
-.atlanticus-inline-comparison-row__separator,
-.atlanticus-inline-comparison-row__second {
+.ada-inline-comparison-row__separator,
+.ada-inline-comparison-row__second {
     font-weight: 400;
 }
 
-.atlanticus-inline-comparison-row__value--danger {
+.ada-inline-comparison-row__value--danger {
     color: var(--atlanticus-inline-comparison-row-danger);
 }
 
-.atlanticus-inline-comparison-row__value--warning {
+.ada-inline-comparison-row__value--warning {
     color: var(--atlanticus-inline-comparison-row-warning);
 }

@@ -1,4 +1,5 @@
-# N° Operativo • Turno usa la primitiva InlineValueRow sin introducir otra variante visual.
+# Número Operativo Turno utiliza InlineValueRow de ADA UI.
+# La visualización preserva estados de turno y presentación de filas; no altera KPI.
 from __future__ import annotations
 
 from dash import html
@@ -8,7 +9,7 @@ from ada.web.application.integrated_operations.modules.dashboard.data_state impo
     DashboardDataState,
 )
 from ada.web.ui.display_status import DisplayStatus, build_display_status_icon
-from atlanticus.web.inline_value_row import (
+from ada.web.ui.inline_row import (
     InlineValueRowState,
     build_inline_value_row,
 )
@@ -54,8 +55,6 @@ def build_numero_operativo_turno(
                         InlineValueRowState(
                             definition=NUMERO_OPERATIVO_TURNO_DEFINITIONS[key],
                             value=value,
-                            # La última fila no necesita divisor inferior.
-                            show_border=index != len(items) - 1,
                         )
                     )
                     for index, (key, value) in enumerate(items)
@@ -66,7 +65,6 @@ def build_numero_operativo_turno(
 
 
 def _build_root(children: list[Component]) -> Component:
-    # La inspección corresponde al único KPI compuesto de la card.
     return html.Div(
         className='numero-operativo-turno',
         **{'data-kpi-inspection-key': NUMERO_OPERATIVO_TURNO_KPI_KEY},

@@ -10,11 +10,11 @@ from ada.web.application.integrated_operations.modules.dashboard.value_status im
     DashboardValueStatus,
 )
 from ada.web.ui.display_status import DisplayStatus, build_display_status_icon
-from atlanticus.web.inline_comparison_row import (
+from ada.web.ui.inline_row import (
     InlineComparisonRowState,
+    InlineValueRowTone,
     build_inline_comparison_row,
 )
-from atlanticus.web.inline_value_row import InlineValueRowTone
 
 from .definitions import (
     TRANSPORTE_GLOBAL_TURNO_KPI_KEY,
@@ -37,21 +37,13 @@ def build_transporte_global_turno(
         raise TypeError('source_status must be DisplayStatus')
 
     if state is None:
-        return _build_root(
-            [
-                _build_status(source_status, 'Información no disponible'),
-            ]
-        )
+        return _build_root([_build_status(source_status, 'Información no disponible')])
 
     if not isinstance(state, TransporteGlobalTurnoState):
         raise TypeError('state must be TransporteGlobalTurnoState or None')
 
     if state.data_state is DashboardDataState.ERROR:
-        return _build_root(
-            [
-                _build_status(DisplayStatus.INVALID, 'Información no disponible'),
-            ]
-        )
+        return _build_root([_build_status(DisplayStatus.INVALID, 'Información no disponible')])
 
     if state.data_state is DashboardDataState.UNSHIFT:
         return _build_root([_build_unshift_state()])
@@ -60,10 +52,7 @@ def build_transporte_global_turno(
         [
             html.Div(
                 className='transporte-global-turno__rows',
-                children=[
-                    _build_row(row=row)
-                    for index, row in enumerate(state.rows)
-                ],
+                children=[_build_row(row=row) for row in state.rows],
             )
         ]
     )
@@ -77,10 +66,7 @@ def _build_root(children: list[Component]) -> Component:
     )
 
 
-def _build_row(
-    *,
-    row: TransporteGlobalTurnoRow,
-) -> Component:
+def _build_row(*, row: TransporteGlobalTurnoRow) -> Component:
     return build_inline_comparison_row(
         InlineComparisonRowState(
             definition=TRANSPORTE_GLOBAL_TURNO_ROW_DEFINITIONS[row.key],
@@ -96,10 +82,7 @@ def _build_unshift_state() -> Component:
     return html.Div(
         className='transporte-global-turno__state transporte-global-turno__state--unshift',
         children=[
-            html.I(
-                className='bi bi-hourglass-split',
-                **{'aria-hidden': 'true'},
-            ),
+            html.I(className='bi bi-hourglass-split', **{'aria-hidden': 'true'}),
             html.Span('Datos del turno aún no disponibles'),
         ],
     )

@@ -1,0 +1,35 @@
+.ada-equipment-image {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ada-equipment-image-gap, .35rem);
+    min-width: 0;
+}
+
+.ada-equipment-image--top {
+    flex-direction: column;
+}
+
+.ada-equipment-image--bottom {
+    flex-direction: column-reverse;
+}
+
+.ada-equipment-image--left {
+    flex-direction: row;
+}
+
+.ada-equipment-image--right {
+    flex-direction: row-reverse;
+}
+
+.ada-equipment-image__label {
+    margin: 0;
+    font-weight: 700;
+}
+
+.ada-equipment-image__image {
+    display: block;
+    max-width: 100%;
+    max-height: var(--ada-equipment-image-max-height, 4rem);
+    object-fit: contain;
+}

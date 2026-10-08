@@ -1,3 +1,4 @@
+# Registro de la capa CSS nueva como parte de la composicion existente.
 from ada.web.application.integrated_operations.modules.dashboard.context import (
     DASHBOARD_CONTEXT_SERVICE_KEY,
     DashboardContext,
@@ -19,6 +20,7 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.module im
 )
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.ui.card_display import ADA_CARD_DISPLAY_ASSET_LAYER
+from ada.web.ui.inline_row import ADA_INLINE_ROW_ASSET_LAYER
 from atlanticus.web.assets import AssetLayer
 from atlanticus.web.modules import WebModule
 
@@ -34,19 +36,15 @@ _DASHBOARD_PAGE_PACKAGE = 'ada.web.application.integrated_operations.modules.das
 def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModule:
     if binding is not None and not isinstance(binding, OperationalRenderBinding):
         raise TypeError('Dashboard binding must be OperationalRenderBinding or None')
-
-    # El contexto conserva el binding operacional y permite que el layout exista aun sin Tool publicada.
     context = DashboardContext(binding)
 
     def register_services(services) -> None:
         services.add(DASHBOARD_CONTEXT_SERVICE_KEY, context)
 
-    # Sólo una Tool resuelta tiene Component KPI Stores. Sin binding no se registran Inputs inexistentes.
     register_callbacks = None
     if binding is not None:
         tool_key = binding.structure.tool_key
 
-        # Cada componente operacional mantiene un único callback coordinador.
         def register_callbacks(dash_app, _services) -> None:
             register_general_mina_callback(dash_app, tool_key=tool_key)
             register_carguio_callback(dash_app, tool_key=tool_key)
@@ -55,9 +53,9 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
     return WebModule(
         name='ada-integrated-operations-dashboard',
         page_packages=(_DASHBOARD_PAGE_PACKAGE,),
-        # Card Display se carga antes de los assets específicos del dashboard y de sus scopes.
         asset_layers=(
             ADA_CARD_DISPLAY_ASSET_LAYER,
+            ADA_INLINE_ROW_ASSET_LAYER,
             DASHBOARD_ASSET_LAYER,
             MINE_ASSET_LAYER,
             PLANT_ASSET_LAYER,

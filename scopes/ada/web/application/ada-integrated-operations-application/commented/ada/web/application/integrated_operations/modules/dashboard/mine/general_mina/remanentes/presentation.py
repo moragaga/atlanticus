@@ -1,4 +1,5 @@
-# Presenta por separado el JSON de Remanentes y la métrica simple Stock 3080.
+# Remanentes conserva por separado el resumen JSON y la métrica Stock 3080.
+# El valor individual usa InlineValueRow de ADA UI y mantiene su tono de presentación.
 from __future__ import annotations
 
 from dash import html
@@ -11,7 +12,7 @@ from ada.web.application.integrated_operations.modules.dashboard.value_status im
     DashboardValueStatus,
 )
 from ada.web.ui.display_status import DisplayStatus, DisplayValue, build_display_status_icon
-from atlanticus.web.inline_value_row import (
+from ada.web.ui.inline_row import (
     InlineValueRowState,
     InlineValueRowTone,
     build_inline_value_row,
@@ -45,7 +46,6 @@ def build_remanentes(state: RemanentesState) -> Component:
                     build_inline_value_row(
                         InlineValueRowState(
                             definition=STOCK_3080_ROW_DEFINITION,
-                            # Stock 3080 inspecciona sólo el valor derecho; InlineValueRow sigue siendo genérico.
                             value=html.Span(
                                 _build_display_value(state.stock_3080.value),
                                 **{'data-kpi-inspection-key': STOCK_3080_KPI_KEY},
@@ -101,7 +101,6 @@ def _build_summary(
                 ],
             )
         )
-    # El JSON completo corresponde a un solo KPI y toda su tabla abre la misma definición.
     return html.Div(
         className='remanentes__summary',
         **{'data-kpi-inspection-key': REMANENTES_SUMMARY_KPI_KEY},

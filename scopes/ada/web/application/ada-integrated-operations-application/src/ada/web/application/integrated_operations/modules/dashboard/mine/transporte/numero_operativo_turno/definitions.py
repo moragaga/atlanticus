@@ -1,4 +1,4 @@
-from atlanticus.web.inline_value_row import InlineValueRowDefinition
+from ada.web.ui.inline_row import InlineValueRowDefinition
 
 NUMERO_OPERATIVO_TURNO_KPI_KEY = 'numero_operativo_turno'
 
