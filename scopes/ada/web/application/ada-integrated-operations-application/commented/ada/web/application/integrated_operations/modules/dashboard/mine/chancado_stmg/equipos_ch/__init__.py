@@ -1,9 +1,11 @@
-# Exporta la interfaz del incremento sin establecer todavía el enlace a las claves persistidas.
+# Expone la única tabla de integración provisional de los dos equipos CH.
+from .definitions import EQUIPOS_CH_DEFINITIONS
 from .mapper import map_equipos_ch_store
 from .models import EquiposChDefinition, EquiposChReading
 from .presentation import build_equipos_ch
 
 __all__ = [
+    'EQUIPOS_CH_DEFINITIONS',
     'EquiposChDefinition',
     'EquiposChReading',
     'build_equipos_ch',

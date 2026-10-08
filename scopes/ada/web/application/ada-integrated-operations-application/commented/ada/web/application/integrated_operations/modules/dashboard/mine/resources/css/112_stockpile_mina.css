@@ -1,0 +1,32 @@
+/* Estilos de las dos pilas existentes; no cambia el SVG compartido. */
+.ada-io-stockpile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .25rem;
+    width: 100%;
+    min-width: 0;
+}
+
+.ada-io-stockpile__title {
+    color: var(--atlanticus-ui-text, #424750);
+    font-size: .68rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+}
+
+.ada-io-stockpile-piles {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+    justify-items: center;
+    gap: .25rem;
+    width: 100%;
+    min-width: 0;
+}
+
+.ada-io-stockpile-piles > * {
+    min-width: 0;
+    max-width: 100%;
+}

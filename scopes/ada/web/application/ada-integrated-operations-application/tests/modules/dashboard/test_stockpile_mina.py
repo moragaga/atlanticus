@@ -98,7 +98,8 @@ def test_callback_rebuilds_two_images_from_existing_kpi_store():
         'integrated_operations', CHANCADO_STMG.tool_component_key
     )
     assert result.to_plotly_json()['type'] == 'Div'
-    assert len(result.to_plotly_json()['props']['children']) == 2
+    assert len(result.to_plotly_json()['props']['children']) == 3
+    assert len(result.children[2].children[1].children) == 2
 
 
 def test_dashboard_retains_stockpile_asset_layer():

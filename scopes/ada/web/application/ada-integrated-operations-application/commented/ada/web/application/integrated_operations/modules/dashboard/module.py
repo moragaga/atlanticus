@@ -1,4 +1,5 @@
-# Registro de la capa CSS nueva como parte de la composicion existente.
+# Añade la capa de imágenes de equipos a las capas existentes; registra su CSS y SVG.
+# Los callbacks mantienen un solo responsable por componente.
 from ada.web.application.integrated_operations.modules.dashboard.context import (
     DASHBOARD_CONTEXT_SERVICE_KEY,
     DashboardContext,
@@ -23,6 +24,7 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.module im
 )
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.ui.card_display import ADA_CARD_DISPLAY_ASSET_LAYER
+from ada.web.ui.equipment_image import ADA_EQUIPMENT_IMAGE_ASSET_LAYER
 from ada.web.ui.inline_row import ADA_INLINE_ROW_ASSET_LAYER
 from ada.web.ui.stockpile import ADA_STOCKPILE_ASSET_LAYER
 from atlanticus.web.assets import AssetLayer
@@ -53,7 +55,6 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             register_general_mina_callback(dash_app, tool_key=tool_key)
             register_carguio_callback(dash_app, tool_key=tool_key)
             register_transporte_callback(dash_app, tool_key=tool_key)
-            # Conecta solo el stockpile de Chancado-STMG al store existente.
             register_chancado_stmg_callback(dash_app, tool_key=tool_key)
 
     return WebModule(
@@ -63,6 +64,7 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             ADA_CARD_DISPLAY_ASSET_LAYER,
             ADA_INLINE_ROW_ASSET_LAYER,
             ADA_STOCKPILE_ASSET_LAYER,
+            ADA_EQUIPMENT_IMAGE_ASSET_LAYER,
             DASHBOARD_ASSET_LAYER,
             MINE_ASSET_LAYER,
             PLANT_ASSET_LAYER,
