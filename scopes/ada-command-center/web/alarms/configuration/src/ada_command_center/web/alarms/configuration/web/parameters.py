@@ -131,6 +131,21 @@ def remove_parameter(
     return updated
 
 
+def _value_for_parameter_kind(value: object, kind: str) -> object:
+    if kind == 'FLOAT':
+        return _parse_float(value)
+    if kind == 'TEXT':
+        if type(value) is bool:
+            return 'true' if value else 'false'
+        if type(value) in (int, float):
+            return str(value)
+    if kind == 'BOOLEAN' and isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {'true', 'false'}:
+            return normalized == 'true'
+    return value
+
+
 def set_parameter_field(
     document: dict[str, object], rule_index: int, row_index: int, field: str, value: object
 ) -> dict[str, object]:
@@ -145,7 +160,7 @@ def set_parameter_field(
             raise ValueError('Unsupported parameter kind')
         if row.get('kind') != value:
             row['kind'] = value
-            row['value'] = {'TEXT': '', 'FLOAT': None, 'BOOLEAN': None}[value]
+            row['value'] = _value_for_parameter_kind(row.get('value'), value)
     elif field == 'value':
         kind = row.get('kind')
         row['value'] = _parse_float(value) if kind == 'FLOAT' else value

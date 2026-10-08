@@ -960,7 +960,7 @@ def _text_field(rule_index: int, field: str, label: str, value: object) -> objec
             id={'type': RULE_FIELD_TYPE, 'rule': rule_index, 'field': field},
             type='text',
             value=value if isinstance(value, str) else '' if value is None else str(value),
-            debounce=True,
+            debounce=False,
         ),
     )
 
@@ -1033,7 +1033,7 @@ def _number_field(rule_index: int, field: str, label: str, value: object) -> obj
             type='number',
             value=value,
             step=1,
-            debounce=True,
+            debounce=False,
         ),
     )
 
@@ -1099,7 +1099,7 @@ def _dropdown_field(
             value=value,
             multi=multi,
             clearable=clearable,
-            debounce=multi,
+            debounce=False,
         ),
     )
 
@@ -1123,7 +1123,7 @@ def _step_number_field(
             type='number',
             value=value,
             step=1,
-            debounce=True,
+            debounce=False,
         ),
     )
 
@@ -1181,7 +1181,7 @@ def _message_text_field(message_index: int, field: str, label: str, value: objec
             id={'type': MESSAGE_FIELD_TYPE, 'message': message_index, 'field': field},
             type='text',
             value=value if isinstance(value, str) else '',
-            debounce=True,
+            debounce=False,
         ),
     )
 

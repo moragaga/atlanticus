@@ -276,77 +276,78 @@ def register_alarm_configuration_admin_callbacks(
         current_document: dict[str, object] | None,
         reference_document: dict[str, object] | None,
     ):
-        component_id = ctx.triggered_id
-        if not isinstance(component_id, dict) or current_document is None:
+        if current_document is None:
             return no_update
-        field_value = _triggered_value()
-        component_type = component_id.get('type')
-        try:
-            if component_type == RULE_FIELD_TYPE:
-                rule_index = int(component_id['rule'])
-                field = str(component_id['field'])
-                if field == 'escalation.origin_tool_key' and field_value is None:
-                    return no_update
-                updated = set_rule_field(current_document, rule_index, field, field_value)
-                if field == 'escalation.origin_tool_key':
-                    updated = synchronize_visual_targets(updated, rule_index, reference_document)
-            elif component_type == STEP_FIELD_TYPE:
-                rule_index = int(component_id['rule'])
-                updated = set_escalation_step_field(
-                    current_document,
-                    rule_index,
-                    int(component_id['step']),
-                    str(component_id['field']),
-                    field_value,
-                )
-                if component_id['field'] in {'target_tool_key', 'is_enabled'}:
-                    updated = synchronize_visual_targets(updated, rule_index, reference_document)
-            elif component_type == TARGET_FIELD_TYPE:
-                rule_index = int(component_id['rule'])
-                target_index = int(component_id['target'])
-                if component_id['field'] == 'component_keys':
-                    updated = set_visual_components(
-                        current_document,
+        updated = current_document
+        synchronize_rules: set[int] = set()
+        for component_id, field_value in _field_updates():
+            component_type = component_id.get('type')
+            try:
+                if component_type == RULE_FIELD_TYPE:
+                    rule_index = int(component_id['rule'])
+                    field = str(component_id['field'])
+                    if field == 'escalation.origin_tool_key' and field_value is None:
+                        continue
+                    updated = set_rule_field(updated, rule_index, field, field_value)
+                    if field == 'escalation.origin_tool_key':
+                        synchronize_rules.add(rule_index)
+                elif component_type == STEP_FIELD_TYPE:
+                    rule_index = int(component_id['rule'])
+                    updated = set_escalation_step_field(
+                        updated,
                         rule_index,
-                        target_index,
-                        field_value,
-                        reference_document,
-                    )
-                else:
-                    updated = set_visual_target_field(
-                        current_document,
-                        rule_index,
-                        target_index,
+                        int(component_id['step']),
                         str(component_id['field']),
                         field_value,
                     )
-            elif component_type == VISUAL_SUBCOMPONENT_SELECT_TYPE:
-                updated = set_visual_subcomponents(
-                    current_document,
-                    int(component_id['rule']),
-                    int(component_id['target']),
-                    field_value,
-                    reference_document,
-                )
-            elif component_type == PARAMETER_FIELD_TYPE:
-                updated = set_parameter_field(
-                    current_document,
-                    int(component_id['rule']),
-                    int(component_id['parameter']),
-                    str(component_id['field']),
-                    field_value,
-                )
-            elif component_type == MESSAGE_FIELD_TYPE:
-                updated = set_message_field(
-                    current_document,
-                    int(component_id['message']),
-                    str(component_id['field']),
-                    field_value,
-                )
-            else:
-                return no_update
-        except IndexError, KeyError, TypeError, ValueError:
-            return no_update
+                    if component_id['field'] in {'target_tool_key', 'is_enabled'}:
+                        synchronize_rules.add(rule_index)
+                elif component_type == TARGET_FIELD_TYPE:
+                    rule_index = int(component_id['rule'])
+                    target_index = int(component_id['target'])
+                    if component_id['field'] == 'component_keys':
+                        updated = set_visual_components(
+                            updated,
+                            rule_index,
+                            target_index,
+                            field_value,
+                            reference_document,
+                        )
+                    else:
+                        updated = set_visual_target_field(
+                            updated,
+                            rule_index,
+                            target_index,
+                            str(component_id['field']),
+                            field_value,
+                        )
+                elif component_type == VISUAL_SUBCOMPONENT_SELECT_TYPE:
+                    updated = set_visual_subcomponents(
+                        updated,
+                        int(component_id['rule']),
+                        int(component_id['target']),
+                        field_value,
+                        reference_document,
+                    )
+                elif component_type == PARAMETER_FIELD_TYPE:
+                    updated = set_parameter_field(
+                        updated,
+                        int(component_id['rule']),
+                        int(component_id['parameter']),
+                        str(component_id['field']),
+                        field_value,
+                    )
+                elif component_type == MESSAGE_FIELD_TYPE:
+                    updated = set_message_field(
+                        updated,
+                        int(component_id['message']),
+                        str(component_id['field']),
+                        field_value,
+                    )
+            except (IndexError, KeyError, TypeError, ValueError):
+                continue
+        for rule_index in sorted(synchronize_rules):
+            updated = synchronize_visual_targets(updated, rule_index, reference_document)
         return no_update if updated == current_document else updated
 
     @app.callback(
@@ -758,6 +759,31 @@ def _configuration(authoring_document: dict[str, object] | None) -> AlarmConfigu
         empty_authoring_document() if authoring_document is None else dict(authoring_document)
     )
     return AlarmConfiguration.from_document(document)
+
+
+# Obtiene cada campo modificado sin confundir eventos de montaje con ediciones.
+# Mantiene compatibilidad con el contexto simplificado de los tests.
+def _field_updates() -> tuple[tuple[dict[str, object], object], ...]:
+    updates: list[tuple[dict[str, object], object]] = []
+    triggered = ctx.triggered
+    for entry in triggered:
+        prop_id = entry.get('prop_id')
+        if not isinstance(prop_id, str) or not prop_id.endswith('.value'):
+            continue
+        raw_id = prop_id.removesuffix('.value')
+        try:
+            component_id = json.loads(raw_id)
+        except (TypeError, ValueError):
+            continue
+        if isinstance(component_id, dict):
+            updates.append((component_id, entry.get('value')))
+    if updates:
+        return tuple(updates)
+    if triggered and all('prop_id' not in item for item in triggered):
+        component_id = ctx.triggered_id
+        if isinstance(component_id, dict):
+            return ((component_id, triggered[0].get('value')),)
+    return ()
 
 
 def _triggered_value() -> object:
