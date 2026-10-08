@@ -36,6 +36,7 @@ atlanticus-operational-data-datasets = { path = "../operational-data/datasets", 
 atlanticus-operational-data-planner = { path = "../operational-data/planner", editable = true }
 atlanticus-operational-data-sources = { path = "../operational-data/sources", editable = true }
 atlanticus-state = { path = "../../backend/state", editable = true }
+atlanticus-json = { path = "../../backend/json", editable = true }
 
 [tool.uv.workspace]
 members = [

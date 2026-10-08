@@ -11,11 +11,13 @@ classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "ada-alarms-materialization==1.0.0",
     "atlanticus-state==1.0.0",
+    "atlanticus-json==1.0.0",
 ]
 
 [tool.uv.sources]
 ada-alarms-materialization = { workspace = true }
 atlanticus-state = { path = "../../../../backend/state", editable = true }
+atlanticus-json = { path = "../../../../backend/json", editable = true }
 
 [dependency-groups]
 dev = ["pytest==9.1.1", "ruff==0.15.22"]

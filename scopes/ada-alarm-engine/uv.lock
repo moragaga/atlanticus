@@ -180,6 +180,7 @@ version = "1.0.0"
 source = { editable = "alarms/persistence" }
 dependencies = [
     { name = "ada-alarms-materialization" },
+    { name = "atlanticus-json" },
     { name = "atlanticus-state" },
 ]
 
@@ -192,6 +193,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "ada-alarms-materialization", editable = "alarms/materialization" },
+    { name = "atlanticus-json", editable = "../../backend/json" },
     { name = "atlanticus-state", editable = "../../backend/state" },
 ]
 
@@ -318,6 +320,11 @@ requires-dist = [
     { name = "psutil", specifier = "==7.2.2" },
 ]
 provides-extras = ["azure"]
+
+[[package]]
+name = "atlanticus-json"
+version = "1.0.0"
+source = { editable = "../../backend/json" }
 
 [[package]]
 name = "atlanticus-kernel"
