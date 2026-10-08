@@ -271,6 +271,15 @@ class AlarmRuntimeJob:
         if result.lifecycle is not None:
             groups = result.lifecycle.groups
             context.set_iteration_fact('lifecycle_group_count', len(groups))
+            # Telemetría agregada separada de los hechos históricos del motor.
+            context.set_iteration_fact(
+                'open_technical_incident_count',
+                len(result.lifecycle.state.technical_incidents),
+            )
+            context.set_iteration_fact(
+                'technical_incident_change_count',
+                len(result.lifecycle.technical_incident_changes),
+            )
             context.set_iteration_fact(
                 'occurrence_change_count',
                 sum(

@@ -22,6 +22,11 @@ from ada.alarms.core import (
     reconcile_group_configuration,
     reduce_group_cycle,
 )
+from ada.alarms.core.technical_incidents import (
+    TechnicalIncident,
+    TechnicalIncidentChange,
+    reduce_initial_technical_incidents,
+)
 from ada.alarms.materialization import EngineAlarmConfiguration
 from ada.contracts.alarms import AlarmIdentity
 from ada.processes.alarm_runtime.adoption import (
@@ -80,6 +85,8 @@ class EmptyAlarmOperationalInputsProvider:
 class AlarmLifecycleRuntimeState:
     configuration: EngineAlarmConfiguration
     groups: tuple[GroupLifecycleState, ...] = ()
+    # Conserva errores sin ocurrencia incluso cuando el grupo físico está vacío.
+    technical_incidents: tuple[TechnicalIncident, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.configuration, EngineAlarmConfiguration):
@@ -99,6 +106,20 @@ class AlarmLifecycleRuntimeState:
             self,
             'groups',
             tuple(sorted(normalized, key=lambda item: item.priority_group)),
+        )
+        if not isinstance(self.technical_incidents, tuple):
+            raise TypeError('technical_incidents must be a tuple')
+        incident_keys: set[AlarmIdentity] = set()
+        for incident in self.technical_incidents:
+            if not isinstance(incident, TechnicalIncident):
+                raise TypeError('technical_incidents must contain TechnicalIncident values')
+            if incident.alarm_identity in incident_keys:
+                raise ValueError('technical_incidents must be unique by alarm identity')
+            incident_keys.add(incident.alarm_identity)
+        object.__setattr__(
+            self,
+            'technical_incidents',
+            tuple(sorted(self.technical_incidents, key=lambda item: item.alarm_identity)),
         )
 
     def group_for(self, priority_group: str) -> GroupLifecycleState | None:
@@ -137,6 +158,7 @@ class AlarmLifecycleCycleResult:
     groups: tuple[AlarmLifecycleGroupResult, ...]
     state: AlarmLifecycleRuntimeState
     adoption_plan: ConfigurationAdoptionPlan | None = None
+    technical_incident_changes: tuple[TechnicalIncidentChange, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -160,6 +182,11 @@ class AlarmLifecycleCycleResult:
                 raise TypeError('adoption_plan must be a ConfigurationAdoptionPlan or None')
             if self.state.configuration != self.adoption_plan.target:
                 raise ValueError('lifecycle state configuration must match adoption target')
+        if not isinstance(self.technical_incident_changes, tuple) or not all(
+            isinstance(item, TechnicalIncidentChange)
+            for item in self.technical_incident_changes
+        ):
+            raise TypeError('technical_incident_changes must contain TechnicalIncidentChange values')
 
 
 def _occurrence_id(_identity: AlarmIdentity, _at: datetime) -> str:
@@ -243,8 +270,29 @@ class AlarmLifecycleCycle:
             )
             for priority_group in group_keys
         )
+        physical_occurrences = frozenset(
+            alarm.alarm_identity
+            for group in (
+                (() if previous is None else previous.groups)
+                + tuple(item.decision.state for item in group_results)
+            )
+            for alarm in group.alarms
+            if alarm.occurrence is not None
+        )
+        # Deduplica eventos en el ciclo; la confirmación WAL será el siguiente incremento.
+        incident_reduction = reduce_initial_technical_incidents(
+            () if previous is None else previous.technical_incidents,
+            evaluations=cycle.evaluations,
+            executable_groups={
+                entry.identity: entry.planned_alarm.priority_group
+                for entry in session.entries
+            },
+            physical_occurrences=physical_occurrences,
+            cycle_at=cycle.cycle_at,
+        )
         state = AlarmLifecycleRuntimeState(
             configuration=session.configuration,
+            technical_incidents=incident_reduction.open_incidents,
             groups=tuple(
                 item.decision.state
                 for item in group_results
@@ -257,6 +305,7 @@ class AlarmLifecycleCycle:
             groups=group_results,
             state=state,
             adoption_plan=adoption_plan,
+            technical_incident_changes=incident_reduction.changes,
         )
 
     @staticmethod

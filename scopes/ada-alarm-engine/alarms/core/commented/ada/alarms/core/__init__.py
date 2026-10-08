@@ -107,6 +107,14 @@ from ada.alarms.core.routing import (
     resolve_alarm_routing,
     resolve_group_routing,
 )
+from ada.alarms.core.technical_incidents import (
+    TechnicalIncident,
+    TechnicalIncidentChange,
+    TechnicalIncidentChangeKind,
+    TechnicalIncidentResolution,
+    reduce_initial_technical_incidents,
+    technical_error_fingerprint,
+)
 
 __version__ = '1.0.0'
 
@@ -191,6 +199,10 @@ __all__ = [
     'RuntimeEvaluationState',
     'ReappearanceChange',
     'ReappearanceDueAtResolver',
+    'TechnicalIncident',
+    'TechnicalIncidentChange',
+    'TechnicalIncidentChangeKind',
+    'TechnicalIncidentResolution',
     'TechnicalHold',
     'TechnicalHoldChange',
     'TechnicalHoldChangeKind',
@@ -201,6 +213,8 @@ __all__ = [
     'is_directly_managed',
     'reconcile_group_configuration',
     'reduce_group_cycle',
+    'reduce_initial_technical_incidents',
+    'technical_error_fingerprint',
     'resolve_alarm_routing',
     'resolve_group_priority',
     'resolve_group_routing',
