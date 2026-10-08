@@ -1,0 +1,116 @@
+/* Equipos CH conserva las imágenes y la inspección solo en controles visibles. */
+.ada-io-equipos-ch {
+    display: flex;
+    flex-direction: column;
+    gap: .18rem;
+    min-width: 0;
+    padding: .08rem .18rem;
+}
+
+.ada-io-equipos-ch__title {
+    margin: 0;
+    font-size: .57rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.ada-io-equipos-ch__rows {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+}
+
+.ada-io-equipos-ch__equipment {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+    align-items: center;
+    gap: .25rem;
+    min-width: 0;
+}
+
+.ada-io-equipos-ch__image-target {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 0;
+    cursor: help;
+}
+
+.ada-io-equipos-ch__image-target .ada-equipment-image {
+    --ada-equipment-image-max-height: 3.2rem;
+    width: 100%;
+}
+
+.ada-io-equipos-ch__details {
+    display: flex;
+    flex-direction: column;
+    gap: .08rem;
+    min-width: 0;
+}
+
+.ada-io-equipos-ch__label {
+    font-size: .56rem;
+    font-weight: 700;
+}
+
+.ada-io-equipos-ch__throughput {
+    display: flex;
+    align-items: center;
+    gap: .14rem;
+    font-size: .53rem;
+}
+
+.ada-io-equipos-ch__value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: help;
+}
+
+.ada-io-equipos-ch__unit {
+    font-size: .48rem;
+}
+
+.ada-io-equipos-ch__atollo {
+    display: flex;
+    align-items: center;
+    gap: .2rem;
+    font-size: .48rem;
+    font-weight: 700;
+    cursor: help;
+}
+
+.ada-io-equipos-ch__atollo--active {
+    color: var(--ada-color-state-danger, #c62828);
+}
+
+.ada-io-equipos-ch__atollo-dot {
+    width: .4rem;
+    height: .4rem;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.ada-io-equipos-ch [data-kpi-inspection-key]:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+.ada-io-equipos-ch [data-kpi-inspection-key]:hover {
+    text-decoration: underline;
+}
+
+@media only screen and (min-width: 480px) and (max-width: 1279px) {
+    .ada-io-equipos-ch__title { font-size: .7rem; }
+    .ada-io-equipos-ch__label { font-size: .68rem; }
+    .ada-io-equipos-ch__throughput { font-size: .63rem; }
+    .ada-io-equipos-ch__atollo { font-size: .59rem; }
+}
+
+@media only screen and (min-width: 1366px) {
+    [data-ada-io-presentation='mine'] .ada-io-equipos-ch__title { font-size: .69rem; }
+    [data-ada-io-presentation='mine'] .ada-io-equipos-ch__label { font-size: .65rem; }
+    [data-ada-io-presentation='mine'] .ada-io-equipos-ch__throughput { font-size: .61rem; }
+    [data-ada-io-presentation='mine'] .ada-io-equipos-ch__atollo { font-size: .57rem; }
+}
