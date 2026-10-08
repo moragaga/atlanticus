@@ -12,6 +12,7 @@ from ada.web.application.integrated_operations.modules.dashboard.ids import (
     dashboard_card_id,
     dashboard_component_id,
 )
+from ada.web.content_state import ContentState
 from ada.web.ui.card_display import build_card_display
 from ada.web.ui.content_state import build_content_state_wrapper
 
@@ -47,6 +48,7 @@ def build_dashboard_card(
         label=binding.label,
         tool_component_key=tool_component_key,
         tool_subcomponent_key=binding.tool_subcomponent_key,
+        content_state=binding.content_state,
     )
 
 
@@ -56,7 +58,7 @@ def build_shared_dashboard_card(binding: DashboardSharedCardBinding):
         label=binding.label,
         tool_component_key=binding.tool_component_key,
         tool_subcomponent_key=binding.tool_subcomponent_key,
-        linked_tool_component_keys=binding.linked_tool_component_keys,
+        linked_component_keys=binding.linked_tool_component_keys,
     )
 
 
@@ -66,12 +68,13 @@ def _build_card_display(
     label: str,
     tool_component_key: str,
     tool_subcomponent_key: str,
-    linked_tool_component_keys: tuple[str, ...] = (),
+    linked_component_keys: tuple[str, ...] = (),
+    content_state: ContentState = ContentState.READY,
 ):
     card = build_card_display(
         component_key=tool_component_key,
         subcomponent_key=tool_subcomponent_key,
-        linked_component_keys=linked_tool_component_keys,
+        linked_component_keys=linked_component_keys,
         wrapper_id=dashboard_card_id(key),
         content=html.Div(id=dashboard_card_content_id(key)),
         footer=label,
@@ -79,6 +82,7 @@ def _build_card_display(
     return build_content_state_wrapper(
         component_key=None,
         children=card,
+        state=content_state,
         operational_runtime=True,
         class_name='ada-io-card-state',
     )

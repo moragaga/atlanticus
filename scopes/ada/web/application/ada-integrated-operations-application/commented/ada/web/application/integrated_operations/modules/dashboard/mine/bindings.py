@@ -1,11 +1,12 @@
+# Solo Tiempos y Colas se declara en construcción; las otras tarjetas mantienen READY.
 from ada.contracts.tools.enums import ToolScope
 from ada.web.application.integrated_operations.modules.dashboard.contracts import (
     DashboardCardBinding,
     DashboardComponentBinding,
     DashboardSharedCardBinding,
 )
+from ada.web.content_state import ContentState
 
-# Mina es dueña de sus identidades visuales y de las referencias estables hacia Tool Structure.
 GENERAL_MINA = DashboardComponentBinding(
     key='general_mina',
     label='GENERAL MINA',
@@ -35,7 +36,6 @@ GENERAL_MINA = DashboardComponentBinding(
     ),
 )
 
-# La composición entregada por Tool contiene Carguío Global; no existe un id para Mezcla hacia Chancado.
 CARGUIO = DashboardComponentBinding(
     key='carguio',
     label='CARGUÍO',
@@ -75,11 +75,11 @@ TRANSPORTE = DashboardComponentBinding(
             key='tiempos_y_colas',
             label='Tiempos y Colas • Turno',
             tool_subcomponent_key='sub_tiempos_y_colas_108de76a6b6e',
+            content_state=ContentState.CONSTRUCTION,
         ),
     ),
 )
 
-# Una sola card visual usa Carguío como owner y publica Transporte como componente enlazado.
 CARGUIO_TRANSPORTE = DashboardSharedCardBinding(
     key='gestion_carguio_turno',
     label='Gestión Carguío • Turno',
@@ -103,7 +103,6 @@ CHANCADO_STMG = DashboardComponentBinding(
     ),
 )
 
-# La colección sólo agrega los componentes que pertenecen al scope Mine.
 MINE_COMPONENTS = (
     GENERAL_MINA,
     CARGUIO,

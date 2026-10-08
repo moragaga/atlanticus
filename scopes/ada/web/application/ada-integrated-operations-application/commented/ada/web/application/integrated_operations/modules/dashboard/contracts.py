@@ -1,19 +1,20 @@
+# Contratos de las tarjetas. READY por defecto; CONSTRUCTION representa trabajo todavía no implementado.
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from ada.contracts.tools.enums import ToolScope
+from ada.web.content_state import ContentState
 
 
-# Toda card visible debe quedar enlazada a una identidad real de subcomponente definida por desarrollo.
 @dataclass(frozen=True, slots=True)
 class DashboardCardBinding:
     key: str
     label: str
     tool_subcomponent_key: str
+    content_state: ContentState = ContentState.READY
 
 
-# El componente conserva una key visual independiente, pero exige la identidad Tool usada por runtime.
 @dataclass(frozen=True, slots=True)
 class DashboardComponentBinding:
     key: str
@@ -23,7 +24,6 @@ class DashboardComponentBinding:
     cards: tuple[DashboardCardBinding, ...]
 
 
-# La card compartida exige owner, subcomponent y vínculos explícitos; no deriva identidades desde labels.
 @dataclass(frozen=True, slots=True)
 class DashboardSharedCardBinding:
     key: str

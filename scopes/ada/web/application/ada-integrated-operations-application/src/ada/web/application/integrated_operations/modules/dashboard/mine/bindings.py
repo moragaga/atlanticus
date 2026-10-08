@@ -4,6 +4,7 @@ from ada.web.application.integrated_operations.modules.dashboard.contracts impor
     DashboardComponentBinding,
     DashboardSharedCardBinding,
 )
+from ada.web.content_state import ContentState
 
 GENERAL_MINA = DashboardComponentBinding(
     key='general_mina',
@@ -73,6 +74,7 @@ TRANSPORTE = DashboardComponentBinding(
             key='tiempos_y_colas',
             label='Tiempos y Colas • Turno',
             tool_subcomponent_key='sub_tiempos_y_colas_108de76a6b6e',
+            content_state=ContentState.CONSTRUCTION,
         ),
     ),
 )
