@@ -465,6 +465,7 @@ class AlarmLifecycleCycle:
         keys = {entry.planned_alarm.priority_group for entry in session.entries}
         if previous is not None:
             keys.update(group.priority_group for group in previous.groups)
+            keys.update(item.priority_group for item in previous.technical_incidents)
         keys.update(item.priority_group for item in inputs.pending_deactivation_requests)
         return tuple(sorted(keys))
 

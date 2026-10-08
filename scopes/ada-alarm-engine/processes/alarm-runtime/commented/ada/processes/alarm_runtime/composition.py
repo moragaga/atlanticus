@@ -1,13 +1,16 @@
 # Espejo pedagógico de la composición ejecutable de Alarm Runtime.
-# Conecta adquisición de datos, evaluación y lifecycle sin incorporar Modeler, Delivery ni persistencia operacional.
+# Conecta recuperación, lease y commits operacionales; adopción de configuración aún no habilitada.
 from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
 
 from ada.alarms.persistence import LocalAlarmMaterializationStore, materialization_root
+from ada.alarms.persistence.operational import AlarmPersistence
 from ada.contracts.alarms import ALARM_CONFIGURATION_SOURCE_KEY
 from ada.processes.alarm_runtime.cycle import AlarmEvaluationCycle
+from ada.processes.alarm_runtime.durable_commit import AlarmDurableCycleCommitter
+from ada.processes.alarm_runtime.durable_recovery import AlarmDurableRecovery
 from ada.processes.alarm_runtime.job import AlarmRuntimeJob
 from ada.processes.alarm_runtime.lifecycle import AlarmLifecycleCycle
 from ada.processes.alarm_runtime.session import AlarmEvaluatorRegistry
@@ -39,6 +42,7 @@ class AlarmRuntimeComposition:
         return execute_job(
             definition=self.definition,
             iteration=self.job.run_iteration,
+            recovery=self.job.recover,
             argv=argv,
             environ=self.configuration.values,
         )
@@ -74,6 +78,12 @@ def build_composition(
         registry=registry,
     )
     cycle = AlarmEvaluationCycle(loader=DataInputLoader(reader=data_reader, registry=registry))
+    operational = AlarmPersistence(application_root=runtime_configuration.application_root)
+    durable_recovery = AlarmDurableRecovery(
+        persistence=operational,
+        materializations=configuration_reader,
+        source_key=ALARM_CONFIGURATION_SOURCE_KEY,
+    )
     job = AlarmRuntimeJob(
         reader=configuration_reader,
         source_key=ALARM_CONFIGURATION_SOURCE_KEY,
@@ -81,6 +91,8 @@ def build_composition(
         source_applications=applications,
         cycle=cycle,
         lifecycle=AlarmLifecycleCycle(),
+        durable_recovery=durable_recovery,
+        durable_committer=AlarmDurableCycleCommitter(persistence=operational),
     )
     definition = JobDefinition(
         module_name='ada.processes.alarm_runtime',

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from typing import Protocol, runtime_checkable
 
@@ -10,6 +10,11 @@ from ada.processes.alarm_runtime.adoption import plan_configuration_adoption
 from ada.processes.alarm_runtime.cycle import (
     AlarmEvaluationCycleExecutor,
     AlarmEvaluationCycleResult,
+)
+from ada.processes.alarm_runtime.durable_commit import AlarmDurableCycleCommitter
+from ada.processes.alarm_runtime.durable_recovery import (
+    AlarmDurableRecovery,
+    RecoveredAlarmAuthority,
 )
 from ada.processes.alarm_runtime.errors import (
     AlarmExecutionSessionError,
@@ -32,6 +37,7 @@ from atlanticus.runtime import JobRuntimeContext
 INITIAL_CONFIGURATION_RETRY_SECONDS = 30.0
 _SESSION_MEMORY_KEY = 'ada.alarm_engine.runtime.execution_session'
 _LIFECYCLE_MEMORY_KEY = 'ada.alarm_engine.runtime.lifecycle_state'
+_DURABLE_MEMORY_KEY = 'ada.alarm_engine.runtime.durable_authority'
 
 
 @runtime_checkable
@@ -87,6 +93,8 @@ class AlarmRuntimeJob:
         source_applications: DataSourceApplications,
         cycle: AlarmEvaluationCycleExecutor,
         lifecycle: AlarmLifecycleCycleExecutor | None = None,
+        durable_recovery: AlarmDurableRecovery | None = None,
+        durable_committer: AlarmDurableCycleCommitter | None = None,
     ) -> None:
         if not isinstance(reader, EngineConfigurationReader):
             raise TypeError('reader must implement EngineConfigurationReader')
@@ -106,10 +114,49 @@ class AlarmRuntimeJob:
         self._evaluator_registry = evaluator_registry
         self._source_applications = source_applications
         self._cycle = cycle
+        if (durable_recovery is None) != (durable_committer is None):
+            raise ValueError('durable recovery and committer must be configured together')
+        if durable_recovery is not None and not isinstance(durable_recovery, AlarmDurableRecovery):
+            raise TypeError('durable_recovery must be AlarmDurableRecovery')
+        if durable_committer is not None and not isinstance(
+            durable_committer, AlarmDurableCycleCommitter
+        ):
+            raise TypeError('durable_committer must be AlarmDurableCycleCommitter')
         self._lifecycle = resolved_lifecycle
+        self._durable_recovery = durable_recovery
+        self._durable_committer = durable_committer
+
+    def recover(self, context: JobRuntimeContext) -> RecoveredAlarmAuthority:
+        if self._durable_recovery is None:
+            raise AlarmRuntimeConfigurationError('durable recovery is not configured')
+        recovered = self._durable_recovery.recover(context)
+        if recovered.lifecycle is not None:
+            session = build_alarm_execution_session(
+                configuration=recovered.lifecycle.configuration,
+                evaluator_registry=self._evaluator_registry,
+            )
+            self._source_applications.validate_sources(session.data_plan.sources)
+            context.assert_lease_current()
+            context.set_memory(_SESSION_MEMORY_KEY, session)
+            context.set_memory(_LIFECYCLE_MEMORY_KEY, recovered.lifecycle)
+        context.set_memory(_DURABLE_MEMORY_KEY, recovered)
+        return recovered
 
     def run_iteration(self, context: JobRuntimeContext) -> AlarmRuntimeIterationResult:
         context.raise_if_cancelled()
+        if self._durable_committer is not None:
+            recovered = context.get_memory(_DURABLE_MEMORY_KEY)
+            if not isinstance(recovered, RecoveredAlarmAuthority):
+                raise AlarmRuntimeConfigurationError('durable recovery must run before iterations')
+            if recovered.artifact_ref is None:
+                context.set_next_iteration_delay(INITIAL_CONFIGURATION_RETRY_SECONDS)
+                waiting = AlarmRuntimeIterationResult(
+                    outcome=AlarmRuntimeConfigurationOutcome.WAITING,
+                    session=None,
+                    reason='effective_configuration_missing',
+                )
+                self._record(context, waiting)
+                return waiting
         pinned = context.get_memory(_SESSION_MEMORY_KEY)
         if pinned is not None and not isinstance(pinned, AlarmExecutionSession):
             raise TypeError('pinned execution session must be an AlarmExecutionSession')
@@ -179,6 +226,15 @@ class AlarmRuntimeJob:
                 ),
             )
 
+        if pinned is not None and self._durable_committer is not None:
+            return self._finish(
+                context,
+                AlarmRuntimeIterationResult(
+                    outcome=AlarmRuntimeConfigurationOutcome.REJECTED,
+                    session=pinned,
+                    reason='published_engine_pending_durable_adoption',
+                ),
+            )
         if pinned is not None:
             adoption = plan_configuration_adoption(pinned.configuration, candidate.configuration)
             if not adoption.is_adoptable:
@@ -224,6 +280,20 @@ class AlarmRuntimeJob:
                 session=result.session,
                 cycle=cycle,
             )
+            if self._durable_committer is not None:
+                recovered = context.get_memory(_DURABLE_MEMORY_KEY)
+                if not isinstance(recovered, RecoveredAlarmAuthority):
+                    raise AlarmRuntimeConfigurationError('durable authority is unavailable')
+                if previous is None:
+                    raise AlarmRuntimeConfigurationError('durable lifecycle state is unavailable')
+                confirmed = self._durable_committer.commit(
+                    context,
+                    recovered=recovered,
+                    previous=previous,
+                    cycle=cycle,
+                    lifecycle=lifecycle,
+                )
+                lifecycle = replace(lifecycle, state=confirmed)
             context.set_memory(_LIFECYCLE_MEMORY_KEY, lifecycle.state)
             result = AlarmRuntimeIterationResult(
                 outcome=result.outcome,
