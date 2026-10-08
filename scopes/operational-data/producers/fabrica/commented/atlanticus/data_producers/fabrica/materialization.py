@@ -43,6 +43,10 @@ class FabricaMaterializationResult:
     metrics_present: int
     missing_metric_keys: tuple[str, ...]
     missing_metric_keys_by_output: tuple[tuple[str, tuple[str, ...]], ...]
+    # Diagnóstico estructurado propagado desde la transformación, sin alterar publicaciones.
+    source_mismatches: tuple[tuple[str, str, str, str, tuple[str, ...]], ...] = ()
+    # Ausencias completas de KPI detectadas durante la lectura de la fuente.
+    missing_source_kpis: tuple[tuple[str, str, tuple[str, ...]], ...] = ()
 
     @property
     def partitions_changed(self) -> int:
@@ -159,6 +163,10 @@ class FabricaMaterializer:
                 metrics_present=transformed.metrics_present,
                 missing_metric_keys=transformed.missing_metric_keys,
                 missing_metric_keys_by_output=transformed.missing_metric_keys_by_output,
+                # Mantiene el contexto del KPI disponible para el job que registra el warning.
+                source_mismatches=transformed.source_mismatches,
+                # Preserva el diagnóstico de KPI ausentes hasta el job.
+                missing_source_kpis=transformed.missing_source_kpis,
             )
         finally:
             Path(path).unlink(missing_ok=True)

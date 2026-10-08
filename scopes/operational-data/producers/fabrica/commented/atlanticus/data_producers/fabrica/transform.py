@@ -29,6 +29,10 @@ class FabricaTransformResult:
     missing_metric_keys_by_output: tuple[tuple[str, tuple[str, ...]], ...]
     metric_requests_expected: int
     metric_requests_present: int
+    # Ausencias de source esperado por KPI y dataset; no incluye KPI sin registros.
+    source_mismatches: tuple[tuple[str, str, str, str, tuple[str, ...]], ...] = ()
+    # Cada KPI ausente se registra una sola vez, aunque pertenezca a varios datasets.
+    missing_source_kpis: tuple[tuple[str, str, tuple[str, ...]], ...] = ()
 
     @property
     def metrics_expected(self) -> int:
@@ -53,6 +57,34 @@ def build_partition_frames(
     outputs = definition.datasets
     ids = {metric.id_kpi for dataset in outputs for metric in dataset.metrics}
     dataframe = dataframe[dataframe[_SOURCE_ID].isin(ids)].copy()
+    # Diagnostica por KPI con los niveles realmente disponibles para ese KPI.
+    sources_by_metric = {
+        str(metric_id): tuple(sorted(group[_SOURCE_LEVEL].dropna().unique()))
+        for metric_id, group in dataframe.groupby(_SOURCE_ID)
+    }
+    source_mismatches: list[tuple[str, str, str, str, tuple[str, ...]]] = []
+    # Distingue KPI sin registros de KPI presentes con un nivel requerido ausente.
+    missing_source_kpis = tuple(
+        (
+            metric.id_kpi,
+            metric.metric_key,
+            tuple(
+                dataset.source_value
+                for dataset in outputs
+                if any(item.id_kpi == metric.id_kpi for item in dataset.metrics)
+            ),
+        )
+        for metric in definition.metrics
+        if metric.id_kpi not in sources_by_metric
+    )
+    for dataset in outputs:
+        for metric in dataset.metrics:
+            available = sources_by_metric.get(metric.id_kpi, ())
+            # Las filas con nivel vacío también representan un source requerido ausente.
+            if metric.id_kpi in sources_by_metric and dataset.source_value not in available:
+                source_mismatches.append(
+                    (metric.id_kpi, metric.metric_key, dataset.name, dataset.source_value, available)
+                )
     # Compara siempre el nivel de origen con los source_value declarados por los datasets.
     known = {dataset.source_value for dataset in outputs}
     unknown = tuple(sorted(set(dataframe[_SOURCE_LEVEL].dropna()) - known))
@@ -103,6 +135,9 @@ def build_partition_frames(
         missing_metric_keys_by_output=tuple(missing),
         metric_requests_expected=sum(len(dataset.metrics) for dataset in outputs),
         metric_requests_present=request_count,
+        source_mismatches=tuple(source_mismatches),
+        # Propaga KPI inexistentes sin afectar los datos publicados.
+        missing_source_kpis=missing_source_kpis,
     )
 
 

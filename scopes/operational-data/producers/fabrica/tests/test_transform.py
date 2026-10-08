@@ -116,3 +116,176 @@ def test_daily_and_weekly_share_deduplication_ordering() -> None:
 
     assert result.frames['daily']['a'].tolist() == [11.0]
     assert result.frames['weekly']['a'].tolist() == [21.0]
+
+
+def test_source_mismatch_identifies_only_affected_kpi_with_synthetic_data() -> None:
+    metrics = tuple(
+        FabricaMetricDefinition(
+            id_kpi=f'TEST_KPI_{letter}',
+            metric_key=f'test_kpi_{letter.lower()}',
+            value_kind=FabricaValueKind.FLOAT,
+        )
+        for letter in ('A', 'B', 'C')
+    )
+    definition = FabricaStreamDefinition(
+        stream_key='test-stream',
+        source_prefix='test',
+        source_filename_pattern=re.compile(r'test_(?P<file_timestamp>\d{14})\.parquet$'),
+        output_route_segment='test',
+        datasets=(
+            FabricaDatasetDefinition(
+                name='daily', source_value='DAY', route_segment='daily', metrics=metrics
+            ),
+        ),
+    )
+    table = pa.Table.from_pydict(
+        {
+            'timestamp': ['2026-10-08T00:00:00Z'] * 5,
+            'id_kpi': ['TEST_KPI_A', 'TEST_KPI_A', 'TEST_KPI_B', 'TEST_KPI_B', 'OTHER'],
+            'valor': ['1', '2', '3', '4', '5'],
+            'nivel': ['MTD', 'YTD', 'DAY', 'MTD', 'OTHER_LEVEL'],
+            'timestamp_ejecucion': ['2026-10-08T00:00:01Z'] * 5,
+            'particion': ['1'] * 5,
+        }
+    )
+
+    result = build_partition_frames(table=table, definition=definition)
+
+    assert result.source_mismatches == (
+        ('TEST_KPI_A', 'test_kpi_a', 'daily', 'DAY', ('MTD', 'YTD')),
+    )
+    assert result.missing_source_kpis == (('TEST_KPI_C', 'test_kpi_c', ('DAY',)),)
+    assert result.unknown_source_values == ('MTD', 'YTD')
+    assert result.frames['daily']['test_kpi_b'].tolist() == [3.0]
+    assert result.frames['daily']['test_kpi_a'].isna().all()
+
+
+def test_missing_expected_source_can_be_globally_known() -> None:
+    metric = FabricaMetricDefinition(
+        id_kpi='TEST_KPI_A', metric_key='test_kpi_a', value_kind=FabricaValueKind.FLOAT
+    )
+    definition = FabricaStreamDefinition(
+        stream_key='test-stream',
+        source_prefix='test',
+        source_filename_pattern=re.compile(r'test_(?P<file_timestamp>\d{14})\.parquet$'),
+        output_route_segment='test',
+        datasets=(
+            FabricaDatasetDefinition(
+                name='daily', source_value='DAY', route_segment='daily', metrics=(metric,)
+            ),
+            FabricaDatasetDefinition(
+                name='weekly', source_value='7LDB', route_segment='weekly', metrics=(metric,)
+            ),
+        ),
+    )
+    table = pa.Table.from_pydict(
+        {
+            'timestamp': ['2026-10-08T00:00:00Z'],
+            'id_kpi': ['TEST_KPI_A'],
+            'valor': ['1'],
+            'nivel': ['DAY'],
+            'timestamp_ejecucion': ['2026-10-08T00:00:01Z'],
+            'particion': ['1'],
+        }
+    )
+
+    result = build_partition_frames(table=table, definition=definition)
+
+    assert result.unknown_source_values == ()
+    assert result.source_mismatches == (
+        ('TEST_KPI_A', 'test_kpi_a', 'weekly', '7LDB', ('DAY',)),
+    )
+
+
+def test_extra_sources_do_not_cause_mismatches_when_expected_are_present() -> None:
+    metric_a, metric_b, metric_c = tuple(
+        FabricaMetricDefinition(
+            id_kpi=f'TEST_KPI_{letter}',
+            metric_key=f'test_kpi_{letter.lower()}',
+            value_kind=FabricaValueKind.FLOAT,
+        )
+        for letter in ('A', 'B', 'C')
+    )
+    definition = FabricaStreamDefinition(
+        stream_key='test-stream',
+        source_prefix='test',
+        source_filename_pattern=re.compile(r'test_(?P<file_timestamp>\d{14})\.parquet$'),
+        output_route_segment='test',
+        datasets=(
+            FabricaDatasetDefinition(
+                name='daily',
+                source_value='DAY',
+                route_segment='daily',
+                metrics=(metric_a, metric_b, metric_c),
+            ),
+            FabricaDatasetDefinition(
+                name='weekly',
+                source_value='7LDB',
+                route_segment='weekly',
+                metrics=(metric_a,),
+            ),
+        ),
+    )
+    table = pa.Table.from_pydict(
+        {
+            'timestamp': ['2026-10-08T00:00:00Z'] * 7,
+            'id_kpi': [
+                'TEST_KPI_A', 'TEST_KPI_A', 'TEST_KPI_A',
+                'TEST_KPI_B', 'TEST_KPI_B', 'TEST_KPI_B', 'OTHER',
+            ],
+            'valor': ['1', '2', '3', '4', '5', '6', '7'],
+            'nivel': ['DAY', '7LDB', 'MTD', 'DAY', '7LDB', 'YTD', 'OTHER_LEVEL'],
+            'timestamp_ejecucion': ['2026-10-08T00:00:01Z'] * 7,
+            'particion': ['1'] * 7,
+        }
+    )
+
+    result = build_partition_frames(table=table, definition=definition)
+
+    assert result.source_mismatches == ()
+    assert result.unknown_source_values == ('MTD', 'YTD')
+    assert result.source_row_count == 3
+    assert result.frames['daily'].loc[0, 'test_kpi_a'] == 1.0
+    assert result.frames['daily'].loc[0, 'test_kpi_b'] == 4.0
+    assert result.frames['weekly'].loc[0, 'test_kpi_a'] == 2.0
+    assert result.missing_source_kpis == (('TEST_KPI_C', 'test_kpi_c', ('DAY',)),)
+
+
+def test_missing_kpi_in_multiple_datasets_generates_one_diagnostic() -> None:
+    present = FabricaMetricDefinition(
+        id_kpi='TEST_PRESENT', metric_key='test_present', value_kind=FabricaValueKind.FLOAT
+    )
+    missing = FabricaMetricDefinition(
+        id_kpi='TEST_KEY', metric_key='test_key', value_kind=FabricaValueKind.FLOAT
+    )
+    definition = FabricaStreamDefinition(
+        stream_key='test-stream',
+        source_prefix='test',
+        source_filename_pattern=re.compile(r'test_(?P<file_timestamp>\d{14})\.parquet$'),
+        output_route_segment='test',
+        datasets=(
+            FabricaDatasetDefinition(
+                name='daily', source_value='DAY', route_segment='daily', metrics=(present, missing)
+            ),
+            FabricaDatasetDefinition(
+                name='weekly', source_value='7LDB', route_segment='weekly', metrics=(missing,)
+            ),
+        ),
+    )
+    table = pa.Table.from_pydict(
+        {
+            'timestamp': ['2026-10-08T00:00:00Z'],
+            'id_kpi': ['TEST_PRESENT'],
+            'valor': ['123'],
+            'nivel': ['DAY'],
+            'timestamp_ejecucion': ['2026-10-08T00:00:01Z'],
+            'particion': ['1'],
+        }
+    )
+
+    result = build_partition_frames(table=table, definition=definition)
+
+    assert result.source_mismatches == ()
+    assert result.missing_source_kpis == (('TEST_KEY', 'test_key', ('DAY', '7LDB')),)
+    assert result.frames['daily'].loc[0, 'test_present'] == 123.0
+    assert result.source_row_count == 1

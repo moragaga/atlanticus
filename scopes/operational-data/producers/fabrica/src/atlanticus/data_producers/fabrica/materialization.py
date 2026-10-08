@@ -40,6 +40,8 @@ class FabricaMaterializationResult:
     metrics_present: int
     missing_metric_keys: tuple[str, ...]
     missing_metric_keys_by_output: tuple[tuple[str, tuple[str, ...]], ...]
+    source_mismatches: tuple[tuple[str, str, str, str, tuple[str, ...]], ...] = ()
+    missing_source_kpis: tuple[tuple[str, str, tuple[str, ...]], ...] = ()
 
     @property
     def partitions_changed(self) -> int:
@@ -152,6 +154,8 @@ class FabricaMaterializer:
                 metrics_present=transformed.metrics_present,
                 missing_metric_keys=transformed.missing_metric_keys,
                 missing_metric_keys_by_output=transformed.missing_metric_keys_by_output,
+                source_mismatches=transformed.source_mismatches,
+                missing_source_kpis=transformed.missing_source_kpis,
             )
         finally:
             Path(path).unlink(missing_ok=True)

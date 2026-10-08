@@ -126,17 +126,28 @@ class FabricaJob:
                 changed += 1
                 context.increment_execution_counter('streams_changed')
                 context.set_execution_fact('new_data', True)
-            # Los niveles desconocidos se comparan con los source_value vigentes, no con un contrato legacy de particiones.
-            if result.unknown_source_values:
+            # Cada warning identifica un KPI con registros, pero sin su source requerido.
+            # Emite un solo warning por KPI sin registros, incluso si está en varios datasets.
+            for id_kpi, metric_key, expected_sources in result.missing_source_kpis:
                 context.logger.warning(
-                    'Unknown source value ignored',
-                    event_name='fabrica.stream.unknown_source_value',
+                    'KPI missing from source',
+                    event_name='fabrica.stream.kpi_missing_from_source',
                     stream=definition.stream_key,
-                    expected_source_values=','.join(
-                        dataset.source_value for dataset in definition.datasets
-                    ),
-                    unknown_count=len(result.unknown_source_values),
-                    unknown_source_values=','.join(result.unknown_source_values),
+                    id_kpi=id_kpi,
+                    metric_key=metric_key,
+                    expected_sources=','.join(expected_sources),
+                )
+            # Un KPI presente puede tener registros, pero no los niveles configurados.
+            for id_kpi, metric_key, dataset, expected_source, available in result.source_mismatches:
+                context.logger.warning(
+                    'KPI source mismatch',
+                    event_name='fabrica.stream.kpi_source_mismatch',
+                    stream=definition.stream_key,
+                    id_kpi=id_kpi,
+                    metric_key=metric_key,
+                    dataset=dataset,
+                    expected_source=expected_source,
+                    available_sources=','.join(available),
                 )
             if result.missing_metric_keys:
                 context.logger.debug(
