@@ -1,0 +1,63 @@
+.ada-stockpile {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: center;
+    gap: var(--ada-stockpile-gap, .6rem);
+    width: 100%;
+    min-width: 0;
+}
+
+.ada-stockpile__item {
+    display: flex;
+    flex: 1 1 100px;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+    max-width: 240px;
+    gap: .12rem;
+}
+
+.ada-stockpile__label {
+    color: var(--atlanticus-ui-text, #424750);
+    font-size: var(--ada-stockpile-label-font-size, .8rem);
+    font-weight: 700;
+    text-align: center;
+}
+
+.ada-stockpile__graphic {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 0;
+    aspect-ratio: 160 / 130;
+    object-fit: contain;
+}
+
+.ada-stockpile__values {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    column-gap: .8rem;
+    row-gap: .18rem;
+    width: 100%;
+}
+
+.ada-stockpile__value {
+    display: inline-flex;
+    align-items: center;
+    gap: .1rem;
+    color: var(--atlanticus-ui-text, #424750);
+    font-size: var(--ada-stockpile-value-font-size, .84rem);
+    font-weight: 650;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.ada-stockpile__status-icon {
+    max-height: 1.4rem;
+    max-width: 1.4rem;
+    object-fit: contain;
+}
