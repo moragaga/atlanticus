@@ -1,5 +1,5 @@
 # Espejo pedagógico del job de Alarm Runtime.
-# El estado lifecycle solo se publica en memoria tras confirmar WAL; la adopción durable permanece separada.
+# El estado lifecycle se publica en memoria solo tras confirmar WAL; READY se adopta mediante V1/V2 y se relee EFFECTIVE.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
@@ -9,6 +9,10 @@ from typing import Protocol, runtime_checkable
 from ada.alarms.materialization import EngineAlarmConfiguration
 from ada.alarms.persistence import AlarmMaterializationPersistenceError
 from ada.processes.alarm_runtime.adoption import plan_configuration_adoption
+from ada.processes.alarm_runtime.durable_adoption import (
+    AlarmDurableAdopter,
+    AlarmOperationalAdoptionRequired,
+)
 from ada.processes.alarm_runtime.durable_commit import AlarmDurableCycleCommitter
 from ada.processes.alarm_runtime.durable_recovery import (
     AlarmDurableRecovery,
@@ -99,6 +103,7 @@ class AlarmRuntimeJob:
         lifecycle: AlarmLifecycleCycleExecutor | None = None,
         durable_recovery: AlarmDurableRecovery | None = None,
         durable_committer: AlarmDurableCycleCommitter | None = None,
+        durable_adopter: AlarmDurableAdopter | None = None,
     ) -> None:
         if not isinstance(reader, EngineConfigurationReader):
             raise TypeError('reader must implement EngineConfigurationReader')
@@ -126,7 +131,12 @@ class AlarmRuntimeJob:
             raise TypeError('durable_committer must be AlarmDurableCycleCommitter')
         self._lifecycle = resolved_lifecycle
         self._durable_recovery = durable_recovery
+        if durable_adopter is not None and durable_committer is None:
+            raise ValueError('durable adoption requires a durable committer')
+        if durable_adopter is not None and not isinstance(durable_adopter, AlarmDurableAdopter):
+            raise TypeError('durable_adopter must be AlarmDurableAdopter')
         self._durable_committer = durable_committer
+        self._durable_adopter = durable_adopter
 
     def recover(self, context: JobRuntimeContext) -> RecoveredAlarmAuthority:
         if self._durable_recovery is None:
@@ -150,6 +160,8 @@ class AlarmRuntimeJob:
             recovered = context.get_memory(_DURABLE_MEMORY_KEY)
             if not isinstance(recovered, RecoveredAlarmAuthority):
                 raise AlarmRuntimeConfigurationError('durable recovery must run before iterations')
+            if self._durable_adopter is not None:
+                return self._run_durable_adoption_iteration(context, recovered)
             if recovered.artifact_ref is None:
                 context.set_next_iteration_delay(INITIAL_CONFIGURATION_RETRY_SECONDS)
                 waiting = AlarmRuntimeIterationResult(
@@ -265,6 +277,131 @@ class AlarmRuntimeJob:
         context.set_memory(_SESSION_MEMORY_KEY, candidate)
         context.mark_iteration_work()
         return finished
+
+    # Una adopción necesita confirmación WAL y recovery del mismo EFFECTIVE exacto.
+    # Los cambios que exigen transiciones físicas se rechazan hasta soportar un batch mixto.
+    def _run_durable_adoption_iteration(
+        self,
+        context: JobRuntimeContext,
+        recovered: RecoveredAlarmAuthority,
+    ) -> AlarmRuntimeIterationResult:
+        adopter = self._durable_adopter
+        if adopter is None or self._durable_recovery is None:
+            raise AlarmRuntimeConfigurationError('durable adoption is not configured')
+        pinned = context.get_memory(_SESSION_MEMORY_KEY)
+        if pinned is not None and not isinstance(pinned, AlarmExecutionSession):
+            raise TypeError('pinned execution session must be AlarmExecutionSession')
+        if (recovered.artifact_ref is None) != (pinned is None):
+            raise AlarmRuntimeConfigurationError('pinned session differs from durable authority')
+        try:
+            ready = adopter.read_candidate()
+        except AlarmMaterializationPersistenceError:
+            if pinned is None:
+                context.set_next_iteration_delay(INITIAL_CONFIGURATION_RETRY_SECONDS)
+            return self._finish(
+                context,
+                AlarmRuntimeIterationResult(
+                    outcome=AlarmRuntimeConfigurationOutcome.REJECTED,
+                    session=pinned,
+                    reason='published_ready_invalid_using_effective',
+                ),
+            )
+        if ready is None:
+            if pinned is None:
+                context.set_next_iteration_delay(INITIAL_CONFIGURATION_RETRY_SECONDS)
+            return self._finish(
+                context,
+                AlarmRuntimeIterationResult(
+                    outcome=(
+                        AlarmRuntimeConfigurationOutcome.WAITING
+                        if pinned is None
+                        else AlarmRuntimeConfigurationOutcome.UNCHANGED
+                    ),
+                    session=pinned,
+                    reason='published_ready_missing',
+                ),
+            )
+        target_ref = adopter.reference_for(ready)
+        if target_ref == recovered.artifact_ref:
+            if pinned is None or pinned.configuration != ready.engine:
+                raise AlarmRuntimeConfigurationError('READY differs from pinned EFFECTIVE')
+            return self._finish(
+                context,
+                AlarmRuntimeIterationResult(
+                    outcome=AlarmRuntimeConfigurationOutcome.UNCHANGED,
+                    session=pinned,
+                    reason='effective_configuration_unchanged',
+                ),
+            )
+        if (
+            pinned is not None
+            and ready.engine.resolution_key == pinned.resolution_key
+            and ready.engine != pinned.configuration
+        ):
+            raise AlarmRuntimeConfigurationError(
+                'Published Engine configuration changed without changing resolution_key'
+            )
+        try:
+            candidate = build_alarm_execution_session(
+                configuration=ready.engine,
+                evaluator_registry=self._evaluator_registry,
+            )
+            self._source_applications.validate_sources(candidate.data_plan.sources)
+        except (AlarmExecutionSessionError, DataSourceRoutingError):
+            if pinned is None:
+                context.set_next_iteration_delay(INITIAL_CONFIGURATION_RETRY_SECONDS)
+            return self._finish(
+                context,
+                AlarmRuntimeIterationResult(
+                    outcome=AlarmRuntimeConfigurationOutcome.REJECTED,
+                    session=pinned,
+                    reason='published_engine_not_executable',
+                ),
+            )
+        if pinned is not None:
+            plan = plan_configuration_adoption(pinned.configuration, candidate.configuration)
+            if not plan.is_adoptable:
+                return self._finish(
+                    context,
+                    AlarmRuntimeIterationResult(
+                        outcome=AlarmRuntimeConfigurationOutcome.REJECTED,
+                        session=pinned,
+                        reason='published_engine_not_adoptable',
+                    ),
+                )
+        context.raise_if_cancelled()
+        try:
+            adopter.adopt(context, recovered=recovered, ready=ready)
+        except AlarmOperationalAdoptionRequired:
+            return self._finish(
+                context,
+                AlarmRuntimeIterationResult(
+                    outcome=AlarmRuntimeConfigurationOutcome.REJECTED,
+                    session=pinned,
+                    reason='published_engine_requires_operational_adoption',
+                ),
+            )
+        confirmed = self._durable_recovery.recover(context)
+        if confirmed.artifact_ref != target_ref or confirmed.lifecycle is None:
+            raise AlarmRuntimeConfigurationError('confirmed EFFECTIVE differs from adopted READY')
+        if confirmed.lifecycle.configuration != candidate.configuration:
+            raise AlarmRuntimeConfigurationError('confirmed configuration differs from candidate')
+        context.assert_lease_current()
+        context.set_memory(_SESSION_MEMORY_KEY, candidate)
+        context.set_memory(_LIFECYCLE_MEMORY_KEY, confirmed.lifecycle)
+        context.set_memory(_DURABLE_MEMORY_KEY, confirmed)
+        context.mark_iteration_work()
+        result = AlarmRuntimeIterationResult(
+            outcome=(
+                AlarmRuntimeConfigurationOutcome.BOOTSTRAPPED
+                if recovered.artifact_ref is None
+                else AlarmRuntimeConfigurationOutcome.ADOPTED
+            ),
+            session=candidate,
+            reason='effective_configuration_committed',
+        )
+        self._record(context, result)
+        return result
 
     def _finish(
         self,

@@ -7,6 +7,7 @@ from ada.alarms.persistence import LocalAlarmMaterializationStore, materializati
 from ada.alarms.persistence.operational import AlarmPersistence
 from ada.contracts.alarms import ALARM_CONFIGURATION_SOURCE_KEY
 from ada.processes.alarm_runtime.cycle import AlarmEvaluationCycle
+from ada.processes.alarm_runtime.durable_adoption import AlarmDurableAdopter
 from ada.processes.alarm_runtime.durable_commit import AlarmDurableCycleCommitter
 from ada.processes.alarm_runtime.durable_recovery import AlarmDurableRecovery
 from ada.processes.alarm_runtime.job import AlarmRuntimeJob
@@ -91,6 +92,11 @@ def build_composition(
         lifecycle=AlarmLifecycleCycle(),
         durable_recovery=durable_recovery,
         durable_committer=AlarmDurableCycleCommitter(persistence=operational),
+        durable_adopter=AlarmDurableAdopter(
+            persistence=operational,
+            materializations=configuration_reader,
+            source_key=ALARM_CONFIGURATION_SOURCE_KEY,
+        ),
     )
     definition = JobDefinition(
         module_name='ada.processes.alarm_runtime',
