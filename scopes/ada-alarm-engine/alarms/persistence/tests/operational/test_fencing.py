@@ -76,8 +76,8 @@ def _run_commit(
 
 
 def test_takeover_after_wal_append_blocks_stale_durable_publication(tmp_path: Path) -> None:
-    first = AlarmPersistence(shared_volume_path=tmp_path)
-    second = AlarmPersistence(shared_volume_path=tmp_path)
+    first = AlarmPersistence(application_root=tmp_path)
+    second = AlarmPersistence(application_root=tmp_path)
     coordinator = _GenerationFence()
     paused = threading.Event()
     resume = threading.Event()
@@ -127,8 +127,8 @@ def test_takeover_after_wal_append_blocks_stale_durable_publication(tmp_path: Pa
 def test_takeover_after_durable_publish_blocks_stale_snapshot_and_replays_exact_commit(
     tmp_path: Path,
 ) -> None:
-    first = AlarmPersistence(shared_volume_path=tmp_path)
-    second = AlarmPersistence(shared_volume_path=tmp_path)
+    first = AlarmPersistence(application_root=tmp_path)
+    second = AlarmPersistence(application_root=tmp_path)
     coordinator = _GenerationFence()
     paused = threading.Event()
     resume = threading.Event()

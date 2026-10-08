@@ -12,7 +12,7 @@ def _authority() -> None:
 
 
 def test_each_wal_record_is_complete_newline_terminated_json(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     result = persistence.commit_batch(
         [build_record()], assert_authority=_authority, fenced_mutation=mutation_fence
     )
@@ -25,7 +25,7 @@ def test_each_wal_record_is_complete_newline_terminated_json(tmp_path: Path) -> 
 
 
 def test_reader_can_resume_from_a_confirmed_record_boundary(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     first = build_record(commit_id='A1', priority_group='a', alarm_key='alarm_a')
     second = build_record(commit_id='B1', priority_group='b', alarm_key='alarm_b')
     persistence.commit_batch(
@@ -39,7 +39,7 @@ def test_reader_can_resume_from_a_confirmed_record_boundary(tmp_path: Path) -> N
 
 
 def test_reader_rejects_non_record_boundary(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     persistence.commit_batch(
         [build_record()], assert_authority=_authority, fenced_mutation=mutation_fence
     )

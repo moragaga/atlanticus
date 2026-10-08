@@ -115,7 +115,7 @@ def test_v2_rejects_tampered_group_reference_and_non_canonical_order() -> None:
 
 
 def test_v2_requires_exact_record_references_before_wal(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     groups = _groups()
     with pytest.raises(AlarmPersistenceValidationError, match='references'):
         _commit(persistence, _adoption(groups), (groups[0],))
@@ -130,7 +130,7 @@ def test_v2_requires_exact_record_references_before_wal(tmp_path: Path) -> None:
 
 
 def test_v1_cannot_confirm_group_records(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     v1 = ConfigurationAdoptionRecord.create(
         adoption_id='adoption-v1',
         previous_artifact_ref=None,
@@ -144,7 +144,7 @@ def test_v1_cannot_confirm_group_records(tmp_path: Path) -> None:
 
 
 def test_first_v2_adoption_confirms_two_groups_with_one_durable_head(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     groups = _groups()
     record = _adoption(groups)
     result = _commit(persistence, record, tuple(reversed(groups)))
@@ -159,7 +159,7 @@ def test_first_v2_adoption_confirms_two_groups_with_one_durable_head(tmp_path: P
 
 
 def test_v1_can_precede_a_v2_adoption_without_changing_v1(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     v1 = ConfigurationAdoptionRecord.create(
         adoption_id='adoption-v1',
         previous_artifact_ref=None,
@@ -176,7 +176,7 @@ def test_v1_can_precede_a_v2_adoption_without_changing_v1(tmp_path: Path) -> Non
 
 
 def test_v2_rejects_cross_hour_records_before_wal(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     groups = _groups()
     v2 = replace(_adoption(groups), effective_at='2026-08-23T19:00:00Z')
     with pytest.raises(AlarmPersistenceValidationError, match='hash'):
@@ -195,7 +195,7 @@ def test_v2_rejects_cross_hour_records_before_wal(tmp_path: Path) -> None:
 
 
 def test_crash_before_durable_discards_entire_unconfirmed_v2_batch(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     calls = 0
 
     @contextmanager
@@ -225,7 +225,7 @@ def test_crash_before_durable_discards_entire_unconfirmed_v2_batch(tmp_path: Pat
 def test_crash_after_durable_before_snapshots_replays_all_three_records(
     tmp_path: Path, monkeypatch
 ) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     groups = _groups()
     record = _adoption(groups)
     original = persistence._materialize_entry
@@ -253,7 +253,7 @@ def test_crash_after_durable_before_snapshots_replays_all_three_records(
 def test_crash_during_second_snapshot_keeps_materialized_head_before_v2_batch(
     tmp_path: Path, monkeypatch
 ) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     groups = _groups()
     record = _adoption(groups)
     original = persistence._materialize_entry
@@ -283,7 +283,7 @@ def test_crash_during_second_snapshot_keeps_materialized_head_before_v2_batch(
 def test_crash_during_recovery_never_publishes_partial_v2_materialized_head(
     tmp_path: Path, monkeypatch
 ) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     groups = _groups()
     record = _adoption(groups)
     original = persistence._materialize_entry
@@ -313,20 +313,20 @@ def test_crash_during_recovery_never_publishes_partial_v2_materialized_head(
 
 
 def test_stale_previous_artifact_and_legacy_first_v2_fail_closed(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     groups = _groups()
     _commit(persistence, _adoption(groups), groups)
     second = _groups()
     with pytest.raises(AlarmPersistenceConflictError, match='previous artifact'):
         _commit(persistence, _adoption(second, adoption_id='stale', target=_ref('b')), second)
-    legacy = AlarmPersistence(shared_volume_path=tmp_path / 'legacy')
+    legacy = AlarmPersistence(application_root=tmp_path / 'legacy')
     legacy.commit_batch(groups, assert_authority=_authority, fenced_mutation=mutation_fence)
     with pytest.raises(AlarmPersistenceConflictError, match='legacy'):
         _commit(legacy, _adoption(groups), groups)
 
 
 def test_corrupt_durable_v2_group_reference_fails_recovery(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     groups = _groups()
     _commit(persistence, _adoption(groups), groups)
     segment = next(persistence.paths.journal_open_root.rglob('*.jsonl'))
@@ -337,7 +337,7 @@ def test_corrupt_durable_v2_group_reference_fails_recovery(tmp_path: Path) -> No
 
 
 def test_ordinary_group_batch_still_recovers_per_record(tmp_path: Path, monkeypatch) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     record = build_record()
     original = persistence._materialize_entry
     monkeypatch.setattr(
@@ -355,7 +355,7 @@ def test_ordinary_group_batch_still_recovers_per_record(tmp_path: Path, monkeypa
 
 
 def test_altered_group_payload_with_valid_group_hash_breaks_v2_reference(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     groups = _groups()
     _commit(persistence, _adoption(groups), groups)
     segment = next(persistence.paths.journal_open_root.rglob('*.jsonl'))
@@ -374,7 +374,7 @@ def test_altered_group_payload_with_valid_group_hash_breaks_v2_reference(tmp_pat
 
 
 def test_in_memory_corrupt_group_record_is_rejected_before_any_wal_write(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     groups = _groups()
     altered = replace(groups[0], record_hash='sha256:' + '0' * 64)
     with pytest.raises(AlarmPersistenceValidationError, match='group commit record hash'):
@@ -388,7 +388,7 @@ def test_in_memory_corrupt_group_record_is_rejected_before_any_wal_write(tmp_pat
 
 
 def test_group_revision_must_match_the_exact_target_artifact(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     groups = _groups()
     target = AlarmArtifactRefSnapshot(
         source_key='alarm-configuration',

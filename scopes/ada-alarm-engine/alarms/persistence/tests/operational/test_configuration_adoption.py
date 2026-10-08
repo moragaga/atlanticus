@@ -87,7 +87,7 @@ def test_adoption_record_rejects_equal_artifact_and_non_utc_time() -> None:
 
 
 def test_adoption_rejects_invalid_in_memory_hash_before_wal(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     record = replace(_adoption(), record_hash='sha256:' + '0' * 64)
     with pytest.raises(AlarmPersistenceValidationError, match='hash'):
         persistence.commit_adoption(
@@ -98,7 +98,7 @@ def test_adoption_rejects_invalid_in_memory_hash_before_wal(tmp_path: Path) -> N
 
 
 def test_zero_group_adoption_is_durable_without_group_snapshots(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     record = _adoption()
     result = persistence.commit_adoption(
         record, assert_authority=_authority, fenced_mutation=mutation_fence
@@ -118,7 +118,7 @@ def test_zero_group_adoption_is_durable_without_group_snapshots(tmp_path: Path) 
 
 
 def test_crash_before_durable_discards_unconfirmed_adoption(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     calls = 0
 
     @contextmanager
@@ -144,7 +144,7 @@ def test_crash_before_durable_discards_unconfirmed_adoption(tmp_path: Path) -> N
 
 
 def test_crash_after_durable_replays_adoption_once(tmp_path: Path, monkeypatch) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     record = _adoption()
     materialize = persistence._materialize_entry
     monkeypatch.setattr(
@@ -175,7 +175,7 @@ def test_crash_after_durable_replays_adoption_once(tmp_path: Path, monkeypatch) 
 
 
 def test_durable_adoption_chain_rejects_stale_previous_and_duplicate_id(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     first = _adoption()
     persistence.commit_adoption(first, assert_authority=_authority, fenced_mutation=mutation_fence)
     with pytest.raises(AlarmPersistenceConflictError, match='previous artifact'):
@@ -196,7 +196,7 @@ def test_durable_adoption_chain_rejects_stale_previous_and_duplicate_id(tmp_path
 
 
 def test_ordinary_group_commits_keep_their_existing_read_contract(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     adoption = _adoption()
     persistence.commit_adoption(
         adoption, assert_authority=_authority, fenced_mutation=mutation_fence
@@ -217,7 +217,7 @@ def test_ordinary_group_commits_keep_their_existing_read_contract(tmp_path: Path
 
 
 def test_first_adoption_rejects_unmigrated_durable_group_history(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     persistence.commit_batch(
         (build_record(),), assert_authority=_authority, fenced_mutation=mutation_fence
     )
@@ -230,7 +230,7 @@ def test_first_adoption_rejects_unmigrated_durable_group_history(tmp_path: Path)
 
 
 def test_corrupt_durable_adoption_fails_recovery(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     persistence.commit_adoption(
         _adoption(), assert_authority=_authority, fenced_mutation=mutation_fence
     )

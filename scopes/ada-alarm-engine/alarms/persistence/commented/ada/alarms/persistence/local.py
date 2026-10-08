@@ -62,10 +62,10 @@ class AlarmMaterializationPublicationResult:
 
 
 # Ubicación durable compartida por Materialization y sus consumidores locales.
-def materialization_root(volume_path: Path) -> Path:
-    if not isinstance(volume_path, Path) or not volume_path.is_absolute():
-        raise ValueError('VOLUMEN_PATH must be an absolute Path')
-    return volume_path / 'ada-alarm-engine' / 'alarms' / 'materialization'
+def materialization_root(application_root: Path) -> Path:
+    if not isinstance(application_root, Path) or not application_root.is_absolute():
+        raise ValueError('application_root must be an absolute Path')
+    return application_root / 'alarms' / 'materialization'
 
 
 # Store que publica generaciones completas y ofrece readers separados para cada consumidor.

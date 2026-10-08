@@ -61,7 +61,7 @@ def build_composition(
         reader=reader,
         qualifications=JsonFileAlarmQualificationProvider(path=settings.qualification_file),
         store=LocalAlarmMaterializationStore(
-            root=materialization_root(runtime_configuration.volume_path),
+            root=materialization_root(runtime_configuration.application_root),
         ),
     )
     definition = JobDefinition(

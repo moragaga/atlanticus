@@ -100,7 +100,7 @@ def _path(persistence: AlarmPersistence) -> Path:
 
 
 def test_no_adoption_has_no_effective_head(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     assert persistence.read_effective_head() is None
     assert not _path(persistence).exists()
     assert _recover(persistence).applied_count == 0
@@ -108,7 +108,7 @@ def test_no_adoption_has_no_effective_head(tmp_path: Path) -> None:
 
 
 def test_v1_publishes_exact_effective_head_without_group_snapshots(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     adoption = _v1()
     result = _commit(persistence, adoption)
     expected = AlarmEffectiveConfigurationHead.from_adoption_entry(
@@ -124,7 +124,7 @@ def test_v1_publishes_exact_effective_head_without_group_snapshots(tmp_path: Pat
 
 
 def test_effective_document_roundtrip_and_strict_schema(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     _commit(persistence, _v1())
     original = persistence.read_effective_head()
     assert original is not None
@@ -145,7 +145,7 @@ def test_effective_document_roundtrip_and_strict_schema(tmp_path: Path) -> None:
 
 
 def test_v1_and_v2_choose_latest_exact_artifact_even_when_revisions_match(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     _commit(persistence, _v1())
     first = persistence.read_effective_head()
     groups = _groups()
@@ -165,7 +165,7 @@ def test_v1_and_v2_choose_latest_exact_artifact_even_when_revisions_match(tmp_pa
 
 
 def test_v2_initial_publishes_only_after_both_group_snapshots(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     groups = _groups()
     _commit(persistence, _v2(groups), groups)
     effective = persistence.read_effective_head()
@@ -176,7 +176,7 @@ def test_v2_initial_publishes_only_after_both_group_snapshots(tmp_path: Path) ->
 
 
 def test_unaligned_v2_never_exposes_new_effective(tmp_path: Path, monkeypatch) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     groups = _groups()
     original = persistence._materialize_entry
     calls = 0
@@ -203,7 +203,7 @@ def test_unaligned_v2_never_exposes_new_effective(tmp_path: Path, monkeypatch) -
 def test_crash_after_materialized_before_effective_recovers_without_replay(
     tmp_path: Path, monkeypatch
 ) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     original = persistence._write_effective_head
     monkeypatch.setattr(
         persistence,
@@ -223,7 +223,7 @@ def test_crash_after_materialized_before_effective_recovers_without_replay(
 
 
 def test_fencing_before_effective_publication_prevents_unfenced_write(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     calls = 0
 
     @contextmanager
@@ -245,10 +245,10 @@ def test_fencing_before_effective_publication_prevents_unfenced_write(tmp_path: 
 
 
 def test_missing_projection_is_not_silently_replaced_on_read(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     _commit(persistence, _v1())
     _path(persistence).unlink()
-    restarted = AlarmPersistence(shared_volume_path=tmp_path)
+    restarted = AlarmPersistence(application_root=tmp_path)
     with pytest.raises(AlarmRecoveryRequiredError):
         restarted.read_effective_head()
     assert not _path(restarted).exists()
@@ -259,7 +259,7 @@ def test_missing_projection_is_not_silently_replaced_on_read(tmp_path: Path) -> 
 def test_corrupt_projection_fails_read_and_recovery_repairs_from_verified_wal(
     tmp_path: Path,
 ) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     _commit(persistence, _v1())
     payload = persistence.read_effective_head().as_document()
     payload['schema_version'] = 'corrupted'
@@ -271,7 +271,7 @@ def test_corrupt_projection_fails_read_and_recovery_repairs_from_verified_wal(
 
 
 def test_stale_projection_requires_recovery_and_rebuilds_latest_from_wal(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     _commit(persistence, _v1())
     old = persistence.read_effective_head()
     _commit(
@@ -291,7 +291,7 @@ def test_stale_projection_requires_recovery_and_rebuilds_latest_from_wal(tmp_pat
 
 
 def test_snapshot_content_divergence_blocks_effective_and_recovery(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     groups = _groups()
     _commit(persistence, _v2(groups), groups)
     changed = build_record(
@@ -308,7 +308,7 @@ def test_snapshot_content_divergence_blocks_effective_and_recovery(tmp_path: Pat
 
 
 def test_orphan_snapshot_blocks_effective_publication(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     _commit(persistence, _v1())
     persistence._state.replace(
         persistence.paths.group_snapshot_relative('orphan'),
@@ -323,10 +323,10 @@ def test_orphan_snapshot_blocks_effective_publication(tmp_path: Path) -> None:
 
 
 def test_physical_effective_without_durable_wal_fails_closed(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     _commit(persistence, _v1())
     payload = persistence.read_effective_head().as_document()
-    orphan = AlarmPersistence(shared_volume_path=tmp_path / 'orphan')
+    orphan = AlarmPersistence(application_root=tmp_path / 'orphan')
     orphan._state.replace(orphan.paths.effective_head_relative, payload)
     with pytest.raises(AlarmPersistenceCorruptionError, match='without a durable'):
         orphan.read_effective_head()
@@ -335,7 +335,7 @@ def test_physical_effective_without_durable_wal_fails_closed(tmp_path: Path) -> 
 
 
 def test_ordinary_group_commit_does_not_change_effective_identity(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     _commit(persistence, _v1())
     old = persistence.read_effective_head()
     record = build_record()
@@ -346,7 +346,7 @@ def test_ordinary_group_commit_does_not_change_effective_identity(tmp_path: Path
 
 
 def test_legacy_group_history_does_not_invent_effective(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     persistence.commit_batch(
         (build_record(),), assert_authority=_authority, fenced_mutation=mutation_fence
     )
@@ -357,7 +357,7 @@ def test_legacy_group_history_does_not_invent_effective(tmp_path: Path) -> None:
 
 
 def test_in_memory_head_requires_exact_artifact_and_record_position(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     _commit(persistence, _v1())
     head = persistence.read_effective_head()
     with pytest.raises(ValueError, match='adoption_position'):
@@ -369,7 +369,7 @@ def test_in_memory_head_requires_exact_artifact_and_record_position(tmp_path: Pa
 
 
 def test_corrupt_wal_cannot_be_repaired_from_effective_projection(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     _commit(persistence, _v1())
     segment = next(persistence.paths.journal_open_root.rglob('*.jsonl'))
     content = segment.read_bytes()
@@ -384,7 +384,7 @@ def test_corrupt_wal_cannot_be_repaired_from_effective_projection(tmp_path: Path
 def test_v2_aligned_crash_before_projection_repairs_without_snapshot_replay(
     tmp_path: Path, monkeypatch
 ) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     groups = _groups()
     original = persistence._write_effective_head
     monkeypatch.setattr(

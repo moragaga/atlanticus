@@ -9,16 +9,16 @@ from ada.alarms.persistence.operational.models import parse_segment_id
 
 # Define la disposición física de journal y proyecciones en el volumen.
 class AlarmPersistencePaths:
-    def __init__(self, *, shared_volume_path: str | Path) -> None:
-        path = Path(shared_volume_path)
+    def __init__(self, *, application_root: str | Path) -> None:
+        path = Path(application_root)
         if not path.is_absolute():
-            raise ValueError('shared_volume_path must be an absolute path')
-        self._shared_volume_path = path
-        self._alarms_root = path / 'ada-alarm-engine' / 'alarms'
+            raise ValueError('application_root must be an absolute path')
+        self._application_root = path
+        self._alarms_root = path / 'alarms'
 
     @property
-    def shared_volume_path(self) -> Path:
-        return self._shared_volume_path
+    def application_root(self) -> Path:
+        return self._application_root
 
     @property
     def alarms_root(self) -> Path:

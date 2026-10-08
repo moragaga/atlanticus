@@ -18,7 +18,7 @@ def _authority() -> None:
 
 
 def test_commit_batch_persists_wal_head_and_snapshot(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     record = build_record()
 
     result = persistence.commit_batch(
@@ -35,7 +35,7 @@ def test_commit_batch_persists_wal_head_and_snapshot(tmp_path: Path) -> None:
 
 
 def test_batch_uses_one_segment_and_deterministic_group_order(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     second = build_record(
         commit_id='C-b',
         priority_group='z_group',
@@ -59,7 +59,7 @@ def test_batch_uses_one_segment_and_deterministic_group_order(tmp_path: Path) ->
 
 
 def test_commit_batch_rejects_empty_input_without_creating_journal(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
 
     with pytest.raises(ValueError, match='must not be empty'):
         persistence.commit_batch([], assert_authority=_authority, fenced_mutation=mutation_fence)
@@ -68,7 +68,7 @@ def test_commit_batch_rejects_empty_input_without_creating_journal(tmp_path: Pat
 
 
 def test_commit_batch_requires_physical_mutation_fence(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
 
     with pytest.raises(TypeError, match='fenced_mutation must be callable'):
         persistence.commit_batch(
@@ -81,7 +81,7 @@ def test_commit_batch_requires_physical_mutation_fence(tmp_path: Path) -> None:
 
 
 def test_commit_batch_rejects_duplicate_priority_group_in_same_cycle(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     first = build_record(commit_id='C1')
     second = build_record(commit_id='C2')
 
@@ -92,7 +92,7 @@ def test_commit_batch_rejects_duplicate_priority_group_in_same_cycle(tmp_path: P
 
 
 def test_commit_requires_current_previous_commit_id(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     persistence.commit_batch(
         [build_record(commit_id='C1')], assert_authority=_authority, fenced_mutation=mutation_fence
     )
@@ -106,7 +106,7 @@ def test_commit_requires_current_previous_commit_id(tmp_path: Path) -> None:
 
 
 def test_commit_rejects_new_work_when_recovery_is_pending(tmp_path: Path, monkeypatch) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     record = build_record(commit_id='C1')
     original = persistence._materialize_entry
 
@@ -129,7 +129,7 @@ def test_commit_rejects_new_work_when_recovery_is_pending(tmp_path: Path, monkey
 
 
 def test_list_snapshots_returns_current_group_states(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     records = [
         build_record(commit_id='A1', priority_group='a', alarm_key='alarm_a'),
         build_record(commit_id='B1', priority_group='b', alarm_key='alarm_b'),
@@ -144,7 +144,7 @@ def test_list_snapshots_returns_current_group_states(tmp_path: Path) -> None:
 def test_alarm_persistence_explicitly_uses_unbounded_state_documents_by_default(
     tmp_path: Path,
 ) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     large_error_key = 'x' * (1024 * 1024 + 128)
     record = build_record(error_key=large_error_key)
 

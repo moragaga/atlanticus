@@ -54,7 +54,7 @@ def build_composition(
     settings = AlarmRuntimeSettings.from_configuration(configuration)
     runtime_configuration = RuntimeConfiguration.from_sources(environ=configuration.values)
     configuration_reader = LocalAlarmMaterializationStore(
-        root=materialization_root(runtime_configuration.volume_path),
+        root=materialization_root(runtime_configuration.application_root),
     )
     registry = build_current_source_registry(pi_source=settings.pi_source)
     applications = DataSourceApplications(

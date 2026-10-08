@@ -10,7 +10,7 @@ def _authority() -> None:
 
 
 def test_hour_change_seals_previous_reconciled_segment(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     first = build_record(
         commit_id='C1',
         evaluated_at='2026-08-23T20:59:59Z',
@@ -43,7 +43,7 @@ def test_hour_change_seals_previous_reconciled_segment(tmp_path: Path) -> None:
 
 
 def test_durable_reader_crosses_sealed_and_open_segments(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     first = build_record(
         commit_id='C1',
         evaluated_at='2026-08-23T20:59:59Z',

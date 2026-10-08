@@ -29,7 +29,7 @@ class _MutationFenceSequence:
 
 
 def test_crash_after_wal_before_durable_head_discards_tail(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     fence = _MutationFenceSequence(fail_on=2)
 
     with pytest.raises(RuntimeError, match='lease lost'):
@@ -54,7 +54,7 @@ def test_crash_after_wal_before_durable_head_discards_tail(tmp_path: Path) -> No
 def test_crash_after_durable_before_snapshot_replays_exact_after_image(
     tmp_path: Path, monkeypatch
 ) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     record = build_record()
     original = persistence._materialize_entry
 
@@ -84,7 +84,7 @@ def test_crash_after_durable_before_snapshot_replays_exact_after_image(
 def test_crash_during_multiple_snapshot_replaces_is_idempotently_recovered(
     tmp_path: Path, monkeypatch
 ) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     first = build_record(commit_id='A1', priority_group='a', alarm_key='alarm_a')
     second = build_record(commit_id='B1', priority_group='b', alarm_key='alarm_b')
     original_replace = persistence._state.replace
@@ -120,7 +120,7 @@ def test_crash_during_multiple_snapshot_replaces_is_idempotently_recovered(
 def test_crash_after_snapshots_before_materialized_head_skips_already_applied_state(
     tmp_path: Path, monkeypatch
 ) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     record = build_record()
     original_replace_head = persistence._replace_head
     head_writes = 0
@@ -150,7 +150,7 @@ def test_crash_after_snapshots_before_materialized_head_skips_already_applied_st
 
 
 def test_non_durable_tail_is_truncated_without_replaying_it(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     result = persistence.commit_batch(
         [build_record()], assert_authority=_authority, fenced_mutation=mutation_fence
     )
@@ -167,7 +167,7 @@ def test_non_durable_tail_is_truncated_without_replaying_it(tmp_path: Path) -> N
 
 
 def test_corruption_inside_durable_region_stops_normal_recovery(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     result = persistence.commit_batch(
         [build_record()], assert_authority=_authority, fenced_mutation=mutation_fence
     )
@@ -181,7 +181,7 @@ def test_corruption_inside_durable_region_stops_normal_recovery(tmp_path: Path) 
 
 
 def test_corrupt_journal_head_fails_closed(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     persistence.commit_batch(
         [build_record()], assert_authority=_authority, fenced_mutation=mutation_fence
     )
@@ -193,7 +193,7 @@ def test_corrupt_journal_head_fails_closed(tmp_path: Path) -> None:
 
 
 def test_snapshots_without_durable_head_are_corruption(tmp_path: Path) -> None:
-    persistence = AlarmPersistence(shared_volume_path=tmp_path)
+    persistence = AlarmPersistence(application_root=tmp_path)
     snapshot = build_record().snapshot_after
     persistence._state.replace(
         persistence.paths.group_snapshot_relative('crusher_pressure'), snapshot.as_document()

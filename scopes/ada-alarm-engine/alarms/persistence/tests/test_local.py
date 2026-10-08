@@ -190,3 +190,12 @@ def test_ready_reader_rejects_extra_files_in_published_version(tmp_path: Path) -
             source_key='alarm_configuration',
             result_id=result.result_id,
         )
+
+
+def test_materialization_root_uses_explicit_application_root(tmp_path: Path) -> None:
+    first = materialization_root(tmp_path / 'engine-a')
+    second = materialization_root(tmp_path / 'engine-b')
+
+    assert first == tmp_path / 'engine-a' / 'alarms' / 'materialization'
+    assert second == tmp_path / 'engine-b' / 'alarms' / 'materialization'
+    assert first != second

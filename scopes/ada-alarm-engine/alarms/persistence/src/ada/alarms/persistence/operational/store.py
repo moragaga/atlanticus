@@ -43,10 +43,10 @@ class AlarmPersistence:
     def __init__(
         self,
         *,
-        shared_volume_path: str | Path,
+        application_root: str | Path,
         max_state_document_bytes: int | None = None,
     ) -> None:
-        self._paths = AlarmPersistencePaths(shared_volume_path=shared_volume_path)
+        self._paths = AlarmPersistencePaths(application_root=application_root)
         self._state = AtomicJsonStore(
             root_path=self._paths.alarms_root,
             max_document_bytes=max_state_document_bytes,
