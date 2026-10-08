@@ -1,5 +1,4 @@
-# Las claves y etiquetas son provisionales; reemplazarlas al confirmar el Tool real.
-# Los dos estados de Atollo (1/0) también son supuestos de integración, no valores verificados.
+# Claves provisionales de las seis lecturas de tabla; reemplazar por las claves reales del Tool.
 from __future__ import annotations
 
 from .models import EquiposChDefinition
@@ -14,6 +13,9 @@ EQUIPOS_CH_DEFINITIONS = (
         atollo_kpi_key='chancador_1_atollo_inst',
         atollo_active_value='1',
         atollo_inactive_value='0',
+        rendimiento_kpi_key='chancador_1_rendimiento_inst',
+        min_atollo_kpi_key='chancador_1_min_atollo_inst',
+        min_poste_kpi_key='chancador_1_min_poste_inst',
     ),
     EquiposChDefinition(
         key='chancador_2',
@@ -23,5 +25,8 @@ EQUIPOS_CH_DEFINITIONS = (
         atollo_kpi_key='chancador_2_atollo_inst',
         atollo_active_value='1',
         atollo_inactive_value='0',
+        rendimiento_kpi_key='chancador_2_rendimiento_inst',
+        min_atollo_kpi_key='chancador_2_min_atollo_inst',
+        min_poste_kpi_key='chancador_2_min_poste_inst',
     ),
 )

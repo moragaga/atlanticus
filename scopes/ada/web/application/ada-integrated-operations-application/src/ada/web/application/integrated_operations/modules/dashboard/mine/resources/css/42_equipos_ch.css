@@ -93,6 +93,99 @@
     background: currentColor;
 }
 
+.ada-io-equipos-ch__table {
+    width: 100%;
+    min-width: 0;
+    border-collapse: collapse;
+    margin-top: .38rem;
+    table-layout: fixed;
+    /*border-top: 1px solid var(--ada-color-border-primary, #c0c0c0);*/
+    border-bottom: 1px solid var(--ada-color-border-primary, #c0c0c0);
+    font-size: .41rem;
+}
+
+.ada-io-equipos-ch__table thead tr,
+.ada-io-equipos-ch__table tbody tr {
+    border-bottom: 1px solid var(--ada-color-border-primary, #c0c0c0);
+}
+
+.ada-io-equipos-ch__table th,
+.ada-io-equipos-ch__table td {
+    padding: .12rem .08rem .05rem;
+    font-weight: 400;
+    line-height: 1.25;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.ada-io-equipos-ch__table thead th {
+    font-size: .38rem;
+    text-align: right;
+}
+
+.ada-io-equipos-ch__table th:first-child {
+    width: 17%;
+    text-align: left;
+    font-weight: bold;
+}
+
+.ada-io-equipos-ch__table td .ada-io-equipos-ch__value {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    max-width: 100%;
+}
+
+.ada-io-equipos-ch__value,
+.ada-io-equipos-ch__atollo,
+.ada-io-equipos-ch__color-indicator {
+    --ada-status-icon-size: 1.2em;
+}
+
+.ada-io-equipos-ch__table-metric {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .12rem;
+    max-width: 100%;
+}
+
+.ada-io-equipos-ch__value--danger {
+    color: var(--ada-color-danger, #c62828);
+}
+
+.ada-io-equipos-ch__value--warning {
+    color: var(--ada-color-warning, #b8860b);
+}
+
+.ada-io-equipos-ch__color-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: inherit;
+    cursor: help;
+}
+
+.ada-io-equipos-ch__color-dot {
+    width: .28rem;
+    height: .28rem;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.ada-io-equipos-ch__color-indicator--neutral {
+    color: var(--ada-color-text-muted, #808080);
+}
+
+.ada-io-equipos-ch__color-indicator--danger {
+    color: var(--ada-color-danger, #c62828);
+}
+
+.ada-io-equipos-ch__color-indicator--warning {
+    color: var(--ada-color-warning, #b8860b);
+}
+
 .ada-io-equipos-ch [data-kpi-inspection-key]:focus-visible {
     outline: 2px solid currentColor;
     outline-offset: 2px;
@@ -107,6 +200,8 @@
     .ada-io-equipos-ch__label { font-size: .68rem; }
     .ada-io-equipos-ch__throughput { font-size: .63rem; }
     .ada-io-equipos-ch__atollo { font-size: .59rem; }
+    .ada-io-equipos-ch__table { font-size: .54rem; }
+    .ada-io-equipos-ch__table thead th { font-size: .49rem; }
 }
 
 @media only screen and (min-width: 1366px) {
@@ -114,4 +209,38 @@
     [data-ada-io-presentation='mine'] .ada-io-equipos-ch__label { font-size: .65rem; }
     [data-ada-io-presentation='mine'] .ada-io-equipos-ch__throughput { font-size: .61rem; }
     [data-ada-io-presentation='mine'] .ada-io-equipos-ch__atollo { font-size: .57rem; }
+    [data-ada-io-presentation='mine'] .ada-io-equipos-ch__table { font-size: .51rem; }
+    [data-ada-io-presentation='mine'] .ada-io-equipos-ch__table thead th { font-size: .46rem; }
+}
+
+.ada-io-stockpile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .25rem;
+    width: 100%;
+    min-width: 0;
+}
+
+.ada-io-stockpile__title {
+    color: var(--atlanticus-ui-text, #424750);
+    font-size: .68rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+}
+
+.ada-io-stockpile-piles {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+    justify-items: center;
+    gap: .25rem;
+    width: 100%;
+    min-width: 0;
+}
+
+.ada-io-stockpile-piles > * {
+    min-width: 0;
+    max-width: 100%;
 }

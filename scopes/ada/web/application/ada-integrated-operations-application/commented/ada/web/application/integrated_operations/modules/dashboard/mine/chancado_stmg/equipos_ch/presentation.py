@@ -1,4 +1,4 @@
-# La imagen y el detalle de cada chancador ocupan los extremos y el centro, respectivamente.
+# La tabla conserva inspección separada de valores y colores; no crea controles cuando no hay color configurado.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -6,6 +6,9 @@ from collections.abc import Sequence
 from dash import html
 from dash.development.base_component import Component
 
+from ada.web.application.integrated_operations.modules.dashboard.value_status import (
+    DashboardValueStatus,
+)
 from ada.web.ui.display_status import DisplayStatus, DisplayValue, build_display_status_icon
 from ada.web.ui.equipment_image import EquipmentStateImage, build_equipment_state_image
 
@@ -32,9 +35,47 @@ def build_equipos_ch(readings: Sequence[EquiposChReading]) -> Component:
                 ],
                 className='ada-io-equipos-ch__body',
             ),
+            _metrics_table(readings),
         ],
         className='ada-io-equipos-ch',
     )
+
+
+
+def _metrics_table(readings: Sequence[EquiposChReading]) -> Component:
+    return html.Table(
+        [
+            html.Thead(
+                html.Tr([
+                    html.Th('EQUIPO', scope='col'),
+                    html.Th('RENDIMIENTO', scope='col'),
+                    html.Th('MIN. ATOLLO', scope='col'),
+                    html.Th('MIN. POSTE', scope='col'),
+                ])
+            ),
+            html.Tbody([_metrics_row(reading) for reading in readings]),
+        ],
+        className='ada-io-equipos-ch__table',
+    )
+
+
+def _metrics_row(reading: EquiposChReading) -> Component:
+    definition = reading.definition
+    return html.Tr([
+        html.Th(definition.label, scope='row'),
+        html.Td(_table_metric(
+            reading.rendimiento, definition.rendimiento_kpi_key,
+            reading.rendimiento_color, definition.rendimiento_color_kpi_key,
+        )),
+        html.Td(_table_metric(
+            reading.min_atollo, definition.min_atollo_kpi_key,
+            reading.min_atollo_color, definition.min_atollo_color_kpi_key,
+        )),
+        html.Td(_table_metric(
+            reading.min_poste, definition.min_poste_kpi_key,
+            reading.min_poste_color, definition.min_poste_color_kpi_key,
+        )),
+    ])
 
 
 def _image(reading: EquiposChReading) -> Component:
@@ -67,10 +108,60 @@ def _details(reading: EquiposChReading) -> Component:
     )
 
 
-def _metric(value: DisplayValue, key: str) -> Component:
+def _table_metric(
+    value: DisplayValue,
+    value_key: str,
+    color: DisplayValue | None,
+    color_key: str | None,
+) -> Component:
+    if color_key is None:
+        return _metric(value, value_key)
+    if color is None:
+        raise ValueError('Configured Equipos CH color requires a reading')
+    return html.Span(
+        [
+            _metric(value, value_key, color=color),
+            _color_indicator(color, color_key),
+        ],
+        className='ada-io-equipos-ch__table-metric',
+    )
+
+
+def _color_indicator(color: DisplayValue, key: str) -> Component:
+    class_name = 'ada-io-equipos-ch__color-indicator'
+    if color.status is DisplayStatus.OK:
+        state = color.value
+        if not isinstance(state, DashboardValueStatus):
+            raise ValueError('Equipos CH color state must be DashboardValueStatus')
+        class_name += f' ada-io-equipos-ch__color-indicator--{state.value}'
+        child = html.Span(className='ada-io-equipos-ch__color-dot', **{'aria-hidden': 'true'})
+    else:
+        child = _display(color)
+    return html.Span(
+        child,
+        className=class_name,
+        role='button',
+        tabIndex=0,
+        title=key,
+        **{'data-kpi-inspection-key': key},
+    )
+
+
+def _metric(
+    value: DisplayValue,
+    key: str,
+    *,
+    color: DisplayValue | None = None,
+) -> Component:
+    class_name = 'ada-io-equipos-ch__value'
+    if value.status is DisplayStatus.OK and color is not None and color.status is DisplayStatus.OK:
+        state = color.value
+        if not isinstance(state, DashboardValueStatus):
+            raise ValueError('Equipos CH color state must be DashboardValueStatus')
+        class_name += f' ada-io-equipos-ch__value--{state.value}'
     return html.Span(
         _display(value),
-        className='ada-io-equipos-ch__value',
+        className=class_name,
         role='button',
         tabIndex=0,
         title=key,
@@ -105,7 +196,10 @@ def _atollo(value: DisplayValue, key: str) -> Component | None:
 def _display(value: DisplayValue) -> str | Component:
     if value.status is DisplayStatus.OK:
         return str(value.value)
-    icon = build_display_status_icon(value.status)
+    icon = build_display_status_icon(
+        value.status,
+        class_name='ada-io-equipos-ch__status-icon',
+    )
     if icon is None:
         raise ValueError('Equipos CH status icon cannot be resolved')
     return icon

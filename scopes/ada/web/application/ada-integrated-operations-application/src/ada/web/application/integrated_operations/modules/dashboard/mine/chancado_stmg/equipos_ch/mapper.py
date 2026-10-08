@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
+from ada.web.application.integrated_operations.modules.dashboard.value_status import (
+    map_dashboard_value_status,
+)
 from ada.web.kpis.collector import KpiLatestValueState, decode_kpi_latest_value
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
@@ -25,8 +28,15 @@ def map_equipos_ch_store(
             definition.state_kpi_key,
             definition.throughput_kpi_key,
             definition.atollo_kpi_key,
+            definition.rendimiento_kpi_key,
+            definition.min_atollo_kpi_key,
+            definition.min_poste_kpi_key,
+            definition.rendimiento_color_kpi_key,
+            definition.min_atollo_color_kpi_key,
+            definition.min_poste_color_kpi_key,
         )
     ]
+    keys = [key for key in keys if key is not None]
     if len(keys) != len(set(keys)):
         raise ValueError('Equipos CH KPI keys must be globally distinct')
 
@@ -37,6 +47,12 @@ def map_equipos_ch_store(
             state=_state(values, definition.state_kpi_key, source_status),
             throughput=_throughput(values, definition.throughput_kpi_key, source_status),
             atollo=_atollo(values, definition, source_status),
+            rendimiento=_value(values, definition.rendimiento_kpi_key, source_status),
+            min_atollo=_value(values, definition.min_atollo_kpi_key, source_status),
+            min_poste=_value(values, definition.min_poste_kpi_key, source_status),
+            rendimiento_color=_color(values, definition.rendimiento_color_kpi_key, source_status),
+            min_atollo_color=_color(values, definition.min_atollo_color_kpi_key, source_status),
+            min_poste_color=_color(values, definition.min_poste_color_kpi_key, source_status),
         )
         for definition in definitions
     )
@@ -116,3 +132,19 @@ def _atollo(
     if token == definition.atollo_inactive_value.strip().lower():
         return DisplayValue.ok(False)
     return DisplayValue.invalid()
+
+
+def _color(
+    values: Mapping[str, object] | None,
+    key: str | None,
+    source_status: DisplayStatus,
+) -> DisplayValue | None:
+    if key is None:
+        return None
+    result = _value(values, key, source_status)
+    if result.status is not DisplayStatus.OK:
+        return result
+    try:
+        return DisplayValue.ok(map_dashboard_value_status(result.value))
+    except ValueError:
+        return DisplayValue.invalid()

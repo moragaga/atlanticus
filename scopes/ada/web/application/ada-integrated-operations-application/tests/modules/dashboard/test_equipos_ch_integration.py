@@ -49,25 +49,29 @@ class DashStub:
         return register
 
 
-def test_provisional_definitions_are_two_equipment_with_six_distinct_keys():
+def test_provisional_definitions_are_two_equipment_with_twelve_distinct_keys():
     definitions = EQUIPOS_CH_DEFINITIONS
     assert len(definitions) == 2
     keys = [key for item in definitions for key in (
         item.state_kpi_key, item.throughput_kpi_key, item.atollo_kpi_key,
+        item.rendimiento_kpi_key, item.min_atollo_kpi_key, item.min_poste_kpi_key,
     )]
-    assert len(keys) == len(set(keys)) == 6
+    assert len(keys) == len(set(keys)) == 12
 
 
-def test_callback_now_renders_three_sections_with_no_mapped_equipment_keys():
+def test_callback_renders_equipment_table_before_untouched_stockpile():
     stub = DashStub()
     register_chancado_stmg_callback(stub, tool_key='integrated_operations')
     root = stub.callback_function(_store({}))
     assert [child.className for child in root.children] == [
         'ada-io-produccion-global', 'ada-io-equipos-ch', 'ada-io-stockpile',
     ]
-    targets = _targets(root.children[1])
-    assert len(targets) == 6
-    assert all(node.role == 'button' and node.tabIndex == 0 for node in targets)
+    equipos_ch = root.children[1]
+    assert equipos_ch.children[2].to_plotly_json()['type'] == 'Table'
+    assert len(equipos_ch.children[2].children[1].children) == 2
+    assert len(_targets(equipos_ch)) == 12
+    assert len(root.children[2].children[1].children) == 2
+    assert all(node.role == 'button' and node.tabIndex == 0 for node in _targets(equipos_ch))
 
 
 def test_atollo_inactive_has_no_hidden_target_and_error_is_inspectable():
@@ -86,3 +90,36 @@ def test_atollo_inactive_has_no_hidden_target_and_error_is_inspectable():
 
 def test_equipment_image_assets_are_registered():
     assert ADA_EQUIPMENT_IMAGE_ASSET_LAYER in create_dashboard_module(None).asset_layers
+
+
+def test_table_color_is_an_optional_kpi_not_a_json_payload():
+    from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.equipos_ch import (
+        EquiposChDefinition,
+    )
+    from ada.web.ui.display_status import DisplayStatus
+
+    original = EQUIPOS_CH_DEFINITIONS[0]
+    colored = EquiposChDefinition(
+        original.key, original.label, original.state_kpi_key,
+        original.throughput_kpi_key, original.atollo_kpi_key,
+        original.atollo_active_value, original.atollo_inactive_value,
+        original.rendimiento_kpi_key, original.min_atollo_kpi_key,
+        original.min_poste_kpi_key,
+        rendimiento_color_kpi_key='rendimiento_color_test',
+    )
+    readings = map_equipos_ch_store({
+        'latest': {'values': {
+            original.rendimiento_kpi_key: {
+                'status': 'ok', 'value_kind': 'value', 'value': '9,1',
+            },
+            'rendimiento_color_test': {
+                'status': 'ok', 'value_kind': 'value', 'value': '2',
+            },
+        }},
+    }, (colored, EQUIPOS_CH_DEFINITIONS[1]))
+    assert readings[0].rendimiento.status is DisplayStatus.OK
+    assert readings[0].rendimiento_color.value.value == 'warning'
+    targets = _targets(build_equipos_ch(readings))
+    keys = [getattr(target, 'data-kpi-inspection-key') for target in targets]
+    assert 'rendimiento_color_test' in keys
+    assert original.rendimiento_kpi_key in keys
