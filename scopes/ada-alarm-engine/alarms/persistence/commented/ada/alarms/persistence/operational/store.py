@@ -12,6 +12,10 @@ from ada.alarms.persistence.operational.configuration_adoption import (
     ConfigurationAdoptionRecordV2,
     GroupCommitReference,
 )
+from ada.alarms.persistence.operational.durable_provenance import (
+    AttributedDurableEntry,
+    attribute_durable_entries,
+)
 from ada.alarms.persistence.operational.effective_head import (
     AlarmEffectiveConfigurationHead,
 )
@@ -121,6 +125,32 @@ class AlarmPersistence:
             for entry in self._journal.read_entries(after=after, through=head.durable)
             if isinstance(entry.record, ConfigurationAdoptionRecord)
         )
+
+    # Sólo se expone lectura de WAL confirmado y EFFECTIVE recuperado.
+    # La posición del cursor debe coincidir con un límite exacto del journal.
+    def read_durable_provenance(
+        self,
+        *,
+        after: JournalPosition | None = None,
+    ) -> tuple[AttributedDurableEntry, ...]:
+        if after is not None and not isinstance(after, JournalPosition):
+            raise TypeError('after must be a JournalPosition or None')
+        head = self.read_head()
+        if not head.aligned:
+            raise AlarmRecoveryRequiredError(
+                'Alarm Engine journal must be recovered before reading durable provenance'
+            )
+        self.read_effective_head()
+        entries = self._journal.validate_durable_region(head.durable)
+        attributed = attribute_durable_entries(entries)
+        if self.read_head() != head:
+            raise AlarmRecoveryRequiredError('journal changed during durable provenance read')
+        if after is None:
+            return attributed
+        for index, item in enumerate(attributed):
+            if item.entry.end == after:
+                return attributed[index + 1 :]
+        raise ValueError('after must identify an exact durable journal entry boundary')
 
     def read_effective_head(self) -> AlarmEffectiveConfigurationHead | None:
         head = self.read_head()

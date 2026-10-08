@@ -18,6 +18,9 @@ from ada.alarms.persistence.operational.core_commit_bridge import (
     PreparedGroupCommit,
     prepare_group_commit,
 )
+from ada.alarms.persistence.operational.durable_provenance import (
+    AttributedDurableEntry,
+)
 from ada.alarms.persistence.operational.effective_head import (
     ALARM_EFFECTIVE_HEAD_SCHEMA_VERSION,
     AlarmEffectiveConfigurationHead,
@@ -65,6 +68,7 @@ from ada.alarms.persistence.operational.technical_incidents import (
 __version__ = '1.0.0'
 
 __all__ = [
+    'AttributedDurableEntry',
     'PreparedGroupCommit',
     'prepare_group_commit',
     'CONFIGURATION_REBASE_SCHEMA_VERSION',
