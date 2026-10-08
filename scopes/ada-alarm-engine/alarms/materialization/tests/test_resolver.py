@@ -4,9 +4,8 @@ from dataclasses import dataclass
 
 from ada.alarms.materialization import (
     AlarmResolutionStatus,
-    EvaluatorQualificationCatalog,
-    EvaluatorQualificationKey,
-    ToolReconciliationQualification,
+
+
     resolve_alarm_configuration,
 )
 from ada.contracts.alarms import (
@@ -78,10 +77,6 @@ def test_ready_resolution_materializes_engine_modeler_and_delivery() -> None:
         configuration=configuration,
         alarm_configuration_revision='ALARMS-4',
         confirmed_tool_catalog=catalog,
-        tool_qualification=ToolReconciliationQualification(('tool_a', 'tool_b')),
-        evaluator_qualification=EvaluatorQualificationCatalog(
-            qualified_keys=(EvaluatorQualificationKey('mill', 'threshold'),),
-        ),
     )
 
     assert result.status is AlarmResolutionStatus.READY
@@ -110,10 +105,6 @@ def test_ready_resolution_propagates_special_condition_to_engine_plan() -> None:
             revision='TOOLS-1',
             entries={'tool_a': process_entry('tool_a')},
         ),
-        tool_qualification=ToolReconciliationQualification(('tool_a',)),
-        evaluator_qualification=EvaluatorQualificationCatalog(
-            qualified_keys=(EvaluatorQualificationKey('mill', 'threshold'),),
-        ),
     )
 
     assert result.status is AlarmResolutionStatus.READY
@@ -138,10 +129,6 @@ def test_modeler_receives_priority_metadata_without_reading_engine_configuration
         confirmed_tool_catalog=ConfirmedToolCatalog(
             revision='TOOLS-1',
             entries={'tool_a': process_entry('tool_a')},
-        ),
-        tool_qualification=ToolReconciliationQualification(('tool_a',)),
-        evaluator_qualification=EvaluatorQualificationCatalog(
-            qualified_keys=(EvaluatorQualificationKey('mill', 'threshold'),),
         ),
     )
 

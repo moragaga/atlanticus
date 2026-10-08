@@ -11,6 +11,7 @@ from ada.contracts.alarms.errors import AlarmConfigurationProjectionValidationEr
 from ada.contracts.alarms.snapshot import AlarmConfigurationSnapshot
 
 ALARM_CONFIGURATION_SOURCE_KEY = 'alarm-configuration'
+ALARM_CONFIGURATION_CONTAINER_NAME = 'alarm-configuration'
 ALARM_CONFIGURATION_PROJECTION_DOCUMENT_TYPE = (
     'ada_command_center_alarm_configuration_projection_record'
 )

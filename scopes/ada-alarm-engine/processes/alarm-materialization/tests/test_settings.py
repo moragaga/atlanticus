@@ -12,11 +12,9 @@ def _configuration(tmp_path: Path, *, disabled: str = 'false') -> ResolvedConfig
         'APPLICATION': 'ada-alarm-materialization-test',
         'VOLUMEN_PATH': str(tmp_path),
         'ATLANTICUS_JOB_EXECUTION_DISABLED': disabled,
-        'COMMAND_CENTER_COSMOS_ENDPOINT': 'http://localhost:8081',
-        'COMMAND_CENTER_COSMOS_KEY': 'local-key',
-        'COMMAND_CENTER_COSMOS_DATABASE_NAME': 'command-center',
-        'ALARM_CONFIGURATION_CONTAINER_NAME': 'alarm-configuration',
-        'ALARM_QUALIFICATIONS_FILE': str(tmp_path / 'qualification.json'),
+        'ADA_COMMAND_CENTER_COSMOS_ENDPOINT': 'http://localhost:8081',
+        'ADA_COMMAND_CENTER_COSMOS_KEY': 'local-key',
+        'ADA_COMMAND_CENTER_COSMOS_DATABASE_NAME': 'command-center',
         'ALARM_MATERIALIZATION_POLL_SECONDS': '30',
         'ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED': 'true',
         'ATLANTICUS_AZURE_OBSERVABILITY_MODE': 'off',
@@ -25,7 +23,7 @@ def _configuration(tmp_path: Path, *, disabled: str = 'false') -> ResolvedConfig
         environment=Environment.from_value('local'),
         values=values,
         sources={key: ConfigurationSource.PROCESS for key in values},
-        sensitive_keys=frozenset({'COMMAND_CENTER_COSMOS_KEY'}),
+        sensitive_keys=frozenset({'ADA_COMMAND_CENTER_COSMOS_KEY'}),
     )
 
 
@@ -41,7 +39,15 @@ def test_composition_carries_forced_stop_into_runtime_without_opening_cosmos(tmp
     result = composition.execute(argv=[])
 
     assert composition.runtime_configuration.job_execution_disabled is True
-    assert composition.settings.projection_container == 'alarm-configuration'
     assert composition.definition.job_key == 'alarm-materialization'
     assert result.iteration_count == 0
     assert result.stop_reason == 'execution_disabled'
+
+
+def test_materialization_configuration_exposes_no_manual_qualification_or_container() -> None:
+    keys = {spec.key for spec in configuration_specs()}
+    assert 'ALARM_CONFIGURATION_CONTAINER_NAME' not in keys
+    assert 'ALARM_QUALIFICATIONS_FILE' not in keys
+    assert 'ADA_COMMAND_CENTER_COSMOS_ENDPOINT' in keys
+    assert 'ADA_COMMAND_CENTER_COSMOS_DATABASE_NAME' in keys
+    assert 'ADA_COMMAND_CENTER_COSMOS_KEY' in keys

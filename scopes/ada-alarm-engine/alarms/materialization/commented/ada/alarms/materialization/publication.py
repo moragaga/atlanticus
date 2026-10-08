@@ -1,4 +1,4 @@
-# Contratos durables de identidad, procedencia, manifiesto y puntero READY de la materialización.
+# La identidad persistida depende exclusivamente del snapshot fijado, no de qualification externa.
 from __future__ import annotations
 
 import json
@@ -19,13 +19,13 @@ from ada.contracts.alarms import AlarmIdentity
 
 DOCUMENT_TYPE = 'ada_alarm_engine_materialization_result'
 READY_DOCUMENT_TYPE = 'ada_alarm_engine_materialization_ready'
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 _RESULT_PATTERN = re.compile(r'alarm-materialization-[0-9a-f]{64}')
 _SHA256_PATTERN = re.compile(r'[0-9a-f]{64}')
 _ARTIFACT_LABELS = ('engine', 'modeler', 'delivery')
 
 
-# Serialización canónica usada para identidades deterministas.
+# Implementación del contrato canonical_json_bytes.
 def canonical_json_bytes(document: Mapping[str, object]) -> bytes:
     if not isinstance(document, Mapping):
         raise TypeError('document must be a mapping')
@@ -37,61 +37,36 @@ def canonical_json_bytes(document: Mapping[str, object]) -> bytes:
     ).encode('utf-8')
 
 
-# Identidad estable del resultado para la misma fuente y evidencia de qualification.
+# Implementación del contrato materialization_result_id.
 def materialization_result_id(
     *,
     source_key: str,
     projection_digest: str,
-    qualification_digest: str,
 ) -> str:
     _require_non_empty_string(source_key, 'source_key')
     _require_sha256(projection_digest, 'projection_digest')
-    _require_sha256(qualification_digest, 'qualification_digest')
-    digest = sha256(
-        canonical_json_bytes(
-            {
-                'source_key': source_key,
-                'projection_digest': projection_digest,
-                'qualification_digest': qualification_digest,
-            }
-        )
-    ).hexdigest()
+    digest = sha256(canonical_json_bytes({
+        'source_key': source_key,
+        'projection_digest': projection_digest,
+    })).hexdigest()
     return f'alarm-materialization-{digest}'
 
-
 @dataclass(frozen=True, slots=True)
-# Evidencia que vincula el resultado con release, Tool Catalog y qualification.
+# Implementación del contrato AlarmMaterializationProvenance.
 class AlarmMaterializationProvenance:
     source_release_id: str
     source_published_at_utc: str
     confirmed_tool_catalog_revision: str
     projection_digest: str
-    qualification_digest: str
-    qualification_producer: str
-    qualification_evidence_ref: str
-    qualified_at_utc: str
 
     def __post_init__(self) -> None:
         for field_name in (
-            'source_release_id',
-            'source_published_at_utc',
-            'confirmed_tool_catalog_revision',
-            'projection_digest',
-            'qualification_digest',
-            'qualification_producer',
-            'qualification_evidence_ref',
-            'qualified_at_utc',
+            'source_release_id', 'source_published_at_utc',
+            'confirmed_tool_catalog_revision', 'projection_digest',
         ):
             _require_non_empty_string(getattr(self, field_name), field_name)
         _require_sha256(self.projection_digest, 'projection_digest')
-        _require_sha256(self.qualification_digest, 'qualification_digest')
-        source_time = _require_aware_datetime(
-            self.source_published_at_utc,
-            'source_published_at_utc',
-        )
-        qualified_time = _require_aware_datetime(self.qualified_at_utc, 'qualified_at_utc')
-        if qualified_time < source_time:
-            raise ValueError('qualified_at_utc must not predate source_published_at_utc')
+        _require_aware_datetime(self.source_published_at_utc, 'source_published_at_utc')
 
     def to_document(self) -> dict[str, object]:
         return {
@@ -99,31 +74,17 @@ class AlarmMaterializationProvenance:
             'source_published_at_utc': self.source_published_at_utc,
             'confirmed_tool_catalog_revision': self.confirmed_tool_catalog_revision,
             'projection_digest': self.projection_digest,
-            'qualification_digest': self.qualification_digest,
-            'qualification_producer': self.qualification_producer,
-            'qualification_evidence_ref': self.qualification_evidence_ref,
-            'qualified_at_utc': self.qualified_at_utc,
         }
 
     @classmethod
     def from_document(cls, document: Mapping[str, object]) -> AlarmMaterializationProvenance:
-        required = {
-            'source_release_id',
-            'source_published_at_utc',
-            'confirmed_tool_catalog_revision',
-            'projection_digest',
-            'qualification_digest',
-            'qualification_producer',
-            'qualification_evidence_ref',
-            'qualified_at_utc',
-        }
+        required = {'source_release_id', 'source_published_at_utc', 'confirmed_tool_catalog_revision', 'projection_digest'}
         if not isinstance(document, Mapping) or set(document) != required:
             raise ValueError('materialization provenance contract is invalid')
         return cls(**{key: document[key] for key in required})
 
-
 @dataclass(frozen=True, slots=True)
-# Inventario verificable de un artifact físico publicado.
+# Implementación del contrato AlarmMaterializationArtifact.
 class AlarmMaterializationArtifact:
     path: str
     size_bytes: int
@@ -158,7 +119,7 @@ class AlarmMaterializationArtifact:
 
 
 @dataclass(frozen=True, slots=True)
-# Contrato principal: READY exige tres artifacts; BLOCKED no permite ninguno.
+# Implementación del contrato AlarmMaterializationManifest.
 class AlarmMaterializationManifest:
     source_key: str
     result_id: str
@@ -197,7 +158,6 @@ class AlarmMaterializationManifest:
         expected_result_id = materialization_result_id(
             source_key=self.source_key,
             projection_digest=self.provenance.projection_digest,
-            qualification_digest=self.provenance.qualification_digest,
         )
         if self.result_id != expected_result_id:
             raise ValueError('result_id does not match publication identity')
@@ -278,7 +238,7 @@ class AlarmMaterializationManifest:
 
 
 @dataclass(frozen=True, slots=True)
-# Head efectivo que apunta únicamente a una versión READY completa.
+# Implementación del contrato AlarmMaterializationReadyPointer.
 class AlarmMaterializationReadyPointer:
     source_key: str
     result_id: str
@@ -327,6 +287,7 @@ class AlarmMaterializationReadyPointer:
         )
 
 
+# Implementación del contrato _resolution_key_to_document.
 def _resolution_key_to_document(key: AlarmResolutionKey) -> dict[str, object]:
     return {
         'alarm_configuration_revision': key.alarm_configuration_revision,
@@ -334,6 +295,7 @@ def _resolution_key_to_document(key: AlarmResolutionKey) -> dict[str, object]:
     }
 
 
+# Implementación del contrato _resolution_key_from_document.
 def _resolution_key_from_document(document: Mapping[str, object]) -> AlarmResolutionKey:
     if not isinstance(document, Mapping) or set(document) != {
         'alarm_configuration_revision',
@@ -346,6 +308,7 @@ def _resolution_key_from_document(document: Mapping[str, object]) -> AlarmResolu
     )
 
 
+# Implementación del contrato _finding_to_document.
 def _finding_to_document(finding: AlarmResolutionFinding) -> dict[str, object]:
     return {
         'code': finding.code,
@@ -364,6 +327,7 @@ def _finding_to_document(finding: AlarmResolutionFinding) -> dict[str, object]:
     }
 
 
+# Implementación del contrato _finding_from_document.
 def _finding_from_document(document: Mapping[str, object]) -> AlarmResolutionFinding:
     required = {
         'code',
@@ -398,18 +362,21 @@ def _finding_from_document(document: Mapping[str, object]) -> AlarmResolutionFin
     )
 
 
+# Implementación del contrato _require_result_id.
 def _require_result_id(value: object) -> str:
     if not isinstance(value, str) or _RESULT_PATTERN.fullmatch(value) is None:
         raise ValueError('result_id must identify one Alarm materialization result')
     return value
 
 
+# Implementación del contrato _require_sha256.
 def _require_sha256(value: object, name: str) -> str:
     if not isinstance(value, str) or _SHA256_PATTERN.fullmatch(value) is None:
         raise ValueError(f'{name} must be a lowercase SHA-256 digest')
     return value
 
 
+# Implementación del contrato _require_aware_datetime.
 def _require_aware_datetime(value: str, name: str) -> datetime:
     try:
         parsed = datetime.fromisoformat(value)
@@ -420,6 +387,7 @@ def _require_aware_datetime(value: str, name: str) -> datetime:
     return parsed
 
 
+# Implementación del contrato _require_non_empty_string.
 def _require_non_empty_string(value: object, name: str) -> str:
     if not isinstance(value, str):
         raise TypeError(f'{name} must be a string')

@@ -1,5 +1,4 @@
-# Contrato transversal de la proyección activa de Alarm Configuration.
-# No conoce Cosmos, Command Center Web ni Alarm Engine: sólo la identidad y el payload publicado.
+# La proyección define la identidad física y el contrato de lectura compartido con Command Center.
 from __future__ import annotations
 
 import json
@@ -12,17 +11,15 @@ from typing import Any
 from ada.contracts.alarms.errors import AlarmConfigurationProjectionValidationError
 from ada.contracts.alarms.snapshot import AlarmConfigurationSnapshot
 
-# La identidad lógica del source es estable y compartida por productor y consumidores.
 ALARM_CONFIGURATION_SOURCE_KEY = 'alarm-configuration'
-# Se conserva el document_type existente para no forzar una migración de datos ya publicados.
+ALARM_CONFIGURATION_CONTAINER_NAME = 'alarm-configuration'
 ALARM_CONFIGURATION_PROJECTION_DOCUMENT_TYPE = (
     'ada_command_center_alarm_configuration_projection_record'
 )
 ALARM_CONFIGURATION_PROJECTION_SCHEMA_VERSION = 1
 
 
-# La identidad física del documento activo es parte del contrato entre productor y consumidores.
-# El helper no conoce Cosmos ni el nombre del container; sólo reproduce el id durable ya publicado.
+# Implementación del contrato alarm_configuration_projection_item_id.
 def alarm_configuration_projection_item_id(source_key: str) -> str:
     _require_text(source_key, 'source_key')
     digest = sha256(source_key.encode('utf-8')).hexdigest()
@@ -30,8 +27,8 @@ def alarm_configuration_projection_item_id(source_key: str) -> str:
 
 
 @dataclass(frozen=True, slots=True)
+# Implementación del contrato AlarmConfigurationProjectionDependency.
 class AlarmConfigurationProjectionDependency:
-    # Una dependencia conserva la identidad exacta de la release que participó en la proyección.
     source_key: str
     source_release_id: str
     source_published_at_utc: datetime
@@ -74,9 +71,7 @@ class AlarmConfigurationProjectionDependency:
                 source_published_at_utc=datetime.fromisoformat(
                     _text(document, 'source_published_at_utc')
                 ),
-                dependencies=tuple(
-                    cls.from_document(dependency) for dependency in dependencies
-                ),
+                dependencies=tuple(cls.from_document(dependency) for dependency in dependencies),
             )
         except (KeyError, TypeError, ValueError) as error:
             raise AlarmConfigurationProjectionValidationError(
@@ -85,8 +80,8 @@ class AlarmConfigurationProjectionDependency:
 
 
 @dataclass(frozen=True, slots=True)
+# Implementación del contrato AlarmConfigurationProjection.
 class AlarmConfigurationProjection:
-    # El contrato conserva release, tiempos, snapshot y dependencias sin conocer su transporte físico.
     source_key: str
     source_release_id: str
     source_published_at_utc: datetime
@@ -115,7 +110,6 @@ class AlarmConfigurationProjection:
 
     @property
     def fingerprint(self) -> str:
-        # El fingerprint usa sólo el contrato canónico, nunca metadatos físicos agregados por Cosmos.
         payload = json.dumps(
             self.to_document(),
             ensure_ascii=False,
@@ -140,7 +134,6 @@ class AlarmConfigurationProjection:
             'dependencies': [dependency.to_document() for dependency in self.dependencies],
             'payload': self.snapshot.to_document(),
         }
-        # id y partition_key son decoración de persistencia opcional; no forman parte de la identidad lógica.
         if item_id is not None:
             document['id'] = item_id
         if partition_key is not None:
@@ -189,6 +182,7 @@ class AlarmConfigurationProjection:
             ) from error
 
 
+# Implementación del contrato _text.
 def _text(document: Mapping[str, Any], field_name: str) -> str:
     value = document[field_name]
     if not isinstance(value, str):
@@ -196,6 +190,7 @@ def _text(document: Mapping[str, Any], field_name: str) -> str:
     return value
 
 
+# Implementación del contrato _require_text.
 def _require_text(value: object, name: str) -> None:
     if not isinstance(value, str):
         raise TypeError(f'{name} must be text')
@@ -203,6 +198,7 @@ def _require_text(value: object, name: str) -> None:
         raise ValueError(f'{name} must be non-empty text without surrounding whitespace')
 
 
+# Implementación del contrato _require_aware_datetime.
 def _require_aware_datetime(value: object, name: str) -> None:
     if not isinstance(value, datetime):
         raise TypeError(f'{name} must be a datetime')

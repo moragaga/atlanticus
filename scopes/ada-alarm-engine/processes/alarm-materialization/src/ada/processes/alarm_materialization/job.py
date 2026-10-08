@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from ada.alarms.materialization import (
+    AlarmMaterializationProvenance,
     AlarmResolutionStatus,
     materialization_result_id,
     resolve_alarm_configuration,
@@ -12,10 +13,8 @@ from ada.alarms.persistence import LocalAlarmMaterializationStore
 from ada.processes.alarm_materialization.candidate import AlarmMaterializationCandidate
 from ada.processes.alarm_materialization.errors import (
     AlarmMaterializationConfigurationPending,
-    AlarmMaterializationQualificationError,
     AlarmMaterializationSupersededError,
 )
-from ada.processes.alarm_materialization.qualification import AlarmQualificationProvider
 from ada.processes.alarm_materialization.repository import AlarmConfigurationReader
 from atlanticus.runtime import JobRuntimeContext
 
@@ -40,17 +39,13 @@ class AlarmMaterializationJob:
         self,
         *,
         reader: AlarmConfigurationReader,
-        qualifications: AlarmQualificationProvider,
         store: LocalAlarmMaterializationStore,
     ) -> None:
         if not callable(getattr(reader, 'read_active', None)):
             raise TypeError('reader must provide read_active()')
-        if not callable(getattr(qualifications, 'load', None)):
-            raise TypeError('qualifications must provide load(candidate)')
         if not isinstance(store, LocalAlarmMaterializationStore):
             raise TypeError('store must be a LocalAlarmMaterializationStore')
         self._reader = reader
-        self._qualifications = qualifications
         self._store = store
 
     def run_iteration(self, context: JobRuntimeContext) -> AlarmMaterializationIterationResult:
@@ -66,14 +61,17 @@ class AlarmMaterializationJob:
             self._record(context, result=result, candidate=None)
             return result
 
-        evidence = self._qualifications.load(candidate)
-        evidence.validate_candidate(candidate)
-        provenance = evidence.provenance(candidate)
+        provenance = AlarmMaterializationProvenance(
+            source_release_id=candidate.source_release_id,
+            source_published_at_utc=candidate.projection.source_published_at_utc.isoformat(),
+            confirmed_tool_catalog_revision=candidate.confirmed_tool_catalog_revision,
+            projection_digest=candidate.fingerprint,
+        )
         result_id = materialization_result_id(
             source_key=candidate.source_key,
             projection_digest=candidate.fingerprint,
-            qualification_digest=evidence.digest,
         )
+
         existing = self._store.read_result(
             source_key=candidate.source_key,
             result_id=result_id,
@@ -85,12 +83,10 @@ class AlarmMaterializationJob:
             configuration=projection.snapshot.configuration,
             alarm_configuration_revision=candidate.alarm_configuration_revision,
             confirmed_tool_catalog=projection.snapshot.tool_dependencies,
-            tool_qualification=evidence.tools,
-            evaluator_qualification=evidence.evaluators,
         )
 
         context.raise_if_cancelled()
-        self._revalidate(candidate, evidence.digest)
+        self._revalidate(candidate)
         context.assert_lease_current()
         with context.fenced_mutation():
             publication = self._store.publish(
@@ -116,7 +112,7 @@ class AlarmMaterializationJob:
         return result
 
     def _revalidate(
-        self, candidate: AlarmMaterializationCandidate, qualification_digest: str
+        self, candidate: AlarmMaterializationCandidate
     ) -> None:
         current = self._reader.read_active()
         if (
@@ -126,11 +122,7 @@ class AlarmMaterializationJob:
             raise AlarmMaterializationSupersededError(
                 'Alarm Configuration projection changed during materialization'
             )
-        refreshed = self._qualifications.load(candidate)
-        if refreshed.digest != qualification_digest:
-            raise AlarmMaterializationQualificationError(
-                'Alarm qualification evidence changed during materialization'
-            )
+
 
     @staticmethod
     def _record(

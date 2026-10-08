@@ -114,7 +114,6 @@ def test_blocked_publication_does_not_replace_last_ready(tmp_path: Path) -> None
         provenance=provenance(
             release='ALARMS-8',
             projection_digest='c' * 64,
-            qualification_digest='d' * 64,
         ),
         resolution=blocked_resolution(),
     )

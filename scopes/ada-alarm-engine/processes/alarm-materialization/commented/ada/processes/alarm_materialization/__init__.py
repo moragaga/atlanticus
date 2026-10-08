@@ -1,10 +1,9 @@
-# Superficie pública del proceso de materialización de Alarmas; no expone infraestructura a Engine ni Modeler.
+# Este módulo preserva el contrato público asociado al incremento de Materialization.
 from ada.processes.alarm_materialization.candidate import AlarmMaterializationCandidate
 from ada.processes.alarm_materialization.errors import (
     AlarmMaterializationAcquisitionError,
     AlarmMaterializationConfigurationPending,
     AlarmMaterializationContractError,
-    AlarmMaterializationQualificationError,
     AlarmMaterializationSettingsError,
     AlarmMaterializationSupersededError,
 )
@@ -13,15 +12,11 @@ from ada.processes.alarm_materialization.job import (
     AlarmMaterializationJob,
     AlarmMaterializationOutcome,
 )
-from ada.processes.alarm_materialization.qualification import (
-    AlarmQualificationEvidence,
-    AlarmQualificationProvider,
-    JsonFileAlarmQualificationProvider,
-)
+
+
 from ada.processes.alarm_materialization.repository import (
     AlarmConfigurationReader,
     CosmosAlarmConfigurationRepository,
-    CosmosAlarmConfigurationRepositorySettings,
 )
 from ada.processes.alarm_materialization.settings import AlarmMaterializationSettings
 
@@ -36,14 +31,9 @@ __all__ = [
     'AlarmMaterializationIterationResult',
     'AlarmMaterializationJob',
     'AlarmMaterializationOutcome',
-    'AlarmMaterializationQualificationError',
     'AlarmMaterializationSettings',
     'AlarmMaterializationSettingsError',
     'AlarmMaterializationSupersededError',
-    'AlarmQualificationEvidence',
-    'AlarmQualificationProvider',
     'CosmosAlarmConfigurationRepository',
-    'CosmosAlarmConfigurationRepositorySettings',
-    'JsonFileAlarmQualificationProvider',
     '__version__',
 ]

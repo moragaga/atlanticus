@@ -5,6 +5,7 @@ from typing import Protocol
 
 from ada.contracts.alarms import (
     ALARM_CONFIGURATION_SOURCE_KEY,
+    ALARM_CONFIGURATION_CONTAINER_NAME,
     AlarmConfigurationProjection,
     AlarmConfigurationProjectionValidationError,
     alarm_configuration_projection_item_id,
@@ -24,33 +25,16 @@ class AlarmConfigurationReader(Protocol):
     def read_active(self) -> AlarmMaterializationCandidate: ...
 
 
-@dataclass(frozen=True, slots=True)
-class CosmosAlarmConfigurationRepositorySettings:
-    container_name: str
-
-    def __post_init__(self) -> None:
-        if (
-            not isinstance(self.container_name, str)
-            or not self.container_name.strip()
-            or self.container_name != self.container_name.strip()
-        ):
-            raise ValueError('Alarm Configuration Cosmos container name is invalid')
 
 
 @dataclass(slots=True)
 class CosmosAlarmConfigurationRepository:
     client: CosmosClient
-    settings: CosmosAlarmConfigurationRepositorySettings
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.settings, CosmosAlarmConfigurationRepositorySettings):
-            raise TypeError('settings must be CosmosAlarmConfigurationRepositorySettings')
-
     def read_active(self) -> AlarmMaterializationCandidate:
         item_id = alarm_configuration_projection_item_id(ALARM_CONFIGURATION_SOURCE_KEY)
         try:
             documents = self.client.query_items(
-                container_name=self.settings.container_name,
+                container_name=ALARM_CONFIGURATION_CONTAINER_NAME,
                 query=_QUERY,
                 parameters=({'name': '@item_id', 'value': item_id},),
                 partition_key=ALARM_CONFIGURATION_SOURCE_KEY,

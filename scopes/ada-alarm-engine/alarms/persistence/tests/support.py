@@ -30,17 +30,12 @@ def provenance(
     release: str = 'ALARMS-7',
     tool_revision: str = 'TOOLS-4',
     projection_digest: str = 'a' * 64,
-    qualification_digest: str = 'b' * 64,
 ) -> AlarmMaterializationProvenance:
     return AlarmMaterializationProvenance(
         source_release_id=release,
         source_published_at_utc='2026-10-07T10:00:00+00:00',
         confirmed_tool_catalog_revision=tool_revision,
         projection_digest=projection_digest,
-        qualification_digest=qualification_digest,
-        qualification_producer='manual-qualification',
-        qualification_evidence_ref='qualification-7',
-        qualified_at_utc='2026-10-07T10:05:00+00:00',
     )
 
 

@@ -10,10 +10,6 @@ class AlarmMaterializationContractError(AlarmMaterializationAcquisitionError):
     pass
 
 
-class AlarmMaterializationQualificationError(RuntimeError):
-    pass
-
-
 class AlarmMaterializationSupersededError(RuntimeError):
     pass
 

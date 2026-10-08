@@ -6,10 +6,8 @@ from dataclasses import dataclass
 
 from ada.alarms.persistence import LocalAlarmMaterializationStore, materialization_root
 from ada.processes.alarm_materialization.job import AlarmMaterializationJob
-from ada.processes.alarm_materialization.qualification import JsonFileAlarmQualificationProvider
 from ada.processes.alarm_materialization.repository import (
     CosmosAlarmConfigurationRepository,
-    CosmosAlarmConfigurationRepositorySettings,
 )
 from ada.processes.alarm_materialization.settings import AlarmMaterializationSettings
 from atlanticus.configuration import ResolvedConfiguration
@@ -53,13 +51,9 @@ def build_composition(
     cosmos = CosmosClient(settings=settings.cosmos)
     reader = CosmosAlarmConfigurationRepository(
         client=cosmos,
-        settings=CosmosAlarmConfigurationRepositorySettings(
-            container_name=settings.projection_container,
-        ),
     )
     job = AlarmMaterializationJob(
         reader=reader,
-        qualifications=JsonFileAlarmQualificationProvider(path=settings.qualification_file),
         store=LocalAlarmMaterializationStore(
             root=materialization_root(runtime_configuration.application_root),
         ),

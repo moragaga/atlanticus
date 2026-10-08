@@ -86,7 +86,6 @@ class LocalAlarmMaterializationStore:
         result_id = materialization_result_id(
             source_key=source_key,
             projection_digest=provenance.projection_digest,
-            qualification_digest=provenance.qualification_digest,
         )
         existing = self.read_result(source_key=source_key, result_id=result_id)
         if existing is not None:

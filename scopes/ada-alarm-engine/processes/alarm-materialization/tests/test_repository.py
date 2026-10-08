@@ -4,6 +4,7 @@ import pytest
 
 from ada.contracts.alarms import (
     ALARM_CONFIGURATION_SOURCE_KEY,
+    ALARM_CONFIGURATION_CONTAINER_NAME,
     AlarmConfiguration,
     AlarmConfigurationProjection,
     AlarmConfigurationSnapshot,
@@ -15,7 +16,6 @@ from ada.processes.alarm_materialization import (
     AlarmMaterializationConfigurationPending,
     AlarmMaterializationContractError,
     CosmosAlarmConfigurationRepository,
-    CosmosAlarmConfigurationRepositorySettings,
 )
 from atlanticus.connectivity.cosmos import CosmosContainerNotFoundError
 
@@ -58,12 +58,7 @@ def _document(projection: AlarmConfigurationProjection | None = None) -> dict[st
 
 
 def _repository(client: FakeCosmosClient) -> CosmosAlarmConfigurationRepository:
-    return CosmosAlarmConfigurationRepository(
-        client=client,
-        settings=CosmosAlarmConfigurationRepositorySettings(
-            container_name='alarm-configuration',
-        ),
-    )
+    return CosmosAlarmConfigurationRepository(client=client)
 
 
 def test_repository_reads_only_the_shared_active_projection_address() -> None:
@@ -74,7 +69,7 @@ def test_repository_reads_only_the_shared_active_projection_address() -> None:
     assert candidate.projection == _projection()
     assert client.calls == [
         {
-            'container_name': 'alarm-configuration',
+            'container_name': ALARM_CONFIGURATION_CONTAINER_NAME,
             'query': 'SELECT * FROM c WHERE c.id = @item_id',
             'parameters': (
                 {
@@ -127,6 +122,5 @@ def test_repository_rejects_projection_from_another_source() -> None:
         ).read_active()
 
 
-def test_repository_settings_reject_invalid_container_name() -> None:
-    with pytest.raises(ValueError):
-        CosmosAlarmConfigurationRepositorySettings(container_name=' alarm-configuration ')
+def test_repository_uses_shared_container_contract() -> None:
+    assert ALARM_CONFIGURATION_CONTAINER_NAME == 'alarm-configuration'

@@ -19,17 +19,14 @@ from ada.alarms.materialization.modeler import (
     ResolvedVisualSubcomponentTarget,
     ResolvedVisualTarget,
 )
-from ada.alarms.materialization.qualification import (
-    EvaluatorQualificationCatalog,
-    ToolReconciliationQualification,
-)
+
+
 from ada.alarms.materialization.resolution import (
     AlarmConfigurationResolution,
     AlarmResolutionFinding,
     AlarmResolutionFindingSeverity,
     AlarmResolutionStatus,
 )
-from ada.alarms.materialization.routing_policy import next_routing_tool_kind
 from ada.contracts.alarms import (
     AlarmConfiguration,
     AlarmDefinition,
@@ -65,27 +62,16 @@ def resolve_alarm_configuration(
     configuration: AlarmConfiguration,
     alarm_configuration_revision: str,
     confirmed_tool_catalog: _ConfirmedToolCatalog,
-    tool_qualification: ToolReconciliationQualification,
-    evaluator_qualification: EvaluatorQualificationCatalog,
 ) -> AlarmConfigurationResolution:
     if not isinstance(configuration, AlarmConfiguration):
         raise TypeError('configuration must be an AlarmConfiguration')
-    if not isinstance(tool_qualification, ToolReconciliationQualification):
-        raise TypeError('tool_qualification must be a ToolReconciliationQualification')
-    if not isinstance(evaluator_qualification, EvaluatorQualificationCatalog):
-        raise TypeError('evaluator_qualification must be an EvaluatorQualificationCatalog')
     catalog_revision = _catalog_revision(confirmed_tool_catalog)
     resolution_key = AlarmResolutionKey(
         alarm_configuration_revision=alarm_configuration_revision,
         confirmed_tool_catalog_revision=catalog_revision,
     )
-    findings = _collect_findings(
-        configuration=configuration,
-        confirmed_tool_catalog=confirmed_tool_catalog,
-        tool_qualification=tool_qualification,
-        evaluator_qualification=evaluator_qualification,
-    )
-    if any(finding.severity is AlarmResolutionFindingSeverity.BLOCKING for finding in findings):
+    findings = _collect_reference_findings(configuration, confirmed_tool_catalog)
+    if findings:
         return AlarmConfigurationResolution(
             resolution_key=resolution_key,
             status=AlarmResolutionStatus.BLOCKED,
@@ -99,16 +85,10 @@ def resolve_alarm_configuration(
     return AlarmConfigurationResolution(
         resolution_key=resolution_key,
         status=AlarmResolutionStatus.READY,
-        findings=findings,
-        engine_configuration=_materialize_engine(
-            configuration=configuration,
-            resolution_key=resolution_key,
-        ),
+        findings=(),
+        engine_configuration=_materialize_engine(configuration=configuration, resolution_key=resolution_key),
         modeler_configuration=modeler,
-        delivery_configuration=_materialize_delivery(
-            modeler_configuration=modeler,
-            resolution_key=resolution_key,
-        ),
+        delivery_configuration=_materialize_delivery(modeler_configuration=modeler, resolution_key=resolution_key),
     )
 
 
@@ -123,276 +103,68 @@ def _catalog_revision(catalog: _ConfirmedToolCatalog) -> str:
     return revision
 
 
-def _collect_findings(
-    *,
+def _collect_reference_findings(
     configuration: AlarmConfiguration,
     confirmed_tool_catalog: _ConfirmedToolCatalog,
-    tool_qualification: ToolReconciliationQualification,
-    evaluator_qualification: EvaluatorQualificationCatalog,
 ) -> tuple[AlarmResolutionFinding, ...]:
     findings: list[AlarmResolutionFinding] = []
     for rule in configuration.rules:
-        findings.extend(_evaluator_findings(rule, evaluator_qualification))
-        findings.extend(
-            _tool_reference_findings(
-                rule=rule,
-                tool_key=rule.escalation.origin_tool_key,
-                field_path=f'{_rule_path(rule)}.escalation.origin_tool_key',
-                confirmed_tool_catalog=confirmed_tool_catalog,
-                tool_qualification=tool_qualification,
-            )
+        path = _rule_path(rule)
+        referenced = [(rule.escalation.origin_tool_key, f'{path}.escalation.origin_tool_key')]
+        referenced.extend(
+            (step.target_tool_key, f'{path}.escalation.steps[{step.step_order}].target_tool_key')
+            for step in rule.escalation.steps
         )
-        for step in sorted(rule.escalation.steps, key=lambda item: item.step_order):
-            findings.extend(
-                _tool_reference_findings(
-                    rule=rule,
-                    tool_key=step.target_tool_key,
-                    field_path=(
-                        f'{_rule_path(rule)}.escalation.steps[{step.step_order}].target_tool_key'
-                    ),
-                    confirmed_tool_catalog=confirmed_tool_catalog,
-                    tool_qualification=tool_qualification,
+        referenced.extend(
+            (target.tool_key, f'{path}.visual_targets[{target.tool_key}].tool_key')
+            for target in rule.visual_targets
+        )
+        for tool_key, field_path in referenced:
+            if confirmed_tool_catalog.get(tool_key) is None:
+                findings.append(
+                    _blocking_finding(
+                        code='tool_reference_not_found',
+                        message=f'Tool reference {tool_key!r} is missing from the pinned Tool manifest',
+                        rule=rule,
+                        field_path=field_path,
+                        reference_key=tool_key,
+                    )
                 )
-            )
-        findings.extend(_routing_findings(rule))
-        findings.extend(_routing_direction_findings(rule, confirmed_tool_catalog))
         for target in rule.visual_targets:
-            findings.extend(
-                _visual_target_findings(
-                    rule=rule,
-                    target=target,
-                    confirmed_tool_catalog=confirmed_tool_catalog,
-                    tool_qualification=tool_qualification,
-                )
-            )
-    return tuple(findings)
-
-
-def _evaluator_findings(
-    rule: AlarmDefinition,
-    evaluator_qualification: EvaluatorQualificationCatalog,
-) -> tuple[AlarmResolutionFinding, ...]:
-    if evaluator_qualification.is_qualified(rule.identity.family_key, rule.evaluator_key):
-        return ()
-    return (
-        _blocking_finding(
-            code='evaluator_not_qualified',
-            message=(
-                f'Evaluator {rule.evaluator_key!r} is not qualified for alarm family '
-                f'{rule.identity.family_key!r}'
-            ),
-            rule=rule,
-            field_path=f'{_rule_path(rule)}.evaluator_key',
-            reference_key=rule.evaluator_key,
-        ),
-    )
-
-
-def _tool_reference_findings(
-    *,
-    rule: AlarmDefinition,
-    tool_key: str,
-    field_path: str,
-    confirmed_tool_catalog: _ConfirmedToolCatalog,
-    tool_qualification: ToolReconciliationQualification,
-) -> tuple[AlarmResolutionFinding, ...]:
-    entry = confirmed_tool_catalog.get(tool_key)
-    if entry is None:
-        return (
-            _blocking_finding(
-                code='tool_reference_not_found',
-                message=f'Tool reference {tool_key!r} does not exist in the confirmed Tool Catalog',
-                rule=rule,
-                field_path=field_path,
-                reference_key=tool_key,
-            ),
-        )
-    if tool_qualification.is_green(tool_key):
-        return ()
-    return (
-        _blocking_finding(
-            code='tool_reference_not_green',
-            message=f'Tool reference {tool_key!r} is not GREEN',
-            rule=rule,
-            field_path=field_path,
-            reference_key=tool_key,
-        ),
-    )
-
-
-def _routing_findings(rule: AlarmDefinition) -> tuple[AlarmResolutionFinding, ...]:
-    findings: list[AlarmResolutionFinding] = []
-    enabled_steps = tuple(
-        step
-        for step in sorted(rule.escalation.steps, key=lambda item: item.step_order)
-        if step.is_enabled
-    )
-    if rule.criticality is Criticality.C1:
-        for step in enabled_steps:
-            if step.wait_minutes_from_previous_step not in (None, 0):
-                findings.append(
-                    _blocking_finding(
-                        code='routing_invalid_for_criticality',
-                        message='C1 routing requires enabled escalation steps to be immediate',
-                        rule=rule,
-                        field_path=(
-                            f'{_rule_path(rule)}.escalation.steps[{step.step_order}]'
-                            '.wait_minutes_from_previous_step'
-                        ),
-                        reference_key=step.target_tool_key,
+            entry = confirmed_tool_catalog.get(target.tool_key)
+            if entry is None:
+                continue
+            base_path = f'{path}.visual_targets[{target.tool_key}]'
+            for component_key in target.component_keys:
+                try:
+                    entry.structure.component(component_key)
+                except ToolConfigurationValidationError:
+                    findings.append(
+                        _blocking_finding(
+                            code='visual_reference_not_found',
+                            message=f'Unknown component {component_key!r}',
+                            rule=rule,
+                            field_path=f'{base_path}.component_keys[{component_key}]',
+                            reference_key=component_key,
+                        )
                     )
-                )
-        return tuple(findings)
-    if rule.criticality is Criticality.C2:
-        for step in enabled_steps:
-            wait = step.wait_minutes_from_previous_step
-            if wait is None or wait <= 0:
-                findings.append(
-                    _blocking_finding(
-                        code='routing_invalid_for_criticality',
-                        message='C2 routing requires every enabled escalation step to be delayed',
-                        rule=rule,
-                        field_path=(
-                            f'{_rule_path(rule)}.escalation.steps[{step.step_order}]'
-                            '.wait_minutes_from_previous_step'
-                        ),
-                        reference_key=step.target_tool_key,
+            for subcomponent in target.subcomponents:
+                reference_key = f'{subcomponent.owner_component_key}/{subcomponent.subcomponent_key}'
+                try:
+                    entry.structure.component(subcomponent.owner_component_key).subcomponent(
+                        subcomponent.subcomponent_key
                     )
-                )
-        return tuple(findings)
-    for step in enabled_steps:
-        findings.append(
-            _blocking_finding(
-                code='routing_invalid_for_criticality',
-                message='C3 routing must not contain enabled escalation steps',
-                rule=rule,
-                field_path=f'{_rule_path(rule)}.escalation.steps[{step.step_order}].is_enabled',
-                reference_key=step.target_tool_key,
-            )
-        )
+                except ToolConfigurationValidationError:
+                    findings.append(
+                        _blocking_finding(
+                            code='visual_reference_not_found',
+                            message=f'Unknown subcomponent {reference_key!r}',
+                            rule=rule,
+                            field_path=f'{base_path}.subcomponents[{reference_key}]',
+                            reference_key=reference_key,
+                        )
+                    )
     return tuple(findings)
-
-
-def _routing_direction_findings(
-    rule: AlarmDefinition,
-    confirmed_tool_catalog: _ConfirmedToolCatalog,
-) -> tuple[AlarmResolutionFinding, ...]:
-    if rule.criticality is Criticality.C3:
-        return ()
-    origin = confirmed_tool_catalog.get(rule.escalation.origin_tool_key)
-    if origin is None:
-        return ()
-    previous_kind = origin.kind
-    findings: list[AlarmResolutionFinding] = []
-    for step in sorted(rule.escalation.steps, key=lambda item: item.step_order):
-        if not step.is_enabled:
-            continue
-        target = confirmed_tool_catalog.get(step.target_tool_key)
-        if target is None:
-            break
-        required = next_routing_tool_kind(previous_kind)
-        if target.kind is not required:
-            expected = 'no further destination' if required is None else required.value
-            findings.append(
-                _blocking_finding(
-                    code='routing_invalid_direction',
-                    message=(
-                        f'Routing from {previous_kind.value} to {target.kind.value} is invalid; '
-                        f'expected {expected}'
-                    ),
-                    rule=rule,
-                    field_path=(
-                        f'{_rule_path(rule)}.escalation.steps[{step.step_order}].target_tool_key'
-                    ),
-                    reference_key=step.target_tool_key,
-                )
-            )
-        previous_kind = target.kind
-    return tuple(findings)
-
-
-def _visual_target_findings(
-    *,
-    rule: AlarmDefinition,
-    target: AlarmVisualTarget,
-    confirmed_tool_catalog: _ConfirmedToolCatalog,
-    tool_qualification: ToolReconciliationQualification,
-) -> tuple[AlarmResolutionFinding, ...]:
-    findings = list(
-        _tool_reference_findings(
-            rule=rule,
-            tool_key=target.tool_key,
-            field_path=f'{_rule_path(rule)}.visual_targets[{target.tool_key}].tool_key',
-            confirmed_tool_catalog=confirmed_tool_catalog,
-            tool_qualification=tool_qualification,
-        )
-    )
-    entry = confirmed_tool_catalog.get(target.tool_key)
-    if entry is None:
-        return tuple(findings)
-    base_path = f'{_rule_path(rule)}.visual_targets[{target.tool_key}]'
-    if entry.kind is ToolConfigurationKind.STRATEGIC:
-        findings.append(
-            _blocking_finding(
-                code='visual_target_invalid',
-                message='Alarm visual projection is not defined for Strategic tools',
-                rule=rule,
-                field_path=f'{base_path}.tool_key',
-                reference_key=target.tool_key,
-            )
-        )
-        return tuple(findings)
-    if entry.kind is ToolConfigurationKind.PROCESS:
-        if target.process_projection_mode is None:
-            findings.append(
-                _blocking_finding(
-                    code='visual_target_invalid',
-                    message='Process visual target requires process_projection_mode',
-                    rule=rule,
-                    field_path=f'{base_path}.process_projection_mode',
-                    reference_key=target.tool_key,
-                )
-            )
-    elif target.process_projection_mode is not None:
-        findings.append(
-            _blocking_finding(
-                code='visual_target_invalid',
-                message='Integrated Operations visual target must not define process_projection_mode',
-                rule=rule,
-                field_path=f'{base_path}.process_projection_mode',
-                reference_key=target.tool_key,
-            )
-        )
-    for component_key in target.component_keys:
-        try:
-            entry.structure.component(component_key)
-        except ToolConfigurationValidationError:
-            findings.append(
-                _blocking_finding(
-                    code='visual_target_invalid',
-                    message=f'Visual target references unknown component {component_key!r}',
-                    rule=rule,
-                    field_path=f'{base_path}.component_keys[{component_key}]',
-                    reference_key=component_key,
-                )
-            )
-    for subcomponent in target.subcomponents:
-        try:
-            component = entry.structure.component(subcomponent.owner_component_key)
-            component.subcomponent(subcomponent.subcomponent_key)
-        except ToolConfigurationValidationError:
-            reference_key = f'{subcomponent.owner_component_key}/{subcomponent.subcomponent_key}'
-            findings.append(
-                _blocking_finding(
-                    code='visual_target_invalid',
-                    message=f'Visual target references unknown subcomponent {reference_key!r}',
-                    rule=rule,
-                    field_path=f'{base_path}.subcomponents[{reference_key}]',
-                    reference_key=reference_key,
-                )
-            )
-    return tuple(findings)
-
 
 def _materialize_engine(
     *,

@@ -21,10 +21,8 @@ def provenance() -> AlarmMaterializationProvenance:
         source_published_at_utc='2026-10-07T10:00:00+00:00',
         confirmed_tool_catalog_revision='TOOLS-4',
         projection_digest='a' * 64,
-        qualification_digest='b' * 64,
-        qualification_producer='manual-qualification',
-        qualification_evidence_ref='qualification-7',
-        qualified_at_utc='2026-10-07T10:05:00+00:00',
+
+
     )
 
 
@@ -45,7 +43,6 @@ def test_ready_manifest_requires_exact_three_artifacts_and_round_trips() -> None
     result_id = materialization_result_id(
         source_key='alarm_configuration',
         projection_digest=metadata.projection_digest,
-        qualification_digest=metadata.qualification_digest,
     )
     manifest = AlarmMaterializationManifest(
         source_key='alarm_configuration',
@@ -70,7 +67,6 @@ def test_blocked_manifest_requires_blocking_finding_and_no_artifacts() -> None:
     result_id = materialization_result_id(
         source_key='alarm_configuration',
         projection_digest=metadata.projection_digest,
-        qualification_digest=metadata.qualification_digest,
     )
     finding = AlarmResolutionFinding(
         code='missing_tool',
@@ -98,14 +94,13 @@ def test_ready_pointer_round_trips_exact_resolution_and_manifest_digest() -> Non
         result_id=materialization_result_id(
             source_key='alarm_configuration',
             projection_digest=metadata.projection_digest,
-            qualification_digest=metadata.qualification_digest,
-        ),
+            ),
         resolution_key=resolution_key(),
         manifest_sha256='d' * 64,
     )
     assert AlarmMaterializationReadyPointer.from_document(pointer.to_document()) == pointer
 
 
-def test_provenance_rejects_qualification_before_source_publication() -> None:
-    with pytest.raises(ValueError, match='must not predate'):
-        replace(provenance(), qualified_at_utc='2026-10-07T09:59:59+00:00')
+def test_provenance_requires_valid_source_timestamp() -> None:
+    with pytest.raises(ValueError, match='timezone-aware'):
+        replace(provenance(), source_published_at_utc='2026-10-07T10:00:00')

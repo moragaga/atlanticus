@@ -6,11 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from ada.alarms.materialization import (
-    EvaluatorQualificationCatalog,
-    EvaluatorQualificationKey,
-    ToolReconciliationQualification,
-)
+
+
 from ada.alarms.persistence import LocalAlarmMaterializationStore
 from ada.contracts.alarms import (
     ALARM_CONFIGURATION_SOURCE_KEY,
@@ -37,9 +34,7 @@ from ada.processes.alarm_materialization import (
     AlarmMaterializationConfigurationPending,
     AlarmMaterializationJob,
     AlarmMaterializationOutcome,
-    AlarmMaterializationQualificationError,
     AlarmMaterializationSupersededError,
-    AlarmQualificationEvidence,
 )
 
 
@@ -103,41 +98,14 @@ class PendingReader:
         )
 
 
-class StaticQualificationProvider:
-    def __init__(self, evidence: AlarmQualificationEvidence) -> None:
-        self.evidence = evidence
-        self.calls = 0
-
-    def load(self, candidate: AlarmMaterializationCandidate) -> AlarmQualificationEvidence:
-        self.calls += 1
-        self.evidence.validate_candidate(candidate)
-        return self.evidence
-
-
-class ChangingQualificationProvider:
-    def __init__(
-        self,
-        first: AlarmQualificationEvidence,
-        second: AlarmQualificationEvidence,
-    ) -> None:
-        self.values = (first, second)
-        self.calls = 0
-
-    def load(self, candidate: AlarmMaterializationCandidate) -> AlarmQualificationEvidence:
-        value = self.values[min(self.calls, 1)]
-        self.calls += 1
-        value.validate_candidate(candidate)
-        return value
 
 
 def test_job_publishes_ready_then_becomes_unchanged(tmp_path: Path) -> None:
     candidate = _candidate()
     reader = StaticReader(candidate)
-    evidence = _evidence(candidate)
     store = LocalAlarmMaterializationStore(root=tmp_path / 'materialization')
     job = AlarmMaterializationJob(
         reader=reader,
-        qualifications=StaticQualificationProvider(evidence),
         store=store,
     )
 
@@ -160,16 +128,14 @@ def test_job_persists_blocked_without_replacing_ready(tmp_path: Path) -> None:
     store = LocalAlarmMaterializationStore(root=tmp_path / 'materialization')
     ready_job = AlarmMaterializationJob(
         reader=StaticReader(ready_candidate),
-        qualifications=StaticQualificationProvider(_evidence(ready_candidate)),
         store=store,
     )
     ready = ready_job.run_iteration(FakeContext())
     current_before = store.read_published_ready(source_key=ALARM_CONFIGURATION_SOURCE_KEY)
 
-    blocked_candidate = _candidate(blocked=True, release='alarm-r8')
+    blocked_candidate = _candidate(blocked=True, release='alarm-r8', missing_tool=True)
     blocked_job = AlarmMaterializationJob(
         reader=StaticReader(blocked_candidate),
-        qualifications=StaticQualificationProvider(_evidence(blocked_candidate, evaluator=False)),
         store=store,
     )
     blocked = blocked_job.run_iteration(FakeContext())
@@ -193,7 +159,6 @@ def test_job_persists_blocked_without_replacing_ready(tmp_path: Path) -> None:
 def test_job_treats_missing_projection_as_pending_without_mutation(tmp_path: Path) -> None:
     job = AlarmMaterializationJob(
         reader=PendingReader(),
-        qualifications=StaticQualificationProvider(_evidence(_candidate())),
         store=LocalAlarmMaterializationStore(root=tmp_path / 'materialization'),
     )
     context = FakeContext()
@@ -213,7 +178,6 @@ def test_job_rejects_projection_changed_before_publication(tmp_path: Path) -> No
     store = LocalAlarmMaterializationStore(root=tmp_path / 'materialization')
     job = AlarmMaterializationJob(
         reader=ChangingReader(first, second),
-        qualifications=StaticQualificationProvider(_evidence(first)),
         store=store,
     )
 
@@ -223,23 +187,6 @@ def test_job_rejects_projection_changed_before_publication(tmp_path: Path) -> No
     assert store.read_published_ready(source_key=ALARM_CONFIGURATION_SOURCE_KEY) is None
 
 
-def test_job_rejects_qualification_changed_before_publication(tmp_path: Path) -> None:
-    candidate = _candidate()
-    first = _evidence(candidate)
-    second_document = first.to_document()
-    second_document['qualified_at_utc'] = '2026-10-07T12:03:00+00:00'
-    second = AlarmQualificationEvidence.from_document(second_document)
-    store = LocalAlarmMaterializationStore(root=tmp_path / 'materialization')
-    job = AlarmMaterializationJob(
-        reader=StaticReader(candidate),
-        qualifications=ChangingQualificationProvider(first, second),
-        store=store,
-    )
-
-    with pytest.raises(AlarmMaterializationQualificationError):
-        job.run_iteration(FakeContext())
-
-    assert store.read_published_ready(source_key=ALARM_CONFIGURATION_SOURCE_KEY) is None
 
 
 def _candidate(
@@ -247,12 +194,13 @@ def _candidate(
     blocked: bool = False,
     release: str = 'alarm-r7',
     projected_minute: int = 1,
+    missing_tool: bool = False,
 ) -> AlarmMaterializationCandidate:
     configuration = AlarmConfiguration(
         rules=(_rule(),) if blocked else (),
         messages=(),
     )
-    tools = (_tool_entry(),) if blocked else ()
+    tools = (_tool_entry(),) if blocked and not missing_tool else ()
     projection = AlarmConfigurationProjection(
         source_key=ALARM_CONFIGURATION_SOURCE_KEY,
         source_release_id=release,
@@ -269,26 +217,6 @@ def _candidate(
     return AlarmMaterializationCandidate.capture(projection)
 
 
-def _evidence(
-    candidate: AlarmMaterializationCandidate,
-    *,
-    evaluator: bool = True,
-) -> AlarmQualificationEvidence:
-    qualified = ()
-    if evaluator and candidate.projection.snapshot.configuration.rules:
-        qualified = (EvaluatorQualificationKey('mill', 'threshold'),)
-    green = tuple(tool.tool_key for tool in candidate.projection.snapshot.tool_dependencies.tools)
-    return AlarmQualificationEvidence(
-        source_key=candidate.source_key,
-        source_release_id=candidate.source_release_id,
-        source_published_at_utc=candidate.projection.source_published_at_utc.isoformat(),
-        confirmed_tool_catalog_revision=candidate.confirmed_tool_catalog_revision,
-        qualified_at_utc='2026-10-07T12:02:00+00:00',
-        producer='qualification-test',
-        evidence_ref=f'evidence://{candidate.source_release_id}',
-        tools=ToolReconciliationQualification(green_tool_keys=green),
-        evaluators=EvaluatorQualificationCatalog(qualified_keys=qualified),
-    )
 
 
 def _rule() -> AlarmDefinition:

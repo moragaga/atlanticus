@@ -1,6 +1,4 @@
-# Esta superficie pública expone únicamente contratos de Alarmas que pueden cruzar productos.
-# La lógica se mantiene equivalente al archivo productivo; sólo se agregan comentarios pedagógicos.
-
+# Este módulo preserva el contrato público asociado al incremento de Materialization.
 from ada.contracts.alarms.configuration import AlarmConfiguration
 from ada.contracts.alarms.definition import (
     DEACTIVATION_MAX_HOURS,
@@ -31,6 +29,7 @@ from ada.contracts.alarms.projection import (
     ALARM_CONFIGURATION_PROJECTION_DOCUMENT_TYPE,
     ALARM_CONFIGURATION_PROJECTION_SCHEMA_VERSION,
     ALARM_CONFIGURATION_SOURCE_KEY,
+    ALARM_CONFIGURATION_CONTAINER_NAME,
     AlarmConfigurationProjection,
     AlarmConfigurationProjectionDependency,
     alarm_configuration_projection_item_id,
@@ -43,6 +42,7 @@ __all__ = [
     'ALARM_CONFIGURATION_PROJECTION_DOCUMENT_TYPE',
     'ALARM_CONFIGURATION_PROJECTION_SCHEMA_VERSION',
     'ALARM_CONFIGURATION_SOURCE_KEY',
+    'ALARM_CONFIGURATION_CONTAINER_NAME',
     'DEACTIVATION_MAX_HOURS',
     'END_OF_SHIFT',
     'AlarmColor',

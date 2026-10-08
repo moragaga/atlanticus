@@ -1,4 +1,4 @@
-# La composición crea el cliente Cosmos lazy, el store local y Atlanticus Runtime sin aprovisionar recursos remotos.
+# La composición toma el Cosmos de entrada y publica artefactos en el volumen compartido.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -7,10 +7,8 @@ from dataclasses import dataclass
 
 from ada.alarms.persistence import LocalAlarmMaterializationStore, materialization_root
 from ada.processes.alarm_materialization.job import AlarmMaterializationJob
-from ada.processes.alarm_materialization.qualification import JsonFileAlarmQualificationProvider
 from ada.processes.alarm_materialization.repository import (
     CosmosAlarmConfigurationRepository,
-    CosmosAlarmConfigurationRepositorySettings,
 )
 from ada.processes.alarm_materialization.settings import AlarmMaterializationSettings
 from atlanticus.configuration import ResolvedConfiguration
@@ -24,6 +22,7 @@ from atlanticus.runtime import (
 
 
 @dataclass(slots=True)
+# Implementación del contrato AlarmMaterializationComposition.
 class AlarmMaterializationComposition:
     configuration: ResolvedConfiguration
     runtime_configuration: RuntimeConfiguration
@@ -43,7 +42,7 @@ class AlarmMaterializationComposition:
             )
 
 
-# El CosmosClient es lazy: construir la composición no abre red ni aprovisiona infraestructura.
+# Implementación del contrato build_composition.
 def build_composition(
     *,
     configuration: ResolvedConfiguration,
@@ -55,13 +54,9 @@ def build_composition(
     cosmos = CosmosClient(settings=settings.cosmos)
     reader = CosmosAlarmConfigurationRepository(
         client=cosmos,
-        settings=CosmosAlarmConfigurationRepositorySettings(
-            container_name=settings.projection_container,
-        ),
     )
     job = AlarmMaterializationJob(
         reader=reader,
-        qualifications=JsonFileAlarmQualificationProvider(path=settings.qualification_file),
         store=LocalAlarmMaterializationStore(
             root=materialization_root(runtime_configuration.application_root),
         ),

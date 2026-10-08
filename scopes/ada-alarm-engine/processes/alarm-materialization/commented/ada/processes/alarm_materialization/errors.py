@@ -1,23 +1,24 @@
-# Errores del proceso: distinguen espera normal, contrato, qualification, supersession y configuración.
+# Este módulo preserva el contrato público asociado al incremento de Materialization.
+# Implementación del contrato AlarmMaterializationAcquisitionError.
 class AlarmMaterializationAcquisitionError(RuntimeError):
     pass
 
 
+# Implementación del contrato AlarmMaterializationConfigurationPending.
 class AlarmMaterializationConfigurationPending(AlarmMaterializationAcquisitionError):
     pass
 
 
+# Implementación del contrato AlarmMaterializationContractError.
 class AlarmMaterializationContractError(AlarmMaterializationAcquisitionError):
     pass
 
 
-class AlarmMaterializationQualificationError(RuntimeError):
-    pass
-
-
+# Implementación del contrato AlarmMaterializationSupersededError.
 class AlarmMaterializationSupersededError(RuntimeError):
     pass
 
 
+# Implementación del contrato AlarmMaterializationSettingsError.
 class AlarmMaterializationSettingsError(ValueError):
     pass
