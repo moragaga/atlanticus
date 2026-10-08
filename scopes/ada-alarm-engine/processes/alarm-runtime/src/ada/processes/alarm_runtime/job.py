@@ -366,8 +366,13 @@ class AlarmRuntimeJob:
                     ),
                 )
         context.raise_if_cancelled()
+        current = self._durable_recovery.recover(context)
+        if current.artifact_ref != recovered.artifact_ref:
+            raise AlarmRuntimeConfigurationError('EFFECTIVE changed before adoption')
+        if current.lifecycle != context.get_memory(_LIFECYCLE_MEMORY_KEY):
+            raise AlarmRuntimeConfigurationError('lifecycle memory differs from durable recovery')
         try:
-            adopter.adopt(context, recovered=recovered, ready=ready)
+            adopter.adopt(context, recovered=current, ready=ready)
         except AlarmOperationalAdoptionRequired:
             return self._finish(
                 context,

@@ -27,7 +27,6 @@ from ada.contracts.alarms import AlarmIdentity
 from ada.processes.alarm_runtime import AlarmRuntimeConfigurationOutcome, AlarmRuntimeJob
 from ada.processes.alarm_runtime.durable_adoption import (
     AlarmDurableAdopter,
-    AlarmOperationalAdoptionRequired,
 )
 from ada.processes.alarm_runtime.durable_commit import AlarmDurableCycleCommitter
 from ada.processes.alarm_runtime.durable_recovery import (
@@ -252,7 +251,7 @@ def test_v2_rebases_empty_snapshot_without_physical_events(tmp_path):
     assert _recovery(store, versions).recover(context).lifecycle.configuration == second.engine
 
 
-def test_withdrawal_with_open_occurrence_is_not_silently_rebased(tmp_path):
+def test_withdrawal_with_open_occurrence_closes_durably(tmp_path):
     store = AlarmPersistence(application_root=tmp_path)
     first = _ready()
     versions = Materializations(first)
@@ -268,12 +267,20 @@ def test_withdrawal_with_open_occurrence_is_not_silently_rebased(tmp_path):
         parameters_by_alarm={},
     )
     second = _ready('b', release='ALARMS-8', configuration=disabled)
-    with pytest.raises(AlarmOperationalAdoptionRequired, match='operational lifecycle'):
-        _adopter(store, versions, at=AT + timedelta(seconds=3)).adopt(
-            context, recovered=previous, ready=second
-        )
-    assert store.read_effective_head().target_artifact_ref == previous.artifact_ref
-    assert len(store.read_durable_adoptions()) == 1
+    versions.versions[second.result_id] = second
+    versions.published = second
+    _adopter(store, versions, at=AT + timedelta(seconds=3)).adopt(
+        context, recovered=previous, ready=second
+    )
+    adopted = _recovery(store, versions).recover(context)
+    assert adopted.artifact_ref.result_id == second.result_id
+    assert adopted.lifecycle.groups[0].episode is None
+    assert adopted.lifecycle.groups[0].alarms == ()
+    assert len(store.read_durable_adoptions()) == 2
+    transition = store.read_durable_records()[-1].record
+    assert 'configuration_rebases' not in transition.records
+    assert transition.records['occurrence_changes']
+    assert transition.records['episode_changes']
 
 
 def test_lost_lease_before_adoption_does_not_write(tmp_path):
