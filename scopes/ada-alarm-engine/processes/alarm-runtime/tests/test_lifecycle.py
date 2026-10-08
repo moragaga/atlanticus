@@ -268,7 +268,7 @@ def test_disabling_alarm_reconciles_configuration_before_cycle() -> None:
     assert result.state.groups == ()
 
 
-def test_structural_reset_closes_old_continuity_then_new_cycle_can_open_new_occurrence() -> None:
+def test_criticality_change_preserves_open_occurrence_and_episode() -> None:
     source_session = _session(engine_configuration())
     lifecycle, _ids = _lifecycle()
     first = lifecycle.run(
@@ -292,10 +292,13 @@ def test_structural_reset_closes_old_continuity_then_new_cycle_can_open_new_occu
 
     group = result.groups[0]
     assert group.adoption_decision is not None
-    assert group.adoption_decision.occurrence_changes[0].occurrence.occurrence_id == 'O1'
+    assert group.adoption_decision.occurrence_changes == ()
+    assert group.adoption_decision.episode_changes == ()
     runtime = group.decision.state.get(target_session.entries[0].identity)
     assert runtime is not None and runtime.occurrence is not None
-    assert runtime.occurrence.occurrence_id == 'O2'
+    assert runtime.occurrence.occurrence_id == 'O1'
+    assert group.decision.state.episode is not None
+    assert group.decision.state.episode.episode_id == 'E1'
 
 
 def test_management_without_timer_is_supported() -> None:

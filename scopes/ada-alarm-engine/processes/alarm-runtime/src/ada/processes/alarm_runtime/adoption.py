@@ -19,7 +19,6 @@ class ConfigurationAdoptionDisposition(StrEnum):
     ENABLED = 'enabled'
     DISABLED = 'disabled'
     REMOVED = 'removed'
-    STRUCTURAL_RESET = 'structural_reset'
     REJECTED = 'rejected'
 
 
@@ -172,14 +171,9 @@ def _classify_change(
             rejection_reason=rejection_reason,
         )
     if (
-        source_plan.criticality is not target_plan.criticality
-        or source_plan.routing.origin_tool_key != target_plan.routing.origin_tool_key
+        source_plan.criticality is target_plan.criticality
+        and source_plan.routing.destinations != target_plan.routing.destinations
     ):
-        return ConfigurationAdoptionChange(
-            identity=identity,
-            disposition=ConfigurationAdoptionDisposition.STRUCTURAL_RESET,
-        )
-    if source_plan.routing != target_plan.routing:
         routing_rejection = _routing_rejection_reason(source_plan.criticality)
         if routing_rejection is not None:
             return ConfigurationAdoptionChange(

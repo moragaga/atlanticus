@@ -14,7 +14,6 @@ from ada.alarms.core import (
     OccurrenceClosureReason,
     TechnicalHoldChangeKind,
     reduce_group_cycle,
-    reset_group_for_reconfiguration,
 )
 from ada.contracts.alarms import AlarmKind, Criticality
 
@@ -361,28 +360,6 @@ def test_normalization_wins_over_configuration_close_at_same_effective_time() ->
     assert (
         decision.episode_changes[0].episode.closure_reason
         is EpisodeClosureReason.CONDITION_NORMALIZED
-    )
-
-
-def test_structural_reset_closes_whole_group_without_reinterpreting_history() -> None:
-    ids = Ids()
-    started = _reduce(
-        GroupLifecycleState(priority_group='mill-feed'),
-        [plan('risk'), plan('impact', kind=AlarmKind.IMPACT, priority_order=1)],
-        [physical('risk', AlarmStatus.ACTIVE), physical('impact', AlarmStatus.ACTIVE)],
-        ids=ids,
-    )
-    at = NOW + timedelta(minutes=5)
-    decision = reset_group_for_reconfiguration(started.state, effective_at=at)
-    assert decision.state.alarms == ()
-    assert decision.state.episode is None
-    assert {change.occurrence.closure_reason for change in decision.occurrence_changes} == {
-        OccurrenceClosureReason.CONFIGURATION_RECONFIGURED
-    }
-    assert decision.episode_changes
-    assert (
-        decision.episode_changes[0].episode.closure_reason
-        is EpisodeClosureReason.CONFIGURATION_TERMINATED
     )
 
 

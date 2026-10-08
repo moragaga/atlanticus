@@ -15,7 +15,7 @@ from ada.alarms.core import (
     reconcile_group_configuration,
     reduce_group_cycle,
 )
-from ada.contracts.alarms import AlarmKind, Criticality
+from ada.contracts.alarms import AlarmKind
 
 from .support import NOW, Ids, management_action, physical, plan
 
@@ -105,100 +105,6 @@ def test_reconcile_c2_routing_reschedules_pending_from_original_occurrence_start
     change = decision.assignment_changes[0]
     assert change.kind is AssignmentChangeKind.RESCHEDULED
     assert change.due_at == NOW + timedelta(minutes=30)
-
-
-def test_reconcile_structural_reset_closes_continuity_and_preserves_active_deactivation() -> None:
-    ids = Ids()
-    source = plan('risk', deactivation_approval_required=False)
-    started = _reduce(
-        GroupLifecycleState(priority_group='mill-feed'),
-        (source,),
-        (physical('risk', AlarmStatus.ACTIVE),),
-        ids=ids,
-    )
-    deactivated_at = NOW + timedelta(minutes=1)
-    deactivated = _reduce(
-        started.state,
-        (source,),
-        (physical('risk', AlarmStatus.ACTIVE, at=deactivated_at),),
-        at=deactivated_at,
-        actions=(
-            management_action(
-                'risk',
-                at=deactivated_at,
-                deactivation_until=deactivated_at + timedelta(hours=1),
-            ),
-        ),
-        ids=ids,
-    )
-    target = replace(
-        source,
-        criticality=Criticality.C1,
-        routing=replace(
-            source.routing,
-            destinations=(RoutingDestination(tool_key='tool-b'),),
-        ),
-    )
-    effective_at = deactivated_at + timedelta(minutes=1)
-
-    decision = reconcile_group_configuration(
-        deactivated.state,
-        effective_at=effective_at,
-        planned_alarms=(target,),
-        structural_reset=True,
-    )
-
-    assert decision.occurrence_changes[0].occurrence.closure_reason is (
-        OccurrenceClosureReason.CONFIGURATION_RECONFIGURED
-    )
-    assert decision.episode_changes[0].episode.closure_reason is (
-        EpisodeClosureReason.CONFIGURATION_TERMINATED
-    )
-    runtime = decision.state.get(source.identity)
-    assert runtime is not None and runtime.occurrence is None
-    assert runtime.deactivation_effect is not None
-    assert decision.deactivation_effect_changes == ()
-
-
-def test_reconcile_structural_reset_preserves_deactivation_for_non_executable_alarm() -> None:
-    ids = Ids()
-    source = plan('risk', deactivation_approval_required=False)
-    started = _reduce(
-        GroupLifecycleState(priority_group='mill-feed'),
-        (source,),
-        (physical('risk', AlarmStatus.ACTIVE),),
-        ids=ids,
-    )
-    deactivated_at = NOW + timedelta(minutes=1)
-    deactivated = _reduce(
-        started.state,
-        (source,),
-        (physical('risk', AlarmStatus.ACTIVE, at=deactivated_at),),
-        at=deactivated_at,
-        actions=(
-            management_action(
-                'risk',
-                at=deactivated_at,
-                deactivation_until=deactivated_at + timedelta(hours=1),
-            ),
-        ),
-        ids=ids,
-    )
-    effective_at = deactivated_at + timedelta(minutes=1)
-
-    decision = reconcile_group_configuration(
-        deactivated.state,
-        effective_at=effective_at,
-        planned_alarms=(),
-        structural_reset=True,
-    )
-
-    runtime = decision.state.get(source.identity)
-    assert runtime is not None
-    assert runtime.occurrence is None
-    assert runtime.deactivation_effect is not None
-    assert runtime.deactivation_effect.effective_until == deactivated_at + timedelta(hours=1)
-    assert decision.deactivation_effect_changes == ()
 
 
 @pytest.mark.parametrize(

@@ -25,7 +25,6 @@ from ada.alarms.core import (
     materialize_group_commit,
     reconcile_group_configuration,
     reduce_group_cycle,
-    reset_group_for_reconfiguration,
 )
 
 from .support import (
@@ -869,10 +868,21 @@ def test_configuration_close_uses_current_physical_evaluation_for_final_evidence
     assert ':final:' in evidence.evidence_id
 
 
-def test_structural_reset_without_evaluation_never_fabricates_final_evidence() -> None:
-    _, _, started = _started()
+def test_configuration_closure_without_evaluation_never_fabricates_final_evidence() -> None:
+    alarm, _, started = _started()
     at = NOW + timedelta(minutes=2)
-    decision = reset_group_for_reconfiguration(started.state, effective_at=at)
+    decision = reconcile_group_configuration(
+        started.state,
+        effective_at=at,
+        planned_alarms=(),
+        configuration_closures=(
+            ConfigurationClosure(
+                alarm_identity=alarm.identity,
+                reason=OccurrenceClosureReason.CONFIGURATION_DISABLED,
+                effective_at=at,
+            ),
+        ),
+    )
     materialized = _materialize(
         started.state,
         decision,
@@ -885,7 +895,7 @@ def test_structural_reset_without_evaluation_never_fabricates_final_evidence() -
     assert 'occurrence_closed' in {event.event_key for event in materialized.records.journey_events}
 
 
-def test_structural_reset_preserves_active_deactivation_independently_of_occurrence() -> None:
+def test_configuration_closure_preserves_active_deactivation_independently_of_occurrence() -> None:
     ids = Ids()
     alarm = plan('risk', deactivation_approval_required=False)
     previous = GroupLifecycleState(priority_group='mill-feed')
@@ -912,13 +922,24 @@ def test_structural_reset_preserves_active_deactivation_independently_of_occurre
         previous_commit_id=started.commit.commit_id,
     )
     assert deactivated is not None
-    reset_at = managed_at + timedelta(minutes=2)
-    reset = reset_group_for_reconfiguration(deactivated.state, effective_at=reset_at)
+    closed_at = managed_at + timedelta(minutes=2)
+    decision = reconcile_group_configuration(
+        deactivated.state,
+        effective_at=closed_at,
+        planned_alarms=(),
+        configuration_closures=(
+            ConfigurationClosure(
+                alarm_identity=alarm.identity,
+                reason=OccurrenceClosureReason.CONFIGURATION_DISABLED,
+                effective_at=closed_at,
+            ),
+        ),
+    )
     materialized = _materialize(
         deactivated.state,
-        reset,
+        decision,
         (),
-        at=reset_at,
+        at=closed_at,
         previous_commit_id=deactivated.commit.commit_id,
     )
     assert materialized is not None

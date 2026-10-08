@@ -410,16 +410,12 @@ class AlarmLifecycleCycle:
                 ConfigurationAdoptionDisposition.REMOVED,
             }
         )
-        structural_reset = any(
-            item.disposition is ConfigurationAdoptionDisposition.STRUCTURAL_RESET
-            for item in actionable
-        )
+        # Reconcilia la configuración sin interrumpir las gestiones ni la continuidad del grupo.
         return reconcile_group_configuration(
             state,
             effective_at=cycle_at,
             planned_alarms=plans,
             configuration_closures=closures,
-            structural_reset=structural_reset,
         )
 
     @staticmethod

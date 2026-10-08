@@ -9,12 +9,10 @@ from ada.alarms.core import (
     GroupLifecycleState,
     ManagementActionOutcome,
     ManagementEffectChangeKind,
-    OccurrenceChangeKind,
     ReappearanceChange,
     is_directly_managed,
     reconcile_group_configuration,
     reduce_group_cycle,
-    reset_group_for_reconfiguration,
 )
 from ada.contracts.alarms import AlarmKind
 
@@ -549,8 +547,9 @@ def test_management_only_effect_expiry_releases_cascade_without_reappearance() -
     assert decision.cascade_suppressions == ()
 
 
-def test_reconfiguration_clears_management_only_effect() -> None:
+def test_compatible_reconfiguration_preserves_management_only_effect_and_cascade() -> None:
     started, ids, plans = _start_impact_and_risk()
+    plans[0] = replace(plans[0], reappearance_after_seconds=300)
     managed_at = NOW + timedelta(minutes=1)
     managed = _manage_impact(started, ids, plans, at=managed_at)
     close_at = managed_at + timedelta(minutes=1)
@@ -564,16 +563,35 @@ def test_reconfiguration_clears_management_only_effect() -> None:
         at=close_at,
         ids=ids,
     )
-    reset_at = close_at + timedelta(seconds=10)
-    decision = reset_group_for_reconfiguration(impact_closed.state, effective_at=reset_at)
-    assert decision.state.alarms == ()
-    assert decision.state.episode is None
-    assert any(
-        change.alarm_identity == identity('impact')
-        and change.kind is ManagementEffectChangeKind.CLEARED
-        for change in decision.management_effect_changes
+    previous_impact = impact_closed.state.get(identity('impact'))
+    previous_risk = impact_closed.state.get(identity('risk'))
+    assert previous_impact is not None and previous_impact.occurrence is None
+    assert previous_impact.management_effect is not None
+    assert previous_risk is not None and previous_risk.occurrence is not None
+
+    changed_plan = replace(
+        plans[0],
+        routing=replace(plans[0].routing, origin_tool_key='tool-c'),
     )
-    assert any(change.kind is OccurrenceChangeKind.CLOSED for change in decision.occurrence_changes)
+    adopted_at = close_at + timedelta(seconds=10)
+    decision = reconcile_group_configuration(
+        impact_closed.state,
+        effective_at=adopted_at,
+        planned_alarms=(changed_plan, plans[1]),
+    )
+
+    impact = decision.state.get(identity('impact'))
+    risk = decision.state.get(identity('risk'))
+    assert impact is not None and impact.occurrence is None
+    assert impact.management_effect == previous_impact.management_effect
+    assert risk is not None and risk.occurrence == previous_risk.occurrence
+    assert decision.state.episode == impact_closed.state.episode
+    assert decision.occurrence_changes == ()
+    assert decision.episode_changes == ()
+    assert decision.management_effect_changes == ()
+    assert {item.target_alarm_identity for item in decision.cascade_suppressions} == {
+        identity('risk')
+    }
 
 
 def test_duplicate_management_input_id_is_rejected() -> None:

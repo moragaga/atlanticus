@@ -13,8 +13,8 @@ from ada.alarms.core import (
     RoutingDestination,
     ToolAssignment,
     is_deactivated,
+    reconcile_group_configuration,
     reduce_group_cycle,
-    reset_group_for_reconfiguration,
 )
 from ada.contracts.alarms import AlarmKind
 
@@ -516,7 +516,7 @@ def test_deactivated_higher_priority_alarm_is_not_predominant() -> None:
     assert dispositions[identity('risk')] is PriorityDisposition.CASCADE_SUPPRESSED
 
 
-def test_structural_reset_preserves_active_deactivation_effect() -> None:
+def test_compatible_origin_change_preserves_active_deactivation_effect() -> None:
     started, ids, alarm = _start(approval_required=False)
     at = NOW + timedelta(minutes=1)
     deactivated = _reduce(
@@ -533,13 +533,23 @@ def test_structural_reset_preserves_active_deactivation_effect() -> None:
         ),
         ids=ids,
     )
-    reset_at = at + timedelta(minutes=1)
-    reset = reset_group_for_reconfiguration(deactivated.state, effective_at=reset_at)
-    runtime = reset.state.get(identity('risk'))
-    assert runtime is not None and runtime.occurrence is None
-    assert runtime.deactivation_effect is not None
+    previous = deactivated.state.get(identity('risk'))
+    assert previous is not None and previous.occurrence is not None
+    assert previous.deactivation_effect is not None
+    adopted_at = at + timedelta(minutes=1)
+    changed = plan('risk', deactivation_approval_required=False, origin_tool_key='tool-new')
+    decision = reconcile_group_configuration(
+        deactivated.state,
+        effective_at=adopted_at,
+        planned_alarms=(changed,),
+    )
+    runtime = decision.state.get(identity('risk'))
+    assert runtime is not None
+    assert runtime.occurrence == previous.occurrence
+    assert runtime.deactivation_effect == previous.deactivation_effect
     assert runtime.deactivation_effect.effective_until == at + timedelta(hours=1)
-    assert reset.deactivation_effect_changes == ()
+    assert decision.deactivation_effect_changes == ()
+    assert decision.occurrence_changes == ()
 
 
 def test_approved_decision_after_request_window_is_expired() -> None:

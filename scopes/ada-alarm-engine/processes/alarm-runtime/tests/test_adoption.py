@@ -79,7 +79,7 @@ def test_disabled_and_removed_are_distinct_adoption_changes() -> None:
     )
 
 
-def test_criticality_and_origin_changes_require_structural_reset() -> None:
+def test_criticality_and_origin_changes_preserve_compatibility() -> None:
     source = engine_configuration()
     target_base = engine_configuration(release='ALARMS-8')
     criticality_target = _with_plan(
@@ -97,7 +97,39 @@ def test_criticality_and_origin_changes_require_structural_reset() -> None:
     for target in (criticality_target, origin_target):
         plan = plan_configuration_adoption(source, target)
         assert plan.is_adoptable is True
-        assert plan.changes[0].disposition is ConfigurationAdoptionDisposition.STRUCTURAL_RESET
+        assert plan.changes[0].disposition is ConfigurationAdoptionDisposition.COMPATIBLE
+
+
+def test_origin_change_on_c1_is_compatible_but_destination_mutation_is_rejected() -> None:
+    source = engine_configuration()
+    target_base = engine_configuration(release='ALARMS-8')
+    origin_target = _with_plan(
+        target_base,
+        replace(
+            target_base.planned_alarms[0],
+            routing=AlarmRouting(origin_tool_key='tool_b'),
+        ),
+    )
+    destination_target = _with_plan(
+        target_base,
+        replace(
+            target_base.planned_alarms[0],
+            routing=AlarmRouting(
+                origin_tool_key='tool_a',
+                destinations=(RoutingDestination(tool_key='tool_b'),),
+            ),
+        ),
+    )
+
+    origin_plan = plan_configuration_adoption(source, origin_target)
+    destination_plan = plan_configuration_adoption(source, destination_target)
+
+    assert origin_plan.is_adoptable is True
+    assert origin_plan.changes[0].disposition is ConfigurationAdoptionDisposition.COMPATIBLE
+    assert destination_plan.is_adoptable is False
+    assert destination_plan.changes[0].rejection_reason is (
+        ConfigurationAdoptionRejectionReason.C1_ROUTING_MUTATION_UNSUPPORTED
+    )
 
 
 def test_c2_destination_change_is_compatible() -> None:

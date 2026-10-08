@@ -36,7 +36,6 @@ from ada.alarms.core.lifecycle import (
     OccurrenceIdFactory,
     reconcile_group_configuration,
     reduce_group_cycle,
-    reset_group_for_reconfiguration,
 )
 from ada.alarms.core.management import (
     ManagementEffectIdFactory,
@@ -201,7 +200,6 @@ __all__ = [
     'is_directly_managed',
     'reconcile_group_configuration',
     'reduce_group_cycle',
-    'reset_group_for_reconfiguration',
     'resolve_alarm_routing',
     'resolve_group_priority',
     'resolve_group_routing',

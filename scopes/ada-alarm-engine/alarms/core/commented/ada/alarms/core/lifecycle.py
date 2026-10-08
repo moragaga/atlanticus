@@ -357,89 +357,17 @@ def reduce_group_cycle(
     )
 
 
-# Cierra continuidad estructural y conserva cualquier DeactivationEffect que siga vigente.
-def reset_group_for_reconfiguration(
-    state: GroupLifecycleState,
-    *,
-    effective_at: datetime,
-) -> GroupLifecycleDecision:
-    _validate_cycle_at(effective_at)
-    working, expired_deactivation_changes = _expire_deactivation_effects(
-        {alarm.alarm_identity: alarm for alarm in state.alarms},
-        cutoff=effective_at,
-        include_equal=True,
-    )
-    occurrence_changes: list[OccurrenceChange] = []
-    technical_hold_changes: list[TechnicalHoldChange] = []
-    management_effect_changes: list[ManagementEffectChange] = []
-    retained: list[AlarmRuntimeState] = []
-    for alarm in sorted(working.values(), key=lambda item: item.alarm_identity):
-        if alarm.occurrence is not None:
-            closed = alarm.occurrence.close(
-                ended_at=effective_at,
-                reason=OccurrenceClosureReason.CONFIGURATION_RECONFIGURED,
-            )
-            occurrence_changes.append(
-                OccurrenceChange(kind=OccurrenceChangeKind.CLOSED, occurrence=closed)
-            )
-            if alarm.technical_hold is not None:
-                technical_hold_changes.append(
-                    TechnicalHoldChange(
-                        kind=TechnicalHoldChangeKind.CLEARED,
-                        alarm_identity=alarm.alarm_identity,
-                        occurrence_id=alarm.occurrence.occurrence_id,
-                        effective_at=effective_at,
-                    )
-                )
-        if alarm.management_effect is not None:
-            management_effect_changes.append(
-                ManagementEffectChange(
-                    kind=ManagementEffectChangeKind.CLEARED,
-                    alarm_identity=alarm.alarm_identity,
-                    effective_at=effective_at,
-                )
-            )
-        if alarm.deactivation_effect is not None:
-            retained.append(
-                AlarmRuntimeState(
-                    alarm_identity=alarm.alarm_identity,
-                    deactivation_effect=alarm.deactivation_effect,
-                )
-            )
-    episode_changes: tuple[EpisodeChange, ...] = ()
-    if state.episode is not None:
-        closed_episode = state.episode.close(
-            ended_at=effective_at,
-            reason=EpisodeClosureReason.CONFIGURATION_TERMINATED,
-        )
-        episode_changes = (EpisodeChange(kind=EpisodeChangeKind.CLOSED, episode=closed_episode),)
-    return GroupLifecycleDecision(
-        state=GroupLifecycleState(
-            priority_group=state.priority_group,
-            alarms=tuple(retained),
-        ),
-        occurrence_changes=tuple(occurrence_changes),
-        episode_changes=episode_changes,
-        technical_hold_changes=tuple(technical_hold_changes),
-        management_effect_changes=tuple(management_effect_changes),
-        deactivation_effect_changes=expired_deactivation_changes,
-    )
-
-
-# Aplica cierres, routing compatible o structural reset ya decididos por Runtime, sin reevaluar alarmas.
+# Reconciliación de cierres y routing sin interrumpir gestiones por cambios compatibles.
 def reconcile_group_configuration(
     state: GroupLifecycleState,
     *,
     effective_at: datetime,
     planned_alarms: Sequence[PlannedAlarm],
     configuration_closures: Sequence[ConfigurationClosure] = (),
-    structural_reset: bool = False,
 ) -> GroupLifecycleDecision:
     if not isinstance(state, GroupLifecycleState):
         raise TypeError('state must be a GroupLifecycleState')
     _validate_cycle_at(effective_at)
-    if not isinstance(structural_reset, bool):
-        raise TypeError('structural_reset must be a bool')
     plans = _index_plans(state.priority_group, planned_alarms)
     closures = _index_closures(effective_at, configuration_closures)
     if set(plans) & set(closures):
@@ -449,44 +377,6 @@ def reconcile_group_configuration(
         cutoff=effective_at,
         include_equal=True,
     )
-    if structural_reset:
-        reset = reset_group_for_reconfiguration(
-            GroupLifecycleState(
-                priority_group=state.priority_group,
-                episode=state.episode,
-                alarms=tuple(working[identity] for identity in sorted(working)),
-            ),
-            effective_at=effective_at,
-        )
-        working = {alarm.alarm_identity: alarm for alarm in reset.state.alarms}
-        deactivation_effect_changes = [
-            *expired_deactivation_changes,
-            *reset.deactivation_effect_changes,
-        ]
-        next_state = GroupLifecycleState(
-            priority_group=state.priority_group,
-            alarms=tuple(working[identity] for identity in sorted(working)),
-        )
-        priority = resolve_group_priority(next_state, planned_alarms=tuple(plans.values()))
-        return GroupLifecycleDecision(
-            state=next_state,
-            occurrence_changes=reset.occurrence_changes,
-            episode_changes=reset.episode_changes,
-            technical_hold_changes=reset.technical_hold_changes,
-            management_effect_changes=reset.management_effect_changes,
-            deactivation_effect_changes=tuple(
-                sorted(
-                    deactivation_effect_changes,
-                    key=lambda change: (
-                        change.effective_at,
-                        change.alarm_identity,
-                        change.kind.value,
-                    ),
-                )
-            ),
-            priority_resolution=priority,
-        )
-
     occurrence_changes: list[OccurrenceChange] = []
     technical_hold_changes: list[TechnicalHoldChange] = []
     deactivation_effect_changes = list(expired_deactivation_changes)
