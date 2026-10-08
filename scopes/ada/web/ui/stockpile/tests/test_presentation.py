@@ -30,21 +30,39 @@ def test_valid_source_text_is_preserved_in_svg():
     assert '65%' in svg and '18,2m' in svg
 
 
-def test_no_data_in_both_uses_maximum_empty_silhouette_and_information_labels():
+def test_no_data_in_both_uses_maximum_empty_silhouette_and_information_label():
     svg = _svg(_render(DisplayValue.empty(), DisplayValue.not_mapped()))
-    assert svg.count('Sin información') == 2
+    assert svg.count('Sin información') == 1
     assert 'clip-path="url(#stockpile-clip)"' not in svg
+    assert 'fill="url(#stockpile-light-volume)"' not in svg
+    assert 'fill="url(#stockpile-light-texture)"' not in svg
 
 
 def test_missing_percentage_shows_real_height_and_no_fill():
     svg = _svg(_render(DisplayValue.empty(), DisplayValue.ok('14')))
-    assert '14m' in svg and 'Sin información' in svg
+    assert '14m' in svg and svg.count('Sin información') == 1
     assert 'clip-path="url(#stockpile-clip)"' not in svg
+    assert 'fill="url(#stockpile-light-volume)"' not in svg
 
 
 def test_missing_height_preserves_percentage_label_but_not_fill():
     svg = _svg(_render(DisplayValue.ok('65'), DisplayValue.empty()))
-    assert '65%' in svg and 'Sin información' in svg
+    assert '65%' in svg and 'Sin información' not in svg
+    assert 'clip-path="url(#stockpile-clip)"' not in svg
+    assert 'fill="url(#stockpile-light-volume)"' not in svg
+
+
+def test_text_decimal_reading_preserves_number_and_fill():
+    svg = _svg(_render(DisplayValue.ok('12,3'), DisplayValue.ok('18,2')))
+    assert '12,3%' in svg
+    assert '18,2m' in svg
+    assert 'fill="url(#stockpile-dark-volume)"' in svg
+
+
+def test_valid_zero_percentage_renders_an_empty_outline():
+    svg = _svg(_render(DisplayValue.ok('0'), DisplayValue.ok('14')))
+    assert '0%' in svg and '14m' in svg
+    assert 'fill="url(#stockpile-light-volume)"' not in svg
     assert 'clip-path="url(#stockpile-clip)"' not in svg
 
 
@@ -56,8 +74,9 @@ def test_fixed_profile_uses_percentage_only():
 
 def test_fixed_profile_missing_percentage_remains_empty():
     svg = _svg(build_stockpile_component(FIXED, StockpileValues(DisplayValue.empty())))
-    assert 'Sin información' in svg
+    assert svg.count('Sin información') == 1
     assert 'clip-path="url(#stockpile-clip)"' not in svg
+    assert 'fill="url(#stockpile-light-volume)"' not in svg
 
 
 @pytest.mark.parametrize(

@@ -126,8 +126,8 @@ def _build_stockpile_content(
     badge_text = definition.percentage_text_color or '#f4f4f4'
 
     measurement = ''
-    if variable_height:
-        measurement_y = max(32, geometry.apex_y - 10)
+    if variable_height and values.height_text is not None:
+        measurement_y = max(16, geometry.apex_y - 10)
         measurement = f"""
         <line x1="{geometry.apex_x:.2f}" y1="{measurement_y + 4:.2f}"
             x2="{geometry.apex_x:.2f}" y2="{geometry.apex_y - 2:.2f}"
@@ -154,11 +154,10 @@ def _build_stockpile_content(
     """
     )
 
-    return f"""
-    <g>
-        <clipPath id="{clip_id}">
-            <path d="{geometry.path}"/>
-        </clipPath>
+    base_markup = (
+        ''
+        if fill_path is None
+        else f"""
         <path d="{geometry.path}"
             fill="url(#stockpile-light-volume)"
             stroke="#666666"
@@ -167,6 +166,15 @@ def _build_stockpile_content(
         <path d="{geometry.path}"
             fill="url(#stockpile-light-texture)"
             opacity="0.72"/>
+    """
+    )
+
+    return f"""
+    <g>
+        <clipPath id="{clip_id}">
+            <path d="{geometry.path}"/>
+        </clipPath>
+        {base_markup}
         {fill_markup}
         <path d="{geometry.path}"
             fill="none"

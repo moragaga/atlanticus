@@ -91,7 +91,8 @@ def _resolve_render_values(
             height_text = f'{height.text}m'
         else:
             height_ratio = 1.0 if missing_both else 0.0
-            height_text = _NO_INFORMATION
+    # Una altura ausente no debe crear un texto superior ficticio: solo la etiqueta inferior comunica el porcentaje.
+    # Si también falta el porcentaje, se conserva una silueta de tamaño máximo pero vacía.
     show_fill = has_percentage and (
         has_height or definition.variant is StockpileVariant.FIXED_PROFILE
     )
