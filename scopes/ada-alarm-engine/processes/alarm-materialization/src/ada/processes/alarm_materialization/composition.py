@@ -6,9 +6,7 @@ from dataclasses import dataclass
 
 from ada.alarms.persistence import LocalAlarmMaterializationStore, materialization_root
 from ada.processes.alarm_materialization.job import AlarmMaterializationJob
-from ada.processes.alarm_materialization.repository import (
-    CosmosAlarmConfigurationRepository,
-)
+from ada.processes.alarm_materialization.repository import CosmosAlarmConfigurationRepository
 from ada.processes.alarm_materialization.settings import AlarmMaterializationSettings
 from atlanticus.configuration import ResolvedConfiguration
 from atlanticus.connectivity.cosmos import CosmosClient
@@ -49,20 +47,20 @@ def build_composition(
     settings = AlarmMaterializationSettings.from_configuration(configuration)
     runtime_configuration = RuntimeConfiguration.from_sources(environ=configuration.values)
     cosmos = CosmosClient(settings=settings.cosmos)
-    reader = CosmosAlarmConfigurationRepository(
-        client=cosmos,
-    )
+    reader = CosmosAlarmConfigurationRepository(client=cosmos)
     job = AlarmMaterializationJob(
         reader=reader,
         store=LocalAlarmMaterializationStore(
             root=materialization_root(runtime_configuration.application_root),
         ),
+        readiness_retry_seconds=settings.poll_interval_seconds,
     )
     definition = JobDefinition(
         module_name='ada.processes.alarm_materialization',
         service_name='alarm-materialization',
         job_key='alarm-materialization',
-        sleep_seconds=settings.poll_interval_seconds,
+        run_once=True,
+        sleep_seconds=0,
         iteration_timeout_seconds=580,
         execution_timeout_seconds=600,
         shutdown_grace_seconds=10,

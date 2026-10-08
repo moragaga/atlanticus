@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -19,6 +20,7 @@ from ada.processes.alarm_materialization.repository import AlarmConfigurationRea
 from atlanticus.runtime import JobRuntimeContext
 
 READINESS_RETRY_SECONDS = 30.0
+READINESS_MAX_ATTEMPTS = 3
 
 
 class AlarmMaterializationOutcome(StrEnum):
@@ -40,20 +42,26 @@ class AlarmMaterializationJob:
         *,
         reader: AlarmConfigurationReader,
         store: LocalAlarmMaterializationStore,
+        readiness_retry_seconds: float = READINESS_RETRY_SECONDS,
     ) -> None:
         if not callable(getattr(reader, 'read_active', None)):
             raise TypeError('reader must provide read_active()')
         if not isinstance(store, LocalAlarmMaterializationStore):
             raise TypeError('store must be a LocalAlarmMaterializationStore')
+        if (
+            isinstance(readiness_retry_seconds, bool)
+            or not isinstance(readiness_retry_seconds, int | float)
+            or not math.isfinite(readiness_retry_seconds)
+            or readiness_retry_seconds <= 0
+        ):
+            raise ValueError('readiness_retry_seconds must be a positive finite number')
         self._reader = reader
         self._store = store
+        self._readiness_retry_seconds = float(readiness_retry_seconds)
 
     def run_iteration(self, context: JobRuntimeContext) -> AlarmMaterializationIterationResult:
-        context.raise_if_cancelled()
-        try:
-            candidate = self._reader.read_active()
-        except AlarmMaterializationConfigurationPending:
-            context.set_next_iteration_delay(READINESS_RETRY_SECONDS)
+        candidate = self._acquire(context)
+        if candidate is None:
             result = AlarmMaterializationIterationResult(
                 outcome=AlarmMaterializationOutcome.PENDING,
                 result_id=None,
@@ -71,7 +79,6 @@ class AlarmMaterializationJob:
             source_key=candidate.source_key,
             projection_digest=candidate.fingerprint,
         )
-
         existing = self._store.read_result(
             source_key=candidate.source_key,
             result_id=result_id,
@@ -111,9 +118,20 @@ class AlarmMaterializationJob:
         self._record(context, result=result, candidate=candidate)
         return result
 
-    def _revalidate(
-        self, candidate: AlarmMaterializationCandidate
-    ) -> None:
+    def _acquire(self, context: JobRuntimeContext) -> AlarmMaterializationCandidate | None:
+        for attempt in range(READINESS_MAX_ATTEMPTS):
+            context.raise_if_cancelled()
+            try:
+                return self._reader.read_active()
+            except AlarmMaterializationConfigurationPending:
+                if attempt == READINESS_MAX_ATTEMPTS - 1:
+                    return None
+                if not context.wait(self._readiness_retry_seconds):
+                    context.raise_if_cancelled()
+                    return None
+        return None
+
+    def _revalidate(self, candidate: AlarmMaterializationCandidate) -> None:
         current = self._reader.read_active()
         if (
             current.source_release_id != candidate.source_release_id
@@ -123,7 +141,6 @@ class AlarmMaterializationJob:
                 'Alarm Configuration projection changed during materialization'
             )
 
-
     @staticmethod
     def _record(
         context: JobRuntimeContext,
@@ -132,6 +149,7 @@ class AlarmMaterializationJob:
         candidate: AlarmMaterializationCandidate | None,
     ) -> None:
         context.set_iteration_fact('outcome', result.outcome.value)
+        context.set_execution_fact('materialization_outcome', result.outcome.value)
         if result.result_id is not None:
             context.set_iteration_fact('result_id', result.result_id)
         if candidate is not None:

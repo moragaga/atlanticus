@@ -6,8 +6,6 @@ from pathlib import Path
 
 import pytest
 
-
-
 from ada.alarms.persistence import LocalAlarmMaterializationStore
 from ada.contracts.alarms import (
     ALARM_CONFIGURATION_SOURCE_KEY,
@@ -30,6 +28,7 @@ from ada.contracts.tools import ToolDependencyEntry, ToolDependencyManifest
 from ada.contracts.tools.enums import ToolConfigurationKind, ToolScope
 from ada.contracts.tools.structure import ToolComponent, ToolStructure, ToolSubcomponent
 from ada.processes.alarm_materialization import (
+    AlarmMaterializationAcquisitionError,
     AlarmMaterializationCandidate,
     AlarmMaterializationConfigurationPending,
     AlarmMaterializationJob,
@@ -42,7 +41,7 @@ class FakeContext:
     def __init__(self) -> None:
         self.facts: dict[str, object] = {}
         self.work_count = 0
-        self.next_delay: float | None = None
+        self.waits: list[float] = []
         self.fenced_count = 0
 
     def raise_if_cancelled(self) -> None:
@@ -62,8 +61,12 @@ class FakeContext:
     def set_iteration_fact(self, key: str, value: object) -> None:
         self.facts[key] = value
 
-    def set_next_iteration_delay(self, seconds: float) -> None:
-        self.next_delay = seconds
+    def set_execution_fact(self, key: str, value: object) -> None:
+        self.facts[key] = value
+
+    def wait(self, seconds: float) -> bool:
+        self.waits.append(seconds)
+        return True
 
 
 class StaticReader:
@@ -92,22 +95,35 @@ class ChangingReader:
 
 
 class PendingReader:
+    def __init__(self, *, pending_count: int = 10, candidate=None) -> None:
+        self.pending_count = pending_count
+        self.candidate = candidate
+        self.calls = 0
+
     def read_active(self) -> AlarmMaterializationCandidate:
-        raise AlarmMaterializationConfigurationPending(
-            'Alarm Configuration projection is not available yet'
-        )
+        self.calls += 1
+        if self.calls <= self.pending_count:
+            raise AlarmMaterializationConfigurationPending(
+                'Alarm Configuration projection is not available yet'
+            )
+        assert self.candidate is not None
+        return self.candidate
 
 
+class FailingReader:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def read_active(self) -> AlarmMaterializationCandidate:
+        self.calls += 1
+        raise AlarmMaterializationAcquisitionError('Could not read projection')
 
 
 def test_job_publishes_ready_then_becomes_unchanged(tmp_path: Path) -> None:
     candidate = _candidate()
     reader = StaticReader(candidate)
     store = LocalAlarmMaterializationStore(root=tmp_path / 'materialization')
-    job = AlarmMaterializationJob(
-        reader=reader,
-        store=store,
-    )
+    job = AlarmMaterializationJob(reader=reader, store=store)
 
     first_context = FakeContext()
     first = job.run_iteration(first_context)
@@ -117,10 +133,12 @@ def test_job_publishes_ready_then_becomes_unchanged(tmp_path: Path) -> None:
     assert first.outcome is AlarmMaterializationOutcome.READY
     assert first.result_id is not None
     assert first_context.work_count == 1
+    assert first_context.waits == []
     assert store.read_published_ready(source_key=ALARM_CONFIGURATION_SOURCE_KEY) is not None
     assert second.outcome is AlarmMaterializationOutcome.UNCHANGED
     assert second.result_id == first.result_id
     assert second_context.work_count == 0
+    assert second_context.waits == []
 
 
 def test_job_persists_blocked_without_replacing_ready(tmp_path: Path) -> None:
@@ -138,11 +156,13 @@ def test_job_persists_blocked_without_replacing_ready(tmp_path: Path) -> None:
         reader=StaticReader(blocked_candidate),
         store=store,
     )
-    blocked = blocked_job.run_iteration(FakeContext())
+    context = FakeContext()
+    blocked = blocked_job.run_iteration(context)
     current_after = store.read_published_ready(source_key=ALARM_CONFIGURATION_SOURCE_KEY)
 
     assert ready.outcome is AlarmMaterializationOutcome.READY
     assert blocked.outcome is AlarmMaterializationOutcome.BLOCKED
+    assert context.waits == []
     assert blocked.result_id is not None
     assert (
         store.read_result(
@@ -156,9 +176,10 @@ def test_job_persists_blocked_without_replacing_ready(tmp_path: Path) -> None:
     assert current_after.result_id == current_before.result_id
 
 
-def test_job_treats_missing_projection_as_pending_without_mutation(tmp_path: Path) -> None:
+def test_job_retries_missing_projection_twice_then_returns_pending(tmp_path: Path) -> None:
+    reader = PendingReader()
     job = AlarmMaterializationJob(
-        reader=PendingReader(),
+        reader=reader,
         store=LocalAlarmMaterializationStore(root=tmp_path / 'materialization'),
     )
     context = FakeContext()
@@ -167,9 +188,46 @@ def test_job_treats_missing_projection_as_pending_without_mutation(tmp_path: Pat
 
     assert result.outcome is AlarmMaterializationOutcome.PENDING
     assert result.result_id is None
-    assert context.next_delay == 30.0
+    assert context.facts['outcome'] == 'PENDING'
+    assert context.facts['materialization_outcome'] == 'PENDING'
+    assert reader.calls == 3
+    assert context.waits == [30.0, 30.0]
     assert context.fenced_count == 0
     assert context.work_count == 0
+
+
+def test_job_materializes_if_projection_appears_after_retry(tmp_path: Path) -> None:
+    reader = PendingReader(pending_count=2, candidate=_candidate())
+    job = AlarmMaterializationJob(
+        reader=reader,
+        store=LocalAlarmMaterializationStore(root=tmp_path / 'materialization'),
+        readiness_retry_seconds=12.5,
+    )
+    context = FakeContext()
+
+    result = job.run_iteration(context)
+
+    assert result.outcome is AlarmMaterializationOutcome.READY
+    assert reader.calls == 4
+    assert context.waits == [12.5, 12.5]
+    assert context.work_count == 1
+    assert context.fenced_count == 1
+
+
+def test_job_does_not_retry_operational_acquisition_error(tmp_path: Path) -> None:
+    reader = FailingReader()
+    job = AlarmMaterializationJob(
+        reader=reader,
+        store=LocalAlarmMaterializationStore(root=tmp_path / 'materialization'),
+    )
+    context = FakeContext()
+
+    with pytest.raises(AlarmMaterializationAcquisitionError):
+        job.run_iteration(context)
+
+    assert reader.calls == 1
+    assert context.waits == []
+    assert context.fenced_count == 0
 
 
 def test_job_rejects_projection_changed_before_publication(tmp_path: Path) -> None:
@@ -185,8 +243,6 @@ def test_job_rejects_projection_changed_before_publication(tmp_path: Path) -> No
         job.run_iteration(FakeContext())
 
     assert store.read_published_ready(source_key=ALARM_CONFIGURATION_SOURCE_KEY) is None
-
-
 
 
 def _candidate(
@@ -215,8 +271,6 @@ def _candidate(
         ),
     )
     return AlarmMaterializationCandidate.capture(projection)
-
-
 
 
 def _rule() -> AlarmDefinition:

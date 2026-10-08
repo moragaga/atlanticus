@@ -44,6 +44,23 @@ def test_composition_carries_forced_stop_into_runtime_without_opening_cosmos(tmp
     assert result.stop_reason == 'execution_disabled'
 
 
+def test_composition_finishes_successfully_after_one_unchanged_iteration(tmp_path) -> None:
+    composition = build_composition(configuration=_configuration(tmp_path))
+    calls = []
+
+    def unchanged(context):
+        calls.append(context)
+        context.set_iteration_fact('outcome', 'UNCHANGED')
+
+    composition.job.run_iteration = unchanged
+
+    result = composition.execute(argv=[])
+
+    assert result.iteration_count == 1
+    assert result.stop_reason == 'run_once'
+    assert len(calls) == 1
+
+
 def test_materialization_configuration_exposes_no_manual_qualification_or_container() -> None:
     keys = {spec.key for spec in configuration_specs()}
     assert 'ALARM_CONFIGURATION_CONTAINER_NAME' not in keys
@@ -51,3 +68,28 @@ def test_materialization_configuration_exposes_no_manual_qualification_or_contai
     assert 'ADA_COMMAND_CENTER_COSMOS_ENDPOINT' in keys
     assert 'ADA_COMMAND_CENTER_COSMOS_DATABASE_NAME' in keys
     assert 'ADA_COMMAND_CENTER_COSMOS_KEY' in keys
+
+
+def test_azure_preview_extension_builds_for_materialization(tmp_path: Path) -> None:
+    from atlanticus.observability import ObservabilitySettings
+    from atlanticus.observability_azure import build_azure_observability_extension
+
+    settings = ObservabilitySettings.build(
+        application='ada-alarm-materialization-test',
+        service='alarm-materialization',
+        module='ada.processes.alarm_materialization',
+        component='runtime',
+        environment=Environment.from_value('local'),
+        volume_path=tmp_path,
+        file_logs_enabled=True,
+    )
+    extension = build_azure_observability_extension(
+        observability_settings=settings,
+        environ={
+            'ATLANTICUS_AZURE_OBSERVABILITY_MODE': 'preview',
+            'ATLANTICUS_AZURE_OBSERVABILITY_PROFILE': 'slim',
+        },
+        volume_path=tmp_path,
+    )
+
+    assert extension.enabled is True

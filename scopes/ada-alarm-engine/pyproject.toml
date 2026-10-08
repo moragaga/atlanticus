@@ -30,6 +30,7 @@ atlanticus-datasets-runtime = { path = "../../backend/datasets-runtime", editabl
 atlanticus-job-runtime = { path = "../../backend/runtime", editable = true }
 atlanticus-key-vault = { path = "../../connectivity/key-vault", editable = true }
 atlanticus-kernel = { path = "../../backend/kernel", editable = true }
+atlanticus-observability-azure = { path = "../../backend/observability-azure", editable = true }
 atlanticus-operational-data-calendar = { path = "../operational-data/operational-calendar", editable = true }
 atlanticus-operational-data-core = { path = "../operational-data/core", editable = true }
 atlanticus-operational-data-dataset-reader = { path = "../operational-data/dataset-reader", editable = true }
@@ -65,13 +66,3 @@ ignore = ["E501"]
 [tool.ruff.lint.isort]
 known-first-party = ["ada", "atlanticus"]
 combine-as-imports = true
-
-[tool.pytest.ini_options]
-addopts = "-q --import-mode=importlib"
-testpaths = [
-    "alarms/core/tests",
-    "alarms/materialization/tests",
-    "alarms/persistence/tests",
-    "processes/alarm-materialization/tests",
-    "processes/alarm-runtime/tests",
-]

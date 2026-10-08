@@ -1,6 +1,7 @@
-# El job fija una publicación, materializa y revalida el mismo snapshot antes de escribir bajo fencing.
+# El job se ejecuta una vez por invocación, con hasta tres intentos de adquirir la publicación.
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -19,10 +20,11 @@ from ada.processes.alarm_materialization.errors import (
 from ada.processes.alarm_materialization.repository import AlarmConfigurationReader
 from atlanticus.runtime import JobRuntimeContext
 
+# La espera solo aplica cuando aún no existe la proyección; no se usa después de READY.
 READINESS_RETRY_SECONDS = 30.0
+READINESS_MAX_ATTEMPTS = 3
 
 
-# Implementación del contrato AlarmMaterializationOutcome.
 class AlarmMaterializationOutcome(StrEnum):
     READY = 'READY'
     BLOCKED = 'BLOCKED'
@@ -31,33 +33,38 @@ class AlarmMaterializationOutcome(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
-# Implementación del contrato AlarmMaterializationIterationResult.
 class AlarmMaterializationIterationResult:
     outcome: AlarmMaterializationOutcome
     result_id: str | None
 
 
-# Implementación del contrato AlarmMaterializationJob.
 class AlarmMaterializationJob:
     def __init__(
         self,
         *,
         reader: AlarmConfigurationReader,
         store: LocalAlarmMaterializationStore,
+        readiness_retry_seconds: float = READINESS_RETRY_SECONDS,
     ) -> None:
         if not callable(getattr(reader, 'read_active', None)):
             raise TypeError('reader must provide read_active()')
         if not isinstance(store, LocalAlarmMaterializationStore):
             raise TypeError('store must be a LocalAlarmMaterializationStore')
+        if (
+            isinstance(readiness_retry_seconds, bool)
+            or not isinstance(readiness_retry_seconds, int | float)
+            or not math.isfinite(readiness_retry_seconds)
+            or readiness_retry_seconds <= 0
+        ):
+            raise ValueError('readiness_retry_seconds must be a positive finite number')
         self._reader = reader
         self._store = store
+        self._readiness_retry_seconds = float(readiness_retry_seconds)
 
+    # Una iteración de Atlanticus abarca también los reintentos breves de readiness.
     def run_iteration(self, context: JobRuntimeContext) -> AlarmMaterializationIterationResult:
-        context.raise_if_cancelled()
-        try:
-            candidate = self._reader.read_active()
-        except AlarmMaterializationConfigurationPending:
-            context.set_next_iteration_delay(READINESS_RETRY_SECONDS)
+        candidate = self._acquire(context)
+        if candidate is None:
             result = AlarmMaterializationIterationResult(
                 outcome=AlarmMaterializationOutcome.PENDING,
                 result_id=None,
@@ -75,7 +82,6 @@ class AlarmMaterializationJob:
             source_key=candidate.source_key,
             projection_digest=candidate.fingerprint,
         )
-
         existing = self._store.read_result(
             source_key=candidate.source_key,
             result_id=result_id,
@@ -89,6 +95,7 @@ class AlarmMaterializationJob:
             confirmed_tool_catalog=projection.snapshot.tool_dependencies,
         )
 
+        # La segunda lectura evita publicar una revisión reemplazada mientras materializábamos.
         context.raise_if_cancelled()
         self._revalidate(candidate)
         context.assert_lease_current()
@@ -115,9 +122,22 @@ class AlarmMaterializationJob:
         self._record(context, result=result, candidate=candidate)
         return result
 
-    def _revalidate(
-        self, candidate: AlarmMaterializationCandidate
-    ) -> None:
+    # Solo se reintenta la ausencia administrativa de proyección, no errores de Cosmos ni contratos.
+    def _acquire(self, context: JobRuntimeContext) -> AlarmMaterializationCandidate | None:
+        for attempt in range(READINESS_MAX_ATTEMPTS):
+            context.raise_if_cancelled()
+            try:
+                return self._reader.read_active()
+            except AlarmMaterializationConfigurationPending:
+                if attempt == READINESS_MAX_ATTEMPTS - 1:
+                    return None
+                # La espera cooperativa atiende SIGTERM y el límite de ejecución.
+                if not context.wait(self._readiness_retry_seconds):
+                    context.raise_if_cancelled()
+                    return None
+        return None
+
+    def _revalidate(self, candidate: AlarmMaterializationCandidate) -> None:
         current = self._reader.read_active()
         if (
             current.source_release_id != candidate.source_release_id
@@ -127,7 +147,7 @@ class AlarmMaterializationJob:
                 'Alarm Configuration projection changed during materialization'
             )
 
-
+    # Los hechos operativos preservan el outcome sin introducir logs en el dominio.
     @staticmethod
     def _record(
         context: JobRuntimeContext,
@@ -136,6 +156,7 @@ class AlarmMaterializationJob:
         candidate: AlarmMaterializationCandidate | None,
     ) -> None:
         context.set_iteration_fact('outcome', result.outcome.value)
+        context.set_execution_fact('materialization_outcome', result.outcome.value)
         if result.result_id is not None:
             context.set_iteration_fact('result_id', result.result_id)
         if candidate is not None:

@@ -1,4 +1,4 @@
-# La composición toma el Cosmos de entrada y publica artefactos en el volumen compartido.
+# La composición define una ejecución de un solo job; el job gestiona sus reintentos internos.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -7,9 +7,7 @@ from dataclasses import dataclass
 
 from ada.alarms.persistence import LocalAlarmMaterializationStore, materialization_root
 from ada.processes.alarm_materialization.job import AlarmMaterializationJob
-from ada.processes.alarm_materialization.repository import (
-    CosmosAlarmConfigurationRepository,
-)
+from ada.processes.alarm_materialization.repository import CosmosAlarmConfigurationRepository
 from ada.processes.alarm_materialization.settings import AlarmMaterializationSettings
 from atlanticus.configuration import ResolvedConfiguration
 from atlanticus.connectivity.cosmos import CosmosClient
@@ -22,7 +20,6 @@ from atlanticus.runtime import (
 
 
 @dataclass(slots=True)
-# Implementación del contrato AlarmMaterializationComposition.
 class AlarmMaterializationComposition:
     configuration: ResolvedConfiguration
     runtime_configuration: RuntimeConfiguration
@@ -31,6 +28,7 @@ class AlarmMaterializationComposition:
     job: AlarmMaterializationJob
     definition: JobDefinition
 
+    # El Runtime común conserva lease, fencing, telemetría y cierre limpio.
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
         with ExitStack() as stack:
             stack.callback(self.cosmos.close)
@@ -42,7 +40,6 @@ class AlarmMaterializationComposition:
             )
 
 
-# Implementación del contrato build_composition.
 def build_composition(
     *,
     configuration: ResolvedConfiguration,
@@ -52,20 +49,22 @@ def build_composition(
     settings = AlarmMaterializationSettings.from_configuration(configuration)
     runtime_configuration = RuntimeConfiguration.from_sources(environ=configuration.values)
     cosmos = CosmosClient(settings=settings.cosmos)
-    reader = CosmosAlarmConfigurationRepository(
-        client=cosmos,
-    )
+    reader = CosmosAlarmConfigurationRepository(client=cosmos)
     job = AlarmMaterializationJob(
         reader=reader,
         store=LocalAlarmMaterializationStore(
             root=materialization_root(runtime_configuration.application_root),
         ),
+        # El intervalo existente ahora regula solamente las esperas por PENDING.
+        readiness_retry_seconds=settings.poll_interval_seconds,
     )
     definition = JobDefinition(
         module_name='ada.processes.alarm_materialization',
         service_name='alarm-materialization',
         job_key='alarm-materialization',
-        sleep_seconds=settings.poll_interval_seconds,
+        # La ejecución termina tras READY, BLOCKED, UNCHANGED o PENDING agotado.
+        run_once=True,
+        sleep_seconds=0,
         iteration_timeout_seconds=580,
         execution_timeout_seconds=600,
         shutdown_grace_seconds=10,

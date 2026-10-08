@@ -17,6 +17,7 @@ dependencies = [
     "atlanticus-job-runtime==1.0.0",
     "atlanticus-key-vault==1.0.0",
     "atlanticus-kernel==1.0.0",
+    "atlanticus-observability-azure==1.0.0",
 ]
 
 [dependency-groups]
