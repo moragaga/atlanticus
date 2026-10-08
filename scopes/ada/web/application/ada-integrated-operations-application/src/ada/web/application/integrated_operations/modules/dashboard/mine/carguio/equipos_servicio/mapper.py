@@ -56,7 +56,7 @@ def _latest_values(
         return None, DisplayStatus.INVALID
     latest = store_data.get('latest')
     if latest is None:
-        return None, DisplayStatus.EMPTY
+        return None, DisplayStatus.NOT_MAPPED
     if not isinstance(latest, Mapping):
         return None, DisplayStatus.INVALID
     values = latest.get('values')

@@ -81,7 +81,7 @@ def _latest_values(store_data: object) -> Mapping[str, object]:
         raise MovimientoMinaContractError('General Mina store must be an object')
     latest = store_data.get('latest')
     if latest is None:
-        raise MovimientoMinaUnavailableError(KpiLatestValueState.MISSING)
+        raise MovimientoMinaUnavailableError(KpiLatestValueState.NOT_MAPPED)
     if not isinstance(latest, Mapping):
         raise MovimientoMinaContractError('General Mina store latest payload must be an object')
     values = latest.get('values')
