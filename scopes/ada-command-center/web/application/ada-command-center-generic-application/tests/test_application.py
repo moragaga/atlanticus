@@ -1,3 +1,5 @@
+import pytest
+
 from ada_command_center.web.application.configuration_manager.dependencies import (
     CommandCenterAdministrationDependencies,
     ConfigurationManagerDependencies,
@@ -100,3 +102,42 @@ def test_definition_composes_identity_users_navigation_manager_and_pages(monkeyp
         'manager-surface',
         'ada-command-center-surface-router',
     )
+
+
+def test_master_projection_requires_namespace_from_host() -> None:
+    with pytest.raises(ValueError, match='namespace is required'):
+        application.create_application_definition(
+            _dependencies(),
+            identity_provider=LocalIdentityProvider(subject_id='local:jane-doe'),
+            users_runtime=UsersRuntime(),
+            master_material_reader=object(),
+        )
+
+
+def test_master_projection_binding_uses_configured_namespace(monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    from atlanticus.web.storage.namespace import StorageNamespace
+
+    class NamespaceObserved(Exception):
+        pass
+
+    dependencies = _dependencies()
+    monkeypatch.setattr(application, 'build_configuration_manager_surface',
+                        lambda _dependencies: _manager_surface_definition(dependencies))
+    monkeypatch.setattr(application, 'compose_command_center_master_projection_backend',
+                        lambda _dependencies: SimpleNamespace(planner=object(), executor=object()))
+
+    def binding(**kwargs):
+        assert kwargs['application_namespace'] == 'custom_ada/command_admin'
+        raise NamespaceObserved
+
+    monkeypatch.setattr(application, 'MasterProjectionWebBinding', binding)
+    with pytest.raises(NamespaceObserved):
+        application.create_application_definition(
+            dependencies,
+            identity_provider=LocalIdentityProvider(subject_id='local:jane-doe'),
+            users_runtime=UsersRuntime(),
+            master_material_reader=object(),
+            namespace=StorageNamespace('custom_ada', 'command_admin'),
+        )

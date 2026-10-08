@@ -12,6 +12,8 @@ def test_local_master_projection_provision_uses_derived_location(tmp_path: Path)
         environ_supplier=lambda: {
             'ATLANTICUS_ENVIRONMENT': 'local',
             'ADA_MANAGER_PERSISTENCE_PROVIDER': 'local',
+            'ADA_APPLICATION_NAMESPACE': 'conciencia_situacional',
+            'ADA_TOOL_NAMESPACE': 'command-center',
         },
     )
     runtime_root = tmp_path / 'runtime'

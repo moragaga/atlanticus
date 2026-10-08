@@ -198,7 +198,8 @@ def test_distinguishes_missing_container_from_container_without_tools() -> None:
         'missing': ToolCatalogConnectionStatus.NO_CONTAINER,
         'valid': ToolCatalogConnectionStatus.READY,
     }
-    assert len(report.consolidation_inputs(current=None)) == 1
+    with pytest.raises(ToolCatalogDiscoveryError, match='not ready'):
+        report.consolidation_inputs(current=None)
 
 
 def test_connection_error_blocks_all_inputs_without_disclosing_secrets() -> None:
@@ -314,7 +315,7 @@ def test_query_limit_blocks_instead_of_returning_partial_results() -> None:
 def test_no_tools_anywhere_cannot_construct_consolidator_inputs() -> None:
     report, _ = _discover({'empty': CosmosStub()})
 
-    with pytest.raises(ToolCatalogDiscoveryError, match='no confirmed candidates'):
+    with pytest.raises(ToolCatalogDiscoveryError, match='not ready'):
         report.consolidation_inputs(current=None)
 
 

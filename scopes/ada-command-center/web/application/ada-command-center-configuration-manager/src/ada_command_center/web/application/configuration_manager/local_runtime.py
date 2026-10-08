@@ -20,8 +20,6 @@ from ada_command_center.web.application.configuration_manager.administration imp
     compose_command_center_administration,
 )
 from ada_command_center.web.application.configuration_manager.catalog_configuration import (
-    COMMAND_CENTER_CATALOG_BLOB_NAME,
-    COMMAND_CENTER_NAMESPACE,
     STORAGE_CONTAINER_VARIABLE,
     ManagerConfigurationReader,
     catalog_storage_settings,
@@ -153,7 +151,7 @@ def open_local_configuration_manager(
     root = (base_root if base_root is not None else Path.cwd() / '.runtime').expanduser()
     if not root.is_absolute():
         raise ValueError('Local Manager base root must be absolute')
-    namespace = COMMAND_CENTER_NAMESPACE
+    namespace = reader.namespace
     persistence = compose_alarm_configuration_persistence(
         settings=AlarmConfigurationPersistenceSettings(
             source_provider=AlarmConfigurationSourceProvider.LOCAL,
@@ -181,13 +179,13 @@ def open_local_configuration_manager(
         projection_name='In-process Projection',
     )
     with ExitStack() as stack:
-        storage = StorageClient(settings=catalog_storage_settings(values))
+        storage = StorageClient(settings=catalog_storage_settings(values, allow_insecure_http=True))
         stack.callback(storage.close)
         catalog = BlobToolCatalogStore(
             storage=storage,
             settings=BlobToolCatalogStoreSettings(
                 container_name=values[STORAGE_CONTAINER_VARIABLE],
-                blob_name=COMMAND_CENTER_CATALOG_BLOB_NAME,
+                blob_name=namespace.scope_blob_name('tool-catalog/current.json'),
             ),
         )
         yield ConfigurationManagerDependencies(

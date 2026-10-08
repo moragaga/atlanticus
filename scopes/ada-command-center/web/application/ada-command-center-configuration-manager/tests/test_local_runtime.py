@@ -13,7 +13,6 @@ from ada_command_center.web.alarms.configuration.source_release import (
 )
 from ada_command_center.web.application.configuration_manager import ALARM_CONFIGURATION_SOURCE_KEY
 from ada_command_center.web.application.configuration_manager.catalog_configuration import (
-    COMMAND_CENTER_CATALOG_BLOB_NAME,
     ManagerConfigurationReader,
 )
 from ada_command_center.web.application.configuration_manager.local_runtime import (
@@ -55,6 +54,8 @@ def _reader(tmp_path, *, environment='local'):
         environ_supplier=lambda: {
             'ATLANTICUS_ENVIRONMENT': environment,
             'ADA_MANAGER_PERSISTENCE_PROVIDER': 'local',
+            'ADA_APPLICATION_NAMESPACE': 'conciencia_situacional',
+            'ADA_TOOL_NAMESPACE': 'command-center',
             'ADA_COMMAND_CENTER_STORAGE_CONNECTION_STRING': 'UseDevelopmentStorage=true',
             'ADA_COMMAND_CENTER_STORAGE_CONTAINER_NAME': 'configurations',
         },
@@ -92,6 +93,7 @@ def _manual_catalog():
         tool_key='mine_tool',
         kind=ToolConfigurationKind.PROCESS,
         operational_scope=ToolScope.PLANT,
+        center_component_key='process',
         components=(
             ToolComponent(
                 key='process',
@@ -171,7 +173,7 @@ def test_manually_confirmed_catalog_is_the_only_local_tool_source(tmp_path, monk
             storage=clients[-1],
             settings=BlobToolCatalogStoreSettings(
                 container_name='configurations',
-                blob_name=COMMAND_CENTER_CATALOG_BLOB_NAME,
+                blob_name=_reader(tmp_path).namespace.scope_blob_name('tool-catalog/current.json'),
             ),
         )
         snapshot = _manual_catalog()

@@ -90,6 +90,14 @@ class ToolCatalogDiscoveryReport:
     ) -> tuple[ToolCatalogInput, ...]:
         if any(item.status is ToolCatalogConnectionStatus.ERROR for item in self.connections):
             raise ToolCatalogDiscoveryError('Tool discovery contains blocking connection errors')
+        if any(
+            item.status in (
+                ToolCatalogConnectionStatus.NO_CONTAINER,
+                ToolCatalogConnectionStatus.NO_TOOLS,
+            )
+            for item in self.connections
+        ):
+            raise ToolCatalogDiscoveryError('Declared Tool Cosmos connection is not ready')
         tools = tuple(tool for connection in self.connections for tool in connection.tools)
         if not tools:
             raise ToolCatalogDiscoveryError('Tool discovery has no confirmed candidates')

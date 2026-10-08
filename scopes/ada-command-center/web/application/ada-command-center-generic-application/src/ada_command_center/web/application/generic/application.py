@@ -15,9 +15,6 @@ from ada_command_center.web.application.generic.layout import build_application_
 from ada_command_center.web.application.generic.master_projection.composition import (
     compose_command_center_master_projection_backend,
 )
-from ada_command_center.web.application.generic.master_projection.location import (
-    COMMAND_CENTER_MASTER_APPLICATION_NAMESPACE,
-)
 from ada_command_center.web.application.generic.navigation import (
     create_navigation_principal_provider,
 )
@@ -42,6 +39,7 @@ from atlanticus.web.navigation.configuration import (
     NAVIGATION_SOURCE_KEY,
     create_projected_navigation_module,
 )
+from atlanticus.web.storage.namespace import StorageNamespace
 from atlanticus.web.users.module import create_users_module
 from atlanticus.web.users.resolver import UsersAccessResolver
 from atlanticus.web.users.runtime import UsersRuntime
@@ -59,6 +57,7 @@ def create_application_definition(
     users_runtime: UsersRuntime,
     master_material_reader: MasterMaterialReader | None = None,
     environment: WebEnvironment | None = None,
+    namespace: StorageNamespace | None = None,
 ) -> WebApplicationDefinition:
     if not isinstance(dependencies, ConfigurationManagerDependencies):
         raise TypeError('Command Center dependencies are invalid')
@@ -71,6 +70,8 @@ def create_application_definition(
     resolved_environment = environment or WebSettings().environment
     if not isinstance(resolved_environment, WebEnvironment):
         raise TypeError('Command Center Web environment is invalid')
+    if master_material_reader is not None and not isinstance(namespace, StorageNamespace):
+        raise ValueError('Command Center namespace is required for Master Projection')
 
     manager = ManagerSurface(
         replace(build_configuration_manager_surface(dependencies), application_home_href='/')
@@ -90,7 +91,7 @@ def create_application_definition(
         backend = compose_command_center_master_projection_backend(dependencies)
         master_modules = (
             MasterProjectionWebBinding(
-                application_namespace=COMMAND_CENTER_MASTER_APPLICATION_NAMESPACE,
+                application_namespace=namespace.scope_prefix,
                 environment=resolved_environment.value,
                 planner=backend.planner,
                 reader=master_material_reader,
@@ -137,6 +138,7 @@ def create_application(
     users_runtime: UsersRuntime,
     master_material_reader: MasterMaterialReader | None = None,
     environment: WebEnvironment | None = None,
+    namespace: StorageNamespace | None = None,
 ) -> WebApplicationRuntime:
     return create_web_application(
         create_application_definition(
@@ -145,6 +147,7 @@ def create_application(
             users_runtime=users_runtime,
             master_material_reader=master_material_reader,
             environment=environment,
+            namespace=namespace,
         )
     )
 

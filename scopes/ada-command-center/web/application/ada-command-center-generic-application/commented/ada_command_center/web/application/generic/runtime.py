@@ -21,7 +21,7 @@ from ada_command_center.web.application.configuration_manager.local_runtime impo
 from ada_command_center.web.application.generic.application import create_application
 from ada_command_center.web.application.generic.manager_principal import ManagerPrincipalBinding
 from ada_command_center.web.application.generic.master_projection.location import (
-    COMMAND_CENTER_MASTER_BLOB_NAME,
+    master_projection_blob_name,
     master_projection_local_path,
 )
 from atlanticus.connectivity.storage import StorageClient
@@ -62,7 +62,9 @@ def open_local_application(
     with ExitStack() as resources:
         if reader.manager_provider == 'local':
             root = (base_root if base_root is not None else Path.cwd() / '.runtime').expanduser()
-            material_reader = LocalMasterMaterialReader(master_projection_local_path(root))
+            material_reader = LocalMasterMaterialReader(
+                master_projection_local_path(root, namespace=reader.namespace)
+            )
             manager = open_local_configuration_manager(
                 reader=reader,
                 principal_provider=principal,
@@ -70,12 +72,12 @@ def open_local_application(
             )
         else:
             values = reader.storage()
-            storage = StorageClient(settings=catalog_storage_settings(values))
+            storage = StorageClient(settings=catalog_storage_settings(values, allow_insecure_http=reader.environment.is_local))
             resources.callback(storage.close)
             material_reader = BlobMasterMaterialReader(
                 client=storage,
                 container_name=values[STORAGE_CONTAINER_VARIABLE],
-                blob_name=COMMAND_CENTER_MASTER_BLOB_NAME,
+                blob_name=master_projection_blob_name(reader.namespace),
             )
             manager = open_durable_configuration_manager(
                 reader=reader,
@@ -88,6 +90,7 @@ def open_local_application(
                 users_runtime=users_runtime,
                 master_material_reader=material_reader,
                 environment=reader.environment,
+                namespace=reader.namespace,
             )
 
 

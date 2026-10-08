@@ -13,8 +13,7 @@ from ada_command_center.web.application.configuration_manager.catalog_configurat
     catalog_storage_settings,
 )
 from ada_command_center.web.application.generic.master_projection.location import (
-    COMMAND_CENTER_MASTER_APPLICATION_NAMESPACE,
-    COMMAND_CENTER_MASTER_BLOB_NAME,
+    master_projection_blob_name,
     master_projection_local_path,
 )
 from atlanticus.connectivity.storage import (
@@ -48,13 +47,13 @@ def _generate_local(
     base_root: Path | None = None,
 ) -> dict[str, str]:
     root = (base_root if base_root is not None else Path.cwd() / '.runtime').expanduser()
-    target = master_projection_local_path(root)
+    target = master_projection_local_path(root, namespace=reader.namespace)
     target.parent.mkdir(parents=True, exist_ok=True)
     identity = generate_master_material(
         target,
         service_user=service_user,
         password=password,
-        application_namespace=COMMAND_CENTER_MASTER_APPLICATION_NAMESPACE,
+        application_namespace=reader.namespace.scope_prefix,
         environment=reader.environment.value,
     )
     return {
@@ -79,14 +78,14 @@ def _generate_durable(
             target,
             service_user=service_user,
             password=password,
-            application_namespace=COMMAND_CENTER_MASTER_APPLICATION_NAMESPACE,
+            application_namespace=reader.namespace.scope_prefix,
             environment=reader.environment.value,
         )
         try:
-            with StorageClient(settings=catalog_storage_settings(values)) as storage:
+            with StorageClient(settings=catalog_storage_settings(values, allow_insecure_http=reader.environment.is_local)) as storage:
                 storage.upload(
                     container_name=container_name,
-                    blob_name=COMMAND_CENTER_MASTER_BLOB_NAME,
+                    blob_name=master_projection_blob_name(reader.namespace),
                     data=target.read_bytes(),
                     overwrite=False,
                     content_type='application/zip',
@@ -99,7 +98,7 @@ def _generate_durable(
         'status': 'GENERATED',
         'material_id': identity.material_id,
         'persistence': 'durable',
-        'location': f'blob://{container_name}/{COMMAND_CENTER_MASTER_BLOB_NAME}',
+        'location': f'blob://{container_name}/{master_projection_blob_name(reader.namespace)}',
     }
 
 

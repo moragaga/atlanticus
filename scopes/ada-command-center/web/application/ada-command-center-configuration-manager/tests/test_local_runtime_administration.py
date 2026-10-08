@@ -39,6 +39,8 @@ def test_local_runtime_mounts_administration_with_command_center_configuration(
         environ_supplier=lambda: {
             'ATLANTICUS_ENVIRONMENT': 'local',
             'ADA_MANAGER_PERSISTENCE_PROVIDER': 'local',
+            'ADA_APPLICATION_NAMESPACE': 'conciencia_situacional',
+            'ADA_TOOL_NAMESPACE': 'command-center',
             'ADA_COMMAND_CENTER_STORAGE_CONNECTION_STRING': 'UseDevelopmentStorage=true',
             'ADA_COMMAND_CENTER_STORAGE_CONTAINER_NAME': 'configurations',
         },

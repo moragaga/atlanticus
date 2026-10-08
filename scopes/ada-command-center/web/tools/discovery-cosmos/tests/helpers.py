@@ -49,6 +49,18 @@ def tool_projection(
                             },
                         ],
                     },
+                    {
+                        'key': 'plant',
+                        'display_name': 'Plant',
+                        'scope': 'plant',
+                        'subcomponents': [
+                            {
+                                'key': 'processing',
+                                'display_name': 'Processing',
+                                'linked_component_keys': [],
+                            },
+                        ],
+                    },
                 ],
             },
         }

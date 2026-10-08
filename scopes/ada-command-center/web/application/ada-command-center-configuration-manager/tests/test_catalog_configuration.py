@@ -83,6 +83,8 @@ def test_local_host_ignores_backend_environment_variable(tmp_path) -> None:
     (tmp_path / '.env').write_text(
         'ATLANTICUS_ENVIRONMENT=local\n'
         'ENVIRONMENT=dev\n'
+        'ADA_APPLICATION_NAMESPACE=conciencia_situacional\n'
+        'ADA_TOOL_NAMESPACE=command-center\n'
         'ADA_COMMAND_CENTER_STORAGE_CONNECTION_STRING=UseDevelopmentStorage=true\n'
         'ADA_COMMAND_CENTER_STORAGE_CONTAINER_NAME=configurations\n'
         'ADA_COMMAND_CENTER_COSMOS_ENDPOINT=https://command-center.example.com\n'
@@ -117,6 +119,8 @@ def test_local_storage_does_not_require_own_cosmos(tmp_path) -> None:
     reader = _local(
         tmp_path,
         environ={
+            'ADA_APPLICATION_NAMESPACE': 'conciencia_situacional',
+            'ADA_TOOL_NAMESPACE': 'command-center',
             'ADA_COMMAND_CENTER_STORAGE_CONNECTION_STRING': 'UseDevelopmentStorage=true',
             'ADA_COMMAND_CENTER_STORAGE_CONTAINER_NAME': 'configurations',
         },

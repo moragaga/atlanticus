@@ -11,6 +11,8 @@ from atlanticus.web.configuration import WebEnvironment
 def _configuration():
     return resolve_durable_configuration(
         {
+            'ADA_APPLICATION_NAMESPACE': 'conciencia_situacional',
+            'ADA_TOOL_NAMESPACE': 'command-center',
             'ADA_COMMAND_CENTER_STORAGE_CONNECTION_STRING': 'UseDevelopmentStorage=true',
             'ADA_COMMAND_CENTER_STORAGE_CONTAINER_NAME': 'command-center',
             'ADA_COMMAND_CENTER_COSMOS_ENDPOINT': 'http://localhost:8081',

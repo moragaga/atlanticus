@@ -21,8 +21,7 @@ from ada_command_center.web.application.configuration_manager.administration imp
     compose_command_center_administration,
 )
 from ada_command_center.web.application.configuration_manager.catalog_configuration import (
-    COMMAND_CENTER_CATALOG_BLOB_NAME,
-    COMMAND_CENTER_NAMESPACE,
+    resolve_command_center_namespace,
     STORAGE_CONTAINER_VARIABLE,
     ManagerConfigurationReader,
     catalog_storage_settings,
@@ -110,7 +109,7 @@ def _require(values: Mapping[str, str], name: str) -> str:
 def resolve_durable_configuration(
     values: Mapping[str, str], *, local: bool
 ) -> CommandCenterDurableConfiguration:
-    namespace = COMMAND_CENTER_NAMESPACE
+    namespace = resolve_command_center_namespace(values)
     plan = resolve_storage_plan(
         _COSMOS_RESOURCES,
         tuple(
@@ -135,7 +134,7 @@ def resolve_durable_configuration(
             raise ValueError(f'Command Center Cosmos topology is invalid: {contract.logical_id}')
     return CommandCenterDurableConfiguration(
         namespace=namespace,
-        storage_settings=catalog_storage_settings(values),
+        storage_settings=catalog_storage_settings(values, allow_insecure_http=local),
         cosmos_settings=CosmosSettings(
             endpoint=_require(values, 'ADA_COMMAND_CENTER_COSMOS_ENDPOINT'),
             database_name=_require(values, 'ADA_COMMAND_CENTER_COSMOS_DATABASE_NAME'),
@@ -144,7 +143,7 @@ def resolve_durable_configuration(
         ),
         cosmos_plan=plan,
         storage_container_name=_require(values, STORAGE_CONTAINER_VARIABLE),
-        catalog_blob_name=COMMAND_CENTER_CATALOG_BLOB_NAME,
+        catalog_blob_name=namespace.scope_blob_name('tool-catalog/current.json'),
         source_root_prefix=namespace.scope_prefix,
         users_registry_blob_name=namespace.application_blob_name('users/users.json.gz'),
         users_membership_blob_name=namespace.scope_blob_name('users/memberships.json.gz'),

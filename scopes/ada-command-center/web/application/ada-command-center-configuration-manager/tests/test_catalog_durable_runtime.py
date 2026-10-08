@@ -18,6 +18,8 @@ from atlanticus.web.users.storage import USERS_RUNTIME_STORAGE_RESOURCE
 
 def _values():
     return {
+        'ADA_APPLICATION_NAMESPACE': 'conciencia_situacional',
+        'ADA_TOOL_NAMESPACE': 'command-center',
         'ADA_COMMAND_CENTER_STORAGE_CONNECTION_STRING': 'UseDevelopmentStorage=true',
         'ADA_COMMAND_CENTER_STORAGE_CONTAINER_NAME': 'configurations',
         'ADA_COMMAND_CENTER_COSMOS_ENDPOINT': 'https://command-center.example.com',
@@ -29,7 +31,7 @@ def _values():
 def test_storage_uses_only_shared_connection_string() -> None:
     setting = catalog_storage_settings(_values())
     assert isinstance(setting.credential, StorageConnectionStringCredential)
-    with pytest.raises(ValueError, match='STORAGE_CONNECTION_STRING'):
+    with pytest.raises(ValueError, match='Storage requires'):
         catalog_storage_settings({'ADA_COMMAND_CENTER_STORAGE_CONTAINER_NAME': 'configurations'})
 
 
