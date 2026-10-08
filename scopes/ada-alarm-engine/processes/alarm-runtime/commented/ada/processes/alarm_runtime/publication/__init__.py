@@ -1,5 +1,6 @@
-# Exportaciones explícitas de superficies de publicación independientes.
-# FACTS usa cursor histórico; CURRENT usa último estado durable confirmado.
+# Fachada de publicación: dos productores separados y un orquestador común.
+# El cursor FACTS y CURRENT no se convierten en una transacción compartida.
+from ada.processes.alarm_runtime.publication.operational import AlarmDurablePublications
 from ada.processes.alarm_runtime.publication.output_batches import (
     AlarmCommittedFactsExporter,
     EngineFactsPublicationError,
@@ -14,6 +15,7 @@ from ada.processes.alarm_runtime.publication.output_current import (
 __all__ = [
     'AlarmCommittedFactsExporter',
     'AlarmDurableCurrentPublisher',
+    'AlarmDurablePublications',
     'DurableCurrentContext',
     'EngineDurableCurrentPublicationError',
     'EngineFactsPublicationError',

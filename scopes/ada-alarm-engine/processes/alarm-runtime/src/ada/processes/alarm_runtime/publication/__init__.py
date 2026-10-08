@@ -1,3 +1,4 @@
+from ada.processes.alarm_runtime.publication.operational import AlarmDurablePublications
 from ada.processes.alarm_runtime.publication.output_batches import (
     AlarmCommittedFactsExporter,
     EngineFactsPublicationError,
@@ -12,6 +13,7 @@ from ada.processes.alarm_runtime.publication.output_current import (
 __all__ = [
     'AlarmCommittedFactsExporter',
     'AlarmDurableCurrentPublisher',
+    'AlarmDurablePublications',
     'DurableCurrentContext',
     'EngineDurableCurrentPublicationError',
     'EngineFactsPublicationError',

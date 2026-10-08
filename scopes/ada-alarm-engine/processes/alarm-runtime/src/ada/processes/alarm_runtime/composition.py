@@ -9,9 +9,17 @@ from ada.contracts.alarms import ALARM_CONFIGURATION_SOURCE_KEY
 from ada.processes.alarm_runtime.cycle import AlarmEvaluationCycle
 from ada.processes.alarm_runtime.durable_adoption import AlarmDurableAdopter
 from ada.processes.alarm_runtime.durable_commit import AlarmDurableCycleCommitter
-from ada.processes.alarm_runtime.durable_recovery import AlarmDurableRecovery
-from ada.processes.alarm_runtime.job import AlarmRuntimeJob
+from ada.processes.alarm_runtime.durable_recovery import (
+    AlarmDurableRecovery,
+    RecoveredAlarmAuthority,
+)
+from ada.processes.alarm_runtime.job import AlarmRuntimeIterationResult, AlarmRuntimeJob
 from ada.processes.alarm_runtime.lifecycle import AlarmLifecycleCycle
+from ada.processes.alarm_runtime.publication import (
+    AlarmCommittedFactsExporter,
+    AlarmDurableCurrentPublisher,
+)
+from ada.processes.alarm_runtime.publication.operational import AlarmDurablePublications
 from ada.processes.alarm_runtime.session import AlarmEvaluatorRegistry
 from ada.processes.alarm_runtime.settings import AlarmRuntimeSettings
 from atlanticus.configuration import ResolvedConfiguration
@@ -23,6 +31,7 @@ from atlanticus.operational_data.sources import (
 )
 from atlanticus.runtime import (
     JobDefinition,
+    JobRuntimeContext,
     RuntimeConfiguration,
     RuntimeExecutionResult,
     execute_job,
@@ -35,13 +44,25 @@ class AlarmRuntimeComposition:
     runtime_configuration: RuntimeConfiguration
     settings: AlarmRuntimeSettings
     job: AlarmRuntimeJob
+    publications: AlarmDurablePublications
     definition: JobDefinition
+
+    def recover(self, context: JobRuntimeContext) -> RecoveredAlarmAuthority:
+        authority = self.job.recover(context)
+        self.publications.reconcile(context, force=True)
+        return authority
+
+    def run_iteration(self, context: JobRuntimeContext) -> AlarmRuntimeIterationResult:
+        self.publications.reconcile(context)
+        result = self.job.run_iteration(context)
+        self.publications.reconcile(context)
+        return result
 
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
         return execute_job(
             definition=self.definition,
-            iteration=self.job.run_iteration,
-            recovery=self.job.recover,
+            iteration=self.run_iteration,
+            recovery=self.recover,
             argv=argv,
             environ=self.configuration.values,
         )
@@ -83,6 +104,16 @@ def build_composition(
         materializations=configuration_reader,
         source_key=ALARM_CONFIGURATION_SOURCE_KEY,
     )
+    output_root = runtime_configuration.application_root / 'alarms' / 'output'
+    publications = AlarmDurablePublications(
+        persistence=operational,
+        facts=AlarmCommittedFactsExporter(
+            root=output_root, source_key=ALARM_CONFIGURATION_SOURCE_KEY
+        ),
+        current=AlarmDurableCurrentPublisher(
+            root=output_root, source_key=ALARM_CONFIGURATION_SOURCE_KEY
+        ),
+    )
     job = AlarmRuntimeJob(
         reader=configuration_reader,
         source_key=ALARM_CONFIGURATION_SOURCE_KEY,
@@ -117,5 +148,6 @@ def build_composition(
         runtime_configuration=runtime_configuration,
         settings=settings,
         job=job,
+        publications=publications,
         definition=definition,
     )
