@@ -6,6 +6,10 @@ from ada.alarms.persistence.operational.configuration_adoption import (
     ConfigurationAdoptionRecordV2,
     GroupCommitReference,
 )
+from ada.alarms.persistence.operational.core_commit_bridge import (
+    PreparedGroupCommit,
+    prepare_group_commit,
+)
 from ada.alarms.persistence.operational.effective_head import (
     ALARM_EFFECTIVE_HEAD_SCHEMA_VERSION,
     AlarmEffectiveConfigurationHead,
@@ -52,6 +56,8 @@ from ada.alarms.persistence.operational.technical_incidents import (
 __version__ = '1.0.0'
 
 __all__ = [
+    'PreparedGroupCommit',
+    'prepare_group_commit',
     'CONFIGURATION_ADOPTION_RECORD_SCHEMA_VERSION',
     'CONFIGURATION_ADOPTION_RECORD_V2_SCHEMA_VERSION',
     'AlarmArtifactRefSnapshot',
