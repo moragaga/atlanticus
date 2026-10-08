@@ -3,9 +3,17 @@ from ada.processes.alarm_runtime.publication.output_batches import (
     EngineFactsPublicationError,
     FactsExportContext,
 )
+from ada.processes.alarm_runtime.publication.output_current import (
+    AlarmDurableCurrentPublisher,
+    DurableCurrentContext,
+    EngineDurableCurrentPublicationError,
+)
 
 __all__ = [
     'AlarmCommittedFactsExporter',
+    'AlarmDurableCurrentPublisher',
+    'DurableCurrentContext',
+    'EngineDurableCurrentPublicationError',
     'EngineFactsPublicationError',
     'FactsExportContext',
 ]

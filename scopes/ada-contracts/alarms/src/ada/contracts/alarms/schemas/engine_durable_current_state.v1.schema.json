@@ -1,0 +1,456 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ada-alarm-engine:engine-durable-current-state:v1",
+  "title": "Alarm Engine committed current state v1",
+  "description": "An atomic view of the aligned durable WAL and validated v3 group snapshots; not the Live Projection or evaluation stream.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "document_type",
+    "schema_version",
+    "artifact_ref",
+    "journal_position",
+    "state",
+    "sha256"
+  ],
+  "properties": {
+    "document_type": {
+      "const": "ada_alarm_engine_durable_current_state"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "artifact_ref": {
+      "$ref": "#/$defs/artifact_ref"
+    },
+    "journal_position": {
+      "$ref": "#/$defs/journal_position"
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resolution_key",
+        "groups"
+      ],
+      "properties": {
+        "resolution_key": {
+          "$ref": "#/$defs/resolution_key"
+        },
+        "groups": {
+          "type": "array",
+          "description": "Unique, ascending by priority_group. Each entry is a lossless committed group-runtime-snapshot.v3, including empty closed groups.",
+          "items": {
+            "$ref": "#/$defs/group_snapshot"
+          }
+        }
+      }
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "$defs": {
+    "resolution_key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alarm_configuration_revision",
+        "confirmed_tool_catalog_revision"
+      ],
+      "properties": {
+        "alarm_configuration_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "confirmed_tool_catalog_revision": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_key",
+        "result_id",
+        "manifest_sha256",
+        "resolution_key"
+      ],
+      "properties": {
+        "source_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "result_id": {
+          "type": "string",
+          "pattern": "^alarm-materialization-[0-9a-f]{64}$"
+        },
+        "manifest_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "resolution_key": {
+          "$ref": "#/$defs/resolution_key"
+        }
+      }
+    },
+    "journal_position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "segment_id",
+        "byte_offset",
+        "commit_id"
+      ],
+      "properties": {
+        "segment_id": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}Z#[0-9]{4}$"
+        },
+        "byte_offset": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "commit_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "state_basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alarm_configuration_revision",
+        "tool_registry_revision"
+      ],
+      "properties": {
+        "alarm_configuration_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tool_registry_revision": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "group_snapshot": {
+      "type": "object",
+      "description": "Validated by the AlarmPersistence GroupRuntimeSnapshot v3 contract, including nested occurrence, management, deactivation and technical incident semantics.",
+      "additionalProperties": false,
+      "required": [
+        "snapshot_schema_version",
+        "priority_group",
+        "last_commit_id",
+        "state_basis",
+        "episode",
+        "alarms",
+        "technical_incidents"
+      ],
+      "properties": {
+        "snapshot_schema_version": {
+          "const": "group-runtime-snapshot.v3"
+        },
+        "priority_group": {
+          "type": "string",
+          "minLength": 1
+        },
+        "last_commit_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state_basis": {
+          "$ref": "#/$defs/state_basis"
+        },
+        "episode": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "episode_id",
+                "started_at"
+              ],
+              "properties": {
+                "episode_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "started_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          ]
+        },
+        "alarms": {
+          "type": "object",
+          "description": "Canonical AlarmIdentity keys. The nested object uses the lossless group-runtime-snapshot.v3 operational state contract.",
+          "propertyNames": {
+            "pattern": "^[^/]+/[^/]+$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/operational_alarm"
+          }
+        },
+        "technical_incidents": {
+          "type": "object",
+          "description": "Committed technical incident state keyed by canonical AlarmIdentity.",
+          "propertyNames": {
+            "pattern": "^[^/]+/[^/]+$"
+          },
+          "additionalProperties": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "last_evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "evaluated_at"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "INACTIVE",
+            "ERROR"
+          ]
+        },
+        "evaluated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "error_key": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "hold": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "started_at",
+        "due_at"
+      ],
+      "properties": {
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "due_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "management_effect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effect_id",
+        "source_occurrence_id",
+        "effective_at",
+        "reappearance_due_at"
+      ],
+      "properties": {
+        "effect_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_occurrence_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effective_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "reappearance_due_at": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "format": "date-time"
+        }
+      }
+    },
+    "deactivation_effect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effect_id",
+        "source_occurrence_id",
+        "effective_from",
+        "effective_until"
+      ],
+      "properties": {
+        "effect_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_occurrence_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effective_from": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "effective_until": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "operational_alarm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "last_commit_id"
+      ],
+      "properties": {
+        "last_commit_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "occurrence": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/occurrence"
+            }
+          ]
+        },
+        "management_effect": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/management_effect"
+            }
+          ]
+        },
+        "deactivation_effect": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/deactivation_effect"
+            }
+          ]
+        }
+      }
+    },
+    "linked_tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assigned_at"
+      ],
+      "properties": {
+        "assigned_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "pending_tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "due_at"
+      ],
+      "properties": {
+        "due_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "occurrence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "occurrence_id",
+        "started_at",
+        "configuration_revision_at_start",
+        "tool_registry_revision_at_start",
+        "last_evaluation",
+        "management_cycle",
+        "assignments",
+        "pending_assignments"
+      ],
+      "properties": {
+        "occurrence_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "configuration_revision_at_start": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tool_registry_revision_at_start": {
+          "type": "string",
+          "minLength": 1
+        },
+        "last_evaluation": {
+          "$ref": "#/$defs/last_evaluation"
+        },
+        "management_cycle": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "assignments": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/linked_tool"
+          }
+        },
+        "pending_assignments": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/pending_tool"
+          }
+        },
+        "technical_hold": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/hold"
+            }
+          ]
+        },
+        "next_evidence_due_at": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}
