@@ -489,6 +489,29 @@ class AlarmPersistence:
     def _validate_previous_state(self, records: Sequence[EngineCommitRecord]) -> None:
         for record in records:
             current = self.read_snapshot(record.commit.priority_group)
+            markers = record.records.get('configuration_rebases')
+            if markers:
+                if current is None:
+                    raise AlarmPersistenceConflictError(
+                        'configuration rebase requires an existing snapshot'
+                    )
+                prior_document = current.as_document()
+                if prior_document['snapshot_schema_version'] != 'group-runtime-snapshot.v3':
+                    raise AlarmPersistenceConflictError(
+                        'configuration rebase requires recoverable snapshot v3'
+                    )
+                if prior_document['state_basis'] != markers[0]['previous_basis']:
+                    raise AlarmPersistenceConflictError(
+                        'configuration rebase previous basis differs from durable state'
+                    )
+                prior_document['state_basis'] = markers[0]['target_basis']
+                prior_document['last_commit_id'] = record.commit.commit_id
+                for alarm in prior_document['alarms'].values():
+                    alarm['last_commit_id'] = record.commit.commit_id
+                if prior_document != record.snapshot_after.as_document():
+                    raise AlarmPersistenceConflictError(
+                        'configuration rebase changed operational state'
+                    )
             if current is None:
                 if record.commit.previous_commit_id is not None:
                     raise AlarmPersistenceConflictError(

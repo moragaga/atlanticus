@@ -8,6 +8,12 @@ from ada.alarms.persistence.operational.configuration_adoption import (
     ConfigurationAdoptionRecordV2,
     GroupCommitReference,
 )
+from ada.alarms.persistence.operational.configuration_rebase import (
+    CONFIGURATION_REBASE_SCHEMA_VERSION,
+    PreparedConfigurationRebase,
+    prepare_configuration_rebase,
+    prepare_noop_configuration_adoption,
+)
 from ada.alarms.persistence.operational.core_commit_bridge import (
     PreparedGroupCommit,
     prepare_group_commit,
@@ -61,6 +67,10 @@ __version__ = '1.0.0'
 __all__ = [
     'PreparedGroupCommit',
     'prepare_group_commit',
+    'CONFIGURATION_REBASE_SCHEMA_VERSION',
+    'PreparedConfigurationRebase',
+    'prepare_configuration_rebase',
+    'prepare_noop_configuration_adoption',
     'CONFIGURATION_ADOPTION_RECORD_SCHEMA_VERSION',
     'CONFIGURATION_ADOPTION_RECORD_V2_SCHEMA_VERSION',
     'AlarmArtifactRefSnapshot',

@@ -27,6 +27,7 @@ JOURNAL_HEAD_SCHEMA_VERSION = 'journal-head.v1'
 _SEGMENT_ID_PATTERN = re.compile(r'\d{4}-\d{2}-\d{2}T\d{2}Z#\d{4}')
 _RECORD_COLLECTIONS = {
     'assignment_changes',
+    'configuration_rebases',
     'deactivation_effects',
     'deactivation_requests',
     'episode_changes',
@@ -154,8 +155,6 @@ class EngineCommitMetadata:
         _require_utc_timestamp(self.committed_at, 'committed_at')
         if not isinstance(self.affected_alarms, tuple):
             raise TypeError('affected_alarms must be a tuple')
-        if not self.affected_alarms:
-            raise ValueError('affected_alarms must not be empty')
         seen: set[str] = set()
         for alarm_key in self.affected_alarms:
             _require_non_empty_string(alarm_key, 'affected alarm')
@@ -284,6 +283,7 @@ class EngineCommitRecord:
             raise ValueError('technical incident transitions require commit v2 or v3')
         if self.schema_version != ENGINE_COMMIT_RECORD_SCHEMA_VERSION:
             _validate_technical_incident_changes(normalized_records, self.commit)
+        _validate_configuration_rebase(normalized_records, self)
         _require_record_hash(self.record_hash)
 
     @classmethod
@@ -536,6 +536,43 @@ def _validate_technical_incidents(value: Any, priority_group: str, error_type: t
             or incident.priority_group != priority_group
         ):
             raise error_type('technical incident snapshot identity does not match group')
+
+
+def _validate_configuration_rebase(records: JsonDocument, record: EngineCommitRecord) -> None:
+    markers = records.get('configuration_rebases')
+    if markers is None:
+        if not record.commit.affected_alarms:
+            raise AlarmPersistenceValidationError('ordinary commit requires affected alarms')
+        return
+    if (
+        record.schema_version != ENGINE_COMMIT_RECORD_V3_SCHEMA_VERSION
+        or set(records) != {'configuration_rebases'}
+        or len(markers) != 1
+        or record.commit.previous_commit_id is None
+    ):
+        raise AlarmPersistenceValidationError('configuration rebase requires exclusive V3 record')
+    marker = markers[0]
+    if (
+        set(marker) != {'schema_version', 'priority_group', 'previous_basis', 'target_basis'}
+        or marker['schema_version'] != 'group-configuration-rebase.v1'
+    ):
+        raise AlarmPersistenceValidationError('configuration rebase marker is invalid')
+    if marker['priority_group'] != record.commit.priority_group:
+        raise AlarmPersistenceValidationError('configuration rebase group does not match commit')
+    previous = marker['previous_basis']
+    target = marker['target_basis']
+    _validate_state_basis(previous, AlarmPersistenceValidationError)
+    _validate_state_basis(target, AlarmPersistenceValidationError)
+    snapshot = record.snapshot_after.as_document()
+    expected_target = {
+        'alarm_configuration_revision': record.commit.alarm_configuration_revision,
+        'tool_registry_revision': record.commit.tool_registry_revision,
+    }
+    if target != expected_target or snapshot['state_basis'] != target:
+        raise AlarmPersistenceValidationError('configuration rebase target basis is inconsistent')
+    identities = set(snapshot['alarms']) | set(snapshot['technical_incidents'])
+    if set(record.commit.affected_alarms) != identities:
+        raise AlarmPersistenceValidationError('configuration rebase affected alarms differ')
 
 
 def _validate_technical_incident_changes(
