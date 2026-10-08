@@ -17,6 +17,7 @@ dependencies = [
     "ada-web-content-state==0.1.0",
     "ada-web-ui-card-display==0.1.0",
     "ada-web-ui-inline-row==0.1.0",
+    "ada-web-ui-stockpile==0.1.0",
     "ada-web-ui-content-state==0.1.6",
     "atlanticus-web==0.1.0",
     "dash==4.4.1",
@@ -71,6 +72,7 @@ ada-web-alarm-status = { path = "../../alarms/status", editable = true }
 ada-web-ui-core = { path = "../../ui/core", editable = true }
 ada-web-ui-card-display = { path = "../../ui/card-display", editable = true }
 ada-web-ui-inline-row = { path = "../../ui/inline-row", editable = true }
+ada-web-ui-stockpile = { path = "../../ui/stockpile", editable = true }
 ada-web-shell-header = { path = "../../shell/header", editable = true }
 ada-web-shell-navigation = { path = "../../shell/navigation", editable = true }
 ada-web-runtime-experience = { path = "../../runtime-experience", editable = true }

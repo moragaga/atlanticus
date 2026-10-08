@@ -5,6 +5,9 @@ from ada.web.application.integrated_operations.modules.dashboard.context import 
 from ada.web.application.integrated_operations.modules.dashboard.mine.carguio.runtime import (
     register_carguio_callback,
 )
+from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.runtime import (
+    register_chancado_stmg_callback,
+)
 from ada.web.application.integrated_operations.modules.dashboard.mine.general_mina.runtime import (
     register_general_mina_callback,
 )
@@ -20,6 +23,7 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.module im
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.ui.card_display import ADA_CARD_DISPLAY_ASSET_LAYER
 from ada.web.ui.inline_row import ADA_INLINE_ROW_ASSET_LAYER
+from ada.web.ui.stockpile import ADA_STOCKPILE_ASSET_LAYER
 from atlanticus.web.assets import AssetLayer
 from atlanticus.web.modules import WebModule
 
@@ -48,6 +52,7 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             register_general_mina_callback(dash_app, tool_key=tool_key)
             register_carguio_callback(dash_app, tool_key=tool_key)
             register_transporte_callback(dash_app, tool_key=tool_key)
+            register_chancado_stmg_callback(dash_app, tool_key=tool_key)
 
     return WebModule(
         name='ada-integrated-operations-dashboard',
@@ -55,6 +60,7 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
         asset_layers=(
             ADA_CARD_DISPLAY_ASSET_LAYER,
             ADA_INLINE_ROW_ASSET_LAYER,
+            ADA_STOCKPILE_ASSET_LAYER,
             DASHBOARD_ASSET_LAYER,
             MINE_ASSET_LAYER,
             PLANT_ASSET_LAYER,
