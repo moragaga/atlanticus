@@ -4,11 +4,12 @@
     --atlanticus-inline-value-row-font-size: .36rem;
     display: flex;
     width: 100%;
-    height: 100%;
+    /*height: 100%;*/
     min-width: 0;
     min-height: min-content;
     flex-direction: column;
     color: var(--ada-io-text, var(--custom-text-color, #4D4D4D));
+    padding: .08rem .18rem;
 }
 
 .numero-operativo-turno__rows {

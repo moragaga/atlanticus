@@ -7,13 +7,20 @@
     --atlanticus-inline-value-row-font-size: .36rem;
     display: flex;
     width: 100%;
-    height: 100%;
+    /*height: 100%;*/
     min-width: 0;
     min-height: min-content;
     flex-direction: column;
     gap: .1rem;
     padding: .08rem .18rem;
     color: var(--ada-io-text, var(--custom-text-color, #4D4D4D));
+}
+
+.remanentes:has(
+    .remanentes__state--unavailable,
+    .remanentes__state--unshift
+) {
+    height: 100%;
 }
 
 .remanentes__summary {

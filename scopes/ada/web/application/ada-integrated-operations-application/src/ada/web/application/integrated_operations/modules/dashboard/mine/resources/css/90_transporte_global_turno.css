@@ -2,11 +2,19 @@
     --atlanticus-inline-comparison-row-font-size: .36rem;
     display: flex;
     width: 100%;
-    height: 100%;
+    /*height: 100%;*/
     min-width: 0;
     min-height: min-content;
     flex-direction: column;
     color: var(--ada-io-text, var(--custom-text-color, #4D4D4D));
+    padding: .08rem .18rem;
+}
+
+.transporte-global-turno:has(
+    .transporte-global-turno__state--unavailable,
+    .transporte-global-turno__state--unshift
+) {
+    height: 100%;
 }
 
 .transporte-global-turno__rows {

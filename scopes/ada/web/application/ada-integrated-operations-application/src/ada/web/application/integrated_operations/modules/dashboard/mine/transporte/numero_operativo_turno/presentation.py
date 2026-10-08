@@ -53,7 +53,6 @@ def build_numero_operativo_turno(
                         InlineValueRowState(
                             definition=NUMERO_OPERATIVO_TURNO_DEFINITIONS[key],
                             value=value,
-                            show_border=index != len(items) - 1,
                         )
                     )
                     for index, (key, value) in enumerate(items)

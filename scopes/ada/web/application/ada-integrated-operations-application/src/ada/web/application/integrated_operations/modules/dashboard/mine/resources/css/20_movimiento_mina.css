@@ -12,14 +12,22 @@
     --movimiento-mina-metric-gap: .07rem;
     display: flex;
     width: 100%;
-    height: 100%;
+    /*height: 100%;*/
     min-width: 100%;
     min-height: min-content;
     flex-direction: column;
     gap: var(--movimiento-mina-section-gap);
-    padding: var(--movimiento-mina-padding-y) var(--movimiento-mina-padding-x);
+    /*padding: var(--movimiento-mina-padding-y) var(--movimiento-mina-padding-x);*/
+    padding: .08rem .18rem;
     color: var(--ada-color-text-primary);
     box-sizing: border-box;
+}
+
+.movimiento-mina:has(
+    .movimiento-mina__state--unavailable,
+    .movimiento-mina__state--unshift
+) {
+    height: 100%;
 }
 
 .movimiento-mina__header,

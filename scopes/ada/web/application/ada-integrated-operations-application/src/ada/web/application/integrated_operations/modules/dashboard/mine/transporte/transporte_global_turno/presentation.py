@@ -61,7 +61,7 @@ def build_transporte_global_turno(
             html.Div(
                 className='transporte-global-turno__rows',
                 children=[
-                    _build_row(row, is_last=index == len(state.rows) - 1)
+                    _build_row(row=row)
                     for index, row in enumerate(state.rows)
                 ],
             )
@@ -78,9 +78,8 @@ def _build_root(children: list[Component]) -> Component:
 
 
 def _build_row(
-    row: TransporteGlobalTurnoRow,
     *,
-    is_last: bool,
+    row: TransporteGlobalTurnoRow,
 ) -> Component:
     return build_inline_comparison_row(
         InlineComparisonRowState(
@@ -89,7 +88,6 @@ def _build_row(
             second_value=row.plan.value,
             first_tone=_TONE[row.real.status],
             second_tone=_TONE[row.plan.status],
-            show_border=not is_last,
         )
     )
 
