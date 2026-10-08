@@ -40,3 +40,18 @@
     grid-column: 4;
     grid-row: 1 / 3;
 }
+
+.ada-io-stockpile-piles {
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    flex-wrap: wrap;
+    gap: .35rem;
+    width: 100%;
+    min-width: 0;
+}
+
+.ada-io-stockpile-piles > * {
+    flex: 0 1 115px;
+    min-width: 0;
+}

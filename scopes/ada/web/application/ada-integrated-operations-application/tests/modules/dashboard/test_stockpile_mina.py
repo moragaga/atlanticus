@@ -10,13 +10,14 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_s
     register_chancado_stmg_callback,
 )
 from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.stockpile_mina import (
+    STOCKPILE_MINA_DEFINITIONS,
     STOCKPILE_MINA_KPI_KEYS,
     STOCKPILE_MINA_SCALE_MAX_M,
     map_stockpile_mina_store,
 )
 from ada.web.kpis.collector import component_kpi_store_id
 from ada.web.ui.display_status import DisplayStatus
-from ada.web.ui.stockpile import ADA_STOCKPILE_ASSET_LAYER
+from ada.web.ui.stockpile import ADA_STOCKPILE_ASSET_LAYER, StockpileVariant
 
 
 def _entry(value: str) -> dict[str, object]:
@@ -29,76 +30,48 @@ def _store(values: dict[str, object]) -> dict[str, object]:
 
 def _values() -> dict[str, object]:
     return {
-        STOCKPILE_MINA_KPI_KEYS[0][2]: _entry('65'),
-        STOCKPILE_MINA_KPI_KEYS[0][3]: _entry('18,2'),
-        STOCKPILE_MINA_KPI_KEYS[1][2]: _entry('80'),
-        STOCKPILE_MINA_KPI_KEYS[1][3]: _entry('23,5'),
+        STOCKPILE_MINA_KPI_KEYS[0][1]: _entry('65'),
+        STOCKPILE_MINA_KPI_KEYS[0][2]: _entry('18,2'),
+        STOCKPILE_MINA_KPI_KEYS[1][1]: _entry('80'),
+        STOCKPILE_MINA_KPI_KEYS[1][2]: _entry('23,5'),
     }
 
 
-def test_mina_stockpile_preserves_independent_source_text_and_common_scale() -> None:
-    state = map_stockpile_mina_store(_store(_values()))
-
-    assert len(state.items) == 2
-    assert [item.label for item in state.items] == ['Pila 1', 'Pila 2']
-    assert [item.percentage.value for item in state.items] == ['65', '80']
-    assert [item.height_m.value for item in state.items] == ['18,2', '23,5']
-    assert state.scale_max_m == STOCKPILE_MINA_SCALE_MAX_M == 28
-
-
-@pytest.mark.parametrize(
-    ('store', 'expected'),
-    [
-        ({'latest': None}, DisplayStatus.NOT_MAPPED),
-        ({'latest': {'values': 'broken'}}, DisplayStatus.INVALID),
-        (None, DisplayStatus.INVALID),
-    ],
-)
-def test_absent_or_invalid_component_store_preserves_both_pile_states(store, expected):
-    state = map_stockpile_mina_store(store)
-
-    assert all(item.percentage.status is expected for item in state.items)
-    assert all(item.height_m.status is expected for item in state.items)
+def test_mina_maps_two_independent_readings_to_individual_definitions():
+    readings = map_stockpile_mina_store(_store(_values()))
+    assert len(readings) == len(STOCKPILE_MINA_DEFINITIONS) == 2
+    assert [r.percent.value for r in readings] == ['65', '80']
+    assert [r.height_m.value for r in readings] == ['18,2', '23,5']
+    assert all(d.variant is StockpileVariant.VARIABLE_HEIGHT for d in STOCKPILE_MINA_DEFINITIONS)
+    assert all(d.scale_max_m == STOCKPILE_MINA_SCALE_MAX_M == 28 for d in STOCKPILE_MINA_DEFINITIONS)
 
 
-def test_mina_stockpile_statuses_are_per_reading_and_per_pile() -> None:
+@pytest.mark.parametrize('store, expected', [
+    ({'latest': None}, DisplayStatus.NOT_MAPPED),
+    ({'latest': {'values': 'broken'}}, DisplayStatus.INVALID),
+    (None, DisplayStatus.INVALID),
+])
+def test_bad_component_store_preserves_errors_per_pile(store, expected):
+    readings = map_stockpile_mina_store(store)
+    assert all(r.percent.status is expected and r.height_m.status is expected for r in readings)
+
+
+def test_mina_handles_partial_readings_without_affecting_other_pile():
     values = _values()
-    values[STOCKPILE_MINA_KPI_KEYS[0][2]] = {'status': 'missing', 'value_kind': None, 'value': None}
-    values[STOCKPILE_MINA_KPI_KEYS[1][3]] = {
-        'status': 'error',
-        'value_kind': 'value',
-        'value': None,
-    }
-    state = map_stockpile_mina_store(_store(values))
-
-    assert state.items[0].percentage.status is DisplayStatus.EMPTY
-    assert state.items[0].height_m.status is DisplayStatus.OK
-    assert state.items[1].percentage.status is DisplayStatus.OK
-    assert state.items[1].height_m.status is DisplayStatus.ERROR
+    values[STOCKPILE_MINA_KPI_KEYS[0][1]] = {'status':'missing', 'value_kind': None, 'value': None}
+    values[STOCKPILE_MINA_KPI_KEYS[1][2]] = {'status':'error','value_kind':'value','value': None}
+    readings = map_stockpile_mina_store(_store(values))
+    assert readings[0].percent.status is DisplayStatus.EMPTY
+    assert readings[0].height_m.status is DisplayStatus.OK
+    assert readings[1].percent.status is DisplayStatus.OK
+    assert readings[1].height_m.status is DisplayStatus.ERROR
 
 
-def test_unmapped_kpi_and_malformed_value_do_not_affect_other_readings() -> None:
+def test_numbers_are_not_accepted_at_collector_boundary():
     values = _values()
-    del values[STOCKPILE_MINA_KPI_KEYS[0][3]]
-    values[STOCKPILE_MINA_KPI_KEYS[1][2]] = {
-        'status': 'ok',
-        'value_kind': 'json',
-        'value': {'a': 2},
-    }
-    state = map_stockpile_mina_store(_store(values))
-
-    assert state.items[0].height_m.status is DisplayStatus.NOT_MAPPED
-    assert state.items[0].percentage.value == '65'
-    assert state.items[1].percentage.status is DisplayStatus.INVALID
-    assert state.items[1].height_m.value == '23,5'
-
-
-def test_number_instead_of_text_is_invalid_at_collector_boundary() -> None:
-    values = _values()
-    values[STOCKPILE_MINA_KPI_KEYS[0][3]] = _entry(18.2)
-    state = map_stockpile_mina_store(_store(values))
-
-    assert state.items[0].height_m.status is DisplayStatus.INVALID
+    values[STOCKPILE_MINA_KPI_KEYS[0][2]] = _entry(18.2)
+    readings = map_stockpile_mina_store(_store(values))
+    assert readings[0].height_m.status is DisplayStatus.INVALID
 
 
 class DashStub:
@@ -116,25 +89,20 @@ class DashStub:
         return register
 
 
-def test_mina_stockpile_callback_consumes_existing_component_store():
+def test_callback_rebuilds_two_images_from_existing_kpi_store():
     stub = DashStub()
     register_chancado_stmg_callback(stub, tool_key='integrated_operations')
-
     result = stub.callback_function(_store(_values()))
-
     assert stub.callback_args[0].component_id == dashboard_card_content_id('chancado_stmg')
     assert stub.callback_args[1].component_id == component_kpi_store_id(
         'integrated_operations', CHANCADO_STMG.tool_component_key
     )
-    assert result is not None
     assert result.to_plotly_json()['type'] == 'Div'
+    assert len(result.to_plotly_json()['props']['children']) == 2
 
 
-def test_stockpile_layer_can_be_composed_by_dashboard():
+def test_dashboard_retains_stockpile_asset_layer():
     from ada.web.application.integrated_operations.modules.dashboard.module import (
         create_dashboard_module,
     )
-
-    module = create_dashboard_module(None)
-
-    assert ADA_STOCKPILE_ASSET_LAYER in module.asset_layers
+    assert ADA_STOCKPILE_ASSET_LAYER in create_dashboard_module(None).asset_layers

@@ -1,8 +1,13 @@
-# Exporta únicamente los contratos necesarios para esta frontera de presentación.
-from .definitions import STOCKPILE_MINA_KPI_KEYS, STOCKPILE_MINA_SCALE_MAX_M
+# Exportación de las definiciones y del mapper específicos de Mina.
+from .definitions import (
+    STOCKPILE_MINA_DEFINITIONS,
+    STOCKPILE_MINA_KPI_KEYS,
+    STOCKPILE_MINA_SCALE_MAX_M,
+)
 from .mapper import map_stockpile_mina_store
 
 __all__ = [
+    'STOCKPILE_MINA_DEFINITIONS',
     'STOCKPILE_MINA_KPI_KEYS',
     'STOCKPILE_MINA_SCALE_MAX_M',
     'map_stockpile_mina_store',

@@ -5,80 +5,102 @@ from dash.development.base_component import Component
 
 from ada.web.ui.display_status import DisplayStatus, build_display_status_icon
 
-from .models import StockpileItem, StockpilePanel
-from .svg import build_stockpile_data_uri
+from .models import (
+    StockpileDefinition,
+    StockpileValues,
+    StockpileVariant,
+    validate_stockpile_values,
+)
+from .svg import StockpileRenderValues, build_stockpile_data_uri
 from .values import StockpileReading, resolve_stockpile_reading
 
+_NO_INFORMATION = 'Sin información'
 
-def build_stockpile_panel(panel: StockpilePanel) -> Component:
-    if not isinstance(panel, StockpilePanel):
-        raise TypeError('panel must be StockpilePanel')
-    return html.Div(
-        className=_classes('ada-stockpile', panel.class_name),
-        children=[_build_item(item, panel) for item in panel.items],
+
+def build_stockpile_component(
+    definition: StockpileDefinition,
+    values: StockpileValues,
+    *,
+    component_id: str | None = None,
+    class_name: str | None = None,
+    alt: str = 'Stockpile',
+) -> Component:
+    validate_stockpile_values(definition, values)
+    percentage = resolve_stockpile_reading(values.percent, percentage=True)
+    height = (
+        resolve_stockpile_reading(values.height_m, percentage=False)
+        if definition.variant is StockpileVariant.VARIABLE_HEIGHT
+        else None
     )
-
-
-def _build_item(item: StockpileItem, panel: StockpilePanel) -> Component:
-    percentage = resolve_stockpile_reading(item.percentage, percentage=True)
-    height = resolve_stockpile_reading(item.height_m, percentage=False)
-    return html.Div(
-        className=_classes('ada-stockpile__item', panel.item_class_name),
-        children=[
-            html.Span(
-                item.label, className=_classes('ada-stockpile__label', panel.label_class_name)
-            ),
-            _build_graphic(height, panel),
-            html.Div(
-                className='ada-stockpile__values',
-                children=[
-                    _build_reading(percentage, unit='%', class_name=panel.value_class_name),
-                    (
-                        _build_reading(height, unit='m', class_name=panel.value_class_name)
-                        if height.status is DisplayStatus.OK
-                        else None
-                    ),
-                ],
-            ),
-        ],
-    )
-
-
-def _build_graphic(height: StockpileReading, panel: StockpilePanel) -> Component:
-    if height.status is not DisplayStatus.OK:
-        return html.Div(
-            _status_icon(height.status),
-            className=_classes('ada-stockpile__graphic', panel.graphic_class_name),
+    failure = _failure_status(percentage, height)
+    if failure is not None:
+        icon = build_display_status_icon(failure, class_name='ada-stockpile__status-icon')
+        if icon is None:
+            raise ValueError('Stockpile error icon cannot be resolved')
+        return html.Span(
+            icon,
+            className=_classes('ada-stockpile__error', class_name),
+            **({'id': component_id} if component_id is not None else {}),
         )
-    if height.number is None:
-        raise ValueError('Valid stockpile height requires numeric value')
+
+    rendered = _resolve_render_values(definition, percentage, height)
+    style = {'display': 'block', 'width': '100%', 'height': 'auto', 'objectFit': 'contain'}
+    if definition.max_width_px is not None:
+        style['maxWidth'] = f'{definition.max_width_px}px'
+    if definition.max_height_px is not None:
+        style['maxHeight'] = f'{definition.max_height_px}px'
     return html.Img(
-        src=build_stockpile_data_uri(height.number, scale_max_m=panel.scale_max_m),
-        alt='',
+        src=build_stockpile_data_uri(definition, rendered),
+        alt=alt,
         draggable=False,
-        className=_classes('ada-stockpile__graphic', panel.graphic_class_name),
-        **{'aria-hidden': 'true'},
+        style=style,
+        className=_classes('ada-stockpile__graphic', class_name),
+        **({'id': component_id} if component_id is not None else {}),
     )
 
 
-def _build_reading(reading: StockpileReading, *, unit: str, class_name: str | None) -> Component:
-    content = (
-        [reading.text, unit]
-        if reading.status is DisplayStatus.OK
-        else [_status_icon(reading.status)]
+def _failure_status(
+    percentage: StockpileReading, height: StockpileReading | None
+) -> DisplayStatus | None:
+    statuses = (percentage.status, height.status if height is not None else None)
+    if DisplayStatus.ERROR in statuses:
+        return DisplayStatus.ERROR
+    if DisplayStatus.INVALID in statuses:
+        return DisplayStatus.INVALID
+    return None
+
+
+def _resolve_render_values(
+    definition: StockpileDefinition,
+    percentage: StockpileReading,
+    height: StockpileReading | None,
+) -> StockpileRenderValues:
+    has_percentage = percentage.status is DisplayStatus.OK
+    has_height = height is not None and height.status is DisplayStatus.OK
+    missing_both = (
+        definition.variant is StockpileVariant.VARIABLE_HEIGHT
+        and not has_height
+        and not has_percentage
     )
-    return html.Span(
-        children=content,
-        className=_classes('ada-stockpile__value', class_name),
+    height_ratio = 1.0
+    height_text = None
+    if definition.variant is StockpileVariant.VARIABLE_HEIGHT:
+        if has_height:
+            height_ratio = min(height.number / definition.scale_max_m, 1.0)
+            height_text = f'{height.text}m'
+        else:
+            height_ratio = 1.0 if missing_both else 0.0
+            height_text = _NO_INFORMATION
+    show_fill = has_percentage and (
+        has_height or definition.variant is StockpileVariant.FIXED_PROFILE
+    )
+    return StockpileRenderValues(
+        percent=percentage.number if show_fill else 0.0,
+        height_ratio=height_ratio,
+        percent_text=f'{percentage.text}%' if has_percentage else _NO_INFORMATION,
+        height_text=height_text,
     )
 
 
-def _status_icon(status: DisplayStatus) -> Component:
-    icon = build_display_status_icon(status, class_name='ada-stockpile__status-icon')
-    if icon is None:
-        raise ValueError('Stockpile status icon cannot be resolved')
-    return icon
-
-
-def _classes(base: str, custom: str | None) -> str:
-    return ' '.join(part for part in (base, custom) if part)
+def _classes(base: str, extra: str | None) -> str:
+    return ' '.join(part for part in (base, extra) if part)

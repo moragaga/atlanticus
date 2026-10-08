@@ -1,29 +1,23 @@
-# El adaptador consume el latest del Collector, sin consultar Cosmos ni exponer claves en ADA UI.
-# Cada KPI conserva su estado de calidad independiente y su texto original.
+# Transforma lecturas KPI a DisplayValue sin fabricar números ni alterar estados.
 from __future__ import annotations
 
 from collections.abc import Mapping
 
 from ada.web.kpis.collector import KpiLatestValueState, decode_kpi_latest_value
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
-from ada.web.ui.stockpile import StockpileItem, StockpilePanel
+from ada.web.ui.stockpile import StockpileValues
 
-from .definitions import STOCKPILE_MINA_KPI_KEYS, STOCKPILE_MINA_SCALE_MAX_M
+from .definitions import STOCKPILE_MINA_KPI_KEYS
 
 
-def map_stockpile_mina_store(store_data: object) -> StockpilePanel:
+def map_stockpile_mina_store(store_data: object) -> tuple[StockpileValues, ...]:
     values, source_status = _latest_values(store_data)
-    return StockpilePanel(
-        items=tuple(
-            StockpileItem(
-                key=key,
-                label=label,
-                percentage=_map_reading(values, percentage_key, source_status),
-                height_m=_map_reading(values, height_m_key, source_status),
-            )
-            for key, label, percentage_key, height_m_key in STOCKPILE_MINA_KPI_KEYS
-        ),
-        scale_max_m=STOCKPILE_MINA_SCALE_MAX_M,
+    return tuple(
+        StockpileValues(
+            percent=_map_reading(values, percentage_key, source_status),
+            height_m=_map_reading(values, height_m_key, source_status),
+        )
+        for _, percentage_key, height_m_key in STOCKPILE_MINA_KPI_KEYS
     )
 
 
@@ -50,10 +44,7 @@ def _map_reading(
 ) -> DisplayValue:
     if values is None:
         return DisplayValue(source_status)
-    decoded = decode_kpi_latest_value(
-        values.get(kpi_key),
-        present=kpi_key in values,
-    )
+    decoded = decode_kpi_latest_value(values.get(kpi_key), present=kpi_key in values)
     if decoded.state is KpiLatestValueState.OK:
         if decoded.value_kind != 'value' or not isinstance(decoded.value, str):
             return DisplayValue.invalid()

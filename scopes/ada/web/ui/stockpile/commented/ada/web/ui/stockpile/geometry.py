@@ -1,114 +1,165 @@
+# Geometría individual reutilizable: interpolación y trayectorias de relleno.
+# Equivalente al archivo productivo, con explicación pedagógica en español.
 from __future__ import annotations
 
-# Los perfiles son proporcionales y no contienen datos de equipos, KPI ni aplicaciones.
-
+import hashlib
 from collections.abc import Sequence
+from dataclasses import dataclass
+
 
 Point = tuple[float, float]
-Profile = tuple[Point, ...]
 
-_PROFILE_PHASES: dict[float, Profile] = {
+
+@dataclass(frozen=True, slots=True)
+class RenderedPileGeometry:
+    path: str
+    apex_x: float
+    apex_y: float
+    base_left_x: float
+    base_right_x: float
+    base_y: float
+
+
+_REFERENCE_PROFILES: dict[float, tuple[Point, ...]] = {
     0.0: (
-        (0.44, 0.00),
-        (0.45, 0.00),
-        (0.46, 0.00),
-        (0.47, 0.00),
-        (0.48, 0.00),
-        (0.50, 0.00),
-        (0.52, 0.00),
-        (0.53, 0.00),
-        (0.54, 0.00),
-        (0.55, 0.00),
-        (0.56, 0.00),
+        (0.46, 1.00),
+        (0.47, 0.99),
+        (0.48, 0.985),
+        (0.49, 0.98),
+        (0.50, 0.975),
+        (0.51, 0.98),
+        (0.52, 0.985),
+        (0.53, 0.99),
+        (0.54, 1.00),
     ),
-    0.30: (
-        (0.20, 0.00),
-        (0.24, 0.04),
-        (0.31, 0.11),
-        (0.39, 0.20),
-        (0.46, 0.28),
-        (0.51, 0.30),
-        (0.57, 0.27),
-        (0.65, 0.19),
-        (0.73, 0.10),
-        (0.79, 0.03),
-        (0.82, 0.00),
+    8 / 30: (
+        (0.31, 1.00),
+        (0.34, 0.93),
+        (0.38, 0.84),
+        (0.43, 0.76),
+        (0.50, 0.71),
+        (0.56, 0.75),
+        (0.62, 0.84),
+        (0.67, 0.93),
+        (0.70, 1.00),
     ),
-    0.65: (
-        (0.07, 0.00),
-        (0.12, 0.08),
-        (0.21, 0.23),
-        (0.32, 0.40),
-        (0.43, 0.57),
-        (0.51, 0.65),
-        (0.59, 0.62),
-        (0.69, 0.49),
-        (0.80, 0.30),
-        (0.89, 0.10),
-        (0.94, 0.00),
+    16 / 30: (
+        (0.18, 1.00),
+        (0.23, 0.87),
+        (0.30, 0.70),
+        (0.39, 0.54),
+        (0.50, 0.43),
+        (0.60, 0.52),
+        (0.70, 0.69),
+        (0.78, 0.87),
+        (0.83, 1.00),
+    ),
+    23 / 30: (
+        (0.08, 1.00),
+        (0.14, 0.83),
+        (0.23, 0.59),
+        (0.36, 0.35),
+        (0.49, 0.20),
+        (0.61, 0.31),
+        (0.75, 0.57),
+        (0.86, 0.82),
+        (0.92, 1.00),
     ),
     1.0: (
-        (0.00, 0.00),
-        (0.06, 0.10),
-        (0.16, 0.28),
-        (0.28, 0.50),
-        (0.40, 0.73),
-        (0.49, 0.92),
-        (0.57, 0.88),
-        (0.68, 0.72),
-        (0.80, 0.47),
-        (0.92, 0.17),
-        (1.00, 0.00),
+        (0.03, 1.00),
+        (0.10, 0.78),
+        (0.20, 0.50),
+        (0.34, 0.24),
+        (0.49, 0.07),
+        (0.62, 0.20),
+        (0.78, 0.48),
+        (0.90, 0.77),
+        (0.97, 1.00),
     ),
 }
 
 
-# Interpolamos perfiles normalizados y limitamos el factor visual a cero/uno.
-def interpolate_profile(ratio: float) -> Profile:
-    clipped = max(0.0, min(1.0, ratio))
-    stops = tuple(sorted(_PROFILE_PHASES))
-    for lower, upper in zip(stops, stops[1:], strict=True):
-        if clipped <= upper:
-            factor = (clipped - lower) / (upper - lower)
-            return tuple(
-                (
-                    x0 + (x1 - x0) * factor,
-                    y0 + (y1 - y0) * factor,
-                )
-                for (x0, y0), (x1, y1) in zip(
-                    _PROFILE_PHASES[lower], _PROFILE_PHASES[upper], strict=True
-                )
-            )
-    return _PROFILE_PHASES[stops[-1]]
+def clamp(value: float, minimum: float, maximum: float) -> float:
+    return max(minimum, min(value, maximum))
 
 
-# La silueta se lleva a un lienzo SVG de dimensiones internas estables.
-def scaled_profile(profile: Sequence[Point]) -> Profile:
-    return tuple((8.0 + x * 144.0, 115.0 - y * 92.0) for x, y in profile)
+def interpolate_profile(height_ratio: float) -> tuple[Point, ...]:
+    ratio = clamp(height_ratio, 0.0, 1.0)
+    stops = sorted(_REFERENCE_PROFILES)
 
+    if ratio <= stops[0]:
+        return _REFERENCE_PROFILES[stops[0]]
+    if ratio >= stops[-1]:
+        return _REFERENCE_PROFILES[stops[-1]]
 
-# Construimos una curva cerrada suave usando controles cúbicos por segmento.
-def closed_profile_path(points: Sequence[Point]) -> str:
-    if len(points) < 2:
-        raise ValueError('Stockpile profile requires at least two points')
-    commands = [f'M {points[0][0]:.2f} {points[0][1]:.2f}']
-    for index in range(len(points) - 1):
-        previous = points[max(index - 1, 0)]
-        current = points[index]
-        following = points[index + 1]
-        after = points[min(index + 2, len(points) - 1)]
-        c1 = (
-            current[0] + (following[0] - previous[0]) / 6.0,
-            current[1] + (following[1] - previous[1]) / 6.0,
+    left_stop = stops[0]
+    right_stop = stops[-1]
+
+    for current_left, current_right in zip(stops, stops[1:], strict=False):
+        if current_left <= ratio <= current_right:
+            left_stop = current_left
+            right_stop = current_right
+            break
+
+    factor = (ratio - left_stop) / (right_stop - left_stop)
+    left_points = _REFERENCE_PROFILES[left_stop]
+    right_points = _REFERENCE_PROFILES[right_stop]
+
+    return tuple(
+        (
+            left_x + (right_x - left_x) * factor,
+            left_y + (right_y - left_y) * factor,
         )
-        c2 = (
-            following[0] - (after[0] - current[0]) / 6.0,
-            following[1] - (after[1] - current[1]) / 6.0,
-        )
-        commands.append(
-            f'C {c1[0]:.2f} {c1[1]:.2f} '
-            f'{c2[0]:.2f} {c2[1]:.2f} '
-            f'{following[0]:.2f} {following[1]:.2f}'
-        )
-    commands.append('Z')
-    return ' '.join(commands)
+        for (left_x, left_y), (right_x, right_y) in zip(left_points, right_points, strict=True)
+    )
+
+
+def render_pile_geometry(
+    *,
+    points: Sequence[Point],
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+) -> RenderedPileGeometry:
+    scaled = tuple((x + px * width, y + py * height) for px, py in points)
+    path_parts = [f"M {scaled[0][0]:.2f} {scaled[0][1]:.2f}"]
+    path_parts.extend(f"L {px:.2f} {py:.2f}" for px, py in scaled[1:])
+    path_parts.append(f"L {scaled[0][0]:.2f} {scaled[0][1]:.2f}")
+    path_parts.append("Z")
+
+    apex_x, apex_y = min(scaled, key=lambda point: point[1])
+    base_y = max(point[1] for point in scaled)
+
+    return RenderedPileGeometry(
+        path=" ".join(path_parts),
+        apex_x=apex_x,
+        apex_y=apex_y,
+        base_left_x=scaled[0][0],
+        base_right_x=scaled[-1][0],
+        base_y=base_y,
+    )
+
+
+def build_irregular_fill_path(
+    *,
+    key: str,
+    x: float,
+    width: float,
+    fill_y: float,
+    base_y: float,
+) -> str:
+    digest = hashlib.sha256(key.encode("utf-8")).digest()
+    points: list[Point] = []
+
+    for index in range(11):
+        px = x + width * index / 10
+        noise = (digest[index] / 255 - 0.5) * 5.0
+        points.append((px, fill_y + noise))
+
+    path_parts = [f"M {points[0][0]:.2f} {base_y:.2f}"]
+    path_parts.append(f"L {points[0][0]:.2f} {points[0][1]:.2f}")
+    path_parts.extend(f"L {px:.2f} {py:.2f}" for px, py in points[1:])
+    path_parts.append(f"L {points[-1][0]:.2f} {base_y:.2f}")
+    path_parts.append("Z")
+    return " ".join(path_parts)
