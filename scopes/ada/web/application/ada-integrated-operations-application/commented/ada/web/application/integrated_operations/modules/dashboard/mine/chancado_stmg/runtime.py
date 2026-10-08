@@ -1,4 +1,4 @@
-# Callback ADA: utiliza el Store existente; el encabezado y la cuadrícula pertenecen al consumidor, no al componente Stockpile.
+# El callback sigue leyendo un único Store; Producción Global se antepone a Stockpile sin modificarlo.
 from __future__ import annotations
 
 from dash import Input, Output, html
@@ -10,6 +10,7 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.bindings i
 from ada.web.kpis.collector import component_kpi_store_id
 from ada.web.ui.stockpile import build_stockpile_component
 
+from .produccion_global import build_produccion_global, map_produccion_global_store
 from .stockpile_mina import STOCKPILE_MINA_DEFINITIONS, map_stockpile_mina_store
 
 
@@ -26,8 +27,14 @@ def register_chancado_stmg_callback(dash_app, *, tool_key: str) -> None:
         ]
         return html.Div(
             [
-                html.Div('Stockpile Mina', className='ada-io-stockpile__title'),
-                html.Div(piles, className='ada-io-stockpile-piles'),
+                build_produccion_global(map_produccion_global_store(store_data)),
+                html.Div(
+                    [
+                        html.Div('Stockpile Mina', className='ada-io-stockpile__title'),
+                        html.Div(piles, className='ada-io-stockpile-piles'),
+                    ],
+                    className='ada-io-stockpile',
+                ),
             ],
-            className='ada-io-stockpile',
+            className='ada-io-chancado-stmg',
         )
