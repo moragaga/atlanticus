@@ -1,0 +1,269 @@
+.gestion-carguio-turno {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: min-content;
+    flex-direction: column;
+    color: var(--ada-io-text, var(--custom-text-color, #4D4D4D));
+    padding: .08rem .18rem;
+}
+
+.gestion-carguio-turno__table-wrapper {
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+}
+
+.gestion-carguio-turno__table {
+    width: 100%;
+    min-width: 0;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.gestion-carguio-turno__head {
+    padding: 0 .08rem .1rem;
+    border-bottom: 1px solid var(--ada-color-border-primary);
+    font-size: .28rem;
+    font-weight: 700;
+    line-height: 1.05;
+    text-align: end;
+    vertical-align: bottom;
+}
+
+.gestion-carguio-turno__head--equipo {
+    width: 9%;
+    text-align: start;
+}
+
+.gestion-carguio-turno__head--fase {
+    width: 8%;
+}
+
+.gestion-carguio-turno__head--uebd {
+    width: 9%;
+}
+
+.gestion-carguio-turno__head--disponibilidad {
+    width: 15%;
+}
+
+.gestion-carguio-turno__head--rendimiento {
+    width: 15%;
+}
+
+.gestion-carguio-turno__head--cola {
+    width: 11%;
+}
+
+.gestion-carguio-turno__head--estado {
+    width: 8%;
+}
+
+.gestion-carguio-turno__head--razon {
+    width: 25%;
+}
+
+.gestion-carguio-turno__section {
+    padding: .12rem .08rem .06rem;
+    border-bottom: 1px solid var(--ada-color-border-primary);
+    font-size: .34rem;
+    font-weight: 800;
+    line-height: 1.05;
+    text-align: start;
+}
+
+.gestion-carguio-turno__cell {
+    overflow: hidden;
+    padding: .08rem;
+    border-bottom: 1px solid var(--ada-color-border-primary);
+    font-size: .32rem;
+    font-weight: 500;
+    line-height: 1.05;
+    text-align: end;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gestion-carguio-turno__cell--equipo {
+    font-weight: 700;
+    text-align: start;
+}
+
+.gestion-carguio-turno__cell--razon {
+    text-align: start;
+}
+
+.gestion-carguio-turno__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .08rem .22rem;
+    padding-top: .12rem;
+    font-size: .28rem;
+    font-style: italic;
+    line-height: 1.1;
+}
+
+.gestion-carguio-turno__state {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: center;
+    gap: .12rem;
+    padding-top: .18rem;
+    font-size: .36rem;
+    font-weight: 600;
+    line-height: 1.1;
+    text-align: center;
+}
+
+.gestion-carguio-turno__status-icon {
+    --ada-status-icon-size: 2em;
+}
+
+@media only screen and (min-width: 350px) {
+    .gestion-carguio-turno__head,
+    .gestion-carguio-turno__legend {
+        font-size: .42rem;
+    }
+
+    .gestion-carguio-turno__section {
+        font-size: .5rem;
+    }
+
+    .gestion-carguio-turno__cell,
+    .gestion-carguio-turno__state {
+        font-size: .48rem;
+    }
+}
+
+@media only screen and (min-width: 480px) {
+    .gestion-carguio-turno__head,
+    .gestion-carguio-turno__legend {
+        font-size: .46rem;
+    }
+
+    .gestion-carguio-turno__section {
+        font-size: .54rem;
+    }
+
+    .gestion-carguio-turno__cell,
+    .gestion-carguio-turno__state {
+        font-size: .52rem;
+    }
+}
+
+@media only screen and (min-width: 1280px) {
+    .gestion-carguio-turno__head,
+    .gestion-carguio-turno__legend {
+        font-size: .3rem;
+    }
+
+    .gestion-carguio-turno__section {
+        font-size: .36rem;
+    }
+
+    .gestion-carguio-turno__cell,
+    .gestion-carguio-turno__state {
+        font-size: .34rem;
+    }
+}
+
+@media only screen and (min-width: 1366px) {
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__head,
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__legend {
+        font-size: .36rem;
+    }
+
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__section {
+        font-size: .43rem;
+    }
+
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__cell,
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__state {
+        font-size: .41rem;
+    }
+}
+
+@media only screen and (min-width: 1536px) {
+    .gestion-carguio-turno__head,
+    .gestion-carguio-turno__legend {
+        font-size: .32rem;
+    }
+
+    .gestion-carguio-turno__section {
+        font-size: .38rem;
+    }
+
+    .gestion-carguio-turno__cell,
+    .gestion-carguio-turno__state {
+        font-size: .36rem;
+    }
+
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__head,
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__legend {
+        font-size: .39rem;
+    }
+
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__section {
+        font-size: .46rem;
+    }
+
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__cell,
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__state {
+        font-size: .44rem;
+    }
+}
+
+@media only screen and (min-width: 1920px) {
+    .gestion-carguio-turno__head,
+    .gestion-carguio-turno__legend {
+        font-size: .36rem;
+    }
+
+    .gestion-carguio-turno__section {
+        font-size: .42rem;
+    }
+
+    .gestion-carguio-turno__cell,
+    .gestion-carguio-turno__state {
+        font-size: .4rem;
+    }
+
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__head,
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__legend {
+        font-size: .44rem;
+    }
+
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__section {
+        font-size: .51rem;
+    }
+
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__cell,
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__state {
+        font-size: .49rem;
+    }
+}
+
+@media only screen and (min-width: 2560px) {
+    .gestion-carguio-turno__head,
+    .gestion-carguio-turno__legend,
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__head,
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__legend {
+        font-size: .42rem;
+    }
+
+    .gestion-carguio-turno__section,
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__section {
+        font-size: .5rem;
+    }
+
+    .gestion-carguio-turno__cell,
+    .gestion-carguio-turno__state,
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__cell,
+    [data-ada-io-presentation='mine'] .gestion-carguio-turno__state {
+        font-size: .48rem;
+    }
+}

@@ -1,4 +1,4 @@
-# Carguío mantiene un único callback coordinador para sus dos cards.
+# Carguío mantiene un único callback coordinador para sus cards y la shared card que posee.
 from __future__ import annotations
 
 from dash import Input, Output
@@ -17,23 +17,32 @@ from .equipos_servicio import (
     build_equipos_servicio,
     map_equipos_servicio_store,
 )
+from .gestion_carguio_turno import (
+    build_gestion_carguio_turno,
+    map_gestion_carguio_turno_store,
+)
 
 
 def register_carguio_callback(dash_app, *, tool_key: str) -> None:
     @dash_app.callback(
         Output(dashboard_card_content_id('carguio_global_turno'), 'children'),
         Output(dashboard_card_content_id('equipos_servicio'), 'children'),
+        Output(dashboard_card_content_id('gestion_carguio_turno'), 'children'),
         Input(component_kpi_store_id(tool_key, CARGUIO.tool_component_key), 'data'),
     )
     def refresh_carguio(store_data: object):
-        # Cada card consume su propio KPI desde el mismo Component KPI Store.
+        # Las tres superficies leen el mismo Component KPI Store de Carguío.
         global_state, global_source_status = map_carguio_global_turno_store(
             store_data
         )
         equipos_state, equipos_source_status = map_equipos_servicio_store(
             store_data
         )
+        gestion_state, gestion_source_status = map_gestion_carguio_turno_store(
+            store_data
+        )
         return (
             build_carguio_global_turno(global_state, global_source_status),
             build_equipos_servicio(equipos_state, equipos_source_status),
+            build_gestion_carguio_turno(gestion_state, gestion_source_status),
         )
