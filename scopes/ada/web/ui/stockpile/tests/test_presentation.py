@@ -30,9 +30,9 @@ def test_valid_source_text_is_preserved_in_svg():
     assert '65%' in svg and '18,2m' in svg
 
 
-def test_no_data_in_both_uses_maximum_empty_silhouette_and_information_label():
+def test_no_data_in_both_uses_maximum_empty_silhouette_and_information_labels():
     svg = _svg(_render(DisplayValue.empty(), DisplayValue.not_mapped()))
-    assert svg.count('Sin información') == 1
+    assert svg.count('Sin información') == 2
     assert 'clip-path="url(#stockpile-clip)"' not in svg
     assert 'fill="url(#stockpile-light-volume)"' not in svg
     assert 'fill="url(#stockpile-light-texture)"' not in svg
@@ -45,9 +45,10 @@ def test_missing_percentage_shows_real_height_and_no_fill():
     assert 'fill="url(#stockpile-light-volume)"' not in svg
 
 
-def test_missing_height_preserves_percentage_label_but_not_fill():
-    svg = _svg(_render(DisplayValue.ok('65'), DisplayValue.empty()))
-    assert '65%' in svg and 'Sin información' not in svg
+@pytest.mark.parametrize('missing_height', [DisplayValue.empty(), DisplayValue.not_mapped()])
+def test_missing_height_preserves_percentage_label_but_not_fill(missing_height):
+    svg = _svg(_render(DisplayValue.ok('65'), missing_height))
+    assert '65%' in svg and svg.count('Sin información') == 1
     assert 'clip-path="url(#stockpile-clip)"' not in svg
     assert 'fill="url(#stockpile-light-volume)"' not in svg
 
