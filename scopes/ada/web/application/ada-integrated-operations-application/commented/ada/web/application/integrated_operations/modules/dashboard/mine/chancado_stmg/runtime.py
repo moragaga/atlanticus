@@ -1,4 +1,4 @@
-# Callback ADA: lee el Store y compone dos pilas individuales sin lógica en Stockpile.
+# Callback ADA: utiliza el Store existente; el encabezado y la cuadrícula pertenecen al consumidor, no al componente Stockpile.
 from __future__ import annotations
 
 from dash import Input, Output, html
@@ -20,10 +20,14 @@ def register_chancado_stmg_callback(dash_app, *, tool_key: str) -> None:
     )
     def refresh_chancado_stmg(store_data: object):
         values = map_stockpile_mina_store(store_data)
+        piles = [
+            build_stockpile_component(definition, reading)
+            for definition, reading in zip(STOCKPILE_MINA_DEFINITIONS, values, strict=True)
+        ]
         return html.Div(
             [
-                build_stockpile_component(definition, reading)
-                for definition, reading in zip(STOCKPILE_MINA_DEFINITIONS, values, strict=True)
+                html.Div('Stockpile Mina', className='ada-io-stockpile__title'),
+                html.Div(piles, className='ada-io-stockpile-piles'),
             ],
-            className='ada-io-stockpile-piles',
+            className='ada-io-stockpile',
         )

@@ -1,4 +1,5 @@
 # Este modulo publica el CSS de ambas filas en una capa propia ADA.
+# El orden 190 evita la colisión con el editor de KPI (170).
 from __future__ import annotations
 
 from atlanticus.web.assets import AssetLayer
@@ -6,7 +7,7 @@ from atlanticus.web.modules import WebModule
 
 ADA_INLINE_ROW_ASSET_LAYER = AssetLayer(
     name='ada_inline_row',
-    load_order=170,
+    load_order=190,
     package='ada.web.ui.inline_row',
 )
 

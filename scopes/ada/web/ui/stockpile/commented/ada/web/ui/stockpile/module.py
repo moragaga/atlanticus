@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 # La capa de assets carga el CSS del propio paquete mediante el módulo Web de Atlanticus.
+# El orden 180 evita la colisión con la capa de configuración ADA (165).
 
 from atlanticus.web.assets import AssetLayer
 from atlanticus.web.modules import WebModule
 
 ADA_STOCKPILE_ASSET_LAYER = AssetLayer(
     name='ada_stockpile',
-    load_order=165,
+    load_order=180,
     package='ada.web.ui.stockpile',
 )
 

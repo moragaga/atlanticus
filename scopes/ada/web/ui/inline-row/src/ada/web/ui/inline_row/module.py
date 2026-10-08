@@ -5,7 +5,7 @@ from atlanticus.web.modules import WebModule
 
 ADA_INLINE_ROW_ASSET_LAYER = AssetLayer(
     name='ada_inline_row',
-    load_order=170,
+    load_order=190,
     package='ada.web.ui.inline_row',
 )
 

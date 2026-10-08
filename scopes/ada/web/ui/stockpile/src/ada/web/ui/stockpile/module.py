@@ -5,7 +5,7 @@ from atlanticus.web.modules import WebModule
 
 ADA_STOCKPILE_ASSET_LAYER = AssetLayer(
     name='ada_stockpile',
-    load_order=165,
+    load_order=180,
     package='ada.web.ui.stockpile',
 )
 
