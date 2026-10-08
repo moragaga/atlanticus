@@ -364,6 +364,7 @@ def _finalize_management_state(
     cycle_at: datetime,
     plans: Mapping[AlarmIdentity, PlannedAlarm],
     active_alarm_identities: frozenset[AlarmIdentity] = frozenset(),
+    expired_deactivation_identities: frozenset[AlarmIdentity] = frozenset(),
     exclude_equal_due_identities: frozenset[AlarmIdentity] = frozenset(),
     occurrence_changes: Sequence[OccurrenceChange],
     episode_changes: Sequence[EpisodeChange],
@@ -374,6 +375,17 @@ def _finalize_management_state(
         cutoff=cycle_at,
         include_equal=True,
         exclude_equal_identities=set(exclude_equal_due_identities),
+    )
+    (
+        working,
+        deactivation_expiry_effect_changes,
+        deactivation_expiry_reappearance_changes,
+    ) = _resolve_special_condition_deactivation_expiry_reappearances(
+        working,
+        at=cycle_at,
+        plans=plans,
+        active_alarm_identities=active_alarm_identities,
+        expired_deactivation_identities=expired_deactivation_identities,
     )
     (
         working,
@@ -431,13 +443,22 @@ def _finalize_management_state(
         state=final_state,
         effect_changes=tuple(
             sorted(
-                (*effect_changes, *special_effect_changes, *cleanup_changes),
+                (
+                    *effect_changes,
+                    *deactivation_expiry_effect_changes,
+                    *special_effect_changes,
+                    *cleanup_changes,
+                ),
                 key=_effect_change_sort_key,
             )
         ),
         reappearance_changes=tuple(
             sorted(
-                (*reappearance_changes, *special_reappearance_changes),
+                (
+                    *reappearance_changes,
+                    *deactivation_expiry_reappearance_changes,
+                    *special_reappearance_changes,
+                ),
                 key=lambda item: (item.effective_at, item.alarm_identity, item.occurrence_id),
             )
         ),
@@ -719,6 +740,63 @@ def _resolve_due_effects(
 
 
 # Auxiliar _resolve_special_condition_reappearances: libera Management por triggers activos.
+
+# Resuelve la excepción de Special Condition al terminar una desactivación temporal.
+# Sólo una condición físicamente ACTIVE en el ciclo de confirmación reaparece de inmediato.
+# Una Rule normal, una SC INACTIVE/ERROR o una nueva deactivation vigente conservan el flujo genérico.
+def _resolve_special_condition_deactivation_expiry_reappearances(
+    working: dict[AlarmIdentity, AlarmRuntimeState],
+    *,
+    at: datetime,
+    plans: Mapping[AlarmIdentity, PlannedAlarm],
+    active_alarm_identities: frozenset[AlarmIdentity],
+    expired_deactivation_identities: frozenset[AlarmIdentity],
+) -> tuple[
+    dict[AlarmIdentity, AlarmRuntimeState],
+    tuple[ManagementEffectChange, ...],
+    tuple[ReappearanceChange, ...],
+]:
+    changes: list[ManagementEffectChange] = []
+    reappearances: list[ReappearanceChange] = []
+    for identity in sorted(expired_deactivation_identities):
+        current = working.get(identity)
+        plan = plans.get(identity)
+        if current is None or plan is None or not plan.is_special_condition:
+            continue
+        effect = current.management_effect
+        occurrence = current.occurrence
+        if effect is None or occurrence is None or current.management_cycle is None:
+            continue
+        if effect.source_occurrence_id != occurrence.occurrence_id:
+            continue
+        if identity not in active_alarm_identities:
+            continue
+        if is_deactivated(current, at=at):
+            continue
+        cycle = current.management_cycle + 1
+        working[identity] = replace(
+            current,
+            management_effect=None,
+            management_cycle=cycle,
+        )
+        changes.append(
+            ManagementEffectChange(
+                kind=ManagementEffectChangeKind.CLEARED,
+                alarm_identity=identity,
+                effective_at=at,
+            )
+        )
+        reappearances.append(
+            ReappearanceChange(
+                alarm_identity=identity,
+                occurrence_id=occurrence.occurrence_id,
+                effective_at=at,
+                management_cycle=cycle,
+            )
+        )
+    return working, tuple(changes), tuple(reappearances)
+
+
 def _resolve_special_condition_reappearances(
     working: dict[AlarmIdentity, AlarmRuntimeState],
     *,

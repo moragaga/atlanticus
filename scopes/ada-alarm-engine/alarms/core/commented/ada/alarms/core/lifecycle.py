@@ -27,6 +27,7 @@ from ada.alarms.core.models import (
     AlarmStatus,
     ConfigurationClosure,
     DeactivationDecision,
+    DeactivationEffectChangeKind,
     DeactivationRequest,
     EpisodeChange,
     EpisodeChangeKind,
@@ -277,6 +278,11 @@ def reduce_group_cycle(
             identity
             for identity, evaluation in evaluation_map.items()
             if evaluation.status is AlarmStatus.ACTIVE
+        ),
+        expired_deactivation_identities=frozenset(
+            change.alarm_identity
+            for change in management.deactivation_effect_changes
+            if change.kind is DeactivationEffectChangeKind.CLEARED
         ),
         occurrence_changes=sorted_occurrence_changes,
         episode_changes=sorted_episode_changes,
