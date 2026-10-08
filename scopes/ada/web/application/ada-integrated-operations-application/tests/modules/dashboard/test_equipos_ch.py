@@ -57,9 +57,10 @@ def test_atollo_inactive_is_absent_and_only_five_inspection_targets_are_rendered
         'state_b': _value('mantencion'), 'tph_b': _value('0'), 'atollo_b': _value('0'),
     }), DEFINITIONS)
     root = build_equipos_ch(state)
-    assert [getattr(node, 'data-kpi-inspection-key') for node in _targets(root)] == [
+    assert {getattr(node, 'data-kpi-inspection-key') for node in _targets(root)} == {
         'state_a', 'tph_a', 'atollo_a', 'state_b', 'tph_b',
-    ]
+    }
+    assert len(_targets(root)) == 5
     assert all(node.role == 'button' and node.tabIndex == 0 for node in _targets(root))
 
 
@@ -91,3 +92,23 @@ def test_duplicate_keys_are_rejected():
     other = EquiposChDefinition('another', 'B', 'state_a', 'other_tph', 'other_atollo', '1', '0')
     with pytest.raises(ValueError, match='globally distinct'):
         map_equipos_ch_store(_store({}), (DEFINITIONS[0], other))
+
+
+def test_two_chancadores_preserve_independent_inspection_with_atollo_error():
+    readings = map_equipos_ch_store(_store({
+        'state_a': _value('operando'), 'tph_a': _value('10'), 'atollo_a': _value('0'),
+        'state_b': _value('detenido'), 'tph_b': _value('20'),
+        'atollo_b': {'status': 'error', 'value_kind': 'value', 'value': None},
+    }), DEFINITIONS)
+    root = build_equipos_ch(readings)
+    targets = [getattr(node, 'data-kpi-inspection-key') for node in _targets(root)]
+    assert set(targets) == {'state_a', 'tph_a', 'state_b', 'tph_b', 'atollo_b'}
+    assert len(targets) == 5
+    assert not any(getattr(node, 'data-kpi-inspection-key', None) == 'atollo_a'
+                   for node in _nodes(root))
+
+
+def test_equipment_presentation_requires_two_readings():
+    state = map_equipos_ch_store(_store({}), DEFINITIONS)
+    with pytest.raises(ValueError, match='exactly two'):
+        build_equipos_ch(state[:1])

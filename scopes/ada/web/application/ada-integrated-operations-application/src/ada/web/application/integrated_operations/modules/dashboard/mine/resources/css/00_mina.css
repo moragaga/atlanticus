@@ -6,21 +6,6 @@
     align-items: stretch;
 }
 
-.ada-io-mine-grid .ada-io-component--general_mina {
-    grid-column: 1;
-    grid-row: 1 / 3;
-}
-
-.ada-io-mine-grid .ada-io-component--carguio {
-    grid-column: 2;
-    grid-row: 1;
-}
-
-.ada-io-mine-grid .ada-io-component--transporte {
-    grid-column: 3;
-    grid-row: 1;
-}
-
 .ada-io-mine-grid__shared-card {
     display: flex;
     min-width: 0;
@@ -34,9 +19,4 @@
     width: 100%;
     min-height: min-content;
     flex: 1 1 auto;
-}
-
-.ada-io-mine-grid .ada-io-component--chancado_stmg {
-    grid-column: 4;
-    grid-row: 1 / 3;
 }

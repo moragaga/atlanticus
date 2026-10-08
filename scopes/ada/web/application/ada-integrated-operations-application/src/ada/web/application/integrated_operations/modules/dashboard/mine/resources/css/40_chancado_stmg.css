@@ -5,3 +5,8 @@
     width: 100%;
     min-width: 0;
 }
+
+.ada-io-mine-grid .ada-io-component--chancado_stmg {
+    grid-column: 4;
+    grid-row: 1 / 3;
+}

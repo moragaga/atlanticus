@@ -16,43 +16,54 @@ def build_equipos_ch(readings: Sequence[EquiposChReading]) -> Component:
         isinstance(reading, EquiposChReading) for reading in readings
     ):
         raise TypeError('readings must be a sequence of EquiposChReading')
+    if len(readings) != 2:
+        raise ValueError('Equipos CH requires exactly two readings')
+    left, right = readings
     return html.Section(
         [
             html.H3('EQUIPOS CH', className='ada-io-equipos-ch__title'),
-            html.Div([_equipment(reading) for reading in readings], className='ada-io-equipos-ch__rows'),
+            html.Div(
+                [
+                    _image(left),
+                    _details(left),
+                    _details(right),
+                    _image(right),
+                ],
+                className='ada-io-equipos-ch__body',
+            ),
         ],
         className='ada-io-equipos-ch',
     )
 
 
-def _equipment(reading: EquiposChReading) -> Component:
+def _image(reading: EquiposChReading) -> Component:
+    return html.Div(
+        build_equipment_state_image(EquipmentStateImage(image='chancador', state=reading.state)),
+        className='ada-io-equipos-ch__image-target',
+        role='button',
+        tabIndex=0,
+        title=reading.definition.state_kpi_key,
+        **{'data-kpi-inspection-key': reading.definition.state_kpi_key},
+    )
+
+
+def _details(reading: EquiposChReading) -> Component:
     definition = reading.definition
     atollo = _atollo(reading.atollo, definition.atollo_kpi_key)
-    children = [
-        html.Div(
-            build_equipment_state_image(EquipmentStateImage(image='chancador', state=reading.state)),
-            className='ada-io-equipos-ch__image-target',
-            role='button',
-            tabIndex=0,
-            title=definition.state_kpi_key,
-            **{'data-kpi-inspection-key': definition.state_kpi_key},
-        ),
-        html.Div(
-            [
-                html.Span(definition.label, className='ada-io-equipos-ch__label'),
-                html.Div(
-                    [
-                        _metric(reading.throughput, definition.throughput_kpi_key),
-                        html.Span('t/h', className='ada-io-equipos-ch__unit'),
-                    ],
-                    className='ada-io-equipos-ch__throughput',
-                ),
-                *([] if atollo is None else [atollo]),
-            ],
-            className='ada-io-equipos-ch__details',
-        ),
-    ]
-    return html.Div(children, className='ada-io-equipos-ch__equipment')
+    return html.Div(
+        [
+            html.Span(definition.label, className='ada-io-equipos-ch__label'),
+            html.Div(
+                [
+                    _metric(reading.throughput, definition.throughput_kpi_key),
+                    html.Span('t/h', className='ada-io-equipos-ch__unit'),
+                ],
+                className='ada-io-equipos-ch__throughput',
+            ),
+            *([] if atollo is None else [atollo]),
+        ],
+        className='ada-io-equipos-ch__details',
+    )
 
 
 def _metric(value: DisplayValue, key: str) -> Component:

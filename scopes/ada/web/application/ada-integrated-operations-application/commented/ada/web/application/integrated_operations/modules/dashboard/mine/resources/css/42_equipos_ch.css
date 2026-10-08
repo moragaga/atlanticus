@@ -1,3 +1,4 @@
+/* Dos imágenes de chancador en los extremos; sus detalles se agrupan en el centro. */
 .ada-io-equipos-ch {
     display: flex;
     flex-direction: column;
@@ -13,17 +14,11 @@
     text-align: center;
 }
 
-.ada-io-equipos-ch__rows {
-    display: flex;
-    flex-direction: column;
-    gap: .3rem;
-}
-
-.ada-io-equipos-ch__equipment {
+.ada-io-equipos-ch__body {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, .8fr) minmax(0, .8fr) minmax(0, 1fr);
     align-items: center;
-    gap: .25rem;
+    column-gap: .12rem;
     min-width: 0;
 }
 
@@ -43,8 +38,10 @@
 .ada-io-equipos-ch__details {
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: .08rem;
     min-width: 0;
+    text-align: center;
 }
 
 .ada-io-equipos-ch__label {
@@ -55,8 +52,11 @@
 .ada-io-equipos-ch__throughput {
     display: flex;
     align-items: center;
-    gap: .14rem;
+    justify-content: center;
+    gap: .12rem;
+    min-width: 0;
     font-size: .53rem;
+    white-space: nowrap;
 }
 
 .ada-io-equipos-ch__value {
@@ -73,6 +73,7 @@
 .ada-io-equipos-ch__atollo {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: .2rem;
     font-size: .48rem;
     font-weight: 700;

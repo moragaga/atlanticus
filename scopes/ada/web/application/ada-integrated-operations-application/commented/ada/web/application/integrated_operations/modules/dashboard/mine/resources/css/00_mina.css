@@ -1,0 +1,23 @@
+/* La cuadrícula común de Mina incluye la tarjeta compartida entre Carguío y Transporte. */
+.ada-io-mine-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(min-content, 1fr));
+    gap: var(--ada-io-gap);
+    align-items: stretch;
+}
+
+.ada-io-mine-grid__shared-card {
+    display: flex;
+    min-width: 0;
+    min-height: min-content;
+    grid-column: 2 / 4;
+    grid-row: 2;
+    overflow: visible;
+}
+
+.ada-io-mine-grid__shared-card > .ada-io-card-state {
+    width: 100%;
+    min-height: min-content;
+    flex: 1 1 auto;
+}
