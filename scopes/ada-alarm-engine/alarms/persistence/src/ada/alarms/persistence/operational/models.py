@@ -18,8 +18,10 @@ from atlanticus.json import JsonDocument, normalize_json_document
 
 ENGINE_COMMIT_RECORD_SCHEMA_VERSION = 'engine-commit-record.v1'
 ENGINE_COMMIT_RECORD_V2_SCHEMA_VERSION = 'engine-commit-record.v2'
+ENGINE_COMMIT_RECORD_V3_SCHEMA_VERSION = 'engine-commit-record.v3'
 GROUP_RUNTIME_SNAPSHOT_SCHEMA_VERSION = 'group-runtime-snapshot.v1'
 GROUP_RUNTIME_SNAPSHOT_V2_SCHEMA_VERSION = 'group-runtime-snapshot.v2'
+GROUP_RUNTIME_SNAPSHOT_V3_SCHEMA_VERSION = 'group-runtime-snapshot.v3'
 JOURNAL_HEAD_SCHEMA_VERSION = 'journal-head.v1'
 
 _SEGMENT_ID_PATTERN = re.compile(r'\d{4}-\d{2}-\d{2}T\d{2}Z#\d{4}')
@@ -265,20 +267,22 @@ class EngineCommitRecord:
             raise ValueError('snapshot_after last_commit_id must match commit_id')
         normalized_records = _normalize_records(self.records, corruption=False)
         object.__setattr__(self, 'records', normalized_records)
-        if self.schema_version not in {
-            ENGINE_COMMIT_RECORD_SCHEMA_VERSION,
-            ENGINE_COMMIT_RECORD_V2_SCHEMA_VERSION,
-        }:
+        snapshot_version = self.snapshot_after.as_document()['snapshot_schema_version']
+        versions = {
+            ENGINE_COMMIT_RECORD_SCHEMA_VERSION: GROUP_RUNTIME_SNAPSHOT_SCHEMA_VERSION,
+            ENGINE_COMMIT_RECORD_V2_SCHEMA_VERSION: GROUP_RUNTIME_SNAPSHOT_V2_SCHEMA_VERSION,
+            ENGINE_COMMIT_RECORD_V3_SCHEMA_VERSION: GROUP_RUNTIME_SNAPSHOT_V3_SCHEMA_VERSION,
+        }
+        if self.schema_version not in versions:
             raise ValueError('engine commit record schema version is unsupported')
-        is_v2_snapshot = (
-            self.snapshot_after.as_document()['snapshot_schema_version']
-            == GROUP_RUNTIME_SNAPSHOT_V2_SCHEMA_VERSION
-        )
-        if (self.schema_version == ENGINE_COMMIT_RECORD_V2_SCHEMA_VERSION) != is_v2_snapshot:
+        if snapshot_version != versions[self.schema_version]:
             raise ValueError('engine commit version must match snapshot version')
-        if 'technical_incident_changes' in normalized_records and not is_v2_snapshot:
-            raise ValueError('technical incident transitions require commit v2')
-        if is_v2_snapshot:
+        if (
+            'technical_incident_changes' in normalized_records
+            and self.schema_version == ENGINE_COMMIT_RECORD_SCHEMA_VERSION
+        ):
+            raise ValueError('technical incident transitions require commit v2 or v3')
+        if self.schema_version != ENGINE_COMMIT_RECORD_SCHEMA_VERSION:
             _validate_technical_incident_changes(normalized_records, self.commit)
         _require_record_hash(self.record_hash)
 
@@ -291,12 +295,11 @@ class EngineCommitRecord:
         records: Mapping[str, Any] | None = None,
     ) -> EngineCommitRecord:
         normalized_records = _normalize_records(records or {}, corruption=False)
-        schema_version = (
-            ENGINE_COMMIT_RECORD_V2_SCHEMA_VERSION
-            if snapshot_after.as_document()['snapshot_schema_version']
-            == GROUP_RUNTIME_SNAPSHOT_V2_SCHEMA_VERSION
-            else ENGINE_COMMIT_RECORD_SCHEMA_VERSION
-        )
+        schema_version = {
+            GROUP_RUNTIME_SNAPSHOT_SCHEMA_VERSION: ENGINE_COMMIT_RECORD_SCHEMA_VERSION,
+            GROUP_RUNTIME_SNAPSHOT_V2_SCHEMA_VERSION: ENGINE_COMMIT_RECORD_V2_SCHEMA_VERSION,
+            GROUP_RUNTIME_SNAPSHOT_V3_SCHEMA_VERSION: ENGINE_COMMIT_RECORD_V3_SCHEMA_VERSION,
+        }[snapshot_after.as_document()['snapshot_schema_version']]
         unsigned = {
             'record_schema_version': schema_version,
             'commit': commit.as_document(),
@@ -340,6 +343,7 @@ class EngineCommitRecord:
         if document['record_schema_version'] not in {
             ENGINE_COMMIT_RECORD_SCHEMA_VERSION,
             ENGINE_COMMIT_RECORD_V2_SCHEMA_VERSION,
+            ENGINE_COMMIT_RECORD_V3_SCHEMA_VERSION,
         }:
             raise AlarmPersistenceCorruptionError(
                 'engine commit record schema version is unsupported'
@@ -482,9 +486,14 @@ def _validate_snapshot_document(document: JsonDocument, *, corruption: bool) -> 
     version = document.get('snapshot_schema_version')
     if version == GROUP_RUNTIME_SNAPSHOT_SCHEMA_VERSION:
         optional = {'state_basis', 'episode'}
-    elif version == GROUP_RUNTIME_SNAPSHOT_V2_SCHEMA_VERSION:
+    elif version in {
+        GROUP_RUNTIME_SNAPSHOT_V2_SCHEMA_VERSION,
+        GROUP_RUNTIME_SNAPSHOT_V3_SCHEMA_VERSION,
+    }:
         optional = {'state_basis', 'episode'}
         required.add('technical_incidents')
+        if version == GROUP_RUNTIME_SNAPSHOT_V3_SCHEMA_VERSION:
+            required.add('state_basis')
     else:
         raise error_type('group runtime snapshot schema version is unsupported')
     if set(document) - required - optional or required - set(document):
@@ -494,8 +503,15 @@ def _validate_snapshot_document(document: JsonDocument, *, corruption: bool) -> 
         _require_non_empty_string(document['last_commit_id'], 'last_commit_id')
         _validate_state_basis(document.get('state_basis'), error_type)
         _validate_episode(document.get('episode'), error_type)
-        _validate_alarm_states(document['alarms'], error_type)
-        if version == GROUP_RUNTIME_SNAPSHOT_V2_SCHEMA_VERSION:
+        _validate_alarm_states(
+            document['alarms'],
+            error_type,
+            lossless=version == GROUP_RUNTIME_SNAPSHOT_V3_SCHEMA_VERSION,
+        )
+        if version in {
+            GROUP_RUNTIME_SNAPSHOT_V2_SCHEMA_VERSION,
+            GROUP_RUNTIME_SNAPSHOT_V3_SCHEMA_VERSION,
+        }:
             _validate_technical_incidents(
                 document['technical_incidents'], document['priority_group'], error_type
             )
@@ -615,6 +631,8 @@ def _validate_episode(
 def _validate_alarm_states(
     value: Any,
     error_type: type[AlarmPersistenceValidationError] | type[AlarmPersistenceCorruptionError],
+    *,
+    lossless: bool = False,
 ) -> None:
     if not isinstance(value, dict):
         raise error_type('alarms must be an object')
@@ -628,8 +646,10 @@ def _validate_alarm_states(
             raise error_type('alarm runtime state has unexpected or missing fields')
         _require_non_empty_string(state['last_commit_id'], 'alarm last_commit_id')
         _validate_occurrence(state.get('occurrence'), error_type)
-        _validate_management_effect(state.get('management_effect'), error_type)
-        _validate_deactivation_effect(state.get('deactivation_effect'), error_type)
+        _validate_management_effect(state.get('management_effect'), error_type, lossless=lossless)
+        _validate_deactivation_effect(
+            state.get('deactivation_effect'), error_type, lossless=lossless
+        )
 
 
 def _validate_occurrence(
@@ -718,6 +738,8 @@ def _validate_timestamp_map(
 def _validate_management_effect(
     value: Any,
     error_type: type[AlarmPersistenceValidationError] | type[AlarmPersistenceCorruptionError],
+    *,
+    lossless: bool = False,
 ) -> None:
     if value is None:
         return
@@ -727,19 +749,30 @@ def _validate_management_effect(
     _require_non_empty_string(value['effect_id'], 'management effect_id')
     _require_non_empty_string(value['source_occurrence_id'], 'source_occurrence_id')
     _require_utc_timestamp(value['effective_at'], 'management_effect.effective_at')
-    _require_utc_timestamp(value['reappearance_due_at'], 'management_effect.reappearance_due_at')
+    if value['reappearance_due_at'] is not None or not lossless:
+        _require_utc_timestamp(
+            value['reappearance_due_at'], 'management_effect.reappearance_due_at'
+        )
 
 
 def _validate_deactivation_effect(
     value: Any,
     error_type: type[AlarmPersistenceValidationError] | type[AlarmPersistenceCorruptionError],
+    *,
+    lossless: bool = False,
 ) -> None:
     if value is None:
         return
     required = {'effect_id', 'effective_from', 'effective_until'}
+    if lossless:
+        required.add('source_occurrence_id')
     if not isinstance(value, dict) or set(value) != required:
         raise error_type('deactivation_effect is invalid')
     _require_non_empty_string(value['effect_id'], 'deactivation effect_id')
+    if lossless:
+        _require_non_empty_string(
+            value['source_occurrence_id'], 'deactivation source_occurrence_id'
+        )
     _require_utc_timestamp(value['effective_from'], 'deactivation_effect.effective_from')
     _require_utc_timestamp(value['effective_until'], 'deactivation_effect.effective_until')
 
