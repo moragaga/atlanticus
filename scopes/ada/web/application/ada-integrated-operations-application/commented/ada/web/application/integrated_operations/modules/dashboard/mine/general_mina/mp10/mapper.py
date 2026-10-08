@@ -16,7 +16,7 @@ _SOURCE_STATUS = {
     KpiLatestValueState.NOT_MAPPED: DisplayStatus.NOT_MAPPED,
     KpiLatestValueState.MISSING: DisplayStatus.EMPTY,
     KpiLatestValueState.INVALID: DisplayStatus.INVALID,
-    KpiLatestValueState.ERROR: DisplayStatus.ERROR,
+    KpiLatestValueState.ERROR: DisplayStatus.INVALID,
 }
 
 

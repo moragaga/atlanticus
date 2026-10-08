@@ -25,7 +25,7 @@ from .remanentes import build_remanentes, map_remanentes_store
 _SOURCE_STATUS = {
     KpiLatestValueState.NOT_MAPPED: DisplayStatus.NOT_MAPPED,
     KpiLatestValueState.MISSING: DisplayStatus.EMPTY,
-    KpiLatestValueState.ERROR: DisplayStatus.ERROR,
+    KpiLatestValueState.ERROR: DisplayStatus.INVALID,
 }
 
 

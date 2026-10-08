@@ -25,7 +25,7 @@ _SOURCE_STATUS = {
     KpiLatestValueState.NOT_MAPPED: DisplayStatus.NOT_MAPPED,
     KpiLatestValueState.MISSING: DisplayStatus.EMPTY,
     KpiLatestValueState.INVALID: DisplayStatus.INVALID,
-    KpiLatestValueState.ERROR: DisplayStatus.ERROR,
+    KpiLatestValueState.ERROR: DisplayStatus.INVALID,
 }
 
 
@@ -136,7 +136,7 @@ def _display_value(
         return DisplayValue.empty()
     if decoded.state is KpiLatestValueState.INVALID:
         return DisplayValue.invalid()
-    return DisplayValue.error()
+    return DisplayValue.invalid()
 
 
 def _decoded(values: Mapping[str, object], kpi_key: str):

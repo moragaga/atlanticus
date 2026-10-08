@@ -153,7 +153,7 @@ def _display_value(values: Mapping[str, object] | None, kpi_key: str) -> Display
         return DisplayValue.empty()
     if decoded.state is KpiLatestValueState.INVALID:
         return DisplayValue.invalid()
-    return DisplayValue.error()
+    return DisplayValue.invalid()
 
 
 def _color_value(values: Mapping[str, object] | None, kpi_key: str) -> str | None:
