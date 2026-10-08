@@ -11,6 +11,9 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.general_mi
 from ada.web.application.integrated_operations.modules.dashboard.mine.module import (
     MINE_ASSET_LAYER,
 )
+from ada.web.application.integrated_operations.modules.dashboard.mine.transporte.runtime import (
+    register_transporte_callback,
+)
 from ada.web.application.integrated_operations.modules.dashboard.plant.module import (
     PLANT_ASSET_LAYER,
 )
@@ -43,6 +46,7 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
         def register_callbacks(dash_app, _services) -> None:
             register_general_mina_callback(dash_app, tool_key=tool_key)
             register_carguio_callback(dash_app, tool_key=tool_key)
+            register_transporte_callback(dash_app, tool_key=tool_key)
 
     return WebModule(
         name='ada-integrated-operations-dashboard',
