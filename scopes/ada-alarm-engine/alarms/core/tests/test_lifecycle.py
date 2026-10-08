@@ -564,16 +564,18 @@ def test_execution_plan_rejects_duplicate_priority_order_within_group() -> None:
         )
 
 
-def test_execution_plan_requires_all_impacts_above_all_risks() -> None:
-    with pytest.raises(AlarmContractError, match='IMPACT priority_order values must be lower'):
-        _reduce(
-            GroupLifecycleState(priority_group='mill-feed'),
-            [
-                plan('risk', priority_order=1),
-                plan('impact', kind=AlarmKind.IMPACT, priority_order=2),
-            ],
-            [
-                physical('risk', AlarmStatus.INACTIVE),
-                physical('impact', AlarmStatus.INACTIVE),
-            ],
-        )
+def test_execution_plan_allows_kind_order_to_follow_priority_order() -> None:
+    decision = _reduce(
+        GroupLifecycleState(priority_group='mill-feed'),
+        [
+            plan('risk', kind=AlarmKind.RISK, priority_order=1),
+            plan('impact', kind=AlarmKind.IMPACT, priority_order=2),
+        ],
+        [
+            physical('risk', AlarmStatus.ACTIVE),
+            physical('impact', AlarmStatus.ACTIVE),
+        ],
+    )
+
+    assert decision.priority_resolution is not None
+    assert decision.priority_resolution.predominant_alarm_identity == identity('risk')

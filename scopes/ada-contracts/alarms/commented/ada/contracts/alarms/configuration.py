@@ -100,28 +100,19 @@ class AlarmConfiguration:
                 )
             seen.add(key)
 
+    # kind clasifica la Rule; priority_group + priority_order son la única autoridad de prioridad.
     def _validate_priority_groups(self) -> None:
         groups: dict[str, list[AlarmDefinition]] = {}
         for rule in self.rules:
             groups.setdefault(rule.priority_group, []).append(rule)
         for priority_group, rules in groups.items():
             orders: set[int] = set()
-            impact_orders: list[int] = []
-            risk_orders: list[int] = []
             for rule in rules:
                 if rule.priority_order in orders:
                     raise AlarmConfigurationValidationError(
                         f'priority_order must be unique within priority_group {priority_group}'
                     )
                 orders.add(rule.priority_order)
-                if rule.kind is AlarmKind.IMPACT:
-                    impact_orders.append(rule.priority_order)
-                elif rule.kind is AlarmKind.RISK:
-                    risk_orders.append(rule.priority_order)
-            if impact_orders and risk_orders and max(impact_orders) >= min(risk_orders):
-                raise AlarmConfigurationValidationError(
-                    f'All IMPACT priority orders must precede RISK in priority_group {priority_group}'
-                )
 
     def _index_messages(self) -> dict[str, MessageDefinition]:
         messages_by_key: dict[str, MessageDefinition] = {}

@@ -100,15 +100,13 @@ def test_alarm_configuration_requires_unique_priority_order_within_group() -> No
         AlarmConfiguration(rules=(first, second), messages=(message(),))
 
 
-def test_alarm_configuration_requires_impact_before_risk() -> None:
+def test_alarm_configuration_priority_order_is_independent_of_kind() -> None:
     risk = rule('risk', kind=AlarmKind.RISK, priority_order=1)
     impact = rule('impact', kind=AlarmKind.IMPACT, priority_order=2)
 
-    with pytest.raises(
-        AlarmConfigurationValidationError,
-        match='All IMPACT priority orders must precede RISK',
-    ):
-        AlarmConfiguration(rules=(risk, impact), messages=(message(),))
+    configuration = AlarmConfiguration(rules=(risk, impact), messages=(message(),))
+
+    assert tuple(rule.priority_order for rule in configuration.rules) == (1, 2)
 
 
 def test_alarm_configuration_requires_global_message_key_identity() -> None:

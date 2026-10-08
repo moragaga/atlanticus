@@ -48,6 +48,21 @@ def test_higher_priority_impact_predominates_over_active_risk() -> None:
     assert dispositions[identity('risk')].blocking_alarm_identities == (identity('impact'),)
 
 
+def test_priority_order_is_authoritative_across_alarm_kinds() -> None:
+    plans = (
+        plan('risk', kind=AlarmKind.RISK, priority_order=1),
+        plan('impact', kind=AlarmKind.IMPACT, priority_order=2),
+    )
+    decision = _start(plans)
+    resolution = decision.priority_resolution
+    assert resolution is not None
+    assert resolution.predominant_alarm_identity == identity('risk')
+    dispositions = _dispositions(resolution)
+    assert dispositions[identity('risk')].disposition is PriorityDisposition.PREDOMINANT
+    assert dispositions[identity('impact')].disposition is PriorityDisposition.ECLIPSED
+    assert dispositions[identity('impact')].blocking_alarm_identities == (identity('risk'),)
+
+
 def test_priority_order_resolves_multiple_impacts_before_risks() -> None:
     plans = (
         plan('impact-a', kind=AlarmKind.IMPACT, priority_order=1),

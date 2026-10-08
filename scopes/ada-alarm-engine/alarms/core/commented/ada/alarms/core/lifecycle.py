@@ -47,7 +47,7 @@ from ada.alarms.core.models import (
 )
 from ada.alarms.core.priority import resolve_group_priority
 from ada.alarms.core.routing import resolve_group_routing
-from ada.contracts.alarms import AlarmIdentity, AlarmKind
+from ada.contracts.alarms import AlarmIdentity
 
 OccurrenceIdFactory = Callable[[AlarmIdentity, datetime], str]
 EpisodeIdFactory = Callable[[str, datetime], str]
@@ -732,15 +732,13 @@ def _clear_hold_if_needed(
     )
 
 
-# Auxiliar _index_plans: mantiene una responsabilidad interna acotada y determinista.
+# Auxiliar _index_plans: valida identidad, grupo y prioridad total; kind no ordena el lifecycle.
 def _index_plans(
     priority_group: str,
     planned_alarms: Sequence[PlannedAlarm],
 ) -> dict[AlarmIdentity, PlannedAlarm]:
     plans: dict[AlarmIdentity, PlannedAlarm] = {}
     priority_orders: set[int] = set()
-    impact_orders: list[int] = []
-    risk_orders: list[int] = []
     for plan in planned_alarms:
         if not isinstance(plan, PlannedAlarm):
             raise TypeError('planned_alarms must contain PlannedAlarm values')
@@ -753,15 +751,7 @@ def _index_plans(
                 'planned_alarms must not contain duplicate priority_order values'
             )
         priority_orders.add(plan.priority_order)
-        if plan.kind is AlarmKind.IMPACT:
-            impact_orders.append(plan.priority_order)
-        else:
-            risk_orders.append(plan.priority_order)
         plans[plan.identity] = plan
-    if impact_orders and risk_orders and max(impact_orders) >= min(risk_orders):
-        raise AlarmContractError(
-            'IMPACT priority_order values must be lower than RISK values within priority_group'
-        )
     return plans
 
 
