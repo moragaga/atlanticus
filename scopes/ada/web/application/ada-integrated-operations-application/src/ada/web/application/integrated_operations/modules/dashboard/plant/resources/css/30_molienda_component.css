@@ -1,0 +1,114 @@
+.ada-io-molienda {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    gap: .45rem;
+}
+
+.ada-io-molienda__trend {
+    width: 100%;
+    min-width: 0;
+}
+
+.ada-io-molienda__trend-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .4rem;
+    padding: .1rem .35rem;
+    font-size: .65rem;
+}
+
+.ada-io-molienda__trend-value {
+    font-weight: 700;
+}
+
+.ada-io-molienda__general,
+.ada-io-molienda__lines,
+.ada-io-molienda__line-metrics {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.ada-io-molienda__line {
+    min-width: 0;
+    border-top: 1px solid var(--primary-border-color, #BDBDBD);
+    padding: .35rem .2rem;
+}
+
+.ada-io-molienda__line-title {
+    margin: 0 0 .2rem;
+    font-size: .65rem;
+    font-weight: 700;
+}
+
+.ada-io-molienda__sag {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+}
+
+.ada-io-molienda__line-details {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: .3rem;
+}
+
+.ada-io-molienda__mills {
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: .25rem;
+    width: 100%;
+    min-width: 0;
+}
+
+.ada-io-molienda__mills > .ada-io-molienda__equipment {
+    flex: 0 0 calc(50% - .125rem);
+    min-width: 0;
+}
+
+.ada-io-molienda__equipment {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+    gap: .08rem;
+    font-size: .62rem;
+}
+
+.ada-io-molienda__equipment .ada-equipment-image__image {
+    max-height: 2.7rem;
+}
+
+.ada-io-molienda__power {
+    display: flex;
+    align-items: baseline;
+    gap: .12rem;
+}
+
+.ada-io-molienda__power-value {
+    font-weight: 700;
+}
+
+.ada-io-molienda__power-value--danger {
+    color: var(--ada-color-danger, #D93829);
+}
+
+.ada-io-molienda__power-value--warning {
+    color: var(--ada-color-warning, #C58A00);
+}
+
+.ada-io-molienda__status-icon {
+    max-width: 1rem;
+    max-height: 1rem;
+}
+
+.ada-io-molienda [data-kpi-inspection-key]:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}

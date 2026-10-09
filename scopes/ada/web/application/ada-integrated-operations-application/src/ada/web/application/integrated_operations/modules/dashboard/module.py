@@ -20,6 +20,9 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.transporte
 from ada.web.application.integrated_operations.modules.dashboard.plant.module import (
     PLANT_ASSET_LAYER,
 )
+from ada.web.application.integrated_operations.modules.dashboard.plant.molienda import (
+    register_molienda_callback,
+)
 from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile_chacay.runtime import (
     register_stockpile_chacay_callback,
 )
@@ -64,6 +67,7 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             register_chancado_stmg_callback(dash_app, tool_key=tool_key)
             register_stockpile_chacay_callback(dash_app, tool_key=tool_key)
             register_tendencia_alimentado_callback(dash_app, tool_key=tool_key)
+            register_molienda_callback(dash_app, tool_key=tool_key)
 
     return WebModule(
         name='ada-integrated-operations-dashboard',

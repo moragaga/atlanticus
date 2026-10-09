@@ -1,4 +1,4 @@
-# El resolvedor solo permite recursos operacionales conocidos. Los estados KPI degradados se dibujan con el icono ADA existente.
+# Agrega SAG y molinos de bolas a la librería de imágenes operacionales, sin incorporar SVG.
 from __future__ import annotations
 
 from dash import html
@@ -12,6 +12,8 @@ from .module import ADA_EQUIPMENT_IMAGE_ASSET_LAYER
 _EQUIPMENT_STATES = {
     'chancador': frozenset({'operando', 'detenido', 'mantencion'}),
     'correa_stmg': frozenset({'operando', 'detenido'}),
+    'sag': frozenset({'operando', 'detenido'}),
+    'molino_bolas': frozenset({'operando', 'detenido'}),
 }
 
 

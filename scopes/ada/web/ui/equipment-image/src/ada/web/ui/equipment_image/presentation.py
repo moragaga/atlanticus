@@ -11,6 +11,8 @@ from .module import ADA_EQUIPMENT_IMAGE_ASSET_LAYER
 _EQUIPMENT_STATES = {
     'chancador': frozenset({'operando', 'detenido', 'mantencion'}),
     'correa_stmg': frozenset({'operando', 'detenido'}),
+    'sag': frozenset({'operando', 'detenido'}),
+    'molino_bolas': frozenset({'operando', 'detenido'}),
 }
 
 
