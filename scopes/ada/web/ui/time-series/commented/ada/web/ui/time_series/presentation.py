@@ -5,6 +5,8 @@ from __future__ import annotations
 # El gráfico no permite zoom, hover ni selección; los nulos permanecen como huecos.
 # Sin serie o sin muestras válidas, se conserva el Graph sin inventar puntos ni fechas.
 # Solo los estados INVALID y ERROR reemplazan el área con la iconografía de sistema.
+# La altura explícita del contenedor evita que Dash responsive sustituya 116 px por 450 px.
+# Los ejes X/Y permanecen dibujados aunque la serie esté completamente vacía.
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -41,6 +43,7 @@ def build_time_series_component(
             'responsive': True,
         },
         responsive=True,
+        style={'width': '100%', 'height': f'{height_px}px'},
         className='ada-time-series__graph',
     )
 
@@ -57,6 +60,9 @@ def _figure(series: TimeSeriesValues, height_px: int) -> go.Figure:
         'ticktext': labels,
         'showgrid': False,
         'zeroline': False,
+        'showline': True,
+        'linecolor': '#757575',
+        'linewidth': 1,
         'fixedrange': True,
         'tickfont': {'size': 9},
         'automargin': False,
@@ -89,6 +95,9 @@ def _figure(series: TimeSeriesValues, height_px: int) -> go.Figure:
         yaxis={
             'showgrid': False,
             'zeroline': False,
+            'showline': True,
+            'linecolor': '#757575',
+            'linewidth': 1,
             'fixedrange': True,
             'showticklabels': False,
         },

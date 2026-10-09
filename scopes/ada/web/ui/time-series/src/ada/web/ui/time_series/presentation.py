@@ -36,6 +36,7 @@ def build_time_series_component(
             'responsive': True,
         },
         responsive=True,
+        style={'width': '100%', 'height': f'{height_px}px'},
         className='ada-time-series__graph',
     )
 
@@ -52,6 +53,9 @@ def _figure(series: TimeSeriesValues, height_px: int) -> go.Figure:
         'ticktext': labels,
         'showgrid': False,
         'zeroline': False,
+        'showline': True,
+        'linecolor': '#757575',
+        'linewidth': 1,
         'fixedrange': True,
         'tickfont': {'size': 9},
         'automargin': False,
@@ -84,6 +88,9 @@ def _figure(series: TimeSeriesValues, height_px: int) -> go.Figure:
         yaxis={
             'showgrid': False,
             'zeroline': False,
+            'showline': True,
+            'linecolor': '#757575',
+            'linewidth': 1,
             'fixedrange': True,
             'showticklabels': False,
         },
