@@ -3,7 +3,7 @@
 /* Todas las líneas parten bajo el punto; no hay conectores por encima de la vía. */
 /* Las posiciones pares coinciden con los centros de las cuatro pilas. */
 /* El icono vacío queda sobre la vía; el cargado invertido, bajo las etiquetas. */
-/* El icono de estado degradado se centra en la vía sin asignar una posición inexistente. */
+/* El carro visual de respaldo ocupa P1 cuando el KPI no aporta una posición válida. */
 .ada-io-stockpile-chacay {
     display: flex;
     flex-direction: column;
@@ -115,19 +115,6 @@
 
 .ada-io-stockpile-chacay__lower-connector {
     height: .6rem;
-}
-
-.ada-io-stockpile-chacay__position-status {
-    position: absolute;
-    top: 2.9rem;
-    left: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transform: translateX(-50%);
-    width: 1.5rem;
-    height: 1.15rem;
-    z-index: 2;
 }
 
 .ada-io-stockpile-chacay__piles {

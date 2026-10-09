@@ -43,7 +43,7 @@ def build_stockpile_chacay(state: StockpileChacayState) -> Component:
 
 
 def _position(value: DisplayValue) -> Component:
-    active = value.value if value.status is DisplayStatus.OK else None
+    active = value.value if value.status is DisplayStatus.OK else 1
     positions = [
         html.Div(
             [
@@ -76,13 +76,6 @@ def _position(value: DisplayValue) -> Component:
         )
         for number in STOCKPILE_CHACAY_POSITIONS
     ]
-    if value.status is not DisplayStatus.OK:
-        positions.append(
-            html.Span(
-                _status(value, 'position'),
-                className='ada-io-stockpile-chacay__position-status',
-            )
-        )
     return html.Div(
         html.Div(positions, className='ada-io-stockpile-chacay__track'),
         className='ada-io-stockpile-chacay__position-section',
@@ -93,7 +86,8 @@ def _position(value: DisplayValue) -> Component:
             'data-kpi-inspection-key': STOCKPILE_CHACAY_POSITION_KEY,
             'aria-label': (
                 f'Posición del carro: P{active}'
-                if active is not None else 'Posición del carro no disponible'
+                if value.status is DisplayStatus.OK
+                else 'Posición no disponible; carro de referencia en P1'
             ),
         },
     )

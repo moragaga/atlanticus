@@ -111,19 +111,6 @@
     height: .6rem;
 }
 
-.ada-io-stockpile-chacay__position-status {
-    position: absolute;
-    top: 2.9rem;
-    left: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transform: translateX(-50%);
-    width: 1.5rem;
-    height: 1.15rem;
-    z-index: 2;
-}
-
 .ada-io-stockpile-chacay__piles {
     box-sizing: border-box;
     display: grid;
