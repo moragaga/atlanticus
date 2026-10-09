@@ -9,6 +9,12 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.bindings i
 from ada.web.kpis.collector import component_kpi_store_id
 from ada.web.ui.stockpile import build_stockpile_component
 
+from .correas_stmg import (
+    CORREAS_STMG_DEFINITIONS,
+    CORREAS_STMG_METRIC,
+    build_correas_stmg,
+    map_correas_stmg_store,
+)
 from .equipos_ch import (
     EQUIPOS_CH_DEFINITIONS,
     FEEDERS_CH_DEFINITIONS,
@@ -46,6 +52,13 @@ def register_chancado_stmg_callback(dash_app, *, tool_key: str) -> None:
                 build_chancado_feeders(
                     FEEDERS_CH_DEFINITIONS,
                     map_feeders_store(store_data, FEEDERS_CH_DEFINITIONS),
+                ),
+                build_correas_stmg(
+                    CORREAS_STMG_DEFINITIONS,
+                    CORREAS_STMG_METRIC,
+                    map_correas_stmg_store(
+                        store_data, CORREAS_STMG_DEFINITIONS, CORREAS_STMG_METRIC
+                    ),
                 ),
             ],
             className='ada-io-chancado-stmg',

@@ -1,0 +1,128 @@
+/* Las tres correas descienden .5rem y 1rem, como en legacy; imágenes y estados se obtienen del componente genérico. */
+.ada-io-correas-stmg {
+    display: flex;
+    flex-direction: column;
+    gap: .18rem;
+    width: 100%;
+    min-width: 0;
+    padding: .08rem .18rem;
+}
+
+.ada-io-correas-stmg__title {
+    margin: 0;
+    background: var(--atlanticus-admin-color-border);
+    border-radius: .2rem;
+    font-size: .57rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.ada-io-correas-stmg__items {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+    justify-items: center;
+    gap: .12rem;
+    width: 100%;
+    min-width: 0;
+}
+
+.ada-io-correas-stmg__item {
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+    cursor: help;
+    --ada-status-icon-size: .75rem;
+}
+
+.ada-io-correas-stmg__item:nth-child(2) {
+    padding-top: .5rem;
+}
+
+.ada-io-correas-stmg__item:nth-child(3) {
+    padding-top: 1rem;
+}
+
+.ada-io-correas-stmg__item .ada-equipment-image {
+    --ada-equipment-image-gap: .08rem;
+    flex-direction: column-reverse;
+    width: 100%;
+    min-width: 0;
+}
+
+.ada-io-correas-stmg__image:not(.ada-display-status__icon) {
+    width: 2.5rem;
+    max-width: 100%;
+    max-height: 2.5rem;
+}
+
+.ada-io-correas-stmg__label {
+    font-size: .48rem;
+    line-height: 1.15;
+    text-align: center;
+}
+
+.ada-io-correas-stmg__metric {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    gap: .12rem;
+}
+
+.ada-io-correas-stmg__value-target {
+    flex: 1;
+    min-width: 0;
+    cursor: help;
+}
+
+.ada-io-correas-stmg__row {
+    font-size: .52rem;
+}
+
+.ada-io-correas-stmg__status-icon {
+    --ada-status-icon-size: 1.2em;
+}
+
+.ada-io-correas-stmg__color-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: help;
+    font-size: .52rem;
+}
+
+.ada-io-correas-stmg__color-dot {
+    display: block;
+    width: .28rem;
+    height: .28rem;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.ada-io-correas-stmg__color-indicator--default {
+    color: var(--ada-color-text-muted, #808080);
+}
+
+.ada-io-correas-stmg__color-indicator--danger {
+    color: var(--ada-color-danger, #c62828);
+}
+
+.ada-io-correas-stmg__color-indicator--warning {
+    color: var(--ada-color-warning, #b8860b);
+}
+
+.ada-io-correas-stmg [data-kpi-inspection-key]:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+@media only screen and (min-width: 480px) and (max-width: 1279px) {
+    .ada-io-correas-stmg__title { font-size: .7rem; }
+    .ada-io-correas-stmg__label { font-size: .58rem; }
+}
+
+@media only screen and (min-width: 1366px) {
+    [data-ada-io-presentation='mine'] .ada-io-correas-stmg__title { font-size: .69rem; }
+    [data-ada-io-presentation='mine'] .ada-io-correas-stmg__label { font-size: .56rem; }
+}

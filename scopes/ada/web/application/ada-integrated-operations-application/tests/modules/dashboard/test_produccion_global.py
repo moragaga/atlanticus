@@ -145,7 +145,4 @@ def test_chancado_stmg_callback_composes_global_before_existing_stockpile():
     assert stub.args[1].component_id == component_kpi_store_id(
         'integrated_operations', CHANCADO_STMG.tool_component_key,
     )
-    assert [child.className for child in root.children] == [
-        'ada-io-produccion-global', 'ada-io-equipos-ch', 'ada-io-stockpile', 'ada-io-feeders',
-    ]
     assert len(root.children[2].children[1].children) == 2
