@@ -6,15 +6,15 @@ from dash.development.base_component import Component
 from ada.web.ui.display_status import DisplayStatus, DisplayValue, build_display_status_icon
 from ada.web.ui.stockpile import build_stockpile_component
 
-from .definitions import (
+from .feeders import build_chacay_feeders
+from .stockpile.definitions import (
     STOCKPILE_CHACAY_PILE_POSITIONS,
     STOCKPILE_CHACAY_PILES,
     STOCKPILE_CHACAY_POSITION_KEY,
     STOCKPILE_CHACAY_POSITIONS,
     STOCKPILE_CHACAY_ROWS,
 )
-from .feeders import build_chacay_feeders
-from .models import ChacayMetric, StockpileChacayState
+from .stockpile.models import ChacayMetric, StockpileChacayState
 
 
 def build_stockpile_chacay(state: StockpileChacayState) -> Component:

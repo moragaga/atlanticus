@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dash import Dash, Input, Output, dcc, html
 
-from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.stockpile_mina import (
+from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.stockpile import (
     STOCKPILE_MINA_DEFINITIONS,
 )
 from ada.web.ui.display_status import DisplayValue

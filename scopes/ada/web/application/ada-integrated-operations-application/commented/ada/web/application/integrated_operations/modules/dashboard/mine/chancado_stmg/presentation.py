@@ -17,7 +17,7 @@ from .leyes import build_leyes_summary
 from .leyes.models import LeyesState
 from .produccion_global import build_produccion_global
 from .produccion_global.models import ProduccionGlobalState
-from .stockpile_mina import STOCKPILE_MINA_DEFINITIONS
+from .stockpile import STOCKPILE_MINA_DEFINITIONS
 
 
 # Este archivo es la única composición visual de CHANCADO-STMG.

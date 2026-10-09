@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from ada.web.ui.display_status import DisplayValue
 from ada.web.ui.stockpile import StockpileValues
 
-from .feeders.models import ChacayFeederReading
+from ..feeders.models import ChacayFeederReading
 
 
 @dataclass(frozen=True, slots=True)

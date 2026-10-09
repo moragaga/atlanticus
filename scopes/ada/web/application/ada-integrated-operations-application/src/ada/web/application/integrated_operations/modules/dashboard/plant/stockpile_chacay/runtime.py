@@ -10,8 +10,8 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.bindings 
 )
 from ada.web.kpis.collector import component_kpi_store_id
 
-from .mapper import map_stockpile_chacay_store
 from .presentation import build_stockpile_chacay
+from .stockpile.mapper import map_stockpile_chacay_store
 
 
 def register_stockpile_chacay_callback(dash_app, *, tool_key: str) -> None:

@@ -7,15 +7,14 @@ from ada.web.ui.display_status import DisplayStatus, DisplayValue, build_display
 from ada.web.ui.stockpile import build_stockpile_component
 
 from .feeders import build_chacay_feeders
-
-from .definitions import (
+from .stockpile.definitions import (
     STOCKPILE_CHACAY_PILE_POSITIONS,
     STOCKPILE_CHACAY_PILES,
     STOCKPILE_CHACAY_POSITION_KEY,
     STOCKPILE_CHACAY_POSITIONS,
     STOCKPILE_CHACAY_ROWS,
 )
-from .models import ChacayMetric, StockpileChacayState
+from .stockpile.models import ChacayMetric, StockpileChacayState
 
 
 # Toda la composición HTML se mantiene fuera del callback.

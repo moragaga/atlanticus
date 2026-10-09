@@ -9,7 +9,7 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.bindings i
 from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg import (
     register_chancado_stmg_callback,
 )
-from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.stockpile_mina import (
+from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.stockpile import (
     STOCKPILE_MINA_DEFINITIONS,
     STOCKPILE_MINA_KPI_KEYS,
     STOCKPILE_MINA_SCALE_MAX_M,

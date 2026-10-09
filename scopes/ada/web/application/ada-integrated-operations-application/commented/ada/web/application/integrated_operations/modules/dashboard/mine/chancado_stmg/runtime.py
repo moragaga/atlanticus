@@ -18,7 +18,7 @@ from .feeders import FEEDERS_CH_DEFINITIONS, map_feeders_store
 from .leyes import map_leyes_store
 from .presentation import build_chancado_stmg
 from .produccion_global import map_produccion_global_store
-from .stockpile_mina import map_stockpile_mina_store
+from .stockpile import map_stockpile_mina_store
 
 
 def register_chancado_stmg_callback(dash_app, *, tool_key: str) -> None:
