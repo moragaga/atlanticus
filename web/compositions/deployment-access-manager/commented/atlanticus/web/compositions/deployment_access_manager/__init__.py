@@ -1,4 +1,7 @@
-# El paquete expone rutas ROOT independientes junto al principal ya establecido en A5.1.
+# Exportaciones públicas de la composición administrativa ROOT.
+from atlanticus.web.compositions.deployment_access_manager.composition import (
+    compose_root_manager_principal,
+)
 from atlanticus.web.compositions.deployment_access_manager.http import (
     ROOT_INDEPENDENT_ROUTES,
     ROOT_LOGIN_PATH,
@@ -7,8 +10,9 @@ from atlanticus.web.compositions.deployment_access_manager.http import (
     DeploymentRootHttpConfigurationError,
     create_deployment_root_http_module,
 )
-from atlanticus.web.compositions.deployment_access_manager.composition import (
-    compose_root_manager_principal,
+from atlanticus.web.compositions.deployment_access_manager.scope import (
+    RootManagerRequestScope,
+    RootManagerScopeConfigurationError,
 )
 from atlanticus.web.compositions.deployment_access_manager.session import (
     DeploymentRootSession,
@@ -22,9 +26,11 @@ __all__ = [
     'ROOT_LOGOUT_PATH',
     'ROOT_STATUS_PATH',
     'DeploymentRootHttpConfigurationError',
-    'create_deployment_root_http_module',
     'DeploymentRootSession',
     'DeploymentRootSessionError',
     'DeploymentRootSessionIdentity',
+    'RootManagerRequestScope',
+    'RootManagerScopeConfigurationError',
     'compose_root_manager_principal',
+    'create_deployment_root_http_module',
 ]

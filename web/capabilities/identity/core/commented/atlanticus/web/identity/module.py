@@ -1,7 +1,9 @@
 # Espejo pedagógico: conserva exactamente el contrato productivo y explica su intención.
 from __future__ import annotations
 
-from flask import Flask, request
+from collections.abc import Callable
+
+from flask import Flask, Request, request
 
 from atlanticus.web.configuration import WebSettings
 from atlanticus.web.identity.access import (
@@ -31,12 +33,13 @@ from atlanticus.web.services import ServiceRegistry
 ACCESS_BOOTSTRAP_SERVICE_KEY = 'atlanticus.web.identity.bootstrap'
 
 
-# El middleware sólo rechaza identidad inválida o un usuario administrado explícitamente deshabilitado.
+# El middleware conserva el contrato normal cuando no existe autorización alternativa.
 def create_identity_module(
     provider: IdentityProvider,
     *,
     access_resolver: AccessResolver | None = None,
     independent_routes: tuple[str, ...] = (),
+    alternative_request_authorizer: Callable[[Request], bool] | None = None,
 ) -> WebModule:
     if not isinstance(independent_routes, tuple) or any(
         not isinstance(route, str) for route in independent_routes
@@ -51,6 +54,8 @@ def create_identity_module(
         for route in independent_routes
     ):
         raise ValueError('Independent route declarations contain an invalid route')
+    if alternative_request_authorizer is not None and not callable(alternative_request_authorizer):
+        raise TypeError('Alternative request authorizer must be callable')
     resolver = access_resolver or AuthenticatedAccessResolver()
 
     def register_services(services: ServiceRegistry) -> None:
@@ -76,9 +81,16 @@ def create_identity_module(
         def enforce_application_access():
             if _is_public_request(independent_routes):
                 return None
+            # Un acceso alternativo requiere una decisión explícita y verificable.
+            if alternative_request_authorizer is not None:
+                try:
+                    if alternative_request_authorizer(request) is True:
+                        return None
+                except Exception:
+                    return identity_unavailable_response()
             try:
                 snapshot = _resolve_request_snapshot(bootstrap, runtime)
-            except IdentityProviderUnavailableError, AccessResolverUnavailableError:
+            except (IdentityProviderUnavailableError, AccessResolverUnavailableError):
                 return identity_unavailable_response()
             if snapshot.status is AccessStatus.INVALID_IDENTITY:
                 return invalid_identity_response()
@@ -93,6 +105,7 @@ def create_identity_module(
     )
 
 
+# El runtime operacional continúa usando su propia sesión y bootstrap.
 def _resolve_request_snapshot(
     bootstrap: AccessBootstrap,
     runtime: AccessRuntime,
