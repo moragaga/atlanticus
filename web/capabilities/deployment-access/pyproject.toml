@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atlanticus-web-deployment-access"
+version = "0.1.0"
+description = "Material de acceso administrativo para Atlanticus Web Manager"
+requires-python = "==3.14.2"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "atlanticus-storage==1.0.0",
+    "pyzipper==0.4.0",
+]
+
+[project.scripts]
+atlanticus-deployment-access = "atlanticus.web.deployment_access.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.15.22",
+]
+
+[tool.uv.sources]
+atlanticus-storage = { path = "../../../connectivity/storage" }
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+include = ["atlanticus.web.deployment_access*"]
+
+[tool.setuptools.package-data]
+"atlanticus.web.deployment_access" = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+target-version = "py314"
+extend-exclude = ["build", "dist", "commented"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["atlanticus"]
+combine-as-imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --import-mode=importlib"
