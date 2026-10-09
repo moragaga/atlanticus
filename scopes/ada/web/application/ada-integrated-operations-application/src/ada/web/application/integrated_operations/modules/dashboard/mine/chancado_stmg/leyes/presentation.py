@@ -90,7 +90,12 @@ def _row(row: LeyesRow) -> Component:
                     },
                 ),
                 scope='row',
-                style={'textAlign': 'left', 'padding': '.2rem .15rem', 'fontWeight': 400},
+                style={
+                    'textAlign': 'left',
+                    'padding': '.2rem .15rem',
+                    'fontWeight': 400,
+                    'borderBottom': '1px solid var(--ada-color-border-primary, #c0c0c0)',
+                },
             ),
             _cell(row.hora),
             _cell(row.turno),
@@ -116,6 +121,7 @@ def _cell(metric: LeyesMetric) -> Component:
             'padding': '.2rem .15rem',
             'whiteSpace': 'nowrap',
             'overflow': 'visible',
+            'borderBottom': '1px solid var(--ada-color-border-primary, #c0c0c0)',
         },
     )
 

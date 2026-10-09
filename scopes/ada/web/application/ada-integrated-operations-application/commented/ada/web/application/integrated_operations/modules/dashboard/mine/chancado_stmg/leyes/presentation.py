@@ -76,6 +76,7 @@ def _header(label: str, width: str, *, first: bool = False) -> Component:
 
 
 # Solo el nombre admite ellipsis; title conserva la etiqueta completa.
+# Cada encabezado de fila lleva una línea inferior, continua con las cuatro celdas de datos.
 def _row(row: LeyesRow) -> Component:
     return html.Tr(
         [
@@ -93,7 +94,12 @@ def _row(row: LeyesRow) -> Component:
                     },
                 ),
                 scope='row',
-                style={'textAlign': 'left', 'padding': '.2rem .15rem', 'fontWeight': 400},
+                style={
+                    'textAlign': 'left',
+                    'padding': '.2rem .15rem',
+                    'fontWeight': 400,
+                    'borderBottom': '1px solid var(--ada-color-border-primary, #c0c0c0)',
+                },
             ),
             _cell(row.hora),
             _cell(row.turno),
@@ -105,6 +111,7 @@ def _row(row: LeyesRow) -> Component:
 
 
 # Los valores no se recortan: si falta espacio, el contenedor tiene desplazamiento horizontal.
+# El borde inferior de cada celda completa la separación entre las filas.
 def _cell(metric: LeyesMetric) -> Component:
     return html.Td(
         html.Span(
@@ -120,6 +127,7 @@ def _cell(metric: LeyesMetric) -> Component:
             'padding': '.2rem .15rem',
             'whiteSpace': 'nowrap',
             'overflow': 'visible',
+            'borderBottom': '1px solid var(--ada-color-border-primary, #c0c0c0)',
         },
     )
 
