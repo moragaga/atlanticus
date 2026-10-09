@@ -7,6 +7,7 @@ from typing import Any
 
 from atlanticus.connectivity.cosmos.client import CosmosClient
 from atlanticus.connectivity.cosmos.errors import (
+    CosmosContainerNotFoundError,
     CosmosDatabaseNotFoundError,
     CosmosError,
     CosmosOperationError,
@@ -83,6 +84,32 @@ class CosmosInventory:
         if not isinstance(client, CosmosClient):
             raise TypeError('Cosmos inventory requires CosmosClient')
         self._client = client
+
+    # Consulta la definición física de un contenedor concreto, sin enumerar toda la base.
+    # La comprobación de salud distingue una base inexistente de un contenedor ausente.
+    @runtime_guard(
+        operation='cosmos.container.inspect',
+        component=_COMPONENT,
+        error_mapper=_inventory_error,
+        emit_started=False,
+    )
+    def read_container(self, *, container_name: str) -> CosmosContainerProperties:
+        self._client.health_check()
+        container = self._client._get_container(container_name)
+        try:
+            raw = container.read()
+        except Exception as error:
+            self._client._raise_sdk_error(
+                error,
+                not_found_error=CosmosContainerNotFoundError,
+                not_found_message='Cosmos container was not found',
+                operation_message='Could not inspect Cosmos container',
+            )
+            raise CosmosOperationError('Could not inspect Cosmos container') from None
+        result = _container_properties(raw)
+        if result.name != container_name:
+            raise CosmosOperationError('Cosmos container identity changed during inspection')
+        return result
 
     @runtime_guard(
         operation='cosmos.containers.inventory',

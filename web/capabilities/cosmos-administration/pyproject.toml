@@ -5,11 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "atlanticus-web-cosmos-administration"
 version = "0.1.0"
-description = "Inventario administrativo de Cosmos para Atlanticus Web"
+description = "Inventario y respaldo administrativo de Cosmos para Atlanticus Web"
 requires-python = "==3.14.2"
 classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "atlanticus-cosmos==1.0.0",
+    "atlanticus-storage==1.0.0",
 ]
 
 [dependency-groups]
@@ -20,6 +21,7 @@ dev = [
 
 [tool.uv.sources]
 atlanticus-cosmos = { path = "../../../connectivity/cosmos", editable = true }
+atlanticus-storage = { path = "../../../connectivity/storage", editable = true }
 
 [tool.setuptools]
 package-dir = {"" = "src"}

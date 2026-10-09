@@ -101,3 +101,44 @@ def test_invalid_or_duplicate_container_metadata_fails_closed():
     for items in ([{'id': 'x'}], [container('duplicate'), container('duplicate')]):
         with pytest.raises(CosmosOperationError):
             CosmosInventory(client=client_with(FakeDatabase(items))).list_containers()
+
+
+class FakeContainer:
+    def __init__(self, *, name='records', error=None):
+        self.name = name
+        self.error = error
+
+    def read(self):
+        if self.error is not None:
+            raise self.error
+        return container(self.name, ('/tenant',), -1)
+
+
+class FakeDatabaseWithContainer(FakeDatabase):
+    def __init__(self, target):
+        super().__init__()
+        self.target = target
+
+    def get_container_client(self, name):
+        assert name == 'records'
+        return self.target
+
+
+def test_read_one_container_without_listing_database():
+    database = FakeDatabaseWithContainer(FakeContainer())
+    result = CosmosInventory(client=client_with(database)).read_container(container_name='records')
+    assert result.partition_key_paths == ('/tenant',)
+    assert result.default_ttl_seconds == -1
+    assert database.read_calls == 1
+    assert database.list_calls == 0
+
+
+def test_read_container_rejects_missing_or_changed_identity():
+    from atlanticus.connectivity.cosmos import CosmosContainerNotFoundError
+
+    database = FakeDatabaseWithContainer(FakeContainer(error=CosmosHttpError(404)))
+    with pytest.raises(CosmosContainerNotFoundError):
+        CosmosInventory(client=client_with(database)).read_container(container_name='records')
+    database = FakeDatabaseWithContainer(FakeContainer(name='changed'))
+    with pytest.raises(CosmosOperationError, match='identity changed'):
+        CosmosInventory(client=client_with(database)).read_container(container_name='records')
