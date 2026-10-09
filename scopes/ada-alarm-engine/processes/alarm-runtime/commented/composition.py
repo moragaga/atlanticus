@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from ada.alarms.persistence import LocalAlarmMaterializationStore, materialization_root
-from ada.alarms.persistence.operational.incremental import IncrementalAlarmPersistence
+from ada.alarms.persistence.operational.incremental import IncrementalAlarmPersistence  # Variante operacional optimizada
 from ada.contracts.alarms import ALARM_CONFIGURATION_SOURCE_KEY
 from ada.processes.alarm_runtime.cycle import AlarmEvaluationCycle
 from ada.processes.alarm_runtime.durable_adoption import AlarmDurableAdopter
@@ -98,6 +98,7 @@ def build_composition(
         registry=registry,
     )
     cycle = AlarmEvaluationCycle(loader=DataInputLoader(reader=data_reader, registry=registry))
+    # Usa estado validado incrementalmente sin cambiar WAL, FACTS o los evaluadores.
     operational = IncrementalAlarmPersistence(
         application_root=runtime_configuration.application_root
     )
