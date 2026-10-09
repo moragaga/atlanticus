@@ -17,6 +17,7 @@ from .correas_stmg import (
 )
 from .equipos_ch import EQUIPOS_CH_DEFINITIONS, build_equipos_ch, map_equipos_ch_store
 from .feeders import FEEDERS_CH_DEFINITIONS, build_chancado_feeders, map_feeders_store
+from .leyes import build_leyes_summary, map_leyes_store
 from .produccion_global import build_produccion_global, map_produccion_global_store
 from .stockpile_mina import STOCKPILE_MINA_DEFINITIONS, map_stockpile_mina_store
 
@@ -54,6 +55,7 @@ def register_chancado_stmg_callback(dash_app, *, tool_key: str) -> None:
                         store_data, CORREAS_STMG_DEFINITIONS, CORREAS_STMG_METRIC
                     ),
                 ),
+                build_leyes_summary(map_leyes_store(store_data)),
             ],
             className='ada-io-chancado-stmg',
         )
