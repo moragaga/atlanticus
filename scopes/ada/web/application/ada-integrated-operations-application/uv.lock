@@ -221,6 +221,7 @@ dependencies = [
     { name = "ada-web-ui-content-state" },
     { name = "ada-web-ui-display-status" },
     { name = "ada-web-ui-equipment-image" },
+    { name = "ada-web-ui-feeder" },
     { name = "ada-web-ui-global-indicator" },
     { name = "ada-web-ui-inline-row" },
     { name = "ada-web-ui-stockpile" },
@@ -245,6 +246,7 @@ requires-dist = [
     { name = "ada-web-ui-content-state", editable = "../../ui/content-state" },
     { name = "ada-web-ui-display-status", editable = "../../ui/display-status" },
     { name = "ada-web-ui-equipment-image", editable = "../../ui/equipment-image" },
+    { name = "ada-web-ui-feeder", editable = "../../ui/feeder" },
     { name = "ada-web-ui-global-indicator", editable = "../../ui/global-indicator" },
     { name = "ada-web-ui-inline-row", editable = "../../ui/inline-row" },
     { name = "ada-web-ui-stockpile", editable = "../../ui/stockpile" },
@@ -1222,6 +1224,31 @@ requires-dist = [
     { name = "ada-web-ui-display-status", editable = "../../ui/display-status" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
     { name = "dash", specifier = "==4.4.1" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-ui-feeder"
+version = "0.1.0"
+source = { editable = "../../ui/feeder" }
+dependencies = [
+    { name = "ada-web-ui-display-status" },
+    { name = "atlanticus-web" },
+    { name = "dash" },
+    { name = "plotly" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-web-ui-display-status", editable = "../../ui/display-status" },
+    { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
+    { name = "dash", specifier = "==4.4.1" },
+    { name = "plotly", specifier = "==7.1.0" },
 ]
 
 [package.metadata.requires-dev]

@@ -10,6 +10,7 @@ from ada.web.kpis.collector import component_kpi_store_id
 from ada.web.ui.stockpile import build_stockpile_component
 
 from .equipos_ch import EQUIPOS_CH_DEFINITIONS, build_equipos_ch, map_equipos_ch_store
+from .feeders import FEEDERS_CH_DEFINITIONS, build_chancado_feeders, map_feeders_store
 from .produccion_global import build_produccion_global, map_produccion_global_store
 from .stockpile_mina import STOCKPILE_MINA_DEFINITIONS, map_stockpile_mina_store
 
@@ -35,6 +36,10 @@ def register_chancado_stmg_callback(dash_app, *, tool_key: str) -> None:
                         html.Div(piles, className='ada-io-stockpile-piles'),
                     ],
                     className='ada-io-stockpile',
+                ),
+                build_chancado_feeders(
+                    FEEDERS_CH_DEFINITIONS,
+                    map_feeders_store(store_data, FEEDERS_CH_DEFINITIONS),
                 ),
             ],
             className='ada-io-chancado-stmg',

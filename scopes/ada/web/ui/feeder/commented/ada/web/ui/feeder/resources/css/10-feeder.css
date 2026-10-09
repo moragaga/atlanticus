@@ -1,0 +1,47 @@
+/* La barra es una figura Plotly; la etiqueta, el porcentaje y el error son elementos externos. */
+.ada-feeder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 0;
+    font-size: .51rem;
+    cursor: help;
+}
+
+.ada-feeder__graphic {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 72px;
+}
+
+.ada-feeder__graph {
+    width: 100%;
+    height: 72px;
+}
+
+.ada-feeder__status-icon {
+    --ada-status-icon-size: 1.2em;
+}
+
+.ada-feeder__value,
+.ada-feeder__label {
+    font-size: .51rem;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.ada-feeder__value {
+    font-weight: 600;
+}
+
+.ada-feeder:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+@media only screen and (min-width: 480px) and (max-width: 1279px) {
+    .ada-feeder__value, .ada-feeder__label { font-size: .59rem; }
+}

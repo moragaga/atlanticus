@@ -64,7 +64,7 @@ def test_callback_renders_equipment_table_before_untouched_stockpile():
     register_chancado_stmg_callback(stub, tool_key='integrated_operations')
     root = stub.callback_function(_store({}))
     assert [child.className for child in root.children] == [
-        'ada-io-produccion-global', 'ada-io-equipos-ch', 'ada-io-stockpile',
+        'ada-io-produccion-global', 'ada-io-equipos-ch', 'ada-io-stockpile', 'ada-io-feeders',
     ]
     equipos_ch = root.children[1]
     assert equipos_ch.children[2].to_plotly_json()['type'] == 'Table'
