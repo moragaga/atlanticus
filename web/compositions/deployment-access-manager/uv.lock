@@ -71,6 +71,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "atlanticus-web-deployment-access" },
+    { name = "atlanticus-web-identity" },
     { name = "atlanticus-web-manager" },
     { name = "flask" },
 ]
@@ -84,6 +85,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "atlanticus-web-deployment-access", editable = "../../capabilities/deployment-access" },
+    { name = "atlanticus-web-identity", editable = "../../capabilities/identity/core" },
     { name = "atlanticus-web-manager", editable = "../../capabilities/manager" },
     { name = "flask", specifier = "==3.1.3" },
 ]
@@ -124,6 +126,23 @@ requires-dist = [
 dev = [
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "atlanticus-web-identity"
+version = "0.1.0"
+source = { editable = "../../capabilities/identity/core" }
+dependencies = [
+    { name = "atlanticus-web" },
+    { name = "atlanticus-web-configuration" },
+    { name = "flask" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-web", editable = "../../framework/core" },
+    { name = "atlanticus-web-configuration", editable = "../../framework/configuration" },
+    { name = "flask", specifier = "==3.1.3" },
 ]
 
 [[package]]

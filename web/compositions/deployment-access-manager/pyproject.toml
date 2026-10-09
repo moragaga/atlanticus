@@ -11,6 +11,7 @@ classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "atlanticus-web-deployment-access==0.1.0",
     "atlanticus-web-manager==0.3.19",
+    "atlanticus-web-identity==0.1.0",
     "Flask==3.1.3",
 ]
 
@@ -23,6 +24,7 @@ dev = [
 [tool.uv.sources]
 atlanticus-web-deployment-access = { path = "../../capabilities/deployment-access", editable = true }
 atlanticus-web-manager = { path = "../../capabilities/manager", editable = true }
+atlanticus-web-identity = { path = "../../capabilities/identity/core", editable = true }
 atlanticus-web = { path = "../../framework/core", editable = true }
 atlanticus-web-source = { path = "../../capabilities/source/core", editable = true }
 atlanticus-web-projection = { path = "../../capabilities/projection/core", editable = true }
