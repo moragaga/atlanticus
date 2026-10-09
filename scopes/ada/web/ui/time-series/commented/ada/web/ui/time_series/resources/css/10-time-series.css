@@ -1,0 +1,18 @@
+/* Presentación declarativa; estados y timestamps se validan funcionalmente. */
+.ada-time-series__graph {
+    width: 100%;
+    min-width: 0;
+}
+
+.ada-time-series__unavailable {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 5rem;
+}
+
+.ada-time-series__status-icon {
+    max-width: 1.4rem;
+    max-height: 1.4rem;
+}

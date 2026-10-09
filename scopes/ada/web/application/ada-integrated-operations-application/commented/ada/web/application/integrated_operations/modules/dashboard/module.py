@@ -24,12 +24,16 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.module im
 from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile_chacay.runtime import (
     register_stockpile_chacay_callback,
 )
+from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile_chacay.tendencia_alimentado import (
+    register_tendencia_alimentado_callback,
+)
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.ui.card_display import ADA_CARD_DISPLAY_ASSET_LAYER
 from ada.web.ui.equipment_image import ADA_EQUIPMENT_IMAGE_ASSET_LAYER
 from ada.web.ui.feeder import ADA_FEEDER_ASSET_LAYER
 from ada.web.ui.inline_row import ADA_INLINE_ROW_ASSET_LAYER
 from ada.web.ui.stockpile import ADA_STOCKPILE_ASSET_LAYER
+from ada.web.ui.time_series import ADA_TIME_SERIES_ASSET_LAYER
 from atlanticus.web.assets import AssetLayer
 from atlanticus.web.modules import WebModule
 
@@ -61,6 +65,7 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             register_chancado_stmg_callback(dash_app, tool_key=tool_key)
             # Activa la primera card de Planta, sin registrar Tendencia Alimentado.
             register_stockpile_chacay_callback(dash_app, tool_key=tool_key)
+            register_tendencia_alimentado_callback(dash_app, tool_key=tool_key)
 
     return WebModule(
         name='ada-integrated-operations-dashboard',
@@ -69,6 +74,7 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             ADA_CARD_DISPLAY_ASSET_LAYER,
             ADA_INLINE_ROW_ASSET_LAYER,
             ADA_STOCKPILE_ASSET_LAYER,
+            ADA_TIME_SERIES_ASSET_LAYER,
             ADA_EQUIPMENT_IMAGE_ASSET_LAYER,
             ADA_FEEDER_ASSET_LAYER,
             DASHBOARD_ASSET_LAYER,
