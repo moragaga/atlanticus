@@ -1,4 +1,3 @@
-# El nuevo componente reutilizable aporta sus propios estilos mediante AssetLayer.
 from ada.web.application.integrated_operations.modules.dashboard.context import (
     DASHBOARD_CONTEXT_SERVICE_KEY,
     DashboardContext,
@@ -20,6 +19,10 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.transporte
 )
 from ada.web.application.integrated_operations.modules.dashboard.plant.module import (
     PLANT_ASSET_LAYER,
+)
+# Único registro nuevo en la composición general del Dashboard.
+from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile_chacay.runtime import (
+    register_stockpile_chacay_callback,
 )
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.ui.card_display import ADA_CARD_DISPLAY_ASSET_LAYER
@@ -56,6 +59,8 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             register_carguio_callback(dash_app, tool_key=tool_key)
             register_transporte_callback(dash_app, tool_key=tool_key)
             register_chancado_stmg_callback(dash_app, tool_key=tool_key)
+            # Activa la primera card de Planta, sin registrar Tendencia Alimentado.
+            register_stockpile_chacay_callback(dash_app, tool_key=tool_key)
 
     return WebModule(
         name='ada-integrated-operations-dashboard',
