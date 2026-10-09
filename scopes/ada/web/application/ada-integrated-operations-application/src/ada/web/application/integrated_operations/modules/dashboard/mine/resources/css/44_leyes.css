@@ -1,0 +1,79 @@
+.ada-io-leyes {
+    display: flex;
+    flex-direction: column;
+    gap: .18rem;
+    min-width: 0;
+    width: 100%;
+    padding: .08rem .18rem;
+}
+
+.ada-io-leyes__title {
+    margin: 0;
+    font-size: .57rem;
+    font-weight: 700;
+    text-align: center;
+    background: var(--atlanticus-admin-color-border);
+    border-radius: .2rem;
+}
+
+.ada-io-leyes__viewport {
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+}
+
+.ada-io-leyes__table {
+    border-collapse: collapse;
+    table-layout: auto;
+    width: 100%;
+    min-width: max-content;
+    font-size: .52rem;
+}
+
+.ada-io-leyes__head,
+.ada-io-leyes__row-header,
+.ada-io-leyes__cell {
+    padding: .2rem .15rem;
+    border-bottom: 1px solid var(--ada-color-border-primary, #c0c0c0);
+}
+
+.ada-io-leyes__head {
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.ada-io-leyes__head--name {
+    width: 35%;
+    text-align: left;
+}
+
+.ada-io-leyes__head--period {
+    width: 16.25%;
+    text-align: right;
+}
+
+.ada-io-leyes__row-header {
+    text-align: left;
+    font-weight: 400;
+}
+
+.ada-io-leyes__label {
+    display: block;
+    max-width: 8rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ada-io-leyes__cell {
+    text-align: right;
+    white-space: nowrap;
+    overflow: visible;
+}
+
+.ada-io-leyes__value {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: nowrap;
+}

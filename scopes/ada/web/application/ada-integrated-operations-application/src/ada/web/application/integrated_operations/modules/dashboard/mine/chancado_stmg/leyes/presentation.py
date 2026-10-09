@@ -13,89 +13,41 @@ def build_leyes_summary(state: LeyesState) -> Component:
         raise TypeError('state must be LeyesState')
     return html.Section(
         [
-            html.H3(
-                'LEYES',
-                style={
-                    'margin': 0,
-                    'fontSize': '.57rem',
-                    'fontWeight': 700,
-                    'textAlign': 'center',
-                    'background': 'var(--atlanticus-admin-color-border)',
-                    'borderRadius': '.2rem',
-                },
-            ),
+            html.H3('LEYES', className='ada-io-leyes__title'),
             html.Div(
                 html.Table(
                     [
                         html.Thead(html.Tr([
-                            _header('', '35%', first=True),
-                            _header('HORA', '16.25%'),
-                            _header('TURNO', '16.25%'),
-                            _header('DÍA', '16.25%'),
-                            _header('PLAN', '16.25%'),
+                            _header('', first=True),
+                            _header('HORA'),
+                            _header('TURNO'),
+                            _header('DÍA'),
+                            _header('PLAN'),
                         ])),
                         html.Tbody([_row(row) for row in state.rows]),
                     ],
-                    style={
-                        'borderCollapse': 'collapse',
-                        'tableLayout': 'auto',
-                        'width': '100%',
-                        'minWidth': 'max-content',
-                        'fontSize': '.52rem',
-                    },
+                    className='ada-io-leyes__table',
                 ),
-                style={'width': '100%', 'minWidth': 0, 'overflowX': 'auto'},
+                className='ada-io-leyes__viewport',
             ),
         ],
-        style={
-            'display': 'flex',
-            'flexDirection': 'column',
-            'gap': '.18rem',
-            'minWidth': 0,
-            'width': '100%',
-            'padding': '.08rem .18rem',
-        },
+        className='ada-io-leyes',
     )
 
 
-def _header(label: str, width: str, *, first: bool = False) -> Component:
-    return html.Th(
-        label,
-        scope='col',
-        style={
-            'width': width,
-            'textAlign': 'left' if first else 'right',
-            'padding': '.2rem .15rem',
-            'fontWeight': 700,
-            'whiteSpace': 'nowrap',
-            'borderBottom': '1px solid var(--ada-color-border-primary, #c0c0c0)',
-        },
-    )
+def _header(label: str, *, first: bool = False) -> Component:
+    class_name = 'ada-io-leyes__head'
+    class_name += ' ada-io-leyes__head--name' if first else ' ada-io-leyes__head--period'
+    return html.Th(label, scope='col', className=class_name)
 
 
 def _row(row: LeyesRow) -> Component:
     return html.Tr(
         [
             html.Th(
-                html.Span(
-                    row.label,
-                    title=row.label,
-                    style={
-                        'display': 'block',
-                        'maxWidth': '8rem',
-                        'minWidth': 0,
-                        'overflow': 'hidden',
-                        'textOverflow': 'ellipsis',
-                        'whiteSpace': 'nowrap',
-                    },
-                ),
+                html.Span(row.label, title=row.label, className='ada-io-leyes__label'),
                 scope='row',
-                style={
-                    'textAlign': 'left',
-                    'padding': '.2rem .15rem',
-                    'fontWeight': 400,
-                    'borderBottom': '1px solid var(--ada-color-border-primary, #c0c0c0)',
-                },
+                className='ada-io-leyes__row-header',
             ),
             _cell(row.hora),
             _cell(row.turno),
@@ -110,19 +62,13 @@ def _cell(metric: LeyesMetric) -> Component:
     return html.Td(
         html.Span(
             _display(metric.value),
+            className='ada-io-leyes__value',
             role='button',
             tabIndex=0,
-            style={'overflow': 'visible', 'textOverflow': 'clip', 'whiteSpace': 'nowrap'},
             title=metric.kpi_key,
             **{'data-kpi-inspection-key': metric.kpi_key},
         ),
-        style={
-            'textAlign': 'right',
-            'padding': '.2rem .15rem',
-            'whiteSpace': 'nowrap',
-            'overflow': 'visible',
-            'borderBottom': '1px solid var(--ada-color-border-primary, #c0c0c0)',
-        },
+        className='ada-io-leyes__cell',
     )
 
 
