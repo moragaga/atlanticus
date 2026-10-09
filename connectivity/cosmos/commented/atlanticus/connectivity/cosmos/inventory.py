@@ -17,18 +17,23 @@ from atlanticus.observability import ErrorInfo, ResultSummary, runtime_guard
 _COMPONENT = 'atlanticus.connectivity.cosmos'
 
 
+# Contrato pedagógico: responsabilidad aislada y reutilizable.
 class CosmosContainerInventoryLimitError(CosmosOperationError):
+    # Validación y errores controlados antes de realizar operaciones.
     def __init__(self, *, max_items: int) -> None:
         self.max_items = max_items
         super().__init__(f'Cosmos container inventory exceeds max_items={max_items}')
 
 
 @dataclass(frozen=True, slots=True)
+# Contrato pedagógico: responsabilidad aislada y reutilizable.
 class CosmosContainerProperties:
     name: str
     partition_key_paths: tuple[str, ...]
     default_ttl_seconds: int | None
+    etag: str | None = None
 
+    # Validación y errores controlados antes de realizar operaciones.
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name or self.name != self.name.strip():
             raise CosmosOperationError('Cosmos container metadata has an invalid name')
@@ -47,6 +52,13 @@ class CosmosContainerProperties:
             not isinstance(ttl, int) or isinstance(ttl, bool) or (ttl != -1 and ttl <= 0)
         ):
             raise CosmosOperationError('Cosmos container metadata has an invalid TTL')
+        if self.etag is not None and (
+            not isinstance(self.etag, str)
+            or not self.etag.strip()
+            or self.etag == '*'
+            or any(ord(char) < 32 for char in self.etag)
+        ):
+            raise CosmosOperationError('Cosmos container metadata has an invalid ETag')
 
 
 def _inventory_error(error: BaseException) -> ErrorInfo:
@@ -76,23 +88,25 @@ def _container_properties(value: object) -> CosmosContainerProperties:
         name=value.get('id'),
         partition_key_paths=tuple(paths),
         default_ttl_seconds=ttl,
+        etag=value.get('_etag'),
     )
 
 
+# Contrato pedagógico: responsabilidad aislada y reutilizable.
 class CosmosInventory:
+    # Validación y errores controlados antes de realizar operaciones.
     def __init__(self, *, client: CosmosClient) -> None:
         if not isinstance(client, CosmosClient):
             raise TypeError('Cosmos inventory requires CosmosClient')
         self._client = client
 
-    # Consulta la definición física de un contenedor concreto, sin enumerar toda la base.
-    # La comprobación de salud distingue una base inexistente de un contenedor ausente.
     @runtime_guard(
         operation='cosmos.container.inspect',
         component=_COMPONENT,
         error_mapper=_inventory_error,
         emit_started=False,
     )
+    # Validación y errores controlados antes de realizar operaciones.
     def read_container(self, *, container_name: str) -> CosmosContainerProperties:
         self._client.health_check()
         container = self._client._get_container(container_name)
@@ -118,12 +132,12 @@ class CosmosInventory:
         error_mapper=_inventory_error,
         emit_started=False,
     )
+    # Validación y errores controlados antes de realizar operaciones.
     def list_containers(self, *, max_items: int = 200) -> tuple[CosmosContainerProperties, ...]:
         if not isinstance(max_items, int) or isinstance(max_items, bool) or max_items <= 0:
             raise ValueError('max_items must be a positive integer')
         if max_items > self._client.settings.max_query_items:
             raise ValueError('max_items exceeds the configured Cosmos query limit')
-        # Diferenciar base ausente de base vacía antes de enumerar.
         database = self._client._get_database()
         try:
             database.read()

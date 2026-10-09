@@ -28,6 +28,7 @@ class CosmosContainerProperties:
     name: str
     partition_key_paths: tuple[str, ...]
     default_ttl_seconds: int | None
+    etag: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name or self.name != self.name.strip():
@@ -47,6 +48,13 @@ class CosmosContainerProperties:
             not isinstance(ttl, int) or isinstance(ttl, bool) or (ttl != -1 and ttl <= 0)
         ):
             raise CosmosOperationError('Cosmos container metadata has an invalid TTL')
+        if self.etag is not None and (
+            not isinstance(self.etag, str)
+            or not self.etag.strip()
+            or self.etag == '*'
+            or any(ord(char) < 32 for char in self.etag)
+        ):
+            raise CosmosOperationError('Cosmos container metadata has an invalid ETag')
 
 
 def _inventory_error(error: BaseException) -> ErrorInfo:
@@ -76,6 +84,7 @@ def _container_properties(value: object) -> CosmosContainerProperties:
         name=value.get('id'),
         partition_key_paths=tuple(paths),
         default_ttl_seconds=ttl,
+        etag=value.get('_etag'),
     )
 
 

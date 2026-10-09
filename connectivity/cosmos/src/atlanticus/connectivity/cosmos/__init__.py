@@ -3,6 +3,7 @@
 from pkgutil import extend_path
 
 from atlanticus.connectivity.cosmos.client import CosmosClient
+from atlanticus.connectivity.cosmos.destruction import CosmosContainerDeletion
 from atlanticus.connectivity.cosmos.errors import (
     CosmosAuthenticationError,
     CosmosAuthorizationError,
@@ -58,6 +59,7 @@ __all__ = [
     'CosmosConfigurationError',
     'CosmosConflictError',
     'CosmosContainerDefinitionMismatchError',
+    'CosmosContainerDeletion',
     'CosmosContainerInventoryLimitError',
     'CosmosContainerNotFoundError',
     'CosmosContainerProperties',
