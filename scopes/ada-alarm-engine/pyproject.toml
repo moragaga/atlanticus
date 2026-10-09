@@ -28,6 +28,7 @@ atlanticus-datasets = { path = "../../backend/datasets", editable = true }
 atlanticus-datasets-parquet = { path = "../../backend/datasets-parquet", editable = true }
 atlanticus-datasets-runtime = { path = "../../backend/datasets-runtime", editable = true }
 atlanticus-job-runtime = { path = "../../backend/runtime", editable = true }
+atlanticus-observability = { path = "../../backend/observability", editable = true }
 atlanticus-key-vault = { path = "../../connectivity/key-vault", editable = true }
 atlanticus-kernel = { path = "../../backend/kernel", editable = true }
 atlanticus-observability-azure = { path = "../../backend/observability-azure", editable = true }

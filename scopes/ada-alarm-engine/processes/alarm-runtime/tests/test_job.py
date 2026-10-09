@@ -172,10 +172,10 @@ def test_unexecutable_new_ready_keeps_pinned_session_and_engine_cycle() -> None:
     context.work = False
     second = job.run_iteration(context)
 
-    assert second.outcome is AlarmRuntimeConfigurationOutcome.REJECTED
-    assert second.session is first.session
-    assert second.reason == 'published_engine_not_executable'
-    assert cycle.sessions[-1] is first.session
+    assert second.outcome is AlarmRuntimeConfigurationOutcome.ADOPTED
+    assert second.session is not first.session
+    assert second.session.unregistered_alarms == (second.session.entries[0].identity,)
+    assert cycle.sessions[-1] is second.session
     assert context.work is True
 
 
@@ -224,11 +224,12 @@ def test_initial_unexecutable_ready_does_not_create_session() -> None:
         cycle=cycle,
     ).run_iteration(context)
 
-    assert result.outcome is AlarmRuntimeConfigurationOutcome.REJECTED
-    assert result.session is None
-    assert result.cycle is None
-    assert context.delay == 30.0
-    assert cycle.sessions == []
+    assert result.outcome is AlarmRuntimeConfigurationOutcome.BOOTSTRAPPED
+    assert result.session is not None
+    assert result.session.unregistered_alarms == (result.session.entries[0].identity,)
+    assert result.session.entries[0].contract_available is False
+    assert context.work is True
+    assert cycle.sessions == [result.session]
 
 
 def test_ready_requiring_unconfigured_source_route_is_not_adopted() -> None:

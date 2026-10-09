@@ -1,5 +1,4 @@
-# Espejo pedagógico del job de Alarm Runtime.
-# El estado lifecycle se publica en memoria solo tras confirmar WAL; READY se adopta mediante V1/V2 y se relee EFFECTIVE.
+# Espejo pedagógico en español; la lógica es equivalente al archivo productivo.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
@@ -9,6 +8,11 @@ from typing import Protocol, runtime_checkable
 from ada.alarms.materialization import EngineAlarmConfiguration
 from ada.alarms.persistence import AlarmMaterializationPersistenceError
 from ada.processes.alarm_runtime.adoption import plan_configuration_adoption
+from ada.processes.alarm_runtime.cycle import (
+    AlarmEvaluationCycleExecutor,
+    AlarmEvaluationCycleResult,
+)
+from ada.processes.alarm_runtime.diagnostics import emit_evaluator_contract_diagnostics
 from ada.processes.alarm_runtime.durable_adoption import (
     AlarmDurableAdopter,
     AlarmOperationalAdoptionRequired,
@@ -17,10 +21,6 @@ from ada.processes.alarm_runtime.durable_commit import AlarmDurableCycleCommitte
 from ada.processes.alarm_runtime.durable_recovery import (
     AlarmDurableRecovery,
     RecoveredAlarmAuthority,
-)
-from ada.processes.alarm_runtime.cycle import (
-    AlarmEvaluationCycleExecutor,
-    AlarmEvaluationCycleResult,
 )
 from ada.processes.alarm_runtime.errors import (
     AlarmExecutionSessionError,
@@ -76,9 +76,7 @@ class AlarmRuntimeIterationResult:
             raise ValueError('reason must be non-empty text')
         if self.cycle is not None and not isinstance(self.cycle, AlarmEvaluationCycleResult):
             raise TypeError('cycle must be an AlarmEvaluationCycleResult or None')
-        if self.lifecycle is not None and not isinstance(
-            self.lifecycle, AlarmLifecycleCycleResult
-        ):
+        if self.lifecycle is not None and not isinstance(self.lifecycle, AlarmLifecycleCycleResult):
             raise TypeError('lifecycle must be an AlarmLifecycleCycleResult or None')
         if self.cycle is not None and self.session is None:
             raise ValueError('cycle requires an execution session')
@@ -91,6 +89,7 @@ class AlarmRuntimeIterationResult:
                 raise ValueError('lifecycle state configuration must match execution session')
 
 
+# Orquesta la adopción y evaluación de alarmas sin comprometer el estado durable.
 class AlarmRuntimeJob:
     def __init__(
         self,
@@ -127,7 +126,9 @@ class AlarmRuntimeJob:
             raise ValueError('durable recovery and committer must be configured together')
         if durable_recovery is not None and not isinstance(durable_recovery, AlarmDurableRecovery):
             raise TypeError('durable_recovery must be AlarmDurableRecovery')
-        if durable_committer is not None and not isinstance(durable_committer, AlarmDurableCycleCommitter):
+        if durable_committer is not None and not isinstance(
+            durable_committer, AlarmDurableCycleCommitter
+        ):
             raise TypeError('durable_committer must be AlarmDurableCycleCommitter')
         self._lifecycle = resolved_lifecycle
         self._durable_recovery = durable_recovery
@@ -138,6 +139,7 @@ class AlarmRuntimeJob:
         self._durable_committer = durable_committer
         self._durable_adopter = durable_adopter
 
+    # Reconstruye EFFECTIVE desde WAL y vuelve a asociar los evaluadores del despliegue actual.
     def recover(self, context: JobRuntimeContext) -> RecoveredAlarmAuthority:
         if self._durable_recovery is None:
             raise AlarmRuntimeConfigurationError('durable recovery is not configured')
@@ -151,9 +153,11 @@ class AlarmRuntimeJob:
             context.assert_lease_current()
             context.set_memory(_SESSION_MEMORY_KEY, session)
             context.set_memory(_LIFECYCLE_MEMORY_KEY, recovered.lifecycle)
+            emit_evaluator_contract_diagnostics(session)
         context.set_memory(_DURABLE_MEMORY_KEY, recovered)
         return recovered
 
+    # Evalúa la configuración publicada; los contratos ausentes no bloquean alarmas disponibles.
     def run_iteration(self, context: JobRuntimeContext) -> AlarmRuntimeIterationResult:
         context.raise_if_cancelled()
         if self._durable_committer is not None:
@@ -228,7 +232,7 @@ class AlarmRuntimeJob:
                 evaluator_registry=self._evaluator_registry,
             )
             self._source_applications.validate_sources(candidate.data_plan.sources)
-        except (AlarmExecutionSessionError, DataSourceRoutingError):
+        except AlarmExecutionSessionError, DataSourceRoutingError:
             if pinned is None:
                 context.set_next_iteration_delay(INITIAL_CONFIGURATION_RETRY_SECONDS)
             return self._finish(
@@ -275,11 +279,11 @@ class AlarmRuntimeJob:
             ),
         )
         context.set_memory(_SESSION_MEMORY_KEY, candidate)
+        emit_evaluator_contract_diagnostics(candidate)
         context.mark_iteration_work()
         return finished
 
-    # Una adopción necesita confirmación WAL y recovery del mismo EFFECTIVE exacto.
-    # Los cambios que exigen transiciones físicas se rechazan hasta soportar un batch mixto.
+    # Adopta READY mediante una transacción durable antes de cambiar la sesión en memoria.
     def _run_durable_adoption_iteration(
         self,
         context: JobRuntimeContext,
@@ -347,7 +351,7 @@ class AlarmRuntimeJob:
                 evaluator_registry=self._evaluator_registry,
             )
             self._source_applications.validate_sources(candidate.data_plan.sources)
-        except (AlarmExecutionSessionError, DataSourceRoutingError):
+        except AlarmExecutionSessionError, DataSourceRoutingError:
             if pinned is None:
                 context.set_next_iteration_delay(INITIAL_CONFIGURATION_RETRY_SECONDS)
             return self._finish(
@@ -370,8 +374,6 @@ class AlarmRuntimeJob:
                     ),
                 )
         context.raise_if_cancelled()
-        # La autoridad en memoria puede tener group heads antiguos tras commits normales.
-        # Una recuperación fresca valida las cabezas justo antes de adoptar.
         current = self._durable_recovery.recover(context)
         if current.artifact_ref != recovered.artifact_ref:
             raise AlarmRuntimeConfigurationError('EFFECTIVE changed before adoption')
@@ -397,6 +399,7 @@ class AlarmRuntimeJob:
         context.set_memory(_SESSION_MEMORY_KEY, candidate)
         context.set_memory(_LIFECYCLE_MEMORY_KEY, confirmed.lifecycle)
         context.set_memory(_DURABLE_MEMORY_KEY, confirmed)
+        emit_evaluator_contract_diagnostics(candidate)
         context.mark_iteration_work()
         result = AlarmRuntimeIterationResult(
             outcome=(
@@ -410,6 +413,7 @@ class AlarmRuntimeJob:
         self._record(context, result)
         return result
 
+    # Ejecuta ciclo, lifecycle y commit solo después de disponer de una sesión válida.
     def _finish(
         self,
         context: JobRuntimeContext,
@@ -454,6 +458,7 @@ class AlarmRuntimeJob:
         return result
 
     @staticmethod
+    # Publica hechos resumidos en la iteración para consola y telemetría.
     def _record(context: JobRuntimeContext, result: AlarmRuntimeIterationResult) -> None:
         context.set_iteration_fact('outcome', result.outcome.value)
         context.set_iteration_fact('reason', result.reason)
@@ -464,6 +469,12 @@ class AlarmRuntimeJob:
             )
             context.set_iteration_fact('tool_catalog_revision', key.confirmed_tool_catalog_revision)
             context.set_iteration_fact('planned_alarm_count', len(result.session.entries))
+            context.set_iteration_fact(
+                'missing_evaluator_contract_count', len(result.session.unregistered_alarms)
+            )
+            context.set_iteration_fact(
+                'unreferenced_evaluator_contract_count', len(result.session.unreferenced_contracts)
+            )
         if result.cycle is not None:
             evaluations = result.cycle.evaluations
             context.set_iteration_fact('cycle_at_utc', result.cycle.cycle_at.isoformat())
@@ -483,7 +494,6 @@ class AlarmRuntimeJob:
         if result.lifecycle is not None:
             groups = result.lifecycle.groups
             context.set_iteration_fact('lifecycle_group_count', len(groups))
-            # Telemetría agregada separada de los hechos históricos del motor.
             context.set_iteration_fact(
                 'open_technical_incident_count',
                 len(result.lifecycle.state.technical_incidents),

@@ -1,10 +1,7 @@
-import pytest
-
 from ada.processes.alarm_runtime import (
     AlarmEvaluatorRegistry,
     build_alarm_execution_session,
 )
-from ada.processes.alarm_runtime.errors import AlarmExecutionSessionError
 from atlanticus.operational_data.core import DataSource
 
 from .support import engine_configuration, registry
@@ -34,12 +31,25 @@ def test_session_builds_operational_data_plan_from_evaluator_inputs() -> None:
     assert session.data_plan.sources == (DataSource.PI_INTERPOLATED,)
 
 
-def test_session_rejects_unregistered_evaluator() -> None:
-    with pytest.raises(AlarmExecutionSessionError, match='evaluator contract is not registered'):
-        build_alarm_execution_session(
-            configuration=engine_configuration(),
-            evaluator_registry=AlarmEvaluatorRegistry(contracts=()),
-        )
+def test_session_preserves_unregistered_evaluator_as_technical_error() -> None:
+    from datetime import UTC, datetime
+    from ada.alarms.core import AlarmStatus, EvaluationContext, EvaluationErrorOrigin
+
+    session = build_alarm_execution_session(
+        configuration=engine_configuration(),
+        evaluator_registry=AlarmEvaluatorRegistry(contracts=()),
+    )
+    entry = session.entries[0]
+    at = datetime(2026, 10, 8, tzinfo=UTC)
+    evaluated = entry.evaluator(
+        EvaluationContext(alarm_identity=entry.identity, now=at, parameters={}, data=None)
+    )
+    assert not entry.contract_available
+    assert session.unregistered_alarms == (entry.identity,)
+    assert entry.inputs == ()
+    assert evaluated.status is AlarmStatus.ERROR
+    assert evaluated.error.origin is EvaluationErrorOrigin.RUNTIME
+    assert evaluated.error.error_key == 'evaluator_contract_unavailable'
 
 
 def test_registry_is_scoped_by_family_and_evaluator_key() -> None:

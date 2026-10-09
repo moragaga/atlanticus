@@ -172,9 +172,10 @@ class AlarmDurableCurrentPublisher:
         }
         document['sha256'] = _digest(document)
         store = AtomicJsonStore(root_path=self.root, max_document_bytes=None)
-        # Dentro del fencing, confirmar de nuevo exactamente el mismo estado de autoridad.
+        # Bajo el fence, releer y comparar la autoridad durable confirmada.
+        # El fence ya valida autoridad antes de entrar; no repetir la comprobación.
+        # Una segunda adquisición bloquearía el candado físico no reentrante.
         with context.fenced_mutation():
-            context.assert_lease_current()
             verified_artifact, verified_position, verified_groups = _read_authority(
                 persistence=persistence, source_key=self.source_key
             )

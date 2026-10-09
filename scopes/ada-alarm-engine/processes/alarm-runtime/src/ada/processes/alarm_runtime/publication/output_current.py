@@ -163,7 +163,6 @@ class AlarmDurableCurrentPublisher:
         document['sha256'] = _digest(document)
         store = AtomicJsonStore(root_path=self.root, max_document_bytes=None)
         with context.fenced_mutation():
-            context.assert_lease_current()
             verified_artifact, verified_position, verified_groups = _read_authority(
                 persistence=persistence, source_key=self.source_key
             )

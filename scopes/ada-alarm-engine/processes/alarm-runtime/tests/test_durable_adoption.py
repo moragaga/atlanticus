@@ -333,16 +333,45 @@ def test_job_waits_without_ready_and_effective(tmp_path):
     assert store.read_head().durable is None
 
 
-def test_job_rejects_unexecutable_bootstrap_without_adoption(tmp_path):
+def test_job_adopts_missing_evaluator_durably_without_executing_cycle(tmp_path):
     store = AlarmPersistence(application_root=tmp_path)
     versions = Materializations(_ready(configuration=engine_configuration(evaluator_key='missing')))
     job = _job(store, versions, NoCycle())
     context = Context()
     job.recover(context)
     result = job.run_iteration(context)
-    assert result.outcome is AlarmRuntimeConfigurationOutcome.REJECTED
-    assert result.reason == 'published_engine_not_executable'
-    assert store.read_head().durable is None
+    assert result.outcome is AlarmRuntimeConfigurationOutcome.BOOTSTRAPPED
+    assert result.session.unregistered_alarms == (result.session.entries[0].identity,)
+    assert result.cycle is None
+    assert store.read_effective_head() is not None
+
+
+def test_runtime_recovers_effective_after_evaluator_code_is_removed(tmp_path):
+    from ada.processes.alarm_runtime.session import AlarmEvaluatorRegistry
+
+    store = AlarmPersistence(application_root=tmp_path)
+    versions = Materializations(_ready())
+    original_context = Context()
+    original = _job(store, versions, NoCycle())
+    original.recover(original_context)
+    original.run_iteration(original_context)
+
+    updated = AlarmRuntimeJob(
+        reader=SimpleNamespace(read_published_engine=lambda **kwargs: None),
+        source_key='alarm-configuration',
+        evaluator_registry=AlarmEvaluatorRegistry(contracts=()),
+        source_applications=DataSourceApplications(pi='pi-app'),
+        cycle=NoCycle(),
+        durable_recovery=_recovery(store, versions),
+        durable_committer=AlarmDurableCycleCommitter(persistence=store),
+        durable_adopter=_adopter(store, versions, at=AT + timedelta(seconds=3)),
+    )
+    context = Context()
+    recovered = updated.recover(context)
+    assert recovered.artifact_ref is not None
+    sessions = [v for v in context.memory.values() if hasattr(v, 'unregistered_alarms')]
+    assert len(sessions) == 1
+    assert sessions[0].unregistered_alarms == (sessions[0].entries[0].identity,)
 
 
 def test_incompatible_new_ready_keeps_existing_effective(tmp_path):

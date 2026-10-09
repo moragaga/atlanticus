@@ -11,6 +11,7 @@ from ada.processes.alarm_runtime.cycle import (
     AlarmEvaluationCycleExecutor,
     AlarmEvaluationCycleResult,
 )
+from ada.processes.alarm_runtime.diagnostics import emit_evaluator_contract_diagnostics
 from ada.processes.alarm_runtime.durable_adoption import (
     AlarmDurableAdopter,
     AlarmOperationalAdoptionRequired,
@@ -149,6 +150,7 @@ class AlarmRuntimeJob:
             context.assert_lease_current()
             context.set_memory(_SESSION_MEMORY_KEY, session)
             context.set_memory(_LIFECYCLE_MEMORY_KEY, recovered.lifecycle)
+            emit_evaluator_contract_diagnostics(session)
         context.set_memory(_DURABLE_MEMORY_KEY, recovered)
         return recovered
 
@@ -273,6 +275,7 @@ class AlarmRuntimeJob:
             ),
         )
         context.set_memory(_SESSION_MEMORY_KEY, candidate)
+        emit_evaluator_contract_diagnostics(candidate)
         context.mark_iteration_work()
         return finished
 
@@ -391,6 +394,7 @@ class AlarmRuntimeJob:
         context.set_memory(_SESSION_MEMORY_KEY, candidate)
         context.set_memory(_LIFECYCLE_MEMORY_KEY, confirmed.lifecycle)
         context.set_memory(_DURABLE_MEMORY_KEY, confirmed)
+        emit_evaluator_contract_diagnostics(candidate)
         context.mark_iteration_work()
         result = AlarmRuntimeIterationResult(
             outcome=(
@@ -458,6 +462,12 @@ class AlarmRuntimeJob:
             )
             context.set_iteration_fact('tool_catalog_revision', key.confirmed_tool_catalog_revision)
             context.set_iteration_fact('planned_alarm_count', len(result.session.entries))
+            context.set_iteration_fact(
+                'missing_evaluator_contract_count', len(result.session.unregistered_alarms)
+            )
+            context.set_iteration_fact(
+                'unreferenced_evaluator_contract_count', len(result.session.unreferenced_contracts)
+            )
         if result.cycle is not None:
             evaluations = result.cycle.evaluations
             context.set_iteration_fact('cycle_at_utc', result.cycle.cycle_at.isoformat())
