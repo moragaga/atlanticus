@@ -6,13 +6,13 @@ from ada.web.kpis.collector import KpiLatestValueState, decode_kpi_latest_value
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
 from ada.web.ui.stockpile import StockpileValues
 
+from ..feeders import map_chacay_feeders_store
 from .definitions import (
     STOCKPILE_CHACAY_PILES,
     STOCKPILE_CHACAY_POSITION_KEY,
     STOCKPILE_CHACAY_POSITIONS,
     STOCKPILE_CHACAY_ROWS,
 )
-from ..feeders import map_chacay_feeders_store
 from .models import ChacayMetric, StockpileChacayState
 
 

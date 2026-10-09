@@ -3,6 +3,8 @@ from __future__ import annotations
 # Plotly representa los instantes sobre UTC, nunca sobre strings locales repetibles.
 # Las etiquetas de America/Santiago muestran el desplazamiento durante un cambio de hora.
 # El gráfico no permite zoom, hover ni selección; los nulos permanecen como huecos.
+# Sin serie o sin muestras válidas, se conserva el Graph sin inventar puntos ni fechas.
+# Solo los estados INVALID y ERROR reemplazan el área con la iconografía de sistema.
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -26,7 +28,7 @@ def build_time_series_component(
         raise TypeError('series must be TimeSeriesValues')
     if type(height_px) is not int or height_px <= 0:
         raise ValueError('height_px must be a positive integer')
-    if series.status is not DisplayStatus.OK:
+    if series.status in (DisplayStatus.INVALID, DisplayStatus.ERROR):
         icon = build_display_status_icon(series.status, class_name='ada-time-series__status-icon')
         if icon is None:
             raise ValueError('Time series status icon cannot be resolved')
@@ -47,9 +49,22 @@ def _figure(series: TimeSeriesValues, height_px: int) -> go.Figure:
     moments = [point.timestamp_utc for point in series.points]
     values = [point.value for point in series.points]
     ticks = _tick_indices(len(moments), 3 if _offset_changes(moments) else 5)
-    start = moments[0] if len(moments) > 1 else moments[0] - timedelta(minutes=1)
-    end = moments[-1] if len(moments) > 1 else moments[-1] + timedelta(minutes=1)
     labels = _santiago_labels([moments[index] for index in ticks], moments)
+    xaxis = {
+        'type': 'date',
+        'tickmode': 'array',
+        'tickvals': [moments[index].isoformat() for index in ticks],
+        'ticktext': labels,
+        'showgrid': False,
+        'zeroline': False,
+        'fixedrange': True,
+        'tickfont': {'size': 9},
+        'automargin': False,
+    }
+    if moments:
+        start = moments[0] if len(moments) > 1 else moments[0] - timedelta(minutes=1)
+        end = moments[-1] if len(moments) > 1 else moments[-1] + timedelta(minutes=1)
+        xaxis['range'] = [start.isoformat(), end.isoformat()]
     figure = go.Figure(
         go.Scatter(
             x=[stamp.isoformat() for stamp in moments],
@@ -70,18 +85,7 @@ def _figure(series: TimeSeriesValues, height_px: int) -> go.Figure:
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         dragmode=False,
-        xaxis={
-            'type': 'date',
-            'range': [start.isoformat(), end.isoformat()],
-            'tickmode': 'array',
-            'tickvals': [moments[index].isoformat() for index in ticks],
-            'ticktext': labels,
-            'showgrid': False,
-            'zeroline': False,
-            'fixedrange': True,
-            'tickfont': {'size': 9},
-            'automargin': False,
-        },
+        xaxis=xaxis,
         yaxis={
             'showgrid': False,
             'zeroline': False,

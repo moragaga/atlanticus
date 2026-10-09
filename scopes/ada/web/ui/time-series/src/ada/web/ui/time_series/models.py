@@ -10,7 +10,7 @@ from ada.web.ui.display_status import DisplayStatus
 @dataclass(frozen=True, slots=True)
 class TimeSeriesPoint:
     timestamp_utc: datetime
-    value: float | None
+    value: int | float | None
 
     def __post_init__(self) -> None:
         if (
@@ -43,10 +43,6 @@ class TimeSeriesValues:
             raise TypeError('Time series points must be a tuple of TimeSeriesPoint')
         if self.status is not DisplayStatus.OK and self.points:
             raise ValueError('Non-OK time series cannot contain points')
-        if self.status is DisplayStatus.OK and (
-            not self.points or not any(point.value is not None for point in self.points)
-        ):
-            raise ValueError('OK time series requires at least one numeric point')
         if any(
             left.timestamp_utc >= right.timestamp_utc
             for left, right in zip(self.points, self.points[1:], strict=False)

@@ -3,7 +3,8 @@ from __future__ import annotations
 # El collector ya entrega ventanas UTC y muestras a intervalos fijos de 120 segundos.
 # El eje se reconstruye desde start_utc + step, sin usar horas locales para ordenar.
 # Los estados degradados de latest y timeseries se evalúan por separado.
-import math
+# Las muestras de delivery se entregan intactas a Plotly, incluidos enteros y None.
+# Una ventana solo con None sigue siendo una serie OK; falta de entrega es NOT_MAPPED.
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 
@@ -51,10 +52,6 @@ def _current(latest: object, key: str) -> DisplayValue:
     if not isinstance(decoded.value, str | int | float):
         return DisplayValue.invalid()
     text = str(decoded.value).strip()
-    try:
-        _numeric(text)
-    except (ValueError, OverflowError):
-        return DisplayValue.invalid()
     return DisplayValue.ok(text) if text else DisplayValue.invalid()
 
 
@@ -65,18 +62,6 @@ def _utc(value: object) -> datetime:
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise ValueError('Time series timestamp must be timezone-aware')
     return parsed.astimezone(UTC)
-
-
-def _numeric(value: object) -> float | None:
-    if value is None:
-        return None
-    if isinstance(value, bool) or not isinstance(value, int | float | str):
-        raise ValueError('Time series sample must be numeric or null')
-    text = str(value).strip().replace(',', '.')
-    number = float(text)
-    if not math.isfinite(number):
-        raise ValueError('Time series sample must be finite')
-    return number
 
 
 def _history(timeseries: object, key: str) -> TimeSeriesValues:
@@ -109,16 +94,14 @@ def _history(timeseries: object, key: str) -> TimeSeriesValues:
         value_type = entry['value_type']
         if value_type not in {'text', 'integer', 'float', 'boolean', None}:
             raise ValueError('Time series value_type is invalid')
-        if value_type == 'boolean':
-            raise ValueError('Boolean series cannot be drawn as numeric trends')
-        if value_type is None and any(value is not None for value in values):
-            raise ValueError('Time series values require a value_type')
+        if value_type not in {'integer', 'float'} and any(
+            value is not None for value in values
+        ):
+            raise ValueError('Non-numeric series cannot be drawn as numeric trends')
         points = tuple(
-            TimeSeriesPoint(start + timedelta(seconds=step * (index + 1)), _numeric(value))
+            TimeSeriesPoint(start + timedelta(seconds=step * (index + 1)), value)
             for index, value in enumerate(values)
         )
     except (KeyError, TypeError, ValueError, OverflowError):
         return TimeSeriesValues(DisplayStatus.INVALID)
-    if not any(point.value is not None for point in points):
-        return TimeSeriesValues(DisplayStatus.EMPTY)
     return TimeSeriesValues(DisplayStatus.OK, points)

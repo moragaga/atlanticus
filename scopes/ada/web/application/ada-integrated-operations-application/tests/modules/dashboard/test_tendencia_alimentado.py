@@ -26,7 +26,6 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile
 from ada.web.kpis.collector import component_kpi_store_id
 from ada.web.ui.display_status import DisplayStatus
 
-
 _END = datetime(2026, 4, 5, 4, 0, tzinfo=UTC)
 _START = _END - timedelta(hours=1)
 
@@ -81,21 +80,46 @@ def test_three_legacy_keys_use_current_component_timeseries_contract():
     assert [reading.current.value for reading in readings] == ['10', '11', '12']
 
 
-def test_nulls_preserved_and_all_null_series_is_empty():
+def test_nulls_preserved_and_all_null_series_is_a_blank_graph():
     data = _store()
     key = ALIMENTADO_TRENDS[0].kpi_key
     data['timeseries']['series'][key]['values'][3] = None
     assert map_tendencia_alimentado_store(data)[0].history.points[3].value is None
     data['timeseries']['series'][key]['values'] = [None] * 30
-    assert map_tendencia_alimentado_store(data)[0].history.status is DisplayStatus.EMPTY
+    history = map_tendencia_alimentado_store(data)[0].history
+    assert history.status is DisplayStatus.OK
+    assert len(history.points) == 30
+    assert all(point.value is None for point in history.points)
 
 
-@pytest.mark.parametrize('bad', [
-    {'hours': 2},
-    {'value_type': 'boolean'},
-    {'values': [1]},
-    {'values': [True] * 30},
-])
+def test_samples_are_not_reformatted_or_imputed_by_the_mapper():
+    data = _store()
+    key = ALIMENTADO_TRENDS[0].kpi_key
+    data['timeseries']['series'][key]['value_type'] = 'integer'
+    data['timeseries']['series'][key]['values'] = [None, 0, 11] + [5] * 27
+    history = map_tendencia_alimentado_store(data)[0].history
+    assert history.status is DisplayStatus.OK
+    assert [point.value for point in history.points[:3]] == [None, 0, 11]
+    assert type(history.points[1].value) is int
+
+
+def test_string_samples_are_not_coerced_to_numeric_values():
+    data = _store()
+    key = ALIMENTADO_TRENDS[0].kpi_key
+    data['timeseries']['series'][key]['values'][0] = '11.25'
+    history = map_tendencia_alimentado_store(data)[0].history
+    assert history.status is DisplayStatus.INVALID
+
+
+@pytest.mark.parametrize(
+    'bad',
+    [
+        {'hours': 2},
+        {'value_type': 'boolean'},
+        {'values': [1]},
+        {'values': [True] * 30},
+    ],
+)
 def test_invalid_series_does_not_change_independent_readings(bad):
     data = _store()
     key = ALIMENTADO_TRENDS[0].kpi_key
