@@ -94,10 +94,7 @@ def _position(value: DisplayValue) -> Component:
 
 def _pile(definition, reading) -> Component:
     return html.Div(
-        [
-            html.Span(f'Pila {definition.label}', className='ada-io-stockpile-chacay__pile-label'),
-            build_stockpile_component(definition.graphic, reading, alt=f'Pila {definition.label}'),
-        ],
+        build_stockpile_component(definition.graphic, reading, alt=f'Pila {definition.label}'),
         className='ada-io-stockpile-chacay__pile',
         role='button',
         tabIndex=0,

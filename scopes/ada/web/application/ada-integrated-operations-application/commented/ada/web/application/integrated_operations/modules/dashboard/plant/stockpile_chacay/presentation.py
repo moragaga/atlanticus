@@ -96,13 +96,10 @@ def _position(value: DisplayValue) -> Component:
     )
 
 
-# Delegamos el dibujo de cada pila al componente genérico.
+# Cada pila se dibuja con el componente común y mantiene su nombre solo como texto alternativo.
 def _pile(definition, reading) -> Component:
     return html.Div(
-        [
-            html.Span(f'Pila {definition.label}', className='ada-io-stockpile-chacay__pile-label'),
-            build_stockpile_component(definition.graphic, reading, alt=f'Pila {definition.label}'),
-        ],
+        build_stockpile_component(definition.graphic, reading, alt=f'Pila {definition.label}'),
         className='ada-io-stockpile-chacay__pile',
         role='button',
         tabIndex=0,

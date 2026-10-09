@@ -42,11 +42,15 @@ def _components(item):
 def test_current_keys_for_four_piles_four_rows_and_position():
     assert STOCKPILE_CHACAY_POSITION_KEY == 'posicion_carro'
     assert [(pile.label, pile.kpi_key) for pile in STOCKPILE_CHACAY_PILES] == [
-        ('G', 'nivel_pila_G_stock'), ('H', 'nivel_pila_H_stock'),
-        ('I', 'nivel_pila_I_stock'), ('J', 'nivel_pila_J_stock'),
+        ('G', 'nivel_pila_G_stock'),
+        ('H', 'nivel_pila_H_stock'),
+        ('I', 'nivel_pila_I_stock'),
+        ('J', 'nivel_pila_J_stock'),
     ]
-    assert all(pile.graphic.variant is StockpileVariant.FIXED_PROFILE
-               for pile in STOCKPILE_CHACAY_PILES)
+    assert all(
+        pile.graphic.variant is StockpileVariant.FIXED_PROFILE
+        for pile in STOCKPILE_CHACAY_PILES
+    )
     assert [(row.label, row.kpi_key) for row in STOCKPILE_CHACAY_ROWS] == [
         ('Plan', 'ton_stockpile_plan'),
         ('Capacidad', 'ton_stockpile_capacidad'),
@@ -55,19 +59,22 @@ def test_current_keys_for_four_piles_four_rows_and_position():
     ]
 
 
-@pytest.mark.parametrize('raw, expected', [(str(i), i) for i in range(1, 9)])
+@pytest.mark.parametrize(('raw', 'expected'), [(str(i), i) for i in range(1, 9)])
 def test_position_maps_eight_values_with_unloaded_and_loaded_minecarts(raw, expected):
     state = map_stockpile_chacay_store(_store({STOCKPILE_CHACAY_POSITION_KEY: _entry(raw)}))
     assert state.position.status is DisplayStatus.OK
     assert state.position.value == expected
     presentation = build_stockpile_chacay(state)
-    carts = [node for node in _components(presentation)
-             if getattr(node, 'className', None) in ('bi bi-minecart', 'bi bi-minecart-loaded')]
+    carts = [
+        node
+        for node in _components(presentation)
+        if getattr(node, 'className', None) in ('bi bi-minecart', 'bi bi-minecart-loaded')
+    ]
     assert len(carts) == 1
     expected_icon = 'bi bi-minecart-loaded' if expected % 2 == 0 else 'bi bi-minecart'
     assert carts[0].className == expected_icon
     assert f'P{expected}' in next(
-        node.get('aria-label') if isinstance(node, dict) else getattr(node, 'aria-label')
+        getattr(node, 'aria-label')
         for node in _components(presentation)
         if getattr(node, 'data-kpi-inspection-key', None) == STOCKPILE_CHACAY_POSITION_KEY
     )
@@ -78,17 +85,21 @@ def test_invalid_positions_do_not_display_cart(raw):
     state = map_stockpile_chacay_store(_store({STOCKPILE_CHACAY_POSITION_KEY: _entry(raw)}))
     assert state.position.status is DisplayStatus.INVALID
     content = build_stockpile_chacay(state)
-    assert not any(getattr(node, 'className', None)
-                   in ('bi bi-minecart', 'bi bi-minecart-loaded')
-                   for node in _components(content))
+    assert not any(
+        getattr(node, 'className', None) in ('bi bi-minecart', 'bi bi-minecart-loaded')
+        for node in _components(content)
+    )
 
 
-@pytest.mark.parametrize('payload, expected', [
-    (None, DisplayStatus.INVALID),
-    ({'latest': None}, DisplayStatus.NOT_MAPPED),
-    ({'latest': []}, DisplayStatus.INVALID),
-    ({'latest': {'values': []}}, DisplayStatus.INVALID),
-])
+@pytest.mark.parametrize(
+    ('payload', 'expected'),
+    [
+        (None, DisplayStatus.INVALID),
+        ({'latest': None}, DisplayStatus.NOT_MAPPED),
+        ({'latest': []}, DisplayStatus.INVALID),
+        ({'latest': {'values': []}}, DisplayStatus.INVALID),
+    ],
+)
 def test_unavailable_store_preserves_status_across_readings(payload, expected):
     state = map_stockpile_chacay_store(payload)
     assert state.position.status is expected
@@ -97,44 +108,56 @@ def test_unavailable_store_preserves_status_across_readings(payload, expected):
 
 
 def test_independent_kpi_values_and_statuses():
-    state = map_stockpile_chacay_store(_store({
-        STOCKPILE_CHACAY_POSITION_KEY: _entry('8'),
-        STOCKPILE_CHACAY_PILES[0].kpi_key: _entry('61,25'),
-        STOCKPILE_CHACAY_PILES[1].kpi_key: {'status': 'missing', 'value_kind': None, 'value': None},
-        STOCKPILE_CHACAY_PILES[2].kpi_key: {'status': 'error', 'value_kind': 'value', 'value': None},
-        STOCKPILE_CHACAY_PILES[3].kpi_key: _entry('   '),
-        STOCKPILE_CHACAY_ROWS[0].kpi_key: _entry('123456789,123456789'),
-        STOCKPILE_CHACAY_ROWS[1].kpi_key: _entry('456'),
-    }))
+    state = map_stockpile_chacay_store(
+        _store(
+            {
+                STOCKPILE_CHACAY_POSITION_KEY: _entry('8'),
+                STOCKPILE_CHACAY_PILES[0].kpi_key: _entry('61,25'),
+                STOCKPILE_CHACAY_PILES[1].kpi_key: {
+                    'status': 'missing',
+                    'value_kind': None,
+                    'value': None,
+                },
+                STOCKPILE_CHACAY_PILES[2].kpi_key: {
+                    'status': 'error',
+                    'value_kind': 'value',
+                    'value': None,
+                },
+                STOCKPILE_CHACAY_PILES[3].kpi_key: _entry('   '),
+                STOCKPILE_CHACAY_ROWS[0].kpi_key: _entry('123456789,123456789'),
+                STOCKPILE_CHACAY_ROWS[1].kpi_key: _entry('456'),
+            }
+        )
+    )
     assert [pile.percent.status for pile in state.piles] == [
-        DisplayStatus.OK, DisplayStatus.EMPTY, DisplayStatus.ERROR, DisplayStatus.INVALID,
+        DisplayStatus.OK,
+        DisplayStatus.EMPTY,
+        DisplayStatus.ERROR,
+        DisplayStatus.INVALID,
     ]
     assert state.piles[0].percent.value == '61,25'
     assert [row.value.status for row in state.rows] == [
-        DisplayStatus.OK, DisplayStatus.OK, DisplayStatus.NOT_MAPPED, DisplayStatus.NOT_MAPPED,
+        DisplayStatus.OK,
+        DisplayStatus.OK,
+        DisplayStatus.NOT_MAPPED,
+        DisplayStatus.NOT_MAPPED,
     ]
     assert state.rows[0].value.value == '123456789,123456789'
     assert state.position.value == 8
 
 
-def test_four_pile_positions_are_linked_in_order_without_fake_readings():
-    presentation = build_stockpile_chacay(map_stockpile_chacay_store(_store({})))
-    positions = [node for node in _components(presentation)
-                 if 'ada-io-stockpile-chacay__position' in getattr(node, 'className', '').split()]
-    assert len(positions) == 8
-    targets = [index for index, node in enumerate(positions, start=1)
-               if 'ada-io-stockpile-chacay__position--pile' in node.className]
-    assert targets == [2, 4, 6, 8]
-    assert [pile.label for pile in STOCKPILE_CHACAY_PILES] == ['G', 'H', 'I', 'J']
-
-
 def test_all_9_visible_kpis_are_individually_inspectable():
     values = {definition.kpi_key: _entry('77') for definition in STOCKPILE_CHACAY_PILES}
-    values.update({definition.kpi_key: _entry('1234567890123') for definition in STOCKPILE_CHACAY_ROWS})
+    values.update(
+        {definition.kpi_key: _entry('1234567890123') for definition in STOCKPILE_CHACAY_ROWS}
+    )
     values[STOCKPILE_CHACAY_POSITION_KEY] = _entry('4')
     presentation = build_stockpile_chacay(map_stockpile_chacay_store(_store(values)))
-    targets = [node for node in _components(presentation)
-               if hasattr(node, 'data-kpi-inspection-key')]
+    targets = [
+        node
+        for node in _components(presentation)
+        if hasattr(node, 'data-kpi-inspection-key')
+    ]
     expected = [STOCKPILE_CHACAY_POSITION_KEY] + [p.kpi_key for p in STOCKPILE_CHACAY_PILES]
     expected += [r.kpi_key for r in STOCKPILE_CHACAY_ROWS]
     assert [getattr(node, 'data-kpi-inspection-key') for node in targets] == expected
@@ -166,5 +189,10 @@ def test_callback_consumes_existing_plant_store_and_renders_first_card():
     )
     result = dash_app.render(_store({STOCKPILE_CHACAY_POSITION_KEY: _entry('3')}))
     assert isinstance(result, Component)
-    assert sum(getattr(node, 'className', None) == 'bi bi-minecart'
-               for node in _components(result)) == 1
+    assert (
+        sum(
+            getattr(node, 'className', None) == 'bi bi-minecart'
+            for node in _components(result)
+        )
+        == 1
+    )

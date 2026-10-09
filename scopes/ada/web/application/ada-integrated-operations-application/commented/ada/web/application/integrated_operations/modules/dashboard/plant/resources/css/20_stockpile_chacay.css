@@ -1,4 +1,4 @@
-/* Una única vía horizontal conecta P1 a P8; las posiciones pares coinciden con G, H, I y J. */
+/* P1-P8 comparten una misma referencia de posición para vía, enganche y carro; las posiciones pares también se conectan a cada stockpile. */
 .ada-io-stockpile-chacay {
     display: flex;
     flex-direction: column;
@@ -10,6 +10,7 @@
 }
 
 .ada-io-stockpile-chacay__position-section {
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -37,20 +38,30 @@
 
 .ada-io-stockpile-chacay__position {
     position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    height: 2.55rem;
     min-width: 0;
     z-index: 1;
 }
 
+.ada-io-stockpile-chacay__position::before {
+    content: '';
+    position: absolute;
+    top: 1.08rem;
+    left: 0;
+    height: .22rem;
+    border-left: 1px solid var(--ada-color-border-primary, #a0a0a0);
+}
+
 .ada-io-stockpile-chacay__cart {
+    position: absolute;
+    top: 0;
+    left: 0;
     display: flex;
-    justify-content: center;
     align-items: end;
+    justify-content: center;
     width: 1.3rem;
-    height: 1.15rem;
-    margin-left: -.65rem;
+    height: 1.1rem;
+    transform: translateX(-50%);
     font-size: 1.15rem;
     line-height: 1;
 }
@@ -61,10 +72,13 @@
 }
 
 .ada-io-stockpile-chacay__marker {
+    position: absolute;
+    top: 1.18rem;
+    left: 0;
     display: block;
-    width: .3rem;
-    height: .3rem;
-    margin-left: -.15rem;
+    width: .24rem;
+    height: .24rem;
+    transform: translateX(-50%);
     background: var(--ada-color-border-primary, #a0a0a0);
     border-radius: 50%;
 }
@@ -72,9 +86,9 @@
 .ada-io-stockpile-chacay__position--pile::after {
     content: '';
     position: absolute;
+    top: 2.28rem;
     left: 0;
-    bottom: -.45rem;
-    height: .45rem;
+    height: .72rem;
     border-left: 1px solid var(--ada-color-border-primary, #a0a0a0);
 }
 
@@ -83,6 +97,9 @@
 }
 
 .ada-io-stockpile-chacay__position-label {
+    position: absolute;
+    top: 1.65rem;
+    left: 0;
     font-size: .47rem;
     line-height: 1.2;
     white-space: nowrap;
@@ -90,6 +107,7 @@
 }
 
 .ada-io-stockpile-chacay__piles {
+    box-sizing: border-box;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0;
@@ -105,11 +123,6 @@
     gap: .08rem;
     min-width: 0;
     cursor: help;
-}
-
-.ada-io-stockpile-chacay__pile-label {
-    font-size: .49rem;
-    white-space: nowrap;
 }
 
 .ada-io-stockpile-chacay__pile .ada-stockpile__graphic {
@@ -164,14 +177,12 @@
 
 @media only screen and (min-width: 480px) and (max-width: 1279px) {
     .ada-io-stockpile-chacay__position-label { font-size: .55rem; }
-    .ada-io-stockpile-chacay__pile-label { font-size: .55rem; }
     .ada-io-stockpile-chacay__row-label,
     .ada-io-stockpile-chacay__row-value { font-size: .59rem; }
 }
 
 @media only screen and (min-width: 1366px) {
     [data-ada-io-presentation='plant'] .ada-io-stockpile-chacay__position-label { font-size: .56rem; }
-    [data-ada-io-presentation='plant'] .ada-io-stockpile-chacay__pile-label { font-size: .56rem; }
     [data-ada-io-presentation='plant'] .ada-io-stockpile-chacay__row-label,
     [data-ada-io-presentation='plant'] .ada-io-stockpile-chacay__row-value { font-size: .59rem; }
 }
