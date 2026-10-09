@@ -43,7 +43,9 @@ def build_stockpile_chacay(state: StockpileChacayState) -> Component:
     )
 
 
-# La vía siempre muestra ocho posiciones; el carro solo aparece sobre una posición válida.
+# Las ocho posiciones comparten un eje: icono, enganche, punto y etiqueta.
+# El conector inferior existe en todas las posiciones; las pares continúan hacia las pilas.
+# La alineación exacta se define mediante una grilla de ocho columnas y anclajes comunes.
 # P2, P4, P6 y P8 son puntos de descarga y usan el icono cargado.
 # En posiciones impares se muestra el icono vacío; ambos se orientan desde CSS.
 def _position(value: DisplayValue) -> Component:
@@ -63,8 +65,14 @@ def _position(value: DisplayValue) -> Component:
                     if active == number else None,
                     className='ada-io-stockpile-chacay__cart',
                 ),
+                html.Span(className='ada-io-stockpile-chacay__hanger', **{'aria-hidden': 'true'}),
                 html.Span(className='ada-io-stockpile-chacay__marker', **{'aria-hidden': 'true'}),
+                html.Span(className='ada-io-stockpile-chacay__drop', **{'aria-hidden': 'true'}),
                 html.Span(f'P{number}', className='ada-io-stockpile-chacay__position-label'),
+                html.Span(
+                    className='ada-io-stockpile-chacay__pile-link',
+                    **{'aria-hidden': 'true'},
+                ),
             ],
             className=(
                 'ada-io-stockpile-chacay__position'

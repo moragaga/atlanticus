@@ -59,8 +59,14 @@ def _position(value: DisplayValue) -> Component:
                     if active == number else None,
                     className='ada-io-stockpile-chacay__cart',
                 ),
+                html.Span(className='ada-io-stockpile-chacay__hanger', **{'aria-hidden': 'true'}),
                 html.Span(className='ada-io-stockpile-chacay__marker', **{'aria-hidden': 'true'}),
+                html.Span(className='ada-io-stockpile-chacay__drop', **{'aria-hidden': 'true'}),
                 html.Span(f'P{number}', className='ada-io-stockpile-chacay__position-label'),
+                html.Span(
+                    className='ada-io-stockpile-chacay__pile-link',
+                    **{'aria-hidden': 'true'},
+                ),
             ],
             className=(
                 'ada-io-stockpile-chacay__position'
