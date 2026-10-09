@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.feeders import (
+from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.equipos_ch import (
     FEEDERS_CH_DEFINITIONS,
     FeederKpiDefinition,
     map_feeders_store,

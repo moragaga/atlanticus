@@ -1,6 +1,4 @@
-# Cada Feeder usa su propia figura Plotly de altura compacta y mantiene el porcentaje real.
-# Los estados degradados conservan el icono e inspección individual.
-# El color inválido no impide dibujar la barra: se utiliza el gris neutro.
+# La altura del gráfico es configurable; los demás consumidores conservan 52 px.
 from __future__ import annotations
 
 import plotly.graph_objects as go
@@ -23,6 +21,7 @@ def build_feeder_component(
     values: FeederValues,
     *,
     inspection_key: str,
+    graphic_height_px: int = 52,
 ) -> Component:
     if not isinstance(label, str) or not label.strip():
         raise ValueError('Feeder label must be a non-empty string')
@@ -30,11 +29,13 @@ def build_feeder_component(
         raise ValueError('Feeder inspection_key must be a non-empty string')
     if not isinstance(values, FeederValues):
         raise TypeError('Feeder values must be FeederValues')
+    if type(graphic_height_px) is not int or graphic_height_px <= 0:
+        raise ValueError('Feeder graphic_height_px must be a positive integer')
 
     if values.percent.status is DisplayStatus.OK:
         percent = values.percent.value
         graphic = dcc.Graph(
-            figure=_figure(percent, _color(values)),
+            figure=_figure(percent, _color(values), graphic_height_px),
             config={'displayModeBar': False, 'staticPlot': True, 'responsive': True},
             responsive=True,
             className='ada-feeder__graph',
@@ -52,6 +53,7 @@ def build_feeder_component(
             html.Span(label, className='ada-feeder__label'),
         ],
         className='ada-feeder',
+        style={'--ada-feeder-graph-height': f'{graphic_height_px}px'},
         role='button',
         tabIndex=0,
         title=inspection_key,
@@ -66,7 +68,7 @@ def _color(values: FeederValues) -> str:
     return _COLORS[color.value]
 
 
-def _figure(percent: int, color: str) -> go.Figure:
+def _figure(percent: int, color: str, height_px: int) -> go.Figure:
     figure = go.Figure(
         go.Bar(
             x=['feeder'],
@@ -79,7 +81,7 @@ def _figure(percent: int, color: str) -> go.Figure:
     )
     figure.update_layout(
         showlegend=False,
-        height=52,
+        height=height_px,
         margin={'l': 0, 'r': 0, 't': 0, 'b': 0},
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',

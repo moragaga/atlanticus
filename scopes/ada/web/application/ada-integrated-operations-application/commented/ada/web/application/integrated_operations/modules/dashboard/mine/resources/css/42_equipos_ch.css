@@ -1,4 +1,4 @@
-/* Los tamaños de iconos numéricos siguen MP10 y las filas usan el mismo color de borde de Mina. */
+/* Los estilos de Stockpile y Feeders permanecen en el único CSS de Equipos CH. */
 .ada-io-equipos-ch {
     display: flex;
     flex-direction: column;
@@ -100,7 +100,7 @@
     border-collapse: collapse;
     margin-top: .38rem;
     table-layout: fixed;
-    border-top: 1px solid var(--ada-color-border-primary, #c0c0c0);
+    /*border-top: 1px solid var(--ada-color-border-primary, #c0c0c0);*/
     border-bottom: 1px solid var(--ada-color-border-primary, #c0c0c0);
     font-size: .41rem;
 }
@@ -112,7 +112,7 @@
 
 .ada-io-equipos-ch__table th,
 .ada-io-equipos-ch__table td {
-    padding: .12rem .08rem;
+    padding: .12rem .08rem .05rem;
     font-weight: 400;
     line-height: 1.25;
     text-align: right;
@@ -127,6 +127,7 @@
 .ada-io-equipos-ch__table th:first-child {
     width: 17%;
     text-align: left;
+    font-weight: bold;
 }
 
 .ada-io-equipos-ch__table td .ada-io-equipos-ch__value {
@@ -213,7 +214,6 @@
     [data-ada-io-presentation='mine'] .ada-io-equipos-ch__table thead th { font-size: .46rem; }
 }
 
-/* Stockpile Mina pertenece a la composición visual de Equipos CH; mantiene sus reglas originales. */
 .ada-io-stockpile {
     display: flex;
     flex-direction: column;
@@ -244,4 +244,46 @@
 .ada-io-stockpile-piles > * {
     min-width: 0;
     max-width: 100%;
+}
+
+.ada-io-feeders {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .06rem;
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+}
+
+.ada-io-feeders__items {
+    display: flex;
+    justify-content: center;
+    align-items: end;
+    gap: .10rem;
+    width: max-content;
+    max-width: 100%;
+    padding: .08rem .16rem .06rem;
+    border: 1px solid var(--ada-color-border-primary, #c0c0c0);
+    border-radius: .32rem;
+    box-sizing: border-box;
+}
+
+.ada-io-feeders__items > .ada-feeder {
+    width: 1.18rem;
+    grid-template-rows: var(--ada-feeder-graph-height, 32px) .58rem .58rem;
+}
+
+.ada-io-feeders__items .ada-feeder__value,
+.ada-io-feeders__items .ada-feeder__label {
+    font-size: .46rem;
+    line-height: 1;
+}
+
+.ada-io-feeders__title {
+    margin: 0;
+    font-size: .52rem;
+    font-weight: 700;
+    line-height: 1.1;
+    text-align: center;
 }

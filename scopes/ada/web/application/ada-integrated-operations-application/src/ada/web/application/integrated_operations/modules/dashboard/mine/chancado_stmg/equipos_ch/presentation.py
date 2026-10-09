@@ -10,8 +10,9 @@ from ada.web.application.integrated_operations.modules.dashboard.value_status im
 )
 from ada.web.ui.display_status import DisplayStatus, DisplayValue, build_display_status_icon
 from ada.web.ui.equipment_image import EquipmentStateImage, build_equipment_state_image
+from ada.web.ui.feeder import FeederValues, build_feeder_component
 
-from .models import EquiposChReading
+from .models import EquiposChReading, FeederKpiDefinition
 
 
 def build_equipos_ch(readings: Sequence[EquiposChReading]) -> Component:
@@ -202,3 +203,29 @@ def _display(value: DisplayValue) -> str | Component:
     if icon is None:
         raise ValueError('Equipos CH status icon cannot be resolved')
     return icon
+
+
+def build_chancado_feeders(
+    definitions: Sequence[FeederKpiDefinition],
+    values: Sequence[FeederValues],
+) -> Component:
+    if len(definitions) != 4 or len(values) != len(definitions):
+        raise ValueError('Chancado requires exactly four feeders')
+    return html.Section(
+        [
+            html.Div(
+                [
+                    build_feeder_component(
+                        definition.label,
+                        reading,
+                        inspection_key=definition.percent_kpi_key,
+                        graphic_height_px=32,
+                    )
+                    for definition, reading in zip(definitions, values, strict=True)
+                ],
+                className='ada-io-feeders__items',
+            ),
+            html.H3('FEEDERS', className='ada-io-feeders__title'),
+        ],
+        className='ada-io-feeders',
+    )

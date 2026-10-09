@@ -9,8 +9,14 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.bindings i
 from ada.web.kpis.collector import component_kpi_store_id
 from ada.web.ui.stockpile import build_stockpile_component
 
-from .equipos_ch import EQUIPOS_CH_DEFINITIONS, build_equipos_ch, map_equipos_ch_store
-from .feeders import FEEDERS_CH_DEFINITIONS, build_chancado_feeders, map_feeders_store
+from .equipos_ch import (
+    EQUIPOS_CH_DEFINITIONS,
+    FEEDERS_CH_DEFINITIONS,
+    build_chancado_feeders,
+    build_equipos_ch,
+    map_equipos_ch_store,
+    map_feeders_store,
+)
 from .produccion_global import build_produccion_global, map_produccion_global_store
 from .stockpile_mina import STOCKPILE_MINA_DEFINITIONS, map_stockpile_mina_store
 

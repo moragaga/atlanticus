@@ -1,7 +1,7 @@
-/* Las filas fijas alinean las etiquetas aun sin porcentaje cuando el KPI falla. */
+/* El alto configurable se aplica igual a barra y a estados degradados. */
 .ada-feeder {
     display: grid;
-    grid-template-rows: 52px .8rem .8rem;
+    grid-template-rows: var(--ada-feeder-graph-height, 52px) .8rem .8rem;
     justify-items: center;
     align-items: center;
     width: 1.75rem;
@@ -16,12 +16,12 @@
     align-items: center;
     justify-content: center;
     width: 100%;
-    height: 52px;
+    height: var(--ada-feeder-graph-height, 52px);
 }
 
 .ada-feeder__graph {
     width: 100%;
-    height: 52px;
+    height: var(--ada-feeder-graph-height, 52px);
 }
 
 .ada-feeder__status-icon {
