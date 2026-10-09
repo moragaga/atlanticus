@@ -7,8 +7,8 @@ from ada.web.ui.display_status import DisplayStatus, DisplayValue, build_display
 from ada.web.ui.stockpile import build_stockpile_component
 
 from .definitions import (
-    STOCKPILE_CHACAY_PILES,
     STOCKPILE_CHACAY_PILE_POSITIONS,
+    STOCKPILE_CHACAY_PILES,
     STOCKPILE_CHACAY_POSITION_KEY,
     STOCKPILE_CHACAY_POSITIONS,
     STOCKPILE_CHACAY_ROWS,
@@ -43,46 +43,23 @@ def build_stockpile_chacay(state: StockpileChacayState) -> Component:
     )
 
 
-# La vía tiene ocho ejes fijos; los círculos se alinean con los centros de cada columna.
-# Los ocho tramos verticales se dibujan exclusivamente bajo la línea horizontal.
+# La vía tiene ocho ejes fijos.
+# Las líneas de descarga solo se muestran en la posición par activa.
 # En posición impar, el carro vacío se muestra arriba; en posición par,
 # el carro cargado se dibuja invertido por debajo, simulando descarga.
-# Una lectura degradada conserva su estado y solo usa P1 como referencia visual.
-# La indicación accesible distingue una posición real del carro de referencia en P1.
+# Una lectura degradada usa P1 como referencia visual, mostrando el icono original de estado.
+# No se altera el estado persistido ni el resultado del mapper.
+# La posición es una lectura funcional; los estados degradados se muestran en P1.
+# La ubicación de cada carro y el conector condicional pertenecen al CSS.
+# El espejo preserva exactamente el contrato y los resultados del código productivo.
 def _position(value: DisplayValue) -> Component:
     active = value.value if value.status is DisplayStatus.OK else 1
-    positions = [
-        html.Div(
-            [
-                html.Span(
-                    html.I(className='bi bi-minecart', **{'aria-hidden': 'true'})
-                    if active == number and number % 2 else None,
-                    className='ada-io-stockpile-chacay__cart ada-io-stockpile-chacay__cart--upper',
-                ),
-                html.Span(className='ada-io-stockpile-chacay__marker', **{'aria-hidden': 'true'}),
-                html.Span(className='ada-io-stockpile-chacay__drop', **{'aria-hidden': 'true'}),
-                html.Span(f'P{number}', className='ada-io-stockpile-chacay__position-label'),
-                html.Span(
-                    className='ada-io-stockpile-chacay__lower-connector',
-                    **{'aria-hidden': 'true'},
-                ),
-                html.Span(
-                    html.I(className='bi bi-minecart-loaded', **{'aria-hidden': 'true'})
-                    if active == number and number % 2 == 0 else None,
-                    className='ada-io-stockpile-chacay__cart ada-io-stockpile-chacay__cart--lower',
-                ),
-            ],
-            className=(
-                'ada-io-stockpile-chacay__position'
-                + (
-                    ' ada-io-stockpile-chacay__position--pile'
-                    if number in STOCKPILE_CHACAY_PILE_POSITIONS else ''
-                )
-                + (' ada-io-stockpile-chacay__position--active' if active == number else '')
-            ),
-        )
-        for number in STOCKPILE_CHACAY_POSITIONS
-    ]
+    positions = [_position_item(value, active, number) for number in STOCKPILE_CHACAY_POSITIONS]
+    label = (
+        f'Posición del carro: P{active}'
+        if value.status is DisplayStatus.OK
+        else 'Posición no disponible; indicador de estado en P1'
+    )
     return html.Div(
         html.Div(positions, className='ada-io-stockpile-chacay__track'),
         className='ada-io-stockpile-chacay__position-section',
@@ -91,16 +68,57 @@ def _position(value: DisplayValue) -> Component:
         title=STOCKPILE_CHACAY_POSITION_KEY,
         **{
             'data-kpi-inspection-key': STOCKPILE_CHACAY_POSITION_KEY,
-            'aria-label': (
-                f'Posición del carro: P{active}'
-                if value.status is DisplayStatus.OK
-                else 'Posición no disponible; carro de referencia en P1'
-            ),
+            'aria-label': label,
         },
     )
 
 
-# Cada pila se dibuja con el componente común y mantiene su nombre solo como texto alternativo.
+def _position_item(value: DisplayValue, active: int, number: int) -> Component:
+    upper = _upper_content(value, active, number)
+    lower = _lower_content(active, number)
+    classes = ['ada-io-stockpile-chacay__position']
+    if number in STOCKPILE_CHACAY_PILE_POSITIONS:
+        classes.append('ada-io-stockpile-chacay__position--pile')
+    if active == number:
+        classes.append('ada-io-stockpile-chacay__position--active')
+    if value.status is DisplayStatus.OK and active == number and number % 2 == 0:
+        classes.append('ada-io-stockpile-chacay__position--unloading')
+    return html.Div(
+        [
+            html.Span(
+                upper,
+                className='ada-io-stockpile-chacay__cart ada-io-stockpile-chacay__cart--upper',
+            ),
+            html.Span(className='ada-io-stockpile-chacay__marker', **{'aria-hidden': 'true'}),
+            html.Span(className='ada-io-stockpile-chacay__drop', **{'aria-hidden': 'true'}),
+            html.Span(f'P{number}', className='ada-io-stockpile-chacay__position-label'),
+            html.Span(
+                className='ada-io-stockpile-chacay__lower-connector',
+                **{'aria-hidden': 'true'},
+            ),
+            html.Span(
+                lower,
+                className='ada-io-stockpile-chacay__cart ada-io-stockpile-chacay__cart--lower',
+            ),
+        ],
+        className=' '.join(classes),
+    )
+
+
+def _upper_content(value: DisplayValue, active: int, number: int) -> Component | None:
+    if active != number or number % 2 == 0:
+        return None
+    if value.status is not DisplayStatus.OK:
+        return _status(value, 'position')
+    return html.I(className='bi bi-minecart', **{'aria-hidden': 'true'})
+
+
+def _lower_content(active: int, number: int) -> Component | None:
+    if active != number or number % 2:
+        return None
+    return html.I(className='bi bi-minecart-loaded', **{'aria-hidden': 'true'})
+
+
 def _pile(definition, reading) -> Component:
     return html.Div(
         build_stockpile_component(definition.graphic, reading, alt=f'Pila {definition.label}'),

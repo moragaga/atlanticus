@@ -1,7 +1,7 @@
 .ada-io-stockpile-chacay {
     display: flex;
     flex-direction: column;
-    gap: .45rem;
+    gap: .18rem;
     min-width: 0;
     width: 100%;
     padding: .08rem .18rem;
@@ -56,10 +56,16 @@
 
 .ada-io-stockpile-chacay__cart--upper {
     align-items: flex-end;
+    --ada-status-icon-size: 1.05rem;
 }
 
 .ada-io-stockpile-chacay__cart--lower {
     align-items: flex-start;
+}
+
+.ada-io-stockpile-chacay__cart--lower:empty {
+    height: 0;
+    flex-basis: 0;
 }
 
 .ada-io-stockpile-chacay__cart .bi {
@@ -93,6 +99,10 @@
     display: block;
     width: 1px;
     flex-shrink: 0;
+}
+
+.ada-io-stockpile-chacay__position--unloading .ada-io-stockpile-chacay__drop,
+.ada-io-stockpile-chacay__position--unloading .ada-io-stockpile-chacay__lower-connector {
     background: var(--ada-color-border-primary, #a0a0a0);
 }
 
@@ -108,7 +118,7 @@
 }
 
 .ada-io-stockpile-chacay__lower-connector {
-    height: .6rem;
+    height: .3rem;
 }
 
 .ada-io-stockpile-chacay__piles {
@@ -136,6 +146,7 @@
 }
 
 .ada-io-stockpile-chacay__rows {
+    margin-top: .27rem;
     display: flex;
     flex-direction: column;
     min-width: 0;

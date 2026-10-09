@@ -1,13 +1,13 @@
 /* Reglas exclusivas de la primera card: el nivel 20 corresponde al contenedor global. */
 /* Ocho columnas comparten una vía horizontal que atraviesa los centros de los marcadores. */
-/* Todas las líneas parten bajo el punto; no hay conectores por encima de la vía. */
-/* Las posiciones pares coinciden con los centros de las cuatro pilas. */
+/* Las líneas de descarga se pintan solo en una posición par activa; en las demás posiciones los espacios son transparentes. */
+/* Las posiciones pares coinciden con los centros de las cuatro pilas; se acorta la separación sin offsets negativos. */
 /* El icono vacío queda sobre la vía; el cargado invertido, bajo las etiquetas. */
-/* El carro visual de respaldo ocupa P1 cuando el KPI no aporta una posición válida. */
+/* Un dato degradado usa P1 para mostrar su propio icono de estado, sin sustituirlo por un carro. */
 .ada-io-stockpile-chacay {
     display: flex;
     flex-direction: column;
-    gap: .45rem;
+    gap: .18rem;
     min-width: 0;
     width: 100%;
     padding: .08rem .18rem;
@@ -62,10 +62,16 @@
 
 .ada-io-stockpile-chacay__cart--upper {
     align-items: flex-end;
+    --ada-status-icon-size: 1.05rem;
 }
 
 .ada-io-stockpile-chacay__cart--lower {
     align-items: flex-start;
+}
+
+.ada-io-stockpile-chacay__cart--lower:empty {
+    height: 0;
+    flex-basis: 0;
 }
 
 .ada-io-stockpile-chacay__cart .bi {
@@ -99,6 +105,10 @@
     display: block;
     width: 1px;
     flex-shrink: 0;
+}
+
+.ada-io-stockpile-chacay__position--unloading .ada-io-stockpile-chacay__drop,
+.ada-io-stockpile-chacay__position--unloading .ada-io-stockpile-chacay__lower-connector {
     background: var(--ada-color-border-primary, #a0a0a0);
 }
 
@@ -114,7 +124,7 @@
 }
 
 .ada-io-stockpile-chacay__lower-connector {
-    height: .6rem;
+    height: .3rem;
 }
 
 .ada-io-stockpile-chacay__piles {
@@ -142,6 +152,7 @@
 }
 
 .ada-io-stockpile-chacay__rows {
+    margin-top: .27rem;
     display: flex;
     flex-direction: column;
     min-width: 0;
