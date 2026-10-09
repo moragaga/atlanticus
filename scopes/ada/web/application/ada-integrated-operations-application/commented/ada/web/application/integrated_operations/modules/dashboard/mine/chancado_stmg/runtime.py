@@ -1,4 +1,4 @@
-# El callback incorpora Correas STMG como frontera local independiente, sin modificar los componentes anteriores.
+# El callback combina secciones hermanas: Equipos CH, Feeders y Correas STMG.
 from __future__ import annotations
 
 from dash import Input, Output, html
@@ -16,14 +16,8 @@ from .correas_stmg import (
     build_correas_stmg,
     map_correas_stmg_store,
 )
-from .equipos_ch import (
-    EQUIPOS_CH_DEFINITIONS,
-    FEEDERS_CH_DEFINITIONS,
-    build_chancado_feeders,
-    build_equipos_ch,
-    map_equipos_ch_store,
-    map_feeders_store,
-)
+from .equipos_ch import EQUIPOS_CH_DEFINITIONS, build_equipos_ch, map_equipos_ch_store
+from .feeders import FEEDERS_CH_DEFINITIONS, build_chancado_feeders, map_feeders_store
 from .produccion_global import build_produccion_global, map_produccion_global_store
 from .stockpile_mina import STOCKPILE_MINA_DEFINITIONS, map_stockpile_mina_store
 
