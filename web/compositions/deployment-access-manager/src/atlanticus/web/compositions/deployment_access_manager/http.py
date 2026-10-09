@@ -175,8 +175,8 @@ def _login_form(token: str) -> str:
 
 def _logout_form(token: str) -> str:
     return (
-        '<p>La sesión ROOT fue autenticada. El acceso al Manager requiere la integración '
-        'de protección HTTP y Dash del siguiente incremento.</p>'
+        '<p>La sesión ROOT fue autenticada. El acceso al Manager depende de que el host '
+        'componga la superficie administrativa y la protección de acceso.</p>'
         '<form method="post" action="/manager-root/logout">'
         f'<input type="hidden" name="csrf_token" value="{escape(token, quote=True)}">'
         '<button type="submit">Cerrar sesión ROOT</button></form>'

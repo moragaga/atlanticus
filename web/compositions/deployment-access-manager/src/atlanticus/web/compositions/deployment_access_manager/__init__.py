@@ -1,6 +1,10 @@
 from atlanticus.web.compositions.deployment_access_manager.composition import (
     compose_root_manager_principal,
 )
+from atlanticus.web.compositions.deployment_access_manager.entry import (
+    DeploymentAccessManagerEntryError,
+    create_deployment_access_manager_entry,
+)
 from atlanticus.web.compositions.deployment_access_manager.http import (
     ROOT_INDEPENDENT_ROUTES,
     ROOT_LOGIN_PATH,
@@ -24,6 +28,7 @@ __all__ = [
     'ROOT_LOGIN_PATH',
     'ROOT_LOGOUT_PATH',
     'ROOT_STATUS_PATH',
+    'DeploymentAccessManagerEntryError',
     'DeploymentRootHttpConfigurationError',
     'DeploymentRootSession',
     'DeploymentRootSessionError',
@@ -31,5 +36,6 @@ __all__ = [
     'RootManagerRequestScope',
     'RootManagerScopeConfigurationError',
     'compose_root_manager_principal',
+    'create_deployment_access_manager_entry',
     'create_deployment_root_http_module',
 ]

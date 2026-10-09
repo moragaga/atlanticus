@@ -73,6 +73,7 @@ dependencies = [
     { name = "atlanticus-web-deployment-access" },
     { name = "atlanticus-web-identity" },
     { name = "atlanticus-web-manager" },
+    { name = "dash" },
     { name = "flask" },
 ]
 
@@ -87,6 +88,7 @@ requires-dist = [
     { name = "atlanticus-web-deployment-access", editable = "../../capabilities/deployment-access" },
     { name = "atlanticus-web-identity", editable = "../../capabilities/identity/core" },
     { name = "atlanticus-web-manager", editable = "../../capabilities/manager" },
+    { name = "dash", specifier = "==4.4.1" },
     { name = "flask", specifier = "==3.1.3" },
 ]
 

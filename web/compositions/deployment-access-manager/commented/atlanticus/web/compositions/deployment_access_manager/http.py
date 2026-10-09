@@ -98,7 +98,7 @@ def create_deployment_root_http_module(
                 return _page('Acceso temporalmente limitado', 'Intenta más tarde.', status=429)
             try:
                 root_session.login(service_user=service_user, password=password)
-            except (DeploymentAccessMaterialError, DeploymentRootSessionError):
+            except DeploymentAccessMaterialError, DeploymentRootSessionError:
                 return _page('Acceso denegado', 'Credenciales ROOT inválidas.', status=401)
             except DeploymentAccessStorageError:
                 return _page('Servicio no disponible', 'Acceso no disponible.', status=503)
@@ -109,7 +109,7 @@ def create_deployment_root_http_module(
         def status() -> Response:
             try:
                 identity = root_session.current()
-            except (DeploymentAccessStorageError, DeploymentRootSessionError):
+            except DeploymentAccessStorageError, DeploymentRootSessionError:
                 return _page('Servicio no disponible', 'Acceso no disponible.', status=503)
             if identity is None:
                 return _page('Sin sesión ROOT', 'La sesión ROOT no está activa.', status=401)
@@ -123,16 +123,22 @@ def create_deployment_root_http_module(
             return redirect(ROOT_LOGIN_PATH, code=303)
 
         server.add_url_rule(
-            ROOT_LOGIN_PATH, endpoint='atlanticus_deployment_root_login',
-            view_func=login, methods=['GET', 'POST']
+            ROOT_LOGIN_PATH,
+            endpoint='atlanticus_deployment_root_login',
+            view_func=login,
+            methods=['GET', 'POST'],
         )
         server.add_url_rule(
-            ROOT_STATUS_PATH, endpoint='atlanticus_deployment_root_status',
-            view_func=status, methods=['GET']
+            ROOT_STATUS_PATH,
+            endpoint='atlanticus_deployment_root_status',
+            view_func=status,
+            methods=['GET'],
         )
         server.add_url_rule(
-            ROOT_LOGOUT_PATH, endpoint='atlanticus_deployment_root_logout',
-            view_func=logout, methods=['POST']
+            ROOT_LOGOUT_PATH,
+            endpoint='atlanticus_deployment_root_logout',
+            view_func=logout,
+            methods=['POST'],
         )
 
     return WebModule(
@@ -177,8 +183,8 @@ def _login_form(token: str) -> str:
 
 def _logout_form(token: str) -> str:
     return (
-        '<p>La sesión ROOT fue autenticada. El acceso al Manager requiere la integración '
-        'de protección HTTP y Dash del siguiente incremento.</p>'
+        '<p>La sesión ROOT fue autenticada. El acceso al Manager depende de que el host '
+        'componga la superficie administrativa y la protección de acceso.</p>'
         '<form method="post" action="/manager-root/logout">'
         f'<input type="hidden" name="csrf_token" value="{escape(token, quote=True)}">'
         '<button type="submit">Cerrar sesión ROOT</button></form>'
