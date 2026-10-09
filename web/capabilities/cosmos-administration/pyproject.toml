@@ -11,6 +11,8 @@ classifiers = ["Private :: Do Not Upload"]
 dependencies = [
     "atlanticus-cosmos==1.0.0",
     "atlanticus-storage==1.0.0",
+    "atlanticus-web-storage-cosmos==0.1.0",
+    "atlanticus-web-storage-topology==0.1.0",
 ]
 
 [dependency-groups]
@@ -22,6 +24,8 @@ dev = [
 [tool.uv.sources]
 atlanticus-cosmos = { path = "../../../connectivity/cosmos", editable = true }
 atlanticus-storage = { path = "../../../connectivity/storage", editable = true }
+atlanticus-web-storage-cosmos = { path = "../storage/cosmos", editable = true }
+atlanticus-web-storage-topology = { path = "../storage/topology", editable = true }
 
 [tool.setuptools]
 package-dir = {"" = "src"}

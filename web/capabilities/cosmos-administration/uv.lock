@@ -55,6 +55,8 @@ source = { editable = "." }
 dependencies = [
     { name = "atlanticus-cosmos" },
     { name = "atlanticus-storage" },
+    { name = "atlanticus-web-storage-cosmos" },
+    { name = "atlanticus-web-storage-topology" },
 ]
 
 [package.dev-dependencies]
@@ -67,6 +69,8 @@ dev = [
 requires-dist = [
     { name = "atlanticus-cosmos", editable = "../../../connectivity/cosmos" },
     { name = "atlanticus-storage", editable = "../../../connectivity/storage" },
+    { name = "atlanticus-web-storage-cosmos", editable = "../storage/cosmos" },
+    { name = "atlanticus-web-storage-topology", editable = "../storage/topology" },
 ]
 
 [package.metadata.requires-dev]
@@ -74,6 +78,26 @@ dev = [
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.15.22" },
 ]
+
+[[package]]
+name = "atlanticus-web-storage-cosmos"
+version = "0.1.0"
+source = { editable = "../storage/cosmos" }
+dependencies = [
+    { name = "atlanticus-cosmos" },
+    { name = "atlanticus-web-storage-topology" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "atlanticus-cosmos", editable = "../../../connectivity/cosmos" },
+    { name = "atlanticus-web-storage-topology", editable = "../storage/topology" },
+]
+
+[[package]]
+name = "atlanticus-web-storage-topology"
+version = "0.1.0"
+source = { editable = "../storage/topology" }
 
 [[package]]
 name = "azure-core"
