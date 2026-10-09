@@ -74,9 +74,7 @@ def _reading(
         return DisplayValue.error()
     if decoded.state is not KpiLatestValueState.OK:
         return DisplayValue.invalid()
-    if decoded.value_kind != 'value' or isinstance(decoded.value, bool):
-        return DisplayValue.invalid()
-    if not isinstance(decoded.value, str | int | float):
+    if isinstance(decoded.value, bool) or not isinstance(decoded.value, str | int | float):
         return DisplayValue.invalid()
     raw = str(decoded.value).strip()
     return DisplayValue.ok(raw) if raw else DisplayValue.invalid()

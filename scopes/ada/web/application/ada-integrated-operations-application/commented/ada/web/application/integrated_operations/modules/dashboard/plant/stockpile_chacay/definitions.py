@@ -7,6 +7,8 @@ from ada.web.ui.stockpile import StockpileDefinition, StockpileVariant
 # El contrato inicial conserva las claves legacy sin introducir equivalencias.
 STOCKPILE_CHACAY_POSITION_KEY = 'posicion_carro'
 STOCKPILE_CHACAY_POSITIONS = tuple(range(1, 9))
+# Las cuatro posiciones pares apuntan respectivamente a las pilas G, H, I y J.
+STOCKPILE_CHACAY_PILE_POSITIONS = (2, 4, 6, 8)
 
 
 @dataclass(frozen=True, slots=True)

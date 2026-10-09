@@ -6,6 +6,7 @@ from ada.web.ui.stockpile import StockpileDefinition, StockpileVariant
 
 STOCKPILE_CHACAY_POSITION_KEY = 'posicion_carro'
 STOCKPILE_CHACAY_POSITIONS = tuple(range(1, 9))
+STOCKPILE_CHACAY_PILE_POSITIONS = (2, 4, 6, 8)
 
 
 @dataclass(frozen=True, slots=True)

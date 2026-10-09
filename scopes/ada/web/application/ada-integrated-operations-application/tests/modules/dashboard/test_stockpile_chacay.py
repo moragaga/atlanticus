@@ -22,8 +22,8 @@ from ada.web.ui.display_status import DisplayStatus
 from ada.web.ui.stockpile import StockpileVariant
 
 
-def _entry(value: object, *, kind: str = 'value') -> dict[str, object]:
-    return {'status': 'ok', 'value_kind': kind, 'value': value}
+def _entry(value: object) -> dict[str, object]:
+    return {'status': 'ok', 'value_kind': 'value', 'value': value}
 
 
 def _store(values: dict[str, object]) -> dict[str, object]:
@@ -39,7 +39,7 @@ def _components(item):
             yield from _components(child)
 
 
-def test_legacy_keys_are_preserved_for_four_piles_four_rows_and_position():
+def test_current_keys_for_four_piles_four_rows_and_position():
     assert STOCKPILE_CHACAY_POSITION_KEY == 'posicion_carro'
     assert [(pile.label, pile.kpi_key) for pile in STOCKPILE_CHACAY_PILES] == [
         ('G', 'nivel_pila_G_stock'), ('H', 'nivel_pila_H_stock'),
@@ -56,14 +56,16 @@ def test_legacy_keys_are_preserved_for_four_piles_four_rows_and_position():
 
 
 @pytest.mark.parametrize('raw, expected', [(str(i), i) for i in range(1, 9)])
-def test_position_maps_eight_legacy_values(raw, expected):
+def test_position_maps_eight_values_with_unloaded_and_loaded_minecarts(raw, expected):
     state = map_stockpile_chacay_store(_store({STOCKPILE_CHACAY_POSITION_KEY: _entry(raw)}))
     assert state.position.status is DisplayStatus.OK
     assert state.position.value == expected
     presentation = build_stockpile_chacay(state)
     carts = [node for node in _components(presentation)
-             if getattr(node, 'className', None) == 'bi bi-minecart-loaded']
+             if getattr(node, 'className', None) in ('bi bi-minecart', 'bi bi-minecart-loaded')]
     assert len(carts) == 1
+    expected_icon = 'bi bi-minecart-loaded' if expected % 2 == 0 else 'bi bi-minecart'
+    assert carts[0].className == expected_icon
     assert f'P{expected}' in next(
         node.get('aria-label') if isinstance(node, dict) else getattr(node, 'aria-label')
         for node in _components(presentation)
@@ -76,7 +78,8 @@ def test_invalid_positions_do_not_display_cart(raw):
     state = map_stockpile_chacay_store(_store({STOCKPILE_CHACAY_POSITION_KEY: _entry(raw)}))
     assert state.position.status is DisplayStatus.INVALID
     content = build_stockpile_chacay(state)
-    assert not any(getattr(node, 'className', None) == 'bi bi-minecart-loaded'
+    assert not any(getattr(node, 'className', None)
+                   in ('bi bi-minecart', 'bi bi-minecart-loaded')
                    for node in _components(content))
 
 
@@ -99,7 +102,7 @@ def test_independent_kpi_values_and_statuses():
         STOCKPILE_CHACAY_PILES[0].kpi_key: _entry('61,25'),
         STOCKPILE_CHACAY_PILES[1].kpi_key: {'status': 'missing', 'value_kind': None, 'value': None},
         STOCKPILE_CHACAY_PILES[2].kpi_key: {'status': 'error', 'value_kind': 'value', 'value': None},
-        STOCKPILE_CHACAY_PILES[3].kpi_key: _entry({'value': '20'}, kind='json'),
+        STOCKPILE_CHACAY_PILES[3].kpi_key: _entry('   '),
         STOCKPILE_CHACAY_ROWS[0].kpi_key: _entry('123456789,123456789'),
         STOCKPILE_CHACAY_ROWS[1].kpi_key: _entry('456'),
     }))
@@ -112,6 +115,17 @@ def test_independent_kpi_values_and_statuses():
     ]
     assert state.rows[0].value.value == '123456789,123456789'
     assert state.position.value == 8
+
+
+def test_four_pile_positions_are_linked_in_order_without_fake_readings():
+    presentation = build_stockpile_chacay(map_stockpile_chacay_store(_store({})))
+    positions = [node for node in _components(presentation)
+                 if 'ada-io-stockpile-chacay__position' in getattr(node, 'className', '').split()]
+    assert len(positions) == 8
+    targets = [index for index, node in enumerate(positions, start=1)
+               if 'ada-io-stockpile-chacay__position--pile' in node.className]
+    assert targets == [2, 4, 6, 8]
+    assert [pile.label for pile in STOCKPILE_CHACAY_PILES] == ['G', 'H', 'I', 'J']
 
 
 def test_all_9_visible_kpis_are_individually_inspectable():
@@ -152,5 +166,5 @@ def test_callback_consumes_existing_plant_store_and_renders_first_card():
     )
     result = dash_app.render(_store({STOCKPILE_CHACAY_POSITION_KEY: _entry('3')}))
     assert isinstance(result, Component)
-    assert sum(getattr(node, 'className', None) == 'bi bi-minecart-loaded'
+    assert sum(getattr(node, 'className', None) == 'bi bi-minecart'
                for node in _components(result)) == 1

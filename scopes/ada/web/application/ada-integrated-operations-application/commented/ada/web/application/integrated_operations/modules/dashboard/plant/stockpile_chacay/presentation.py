@@ -8,6 +8,7 @@ from ada.web.ui.stockpile import build_stockpile_component
 
 from .definitions import (
     STOCKPILE_CHACAY_PILES,
+    STOCKPILE_CHACAY_PILE_POSITIONS,
     STOCKPILE_CHACAY_POSITION_KEY,
     STOCKPILE_CHACAY_POSITIONS,
     STOCKPILE_CHACAY_ROWS,
@@ -43,13 +44,22 @@ def build_stockpile_chacay(state: StockpileChacayState) -> Component:
 
 
 # La vía siempre muestra ocho posiciones; el carro solo aparece sobre una posición válida.
+# P2, P4, P6 y P8 son puntos de descarga y usan el icono cargado.
+# En posiciones impares se muestra el icono vacío; ambos se orientan desde CSS.
 def _position(value: DisplayValue) -> Component:
     active = value.value if value.status is DisplayStatus.OK else None
     children = [
         html.Div(
             [
                 html.Span(
-                    html.I(className='bi bi-minecart-loaded', **{'aria-hidden': 'true'})
+                    html.I(
+                        className=(
+                            'bi bi-minecart-loaded'
+                            if number in STOCKPILE_CHACAY_PILE_POSITIONS
+                            else 'bi bi-minecart'
+                        ),
+                        **{'aria-hidden': 'true'},
+                    )
                     if active == number else None,
                     className='ada-io-stockpile-chacay__cart',
                 ),
@@ -58,6 +68,10 @@ def _position(value: DisplayValue) -> Component:
             ],
             className=(
                 'ada-io-stockpile-chacay__position'
+                + (
+                    ' ada-io-stockpile-chacay__position--pile'
+                    if number in STOCKPILE_CHACAY_PILE_POSITIONS else ''
+                )
                 + (' ada-io-stockpile-chacay__position--active' if active == number else '')
             ),
         )

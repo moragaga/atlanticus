@@ -8,6 +8,7 @@ from ada.web.ui.stockpile import build_stockpile_component
 
 from .definitions import (
     STOCKPILE_CHACAY_PILES,
+    STOCKPILE_CHACAY_PILE_POSITIONS,
     STOCKPILE_CHACAY_POSITION_KEY,
     STOCKPILE_CHACAY_POSITIONS,
     STOCKPILE_CHACAY_ROWS,
@@ -47,7 +48,14 @@ def _position(value: DisplayValue) -> Component:
         html.Div(
             [
                 html.Span(
-                    html.I(className='bi bi-minecart-loaded', **{'aria-hidden': 'true'})
+                    html.I(
+                        className=(
+                            'bi bi-minecart-loaded'
+                            if number in STOCKPILE_CHACAY_PILE_POSITIONS
+                            else 'bi bi-minecart'
+                        ),
+                        **{'aria-hidden': 'true'},
+                    )
                     if active == number else None,
                     className='ada-io-stockpile-chacay__cart',
                 ),
@@ -56,6 +64,10 @@ def _position(value: DisplayValue) -> Component:
             ],
             className=(
                 'ada-io-stockpile-chacay__position'
+                + (
+                    ' ada-io-stockpile-chacay__position--pile'
+                    if number in STOCKPILE_CHACAY_PILE_POSITIONS else ''
+                )
                 + (' ada-io-stockpile-chacay__position--active' if active == number else '')
             ),
         )
