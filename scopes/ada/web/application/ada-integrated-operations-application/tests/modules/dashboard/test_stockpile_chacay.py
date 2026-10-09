@@ -165,6 +165,20 @@ def test_all_9_visible_kpis_are_individually_inspectable():
     assert [node.children for node in targets[-4:]] == ['1234567890123'] * 4
 
 
+def test_no_position_does_not_place_a_cart_at_a_false_location():
+    presentation = build_stockpile_chacay(map_stockpile_chacay_store(_store({})))
+    assert not any(
+        getattr(node, 'className', None) in ('bi bi-minecart', 'bi bi-minecart-loaded')
+        for node in _components(presentation)
+    )
+    status_slots = [
+        node for node in _components(presentation)
+        if getattr(node, 'className', None) == 'ada-io-stockpile-chacay__position-status'
+    ]
+    assert len(status_slots) == 1
+    assert isinstance(status_slots[0].children, Component)
+
+
 class DashStub:
     def __init__(self):
         self.args = None

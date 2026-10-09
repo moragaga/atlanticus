@@ -43,35 +43,32 @@ def build_stockpile_chacay(state: StockpileChacayState) -> Component:
     )
 
 
-# Las ocho posiciones comparten un eje: icono, enganche, punto y etiqueta.
-# El conector inferior existe en todas las posiciones; las pares continúan hacia las pilas.
-# La alineación exacta se define mediante una grilla de ocho columnas y anclajes comunes.
-# P2, P4, P6 y P8 son puntos de descarga y usan el icono cargado.
-# En posiciones impares se muestra el icono vacío; ambos se orientan desde CSS.
+# La vía tiene ocho ejes fijos; los círculos se alinean con los centros de cada columna.
+# Los ocho tramos verticales se dibujan exclusivamente bajo la línea horizontal.
+# En posición impar, el carro vacío se muestra arriba; en posición par,
+# el carro cargado se dibuja invertido por debajo, simulando descarga.
+# Una lectura degradada se muestra en el centro de la vía sin inventar una posición.
 def _position(value: DisplayValue) -> Component:
     active = value.value if value.status is DisplayStatus.OK else None
-    children = [
+    positions = [
         html.Div(
             [
                 html.Span(
-                    html.I(
-                        className=(
-                            'bi bi-minecart-loaded'
-                            if number in STOCKPILE_CHACAY_PILE_POSITIONS
-                            else 'bi bi-minecart'
-                        ),
-                        **{'aria-hidden': 'true'},
-                    )
-                    if active == number else None,
-                    className='ada-io-stockpile-chacay__cart',
+                    html.I(className='bi bi-minecart', **{'aria-hidden': 'true'})
+                    if active == number and number % 2 else None,
+                    className='ada-io-stockpile-chacay__cart ada-io-stockpile-chacay__cart--upper',
                 ),
-                html.Span(className='ada-io-stockpile-chacay__hanger', **{'aria-hidden': 'true'}),
                 html.Span(className='ada-io-stockpile-chacay__marker', **{'aria-hidden': 'true'}),
                 html.Span(className='ada-io-stockpile-chacay__drop', **{'aria-hidden': 'true'}),
                 html.Span(f'P{number}', className='ada-io-stockpile-chacay__position-label'),
                 html.Span(
-                    className='ada-io-stockpile-chacay__pile-link',
+                    className='ada-io-stockpile-chacay__lower-connector',
                     **{'aria-hidden': 'true'},
+                ),
+                html.Span(
+                    html.I(className='bi bi-minecart-loaded', **{'aria-hidden': 'true'})
+                    if active == number and number % 2 == 0 else None,
+                    className='ada-io-stockpile-chacay__cart ada-io-stockpile-chacay__cart--lower',
                 ),
             ],
             className=(
@@ -85,11 +82,15 @@ def _position(value: DisplayValue) -> Component:
         )
         for number in STOCKPILE_CHACAY_POSITIONS
     ]
+    if value.status is not DisplayStatus.OK:
+        positions.append(
+            html.Span(
+                _status(value, 'position'),
+                className='ada-io-stockpile-chacay__position-status',
+            )
+        )
     return html.Div(
-        [
-            html.Div(children, className='ada-io-stockpile-chacay__track'),
-            *([] if value.status is DisplayStatus.OK else [_status(value, 'position')]),
-        ],
+        html.Div(positions, className='ada-io-stockpile-chacay__track'),
         className='ada-io-stockpile-chacay__position-section',
         role='button',
         tabIndex=0,
