@@ -18,6 +18,9 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile
     map_stockpile_chacay_store,
     register_stockpile_chacay_callback,
 )
+from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile_chacay.feeders import (
+    STOCKPILE_CHACAY_FEEDER_GROUPS,
+)
 from ada.web.kpis.collector import component_kpi_store_id
 from ada.web.ui.display_status import DisplayStatus, resolve_status_visual
 from ada.web.ui.stockpile import StockpileVariant
@@ -148,7 +151,7 @@ def test_independent_kpi_values_and_statuses():
     assert state.position.value == 8
 
 
-def test_all_9_visible_kpis_are_individually_inspectable():
+def test_all_25_kpis_are_individually_inspectable():
     values = {definition.kpi_key: _entry('77') for definition in STOCKPILE_CHACAY_PILES}
     values.update(
         {definition.kpi_key: _entry('1234567890123') for definition in STOCKPILE_CHACAY_ROWS}
@@ -159,6 +162,7 @@ def test_all_9_visible_kpis_are_individually_inspectable():
         node for node in _components(presentation) if hasattr(node, 'data-kpi-inspection-key')
     ]
     expected = [STOCKPILE_CHACAY_POSITION_KEY] + [p.kpi_key for p in STOCKPILE_CHACAY_PILES]
+    expected += [d.value_kpi_key for group in STOCKPILE_CHACAY_FEEDER_GROUPS for d in group]
     expected += [r.kpi_key for r in STOCKPILE_CHACAY_ROWS]
     assert [getattr(node, 'data-kpi-inspection-key') for node in targets] == expected
     assert all(node.role == 'button' and node.tabIndex == 0 for node in targets)

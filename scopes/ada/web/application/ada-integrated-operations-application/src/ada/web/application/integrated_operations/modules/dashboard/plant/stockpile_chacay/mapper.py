@@ -12,6 +12,7 @@ from .definitions import (
     STOCKPILE_CHACAY_POSITIONS,
     STOCKPILE_CHACAY_ROWS,
 )
+from .feeders import map_chacay_feeders_store
 from .models import ChacayMetric, StockpileChacayState
 
 
@@ -30,6 +31,7 @@ def map_stockpile_chacay_store(store_data: object) -> StockpileChacayState:
             StockpileValues(percent=_reading(values, definition.kpi_key, source_status))
             for definition in STOCKPILE_CHACAY_PILES
         ),
+        feeders=map_chacay_feeders_store(store_data),
         rows=tuple(
             ChacayMetric(
                 key=definition.key,

@@ -12,14 +12,13 @@ from .definitions import (
     STOCKPILE_CHACAY_POSITIONS,
     STOCKPILE_CHACAY_ROWS,
 )
+from .feeders import map_chacay_feeders_store
 from .models import ChacayMetric, StockpileChacayState
 
 
-# Un único store alimenta la posición, las pilas y los indicadores, sin consultas secundarias.
 def map_stockpile_chacay_store(store_data: object) -> StockpileChacayState:
     values, source_status = _latest_values(store_data)
     position = _reading(values, STOCKPILE_CHACAY_POSITION_KEY, source_status)
-# El carro se posiciona únicamente con valores válidos de 1 a 8.
     if position.status is DisplayStatus.OK:
         number = str(position.value).strip()
         if number not in {str(value) for value in STOCKPILE_CHACAY_POSITIONS}:
@@ -32,6 +31,8 @@ def map_stockpile_chacay_store(store_data: object) -> StockpileChacayState:
             StockpileValues(percent=_reading(values, definition.kpi_key, source_status))
             for definition in STOCKPILE_CHACAY_PILES
         ),
+        # Integrar las dieciséis lecturas sin transformar su valor en booleanos.
+        feeders=map_chacay_feeders_store(store_data),
         rows=tuple(
             ChacayMetric(
                 key=definition.key,
@@ -44,7 +45,6 @@ def map_stockpile_chacay_store(store_data: object) -> StockpileChacayState:
     )
 
 
-# Separamos una fuente ausente de un contrato de store malformado.
 def _latest_values(
     store_data: object,
 ) -> tuple[Mapping[str, object] | None, DisplayStatus]:
@@ -61,8 +61,6 @@ def _latest_values(
     return values, DisplayStatus.OK
 
 
-# Cada KPI conserva su estado independiente; no se aceptan JSON no verificados como escalares.
-# El lector conserva los estados de latest y valida únicamente escalares.
 def _reading(
     values: Mapping[str, object] | None,
     kpi_key: str,

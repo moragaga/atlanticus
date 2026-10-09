@@ -1,0 +1,60 @@
+.ada-io-chacay-feeders {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .08rem;
+    width: 100%;
+    min-width: 0;
+    /*padding-inline: .65rem;*/
+}
+
+.ada-io-chacay-feeders__group {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .08rem;
+    min-width: 0;
+    align-items: end;
+}
+
+.ada-io-chacay-feeders__feeder {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    min-width: 0;
+    min-height: 1.65rem;
+    cursor: help;
+    --ada-status-icon-size: .8rem;
+}
+
+.ada-io-chacay-feeders__bar {
+    position: relative;
+    width: min(100%, .48rem);
+    height: 1.65rem;
+    border: 1px solid var(--ada-color-border-primary, #a0a0a0);
+    background: transparent;
+}
+
+.ada-io-chacay-feeders__fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: #939393;
+}
+
+.ada-io-chacay-feeders__fill--danger {
+    background: #c62828;
+}
+
+.ada-io-chacay-feeders__fill--warning {
+    background: #d3a000;
+}
+
+.ada-io-chacay-feeders__status-icon {
+    max-width: .88rem;
+    max-height: .88rem;
+}
+
+.ada-io-chacay-feeders [data-kpi-inspection-key]:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}

@@ -13,6 +13,7 @@ from .definitions import (
     STOCKPILE_CHACAY_POSITIONS,
     STOCKPILE_CHACAY_ROWS,
 )
+from .feeders import build_chacay_feeders
 from .models import ChacayMetric, StockpileChacayState
 
 
@@ -33,6 +34,7 @@ def build_stockpile_chacay(state: StockpileChacayState) -> Component:
                 ],
                 className='ada-io-stockpile-chacay__piles',
             ),
+            build_chacay_feeders(state.feeders),
             html.Div(
                 [_row(row) for row in state.rows],
                 className='ada-io-stockpile-chacay__rows',

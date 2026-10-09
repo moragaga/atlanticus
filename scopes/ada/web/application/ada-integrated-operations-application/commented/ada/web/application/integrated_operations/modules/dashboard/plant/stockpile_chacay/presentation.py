@@ -6,6 +6,8 @@ from dash.development.base_component import Component
 from ada.web.ui.display_status import DisplayStatus, DisplayValue, build_display_status_icon
 from ada.web.ui.stockpile import build_stockpile_component
 
+from .feeders import build_chacay_feeders
+
 from .definitions import (
     STOCKPILE_CHACAY_PILE_POSITIONS,
     STOCKPILE_CHACAY_PILES,
@@ -34,6 +36,7 @@ def build_stockpile_chacay(state: StockpileChacayState) -> Component:
                 ],
                 className='ada-io-stockpile-chacay__piles',
             ),
+            build_chacay_feeders(state.feeders),
             html.Div(
                 [_row(row) for row in state.rows],
                 className='ada-io-stockpile-chacay__rows',

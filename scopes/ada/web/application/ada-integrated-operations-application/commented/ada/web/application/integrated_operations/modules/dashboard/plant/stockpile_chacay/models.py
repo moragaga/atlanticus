@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from ada.web.ui.display_status import DisplayValue
 from ada.web.ui.stockpile import StockpileValues
 
+from .feeders.models import ChacayFeederReading
+
 
 @dataclass(frozen=True, slots=True)
 class ChacayMetric:
@@ -14,9 +16,10 @@ class ChacayMetric:
     value: DisplayValue
 
 
-# El estado de presentación no contiene componentes Dash ni acceso a servicios.
 @dataclass(frozen=True, slots=True)
 class StockpileChacayState:
     position: DisplayValue
     piles: tuple[StockpileValues, ...]
+    # Se conserva la agrupación de cuatro líneas por cuatro lecturas numéricas.
+    feeders: tuple[tuple[ChacayFeederReading, ...], ...]
     rows: tuple[ChacayMetric, ...]
