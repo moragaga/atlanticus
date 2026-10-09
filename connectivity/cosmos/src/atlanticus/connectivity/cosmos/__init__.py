@@ -21,6 +21,11 @@ from atlanticus.connectivity.cosmos.errors import (
     CosmosResultLimitError,
     CosmosThrottledError,
 )
+from atlanticus.connectivity.cosmos.inventory import (
+    CosmosContainerInventoryLimitError,
+    CosmosContainerProperties,
+    CosmosInventory,
+)
 from atlanticus.connectivity.cosmos.models import (
     CosmosContainerSpec,
     CosmosPage,
@@ -53,10 +58,13 @@ __all__ = [
     'CosmosConfigurationError',
     'CosmosConflictError',
     'CosmosContainerDefinitionMismatchError',
+    'CosmosContainerInventoryLimitError',
     'CosmosContainerNotFoundError',
+    'CosmosContainerProperties',
     'CosmosContainerSpec',
     'CosmosDatabaseNotFoundError',
     'CosmosError',
+    'CosmosInventory',
     'CosmosItemNotFoundError',
     'CosmosOperationError',
     'CosmosPage',

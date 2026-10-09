@@ -1,5 +1,3 @@
-# Espejo pedagógico: conserva exactamente el código productivo y agrega sólo comentarios.
-# La composición entrega settings ya resueltos; este módulo no interpreta variables de entorno.
 """Conectividad Azure Cosmos DB neutral y síncrona para Atlanticus."""
 
 from pkgutil import extend_path
@@ -22,6 +20,11 @@ from atlanticus.connectivity.cosmos.errors import (
     CosmosQueryContractError,
     CosmosResultLimitError,
     CosmosThrottledError,
+)
+from atlanticus.connectivity.cosmos.inventory import (
+    CosmosContainerInventoryLimitError,
+    CosmosContainerProperties,
+    CosmosInventory,
 )
 from atlanticus.connectivity.cosmos.models import (
     CosmosContainerSpec,
@@ -55,10 +58,13 @@ __all__ = [
     'CosmosConfigurationError',
     'CosmosConflictError',
     'CosmosContainerDefinitionMismatchError',
+    'CosmosContainerInventoryLimitError',
     'CosmosContainerNotFoundError',
+    'CosmosContainerProperties',
     'CosmosContainerSpec',
     'CosmosDatabaseNotFoundError',
     'CosmosError',
+    'CosmosInventory',
     'CosmosItemNotFoundError',
     'CosmosOperationError',
     'CosmosPage',
