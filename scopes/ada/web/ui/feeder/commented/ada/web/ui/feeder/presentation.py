@@ -1,5 +1,5 @@
-# Cada Feeder tiene su propia figura Plotly y un selector de inspección visible.
-# La altura se limita a 100 %, pero el texto conserva cualquier entero superior.
+# Cada Feeder usa su propia figura Plotly de altura compacta y mantiene el porcentaje real.
+# Los estados degradados conservan el icono e inspección individual.
 # El color inválido no impide dibujar la barra: se utiliza el gris neutro.
 from __future__ import annotations
 
@@ -79,7 +79,7 @@ def _figure(percent: int, color: str) -> go.Figure:
     )
     figure.update_layout(
         showlegend=False,
-        height=72,
+        height=52,
         margin={'l': 0, 'r': 0, 't': 0, 'b': 0},
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',

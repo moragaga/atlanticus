@@ -18,7 +18,6 @@ def build_chancado_feeders(
         raise ValueError('Chancado requires exactly four feeders')
     return html.Section(
         [
-            html.H3('FEEDERS', className='ada-io-feeders__title'),
             html.Div(
                 [
                     build_feeder_component(
@@ -30,6 +29,7 @@ def build_chancado_feeders(
                 ],
                 className='ada-io-feeders__items',
             ),
+            html.H3('FEEDERS', className='ada-io-feeders__title'),
         ],
         className='ada-io-feeders',
     )

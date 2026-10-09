@@ -1,4 +1,4 @@
-# Mina compone cuatro Feeder reutilizables sin trasladar presentación a Plotly global.
+# Los cuatro Feeder y sus valores comparten una sola caja centrada; el título va debajo.
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -19,7 +19,6 @@ def build_chancado_feeders(
         raise ValueError('Chancado requires exactly four feeders')
     return html.Section(
         [
-            html.H3('FEEDERS', className='ada-io-feeders__title'),
             html.Div(
                 [
                     build_feeder_component(
@@ -31,6 +30,7 @@ def build_chancado_feeders(
                 ],
                 className='ada-io-feeders__items',
             ),
+            html.H3('FEEDERS', className='ada-io-feeders__title'),
         ],
         className='ada-io-feeders',
     )

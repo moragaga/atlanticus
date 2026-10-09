@@ -1,28 +1,33 @@
-/* Mina organiza cuatro Feeder, pero la geometría de cada barra es reutilizable. */
+/* El borde pertenece al conjunto; cada Feeder conserva su propia superficie de inspección. */
 .ada-io-feeders {
     display: flex;
     flex-direction: column;
-    gap: .16rem;
+    align-items: center;
+    gap: .14rem;
     width: 100%;
     min-width: 0;
     padding: .08rem .18rem;
 }
 
-.ada-io-feeders__title {
-    margin: 0;
-    background: var(--atlanticus-admin-color-border);
-    border-radius: .2rem;
-    font-size: .57rem;
-    font-weight: 700;
-    text-align: center;
+.ada-io-feeders__items {
+    display: flex;
+    justify-content: center;
+    align-items: end;
+    gap: .18rem;
+    width: max-content;
+    max-width: 100%;
+    padding: .18rem .32rem .14rem;
+    border: 1px solid var(--ada-color-border-primary, #c0c0c0);
+    border-radius: .35rem;
+    box-sizing: border-box;
 }
 
-.ada-io-feeders__items {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    align-items: end;
-    gap: .3rem;
-    min-width: 0;
+.ada-io-feeders__title {
+    margin: 0;
+    font-size: .57rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
 }
 
 @media only screen and (min-width: 480px) and (max-width: 1279px) {

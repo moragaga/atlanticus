@@ -76,7 +76,7 @@ def _figure(percent: int, color: str) -> go.Figure:
     )
     figure.update_layout(
         showlegend=False,
-        height=72,
+        height=52,
         margin={'l': 0, 'r': 0, 't': 0, 'b': 0},
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',

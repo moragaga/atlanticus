@@ -1,24 +1,26 @@
 .ada-feeder {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-rows: 52px .8rem .8rem;
+    justify-items: center;
     align-items: center;
-    justify-content: flex-end;
+    width: 1.75rem;
     min-width: 0;
     font-size: .51rem;
     cursor: help;
 }
 
 .ada-feeder__graphic {
+    grid-row: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     width: 100%;
-    min-height: 72px;
+    height: 52px;
 }
 
 .ada-feeder__graph {
     width: 100%;
-    height: 72px;
+    height: 52px;
 }
 
 .ada-feeder__status-icon {
@@ -33,7 +35,12 @@
 }
 
 .ada-feeder__value {
+    grid-row: 2;
     font-weight: 600;
+}
+
+.ada-feeder__label {
+    grid-row: 3;
 }
 
 .ada-feeder:focus-visible {
