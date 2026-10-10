@@ -13,6 +13,7 @@ members = [
     "ada-alarm-materialization-process",
     "ada-alarm-runtime-process",
     "ada-alarms-core",
+    "ada-alarms-history",
     "ada-alarms-materialization",
     "ada-alarms-persistence",
 ]
@@ -144,6 +145,37 @@ dev = [
 
 [package.metadata]
 requires-dist = [{ name = "ada-contracts-alarms", editable = "../ada-contracts/alarms" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-alarms-history"
+version = "1.0.0"
+source = { editable = "alarms/history" }
+dependencies = [
+    { name = "ada-contracts-alarms" },
+    { name = "atlanticus-datasets" },
+    { name = "atlanticus-datasets-runtime" },
+    { name = "pyarrow" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-contracts-alarms", editable = "../ada-contracts/alarms" },
+    { name = "atlanticus-datasets", editable = "../../backend/datasets" },
+    { name = "atlanticus-datasets-runtime", editable = "../../backend/datasets-runtime" },
+    { name = "pyarrow", specifier = "==25.0.0" },
+]
 
 [package.metadata.requires-dev]
 dev = [

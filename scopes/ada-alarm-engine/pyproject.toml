@@ -18,6 +18,7 @@ package = false
 ada-alarm-materialization-process = { workspace = true }
 ada-alarm-runtime-process = { workspace = true }
 ada-alarms-core = { workspace = true }
+ada-alarms-history = { workspace = true }
 ada-alarms-materialization = { workspace = true }
 ada-alarms-persistence = { workspace = true }
 ada-contracts-alarms = { path = "../ada-contracts/alarms", editable = true }
@@ -43,6 +44,7 @@ atlanticus-json = { path = "../../backend/json", editable = true }
 [tool.uv.workspace]
 members = [
     "alarms/core",
+    "alarms/history",
     "alarms/materialization",
     "alarms/persistence",
     "processes/alarm-materialization",
