@@ -210,7 +210,7 @@ class _Publications:
         self.fail_after_commit = False
         self.persistence = SimpleNamespace(read_head=lambda: JournalHead())
 
-    def reconcile(self, context, *, force=False):
+    def reconcile(self, context, *, force=False, publish_facts=True):
         self.events.append('force' if force else 'publish')
         if self.fail_after_commit and self.events[-2:] == ['commit', 'publish']:
             self.fail_after_commit = False
@@ -222,7 +222,10 @@ def _composition(events):
     return AlarmRuntimeComposition(
         configuration=SimpleNamespace(values={}),
         runtime_configuration=None,
-        settings=None,
+        settings=SimpleNamespace(
+            checkpoint_interval_seconds=60,
+            facts_publish_interval_seconds=10,
+        ),
         job=_Job(events),
         publications=_Publications(events),
         definition=None,
@@ -268,7 +271,7 @@ def test_composition_preflight_failure_prevents_new_commit():
     events = []
     composition = _composition(events)
 
-    def fail_before_cycle(context, *, force=False):
+    def fail_before_cycle(context, *, force=False, publish_facts=True):
         events.append('publish')
         raise OSError('backlog publication failed')
 

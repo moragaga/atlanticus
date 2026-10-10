@@ -28,7 +28,7 @@ def test_checkpoint_runs_periodically_and_on_rotation(monkeypatch) -> None:
         persistence = Persistence()
         facts = SimpleNamespace(exported_position=lambda: position)
 
-        def reconcile(self, context, *, force=False):
+        def reconcile(self, context, *, force=False, publish_facts=True):
             calls.append('reconcile')
             return False
 
@@ -40,7 +40,10 @@ def test_checkpoint_runs_periodically_and_on_rotation(monkeypatch) -> None:
     composition = AlarmRuntimeComposition(
         configuration=None,
         runtime_configuration=None,
-        settings=SimpleNamespace(checkpoint_interval_seconds=60),
+        settings=SimpleNamespace(
+            checkpoint_interval_seconds=60,
+            facts_publish_interval_seconds=10,
+        ),
         job=Job(),
         publications=Publications(),
         definition=None,

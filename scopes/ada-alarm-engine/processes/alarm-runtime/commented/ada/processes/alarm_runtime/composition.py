@@ -1,12 +1,11 @@
-# Espejo pedagógico de la composición ejecutable del Alarm Runtime.
-# Publica CURRENT y FACTS después de recovery y después de confirmar commits.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from time import monotonic
 
 from ada.alarms.persistence import LocalAlarmMaterializationStore, materialization_root
-from ada.alarms.persistence.operational import AlarmPersistence
+from ada.alarms.persistence.operational.incremental import IncrementalAlarmPersistence
 from ada.contracts.alarms import ALARM_CONFIGURATION_SOURCE_KEY
 from ada.processes.alarm_runtime.cycle import AlarmEvaluationCycle
 from ada.processes.alarm_runtime.durable_adoption import AlarmDurableAdopter
@@ -48,28 +47,68 @@ class AlarmRuntimeComposition:
     job: AlarmRuntimeJob
     publications: AlarmDurablePublications
     definition: JobDefinition
+    _last_maintenance_at: float | None = field(default=None, init=False, repr=False)
+    _last_maintenance_segment: str | None = field(default=None, init=False, repr=False)
+    _last_facts_publication_at: float | None = field(default=None, init=False, repr=False)
 
+    # Al recuperar, se reconcilia toda publicación durable pendiente desde WAL.
     def recover(self, context: JobRuntimeContext) -> RecoveredAlarmAuthority:
-        # El Engine recupera y valida autoridad EFFECTIVE antes de publicar nada.
         authority = self.job.recover(context)
-        # Se reintentan todas las publicaciones, aun si no hubo nuevos ciclos.
         self.publications.reconcile(context, force=True)
+        self._last_facts_publication_at = monotonic()
         return authority
 
+    # Se preserva el ritmo de evaluación y se limita únicamente la frecuencia de FACTS.
     def run_iteration(self, context: JobRuntimeContext) -> AlarmRuntimeIterationResult:
-        # En caso de fallo anterior, reconciliamos antes de un nuevo commit.
-        self.publications.reconcile(context)
+        self.publications.reconcile(context, publish_facts=False)
         result = self.job.run_iteration(context)
-        # El commit durable ya terminó dentro de job.run_iteration.
-        # Una excepción de publicación deja intacta la autoridad WAL.
-        self.publications.reconcile(context)
+        now = monotonic()
+        # El reloj monotónico evita acoplar el intervalo de publicación al tiempo del ciclo.
+        publish_facts = (
+            self._last_facts_publication_at is None
+            or now - self._last_facts_publication_at >= self.settings.facts_publish_interval_seconds
+        )
+        self.publications.reconcile(context, publish_facts=publish_facts)
+        if publish_facts:
+            self._last_facts_publication_at = now
+        head = self.publications.persistence.read_head()
+        segment = None if head.durable is None else head.durable.segment_id
+        if (
+            head.aligned
+            and segment is not None
+            and (
+                self._last_maintenance_at is None
+                or now - self._last_maintenance_at >= self.settings.checkpoint_interval_seconds
+                or segment != self._last_maintenance_segment
+            )
+        ):
+            self.checkpoint(context)
+            self._last_maintenance_at = now
+            self._last_maintenance_segment = segment
+        if isinstance(result, AlarmRuntimeIterationResult) and _notable_iteration(result):
+            context.request_iteration_summary()
         return result
+
+    # Antes de compactar WAL se fuerza la publicación pendiente de FACTS.
+    def checkpoint(self, context: JobRuntimeContext) -> None:
+        self.publications.reconcile(context)
+        self._last_facts_publication_at = monotonic()
+        self.publications.persistence.publish_recovery_checkpoint(
+            assert_authority=context.assert_lease_current,
+            fenced_mutation=context.fenced_mutation,
+        )
+        self.publications.persistence.compact_recovered_wal(
+            exported_through=self.publications.facts.exported_position(),
+            assert_authority=context.assert_lease_current,
+            fenced_mutation=context.fenced_mutation,
+        )
 
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
         return execute_job(
             definition=self.definition,
             iteration=self.run_iteration,
             recovery=self.recover,
+            drain=self.checkpoint,
             argv=argv,
             environ=self.configuration.values,
         )
@@ -105,14 +144,15 @@ def build_composition(
         registry=registry,
     )
     cycle = AlarmEvaluationCycle(loader=DataInputLoader(reader=data_reader, registry=registry))
-    # Persistencia compartida: su WAL/snapshot nunca se modifica por el publicador.
-    operational = AlarmPersistence(application_root=runtime_configuration.application_root)
+    operational = IncrementalAlarmPersistence(
+        application_root=runtime_configuration.application_root,
+        max_journal_segment_bytes=settings.max_wal_segment_bytes,
+    )
     durable_recovery = AlarmDurableRecovery(
         persistence=operational,
         materializations=configuration_reader,
         source_key=ALARM_CONFIGURATION_SOURCE_KEY,
     )
-    # Salidas propias de Alarm Engine y separadas de runtime/state.
     output_root = runtime_configuration.application_root / 'alarms' / 'output'
     publications = AlarmDurablePublications(
         persistence=operational,
@@ -151,6 +191,7 @@ def build_composition(
         lease_wait_seconds=None,
         lease_poll_seconds=1,
         resource_sample_seconds=5,
+        iteration_summary_every=0,
     )
     return AlarmRuntimeComposition(
         configuration=configuration,
@@ -160,3 +201,24 @@ def build_composition(
         publications=publications,
         definition=definition,
     )
+
+
+def _notable_iteration(result: AlarmRuntimeIterationResult) -> bool:
+    if result.outcome.value != 'UNCHANGED':
+        return True
+    lifecycle = result.lifecycle
+    if lifecycle is None:
+        return False
+    if lifecycle.technical_incident_changes:
+        return True
+    for group in lifecycle.groups:
+        for decision in (group.adoption_decision, group.decision):
+            if decision is not None and (
+                decision.has_lifecycle_change
+                or decision.management_action_results
+                or decision.deactivation_request_results
+                or decision.deactivation_decision_results
+                or decision.cascade_suppressions
+            ):
+                return True
+    return False

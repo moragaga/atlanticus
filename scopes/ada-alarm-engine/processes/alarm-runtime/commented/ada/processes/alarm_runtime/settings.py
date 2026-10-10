@@ -1,4 +1,3 @@
-# Configuración propia del proceso y routing hacia productores Operational Data compartidos.
 from __future__ import annotations
 
 import math
@@ -19,6 +18,8 @@ METEODATA_APPLICATION_VARIABLE = 'METEODATA_APPLICATION'
 POLL_INTERVAL_VARIABLE = 'ALARM_RUNTIME_POLL_SECONDS'
 WAL_SEGMENT_BYTES_VARIABLE = 'ALARM_RUNTIME_WAL_SEGMENT_BYTES'
 CHECKPOINT_SECONDS_VARIABLE = 'ALARM_RUNTIME_CHECKPOINT_SECONDS'
+# Parámetro independiente del intervalo de evaluación y del checkpoint de WAL.
+FACTS_PUBLISH_SECONDS_VARIABLE = 'ALARM_RUNTIME_FACTS_PUBLISH_SECONDS'
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +35,8 @@ class AlarmRuntimeSettings:
     poll_interval_seconds: float
     max_wal_segment_bytes: int = 262144
     checkpoint_interval_seconds: float = 60.0
+    # El valor por defecto permite agrupar commits entre varias iteraciones.
+    facts_publish_interval_seconds: float = 10.0
 
     @classmethod
     def from_configuration(cls, configuration: ResolvedConfiguration) -> AlarmRuntimeSettings:
@@ -44,8 +47,6 @@ class AlarmRuntimeSettings:
             pi_application=_required_application(
                 configuration.require(PI_APPLICATION_VARIABLE), PI_APPLICATION_VARIABLE
             ),
-            # Las rutas opcionales sólo se vuelven obligatorias cuando una sesión adoptada
-            # declara un DataSource asociado.
             dispatch_application=_optional_application(
                 configuration.get(DISPATCH_APPLICATION_VARIABLE), DISPATCH_APPLICATION_VARIABLE
             ),
@@ -78,6 +79,10 @@ class AlarmRuntimeSettings:
                 configuration.get(CHECKPOINT_SECONDS_VARIABLE) or '60',
                 CHECKPOINT_SECONDS_VARIABLE,
             ),
+            facts_publish_interval_seconds=_positive_float(
+                configuration.get(FACTS_PUBLISH_SECONDS_VARIABLE) or '10',
+                FACTS_PUBLISH_SECONDS_VARIABLE,
+            ),
         )
 
 
@@ -97,6 +102,7 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='5'),
         ConfigurationVariableSpec(key=WAL_SEGMENT_BYTES_VARIABLE, default='262144'),
         ConfigurationVariableSpec(key=CHECKPOINT_SECONDS_VARIABLE, default='60'),
+        ConfigurationVariableSpec(key=FACTS_PUBLISH_SECONDS_VARIABLE, default='10'),
         ConfigurationVariableSpec(key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED', default='true'),
         ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_MODE', default='off'),
         ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_PROFILE', required=False),

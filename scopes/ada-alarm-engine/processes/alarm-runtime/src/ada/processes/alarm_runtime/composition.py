@@ -49,18 +49,26 @@ class AlarmRuntimeComposition:
     definition: JobDefinition
     _last_maintenance_at: float | None = field(default=None, init=False, repr=False)
     _last_maintenance_segment: str | None = field(default=None, init=False, repr=False)
+    _last_facts_publication_at: float | None = field(default=None, init=False, repr=False)
 
     def recover(self, context: JobRuntimeContext) -> RecoveredAlarmAuthority:
         authority = self.job.recover(context)
         self.publications.reconcile(context, force=True)
+        self._last_facts_publication_at = monotonic()
         return authority
 
     def run_iteration(self, context: JobRuntimeContext) -> AlarmRuntimeIterationResult:
-        self.publications.reconcile(context)
+        self.publications.reconcile(context, publish_facts=False)
         result = self.job.run_iteration(context)
-        self.publications.reconcile(context)
-        head = self.publications.persistence.read_head()
         now = monotonic()
+        publish_facts = (
+            self._last_facts_publication_at is None
+            or now - self._last_facts_publication_at >= self.settings.facts_publish_interval_seconds
+        )
+        self.publications.reconcile(context, publish_facts=publish_facts)
+        if publish_facts:
+            self._last_facts_publication_at = now
+        head = self.publications.persistence.read_head()
         segment = None if head.durable is None else head.durable.segment_id
         if (
             head.aligned
@@ -80,6 +88,7 @@ class AlarmRuntimeComposition:
 
     def checkpoint(self, context: JobRuntimeContext) -> None:
         self.publications.reconcile(context)
+        self._last_facts_publication_at = monotonic()
         self.publications.persistence.publish_recovery_checkpoint(
             assert_authority=context.assert_lease_current,
             fenced_mutation=context.fenced_mutation,

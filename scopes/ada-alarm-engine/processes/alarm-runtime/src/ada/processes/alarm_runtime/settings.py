@@ -18,6 +18,7 @@ METEODATA_APPLICATION_VARIABLE = 'METEODATA_APPLICATION'
 POLL_INTERVAL_VARIABLE = 'ALARM_RUNTIME_POLL_SECONDS'
 WAL_SEGMENT_BYTES_VARIABLE = 'ALARM_RUNTIME_WAL_SEGMENT_BYTES'
 CHECKPOINT_SECONDS_VARIABLE = 'ALARM_RUNTIME_CHECKPOINT_SECONDS'
+FACTS_PUBLISH_SECONDS_VARIABLE = 'ALARM_RUNTIME_FACTS_PUBLISH_SECONDS'
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +34,7 @@ class AlarmRuntimeSettings:
     poll_interval_seconds: float
     max_wal_segment_bytes: int = 262144
     checkpoint_interval_seconds: float = 60.0
+    facts_publish_interval_seconds: float = 10.0
 
     @classmethod
     def from_configuration(cls, configuration: ResolvedConfiguration) -> AlarmRuntimeSettings:
@@ -75,6 +77,10 @@ class AlarmRuntimeSettings:
                 configuration.get(CHECKPOINT_SECONDS_VARIABLE) or '60',
                 CHECKPOINT_SECONDS_VARIABLE,
             ),
+            facts_publish_interval_seconds=_positive_float(
+                configuration.get(FACTS_PUBLISH_SECONDS_VARIABLE) or '10',
+                FACTS_PUBLISH_SECONDS_VARIABLE,
+            ),
         )
 
 
@@ -94,6 +100,7 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='5'),
         ConfigurationVariableSpec(key=WAL_SEGMENT_BYTES_VARIABLE, default='262144'),
         ConfigurationVariableSpec(key=CHECKPOINT_SECONDS_VARIABLE, default='60'),
+        ConfigurationVariableSpec(key=FACTS_PUBLISH_SECONDS_VARIABLE, default='10'),
         ConfigurationVariableSpec(key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED', default='true'),
         ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_MODE', default='off'),
         ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_PROFILE', required=False),

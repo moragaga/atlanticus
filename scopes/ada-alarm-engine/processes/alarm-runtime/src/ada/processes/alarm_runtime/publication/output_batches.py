@@ -23,6 +23,8 @@ CURSOR_DOCUMENT_TYPE = 'ada_command_center_engine_facts_export_cursor'
 SCHEMA_VERSION = 4
 _CURSOR = 'state/facts-export-cursor.json'
 _SEGMENT_LIMIT = 2 * 1024 * 1024
+_BATCH_LIMIT = 256 * 1024
+_BATCH_RECORD_LIMIT = 256
 _RECORD_COLLECTIONS = frozenset(
     {
         'assignment_changes',
@@ -251,6 +253,8 @@ class AlarmCommittedFactsExporter:
     root: Path
     source_key: str
     max_segment_bytes: int = _SEGMENT_LIMIT
+    max_batch_bytes: int = _BATCH_LIMIT
+    max_batch_records: int = _BATCH_RECORD_LIMIT
 
     def __post_init__(self) -> None:
         if not isinstance(self.root, Path) or not self.root.is_absolute():
@@ -259,6 +263,15 @@ class AlarmCommittedFactsExporter:
             raise ValueError('Engine output source_key must be non-empty text')
         if not isinstance(self.max_segment_bytes, int) or self.max_segment_bytes < 512:
             raise ValueError('max_segment_bytes must be at least 512')
+        if (
+            not isinstance(self.max_batch_bytes, int)
+            or isinstance(self.max_batch_bytes, bool)
+            or self.max_batch_bytes <= 0
+            or not isinstance(self.max_batch_records, int)
+            or isinstance(self.max_batch_records, bool)
+            or self.max_batch_records <= 0
+        ):
+            raise ValueError('FACTS batch limits must be positive integers')
 
     def exported_position(self) -> JournalPosition | None:
         checkpoint = AtomicJsonStore(root_path=self.root, max_document_bytes=None).read(_CURSOR)
@@ -303,7 +316,43 @@ class AlarmCommittedFactsExporter:
         cursor = _verify_checkpoint(self.root, checkpoint)
         context.assert_lease_current()
         entries = persistence.read_durable_provenance(after=cursor)
+        pending: list[bytes] = []
+        pending_bytes = 0
+        working = checkpoint
         count = 0
+
+        def flush() -> None:
+            nonlocal checkpoint, pending_bytes
+            if not pending:
+                return
+            relative = working['segment_path']
+            previous_end = (
+                checkpoint['record_end']
+                if checkpoint['segment_path'] == relative
+                else 0
+            )
+            path = self.root / relative
+            with context.fenced_mutation():
+                if store.read(_CURSOR) != checkpoint:
+                    raise EngineFactsPublicationError(
+                        'Facts export checkpoint changed during publication'
+                    )
+                if checkpoint['segment_path'] and checkpoint['segment_path'] != relative:
+                    _truncate_orphan(
+                        self.root / checkpoint['segment_path'], checkpoint['record_end']
+                    )
+                _truncate_orphan(path, previous_end)
+                start, end = _append(path, b''.join(pending))
+                if start != previous_end or end != working['record_end']:
+                    raise EngineFactsPublicationError(
+                        'Facts append position differs from checkpoint'
+                    )
+                updated = _seal_cursor(working)
+                store.replace(_CURSOR, updated)
+            checkpoint = updated
+            pending.clear()
+            pending_bytes = 0
+
         for item in entries:
             if item.artifact_ref.source_key != self.source_key:
                 raise EngineFactsPublicationError(
@@ -314,60 +363,51 @@ class AlarmCommittedFactsExporter:
                 continue
             context.assert_lease_current()
             position = item.entry.end
-            current_path = checkpoint['segment_path']
+            current_path = working['segment_path']
             candidate_path = _segment_path(position, 0)
             same_hour = isinstance(current_path, str) and (
                 str(Path(current_path).parent) == str(Path(candidate_path).parent)
             )
             relative = current_path if same_hour else candidate_path
-            artifact_changed = checkpoint['artifact_ref'] != item.artifact_ref.as_document()
-            previous = checkpoint['record_sha256']
+            artifact_changed = working['artifact_ref'] != item.artifact_ref.as_document()
             payload_doc = _entry(
                 record,
                 position,
                 item.artifact_ref,
-                previous,
+                working['record_sha256'],
                 include_artifact=artifact_changed or not same_hour,
             )
             payload = _encode(payload_doc) + b'\n'
-            previous_end = checkpoint['record_end'] if same_hour else 0
+            previous_end = working['record_end'] if same_hour else 0
             if same_hour and previous_end + len(payload) > self.max_segment_bytes:
                 relative = _segment_path(position, _part(current_path) + 1)
                 payload_doc = _entry(
                     record,
                     position,
                     item.artifact_ref,
-                    previous,
+                    working['record_sha256'],
                     include_artifact=True,
                 )
                 payload = _encode(payload_doc) + b'\n'
                 previous_end = 0
-            path = self.root / relative
-            with context.fenced_mutation():
-                if store.read(_CURSOR) != checkpoint:
-                    raise EngineFactsPublicationError(
-                        'Facts export checkpoint changed during publication'
-                    )
-                if current_path and relative != current_path:
-                    _truncate_orphan(self.root / current_path, checkpoint['record_end'])
-                _truncate_orphan(path, previous_end)
-                start, end = _append(path, payload)
-                if start != previous_end:
-                    raise EngineFactsPublicationError(
-                        'Facts append position differs from checkpoint'
-                    )
-                updated = {
-                    'document_type': CURSOR_DOCUMENT_TYPE,
-                    'schema_version': SCHEMA_VERSION,
-                    'artifact_ref': item.artifact_ref.as_document(),
-                    'journal_position': position.as_document(),
-                    'segment_path': relative,
-                    'record_start': start,
-                    'record_end': end,
-                    'record_sha256': payload_doc['sha256'],
-                }
-                updated = _seal_cursor(updated)
-                store.replace(_CURSOR, updated)
-            checkpoint = updated
+            if pending and (
+                relative != working['segment_path']
+                or len(pending) >= self.max_batch_records
+                or pending_bytes + len(payload) > self.max_batch_bytes
+            ):
+                flush()
+            pending.append(payload)
+            pending_bytes += len(payload)
+            working = {
+                'document_type': CURSOR_DOCUMENT_TYPE,
+                'schema_version': SCHEMA_VERSION,
+                'artifact_ref': item.artifact_ref.as_document(),
+                'journal_position': position.as_document(),
+                'segment_path': relative,
+                'record_start': previous_end,
+                'record_end': previous_end + len(payload),
+                'record_sha256': payload_doc['sha256'],
+            }
             count += 1
+        flush()
         return count
