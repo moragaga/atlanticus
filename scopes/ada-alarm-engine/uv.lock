@@ -12,6 +12,7 @@ members = [
     "ada-alarm-engine-workspace",
     "ada-alarm-historian-process",
     "ada-alarm-materialization-process",
+    "ada-alarm-modeler-process",
     "ada-alarm-runtime-process",
     "ada-alarms-core",
     "ada-alarms-history",
@@ -114,6 +115,47 @@ requires-dist = [
     { name = "atlanticus-kernel", editable = "../../backend/kernel" },
     { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
     { name = "atlanticus-observability-azure", editable = "../../backend/observability-azure" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-alarm-modeler-process"
+version = "1.0.0"
+source = { editable = "processes/alarm-modeler" }
+dependencies = [
+    { name = "ada-alarms-materialization" },
+    { name = "ada-alarms-persistence" },
+    { name = "ada-contracts-alarms" },
+    { name = "atlanticus-configuration" },
+    { name = "atlanticus-job-runtime" },
+    { name = "atlanticus-kernel" },
+    { name = "atlanticus-key-vault" },
+    { name = "atlanticus-observability-azure" },
+    { name = "atlanticus-state" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-alarms-materialization", editable = "alarms/materialization" },
+    { name = "ada-alarms-persistence", editable = "alarms/persistence" },
+    { name = "ada-contracts-alarms", editable = "../ada-contracts/alarms" },
+    { name = "atlanticus-configuration", editable = "../../backend/configuration" },
+    { name = "atlanticus-job-runtime", editable = "../../backend/runtime" },
+    { name = "atlanticus-kernel", editable = "../../backend/kernel" },
+    { name = "atlanticus-key-vault", editable = "../../connectivity/key-vault" },
+    { name = "atlanticus-observability-azure", editable = "../../backend/observability-azure" },
+    { name = "atlanticus-state", editable = "../../backend/state" },
 ]
 
 [package.metadata.requires-dev]
