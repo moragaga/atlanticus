@@ -43,6 +43,8 @@ include = ["ada.web.ui.equipment_image*"]
     "resources/img/equipment/correa_stmg/*.svg",
     "resources/img/equipment/sag/*.svg",
     "resources/img/equipment/molino_bolas/*.svg",
+    "resources/img/equipment/vertimil/*.svg",
+    "resources/img/equipment/bomba/*.svg",
 ]
 
 [tool.ruff]

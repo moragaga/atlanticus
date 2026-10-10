@@ -1,4 +1,4 @@
-# Agrega SAG y molinos de bolas a la librería de imágenes operacionales, sin incorporar SVG.
+# Construye componentes Dash usando contratos UI compartidos.
 from __future__ import annotations
 
 from dash import html
@@ -14,9 +14,12 @@ _EQUIPMENT_STATES = {
     'correa_stmg': frozenset({'operando', 'detenido'}),
     'sag': frozenset({'operando', 'detenido'}),
     'molino_bolas': frozenset({'operando', 'detenido'}),
+    'vertimil': frozenset({'operando', 'detenido'}),
+    'bomba': frozenset({'operando', 'detenido'}),
 }
 
 
+# La lista blanca protege la resolución de rutas de assets.
 def build_equipment_state_image(model: EquipmentStateImage) -> Component:
     if not isinstance(model, EquipmentStateImage):
         raise TypeError('model must be EquipmentStateImage')

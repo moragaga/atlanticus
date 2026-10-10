@@ -1,4 +1,4 @@
-# Registra los callbacks existentes y añade Molienda usando su Store actual.
+# Registra los callbacks del dashboard sin alterar el contrato del módulo.
 from ada.web.application.integrated_operations.modules.dashboard.context import (
     DASHBOARD_CONTEXT_SERVICE_KEY,
     DashboardContext,
@@ -12,15 +12,14 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_s
 from ada.web.application.integrated_operations.modules.dashboard.mine.general_mina.runtime import (
     register_general_mina_callback,
 )
-from ada.web.application.integrated_operations.modules.dashboard.mine.module import (
-    MINE_ASSET_LAYER,
-)
+from ada.web.application.integrated_operations.modules.dashboard.mine.module import MINE_ASSET_LAYER
 from ada.web.application.integrated_operations.modules.dashboard.mine.transporte.runtime import (
     register_transporte_callback,
 )
-from ada.web.application.integrated_operations.modules.dashboard.plant.module import (
-    PLANT_ASSET_LAYER,
+from ada.web.application.integrated_operations.modules.dashboard.plant.flotacion.colectiva import (
+    register_colectiva_callback,
 )
+from ada.web.application.integrated_operations.modules.dashboard.plant.module import PLANT_ASSET_LAYER
 from ada.web.application.integrated_operations.modules.dashboard.plant.molienda import (
     register_molienda_callback,
 )
@@ -69,6 +68,7 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             register_stockpile_chacay_callback(dash_app, tool_key=tool_key)
             register_tendencia_alimentado_callback(dash_app, tool_key=tool_key)
             register_molienda_callback(dash_app, tool_key=tool_key)
+            register_colectiva_callback(dash_app, tool_key=tool_key)
 
     return WebModule(
         name='ada-integrated-operations-dashboard',

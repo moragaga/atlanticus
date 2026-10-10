@@ -13,6 +13,8 @@ _EQUIPMENT_STATES = {
     'correa_stmg': frozenset({'operando', 'detenido'}),
     'sag': frozenset({'operando', 'detenido'}),
     'molino_bolas': frozenset({'operando', 'detenido'}),
+    'vertimil': frozenset({'operando', 'detenido'}),
+    'bomba': frozenset({'operando', 'detenido'}),
 }
 
 

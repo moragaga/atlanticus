@@ -1,0 +1,154 @@
+/* Estilos equivalentes al módulo productivo; se conservan las mismas reglas. */
+.ada-io-colectiva,
+.ada-io-colectiva__overview,
+.ada-io-colectiva__process {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    width: 100%;
+    gap: .45rem;
+}
+
+.ada-io-colectiva__trend,
+.ada-io-colectiva__indicators {
+    min-width: 0;
+    width: 100%;
+}
+
+.ada-io-colectiva__indicators {
+    display: flex;
+    flex-direction: column;
+    --atlanticus-inline-value-row-font-size: .54rem;
+}
+
+.ada-io-colectiva__trend-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .1rem .35rem;
+    gap: .4rem;
+    font-size: .65rem;
+}
+
+.ada-io-colectiva__trend-value {
+    font-weight: 700;
+}
+
+.ada-io-colectiva__states-section,
+.ada-io-colectiva__equipment-section {
+    border-top: 1px solid var(--primary-border-color, #bdbdbd);
+    padding: .35rem .2rem;
+    min-width: 0;
+}
+
+.ada-io-colectiva__section-title {
+    font-size: .65rem;
+    font-weight: 700;
+    margin: 0 0 .25rem;
+}
+
+.ada-io-colectiva__states {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: .25rem;
+}
+
+.ada-io-colectiva__states--scavengers {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ada-io-colectiva__state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .15rem;
+    min-width: 0;
+}
+
+.ada-io-colectiva__state-label {
+    font-size: .6rem;
+    font-weight: 700;
+}
+
+.ada-io-colectiva__circle {
+    position: relative;
+    display: block;
+    width: min(100%, 2.1rem);
+    aspect-ratio: 1;
+}
+
+.ada-io-colectiva__circle::before {
+    content: '';
+    position: absolute;
+    inset: 10.9375%;
+    border-radius: 50%;
+    border: .19rem solid;
+    box-sizing: border-box;
+}
+
+.ada-io-colectiva__circle--operando::before {
+    background: #afafaf;
+    border-color: #fff;
+}
+
+.ada-io-colectiva__circle--detenido::before {
+    background: #fff;
+    border-color: #afafaf;
+}
+
+.ada-io-colectiva__machines {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: .25rem;
+    align-items: start;
+}
+
+.ada-io-colectiva__vertimills,
+.ada-io-colectiva__bombas {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .15rem;
+}
+
+.ada-io-colectiva__pump-pair {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .2rem;
+}
+
+.ada-io-colectiva__equipment {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .1rem;
+    min-width: 0;
+    font-size: .55rem;
+}
+
+.ada-io-colectiva__equipment-image .ada-equipment-image__image {
+    max-height: 2.6rem;
+}
+
+.ada-io-colectiva__amperage {
+    display: flex;
+    gap: .12rem;
+    align-items: center;
+    font-weight: 700;
+}
+
+.ada-io-colectiva__columns {
+    margin-top: .25rem;
+    --atlanticus-inline-comparison-row-font-size: .55rem;
+}
+
+.ada-io-colectiva__status-icon {
+    width: 1rem;
+    height: 1rem;
+    object-fit: contain;
+}
+
+.ada-io-colectiva [data-kpi-inspection-key]:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
