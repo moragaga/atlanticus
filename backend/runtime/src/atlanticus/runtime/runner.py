@@ -314,6 +314,13 @@ def _run_iterations(
 
                         if context.iteration_has_work:
                             work_iterations += 1
+                        else:
+                            empty_iterations += 1
+                        if context.iteration_summary_requested or (
+                            context.iteration_has_work
+                            and definition.iteration_summary_every > 0
+                            and iteration_count % definition.iteration_summary_every == 0
+                        ):
                             emit_event(
                                 ObservabilityEvent(
                                     name='runtime.iteration.summary',
@@ -325,8 +332,6 @@ def _run_iterations(
                                     attributes=context._iteration_facts(),
                                 )
                             )
-                        else:
-                            empty_iterations += 1
 
                         if duration_seconds >= definition.iteration_timeout_seconds:
                             emit_event(

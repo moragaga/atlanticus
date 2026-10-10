@@ -26,6 +26,7 @@ class JobDefinition:
     lease_wait_seconds: float | None = None
     lease_poll_seconds: float = 1.0
     resource_sample_seconds: float = 1.0
+    iteration_summary_every: int = 1
 
     def __post_init__(self) -> None:
         _validate_module_name(self.module_name)
@@ -52,6 +53,14 @@ class JobDefinition:
             _validate_non_negative('lease_wait_seconds', self.lease_wait_seconds)
         _validate_positive('lease_poll_seconds', self.lease_poll_seconds)
         _validate_positive('resource_sample_seconds', self.resource_sample_seconds)
+        if isinstance(self.iteration_summary_every, bool) or not isinstance(
+            self.iteration_summary_every, int
+        ):
+            raise TypeError('iteration_summary_every must be an int')
+        if self.iteration_summary_every < 0:
+            raise RuntimeContractError(
+                'iteration_summary_every must be greater than or equal to zero'
+            )
 
         if self.shutdown_grace_seconds >= self.execution_timeout_seconds:
             raise RuntimeContractError(
