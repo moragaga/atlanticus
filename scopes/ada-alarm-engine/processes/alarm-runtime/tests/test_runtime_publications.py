@@ -42,6 +42,11 @@ def _output(tmp_path):
     return AtomicJsonStore(root_path=tmp_path / 'runtime' / 'alarms' / 'output')
 
 
+def _facts_count(tmp_path):
+    root = tmp_path / 'runtime' / 'alarms' / 'output' / 'facts'
+    return sum(len(path.read_bytes().splitlines()) for path in root.rglob('*.jsonl'))
+
+
 def test_genesis_does_not_fabricate_current_without_effective(tmp_path):
     persistence = AlarmPersistence(application_root=tmp_path / 'runtime')
     persistence.recover(assert_authority=lambda: None, fenced_mutation=nullcontext)
@@ -49,7 +54,7 @@ def test_genesis_does_not_fabricate_current_without_effective(tmp_path):
     assert not service.reconcile(_Context())
     assert _output(tmp_path).read('current/durable-latest.json') is None
     cursor = _output(tmp_path).read('state/facts-export-cursor.json')
-    assert cursor['schema_version'] == 3
+    assert cursor['schema_version'] == 4
     assert cursor['journal_position'] is None
     assert not service.reconcile(_Context())
 
@@ -75,23 +80,19 @@ def test_mp10_open_close_restarts_idempotently_with_two_facts_batches(tmp_path):
     assert alarm['occurrence']['occurrence_id'] == 'occ-mp10-1'
     assert opened['journal_position']['commit_id'] == start.commit.commit_id
     assert not service.reconcile(_Context())
-
     end = _commit(persistence, offset=3, opened=False)
     assert service.reconcile(_Context())
     closed = _output(tmp_path).read('current/durable-latest.json')
     assert closed['journal_position']['commit_id'] == end.commit.commit_id
     assert closed['state']['groups'][0]['alarms'] == {}
-    facts_root = tmp_path / 'runtime' / 'alarms' / 'output' / 'facts'
-    facts_files = sorted(facts_root.glob('facts-*.json'))
-    assert len(facts_files) == 2
+    assert _facts_count(tmp_path) == 2
     cursor = _output(tmp_path).read('state/facts-export-cursor.json')
     assert cursor['journal_position'] == persistence.read_head().durable.as_document()
-
     restarted = AlarmPersistence(application_root=tmp_path / 'runtime')
     restarted.recover(assert_authority=lambda: None, fenced_mutation=nullcontext)
     assert not _service(tmp_path, restarted).reconcile(_Context(), force=True)
     assert _output(tmp_path).read('current/durable-latest.json') == closed
-    assert len(list(facts_root.glob('facts-*.json'))) == 2
+    assert _facts_count(tmp_path) == 2
 
 
 def test_facts_checkpoint_write_failure_retries_without_repeating_commit(tmp_path, monkeypatch):
@@ -118,8 +119,7 @@ def test_facts_checkpoint_write_failure_retries_without_repeating_commit(tmp_pat
     assert service.reconcile(_Context())
     assert not service.reconcile(_Context())
     assert len(persistence.read_durable_records()) == 1
-    facts_root = tmp_path / 'runtime' / 'alarms' / 'output' / 'facts'
-    assert len(list(facts_root.glob('facts-*.json'))) == 1
+    assert _facts_count(tmp_path) == 1
 
 
 def test_current_failure_after_facts_reconciles_on_retry(tmp_path, monkeypatch):
@@ -146,8 +146,7 @@ def test_current_failure_after_facts_reconciles_on_retry(tmp_path, monkeypatch):
     assert _output(tmp_path).read('current/durable-latest.json') == baseline
     assert service.reconcile(_Context())
     assert not service.reconcile(_Context(), force=True)
-    facts_root = tmp_path / 'runtime' / 'alarms' / 'output' / 'facts'
-    assert len(list(facts_root.glob('facts-*.json'))) == 1
+    assert _facts_count(tmp_path) == 1
 
 
 def test_unaligned_wal_blocks_publication(tmp_path, monkeypatch):
@@ -155,7 +154,8 @@ def test_unaligned_wal_blocks_publication(tmp_path, monkeypatch):
     service = _service(tmp_path, persistence)
     valid = persistence.read_head()
     monkeypatch.setattr(
-        persistence, 'read_head',
+        persistence,
+        'read_head',
         lambda: JournalHead(durable=valid.durable, materialized=None),
     )
     with pytest.raises(AlarmRecoveryRequiredError, match='aligned'):
@@ -208,6 +208,7 @@ class _Publications:
     def __init__(self, events):
         self.events = events
         self.fail_after_commit = False
+        self.persistence = SimpleNamespace(read_head=lambda: JournalHead())
 
     def reconcile(self, context, *, force=False):
         self.events.append('force' if force else 'publish')
@@ -256,7 +257,6 @@ def test_restart_repairs_missing_current_from_durable_wal(tmp_path):
     good = _output(tmp_path).read('current/durable-latest.json')
     latest = tmp_path / 'runtime' / 'alarms' / 'output' / 'current' / 'durable-latest.json'
     latest.unlink()
-
     restarted = AlarmPersistence(application_root=tmp_path / 'runtime')
     restarted.recover(assert_authority=lambda: None, fenced_mutation=nullcontext)
     assert _service(tmp_path, restarted).reconcile(_Context(), force=True)

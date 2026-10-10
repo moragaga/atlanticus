@@ -16,6 +16,8 @@ FABRICA_PLANES_APPLICATION_VARIABLE = 'FABRICA_PLANES_APPLICATION'
 FABRICA_KPIS_APPLICATION_VARIABLE = 'FABRICA_KPIS_APPLICATION'
 METEODATA_APPLICATION_VARIABLE = 'METEODATA_APPLICATION'
 POLL_INTERVAL_VARIABLE = 'ALARM_RUNTIME_POLL_SECONDS'
+WAL_SEGMENT_BYTES_VARIABLE = 'ALARM_RUNTIME_WAL_SEGMENT_BYTES'
+CHECKPOINT_SECONDS_VARIABLE = 'ALARM_RUNTIME_CHECKPOINT_SECONDS'
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,6 +31,8 @@ class AlarmRuntimeSettings:
     fabrica_kpis_application: str | None
     meteodata_application: str | None
     poll_interval_seconds: float
+    max_wal_segment_bytes: int = 262144
+    checkpoint_interval_seconds: float = 60.0
 
     @classmethod
     def from_configuration(cls, configuration: ResolvedConfiguration) -> AlarmRuntimeSettings:
@@ -63,6 +67,14 @@ class AlarmRuntimeSettings:
             poll_interval_seconds=_positive_float(
                 configuration.require(POLL_INTERVAL_VARIABLE), POLL_INTERVAL_VARIABLE
             ),
+            max_wal_segment_bytes=_positive_int(
+                configuration.get(WAL_SEGMENT_BYTES_VARIABLE) or '262144',
+                WAL_SEGMENT_BYTES_VARIABLE,
+            ),
+            checkpoint_interval_seconds=_positive_float(
+                configuration.get(CHECKPOINT_SECONDS_VARIABLE) or '60',
+                CHECKPOINT_SECONDS_VARIABLE,
+            ),
         )
 
 
@@ -80,6 +92,8 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(key=FABRICA_KPIS_APPLICATION_VARIABLE, required=False),
         ConfigurationVariableSpec(key=METEODATA_APPLICATION_VARIABLE, required=False),
         ConfigurationVariableSpec(key=POLL_INTERVAL_VARIABLE, default='5'),
+        ConfigurationVariableSpec(key=WAL_SEGMENT_BYTES_VARIABLE, default='262144'),
+        ConfigurationVariableSpec(key=CHECKPOINT_SECONDS_VARIABLE, default='60'),
         ConfigurationVariableSpec(key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED', default='true'),
         ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_MODE', default='off'),
         ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_PROFILE', required=False),
@@ -120,6 +134,16 @@ def _optional_application(value: str | None, field: str) -> str | None:
     if value is None:
         return None
     return _required_application(value, field)
+
+
+def _positive_int(value: str, name: str) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as error:
+        raise AlarmRuntimeConfigurationError(f'{name} must be an integer >= 512') from error
+    if isinstance(value, bool) or parsed < 512:
+        raise AlarmRuntimeConfigurationError(f'{name} must be an integer >= 512')
+    return parsed
 
 
 def _positive_float(value: str, name: str) -> float:

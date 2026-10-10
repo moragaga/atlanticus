@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from time import monotonic
 
 from ada.alarms.persistence import LocalAlarmMaterializationStore, materialization_root
 from ada.alarms.persistence.operational.incremental import IncrementalAlarmPersistence  # Variante operacional optimizada
@@ -46,6 +47,8 @@ class AlarmRuntimeComposition:
     job: AlarmRuntimeJob
     publications: AlarmDurablePublications
     definition: JobDefinition
+    _last_maintenance_at: float | None = field(default=None, init=False, repr=False)
+    _last_maintenance_segment: str | None = field(default=None, init=False, repr=False)
 
     def recover(self, context: JobRuntimeContext) -> RecoveredAlarmAuthority:
         authority = self.job.recover(context)
@@ -56,13 +59,43 @@ class AlarmRuntimeComposition:
         self.publications.reconcile(context)
         result = self.job.run_iteration(context)
         self.publications.reconcile(context)
+        head = self.publications.persistence.read_head()
+        now = monotonic()
+        segment = None if head.durable is None else head.durable.segment_id
+        if head.aligned and segment is not None and (
+            self._last_maintenance_at is None
+            or now - self._last_maintenance_at >= self.settings.checkpoint_interval_seconds
+            or segment != self._last_maintenance_segment
+        ):
+            self.checkpoint(context)
+            self._last_maintenance_at = now
+            self._last_maintenance_segment = segment
+        if isinstance(result, AlarmRuntimeIterationResult) and _notable_iteration(result):
+            # La decisión de registrar no altera work_iterations.
+            context.request_iteration_summary()
         return result
+
+    # Se emite solo al drenar una ejecución completa, no en cada evaluación ni commit.
+    # Si el proceso muere antes, recovery tradicional conserva la garantía existente.
+    def checkpoint(self, context: JobRuntimeContext) -> None:
+        self.publications.reconcile(context)
+        self.publications.persistence.publish_recovery_checkpoint(
+            assert_authority=context.assert_lease_current,
+            fenced_mutation=context.fenced_mutation,
+        )
+        # Compacta únicamente después de la reconciliación de los hechos publicados.
+        self.publications.persistence.compact_recovered_wal(
+            exported_through=self.publications.facts.exported_position(),
+            assert_authority=context.assert_lease_current,
+            fenced_mutation=context.fenced_mutation,
+        )
 
     def execute(self, *, argv: Sequence[str] | None = None) -> RuntimeExecutionResult:
         return execute_job(
             definition=self.definition,
             iteration=self.run_iteration,
             recovery=self.recover,
+            drain=self.checkpoint,
             argv=argv,
             environ=self.configuration.values,
         )
@@ -100,7 +133,8 @@ def build_composition(
     cycle = AlarmEvaluationCycle(loader=DataInputLoader(reader=data_reader, registry=registry))
     # Usa estado validado incrementalmente sin cambiar WAL, FACTS o los evaluadores.
     operational = IncrementalAlarmPersistence(
-        application_root=runtime_configuration.application_root
+        application_root=runtime_configuration.application_root,
+        max_journal_segment_bytes=settings.max_wal_segment_bytes,
     )
     durable_recovery = AlarmDurableRecovery(
         persistence=operational,
@@ -145,6 +179,8 @@ def build_composition(
         lease_wait_seconds=None,
         lease_poll_seconds=1,
         resource_sample_seconds=5,
+        # No emitir resumen rutinario por cada evaluación.
+        iteration_summary_every=0,
     )
     return AlarmRuntimeComposition(
         configuration=configuration,
@@ -154,3 +190,25 @@ def build_composition(
         publications=publications,
         definition=definition,
     )
+
+# Registrar una iteración especial no modifica la contabilidad de trabajo.
+# El contrato de negocio se mantiene en WAL y FACTS; el log solo resume cambios.
+def _notable_iteration(result: AlarmRuntimeIterationResult) -> bool:
+    if result.outcome.value != 'UNCHANGED':
+        return True
+    lifecycle = result.lifecycle
+    if lifecycle is None:
+        return False
+    if lifecycle.technical_incident_changes:
+        return True
+    for group in lifecycle.groups:
+        for decision in (group.adoption_decision, group.decision):
+            if decision is not None and (
+                decision.has_lifecycle_change
+                or decision.management_action_results
+                or decision.deactivation_request_results
+                or decision.deactivation_decision_results
+                or decision.cascade_suppressions
+            ):
+                return True
+    return False
