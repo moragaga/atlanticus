@@ -10,6 +10,7 @@ from atlanticus.connectivity.cosmos.errors import CosmosError
 from atlanticus.web.compositions.deployment_access_manager import (
     DeploymentRootSession,
     DeploymentRootSessionError,
+    RootManagerAccess,
 )
 from atlanticus.web.cosmos_administration import (
     CosmosAdministrationConfigurationError,
@@ -43,6 +44,7 @@ def create_cosmos_inventory_manager_entry(
     access_key: str = 'cosmos-administration.manage',
     max_items: int = 200,
     authorization: ManagerAuthorizationPolicy | None = None,
+    root_access: RootManagerAccess | None = None,
 ) -> ManagerEntry:
     if not isinstance(administration, CosmosAdministrationService):
         raise CosmosInventoryManagerEntryError('Cosmos inventory requires administration service')
@@ -52,6 +54,12 @@ def create_cosmos_inventory_manager_entry(
         raise CosmosInventoryManagerEntryError('Cosmos inventory requires principal provider')
     if not isinstance(max_items, int) or isinstance(max_items, bool) or not 1 <= max_items <= 200:
         raise CosmosInventoryManagerEntryError('Cosmos inventory limit must be between 1 and 200')
+    if root_access is not None and (
+        not isinstance(root_access, RootManagerAccess)
+        or root_access.root_session is not root_session
+    ):
+        raise CosmosInventoryManagerEntryError('Cosmos inventory requires matching ROOT access')
+    effective_access = root_access or RootManagerAccess(root_session=root_session)
     policy = authorization if authorization is not None else DefaultManagerAuthorizationPolicy()
     connection_id = f'atlanticus-cosmos-admin-{module_key}-connection'
     inspect_id = f'atlanticus-cosmos-admin-{module_key}-inspect'
@@ -61,7 +69,7 @@ def create_cosmos_inventory_manager_entry(
         if not has_request_context():
             return False
         try:
-            if root_session.current() is None:
+            if effective_access.current() is None:
                 return False
             return policy.can_view(principal_provider(), entry) is True
         except DeploymentRootSessionError, DeploymentAccessStorageError:
@@ -69,7 +77,9 @@ def create_cosmos_inventory_manager_entry(
 
     def layout(_services: ServiceRegistry) -> object:
         if not is_authorized():
-            return html.P('Se requiere una sesión ROOT y autorización Manager vigentes.')
+            return html.P(
+                'Se requiere una sesión ROOT o identidad ROOT y autorización Manager vigentes.'
+            )
         try:
             connections = administration.list_connections()
         except CosmosAdministrationConfigurationError, CosmosError:
@@ -107,7 +117,9 @@ def create_cosmos_inventory_manager_entry(
             if not isinstance(clicks, int) or clicks <= 0:
                 raise PreventUpdate
             if not is_authorized():
-                return html.P('Se requiere una sesión ROOT y autorización Manager vigentes.')
+                return html.P(
+                    'Se requiere una sesión ROOT o identidad ROOT y autorización Manager vigentes.'
+                )
             try:
                 permitted = {item.connection_ref for item in administration.list_connections()}
                 if not isinstance(connection_ref, str) or connection_ref not in permitted:

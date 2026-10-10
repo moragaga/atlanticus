@@ -21,6 +21,7 @@ def main() -> None:
     parser.add_argument('--endpoint', required=True)
     parser.add_argument('--database', required=True)
     parser.add_argument('--allow-insecure-http', action='store_true')
+    parser.add_argument('--local-user', choices=('jane', 'john'))
     options = parser.parse_args()
     if not 1024 <= options.port <= 65535:
         parser.error('Port must be between 1024 and 65535')
@@ -42,7 +43,9 @@ def main() -> None:
         administration = CosmosAdministrationService(connections={options.connection_name: client})
         with TemporaryDirectory(prefix='atlanticus-cosmos-root-qualification-') as path:
             runtime = build_qualification_runtime(
-                directory=Path(path), administration=administration
+                directory=Path(path),
+                administration=administration,
+                local_user=options.local_user,
             )
             print('Local Cosmos ROOT qualification (not for production)', flush=True)
             print(f'Login: http://127.0.0.1:{options.port}/manager-root/login', flush=True)
@@ -51,8 +54,12 @@ def main() -> None:
                 f'Cosmos: http://127.0.0.1:{options.port}/manager/cosmos-administration',
                 flush=True,
             )
-            print(f'Demo user: {DEMO_USER}', flush=True)
-            print(f'Demo password: {DEMO_PASSWORD}', flush=True)
+            if options.local_user is None:
+                print(f'Demo user: {DEMO_USER}', flush=True)
+                print(f'Demo password: {DEMO_PASSWORD}', flush=True)
+            else:
+                print(f'Local ROOT identity: {options.local_user}', flush=True)
+                print('No separate ROOT login is required for this local identity.', flush=True)
             runtime.web.server.run(
                 host='127.0.0.1',
                 port=options.port,

@@ -1,3 +1,7 @@
+from atlanticus.web.compositions.deployment_access_manager.access import (
+    RootManagerAccess,
+    RootManagerAccessError,
+)
 from atlanticus.web.compositions.deployment_access_manager.composition import (
     compose_root_manager_principal,
 )
@@ -33,6 +37,8 @@ __all__ = [
     'DeploymentRootSession',
     'DeploymentRootSessionError',
     'DeploymentRootSessionIdentity',
+    'RootManagerAccess',
+    'RootManagerAccessError',
     'RootManagerRequestScope',
     'RootManagerScopeConfigurationError',
     'compose_root_manager_principal',

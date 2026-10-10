@@ -1,4 +1,4 @@
-# Composición administrativa de solo lectura; no publica secretos ni muta material ROOT.
+# Consulta el estado del material y muestra también el acceso ROOT por identidad.
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from dash import Input, Output, html
 from flask import has_request_context
 
+from atlanticus.web.compositions.deployment_access_manager.access import RootManagerAccess
 from atlanticus.web.compositions.deployment_access_manager.http import (
     ROOT_LOGIN_PATH,
     ROOT_STATUS_PATH,
@@ -25,10 +26,12 @@ from atlanticus.web.manager import (
 from atlanticus.web.modules import WebModule
 from atlanticus.web.services import ServiceRegistry
 
+
 class DeploymentAccessManagerEntryError(ValueError):
     pass
 
 
+# Construye una entrada administrativa limitada a lectura y protegida en cada callback.
 def create_deployment_access_manager_entry(
     *,
     root_session: DeploymentRootSession,
@@ -39,22 +42,29 @@ def create_deployment_access_manager_entry(
     route: str = '/deployment-access',
     order: int = 5,
     authorization: ManagerAuthorizationPolicy | None = None,
+    root_access: RootManagerAccess | None = None,
 ) -> ManagerEntry:
     if not isinstance(root_session, DeploymentRootSession):
         raise DeploymentAccessManagerEntryError('Deployment Access requires a ROOT session')
     if not callable(principal_provider):
         raise DeploymentAccessManagerEntryError('Deployment Access requires a principal provider')
+    if root_access is not None and (
+        not isinstance(root_access, RootManagerAccess)
+        or root_access.root_session is not root_session
+    ):
+        raise DeploymentAccessManagerEntryError('Deployment Access requires matching ROOT access')
+    effective_access = root_access or RootManagerAccess(root_session=root_session)
     policy = authorization if authorization is not None else DefaultManagerAuthorizationPolicy()
     status_id = f'atlanticus-deployment-access-manager-{module_key}-status'
     refresh_id = f'atlanticus-deployment-access-manager-{module_key}-refresh'
 
-    # El control de acceso ocurre también al refrescar, no solo al construir el layout.
+    # Comprueba autorización antes de revelar el estado administrativo.
     def status_content() -> object:
         if not has_request_context():
             return html.P('La sesión ROOT requiere una solicitud autenticada.')
         try:
-            identity = root_session.current()
-            if identity is None:
+            principal = effective_access.current()
+            if principal is None:
                 return html.Div(
                     [
                         html.P('Se requiere una sesión ROOT vigente para consultar el material.'),
@@ -63,8 +73,24 @@ def create_deployment_access_manager_entry(
                 )
             if not policy.can_view(principal_provider(), entry):
                 return html.P('No tienes autorización para consultar Deployment Access.')
+            identity = root_session.current()
         except (DeploymentRootSessionError, DeploymentAccessStorageError):
             return html.P('No fue posible verificar la sesión ROOT.')
+        # Una identidad ROOT vigente no debe ver un segundo login como paso obligatorio.
+        if identity is None:
+            identity_content = [
+                html.P('Acceso administrativo ROOT activo.'),
+                html.P(f'Identidad: {principal.display_name}.'),
+            ]
+            if principal.profile_label is not None:
+                identity_content.append(html.P(f'Perfil: {principal.profile_label}.'))
+            identity_content.extend(
+                [
+                    html.P('Autorización efectiva: ROOT.'),
+                    html.P('No se requiere autenticación adicional.'),
+                ]
+            )
+            return html.Div(identity_content)
         expires = datetime.fromtimestamp(identity.expires_at_epoch, tz=UTC).strftime(
             '%Y-%m-%d %H:%M:%S UTC'
         )
@@ -94,7 +120,6 @@ def create_deployment_access_manager_entry(
             className='atlanticus-deployment-access-manager',
         )
 
-    # El callback se registra en el WebModule del mismo ManagerEntry.
     def register_callbacks(app: object, _services: ServiceRegistry) -> None:
         @app.callback(Output(status_id, 'children'), Input(refresh_id, 'n_clicks'))
         def refresh_status(_clicks: int | None) -> object:

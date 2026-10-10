@@ -1,7 +1,4 @@
-# Composición de la capacidad administrativa Cosmos con Manager.
-# El inventario permanece dentro de CosmosAdministrationService y la UI no realiza mutaciones.
-# ROOT y la autorización Manager se comprueban en cada callback, además de los gates HTTP/Dash.
-
+# Ofrece inventario Cosmos con un guard administrativo común y consultas explícitas.
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -14,6 +11,7 @@ from atlanticus.connectivity.cosmos.errors import CosmosError
 from atlanticus.web.compositions.deployment_access_manager import (
     DeploymentRootSession,
     DeploymentRootSessionError,
+    RootManagerAccess,
 )
 from atlanticus.web.cosmos_administration import (
     CosmosAdministrationConfigurationError,
@@ -35,6 +33,7 @@ class CosmosInventoryManagerEntryError(ValueError):
     pass
 
 
+# Conserva el inventario de solo lectura y revalida la autorización en callbacks.
 def create_cosmos_inventory_manager_entry(
     *,
     administration: CosmosAdministrationService,
@@ -47,6 +46,7 @@ def create_cosmos_inventory_manager_entry(
     access_key: str = 'cosmos-administration.manage',
     max_items: int = 200,
     authorization: ManagerAuthorizationPolicy | None = None,
+    root_access: RootManagerAccess | None = None,
 ) -> ManagerEntry:
     if not isinstance(administration, CosmosAdministrationService):
         raise CosmosInventoryManagerEntryError('Cosmos inventory requires administration service')
@@ -56,26 +56,33 @@ def create_cosmos_inventory_manager_entry(
         raise CosmosInventoryManagerEntryError('Cosmos inventory requires principal provider')
     if not isinstance(max_items, int) or isinstance(max_items, bool) or not 1 <= max_items <= 200:
         raise CosmosInventoryManagerEntryError('Cosmos inventory limit must be between 1 and 200')
+    if root_access is not None and (
+        not isinstance(root_access, RootManagerAccess)
+        or root_access.root_session is not root_session
+    ):
+        raise CosmosInventoryManagerEntryError('Cosmos inventory requires matching ROOT access')
+    effective_access = root_access or RootManagerAccess(root_session=root_session)
     policy = authorization if authorization is not None else DefaultManagerAuthorizationPolicy()
     connection_id = f'atlanticus-cosmos-admin-{module_key}-connection'
     inspect_id = f'atlanticus-cosmos-admin-{module_key}-inspect'
     report_id = f'atlanticus-cosmos-admin-{module_key}-report'
 
-    # La autorización no se infiere de administrative_override: requiere sesión ROOT vigente.
+    # No basta tener el dropdown o la ruta; cada consulta exige ROOT y Manager.
     def is_authorized() -> bool:
         if not has_request_context():
             return False
         try:
-            if root_session.current() is None:
+            if effective_access.current() is None:
                 return False
             return policy.can_view(principal_provider(), entry) is True
         except (DeploymentRootSessionError, DeploymentAccessStorageError):
             return False
 
-    # La vista no consulta inventario al abrir; únicamente lista las conexiones ya compuestas.
     def layout(_services: ServiceRegistry) -> object:
         if not is_authorized():
-            return html.P('Se requiere una sesión ROOT y autorización Manager vigentes.')
+            return html.P(
+                'Se requiere una sesión ROOT o identidad ROOT y autorización Manager vigentes.'
+            )
         try:
             connections = administration.list_connections()
         except (CosmosAdministrationConfigurationError, CosmosError):
@@ -86,9 +93,7 @@ def create_cosmos_inventory_manager_entry(
         ]
         return html.Div(
             [
-                html.P(
-                    'Inventario de solo lectura. No crea, modifica ni elimina recursos Cosmos.'
-                ),
+                html.P('Inventario de solo lectura. No crea, modifica ni elimina recursos Cosmos.'),
                 html.Label('Conexión Cosmos', htmlFor=connection_id),
                 dcc.Dropdown(
                     id=connection_id,
@@ -111,12 +116,13 @@ def create_cosmos_inventory_manager_entry(
             State(connection_id, 'value'),
             prevent_initial_call=True,
         )
-        # Se revalida ROOT por solicitud y se restringe la selección a conexiones declaradas.
         def inspect_containers(clicks: int | None, connection_ref: str | None) -> object:
             if not isinstance(clicks, int) or clicks <= 0:
                 raise PreventUpdate
             if not is_authorized():
-                return html.P('Se requiere una sesión ROOT y autorización Manager vigentes.')
+                return html.P(
+                    'Se requiere una sesión ROOT o identidad ROOT y autorización Manager vigentes.'
+                )
             try:
                 permitted = {item.connection_ref for item in administration.list_connections()}
                 if not isinstance(connection_ref, str) or connection_ref not in permitted:
@@ -152,9 +158,7 @@ def _render_inventory(report: CosmosInventoryReport) -> object:
                 html.Td(item.name),
                 html.Td(', '.join(item.partition_key_paths)),
                 html.Td(
-                    'Sin TTL'
-                    if item.default_ttl_seconds is None
-                    else str(item.default_ttl_seconds)
+                    'Sin TTL' if item.default_ttl_seconds is None else str(item.default_ttl_seconds)
                 ),
             ]
         )

@@ -7,6 +7,7 @@ from typing import Any
 
 from flask import Flask, Request, Response, g, has_request_context, request
 
+from atlanticus.web.compositions.deployment_access_manager.access import RootManagerAccess
 from atlanticus.web.compositions.deployment_access_manager.session import DeploymentRootSession
 from atlanticus.web.manager import ManagerSurface
 from atlanticus.web.modules import WebModule
@@ -30,17 +31,25 @@ class RootManagerRequestScope:
         *,
         root_session: DeploymentRootSession,
         manager_surface: ManagerSurface,
+        root_access: RootManagerAccess | None = None,
     ) -> None:
         if not isinstance(root_session, DeploymentRootSession):
             raise RootManagerScopeConfigurationError('Manager ROOT scope requires a ROOT session')
         if not isinstance(manager_surface, ManagerSurface):
             raise RootManagerScopeConfigurationError('Manager ROOT scope requires a ManagerSurface')
+        if root_access is not None and (
+            not isinstance(root_access, RootManagerAccess)
+            or root_access.root_session is not root_session
+        ):
+            raise RootManagerScopeConfigurationError(
+                'Manager ROOT scope requires matching ROOT access'
+            )
         prefix = manager_surface.registry.root_route
         if not isinstance(prefix, str) or not prefix.startswith('/') or prefix == '/':
             raise RootManagerScopeConfigurationError(
                 'Manager ROOT scope requires a dedicated prefix'
             )
-        self._root_session = root_session
+        self._root_access = root_access or RootManagerAccess(root_session=root_session)
         self._manager_surface = manager_surface
         self._prefix = prefix
         self._manager_routes = frozenset(
@@ -75,11 +84,28 @@ class RootManagerRequestScope:
 
     def guard_module(self) -> WebModule:
         def register_middlewares(server: Flask, _services: ServiceRegistry) -> None:
+            @server.before_request
+            def reject_unadmitted_manager_requests() -> Response | None:
+                admitted = getattr(g, _ROOT_ADMITTED, False)
+                path = request.path
+                if (path == self._prefix or path.startswith(f'{self._prefix}/')) and (
+                    not admitted or request.method != 'GET' or path not in self._manager_routes
+                ):
+                    return Response('Manager access denied', status=403)
+                if path == _DASH_UPDATE and request.method == 'POST' and not admitted:
+                    data = request.get_json(silent=True)
+                    if (
+                        isinstance(data, dict)
+                        and isinstance(data.get('output'), str)
+                        and data['output'] in self._allowed_outputs
+                    ):
+                        return Response('Manager access denied', status=403)
+                return None
+
             @server.after_request
             def isolate_root_dependencies(response: Response) -> Response:
-                if not getattr(g, _ROOT_ADMITTED, False):
-                    return response
-                if (
+                admitted = getattr(g, _ROOT_ADMITTED, False)
+                if admitted and (
                     request.path in {_DASH_LAYOUT, _DASH_DEPENDENCIES}
                     or request.path in self._manager_routes
                 ):
@@ -94,9 +120,12 @@ class RootManagerRequestScope:
                     item
                     for item in data
                     if isinstance(item.get('output'), str)
-                    and item['output'] in self._allowed_outputs
+                    and (item['output'] in self._allowed_outputs) is admitted
                 ]
                 response.set_data(json.dumps(filtered, separators=(',', ':')))
+                if not admitted:
+                    response.headers['Cache-Control'] = 'private, no-store'
+                    response.headers['Vary'] = 'Cookie'
                 return response
 
         def register_callbacks(app: Any, services: ServiceRegistry) -> None:
@@ -148,7 +177,7 @@ class RootManagerRequestScope:
             return False
         if dash_update and not self._is_managed_callback(incoming):
             return False
-        if self._root_session.current() is None:
+        if self._root_access.current() is None:
             return False
         setattr(g, _ROOT_ADMITTED, True)
         return True

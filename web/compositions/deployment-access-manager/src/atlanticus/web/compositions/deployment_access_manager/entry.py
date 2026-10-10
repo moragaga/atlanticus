@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from dash import Input, Output, html
 from flask import has_request_context
 
+from atlanticus.web.compositions.deployment_access_manager.access import RootManagerAccess
 from atlanticus.web.compositions.deployment_access_manager.http import (
     ROOT_LOGIN_PATH,
     ROOT_STATUS_PATH,
@@ -39,11 +40,18 @@ def create_deployment_access_manager_entry(
     route: str = '/deployment-access',
     order: int = 5,
     authorization: ManagerAuthorizationPolicy | None = None,
+    root_access: RootManagerAccess | None = None,
 ) -> ManagerEntry:
     if not isinstance(root_session, DeploymentRootSession):
         raise DeploymentAccessManagerEntryError('Deployment Access requires a ROOT session')
     if not callable(principal_provider):
         raise DeploymentAccessManagerEntryError('Deployment Access requires a principal provider')
+    if root_access is not None and (
+        not isinstance(root_access, RootManagerAccess)
+        or root_access.root_session is not root_session
+    ):
+        raise DeploymentAccessManagerEntryError('Deployment Access requires matching ROOT access')
+    effective_access = root_access or RootManagerAccess(root_session=root_session)
     policy = authorization if authorization is not None else DefaultManagerAuthorizationPolicy()
     status_id = f'atlanticus-deployment-access-manager-{module_key}-status'
     refresh_id = f'atlanticus-deployment-access-manager-{module_key}-refresh'
@@ -52,8 +60,8 @@ def create_deployment_access_manager_entry(
         if not has_request_context():
             return html.P('La sesión ROOT requiere una solicitud autenticada.')
         try:
-            identity = root_session.current()
-            if identity is None:
+            principal = effective_access.current()
+            if principal is None:
                 return html.Div(
                     [
                         html.P('Se requiere una sesión ROOT vigente para consultar el material.'),
@@ -62,8 +70,23 @@ def create_deployment_access_manager_entry(
                 )
             if not policy.can_view(principal_provider(), entry):
                 return html.P('No tienes autorización para consultar Deployment Access.')
+            identity = root_session.current()
         except DeploymentRootSessionError, DeploymentAccessStorageError:
             return html.P('No fue posible verificar la sesión ROOT.')
+        if identity is None:
+            identity_content = [
+                html.P('Acceso administrativo ROOT activo.'),
+                html.P(f'Identidad: {principal.display_name}.'),
+            ]
+            if principal.profile_label is not None:
+                identity_content.append(html.P(f'Perfil: {principal.profile_label}.'))
+            identity_content.extend(
+                [
+                    html.P('Autorización efectiva: ROOT.'),
+                    html.P('No se requiere autenticación adicional.'),
+                ]
+            )
+            return html.Div(identity_content)
         expires = datetime.fromtimestamp(identity.expires_at_epoch, tz=UTC).strftime(
             '%Y-%m-%d %H:%M:%S UTC'
         )

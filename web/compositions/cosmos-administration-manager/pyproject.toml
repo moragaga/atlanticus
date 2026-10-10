@@ -12,6 +12,8 @@ dependencies = [
     "atlanticus-web-cosmos-administration==0.1.0",
     "atlanticus-web-composition-deployment-access-manager==0.1.0",
     "atlanticus-web-manager==0.3.19",
+    "atlanticus-web-users==0.1.0",
+    "atlanticus-web-identity-local==0.1.0",
     "atlanticus-web==0.1.0",
     "Flask==3.1.3",
     "dash==4.4.1",
@@ -27,9 +29,12 @@ dev = [
 atlanticus-web-cosmos-administration = { path = "../../capabilities/cosmos-administration", editable = true }
 atlanticus-web-composition-deployment-access-manager = { path = "../deployment-access-manager", editable = true }
 atlanticus-web-manager = { path = "../../capabilities/manager", editable = true }
+atlanticus-web-users = { path = "../../capabilities/users/core", editable = true }
+atlanticus-web-profiles = { path = "../../capabilities/profiles/core", editable = true }
 atlanticus-web = { path = "../../framework/core", editable = true }
 atlanticus-web-deployment-access = { path = "../../capabilities/deployment-access", editable = true }
 atlanticus-web-identity = { path = "../../capabilities/identity/core", editable = true }
+atlanticus-web-identity-local = { path = "../../capabilities/identity/local", editable = true }
 atlanticus-web-source = { path = "../../capabilities/source/core", editable = true }
 atlanticus-web-projection = { path = "../../capabilities/projection/core", editable = true }
 atlanticus-web-storage-cosmos = { path = "../../capabilities/storage/cosmos", editable = true }
