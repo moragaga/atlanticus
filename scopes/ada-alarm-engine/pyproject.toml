@@ -15,6 +15,7 @@ dev = [
 package = false
 
 [tool.uv.sources]
+ada-alarm-historian-process = { workspace = true }
 ada-alarm-materialization-process = { workspace = true }
 ada-alarm-runtime-process = { workspace = true }
 ada-alarms-core = { workspace = true }
@@ -47,6 +48,7 @@ members = [
     "alarms/history",
     "alarms/materialization",
     "alarms/persistence",
+    "processes/alarm-historian",
     "processes/alarm-materialization",
     "processes/alarm-runtime",
 ]
