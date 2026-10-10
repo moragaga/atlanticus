@@ -121,11 +121,7 @@ def _build_progress(
     if avance is not None:
         modifier = _STATUS_CLASS[status]
         fill = html.Div(
-            className=' '.join(
-                item
-                for item in ('perforacion__progress-fill', modifier)
-                if item
-            ),
+            className=' '.join(item for item in ('perforacion__progress-fill', modifier) if item),
             style={'width': avance},
         )
     return html.Div(
@@ -163,11 +159,7 @@ def _build_detalle(
             children=[
                 _build_table_head(),
                 html.Tbody(
-                    children=[
-                        row
-                        for fase in state.fases
-                        for row in _build_fase_rows(fase)
-                    ],
+                    children=[row for fase in state.fases for row in _build_fase_rows(fase)],
                 ),
             ],
         )
@@ -250,9 +242,7 @@ def _build_equipo_cells(equipo: PerforacionEquipoState) -> list[Component]:
 
 def _build_comparison(value: PerforacionComparison) -> Component:
     modifier = _STATUS_CLASS[value.status]
-    real_class = ' '.join(
-        item for item in ('perforacion__value', modifier) if item
-    )
+    real_class = ' '.join(item for item in ('perforacion__value', modifier) if item)
     return html.Span(
         className='perforacion__comparison',
         children=[

@@ -90,7 +90,7 @@ def history_values(store_data: object, key: str) -> TimeSeriesValues:
             TimeSeriesPoint(start + timedelta(seconds=step * (index + 1)), sample)
             for index, sample in enumerate(samples)
         )
-    except (KeyError, TypeError, ValueError, OverflowError):
+    except KeyError, TypeError, ValueError, OverflowError:
         return TimeSeriesValues(DisplayStatus.INVALID)
     return TimeSeriesValues(DisplayStatus.OK, points)
 

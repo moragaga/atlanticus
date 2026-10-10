@@ -22,13 +22,9 @@ class NumeroOperativoTurnoState:
                 or not isinstance(item[0], str)
                 or not isinstance(item[1], str | int | float | bool)
             ):
-                raise TypeError(
-                    'Numero Operativo Turno values must contain scalar pairs'
-                )
+                raise TypeError('Numero Operativo Turno values must contain scalar pairs')
         if not isinstance(self.data_state, DashboardDataState):
-            raise TypeError(
-                'Numero Operativo Turno data_state must be DashboardDataState'
-            )
+            raise TypeError('Numero Operativo Turno data_state must be DashboardDataState')
 
     def as_mapping(self) -> dict[str, str | int | float | bool]:
         return dict(self.values)

@@ -100,9 +100,7 @@ def _map_resumen_payload(payload: Mapping[str, object]) -> PerforacionResumenSta
     data_state = _map_data_state(payload)
     if data_state is DashboardDataState.ERROR:
         return PerforacionResumenState(data_state=data_state)
-    acumulado_semanal = _map_comparison(
-        _require_mapping(payload, 'acumulado_semanal')
-    )
+    acumulado_semanal = _map_comparison(_require_mapping(payload, 'acumulado_semanal'))
     plan_semanal = _require_value(payload, 'plan_semanal')
     avance = _require_value(payload, 'avance')
     if avance is not None:
@@ -149,9 +147,7 @@ def _map_equipo(value: object) -> PerforacionEquipoState:
     return PerforacionEquipoState(
         perforadora=_require_value(value, 'perforadora'),
         dia_anterior=_map_comparison(_require_mapping(value, 'dia_anterior')),
-        acumulado_semanal=_map_comparison(
-            _require_mapping(value, 'acumulado_semanal')
-        ),
+        acumulado_semanal=_map_comparison(_require_mapping(value, 'acumulado_semanal')),
     )
 
 

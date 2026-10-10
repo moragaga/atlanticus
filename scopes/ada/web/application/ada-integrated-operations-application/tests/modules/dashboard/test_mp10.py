@@ -60,11 +60,7 @@ def test_mp10_maps_independent_json_contracts() -> None:
 def test_mp10_keeps_source_states_independent() -> None:
     state = map_mp10_store(
         _store(
-            {
-                MP10_HOTEL_MINA_PROY_KPI_KEY: _json(
-                    {'value': '148', 'alert': None, 'status': None}
-                )
-            }
+            {MP10_HOTEL_MINA_PROY_KPI_KEY: _json({'value': '148', 'alert': None, 'status': None})}
         )
     )
 
@@ -110,15 +106,10 @@ def test_mp10_places_inspection_key_only_on_each_value_surface() -> None:
     component = build_mp10(state)
     nodes = tuple(_walk(component))
     inspection_nodes = [
-        node
-        for node in nodes
-        if _props(node).get('data-kpi-inspection-key') is not None
+        node for node in nodes if _props(node).get('data-kpi-inspection-key') is not None
     ]
 
-    assert [
-        _props(node)['data-kpi-inspection-key']
-        for node in inspection_nodes
-    ] == [
+    assert [_props(node)['data-kpi-inspection-key'] for node in inspection_nodes] == [
         MP10_HOTEL_MINA_INST_KPI_KEY,
         MP10_HOTEL_MINA_PROY_KPI_KEY,
     ]

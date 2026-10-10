@@ -106,7 +106,11 @@ def _state(
     result = _value(values, key, source_status)
     if result.status is DisplayStatus.OK:
         normalized = result.value.lower()
-        return DisplayValue.ok(normalized) if normalized in _CHANCADOR_STATES else DisplayValue.invalid()
+        return (
+            DisplayValue.ok(normalized)
+            if normalized in _CHANCADOR_STATES
+            else DisplayValue.invalid()
+        )
     return result
 
 

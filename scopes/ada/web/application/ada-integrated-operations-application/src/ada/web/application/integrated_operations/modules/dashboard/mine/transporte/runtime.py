@@ -33,12 +33,8 @@ def register_transporte_callback(dash_app, *, tool_key: str) -> None:
         ),
     )
     def refresh_transporte(store_data: object):
-        global_state, global_source_status = map_transporte_global_turno_store(
-            store_data
-        )
-        numero_state, numero_source_status = map_numero_operativo_turno_store(
-            store_data
-        )
+        global_state, global_source_status = map_transporte_global_turno_store(store_data)
+        numero_state, numero_source_status = map_numero_operativo_turno_store(store_data)
         return (
             build_transporte_global_turno(global_state, global_source_status),
             build_numero_operativo_turno(numero_state, numero_source_status),

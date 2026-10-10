@@ -45,7 +45,7 @@ def map_equipos_servicio_store(
 
     try:
         return _map_payload(decoded.value), DisplayStatus.OK
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None, DisplayStatus.INVALID
 
 
@@ -100,9 +100,7 @@ def _map_row(value: object) -> EquiposServicioRow:
         is_total=is_total,
         operando=_map_comparison(_require_mapping(value, 'operando')),
         disponibles=_map_comparison(_require_mapping(value, 'disponibles')),
-        fuera_servicio=_map_comparison(
-            _require_mapping(value, 'fuera_servicio')
-        ),
+        fuera_servicio=_map_comparison(_require_mapping(value, 'fuera_servicio')),
     )
 
 

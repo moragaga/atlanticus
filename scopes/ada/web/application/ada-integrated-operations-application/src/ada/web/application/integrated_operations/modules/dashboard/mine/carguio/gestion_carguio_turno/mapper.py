@@ -42,7 +42,7 @@ def map_gestion_carguio_turno_store(
 
     try:
         return _map_payload(decoded.value), DisplayStatus.OK
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None, DisplayStatus.INVALID
 
 

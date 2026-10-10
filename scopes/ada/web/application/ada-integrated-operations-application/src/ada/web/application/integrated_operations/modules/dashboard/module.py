@@ -18,7 +18,9 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.transporte
 from ada.web.application.integrated_operations.modules.dashboard.plant.flotacion.colectiva import (
     register_colectiva_callback,
 )
-from ada.web.application.integrated_operations.modules.dashboard.plant.module import PLANT_ASSET_LAYER
+from ada.web.application.integrated_operations.modules.dashboard.plant.module import (
+    PLANT_ASSET_LAYER,
+)
 from ada.web.application.integrated_operations.modules.dashboard.plant.molienda import (
     register_molienda_callback,
 )

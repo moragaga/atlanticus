@@ -85,9 +85,7 @@ def test_carguio_global_turno_maps_backend_rows_without_calculating_total() -> N
 
 
 def test_carguio_global_turno_supports_unshift_without_rows() -> None:
-    state, status = map_carguio_global_turno_store(
-        _store({'data_state': 'unshift', 'rows': []})
-    )
+    state, status = map_carguio_global_turno_store(_store({'data_state': 'unshift', 'rows': []}))
 
     assert status is DisplayStatus.OK
     assert state is not None
@@ -118,18 +116,11 @@ def test_carguio_global_turno_rejects_missing_status() -> None:
 
 
 def test_carguio_global_turno_inspects_complete_json_surface() -> None:
-    state, status = map_carguio_global_turno_store(
-        _store({'data_state': 'unshift', 'rows': []})
-    )
+    state, status = map_carguio_global_turno_store(_store({'data_state': 'unshift', 'rows': []}))
     component = build_carguio_global_turno(state, status)
     inspection_nodes = [
-        node
-        for node in _walk(component)
-        if _props(node).get('data-kpi-inspection-key') is not None
+        node for node in _walk(component) if _props(node).get('data-kpi-inspection-key') is not None
     ]
 
     assert len(inspection_nodes) == 1
-    assert (
-        _props(inspection_nodes[0])['data-kpi-inspection-key']
-        == CARGUIO_GLOBAL_TURNO_KPI_KEY
-    )
+    assert _props(inspection_nodes[0])['data-kpi-inspection-key'] == CARGUIO_GLOBAL_TURNO_KPI_KEY

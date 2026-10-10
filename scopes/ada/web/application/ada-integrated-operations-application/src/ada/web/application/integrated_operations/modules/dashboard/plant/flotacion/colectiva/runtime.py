@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dash import Input, Output
 
-from ada.web.application.integrated_operations.modules.dashboard.ids import dashboard_card_content_id
+from ada.web.application.integrated_operations.modules.dashboard.ids import (
+    dashboard_card_content_id,
+)
 from ada.web.application.integrated_operations.modules.dashboard.plant.bindings import FLOTACION
 from ada.web.kpis.collector import component_kpi_store_id
 

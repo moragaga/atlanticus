@@ -24,7 +24,5 @@ class DashboardContext:
         if self.binding is None:
             return ()
         return tuple(
-            component
-            for component in self.binding.components
-            if component.component.scope is scope
+            component for component in self.binding.components if component.component.scope is scope
         )

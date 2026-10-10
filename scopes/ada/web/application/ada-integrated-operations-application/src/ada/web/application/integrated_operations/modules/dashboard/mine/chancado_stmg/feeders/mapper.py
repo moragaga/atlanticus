@@ -23,7 +23,9 @@ def map_feeders_store(
         isinstance(item, FeederKpiDefinition) for item in definitions
     ):
         raise TypeError('definitions must be a sequence of FeederKpiDefinition')
-    keys = [key for item in definitions for key in (item.percent_kpi_key, item.color_kpi_key) if key]
+    keys = [
+        key for item in definitions for key in (item.percent_kpi_key, item.color_kpi_key) if key
+    ]
     if len(set(keys)) != len(keys):
         raise ValueError('Feeder KPI keys must be globally distinct')
     values, status = _latest_values(store_data)
@@ -32,7 +34,8 @@ def map_feeders_store(
             percent=_feeder_percent(values, definition.percent_kpi_key, status),
             color=(
                 _feeder_color(values, definition.color_kpi_key, status)
-                if definition.color_kpi_key is not None else None
+                if definition.color_kpi_key is not None
+                else None
             ),
         )
         for definition in definitions

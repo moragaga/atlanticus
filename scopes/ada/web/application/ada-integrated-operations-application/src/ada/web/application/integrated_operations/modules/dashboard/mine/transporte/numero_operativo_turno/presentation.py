@@ -27,17 +27,13 @@ def build_numero_operativo_turno(
         raise TypeError('source_status must be DisplayStatus')
 
     if state is None:
-        return _build_root(
-            [_build_status(source_status, 'Información no disponible')]
-        )
+        return _build_root([_build_status(source_status, 'Información no disponible')])
 
     if not isinstance(state, NumeroOperativoTurnoState):
         raise TypeError('state must be NumeroOperativoTurnoState or None')
 
     if state.data_state is DashboardDataState.ERROR:
-        return _build_root(
-            [_build_status(DisplayStatus.INVALID, 'Información no disponible')]
-        )
+        return _build_root([_build_status(DisplayStatus.INVALID, 'Información no disponible')])
 
     if state.data_state is DashboardDataState.UNSHIFT:
         return _build_root([_build_unshift_state()])

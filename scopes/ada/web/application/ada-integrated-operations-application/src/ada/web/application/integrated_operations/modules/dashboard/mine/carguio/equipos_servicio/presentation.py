@@ -105,11 +105,7 @@ def _build_row(row: EquiposServicioRow) -> Component:
 
 def _build_comparison(value: EquiposServicioComparison) -> Component:
     status_class = _STATUS_CLASS[value.status]
-    real_class = ' '.join(
-        item
-        for item in ('equipos-servicio__value', status_class)
-        if item
-    )
+    real_class = ' '.join(item for item in ('equipos-servicio__value', status_class) if item)
     return html.Span(
         className='equipos-servicio__cell equipos-servicio__comparison',
         children=[

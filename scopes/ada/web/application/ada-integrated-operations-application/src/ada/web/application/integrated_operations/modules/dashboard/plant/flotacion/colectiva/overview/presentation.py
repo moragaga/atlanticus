@@ -35,8 +35,10 @@ def build_colectiva_overview(reading: ColectivaOverviewReading) -> Component:
                 ],
                 className='ada-io-colectiva__trend',
             ),
-            html.Div([_indicator(item) for item in reading.indicators],
-                     className='ada-io-colectiva__indicators'),
+            html.Div(
+                [_indicator(item) for item in reading.indicators],
+                className='ada-io-colectiva__indicators',
+            ),
         ],
         className='ada-io-colectiva__overview',
     )

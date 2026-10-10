@@ -59,10 +59,7 @@ class GestionCarguioTurnoState:
     def __post_init__(self) -> None:
         if not isinstance(self.sections, tuple):
             raise TypeError('Gestion Carguio Turno sections must be a tuple')
-        if any(
-            not isinstance(section, GestionCarguioTurnoSection)
-            for section in self.sections
-        ):
+        if any(not isinstance(section, GestionCarguioTurnoSection) for section in self.sections):
             raise TypeError('Gestion Carguio Turno sections must be sections')
         if not isinstance(self.data_state, DashboardDataState):
             raise TypeError('Gestion Carguio Turno data_state must be DashboardDataState')

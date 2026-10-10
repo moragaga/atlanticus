@@ -41,7 +41,7 @@ def map_numero_operativo_turno_store(
 
     try:
         return _map_payload(decoded.value), DisplayStatus.OK
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None, DisplayStatus.INVALID
 
 
@@ -79,14 +79,11 @@ def _map_payload(payload: Mapping[str, object]) -> NumeroOperativoTurnoState:
         return NumeroOperativoTurnoState(values=(), data_state=data_state)
 
     if set(raw_values) != set(NUMERO_OPERATIVO_TURNO_KEYS):
-        raise ValueError(
-            'Numero Operativo Turno values must contain canonical keys'
-        )
+        raise ValueError('Numero Operativo Turno values must contain canonical keys')
 
     return NumeroOperativoTurnoState(
         values=tuple(
-            (key, _require_scalar(raw_values, key))
-            for key in NUMERO_OPERATIVO_TURNO_KEYS
+            (key, _require_scalar(raw_values, key)) for key in NUMERO_OPERATIVO_TURNO_KEYS
         ),
         data_state=data_state,
     )
@@ -98,7 +95,5 @@ def _require_scalar(
 ) -> str | int | float | bool:
     value = values[key]
     if not isinstance(value, str | int | float | bool):
-        raise TypeError(
-            f'Numero Operativo Turno value must be a scalar: {key}'
-        )
+        raise TypeError(f'Numero Operativo Turno value must be a scalar: {key}')
     return value

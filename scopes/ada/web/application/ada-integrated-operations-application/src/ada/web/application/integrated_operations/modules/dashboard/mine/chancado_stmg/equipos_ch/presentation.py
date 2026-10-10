@@ -40,17 +40,18 @@ def build_equipos_ch(readings: Sequence[EquiposChReading]) -> Component:
     )
 
 
-
 def _metrics_table(readings: Sequence[EquiposChReading]) -> Component:
     return html.Table(
         [
             html.Thead(
-                html.Tr([
-                    html.Th('EQUIPO', scope='col'),
-                    html.Th('RENDIMIENTO', scope='col'),
-                    html.Th('MIN. ATOLLO', scope='col'),
-                    html.Th('MIN. POSTE', scope='col'),
-                ])
+                html.Tr(
+                    [
+                        html.Th('EQUIPO', scope='col'),
+                        html.Th('RENDIMIENTO', scope='col'),
+                        html.Th('MIN. ATOLLO', scope='col'),
+                        html.Th('MIN. POSTE', scope='col'),
+                    ]
+                )
             ),
             html.Tbody([_metrics_row(reading) for reading in readings]),
         ],
@@ -60,21 +61,35 @@ def _metrics_table(readings: Sequence[EquiposChReading]) -> Component:
 
 def _metrics_row(reading: EquiposChReading) -> Component:
     definition = reading.definition
-    return html.Tr([
-        html.Th(definition.label, scope='row'),
-        html.Td(_table_metric(
-            reading.rendimiento, definition.rendimiento_kpi_key,
-            reading.rendimiento_color, definition.rendimiento_color_kpi_key,
-        )),
-        html.Td(_table_metric(
-            reading.min_atollo, definition.min_atollo_kpi_key,
-            reading.min_atollo_color, definition.min_atollo_color_kpi_key,
-        )),
-        html.Td(_table_metric(
-            reading.min_poste, definition.min_poste_kpi_key,
-            reading.min_poste_color, definition.min_poste_color_kpi_key,
-        )),
-    ])
+    return html.Tr(
+        [
+            html.Th(definition.label, scope='row'),
+            html.Td(
+                _table_metric(
+                    reading.rendimiento,
+                    definition.rendimiento_kpi_key,
+                    reading.rendimiento_color,
+                    definition.rendimiento_color_kpi_key,
+                )
+            ),
+            html.Td(
+                _table_metric(
+                    reading.min_atollo,
+                    definition.min_atollo_kpi_key,
+                    reading.min_atollo_color,
+                    definition.min_atollo_color_kpi_key,
+                )
+            ),
+            html.Td(
+                _table_metric(
+                    reading.min_poste,
+                    definition.min_poste_kpi_key,
+                    reading.min_poste_color,
+                    definition.min_poste_color_kpi_key,
+                )
+            ),
+        ]
+    )
 
 
 def _image(reading: EquiposChReading) -> Component:

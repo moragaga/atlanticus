@@ -141,11 +141,7 @@ def _build_comparison_metric(
     status: DashboardValueStatus,
 ) -> Component:
     modifier = _STATUS_CLASS[status]
-    value_class = ' '.join(
-        item
-        for item in ('movimiento-mina__value', modifier)
-        if item
-    )
+    value_class = ' '.join(item for item in ('movimiento-mina__value', modifier) if item)
     return html.Div(
         className='movimiento-mina__metric',
         children=[

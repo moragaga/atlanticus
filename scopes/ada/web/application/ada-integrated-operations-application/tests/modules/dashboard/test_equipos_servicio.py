@@ -83,9 +83,7 @@ def test_equipos_servicio_preserves_backend_rows_and_total() -> None:
 
 
 def test_equipos_servicio_supports_unshift_without_rows() -> None:
-    state, status = map_equipos_servicio_store(
-        _store({'data_state': 'unshift', 'rows': []})
-    )
+    state, status = map_equipos_servicio_store(_store({'data_state': 'unshift', 'rows': []}))
 
     assert status is DisplayStatus.OK
     assert state is not None
@@ -115,18 +113,11 @@ def test_equipos_servicio_rejects_missing_status() -> None:
 
 
 def test_equipos_servicio_inspects_complete_json_surface() -> None:
-    state, status = map_equipos_servicio_store(
-        _store({'data_state': 'unshift', 'rows': []})
-    )
+    state, status = map_equipos_servicio_store(_store({'data_state': 'unshift', 'rows': []}))
     component = build_equipos_servicio(state, status)
     inspection_nodes = [
-        node
-        for node in _walk(component)
-        if _props(node).get('data-kpi-inspection-key') is not None
+        node for node in _walk(component) if _props(node).get('data-kpi-inspection-key') is not None
     ]
 
     assert len(inspection_nodes) == 1
-    assert (
-        _props(inspection_nodes[0])['data-kpi-inspection-key']
-        == EQUIPOS_SERVICIO_KPI_KEY
-    )
+    assert _props(inspection_nodes[0])['data-kpi-inspection-key'] == EQUIPOS_SERVICIO_KPI_KEY

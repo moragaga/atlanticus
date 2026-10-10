@@ -107,11 +107,7 @@ def _build_row(row: CarguioGlobalTurnoRow) -> Component:
 
 def _build_comparison(value: CarguioGlobalTurnoComparison) -> Component:
     status_class = _STATUS_CLASS[value.status]
-    real_class = ' '.join(
-        item
-        for item in ('carguio-global-turno__value', status_class)
-        if item
-    )
+    real_class = ' '.join(item for item in ('carguio-global-turno__value', status_class) if item)
     return html.Span(
         className='carguio-global-turno__cell carguio-global-turno__comparison',
         children=[

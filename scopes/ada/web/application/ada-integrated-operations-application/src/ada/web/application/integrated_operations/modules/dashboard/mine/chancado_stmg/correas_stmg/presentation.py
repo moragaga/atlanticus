@@ -36,8 +36,10 @@ def build_correas_stmg(
     metric: CorreaStmgMetricDefinition,
     state: CorreasStmgState,
 ) -> Component:
-    if not isinstance(definitions, Sequence) or len(definitions) != 3 or not all(
-        isinstance(item, CorreaStmgDefinition) for item in definitions
+    if (
+        not isinstance(definitions, Sequence)
+        or len(definitions) != 3
+        or not all(isinstance(item, CorreaStmgDefinition) for item in definitions)
     ):
         raise ValueError('Correa STMG requires exactly three definitions')
     if not isinstance(metric, CorreaStmgMetricDefinition):
@@ -50,7 +52,10 @@ def build_correas_stmg(
         [
             html.H3('CORREAS STMG', className='ada-io-correas-stmg__title'),
             html.Div(
-                [_image(item, reading) for item, reading in zip(definitions, state.states, strict=True)],
+                [
+                    _image(item, reading)
+                    for item, reading in zip(definitions, state.states, strict=True)
+                ],
                 className='ada-io-correas-stmg__items',
             ),
             _metric(metric, state.metric, state.metric_color),
@@ -105,14 +110,16 @@ def _metric(
             class_name='ada-io-correas-stmg__row',
         )
     )
-    children: list[Component] = [html.Div(
-        row,
-        className='ada-io-correas-stmg__value-target',
-        role='button',
-        tabIndex=0,
-        title=metric.value_kpi_key,
-        **{'data-kpi-inspection-key': metric.value_kpi_key},
-    )]
+    children: list[Component] = [
+        html.Div(
+            row,
+            className='ada-io-correas-stmg__value-target',
+            role='button',
+            tabIndex=0,
+            title=metric.value_kpi_key,
+            **{'data-kpi-inspection-key': metric.value_kpi_key},
+        )
+    ]
     if metric.color_kpi_key is not None:
         if color is None:
             raise ValueError('Correa STMG metric color cannot be missing')

@@ -17,13 +17,17 @@ def build_leyes_summary(state: LeyesState) -> Component:
             html.Div(
                 html.Table(
                     [
-                        html.Thead(html.Tr([
-                            _header('', first=True),
-                            _header('HORA'),
-                            _header('TURNO'),
-                            _header('DÍA'),
-                            _header('PLAN'),
-                        ])),
+                        html.Thead(
+                            html.Tr(
+                                [
+                                    _header('', first=True),
+                                    _header('HORA'),
+                                    _header('TURNO'),
+                                    _header('DÍA'),
+                                    _header('PLAN'),
+                                ]
+                            )
+                        ),
                         html.Tbody([_row(row) for row in state.rows]),
                     ],
                     className='ada-io-leyes__table',

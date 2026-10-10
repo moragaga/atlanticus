@@ -18,12 +18,10 @@ class ColectivaEquipmentDefinition:
 
 
 ROUGHERS = tuple(
-    ColectivaStateDefinition(f'R{number}', f'estado_rougher_{number}')
-    for number in range(1, 10)
+    ColectivaStateDefinition(f'R{number}', f'estado_rougher_{number}') for number in range(1, 10)
 )
 SCAVENGERS = tuple(
-    ColectivaStateDefinition(f'SC{number}', f'estado_scavenger_{number}')
-    for number in range(1, 3)
+    ColectivaStateDefinition(f'SC{number}', f'estado_scavenger_{number}') for number in range(1, 3)
 )
 VERTIMILLS = tuple(
     ColectivaEquipmentDefinition(

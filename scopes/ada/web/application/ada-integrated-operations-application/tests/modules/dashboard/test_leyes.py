@@ -18,7 +18,6 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_s
 from ada.web.kpis.collector import component_kpi_store_id
 from ada.web.ui.display_status import DisplayStatus
 
-
 _PERIODS = ('hora', 'turno', 'dia', 'plan')
 _EXPECTED = (
     ('ley_cu', 'Ley CuT %'),
@@ -77,26 +76,36 @@ def test_every_scalar_value_is_preserved_without_rounding_or_replacement():
 
 def test_latest_failures_are_independent_per_cell():
     first, second, third, fourth, fifth = _keys()[:5]
-    state = map_leyes_store(_store({
-        first: _entry('12,34'),
-        second: {'status': 'missing', 'value_kind': None, 'value': None},
-        third: {'status': 'error', 'value_kind': 'value', 'value': None},
-        fourth: _entry([1, 2], kind='json'),
-        fifth: _entry('   '),
-    }))
+    state = map_leyes_store(
+        _store(
+            {
+                first: _entry('12,34'),
+                second: {'status': 'missing', 'value_kind': None, 'value': None},
+                third: {'status': 'error', 'value_kind': 'value', 'value': None},
+                fourth: _entry([1, 2], kind='json'),
+                fifth: _entry('   '),
+            }
+        )
+    )
     assert [metric.value.status for metric in _metrics(state)] == [
-        DisplayStatus.OK, DisplayStatus.EMPTY, DisplayStatus.ERROR,
-        DisplayStatus.INVALID, DisplayStatus.INVALID,
+        DisplayStatus.OK,
+        DisplayStatus.EMPTY,
+        DisplayStatus.ERROR,
+        DisplayStatus.INVALID,
+        DisplayStatus.INVALID,
         *([DisplayStatus.NOT_MAPPED] * 23),
     ]
 
 
-@pytest.mark.parametrize(('store', 'expected'), [
-    (None, DisplayStatus.INVALID),
-    ({'latest': None}, DisplayStatus.NOT_MAPPED),
-    ({'latest': []}, DisplayStatus.INVALID),
-    ({'latest': {'values': []}}, DisplayStatus.INVALID),
-])
+@pytest.mark.parametrize(
+    ('store', 'expected'),
+    [
+        (None, DisplayStatus.INVALID),
+        ({'latest': None}, DisplayStatus.NOT_MAPPED),
+        ({'latest': []}, DisplayStatus.INVALID),
+        ({'latest': {'values': []}}, DisplayStatus.INVALID),
+    ],
+)
 def test_absent_or_invalid_latest_keeps_source_status(store, expected):
     state = map_leyes_store(store)
     assert all(metric.value.status is expected for metric in _metrics(state))
@@ -121,16 +130,19 @@ def test_table_preserves_28_inspectable_values_and_all_labels():
     ]
     assert all(item.role == 'button' and item.tabIndex == 0 for item in inspected)
     assert all(item.title == key for item, key in zip(inspected, keys, strict=True))
-    labels = [item for item in components if getattr(item, 'title', None) in {
-        label for _, label in _EXPECTED
-    }]
+    labels = [
+        item
+        for item in components
+        if getattr(item, 'title', None) in {label for _, label in _EXPECTED}
+    ]
     assert {item.children for item in labels} == {label for _, label in _EXPECTED}
 
 
 def test_degraded_value_is_displayed_as_shared_status_icon():
     presentation = build_leyes_summary(map_leyes_store(_store({})))
-    inspected = [item for item in _components(presentation)
-                 if hasattr(item, 'data-kpi-inspection-key')]
+    inspected = [
+        item for item in _components(presentation) if hasattr(item, 'data-kpi-inspection-key')
+    ]
     assert len(inspected) == 28
     assert all(isinstance(item.children, Component) for item in inspected)
 
@@ -160,8 +172,7 @@ def test_chancado_callback_renders_leyes_after_correas_with_same_store():
     store = _store({_keys()[0]: _entry('12,3456789')})
     root = app.render(store)
     last = root.children[-1]
-    inspected = [item for item in _components(last)
-                 if hasattr(item, 'data-kpi-inspection-key')]
+    inspected = [item for item in _components(last) if hasattr(item, 'data-kpi-inspection-key')]
     assert len(root.children) == 6
     assert len(inspected) == 28
     assert inspected[0].children == '12,3456789'

@@ -17,9 +17,7 @@ class MP10MetricState:
     def __post_init__(self) -> None:
         if not isinstance(self.value, str | int | float | bool):
             raise TypeError('MP10 value must be a scalar')
-        if self.alert is not None and (
-            not isinstance(self.alert, str) or not self.alert.strip()
-        ):
+        if self.alert is not None and (not isinstance(self.alert, str) or not self.alert.strip()):
             raise ValueError('MP10 alert must be null or a non-empty string')
         if not isinstance(self.status, DashboardValueStatus):
             raise TypeError('MP10 status must be DashboardValueStatus')

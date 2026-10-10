@@ -37,7 +37,9 @@ class PerforacionResumenState:
         if not isinstance(self.acumulado_semanal, PerforacionComparison):
             raise TypeError('Perforacion resumen acumulado_semanal must be PerforacionComparison')
         if self.data_state is DashboardDataState.OK and not isinstance(self.avance, str):
-            raise TypeError('Perforacion resumen avance must be a percentage string when data_state is ok')
+            raise TypeError(
+                'Perforacion resumen avance must be a percentage string when data_state is ok'
+            )
         if self.avance is not None and not isinstance(self.avance, str):
             raise TypeError('Perforacion resumen avance must be null or a percentage string')
 

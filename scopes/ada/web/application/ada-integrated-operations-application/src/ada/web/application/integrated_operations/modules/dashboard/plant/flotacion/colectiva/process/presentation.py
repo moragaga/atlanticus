@@ -40,12 +40,16 @@ def build_colectiva_process(reading: ColectivaProcessReading) -> Component:
                     html.H3('Molinos Verticales', className='ada-io-colectiva__section-title'),
                     html.Div(
                         [
-                            html.Div([_equipment(item) for item in reading.vertimills],
-                                     className='ada-io-colectiva__vertimills'),
+                            html.Div(
+                                [_equipment(item) for item in reading.vertimills],
+                                className='ada-io-colectiva__vertimills',
+                            ),
                             html.Div(
                                 [
-                                    html.Div([_equipment(item) for item in pair],
-                                             className='ada-io-colectiva__pump-pair')
+                                    html.Div(
+                                        [_equipment(item) for item in pair],
+                                        className='ada-io-colectiva__pump-pair',
+                                    )
                                     for pair in reading.bombas
                                 ],
                                 className='ada-io-colectiva__bombas',
@@ -57,7 +61,9 @@ def build_colectiva_process(reading: ColectivaProcessReading) -> Component:
                         build_inline_comparison_row(
                             InlineComparisonRowState(
                                 definition=InlineComparisonRowDefinition('N° Columnas'),
-                                first_value=_inspection(reading.columns_operating, COLUMNS_OPERATING_KEY),
+                                first_value=_inspection(
+                                    reading.columns_operating, COLUMNS_OPERATING_KEY
+                                ),
                                 second_value=_inspection(reading.columns_total, COLUMNS_TOTAL_KEY),
                             )
                         ),
@@ -72,14 +78,14 @@ def build_colectiva_process(reading: ColectivaProcessReading) -> Component:
     )
 
 
-def _state_group(
-    label: str, readings: tuple[ColectivaStateReading, ...], kind: str
-) -> Component:
+def _state_group(label: str, readings: tuple[ColectivaStateReading, ...], kind: str) -> Component:
     return html.Section(
         [
             html.H3(label, className='ada-io-colectiva__section-title'),
-            html.Div([_state(item) for item in readings],
-                     className=f'ada-io-colectiva__states ada-io-colectiva__states--{kind}'),
+            html.Div(
+                [_state(item) for item in readings],
+                className=f'ada-io-colectiva__states ada-io-colectiva__states--{kind}',
+            ),
         ],
         className='ada-io-colectiva__states-section',
     )

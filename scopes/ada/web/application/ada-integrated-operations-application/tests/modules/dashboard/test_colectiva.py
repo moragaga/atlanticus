@@ -4,7 +4,9 @@ from datetime import UTC, datetime, timedelta
 
 from dash.development.base_component import Component
 
-from ada.web.application.integrated_operations.modules.dashboard.ids import dashboard_card_content_id
+from ada.web.application.integrated_operations.modules.dashboard.ids import (
+    dashboard_card_content_id,
+)
 from ada.web.application.integrated_operations.modules.dashboard.plant.bindings import FLOTACION
 from ada.web.application.integrated_operations.modules.dashboard.plant.flotacion.colectiva import (
     BOMBAS,
@@ -66,7 +68,7 @@ def _store() -> dict[str, object]:
 def _walk(item):
     if isinstance(item, Component):
         yield item
-        yield from _walk(item.children)
+        yield from _walk(getattr(item, 'children', None))
     elif isinstance(item, (list, tuple)):
         for child in item:
             yield from _walk(child)
@@ -75,14 +77,19 @@ def _walk(item):
 def test_definitions_legacy_keys_and_current_equipment_layout():
     assert COLECTIVA_TREND.kpi_key == 'recuperacion_cu_lab'
     assert [item.kpi_key for item in COLECTIVA_INDICATORS] == [
-        'ley_cu_lab', 'malla_325_lab', 'malla_100_lab',
-        'ley_concentrado_lab', 'ley_colas_lab',
+        'ley_cu_lab',
+        'malla_325_lab',
+        'malla_100_lab',
+        'ley_concentrado_lab',
+        'ley_colas_lab',
     ]
     assert [item.label for item in ROUGHERS] == [f'R{n}' for n in range(1, 10)]
     assert [item.label for item in SCAVENGERS] == ['SC1', 'SC2']
     assert [item.label for item in VERTIMILLS] == ['VT-009', 'VT-010', 'VT-701']
     assert [[item.label for item in group] for group in BOMBAS] == [
-        ['PP45', 'PP46'], ['PP52', 'PP53'], ['PP855', 'PP856'],
+        ['PP45', 'PP46'],
+        ['PP52', 'PP53'],
+        ['PP855', 'PP856'],
     ]
     assert VERTIMILLS[2].amperage_kpi_key == 'amperaje_vertimil_701_inst'
     assert BOMBAS[2][1].state_kpi_key == 'estado_bomba856_inst'
@@ -111,10 +118,14 @@ def test_degraded_readings_do_not_become_detenido():
     values = store['latest']['values']
     values.pop(ROUGHERS[0].state_kpi_key)
     values[SCAVENGERS[0].state_kpi_key] = {
-        'status': 'missing', 'value_kind': None, 'value': None,
+        'status': 'missing',
+        'value_kind': None,
+        'value': None,
     }
     values[VERTIMILLS[0].state_kpi_key] = {
-        'status': 'error', 'value_kind': None, 'value': None,
+        'status': 'error',
+        'value_kind': None,
+        'value': None,
     }
     values[BOMBAS[0][0].state_kpi_key] = _entry('unrecognized')
     process = map_colectiva_process_store(store)
@@ -122,9 +133,15 @@ def test_degraded_readings_do_not_become_detenido():
     assert process.scavengers[0].state.status is DisplayStatus.EMPTY
     assert process.vertimills[0].state.status is DisplayStatus.ERROR
     root = build_colectiva(map_colectiva_overview_store(store), process)
-    circles = [node for node in _walk(root) if 'ada-io-colectiva__circle' in (getattr(node, 'className', '') or '')]
+    circles = [
+        node
+        for node in _walk(root)
+        if 'ada-io-colectiva__circle' in (getattr(node, 'className', '') or '')
+    ]
     assert len(circles) == 9
-    invalid_icons = [node for node in _walk(root) if getattr(node, 'src', '').endswith('invalid-data.svg')]
+    invalid_icons = [
+        node for node in _walk(root) if getattr(node, 'src', '').endswith('invalid-data.svg')
+    ]
     assert invalid_icons
 
 
@@ -187,3 +204,17 @@ def test_callback_reuses_flotacion_collector_store():
         'integrated_operations', FLOTACION.tool_component_key
     )
     assert isinstance(app.render(_store()), Component)
+
+
+def test_latest_validation_remains_independent_between_overview_and_process():
+    store = _store()
+    store['latest'] = {'values': None}
+    overview = map_colectiva_overview_store(store)
+    process = map_colectiva_process_store(store)
+    assert overview.trend_current.status is DisplayStatus.INVALID
+    assert all(item.value.status is DisplayStatus.INVALID for item in overview.indicators)
+    assert all(item.state.status is DisplayStatus.INVALID for item in process.roughers)
+    assert process.columns_operating.status is DisplayStatus.INVALID
+    assert process.columns_total.status is DisplayStatus.INVALID
+    assert overview.trend_history.status is DisplayStatus.OK
+    assert overview.trend_history.points[1].value == 0.0

@@ -1,4 +1,3 @@
-/* Estilos equivalentes al módulo productivo; se conservan las mismas reglas. */
 .ada-io-colectiva,
 .ada-io-colectiva__overview,
 .ada-io-colectiva__process {
@@ -47,33 +46,44 @@
     margin: 0 0 .25rem;
 }
 
+/* Nueve posiciones en la misma fila como en el legacy actual. */
 .ada-io-colectiva__states {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: .25rem;
+    grid-template-columns: repeat(9, minmax(0, 1fr));
+    gap: .15rem;
 }
 
 .ada-io-colectiva__states--scavengers {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* Cada equipo conserva su tarjeta gris y borde; el estado sigue siendo independiente. */
 .ada-io-colectiva__state {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: .15rem;
+    justify-content: center;
+    gap: .1rem;
     min-width: 0;
+    padding: .2rem 0 .12rem;
+    background-color: #d7d7d7;
+    border: 1px solid #bbbbbb;
+    border-radius: 5px;
+    box-sizing: border-box;
 }
 
 .ada-io-colectiva__state-label {
-    font-size: .6rem;
+    font-size: .51rem;
+    line-height: 1;
     font-weight: 700;
+    white-space: nowrap;
 }
 
+/* El tamaño del círculo reproduce el SVG de 64 por 64 a escala reducida. */
 .ada-io-colectiva__circle {
     position: relative;
     display: block;
-    width: min(100%, 2.1rem);
+    width: min(100%, .9rem);
     aspect-ratio: 1;
 }
 
@@ -82,7 +92,7 @@
     position: absolute;
     inset: 10.9375%;
     border-radius: 50%;
-    border: .19rem solid;
+    border: .085rem solid;
     box-sizing: border-box;
 }
 
@@ -146,6 +156,11 @@
     width: 1rem;
     height: 1rem;
     object-fit: contain;
+}
+
+.ada-io-colectiva__state .ada-io-colectiva__status-icon {
+    width: min(100%, .9rem);
+    height: .9rem;
 }
 
 .ada-io-colectiva [data-kpi-inspection-key]:focus-visible {

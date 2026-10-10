@@ -31,7 +31,10 @@ def _all_keys() -> tuple[str, ...]:
         getattr(definition, attribute)
         for definition in PRODUCCION_GLOBAL_DEFINITIONS
         for attribute in (
-            'real_key', 'plan_acumulado_key', 'proyeccion_key', 'plan_dia_key',
+            'real_key',
+            'plan_acumulado_key',
+            'proyeccion_key',
+            'plan_dia_key',
             'requerido_hora_key',
         )
     )
@@ -60,24 +63,33 @@ def test_ten_independent_keys_and_decimal_text_are_preserved():
     state = map_produccion_global_store(_store({key: _entry('12,3') for key in keys}))
     assert [row.label for row in state.rows] == ['Alimentación', 'Transportado']
     assert tuple(item.kpi_key for item in _metrics(state)) == keys
-    assert all(item.value.status is DisplayStatus.OK and item.value.value == '12,3'
-               for item in _metrics(state))
+    assert all(
+        item.value.status is DisplayStatus.OK and item.value.value == '12,3'
+        for item in _metrics(state)
+    )
 
 
 def test_each_latest_status_is_isolated_without_json_fallback():
     keys = _all_keys()
-    state = map_produccion_global_store(_store({
-        keys[0]: _entry('14,5'),
-        keys[1]: {'status': 'missing', 'value_kind': None, 'value': None},
-        keys[2]: {'status': 'error', 'value_kind': 'value', 'value': None},
-        keys[3]: _entry({'real': '6'}, kind='json'),
-        keys[4]: _entry('  '),
-        'produccion_global_summary_inst': _entry({'payload': []}, kind='json'),
-    }))
+    state = map_produccion_global_store(
+        _store(
+            {
+                keys[0]: _entry('14,5'),
+                keys[1]: {'status': 'missing', 'value_kind': None, 'value': None},
+                keys[2]: {'status': 'error', 'value_kind': 'value', 'value': None},
+                keys[3]: _entry({'real': '6'}, kind='json'),
+                keys[4]: _entry('  '),
+                'produccion_global_summary_inst': _entry({'payload': []}, kind='json'),
+            }
+        )
+    )
     statuses = [metric.value.status for metric in _metrics(state)]
     assert statuses == [
-        DisplayStatus.OK, DisplayStatus.EMPTY, DisplayStatus.ERROR,
-        DisplayStatus.INVALID, DisplayStatus.INVALID,
+        DisplayStatus.OK,
+        DisplayStatus.EMPTY,
+        DisplayStatus.ERROR,
+        DisplayStatus.INVALID,
+        DisplayStatus.INVALID,
         *([DisplayStatus.NOT_MAPPED] * 5),
     ]
 
@@ -102,8 +114,7 @@ def test_invalid_scalar_type_does_not_leak_into_presentation():
 def test_every_visible_metric_has_its_own_inspection_key_when_missing():
     state = map_produccion_global_store(_store({}))
     root = build_produccion_global(state)
-    targets = [node for node in _components(root)
-               if hasattr(node, 'data-kpi-inspection-key')]
+    targets = [node for node in _components(root) if hasattr(node, 'data-kpi-inspection-key')]
     assert len(targets) == 10
     assert tuple(getattr(target, 'data-kpi-inspection-key') for target in targets) == _all_keys()
     assert all(target.tabIndex == 0 and target.role == 'button' for target in targets)
@@ -115,8 +126,7 @@ def test_values_in_pair_are_independently_inspectable():
     root = build_produccion_global(
         map_produccion_global_store(_store({key: _entry(str(n)) for n, key in enumerate(keys)}))
     )
-    targets = [node for node in _components(root)
-               if hasattr(node, 'data-kpi-inspection-key')]
+    targets = [node for node in _components(root) if hasattr(node, 'data-kpi-inspection-key')]
     assert [node.children for node in targets] == [str(n) for n in range(10)]
     assert targets[0].title == keys[0]
     assert targets[1].title == keys[1]
@@ -143,6 +153,7 @@ def test_chancado_stmg_callback_composes_global_before_existing_stockpile():
     root = stub.render(_store({}))
     assert stub.args[0].component_id == dashboard_card_content_id('chancado_stmg')
     assert stub.args[1].component_id == component_kpi_store_id(
-        'integrated_operations', CHANCADO_STMG.tool_component_key,
+        'integrated_operations',
+        CHANCADO_STMG.tool_component_key,
     )
     assert len(root.children[2].children[1].children) == 2

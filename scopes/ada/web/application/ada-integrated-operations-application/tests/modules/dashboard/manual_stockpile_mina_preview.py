@@ -15,8 +15,10 @@ def _preview(pile_1_height: float, pile_2_height: float):
         StockpileValues(DisplayValue.ok('80'), DisplayValue.ok(str(pile_2_height))),
     )
     return html.Div(
-        [build_stockpile_component(definition, reading)
-         for definition, reading in zip(STOCKPILE_MINA_DEFINITIONS, values, strict=True)],
+        [
+            build_stockpile_component(definition, reading)
+            for definition, reading in zip(STOCKPILE_MINA_DEFINITIONS, values, strict=True)
+        ],
         style={'display': 'flex', 'justifyContent': 'space-evenly', 'gap': '8px'},
     )
 

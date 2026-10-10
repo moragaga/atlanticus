@@ -45,7 +45,7 @@ def map_carguio_global_turno_store(
 
     try:
         return _map_payload(decoded.value), DisplayStatus.OK
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None, DisplayStatus.INVALID
 
 
@@ -99,9 +99,7 @@ def _map_row(value: object) -> CarguioGlobalTurnoRow:
         flota=flota,
         is_total=is_total,
         op_req=_map_comparison(_require_mapping(value, 'op_req')),
-        disponibilidad=_map_comparison(
-            _require_mapping(value, 'disponibilidad')
-        ),
+        disponibilidad=_map_comparison(_require_mapping(value, 'disponibilidad')),
         uebd=_map_comparison(_require_mapping(value, 'uebd')),
         rendimiento=_map_comparison(_require_mapping(value, 'rendimiento')),
     )

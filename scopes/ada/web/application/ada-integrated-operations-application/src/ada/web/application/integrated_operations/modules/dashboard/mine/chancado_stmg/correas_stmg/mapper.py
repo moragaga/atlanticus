@@ -32,9 +32,7 @@ def map_correas_stmg_store(
         raise ValueError('Correa STMG KPI keys must be distinct')
     values, source_status = _latest_values(store_data)
     return CorreasStmgState(
-        states=tuple(
-            _state(values, item.state_kpi_key, source_status) for item in definitions
-        ),
+        states=tuple(_state(values, item.state_kpi_key, source_status) for item in definitions),
         metric=_read(values, metric.value_kpi_key, source_status),
         metric_color=(
             _color(values, metric.color_kpi_key, source_status)

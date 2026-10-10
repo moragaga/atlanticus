@@ -46,16 +46,25 @@ class DashStub:
         def register(fn):
             self.callback_function = fn
             return fn
+
         return register
 
 
 def test_provisional_definitions_are_two_equipment_with_twelve_distinct_keys():
     definitions = EQUIPOS_CH_DEFINITIONS
     assert len(definitions) == 2
-    keys = [key for item in definitions for key in (
-        item.state_kpi_key, item.throughput_kpi_key, item.atollo_kpi_key,
-        item.rendimiento_kpi_key, item.min_atollo_kpi_key, item.min_poste_kpi_key,
-    )]
+    keys = [
+        key
+        for item in definitions
+        for key in (
+            item.state_kpi_key,
+            item.throughput_kpi_key,
+            item.atollo_kpi_key,
+            item.rendimiento_kpi_key,
+            item.min_atollo_kpi_key,
+            item.min_poste_kpi_key,
+        )
+    ]
     assert len(keys) == len(set(keys)) == 12
 
 
@@ -73,14 +82,20 @@ def test_callback_renders_equipment_table_before_untouched_stockpile():
 
 def test_atollo_inactive_has_no_hidden_target_and_error_is_inspectable():
     a, b = EQUIPOS_CH_DEFINITIONS
-    mapped = map_equipos_ch_store(_store({
-        a.atollo_kpi_key: _entry(a.atollo_inactive_value),
-        b.atollo_kpi_key: {'status': 'error', 'value_kind': 'value', 'value': None},
-    }), EQUIPOS_CH_DEFINITIONS)
+    mapped = map_equipos_ch_store(
+        _store(
+            {
+                a.atollo_kpi_key: _entry(a.atollo_inactive_value),
+                b.atollo_kpi_key: {'status': 'error', 'value_kind': 'value', 'value': None},
+            }
+        ),
+        EQUIPOS_CH_DEFINITIONS,
+    )
     assert mapped[0].atollo.value is False
     assert mapped[1].atollo.status is DisplayStatus.ERROR
-    target_keys = [getattr(node, 'data-kpi-inspection-key') for node in
-                   _targets(build_equipos_ch(mapped))]
+    target_keys = [
+        getattr(node, 'data-kpi-inspection-key') for node in _targets(build_equipos_ch(mapped))
+    ]
     assert a.atollo_kpi_key not in target_keys
     assert b.atollo_kpi_key in target_keys
 
@@ -97,23 +112,37 @@ def test_table_color_is_an_optional_kpi_not_a_json_payload():
 
     original = EQUIPOS_CH_DEFINITIONS[0]
     colored = EquiposChDefinition(
-        original.key, original.label, original.state_kpi_key,
-        original.throughput_kpi_key, original.atollo_kpi_key,
-        original.atollo_active_value, original.atollo_inactive_value,
-        original.rendimiento_kpi_key, original.min_atollo_kpi_key,
+        original.key,
+        original.label,
+        original.state_kpi_key,
+        original.throughput_kpi_key,
+        original.atollo_kpi_key,
+        original.atollo_active_value,
+        original.atollo_inactive_value,
+        original.rendimiento_kpi_key,
+        original.min_atollo_kpi_key,
         original.min_poste_kpi_key,
         rendimiento_color_kpi_key='rendimiento_color_test',
     )
-    readings = map_equipos_ch_store({
-        'latest': {'values': {
-            original.rendimiento_kpi_key: {
-                'status': 'ok', 'value_kind': 'value', 'value': '9,1',
+    readings = map_equipos_ch_store(
+        {
+            'latest': {
+                'values': {
+                    original.rendimiento_kpi_key: {
+                        'status': 'ok',
+                        'value_kind': 'value',
+                        'value': '9,1',
+                    },
+                    'rendimiento_color_test': {
+                        'status': 'ok',
+                        'value_kind': 'value',
+                        'value': '2',
+                    },
+                }
             },
-            'rendimiento_color_test': {
-                'status': 'ok', 'value_kind': 'value', 'value': '2',
-            },
-        }},
-    }, (colored, EQUIPOS_CH_DEFINITIONS[1]))
+        },
+        (colored, EQUIPOS_CH_DEFINITIONS[1]),
+    )
     assert readings[0].rendimiento.status is DisplayStatus.OK
     assert readings[0].rendimiento_color.value.value == 'warning'
     targets = _targets(build_equipos_ch(readings))

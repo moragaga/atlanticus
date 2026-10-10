@@ -100,9 +100,7 @@ def test_transporte_global_turno_preserves_independent_real_plan_statuses() -> N
 
 
 def test_transporte_global_turno_supports_unshift() -> None:
-    state, status = map_transporte_global_turno_store(
-        _store({'data_state': 'unshift', 'rows': []})
-    )
+    state, status = map_transporte_global_turno_store(_store({'data_state': 'unshift', 'rows': []}))
 
     assert status is DisplayStatus.OK
     assert state is not None
@@ -135,13 +133,8 @@ def test_transporte_global_turno_inspects_complete_surface() -> None:
     state, status = map_transporte_global_turno_store(_store(_payload()))
     component = build_transporte_global_turno(state, status)
     inspection_nodes = [
-        node
-        for node in _walk(component)
-        if _props(node).get('data-kpi-inspection-key') is not None
+        node for node in _walk(component) if _props(node).get('data-kpi-inspection-key') is not None
     ]
 
     assert len(inspection_nodes) == 1
-    assert (
-        _props(inspection_nodes[0])['data-kpi-inspection-key']
-        == TRANSPORTE_GLOBAL_TURNO_KPI_KEY
-    )
+    assert _props(inspection_nodes[0])['data-kpi-inspection-key'] == TRANSPORTE_GLOBAL_TURNO_KPI_KEY

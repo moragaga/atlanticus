@@ -73,7 +73,7 @@ def _map_metric(
         return None, DisplayStatus.INVALID
     try:
         return _map_metric_payload(decoded.value), DisplayStatus.OK
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None, DisplayStatus.INVALID
 
 
@@ -85,9 +85,7 @@ def _map_metric_payload(payload: Mapping[str, object]) -> MP10MetricState:
     if 'alert' not in payload:
         raise ValueError('MP10 alert is required')
     alert = payload['alert']
-    if alert is not None and (
-        not isinstance(alert, str) or not alert.strip()
-    ):
+    if alert is not None and (not isinstance(alert, str) or not alert.strip()):
         raise ValueError('MP10 alert must be null or a non-empty string')
 
     if 'status' not in payload:

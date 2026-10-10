@@ -19,9 +19,7 @@ class TransporteGlobalTurnoValue:
         if not isinstance(self.value, str | int | float | bool):
             raise TypeError('Transporte Global Turno value must be a scalar')
         if not isinstance(self.status, DashboardValueStatus):
-            raise TypeError(
-                'Transporte Global Turno status must be DashboardValueStatus'
-            )
+            raise TypeError('Transporte Global Turno status must be DashboardValueStatus')
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +46,4 @@ class TransporteGlobalTurnoState:
         if not isinstance(self.rows, tuple):
             raise TypeError('Transporte Global Turno rows must be a tuple')
         if not isinstance(self.data_state, DashboardDataState):
-            raise TypeError(
-                'Transporte Global Turno data_state must be DashboardDataState'
-            )
+            raise TypeError('Transporte Global Turno data_state must be DashboardDataState')

@@ -23,9 +23,16 @@ class EquiposChDefinition:
 
     def __post_init__(self) -> None:
         for name in (
-            'key', 'label', 'state_kpi_key', 'throughput_kpi_key', 'atollo_kpi_key',
-            'atollo_active_value', 'atollo_inactive_value',
-            'rendimiento_kpi_key', 'min_atollo_kpi_key', 'min_poste_kpi_key',
+            'key',
+            'label',
+            'state_kpi_key',
+            'throughput_kpi_key',
+            'atollo_kpi_key',
+            'atollo_active_value',
+            'atollo_inactive_value',
+            'rendimiento_kpi_key',
+            'min_atollo_kpi_key',
+            'min_poste_kpi_key',
         ):
             value = getattr(self, name)
             if not isinstance(value, str) or not value.strip():
@@ -33,16 +40,26 @@ class EquiposChDefinition:
         if self.atollo_active_value.strip().lower() == self.atollo_inactive_value.strip().lower():
             raise ValueError('Equipos CH atollo states must be distinct')
         for name in (
-            'rendimiento_color_kpi_key', 'min_atollo_color_kpi_key',
+            'rendimiento_color_kpi_key',
+            'min_atollo_color_kpi_key',
             'min_poste_color_kpi_key',
         ):
             value = getattr(self, name)
             if value is not None and (not isinstance(value, str) or not value.strip()):
                 raise ValueError(f'Equipos CH {name} must be null or a non-empty string')
-        if len({
-            self.state_kpi_key, self.throughput_kpi_key, self.atollo_kpi_key,
-            self.rendimiento_kpi_key, self.min_atollo_kpi_key, self.min_poste_kpi_key,
-        }) != 6:
+        if (
+            len(
+                {
+                    self.state_kpi_key,
+                    self.throughput_kpi_key,
+                    self.atollo_kpi_key,
+                    self.rendimiento_kpi_key,
+                    self.min_atollo_kpi_key,
+                    self.min_poste_kpi_key,
+                }
+            )
+            != 6
+        ):
             raise ValueError('Equipos CH KPI keys must be distinct')
 
 

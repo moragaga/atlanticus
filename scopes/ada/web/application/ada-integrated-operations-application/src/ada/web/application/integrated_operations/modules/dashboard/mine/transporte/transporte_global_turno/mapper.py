@@ -48,7 +48,7 @@ def map_transporte_global_turno_store(
 
     try:
         return _map_payload(decoded.value), DisplayStatus.OK
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None, DisplayStatus.INVALID
 
 
@@ -130,9 +130,7 @@ def _require_mapping(
 ) -> Mapping[str, object]:
     value = container.get(key)
     if not isinstance(value, Mapping):
-        raise ValueError(
-            f'Transporte Global Turno field must be an object: {key}'
-        )
+        raise ValueError(f'Transporte Global Turno field must be an object: {key}')
     return value
 
 

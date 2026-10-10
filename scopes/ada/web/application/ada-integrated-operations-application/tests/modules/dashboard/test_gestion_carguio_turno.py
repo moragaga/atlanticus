@@ -116,13 +116,8 @@ def test_gestion_carguio_turno_inspects_complete_json_surface() -> None:
     )
     component = build_gestion_carguio_turno(state, status)
     inspection_nodes = [
-        node
-        for node in _walk(component)
-        if _props(node).get('data-kpi-inspection-key') is not None
+        node for node in _walk(component) if _props(node).get('data-kpi-inspection-key') is not None
     ]
 
     assert len(inspection_nodes) == 1
-    assert (
-        _props(inspection_nodes[0])['data-kpi-inspection-key']
-        == GESTION_CARGUIO_TURNO_KPI_KEY
-    )
+    assert _props(inspection_nodes[0])['data-kpi-inspection-key'] == GESTION_CARGUIO_TURNO_KPI_KEY

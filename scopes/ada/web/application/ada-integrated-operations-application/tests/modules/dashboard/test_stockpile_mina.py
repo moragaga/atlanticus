@@ -43,14 +43,19 @@ def test_mina_maps_two_independent_readings_to_individual_definitions():
     assert [r.percent.value for r in readings] == ['65', '80']
     assert [r.height_m.value for r in readings] == ['18,2', '23,5']
     assert all(d.variant is StockpileVariant.VARIABLE_HEIGHT for d in STOCKPILE_MINA_DEFINITIONS)
-    assert all(d.scale_max_m == STOCKPILE_MINA_SCALE_MAX_M == 28 for d in STOCKPILE_MINA_DEFINITIONS)
+    assert all(
+        d.scale_max_m == STOCKPILE_MINA_SCALE_MAX_M == 28 for d in STOCKPILE_MINA_DEFINITIONS
+    )
 
 
-@pytest.mark.parametrize('store, expected', [
-    ({'latest': None}, DisplayStatus.NOT_MAPPED),
-    ({'latest': {'values': 'broken'}}, DisplayStatus.INVALID),
-    (None, DisplayStatus.INVALID),
-])
+@pytest.mark.parametrize(
+    'store, expected',
+    [
+        ({'latest': None}, DisplayStatus.NOT_MAPPED),
+        ({'latest': {'values': 'broken'}}, DisplayStatus.INVALID),
+        (None, DisplayStatus.INVALID),
+    ],
+)
 def test_bad_component_store_preserves_errors_per_pile(store, expected):
     readings = map_stockpile_mina_store(store)
     assert all(r.percent.status is expected and r.height_m.status is expected for r in readings)
@@ -58,8 +63,12 @@ def test_bad_component_store_preserves_errors_per_pile(store, expected):
 
 def test_mina_handles_partial_readings_without_affecting_other_pile():
     values = _values()
-    values[STOCKPILE_MINA_KPI_KEYS[0][1]] = {'status':'missing', 'value_kind': None, 'value': None}
-    values[STOCKPILE_MINA_KPI_KEYS[1][2]] = {'status':'error','value_kind':'value','value': None}
+    values[STOCKPILE_MINA_KPI_KEYS[0][1]] = {'status': 'missing', 'value_kind': None, 'value': None}
+    values[STOCKPILE_MINA_KPI_KEYS[1][2]] = {
+        'status': 'error',
+        'value_kind': 'value',
+        'value': None,
+    }
     readings = map_stockpile_mina_store(_store(values))
     assert readings[0].percent.status is DisplayStatus.EMPTY
     assert readings[0].height_m.status is DisplayStatus.OK
@@ -105,4 +114,5 @@ def test_dashboard_retains_stockpile_asset_layer():
     from ada.web.application.integrated_operations.modules.dashboard.module import (
         create_dashboard_module,
     )
+
     assert ADA_STOCKPILE_ASSET_LAYER in create_dashboard_module(None).asset_layers

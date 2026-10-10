@@ -18,12 +18,13 @@ def _walk(node):
 
 
 def test_only_tiempos_y_colas_declares_construction() -> None:
-    assert [card.key for card in TRANSPORTE.cards if card.content_state is ContentState.CONSTRUCTION] == [
-        'tiempos_y_colas'
-    ]
+    assert [
+        card.key for card in TRANSPORTE.cards if card.content_state is ContentState.CONSTRUCTION
+    ] == ['tiempos_y_colas']
     assert all(
         card.content_state is ContentState.READY
-        for card in TRANSPORTE.cards if card.key != 'tiempos_y_colas'
+        for card in TRANSPORTE.cards
+        if card.key != 'tiempos_y_colas'
     )
 
 
@@ -35,7 +36,12 @@ def test_construction_survives_runtime_degradation() -> None:
         if node.to_plotly_json()['props'].get('data-ada-content-state-operational') == 'true'
     ]
     assert [props['data-ada-content-state-declared'] for props in wrappers] == [
-        'ready', 'ready', 'construction'
+        'ready',
+        'ready',
+        'construction',
     ]
     for runtime_state in (ContentState.STALE, ContentState.SOURCE_ERROR):
-        assert resolve_content_state(ContentState.CONSTRUCTION, runtime_state) is ContentState.CONSTRUCTION
+        assert (
+            resolve_content_state(ContentState.CONSTRUCTION, runtime_state)
+            is ContentState.CONSTRUCTION
+        )
