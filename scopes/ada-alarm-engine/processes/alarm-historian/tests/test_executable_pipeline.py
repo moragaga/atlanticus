@@ -107,8 +107,7 @@ def test_end_to_end_facts_parquet_checkpoint_and_relaunch(tmp_path):
         'ENVIRONMENT': 'local',
         'APPLICATION': 'historian-target',
         'VOLUMEN_PATH': str(tmp_path),
-        'ALARM_HISTORIAN_PRODUCER_APPLICATION': 'runtime-source',
-        'ALARM_HISTORIAN_STREAM_ID': 'plant-stream-stable',
+        'ALARM_RUNTIME_APPLICATION': 'runtime-source',
         'ALARM_HISTORIAN_MAX_RECORDS': '1',
     }
     resolved = load_configuration(process_root=tmp_path, environ=values)
@@ -120,18 +119,18 @@ def test_end_to_end_facts_parquet_checkpoint_and_relaunch(tmp_path):
     assert result.checkpoint_advanced
     checkpoint_store = AlarmHistorianCheckpointStore(
         root=tmp_path / 'historian-target' / 'alarms' / 'historian',
-        stream_id='plant-stream-stable',
+        stream_id='runtime-source',
         producer_application='runtime-source',
     )
     checkpoint = checkpoint_store.read()
-    assert checkpoint.stream_id == 'plant-stream-stable'
+    assert checkpoint.stream_id == 'runtime-source'
     assert checkpoint.producer_application == 'runtime-source'
 
     from ada.contracts.alarms.facts_stream import iter_committed_facts
     from ada.contracts.alarms.history_projection import project_committed_alarm_facts
 
     committed = next(iter_committed_facts(root=producer / 'alarms' / 'output'))
-    fact = project_committed_alarm_facts(facts=committed, stream_id='plant-stream-stable').facts[0]
+    fact = project_committed_alarm_facts(facts=committed, stream_id='runtime-source').facts[0]
     assert fact.domain == AlarmHistoryDomain.LIFECYCLE
     definition, target = history_destination(fact)
     dataset = DatasetRuntime(

@@ -6,8 +6,7 @@ from dataclasses import dataclass
 from atlanticus.configuration import ConfigurationVariableSpec, ResolvedConfiguration
 from atlanticus.runtime.storage import validate_path_segment
 
-STREAM_ID_VARIABLE = 'ALARM_HISTORIAN_STREAM_ID'
-PRODUCER_APPLICATION_VARIABLE = 'ALARM_HISTORIAN_PRODUCER_APPLICATION'
+RUNTIME_APPLICATION_VARIABLE = 'ALARM_RUNTIME_APPLICATION'
 MAX_RECORDS_VARIABLE = 'ALARM_HISTORIAN_MAX_RECORDS'
 
 
@@ -24,16 +23,14 @@ class AlarmHistorianSettings:
     max_records: int
 
     # Convierte el contrato resuelto en los valores del proceso.
+    # La identidad del stream FACTS deriva de la APPLICATION de Runtime.
     @classmethod
     def from_configuration(cls, configuration: ResolvedConfiguration) -> AlarmHistorianSettings:
         if not isinstance(configuration, ResolvedConfiguration):
             raise TypeError('configuration must be a ResolvedConfiguration')
-        stream_id = configuration.require(STREAM_ID_VARIABLE)
-        if stream_id != stream_id.strip() or not stream_id:
-            raise AlarmHistorianSettingsError('stream_id must be non-empty normalized text')
         try:
             producer = validate_path_segment(
-                configuration.require(PRODUCER_APPLICATION_VARIABLE), name='producer_application'
+                configuration.require(RUNTIME_APPLICATION_VARIABLE), name='runtime_application'
             )
         except (TypeError, ValueError) as error:
             raise AlarmHistorianSettingsError(str(error)) from error
@@ -43,7 +40,7 @@ class AlarmHistorianSettings:
         count = int(value)
         if not 1 <= count <= 10000:
             raise AlarmHistorianSettingsError('max_records must be between 1 and 10000')
-        return cls(stream_id=stream_id, producer_application=producer, max_records=count)
+        return cls(stream_id=producer, producer_application=producer, max_records=count)
 
 
 # Declara las variables que el bootstrap puede consumir.
@@ -52,8 +49,7 @@ def configuration_specs() -> tuple[ConfigurationVariableSpec, ...]:
         ConfigurationVariableSpec(key='APPLICATION'),
         ConfigurationVariableSpec(key='VOLUMEN_PATH'),
         ConfigurationVariableSpec(key='ATLANTICUS_JOB_EXECUTION_DISABLED', default='false'),
-        ConfigurationVariableSpec(key=STREAM_ID_VARIABLE),
-        ConfigurationVariableSpec(key=PRODUCER_APPLICATION_VARIABLE),
+        ConfigurationVariableSpec(key=RUNTIME_APPLICATION_VARIABLE),
         ConfigurationVariableSpec(key=MAX_RECORDS_VARIABLE, default='100'),
         ConfigurationVariableSpec(key='ATLANTICUS_OBSERVABILITY_FILE_LOGS_ENABLED', default='true'),
         ConfigurationVariableSpec(key='ATLANTICUS_AZURE_OBSERVABILITY_MODE', default='off'),
