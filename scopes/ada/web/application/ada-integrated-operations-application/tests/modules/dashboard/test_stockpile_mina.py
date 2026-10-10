@@ -21,7 +21,13 @@ from ada.web.ui.stockpile import ADA_STOCKPILE_ASSET_LAYER, StockpileVariant
 
 
 def _entry(value: str) -> dict[str, object]:
-    return {'status': 'ok', 'value_kind': 'value', 'value': value}
+    return {
+        'status': 'ok',
+        'value_kind': 'value',
+        'value': str(value),
+        'value_type': 'text',
+        'parsed_value': str(value),
+    }
 
 
 def _store(values: dict[str, object]) -> dict[str, object]:
@@ -63,11 +69,19 @@ def test_bad_component_store_preserves_errors_per_pile(store, expected):
 
 def test_mina_handles_partial_readings_without_affecting_other_pile():
     values = _values()
-    values[STOCKPILE_MINA_KPI_KEYS[0][1]] = {'status': 'missing', 'value_kind': None, 'value': None}
+    values[STOCKPILE_MINA_KPI_KEYS[0][1]] = {
+        'status': 'missing',
+        'value_kind': None,
+        'value': None,
+        'value_type': None,
+        'parsed_value': None,
+    }
     values[STOCKPILE_MINA_KPI_KEYS[1][2]] = {
         'status': 'error',
         'value_kind': 'value',
         'value': None,
+        'value_type': 'text',
+        'parsed_value': None,
     }
     readings = map_stockpile_mina_store(_store(values))
     assert readings[0].percent.status is DisplayStatus.EMPTY
@@ -78,7 +92,13 @@ def test_mina_handles_partial_readings_without_affecting_other_pile():
 
 def test_numbers_are_not_accepted_at_collector_boundary():
     values = _values()
-    values[STOCKPILE_MINA_KPI_KEYS[0][2]] = _entry(18.2)
+    values[STOCKPILE_MINA_KPI_KEYS[0][2]] = {
+        'status': 'ok',
+        'value_kind': 'value',
+        'value_type': 'float',
+        'value': 18.2,
+        'parsed_value': '18,2',
+    }
     readings = map_stockpile_mina_store(_store(values))
     assert readings[0].height_m.status is DisplayStatus.INVALID
 

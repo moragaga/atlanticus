@@ -16,7 +16,13 @@ from ada.web.ui.display_status import DisplayStatus
 
 
 def _entry(value: object, *, kind: str = 'value') -> dict[str, object]:
-    return {'status': 'ok', 'value_kind': kind, 'value': value}
+    return {
+        'status': 'ok',
+        'value_kind': kind,
+        'value': (str(value) if kind == 'value' else value),
+        'value_type': ('text' if kind == 'value' else None),
+        'parsed_value': (str(value) if kind == 'value' else None),
+    }
 
 
 def _store(values: dict[str, object]) -> dict[str, object]:
@@ -48,7 +54,13 @@ def test_errors_are_independent_and_unknown_state_is_invalid():
         _store(
             {
                 a.state_kpi_key: _entry('mantencion'),
-                b.state_kpi_key: {'status': 'error', 'value_kind': 'value', 'value': None},
+                b.state_kpi_key: {
+                    'status': 'error',
+                    'value_kind': 'value',
+                    'value': None,
+                    'value_type': 'text',
+                    'parsed_value': None,
+                },
                 c.state_kpi_key: _entry('detenido'),
             }
         ),
@@ -102,7 +114,13 @@ def test_color_failure_preserves_metric_and_reports_failure():
         _store(
             {
                 metric.value_kpi_key: _entry('154'),
-                metric.color_kpi_key: {'status': 'error', 'value_kind': 'value', 'value': None},
+                metric.color_kpi_key: {
+                    'status': 'error',
+                    'value_kind': 'value',
+                    'value': None,
+                    'value_type': 'text',
+                    'parsed_value': None,
+                },
             }
         ),
         CORREAS_STMG_DEFINITIONS,

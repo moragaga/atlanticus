@@ -1,5 +1,6 @@
-from ..metrics import FluidMetricDefinition
+from ..indicators import FluidMetricDefinition
 
+# Orden y nombres de los KPI históricos permanecen iguales.
 STA_INDICATORS = (
     FluidMetricDefinition('Make Up', 'make_up_real_mean_hora', 'm³/t'),
     FluidMetricDefinition('Flujo R2', 'flujo_r2_real_mean_hora', 'l/s'),

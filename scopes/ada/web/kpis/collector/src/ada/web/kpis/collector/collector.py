@@ -49,7 +49,7 @@ _LATEST_MANIFEST_FIELDS = frozenset(
         'published_at_utc',
     }
 )
-_LATEST_VALUE_FIELDS = frozenset({'status', 'value_kind', 'value'})
+_LATEST_VALUE_FIELDS = frozenset({'status', 'value_kind', 'value_type', 'value', 'parsed_value'})
 _LATEST_VALUE_KINDS = frozenset({'value', 'json'})
 _TIMESERIES_DOCUMENT_FIELDS = frozenset(
     {
@@ -520,32 +520,36 @@ def _validate_latest_value(value: Mapping[str, Any], key: str) -> None:
     status = value['status']
     value_kind = value['value_kind']
     payload = value['value']
+    parsed = value['parsed_value']
+    value_type = value['value_type']
     if status not in {'ok', 'missing', 'error'}:
         raise KpiCollectorContractError(f'KPI latest value {key!r} status is invalid')
     if value_kind is not None:
         _required_text(value_kind, f'KPI latest value {key!r} value_kind')
         if value_kind not in _LATEST_VALUE_KINDS:
             raise KpiCollectorContractError(f'KPI latest value {key!r} value_kind is invalid')
+    if value_kind == 'json':
+        if value_type is not None or parsed is not None:
+            raise KpiCollectorContractError(f'KPI latest value {key!r} JSON metadata is invalid')
+        if status == 'ok' and not isinstance(payload, list | dict):
+            raise KpiCollectorContractError(f'KPI latest value {key!r} JSON payload is invalid')
+    elif value_kind == 'value':
+        if value_type not in _VALUE_TYPES:
+            raise KpiCollectorContractError(f'KPI latest value {key!r} value_type is invalid')
+        if status == 'ok' and (not isinstance(payload, str) or not isinstance(parsed, str)):
+            raise KpiCollectorContractError(f'KPI latest value {key!r} text fields are invalid')
+    elif value_type is not None or parsed is not None:
+        raise KpiCollectorContractError(f'KPI latest value {key!r} metadata is invalid')
     if status == 'ok':
-        if value_kind is None or payload is None:
-            raise KpiCollectorContractError(
-                f'KPI latest value {key!r} requires value_kind and value when status is ok'
-            )
-        if value_kind == 'json' and not isinstance(payload, list | dict):
-            raise KpiCollectorContractError(
-                f'KPI latest value {key!r} json value must be an object or array'
-            )
+        if value_kind is None:
+            raise KpiCollectorContractError(f'KPI latest value {key!r} requires value_kind')
         return
-    if status == 'missing':
-        if value_kind is not None or payload is not None:
-            raise KpiCollectorContractError(
-                f'KPI latest value {key!r} must be empty when status is missing'
-            )
-        return
-    if payload is not None:
-        raise KpiCollectorContractError(
-            f'KPI latest value {key!r} must not contain value when status is error'
-        )
+    if status == 'error' and value_kind is None:
+        raise KpiCollectorContractError(f'KPI latest value {key!r} error requires value_kind')
+    if status == 'missing' and value_kind not in {None, 'json'}:
+        raise KpiCollectorContractError(f'KPI latest value {key!r} missing kind is invalid')
+    if payload is not None or parsed is not None:
+        raise KpiCollectorContractError(f'KPI latest value {key!r} degraded payload is invalid')
 
 
 def _validate_timeseries_series(

@@ -1,4 +1,4 @@
-# Mapeador autónomo del submódulo: no se comparte estado mutable.
+# Para presentación se consume parsed_value; los datos de cálculo usan value neutral.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -19,7 +19,6 @@ from .definitions import (
 from .models import ColectivaEquipmentReading, ColectivaProcessReading, ColectivaStateReading
 
 
-# Resuelve cada estado de equipos y las dos cifras de columnas de forma independiente.
 def map_colectiva_process_store(store_data: object) -> ColectivaProcessReading:
     values, status = _latest_values(store_data)
 
@@ -50,7 +49,6 @@ def map_colectiva_process_store(store_data: object) -> ColectivaProcessReading:
     )
 
 
-# Verifica la envoltura latest sin depender del mapeador de overview.
 def _latest_values(store_data: object) -> tuple[Mapping[str, object] | None, DisplayStatus]:
     if not isinstance(store_data, Mapping):
         return None, DisplayStatus.INVALID
@@ -65,7 +63,6 @@ def _latest_values(store_data: object) -> tuple[Mapping[str, object] | None, Dis
     return values, DisplayStatus.OK
 
 
-# No convierte la falta de información en detenido; conserva los estados degradados.
 def _display_value(
     values: Mapping[str, object] | None,
     key: str,
@@ -82,9 +79,9 @@ def _display_value(
         return DisplayValue.error()
     if decoded.state is not KpiLatestValueState.OK:
         return DisplayValue.invalid()
-    if decoded.value_kind != 'value' or isinstance(decoded.value, bool):
+    if decoded.value_kind != 'value' or isinstance(decoded.parsed_value, bool):
         return DisplayValue.invalid()
-    if not isinstance(decoded.value, str | int | float):
+    if not isinstance(decoded.parsed_value, str | int | float):
         return DisplayValue.invalid()
-    raw = str(decoded.value).strip()
+    raw = str(decoded.parsed_value).strip()
     return DisplayValue.ok(raw) if raw else DisplayValue.invalid()

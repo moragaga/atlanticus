@@ -19,7 +19,13 @@ from ada.web.ui.display_status import DisplayStatus
 
 
 def _entry(value: object) -> dict[str, object]:
-    return {'status': 'ok', 'value_kind': 'value', 'value': value}
+    return {
+        'status': 'ok',
+        'value_kind': 'value',
+        'value': str(value),
+        'value_type': 'text',
+        'parsed_value': str(value),
+    }
 
 
 def _store() -> dict[str, object]:
@@ -44,9 +50,7 @@ def _walk(item):
 
 
 def test_current_five_tanks_and_all_legacy_keys():
-    assert [item.label for item in ESPESADORES] == [
-        'TK-10', 'TK-12', 'TK-13', 'TK-55', 'TK-56'
-    ]
+    assert [item.label for item in ESPESADORES] == ['TK-10', 'TK-12', 'TK-13', 'TK-55', 'TK-56']
     for definition, number in zip(ESPESADORES, ('10', '12', '13', '55', '56'), strict=True):
         assert definition.state_kpi_key == f'tk_{number}_estado_inst'
         assert definition.feed_kpi_key == f'tk_{number}_estado_alimentacion_inst'
@@ -74,7 +78,11 @@ def test_latest_maps_five_tanks_and_six_indicators():
     indicators = map_selectiva_indicators_store(_store())
     assert len(tanks) == 5
     assert [item.feed.value for item in tanks] == [
-        'detenido', 'operando', 'detenido', 'operando', 'detenido'
+        'detenido',
+        'operando',
+        'detenido',
+        'operando',
+        'detenido',
     ]
     assert tanks[0].state.value == 'Detenido'
     assert [metric.value.value for metric in tanks[0].metrics] == ['25.6'] * 4
@@ -85,8 +93,20 @@ def test_unknown_or_missing_feed_never_becomes_detenido():
     store = _store()
     values = store['latest']['values']
     values.pop(ESPESADORES[0].feed_kpi_key)
-    values[ESPESADORES[1].feed_kpi_key] = {'status': 'missing', 'value_kind': None, 'value': None}
-    values[ESPESADORES[2].feed_kpi_key] = {'status': 'error', 'value_kind': None, 'value': None}
+    values[ESPESADORES[1].feed_kpi_key] = {
+        'status': 'missing',
+        'value_kind': None,
+        'value': None,
+        'value_type': None,
+        'parsed_value': None,
+    }
+    values[ESPESADORES[2].feed_kpi_key] = {
+        'status': 'error',
+        'value_kind': 'json',
+        'value': None,
+        'value_type': None,
+        'parsed_value': None,
+    }
     values[ESPESADORES[3].feed_kpi_key] = _entry('unrecognized')
     values[ESPESADORES[4].feed_kpi_key] = _entry(0)
     tanks = map_espesadores_store(store)
@@ -104,11 +124,19 @@ def test_tanks_and_indicators_keep_independent_degraded_statuses():
     store = _store()
     values = store['latest']['values']
     values[ESPESADORES[2].metrics[1].kpi_key] = {
-        'status': 'error', 'value_kind': None, 'value': None
+        'status': 'error',
+        'value_kind': 'json',
+        'value': None,
+        'value_type': None,
+        'parsed_value': None,
     }
     values.pop(SELECTIVA_INDICATORS[0].kpi_key)
     values[SELECTIVA_INDICATORS[1].kpi_key] = {
-        'status': 'missing', 'value_kind': None, 'value': None
+        'status': 'missing',
+        'value_kind': None,
+        'value': None,
+        'value_type': None,
+        'parsed_value': None,
     }
     tanks = map_espesadores_store(store)
     indicators = map_selectiva_indicators_store(store)
@@ -126,8 +154,7 @@ def test_missing_delivery_and_invalid_latest_do_not_crash():
     assert all(item.value.status is DisplayStatus.NOT_MAPPED for item in indicators)
     assert all(item.feed.status is DisplayStatus.INVALID for item in map_espesadores_store(None))
     assert all(
-        item.value.status is DisplayStatus.INVALID
-        for item in map_selectiva_indicators_store(None)
+        item.value.status is DisplayStatus.INVALID for item in map_selectiva_indicators_store(None)
     )
 
 

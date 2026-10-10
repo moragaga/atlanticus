@@ -27,7 +27,13 @@ def _nodes(item):
 
 
 def _entry(value):
-    return {'status': 'ok', 'value_kind': 'value', 'value': value}
+    return {
+        'status': 'ok',
+        'value_kind': 'value',
+        'value': str(value),
+        'value_type': 'text',
+        'parsed_value': str(value),
+    }
 
 
 def _store(values):
@@ -86,7 +92,13 @@ def test_atollo_inactive_has_no_hidden_target_and_error_is_inspectable():
         _store(
             {
                 a.atollo_kpi_key: _entry(a.atollo_inactive_value),
-                b.atollo_kpi_key: {'status': 'error', 'value_kind': 'value', 'value': None},
+                b.atollo_kpi_key: {
+                    'status': 'error',
+                    'value_kind': 'value',
+                    'value': None,
+                    'value_type': 'text',
+                    'parsed_value': None,
+                },
             }
         ),
         EQUIPOS_CH_DEFINITIONS,
@@ -131,12 +143,16 @@ def test_table_color_is_an_optional_kpi_not_a_json_payload():
                     original.rendimiento_kpi_key: {
                         'status': 'ok',
                         'value_kind': 'value',
-                        'value': '9,1',
+                        'value': str('9,1'),
+                        'value_type': 'text',
+                        'parsed_value': str('9,1'),
                     },
                     'rendimiento_color_test': {
                         'status': 'ok',
                         'value_kind': 'value',
-                        'value': '2',
+                        'value': str('2'),
+                        'value_type': 'text',
+                        'parsed_value': str('2'),
                     },
                 }
             },

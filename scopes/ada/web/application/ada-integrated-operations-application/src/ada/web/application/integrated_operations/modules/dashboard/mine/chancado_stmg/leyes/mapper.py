@@ -58,11 +58,11 @@ def _metric(
         display = DisplayValue.error()
     elif decoded.state is not KpiLatestValueState.OK:
         display = DisplayValue.invalid()
-    elif decoded.value_kind != 'value' or isinstance(decoded.value, bool):
+    elif decoded.value_kind != 'value' or isinstance(decoded.parsed_value, bool):
         display = DisplayValue.invalid()
-    elif not isinstance(decoded.value, str | int | float):
+    elif not isinstance(decoded.parsed_value, str | int | float):
         display = DisplayValue.invalid()
     else:
-        text = str(decoded.value)
+        text = str(decoded.parsed_value)
         display = DisplayValue.ok(text) if text.strip() else DisplayValue.invalid()
     return LeyesMetric(kpi_key, display)

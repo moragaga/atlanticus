@@ -30,7 +30,13 @@ def _row(
 
 
 def _json(value: object) -> dict[str, object]:
-    return {'status': 'ok', 'value_kind': 'json', 'value': value}
+    return {
+        'status': 'ok',
+        'value_kind': 'json',
+        'value': value,
+        'value_type': None,
+        'parsed_value': None,
+    }
 
 
 def _store(value: object) -> dict[str, object]:
@@ -120,6 +126,8 @@ def test_transporte_global_turno_source_semantics() -> None:
                         'status': 'missing',
                         'value_kind': None,
                         'value': None,
+                        'value_type': None,
+                        'parsed_value': None,
                     }
                 }
             }

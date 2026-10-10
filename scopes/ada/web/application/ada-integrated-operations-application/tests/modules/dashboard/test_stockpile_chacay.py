@@ -27,7 +27,13 @@ from ada.web.ui.stockpile import StockpileVariant
 
 
 def _entry(value: object) -> dict[str, object]:
-    return {'status': 'ok', 'value_kind': 'value', 'value': value}
+    return {
+        'status': 'ok',
+        'value_kind': 'value',
+        'value': str(value),
+        'value_type': 'text',
+        'parsed_value': str(value),
+    }
 
 
 def _store(values: dict[str, object]) -> dict[str, object]:
@@ -122,11 +128,15 @@ def test_independent_kpi_values_and_statuses():
                     'status': 'missing',
                     'value_kind': None,
                     'value': None,
+                    'value_type': None,
+                    'parsed_value': None,
                 },
                 STOCKPILE_CHACAY_PILES[2].kpi_key: {
                     'status': 'error',
                     'value_kind': 'value',
                     'value': None,
+                    'value_type': 'text',
+                    'parsed_value': None,
                 },
                 STOCKPILE_CHACAY_PILES[3].kpi_key: _entry('   '),
                 STOCKPILE_CHACAY_ROWS[0].kpi_key: _entry('123456789,123456789'),
@@ -173,8 +183,26 @@ def test_all_25_kpis_are_individually_inspectable():
     ('entry', 'expected'),
     [
         (None, DisplayStatus.NOT_MAPPED),
-        ({'status': 'missing', 'value_kind': None, 'value': None}, DisplayStatus.EMPTY),
-        ({'status': 'error', 'value_kind': 'value', 'value': None}, DisplayStatus.ERROR),
+        (
+            {
+                'status': 'missing',
+                'value_kind': None,
+                'value': None,
+                'value_type': None,
+                'parsed_value': None,
+            },
+            DisplayStatus.EMPTY,
+        ),
+        (
+            {
+                'status': 'error',
+                'value_kind': 'value',
+                'value': None,
+                'value_type': 'text',
+                'parsed_value': None,
+            },
+            DisplayStatus.ERROR,
+        ),
         (_entry(''), DisplayStatus.INVALID),
     ],
 )

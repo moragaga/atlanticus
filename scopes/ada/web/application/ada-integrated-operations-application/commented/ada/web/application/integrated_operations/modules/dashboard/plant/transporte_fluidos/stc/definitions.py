@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..metrics import FluidMetricDefinition
+from ..indicators import FluidMetricDefinition
 
 
 @dataclass(frozen=True, slots=True)
-# Explicación: este bloque implementa la misma responsabilidad que su par productivo.
 class StcEspesadorDefinition:
     label: str
     state_key: str
@@ -15,7 +14,6 @@ class StcEspesadorDefinition:
 
 
 @dataclass(frozen=True, slots=True)
-# Explicación: este bloque implementa la misma responsabilidad que su par productivo.
 class StcLevelDefinition:
     label: str
     level_key: str
@@ -26,6 +24,7 @@ class StcLevelDefinition:
     fill_color: str = '#5b5c64'
 
 
+# Las claves y unidades se conservan; solo cambia la ubicación del tipo de definición.
 STC_INDICATORS = (
     FluidMetricDefinition('Concentrado', 'concentrado_entregado_puerto_real_mean_hora', 't/h'),
     FluidMetricDefinition('Sólido Puerto', 'solido_puerto_real_mean_hora', '%'),

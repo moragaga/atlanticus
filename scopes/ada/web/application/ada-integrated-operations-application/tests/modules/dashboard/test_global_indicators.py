@@ -86,7 +86,13 @@ def _binding(
 
 
 def _ok(value: object) -> dict[str, object]:
-    return {'status': 'ok', 'value_kind': 'value', 'value': value}
+    return {
+        'status': 'ok',
+        'value_kind': 'value',
+        'value': str(value),
+        'value_type': 'text',
+        'parsed_value': str(value),
+    }
 
 
 def _store() -> dict[str, object]:
@@ -160,7 +166,7 @@ def test_resolver_maps_canonical_latest_envelopes_and_preserves_kpi_inspection_k
 
     assert shared.key == 'shared'
     assert shared.measurements[0].actual_value.status is DisplayStatus.OK
-    assert shared.measurements[0].actual_value.value == 10
+    assert shared.measurements[0].actual_value.value == '10'
     assert shared.measurements[0].actual_kpi_key == 'shared.turno.actual'
     assert shared.measurements[0].color_class == 'indicator-positive'
     assert shared.last_measurement is not None
@@ -196,6 +202,8 @@ def test_runtime_state_rejects_missing_or_invalid_latest_payload() -> None:
         'status': 'ok',
         'value_kind': 'json',
         'value': {'value': 10},
+        'value_type': None,
+        'parsed_value': None,
     }
 
     assert (

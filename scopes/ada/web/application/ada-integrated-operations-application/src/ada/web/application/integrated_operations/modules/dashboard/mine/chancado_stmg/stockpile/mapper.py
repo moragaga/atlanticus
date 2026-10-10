@@ -45,9 +45,9 @@ def _map_reading(
         return DisplayValue(source_status)
     decoded = decode_kpi_latest_value(values.get(kpi_key), present=kpi_key in values)
     if decoded.state is KpiLatestValueState.OK:
-        if decoded.value_kind != 'value' or not isinstance(decoded.value, str):
+        if decoded.value_kind != 'value' or not isinstance(decoded.parsed_value, str):
             return DisplayValue.invalid()
-        return DisplayValue.ok(decoded.value)
+        return DisplayValue.ok(decoded.parsed_value)
     if decoded.state is KpiLatestValueState.NOT_MAPPED:
         return DisplayValue.not_mapped()
     if decoded.state is KpiLatestValueState.MISSING:

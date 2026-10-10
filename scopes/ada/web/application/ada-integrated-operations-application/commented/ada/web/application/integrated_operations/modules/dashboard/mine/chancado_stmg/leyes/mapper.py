@@ -1,3 +1,4 @@
+# Para presentación se consume parsed_value; los datos de cálculo usan value neutral.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -9,7 +10,6 @@ from .definitions import LEYES_DEFINITIONS
 from .models import LeyesMetric, LeyesRow, LeyesState
 
 
-# Transformación exclusiva del store latest del collector a un modelo tipado.
 def map_leyes_store(store_data: object) -> LeyesState:
     values, source_status = _latest_values(store_data)
     return LeyesState(
@@ -27,7 +27,6 @@ def map_leyes_store(store_data: object) -> LeyesState:
     )
 
 
-# Una estructura de origen incorrecta no se oculta como ausencia de un KPI.
 def _latest_values(
     store_data: object,
 ) -> tuple[Mapping[str, object] | None, DisplayStatus]:
@@ -44,7 +43,6 @@ def _latest_values(
     return values, DisplayStatus.OK
 
 
-# Cada KPI se decodifica aisladamente; no se realizan cálculos ni sustituciones de datos.
 def _metric(
     values: Mapping[str, object] | None,
     kpi_key: str,
@@ -61,11 +59,11 @@ def _metric(
         display = DisplayValue.error()
     elif decoded.state is not KpiLatestValueState.OK:
         display = DisplayValue.invalid()
-    elif decoded.value_kind != 'value' or isinstance(decoded.value, bool):
+    elif decoded.value_kind != 'value' or isinstance(decoded.parsed_value, bool):
         display = DisplayValue.invalid()
-    elif not isinstance(decoded.value, str | int | float):
+    elif not isinstance(decoded.parsed_value, str | int | float):
         display = DisplayValue.invalid()
     else:
-        text = str(decoded.value)
+        text = str(decoded.parsed_value)
         display = DisplayValue.ok(text) if text.strip() else DisplayValue.invalid()
     return LeyesMetric(kpi_key, display)

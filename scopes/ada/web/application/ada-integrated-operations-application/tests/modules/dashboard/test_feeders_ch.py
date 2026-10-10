@@ -16,7 +16,13 @@ def _store(values: dict[str, object]) -> dict[str, object]:
 
 
 def _entry(value: object, *, kind: str = 'value') -> dict[str, object]:
-    return {'status': 'ok', 'value_kind': kind, 'value': value}
+    return {
+        'status': 'ok',
+        'value_kind': kind,
+        'value': (str(value) if kind == 'value' else value),
+        'value_type': ('text' if kind == 'value' else None),
+        'parsed_value': (str(value) if kind == 'value' else None),
+    }
 
 
 @pytest.mark.parametrize(
@@ -59,9 +65,21 @@ def test_four_feeder_statuses_are_independent():
         _store(
             {
                 a.percent_kpi_key: _entry('100'),
-                b.percent_kpi_key: {'status': 'missing', 'value_kind': None, 'value': None},
+                b.percent_kpi_key: {
+                    'status': 'missing',
+                    'value_kind': None,
+                    'value': None,
+                    'value_type': None,
+                    'parsed_value': None,
+                },
                 c.percent_kpi_key: _entry('112'),
-                d.percent_kpi_key: {'status': 'error', 'value_kind': 'value', 'value': None},
+                d.percent_kpi_key: {
+                    'status': 'error',
+                    'value_kind': 'value',
+                    'value': None,
+                    'value_type': 'text',
+                    'parsed_value': None,
+                },
             }
         ),
         FEEDERS_CH_DEFINITIONS,
@@ -81,7 +99,15 @@ def test_optional_color_does_not_degrade_the_valid_percentage():
     sources = (
         ({}, DisplayStatus.NOT_MAPPED),
         (
-            {'color_x': {'status': 'error', 'value_kind': 'value', 'value': None}},
+            {
+                'color_x': {
+                    'status': 'error',
+                    'value_kind': 'value',
+                    'value': None,
+                    'value_type': 'text',
+                    'parsed_value': None,
+                }
+            },
             DisplayStatus.ERROR,
         ),
         ({'color_x': _entry('5')}, DisplayStatus.INVALID),

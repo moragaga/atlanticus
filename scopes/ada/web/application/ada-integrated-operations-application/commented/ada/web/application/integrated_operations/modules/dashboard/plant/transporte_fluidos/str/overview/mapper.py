@@ -1,30 +1,29 @@
 from __future__ import annotations
 
-# Versión pedagógica: conserva literalmente la lógica y contratos del módulo productivo.
-
-
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 
+from ada.web.kpis.readings import (
+    read_component_latest,
+)
 from ada.web.ui.display_status import DisplayStatus
 from ada.web.ui.time_series import TimeSeriesPoint, TimeSeriesValues
 
-from .._latest import display_value, latest_values
 from .definitions import STR_TREND
 from .models import StrOverviewReading
 
 _STEP_SECONDS = 120
 
 
+# El valor actual usa el lector común; la serie temporal mantiene su contrato propio.
 def map_str_overview_store(store_data: object) -> StrOverviewReading:
-    values, status = latest_values(store_data)
+    source = read_component_latest(store_data)
     return StrOverviewReading(
-        current=display_value(values, STR_TREND.kpi_key, status),
+        current=source.text(STR_TREND.kpi_key),
         history=_history(store_data),
     )
 
 
-# Se reconstruye exactamente la malla temporal de 120 segundos, conservando None en sus posiciones.
 def _history(store_data: object) -> TimeSeriesValues:
     if not isinstance(store_data, Mapping):
         return TimeSeriesValues(DisplayStatus.INVALID)
@@ -69,7 +68,6 @@ def _history(store_data: object) -> TimeSeriesValues:
     return TimeSeriesValues(DisplayStatus.OK, points)
 
 
-# Los timestamps deben incluir zona horaria y se normalizan a UTC.
 def _utc(value: object) -> datetime:
     if not isinstance(value, str) or not value:
         raise ValueError('STR time series timestamp must be an ISO string')

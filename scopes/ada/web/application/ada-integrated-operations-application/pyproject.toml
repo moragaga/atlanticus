@@ -26,6 +26,7 @@ dependencies = [
     "atlanticus-web==0.1.0",
     "dash==4.4.1",
     "ada-web-kpi-collector==0.1.0",
+    "ada-web-kpi-readings==0.1.0",
     "ada-web-shell-header==0.1.8",
     "ada-web-ui-display-status==0.1.1",
     "ada-web-ui-global-indicator==0.2.10",
@@ -110,6 +111,7 @@ ada-web-tools-projection-cosmos = { path = "../../tools/projection-cosmos", edit
 ada-web-tools-projection-local = { path = "../../tools/projection-local", editable = true }
 ada-web-components = { path = "../../components/core", editable = true }
 ada-web-kpi-collector = { path = "../../kpis/collector", editable = true }
+ada-web-kpi-readings = { path = "../../kpis/readings", editable = true }
 atlanticus-web-projection = { path = "../../../../../web/capabilities/projection/core", editable = true }
 atlanticus-web-master-projection = { path = "../../../../../web/capabilities/master-projection", editable = true }
 atlanticus-web-source = { path = "../../../../../web/capabilities/source/core", editable = true }

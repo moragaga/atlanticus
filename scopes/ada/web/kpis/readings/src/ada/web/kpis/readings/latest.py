@@ -1,4 +1,3 @@
-# La capa de lecturas pertenece al dashboard, no al collector ni a la vista.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -12,13 +11,11 @@ from ada.web.kpis.collector import (
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 
-# Snapshot inmutable por referencia; no modifica el store recibido.
 @dataclass(frozen=True, slots=True)
-class DashboardLatestReadings:
+class KpiLatestReadings:
     values: Mapping[str, object] | None
     source_status: DisplayStatus
 
-    # Si la lectura está degradada, nunca exponemos valores operacionales.
     def __post_init__(self) -> None:
         if not isinstance(self.source_status, DisplayStatus):
             raise TypeError('source_status must be DisplayStatus')
@@ -28,29 +25,26 @@ class DashboardLatestReadings:
         elif self.values is not None:
             raise ValueError('Degraded source cannot expose values')
 
-    # Conserva el tipo recibido; los booleanos requieren autorización expresa.
-    def scalar(self, key: str, *, allow_bool: bool = False) -> DisplayValue:
+    def scalar(self, key: str) -> DisplayValue:
         decoded = self._decode(key)
         if decoded is None:
             return DisplayValue(self.source_status)
         if decoded.state is not KpiLatestValueState.OK:
             return _degraded(decoded.state)
-        if decoded.value_kind != 'value':
+        if decoded.value_kind != 'value' or not isinstance(decoded.value, str):
             return DisplayValue.invalid()
-        value = decoded.value
-        if not isinstance(value, str | int | float) or (isinstance(value, bool) and not allow_bool):
-            return DisplayValue.invalid()
-        return DisplayValue.ok(value)
+        return DisplayValue.ok(decoded.value)
 
-    # Política de las cards simples: texto no vacío, sin espacios laterales.
     def text(self, key: str) -> DisplayValue:
-        result = self.scalar(key)
-        if result.status is not DisplayStatus.OK:
-            return result
-        value = str(result.value).strip()
-        return DisplayValue.ok(value) if value else DisplayValue.invalid()
+        decoded = self._decode(key)
+        if decoded is None:
+            return DisplayValue(self.source_status)
+        if decoded.state is not KpiLatestValueState.OK:
+            return _degraded(decoded.state)
+        if decoded.value_kind != 'value' or not isinstance(decoded.parsed_value, str):
+            return DisplayValue.invalid()
+        return DisplayValue.ok(decoded.parsed_value)
 
-    # Las estructuras compuestas se preservan para su mapper de dominio.
     def json(self, key: str) -> DisplayValue:
         decoded = self._decode(key)
         if decoded is None:
@@ -61,7 +55,12 @@ class DashboardLatestReadings:
             return DisplayValue.invalid()
         return DisplayValue.ok(decoded.value)
 
-    # Delegamos la validación exacta de cada entrada al collector existente.
+    def value_type(self, key: str) -> str | None:
+        decoded = self._decode(key)
+        if decoded is None or decoded.state is not KpiLatestValueState.OK:
+            return None
+        return decoded.value_type
+
     def _decode(self, key: str) -> DecodedKpiLatestValue | None:
         if not isinstance(key, str) or not key or key != key.strip():
             raise ValueError('KPI key must be a non-empty trimmed string')
@@ -70,44 +69,40 @@ class DashboardLatestReadings:
         return decode_kpi_latest_value(self.values.get(key), present=key in self.values)
 
 
-# Entrada habitual de Mina y Planta: no altera reglas de identidad anteriores.
-def read_component_latest(store_data: object) -> DashboardLatestReadings:
+def read_component_latest(store_data: object) -> KpiLatestReadings:
     return _read_latest(store_data)
 
 
-# Los indicadores globales usan otra identidad de Store, validada explícitamente.
 def read_system_latest(
     store_data: object, *, tool_key: str, destination_key: str
-) -> DashboardLatestReadings:
+) -> KpiLatestReadings:
     for name, key in (('tool_key', tool_key), ('destination_key', destination_key)):
         if not isinstance(key, str) or not key or key != key.strip():
             raise ValueError(f'{name} must be a non-empty trimmed string')
     if not isinstance(store_data, Mapping):
-        return DashboardLatestReadings(None, DisplayStatus.INVALID)
+        return KpiLatestReadings(None, DisplayStatus.INVALID)
     if (
         store_data.get('tool_key') != tool_key
         or store_data.get('destination_key') != destination_key
     ):
-        return DashboardLatestReadings(None, DisplayStatus.INVALID)
+        return KpiLatestReadings(None, DisplayStatus.INVALID)
     return _read_latest(store_data)
 
 
-# Distingue falta de entrega de una entrega con estructura inválida.
-def _read_latest(store_data: object) -> DashboardLatestReadings:
+def _read_latest(store_data: object) -> KpiLatestReadings:
     if not isinstance(store_data, Mapping):
-        return DashboardLatestReadings(None, DisplayStatus.INVALID)
+        return KpiLatestReadings(None, DisplayStatus.INVALID)
     latest = store_data.get('latest')
     if latest is None:
-        return DashboardLatestReadings(None, DisplayStatus.NOT_MAPPED)
+        return KpiLatestReadings(None, DisplayStatus.NOT_MAPPED)
     if not isinstance(latest, Mapping):
-        return DashboardLatestReadings(None, DisplayStatus.INVALID)
+        return KpiLatestReadings(None, DisplayStatus.INVALID)
     values = latest.get('values')
     if not isinstance(values, Mapping):
-        return DashboardLatestReadings(None, DisplayStatus.INVALID)
-    return DashboardLatestReadings(values, DisplayStatus.OK)
+        return KpiLatestReadings(None, DisplayStatus.INVALID)
+    return KpiLatestReadings(values, DisplayStatus.OK)
 
 
-# El estado ERROR se conserva; cada consumidor decidirá su presentación.
 def _degraded(state: KpiLatestValueState) -> DisplayValue:
     if state is KpiLatestValueState.NOT_MAPPED:
         return DisplayValue.not_mapped()

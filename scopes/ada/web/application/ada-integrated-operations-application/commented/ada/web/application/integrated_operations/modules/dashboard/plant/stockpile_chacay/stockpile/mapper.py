@@ -1,3 +1,4 @@
+# Para presentación se consume parsed_value; los datos de cálculo usan value neutral.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -6,13 +7,13 @@ from ada.web.kpis.collector import KpiLatestValueState, decode_kpi_latest_value
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
 from ada.web.ui.stockpile import StockpileValues
 
+from ..feeders import map_chacay_feeders_store
 from .definitions import (
     STOCKPILE_CHACAY_PILES,
     STOCKPILE_CHACAY_POSITION_KEY,
     STOCKPILE_CHACAY_POSITIONS,
     STOCKPILE_CHACAY_ROWS,
 )
-from ..feeders import map_chacay_feeders_store
 from .models import ChacayMetric, StockpileChacayState
 
 
@@ -31,7 +32,6 @@ def map_stockpile_chacay_store(store_data: object) -> StockpileChacayState:
             StockpileValues(percent=_reading(values, definition.kpi_key, source_status))
             for definition in STOCKPILE_CHACAY_PILES
         ),
-        # Integrar las dieciséis lecturas sin transformar su valor en booleanos.
         feeders=map_chacay_feeders_store(store_data),
         rows=tuple(
             ChacayMetric(
@@ -77,7 +77,7 @@ def _reading(
         return DisplayValue.error()
     if decoded.state is not KpiLatestValueState.OK:
         return DisplayValue.invalid()
-    if isinstance(decoded.value, bool) or not isinstance(decoded.value, str | int | float):
+    if isinstance(decoded.parsed_value, bool) or not isinstance(decoded.parsed_value, str | int | float):
         return DisplayValue.invalid()
-    raw = str(decoded.value).strip()
+    raw = str(decoded.parsed_value).strip()
     return DisplayValue.ok(raw) if raw else DisplayValue.invalid()

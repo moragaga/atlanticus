@@ -34,7 +34,11 @@ def test_configuration_drives_latest_and_series_independently() -> None:
     end = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
     latest = project_kpi_latest(
         configuration=configuration,
-        values={'production': KpiLatestValue(KpiDeliveryStatus.OK, 'value', '66')},
+        values={
+            'production': KpiLatestValue(
+                KpiDeliveryStatus.OK, 'value', '66', value_type='integer', parsed_value='66'
+            )
+        },
         watermark_utc=end,
         published_at_utc=end,
     )

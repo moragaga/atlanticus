@@ -1,4 +1,4 @@
-# Descifra Latest sin inventar ceros ni fallbacks. Una lectura faltante no afecta a las demás.
+# Para presentación se consume parsed_value; los datos de cálculo usan value neutral.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -10,7 +10,6 @@ from .definitions import PRODUCCION_GLOBAL_DEFINITIONS
 from .models import ProduccionGlobalMetric, ProduccionGlobalRow, ProduccionGlobalState
 
 
-# La tabla consume el mismo Store Latest de Chancado-STMG.
 def map_produccion_global_store(store_data: object) -> ProduccionGlobalState:
     values, source_status = _latest_values(store_data)
     return ProduccionGlobalState(
@@ -45,7 +44,6 @@ def _latest_values(
     return values, DisplayStatus.OK
 
 
-# Conserva NOT_MAPPED, EMPTY, INVALID y ERROR en cada valor escalar independiente.
 def _metric(
     values: Mapping[str, object] | None,
     kpi_key: str,
@@ -55,12 +53,12 @@ def _metric(
         return ProduccionGlobalMetric(kpi_key, DisplayValue(source_status))
     decoded = decode_kpi_latest_value(values.get(kpi_key), present=kpi_key in values)
     if decoded.state is KpiLatestValueState.OK:
-        if decoded.value_kind != 'value' or not isinstance(decoded.value, str):
+        if decoded.value_kind != 'value' or not isinstance(decoded.parsed_value, str):
             display = DisplayValue.invalid()
-        elif not decoded.value.strip():
+        elif not decoded.parsed_value.strip():
             display = DisplayValue.invalid()
         else:
-            display = DisplayValue.ok(decoded.value.strip())
+            display = DisplayValue.ok(decoded.parsed_value.strip())
     elif decoded.state is KpiLatestValueState.NOT_MAPPED:
         display = DisplayValue.not_mapped()
     elif decoded.state is KpiLatestValueState.MISSING:

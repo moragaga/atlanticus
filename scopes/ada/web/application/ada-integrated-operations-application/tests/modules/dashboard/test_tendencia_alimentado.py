@@ -46,7 +46,13 @@ def _store() -> dict[str, object]:
         for definition in ALIMENTADO_TRENDS
     }
     latest = {
-        definition.kpi_key: {'status': 'ok', 'value_kind': 'value', 'value': str(i + 10)}
+        definition.kpi_key: {
+            'status': 'ok',
+            'value_kind': 'value',
+            'value': str(str(i + 10)),
+            'value_type': 'text',
+            'parsed_value': str(str(i + 10)),
+        }
         for i, definition in enumerate(ALIMENTADO_TRENDS)
     }
     return {
@@ -58,7 +64,7 @@ def _store() -> dict[str, object]:
 def _walk(item):
     if isinstance(item, Component):
         yield item
-        yield from _walk(item.children)
+        yield from _walk(getattr(item, 'children', None))
     elif isinstance(item, list | tuple):
         for child in item:
             yield from _walk(child)

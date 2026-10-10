@@ -31,7 +31,13 @@ _EXPECTED = (
 
 
 def _entry(value: object, *, kind: str = 'value') -> dict[str, object]:
-    return {'status': 'ok', 'value_kind': kind, 'value': value}
+    return {
+        'status': 'ok',
+        'value_kind': kind,
+        'value': value,
+        'value_type': ('text' if kind == 'value' else None),
+        'parsed_value': (value if isinstance(value, str) and kind == 'value' else None),
+    }
 
 
 def _store(values: dict[str, object]) -> dict[str, object]:
@@ -80,8 +86,20 @@ def test_latest_failures_are_independent_per_cell():
         _store(
             {
                 first: _entry('12,34'),
-                second: {'status': 'missing', 'value_kind': None, 'value': None},
-                third: {'status': 'error', 'value_kind': 'value', 'value': None},
+                second: {
+                    'status': 'missing',
+                    'value_kind': None,
+                    'value': None,
+                    'value_type': None,
+                    'parsed_value': None,
+                },
+                third: {
+                    'status': 'error',
+                    'value_kind': 'value',
+                    'value': None,
+                    'value_type': 'text',
+                    'parsed_value': None,
+                },
                 fourth: _entry([1, 2], kind='json'),
                 fifth: _entry('   '),
             }

@@ -1,4 +1,4 @@
-# Modelos de Delivery; Timeseries conserva value_type una vez por serie y puntos ya reconstruidos.
+# Contrato compartido de KPI. Mantiene equivalencia funcional con el módulo productivo.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -19,31 +19,41 @@ class KpiDeliveryStatus(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
-# Latest conserva el tipo contractual, pero los estados degradados nunca transportan valor.
 class KpiLatestValue:
     status: KpiDeliveryStatus
     value_kind: str | None
     value: Any
+    value_type: str | None = None
+    parsed_value: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.status, KpiDeliveryStatus):
             raise TypeError('status must be KpiDeliveryStatus')
-        if self.value_kind is not None:
-            if not isinstance(self.value_kind, str):
-                raise TypeError('value_kind must be str or None')
-            if not self.value_kind or self.value_kind != self.value_kind.strip():
-                raise ValueError('value_kind must be a non-empty trimmed string')
-            if self.value_kind not in _VALUE_KINDS:
-                raise ValueError('value_kind must be value or json')
+        if self.value_kind not in _VALUE_KINDS | {None}:
+            raise ValueError('value_kind must be value, json or None')
+        if self.value_kind == 'value':
+            if self.value_type not in _VALUE_TYPES:
+                raise ValueError('VALUE delivery requires a supported value_type')
+            if self.status is KpiDeliveryStatus.OK and (
+                not isinstance(self.value, str) or not isinstance(self.parsed_value, str)
+            ):
+                raise TypeError('VALUE delivery requires value and parsed_value strings')
+        elif self.value_kind == 'json':
+            if self.value_type is not None or self.parsed_value is not None:
+                raise ValueError('JSON delivery must not expose scalar metadata')
+            if self.status is KpiDeliveryStatus.OK and not isinstance(self.value, list | dict):
+                raise TypeError('JSON delivery value must be a list or dict')
+        elif self.value_type is not None or self.parsed_value is not None:
+            raise ValueError('Delivery without value_kind must not expose typed values')
         if self.status is KpiDeliveryStatus.OK:
             if self.value_kind is None:
-                raise ValueError('value_kind is required for ok delivery values')
-            if self.value is None:
-                raise ValueError('value is required for ok delivery values')
-            if self.value_kind == 'json' and not isinstance(self.value, list | dict):
-                raise TypeError('json delivery values must contain a list or dict')
-        elif self.value is not None:
-            raise ValueError(f'{self.status.value} delivery values must not carry a value')
+                raise ValueError('OK delivery requires value_kind')
+        elif self.value is not None or self.parsed_value is not None:
+            raise ValueError('Degraded delivery must not expose values')
+        if self.status is KpiDeliveryStatus.MISSING and self.value_kind not in {None, 'json'}:
+            raise ValueError('MISSING delivery must have no kind or JSON kind')
+        if self.status is KpiDeliveryStatus.ERROR and self.value_kind is None:
+            raise ValueError('ERROR delivery requires value_kind')
 
     @classmethod
     def missing(cls) -> KpiLatestValue:
@@ -53,7 +63,9 @@ class KpiLatestValue:
         return {
             'status': self.status.value,
             'value_kind': self.value_kind,
+            'value_type': self.value_type,
             'value': self.value,
+            'parsed_value': self.parsed_value,
         }
 
 

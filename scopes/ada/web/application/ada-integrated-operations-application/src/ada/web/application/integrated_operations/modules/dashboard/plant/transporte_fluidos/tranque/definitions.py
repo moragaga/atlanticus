@@ -1,4 +1,4 @@
-from ..metrics import FluidMetricDefinition
+from ..indicators import FluidMetricDefinition
 
 TRANQUE_INDICATORS = (
     FluidMetricDefinition('Arenas Prod Día', 'produccion_arenas_real_acc_dia', 'kt'),

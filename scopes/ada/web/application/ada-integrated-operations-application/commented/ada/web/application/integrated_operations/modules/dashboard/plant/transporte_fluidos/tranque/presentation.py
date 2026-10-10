@@ -1,11 +1,12 @@
 from collections.abc import Sequence
+
 from dash.development.base_component import Component
 
-from ..metrics import FluidMetricReading, build_metric_rows
+from ..indicators import FluidMetricReading, build_metric_rows
 from .definitions import TRANQUE_INDICATORS
 
 
-# Explicación: este bloque implementa la misma responsabilidad que su par productivo.
+# La presentación visual se mantiene; solo cambia el punto de importación de indicadores.
 def build_tranque(readings: Sequence[FluidMetricReading]) -> Component:
     if len(readings) != len(TRANQUE_INDICATORS):
         raise ValueError('TRANQUE indicator count is inconsistent')

@@ -1,4 +1,4 @@
-# Cada KPI se decodifica individualmente; los estados desconocidos no se traducen a detenido y la falla de color no afecta el valor.
+# Para presentación se consume parsed_value; los datos de cálculo usan value neutral.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -33,9 +33,7 @@ def map_correas_stmg_store(
         raise ValueError('Correa STMG KPI keys must be distinct')
     values, source_status = _latest_values(store_data)
     return CorreasStmgState(
-        states=tuple(
-            _state(values, item.state_kpi_key, source_status) for item in definitions
-        ),
+        states=tuple(_state(values, item.state_kpi_key, source_status) for item in definitions),
         metric=_read(values, metric.value_kpi_key, source_status),
         metric_color=(
             _color(values, metric.color_kpi_key, source_status)
@@ -77,11 +75,11 @@ def _read(
         return DisplayValue.error()
     if decoded.state is not KpiLatestValueState.OK:
         return DisplayValue.invalid()
-    if decoded.value_kind != 'value' or isinstance(decoded.value, bool):
+    if decoded.value_kind != 'value' or isinstance(decoded.parsed_value, bool):
         return DisplayValue.invalid()
-    if not isinstance(decoded.value, str | int | float):
+    if not isinstance(decoded.parsed_value, str | int | float):
         return DisplayValue.invalid()
-    value = str(decoded.value).strip()
+    value = str(decoded.parsed_value).strip()
     return DisplayValue.ok(value) if value else DisplayValue.invalid()
 
 

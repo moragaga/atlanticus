@@ -100,7 +100,9 @@ def _latest(value: int, revision: str) -> ComponentLatestKpiData:
             'rate': {
                 'status': 'ok',
                 'value_kind': 'value',
-                'value': value,
+                'value': str(value),
+                'value_type': 'text',
+                'parsed_value': str(value),
             }
         },
     )
@@ -230,7 +232,7 @@ def test_store_projection_is_json_serializable_for_both_store_families() -> None
 
     assert projected_component['component_key'] == 'mine'
     assert projected_system['destination_key'] == 'global_indicators'
-    assert projected_component['latest']['values']['rate']['value'] == 7
+    assert projected_component['latest']['values']['rate']['value'] == '7'
     assert projected_system['timeseries']['series']['rate']['values'] == [1, 2, 3]
 
 
@@ -253,9 +255,9 @@ def test_browser_update_reads_cache_without_triggering_collector_refresh() -> No
         browser_system_data=(None, None),
     )
 
-    assert component_updates[0]['latest']['values']['rate']['value'] == 7
+    assert component_updates[0]['latest']['values']['rate']['value'] == '7'
     assert component_updates[1]['latest'] is None
-    assert system_updates[0]['latest']['values']['rate']['value'] == 9
+    assert system_updates[0]['latest']['values']['rate']['value'] == '9'
     assert system_updates[1]['latest'] is None
     assert revision['latest']['revision'] == 'latest-r1'
     assert collector.refresh_latest_calls == 0
@@ -379,9 +381,9 @@ def test_new_latest_preserves_newer_browser_timeseries_for_all_store_families() 
         ),
     )
 
-    assert component_updates[0]['latest']['values']['rate']['value'] == 8
+    assert component_updates[0]['latest']['values']['rate']['value'] == '8'
     assert component_updates[0]['timeseries'] is browser_timeseries
-    assert system_updates[0]['latest']['values']['rate']['value'] == 9
+    assert system_updates[0]['latest']['values']['rate']['value'] == '9'
     assert system_updates[0]['timeseries'] is browser_timeseries
     assert revision['latest']['revision'] == 'latest-r2'
     assert revision['timeseries']['revision'] == 'timeseries-r2'

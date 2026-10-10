@@ -44,28 +44,43 @@ def test_latest_routes_once_per_destination_and_excludes_latest_disabled() -> No
     snapshot = project_kpi_latest(
         configuration=_configuration(),
         values={
-            'production': KpiLatestValue(KpiDeliveryStatus.OK, 'value', '66,00'),
-            'availability': KpiLatestValue(KpiDeliveryStatus.ERROR, 'value', None),
+            'production': KpiLatestValue(
+                KpiDeliveryStatus.OK, 'value', '66', value_type='integer', parsed_value='66,00'
+            ),
+            'availability': KpiLatestValue(
+                KpiDeliveryStatus.ERROR, 'value', None, value_type='integer'
+            ),
         },
         watermark_utc=datetime(2026, 9, 1, 12, 0, tzinfo=UTC),
         published_at_utc=datetime(2026, 9, 1, 12, 0, 1, tzinfo=UTC),
     )
     payload = snapshot.to_payload()
-    assert payload['destinations']['global_indicators']['production']['value'] == '66,00'
-    assert payload['destinations']['milling']['production']['value'] == '66,00'
+    assert payload['destinations']['global_indicators']['production']['value'] == '66'
+    assert payload['destinations']['milling']['production']['value'] == '66'
     assert payload['destinations']['global_indicators']['availability']['status'] == 'error'
+    assert payload['destinations']['milling']['production']['parsed_value'] == '66,00'
     assert 'series_only' not in payload['destinations']['milling']
 
 
 def test_latest_generates_missing_for_configured_key_without_value() -> None:
     snapshot = project_kpi_latest(
         configuration=_configuration(),
-        values={'production': KpiLatestValue(KpiDeliveryStatus.OK, 'value', 66)},
+        values={
+            'production': KpiLatestValue(
+                KpiDeliveryStatus.OK, 'value', '66', value_type='integer', parsed_value='66'
+            )
+        },
         watermark_utc=datetime(2026, 9, 1, 12, 0, tzinfo=UTC),
         published_at_utc=datetime(2026, 9, 1, 12, 0, 1, tzinfo=UTC),
     )
     missing = snapshot.to_payload()['destinations']['global_indicators']['availability']
-    assert missing == {'status': 'missing', 'value_kind': None, 'value': None}
+    assert missing == {
+        'status': 'missing',
+        'value_kind': None,
+        'value': None,
+        'value_type': None,
+        'parsed_value': None,
+    }
 
 
 def test_latest_empty_when_no_binding_has_latest_enabled() -> None:
@@ -92,7 +107,11 @@ def test_latest_empty_when_no_binding_has_latest_enabled() -> None:
 def test_latest_revision_is_deterministic_and_ignores_published_at() -> None:
     args = {
         'configuration': _configuration(),
-        'values': {'production': KpiLatestValue(KpiDeliveryStatus.OK, 'value', 66)},
+        'values': {
+            'production': KpiLatestValue(
+                KpiDeliveryStatus.OK, 'value', '66', value_type='integer', parsed_value='66'
+            )
+        },
         'watermark_utc': datetime(2026, 9, 1, 12, 0, tzinfo=UTC),
     }
     first = project_kpi_latest(
@@ -107,7 +126,11 @@ def test_latest_revision_is_deterministic_and_ignores_published_at() -> None:
 
 
 def test_latest_revision_changes_for_new_watermark_even_with_same_value() -> None:
-    values = {'production': KpiLatestValue(KpiDeliveryStatus.OK, 'value', 66)}
+    values = {
+        'production': KpiLatestValue(
+            KpiDeliveryStatus.OK, 'value', '66', value_type='integer', parsed_value='66'
+        )
+    }
     base = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
     first = project_kpi_latest(
         configuration=_configuration(),
@@ -131,7 +154,11 @@ def test_latest_revision_changes_for_configuration_revision() -> None:
         tool_projection_revision=first_configuration.tool_projection_revision,
         bindings=first_configuration.bindings,
     )
-    values = {'production': KpiLatestValue(KpiDeliveryStatus.OK, 'value', 66)}
+    values = {
+        'production': KpiLatestValue(
+            KpiDeliveryStatus.OK, 'value', '66', value_type='integer', parsed_value='66'
+        )
+    }
     now = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
     first = project_kpi_latest(
         configuration=first_configuration,
@@ -154,8 +181,10 @@ def test_degraded_latest_values_never_carry_json_payloads(status) -> None:
     assert value.to_payload() == {
         'status': status.value,
         'value_kind': 'json',
+        'value_type': None,
         'value': None,
+        'parsed_value': None,
     }
 
-    with pytest.raises(ValueError, match='must not carry a value'):
+    with pytest.raises(ValueError, match='Degraded delivery must not expose values'):
         KpiLatestValue(status=status, value_kind='json', value={'rows': []})

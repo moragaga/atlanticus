@@ -1,4 +1,4 @@
-# Resuelve Remanentes JSON y Stock 3080 de forma independiente desde el mismo Component KPI Store.
+# Para presentación se consume parsed_value; los datos de cálculo usan value neutral.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -35,7 +35,6 @@ def map_remanentes_store(store_data: object) -> RemanentesState:
     return RemanentesState(
         summary=summary,
         summary_status=summary_status,
-        # Stock 3080 siempre conserva su propio DisplayValue aunque el JSON vecino falle.
         stock_3080=Stock3080State(
             value=_display_value(
                 values,
@@ -125,11 +124,11 @@ def _display_value(
     decoded = _decoded(values, kpi_key)
     if decoded.state is KpiLatestValueState.OK:
         if decoded.value_kind != 'value' or not isinstance(
-            decoded.value,
+            decoded.parsed_value,
             str | int | float | bool,
         ):
             return DisplayValue.invalid()
-        return DisplayValue.ok(decoded.value)
+        return DisplayValue.ok(decoded.parsed_value)
     if decoded.state is KpiLatestValueState.NOT_MAPPED:
         return DisplayValue.not_mapped()
     if decoded.state is KpiLatestValueState.MISSING:

@@ -1,4 +1,4 @@
-from ..metrics import FluidMetricDefinition
+from ..indicators import FluidMetricDefinition
 
 STA_INDICATORS = (
     FluidMetricDefinition('Make Up', 'make_up_real_mean_hora', 'm³/t'),

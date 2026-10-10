@@ -1,7 +1,8 @@
 from collections.abc import Sequence
+
 from dash.development.base_component import Component
 
-from ..metrics import FluidMetricReading, build_metric_rows
+from ..indicators import FluidMetricReading, build_metric_rows
 from .definitions import STA_INDICATORS
 
 

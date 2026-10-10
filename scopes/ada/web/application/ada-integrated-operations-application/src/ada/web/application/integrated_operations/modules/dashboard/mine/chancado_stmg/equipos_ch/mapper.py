@@ -90,9 +90,9 @@ def _value(
         return DisplayValue.error()
     if decoded.state is not KpiLatestValueState.OK:
         return DisplayValue.invalid()
-    if decoded.value_kind != 'value' or not isinstance(decoded.value, str):
+    if decoded.value_kind != 'value' or not isinstance(decoded.parsed_value, str):
         return DisplayValue.invalid()
-    normalized = decoded.value.strip()
+    normalized = decoded.parsed_value.strip()
     if not normalized:
         return DisplayValue.invalid()
     return DisplayValue.ok(normalized)

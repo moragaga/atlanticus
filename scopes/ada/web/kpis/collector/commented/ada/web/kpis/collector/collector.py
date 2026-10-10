@@ -1,7 +1,4 @@
-# Collector de KPI Delivery. Mantiene dos familias de Store sincronizadas por las mismas revisiones:
-# Component Stores para componentes del Tool y System Stores para destinos reservados como
-# global_indicators y time_status. Ningún consumidor específico vive en esta capa.
-
+# Valida estrictamente el contrato KPI Latest v2 y rechaza estados degradados inconsistentes.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -53,7 +50,7 @@ _LATEST_MANIFEST_FIELDS = frozenset(
         'published_at_utc',
     }
 )
-_LATEST_VALUE_FIELDS = frozenset({'status', 'value_kind', 'value'})
+_LATEST_VALUE_FIELDS = frozenset({'status', 'value_kind', 'value_type', 'value', 'parsed_value'})
 _LATEST_VALUE_KINDS = frozenset({'value', 'json'})
 _TIMESERIES_DOCUMENT_FIELDS = frozenset(
     {
@@ -112,8 +109,6 @@ class _TimeseriesDelivery:
         return self.configuration_revision, self.tool_projection_revision
 
 
-# El Collector conserva el último snapshot válido de Latest y Timeseries y reconstruye ambas
-# familias de Store de forma atómica bajo el mismo lock.
 class AdaKpiCollector:
     def __init__(
         self,
@@ -183,7 +178,6 @@ class AdaKpiCollector:
                 ),
             )
 
-    # Latest se valida completo, incluidos sus destination keys, antes de mutar el cache.
     def refresh_latest(self) -> KpiCollectorRefreshResult:
         document = self._reader.read_latest()
         if document is None:
@@ -225,7 +219,6 @@ class AdaKpiCollector:
                 candidate.revision,
             )
 
-    # Timeseries usa la misma whitelist de destinos y conserva la compatibilidad de revisiones.
     def refresh_timeseries(self) -> KpiCollectorRefreshResult:
         document = self._reader.read_timeseries()
         if document is None:
@@ -269,7 +262,6 @@ class AdaKpiCollector:
                 candidate.revision,
             )
 
-    # Una única reconstrucción proyecta el mismo Delivery hacia componentes y destinos de sistema.
     def _rebuild_stores(self) -> None:
         stores = build_empty_component_stores(self._structure)
         deliveries: list[ComponentDelivery] = []
@@ -303,8 +295,6 @@ class AdaKpiCollector:
         )
 
 
-# Esta función evita dos pipelines distintos: component y system consumen exactamente el mismo
-# contrato Latest/Timeseries; solo cambia la identidad del Store que lo publica.
 def _destination_payload(
     *,
     latest_delivery: _LatestDelivery | None,
@@ -350,8 +340,6 @@ def _destination_timeseries(
     )
 
 
-# ToolStructure es la autoridad de los destinos. Los destinos de sistema son los kpi_destination_keys
-# que no corresponden a component.key, por lo que no se mantiene una lista paralela en Collector.
 def _system_destination_keys(structure: ToolStructure) -> tuple[str, ...]:
     component_keys = {component.key for component in structure.components}
     return tuple(key for key in structure.kpi_destination_keys if key not in component_keys)
@@ -370,7 +358,6 @@ def _build_empty_system_stores(
     )
 
 
-# Un destino desconocido se considera ruptura contractual; ignorarlo ocultaría errores de configuración.
 def _validate_destination_keys(
     destinations: Mapping[str, object],
     *,
@@ -395,8 +382,6 @@ def _freeze_value(value: object) -> object:
     return value
 
 
-# El parser conserva el envelope status/value_kind/value. La presentación se resuelve después mediante
-# el decoder canónico de Latest y nunca aquí.
 def _parse_latest_delivery(document: Mapping[str, Any]) -> _LatestDelivery:
     value = _document(document, _LATEST_DOCUMENT_FIELDS, 'KPI latest delivery')
     _require_identity(
@@ -532,38 +517,40 @@ def _parse_timeseries_delivery(document: Mapping[str, Any]) -> _TimeseriesDelive
     )
 
 
-# La validación replica el contrato efectivo de Delivery: value_kind solo puede ser value o json;
-# missing no transporta tipo ni payload y error nunca transporta payload.
 def _validate_latest_value(value: Mapping[str, Any], key: str) -> None:
     status = value['status']
     value_kind = value['value_kind']
     payload = value['value']
+    parsed = value['parsed_value']
+    value_type = value['value_type']
     if status not in {'ok', 'missing', 'error'}:
         raise KpiCollectorContractError(f'KPI latest value {key!r} status is invalid')
     if value_kind is not None:
         _required_text(value_kind, f'KPI latest value {key!r} value_kind')
         if value_kind not in _LATEST_VALUE_KINDS:
             raise KpiCollectorContractError(f'KPI latest value {key!r} value_kind is invalid')
+    if value_kind == 'json':
+        if value_type is not None or parsed is not None:
+            raise KpiCollectorContractError(f'KPI latest value {key!r} JSON metadata is invalid')
+        if status == 'ok' and not isinstance(payload, list | dict):
+            raise KpiCollectorContractError(f'KPI latest value {key!r} JSON payload is invalid')
+    elif value_kind == 'value':
+        if value_type not in _VALUE_TYPES:
+            raise KpiCollectorContractError(f'KPI latest value {key!r} value_type is invalid')
+        if status == 'ok' and (not isinstance(payload, str) or not isinstance(parsed, str)):
+            raise KpiCollectorContractError(f'KPI latest value {key!r} text fields are invalid')
+    elif value_type is not None or parsed is not None:
+        raise KpiCollectorContractError(f'KPI latest value {key!r} metadata is invalid')
     if status == 'ok':
-        if value_kind is None or payload is None:
-            raise KpiCollectorContractError(
-                f'KPI latest value {key!r} requires value_kind and value when status is ok'
-            )
-        if value_kind == 'json' and not isinstance(payload, list | dict):
-            raise KpiCollectorContractError(
-                f'KPI latest value {key!r} json value must be an object or array'
-            )
+        if value_kind is None:
+            raise KpiCollectorContractError(f'KPI latest value {key!r} requires value_kind')
         return
-    if status == 'missing':
-        if value_kind is not None or payload is not None:
-            raise KpiCollectorContractError(
-                f'KPI latest value {key!r} must be empty when status is missing'
-            )
-        return
-    if payload is not None:
-        raise KpiCollectorContractError(
-            f'KPI latest value {key!r} must not contain value when status is error'
-        )
+    if status == 'error' and value_kind is None:
+        raise KpiCollectorContractError(f'KPI latest value {key!r} error requires value_kind')
+    if status == 'missing' and value_kind not in {None, 'json'}:
+        raise KpiCollectorContractError(f'KPI latest value {key!r} missing kind is invalid')
+    if payload is not None or parsed is not None:
+        raise KpiCollectorContractError(f'KPI latest value {key!r} degraded payload is invalid')
 
 
 def _validate_timeseries_series(

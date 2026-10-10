@@ -25,7 +25,13 @@ def _store(values: dict[str, object]) -> dict[str, object]:
 
 
 def _ok(value: object) -> dict[str, object]:
-    return {'status': 'ok', 'value_kind': 'value', 'value': value}
+    return {
+        'status': 'ok',
+        'value_kind': 'value',
+        'value': str(value),
+        'value_type': 'text',
+        'parsed_value': str(value),
+    }
 
 
 def _walk(item):
@@ -76,8 +82,20 @@ def test_each_feeder_preserves_its_own_degraded_state():
     keys = [item.value_kpi_key for group in STOCKPILE_CHACAY_FEEDER_GROUPS for item in group]
     values = {
         keys[0]: _ok('35.5'),
-        keys[1]: {'status': 'missing', 'value_kind': None, 'value': None},
-        keys[2]: {'status': 'error', 'value_kind': 'value', 'value': None},
+        keys[1]: {
+            'status': 'missing',
+            'value_kind': None,
+            'value': None,
+            'value_type': None,
+            'parsed_value': None,
+        },
+        keys[2]: {
+            'status': 'error',
+            'value_kind': 'value',
+            'value': None,
+            'value_type': 'text',
+            'parsed_value': None,
+        },
         keys[3]: _ok(''),
     }
     groups = map_chacay_feeders_store(_store(values))

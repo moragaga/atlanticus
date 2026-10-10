@@ -215,6 +215,7 @@ dependencies = [
     { name = "ada-generic-application" },
     { name = "ada-web-content-state" },
     { name = "ada-web-kpi-collector" },
+    { name = "ada-web-kpi-readings" },
     { name = "ada-web-operational-render-binding" },
     { name = "ada-web-shell-header" },
     { name = "ada-web-ui-card-display" },
@@ -242,6 +243,7 @@ requires-dist = [
     { name = "ada-generic-application", editable = "../ada-generic-application" },
     { name = "ada-web-content-state", editable = "../../content-state/core" },
     { name = "ada-web-kpi-collector", editable = "../../kpis/collector" },
+    { name = "ada-web-kpi-readings", editable = "../../kpis/readings" },
     { name = "ada-web-operational-render-binding", editable = "../../operational-render-binding" },
     { name = "ada-web-shell-header", editable = "../../shell/header" },
     { name = "ada-web-ui-card-display", editable = "../../ui/card-display" },
@@ -725,6 +727,27 @@ dependencies = [
 requires-dist = [
     { name = "ada-web-ui-core", editable = "../../ui/core" },
     { name = "atlanticus-web", editable = "../../../../../web/framework/core" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "ruff", specifier = "==0.15.22" },
+]
+
+[[package]]
+name = "ada-web-kpi-readings"
+version = "0.1.0"
+source = { editable = "../../kpis/readings" }
+dependencies = [
+    { name = "ada-web-kpi-collector" },
+    { name = "ada-web-ui-display-status" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ada-web-kpi-collector", editable = "../../kpis/collector" },
+    { name = "ada-web-ui-display-status", editable = "../../ui/display-status" },
 ]
 
 [package.metadata.requires-dev]

@@ -1,6 +1,4 @@
-# Espejo comentado: los valores se resuelven para construir la UI, pero el estado operacional se
-# calcula para la colección completa. Si falta cualquiera de los KPI configurados, el runtime
-# degrada la colección a SOURCE_ERROR; los KPI que no pertenezcan al catálogo no participan.
+# Para presentación se consume parsed_value; los datos de cálculo usan value neutral.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -55,7 +53,6 @@ def resolve_dashboard_global_indicators_runtime_state(
     values = _latest_values(store_data, tool_key=binding.tool_key)
     if values is None:
         return ContentState.SOURCE_ERROR
-    # Sólo los KPI declarados por cada definición son obligatorios para esta composición.
     if all(_definition_is_ready(item, values) for item in binding.indicators):
         return ContentState.READY
     return ContentState.SOURCE_ERROR
@@ -128,7 +125,7 @@ def _display_value_is_ready(values: Mapping[str, object], kpi_key: str) -> bool:
     return (
         decoded.state is KpiLatestValueState.OK
         and decoded.value_kind == 'value'
-        and isinstance(decoded.value, str | int | float | bool)
+        and isinstance(decoded.parsed_value, str | int | float | bool)
     )
 
 
@@ -146,11 +143,11 @@ def _display_value(values: Mapping[str, object] | None, kpi_key: str) -> Display
     decoded = _decoded(values, kpi_key)
     if decoded.state is KpiLatestValueState.OK:
         if decoded.value_kind != 'value' or not isinstance(
-            decoded.value,
+            decoded.parsed_value,
             str | int | float | bool,
         ):
             return DisplayValue.invalid()
-        return DisplayValue.ok(decoded.value)
+        return DisplayValue.ok(decoded.parsed_value)
     if decoded.state is KpiLatestValueState.NOT_MAPPED:
         return DisplayValue.not_mapped()
     if decoded.state is KpiLatestValueState.MISSING:

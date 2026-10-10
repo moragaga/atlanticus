@@ -11,12 +11,12 @@ from ada.web.ui.equipment_image import (
 )
 from ada.web.ui.level_gauge import build_level_gauge
 
-from ..metrics import build_metric_rows, display_value_component
+from ..indicators import build_metric_rows, display_value_component
 from .definitions import STC_ESPESADOR, STC_LEVELS
 from .models import StcReading
 
 
-# Explicación: este bloque implementa la misma responsabilidad que su par productivo.
+# La presentación visual se mantiene; solo cambia el punto de importación de indicadores.
 def build_stc(reading: StcReading) -> Component:
     if not isinstance(reading, StcReading):
         raise TypeError('reading must be StcReading')
@@ -57,7 +57,6 @@ def build_stc(reading: StcReading) -> Component:
     )
 
 
-# Explicación: este bloque implementa la misma responsabilidad que su par productivo.
 def _espesador(reading) -> Component:
     d = reading.definition
     if len(reading.metrics) != len(STC_ESPESADOR.metrics):
@@ -114,7 +113,6 @@ def _espesador(reading) -> Component:
     )
 
 
-# Explicación: este bloque implementa la misma responsabilidad que su par productivo.
 def _feed(value: DisplayValue) -> Component:
     if value.status is DisplayStatus.OK:
         return html.Span(

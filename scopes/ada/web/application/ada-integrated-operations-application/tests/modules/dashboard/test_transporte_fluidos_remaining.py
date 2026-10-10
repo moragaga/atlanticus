@@ -33,7 +33,13 @@ from ada.web.ui.display_status import DisplayStatus
 
 
 def _entry(value):
-    return {'status': 'ok', 'value_kind': 'value', 'value': value}
+    return {
+        'status': 'ok',
+        'value_kind': 'value',
+        'value': str(value),
+        'value_type': 'text',
+        'parsed_value': str(value),
+    }
 
 
 def _store():
@@ -83,12 +89,8 @@ def test_old_indicator_contracts_and_order():
 
 def test_current_stc_thickener_and_level_keys():
     assert STC_ESPESADOR.label == 'TK-711'
-    assert [item.label for item in STC_ESPESADOR.metrics] == [
-        'Altura', 'Torque', 'Flujo', 'Sólido'
-    ]
-    assert [item.level_key for item in STC_LEVELS] == [
-        'nivel_tk_020_inst', 'nivel_tk_021_inst'
-    ]
+    assert [item.label for item in STC_ESPESADOR.metrics] == ['Altura', 'Torque', 'Flujo', 'Sólido']
+    assert [item.level_key for item in STC_LEVELS] == ['nivel_tk_020_inst', 'nivel_tk_021_inst']
     data = map_stc_store(_store())
     assert data.espesador.feed.value == 'operando'
     assert data.levels[0].level.value == '55'
@@ -101,7 +103,11 @@ def test_unmapped_feed_and_levels_are_not_faked():
     del values[STC_ESPESADOR.feed_key]
     del values[STC_LEVELS[0].state_key]
     values[STC_LEVELS[1].level_key] = {
-        'status': 'error', 'value_kind': None, 'value': None
+        'status': 'error',
+        'value_kind': 'json',
+        'value': None,
+        'value_type': None,
+        'parsed_value': None,
     }
     result = map_stc_store(data)
     assert result.espesador.feed.status is DisplayStatus.NOT_MAPPED
@@ -119,7 +125,11 @@ def test_metric_status_independence():
     data = _store()
     del data['latest']['values'][STA_INDICATORS[0].kpi_key]
     data['latest']['values'][TRANQUE_INDICATORS[1].kpi_key] = {
-        'status': 'missing', 'value_kind': None, 'value': None
+        'status': 'missing',
+        'value_kind': None,
+        'value': None,
+        'value_type': None,
+        'parsed_value': None,
     }
     assert map_sta_store(data)[0].value.status is DisplayStatus.NOT_MAPPED
     assert map_tranque_store(data)[1].value.status is DisplayStatus.EMPTY

@@ -25,7 +25,13 @@ _START = _END - timedelta(hours=1)
 
 
 def _entry(value: object) -> dict[str, object]:
-    return {'status': 'ok', 'value_kind': 'value', 'value': value}
+    return {
+        'status': 'ok',
+        'value_kind': 'value',
+        'value': str(value),
+        'value_type': 'text',
+        'parsed_value': str(value),
+    }
 
 
 def _store() -> dict[str, object]:
@@ -61,7 +67,7 @@ def _store() -> dict[str, object]:
 def _walk(item):
     if isinstance(item, Component):
         yield item
-        yield from _walk(item.children)
+        yield from _walk(getattr(item, 'children', None))
     elif isinstance(item, list | tuple):
         for child in item:
             yield from _walk(child)
@@ -119,11 +125,15 @@ def test_degraded_states_are_independent_and_not_replaced_by_detenido():
         'status': 'error',
         'value_kind': 'value',
         'value': None,
+        'value_type': 'text',
+        'parsed_value': None,
     }
     values[MOLIENDA_GENERAL_METRICS[2].kpi_key] = {
         'status': 'missing',
         'value_kind': None,
         'value': None,
+        'value_type': None,
+        'parsed_value': None,
     }
     state = map_molienda_overview_store(data)
     lines = map_molienda_sags_store(data)

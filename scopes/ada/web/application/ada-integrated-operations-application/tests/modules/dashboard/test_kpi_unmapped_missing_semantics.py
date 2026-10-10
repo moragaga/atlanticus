@@ -43,6 +43,8 @@ def _missing_entry() -> dict[str, object]:
         'status': 'missing',
         'value_kind': None,
         'value': None,
+        'value_type': None,
+        'parsed_value': None,
     }
 
 

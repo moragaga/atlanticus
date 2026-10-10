@@ -1,4 +1,4 @@
-# Adaptador Latest: OK publica su valor; MISSING y ERROR conservan estado/tipo sin valor.
+# Contrato compartido de KPI. Mantiene equivalencia funcional con el módulo productivo.
 from __future__ import annotations
 
 from ada.kpis.core import KpiStatus, KpiValueKind
@@ -26,17 +26,23 @@ def delivery_values_from_batch(batch: KpiEvaluationBatch) -> dict[str, KpiLatest
                 status=KpiDeliveryStatus.ERROR,
                 value_kind=evaluation.value_kind.value,
                 value=None,
+                value_type=None if evaluation.value_type is None else evaluation.value_type.value,
             )
         else:
-            value = (
-                evaluation.parsed_value
-                if evaluation.value_kind is KpiValueKind.VALUE
-                else evaluation.value
-            )
             projected = KpiLatestValue(
                 status=KpiDeliveryStatus.OK,
                 value_kind=evaluation.value_kind.value,
-                value=value,
+                value=evaluation.value,
+                value_type=(
+                    evaluation.value_type.value
+                    if evaluation.value_kind is KpiValueKind.VALUE
+                    else None
+                ),
+                parsed_value=(
+                    evaluation.parsed_value
+                    if evaluation.value_kind is KpiValueKind.VALUE
+                    else None
+                ),
             )
         values[evaluation.key] = projected
     return values

@@ -52,12 +52,12 @@ def _metric(
         return ProduccionGlobalMetric(kpi_key, DisplayValue(source_status))
     decoded = decode_kpi_latest_value(values.get(kpi_key), present=kpi_key in values)
     if decoded.state is KpiLatestValueState.OK:
-        if decoded.value_kind != 'value' or not isinstance(decoded.value, str):
+        if decoded.value_kind != 'value' or not isinstance(decoded.parsed_value, str):
             display = DisplayValue.invalid()
-        elif not decoded.value.strip():
+        elif not decoded.parsed_value.strip():
             display = DisplayValue.invalid()
         else:
-            display = DisplayValue.ok(decoded.value.strip())
+            display = DisplayValue.ok(decoded.parsed_value.strip())
     elif decoded.state is KpiLatestValueState.NOT_MAPPED:
         display = DisplayValue.not_mapped()
     elif decoded.state is KpiLatestValueState.MISSING:

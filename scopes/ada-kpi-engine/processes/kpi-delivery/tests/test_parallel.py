@@ -32,7 +32,9 @@ def _snapshot():
             'produccion_total': KpiLatestValue(
                 status=KpiDeliveryStatus.OK,
                 value_kind='value',
-                value=42.5,
+                value='42.5',
+                value_type='float',
+                parsed_value='42,5',
             )
         },
         watermark_utc=datetime(2026, 9, 1, 5, 0, tzinfo=UTC),

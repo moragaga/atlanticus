@@ -1,3 +1,4 @@
+# Para presentación se consume parsed_value; los datos de cálculo usan value neutral.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -9,7 +10,6 @@ from .definitions import SELECTIVA_INDICATORS
 from .models import SelectivaIndicatorReading
 
 
-# Punto de responsabilidad: map_selectiva_indicators_store; mantiene el mismo contrato que producción.
 def map_selectiva_indicators_store(store_data: object) -> tuple[SelectivaIndicatorReading, ...]:
     values, status = _latest_values(store_data)
     return tuple(
@@ -18,7 +18,6 @@ def map_selectiva_indicators_store(store_data: object) -> tuple[SelectivaIndicat
     )
 
 
-# Punto de responsabilidad: _latest_values; mantiene el mismo contrato que producción.
 def _latest_values(store_data: object) -> tuple[Mapping[str, object] | None, DisplayStatus]:
     if not isinstance(store_data, Mapping):
         return None, DisplayStatus.INVALID
@@ -33,7 +32,6 @@ def _latest_values(store_data: object) -> tuple[Mapping[str, object] | None, Dis
     return values, DisplayStatus.OK
 
 
-# Mantiene el estado de cada KPI independiente de los demás indicadores y equipos.
 def _value(
     values: Mapping[str, object] | None,
     key: str,
@@ -50,9 +48,9 @@ def _value(
         return DisplayValue.error()
     if decoded.state is not KpiLatestValueState.OK:
         return DisplayValue.invalid()
-    if decoded.value_kind != 'value' or isinstance(decoded.value, bool):
+    if decoded.value_kind != 'value' or isinstance(decoded.parsed_value, bool):
         return DisplayValue.invalid()
-    if not isinstance(decoded.value, str | int | float):
+    if not isinstance(decoded.parsed_value, str | int | float):
         return DisplayValue.invalid()
-    raw = str(decoded.value).strip()
+    raw = str(decoded.parsed_value).strip()
     return DisplayValue.ok(raw) if raw else DisplayValue.invalid()

@@ -12,7 +12,13 @@ from ada.web.ui.display_status import DisplayStatus
 
 
 def _json(value: object) -> dict[str, object]:
-    return {'status': 'ok', 'value_kind': 'json', 'value': value}
+    return {
+        'status': 'ok',
+        'value_kind': 'json',
+        'value': value,
+        'value_type': None,
+        'parsed_value': None,
+    }
 
 
 def _store(value: object) -> dict[str, object]:

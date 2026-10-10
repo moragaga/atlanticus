@@ -1,4 +1,4 @@
-# El adaptador de dominio consume latest y timeseries; no transforma las muestras.
+# Para presentación se consume parsed_value; los datos de cálculo usan value neutral.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -23,6 +23,7 @@ def map_molienda_sags_store(store_data: object) -> tuple[MoliendaLineReading, ..
     data = store_data if isinstance(store_data, Mapping) else None
     values, source_status = _latest_values(data)
     return tuple(_line(values, definition, source_status) for definition in MOLIENDA_LINES)
+
 
 def _latest_values(
     data: Mapping[str, object] | None,
@@ -56,11 +57,11 @@ def _value(
         return DisplayValue.error()
     if decoded.state is not KpiLatestValueState.OK:
         return DisplayValue.invalid()
-    if decoded.value_kind != 'value' or isinstance(decoded.value, bool):
+    if decoded.value_kind != 'value' or isinstance(decoded.parsed_value, bool):
         return DisplayValue.invalid()
-    if not isinstance(decoded.value, str | int | float):
+    if not isinstance(decoded.parsed_value, str | int | float):
         return DisplayValue.invalid()
-    raw = str(decoded.value).strip()
+    raw = str(decoded.parsed_value).strip()
     return DisplayValue.ok(raw) if raw else DisplayValue.invalid()
 
 

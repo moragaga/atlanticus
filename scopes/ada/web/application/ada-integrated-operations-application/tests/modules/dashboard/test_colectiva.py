@@ -28,7 +28,13 @@ _START = _END - timedelta(hours=1)
 
 
 def _entry(value: object) -> dict[str, object]:
-    return {'status': 'ok', 'value_kind': 'value', 'value': value}
+    return {
+        'status': 'ok',
+        'value_kind': 'value',
+        'value': str(value),
+        'value_type': 'text',
+        'parsed_value': str(value),
+    }
 
 
 def _store() -> dict[str, object]:
@@ -121,11 +127,15 @@ def test_degraded_readings_do_not_become_detenido():
         'status': 'missing',
         'value_kind': None,
         'value': None,
+        'value_type': None,
+        'parsed_value': None,
     }
     values[VERTIMILLS[0].state_kpi_key] = {
         'status': 'error',
-        'value_kind': None,
+        'value_kind': 'json',
         'value': None,
+        'value_type': None,
+        'parsed_value': None,
     }
     values[BOMBAS[0][0].state_kpi_key] = _entry('unrecognized')
     process = map_colectiva_process_store(store)

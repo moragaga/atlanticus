@@ -1,4 +1,4 @@
-# Mapeador autónomo del submódulo: no se comparte estado mutable.
+# Para presentación se consume parsed_value; los datos de cálculo usan value neutral.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -14,7 +14,6 @@ from .models import ColectivaIndicatorReading, ColectivaOverviewReading
 _STEP_SECONDS = 120
 
 
-# Construye las lecturas de tendencia e indicadores; un fallo del historial no bloquea latest.
 def map_colectiva_overview_store(store_data: object) -> ColectivaOverviewReading:
     values, status = _latest_values(store_data)
     return ColectivaOverviewReading(
@@ -29,7 +28,6 @@ def map_colectiva_overview_store(store_data: object) -> ColectivaOverviewReading
     )
 
 
-# Valida únicamente la envoltura latest antes de resolver cada KPI.
 def _latest_values(store_data: object) -> tuple[Mapping[str, object] | None, DisplayStatus]:
     if not isinstance(store_data, Mapping):
         return None, DisplayStatus.INVALID
@@ -44,7 +42,6 @@ def _latest_values(store_data: object) -> tuple[Mapping[str, object] | None, Dis
     return values, DisplayStatus.OK
 
 
-# Traduce el contrato del collector a los cinco estados compartidos de visualización.
 def _display_value(
     values: Mapping[str, object] | None,
     key: str,
@@ -61,15 +58,14 @@ def _display_value(
         return DisplayValue.error()
     if decoded.state is not KpiLatestValueState.OK:
         return DisplayValue.invalid()
-    if decoded.value_kind != 'value' or isinstance(decoded.value, bool):
+    if decoded.value_kind != 'value' or isinstance(decoded.parsed_value, bool):
         return DisplayValue.invalid()
-    if not isinstance(decoded.value, str | int | float):
+    if not isinstance(decoded.parsed_value, str | int | float):
         return DisplayValue.invalid()
-    raw = str(decoded.value).strip()
+    raw = str(decoded.parsed_value).strip()
     return DisplayValue.ok(raw) if raw else DisplayValue.invalid()
 
 
-# Conserva los null originales y verifica el tamaño y los límites de la serie.
 def _history_values(store_data: object, key: str) -> TimeSeriesValues:
     if not isinstance(store_data, Mapping):
         return TimeSeriesValues(DisplayStatus.INVALID)
@@ -112,12 +108,11 @@ def _history_values(store_data: object, key: str) -> TimeSeriesValues:
             TimeSeriesPoint(start + timedelta(seconds=step * (index + 1)), sample)
             for index, sample in enumerate(samples)
         )
-    except (KeyError, TypeError, ValueError, OverflowError):
+    except KeyError, TypeError, ValueError, OverflowError:
         return TimeSeriesValues(DisplayStatus.INVALID)
     return TimeSeriesValues(DisplayStatus.OK, points)
 
 
-# Normaliza las marcas temporales a UTC para el gráfico en horario de Santiago.
 def _utc(value: object) -> datetime:
     if not isinstance(value, str) or not value:
         raise ValueError('Time series timestamp must be an ISO string')

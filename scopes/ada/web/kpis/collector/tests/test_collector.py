@@ -75,7 +75,7 @@ def _latest(
         'partition_id': 'kpis',
         'document_type': 'ada_kpi_latest_delivery',
         'manifest': {
-            'schema_version': 1,
+            'schema_version': 2,
             'revision': revision,
             'configuration_revision': configuration_revision,
             'tool_projection_revision': tool_revision,
@@ -84,10 +84,22 @@ def _latest(
         },
         'destinations': {
             'global_indicators': {
-                'system_kpi': {'status': 'ok', 'value_kind': 'value', 'value': 99.0},
+                'system_kpi': {
+                    'status': 'ok',
+                    'value_kind': 'value',
+                    'value': str(99.0),
+                    'value_type': 'text',
+                    'parsed_value': str(99.0),
+                },
             },
             'mine': {
-                'mine_rate': {'status': 'ok', 'value_kind': 'value', 'value': 42.0},
+                'mine_rate': {
+                    'status': 'ok',
+                    'value_kind': 'value',
+                    'value': str(42.0),
+                    'value_type': 'text',
+                    'parsed_value': str(42.0),
+                },
             },
         },
     }

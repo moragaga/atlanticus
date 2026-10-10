@@ -35,6 +35,8 @@ def _entry(*, value_kind: str) -> dict[str, object]:
         'status': 'error',
         'value_kind': value_kind,
         'value': None,
+        'value_type': ('text' if value_kind == 'value' else None),
+        'parsed_value': None,
     }
 
 

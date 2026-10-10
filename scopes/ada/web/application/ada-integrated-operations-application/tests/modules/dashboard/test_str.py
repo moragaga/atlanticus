@@ -28,7 +28,13 @@ _START = _END - timedelta(hours=1)
 
 
 def _entry(value: object) -> dict[str, object]:
-    return {'status': 'ok', 'value_kind': 'value', 'value': value}
+    return {
+        'status': 'ok',
+        'value_kind': 'value',
+        'value': str(value),
+        'value_type': 'text',
+        'parsed_value': str(value),
+    }
 
 
 def _store() -> dict[str, object]:
@@ -73,7 +79,9 @@ def _walk(item):
 
 def test_old_trend_and_current_equipment_contracts():
     assert (STR_TREND.label, STR_TREND.kpi_key, STR_TREND.unit) == (
-        'Relave', 'relave_real_mean_hora', 't/h'
+        'Relave',
+        'relave_real_mean_hora',
+        't/h',
     )
     assert [item.label for item in STR_ESPESADORES] == ['TK-50', 'TK-51', 'TK-712']
     for tank, code in zip(STR_ESPESADORES, ('050', '051', '712'), strict=True):
@@ -87,7 +95,8 @@ def test_old_trend_and_current_equipment_contracts():
         ]
     assert [item.label for item in DUCTOS] == ['36', '28']
     assert [[pump.label for pump in duct.pumps] for duct in DUCTOS] == [
-        ['PP003', 'PP004', 'PP1005'], ['PP1010', 'PP1011']
+        ['PP003', 'PP004', 'PP1005'],
+        ['PP1010', 'PP1011'],
     ]
 
 
@@ -100,7 +109,8 @@ def test_latest_mappings_preserve_independent_state_and_numbers():
     assert len(tanks) == 3
     assert [item.value.value for item in tanks[0].metrics] == ['50'] * 4
     assert [(item.solids_in.value, item.solids_out.value) for item in ducts] == [
-        ('42.3', '50.2'), ('42.3', '50.2')
+        ('42.3', '50.2'),
+        ('42.3', '50.2'),
     ]
     assert [len(item.pumps) for item in ducts] == [3, 2]
 
@@ -127,18 +137,28 @@ def test_missing_and_unknown_states_are_not_operando_or_detenido():
     values = data['latest']['values']
     values.pop(STR_ESPESADORES[0].feed_kpi_key)
     values[STR_ESPESADORES[1].feed_kpi_key] = {
-        'status': 'missing', 'value_kind': None, 'value': None
+        'status': 'missing',
+        'value_kind': None,
+        'value': None,
+        'value_type': None,
+        'parsed_value': None,
     }
     values[STR_ESPESADORES[2].feed_kpi_key] = _entry('another state')
     values[DUCTOS[0].state_kpi_key] = _entry('unknown')
     values.pop(DUCTOS[1].state_kpi_key)
     values[DUCTOS[0].pumps[0].state_kpi_key] = {
-        'status': 'error', 'value_kind': None, 'value': None
+        'status': 'error',
+        'value_kind': 'json',
+        'value': None,
+        'value_type': None,
+        'parsed_value': None,
     }
     tanks = map_str_espesadores_store(data)
     ducts = map_str_ductos_store(data)
     assert [item.feed.status for item in tanks] == [
-        DisplayStatus.NOT_MAPPED, DisplayStatus.EMPTY, DisplayStatus.INVALID
+        DisplayStatus.NOT_MAPPED,
+        DisplayStatus.EMPTY,
+        DisplayStatus.INVALID,
     ]
     assert ducts[0].state.value == 'unknown'
     assert ducts[1].state.status is DisplayStatus.NOT_MAPPED
@@ -150,11 +170,18 @@ def test_degraded_metric_and_missing_delivery_are_independent():
     data = _store()
     data['latest']['values'].pop(STR_ESPESADORES[1].metrics[0].kpi_key)
     data['latest']['values'][DUCTOS[0].solids_in_kpi_key] = {
-        'status': 'error', 'value_kind': None, 'value': None
+        'status': 'error',
+        'value_kind': 'json',
+        'value': None,
+        'value_type': None,
+        'parsed_value': None,
     }
     assert map_str_espesadores_store(data)[1].metrics[0].value.status is DisplayStatus.NOT_MAPPED
     assert map_str_ductos_store(data)[0].solids_in.status is DisplayStatus.ERROR
-    assert map_str_overview_store({'latest': {'values': {}}}).history.status is DisplayStatus.NOT_MAPPED
+    assert (
+        map_str_overview_store({'latest': {'values': {}}}).history.status
+        is DisplayStatus.NOT_MAPPED
+    )
 
 
 def test_all_latest_keys_are_inspectable_once():
@@ -184,9 +211,11 @@ class DashStub:
 
     def callback(self, *args):
         self.args = args
+
         def register(fn):
             self.render = fn
             return fn
+
         return register
 
 

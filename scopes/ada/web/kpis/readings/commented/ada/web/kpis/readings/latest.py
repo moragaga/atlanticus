@@ -1,3 +1,4 @@
+# La fuente entrega ambas representaciones sin reprocesar el formato de KPI.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -12,7 +13,7 @@ from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 
 @dataclass(frozen=True, slots=True)
-class DashboardLatestReadings:
+class KpiLatestReadings:
     values: Mapping[str, object] | None
     source_status: DisplayStatus
 
@@ -25,25 +26,25 @@ class DashboardLatestReadings:
         elif self.values is not None:
             raise ValueError('Degraded source cannot expose values')
 
-    def scalar(self, key: str, *, allow_bool: bool = False) -> DisplayValue:
+    def scalar(self, key: str) -> DisplayValue:
         decoded = self._decode(key)
         if decoded is None:
             return DisplayValue(self.source_status)
         if decoded.state is not KpiLatestValueState.OK:
             return _degraded(decoded.state)
-        if decoded.value_kind != 'value':
+        if decoded.value_kind != 'value' or not isinstance(decoded.value, str):
             return DisplayValue.invalid()
-        value = decoded.value
-        if not isinstance(value, str | int | float) or (isinstance(value, bool) and not allow_bool):
-            return DisplayValue.invalid()
-        return DisplayValue.ok(value)
+        return DisplayValue.ok(decoded.value)
 
     def text(self, key: str) -> DisplayValue:
-        result = self.scalar(key)
-        if result.status is not DisplayStatus.OK:
-            return result
-        value = str(result.value).strip()
-        return DisplayValue.ok(value) if value else DisplayValue.invalid()
+        decoded = self._decode(key)
+        if decoded is None:
+            return DisplayValue(self.source_status)
+        if decoded.state is not KpiLatestValueState.OK:
+            return _degraded(decoded.state)
+        if decoded.value_kind != 'value' or not isinstance(decoded.parsed_value, str):
+            return DisplayValue.invalid()
+        return DisplayValue.ok(decoded.parsed_value)
 
     def json(self, key: str) -> DisplayValue:
         decoded = self._decode(key)
@@ -55,6 +56,12 @@ class DashboardLatestReadings:
             return DisplayValue.invalid()
         return DisplayValue.ok(decoded.value)
 
+    def value_type(self, key: str) -> str | None:
+        decoded = self._decode(key)
+        if decoded is None or decoded.state is not KpiLatestValueState.OK:
+            return None
+        return decoded.value_type
+
     def _decode(self, key: str) -> DecodedKpiLatestValue | None:
         if not isinstance(key, str) or not key or key != key.strip():
             raise ValueError('KPI key must be a non-empty trimmed string')
@@ -63,38 +70,38 @@ class DashboardLatestReadings:
         return decode_kpi_latest_value(self.values.get(key), present=key in self.values)
 
 
-def read_component_latest(store_data: object) -> DashboardLatestReadings:
+def read_component_latest(store_data: object) -> KpiLatestReadings:
     return _read_latest(store_data)
 
 
 def read_system_latest(
     store_data: object, *, tool_key: str, destination_key: str
-) -> DashboardLatestReadings:
+) -> KpiLatestReadings:
     for name, key in (('tool_key', tool_key), ('destination_key', destination_key)):
         if not isinstance(key, str) or not key or key != key.strip():
             raise ValueError(f'{name} must be a non-empty trimmed string')
     if not isinstance(store_data, Mapping):
-        return DashboardLatestReadings(None, DisplayStatus.INVALID)
+        return KpiLatestReadings(None, DisplayStatus.INVALID)
     if (
         store_data.get('tool_key') != tool_key
         or store_data.get('destination_key') != destination_key
     ):
-        return DashboardLatestReadings(None, DisplayStatus.INVALID)
+        return KpiLatestReadings(None, DisplayStatus.INVALID)
     return _read_latest(store_data)
 
 
-def _read_latest(store_data: object) -> DashboardLatestReadings:
+def _read_latest(store_data: object) -> KpiLatestReadings:
     if not isinstance(store_data, Mapping):
-        return DashboardLatestReadings(None, DisplayStatus.INVALID)
+        return KpiLatestReadings(None, DisplayStatus.INVALID)
     latest = store_data.get('latest')
     if latest is None:
-        return DashboardLatestReadings(None, DisplayStatus.NOT_MAPPED)
+        return KpiLatestReadings(None, DisplayStatus.NOT_MAPPED)
     if not isinstance(latest, Mapping):
-        return DashboardLatestReadings(None, DisplayStatus.INVALID)
+        return KpiLatestReadings(None, DisplayStatus.INVALID)
     values = latest.get('values')
     if not isinstance(values, Mapping):
-        return DashboardLatestReadings(None, DisplayStatus.INVALID)
-    return DashboardLatestReadings(values, DisplayStatus.OK)
+        return KpiLatestReadings(None, DisplayStatus.INVALID)
+    return KpiLatestReadings(values, DisplayStatus.OK)
 
 
 def _degraded(state: KpiLatestValueState) -> DisplayValue:

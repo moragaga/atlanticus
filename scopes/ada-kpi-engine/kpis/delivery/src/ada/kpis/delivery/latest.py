@@ -16,7 +16,7 @@ def _normalized_latest_value(value: KpiLatestValue) -> KpiLatestValue:
     if not isinstance(value, KpiLatestValue):
         raise TypeError('latest values must contain KpiLatestValue values')
     if value.value is not None:
-        canonical_revision({'value': value.value})
+        canonical_revision(value.to_payload())
     return value
 
 
@@ -43,7 +43,7 @@ def project_kpi_latest(
     watermark = utc_iso(watermark_utc, field_name='watermark_utc')
     published_at = utc_iso(published_at_utc, field_name='published_at_utc')
     revision_payload = {
-        'schema_version': 1,
+        'schema_version': 2,
         'configuration_revision': configuration.revision,
         'tool_projection_revision': configuration.tool_projection_revision,
         'watermark_utc': watermark,
@@ -53,7 +53,7 @@ def project_kpi_latest(
         },
     }
     manifest = KpiLatestManifest(
-        schema_version=1,
+        schema_version=2,
         revision=canonical_revision(revision_payload),
         configuration_revision=configuration.revision,
         tool_projection_revision=configuration.tool_projection_revision,

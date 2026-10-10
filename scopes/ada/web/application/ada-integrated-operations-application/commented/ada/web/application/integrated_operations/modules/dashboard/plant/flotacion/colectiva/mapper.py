@@ -1,4 +1,4 @@
-# Normaliza las proyecciones latest y timeseries sin mezclar sus estados.
+# Para presentación se consume parsed_value; los datos de cálculo usan value neutral.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -11,7 +11,6 @@ from ada.web.ui.time_series import TimeSeriesPoint, TimeSeriesValues
 _STEP_SECONDS = 120
 
 
-# Se distingue un store inválido de una proyección latest todavía no mapeada.
 def latest_values(store_data: object) -> tuple[Mapping[str, object] | None, DisplayStatus]:
     if not isinstance(store_data, Mapping):
         return None, DisplayStatus.INVALID
@@ -26,7 +25,6 @@ def latest_values(store_data: object) -> tuple[Mapping[str, object] | None, Disp
     return values, DisplayStatus.OK
 
 
-# Se conserva el resultado del decodificador; la ausencia no implica detención.
 def display_value(
     values: Mapping[str, object] | None,
     key: str,
@@ -43,15 +41,14 @@ def display_value(
         return DisplayValue.error()
     if decoded.state is not KpiLatestValueState.OK:
         return DisplayValue.invalid()
-    if decoded.value_kind != 'value' or isinstance(decoded.value, bool):
+    if decoded.value_kind != 'value' or isinstance(decoded.parsed_value, bool):
         return DisplayValue.invalid()
-    if not isinstance(decoded.value, str | int | float):
+    if not isinstance(decoded.parsed_value, str | int | float):
         return DisplayValue.invalid()
-    raw = str(decoded.value).strip()
+    raw = str(decoded.parsed_value).strip()
     return DisplayValue.ok(raw) if raw else DisplayValue.invalid()
 
 
-# Se valida la estructura temporal antes de construir puntos con nulos intactos.
 def history_values(store_data: object, key: str) -> TimeSeriesValues:
     if not isinstance(store_data, Mapping):
         return TimeSeriesValues(DisplayStatus.INVALID)
@@ -94,12 +91,11 @@ def history_values(store_data: object, key: str) -> TimeSeriesValues:
             TimeSeriesPoint(start + timedelta(seconds=step * (index + 1)), sample)
             for index, sample in enumerate(samples)
         )
-    except (KeyError, TypeError, ValueError, OverflowError):
+    except KeyError, TypeError, ValueError, OverflowError:
         return TimeSeriesValues(DisplayStatus.INVALID)
     return TimeSeriesValues(DisplayStatus.OK, points)
 
 
-# Toda la serie se normaliza a UTC; la UI mostrará horario de Santiago.
 def _utc(value: object) -> datetime:
     if not isinstance(value, str) or not value:
         raise ValueError('Time series timestamp must be an ISO string')

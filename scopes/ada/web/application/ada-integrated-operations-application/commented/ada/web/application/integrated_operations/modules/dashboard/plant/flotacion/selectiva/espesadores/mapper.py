@@ -1,3 +1,4 @@
+# Para presentación se consume parsed_value; los datos de cálculo usan value neutral.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -9,13 +10,11 @@ from .definitions import ESPESADORES, EspesadorDefinition
 from .models import EspesadorMetricReading, EspesadorReading
 
 
-# Punto de responsabilidad: map_espesadores_store; mantiene el mismo contrato que producción.
 def map_espesadores_store(store_data: object) -> tuple[EspesadorReading, ...]:
     values, status = _latest_values(store_data)
     return tuple(_espesador(definition, values, status) for definition in ESPESADORES)
 
 
-# Punto de responsabilidad: _espesador; mantiene el mismo contrato que producción.
 def _espesador(
     definition: EspesadorDefinition,
     values: Mapping[str, object] | None,
@@ -33,7 +32,6 @@ def _espesador(
     )
 
 
-# Solo se traducen estados de alimentación conocidos; la falta de datos no significa detenido.
 def _feed_state(value: DisplayValue) -> DisplayValue:
     if value.status is not DisplayStatus.OK:
         return value
@@ -47,7 +45,6 @@ def _feed_state(value: DisplayValue) -> DisplayValue:
     return DisplayValue.invalid()
 
 
-# Lee el contrato latest sin asumir que todos los datos están presentes.
 def _latest_values(store_data: object) -> tuple[Mapping[str, object] | None, DisplayStatus]:
     if not isinstance(store_data, Mapping):
         return None, DisplayStatus.INVALID
@@ -62,7 +59,6 @@ def _latest_values(store_data: object) -> tuple[Mapping[str, object] | None, Dis
     return values, DisplayStatus.OK
 
 
-# Punto de responsabilidad: _value; mantiene el mismo contrato que producción.
 def _value(
     values: Mapping[str, object] | None,
     key: str,
@@ -79,9 +75,9 @@ def _value(
         return DisplayValue.error()
     if decoded.state is not KpiLatestValueState.OK:
         return DisplayValue.invalid()
-    if decoded.value_kind != 'value' or isinstance(decoded.value, bool):
+    if decoded.value_kind != 'value' or isinstance(decoded.parsed_value, bool):
         return DisplayValue.invalid()
-    if not isinstance(decoded.value, str | int | float):
+    if not isinstance(decoded.parsed_value, str | int | float):
         return DisplayValue.invalid()
-    raw = str(decoded.value).strip()
+    raw = str(decoded.parsed_value).strip()
     return DisplayValue.ok(raw) if raw else DisplayValue.invalid()

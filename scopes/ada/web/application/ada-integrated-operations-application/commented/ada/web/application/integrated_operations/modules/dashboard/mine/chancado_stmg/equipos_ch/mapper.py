@@ -1,4 +1,4 @@
-# Decodifica los KPI de los chancadores desde Latest sin conocer Feeders.
+# Para presentación se consume parsed_value; los datos de cálculo usan value neutral.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -91,9 +91,9 @@ def _value(
         return DisplayValue.error()
     if decoded.state is not KpiLatestValueState.OK:
         return DisplayValue.invalid()
-    if decoded.value_kind != 'value' or not isinstance(decoded.value, str):
+    if decoded.value_kind != 'value' or not isinstance(decoded.parsed_value, str):
         return DisplayValue.invalid()
-    normalized = decoded.value.strip()
+    normalized = decoded.parsed_value.strip()
     if not normalized:
         return DisplayValue.invalid()
     return DisplayValue.ok(normalized)
@@ -107,7 +107,11 @@ def _state(
     result = _value(values, key, source_status)
     if result.status is DisplayStatus.OK:
         normalized = result.value.lower()
-        return DisplayValue.ok(normalized) if normalized in _CHANCADOR_STATES else DisplayValue.invalid()
+        return (
+            DisplayValue.ok(normalized)
+            if normalized in _CHANCADOR_STATES
+            else DisplayValue.invalid()
+        )
     return result
 
 

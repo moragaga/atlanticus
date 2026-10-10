@@ -11,7 +11,7 @@ from ada.web.ui.equipment_image import (
 )
 from ada.web.ui.level_gauge import build_level_gauge
 
-from ..metrics import build_metric_rows, display_value_component
+from ..indicators import build_metric_rows, display_value_component
 from .definitions import STC_ESPESADOR, STC_LEVELS
 from .models import StcReading
 

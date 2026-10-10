@@ -38,7 +38,13 @@ DEFINITIONS = (
 
 
 def _value(token: str) -> dict[str, object]:
-    return {'status': 'ok', 'value_kind': 'value', 'value': token}
+    return {
+        'status': 'ok',
+        'value_kind': 'value',
+        'value': str(token),
+        'value_type': 'text',
+        'parsed_value': str(token),
+    }
 
 
 def _store(values: dict[str, object]) -> dict[str, object]:
@@ -116,8 +122,26 @@ def test_atollo_inactive_is_absent_and_only_five_inspection_targets_are_rendered
 def test_atollo_degraded_status_is_visible_and_inspectable():
     for value, expected in (
         (None, DisplayStatus.NOT_MAPPED),
-        ({'status': 'missing', 'value_kind': None, 'value': None}, DisplayStatus.EMPTY),
-        ({'status': 'error', 'value_kind': 'value', 'value': None}, DisplayStatus.ERROR),
+        (
+            {
+                'status': 'missing',
+                'value_kind': None,
+                'value': None,
+                'value_type': None,
+                'parsed_value': None,
+            },
+            DisplayStatus.EMPTY,
+        ),
+        (
+            {
+                'status': 'error',
+                'value_kind': 'value',
+                'value': None,
+                'value_type': 'text',
+                'parsed_value': None,
+            },
+            DisplayStatus.ERROR,
+        ),
         (_value('unrecognized'), DisplayStatus.INVALID),
     ):
         values = {} if value is None else {'atollo_a': value}
@@ -218,10 +242,22 @@ def test_color_failures_remain_visible_without_invalidating_values():
         _store(
             {
                 'rend_a': _value('25'),
-                'rend_color_a': {'status': 'error', 'value_kind': 'value', 'value': None},
+                'rend_color_a': {
+                    'status': 'error',
+                    'value_kind': 'value',
+                    'value': None,
+                    'value_type': 'text',
+                    'parsed_value': None,
+                },
                 'minutes_a': _value('3'),
                 'minutes_color_a': _value('9'),
-                'poste_a': {'status': 'missing', 'value_kind': None, 'value': None},
+                'poste_a': {
+                    'status': 'missing',
+                    'value_kind': None,
+                    'value': None,
+                    'value_type': None,
+                    'parsed_value': None,
+                },
             }
         ),
         (colored, DEFINITIONS[1]),
@@ -296,7 +332,13 @@ def test_two_chancadores_preserve_independent_inspection_with_atollo_error():
                 'atollo_a': _value('0'),
                 'state_b': _value('detenido'),
                 'tph_b': _value('20'),
-                'atollo_b': {'status': 'error', 'value_kind': 'value', 'value': None},
+                'atollo_b': {
+                    'status': 'error',
+                    'value_kind': 'value',
+                    'value': None,
+                    'value_type': 'text',
+                    'parsed_value': None,
+                },
             }
         ),
         DEFINITIONS,
@@ -335,7 +377,13 @@ def test_table_metrics_remain_independent_and_preserve_source_error():
                 'rend_a': _value('0,0'),
                 'minutes_a': _value('0,0'),
                 'poste_a': _value('197,02'),
-                'rend_b': {'status': 'error', 'value_kind': 'value', 'value': None},
+                'rend_b': {
+                    'status': 'error',
+                    'value_kind': 'value',
+                    'value': None,
+                    'value_type': 'text',
+                    'parsed_value': None,
+                },
                 'minutes_b': _value('0,0'),
                 'poste_b': _value('-0,22'),
             }
@@ -385,9 +433,21 @@ def test_invalid_table_payload_does_not_hide_remaining_readings():
     readings = map_equipos_ch_store(
         _store(
             {
-                'rend_a': {'status': 'missing', 'value_kind': None, 'value': None},
+                'rend_a': {
+                    'status': 'missing',
+                    'value_kind': None,
+                    'value': None,
+                    'value_type': None,
+                    'parsed_value': None,
+                },
                 'minutes_a': _value(' '),
-                'poste_a': {'status': 'ok', 'value_kind': 'json', 'value': {'n': 2}},
+                'poste_a': {
+                    'status': 'ok',
+                    'value_kind': 'json',
+                    'value': {'n': 2},
+                    'value_type': None,
+                    'parsed_value': None,
+                },
                 'rend_b': _value('9'),
             }
         ),

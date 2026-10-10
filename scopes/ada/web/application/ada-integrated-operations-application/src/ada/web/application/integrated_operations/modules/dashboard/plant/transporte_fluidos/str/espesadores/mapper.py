@@ -1,21 +1,23 @@
 from __future__ import annotations
 
+from ada.web.kpis.readings import (
+    read_component_latest,
+)
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
-from .._latest import display_value, latest_values
 from .definitions import STR_ESPESADORES
 from .models import StrEspesadorReading, StrMetricReading
 
 
 def map_str_espesadores_store(store_data: object) -> tuple[StrEspesadorReading, ...]:
-    values, status = latest_values(store_data)
+    source = read_component_latest(store_data)
     return tuple(
         StrEspesadorReading(
             definition=definition,
-            state=display_value(values, definition.state_kpi_key, status),
-            feed=_feed(display_value(values, definition.feed_kpi_key, status)),
+            state=source.text(definition.state_kpi_key),
+            feed=_feed(source.text(definition.feed_kpi_key)),
             metrics=tuple(
-                StrMetricReading(metric, display_value(values, metric.kpi_key, status))
+                StrMetricReading(metric, source.text(metric.kpi_key))
                 for metric in definition.metrics
             ),
         )

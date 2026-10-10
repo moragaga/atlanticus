@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..metrics import FluidMetricDefinition
+from ..indicators import FluidMetricDefinition
 
 
 @dataclass(frozen=True, slots=True)

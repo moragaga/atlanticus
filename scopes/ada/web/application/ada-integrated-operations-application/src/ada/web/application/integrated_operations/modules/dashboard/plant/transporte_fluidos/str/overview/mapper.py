@@ -3,10 +3,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 
+from ada.web.kpis.readings import (
+    read_component_latest,
+)
 from ada.web.ui.display_status import DisplayStatus
 from ada.web.ui.time_series import TimeSeriesPoint, TimeSeriesValues
 
-from .._latest import display_value, latest_values
 from .definitions import STR_TREND
 from .models import StrOverviewReading
 
@@ -14,9 +16,9 @@ _STEP_SECONDS = 120
 
 
 def map_str_overview_store(store_data: object) -> StrOverviewReading:
-    values, status = latest_values(store_data)
+    source = read_component_latest(store_data)
     return StrOverviewReading(
-        current=display_value(values, STR_TREND.kpi_key, status),
+        current=source.text(STR_TREND.kpi_key),
         history=_history(store_data),
     )
 
@@ -60,7 +62,7 @@ def _history(store_data: object) -> TimeSeriesValues:
             TimeSeriesPoint(start + timedelta(seconds=step * (index + 1)), value)
             for index, value in enumerate(values)
         )
-    except (KeyError, TypeError, ValueError, OverflowError):
+    except KeyError, TypeError, ValueError, OverflowError:
         return TimeSeriesValues(DisplayStatus.INVALID)
     return TimeSeriesValues(DisplayStatus.OK, points)
 

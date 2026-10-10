@@ -19,7 +19,13 @@ from ada.web.ui.display_status import DisplayStatus
 
 
 def _entry(value: object, *, kind: str = 'value') -> dict[str, object]:
-    return {'status': 'ok', 'value_kind': kind, 'value': value}
+    return {
+        'status': 'ok',
+        'value_kind': kind,
+        'value': value,
+        'value_type': ('text' if kind == 'value' else None),
+        'parsed_value': (value if isinstance(value, str) and kind == 'value' else None),
+    }
 
 
 def _store(values: dict[str, object]) -> dict[str, object]:
@@ -75,8 +81,20 @@ def test_each_latest_status_is_isolated_without_json_fallback():
         _store(
             {
                 keys[0]: _entry('14,5'),
-                keys[1]: {'status': 'missing', 'value_kind': None, 'value': None},
-                keys[2]: {'status': 'error', 'value_kind': 'value', 'value': None},
+                keys[1]: {
+                    'status': 'missing',
+                    'value_kind': None,
+                    'value': None,
+                    'value_type': None,
+                    'parsed_value': None,
+                },
+                keys[2]: {
+                    'status': 'error',
+                    'value_kind': 'value',
+                    'value': None,
+                    'value_type': 'text',
+                    'parsed_value': None,
+                },
                 keys[3]: _entry({'real': '6'}, kind='json'),
                 keys[4]: _entry('  '),
                 'produccion_global_summary_inst': _entry({'payload': []}, kind='json'),
