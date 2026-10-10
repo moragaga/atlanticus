@@ -23,7 +23,7 @@ dev = [
 ]
 
 [tool.uv.sources]
-atlanticus-storage = { path = "../../../connectivity/storage" }
+atlanticus-storage = { path = "../../../connectivity/storage", editable = true }
 
 [tool.setuptools]
 package-dir = {"" = "src"}

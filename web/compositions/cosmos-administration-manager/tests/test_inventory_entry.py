@@ -198,8 +198,10 @@ def test_manager_authorization_is_enforced_and_backend_errors_are_not_disclosed(
 
 def test_invalid_configuration_rejected():
     _server, administration, _access, root, _entry, _callback = _build()
+
     def principal():
         return ManagerPrincipal(subject_id='x', display_name='X')
+
     values = (
         {'administration': object()},
         {'root_session': object()},

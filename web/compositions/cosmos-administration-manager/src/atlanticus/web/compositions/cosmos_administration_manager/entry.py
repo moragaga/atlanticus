@@ -64,7 +64,7 @@ def create_cosmos_inventory_manager_entry(
             if root_session.current() is None:
                 return False
             return policy.can_view(principal_provider(), entry) is True
-        except (DeploymentRootSessionError, DeploymentAccessStorageError):
+        except DeploymentRootSessionError, DeploymentAccessStorageError:
             return False
 
     def layout(_services: ServiceRegistry) -> object:
@@ -72,7 +72,7 @@ def create_cosmos_inventory_manager_entry(
             return html.P('Se requiere una sesión ROOT y autorización Manager vigentes.')
         try:
             connections = administration.list_connections()
-        except (CosmosAdministrationConfigurationError, CosmosError):
+        except CosmosAdministrationConfigurationError, CosmosError:
             return html.P('No fue posible consultar las conexiones Cosmos configuradas.')
         options = [
             {'label': f'{item.connection_ref} — {item.database_name}', 'value': item.connection_ref}
@@ -80,9 +80,7 @@ def create_cosmos_inventory_manager_entry(
         ]
         return html.Div(
             [
-                html.P(
-                    'Inventario de solo lectura. No crea, modifica ni elimina recursos Cosmos.'
-                ),
+                html.P('Inventario de solo lectura. No crea, modifica ni elimina recursos Cosmos.'),
                 html.Label('Conexión Cosmos', htmlFor=connection_id),
                 dcc.Dropdown(
                     id=connection_id,
@@ -117,7 +115,7 @@ def create_cosmos_inventory_manager_entry(
                 report = administration.inventory(
                     connection_ref=connection_ref, max_items=max_items
                 )
-            except (CosmosAdministrationConfigurationError, CosmosError, ValueError):
+            except CosmosAdministrationConfigurationError, CosmosError, ValueError:
                 return html.P('No fue posible consultar el inventario Cosmos.')
             return _render_inventory(report)
 
@@ -145,9 +143,7 @@ def _render_inventory(report: CosmosInventoryReport) -> object:
                 html.Td(item.name),
                 html.Td(', '.join(item.partition_key_paths)),
                 html.Td(
-                    'Sin TTL'
-                    if item.default_ttl_seconds is None
-                    else str(item.default_ttl_seconds)
+                    'Sin TTL' if item.default_ttl_seconds is None else str(item.default_ttl_seconds)
                 ),
             ]
         )
