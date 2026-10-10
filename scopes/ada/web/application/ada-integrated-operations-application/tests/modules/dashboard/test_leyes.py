@@ -10,10 +10,13 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.bindings i
 from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg import (
     register_chancado_stmg_callback,
 )
+from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.decoder import (
+    decode_chancado_stmg_store,
+)
 from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.leyes import (
     LEYES_DEFINITIONS,
     build_leyes_summary,
-    map_leyes_store,
+    map_leyes_readings,
 )
 from ada.web.kpis.collector import component_kpi_store_id
 from ada.web.ui.display_status import DisplayStatus
@@ -72,7 +75,7 @@ def test_legacy_contract_has_seven_rows_and_28_distinct_individual_kpis():
 
 def test_every_scalar_value_is_preserved_without_rounding_or_replacement():
     values = {key: _entry(f'{index},123456789012345') for index, key in enumerate(_keys())}
-    state = map_leyes_store(_store(values))
+    state = map_leyes_readings(decode_chancado_stmg_store(_store(values)))
     assert [metric.kpi_key for metric in _metrics(state)] == list(_keys())
     assert [metric.value.value for metric in _metrics(state)] == [
         f'{index},123456789012345' for index in range(28)
@@ -82,8 +85,8 @@ def test_every_scalar_value_is_preserved_without_rounding_or_replacement():
 
 def test_latest_failures_are_independent_per_cell():
     first, second, third, fourth, fifth = _keys()[:5]
-    state = map_leyes_store(
-        _store(
+    state = map_leyes_readings(
+        decode_chancado_stmg_store(_store(
             {
                 first: _entry('12,34'),
                 second: {
@@ -103,7 +106,7 @@ def test_latest_failures_are_independent_per_cell():
                 fourth: _entry([1, 2], kind='json'),
                 fifth: _entry('   '),
             }
-        )
+        ))
     )
     assert [metric.value.status for metric in _metrics(state)] == [
         DisplayStatus.OK,
@@ -125,21 +128,21 @@ def test_latest_failures_are_independent_per_cell():
     ],
 )
 def test_absent_or_invalid_latest_keeps_source_status(store, expected):
-    state = map_leyes_store(store)
+    state = map_leyes_readings(decode_chancado_stmg_store(store))
     assert all(metric.value.status is expected for metric in _metrics(state))
 
 
 @pytest.mark.parametrize('value', [True, None, {'foo': 'bar'}, ['1']])
 def test_non_scalar_reading_is_invalid(value):
     first = _keys()[0]
-    state = map_leyes_store(_store({first: _entry(value)}))
+    state = map_leyes_readings(decode_chancado_stmg_store(_store({first: _entry(value)})))
     assert _metrics(state)[0].value.status is DisplayStatus.INVALID
 
 
 def test_table_preserves_28_inspectable_values_and_all_labels():
     keys = _keys()
     values = {key: _entry(f'{index},123456789012345') for index, key in enumerate(keys)}
-    presentation = build_leyes_summary(map_leyes_store(_store(values)))
+    presentation = build_leyes_summary(map_leyes_readings(decode_chancado_stmg_store(_store(values))))
     components = tuple(_components(presentation))
     inspected = [item for item in components if hasattr(item, 'data-kpi-inspection-key')]
     assert [getattr(item, 'data-kpi-inspection-key') for item in inspected] == list(keys)
@@ -157,7 +160,7 @@ def test_table_preserves_28_inspectable_values_and_all_labels():
 
 
 def test_degraded_value_is_displayed_as_shared_status_icon():
-    presentation = build_leyes_summary(map_leyes_store(_store({})))
+    presentation = build_leyes_summary(map_leyes_readings(decode_chancado_stmg_store(_store({}))))
     inspected = [
         item for item in _components(presentation) if hasattr(item, 'data-kpi-inspection-key')
     ]

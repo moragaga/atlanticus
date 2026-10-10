@@ -5,8 +5,9 @@ import pytest
 from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.feeders import (
     FEEDERS_CH_DEFINITIONS,
     FeederKpiDefinition,
-    map_feeders_store,
+    map_feeders_readings,
 )
+from ada.web.kpis.readings import read_component_latest
 from ada.web.ui.display_status import DisplayStatus
 from ada.web.ui.feeder import FeederColor
 
@@ -31,7 +32,7 @@ def _entry(value: object, *, kind: str = 'value') -> dict[str, object]:
 )
 def test_collector_integer_text_is_converted_without_losing_the_real_percentage(raw, expected):
     definition = FEEDERS_CH_DEFINITIONS[0]
-    reading = map_feeders_store(_store({definition.percent_kpi_key: _entry(raw)}), (definition,))[0]
+    reading = map_feeders_readings(_prepare_feeders(_store({definition.percent_kpi_key: _entry(raw)}), (definition,)), (definition,))[0]
     assert reading.percent.status is DisplayStatus.OK
     assert type(reading.percent.value) is int
     assert reading.percent.value == expected
@@ -40,20 +41,20 @@ def test_collector_integer_text_is_converted_without_losing_the_real_percentage(
 @pytest.mark.parametrize('raw', ['12.0', '12,5', '-3', 'x', '', '1e2', '12%'])
 def test_non_integer_or_negative_text_is_invalid(raw):
     definition = FEEDERS_CH_DEFINITIONS[0]
-    reading = map_feeders_store(_store({definition.percent_kpi_key: _entry(raw)}), (definition,))[0]
+    reading = map_feeders_readings(_prepare_feeders(_store({definition.percent_kpi_key: _entry(raw)}), (definition,)), (definition,))[0]
     assert reading.percent.status is DisplayStatus.INVALID
 
 
 @pytest.mark.parametrize('raw', [2.0, True, None])
 def test_floats_booleans_and_null_are_invalid(raw):
     definition = FEEDERS_CH_DEFINITIONS[0]
-    reading = map_feeders_store(_store({definition.percent_kpi_key: _entry(raw)}), (definition,))[0]
+    reading = map_feeders_readings(_prepare_feeders(_store({definition.percent_kpi_key: _entry(raw)}), (definition,)), (definition,))[0]
     assert reading.percent.status is DisplayStatus.INVALID
 
 
 def test_native_integer_is_accepted_without_float_conversion():
     definition = FEEDERS_CH_DEFINITIONS[0]
-    reading = map_feeders_store(_store({definition.percent_kpi_key: _entry(113)}), (definition,))[0]
+    reading = map_feeders_readings(_prepare_feeders(_store({definition.percent_kpi_key: _entry(113)}), (definition,)), (definition,))[0]
     assert reading.percent.status is DisplayStatus.OK
     assert type(reading.percent.value) is int
     assert reading.percent.value == 113
@@ -61,8 +62,8 @@ def test_native_integer_is_accepted_without_float_conversion():
 
 def test_four_feeder_statuses_are_independent():
     a, b, c, d = FEEDERS_CH_DEFINITIONS
-    readings = map_feeders_store(
-        _store(
+    readings = map_feeders_readings(
+        _prepare_feeders(_store(
             {
                 a.percent_kpi_key: _entry('100'),
                 b.percent_kpi_key: {
@@ -81,7 +82,7 @@ def test_four_feeder_statuses_are_independent():
                     'parsed_value': None,
                 },
             }
-        ),
+        ), FEEDERS_CH_DEFINITIONS),
         FEEDERS_CH_DEFINITIONS,
     )
     assert [item.percent.status for item in readings] == [
@@ -113,7 +114,7 @@ def test_optional_color_does_not_degrade_the_valid_percentage():
         ({'color_x': _entry('5')}, DisplayStatus.INVALID),
     )
     for values, expected in sources:
-        reading = map_feeders_store(_store({'percent_x': _entry('105'), **values}), (definition,))[
+        reading = map_feeders_readings(_prepare_feeders(_store({'percent_x': _entry('105'), **values}), (definition,)), (definition,))[
             0
         ]
         assert reading.percent.status is DisplayStatus.OK
@@ -123,7 +124,7 @@ def test_optional_color_does_not_degrade_the_valid_percentage():
 
 def test_unconfigured_color_produces_no_color_reading():
     definition = FEEDERS_CH_DEFINITIONS[0]
-    reading = map_feeders_store(_store({definition.percent_kpi_key: _entry('82')}), (definition,))[
+    reading = map_feeders_readings(_prepare_feeders(_store({definition.percent_kpi_key: _entry('82')}), (definition,)), (definition,))[
         0
     ]
     assert reading.percent.value == 82
@@ -136,8 +137,8 @@ def test_unconfigured_color_produces_no_color_reading():
 )
 def test_color_codes_are_decoded_independently(code, color):
     definition = FeederKpiDefinition('x', 'X', 'percent_x', 'color_x')
-    reading = map_feeders_store(
-        _store({'percent_x': _entry('82'), 'color_x': _entry(code)}), (definition,)
+    reading = map_feeders_readings(
+        _prepare_feeders(_store({'percent_x': _entry('82'), 'color_x': _entry(code)}), (definition,)), (definition,)
     )[0]
     assert reading.percent.value == 82
     assert reading.color.value is color
@@ -153,7 +154,7 @@ def test_invalid_payload_or_latest_source_reports_its_status():
         ({'latest': {'values': []}}, DisplayStatus.INVALID),
     )
     for store, expected in cases:
-        reading = map_feeders_store(store, (definition,))[0]
+        reading = map_feeders_readings(_prepare_feeders(store, (definition,)), (definition,))[0]
         assert reading.percent.status is expected
 
 
@@ -161,4 +162,15 @@ def test_duplicate_kpi_keys_are_rejected():
     first = FeederKpiDefinition('a', 'A', 'percent_a')
     second = FeederKpiDefinition('b', 'B', 'percent_a')
     with pytest.raises(ValueError, match='globally distinct'):
-        map_feeders_store(_store({}), (first, second))
+        map_feeders_readings(_prepare_feeders(_store({}), (first, second)), (first, second))
+
+
+def _prepare_feeders(source, definitions):
+    latest = read_component_latest(source)
+    keys = (
+        key
+        for definition in definitions
+        for key in (definition.percent_kpi_key, definition.color_kpi_key)
+        if key is not None
+    )
+    return {key: latest.scalar(key) for key in keys}

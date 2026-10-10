@@ -1,5 +1,5 @@
 from .definitions import EQUIPOS_CH_DEFINITIONS
-from .mapper import map_equipos_ch_store
+from .mapper import map_equipos_ch_readings
 from .models import EquiposChDefinition, EquiposChReading
 from .presentation import build_equipos_ch
 
@@ -8,5 +8,5 @@ __all__ = [
     'EquiposChDefinition',
     'EquiposChReading',
     'build_equipos_ch',
-    'map_equipos_ch_store',
+    'map_equipos_ch_readings',
 ]

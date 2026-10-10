@@ -5,8 +5,9 @@ import pytest
 from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.equipos_ch import (
     EquiposChDefinition,
     build_equipos_ch,
-    map_equipos_ch_store,
+    map_equipos_ch_readings,
 )
+from ada.web.kpis.readings import read_component_latest
 from ada.web.ui.display_status import DisplayStatus
 
 DEFINITIONS = (
@@ -65,8 +66,8 @@ def _targets(root):
 
 
 def test_six_distinct_kpi_readings_and_states_are_isolated():
-    readings = map_equipos_ch_store(
-        _store(
+    readings = map_equipos_ch_readings(
+        _prepare_equipment(_store(
             {
                 'state_a': _value('Operando'),
                 'tph_a': _value('123,4'),
@@ -75,7 +76,7 @@ def test_six_distinct_kpi_readings_and_states_are_isolated():
                 'tph_b': _value('90'),
                 'atollo_b': _value('0'),
             }
-        ),
+        ), DEFINITIONS),
         DEFINITIONS,
     )
     assert len(readings) == 2
@@ -88,8 +89,8 @@ def test_six_distinct_kpi_readings_and_states_are_isolated():
 
 
 def test_atollo_inactive_is_absent_and_only_five_inspection_targets_are_rendered():
-    state = map_equipos_ch_store(
-        _store(
+    state = map_equipos_ch_readings(
+        _prepare_equipment(_store(
             {
                 'state_a': _value('detenido'),
                 'tph_a': _value('20'),
@@ -98,7 +99,7 @@ def test_atollo_inactive_is_absent_and_only_five_inspection_targets_are_rendered
                 'tph_b': _value('0'),
                 'atollo_b': _value('0'),
             }
-        ),
+        ), DEFINITIONS),
         DEFINITIONS,
     )
     root = build_equipos_ch(state)
@@ -145,7 +146,7 @@ def test_atollo_degraded_status_is_visible_and_inspectable():
         (_value('unrecognized'), DisplayStatus.INVALID),
     ):
         values = {} if value is None else {'atollo_a': value}
-        readings = map_equipos_ch_store(_store(values), DEFINITIONS)
+        readings = map_equipos_ch_readings(_prepare_equipment(_store(values), DEFINITIONS), DEFINITIONS)
         assert readings[0].atollo.status is expected
         assert 'atollo_a' in [
             getattr(node, 'data-kpi-inspection-key')
@@ -159,12 +160,12 @@ def test_unavailable_store_never_implies_atollo_is_inactive():
         (None, DisplayStatus.INVALID),
         ({'latest': {'values': []}}, DisplayStatus.INVALID),
     ):
-        readings = map_equipos_ch_store(store, DEFINITIONS)
+        readings = map_equipos_ch_readings(_prepare_equipment(store, DEFINITIONS), DEFINITIONS)
         assert all(item.atollo.status is expected for item in readings)
 
 
 def test_color_kpi_is_optional_and_absent_without_configuration():
-    readings = map_equipos_ch_store(_store({'rend_a': _value('12')}), DEFINITIONS)
+    readings = map_equipos_ch_readings(_prepare_equipment(_store({'rend_a': _value('12')}), DEFINITIONS), DEFINITIONS)
     assert readings[0].rendimiento_color is None
     table = build_equipos_ch(readings).children[2]
     assert 'rend_color_a' not in [
@@ -188,8 +189,8 @@ def test_color_values_are_decoded_separately_with_existing_state_codes():
         min_atollo_color_kpi_key='minutes_color_a',
         min_poste_color_kpi_key='poste_color_a',
     )
-    readings = map_equipos_ch_store(
-        _store(
+    readings = map_equipos_ch_readings(
+        _prepare_equipment(_store(
             {
                 'rend_a': _value('14,1'),
                 'rend_color_a': _value('1'),
@@ -198,7 +199,7 @@ def test_color_values_are_decoded_separately_with_existing_state_codes():
                 'poste_a': _value('6'),
                 'poste_color_a': _value('0'),
             }
-        ),
+        ), (colored, DEFINITIONS[1])),
         (colored, DEFINITIONS[1]),
     )
     assert readings[0].rendimiento_color.value.value == 'danger'
@@ -238,8 +239,8 @@ def test_color_failures_remain_visible_without_invalidating_values():
         min_atollo_color_kpi_key='minutes_color_a',
         min_poste_color_kpi_key='poste_color_a',
     )
-    readings = map_equipos_ch_store(
-        _store(
+    readings = map_equipos_ch_readings(
+        _prepare_equipment(_store(
             {
                 'rend_a': _value('25'),
                 'rend_color_a': {
@@ -259,7 +260,7 @@ def test_color_failures_remain_visible_without_invalidating_values():
                     'parsed_value': None,
                 },
             }
-        ),
+        ), (colored, DEFINITIONS[1])),
         (colored, DEFINITIONS[1]),
     )
     first = readings[0]
@@ -303,7 +304,7 @@ def test_optional_color_key_must_be_nonempty_when_supplied_and_distinct():
             'poste_b',
             min_poste_color_kpi_key='rend_a',
         )
-        map_equipos_ch_store(_store({}), (DEFINITIONS[0], invalid))
+        map_equipos_ch_readings(_prepare_equipment(_store({}), (DEFINITIONS[0], invalid)), (DEFINITIONS[0], invalid))
 
 
 def test_duplicate_keys_are_rejected():
@@ -320,12 +321,12 @@ def test_duplicate_keys_are_rejected():
         'poste_c',
     )
     with pytest.raises(ValueError, match='globally distinct'):
-        map_equipos_ch_store(_store({}), (DEFINITIONS[0], other))
+        map_equipos_ch_readings(_prepare_equipment(_store({}), (DEFINITIONS[0], other)), (DEFINITIONS[0], other))
 
 
 def test_two_chancadores_preserve_independent_inspection_with_atollo_error():
-    readings = map_equipos_ch_store(
-        _store(
+    readings = map_equipos_ch_readings(
+        _prepare_equipment(_store(
             {
                 'state_a': _value('operando'),
                 'tph_a': _value('10'),
@@ -340,7 +341,7 @@ def test_two_chancadores_preserve_independent_inspection_with_atollo_error():
                     'parsed_value': None,
                 },
             }
-        ),
+        ), DEFINITIONS),
         DEFINITIONS,
     )
     root = build_equipos_ch(readings)
@@ -365,14 +366,14 @@ def test_two_chancadores_preserve_independent_inspection_with_atollo_error():
 
 
 def test_equipment_presentation_requires_two_readings():
-    state = map_equipos_ch_store(_store({}), DEFINITIONS)
+    state = map_equipos_ch_readings(_prepare_equipment(_store({}), DEFINITIONS), DEFINITIONS)
     with pytest.raises(ValueError, match='exactly two'):
         build_equipos_ch(state[:1])
 
 
 def test_table_metrics_remain_independent_and_preserve_source_error():
-    readings = map_equipos_ch_store(
-        _store(
+    readings = map_equipos_ch_readings(
+        _prepare_equipment(_store(
             {
                 'rend_a': _value('0,0'),
                 'minutes_a': _value('0,0'),
@@ -387,7 +388,7 @@ def test_table_metrics_remain_independent_and_preserve_source_error():
                 'minutes_b': _value('0,0'),
                 'poste_b': _value('-0,22'),
             }
-        ),
+        ), DEFINITIONS),
         DEFINITIONS,
     )
     assert tuple(
@@ -401,8 +402,8 @@ def test_table_metrics_remain_independent_and_preserve_source_error():
 
 
 def test_table_has_two_equipment_rows_and_six_independently_inspectable_cells():
-    readings = map_equipos_ch_store(
-        _store(
+    readings = map_equipos_ch_readings(
+        _prepare_equipment(_store(
             {
                 'rend_a': _value('10,2'),
                 'minutes_a': _value('3'),
@@ -413,7 +414,7 @@ def test_table_has_two_equipment_rows_and_six_independently_inspectable_cells():
                 'atollo_a': _value('0'),
                 'atollo_b': _value('0'),
             }
-        ),
+        ), DEFINITIONS),
         DEFINITIONS,
     )
     root = build_equipos_ch(readings)
@@ -430,8 +431,8 @@ def test_table_has_two_equipment_rows_and_six_independently_inspectable_cells():
 
 
 def test_invalid_table_payload_does_not_hide_remaining_readings():
-    readings = map_equipos_ch_store(
-        _store(
+    readings = map_equipos_ch_readings(
+        _prepare_equipment(_store(
             {
                 'rend_a': {
                     'status': 'missing',
@@ -450,7 +451,7 @@ def test_invalid_table_payload_does_not_hide_remaining_readings():
                 },
                 'rend_b': _value('9'),
             }
-        ),
+        ), DEFINITIONS),
         DEFINITIONS,
     )
     assert readings[0].rendimiento.status is DisplayStatus.EMPTY
@@ -458,3 +459,24 @@ def test_invalid_table_payload_does_not_hide_remaining_readings():
     assert readings[0].min_poste.status is DisplayStatus.INVALID
     assert readings[1].rendimiento.value == '9'
     assert readings[1].min_poste.status is DisplayStatus.NOT_MAPPED
+
+
+def _prepare_equipment(source, definitions):
+    latest = read_component_latest(source)
+    keys = (
+        key
+        for definition in definitions
+        for key in (
+        definition.state_kpi_key,
+        definition.throughput_kpi_key,
+        definition.atollo_kpi_key,
+        definition.rendimiento_kpi_key,
+        definition.min_atollo_kpi_key,
+        definition.min_poste_kpi_key,
+        definition.rendimiento_color_kpi_key,
+        definition.min_atollo_color_kpi_key,
+        definition.min_poste_color_kpi_key,
+        )
+        if key is not None
+    )
+    return {key: latest.text(key) for key in keys}

@@ -1,5 +1,5 @@
 from .definitions import LEYES_DEFINITIONS
-from .mapper import map_leyes_store
+from .mapper import map_leyes_readings
 from .presentation import build_leyes_summary
 
-__all__ = ['LEYES_DEFINITIONS', 'build_leyes_summary', 'map_leyes_store']
+__all__ = ['LEYES_DEFINITIONS', 'build_leyes_summary', 'map_leyes_readings']

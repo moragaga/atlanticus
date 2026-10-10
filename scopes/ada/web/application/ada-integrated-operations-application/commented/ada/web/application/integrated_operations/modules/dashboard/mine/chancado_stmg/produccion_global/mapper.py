@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from ada.web.kpis.readings import KpiLatestReadings, read_component_latest
+from collections.abc import Mapping
+
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 from .definitions import PRODUCCION_GLOBAL_DEFINITIONS
@@ -8,8 +9,9 @@ from .models import ProduccionGlobalMetric, ProduccionGlobalRow, ProduccionGloba
 
 
 # Producción Global conserva las definiciones de filas, sin repetir estados ni decodificación.
-def map_produccion_global_store(store_data: object) -> ProduccionGlobalState:
-    readings = read_component_latest(store_data)
+def map_produccion_global_readings(
+    readings: Mapping[str, DisplayValue],
+) -> ProduccionGlobalState:
     return ProduccionGlobalState(
         rows=tuple(
             ProduccionGlobalRow(
@@ -27,8 +29,8 @@ def map_produccion_global_store(store_data: object) -> ProduccionGlobalState:
 
 
 # Solo aplicamos la normalización de presentación específica de este mapper.
-def _metric(readings: KpiLatestReadings, kpi_key: str) -> ProduccionGlobalMetric:
-    display = readings.text(kpi_key)
+def _metric(readings: Mapping[str, DisplayValue], kpi_key: str) -> ProduccionGlobalMetric:
+    display = readings[kpi_key]
     if display.status is DisplayStatus.OK:
         normalized = display.value.strip()
         display = DisplayValue.ok(normalized) if normalized else DisplayValue.invalid()

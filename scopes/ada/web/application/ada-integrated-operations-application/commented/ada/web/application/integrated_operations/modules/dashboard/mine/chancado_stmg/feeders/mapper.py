@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
-from ada.web.kpis.readings import KpiLatestReadings, read_component_latest
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
 from ada.web.ui.feeder import FeederColor, FeederValues
 
@@ -16,8 +15,8 @@ _FEEDER_COLOR_CODES = {
 
 
 # El porcentaje se interpreta desde value neutral, no desde parsed_value.
-def map_feeders_store(
-    store_data: object,
+def map_feeders_readings(
+    readings: Mapping[str, DisplayValue],
     definitions: Sequence[FeederKpiDefinition],
 ) -> tuple[FeederValues, ...]:
     if not isinstance(definitions, Sequence) or not all(
@@ -29,7 +28,6 @@ def map_feeders_store(
     ]
     if len(set(keys)) != len(keys):
         raise ValueError('Feeder KPI keys must be globally distinct')
-    readings = read_component_latest(store_data)
     return tuple(
         FeederValues(
             percent=_feeder_percent(readings, definition.percent_kpi_key),
@@ -43,8 +41,8 @@ def map_feeders_store(
     )
 
 
-def _feeder_read(readings: KpiLatestReadings, key: str) -> DisplayValue:
-    result = readings.scalar(key)
+def _feeder_read(readings: Mapping[str, DisplayValue], key: str) -> DisplayValue:
+    result = readings[key]
     if result.status is not DisplayStatus.OK:
         return result
     text = result.value.strip()
@@ -52,7 +50,7 @@ def _feeder_read(readings: KpiLatestReadings, key: str) -> DisplayValue:
 
 
 # La validación de porcentaje entero es una regla local de Feeders.
-def _feeder_percent(readings: KpiLatestReadings, key: str) -> DisplayValue:
+def _feeder_percent(readings: Mapping[str, DisplayValue], key: str) -> DisplayValue:
     reading = _feeder_read(readings, key)
     if reading.status is not DisplayStatus.OK:
         return reading
@@ -65,7 +63,7 @@ def _feeder_percent(readings: KpiLatestReadings, key: str) -> DisplayValue:
         return DisplayValue.invalid()
 
 
-def _feeder_color(readings: KpiLatestReadings, key: str) -> DisplayValue:
+def _feeder_color(readings: Mapping[str, DisplayValue], key: str) -> DisplayValue:
     reading = _feeder_read(readings, key)
     if reading.status is not DisplayStatus.OK:
         return reading

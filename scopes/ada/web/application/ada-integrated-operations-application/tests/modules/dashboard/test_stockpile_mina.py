@@ -9,11 +9,14 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.bindings i
 from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg import (
     register_chancado_stmg_callback,
 )
+from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.decoder import (
+    decode_chancado_stmg_store,
+)
 from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.stockpile import (
     STOCKPILE_MINA_DEFINITIONS,
     STOCKPILE_MINA_KPI_KEYS,
     STOCKPILE_MINA_SCALE_MAX_M,
-    map_stockpile_mina_store,
+    map_stockpile_mina_readings,
 )
 from ada.web.kpis.collector import component_kpi_store_id
 from ada.web.ui.display_status import DisplayStatus
@@ -44,7 +47,7 @@ def _values() -> dict[str, object]:
 
 
 def test_mina_maps_two_independent_readings_to_individual_definitions():
-    readings = map_stockpile_mina_store(_store(_values()))
+    readings = map_stockpile_mina_readings(decode_chancado_stmg_store(_store(_values())))
     assert len(readings) == len(STOCKPILE_MINA_DEFINITIONS) == 2
     assert [r.percent.value for r in readings] == ['65', '80']
     assert [r.height_m.value for r in readings] == ['18,2', '23,5']
@@ -63,7 +66,7 @@ def test_mina_maps_two_independent_readings_to_individual_definitions():
     ],
 )
 def test_bad_component_store_preserves_errors_per_pile(store, expected):
-    readings = map_stockpile_mina_store(store)
+    readings = map_stockpile_mina_readings(decode_chancado_stmg_store(store))
     assert all(r.percent.status is expected and r.height_m.status is expected for r in readings)
 
 
@@ -83,7 +86,7 @@ def test_mina_handles_partial_readings_without_affecting_other_pile():
         'value_type': 'text',
         'parsed_value': None,
     }
-    readings = map_stockpile_mina_store(_store(values))
+    readings = map_stockpile_mina_readings(decode_chancado_stmg_store(_store(values)))
     assert readings[0].percent.status is DisplayStatus.EMPTY
     assert readings[0].height_m.status is DisplayStatus.OK
     assert readings[1].percent.status is DisplayStatus.OK
@@ -99,7 +102,7 @@ def test_numbers_are_not_accepted_at_collector_boundary():
         'value': 18.2,
         'parsed_value': '18,2',
     }
-    readings = map_stockpile_mina_store(_store(values))
+    readings = map_stockpile_mina_readings(decode_chancado_stmg_store(_store(values)))
     assert readings[0].height_m.status is DisplayStatus.INVALID
 
 

@@ -9,10 +9,13 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.bindings i
 from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg import (
     register_chancado_stmg_callback,
 )
+from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.decoder import (
+    decode_chancado_stmg_store,
+)
 from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.produccion_global import (
     PRODUCCION_GLOBAL_DEFINITIONS,
     build_produccion_global,
-    map_produccion_global_store,
+    map_produccion_global_readings,
 )
 from ada.web.kpis.collector import component_kpi_store_id
 from ada.web.ui.display_status import DisplayStatus
@@ -66,7 +69,7 @@ def _components(component):
 def test_ten_independent_keys_and_decimal_text_are_preserved():
     keys = _all_keys()
     assert len(keys) == len(set(keys)) == 10
-    state = map_produccion_global_store(_store({key: _entry('12,3') for key in keys}))
+    state = map_produccion_global_readings(decode_chancado_stmg_store(_store({key: _entry('12,3') for key in keys})))
     assert [row.label for row in state.rows] == ['Alimentación', 'Transportado']
     assert tuple(item.kpi_key for item in _metrics(state)) == keys
     assert all(
@@ -77,8 +80,8 @@ def test_ten_independent_keys_and_decimal_text_are_preserved():
 
 def test_each_latest_status_is_isolated_without_json_fallback():
     keys = _all_keys()
-    state = map_produccion_global_store(
-        _store(
+    state = map_produccion_global_readings(
+        decode_chancado_stmg_store(_store(
             {
                 keys[0]: _entry('14,5'),
                 keys[1]: {
@@ -99,7 +102,7 @@ def test_each_latest_status_is_isolated_without_json_fallback():
                 keys[4]: _entry('  '),
                 'produccion_global_summary_inst': _entry({'payload': []}, kind='json'),
             }
-        )
+        ))
     )
     statuses = [metric.value.status for metric in _metrics(state)]
     assert statuses == [
@@ -118,19 +121,19 @@ def test_malformed_or_absent_latest_preserves_source_status():
         ({'latest': {'values': []}}, DisplayStatus.INVALID),
         (None, DisplayStatus.INVALID),
     ):
-        state = map_produccion_global_store(store)
+        state = map_produccion_global_readings(decode_chancado_stmg_store(store))
         assert all(metric.value.status is expected for metric in _metrics(state))
 
 
 def test_invalid_scalar_type_does_not_leak_into_presentation():
     keys = _all_keys()
     for value in (12.3, True, None):
-        state = map_produccion_global_store(_store({keys[0]: _entry(value)}))
+        state = map_produccion_global_readings(decode_chancado_stmg_store(_store({keys[0]: _entry(value)})))
         assert _metrics(state)[0].value.status is DisplayStatus.INVALID
 
 
 def test_every_visible_metric_has_its_own_inspection_key_when_missing():
-    state = map_produccion_global_store(_store({}))
+    state = map_produccion_global_readings(decode_chancado_stmg_store(_store({})))
     root = build_produccion_global(state)
     targets = [node for node in _components(root) if hasattr(node, 'data-kpi-inspection-key')]
     assert len(targets) == 10
@@ -142,7 +145,7 @@ def test_every_visible_metric_has_its_own_inspection_key_when_missing():
 def test_values_in_pair_are_independently_inspectable():
     keys = _all_keys()
     root = build_produccion_global(
-        map_produccion_global_store(_store({key: _entry(str(n)) for n, key in enumerate(keys)}))
+        map_produccion_global_readings(decode_chancado_stmg_store(_store({key: _entry(str(n)) for n, key in enumerate(keys)})))
     )
     targets = [node for node in _components(root) if hasattr(node, 'data-kpi-inspection-key')]
     assert [node.children for node in targets] == [str(n) for n in range(10)]

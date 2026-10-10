@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from ada.web.application.integrated_operations.modules.dashboard.value_status import (
     map_dashboard_value_status,
 )
-from ada.web.kpis.readings import KpiLatestReadings, read_component_latest
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 from .models import EquiposChDefinition, EquiposChReading
@@ -13,8 +12,8 @@ from .models import EquiposChDefinition, EquiposChReading
 _CHANCADOR_STATES = frozenset({'operando', 'detenido', 'mantencion'})
 
 
-def map_equipos_ch_store(
-    store_data: object,
+def map_equipos_ch_readings(
+    readings: Mapping[str, DisplayValue],
     definitions: Sequence[EquiposChDefinition],
 ) -> tuple[EquiposChReading, ...]:
     if not isinstance(definitions, Sequence) or not all(
@@ -40,7 +39,6 @@ def map_equipos_ch_store(
     if len(keys) != len(set(keys)):
         raise ValueError('Equipos CH KPI keys must be globally distinct')
 
-    readings = read_component_latest(store_data)
     return tuple(
         EquiposChReading(
             definition=definition,
@@ -58,27 +56,25 @@ def map_equipos_ch_store(
     )
 
 
-def _value(readings: KpiLatestReadings, key: str) -> DisplayValue:
-    result = readings.text(key)
+def _value(readings: Mapping[str, DisplayValue], key: str) -> DisplayValue:
+    result = readings[key]
     if result.status is not DisplayStatus.OK:
         return result
     normalized = result.value.strip()
     return DisplayValue.ok(normalized) if normalized else DisplayValue.invalid()
 
 
-def _state(readings: KpiLatestReadings, key: str) -> DisplayValue:
+def _state(readings: Mapping[str, DisplayValue], key: str) -> DisplayValue:
     result = _value(readings, key)
     if result.status is not DisplayStatus.OK:
         return result
     normalized = result.value.lower()
     return (
-        DisplayValue.ok(normalized)
-        if normalized in _CHANCADOR_STATES
-        else DisplayValue.invalid()
+        DisplayValue.ok(normalized) if normalized in _CHANCADOR_STATES else DisplayValue.invalid()
     )
 
 
-def _atollo(readings: KpiLatestReadings, definition: EquiposChDefinition) -> DisplayValue:
+def _atollo(readings: Mapping[str, DisplayValue], definition: EquiposChDefinition) -> DisplayValue:
     result = _value(readings, definition.atollo_kpi_key)
     if result.status is not DisplayStatus.OK:
         return result
@@ -90,7 +86,7 @@ def _atollo(readings: KpiLatestReadings, definition: EquiposChDefinition) -> Dis
     return DisplayValue.invalid()
 
 
-def _color(readings: KpiLatestReadings, key: str | None) -> DisplayValue | None:
+def _color(readings: Mapping[str, DisplayValue], key: str | None) -> DisplayValue | None:
     if key is None:
         return None
     result = _value(readings, key)

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from ada.web.application.integrated_operations.modules.dashboard.value_status import (
     map_dashboard_value_status,
 )
-from ada.web.kpis.readings import KpiLatestReadings, read_component_latest
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 from .definitions import CorreaStmgDefinition, CorreaStmgMetricDefinition
@@ -14,8 +13,8 @@ from .models import CorreasStmgState
 _STATES = frozenset({'operando', 'detenido'})
 
 
-def map_correas_stmg_store(
-    store_data: object,
+def map_correas_stmg_readings(
+    readings: Mapping[str, DisplayValue],
     definitions: Sequence[CorreaStmgDefinition],
     metric: CorreaStmgMetricDefinition,
 ) -> CorreasStmgState:
@@ -30,27 +29,24 @@ def map_correas_stmg_store(
         keys.append(metric.color_kpi_key)
     if len(keys) != len(set(keys)):
         raise ValueError('Correa STMG KPI keys must be distinct')
-    readings = read_component_latest(store_data)
     return CorreasStmgState(
         states=tuple(_state(readings, item.state_kpi_key) for item in definitions),
         metric=_read(readings, metric.value_kpi_key),
         metric_color=(
-            _color(readings, metric.color_kpi_key)
-            if metric.color_kpi_key is not None
-            else None
+            _color(readings, metric.color_kpi_key) if metric.color_kpi_key is not None else None
         ),
     )
 
 
-def _read(readings: KpiLatestReadings, key: str) -> DisplayValue:
-    result = readings.text(key)
+def _read(readings: Mapping[str, DisplayValue], key: str) -> DisplayValue:
+    result = readings[key]
     if result.status is not DisplayStatus.OK:
         return result
     normalized = result.value.strip()
     return DisplayValue.ok(normalized) if normalized else DisplayValue.invalid()
 
 
-def _state(readings: KpiLatestReadings, key: str) -> DisplayValue:
+def _state(readings: Mapping[str, DisplayValue], key: str) -> DisplayValue:
     reading = _read(readings, key)
     if reading.status is not DisplayStatus.OK:
         return reading
@@ -58,7 +54,7 @@ def _state(readings: KpiLatestReadings, key: str) -> DisplayValue:
     return DisplayValue.ok(state) if state in _STATES else DisplayValue.invalid()
 
 
-def _color(readings: KpiLatestReadings, key: str) -> DisplayValue:
+def _color(readings: Mapping[str, DisplayValue], key: str) -> DisplayValue:
     reading = _read(readings, key)
     if reading.status is not DisplayStatus.OK:
         return reading

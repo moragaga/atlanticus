@@ -5,7 +5,7 @@ from dash.development.base_component import Component
 from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.equipos_ch import (
     EQUIPOS_CH_DEFINITIONS,
     build_equipos_ch,
-    map_equipos_ch_store,
+    map_equipos_ch_readings,
 )
 from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_stmg.runtime import (
     register_chancado_stmg_callback,
@@ -13,6 +13,7 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.chancado_s
 from ada.web.application.integrated_operations.modules.dashboard.module import (
     create_dashboard_module,
 )
+from ada.web.kpis.readings import read_component_latest
 from ada.web.ui.display_status import DisplayStatus
 from ada.web.ui.equipment_image import ADA_EQUIPMENT_IMAGE_ASSET_LAYER
 
@@ -88,8 +89,8 @@ def test_callback_renders_equipment_table_before_untouched_stockpile():
 
 def test_atollo_inactive_has_no_hidden_target_and_error_is_inspectable():
     a, b = EQUIPOS_CH_DEFINITIONS
-    mapped = map_equipos_ch_store(
-        _store(
+    mapped = map_equipos_ch_readings(
+        _prepare_equipment(_store(
             {
                 a.atollo_kpi_key: _entry(a.atollo_inactive_value),
                 b.atollo_kpi_key: {
@@ -100,7 +101,7 @@ def test_atollo_inactive_has_no_hidden_target_and_error_is_inspectable():
                     'parsed_value': None,
                 },
             }
-        ),
+        ), EQUIPOS_CH_DEFINITIONS),
         EQUIPOS_CH_DEFINITIONS,
     )
     assert mapped[0].atollo.value is False
@@ -136,8 +137,8 @@ def test_table_color_is_an_optional_kpi_not_a_json_payload():
         original.min_poste_kpi_key,
         rendimiento_color_kpi_key='rendimiento_color_test',
     )
-    readings = map_equipos_ch_store(
-        {
+    readings = map_equipos_ch_readings(
+        _prepare_equipment({
             'latest': {
                 'values': {
                     original.rendimiento_kpi_key: {
@@ -156,7 +157,7 @@ def test_table_color_is_an_optional_kpi_not_a_json_payload():
                     },
                 }
             },
-        },
+        }, (colored, EQUIPOS_CH_DEFINITIONS[1])),
         (colored, EQUIPOS_CH_DEFINITIONS[1]),
     )
     assert readings[0].rendimiento.status is DisplayStatus.OK
@@ -165,3 +166,24 @@ def test_table_color_is_an_optional_kpi_not_a_json_payload():
     keys = [getattr(target, 'data-kpi-inspection-key') for target in targets]
     assert 'rendimiento_color_test' in keys
     assert original.rendimiento_kpi_key in keys
+
+
+def _prepare_equipment(source, definitions):
+    latest = read_component_latest(source)
+    keys = (
+        key
+        for definition in definitions
+        for key in (
+        definition.state_kpi_key,
+        definition.throughput_kpi_key,
+        definition.atollo_kpi_key,
+        definition.rendimiento_kpi_key,
+        definition.min_atollo_kpi_key,
+        definition.min_poste_kpi_key,
+        definition.rendimiento_color_kpi_key,
+        definition.min_atollo_color_kpi_key,
+        definition.min_poste_color_kpi_key,
+        )
+        if key is not None
+    )
+    return {key: latest.text(key) for key in keys}
