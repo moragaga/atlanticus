@@ -1,4 +1,4 @@
-# La aplicación registra Selectiva sin crear un segundo store ni alterar Colectiva.
+# Espejo pedagógico: se añade únicamente el callback de la card STR.
 from ada.web.application.integrated_operations.modules.dashboard.context import (
     DASHBOARD_CONTEXT_SERVICE_KEY,
     DashboardContext,
@@ -33,6 +33,9 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile
 )
 from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile_chacay.tendencia_alimentado import (
     register_tendencia_alimentado_callback,
+)
+from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos.str import (
+    register_str_callback,
 )
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.ui.card_display import ADA_CARD_DISPLAY_ASSET_LAYER
@@ -74,8 +77,8 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             register_tendencia_alimentado_callback(dash_app, tool_key=tool_key)
             register_molienda_callback(dash_app, tool_key=tool_key)
             register_colectiva_callback(dash_app, tool_key=tool_key)
-            # Añade la presentación Selectiva usando el mismo store de Flotación.
             register_selectiva_callback(dash_app, tool_key=tool_key)
+            register_str_callback(dash_app, tool_key=tool_key)
 
     return WebModule(
         name='ada-integrated-operations-dashboard',

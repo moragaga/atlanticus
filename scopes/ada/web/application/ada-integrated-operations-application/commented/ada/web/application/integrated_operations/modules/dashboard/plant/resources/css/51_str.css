@@ -1,0 +1,249 @@
+/* La tarjeta STR mantiene el orden: histórico, tres espesadores y dos ductos.
+   Los ductos conservan dos columnas salvo que el contenedor no permita leer las bombas. */
+.ada-io-str {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    gap: .45rem;
+}
+
+.ada-io-str__trend {
+    width: 100%;
+    min-width: 0;
+}
+
+.ada-io-str__trend-header,
+.ada-io-str__trend-reading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .3rem;
+}
+
+.ada-io-str__trend-header {
+    padding: .1rem .35rem;
+    font-size: .65rem;
+}
+
+.ada-io-str__trend-reading > span:first-child {
+    font-weight: 700;
+}
+
+.ada-io-str__espesadores,
+.ada-io-str__tanks,
+.ada-io-str__ducts-section {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+}
+
+.ada-io-str__tanks {
+    gap: .25rem;
+}
+
+.ada-io-str__section-title {
+    font-size: .65rem;
+    font-weight: 700;
+    margin: 0 0 .25rem;
+}
+
+.ada-io-str__tank {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: .25rem;
+    min-width: 0;
+    box-sizing: border-box;
+    border: 1px solid var(--soft-border-color, #d7d7d7);
+    border-radius: 5px;
+    padding: .2rem .1rem;
+    font-size: .55rem;
+}
+
+.ada-io-str__tank-left {
+    display: grid;
+    grid-template-columns: 1.2rem minmax(0, 1fr);
+    align-items: start;
+    gap: .1rem;
+    min-width: 0;
+}
+
+.ada-io-str__feed {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 1.3rem;
+    padding: .1rem;
+    border: 1px solid var(--soft-border-color, #d7d7d7);
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+
+.ada-io-str__feed-circle {
+    position: relative;
+    display: block;
+    width: min(100%, .9rem);
+    aspect-ratio: 1;
+}
+
+.ada-io-str__feed-circle::before {
+    content: '';
+    position: absolute;
+    inset: 10.9375%;
+    border: .085rem solid;
+    border-radius: 50%;
+    box-sizing: border-box;
+}
+
+.ada-io-str__feed-circle--operando::before {
+    background: #afafaf;
+    border-color: #fff;
+}
+
+.ada-io-str__feed-circle--detenido::before {
+    background: #fff;
+    border-color: #afafaf;
+}
+
+.ada-io-str__tank-image,
+.ada-io-str__tank-image .ada-equipment-image {
+    width: 100%;
+    min-width: 0;
+}
+
+.ada-io-str__tank-image .ada-equipment-image__image {
+    max-height: 2.75rem;
+}
+
+.ada-io-str__tank-image .ada-equipment-image__label {
+    font-size: .55rem;
+}
+
+.ada-io-str__tank-metrics {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.ada-io-str__tank-metric {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .1rem;
+    min-width: 0;
+    padding: .1rem 0;
+}
+
+.ada-io-str__tank-metric:nth-child(2n + 1) {
+    border-bottom: 1px solid var(--primary-border-color, #bdbdbd);
+}
+
+.ada-io-str__tank-metric > span:first-child {
+    min-width: 0;
+}
+
+.ada-io-str__metric-value {
+    flex: none;
+    font-weight: 700;
+}
+
+.ada-io-str__ducts-section {
+    border-top: 1px solid var(--primary-border-color, #bdbdbd);
+    padding-top: .35rem;
+    container-type: inline-size;
+}
+
+.ada-io-str__ducts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .25rem;
+}
+
+.ada-io-str__duct {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: .2rem;
+    font-size: .55rem;
+}
+
+.ada-io-str__duct-header,
+.ada-io-str__duct-solids {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .15rem;
+}
+
+.ada-io-str__duct-header {
+    font-size: .6rem;
+}
+
+.ada-io-str__duct-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.3rem;
+    min-width: 0;
+}
+
+.ada-io-str__duct-image .ada-equipment-image {
+    width: 100%;
+    min-width: 0;
+}
+
+.ada-io-str__duct-image .ada-equipment-image__image {
+    max-width: 100%;
+    max-height: 2.3rem;
+}
+
+.ada-io-str__duct-solids {
+    flex-wrap: wrap;
+    gap: .1rem;
+    white-space: nowrap;
+}
+
+.ada-io-str__solid-reading {
+    display: inline-flex;
+    align-items: center;
+    gap: .03rem;
+}
+
+.ada-io-str__pumps {
+    display: flex;
+    align-items: start;
+    justify-content: space-evenly;
+    gap: .1rem;
+}
+
+.ada-io-str__pump {
+    min-width: 0;
+}
+
+.ada-io-str__pump .ada-equipment-image__image {
+    max-height: 1.75rem;
+}
+
+.ada-io-str__pump .ada-equipment-image__label {
+    font-size: .5rem;
+}
+
+.ada-io-str__status-icon {
+    display: block;
+    width: .9rem;
+    height: .9rem;
+    object-fit: contain;
+}
+
+.ada-io-str [data-kpi-inspection-key]:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+@container (max-width: 11rem) {
+    .ada-io-str__ducts {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

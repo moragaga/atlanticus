@@ -16,6 +16,7 @@ _EQUIPMENT_STATES = {
     'vertimil': frozenset({'operando', 'detenido'}),
     'bomba': frozenset({'operando', 'detenido'}),
     'espesador': frozenset({'operando', 'detenido'}),
+    'str': frozenset({'operando', 'detenido'}),
 }
 
 

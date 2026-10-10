@@ -33,6 +33,9 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile
 from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile_chacay.tendencia_alimentado import (
     register_tendencia_alimentado_callback,
 )
+from ada.web.application.integrated_operations.modules.dashboard.plant.transporte_fluidos.str import (
+    register_str_callback,
+)
 from ada.web.operational_render_binding import OperationalRenderBinding
 from ada.web.ui.card_display import ADA_CARD_DISPLAY_ASSET_LAYER
 from ada.web.ui.equipment_image import ADA_EQUIPMENT_IMAGE_ASSET_LAYER
@@ -74,6 +77,7 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             register_molienda_callback(dash_app, tool_key=tool_key)
             register_colectiva_callback(dash_app, tool_key=tool_key)
             register_selectiva_callback(dash_app, tool_key=tool_key)
+            register_str_callback(dash_app, tool_key=tool_key)
 
     return WebModule(
         name='ada-integrated-operations-dashboard',
