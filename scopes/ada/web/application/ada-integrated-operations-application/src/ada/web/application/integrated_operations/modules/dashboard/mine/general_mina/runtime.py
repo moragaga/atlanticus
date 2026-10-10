@@ -9,16 +9,16 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.bindings i
 from ada.web.kpis.collector import KpiLatestValueState, component_kpi_store_id
 from ada.web.ui.display_status import DisplayStatus
 
+from .decoder import decode_general_mina_store
 from .movimiento_mina import (
     MovimientoMinaContractError,
     MovimientoMinaUnavailableError,
-    build_movimiento_mina,
-    build_movimiento_mina_unavailable,
-    map_movimiento_mina_store,
+    map_movimiento_mina_readings,
 )
-from .mp10 import build_mp10, map_mp10_store
-from .perforacion import build_perforacion, map_perforacion_store
-from .remanentes import build_remanentes, map_remanentes_store
+from .mp10 import map_mp10_readings
+from .perforacion import map_perforacion_readings
+from .presentation import build_general_mina
+from .remanentes import map_remanentes_readings
 
 _SOURCE_STATUS = {
     KpiLatestValueState.NOT_MAPPED: DisplayStatus.NOT_MAPPED,
@@ -36,19 +36,16 @@ def register_general_mina_callback(dash_app, *, tool_key: str) -> None:
         Input(component_kpi_store_id(tool_key, GENERAL_MINA.tool_component_key), 'data'),
     )
     def refresh_general_mina(store_data: object):
-        return (
-            _render_movimiento_mina(store_data),
-            build_remanentes(map_remanentes_store(store_data)),
-            build_perforacion(map_perforacion_store(store_data)),
-            build_mp10(map_mp10_store(store_data)),
+        readings = decode_general_mina_store(store_data)
+        try:
+            movimiento = map_movimiento_mina_readings(readings)
+        except MovimientoMinaUnavailableError as error:
+            movimiento = _SOURCE_STATUS[error.state]
+        except MovimientoMinaContractError:
+            movimiento = DisplayStatus.INVALID
+        return build_general_mina(
+            movimiento_mina=movimiento,
+            remanentes=map_remanentes_readings(readings),
+            perforacion=map_perforacion_readings(readings),
+            mp10=map_mp10_readings(readings),
         )
-
-
-def _render_movimiento_mina(store_data: object):
-    try:
-        state = map_movimiento_mina_store(store_data)
-    except MovimientoMinaUnavailableError as error:
-        return build_movimiento_mina_unavailable(_SOURCE_STATUS[error.state])
-    except MovimientoMinaContractError:
-        return build_movimiento_mina_unavailable(DisplayStatus.INVALID)
-    return build_movimiento_mina(state)

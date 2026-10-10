@@ -12,20 +12,23 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.carguio.ge
     GESTION_CARGUIO_TURNO_KPI_KEY,
     map_gestion_carguio_turno_store,
 )
+from ada.web.application.integrated_operations.modules.dashboard.mine.general_mina.decoder import (
+    decode_general_mina_store,
+)
 from ada.web.application.integrated_operations.modules.dashboard.mine.general_mina.mp10 import (
     MP10_HOTEL_MINA_INST_KPI_KEY,
     MP10_HOTEL_MINA_PROY_KPI_KEY,
-    map_mp10_store,
+    map_mp10_readings,
 )
 from ada.web.application.integrated_operations.modules.dashboard.mine.general_mina.perforacion import (
     PERFORACION_DETALLE_KPI_KEY,
     PERFORACION_RESUMEN_KPI_KEY,
-    map_perforacion_store,
+    map_perforacion_readings,
 )
 from ada.web.application.integrated_operations.modules.dashboard.mine.general_mina.remanentes import (
     REMANENTES_SUMMARY_KPI_KEY,
     STOCK_3080_KPI_KEY,
-    map_remanentes_store,
+    map_remanentes_readings,
 )
 from ada.web.ui.display_status import DisplayStatus
 
@@ -66,40 +69,32 @@ def test_carguio_source_errors_are_invalid_data() -> None:
 
 
 def test_general_mina_source_errors_are_invalid_data() -> None:
-    remanentes = map_remanentes_store(
-        _store(
-            {
-                REMANENTES_SUMMARY_KPI_KEY: _entry(value_kind='json'),
-                STOCK_3080_KPI_KEY: _entry(value_kind='value'),
-            }
-        )
+    remanentes = map_remanentes_readings(
+        decode_general_mina_store(_store({
+            REMANENTES_SUMMARY_KPI_KEY: _entry(value_kind='json'),
+            STOCK_3080_KPI_KEY: _entry(value_kind='value'),
+        }))
     )
-    perforacion = map_perforacion_store(
-        _store(
-            {
-                PERFORACION_RESUMEN_KPI_KEY: _entry(value_kind='json'),
-                PERFORACION_DETALLE_KPI_KEY: _entry(value_kind='json'),
-            }
-        )
+    perforacion = map_perforacion_readings(
+        decode_general_mina_store(_store({
+            PERFORACION_RESUMEN_KPI_KEY: _entry(value_kind='json'),
+            PERFORACION_DETALLE_KPI_KEY: _entry(value_kind='json'),
+        }))
     )
-    mp10 = map_mp10_store(
-        _store(
-            {
-                MP10_HOTEL_MINA_INST_KPI_KEY: _entry(value_kind='json'),
-                MP10_HOTEL_MINA_PROY_KPI_KEY: _entry(value_kind='json'),
-            }
-        )
+    mp10 = map_mp10_readings(
+        decode_general_mina_store(_store({
+            MP10_HOTEL_MINA_INST_KPI_KEY: _entry(value_kind='json'),
+            MP10_HOTEL_MINA_PROY_KPI_KEY: _entry(value_kind='json'),
+        }))
     )
 
     assert remanentes.summary is None
     assert remanentes.summary_status is DisplayStatus.INVALID
     assert remanentes.stock_3080.value.status is DisplayStatus.INVALID
-
     assert perforacion.resumen is None
     assert perforacion.detalle is None
     assert perforacion.resumen_status is DisplayStatus.INVALID
     assert perforacion.detalle_status is DisplayStatus.INVALID
-
     assert mp10.instant is None
     assert mp10.projection is None
     assert mp10.instant_status is DisplayStatus.INVALID

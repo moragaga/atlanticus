@@ -9,7 +9,6 @@ from ada.web.application.integrated_operations.modules.dashboard.data_state impo
 from ada.web.application.integrated_operations.modules.dashboard.value_status import (
     DashboardValueStatus,
 )
-from ada.web.kpis.collector import KpiLatestValueState, decode_kpi_latest_value
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 from .definitions import REMANENTES_SUMMARY_KPI_KEY, STOCK_3080_KPI_KEY
@@ -20,61 +19,27 @@ from .models import (
     Stock3080State,
 )
 
-_SOURCE_STATUS = {
-    KpiLatestValueState.NOT_MAPPED: DisplayStatus.NOT_MAPPED,
-    KpiLatestValueState.MISSING: DisplayStatus.EMPTY,
-    KpiLatestValueState.INVALID: DisplayStatus.INVALID,
-    KpiLatestValueState.ERROR: DisplayStatus.INVALID,
-}
 
-
-def map_remanentes_store(store_data: object) -> RemanentesState:
-    values, source_status = _latest_values(store_data)
-    summary, summary_status = _map_summary(values, source_status=source_status)
+def map_remanentes_readings(readings: Mapping[str, DisplayValue]) -> RemanentesState:
+    summary, summary_status = _map_summary(readings[REMANENTES_SUMMARY_KPI_KEY])
+    stock = readings[STOCK_3080_KPI_KEY]
+    if stock.status is DisplayStatus.ERROR:
+        stock = DisplayValue.invalid()
     return RemanentesState(
         summary=summary,
         summary_status=summary_status,
-        stock_3080=Stock3080State(
-            value=_display_value(
-                values,
-                STOCK_3080_KPI_KEY,
-                source_status=source_status,
-            ),
-            status=DashboardValueStatus.NEUTRAL,
-        ),
+        stock_3080=Stock3080State(value=stock, status=DashboardValueStatus.NEUTRAL),
     )
 
 
-def _latest_values(
-    store_data: object,
-) -> tuple[Mapping[str, object] | None, DisplayStatus]:
-    if not isinstance(store_data, Mapping):
-        return None, DisplayStatus.INVALID
-    latest = store_data.get('latest')
-    if latest is None:
-        return None, DisplayStatus.NOT_MAPPED
-    if not isinstance(latest, Mapping):
-        return None, DisplayStatus.INVALID
-    values = latest.get('values')
-    if not isinstance(values, Mapping):
-        return None, DisplayStatus.INVALID
-    return values, DisplayStatus.OK
-
-
-def _map_summary(
-    values: Mapping[str, object] | None,
-    *,
-    source_status: DisplayStatus,
-) -> tuple[RemanentesSummaryState | None, DisplayStatus]:
-    if values is None:
-        return None, source_status
-    decoded = _decoded(values, REMANENTES_SUMMARY_KPI_KEY)
-    if decoded.state is not KpiLatestValueState.OK:
-        return None, _SOURCE_STATUS[decoded.state]
-    if decoded.value_kind != 'json' or not isinstance(decoded.value, Mapping):
+def _map_summary(reading: DisplayValue) -> tuple[RemanentesSummaryState | None, DisplayStatus]:
+    if reading.status is not DisplayStatus.OK:
+        status = DisplayStatus.INVALID if reading.status is DisplayStatus.ERROR else reading.status
+        return None, status
+    if not isinstance(reading.value, Mapping):
         return None, DisplayStatus.INVALID
     try:
-        return _map_summary_payload(decoded.value), DisplayStatus.OK
+        return _map_summary_payload(reading.value), DisplayStatus.OK
     except ValueError:
         return None, DisplayStatus.INVALID
 
@@ -103,44 +68,6 @@ def _map_summary_row(value: object) -> RemanentesSummaryRow:
         esteril=_require_value(value, 'esteril'),
         baja_ley=_require_value(value, 'baja_ley'),
         total=_require_value(value, 'total'),
-    )
-
-
-def _display_value(
-    values: Mapping[str, object] | None,
-    kpi_key: str,
-    *,
-    source_status: DisplayStatus,
-) -> DisplayValue:
-    if values is None:
-        if source_status is DisplayStatus.EMPTY:
-            return DisplayValue.empty()
-        if source_status is DisplayStatus.INVALID:
-            return DisplayValue.invalid()
-        if source_status is DisplayStatus.ERROR:
-            return DisplayValue.error()
-        return DisplayValue.not_mapped()
-    decoded = _decoded(values, kpi_key)
-    if decoded.state is KpiLatestValueState.OK:
-        if decoded.value_kind != 'value' or not isinstance(
-            decoded.parsed_value,
-            str | int | float | bool,
-        ):
-            return DisplayValue.invalid()
-        return DisplayValue.ok(decoded.parsed_value)
-    if decoded.state is KpiLatestValueState.NOT_MAPPED:
-        return DisplayValue.not_mapped()
-    if decoded.state is KpiLatestValueState.MISSING:
-        return DisplayValue.empty()
-    if decoded.state is KpiLatestValueState.INVALID:
-        return DisplayValue.invalid()
-    return DisplayValue.invalid()
-
-
-def _decoded(values: Mapping[str, object], kpi_key: str):
-    return decode_kpi_latest_value(
-        values.get(kpi_key),
-        present=kpi_key in values,
     )
 
 

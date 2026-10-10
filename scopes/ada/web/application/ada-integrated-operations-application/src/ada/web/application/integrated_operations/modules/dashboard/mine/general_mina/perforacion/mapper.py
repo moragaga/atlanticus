@@ -11,8 +11,7 @@ from ada.web.application.integrated_operations.modules.dashboard.data_state impo
 from ada.web.application.integrated_operations.modules.dashboard.value_status import (
     map_dashboard_value_status,
 )
-from ada.web.kpis.collector import KpiLatestValueState, decode_kpi_latest_value
-from ada.web.ui.display_status import DisplayStatus
+from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 from .definitions import PERFORACION_DETALLE_KPI_KEY, PERFORACION_RESUMEN_KPI_KEY
 from .models import (
@@ -27,27 +26,13 @@ from .models import (
 _PERCENTAGE_PATTERN = re.compile(r'^(?:100(?:\.0+)?|(?:\d{1,2})(?:\.\d+)?)%$')
 _T = TypeVar('_T')
 
-_SOURCE_STATUS = {
-    KpiLatestValueState.NOT_MAPPED: DisplayStatus.NOT_MAPPED,
-    KpiLatestValueState.MISSING: DisplayStatus.EMPTY,
-    KpiLatestValueState.INVALID: DisplayStatus.INVALID,
-    KpiLatestValueState.ERROR: DisplayStatus.INVALID,
-}
 
-
-def map_perforacion_store(store_data: object) -> PerforacionState:
-    values, source_status = _latest_values(store_data)
+def map_perforacion_readings(readings: Mapping[str, DisplayValue]) -> PerforacionState:
     resumen, resumen_status = _map_json_value(
-        values,
-        source_status=source_status,
-        kpi_key=PERFORACION_RESUMEN_KPI_KEY,
-        payload_mapper=_map_resumen_payload,
+        readings[PERFORACION_RESUMEN_KPI_KEY], _map_resumen_payload
     )
     detalle, detalle_status = _map_json_value(
-        values,
-        source_status=source_status,
-        kpi_key=PERFORACION_DETALLE_KPI_KEY,
-        payload_mapper=_map_detalle_payload,
+        readings[PERFORACION_DETALLE_KPI_KEY], _map_detalle_payload
     )
     return PerforacionState(
         resumen=resumen,
@@ -57,41 +42,17 @@ def map_perforacion_store(store_data: object) -> PerforacionState:
     )
 
 
-def _latest_values(
-    store_data: object,
-) -> tuple[Mapping[str, object] | None, DisplayStatus]:
-    if not isinstance(store_data, Mapping):
-        return None, DisplayStatus.INVALID
-    latest = store_data.get('latest')
-    if latest is None:
-        return None, DisplayStatus.NOT_MAPPED
-    if not isinstance(latest, Mapping):
-        return None, DisplayStatus.INVALID
-    values = latest.get('values')
-    if not isinstance(values, Mapping):
-        return None, DisplayStatus.INVALID
-    return values, DisplayStatus.OK
-
-
 def _map_json_value(
-    values: Mapping[str, object] | None,
-    *,
-    source_status: DisplayStatus,
-    kpi_key: str,
+    reading: DisplayValue,
     payload_mapper: Callable[[Mapping[str, object]], _T],
 ) -> tuple[_T | None, DisplayStatus]:
-    if values is None:
-        return None, source_status
-    decoded = decode_kpi_latest_value(
-        values.get(kpi_key),
-        present=kpi_key in values,
-    )
-    if decoded.state is not KpiLatestValueState.OK:
-        return None, _SOURCE_STATUS[decoded.state]
-    if decoded.value_kind != 'json' or not isinstance(decoded.value, Mapping):
+    if reading.status is not DisplayStatus.OK:
+        status = DisplayStatus.INVALID if reading.status is DisplayStatus.ERROR else reading.status
+        return None, status
+    if not isinstance(reading.value, Mapping):
         return None, DisplayStatus.INVALID
     try:
-        return payload_mapper(decoded.value), DisplayStatus.OK
+        return payload_mapper(reading.value), DisplayStatus.OK
     except ValueError:
         return None, DisplayStatus.INVALID
 
@@ -172,10 +133,7 @@ def _map_data_state(payload: Mapping[str, object]) -> DashboardDataState:
         raise ValueError(str(error)) from error
 
 
-def _require_mapping(
-    container: Mapping[str, object],
-    key: str,
-) -> Mapping[str, object]:
+def _require_mapping(container: Mapping[str, object], key: str) -> Mapping[str, object]:
     value = container.get(key)
     if not isinstance(value, Mapping):
         raise ValueError(f'Perforacion field must be an object: {key}')

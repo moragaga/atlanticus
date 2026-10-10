@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from ada.web.application.integrated_operations.modules.dashboard.mine.general_mina.decoder import (
+    decode_general_mina_store,
+)
 from ada.web.application.integrated_operations.modules.dashboard.mine.general_mina.mp10 import (
     MP10_HOTEL_MINA_INST_KPI_KEY,
     MP10_HOTEL_MINA_PROY_KPI_KEY,
     build_mp10,
-    map_mp10_store,
+    map_mp10_readings,
 )
 from ada.web.application.integrated_operations.modules.dashboard.value_status import (
     DashboardValueStatus,
@@ -42,19 +45,20 @@ def _walk(component):
 
 
 def test_mp10_maps_independent_json_contracts() -> None:
-    state = map_mp10_store(
-        _store(
-            {
-                MP10_HOTEL_MINA_INST_KPI_KEY: _json(
-                    {'value': '275', 'alert': 'Alerta 2', 'status': '2'}
-                ),
-                MP10_HOTEL_MINA_PROY_KPI_KEY: _json(
-                    {'value': '420', 'alert': 'Alerta 3', 'status': '1'}
-                ),
-            }
+    state = map_mp10_readings(
+        decode_general_mina_store(
+            _store(
+                {
+                    MP10_HOTEL_MINA_INST_KPI_KEY: _json(
+                        {'value': '275', 'alert': 'Alerta 2', 'status': '2'}
+                    ),
+                    MP10_HOTEL_MINA_PROY_KPI_KEY: _json(
+                        {'value': '420', 'alert': 'Alerta 3', 'status': '1'}
+                    ),
+                }
+            )
         )
     )
-
     assert state.instant is not None
     assert state.instant.value == '275'
     assert state.instant.alert == 'Alerta 2'
@@ -64,12 +68,13 @@ def test_mp10_maps_independent_json_contracts() -> None:
 
 
 def test_mp10_keeps_source_states_independent() -> None:
-    state = map_mp10_store(
-        _store(
-            {MP10_HOTEL_MINA_PROY_KPI_KEY: _json({'value': '148', 'alert': None, 'status': None})}
+    state = map_mp10_readings(
+        decode_general_mina_store(
+            _store(
+                {MP10_HOTEL_MINA_PROY_KPI_KEY: _json({'value': '148', 'alert': None, 'status': None})}
+            )
         )
     )
-
     assert state.instant is None
     assert state.instant_status is DisplayStatus.NOT_MAPPED
     assert state.projection is not None
@@ -77,19 +82,20 @@ def test_mp10_keeps_source_states_independent() -> None:
 
 
 def test_mp10_rejects_invalid_json_contract_without_collapsing_other_kpi() -> None:
-    state = map_mp10_store(
-        _store(
-            {
-                MP10_HOTEL_MINA_INST_KPI_KEY: _json(
-                    {'value': '275', 'alert': 'Alerta 2', 'status': 'unexpected'}
-                ),
-                MP10_HOTEL_MINA_PROY_KPI_KEY: _json(
-                    {'value': '420', 'alert': 'Alerta 3', 'status': '1'}
-                ),
-            }
+    state = map_mp10_readings(
+        decode_general_mina_store(
+            _store(
+                {
+                    MP10_HOTEL_MINA_INST_KPI_KEY: _json(
+                        {'value': '275', 'alert': 'Alerta 2', 'status': 'unexpected'}
+                    ),
+                    MP10_HOTEL_MINA_PROY_KPI_KEY: _json(
+                        {'value': '420', 'alert': 'Alerta 3', 'status': '1'}
+                    ),
+                }
+            )
         )
     )
-
     assert state.instant is None
     assert state.instant_status is DisplayStatus.INVALID
     assert state.projection is not None
@@ -97,16 +103,18 @@ def test_mp10_rejects_invalid_json_contract_without_collapsing_other_kpi() -> No
 
 
 def test_mp10_places_inspection_key_only_on_each_value_surface() -> None:
-    state = map_mp10_store(
-        _store(
-            {
-                MP10_HOTEL_MINA_INST_KPI_KEY: _json(
-                    {'value': '275', 'alert': 'Alerta 2', 'status': '2'}
-                ),
-                MP10_HOTEL_MINA_PROY_KPI_KEY: _json(
-                    {'value': '420', 'alert': 'Alerta 3', 'status': '1'}
-                ),
-            }
+    state = map_mp10_readings(
+        decode_general_mina_store(
+            _store(
+                {
+                    MP10_HOTEL_MINA_INST_KPI_KEY: _json(
+                        {'value': '275', 'alert': 'Alerta 2', 'status': '2'}
+                    ),
+                    MP10_HOTEL_MINA_PROY_KPI_KEY: _json(
+                        {'value': '420', 'alert': 'Alerta 3', 'status': '1'}
+                    ),
+                }
+            )
         )
     )
     component = build_mp10(state)

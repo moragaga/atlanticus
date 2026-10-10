@@ -1,4 +1,5 @@
-# Mapper de Movimiento Mina: valida estructura y estados, pero nunca castea valores de negocio.
+# Movimiento Mina valida únicamente la estructura interna del JSON operacional.
+# Los estados de disponibilidad ya están preparados por el decoder del componente.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -10,15 +11,23 @@ from ada.web.application.integrated_operations.modules.dashboard.data_state impo
 from ada.web.application.integrated_operations.modules.dashboard.value_status import (
     map_dashboard_value_status,
 )
-from ada.web.kpis.collector import KpiLatestValueState, decode_kpi_latest_value
+from ada.web.kpis.collector import KpiLatestValueState
+from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 from .models import (
     MOVIMIENTO_MINA_KPI_KEY,
     MOVIMIENTO_MINA_ROW_KEYS,
     MovimientoMinaComparison,
     MovimientoMinaRow,
+    MovimientoMinaRowKey,
     MovimientoMinaState,
 )
+
+_UNAVAILABLE_STATES = {
+    DisplayStatus.NOT_MAPPED: KpiLatestValueState.NOT_MAPPED,
+    DisplayStatus.EMPTY: KpiLatestValueState.MISSING,
+    DisplayStatus.ERROR: KpiLatestValueState.ERROR,
+}
 
 
 class MovimientoMinaContractError(ValueError):
@@ -37,26 +46,17 @@ class MovimientoMinaUnavailableError(MovimientoMinaContractError):
         super().__init__(f'Movimiento Mina latest value is unavailable: {state.value}')
 
 
-def map_movimiento_mina_store(store_data: object) -> MovimientoMinaState:
-    values = _latest_values(store_data)
-    present = MOVIMIENTO_MINA_KPI_KEY in values
-    decoded = decode_kpi_latest_value(
-        values.get(MOVIMIENTO_MINA_KPI_KEY),
-        present=present,
-    )
-    if decoded.state in {
-        KpiLatestValueState.NOT_MAPPED,
-        KpiLatestValueState.MISSING,
-        KpiLatestValueState.ERROR,
-    }:
-        raise MovimientoMinaUnavailableError(decoded.state)
-    if decoded.state is not KpiLatestValueState.OK:
+def map_movimiento_mina_readings(readings: Mapping[str, DisplayValue]) -> MovimientoMinaState:
+    result = readings[MOVIMIENTO_MINA_KPI_KEY]
+    if result.status in _UNAVAILABLE_STATES:
+        raise MovimientoMinaUnavailableError(_UNAVAILABLE_STATES[result.status])
+    if result.status is not DisplayStatus.OK:
         raise MovimientoMinaContractError(
-            f'Movimiento Mina latest value is invalid: {decoded.state.value}'
+            f'Movimiento Mina latest value is invalid: {result.status.value}'
         )
-    if decoded.value_kind != 'json' or not isinstance(decoded.value, Mapping):
+    if not isinstance(result.value, Mapping):
         raise MovimientoMinaContractError('Movimiento Mina latest value must be a JSON object')
-    return map_movimiento_mina_payload(decoded.value)
+    return map_movimiento_mina_payload(result.value)
 
 
 def map_movimiento_mina_payload(payload: Mapping[str, object]) -> MovimientoMinaState:
@@ -66,34 +66,19 @@ def map_movimiento_mina_payload(payload: Mapping[str, object]) -> MovimientoMina
         data_state = map_dashboard_data_state(payload['data_state'])
     except ValueError as error:
         raise MovimientoMinaContractError(str(error)) from error
-    # ERROR puede viajar sin rows. OK y UNSHIFT conservan la estructura canónica completa.
     if data_state is DashboardDataState.ERROR and 'rows' not in payload:
         return MovimientoMinaState(rows=(), data_state=data_state)
     rows = _require_mapping(payload, 'rows')
     return MovimientoMinaState(
-        rows=tuple(_map_row(rows, key.value) for key in MOVIMIENTO_MINA_ROW_KEYS),
+        rows=tuple(_map_row(rows, key) for key in MOVIMIENTO_MINA_ROW_KEYS),
         data_state=data_state,
     )
 
 
-def _latest_values(store_data: object) -> Mapping[str, object]:
-    if not isinstance(store_data, Mapping):
-        raise MovimientoMinaContractError('General Mina store must be an object')
-    latest = store_data.get('latest')
-    if latest is None:
-        raise MovimientoMinaUnavailableError(KpiLatestValueState.NOT_MAPPED)
-    if not isinstance(latest, Mapping):
-        raise MovimientoMinaContractError('General Mina store latest payload must be an object')
-    values = latest.get('values')
-    if not isinstance(values, Mapping):
-        raise MovimientoMinaContractError('General Mina latest values must be an object')
-    return values
-
-
-def _map_row(rows: Mapping[str, object], key: str) -> MovimientoMinaRow:
-    row = _require_mapping(rows, key)
+def _map_row(rows: Mapping[str, object], key: MovimientoMinaRowKey) -> MovimientoMinaRow:
+    row = _require_mapping(rows, key.value)
     return MovimientoMinaRow(
-        key=next(item for item in MOVIMIENTO_MINA_ROW_KEYS if item.value == key),
+        key=key,
         avance=_map_comparison(row, section_key='avance', value_key='real'),
         cierre=_map_comparison(row, section_key='cierre', value_key='proyeccion'),
         ritmo=_require_value(_require_mapping(row, 'ritmo'), 'requerido'),
@@ -108,7 +93,6 @@ def _map_comparison(
 ) -> MovimientoMinaComparison:
     section = _require_mapping(row, section_key)
     try:
-        # El status permanece textual: "0", "1", "2" o null.
         status = map_dashboard_value_status(section.get('status'))
     except ValueError as error:
         raise MovimientoMinaContractError(str(error)) from error
