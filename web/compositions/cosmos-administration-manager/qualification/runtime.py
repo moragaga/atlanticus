@@ -86,6 +86,8 @@ def build_qualification_runtime(
     administration: CosmosAdministrationService,
     local_user: str | None = None,
     local_users: UsersRuntimeStore | None = None,
+    authenticated_provider: IdentityProvider | None = None,
+    authenticated_users: UsersRuntimeStore | None = None,
 ) -> QualificationRuntime:
     if os.environ.get('ATLANTICUS_ENVIRONMENT', 'local').strip().lower() != 'local':
         raise ValueError('Cosmos ROOT qualification is only available in local environment')
@@ -99,6 +101,15 @@ def build_qualification_runtime(
         local_user is None or not isinstance(local_users, UsersRuntimeStore)
     ):
         raise TypeError('Qualification local users require a valid local user selection')
+    if (authenticated_provider is None) != (authenticated_users is None):
+        raise ValueError('Qualification identity provider and users must be configured together')
+    if authenticated_provider is not None:
+        if not isinstance(authenticated_provider, IdentityProvider) or not isinstance(
+            authenticated_users, UsersRuntimeStore
+        ):
+            raise TypeError('Qualification authenticated identity configuration is invalid')
+        if local_user is not None or local_users is not None:
+            raise ValueError('Qualification identity modes cannot be combined')
 
     access = DeploymentAccessService(
         storage=LocalDeploymentAccessStorage(directory / 'qualification-root.zip'),
@@ -111,9 +122,14 @@ def build_qualification_runtime(
     def ordinary_principal() -> ManagerPrincipal:
         return ManagerPrincipal(subject_id='qualification-anonymous', display_name='Anonymous')
 
-    identity_provider: IdentityProvider = QualificationIdentityProvider()
+    identity_provider: IdentityProvider = authenticated_provider or QualificationIdentityProvider()
     authenticated_root = None
-    if local_user is not None:
+    if authenticated_provider is not None and authenticated_users is not None:
+        authenticated_root = create_authenticated_root_provider(
+            identity_provider=identity_provider,
+            users=authenticated_users,
+        )
+    elif local_user is not None:
         selected = _LOCAL_USERS[local_user]
         identity_provider = LocalIdentityProvider(subject_id=selected.subject_id)
         authenticated_root = create_authenticated_root_provider(
