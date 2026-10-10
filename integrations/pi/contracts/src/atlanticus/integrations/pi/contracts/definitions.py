@@ -81,9 +81,18 @@ class PiCatalog:
         if any(not isinstance(item, PiTagDefinition) for item in self.definitions):
             raise TypeError('definitions must contain only PiTagDefinition values.')
 
-        aliases = [definition.alias for definition in self.definitions]
+        names = [
+            (definition.extraction_mode, definition.tag_name.casefold())
+            for definition in self.definitions
+        ]
+        if len(set(names)) != len(names):
+            raise ValueError('definitions must use unique tag names within each extraction mode.')
+
+        aliases = [
+            (definition.extraction_mode, definition.alias) for definition in self.definitions
+        ]
         if len(set(aliases)) != len(aliases):
-            raise ValueError('definitions must use unique aliases.')
+            raise ValueError('definitions must use unique aliases within each extraction mode.')
 
         if isinstance(self.source, PiWebApiSource):
             has_interpolated = any(

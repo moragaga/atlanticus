@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from .enums import PiExtractionMode, PiMaterialization, PiValueKind
 
 
-# Conserva nombres y aliases exactamente como fueron declarados; no normaliza silenciosamente.
+# Conserva identificadores exactamente como se declararon y rechaza espacios periféricos.
 def _require_identifier(value: str, *, field_name: str) -> None:
     if not value:
         raise ValueError(f'{field_name} must not be empty.')
@@ -11,13 +11,13 @@ def _require_identifier(value: str, *, field_name: str) -> None:
         raise ValueError(f'{field_name} must not contain surrounding whitespace.')
 
 
-# Fuente NOTPII: marcador explícito sin parámetros ajenos a ese mecanismo de adquisición.
+# Fuente NotPII: identifica el origen de adquisición sin configuración adicional.
 @dataclass(frozen=True, slots=True)
 class NotPiiSource:
     pass
 
 
-# Fuente PI Web API: una única interpolación compartida por todo el catálogo que la usa.
+# Fuente Web API: comparte una frecuencia de interpolación entre las definiciones activas.
 @dataclass(frozen=True, slots=True)
 class PiWebApiSource:
     interpolation_seconds: int | None = None
@@ -33,11 +33,11 @@ class PiWebApiSource:
             raise ValueError('interpolation_seconds must be a positive integer.')
 
 
-# Unión cerrada de fuentes admitidas por el contrato PI actual.
+# Unión de los orígenes admitidos por el catálogo.
 PiSource = NotPiiSource | PiWebApiSource
 
 
-# Define el tag real de PI y qué materializaciones debe producir; no conoce conexiones ni WebID.
+# El contrato de cada tag permanece inalterado; la identidad de PI y el alias son independientes.
 @dataclass(frozen=True, slots=True)
 class PiTagDefinition:
     tag_name: str
@@ -71,7 +71,7 @@ class PiTagDefinition:
             raise ValueError('Recorded PI tags cannot declare latest materialization.')
 
 
-# Compone una única fuente con todas las definiciones que se ejecutan bajo ese contrato.
+# El catálogo valida identidades dentro de cada modalidad de extracción.
 @dataclass(frozen=True, slots=True)
 class PiCatalog:
     source: PiSource
@@ -87,12 +87,22 @@ class PiCatalog:
         if any(not isinstance(item, PiTagDefinition) for item in self.definitions):
             raise TypeError('definitions must contain only PiTagDefinition values.')
 
-        # El alias termina como nombre de columna; duplicarlo produciría un pivot ambiguo.
-        aliases = [definition.alias for definition in self.definitions]
-        if len(set(aliases)) != len(aliases):
-            raise ValueError('definitions must use unique aliases.')
+        # Un mismo PI Point puede consultarse en dos modalidades, pero no repetirse en una.
+        names = [
+            (definition.extraction_mode, definition.tag_name.casefold())
+            for definition in self.definitions
+        ]
+        if len(set(names)) != len(names):
+            raise ValueError('definitions must use unique tag names within each extraction mode.')
 
-        # PI Web API necesita una sola grilla común cuando existen tags interpolados activos.
+        # Los alias son columnas de salida; deben ser únicos solo dentro de cada dataset por modo.
+        aliases = [
+            (definition.extraction_mode, definition.alias) for definition in self.definitions
+        ]
+        if len(set(aliases)) != len(aliases):
+            raise ValueError('definitions must use unique aliases within each extraction mode.')
+
+        # Solo los interpolados activos requieren declarar el intervalo de interpolación.
         if isinstance(self.source, PiWebApiSource):
             has_interpolated = any(
                 definition.is_active and definition.extraction_mode is PiExtractionMode.INTERPOLATED

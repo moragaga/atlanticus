@@ -37,12 +37,16 @@ class ResolvedPiTag:
         return self.definition.extraction_mode
 
 
+# El plan conserva cada modalidad sin confundir definiciones del mismo punto físico.
 @dataclass(frozen=True, slots=True)
 class PiExecutionPlan:
     interpolated: tuple[ResolvedPiTag, ...]
     recorded: tuple[ResolvedPiTag, ...]
     unresolved_tag_names: tuple[str, ...] = ()
-    _by_name: Mapping[str, ResolvedPiTag] = field(init=False, repr=False, compare=False)
+    # La clave incluye el modo para que dos definiciones con igual tag_name coexistan.
+    _by_name: Mapping[tuple[PiExtractionMode, str], ResolvedPiTag] = field(
+        init=False, repr=False, compare=False
+    )
 
     def __post_init__(self) -> None:
         if not isinstance(self.interpolated, tuple) or not isinstance(self.recorded, tuple):
@@ -55,19 +59,27 @@ class PiExecutionPlan:
             not isinstance(item, str) or not item for item in self.unresolved_tag_names
         ):
             raise TypeError('unresolved_tag_names must be a tuple of non-empty text values')
-        tag_names = [item.tag_name.casefold() for item in (*self.interpolated, *self.recorded)]
+        # La unicidad de tag_name es local a cada modalidad.
+        tag_names = [
+            (item.extraction_mode, item.tag_name.casefold())
+            for item in (*self.interpolated, *self.recorded)
+        ]
         if len(set(tag_names)) != len(tag_names):
-            raise ValueError('execution plan must not contain duplicate tag names')
+            raise ValueError('execution plan must not contain duplicate tag names within a mode')
         unresolved = [item.casefold() for item in self.unresolved_tag_names]
         if len(set(unresolved)) != len(unresolved):
             raise ValueError('unresolved_tag_names must not contain duplicates')
-        if set(tag_names).intersection(unresolved):
+        # Un punto sin resolver se informa una sola vez, independiente del modo.
+        if {name for _, name in tag_names}.intersection(unresolved):
             raise ValueError('resolved and unresolved tag names must not overlap')
         object.__setattr__(
             self,
             '_by_name',
             MappingProxyType(
-                {item.tag_name: item for item in (*self.interpolated, *self.recorded)}
+                {
+                    (item.extraction_mode, item.tag_name): item
+                    for item in (*self.interpolated, *self.recorded)
+                }
             ),
         )
 
@@ -76,7 +88,8 @@ class PiExecutionPlan:
         return (*self.interpolated, *self.recorded)
 
     @property
-    def by_name(self) -> Mapping[str, ResolvedPiTag]:
+    # El índice público conserva ambas entradas mediante una clave compuesta.
+    def by_name(self) -> Mapping[tuple[PiExtractionMode, str], ResolvedPiTag]:
         return self._by_name
 
 

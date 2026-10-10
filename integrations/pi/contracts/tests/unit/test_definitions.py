@@ -1,4 +1,4 @@
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 
 import pytest
 from atlanticus.integrations.pi.contracts import (
@@ -237,14 +237,13 @@ def test_catalog_rejects_invalid_definition_values() -> None:
         PiCatalog(source=NotPiiSource(), definitions=('invalid',))  # type: ignore[arg-type]
 
 
-def test_catalog_rejects_duplicate_aliases() -> None:
+@pytest.mark.parametrize('tag_factory', [_interpolated_tag, _recorded_tag])
+def test_catalog_rejects_duplicate_aliases(tag_factory) -> None:
+    definition = tag_factory(alias='same_alias')
     with pytest.raises(ValueError, match='unique aliases'):
         PiCatalog(
             source=NotPiiSource(),
-            definitions=(
-                _interpolated_tag(alias='same_alias'),
-                _recorded_tag(alias='same_alias'),
-            ),
+            definitions=(definition, replace(definition, tag_name='another_tag')),
         )
 
 

@@ -52,7 +52,10 @@ class PiExecutionPlanPreparer:
         context: JobRuntimeContext | None = None,
     ) -> PiPreparationResult:
         definitions = _active_definitions(catalog)
-        tag_names = tuple(item.tag_name for item in definitions)
+        unique_names: dict[str, str] = {}
+        for item in definitions:
+            unique_names.setdefault(item.tag_name.casefold(), item.tag_name)
+        tag_names = tuple(unique_names.values())
         cached = self._registry.lookup(tag_names)
         missing = tuple(tag_name for tag_name in tag_names if tag_name not in cached)
         newly_resolved: dict[str, str] = {}
@@ -97,12 +100,14 @@ class PiExecutionPlanPreparer:
                 self._registry.merge(resolved_chunk)
                 newly_resolved.update(resolved_chunk)
 
-        entries = self._registry.current()
+        entries = {
+            tag_name.casefold(): web_id for tag_name, web_id in self._registry.current().items()
+        }
         unresolved_set = {item.casefold() for item in unresolved}
         interpolated: list[ResolvedPiTag] = []
         recorded: list[ResolvedPiTag] = []
         for definition in definitions:
-            web_id = entries.get(definition.tag_name)
+            web_id = entries.get(definition.tag_name.casefold())
             if web_id is None:
                 if definition.tag_name.casefold() not in unresolved_set:
                     unresolved.append(definition.tag_name)
@@ -136,7 +141,7 @@ def _active_definitions(catalog: PiCatalog) -> tuple[PiTagDefinition, ...]:
     definitions = tuple(item for item in catalog.definitions if item.is_active)
     if not definitions:
         raise PiDataProducerCatalogError('PI Web API catalog must contain active definitions')
-    normalized_names = [item.tag_name.casefold() for item in definitions]
+    normalized_names = [(item.extraction_mode, item.tag_name.casefold()) for item in definitions]
     if len(set(normalized_names)) != len(normalized_names):
         raise PiDataProducerCatalogError('PI Web API catalog must use unique active tag names')
     return definitions
