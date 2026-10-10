@@ -1,3 +1,4 @@
+# Publica las funciones y definiciones del subcomponente.
 from ada.web.application.integrated_operations.modules.dashboard.context import (
     DASHBOARD_CONTEXT_SERVICE_KEY,
     DashboardContext,
@@ -23,6 +24,9 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.module im
 )
 from ada.web.application.integrated_operations.modules.dashboard.plant.molienda import (
     register_molienda_callback,
+)
+from ada.web.application.integrated_operations.modules.dashboard.plant.puerto import (
+    register_puerto_callback,
 )
 from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile_chacay.runtime import (
     register_stockpile_chacay_callback,
@@ -50,7 +54,6 @@ DASHBOARD_ASSET_LAYER = AssetLayer(
 _DASHBOARD_PAGE_PACKAGE = 'ada.web.application.integrated_operations.modules.dashboard.pages'
 
 
-# Registra un callback para Flotación en reemplazo de los dos anteriores.
 def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModule:
     if binding is not None and not isinstance(binding, OperationalRenderBinding):
         raise TypeError('Dashboard binding must be OperationalRenderBinding or None')
@@ -71,8 +74,8 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             register_stockpile_chacay_callback(dash_app, tool_key=tool_key)
             register_molienda_callback(dash_app, tool_key=tool_key)
             register_flotacion_callback(dash_app, tool_key=tool_key)
-            # Transporte de Fluidos actualiza cuatro tarjetas desde un único callback.
             register_transporte_fluidos_callback(dash_app, tool_key=tool_key)
+            register_puerto_callback(dash_app, tool_key=tool_key)
 
     return WebModule(
         name='ada-integrated-operations-dashboard',

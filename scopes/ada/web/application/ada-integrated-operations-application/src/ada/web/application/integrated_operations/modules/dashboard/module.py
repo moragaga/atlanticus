@@ -24,6 +24,9 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.module im
 from ada.web.application.integrated_operations.modules.dashboard.plant.molienda import (
     register_molienda_callback,
 )
+from ada.web.application.integrated_operations.modules.dashboard.plant.puerto import (
+    register_puerto_callback,
+)
 from ada.web.application.integrated_operations.modules.dashboard.plant.stockpile_chacay.runtime import (
     register_stockpile_chacay_callback,
 )
@@ -71,6 +74,7 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             register_molienda_callback(dash_app, tool_key=tool_key)
             register_flotacion_callback(dash_app, tool_key=tool_key)
             register_transporte_fluidos_callback(dash_app, tool_key=tool_key)
+            register_puerto_callback(dash_app, tool_key=tool_key)
 
     return WebModule(
         name='ada-integrated-operations-dashboard',
