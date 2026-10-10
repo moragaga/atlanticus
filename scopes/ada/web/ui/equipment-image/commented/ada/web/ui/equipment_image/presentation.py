@@ -16,6 +16,7 @@ _EQUIPMENT_STATES = {
     'molino_bolas': frozenset({'operando', 'detenido'}),
     'vertimil': frozenset({'operando', 'detenido'}),
     'bomba': frozenset({'operando', 'detenido'}),
+    'espesador': frozenset({'operando', 'detenido'}),
 }
 
 

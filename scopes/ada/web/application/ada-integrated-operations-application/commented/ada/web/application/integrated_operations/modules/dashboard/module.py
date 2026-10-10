@@ -1,4 +1,4 @@
-# Registra los callbacks del dashboard sin alterar el contrato del módulo.
+# La aplicación registra Selectiva sin crear un segundo store ni alterar Colectiva.
 from ada.web.application.integrated_operations.modules.dashboard.context import (
     DASHBOARD_CONTEXT_SERVICE_KEY,
     DashboardContext,
@@ -19,7 +19,12 @@ from ada.web.application.integrated_operations.modules.dashboard.mine.transporte
 from ada.web.application.integrated_operations.modules.dashboard.plant.flotacion.colectiva import (
     register_colectiva_callback,
 )
-from ada.web.application.integrated_operations.modules.dashboard.plant.module import PLANT_ASSET_LAYER
+from ada.web.application.integrated_operations.modules.dashboard.plant.flotacion.selectiva import (
+    register_selectiva_callback,
+)
+from ada.web.application.integrated_operations.modules.dashboard.plant.module import (
+    PLANT_ASSET_LAYER,
+)
 from ada.web.application.integrated_operations.modules.dashboard.plant.molienda import (
     register_molienda_callback,
 )
@@ -69,6 +74,8 @@ def create_dashboard_module(binding: OperationalRenderBinding | None) -> WebModu
             register_tendencia_alimentado_callback(dash_app, tool_key=tool_key)
             register_molienda_callback(dash_app, tool_key=tool_key)
             register_colectiva_callback(dash_app, tool_key=tool_key)
+            # Añade la presentación Selectiva usando el mismo store de Flotación.
+            register_selectiva_callback(dash_app, tool_key=tool_key)
 
     return WebModule(
         name='ada-integrated-operations-dashboard',
