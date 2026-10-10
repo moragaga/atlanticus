@@ -21,7 +21,7 @@ from atlanticus.web.users.models import RuntimeUser
 from atlanticus.web.users.store import UsersRuntimeStore
 
 _USER_DOCUMENT_TYPE = 'atlanticus_tool_runtime_user'
-_USER_SCHEMA_VERSION = 1
+_USER_SCHEMA_VERSION = 2
 _USERS_QUERY = 'SELECT * FROM c WHERE c.document_type = @document_type'
 
 

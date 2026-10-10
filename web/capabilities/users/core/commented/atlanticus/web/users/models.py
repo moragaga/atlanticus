@@ -2,6 +2,7 @@ from __future__ import annotations
 
 # Contratos separados: identidad global, membership Tool y snapshot Runtime materializado.
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -15,6 +16,8 @@ from atlanticus.web.profiles.models import (
 from atlanticus.web.users.errors import UsersDefinitionError
 from atlanticus.web.users.identity import build_user_key
 from atlanticus.web.users.profiles import has_full_access_profile, normalize_managed_profile_key
+
+_ACCESS_KEY_PATTERN = re.compile(r'[a-z0-9][a-z0-9._-]*\Z')
 
 
 def _required_text(value: str | None, *, label: str) -> str:
@@ -329,6 +332,7 @@ class RuntimeUser:
     enabled: bool
     profile: RuntimeProfile
     operational: RuntimeOperational = RuntimeOperational()
+    access_keys: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.identity, UserIdentity):
@@ -339,6 +343,17 @@ class RuntimeUser:
             raise TypeError('Runtime user profile must be RuntimeProfile')
         if not isinstance(self.operational, RuntimeOperational):
             raise TypeError('Runtime user operational data must be RuntimeOperational')
+        # Los accesos pertenecen a la proyección runtime del perfil; no se consultan al inicio de sesión.
+        if (
+            not isinstance(self.access_keys, tuple)
+            or any(
+                not isinstance(key, str) or _ACCESS_KEY_PATTERN.fullmatch(key) is None
+                for key in self.access_keys
+            )
+            or len(set(self.access_keys)) != len(self.access_keys)
+            or self.access_keys != tuple(sorted(self.access_keys))
+        ):
+            raise UsersDefinitionError('Runtime user access keys must be unique normalized keys')
 
     @property
     def user_id(self) -> str:
@@ -375,24 +390,36 @@ class RuntimeUser:
             'enabled': self.enabled,
             'profile': self.profile.to_document(),
             'operational': self.operational.to_document(),
+            'access_keys': list(self.access_keys),
         }
 
     @classmethod
     def from_document(cls, document: dict[str, Any]) -> RuntimeUser:
+        # La forma serializada es estricta: no permite leer documentos incompletos o antiguos.
         try:
+            if not isinstance(document, dict) or set(document) != {
+                'identity',
+                'enabled',
+                'profile',
+                'operational',
+                'access_keys',
+            }:
+                raise TypeError
             identity = document['identity']
             profile = document['profile']
             operational = document['operational']
             enabled = document['enabled']
+            access_keys = document['access_keys']
             if not all(isinstance(value, dict) for value in (identity, profile, operational)):
                 raise TypeError
-            if not isinstance(enabled, bool):
+            if not isinstance(enabled, bool) or not isinstance(access_keys, list):
                 raise TypeError
             return cls(
                 identity=UserIdentity.from_document(identity),
                 enabled=enabled,
                 profile=RuntimeProfile.from_document(profile),
                 operational=RuntimeOperational.from_document(operational),
+                access_keys=tuple(access_keys),
             )
         except (KeyError, TypeError, ValueError, UsersDefinitionError) as error:
             raise UsersDefinitionError('Runtime user contract is invalid') from error
@@ -441,6 +468,7 @@ def build_runtime_user(
     membership: ToolUserMembership,
     profile: ProfileDefinition,
     operational: RuntimeOperational | None = None,
+    access_keys: tuple[str, ...] = (),
 ) -> RuntimeUser:
     if identity.user_id != membership.user_id:
         raise UsersDefinitionError('Runtime user identity and membership do not match')
@@ -451,6 +479,7 @@ def build_runtime_user(
         enabled=membership.enabled,
         profile=RuntimeProfile.from_profile(profile),
         operational=operational or RuntimeOperational(),
+        access_keys=access_keys,
     )
 
 
