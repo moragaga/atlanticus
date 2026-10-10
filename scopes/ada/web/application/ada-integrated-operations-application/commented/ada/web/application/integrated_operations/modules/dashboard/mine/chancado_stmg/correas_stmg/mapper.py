@@ -1,12 +1,11 @@
-# Para presentación se consume parsed_value; los datos de cálculo usan value neutral.
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 
 from ada.web.application.integrated_operations.modules.dashboard.value_status import (
     map_dashboard_value_status,
 )
-from ada.web.kpis.collector import KpiLatestValueState, decode_kpi_latest_value
+from ada.web.kpis.readings import KpiLatestReadings, read_component_latest
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 from .definitions import CorreaStmgDefinition, CorreaStmgMetricDefinition
@@ -15,6 +14,7 @@ from .models import CorreasStmgState
 _STATES = frozenset({'operando', 'detenido'})
 
 
+# La validación de claves pertenece al componente; la interpretación de Latest pertenece a readings.
 def map_correas_stmg_store(
     store_data: object,
     definitions: Sequence[CorreaStmgDefinition],
@@ -31,76 +31,38 @@ def map_correas_stmg_store(
         keys.append(metric.color_kpi_key)
     if len(keys) != len(set(keys)):
         raise ValueError('Correa STMG KPI keys must be distinct')
-    values, source_status = _latest_values(store_data)
+    readings = read_component_latest(store_data)
     return CorreasStmgState(
-        states=tuple(_state(values, item.state_kpi_key, source_status) for item in definitions),
-        metric=_read(values, metric.value_kpi_key, source_status),
+        states=tuple(_state(readings, item.state_kpi_key) for item in definitions),
+        metric=_read(readings, metric.value_kpi_key),
         metric_color=(
-            _color(values, metric.color_kpi_key, source_status)
+            _color(readings, metric.color_kpi_key)
             if metric.color_kpi_key is not None
             else None
         ),
     )
 
 
-def _latest_values(
-    store_data: object,
-) -> tuple[Mapping[str, object] | None, DisplayStatus]:
-    if not isinstance(store_data, Mapping):
-        return None, DisplayStatus.INVALID
-    latest = store_data.get('latest')
-    if latest is None:
-        return None, DisplayStatus.NOT_MAPPED
-    if not isinstance(latest, Mapping):
-        return None, DisplayStatus.INVALID
-    values = latest.get('values')
-    if not isinstance(values, Mapping):
-        return None, DisplayStatus.INVALID
-    return values, DisplayStatus.OK
+def _read(readings: KpiLatestReadings, key: str) -> DisplayValue:
+    result = readings.text(key)
+    if result.status is not DisplayStatus.OK:
+        return result
+    normalized = result.value.strip()
+    return DisplayValue.ok(normalized) if normalized else DisplayValue.invalid()
 
 
-def _read(
-    values: Mapping[str, object] | None,
-    key: str,
-    source_status: DisplayStatus,
-) -> DisplayValue:
-    if values is None:
-        return DisplayValue(source_status)
-    decoded = decode_kpi_latest_value(values.get(key), present=key in values)
-    if decoded.state is KpiLatestValueState.NOT_MAPPED:
-        return DisplayValue.not_mapped()
-    if decoded.state is KpiLatestValueState.MISSING:
-        return DisplayValue.empty()
-    if decoded.state is KpiLatestValueState.ERROR:
-        return DisplayValue.error()
-    if decoded.state is not KpiLatestValueState.OK:
-        return DisplayValue.invalid()
-    if decoded.value_kind != 'value' or isinstance(decoded.parsed_value, bool):
-        return DisplayValue.invalid()
-    if not isinstance(decoded.parsed_value, str | int | float):
-        return DisplayValue.invalid()
-    value = str(decoded.parsed_value).strip()
-    return DisplayValue.ok(value) if value else DisplayValue.invalid()
-
-
-def _state(
-    values: Mapping[str, object] | None,
-    key: str,
-    source_status: DisplayStatus,
-) -> DisplayValue:
-    reading = _read(values, key, source_status)
+# El estado operativo es una regla de dominio del componente, no del decoder genérico.
+def _state(readings: KpiLatestReadings, key: str) -> DisplayValue:
+    reading = _read(readings, key)
     if reading.status is not DisplayStatus.OK:
         return reading
     state = reading.value.lower()
     return DisplayValue.ok(state) if state in _STATES else DisplayValue.invalid()
 
 
-def _color(
-    values: Mapping[str, object] | None,
-    key: str,
-    source_status: DisplayStatus,
-) -> DisplayValue:
-    reading = _read(values, key, source_status)
+# La conversión de códigos de color sigue siendo responsabilidad del componente.
+def _color(readings: KpiLatestReadings, key: str) -> DisplayValue:
+    reading = _read(readings, key)
     if reading.status is not DisplayStatus.OK:
         return reading
     try:

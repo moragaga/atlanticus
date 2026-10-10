@@ -1,12 +1,11 @@
-# Para presentación se consume parsed_value; los datos de cálculo usan value neutral.
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 
 from ada.web.application.integrated_operations.modules.dashboard.value_status import (
     map_dashboard_value_status,
 )
-from ada.web.kpis.collector import KpiLatestValueState, decode_kpi_latest_value
+from ada.web.kpis.readings import KpiLatestReadings, read_component_latest
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
 
 from .models import EquiposChDefinition, EquiposChReading
@@ -14,6 +13,7 @@ from .models import EquiposChDefinition, EquiposChReading
 _CHANCADOR_STATES = frozenset({'operando', 'detenido', 'mantencion'})
 
 
+# Se mantiene la validación de claves y la semántica propia de estados, atollo y colores.
 def map_equipos_ch_store(
     store_data: object,
     definitions: Sequence[EquiposChDefinition],
@@ -41,94 +41,47 @@ def map_equipos_ch_store(
     if len(keys) != len(set(keys)):
         raise ValueError('Equipos CH KPI keys must be globally distinct')
 
-    values, source_status = _latest_values(store_data)
+    readings = read_component_latest(store_data)
     return tuple(
         EquiposChReading(
             definition=definition,
-            state=_state(values, definition.state_kpi_key, source_status),
-            throughput=_throughput(values, definition.throughput_kpi_key, source_status),
-            atollo=_atollo(values, definition, source_status),
-            rendimiento=_value(values, definition.rendimiento_kpi_key, source_status),
-            min_atollo=_value(values, definition.min_atollo_kpi_key, source_status),
-            min_poste=_value(values, definition.min_poste_kpi_key, source_status),
-            rendimiento_color=_color(values, definition.rendimiento_color_kpi_key, source_status),
-            min_atollo_color=_color(values, definition.min_atollo_color_kpi_key, source_status),
-            min_poste_color=_color(values, definition.min_poste_color_kpi_key, source_status),
+            state=_state(readings, definition.state_kpi_key),
+            throughput=_value(readings, definition.throughput_kpi_key),
+            atollo=_atollo(readings, definition),
+            rendimiento=_value(readings, definition.rendimiento_kpi_key),
+            min_atollo=_value(readings, definition.min_atollo_kpi_key),
+            min_poste=_value(readings, definition.min_poste_kpi_key),
+            rendimiento_color=_color(readings, definition.rendimiento_color_kpi_key),
+            min_atollo_color=_color(readings, definition.min_atollo_color_kpi_key),
+            min_poste_color=_color(readings, definition.min_poste_color_kpi_key),
         )
         for definition in definitions
     )
 
 
-def _latest_values(
-    store_data: object,
-) -> tuple[Mapping[str, object] | None, DisplayStatus]:
-    if not isinstance(store_data, Mapping):
-        return None, DisplayStatus.INVALID
-    latest = store_data.get('latest')
-    if latest is None:
-        return None, DisplayStatus.NOT_MAPPED
-    if not isinstance(latest, Mapping):
-        return None, DisplayStatus.INVALID
-    values = latest.get('values')
-    if not isinstance(values, Mapping):
-        return None, DisplayStatus.INVALID
-    return values, DisplayStatus.OK
+def _value(readings: KpiLatestReadings, key: str) -> DisplayValue:
+    result = readings.text(key)
+    if result.status is not DisplayStatus.OK:
+        return result
+    normalized = result.value.strip()
+    return DisplayValue.ok(normalized) if normalized else DisplayValue.invalid()
 
 
-def _value(
-    values: Mapping[str, object] | None,
-    key: str,
-    source_status: DisplayStatus,
-) -> DisplayValue:
-    if values is None:
-        return DisplayValue(source_status)
-    decoded = decode_kpi_latest_value(values.get(key), present=key in values)
-    if decoded.state is KpiLatestValueState.NOT_MAPPED:
-        return DisplayValue.not_mapped()
-    if decoded.state is KpiLatestValueState.MISSING:
-        return DisplayValue.empty()
-    if decoded.state is KpiLatestValueState.ERROR:
-        return DisplayValue.error()
-    if decoded.state is not KpiLatestValueState.OK:
-        return DisplayValue.invalid()
-    if decoded.value_kind != 'value' or not isinstance(decoded.parsed_value, str):
-        return DisplayValue.invalid()
-    normalized = decoded.parsed_value.strip()
-    if not normalized:
-        return DisplayValue.invalid()
-    return DisplayValue.ok(normalized)
+# El estado operativo es una regla de dominio del componente, no del decoder genérico.
+def _state(readings: KpiLatestReadings, key: str) -> DisplayValue:
+    result = _value(readings, key)
+    if result.status is not DisplayStatus.OK:
+        return result
+    normalized = result.value.lower()
+    return (
+        DisplayValue.ok(normalized)
+        if normalized in _CHANCADOR_STATES
+        else DisplayValue.invalid()
+    )
 
 
-def _state(
-    values: Mapping[str, object] | None,
-    key: str,
-    source_status: DisplayStatus,
-) -> DisplayValue:
-    result = _value(values, key, source_status)
-    if result.status is DisplayStatus.OK:
-        normalized = result.value.lower()
-        return (
-            DisplayValue.ok(normalized)
-            if normalized in _CHANCADOR_STATES
-            else DisplayValue.invalid()
-        )
-    return result
-
-
-def _throughput(
-    values: Mapping[str, object] | None,
-    key: str,
-    source_status: DisplayStatus,
-) -> DisplayValue:
-    return _value(values, key, source_status)
-
-
-def _atollo(
-    values: Mapping[str, object] | None,
-    definition: EquiposChDefinition,
-    source_status: DisplayStatus,
-) -> DisplayValue:
-    result = _value(values, definition.atollo_kpi_key, source_status)
+def _atollo(readings: KpiLatestReadings, definition: EquiposChDefinition) -> DisplayValue:
+    result = _value(readings, definition.atollo_kpi_key)
     if result.status is not DisplayStatus.OK:
         return result
     token = result.value.lower()
@@ -139,14 +92,11 @@ def _atollo(
     return DisplayValue.invalid()
 
 
-def _color(
-    values: Mapping[str, object] | None,
-    key: str | None,
-    source_status: DisplayStatus,
-) -> DisplayValue | None:
+# La conversión de códigos de color sigue siendo responsabilidad del componente.
+def _color(readings: KpiLatestReadings, key: str | None) -> DisplayValue | None:
     if key is None:
         return None
-    result = _value(values, key, source_status)
+    result = _value(readings, key)
     if result.status is not DisplayStatus.OK:
         return result
     try:

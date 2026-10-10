@@ -1,4 +1,3 @@
-# La fuente entrega ambas representaciones sin reprocesar el formato de KPI.
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -62,6 +61,7 @@ class KpiLatestReadings:
             return None
         return decoded.value_type
 
+    # El decoder del Collector centraliza el contrato y los estados de cada lectura.
     def _decode(self, key: str) -> DecodedKpiLatestValue | None:
         if not isinstance(key, str) or not key or key != key.strip():
             raise ValueError('KPI key must be a non-empty trimmed string')
@@ -70,7 +70,10 @@ class KpiLatestReadings:
         return decode_kpi_latest_value(self.values.get(key), present=key in self.values)
 
 
+# Si la entrada ya es un lector, devolvemos la misma instancia para compartirla sin trabajo adicional.
 def read_component_latest(store_data: object) -> KpiLatestReadings:
+    if isinstance(store_data, KpiLatestReadings):
+        return store_data
     return _read_latest(store_data)
 
 

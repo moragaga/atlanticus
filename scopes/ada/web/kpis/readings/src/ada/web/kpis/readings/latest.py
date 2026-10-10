@@ -70,6 +70,8 @@ class KpiLatestReadings:
 
 
 def read_component_latest(store_data: object) -> KpiLatestReadings:
+    if isinstance(store_data, KpiLatestReadings):
+        return store_data
     return _read_latest(store_data)
 
 
