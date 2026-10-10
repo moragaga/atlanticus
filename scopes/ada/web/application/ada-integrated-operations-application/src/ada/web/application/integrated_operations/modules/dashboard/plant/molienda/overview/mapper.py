@@ -7,7 +7,6 @@ from ada.web.application.integrated_operations.modules.dashboard.value_status im
     DashboardValueStatus,
     map_dashboard_value_status,
 )
-from ada.web.kpis.collector import KpiLatestValueState, decode_kpi_latest_value
 from ada.web.ui.display_status import DisplayStatus, DisplayValue
 from ada.web.ui.time_series import TimeSeriesPoint, TimeSeriesValues
 
@@ -17,67 +16,20 @@ from .models import MoliendaMetricReading, MoliendaOverviewReading
 _STEP_SECONDS = 120
 
 
-def map_molienda_overview_store(store_data: object) -> MoliendaOverviewReading:
-    data = store_data if isinstance(store_data, Mapping) else None
-    values, source_status = _latest_values(data)
-    timeseries = data.get('timeseries') if data is not None else None
+def map_molienda_overview_readings(
+    readings: Mapping[str, DisplayValue], timeseries: object
+) -> MoliendaOverviewReading:
     return MoliendaOverviewReading(
-        trend_current=_value(values, MOLIENDA_TREND.kpi_key, source_status),
+        trend_current=readings[MOLIENDA_TREND.kpi_key],
         trend_history=_history(timeseries, MOLIENDA_TREND.kpi_key),
-        general=tuple(
-            _metric(values, definition, source_status) for definition in MOLIENDA_GENERAL_METRICS
-        ),
+        general=tuple(_metric(readings, definition) for definition in MOLIENDA_GENERAL_METRICS),
     )
 
 
-def _latest_values(
-    data: Mapping[str, object] | None,
-) -> tuple[Mapping[str, object] | None, DisplayStatus]:
-    if data is None:
-        return None, DisplayStatus.INVALID
-    latest = data.get('latest')
-    if latest is None:
-        return None, DisplayStatus.NOT_MAPPED
-    if not isinstance(latest, Mapping):
-        return None, DisplayStatus.INVALID
-    values = latest.get('values')
-    if not isinstance(values, Mapping):
-        return None, DisplayStatus.INVALID
-    return values, DisplayStatus.OK
-
-
-def _value(
-    values: Mapping[str, object] | None,
-    key: str,
-    source_status: DisplayStatus,
-) -> DisplayValue:
-    if values is None:
-        return DisplayValue(source_status)
-    decoded = decode_kpi_latest_value(values.get(key), present=key in values)
-    if decoded.state is KpiLatestValueState.NOT_MAPPED:
-        return DisplayValue.not_mapped()
-    if decoded.state is KpiLatestValueState.MISSING:
-        return DisplayValue.empty()
-    if decoded.state is KpiLatestValueState.ERROR:
-        return DisplayValue.error()
-    if decoded.state is not KpiLatestValueState.OK:
-        return DisplayValue.invalid()
-    if decoded.value_kind != 'value' or isinstance(decoded.parsed_value, bool):
-        return DisplayValue.invalid()
-    if not isinstance(decoded.parsed_value, str | int | float):
-        return DisplayValue.invalid()
-    raw = str(decoded.parsed_value).strip()
-    return DisplayValue.ok(raw) if raw else DisplayValue.invalid()
-
-
-def _tone(
-    values: Mapping[str, object] | None,
-    key: str | None,
-    source_status: DisplayStatus,
-) -> DashboardValueStatus:
+def _tone(readings: Mapping[str, DisplayValue], key: str | None) -> DashboardValueStatus:
     if key is None:
         return DashboardValueStatus.NEUTRAL
-    reading = _value(values, key, source_status)
+    reading = readings[key]
     if reading.status is not DisplayStatus.OK:
         return DashboardValueStatus.NEUTRAL
     try:
@@ -87,14 +39,12 @@ def _tone(
 
 
 def _metric(
-    values: Mapping[str, object] | None,
-    definition: MoliendaMetricDefinition,
-    source_status: DisplayStatus,
+    readings: Mapping[str, DisplayValue], definition: MoliendaMetricDefinition
 ) -> MoliendaMetricReading:
     return MoliendaMetricReading(
         definition=definition,
-        value=_value(values, definition.kpi_key, source_status),
-        tone=_tone(values, definition.color_kpi_key, source_status),
+        value=readings[definition.kpi_key],
+        tone=_tone(readings, definition.color_kpi_key),
     )
 
 
@@ -143,6 +93,6 @@ def _history(timeseries: object, key: str) -> TimeSeriesValues:
             TimeSeriesPoint(start + timedelta(seconds=step * (index + 1)), sample)
             for index, sample in enumerate(samples)
         )
-    except KeyError, TypeError, ValueError, OverflowError:
+    except (KeyError, TypeError, ValueError, OverflowError):
         return TimeSeriesValues(DisplayStatus.INVALID)
     return TimeSeriesValues(DisplayStatus.OK, points)

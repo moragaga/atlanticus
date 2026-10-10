@@ -13,9 +13,12 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.molienda 
     MOLIENDA_LINES,
     MOLIENDA_TREND,
     build_molienda,
-    map_molienda_overview_store,
-    map_molienda_sags_store,
+    map_molienda_overview_readings,
+    map_molienda_sags_readings,
     register_molienda_callback,
+)
+from ada.web.application.integrated_operations.modules.dashboard.plant.molienda.decoder import (
+    decode_molienda_store,
 )
 from ada.web.kpis.collector import component_kpi_store_id
 from ada.web.ui.display_status import DisplayStatus
@@ -64,6 +67,16 @@ def _store() -> dict[str, object]:
     }
 
 
+def _overview(source: object):
+    values, timeseries = decode_molienda_store(source)
+    return map_molienda_overview_readings(values, timeseries)
+
+
+def _sags(source: object):
+    values, _ = decode_molienda_store(source)
+    return map_molienda_sags_readings(values)
+
+
 def _walk(item):
     if isinstance(item, Component):
         yield item
@@ -92,10 +105,10 @@ def test_legacy_kpi_contract_and_four_sag_line_associations():
 
 
 def test_latest_independent_values_and_operational_states():
-    state = map_molienda_overview_store(_store())
+    state = _overview(_store())
     assert state.trend_current.value == '234.5'
     assert [item.value.value for item in state.general] == ['10', '11', '12', '13']
-    lines = map_molienda_sags_store(_store())
+    lines = _sags(_store())
     assert lines[0].sag.state.value == 'Operando'
     assert lines[0].sag.power.value == '1500'
     assert [mill.state.value for mill in lines[0].mills] == ['Detenido', 'Detenido']
@@ -103,7 +116,7 @@ def test_latest_independent_values_and_operational_states():
 
 
 def test_timeseries_preserves_exact_numeric_and_null_samples():
-    state = map_molienda_overview_store(_store())
+    state = _overview(_store())
     history = state.trend_history
     assert history.status is DisplayStatus.OK
     assert len(history.points) == 30
@@ -112,9 +125,7 @@ def test_timeseries_preserves_exact_numeric_and_null_samples():
     assert history.points[-1].timestamp_utc == _END
     data = _store()
     data['timeseries']['series'][MOLIENDA_TREND.kpi_key]['values'] = [None] * 30
-    assert all(
-        item.value is None for item in map_molienda_overview_store(data).trend_history.points
-    )
+    assert all(item.value is None for item in _overview(data).trend_history.points)
 
 
 def test_degraded_states_are_independent_and_not_replaced_by_detenido():
@@ -135,8 +146,8 @@ def test_degraded_states_are_independent_and_not_replaced_by_detenido():
         'value_type': None,
         'parsed_value': None,
     }
-    state = map_molienda_overview_store(data)
-    lines = map_molienda_sags_store(data)
+    state = _overview(data)
+    lines = _sags(data)
     assert lines[0].sag.state.status is DisplayStatus.NOT_MAPPED
     assert lines[0].sag.power.status is DisplayStatus.OK
     assert lines[0].mills[0].power.status is DisplayStatus.ERROR
@@ -147,23 +158,27 @@ def test_degraded_states_are_independent_and_not_replaced_by_detenido():
 def test_invalid_timeseries_does_not_disrupt_latest_values():
     data = _store()
     data['timeseries']['series'][MOLIENDA_TREND.kpi_key]['values'][3] = 'fake'
-    state = map_molienda_overview_store(data)
+    state = _overview(data)
     assert state.trend_history.status is DisplayStatus.INVALID
     assert state.trend_current.status is DisplayStatus.OK
     assert all(reading.value.status is DisplayStatus.OK for reading in state.general)
 
 
 def test_missing_delivery_keeps_empty_trend_and_independent_statuses():
-    state = map_molienda_overview_store({'latest': {'values': {}}})
+    state = _overview({'latest': {'values': {}}})
     assert state.trend_history.status is DisplayStatus.NOT_MAPPED
     assert state.trend_history.points == ()
     assert all(metric.value.status is DisplayStatus.NOT_MAPPED for metric in state.general)
-    lines = map_molienda_sags_store({'latest': {'values': {}}})
+    lines = _sags({'latest': {'values': {}}})
     assert all(line.sag.state.status is DisplayStatus.NOT_MAPPED for line in lines)
 
 
 def test_readings_are_inspectable_without_inventing_extra_kpi_keys():
-    root = build_molienda(map_molienda_overview_store(_store()), map_molienda_sags_store(_store()))
+    source = _store()
+    values, timeseries = decode_molienda_store(source)
+    root = build_molienda(
+        map_molienda_overview_readings(values, timeseries), map_molienda_sags_readings(values)
+    )
     targets = [node for node in _walk(root) if getattr(node, 'data-kpi-inspection-key', None)]
     keys = [getattr(node, 'data-kpi-inspection-key') for node in targets]
     expected = [MOLIENDA_TREND.kpi_key]
