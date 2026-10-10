@@ -40,8 +40,42 @@ class EngineJournal:
             raise TypeError('paths must be AlarmPersistencePaths')
         self._paths = paths
 
+    def select_append_segment(
+        self,
+        records: Sequence[EngineCommitRecord | ConfigurationAdoptionRecord],
+        *,
+        durable: JournalPosition | None,
+        max_segment_bytes: int | None,
+    ) -> str:
+        ordered = _validate_batch(records)
+        first = ordered[0]
+        evaluated_at = (
+            first.commit.evaluated_at
+            if isinstance(first, EngineCommitRecord)
+            else first.effective_at
+        )
+        initial = segment_id_for_evaluated_at(evaluated_at)
+        if durable is None or durable.segment_id.split('#', 1)[0] != initial.split('#', 1)[0]:
+            return initial
+        current = durable.segment_id
+        can_append = not self._paths.journal_segment_path(current, sealed=True).exists()
+        if max_segment_bytes is None:
+            if can_append:
+                return current
+        elif can_append and durable.byte_offset + sum(
+            len(encode_record_line(record.as_document())) for record in ordered
+        ) <= max_segment_bytes:
+            return current
+        next_part = int(current.rsplit('#', 1)[1]) + 1
+        if next_part > 9999:
+            raise AlarmPersistenceValidationError('WAL segment part limit is exhausted')
+        return segment_id_for_evaluated_at(evaluated_at, part=next_part)
+
     def append_batch(
-        self, records: Sequence[EngineCommitRecord | ConfigurationAdoptionRecord]
+        self,
+        records: Sequence[EngineCommitRecord | ConfigurationAdoptionRecord],
+        *,
+        segment_id: str | None = None,
     ) -> tuple[JournalEntry, ...]:
         ordered = _validate_batch(records)
         first = ordered[0]
@@ -50,7 +84,16 @@ class EngineJournal:
             if isinstance(first, EngineCommitRecord)
             else first.effective_at
         )
-        segment_id = segment_id_for_evaluated_at(evaluated_at)
+        expected = segment_id_for_evaluated_at(evaluated_at)
+        if segment_id is None:
+            segment_id = expected
+        elif (
+            not isinstance(segment_id, str)
+            or segment_id.split('#', 1)[0] != expected.split('#', 1)[0]
+            or not segment_id.rsplit('#', 1)[-1].isdigit()
+            or len(segment_id.rsplit('#', 1)[-1]) != 4
+        ):
+            raise AlarmPersistenceValidationError('WAL batch segment differs from evaluation hour')
         path = self._paths.journal_segment_path(segment_id, sealed=False)
         sealed_path = self._paths.journal_segment_path(segment_id, sealed=True)
         if sealed_path.exists():
@@ -188,14 +231,17 @@ class EngineJournal:
                         'V2 group commit revisions must match target artifact'
                     )
                 if any(
-                    segment_id_for_evaluated_at(item.record.commit.evaluated_at)
-                    != entry.end.segment_id
+                    segment_id_for_evaluated_at(item.record.commit.evaluated_at).split('#', 1)[0]
+                    != entry.end.segment_id.split('#', 1)[0]
                     for item in group_entries
                 ):
                     raise AlarmPersistenceCorruptionError(
                         'V2 group commit timestamps must match WAL segment'
                     )
-                if segment_id_for_evaluated_at(record.effective_at) != entry.end.segment_id:
+                if (
+                    segment_id_for_evaluated_at(record.effective_at).split('#', 1)[0]
+                    != entry.end.segment_id.split('#', 1)[0]
+                ):
                     raise AlarmPersistenceCorruptionError(
                         'V2 adoption effective_at segment does not match its group commits'
                     )

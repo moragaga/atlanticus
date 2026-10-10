@@ -52,7 +52,15 @@ class AlarmPersistence:
         *,
         application_root: str | Path,
         max_state_document_bytes: int | None = None,
+        max_journal_segment_bytes: int | None = None,
     ) -> None:
+        if max_journal_segment_bytes is not None and (
+            isinstance(max_journal_segment_bytes, bool)
+            or not isinstance(max_journal_segment_bytes, int)
+            or max_journal_segment_bytes < 512
+        ):
+            raise ValueError('max_journal_segment_bytes must be at least 512')
+        self._max_journal_segment_bytes = max_journal_segment_bytes
         self._paths = AlarmPersistencePaths(application_root=application_root)
         self._state = AtomicJsonStore(
             root_path=self._paths.alarms_root,
@@ -302,15 +310,19 @@ class AlarmPersistence:
             if isinstance(first, EngineCommitRecord)
             else first.effective_at
         )
-        segment_id = segment_id_for_evaluated_at(evaluated_at)
         with mutation():
             _require_unchanged_head(self.read_head(), head, stage='WAL append')
             self._journal.discard_unconfirmed_tail(head.durable)
+            segment_id = self._journal.select_append_segment(
+                records,
+                durable=head.durable,
+                max_segment_bytes=self._max_journal_segment_bytes,
+            )
             sealed_count = 0
             if head.durable is not None and segment_id > head.durable.segment_id:
                 sealed_count = self._journal.seal_before(segment_id)
             self._journal.verify_append_position(durable=head.durable, segment_id=segment_id)
-            entries = self._journal.append_batch(records)
+            entries = self._journal.append_batch(records, segment_id=segment_id)
         final_position = entries[-1].end
         durable_head = JournalHead(durable=final_position, materialized=head.materialized)
         with mutation():
