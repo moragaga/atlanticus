@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-# Espejo pedagógico del contrato puro de proyección FACTS v4.
-# No persiste Parquet, no modifica WAL/FACTS y no avanza el checkpoint del Historian.
-# Cada colección tiene un destino definido o una exclusión explícitamente visible.
-
 import hashlib
 import json
 import re
@@ -16,13 +12,13 @@ if TYPE_CHECKING:
     from ada.contracts.alarms.facts_stream import CommittedFacts
 
 
-# Un fallo de mapeo no debe producir pérdidas silenciosas de hechos históricos.
 class AlarmHistoryProjectionError(ValueError):
     pass
 
 
-# Seis historias de consulta diferentes, no seis nuevas fuentes de autoridad.
+# Separamos el ciclo de vida del episodio de los cambios individuales de ocurrencias.
 class AlarmHistoryDomain(StrEnum):
+    EPISODES = 'episodes'
     LIFECYCLE = 'lifecycle'
     MANAGEMENT = 'management'
     CASCADE = 'cascade'
@@ -32,7 +28,6 @@ class AlarmHistoryDomain(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
-# Cada fila conserva procedencia, timestamp real y contenido de origen.
 class ProjectedAlarmHistoryFact:
     domain: AlarmHistoryDomain
     historian_fact_id: str
@@ -55,7 +50,6 @@ class ProjectedAlarmHistoryFact:
 
 
 @dataclass(frozen=True, slots=True)
-# Una exclusión deliberada es auditable y no se confunde con un hecho procesado.
 class ExcludedAlarmHistoryFact:
     collection: str
     ordinal: int
@@ -63,7 +57,6 @@ class ExcludedAlarmHistoryFact:
 
 
 @dataclass(frozen=True, slots=True)
-# La salida incluye los hechos materializables y las exclusiones justificadas.
 class AlarmHistoryProjection:
     facts: tuple[ProjectedAlarmHistoryFact, ...]
     excluded: tuple[ExcludedAlarmHistoryFact, ...]
@@ -71,7 +64,7 @@ class AlarmHistoryProjection:
 
 _COLLECTION_DOMAINS = {
     'occurrence_changes': AlarmHistoryDomain.LIFECYCLE,
-    'episode_changes': AlarmHistoryDomain.LIFECYCLE,
+    'episode_changes': AlarmHistoryDomain.EPISODES,
     'management_effects': AlarmHistoryDomain.MANAGEMENT,
     'evidence_records': AlarmHistoryDomain.EVIDENCE,
     'deactivation_requests': AlarmHistoryDomain.DEACTIVATION,
@@ -116,7 +109,6 @@ _TIMESTAMPS = {
 }
 
 
-# Transforma un commit FACTS verificado sin escribir en ningún sistema externo.
 def project_committed_alarm_facts(
     *, facts: CommittedFacts, stream_id: str
 ) -> AlarmHistoryProjection:
@@ -197,7 +189,6 @@ def project_committed_alarm_facts(
     return AlarmHistoryProjection(tuple(projected), tuple(excluded))
 
 
-# Evita reinterpretar Journey como historia duplicada de gestión o asignación.
 def _route(collection: str, entry: dict[str, Any]) -> tuple[AlarmHistoryDomain | None, str | None]:
     if collection in _EXCLUDED_COLLECTIONS:
         return None, _EXCLUDED_COLLECTIONS[collection]
@@ -226,7 +217,6 @@ def _route(collection: str, entry: dict[str, Any]) -> tuple[AlarmHistoryDomain |
     raise AlarmHistoryProjectionError(f'Unclassified Journey event: {key}')
 
 
-# Una cascada debe conservar alarma y ocurrencia de origen y exactamente un efecto.
 def _validate_causal_cascade(entry: dict[str, Any]) -> None:
     _nonempty(entry.get('cascade_source_alarm_key'), 'cascade_source_alarm_key')
     _nonempty(entry.get('cascade_source_occurrence_id'), 'cascade_source_occurrence_id')
@@ -241,8 +231,6 @@ def _validate_causal_cascade(entry: dict[str, Any]) -> None:
             _nonempty(entry[name], name)
 
 
-
-# No aceptar eventos atribuidos a una Rule o Tool si faltan sus claves básicas.
 def _validate_history_identity(collection: str, entry: dict[str, Any]) -> None:
     required = {
         'occurrence_changes': ('alarm_key', 'occurrence_id'),
@@ -259,7 +247,6 @@ def _validate_history_identity(collection: str, entry: dict[str, Any]) -> None:
         _nonempty(entry.get(name), f'{collection}.{name}')
 
 
-# El día de materialización se deriva del hecho y no del momento de ejecución.
 def _timestamp_field(collection: str, entry: dict[str, Any]) -> str:
     if collection == 'input_receipts':
         return 'event_at' if entry.get('event_at') is not None else 'applied_at'
@@ -273,7 +260,6 @@ def _timestamp_field(collection: str, entry: dict[str, Any]) -> str:
     return _TIMESTAMPS[collection]
 
 
-# Respeta los valores de evento que publica el Engine sin renombrar ASSIGNED.
 def _event_kind(collection: str, entry: dict[str, Any]) -> str:
     field = 'event_key' if collection == 'journey_events' else (
         'input_kind' if collection == 'input_receipts' else 'kind'
@@ -286,7 +272,6 @@ def _event_kind(collection: str, entry: dict[str, Any]) -> str:
     return _nonempty(value, f'{collection}.{field}')
 
 
-# Fechas estrictamente UTC; no reinterpretar timestamps locales.
 def _utc_timestamp(value: Any) -> datetime:
     if not isinstance(value, str) or not value.endswith('Z'):
         raise AlarmHistoryProjectionError('History event timestamp must be UTC Z text')
@@ -299,14 +284,12 @@ def _utc_timestamp(value: Any) -> datetime:
     return result
 
 
-# Las referencias históricas obligatorias no pueden ser vacías.
 def _nonempty(value: Any, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise AlarmHistoryProjectionError(f'{field} must be non-empty text')
     return value
 
 
-# Los registros de versiones anteriores pueden no incluir metadatos enriquecidos.
 def _optional_string(entry: dict[str, Any], field: str) -> str | None:
     value = entry.get(field)
     if value is None:

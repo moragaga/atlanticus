@@ -12,6 +12,8 @@ from atlanticus.runtime import JobRuntimeContext
 class _DatasetMerger(Protocol):
     def merge(self, **kwargs): ...
 
+    def read_table(self, **kwargs): ...
+
 
 class _FencedDatasetMerger:
     def __init__(self, *, runtime: _DatasetMerger, context: JobRuntimeContext) -> None:
@@ -22,6 +24,11 @@ class _FencedDatasetMerger:
         self._context.raise_if_cancelled()
         with self._context.fenced_mutation():
             return self._runtime.merge(**kwargs)
+
+    def read_table(self, **kwargs):
+        self._context.raise_if_cancelled()
+        self._context.assert_lease_current()
+        return self._runtime.read_table(**kwargs)
 
 
 @dataclass(frozen=True, slots=True)

@@ -17,6 +17,7 @@ class AlarmHistoryProjectionError(ValueError):
 
 
 class AlarmHistoryDomain(StrEnum):
+    EPISODES = 'episodes'
     LIFECYCLE = 'lifecycle'
     MANAGEMENT = 'management'
     CASCADE = 'cascade'
@@ -62,7 +63,7 @@ class AlarmHistoryProjection:
 
 _COLLECTION_DOMAINS = {
     'occurrence_changes': AlarmHistoryDomain.LIFECYCLE,
-    'episode_changes': AlarmHistoryDomain.LIFECYCLE,
+    'episode_changes': AlarmHistoryDomain.EPISODES,
     'management_effects': AlarmHistoryDomain.MANAGEMENT,
     'evidence_records': AlarmHistoryDomain.EVIDENCE,
     'deactivation_requests': AlarmHistoryDomain.DEACTIVATION,
@@ -227,7 +228,6 @@ def _validate_causal_cascade(entry: dict[str, Any]) -> None:
     for name in ('cascade_management_effect_id', 'cascade_deactivation_effect_id'):
         if entry.get(name) is not None:
             _nonempty(entry[name], name)
-
 
 
 def _validate_history_identity(collection: str, entry: dict[str, Any]) -> None:

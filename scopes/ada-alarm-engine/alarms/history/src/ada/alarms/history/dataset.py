@@ -5,7 +5,7 @@ from collections.abc import Iterable
 import pyarrow as pa
 
 from ada.alarms.history.contract import AlarmHistoryContractError
-from ada.contracts.alarms.history_projection import ProjectedAlarmHistoryFact
+from ada.contracts.alarms.history_projection import AlarmHistoryDomain, ProjectedAlarmHistoryFact
 
 _HISTORY_SCHEMA = pa.schema(
     (
@@ -42,6 +42,8 @@ def history_table(facts: Iterable[ProjectedAlarmHistoryFact]) -> pa.Table:
         raise TypeError('facts must be an iterable of projected history facts') from error
     if not all(isinstance(item, ProjectedAlarmHistoryFact) for item in items):
         raise TypeError('facts must contain ProjectedAlarmHistoryFact values')
+    if any(item.domain is AlarmHistoryDomain.EPISODES for item in items):
+        raise AlarmHistoryContractError('Episode facts require the consolidated episodes dataset')
     rows = [
         {
             'historian_fact_id': item.historian_fact_id,

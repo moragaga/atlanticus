@@ -20,7 +20,6 @@ HISTORY_ORDER_COLUMNS = ('event_at_utc', 'historian_fact_id')
 HISTORY_PARTITION_DIMENSIONS = ('year', 'month', 'day')
 
 
-# Error de contrato: no se transforma una identidad histórica defectuosa.
 class AlarmHistoryContractError(ValueError):
     pass
 
@@ -43,14 +42,12 @@ _HISTORY_DEFINITIONS = {
 }
 
 
-# Dataset diario por dominio no-Evidence.
 def history_definition(domain: AlarmHistoryDomain) -> DatasetDefinition:
     if not isinstance(domain, AlarmHistoryDomain) or domain is AlarmHistoryDomain.EVIDENCE:
         raise AlarmHistoryContractError('History domain must be a non-evidence domain')
     return _HISTORY_DEFINITIONS[domain]
 
 
-# Dataset Evidence por familia y regla, conservando ambas identidades.
 def evidence_definition(alarm_key: str) -> DatasetDefinition:
     family, rule = _evidence_identity(alarm_key)
     return DatasetDefinition(
@@ -67,7 +64,6 @@ def evidence_definition(alarm_key: str) -> DatasetDefinition:
     )
 
 
-# Comprueba procedencia UTC e identidad antes de resolver la partición.
 def history_destination(
     fact: ProjectedAlarmHistoryFact,
 ) -> tuple[DatasetDefinition, DatasetTarget]:
@@ -94,13 +90,18 @@ def history_destination(
         if fact.domain is AlarmHistoryDomain.EVIDENCE
         else history_definition(fact.domain)
     )
+    # Los cierres actualizan la partición de inicio, incluso al cruzar medianoche.
+    partition_day = fact.day_utc
+    if fact.domain is AlarmHistoryDomain.EPISODES:
+        from ada.alarms.history.episodes import episode_started_at
+
+        partition_day = episode_started_at(fact).date()
     return definition, definition.resolve_target(
         materialization=HISTORY_MATERIALIZATION,
-        partition=_daily_partition(fact.day_utc),
+        partition=_daily_partition(partition_day),
     )
 
 
-# Conserva la partición física de la fecha de evento UTC.
 def _daily_partition(day: date) -> dict[str, str]:
     return {
         'year': f'{day.year:04d}',
@@ -109,8 +110,6 @@ def _daily_partition(day: date) -> dict[str, str]:
     }
 
 
-# Reutiliza el validador de rutas del Dataset sin normalizaciones con pérdida.
-# El contrato no acepta segmentos vacíos, barras adicionales ni rutas relativas.
 def _evidence_identity(alarm_key: str) -> tuple[str, str]:
     if not isinstance(alarm_key, str):
         raise AlarmHistoryContractError('Evidence requires a canonical alarm key')

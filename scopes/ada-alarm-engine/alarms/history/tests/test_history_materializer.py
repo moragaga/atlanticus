@@ -55,8 +55,8 @@ def _read_rows(runtime, fact):
     return runtime.read_table(definition=definition, target=target).table.to_pylist()
 
 
-def test_six_histories_and_daily_partition_isolation(runtime, facts):
-    domains = tuple(AlarmHistoryDomain)
+def test_non_episode_histories_and_daily_partition_isolation(runtime, facts):
+    domains = tuple(domain for domain in AlarmHistoryDomain if domain is not AlarmHistoryDomain.EPISODES)
     rows = [facts(i, domain) for i, domain in enumerate(domains, start=1)]
     rows.extend([
         facts(7, AlarmHistoryDomain.EVIDENCE, key='molienda/temperatura_alta'),

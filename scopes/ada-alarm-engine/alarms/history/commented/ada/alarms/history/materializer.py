@@ -4,33 +4,36 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Protocol
 
+import pyarrow as pa
+
 from ada.alarms.history.contract import (
     HISTORY_KEY_COLUMNS,
     HISTORY_ORDER_COLUMNS,
     history_destination,
 )
 from ada.alarms.history.dataset import history_table
-from ada.contracts.alarms.history_projection import ProjectedAlarmHistoryFact
+from ada.alarms.history.episodes import episodes_table
+from ada.contracts.alarms.history_projection import AlarmHistoryDomain, ProjectedAlarmHistoryFact
 from atlanticus.datasets.core import (
     DatasetDefinition,
     DatasetTarget,
     PublicationQuality,
     PublicationStatus,
 )
+from atlanticus.datasets.runtime import DatasetRuntimeNotFoundError
 
 
-# Error que impide dar por completada una publicación de historia.
 class AlarmHistoryMaterializationError(ValueError):
     pass
 
 
-# Dependencia inyectada: el módulo no controla filesystem ni atomicidad.
 class _DatasetMerger(Protocol):
     def merge(self, **kwargs): ...
 
+    def read_table(self, **kwargs): ...
+
 
 @dataclass(frozen=True, slots=True)
-# Resumen local; el checkpoint pertenece a otro incremento.
 class AlarmHistoryWriteResult:
     facts_received: int
     facts_unique: int
@@ -40,14 +43,12 @@ class AlarmHistoryWriteResult:
     target_identifiers: tuple[str, ...]
 
 
-# Prevalida el lote entero y usa merges deduplicados por identidad.
 class AlarmHistoryMaterializer:
     def __init__(self, *, runtime: _DatasetMerger) -> None:
         if not callable(getattr(runtime, 'merge', None)):
             raise TypeError('runtime must provide a callable merge method')
         self._runtime = runtime
 
-    # Conserva hechos previos al reintentar una escritura parcial.
     def materialize(
         self,
         *,
@@ -83,18 +84,39 @@ class AlarmHistoryMaterializer:
             if target.identifier not in groups:
                 groups[target.identifier] = (definition, target, [])
             groups[target.identifier][2].append(fact)
+        # Se validan todos los destinos antes de la primera publicación física.
+        prepared: list[
+            tuple[str, DatasetDefinition, DatasetTarget, pa.Table, tuple[str, ...], tuple[str, ...]]
+        ] = []
+        for identifier, (definition, target, rows) in sorted(groups.items()):
+            _check_current(check_current)
+            rows.sort(key=lambda item: (item.event_at_utc, item.event_kind == 'CLOSED', item.historian_fact_id))
+            if rows[0].domain is AlarmHistoryDomain.EPISODES:
+                if not callable(getattr(self._runtime, 'read_table', None)):
+                    raise AlarmHistoryMaterializationError('Episode publication requires readable runtime')
+                try:
+                    current = self._runtime.read_table(definition=definition, target=target).table
+                except DatasetRuntimeNotFoundError:
+                    current = None
+                data = episodes_table(rows, current=current)
+                keys = ('episode_id',)
+                ordering = ('started_at_utc', 'episode_id')
+            else:
+                data = history_table(rows)
+                keys = HISTORY_KEY_COLUMNS
+                ordering = HISTORY_ORDER_COLUMNS
+            prepared.append((identifier, definition, target, data, keys, ordering))
         committed = 0
         unchanged = 0
         targets: list[str] = []
-        for identifier, (definition, target, rows) in sorted(groups.items()):
+        for identifier, definition, target, data, keys, ordering in prepared:
             _check_current(check_current)
-            rows.sort(key=lambda item: (item.event_at_utc, item.historian_fact_id))
             publication = self._runtime.merge(
                 definition=definition,
                 target=target,
-                data=history_table(rows),
-                key_columns=HISTORY_KEY_COLUMNS,
-                order_by=HISTORY_ORDER_COLUMNS,
+                data=data,
+                key_columns=keys,
+                order_by=ordering,
             )
             if (
                 publication.target != target
@@ -120,7 +142,6 @@ class AlarmHistoryMaterializer:
         )
 
 
-# Invoca fencing proporcionado por el futuro job antes y después de publicar.
 def _check_current(check_current: Callable[[], None] | None) -> None:
     if check_current is not None:
         check_current()

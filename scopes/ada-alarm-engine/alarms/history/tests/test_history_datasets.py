@@ -56,7 +56,7 @@ def make_fact():
 
 def test_each_non_evidence_domain_has_a_daily_history_target(make_fact):
     for domain in AlarmHistoryDomain:
-        if domain is AlarmHistoryDomain.EVIDENCE:
+        if domain in {AlarmHistoryDomain.EVIDENCE, AlarmHistoryDomain.EPISODES}:
             continue
         fact = make_fact(domain=domain, alarm_key=None)
         definition, target = history_destination(fact)

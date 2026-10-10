@@ -8,6 +8,7 @@ from ada.alarms.history.contract import (
     history_destination,
 )
 from ada.alarms.history.dataset import history_schema, history_table
+from ada.alarms.history.episodes import episodes_schema, episodes_table
 from ada.alarms.history.materializer import (
     AlarmHistoryMaterializationError,
     AlarmHistoryMaterializer,
@@ -24,6 +25,8 @@ __all__ = [
     'AlarmHistoryMaterializationError',
     'AlarmHistoryMaterializer',
     'AlarmHistoryWriteResult',
+    'episodes_schema',
+    'episodes_table',
     'evidence_definition',
     'history_definition',
     'history_destination',

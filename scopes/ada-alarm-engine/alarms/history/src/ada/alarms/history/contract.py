@@ -90,9 +90,14 @@ def history_destination(
         if fact.domain is AlarmHistoryDomain.EVIDENCE
         else history_definition(fact.domain)
     )
+    partition_day = fact.day_utc
+    if fact.domain is AlarmHistoryDomain.EPISODES:
+        from ada.alarms.history.episodes import episode_started_at
+
+        partition_day = episode_started_at(fact).date()
     return definition, definition.resolve_target(
         materialization=HISTORY_MATERIALIZATION,
-        partition=_daily_partition(fact.day_utc),
+        partition=_daily_partition(partition_day),
     )
 
 
