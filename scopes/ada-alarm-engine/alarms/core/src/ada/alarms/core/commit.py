@@ -46,6 +46,13 @@ class InputReceipt:
     commit_id: str
     applied_at: datetime
     outcome: str
+    alarm_key: str | None = None
+    occurrence_id: str | None = None
+    tool_key: str | None = None
+    actor_key: str | None = None
+    event_at: datetime | None = None
+    request_id: str | None = None
+    decision_kind: str | None = None
 
     def __post_init__(self) -> None:
         _require_non_empty_string(self.input_id, 'input_id')
@@ -54,19 +61,46 @@ class InputReceipt:
         _require_non_empty_string(self.commit_id, 'commit_id')
         _require_utc_datetime(self.applied_at, 'applied_at')
         _require_non_empty_string(self.outcome, 'outcome')
+        for name in (
+            'alarm_key',
+            'occurrence_id',
+            'tool_key',
+            'actor_key',
+            'request_id',
+            'decision_kind',
+        ):
+            value = getattr(self, name)
+            if value is not None:
+                _require_non_empty_string(value, name)
+        if self.event_at is not None:
+            _require_utc_datetime(self.event_at, 'event_at')
 
     @property
     def receipt_id(self) -> str:
         return f'{self.input_kind.value}:{self.input_id}'
 
     def as_document(self) -> dict[str, Any]:
-        return {
+        document: dict[str, Any] = {
             'input_id': self.input_id,
             'input_kind': self.input_kind.value,
             'commit_id': self.commit_id,
             'applied_at': _timestamp(self.applied_at),
             'outcome': self.outcome,
         }
+        for name in (
+            'alarm_key',
+            'occurrence_id',
+            'tool_key',
+            'actor_key',
+            'request_id',
+            'decision_kind',
+        ):
+            value = getattr(self, name)
+            if value is not None:
+                document[name] = value
+        if self.event_at is not None:
+            document['event_at'] = _timestamp(self.event_at)
+        return document
 
 
 @dataclass(frozen=True, slots=True)
@@ -602,6 +636,7 @@ def _build_receipts(
         else:
             input_kind = InputKind.DEACTIVATION_REQUEST
             outcome = deactivation.outcome.value
+        request = None if deactivation is None else deactivation.deactivation_request
         receipts.append(
             InputReceipt(
                 input_id=result.action.input_id,
@@ -609,11 +644,20 @@ def _build_receipts(
                 commit_id=commit_id,
                 applied_at=committed_at,
                 outcome=outcome,
+                alarm_key=result.action.alarm_identity.canonical_key,
+                occurrence_id=result.action.source_occurrence_id,
+                tool_key=result.action.tool_key,
+                actor_key=result.action.actor_key,
+                event_at=result.action.source_created_at,
+                request_id=None if request is None else request.request_id,
             )
         )
     for result in decision.deactivation_decision_results:
         if result.outcome is DeactivationDecisionOutcome.PENDING_DEPENDENCY:
             continue
+        request = result.deactivation_request
+        if request is None:
+            raise AlarmContractError('Resolved deactivation decision requires a request')
         receipts.append(
             InputReceipt(
                 input_id=result.decision.decision_id,
@@ -621,6 +665,12 @@ def _build_receipts(
                 commit_id=commit_id,
                 applied_at=committed_at,
                 outcome=result.outcome.value,
+                alarm_key=request.alarm_identity.canonical_key,
+                occurrence_id=request.source_occurrence_id,
+                actor_key=result.decision.actor_key,
+                event_at=result.decision.decided_at,
+                request_id=result.decision.request_id,
+                decision_kind=result.decision.kind.value,
             )
         )
     return tuple(sorted(receipts, key=lambda item: item.receipt_id))
