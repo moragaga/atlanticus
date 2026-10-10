@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ada-command-center:engine-facts-export-cursor:v4",
+  "title": "EngineFactsExportCursor v4",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["document_type", "schema_version", "artifact_ref", "journal_position", "segment_path", "record_start", "record_end", "record_sha256", "cursor_sha256"],
+  "properties": {
+    "document_type": {"const": "ada_command_center_engine_facts_export_cursor"},
+    "schema_version": {"const": 4},
+    "artifact_ref": {"type": ["object", "null"]},
+    "journal_position": {"type": ["object", "null"]},
+    "segment_path": {"type": ["string", "null"]},
+    "record_start": {"type": ["integer", "null"], "minimum": 0},
+    "record_end": {"type": ["integer", "null"], "minimum": 1},
+    "record_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "cursor_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -94,6 +94,7 @@ def _snapshot():
         tool_key='crusher',
         kind=ToolConfigurationKind.PROCESS,
         operational_scope=ToolScope.PLANT,
+        center_component_key='main',
         components=(
             ToolComponent(
                 key='main',
