@@ -105,7 +105,7 @@ class UsersAdministrationService:
         profile_key: str,
         enabled: bool = True,
         expected_registry_version: str | None,
-        expected_membership_version: str | None = None,
+        expected_membership_version: str | None,
     ) -> ManagedUser:
         normalized_user_id = _required_user_id(user_id)
         profile = require_managed_profile(profile_key, profiles=resolve_profile_catalog(self._profiles))
@@ -113,6 +113,8 @@ class UsersAdministrationService:
             raise TypeError('enabled must be boolean')
 
         snapshot = self.discover()
+        if snapshot.memberships.version != expected_membership_version:
+            raise UsersRegistryConflictError('Tool membership changed before promotion')
         candidate = next(
             (item for item in snapshot.candidates if item.user_id == normalized_user_id),
             None,
@@ -143,11 +145,6 @@ class UsersAdministrationService:
             _require_directory_identity(candidate.directory_user, identity)
 
         memberships = snapshot.memberships
-        expected_membership_version = (
-            memberships.version
-            if expected_membership_version is None
-            else expected_membership_version
-        )
         if memberships.version != expected_membership_version:
             raise UsersRegistryConflictError('Tool membership changed before promotion')
         if memberships.get(identity.user_id) is not None:
@@ -173,7 +170,7 @@ class UsersAdministrationService:
         profile_key: str,
         enabled: bool,
         expected_registry_version: str | None = None,
-        expected_membership_version: str | None = None,
+        expected_membership_version: str | None,
     ) -> ManagedUser:
         del expected_registry_version
         normalized_user_id = _required_user_id(user_id)
@@ -189,8 +186,7 @@ class UsersAdministrationService:
         current = memberships.get(normalized_user_id)
         if current is None:
             raise UserPromotionError('Managed user does not exist')
-        expected = memberships.version if expected_membership_version is None else expected_membership_version
-        if memberships.version != expected:
+        if memberships.version != expected_membership_version:
             raise UsersRegistryConflictError('Tool membership changed before user update')
         updated = ToolUserMembership(
             user_id=normalized_user_id,
@@ -202,7 +198,7 @@ class UsersAdministrationService:
                 updated if item.user_id == normalized_user_id else item
                 for item in memberships.memberships
             ),
-            expected_version=expected,
+            expected_version=expected_membership_version,
         )
         if saved.get(normalized_user_id) != updated:
             raise UserPromotionError('Tool membership persisted a different user')

@@ -230,11 +230,14 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
             return no_update, _error('Select a profile before promoting.')
         version = document.get('registry_version') if isinstance(document, dict) else None
         try:
+            # El token de concurrencia de memberships viene del snapshot visible.
+            membership_version = _membership_version(document)
             context.administration.promote(
                 user_id,
                 profile_key=str(profile_key),
                 enabled=True,
                 expected_registry_version=version if isinstance(version, str) else None,
+                expected_membership_version=membership_version,
             )
             fresh = snapshot_to_document(context.administration.discover())
             return preserve_profiles(fresh, document), _notice('Usuario promovido.')
@@ -313,25 +316,29 @@ def register_users_admin_callbacks(app: object, context: UsersAdminWebContext) -
             return no_update, no_update, no_update
         if not isinstance(user_id, str) or not isinstance(profile_key, str):
             return no_update, _EDIT_MODAL_OPEN, _error('User or profile is not available.')
-        version = document.get('registry_version') if isinstance(document, dict) else None
-        if not isinstance(version, str):
-            return (
-                no_update,
-                _EDIT_MODAL_OPEN,
-                _error('Users registry version is not available. Refresh before saving.'),
-            )
         try:
+            # No usar registry_version para una edición que solo modifica membership.
+            membership_version = _membership_version(document)
             context.administration.update(
                 user_id,
                 profile_key=profile_key,
                 enabled='enabled' in (enabled_values or []),
-                expected_registry_version=version,
+                expected_membership_version=membership_version,
             )
             fresh = snapshot_to_document(context.administration.discover())
             return preserve_profiles(fresh, document), _EDIT_MODAL_CLOSED, None
         except Exception as error:
             return no_update, _EDIT_MODAL_OPEN, _error(str(error))
 
+
+
+def _membership_version(document: dict[str, object] | None) -> str | None:
+    if not isinstance(document, dict) or 'membership_version' not in document:
+        raise ValueError('Tool membership version is not available. Refresh before saving.')
+    version = document['membership_version']
+    if version is not None and (not isinstance(version, str) or not version.strip()):
+        raise ValueError('Tool membership version is invalid. Refresh before saving.')
+    return version
 
 
 def _profile_options(document: dict[str, object] | None) -> list[dict[str, object]]:

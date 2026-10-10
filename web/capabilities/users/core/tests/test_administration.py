@@ -7,7 +7,6 @@ from atlanticus.web.users.models import (
     DiscoveredUser,
     ToolMembershipSnapshot,
     ToolUserMembership,
-    UserIdentity,
     UsersRegistrySnapshot,
 )
 from atlanticus.web.users.store import ToolMembershipStore, UsersDirectoryReader, UsersRegistryStore
@@ -135,3 +134,66 @@ def test_unknown_user_cannot_be_promoted():
             expected_registry_version='r1',
             expected_membership_version='m1',
         )
+
+
+def test_promotion_rejects_stale_tool_membership_before_creating_global_identity():
+    registry = Registry()
+    memberships = Memberships(version='m2')
+    user = discovered()
+    service = UsersAdministrationService(
+        registry=registry,
+        memberships=memberships,
+        profiles=lambda: ProfileCatalog(),
+        directory=Directory(user),
+    )
+    with pytest.raises(UsersRegistryConflictError, match='Tool membership changed'):
+        service.promote(
+            user.user_id,
+            profile_key='basic',
+            expected_registry_version='r1',
+            expected_membership_version='m1',
+        )
+    assert registry.writes == 0
+    assert memberships.writes == 0
+
+
+def test_update_rejects_stale_membership_without_overwriting_another_change():
+    identity = discovered().to_identity()
+    registry = Registry((identity,))
+    membership = ToolUserMembership(user_id=identity.user_id, profile_key='basic')
+    memberships = Memberships((membership,), version='m2')
+    service = UsersAdministrationService(
+        registry=registry,
+        memberships=memberships,
+        profiles=lambda: ProfileCatalog(),
+    )
+    with pytest.raises(UsersRegistryConflictError, match='Tool membership changed'):
+        service.update(
+            identity.user_id,
+            profile_key='root',
+            enabled=False,
+            expected_membership_version='m1',
+        )
+    assert memberships.writes == 0
+    assert memberships.load().get(identity.user_id) == membership
+
+
+def test_promotion_allows_explicit_empty_membership_version_on_first_write():
+    registry = Registry(version=None)
+    memberships = Memberships(version=None)
+    user = discovered()
+    service = UsersAdministrationService(
+        registry=registry,
+        memberships=memberships,
+        profiles=lambda: ProfileCatalog(),
+        directory=Directory(user),
+    )
+    promoted = service.promote(
+        user.user_id,
+        profile_key='basic',
+        expected_registry_version=None,
+        expected_membership_version=None,
+    )
+    assert promoted.membership == memberships.load().get(user.user_id)
+    assert registry.writes == 1
+    assert memberships.writes == 1
