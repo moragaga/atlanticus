@@ -16,6 +16,7 @@ from ada.web.application.integrated_operations.modules.dashboard.plant.puerto.pu
     map_puerto_readings,
 )
 from ada.web.ui.display_status import DisplayStatus
+from ada.web.ui.equipment_image import ADA_EQUIPMENT_IMAGE_ASSET_LAYER
 
 
 def _walk(item):
@@ -46,3 +47,28 @@ def test_desaladora_stays_renderable_on_missing_data():
     model = map_desaladora_readings(readings, histories)
     assert model.trend_history.status is DisplayStatus.NOT_MAPPED
     assert isinstance(build_desaladora(model), Component)
+
+
+def test_puerto_uses_shared_equipment_images_for_filter_and_shipment():
+    source = {
+        'latest': {
+            'values': {
+                'fl_001_estado_inst': {
+                    'status': 'ok', 'value_kind': 'value', 'value_type': 'text',
+                    'value': 'Operando', 'parsed_value': 'Operando',
+                },
+                'embarque_estado_inst': {
+                    'status': 'ok', 'value_kind': 'value', 'value_type': 'text',
+                    'value': 'Detenido', 'parsed_value': 'Detenido',
+                },
+            }
+        }
+    }
+    readings, histories = decode_puerto_store(source)
+    root = build_puerto(map_puerto_readings(readings, histories))
+    srcs = [node.src for node in _walk(root) if getattr(node, 'src', None)]
+    prefix = f'/assets/{ADA_EQUIPMENT_IMAGE_ASSET_LAYER.target_name}/img/equipment/'
+    assert prefix + 'filtro/operando.svg' in srcs
+    assert prefix + 'barco/detenido.svg' in srcs
+    assert any(item.endswith('/img/status/not-mapped.svg') for item in srcs)
+    assert not any('/img/puerto/' in item for item in srcs)

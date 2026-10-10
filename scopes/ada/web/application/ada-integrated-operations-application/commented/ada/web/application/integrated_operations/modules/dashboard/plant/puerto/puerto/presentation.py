@@ -3,10 +3,8 @@ from __future__ import annotations
 from dash import html
 from dash.development.base_component import Component
 
-from ada.web.application.integrated_operations.modules.dashboard.plant.module import (
-    PLANT_ASSET_LAYER,
-)
 from ada.web.ui.display_status import DisplayStatus, DisplayValue, build_display_status_icon
+from ada.web.ui.equipment_image import EquipmentStateImage, build_equipment_state_image
 from ada.web.ui.inline_row import (
     InlineValueRowDefinition,
     InlineValueRowState,
@@ -15,8 +13,14 @@ from ada.web.ui.inline_row import (
 from ada.web.ui.level_gauge import build_level_gauge
 from ada.web.ui.time_series import build_time_series_component
 
-from ..definitions import MetricDefinition
-from .definitions import FILTERS, FILTRADO_ACCUMULATED, FILTRADO_TREND, SHIPMENT, TANKS
+from .definitions import (
+    FILTERS,
+    FILTRADO_ACCUMULATED,
+    FILTRADO_TREND,
+    SHIPMENT,
+    TANKS,
+    MetricDefinition,
+)
 from .models import FilterReading, PuertoReading
 
 
@@ -71,7 +75,7 @@ def build_puerto(reading: PuertoReading) -> Component:
                                 ],
                                 className='ada-io-puerto__shipment-rows',
                             ),
-                            _inspect_wrap(_image('barco', reading.ship_state, 'Barco'), SHIPMENT.state_key),
+                            _inspect_wrap(_image('barco', reading.ship_state), SHIPMENT.state_key),
                         ],
                         className='ada-io-puerto__shipment',
                     ),
@@ -88,7 +92,7 @@ def _filter(reading: FilterReading) -> Component:
         html.Div(
             [
                 html.Span(reading.definition.label, className='ada-io-puerto__filter-label'),
-                _image('filtro', reading.state, reading.definition.label),
+                _image('filtro', reading.state),
             ],
             className='ada-io-puerto__filter',
         ),
@@ -96,17 +100,15 @@ def _filter(reading: FilterReading) -> Component:
     )
 
 
-def _image(kind: str, value: DisplayValue, label: str) -> Component:
-    if value.status is DisplayStatus.OK:
-        return html.Img(
-            src=f'/assets/{PLANT_ASSET_LAYER.target_name}/img/puerto/{kind}/{value.value}.svg',
-            alt=f'{label}: {value.value}',
-            className=f'ada-io-puerto__image ada-io-puerto__image--{kind}',
+# El equipo UI resuelve el recurso, los estados degradados y el asset layer.
+def _image(kind: str, value: DisplayValue) -> Component:
+    return build_equipment_state_image(
+        EquipmentStateImage(
+            image=kind,
+            state=value,
+            image_class_name=f'ada-io-puerto__image ada-io-puerto__image--{kind}',
         )
-    icon = build_display_status_icon(value.status)
-    if icon is None:
-        raise ValueError('Puerto equipment icon cannot be resolved')
-    return icon
+    )
 
 
 def _row(definition, value: DisplayValue) -> Component:

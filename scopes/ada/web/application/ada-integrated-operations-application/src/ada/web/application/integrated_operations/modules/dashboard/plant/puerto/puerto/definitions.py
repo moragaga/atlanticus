@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..definitions import MetricDefinition
+
+@dataclass(frozen=True, slots=True)
+class MetricDefinition:
+    label: str
+    kpi_key: str
+    unit: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

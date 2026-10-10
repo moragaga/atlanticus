@@ -2,10 +2,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..definitions import MetricDefinition
-
 
 # Claves y orden de KPI recuperados desde las referencias legacy indicadas.
+# Define localmente los KPI de Puerto, sin depender de la tarjeta Desaladora.
+@dataclass(frozen=True, slots=True)
+class MetricDefinition:
+    label: str
+    kpi_key: str
+    unit: str | None = None
+
+
 @dataclass(frozen=True, slots=True)
 class TankDefinition:
     label: str
