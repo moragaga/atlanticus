@@ -116,6 +116,53 @@ class CosmosUsersRuntimeStore(UsersRuntimeStore):
         users = tuple(_user_from_document(document) for document in documents)
         return tuple(sorted(users, key=lambda user: user.user_id))
 
+    def upsert_user(self, user: RuntimeUser) -> RuntimeUser:
+        if not isinstance(user, RuntimeUser):
+            raise TypeError('Users runtime upsert requires RuntimeUser')
+        payload = _user_to_document(user)
+        try:
+            existing = self._client.find_item(
+                container_name=self._container_name,
+                item_id=user.user_id,
+                partition_key=user.user_id,
+                include_metadata=True,
+            )
+            if existing is None:
+                self._client.create_item(container_name=self._container_name, item=payload)
+            else:
+                previous = _user_from_document(existing)
+                if previous.issuer != user.issuer or previous.subject_id != user.subject_id:
+                    raise UsersIdentityConflictError('Runtime user identity cannot be changed')
+                if previous != user:
+                    self._client.patch_item(
+                        container_name=self._container_name,
+                        item_id=user.user_id,
+                        partition_key=user.user_id,
+                        operations=(
+                            CosmosPatchOperation(
+                                operation='set', path='/user', value=user.to_document()
+                            ),
+                        ),
+                        if_match_etag=_etag(existing),
+                    )
+            persisted = self._client.find_item(
+                container_name=self._container_name,
+                item_id=user.user_id,
+                partition_key=user.user_id,
+            )
+        except CosmosConflictError as error:
+            raise UsersStoreUnavailableError('Users runtime changed concurrently') from error
+        except CosmosItemNotFoundError as error:
+            raise UsersStoreUnavailableError('Users runtime changed during publication') from error
+        except CosmosError as error:
+            raise UsersStoreUnavailableError('Could not publish runtime user') from error
+        if persisted is None:
+            raise UsersStoreUnavailableError('Published runtime user could not be read')
+        result = _user_from_document(persisted)
+        if result != user:
+            raise UsersStoreUnavailableError('Published runtime user differs from request')
+        return result
+
     def replace_all(self, users: tuple[RuntimeUser, ...]) -> tuple[RuntimeUser, ...]:
         desired = tuple(sorted(users, key=lambda user: user.user_id))
         if any(not isinstance(user, RuntimeUser) for user in desired):
